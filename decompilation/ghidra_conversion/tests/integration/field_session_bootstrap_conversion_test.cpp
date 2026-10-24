@@ -217,10 +217,9 @@ int main() {
     assert(state.field_lock == 0U && state.camera_transition_x == -1 &&
            state.camera_transition_y == -1 &&
            state.display_service_word == 0U);
-    assert(observations.audio_commands.size() == 6U &&
-           std::all_of(observations.audio_commands.begin(),
-                       observations.audio_commands.end(),
-                       [](const std::uint16_t command) { return command == 0x14U; }));
+    const std::vector<std::uint16_t> expected_mode_entry_commands{
+        0x14U, 0x28U, 0x3CU, 0x50U, 0x64U, 0x78U};
+    assert(observations.audio_commands == expected_mode_entry_commands);
     assert(observations.audio_wait_counters.size() == 6U &&
            std::all_of(observations.audio_wait_counters.begin(),
                        observations.audio_wait_counters.end(),
@@ -249,7 +248,7 @@ int main() {
            FieldSessionBootstrapResult::field_ready);
     assert(restored_state.field_scene_buffers.scene_reference == 6U &&
            restored_state.field_scene_buffers.camera_x == 0x1200U &&
-           restored_state.field_scene_buffers.camera_y == 0x5700U &&
+           restored_state.field_scene_buffers.camera_y == 0x5600U &&
            restored_state.field_scene_buffers.source_metadata
                    .initial_field_records[0]
                    .x == 0x2345U &&

@@ -2,8 +2,12 @@
 #include "enums.hpp"
 #include "genesis_image_compositor.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
+#include "shadowrun_ghidra/core/random_conversion.hpp"
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
+#include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
+#include "shadowrun_ghidra/session/startup_record_assets_conversion.hpp"
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
+#include "numeric_visual_renderer.hpp"
 
 #include <QJsonArray>
 
@@ -12,7 +16,9 @@
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <utility>
 #include <vector>
@@ -98,6 +104,83 @@ bool centered_source_menu_text_matches(
     }
     const auto origin_x = field_x + (field_width - text_width) / 2;
     return source_menu_caption_matches(scene, font, origin_x, origin_y, text);
+}
+
+bool source_menu_direct_asset_text_matches(
+    const QImage& scene, const QImage& font, const int origin_x,
+    const int origin_y, const std::string_view text) {
+    if (font.isNull() || font.width() < 8 || font.height() < 8 ||
+        origin_x < 0 || origin_y < 0 ||
+        origin_x + static_cast<int>(text.size() * 8U) > scene.width() ||
+        origin_y + 8 > scene.height()) {
+        return false;
+    }
+    QImage expected(static_cast<int>(text.size() * 8U), 8,
+                    QImage::Format_ARGB32_Premultiplied);
+    expected.fill(Qt::black);
+    QPainter painter(&expected);
+    auto cursor_x = 0;
+    auto cursor_y = 0;
+    for (const unsigned char code : text) {
+        if (code == '\n') {
+            cursor_x = 0;
+            cursor_y += 8;
+            continue;
+        }
+        if (code < 0x20U || code > 0x7EU) {
+            cursor_x += 8;
+            continue;
+        }
+        const auto glyph = static_cast<int>(code - 0x20U);
+        const auto source_x = (glyph % 16) * 8;
+        const auto source_y = (glyph / 16) * 8;
+        if (source_x + 8 > font.width() || source_y + 8 > font.height()) {
+            painter.end();
+            return false;
+        }
+        painter.drawImage(cursor_x, cursor_y, font, source_x, source_y, 8, 8);
+        cursor_x += 8;
+    }
+    painter.end();
+    const auto expected_rgb = expected.convertToFormat(QImage::Format_RGB32);
+    for (int y = 0; y < expected_rgb.height(); ++y) {
+        for (int x = 0; x < expected_rgb.width(); ++x) {
+            if (scene.pixel(origin_x + x, origin_y + y) !=
+                expected_rgb.pixel(x, y)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool numeric_visual_patch_matches(
+    const QImage& scene, const QImage& font, const int origin_x,
+    const int origin_y, const std::uint32_t value,
+    const std::optional<QColor> tint) {
+    const auto visual =
+        shadowrun::ghidra_conversion::qt_runtime::render_numeric_visual(
+            font, value, false, tint);
+    if (visual.isNull() || origin_x < 0 || origin_y < 0 ||
+        origin_x + visual.width() > scene.width() ||
+        origin_y + visual.height() > scene.height()) {
+        return false;
+    }
+    QImage expected(visual.size(), QImage::Format_ARGB32_Premultiplied);
+    expected.fill(Qt::black);
+    QPainter painter(&expected);
+    painter.drawImage(0, 0, visual);
+    painter.end();
+    const auto expected_rgb = expected.convertToFormat(QImage::Format_RGB32);
+    for (int y = 0; y < expected_rgb.height(); ++y) {
+        for (int x = 0; x < expected_rgb.width(); ++x) {
+            if (scene.pixel(origin_x + x, origin_y + y) !=
+                expected_rgb.pixel(x, y)) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 std::string centered_source_menu_caption(const std::string_view label) {
@@ -19917,7 +20000,19 @@ int run_field_tarislar_city_inn_qa(
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
-    const std::vector<std::string>& source_boundaries) {
+    const std::vector<std::string>& source_boundaries,
+    const std::string_view route) {
+    const bool tabatha_route =
+        route == "tabatha_caleb_recruit" ||
+        route == "tabatha_caleb_thanks" ||
+        route == "tabatha_errascoe_recruit" ||
+        route == "tabatha_errascoe_thanks";
+    if (route != "leave" && route != "paid" &&
+        route != "insufficient" && route != "declined" && !tabatha_route) {
+        std::cerr << "Tarislar City Inn QA: unknown payment route " << route
+                  << '\n';
+        return 3;
+    }
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -19955,7 +20050,22 @@ int run_field_tarislar_city_inn_qa(
                      "or service-1 story gate did not match\n";
         return 3;
     }
-    field_scene.set_field_funds_for_dump(1000U);
+    if (tabatha_route) {
+        // The source new-game path writes zero Karma to the three live runner
+        // records. This restored-position QA checkpoint otherwise omits that
+        // mutable party byte state.
+        field_scene.seed_runner_source_byte_triplet_for_qa({0U, 0U, 0U});
+        // Fresh New Game leaves FFFC30 bit 0 set and the remaining Notebook
+        // tip bits clear, while FFFC27 starts clear. The restored-position
+        // checkpoint does not include either flag store.
+        field_scene.seed_notebook_tip_flags_for_qa({{1U, 0U, 0U}});
+        field_scene.seed_notebook_referral_flags_for_qa(0U);
+    }
+    const std::uint32_t initial_funds =
+        route == "insufficient" ? 29U
+        : (route == "paid" || route == "declined") ? 30U
+                                                    : 1000U;
+    field_scene.set_field_funds_for_dump(initial_funds);
 
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
     const auto save = [&](const std::string_view name,
@@ -20038,7 +20148,7 @@ int run_field_tarislar_city_inn_qa(
         field_scene.field_scene_reference_for_dump() != 1U ||
         !intro.source_complete || !intro_has_more ||
         !contains("Tarislar City Inn caters") ||
-        service_opened != 1 || !save("actual", false)) {
+        service_opened != 1 || !save("service-intro", false)) {
         std::cerr << "Tarislar City Inn QA: record 68 did not open title "
                      "service 1's source-gated Lua introduction (opened="
                   << service_opened << ", dialogue="
@@ -20052,19 +20162,539 @@ int run_field_tarislar_city_inn_qa(
 
     tap_qa_controller_button(field_scene, 0x40U); // A: finish intro page
     const auto& choices = field_scene.dialogue_panel();
+    bool has_crash = false;
     bool has_leave = false;
+    bool has_tabatha = false;
     for (std::size_t index = 0U; index < choices.option_count; ++index) {
+        has_crash = has_crash ||
+            choices.options[index].source_label.find("place to crash") !=
+                std::string_view::npos;
         has_leave = has_leave ||
             choices.options[index].source_label.find("talk to you later") !=
                 std::string_view::npos;
+        has_tabatha = has_tabatha ||
+            choices.options[index].source_label.find("Tabatha") !=
+                std::string_view::npos;
     }
     if (!field_scene.dialogue_open() || choices.option_count != 3U ||
-        !has_leave || !contains("You need a place to stay") ||
+        !has_crash || !has_leave || !has_tabatha ||
+        !contains("You need a place to stay") ||
         !save("service-options", false)) {
         std::cerr << "Tarislar City Inn QA: intro did not advance to the "
-                     "source three-choice service menu\n";
+                     "source Crash/Leave/Tabatha service menu\n";
         return 3;
     }
+
+    if (tabatha_route) {
+        const bool caleb_first = route == "tabatha_caleb_recruit" ||
+                                 route == "tabatha_caleb_thanks";
+        const bool thanks_choice = route == "tabatha_caleb_thanks" ||
+                                   route == "tabatha_errascoe_thanks";
+        const auto source_triplet_before =
+            field_scene.runner_source_byte_triplet_for_dump();
+        if (source_triplet_before !=
+            std::optional<std::array<std::uint8_t, 3>>{{0U, 0U, 0U}}) {
+            std::cerr << "Tarislar City Inn QA: fresh New Game source-byte "
+                         "triplet did not start at zero\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x20U); // C: ask about Tabatha
+        const auto& tabatha_intro = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() ||
+            tabatha_intro.actor_name != "Inn Manager" ||
+            !contains("Tabatha Shale?") || !save("tabatha-intro-manager", false)) {
+            std::cerr << "Tarislar City Inn QA: Tabatha selection did not "
+                         "show the manager's source page\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U);
+        const auto& phone_page = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() ||
+            phone_page.actor_name != "Narration" ||
+            phone_page.portrait_alias != "none" ||
+            !contains("screen remains blank") ||
+            !save("tabatha-intro-phone", false)) {
+            std::cerr << "Tarislar City Inn QA: the vid-phone page did not "
+                         "clear the manager portrait and show its blank-screen text"
+                      << " (actor=" << phone_page.actor_name
+                      << ", portrait=" << phone_page.portrait_alias
+                      << ", blank_text=" << contains("screen remains blank")
+                      << ", segments=";
+            for (std::size_t index = 0U;
+                 index < phone_page.text_segment_count; ++index) {
+                std::cerr << '[' << phone_page.text_segments[index] << ']';
+            }
+            std::cerr << ")\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U);
+        const auto& agreement_page = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() ||
+            agreement_page.actor_name != "Narration" ||
+            agreement_page.portrait_alias != "none" ||
+            !contains("agrees to let you enter") ||
+            !save("tabatha-intro-agreement", false)) {
+            std::cerr << "Tarislar City Inn QA: the agreement page inherited "
+                         "an actor portrait or lost its source text\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U);
+        const auto& arrival = field_scene.dialogue_panel();
+        const auto source_triplet_after =
+            field_scene.runner_source_byte_triplet_for_dump();
+        const bool arrival_saved = save("tabatha-apartment-choice", false);
+        if (!field_scene.dialogue_open() ||
+            arrival.actor_name != "Tabatha Shale" ||
+            arrival.portrait_alias != "dialogue.portraits.tabatha.shale" ||
+            arrival.option_count != 1U ||
+            arrival.options[0U].source_label.find("Michael's last Shadowrun") ==
+                std::string_view::npos ||
+            source_triplet_after !=
+                std::optional<std::array<std::uint8_t, 3>>{{1U, 1U, 1U}} ||
+            !arrival_saved) {
+            std::cerr << "Tarislar City Inn QA: agreement did not apply the "
+                         "source-byte triplet and Tabatha apartment choice"
+                      << " (dialogue=" << field_scene.dialogue_open()
+                      << ", actor=" << arrival.actor_name
+                      << ", portrait=" << arrival.portrait_alias
+                      << ", options="
+                      << static_cast<unsigned>(arrival.option_count)
+                      << ", label="
+                      << (arrival.option_count > 0U
+                              ? arrival.options[0U].source_label
+                              : std::string_view{})
+                      << ", kind=" << static_cast<int>(arrival.kind)
+                      << ", mode_text="
+                      << field_scene.field_mode_text_open_for_dump()
+                      << ", source_boundary="
+                      << arrival.source_boundary_reason
+                      << ", triplet=";
+            if (source_triplet_after.has_value()) {
+                std::cerr << static_cast<unsigned>((*source_triplet_after)[0U])
+                          << ','
+                          << static_cast<unsigned>((*source_triplet_after)[1U])
+                          << ','
+                          << static_cast<unsigned>((*source_triplet_after)[2U]);
+            } else {
+                std::cerr << "unknown";
+            }
+            std::cerr << ", saved=" << arrival_saved << ", segments=";
+            for (std::size_t index = 0U;
+                 index < arrival.text_segment_count; ++index) {
+                std::cerr << '[' << arrival.text_segments[index] << ']';
+            }
+            std::cerr << ")\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U);
+        if (!field_scene.dialogue_open() ||
+            field_scene.dialogue_panel().actor_name != "Tabatha Shale" ||
+            !contains("unknown Mr. Johnson") ||
+            !save("tabatha-last-run", false)) {
+            std::cerr << "Tarislar City Inn QA: apartment choice did not "
+                         "show the source last-run page\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U);
+        const auto& topic_prompt = field_scene.dialogue_panel();
+        const bool has_caleb = topic_prompt.option_count == 2U &&
+            topic_prompt.options[0U].source_label.find("Caleb") !=
+                std::string_view::npos;
+        const bool has_errascoe = topic_prompt.option_count == 2U &&
+            topic_prompt.options[1U].source_label.find("Errascoe") !=
+                std::string_view::npos;
+        if (!field_scene.dialogue_open() || !has_caleb || !has_errascoe ||
+            !save("tabatha-topic-choice", false)) {
+            std::cerr << "Tarislar City Inn QA: the source Caleb/Errascoe "
+                         "topic prompt did not resolve in ROM order\n";
+            return 3;
+        }
+
+        if (caleb_first) {
+            tap_qa_controller_button(field_scene, 0x40U); // A: Caleb first
+        } else {
+            tap_qa_controller_button(field_scene, 0x10U); // B: Errascoe first
+        }
+        const auto& first_response = field_scene.dialogue_panel();
+        const bool first_response_text = caleb_first
+            ? contains("He's a Johnson Michael and I used a couple of times")
+            : contains("Boris Errascoe is a small time fixer");
+        const bool second_topic_option = first_response.option_count == 1U &&
+            first_response.options[0U].source_label.find(
+                caleb_first ? "Errascoe" : "Caleb") != std::string_view::npos;
+        if (!field_scene.dialogue_open() ||
+            !first_response_text || !second_topic_option ||
+            !save(caleb_first ? "tabatha-caleb-first" :
+                                "tabatha-errascoe-first", false)) {
+            std::cerr << "Tarislar City Inn QA: the selected first topic did "
+                         "not show its source response and remaining topic"
+                      << " (dialogue=" << field_scene.dialogue_open()
+                      << ", actor=" << first_response.actor_name
+                      << ", options="
+                      << static_cast<unsigned>(first_response.option_count)
+                      << ", source_boundary="
+                      << first_response.source_boundary_reason
+                      << ", expected_text=" << first_response_text
+                      << ", expected_option=" << second_topic_option
+                      << ", segments=";
+            for (std::size_t index = 0U;
+                 index < first_response.text_segment_count; ++index) {
+                std::cerr << '[' << first_response.text_segments[index] << ']';
+            }
+            std::cerr << ")\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U); // A: ask second topic
+        const auto& final_choice = field_scene.dialogue_panel();
+        const bool second_response_text = caleb_first
+            ? contains("Boris Errascoe is a small time fixer")
+            : contains("He's a Johnson Michael and I used a couple of times");
+        bool has_recruit = false;
+        bool has_thanks = false;
+        for (std::size_t index = 0U; index < final_choice.option_count; ++index) {
+            has_recruit = has_recruit ||
+                final_choice.options[index].source_label.find("sign on") !=
+                    std::string_view::npos;
+            has_thanks = has_thanks ||
+                final_choice.options[index].source_label.find(
+                    "Thanks for your help") != std::string_view::npos;
+        }
+        if (!field_scene.dialogue_open() || !second_response_text ||
+            final_choice.option_count != 2U || !has_recruit || !has_thanks ||
+            !save("tabatha-recruit-thanks-choice", false)) {
+            std::cerr << "Tarislar City Inn QA: the second source topic did "
+                         "not reach the Recruit/Thanks choice\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, thanks_choice ? 0x10U : 0x40U);
+        if (!thanks_choice) {
+            if (!field_scene.dialogue_open() ||
+                !contains("I don't plan on joining him") ||
+                !save("tabatha-refusal", false)) {
+                std::cerr << "Tarislar City Inn QA: Recruit did not show the "
+                             "source refusal page\n";
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U);
+        }
+
+        if (!field_scene.dialogue_open() ||
+            field_scene.dialogue_panel().actor_name != "Tabatha Shale" ||
+            !contains("As if on cue") ||
+            !save("tabatha-attack", false)) {
+            std::cerr << "Tarislar City Inn QA: Recruit/Thanks did not reach "
+                         "the source attack page\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U);
+        const auto& renraku_page = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() ||
+            renraku_page.actor_name != "Renraku Strike Team" ||
+            renraku_page.portrait_alias !=
+                "field.mode.entry.renraku.strike.team.sprite" ||
+            !contains("swarm of bullets abates") ||
+            !save("tabatha-renraku-aftermath", false)) {
+            std::cerr << "Tarislar City Inn QA: command 0x4B did not switch "
+                         "to the source Renraku profile/page\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U);
+        const auto& reentry_page = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() ||
+            reentry_page.actor_name != "Tabatha Shale" ||
+            reentry_page.portrait_alias != "dialogue.portraits.tabatha.shale" ||
+            !contains("rush back into Tabatha's room") ||
+            !save("tabatha-room-reentry", false)) {
+            std::cerr << "Tarislar City Inn QA: command 0x4C did not restore "
+                         "Tabatha's profile and room page\n";
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U);
+        const auto& holopix = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() ||
+            holopix.kind != DialoguePanelKind::information_page ||
+            !field_scene.dialogue_input_locked() ||
+            !holopix.actor_name.empty() ||
+            holopix.portrait_alias !=
+                "dialogue.portraits.david.owlfeather") {
+            std::cerr << "Tarislar City Inn QA: command 0x20 did not open "
+                         "the source profile-free Holopix information page"
+                      << " (dialogue=" << field_scene.dialogue_open()
+                      << ", input_locked="
+                      << field_scene.dialogue_input_locked()
+                      << ", actor=" << holopix.actor_name
+                      << ", portrait=" << holopix.portrait_alias
+                      << ", kind=" << static_cast<int>(holopix.kind) << ")\n";
+            return 3;
+        }
+        bool holopix_name = false;
+        for (std::size_t index = 0U; index < holopix.text_segment_count; ++index) {
+            holopix_name = holopix_name ||
+                holopix.text_segments[index].find("David William Owlfeather") !=
+                    std::string_view::npos;
+        }
+        if (!holopix_name || !save("tabatha-holopix", false)) {
+            std::cerr << "Tarislar City Inn QA: David's Holopix text was not "
+                         "rendered in a full-frame capture\n";
+            return 3;
+        }
+
+        // The transition's ordinary A tap already consumes one frame of the
+        // ROM's 30-frame 0x1F3C4 sentinel wait. An immediate A edge must be
+        // ignored while the page is locked; count the remaining 29 frames.
+        field_scene.set_controller_port_byte(0x40U);
+        field_scene.advance_frame();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        for (std::uint8_t frame = 0U; frame < 25U; ++frame) {
+            field_scene.advance_frame();
+        }
+        if (!field_scene.dialogue_open() ||
+            !field_scene.dialogue_input_locked()) {
+            std::cerr << "Tarislar City Inn QA: the Holopix accepted input "
+                         "before the source 30-frame delay elapsed\n";
+            return 3;
+        }
+        field_scene.advance_frame();
+        if (!field_scene.dialogue_input_locked()) {
+            std::cerr << "Tarislar City Inn QA: the Holopix wait ended before "
+                         "frame 30\n";
+            return 3;
+        }
+        field_scene.advance_frame();
+        if (!field_scene.dialogue_open() ||
+            field_scene.dialogue_input_locked()) {
+            std::cerr << "Tarislar City Inn QA: the Holopix wait did not end "
+                         "after source frame 30\n";
+            return 3;
+        }
+        // The source waits before polling FFDD22 again. Sample the released
+        // pad once after the wait, then send a fresh A edge to dismiss it.
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        tap_qa_controller_button(field_scene, 0x40U);
+        const bool return_dialogue_closed = !field_scene.dialogue_open();
+        const auto return_scene = field_scene.field_scene_reference_for_dump();
+        const bool transition_finished =
+            finish_field_modal_return_transition(field_scene);
+        const auto return_image = render();
+        const bool return_hud =
+            field_hud_chrome_survives(return_image, asset_root);
+        const bool return_frame_saved = save("actual", std::nullopt);
+        const auto funds_after = field_scene.field_funds_for_dump();
+        if (!return_dialogue_closed || return_scene != 1U ||
+            !transition_finished || !return_frame_saved ||
+            !return_hud || count_playfield_lit(return_image) < 100U ||
+            funds_after != std::optional<std::uint32_t>{initial_funds}) {
+            std::cerr << "Tarislar City Inn QA: Tabatha route did not return "
+                         "to the same field map without a funds change"
+                      << " (dialogue_closed=" << return_dialogue_closed
+                      << ", scene=" << return_scene
+                      << ", transition_finished=" << transition_finished
+                      << ", transition_frames="
+                      << static_cast<unsigned>(
+                             field_scene.field_modal_return_transition_frames_for_dump())
+                      << ", fade_steps="
+                      << static_cast<unsigned>(
+                             field_scene.field_palette_fade_steps_for_dump())
+                      << ", hud=" << return_hud
+                      << ", lit=" << count_playfield_lit(return_image)
+                      << ", saved=" << return_frame_saved
+                      << ", funds="
+                      << (funds_after.has_value()
+                              ? std::to_string(*funds_after)
+                              : std::string("unknown"))
+                      << ")\n";
+            return 3;
+        }
+
+        std::ofstream trace(output / "route.tsv", std::ios::trunc);
+        if (!trace) return 3;
+        trace << "route\trecord\tevent\tmovement_ticks\tfirst_topic\t"
+                 "second_topic\tfinal_choice\ttriplet_before\ttriplet_after\t"
+                 "scene\tfunds_before\tfunds_after\n"
+              << route << "\t68\t1\t" << movement_ticks << '\t'
+              << (caleb_first ? "caleb" : "errascoe") << '\t'
+              << (caleb_first ? "errascoe" : "caleb") << '\t'
+              << (thanks_choice ? "thanks" : "recruit")
+              << "\t0,0,0\t1,1,1\t1\t"
+              << initial_funds << '\t' << *funds_after << '\n';
+        trace.close();
+        if (!trace) return 3;
+        std::cout << "field_tarislar_city_inn_qa=passed route=" << route
+                  << " topic_order=" << (caleb_first ? "caleb-errascoe"
+                                                        : "errascoe-caleb")
+                  << " final_choice=" << (thanks_choice ? "thanks" : "recruit")
+                  << " triplet=0,0,0-to-1,1,1 scene=1 "
+                     "artifacts=" << output.string() << '\n';
+        return 0;
+    }
+
+    if (route != "leave") {
+        tap_qa_controller_button(field_scene, 0x40U); // A: choose Crash
+        const auto& payment_prompt = field_scene.dialogue_panel();
+        const bool pay_choice = payment_prompt.option_count == 2U &&
+            payment_prompt.options[0U].source_label.find("I'll pay") !=
+                std::string_view::npos;
+        const bool decline_choice = payment_prompt.option_count == 2U &&
+            payment_prompt.options[1U].source_label == "No.";
+        if (!field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 1U ||
+            !contains("meager 30$") || !pay_choice || !decline_choice ||
+            !save("room-payment", false)) {
+            std::cerr << "Tarislar City Inn QA: Crash did not open the "
+                         "source 30-nuyen Pay/No prompt\n";
+            return 3;
+        }
+
+        if (route == "declined") {
+            tap_qa_controller_button(field_scene, 0x10U); // B: decline
+            const bool farewell_text =
+                contains("I'll be seeing you, chum");
+            if (!field_scene.dialogue_open() || !farewell_text ||
+                !save("farewell", false) ||
+                field_scene.field_funds_for_dump() !=
+                    std::optional<std::uint32_t>{initial_funds}) {
+                std::cerr << "Tarislar City Inn QA: room decline did not "
+                             "show farewell without changing funds\n";
+                return 3;
+            }
+        } else {
+            tap_qa_controller_button(field_scene, 0x40U); // A: pay
+            const bool paid = route == "paid";
+            const auto expected_funds = paid ? 0U : initial_funds;
+            const auto expected_text = paid ? "Hope you brought" : "low on creds";
+            if (!field_scene.dialogue_open() || !contains(expected_text) ||
+                field_scene.field_scene_reference_for_dump() != 1U ||
+                field_scene.field_funds_for_dump() !=
+                    std::optional<std::uint32_t>{expected_funds} ||
+                !save(paid ? "room-paid" : "room-insufficient", false)) {
+                std::cerr << "Tarislar City Inn QA: the " << route
+                          << " transaction did not show the expected page, "
+                             "scene, and wallet result\n";
+                return 3;
+            }
+
+            if (paid) {
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (field_scene.dialogue_open() ||
+                    !field_scene.hotel_menu_open() ||
+                    field_scene.hotel_menu_phase() !=
+                        HotelMenuPhase::entity_status ||
+                    field_scene.field_scene_reference_for_dump() != 1U ||
+                    field_scene.field_funds_for_dump() !=
+                        std::optional<std::uint32_t>{0U}) {
+                    std::cerr << "Tarislar City Inn QA: paid continuation did "
+                                 "not dispatch the same-map Hotel status "
+                                 "service\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 5; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto hotel_status = render();
+                if (hotel_status.size() != QSize(kSceneWidth, kSceneHeight) ||
+                    !image_has_green_ink(hotel_status, 24, 48, 240, 48) ||
+                    !hotel_status.save(QString::fromStdWString(
+                        (output / "hotel-status.bmp").wstring()))) {
+                    std::cerr << "Tarislar City Inn QA: paid route did not "
+                                 "render the source Hotel status page\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.hotel_menu_open() ||
+                    field_scene.hotel_menu_phase() != HotelMenuPhase::options ||
+                    field_scene.hotel_option_selection() != 0U ||
+                    field_scene.field_scene_reference_for_dump() != 1U ||
+                    field_scene.field_funds_for_dump() !=
+                        std::optional<std::uint32_t>{0U}) {
+                    std::cerr << "Tarislar City Inn QA: status acknowledgement "
+                                 "did not reach Hotel Options on scene 1\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 3; ++frame) {
+                    field_scene.advance_frame();
+                }
+                const auto hotel_options = render();
+                if (hotel_options.size() != QSize(kSceneWidth, kSceneHeight) ||
+                    !image_has_green_ink(hotel_options, 88, 72, 160, 8) ||
+                    !image_has_green_ink(hotel_options, 88, 88, 160, 8) ||
+                    !image_region_has_color(hotel_options, 88, 72, 160, 8,
+                                            QColor(36, 219, 36)) ||
+                    image_has_green_ink(hotel_options, 32, 40, 240, 8) ||
+                    !hotel_options.save(QString::fromStdWString(
+                        (output / "hotel-options.bmp").wstring())) ||
+                    !save("actual", std::nullopt)) {
+                    std::cerr << "Tarislar City Inn QA: Hotel Options did "
+                                 "not render its selected and unselected "
+                                 "rows after the paid outcome\n";
+                    return 3;
+                }
+                std::ofstream trace(output / "route.tsv", std::ios::trunc);
+                if (!trace) return 3;
+                trace << "record\tevent\tservice\tgate\tmovement_ticks\t"
+                         "wallet_before\tprice\twallet_after\tresult\n"
+                      << "68\t1\t1\tstory_bit_0=1,story_bit_1=0\t"
+                      << movement_ticks << "\t30\t30\t0\t"
+                         "physical_pay_same_map_hotel_options\n";
+                trace.close();
+                if (!trace) return 3;
+                std::cout << "field_tarislar_city_inn_qa=passed route=paid "
+                             "record=68 price=30 wallet_after=0 "
+                             "destination=hotel.options "
+                             "artifacts=" << output.string() << '\n';
+                return 0;
+            }
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U); // A: close result page
+        const bool return_dialogue_closed = !field_scene.dialogue_open();
+        const auto return_scene = field_scene.field_scene_reference_for_dump();
+        const auto return_frames =
+            field_scene.field_modal_return_transition_frames_for_dump();
+        const bool transition_finished =
+            finish_field_modal_return_transition(field_scene);
+        const bool return_frame_saved = save("actual", true);
+        const auto funds_after = field_scene.field_funds_for_dump();
+        if (!return_dialogue_closed || return_scene != 1U ||
+            return_frames != 59U || !transition_finished ||
+            !return_frame_saved ||
+            funds_after != std::optional<std::uint32_t>{initial_funds}) {
+            std::cerr << "Tarislar City Inn QA: " << route
+                      << " did not return to the same map with the expected "
+                         "wallet and settled field frame\n";
+            return 3;
+        }
+        std::ofstream trace(output / "route.tsv", std::ios::trunc);
+        if (!trace) return 3;
+        trace << "record\tevent\tservice\tgate\tmovement_ticks\t"
+                 "wallet_before\tprice\twallet_after\tresult\n"
+              << "68\t1\t1\tstory_bit_0=1,story_bit_1=0\t"
+              << movement_ticks << '\t' << initial_funds << "\t30\t"
+              << *funds_after << '\t'
+              << (route == "declined" ? "physical_decline_no_debit"
+                                       : "physical_insufficient_no_debit")
+              << '\n';
+        trace.close();
+        if (!trace) return 3;
+        std::cout << "field_tarislar_city_inn_qa=passed route=" << route
+                  << " record=68 price=30 wallet_after=" << *funds_after
+                  << " destination=scene_1 artifacts=" << output.string()
+                  << '\n';
+        return 0;
+    }
+
     tap_qa_controller_button(field_scene, 0x10U); // B: choose Leave
     const bool farewell_text = contains("I'll be seeing you, chum");
     const bool farewell_saved = save("farewell", false);
@@ -20095,11 +20725,13 @@ int run_field_tarislar_city_inn_qa(
     const bool transition_finished =
         finish_field_modal_return_transition(field_scene);
     const bool return_frame_saved = save("field-return", true);
+    const bool actual_saved = save("actual", true);
     const auto funds_after = field_scene.field_funds_for_dump();
     if (!return_dialogue_closed || return_scene != 1U ||
         // The A edge that closes the page also services the first modal-return
         // frame, so the next observable counter value is 59.
         return_frames != 59U || !transition_finished || !return_frame_saved ||
+        !actual_saved ||
         funds_after != std::optional<std::uint32_t>{1000U}) {
         std::cerr << "Tarislar City Inn QA: Leave did not return to the same "
                      "field map without an unintended scene load or charge "
@@ -22963,6 +23595,11 @@ int run_field_spirit_eyes_physical_entry_qa(
 
     constexpr std::array<std::string_view, 4U> kRitualPageCaptures{{
         "ritual-page-0", "ritual-page-1", "ritual-page-2", "ritual-page-3"}};
+    constexpr std::array<std::string_view, 4U> kRitualPageTextKeys{{
+        "salish.spirit_eyes.page.post_ritual_warning",
+        "salish.spirit_eyes.page.post_ritual_name",
+        "salish.spirit_eyes.page.post_ritual_brother",
+        "salish.spirit_eyes.page.post_ritual_lust"}};
     const QImage story_art(QString::fromStdWString(
         (asset_root / "cinematics" /
          "salish-spirit-eyes-ritual.bmp").wstring()));
@@ -22974,6 +23611,9 @@ int run_field_spirit_eyes_physical_entry_qa(
     for (std::size_t page = 0U; page < kRitualPageCaptures.size(); ++page) {
         const auto image = render();
         if (!field_scene.dialogue_open() ||
+            field_scene.active_story_page_text_key_for_dump() !=
+                kRitualPageTextKeys[page] ||
+            !field_scene.dialogue_panel().source_boundary_reason.empty() ||
             image.size() != QSize(kSceneWidth, kSceneHeight) ||
             (page != 0U && image == previous_story_page) ||
             !image.save(QString::fromStdWString(
@@ -22983,7 +23623,12 @@ int run_field_spirit_eyes_physical_entry_qa(
              !image.save(QString::fromStdWString(
                  (output / "actual.bmp").wstring())))) {
             std::cerr << "Spirit Eyes QA: story page capture/advance failed "
-                      << "at page " << page << '\n';
+                      << "at page " << page
+                      << " text_key=\""
+                      << field_scene.active_story_page_text_key_for_dump()
+                      << "\" boundary=\""
+                      << field_scene.dialogue_panel().source_boundary_reason
+                      << "\"\n";
             return 3;
         }
         if (page == 0U) {
@@ -23002,12 +23647,26 @@ int run_field_spirit_eyes_physical_entry_qa(
                 return 3;
             }
         }
+        const auto actual_art_region =
+            image.copy(0, 96, kSceneWidth, 128)
+                .convertToFormat(QImage::Format_RGB32);
+        const auto source_art_region =
+            story_art.copy(0, 96, kSceneWidth, 128)
+                .convertToFormat(QImage::Format_RGB32);
+        if (actual_art_region != source_art_region) {
+            std::cerr << "Spirit Eyes QA: extracted ritual art changed under "
+                         "the page text on page " << page << '\n';
+            return 3;
+        }
         previous_story_page = image;
         if (page + 1U < kRitualPageCaptures.size()) {
-            tap_qa_controller_button(field_scene, 0x40U); // A: next ROM page
+            constexpr std::array<std::uint8_t, 3U> kPageAdvanceInputs{{
+                0x10U, 0x04U, 0x01U}}; // B, Left, Up
+            tap_qa_controller_button(field_scene,
+                                     kPageAdvanceInputs[page]);
         }
     }
-    tap_qa_controller_button(field_scene, 0x40U); // A: finish the last page
+    tap_qa_controller_button(field_scene, 0x80U); // Start: finish the last page
     const auto cinematic_return_frames =
         field_scene.field_modal_return_transition_frames_for_dump();
     const bool cinematic_return_finished =
@@ -23481,11 +24140,46 @@ int run_field_sinsearach_gate_physical_entry_qa(
     }
     const auto runner_triplet_before =
         field_scene.runner_source_byte_triplet_for_dump();
-    tap_qa_controller_button(field_scene, 0x40U); // A: command 0x49
+    // Keep the confirming A press held across the cinematic's first frame.
+    // The prompt consumes the edge; ROM 0x0D94's next sample must see only
+    // the held low byte, leaving the first full-screen page visible.
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame(); // A: command 0x49
+    if (!field_scene.dialogue_open() ||
+        field_scene.active_story_page_text_key_for_dump() !=
+            "salish.sinsearach.page.harlequin_request") {
+        std::cerr << "Sinsearach gate QA: command 0x49 did not present its "
+                     "first page while A remained held\n";
+        return 3;
+    }
+    const auto first_page_while_held = render_qa_field(field_scene);
+    field_scene.advance_frame(); // The held A is no longer a new edge.
+    if (!field_scene.dialogue_open() ||
+        field_scene.active_story_page_text_key_for_dump() !=
+            "salish.sinsearach.page.harlequin_request" ||
+        render_qa_field(field_scene) != first_page_while_held) {
+        std::cerr << "Sinsearach gate QA: held A advanced or changed the "
+                     "first cinematic page\n";
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame(); // A release has no high-byte event either.
+    if (!field_scene.dialogue_open() ||
+        field_scene.active_story_page_text_key_for_dump() !=
+            "salish.sinsearach.page.harlequin_request" ||
+        render_qa_field(field_scene) != first_page_while_held) {
+        std::cerr << "Sinsearach gate QA: releasing A advanced or changed "
+                     "the first cinematic page\n";
+        return 3;
+    }
 
     constexpr std::array<std::string_view, 3U> kStoryPageCaptures{{
         "frosty-story-page-0", "frosty-story-page-1",
         "frosty-story-page-2"}};
+    constexpr std::array<std::string_view, 3U> kStoryPageTextKeys{{
+        "salish.sinsearach.page.harlequin_request",
+        "salish.sinsearach.page.thon_presence",
+        "salish.sinsearach.page.tarislar_apartments"}};
     const QImage story_art(QString::fromStdWString(
         (asset_root / "cinematics" /
          "salish-sinsearach-frosty-harlequin.bmp").wstring()));
@@ -23497,6 +24191,9 @@ int run_field_sinsearach_gate_physical_entry_qa(
     for (std::size_t page = 0U; page < kStoryPageCaptures.size(); ++page) {
         const auto image = render();
         if (!field_scene.dialogue_open() ||
+            field_scene.active_story_page_text_key_for_dump() !=
+                kStoryPageTextKeys[page] ||
+            !field_scene.dialogue_panel().source_boundary_reason.empty() ||
             image.size() != QSize(kSceneWidth, kSceneHeight) ||
             (page != 0U && image == previous_story_page) ||
             !image.save(QString::fromStdWString(
@@ -23506,31 +24203,72 @@ int run_field_sinsearach_gate_physical_entry_qa(
              !image.save(QString::fromStdWString(
                  (output / "actual.bmp").wstring())))) {
             std::cerr << "Sinsearach gate QA: cinematic page capture/advance "
-                      << "failed at page " << page << '\n';
+                      << "failed at page " << page
+                      << " dialogue_open=" << field_scene.dialogue_open()
+                      << " image_changed="
+                      << (page == 0U || image != previous_story_page)
+                      << " text=\""
+                      << field_scene.active_story_page_text_for_dump()
+                      << "\""
+                      << " text_key=\""
+                      << field_scene.active_story_page_text_key_for_dump()
+                      << "\""
+                      << " boundary=\""
+                      << field_scene.dialogue_panel().source_boundary_reason
+                      << "\""
+                      << " frame=" << image.width() << 'x' << image.height()
+                      << '\n';
             return 3;
         }
-        if (page == 0U) {
-            bool source_ink_overlaid = false;
-            for (int y = 16; y < 24 && !source_ink_overlaid; ++y) {
-                for (int x = 72; x < 80; ++x) {
-                    if (image.pixelColor(x, y) != story_art.pixelColor(x, y)) {
-                        source_ink_overlaid = true;
+        const auto page_text = field_scene.active_story_page_text_for_dump();
+        const auto first_line_end = page_text.find('|');
+        const auto first_ink = page_text.find_first_not_of(' ');
+        const auto first_ink_x = first_ink == std::string_view::npos
+            ? -1
+            : 24 + static_cast<int>(first_ink) * 8;
+        bool first_glyph_ink = false;
+        if (first_ink_x >= 24 && first_ink_x + 8 <= kSceneWidth) {
+            for (int y = 16; y < 24 && !first_glyph_ink; ++y) {
+                for (int x = first_ink_x; x < first_ink_x + 8; ++x) {
+                    const auto pixel = image.pixelColor(x, y);
+                    if (pixel.red() > 150 && pixel.green() < 80 &&
+                        pixel.blue() > 150) {
+                        first_glyph_ink = true;
                         break;
                     }
                 }
             }
-            if (!source_ink_overlaid) {
-                std::cerr << "Sinsearach gate QA: source text was not drawn "
-                             "at its first-character cell\n";
+        }
+        if (first_line_end == std::string_view::npos ||
+            first_ink == std::string_view::npos || first_ink >= first_line_end ||
+            first_ink_x < 24 || first_ink_x + 8 > kSceneWidth ||
+            !first_glyph_ink ||
+            image_region_differs(image, story_art, 0, 80, kSceneWidth, 144)) {
+            std::cerr << "Sinsearach gate QA: page " << page
+                      << " did not draw its first source-text glyph at the "
+                         "0x2106 origin, or changed the art below the text\n";
+            return 3;
+        }
+        previous_story_page = image;
+        if (page == 0U) {
+            // ROM 0x0D94 waits for a new controller event. An idle poll must
+            // leave this page and its full-screen pixels unchanged.
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            if (!field_scene.dialogue_open() || render() != image) {
+                std::cerr << "Sinsearach gate QA: idle story-page poll "
+                             "advanced or changed the page\n";
                 return 3;
             }
         }
-        previous_story_page = image;
         if (page + 1U < kStoryPageCaptures.size()) {
-            tap_qa_controller_button(field_scene, 0x40U); // A: next ROM page
+            tap_qa_controller_button(
+                field_scene, page == 0U ? 0x20U : 0x02U);
+            // C advances by the action-event path; Down advances through the
+            // direction-event path. Both are accepted by ROM's 0x0D94 wait.
         }
     }
-    tap_qa_controller_button(field_scene, 0x40U); // A: finish last ROM page
+    tap_qa_controller_button(field_scene, 0x80U); // Start: finish last page.
     const auto return_frames =
         field_scene.field_modal_return_transition_frames_for_dump();
     const bool returned = finish_field_modal_return_transition(field_scene);
@@ -23564,6 +24302,342 @@ int run_field_sinsearach_gate_physical_entry_qa(
     std::cout << "field_sinsearach_gate_physical_entry_qa=passed "
                  "record=230 event=0 result=frosty_story_pages "
                  "artifacts=" << output.string() << '\n';
+    return 0;
+}
+
+int run_field_sinsearach_gate_choice_permutation_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::string_view route,
+    const std::vector<std::string>& source_boundaries) {
+    const bool hostile_question_route = route == "hostile-questions";
+    const bool question_route = route == "questions" || hostile_question_route;
+    const bool frosty_elders_route = route == "frosty-elders";
+    const bool frosty_later_route = route == "frosty-later";
+    if (!question_route && !frosty_elders_route && !frosty_later_route) {
+        std::cerr << "Sinsearach choice QA: unknown route " << route << '\n';
+        return 3;
+    }
+
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Sinsearach choice QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    constexpr std::size_t kGateRecord = 230U;
+    constexpr std::uint16_t kStartX = 0x0D00U;
+    constexpr std::uint16_t kStartY = 0x0C00U;
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    if (output_error || field_scene.field_scene_reference_for_dump() != 9U ||
+        field_scene.field_runtime_state_for_dump().field_mode != 9U ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        rectangles.size() <= kGateRecord ||
+        rectangles[kGateRecord].left != 0x00C0U ||
+        rectangles[kGateRecord].right != 0x00DFU ||
+        rectangles[kGateRecord].top != 0x00A0U ||
+        rectangles[kGateRecord].bottom != 0x00BFU) {
+        std::cerr << "Sinsearach choice QA: Scene-9 checkpoint or ROM record "
+                     "230 does not match\n";
+        return 3;
+    }
+
+    for (const std::uint8_t bit : {9U, 13U, 17U, 19U}) {
+        if (!field_scene.set_story_flag_for_dump(bit, true)) return 3;
+    }
+    if (!field_scene.set_story_flag_for_dump(18U, !hostile_question_route) ||
+        !field_scene.set_story_flag_for_dump(20U, !question_route) ||
+        !field_scene.set_story_flag_for_dump(30U, false)) {
+        return 3;
+    }
+    field_scene.set_group_item_flags_for_dump(0U);
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto save_panel = [&](const std::string_view name,
+                                const std::string_view expected_text,
+                                const std::vector<std::string_view>& labels,
+                                const bool actual) {
+        const auto& panel = field_scene.dialogue_panel();
+        const auto image = render();
+        bool labels_match = false;
+        if (labels.empty()) {
+            labels_match = panel.has_more
+                ? panel.option_count == 1U &&
+                      panel.continuation_label.find("< MORE >") !=
+                          std::string_view::npos
+                : panel.option_count == 0U;
+        } else {
+            labels_match = panel.option_count == labels.size() &&
+                           !panel.has_more;
+        }
+        for (std::size_t index = 0U; labels_match && index < labels.size();
+             ++index) {
+            labels_match = panel.options[index].source_label == labels[index];
+        }
+        if (!field_scene.dialogue_open() || !panel.source_complete ||
+            !panel.source_boundary_reason.empty() || !contains(expected_text) ||
+            !labels_match || image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            field_hud_chrome_survives(image, asset_root) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring())) ||
+            (actual && !save_qa_image(output, "actual.bmp", image))) {
+            std::cerr << "Sinsearach choice QA: " << name
+                      << " did not match the full-frame ROM prompt"
+                      << " (open=" << field_scene.dialogue_open()
+                      << ", text=" << contains(expected_text)
+                      << ", labels=" << labels_match
+                      << ", option_count="
+                      << static_cast<unsigned>(panel.option_count)
+                      << ", has_more=" << panel.has_more
+                      << ", continuation=" << panel.continuation_label
+                      << ", boundary=" << panel.source_boundary_reason
+                      << ")\n";
+            return false;
+        }
+        return true;
+    };
+
+    const auto start_funds = field_scene.field_funds_for_dump();
+    const auto spawn_image = render();
+    if (spawn_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !field_hud_chrome_survives(spawn_image, asset_root) ||
+        !save_qa_image(output, "gate-spawn.bmp", spawn_image)) {
+        std::cerr << "Sinsearach choice QA: gate spawn capture failed\n";
+        return 3;
+    }
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into record 230
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 9U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto& dispatch =
+        field_scene.field_map_event_system_for_dump().last_collision_dispatch();
+    if (movement_ticks == 0U || movement_ticks >= 80U || !dispatch.has_value() ||
+        dispatch->decision.source_event_code !=
+            FieldCollisionEventCode::event_0 ||
+        dispatch->decision.event_code != FieldCollisionEventCode::event_0 ||
+        field_scene.field_mode_event_code_for_dump() != 0U) {
+        std::cerr << "Sinsearach choice QA: ordinary Up did not dispatch "
+                     "Scene-9 record 230/event 0\n";
+        return 3;
+    }
+    for (std::uint8_t settle = 0U;
+         settle < 100U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == 9U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+
+    const std::vector<std::string_view> kQuestionRoot{
+        "I need some questions answered.",
+        "May I speak with the Tribal Elders?",
+        "I'll talk to you later, chum."};
+    const std::vector<std::string_view> kFrostyRoot{
+        "I'd like to see Frosty, please.",
+        "May I speak with the Tribal Elders?",
+        "I'll talk to you later, chum."};
+    const bool frosty_root = !question_route;
+    const auto& root_labels = frosty_root ? kFrostyRoot : kQuestionRoot;
+    if (!save_panel("guard-root",
+                    hostile_question_route ? "Hold it, round-ear!"
+                                           : "Greetings, Sir Joshua",
+                    root_labels, hostile_question_route)) {
+        return 3;
+    }
+
+    if (question_route) {
+        tap_qa_controller_button(field_scene, 0x40U); // A: Questions
+        const std::vector<std::string_view> kQuestionChoices{
+            "What can you tell me about Caleb Brightmore?",
+            "I'm looking for an elf named Frosty.",
+            "I'll talk to you later, chum."};
+        if (!save_panel("guard-questions",
+                        "wired reflexes",
+                        kQuestionChoices, false)) {
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U); // A: Caleb
+        const std::vector<std::string_view> kFollowupChoices{
+            "I've got another question for you.",
+            "May I speak with the Tribal Elders?",
+            "I'll talk to you later, chum."};
+        if (!save_panel("caleb-answer",
+                        "infamous Mr. Brightmore",
+                        kFollowupChoices, false)) {
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x40U); // A: Another question
+        if (!save_panel("questions-after-caleb",
+                        "wired reflexes",
+                        kQuestionChoices, false)) {
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x10U); // B: Frosty question
+        if (!save_panel("frosty-name-answer",
+                        "discuss that name",
+                        kFollowupChoices, false)) {
+            return 3;
+        }
+
+        tap_qa_controller_button(field_scene, 0x10U); // B: Elders
+        const std::vector<std::string_view> kThanksChoice{
+            "Thanks, chum."};
+        if (!save_panel("elders-welcome",
+                        "judge your requests",
+                        kThanksChoice, false)) {
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U); // A: Thanks
+        if (!save_panel("elders-escort",
+                        "takes you to the Lodge",
+                        {}, false)) {
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U); // A: escort reply
+        if (!save_panel("elders-busy",
+                        "in council on other matters",
+                        {}, false)) {
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U); // A: command 0x39
+        const std::vector<std::string_view> kFareChoices{
+            "Yes", "No"};
+        if (!save_panel("guard-return-offer",
+                        "1,000$",
+                        kFareChoices, !hostile_question_route)) {
+            return 3;
+        }
+    } else {
+        tap_qa_controller_button(field_scene, 0x40U); // A: Frosty
+        const std::vector<std::string_view> kFrostyLeftChoices{
+            "I'd like to see Frosty, please.",
+            "May I speak with the Tribal Elders?",
+            "I'll talk to you later, chum."};
+        if (!save_panel("frosty-left",
+                        "Frosty recently left without notice",
+                        kFrostyLeftChoices, false)) {
+            return 3;
+        }
+        const auto first_left_frame = render();
+        tap_qa_controller_button(field_scene, 0x40U); // A: source self-loop
+        const auto repeat_left_frame = render();
+        if (!save_panel("frosty-left-repeat",
+                        "Frosty recently left without notice",
+                        kFrostyLeftChoices, false) ||
+            first_left_frame != repeat_left_frame) {
+            std::cerr << "Sinsearach choice QA: Frosty-left self-loop changed "
+                         "the source page\n";
+            return 3;
+        }
+
+        if (frosty_elders_route) {
+            tap_qa_controller_button(field_scene, 0x10U); // B: Elders
+            const std::vector<std::string_view> kThanksChoice{
+                "Thanks, chum."};
+            if (!save_panel("frosty-left-elders",
+                            "show you to the Lodge",
+                            kThanksChoice, false)) {
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U); // A: Thanks
+            if (!save_panel("lady-gillian",
+                            "Lady Gillian greets you",
+                            {"I'd like to see Frosty, please."}, true) ||
+                (field_scene.field_world_fact_flags_for_dump() &
+                 (1U << 30U)) != 0U) {
+                std::cerr << "Sinsearach choice QA: Elders exit did not reach "
+                             "the source Lady Gillian gate\n";
+                return 3;
+            }
+        } else {
+            tap_qa_controller_button(field_scene, 0x20U); // C: Later
+            const std::vector<std::string_view> kFareChoices{
+                "Yes", "No"};
+            if (!save_panel("frosty-left-later",
+                            "1,000$",
+                            kFareChoices, false)) {
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x10U); // B: No
+            if (!save_panel("fare-no-response",
+                            "I'd rather walk",
+                            {}, false)) {
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U); // A: guard reply
+            if (!save_panel("fare-no-reply",
+                            "keep your nose",
+                            {}, false)) {
+                return 3;
+            }
+            tap_qa_controller_button(field_scene, 0x40U); // A: return in place
+            const auto return_frames =
+                field_scene.field_modal_return_transition_frames_for_dump();
+            if (return_frames != 0U &&
+                !finish_field_modal_return_transition(field_scene)) {
+                std::cerr << "Sinsearach choice QA: no-fare return fade did "
+                             "not complete\n";
+                return 3;
+            }
+            const auto returned = render();
+            if (field_scene.dialogue_open() ||
+                field_scene.field_scene_reference_for_dump() != 9U ||
+                field_scene.field_funds_for_dump() != start_funds ||
+                (field_scene.field_world_fact_flags_for_dump() &
+                 (1U << 30U)) != 0U ||
+                returned.size() != QSize(kSceneWidth, kSceneHeight) ||
+                !field_hud_chrome_survives(returned, asset_root) ||
+                !save_qa_image(output, "field-return.bmp", returned) ||
+                !save_qa_image(output, "actual.bmp", returned)) {
+                std::cerr << "Sinsearach choice QA: No response did not return "
+                             "to the unchanged Scene-9 field context\n";
+                return 3;
+            }
+        }
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "rom_scene\trom_record\trom_event\tprofile_branch\t"
+             "physical_choices\tresult\tfunds_unchanged\n"
+          << "9\t230\t0\t" << route << "\tordinary_up_then_abc\t"
+           << (question_route ? "question_graph_and_elders_fallback"
+                             : (frosty_elders_route
+                                    ? "frosty_left_to_elders"
+                                    : "frosty_left_to_later_no"))
+          << '\t' << (field_scene.field_funds_for_dump() == start_funds)
+          << '\n';
+    trace.flush();
+    if (!trace) return 3;
+    std::cout << "field_sinsearach_gate_choice_permutation_qa=passed route="
+              << route << " artifacts=" << output.string() << '\n';
     return 0;
 }
 
@@ -26445,6 +27519,7 @@ int main(int argc, char** argv) {
             field_tarislar_repeat_service_qa_path;
         std::optional<std::filesystem::path>
             field_tarislar_city_inn_qa_path;
+        std::string field_tarislar_city_inn_qa_route = "leave";
         std::optional<std::filesystem::path>
             field_wylie_gala_inn_qa_path;
         std::optional<std::filesystem::path>
@@ -26556,6 +27631,8 @@ int main(int argc, char** argv) {
             field_scene2_motel_street_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
+        std::optional<std::filesystem::path>
+            field_hotel_profile_permutation_qa_path;
         std::optional<std::filesystem::path> field_command_dump_path;
         std::optional<std::filesystem::path> field_taxi_dump_path;
         std::optional<std::filesystem::path>
@@ -26568,6 +27645,9 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_cyberware_dump_path;
         std::optional<std::filesystem::path> field_secretary_dump_path;
         std::optional<std::filesystem::path> field_posture_dump_path;
+        std::optional<std::filesystem::path>
+            field_profile_combat_bar_permutation_qa_path;
+        bool field_spell_action_bars_qa = false;
         std::optional<std::filesystem::path> field_action_dump_path;
         std::optional<std::filesystem::path> field_player_action_dump_path;
         std::optional<std::filesystem::path> field_first_aid_dump_path;
@@ -26579,6 +27659,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_magic_spell_dump_path;
         std::optional<std::filesystem::path>
             field_attributes_skills_dump_path;
+        std::optional<std::filesystem::path>
+            field_profile_attributes_skills_permutation_qa_path;
         std::optional<std::string> field_archetype_name;
         std::optional<std::string> field_dialogue_dump_prompt;
         std::optional<std::filesystem::path> field_dialogue_dump_path;
@@ -26594,6 +27676,10 @@ int main(int argc, char** argv) {
             field_spirit_eyes_physical_entry_qa_path;
         std::optional<std::filesystem::path>
             field_tarislar_tomb_credits_presenter_qa_path;
+        std::optional<std::filesystem::path>
+            field_sinsearach_gate_choice_permutation_qa_path;
+        std::optional<std::string>
+            field_sinsearach_gate_choice_permutation_route;
         std::optional<std::filesystem::path>
             field_sinsearach_gate_physical_entry_qa_path;
         std::optional<std::filesystem::path>
@@ -26850,6 +27936,23 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_tarislar_city_inn_qa_path =
                     std::filesystem::path(argv[++index]);
+                field_tarislar_city_inn_qa_route = "leave";
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-city-inn-payment-qa" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                field_tarislar_city_inn_qa_path =
+                    std::filesystem::path(argv[++index]);
+                field_tarislar_city_inn_qa_route = argv[++index];
+            }
+            if (std::string(argv[index]) ==
+                    "--field-tarislar-city-inn-tabatha-qa" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                field_tarislar_city_inn_qa_path =
+                    std::filesystem::path(argv[++index]);
+                field_tarislar_city_inn_qa_route = argv[++index];
             }
             if (std::string(argv[index]) ==
                     "--field-wylie-gala-inn-qa" &&
@@ -27459,6 +28562,13 @@ int main(int argc, char** argv) {
                 field_attributes_skills_dump_path =
                     std::filesystem::path(argv[++index]);
             }
+            if (std::string(argv[index]) ==
+                    "--field-profile-attributes-skills-permutation-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_profile_attributes_skills_permutation_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
             if (std::string(argv[index]) == "--field-cyberware-dump" &&
                 index + 1 < argc) {
                 field_smoke = true;
@@ -27484,6 +28594,13 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_hotel_qa_path = std::filesystem::path(argv[++index]);
             }
+            if (std::string(argv[index]) ==
+                    "--field-hotel-profile-permutation-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_hotel_profile_permutation_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
             if (std::string(argv[index]) == "--field-command-page" &&
                 index + 1 < argc) {
                 field_smoke = true;
@@ -27501,6 +28618,18 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_posture_dump_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-profile-combat-bar-permutation-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_profile_combat_bar_permutation_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                "--field-spell-action-bars-qa") {
+                field_smoke = true;
+                field_spell_action_bars_qa = true;
             }
             if (std::string(argv[index]) == "--field-dialogue-dump" &&
                 index + 2 < argc) {
@@ -27551,6 +28680,15 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_tarislar_tomb_credits_presenter_qa_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-sinsearach-gate-choice-permutation-qa" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                field_sinsearach_gate_choice_permutation_qa_path =
+                    std::filesystem::path(argv[++index]);
+                field_sinsearach_gate_choice_permutation_route =
+                    std::string(argv[++index]);
             }
             if (std::string(argv[index]) ==
                     "--field-sinsearach-gate-physical-entry-qa" &&
@@ -28264,7 +29402,8 @@ int main(int argc, char** argv) {
                 checkpoint.active_runner_slot = 0U;
                 smoke_state.restored_field_state = std::move(checkpoint);
             }
-            if (field_sinsearach_gate_physical_entry_qa_path.has_value() ||
+            if (field_sinsearach_gate_choice_permutation_qa_path.has_value() ||
+                field_sinsearach_gate_physical_entry_qa_path.has_value() ||
                 field_sinsearach_gate_fare_physical_entry_qa_path.has_value() ||
                 field_sinsearach_gate_paid_physical_entry_qa_path.has_value()) {
                 const auto scene9 = integration::make_field_scene_input(
@@ -28496,6 +29635,7 @@ int main(int argc, char** argv) {
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||
                 field_movement_qa_path.has_value() ||
+                field_sinsearach_gate_choice_permutation_qa_path.has_value() ||
                 field_sinsearach_gate_physical_entry_qa_path.has_value() ||
                 field_sinsearach_gate_fare_physical_entry_qa_path.has_value() ||
                 field_sinsearach_gate_paid_physical_entry_qa_path.has_value() ||
@@ -28546,7 +29686,8 @@ int main(int argc, char** argv) {
                  field_penumbra_mako_lead_missing_qa_path.has_value() ||
                  field_penumbra_mako_mode_flag_lead_qa_path.has_value())
                 ? field_scene.bootstrap_for_scene_dump(smoke_state, 3U)
-                : (field_sinsearach_gate_physical_entry_qa_path.has_value() ||
+                : (field_sinsearach_gate_choice_permutation_qa_path.has_value() ||
+                           field_sinsearach_gate_physical_entry_qa_path.has_value() ||
                            field_sinsearach_gate_fare_physical_entry_qa_path
                                .has_value() ||
                            field_sinsearach_gate_paid_physical_entry_qa_path
@@ -32018,7 +33159,8 @@ int main(int argc, char** argv) {
                 return run_field_tarislar_city_inn_qa(
                     field_scene, asset_root,
                     *field_tarislar_city_inn_qa_path,
-                    field_audio_events, field_source_boundaries);
+                    field_audio_events, field_source_boundaries,
+                    field_tarislar_city_inn_qa_route);
             }
             if (field_wylie_gala_inn_qa_path.has_value()) {
                 return run_field_wylie_gala_inn_qa(
@@ -32177,6 +33319,17 @@ int main(int argc, char** argv) {
                 return run_field_tarislar_tomb_credits_presenter_qa(
                     field_scene,
                     *field_tarislar_tomb_credits_presenter_qa_path,
+                    field_source_boundaries);
+            }
+            if (field_sinsearach_gate_choice_permutation_qa_path.has_value()) {
+                if (!field_sinsearach_gate_choice_permutation_route.has_value()) {
+                    std::cerr << "Sinsearach choice QA: route name is missing\n";
+                    return 3;
+                }
+                return run_field_sinsearach_gate_choice_permutation_qa(
+                    field_scene, asset_root,
+                    *field_sinsearach_gate_choice_permutation_qa_path,
+                    *field_sinsearach_gate_choice_permutation_route,
                     field_source_boundaries);
             }
             if (field_sinsearach_gate_physical_entry_qa_path.has_value()) {
@@ -36056,6 +37209,1018 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: E660 should animate the lower grid once per options wait frame\n";
                     return 3;
                 }
+                if (field_hotel_profile_permutation_qa_path.has_value()) {
+                    using namespace shadowrun::ghidra_conversion;
+                    using shadowrun::ghidra_conversion::qt_runtime::
+                        AttributesSkillsMenuMessage;
+                    constexpr std::array<std::string_view, 13U> profile_slugs{{
+                        "joshua-samurai", "joshua-decker",
+                        "joshua-gator-shaman", "rat-shaman",
+                        "troll-samurai", "human-mage", "dwarf-decker",
+                        "bear-shaman", "elf-decker-1", "human-samurai-1",
+                        "elf-mage", "elf-decker-2", "human-samurai-2"}};
+                    constexpr std::array<std::uint8_t, 13U> expected_races{{
+                        0U, 0U, 0U, 2U, 4U, 0U, 2U, 3U, 1U, 0U, 1U, 1U,
+                        0U}};
+                    constexpr std::array<std::uint8_t, 13U> expected_classes{{
+                        2U, 3U, 1U, 1U, 2U, 0U, 3U, 1U, 3U, 2U, 0U, 3U,
+                        2U}};
+                    constexpr std::array<std::size_t, 5U> race_representatives{{
+                        0U, 8U, 3U, 7U, 4U}};
+                    // One source record for each class: Mage, Shaman,
+                    // Samurai, Decker. These exercise the two Sorcery gates
+                    // and a rank-12 skill through the live Hotel presenter.
+                    constexpr std::array<std::size_t, 4U> class_representatives{{
+                        5U, 2U, 0U, 1U}};
+                    constexpr std::array<std::string_view, 5U> race_names{{
+                        "Human", "  Elf", "Dwarf", "  Orc", "Troll"}};
+                    constexpr std::array<std::string_view, 4U> class_names{{
+                        "Mage", "Shaman", "Samurai", "Decker"}};
+                    constexpr std::array<std::string_view, 20U> cell_labels{{
+                        "Body", "Quickness", "Strength", "Charisma",
+                        "Intelligence", "Willpower", "Essence      .",
+                        "Magic", "Sorcery", "Firearms", "Pistols", "SMGs",
+                        "Shotguns", "Melee Combat", "Throwing", "Computer",
+                        "Biotech", "Electronics", "Reputation", "Negotiation"}};
+                    const auto profile_failure = [](const std::string& reason) {
+                        std::cerr << "field Hotel profile permutation QA: "
+                                  << reason << '\n';
+                        return 3;
+                    };
+                    if (!smoke_state.startup_records.has_value()) {
+                        return profile_failure(
+                            "the source Joshua and recruited templates were not loaded");
+                    }
+#ifndef SHADOWRUN_US_ROM_PATH
+                    return profile_failure("the QA target has no US ROM path");
+#else
+                    std::ifstream rom_file(SHADOWRUN_US_ROM_PATH,
+                                           std::ios::binary);
+                    if (!rom_file) {
+                        return profile_failure(
+                            "could not open the primary US ROM input");
+                    }
+                    const auto rom_begin =
+                        std::istreambuf_iterator<char>{rom_file};
+                    const auto rom_end = std::istreambuf_iterator<char>{};
+                    const std::vector<std::uint8_t> rom_bytes(rom_begin,
+                                                              rom_end);
+                    constexpr std::size_t kRaceMaximumTable = 0xC22A6U;
+                    constexpr std::size_t kJoshuaRecordTable = 0x7291AU;
+                    constexpr std::size_t kRecruitRecordTable = 0x72C1AU;
+                    constexpr std::size_t kRecordStride = 0x100U;
+                    constexpr std::size_t kRequiredRomBytes =
+                        kRaceMaximumTable + 5U * 6U;
+                    if (rom_bytes.size() < kRequiredRomBytes) {
+                        return profile_failure(
+                            "the primary US ROM is shorter than the race-cap table");
+                    }
+                    const auto output_directory =
+                        *field_hotel_profile_permutation_qa_path;
+                    std::filesystem::create_directories(output_directory);
+                    std::error_code clear_error;
+                    clear_qa_bitmap_artifacts(output_directory, clear_error);
+                    if (clear_error) {
+                        return profile_failure(
+                            "could not clear prior profile screenshots");
+                    }
+                    const QImage green_font(QString::fromStdWString(
+                        (asset_root / "menu" / "field" / "font.bmp").wstring()));
+                    const QImage purple_font(QString::fromStdWString(
+                        (asset_root / "menu" / "field" /
+                         "font-palette-2.bmp").wstring()));
+                    if (green_font.isNull() || purple_font.isNull()) {
+                        return profile_failure(
+                            "the source green and Hotel purple font assets are missing");
+                    }
+                    std::ofstream manifest(output_directory / "profile-cells.tsv",
+                                           std::ios::trunc);
+                    if (!manifest) {
+                        return profile_failure(
+                            "could not create profile-cells.tsv");
+                    }
+                    manifest << "profile\traw_rom_record\tcolumn\t"
+                                "cursor_row\trecord_offset\tcurrent\t"
+                                "preview_status\tnext\tcost\tkarma\tframe\n";
+                    const QColor kGreen(0, 255, 0);
+                    const auto color_tint =
+                        std::optional<QColor>(kGreen);
+                    const auto expected_preview = [&rom_bytes](
+                        const RunnerRecordFields& record,
+                        const std::uint8_t column,
+                        const std::uint8_t row) {
+                        AttributeSkillUpgradePreview expected{};
+                        if (row < 4U) {
+                            expected.section = AttributeSkillSection::attribute;
+                            expected.value_index = static_cast<std::uint8_t>(
+                                row + column * 4U);
+                            expected.record_offset = static_cast<std::uint16_t>(
+                                0x77U + expected.value_index);
+                            expected.current_value =
+                                record.attributes[expected.value_index];
+                            if (expected.value_index >= 6U) {
+                                expected.status = AttributeSkillUpgradeStatus::
+                                    attribute_not_upgradeable;
+                                return expected;
+                            }
+                            if (record.species_index >= 5U) {
+                                expected.status =
+                                    AttributeSkillUpgradeStatus::unknown_species;
+                                return expected;
+                            }
+                            const auto next = static_cast<unsigned>(
+                                expected.current_value) + 1U;
+                            const auto maximum = rom_bytes[
+                                kRaceMaximumTable +
+                                record.species_index * 6U +
+                                expected.value_index];
+                            if (next > maximum) {
+                                expected.status =
+                                    AttributeSkillUpgradeStatus::at_limit;
+                                return expected;
+                            }
+                            expected.next_value = static_cast<std::uint8_t>(next);
+                            expected.karma_cost =
+                                static_cast<std::uint16_t>(next);
+                            expected.status =
+                                AttributeSkillUpgradeStatus::available;
+                            return expected;
+                        }
+
+                        expected.section = AttributeSkillSection::skill;
+                        expected.value_index = static_cast<std::uint8_t>(
+                            row - 4U + column * 6U);
+                        expected.record_offset = expected.value_index < 6U
+                            ? static_cast<std::uint16_t>(
+                                  0x80U + expected.value_index)
+                            : static_cast<std::uint16_t>(
+                                  0x87U + expected.value_index - 6U);
+                        expected.current_value =
+                            record.skills[expected.value_index];
+                        if (expected.value_index == 0U &&
+                            record.archetype_index >= 2U) {
+                            expected.status =
+                                AttributeSkillUpgradeStatus::class_restricted;
+                            return expected;
+                        }
+                        const bool reduced_cost = column == 0U &&
+                            expected.value_index >= 2U &&
+                            expected.value_index <= 4U;
+                        auto base = static_cast<unsigned>(
+                            expected.current_value);
+                        if (reduced_cost && expected.current_value == 0U) {
+                            base = record.skills[1U];
+                        }
+                        const auto next = base + 1U;
+                        if (next >= 13U) {
+                            expected.status =
+                                AttributeSkillUpgradeStatus::at_limit;
+                            return expected;
+                        }
+                        expected.next_value = static_cast<std::uint8_t>(next);
+                        expected.karma_cost = static_cast<std::uint16_t>(
+                            reduced_cost ? (next * 15U + 9U) / 10U
+                                         : next * 2U);
+                        expected.status =
+                            AttributeSkillUpgradeStatus::available;
+                        return expected;
+                    };
+                    const auto status_name = [](const AttributeSkillUpgradeStatus status) {
+                        switch (status) {
+                        case AttributeSkillUpgradeStatus::available:
+                            return std::string_view("available");
+                        case AttributeSkillUpgradeStatus::invalid_selection:
+                            return std::string_view("invalid");
+                        case AttributeSkillUpgradeStatus::attribute_not_upgradeable:
+                            return std::string_view("non-upgradeable");
+                        case AttributeSkillUpgradeStatus::unknown_species:
+                            return std::string_view("unknown-race");
+                        case AttributeSkillUpgradeStatus::class_restricted:
+                            return std::string_view("class-restricted");
+                        case AttributeSkillUpgradeStatus::at_limit:
+                            return std::string_view("at-limit");
+                        }
+                        return std::string_view("unknown-status");
+                    };
+                    auto cursor_column = std::uint8_t{0U};
+                    auto cursor_row = std::uint8_t{0U};
+                    const auto press_profile_button = [&field_scene](
+                        const std::uint8_t port_byte) {
+                        settle_qa_dialogue_input(field_scene);
+                        field_scene.set_controller_port_byte(port_byte);
+                        field_scene.advance_frame();
+                        field_scene.set_controller_port_byte(0U);
+                        field_scene.advance_frame();
+                    };
+                    const auto move_profile_cursor = [&] (
+                        const std::uint8_t column,
+                        const std::uint8_t row) {
+                        while (cursor_column > column) {
+                            press_profile_button(0x04U);
+                            cursor_column = static_cast<std::uint8_t>(
+                                cursor_column - 1U);
+                        }
+                        while (cursor_column < column) {
+                            press_profile_button(0x08U);
+                            cursor_column = static_cast<std::uint8_t>(
+                                cursor_column + 1U);
+                        }
+                        while (cursor_row > row) {
+                            press_profile_button(0x01U);
+                            cursor_row = static_cast<std::uint8_t>(
+                                cursor_row - 1U);
+                        }
+                        while (cursor_row < row) {
+                            press_profile_button(0x02U);
+                            cursor_row = static_cast<std::uint8_t>(
+                                cursor_row + 1U);
+                        }
+                    };
+                    const auto check_screen_cell = [&](
+                        const RunnerRecordFields& record,
+                        const std::string_view profile_slug,
+                        const std::size_t raw_record_address,
+                        const std::uint8_t column,
+                        const std::uint8_t row,
+                        const std::filesystem::path& frame_path,
+                        std::string& reason) {
+                        const auto image = capture(frame_path);
+                        if (image.isNull() ||
+                            image.size() != QSize(kSceneWidth, kSceneHeight)) {
+                            reason = "could not save a full 320x224 Hotel frame";
+                            return false;
+                        }
+                        const auto& menu = field_scene.hotel_karma_screen();
+                        const auto& live = field_scene.active_runner_record();
+                        if (!menu.is_open() ||
+                            !menu.allows_karma_upgrades() ||
+                            menu.upgrade_prompt_open() ||
+                            menu.state().cursor.column != column ||
+                            menu.state().cursor.row != row ||
+                            live.species_index != record.species_index ||
+                            live.archetype_index != record.archetype_index ||
+                            live.attributes != record.attributes ||
+                            live.skills != record.skills ||
+                            live.auxiliary != record.auxiliary) {
+                            reason = "typed Hotel state did not match the selected profile/cursor";
+                            return false;
+                        }
+                        const auto expected =
+                            expected_preview(record, column, row);
+                        const auto actual = menu.preview(live);
+                        if (actual.status != expected.status ||
+                            actual.section != expected.section ||
+                            actual.value_index != expected.value_index ||
+                            actual.record_offset != expected.record_offset ||
+                            actual.current_value != expected.current_value ||
+                            actual.next_value != expected.next_value ||
+                            actual.karma_cost != expected.karma_cost) {
+                            reason = "typed preview disagreed with the independent ROM table/formula oracle";
+                            return false;
+                        }
+                        const auto expected_message =
+                            expected.status == AttributeSkillUpgradeStatus::at_limit
+                                ? AttributesSkillsMenuMessage::maximum_level
+                                : AttributesSkillsMenuMessage::none;
+                        if (menu.message() != expected_message) {
+                            reason = "Hotel status message disagreed with the selected ROM limit";
+                            return false;
+                        }
+                        const auto green_header =
+                            record.species_index < race_names.size() &&
+                            record.archetype_index < class_names.size() &&
+                            source_menu_caption_matches(
+                                image, green_font, 80, 32,
+                                race_names[record.species_index]) &&
+                            source_menu_caption_matches(
+                                image, green_font, 128, 32,
+                                class_names[record.archetype_index]);
+                        if (!green_header ||
+                            !numeric_visual_patch_matches(
+                                image, green_font, 120, 160,
+                                record.auxiliary[2U], color_tint)) {
+                            reason = "race/class header or live +0x8D Karma display did not match the profile";
+                            return false;
+                        }
+
+                        const auto grid = menu.grid(live);
+                        for (std::uint8_t cell_column = 0U;
+                             cell_column < 2U; ++cell_column) {
+                            for (std::uint8_t cell_row = 0U;
+                                 cell_row < 10U; ++cell_row) {
+                                const auto label_index = cell_row < 4U
+                                    ? static_cast<std::size_t>(
+                                          cell_row + cell_column * 4U)
+                                    : static_cast<std::size_t>(
+                                          8U + cell_row - 4U +
+                                          cell_column * 6U);
+                                const auto value_index = cell_row < 4U
+                                    ? static_cast<std::size_t>(
+                                          cell_row + cell_column * 4U)
+                                    : static_cast<std::size_t>(
+                                          cell_row - 4U + cell_column * 6U);
+                                const auto offset = cell_row < 4U
+                                    ? 0x77U + value_index
+                                    : (value_index < 6U
+                                           ? 0x80U + value_index
+                                           : 0x87U + value_index - 6U);
+                                const auto expected_state =
+                                    cell_row == 4U && cell_column == 0U &&
+                                            record.archetype_index >= 2U
+                                        ? AttributeSkillCellState::class_restricted
+                                        : AttributeSkillCellState::value;
+                                const auto& cell = grid[cell_column][cell_row];
+                                const auto label_x = cell_column == 0U
+                                    ? 24 : 176;
+                                const auto cell_y = cell_row < 4U
+                                    ? 56 + static_cast<int>(cell_row) * 8
+                                    : 104 + static_cast<int>(cell_row - 4U) * 8;
+                                const auto value_x = label_index == 6U
+                                    ? 272
+                                    : cell_column == 0U ? 136 : 280;
+                                const auto source_value = cell_row < 4U
+                                    ? record.attributes[value_index]
+                                    : record.skills[value_index];
+                                const auto selected =
+                                    cell_column == column && cell_row == row;
+                                const auto label_text = label_index == 6U
+                                    ? std::string_view("Essence")
+                                    : cell_labels[label_index];
+                                if (cell.label_index != label_index ||
+                                    cell.value_index != value_index ||
+                                    cell.record_offset != offset ||
+                                    cell.value != source_value ||
+                                    cell.state != expected_state) {
+                                    reason = "typed grid cell did not preserve its source record field/label";
+                                    return false;
+                                }
+                                if (selected) {
+                                    if (!source_menu_direct_asset_text_matches(
+                                            image, purple_font, label_x,
+                                            cell_y, label_text)) {
+                                        reason = "selected label did not use the Hotel palette at the ROM cursor position";
+                                        return false;
+                                    }
+                                    bool current_matches = false;
+                                    if (cell_row >= 4U) {
+                                        current_matches =
+                                            numeric_visual_patch_matches(
+                                                image, purple_font,
+                                                cell_column == 0U ? 136 : 280,
+                                                cell_y,
+                                                record.skills[value_index],
+                                                std::nullopt);
+                                    } else if (value_index < 6U) {
+                                        current_matches =
+                                            numeric_visual_patch_matches(
+                                                image, purple_font,
+                                                cell_column == 0U ? 136 : 280,
+                                                cell_y,
+                                                record.attributes[value_index],
+                                                std::nullopt);
+                                    } else if (value_index == 6U) {
+                                        // D5DC reads +0x7E and +0x8E as the
+                                        // tens and ones of live Essence.
+                                        current_matches =
+                                            numeric_visual_patch_matches(
+                                                image, purple_font, 272, 72,
+                                                record.attributes[7U],
+                                                std::nullopt) &&
+                                            numeric_visual_patch_matches(
+                                                image, purple_font, 288, 72,
+                                                record.auxiliary[3U],
+                                                std::nullopt);
+                                    } else {
+                                        // The focused Magic detail is +0x7F;
+                                        // the base grid byte at +0x7E is the
+                                        // Essence tens digit.
+                                        current_matches =
+                                            numeric_visual_patch_matches(
+                                                image, purple_font, 280, 80,
+                                                record.auxiliary[0U],
+                                                std::nullopt);
+                                    }
+                                    if (!current_matches) {
+                                        reason = "selected numeric detail did not follow its ROM-backed stat/Essence/Magic source";
+                                        return false;
+                                    }
+                                } else if (!source_menu_caption_matches(
+                                               image, green_font, label_x,
+                                               cell_y, label_text) ||
+                                           !numeric_visual_patch_matches(
+                                               image, green_font, value_x,
+                                               cell_y, source_value,
+                                               color_tint)) {
+                                    reason = "unselected grid label/value pixels did not match the live ROM profile";
+                                    return false;
+                                }
+                            }
+                        }
+
+                        if (expected.status ==
+                            AttributeSkillUpgradeStatus::available) {
+                            if (!source_menu_direct_asset_text_matches(
+                                    image, purple_font, 64, 200,
+                                    "Upgrade to") ||
+                                !source_menu_direct_asset_text_matches(
+                                    image, purple_font, 200, 200, "Cost") ||
+                                !numeric_visual_patch_matches(
+                                    image, purple_font, 160, 200,
+                                    expected.next_value, std::nullopt) ||
+                                !numeric_visual_patch_matches(
+                                    image, purple_font, 248, 200,
+                                    expected.karma_cost, std::nullopt)) {
+                                reason = "lower next-value or Karma-cost pixels did not match the ROM formula";
+                                return false;
+                            }
+                        } else if (expected.status ==
+                                   AttributeSkillUpgradeStatus::at_limit) {
+                            if (!source_menu_direct_asset_text_matches(
+                                    image, purple_font, 48, 200,
+                                    "You are at the maximum level.")) {
+                                reason = "race/skill maximum did not display its source-backed message";
+                                return false;
+                            }
+                        }
+                        manifest << profile_slug << '\t'
+                                 << raw_record_address << '\t'
+                                 << static_cast<unsigned>(column) << '\t'
+                                 << static_cast<unsigned>(row) << '\t'
+                                 << expected.record_offset << '\t'
+                                 << static_cast<unsigned>(expected.current_value)
+                                 << '\t' << status_name(expected.status) << '\t'
+                                 << static_cast<unsigned>(expected.next_value)
+                                 << '\t' << expected.karma_cost << '\t'
+                                 << static_cast<unsigned>(record.auxiliary[2U])
+                                  << '\t'
+                                  << frame_path.lexically_relative(
+                                         output_directory).string()
+                                 << '\n';
+                        return true;
+                    };
+
+                    std::size_t profile_cell_frames = 0U;
+                    std::size_t race_cap_frames = 0U;
+                    std::size_t boundary_frames = 0U;
+                    std::size_t profile_transactions = 0U;
+                    const auto hotel_base_after_purchase =
+                        field_scene.active_runner_record();
+                    if (!field_scene.hotel_menu_open() ||
+                        field_scene.hotel_menu_phase() !=
+                            HotelMenuPhase::options ||
+                        field_scene.hotel_karma_screen_open()) {
+                        return profile_failure(
+                            "profile sweep was not positioned at Hotel Options after the baseline purchase");
+                    }
+
+                    for (std::size_t profile_index = 0U;
+                         profile_index < profile_slugs.size();
+                         ++profile_index) {
+                        const auto raw_record_address = profile_index < 3U
+                            ? kJoshuaRecordTable + profile_index * kRecordStride
+                            : kRecruitRecordTable +
+                                  (profile_index - 3U) * kRecordStride;
+                        LiveRunnerRecord raw_record{};
+                        std::copy_n(rom_bytes.begin() +
+                                        static_cast<std::ptrdiff_t>(
+                                            raw_record_address),
+                                    raw_record.bytes.size(),
+                                    raw_record.bytes.begin());
+                        const auto& records = *smoke_state.startup_records;
+                        LiveRunnerRecord asset_record{};
+                        if (profile_index < kJoshuaArchetypeCount) {
+                            asset_record.bytes = records
+                                .joshua_archetypes[profile_index].record;
+                        } else {
+                            asset_record.bytes = records
+                                .save_roster_templates[profile_index - 2U]
+                                .record;
+                        }
+                        if (asset_record.bytes != raw_record.bytes) {
+                            return profile_failure(
+                                "named profile asset did not match all 0x100 bytes at its raw ROM record");
+                        }
+                        auto profile = read_runner_record_fields(raw_record);
+                        if (profile.species_index !=
+                                expected_races[profile_index] ||
+                            profile.archetype_index !=
+                                expected_classes[profile_index]) {
+                            return profile_failure(
+                                "ROM profile order or race/class identity changed");
+                        }
+
+                        field_scene.active_runner_record() = profile;
+                        field_scene.refresh_field_hud_for_dump();
+                        press_profile_button(0x40U); // A opens the child.
+                        if (!field_scene.hotel_karma_screen_open() ||
+                            !field_scene.hotel_menu_open() ||
+                            field_scene.hotel_karma_screen()
+                                .state().cursor.column != 0U ||
+                            field_scene.hotel_karma_screen()
+                                .state().cursor.row != 0U) {
+                            return profile_failure(
+                                "ordinary A did not open the Body-focused Karma child");
+                        }
+                        const auto profile_directory = output_directory /
+                            std::string(profile_slugs[profile_index]);
+                        const auto loading_frame = capture(
+                            profile_directory / "loading.bmp");
+                        if (loading_frame.isNull() ||
+                            !field_scene.hotel_karma_screen_loading() ||
+                            image_has_green_ink(loading_frame, 0, 0, 320, 224)) {
+                            return profile_failure(
+                                "a profile-specific Hotel child lost its source black load phase");
+                        }
+                        for (int load_frame = 0;
+                             field_scene.hotel_karma_screen_loading() &&
+                             load_frame < 64;
+                             ++load_frame) {
+                            field_scene.advance_frame();
+                        }
+                        if (field_scene.hotel_karma_screen_loading()) {
+                            return profile_failure(
+                                "a profile-specific Hotel child did not finish loading");
+                        }
+                        cursor_column = 0U;
+                        cursor_row = 0U;
+
+                        const auto check_current = [&] (
+                            const std::uint8_t column,
+                            const std::uint8_t row) {
+                            std::string reason;
+                            auto frame_path = profile_directory /
+                                ("cell-" + std::to_string(column) + "-" +
+                                 std::to_string(row) + ".bmp");
+                            if (column == 0U && row == 0U) {
+                                frame_path = profile_directory / "actual.bmp";
+                            }
+                            const auto raw_record_address = profile_index < 3U
+                                ? kJoshuaRecordTable +
+                                      profile_index * kRecordStride
+                                : kRecruitRecordTable +
+                                      (profile_index - 3U) * kRecordStride;
+                            if (!check_screen_cell(
+                                    profile, profile_slugs[profile_index],
+                                    raw_record_address, column, row, frame_path,
+                                    reason)) {
+                                std::cerr << profile_slugs[profile_index]
+                                          << " cursor="
+                                          << static_cast<unsigned>(column)
+                                          << ','
+                                          << static_cast<unsigned>(row)
+                                          << ": " << reason << '\n';
+                                return false;
+                            }
+                            ++profile_cell_frames;
+                            return true;
+                        };
+                        for (std::uint8_t row = 0U; row < 10U; ++row) {
+                            if (row != 0U) {
+                                press_profile_button(0x02U);
+                                cursor_row = row;
+                            }
+                            if (!check_current(0U, row)) {
+                                return profile_failure(
+                                    "the first column failed its source/profile/pixel checks");
+                            }
+                        }
+                        for (std::uint8_t step = 0U; step < 9U; ++step) {
+                            press_profile_button(0x01U);
+                        }
+                        cursor_row = 0U;
+                        press_profile_button(0x08U);
+                        cursor_column = 1U;
+                        for (std::uint8_t row = 0U; row < 10U; ++row) {
+                            if (row != 0U) {
+                                press_profile_button(0x02U);
+                                cursor_row = row;
+                            }
+                            if (!check_current(1U, row)) {
+                                return profile_failure(
+                                    "the second column failed its source/profile/pixel checks");
+                            }
+                        }
+
+                        const auto is_race_representative =
+                            race_representatives[profile.species_index] ==
+                            profile_index;
+                        if (is_race_representative) {
+                            for (std::uint8_t attribute = 0U;
+                                 attribute < 6U; ++attribute) {
+                                field_scene.active_runner_record() = profile;
+                                const auto maximum = rom_bytes[
+                                    kRaceMaximumTable +
+                                    profile.species_index * 6U + attribute];
+                                field_scene.active_runner_record()
+                                    .attributes[attribute] = maximum;
+                                const auto column = static_cast<std::uint8_t>(
+                                    attribute / 4U);
+                                const auto row = static_cast<std::uint8_t>(
+                                    attribute % 4U);
+                                move_profile_cursor(column, row);
+                                const auto boundary_path = profile_directory /
+                                    ("race-cap-" +
+                                     std::to_string(attribute) + ".bmp");
+                                std::string reason;
+                                if (!check_screen_cell(
+                                        field_scene.active_runner_record(),
+                                        profile_slugs[profile_index],
+                                        raw_record_address, column, row,
+                                        boundary_path, reason) ||
+                                    field_scene.hotel_karma_screen().preview(
+                                        field_scene.active_runner_record())
+                                            .status !=
+                                        AttributeSkillUpgradeStatus::at_limit ||
+                                    field_scene.hotel_karma_screen().message() !=
+                                        AttributesSkillsMenuMessage::maximum_level) {
+                                    return profile_failure(
+                                        "one of the six ROM race ceilings did not render the maximum-level state: " +
+                                        reason);
+                                }
+                                press_profile_button(0x40U);
+                                if (field_scene.active_runner_record()
+                                        .attributes[attribute] != maximum ||
+                                    field_scene.hotel_karma_screen()
+                                        .upgrade_prompt_open()) {
+                                    return profile_failure(
+                                        "A mutated an attribute already at its race ceiling");
+                                }
+                                ++race_cap_frames;
+                            }
+                        }
+
+                        if (profile_index == 0U) {
+                            field_scene.active_runner_record() = profile;
+                            field_scene.active_runner_record()
+                                .attributes[3U] = 0U;
+                            move_profile_cursor(0U, 3U);
+                            const auto minimum_path = profile_directory /
+                                "zero-charisma-next-one-cost-one.bmp";
+                            std::string reason;
+                            if (!check_screen_cell(
+                                    field_scene.active_runner_record(),
+                                    profile_slugs[profile_index],
+                                    raw_record_address, 0U, 3U,
+                                    minimum_path, reason)) {
+                                return profile_failure(
+                                    "the zero-to-one attribute boundary failed: " +
+                                    reason);
+                            }
+                            const auto minimum = field_scene.hotel_karma_screen()
+                                .preview(field_scene.active_runner_record());
+                            if (minimum.status !=
+                                    AttributeSkillUpgradeStatus::available ||
+                                minimum.current_value != 0U ||
+                                minimum.next_value != 1U ||
+                                minimum.karma_cost != 1U) {
+                                return profile_failure(
+                                    "the attribute path incorrectly imposed a minimum above zero");
+                            }
+                            ++boundary_frames;
+                        }
+
+                        if (profile.archetype_index >= 2U) {
+                            field_scene.active_runner_record() = profile;
+                            move_profile_cursor(0U, 4U);
+                            const auto before =
+                                field_scene.active_runner_record();
+                            press_profile_button(0x40U);
+                            const auto restricted = capture(
+                                profile_directory / "sorcery-mage-only.bmp");
+                            if (field_scene.hotel_karma_screen().message() !=
+                                    AttributesSkillsMenuMessage::mage_only_skill ||
+                                field_scene.hotel_karma_screen()
+                                    .upgrade_prompt_open() ||
+                                field_scene.active_runner_record().skills !=
+                                    before.skills ||
+                                restricted.isNull() ||
+                                !image_region_has_color(
+                                    restricted, 72, 176, 160, 16,
+                                    QColor(109, 73, 146))) {
+                                return profile_failure(
+                                    "Samurai/Decker Sorcery did not show Mage Only without mutation");
+                            }
+                            ++boundary_frames;
+                        }
+
+                        const auto is_class_representative =
+                            class_representatives[profile.archetype_index] ==
+                            profile_index;
+                        if (is_class_representative) {
+                            field_scene.active_runner_record() = profile;
+                            field_scene.active_runner_record().skills[1U] =
+                                12U;
+                            move_profile_cursor(0U, 5U); // Firearms.
+                            const auto rank_twelve_path = profile_directory /
+                                "firearms-rank-twelve.bmp";
+                            std::string reason;
+                            if (!check_screen_cell(
+                                    field_scene.active_runner_record(),
+                                    profile_slugs[profile_index],
+                                    raw_record_address, 0U, 5U,
+                                    rank_twelve_path, reason) ||
+                                field_scene.hotel_karma_screen().preview(
+                                    field_scene.active_runner_record()).status !=
+                                    AttributeSkillUpgradeStatus::at_limit ||
+                                field_scene.hotel_karma_screen().message() !=
+                                    AttributesSkillsMenuMessage::maximum_level) {
+                                return profile_failure(
+                                    "rank-12 Firearms did not render the skill maximum state: " +
+                                    reason);
+                            }
+                            ++boundary_frames;
+                            if (profile.archetype_index < 2U) {
+                                field_scene.active_runner_record() = profile;
+                                field_scene.active_runner_record().skills[0U] =
+                                    12U;
+                                move_profile_cursor(0U, 4U); // Sorcery.
+                                const auto sorcery_limit_path =
+                                    profile_directory / "sorcery-rank-twelve.bmp";
+                                reason.clear();
+                                if (!check_screen_cell(
+                                        field_scene.active_runner_record(),
+                                        profile_slugs[profile_index],
+                                        raw_record_address, 0U, 4U,
+                                        sorcery_limit_path, reason) ||
+                                    field_scene.hotel_karma_screen().preview(
+                                        field_scene.active_runner_record())
+                                            .status !=
+                                        AttributeSkillUpgradeStatus::at_limit) {
+                                    return profile_failure(
+                                        "Mage/Shaman Sorcery rank 12 did not reach the numeric ceiling: " +
+                                        reason);
+                                }
+                                ++boundary_frames;
+                            }
+                        }
+
+                        // Each profile performs an insufficient-funds attempt,
+                        // declines the default-Yes prompt, then confirms the
+                        // same ROM-derived Body increment with exactly enough
+                        // Karma. This validates the displayed cost against
+                        // the stored +0x8D debit.
+                        field_scene.active_runner_record() = profile;
+                        const auto body_current = profile.attributes[0U];
+                        const auto body_maximum = rom_bytes[
+                            kRaceMaximumTable +
+                            profile.species_index * 6U];
+                        const auto body_cost = static_cast<std::uint8_t>(
+                            body_current + 1U);
+                        if (body_cost > body_maximum) {
+                            return profile_failure(
+                                "a source Body profile unexpectedly starts at its race maximum");
+                        }
+                        field_scene.active_runner_record().auxiliary[2U] =
+                            static_cast<std::uint8_t>(body_cost - 1U);
+                        move_profile_cursor(0U, 0U);
+                        // Force a live detail redraw after the QA-only Karma
+                        // fixture write, even when the cursor already sits on
+                        // Body at the end of a boundary sweep.
+                        press_profile_button(0x08U);
+                        cursor_column = 1U;
+                        press_profile_button(0x04U);
+                        cursor_column = 0U;
+                        const auto insufficient_before =
+                            field_scene.active_runner_record();
+                        press_profile_button(0x40U); // A with insufficient funds.
+                        const auto insufficient_frame = capture(
+                            profile_directory / "insufficient-karma.bmp");
+                        if (field_scene.hotel_karma_screen().message() !=
+                                AttributesSkillsMenuMessage::insufficient_karma ||
+                            field_scene.hotel_karma_screen()
+                                .upgrade_prompt_open() ||
+                            field_scene.active_runner_record().attributes !=
+                                insufficient_before.attributes ||
+                            field_scene.active_runner_record().auxiliary[2U] !=
+                                insufficient_before.auxiliary[2U] ||
+                            insufficient_frame.isNull() ||
+                            !image_region_has_color(
+                                insufficient_frame, 72, 176, 160, 16,
+                                QColor(109, 73, 146))) {
+                            return profile_failure(
+                                "the insufficient-Karma path did not preserve +0x77/+0x8D and display its message");
+                        }
+
+                        field_scene.active_runner_record().auxiliary[2U] =
+                            body_cost;
+                        press_profile_button(0x08U);
+                        cursor_column = 1U;
+                        press_profile_button(0x04U);
+                        cursor_column = 0U;
+                        press_profile_button(0x10U); // B also opens the upgrade prompt.
+                        if (!field_scene.hotel_karma_screen()
+                                 .upgrade_prompt_open() ||
+                            field_scene.hotel_karma_screen()
+                                .upgrade_prompt_selection() != 0U ||
+                            field_scene.active_runner_record().attributes[0U] !=
+                                body_current ||
+                            field_scene.active_runner_record().auxiliary[2U] !=
+                                body_cost) {
+                            return profile_failure(
+                                "exact-funds A did not open the default-Yes prompt without writing early");
+                        }
+                        const auto prompt_yes = capture(
+                            profile_directory / "prompt-yes.bmp");
+                        press_profile_button(0x02U); // Down selects No.
+                        const auto prompt_no = capture(
+                            profile_directory / "prompt-no.bmp");
+                        if (field_scene.hotel_karma_screen()
+                                .upgrade_prompt_selection() != 1U ||
+                            !field_scene.hotel_karma_screen()
+                                 .upgrade_prompt_open() ||
+                            prompt_yes.isNull() || prompt_no.isNull() ||
+                            !image_region_differs(prompt_yes, prompt_no,
+                                                  96, 168, 120, 32)) {
+                            return profile_failure(
+                                "Down did not visibly move the confirmation selector from Yes to No");
+                        }
+                        const auto transaction_before_decline =
+                            field_scene.active_runner_record();
+                        press_profile_button(0x10U); // B cancels the purchase.
+                        const auto declined_frame = capture(
+                            profile_directory / "declined.bmp");
+                        if (field_scene.hotel_karma_screen()
+                                .upgrade_prompt_open() ||
+                            field_scene.active_runner_record().attributes !=
+                                transaction_before_decline.attributes ||
+                            field_scene.active_runner_record().auxiliary[2U] !=
+                                body_cost || declined_frame.isNull()) {
+                            return profile_failure(
+                                "B on No did not cancel without changing the runner or Karma");
+                        }
+                        press_profile_button(0x40U); // A reopens Yes.
+                        if (!field_scene.hotel_karma_screen()
+                                 .upgrade_prompt_open() ||
+                            field_scene.hotel_karma_screen()
+                                .upgrade_prompt_selection() != 0U) {
+                            return profile_failure(
+                                "A did not reopen the confirmation with Yes selected");
+                        }
+                        press_profile_button(0x40U); // A buys Body +1.
+                        const auto applied_frame = capture(
+                            profile_directory / "upgrade-applied.bmp");
+                        const auto& applied_record =
+                            field_scene.active_runner_record();
+                        const auto expected_after = expected_preview(
+                            applied_record, 0U, 0U);
+                        const auto applied_body_pixels =
+                            numeric_visual_patch_matches(
+                                applied_frame, purple_font, 136, 56,
+                                body_current + 1U, std::nullopt);
+                        const auto applied_karma_pixels =
+                            numeric_visual_patch_matches(
+                                applied_frame, green_font, 120, 160, 0U,
+                                color_tint);
+                        const auto applied_preview_pixels =
+                            expected_after.status ==
+                                    AttributeSkillUpgradeStatus::available
+                                ? numeric_visual_patch_matches(
+                                      applied_frame, purple_font, 160, 200,
+                                      expected_after.next_value, std::nullopt) &&
+                                      numeric_visual_patch_matches(
+                                          applied_frame, purple_font, 248, 200,
+                                          expected_after.karma_cost,
+                                          std::nullopt)
+                                : expected_after.status ==
+                                          AttributeSkillUpgradeStatus::at_limit &&
+                                      field_scene.hotel_karma_screen().message() ==
+                                          AttributesSkillsMenuMessage::maximum_level &&
+                                      source_menu_direct_asset_text_matches(
+                                          applied_frame, purple_font, 48, 200,
+                                          "You are at the maximum level.");
+                        if (field_scene.hotel_karma_screen()
+                                .upgrade_prompt_open() ||
+                            applied_record.attributes[0U] != body_current + 1U ||
+                            applied_record.auxiliary[2U] != 0U ||
+                            applied_record.skills != profile.skills ||
+                            applied_record.species_index !=
+                                profile.species_index ||
+                            applied_record.archetype_index !=
+                                profile.archetype_index ||
+                            applied_frame.isNull() ||
+                            !applied_body_pixels || !applied_karma_pixels ||
+                            !applied_preview_pixels) {
+                            std::cerr << "applied profile="
+                                      << profile_slugs[profile_index]
+                                      << " body=" << static_cast<unsigned>(
+                                             applied_record.attributes[0U])
+                                      << " karma=" << static_cast<unsigned>(
+                                             applied_record.auxiliary[2U])
+                                      << " prompt=" << field_scene
+                                             .hotel_karma_screen()
+                                             .upgrade_prompt_open()
+                                      << " after-status=" << status_name(
+                                             expected_after.status)
+                                      << " after-next=" << static_cast<unsigned>(
+                                             expected_after.next_value)
+                                      << " after-cost="
+                                      << expected_after.karma_cost
+                                      << " pixels=" << applied_body_pixels
+                                      << applied_karma_pixels
+                                      << applied_preview_pixels << '\n';
+                            return profile_failure(
+                                "Yes did not update Body, the +0x8D balance, and the recalculated preview pixels");
+                        }
+                        ++profile_transactions;
+
+                        press_profile_button(0x80U); // Start returns.
+                        const auto hotel_return = capture(
+                            profile_directory / "hotel-return.bmp");
+                        if (field_scene.hotel_karma_screen_open() ||
+                            !field_scene.hotel_menu_open() ||
+                            field_scene.hotel_menu_phase() !=
+                                HotelMenuPhase::options ||
+                            field_scene.hotel_option_selection() != 0U ||
+                            hotel_return.isNull()) {
+                            return profile_failure(
+                                "Start did not return the profile test to Hotel Options");
+                        }
+                    }
+
+                    // A zero Firearms base and zero Pistol take the reduced
+                    // cost branch at its minimum. Show the dependency and
+                    // integer-ceiling result (next 1, cost 2) in the live UI.
+                    {
+                        LiveRunnerRecord minimum_skill_record{};
+                        minimum_skill_record.bytes = smoke_state.startup_records
+                            ->joshua_archetypes[0U].record;
+                        auto minimum_skill = read_runner_record_fields(
+                            minimum_skill_record);
+                        minimum_skill.skills[1U] = 0U;
+                        minimum_skill.skills[2U] = 0U;
+                        field_scene.active_runner_record() = minimum_skill;
+                        field_scene.refresh_field_hud_for_dump();
+                        press_profile_button(0x40U);
+                        if (!field_scene.hotel_karma_screen_open()) {
+                            return profile_failure(
+                                "could not reopen Hotel Karma for the zero-rank reduced-cost boundary");
+                        }
+                        for (int load_frame = 0;
+                             field_scene.hotel_karma_screen_loading() &&
+                             load_frame < 64;
+                             ++load_frame) {
+                            field_scene.advance_frame();
+                        }
+                        if (field_scene.hotel_karma_screen_loading()) {
+                            return profile_failure(
+                                "the reduced-cost boundary page did not finish loading");
+                        }
+                        cursor_column = 0U;
+                        cursor_row = 0U;
+                        move_profile_cursor(0U, 6U); // Pistols.
+                        std::string reason;
+                        const auto min_skill_frame = capture(
+                            output_directory /
+                            "zero-firearms-zero-pistols-next-one-cost-two.bmp");
+                        const auto min_skill_preview =
+                            field_scene.hotel_karma_screen().preview(
+                                field_scene.active_runner_record());
+                        if (min_skill_frame.isNull() ||
+                            min_skill_preview.status !=
+                                AttributeSkillUpgradeStatus::available ||
+                            min_skill_preview.current_value != 0U ||
+                            min_skill_preview.next_value != 1U ||
+                            min_skill_preview.karma_cost != 2U ||
+                            !check_screen_cell(
+                                field_scene.active_runner_record(),
+                                "joshua-samurai", kJoshuaRecordTable,
+                                0U, 6U,
+                                output_directory /
+                                    "zero-firearms-zero-pistols-check.bmp",
+                                reason)) {
+                            return profile_failure(
+                                "zero Firearms/Pistols did not show the +0x81-based reduced cost: " +
+                                reason);
+                        }
+                        ++boundary_frames;
+                        press_profile_button(0x80U);
+                        if (field_scene.hotel_karma_screen_open() ||
+                            !field_scene.hotel_menu_open() ||
+                            field_scene.hotel_menu_phase() !=
+                                HotelMenuPhase::options) {
+                            return profile_failure(
+                                "Start did not close the reduced-cost audit page");
+                        }
+                    }
+
+                    field_scene.active_runner_record() =
+                        hotel_base_after_purchase;
+                    field_scene.refresh_field_hud_for_dump();
+                    manifest.flush();
+                    if (!manifest) {
+                        return profile_failure(
+                            "could not flush the source-to-preview manifest");
+                    }
+                    std::cout << "field_hotel_profile_permutation_qa=passed path="
+                              << output_directory.string()
+                              << " profiles=" << profile_transactions
+                              << " profile_cells=" << profile_cell_frames
+                              << " race_attribute_caps=" << race_cap_frames
+                              << " additional_boundaries=" << boundary_frames
+                              << " rom_record_bytes_checked="
+                              << profile_transactions * kRecordStride << "\n";
+#endif
+                }
                 press_button(0x02U); // Down selects Check Out.
                 if (field_scene.hotel_option_selection() != 1U) {
                     std::cerr << "field Hotel QA: Down did not select Check Out\n";
@@ -37705,17 +39870,21 @@ int main(int argc, char** argv) {
                     field_scene.magic_selected_spell()->spell_code;
                 const auto first_selection =
                     field_scene.magic_spell_selection();
-                field_scene.set_controller_port_byte(0x08U);
+                // ROM checks direction before action. Right+A moves the
+                // selected spell and leaves the force child closed.
+                field_scene.set_controller_port_byte(0x48U);
                 field_scene.advance_frame();
                 const auto moved_selection =
                     field_scene.magic_spell_selection();
                 const auto moved_spell = field_scene.magic_selected_spell();
                 field_scene.set_controller_port_byte(0U);
                 field_scene.advance_frame();
-                if (moved_selection.column == first_selection.column &&
-                    moved_selection.row == first_selection.row) {
+                if ((moved_selection.column == first_selection.column &&
+                     moved_selection.row == first_selection.row) ||
+                    !field_scene.magic_spell_panel_open() ||
+                    field_scene.magic_force_selection_open()) {
                     std::cerr << "field Magic spell dump: Right did not "
-                                 "move the selection\n";
+                                 "win over simultaneous A on the spell page\n";
                     return 3;
                 }
                 if (!moved_spell.has_value() ||
@@ -37978,7 +40147,6 @@ int main(int argc, char** argv) {
                                  "re-entry frame\n";
                     return 3;
                 }
-
                 const auto press_field_port = [&](const std::uint8_t port) {
                     settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port);
@@ -37986,6 +40154,18 @@ int main(int argc, char** argv) {
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
                 };
+                press_field_port(0xC0U); // A+Start confirms before Start.
+                if (!field_scene.magic_force_selection_open()) {
+                    std::cerr << "field Magic spell dump: A+Start did not "
+                                 "open force selection\n";
+                    return 3;
+                }
+                press_field_port(0x20U); // C finishes the force loop.
+                if (!field_scene.magic_spell_panel_open()) {
+                    std::cerr << "field Magic spell dump: A+Start action "
+                                 "did not return to the spell page\n";
+                    return 3;
+                }
                 if (field_scene.magic_maximum_force() != 3U ||
                     field_scene.magic_current_force() != 3U) {
                     std::cerr << "field Magic spell dump: selected force "
@@ -38065,6 +40245,35 @@ int main(int argc, char** argv) {
                                  "restore the selected force\n";
                     return 3;
                 }
+                press_field_port(0x04U);
+                press_field_port(0x04U);
+                if (field_scene.magic_current_force() != 1U ||
+                    field_scene.active_runner_record().magic_force != 1U ||
+                    !save_scene("force_lower_bound", render_scene())) {
+                    std::cerr << "field Magic spell dump: force did not "
+                                 "reach the source minimum of one\n";
+                    return 3;
+                }
+                press_field_port(0x04U);
+                if (field_scene.magic_current_force() != 1U) {
+                    std::cerr << "field Magic spell dump: force fell below "
+                                 "the source minimum\n";
+                    return 3;
+                }
+                press_field_port(0x08U);
+                press_field_port(0x08U);
+                if (field_scene.magic_current_force() != 3U ||
+                    !save_scene("force_upper_bound", render_scene())) {
+                    std::cerr << "field Magic spell dump: force did not "
+                                 "reach the selected spell maximum\n";
+                    return 3;
+                }
+                press_field_port(0x08U);
+                if (field_scene.magic_current_force() != 3U) {
+                    std::cerr << "field Magic spell dump: force exceeded "
+                                 "the selected spell maximum\n";
+                    return 3;
+                }
                 press_field_port(0x02U); // Down enters posture adjustment.
                 if (!field_scene.magic_posture_selection_open() ||
                     !save_scene("posture_selection", render_scene())) {
@@ -38085,7 +40294,31 @@ int main(int argc, char** argv) {
                                  "not follow the runner record\n";
                     return 3;
                 }
-                press_field_port(0x20U); // B finishes the equipment action.
+                while (field_scene.active_runner_record().posture < 4U) {
+                    press_field_port(0x08U);
+                }
+                press_field_port(0x08U);
+                if (field_scene.active_runner_record().posture != 4U ||
+                    !save_scene("posture_upper_bound", render_scene())) {
+                    std::cerr << "field Magic spell dump: posture exceeded "
+                                 "the source maximum of four\n";
+                    return 3;
+                }
+                while (field_scene.active_runner_record().posture > 0U) {
+                    press_field_port(0x04U);
+                }
+                press_field_port(0x04U);
+                if (field_scene.active_runner_record().posture != 0U ||
+                    !save_scene("posture_lower_bound", render_scene())) {
+                    std::cerr << "field Magic spell dump: posture fell below "
+                                 "the source minimum of zero\n";
+                    return 3;
+                }
+                while (field_scene.active_runner_record().posture <
+                       expected_posture) {
+                    press_field_port(0x08U);
+                }
+                press_field_port(0x20U); // C finishes the equipment action.
                 const auto equipped_scene = render_scene();
                 const auto magic_hud_palette =
                     select_hud_glyph_attribute_flags(HudGlyphAttributeInput{
@@ -38124,6 +40357,133 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
+                const auto magic_audio_after_equipment = field_audio_events;
+                press_field_port(0x20U); // C opens the force action view.
+                if (!field_scene.magic_force_selection_open() ||
+                    !save_scene("force_c_confirmation", render_scene())) {
+                    std::cerr << "field Magic spell dump: C did not open "
+                                 "the force action view\n";
+                    return 3;
+                }
+                press_field_port(0x20U); // C alone completes from force.
+                if (!field_scene.magic_spell_panel_open() ||
+                    field_scene.active_runner_record()
+                            .equipped_inventory_slot != -1 ||
+                    field_scene.active_runner_record().equipped_item_code !=
+                        static_cast<std::uint8_t>(first_spell + 1U) ||
+                    field_scene.active_runner_record().magic_force != 3U ||
+                    field_audio_events != magic_audio_after_equipment ||
+                    !save_scene("spell_equipped_via_force_c",
+                                render_scene())) {
+                    std::cerr << "field Magic spell dump: C alone did not "
+                                 "finish the force loop without extra sound\n";
+                    return 3;
+                }
+
+                press_field_port(0x40U); // A opens force selection.
+                press_field_port(0x10U); // B alone finishes from force.
+                if (!field_scene.magic_spell_panel_open() ||
+                    field_scene.magic_force_selection_open() ||
+                    field_scene.magic_posture_selection_open() ||
+                    field_scene.active_runner_record().magic_force != 3U) {
+                    std::cerr << "field Magic spell dump: B alone did not "
+                                 "finish the force loop\n";
+                    return 3;
+                }
+                press_field_port(0x40U); // A opens force selection.
+                press_field_port(0x40U); // A alone finishes from force.
+                if (!field_scene.magic_spell_panel_open() ||
+                    field_scene.magic_force_selection_open() ||
+                    field_scene.active_runner_record().magic_force != 3U) {
+                    std::cerr << "field Magic spell dump: A alone did not "
+                                 "finish the force loop\n";
+                    return 3;
+                }
+
+                press_field_port(0x40U); // A opens force selection.
+                press_field_port(0x04U); // Left lowers force to two.
+                press_field_port(0x48U); // Right+A: direction wins.
+                if (!field_scene.magic_force_selection_open() ||
+                    field_scene.magic_current_force() != 3U) {
+                    std::cerr << "field Magic spell dump: Right+A did not "
+                                 "adjust force before confirmation\n";
+                    return 3;
+                }
+                press_field_port(0x22U); // Down+C: outer action check wins.
+                if (!field_scene.magic_spell_panel_open() ||
+                    field_scene.magic_posture_selection_open() ||
+                    field_scene.active_runner_record().magic_force != 3U) {
+                    std::cerr << "field Magic spell dump: Down+C did not "
+                                 "finish without entering posture\n";
+                    return 3;
+                }
+
+                press_field_port(0x40U); // A opens force selection.
+                press_field_port(0x02U); // Down enters posture selection.
+                if (!field_scene.magic_posture_selection_open()) {
+                    std::cerr << "field Magic spell dump: Down did not "
+                                 "re-enter posture selection\n";
+                    return 3;
+                }
+                const auto posture_before_combo =
+                    field_scene.active_runner_record().posture;
+                press_field_port(0x18U); // Right+B: posture direction wins.
+                const auto expected_posture_after_combo = static_cast<std::uint8_t>(
+                    std::min<unsigned>(4U, posture_before_combo + 1U));
+                if (!field_scene.magic_posture_selection_open() ||
+                    field_scene.active_runner_record().posture !=
+                        expected_posture_after_combo) {
+                    std::cerr << "field Magic spell dump: Right+B did not "
+                                 "adjust posture before confirmation\n";
+                    return 3;
+                }
+                if (expected_posture_after_combo != posture_before_combo) {
+                    press_field_port(0x04U); // Restore before Up tests.
+                }
+                if (field_scene.active_runner_record().posture !=
+                    posture_before_combo) {
+                    std::cerr << "field Magic spell dump: posture combo "
+                                 "could not be restored\n";
+                    return 3;
+                }
+                press_field_port(0x10U); // B alone finishes from posture.
+                if (!field_scene.magic_spell_panel_open() ||
+                    field_scene.magic_force_selection_open() ||
+                    field_scene.magic_posture_selection_open()) {
+                    std::cerr << "field Magic spell dump: B alone did not "
+                                 "finish the posture loop\n";
+                    return 3;
+                }
+                press_field_port(0x40U); // Re-enter force.
+                press_field_port(0x02U); // Re-enter posture.
+                if (!field_scene.magic_posture_selection_open()) {
+                    std::cerr << "field Magic spell dump: could not reopen "
+                                 "posture after its B completion\n";
+                    return 3;
+                }
+                press_field_port(0x01U); // Up alone returns to force.
+                if (!field_scene.magic_force_selection_open()) {
+                    std::cerr << "field Magic spell dump: Up alone did not "
+                                 "return to force selection\n";
+                    return 3;
+                }
+                press_field_port(0x02U);
+                press_field_port(0x41U); // Up+A: outer 0xFF5A finalizes.
+                if (!field_scene.magic_spell_panel_open() ||
+                    field_scene.active_runner_record()
+                            .equipped_inventory_slot != -1 ||
+                    field_scene.active_runner_record().equipped_item_code !=
+                        static_cast<std::uint8_t>(first_spell + 1U) ||
+                    field_scene.active_runner_record().magic_force != 3U ||
+                    field_scene.active_runner_record().posture !=
+                        expected_posture ||
+                    field_audio_events != magic_audio_after_equipment ||
+                    !save_scene("posture_up_a_completion", render_scene())) {
+                    std::cerr << "field Magic spell dump: Up+A did not "
+                                 "complete through the outer action handler\n";
+                    return 3;
+                }
+
                 field_scene.set_controller_port_byte(0x80U);
                 field_scene.advance_frame();
                 if (field_scene.magic_spell_panel_open() ||
@@ -38147,12 +40507,463 @@ int main(int argc, char** argv) {
                                  "the post-equipment return frame\n";
                     return 3;
                 }
+
+                struct MagicPresetAudit {
+                    std::string_view id;
+                    std::uint8_t race;
+                    std::uint8_t archetype;
+                    std::uint16_t table;
+                    std::uint8_t sorcery;
+                    std::uint8_t body;
+                    std::uint8_t willpower;
+                    std::uint8_t totem;
+                    std::uint8_t portrait_family;
+                };
+                // ROM templates: Joshua Gator Shaman 0x72B1A; Rat Shaman
+                // 0x72C1A; Human Mage 0x72E1A; Bear Shaman 0x7301A; Elf
+                // Mage 0x7331A. Species and class indexes follow the ROM
+                // command-name rows; table index is the word at +0xA0.
+                constexpr std::array<MagicPresetAudit, 5> kMagicPresets{{
+                    {"human_gator_shaman", 0U, 1U, 4U, 3U, 2U, 4U, 0x2AU, 2U},
+                    {"dwarf_rat_shaman", 2U, 1U, 0U, 3U, 4U, 4U, 0x29U, 3U},
+                    {"human_mage", 0U, 0U, 1U, 3U, 2U, 4U, 0U, 5U},
+                    {"orc_bear_shaman", 3U, 1U, 2U, 4U, 6U, 5U, 0x2BU, 7U},
+                    {"elf_mage", 1U, 0U, 3U, 5U, 3U, 5U, 0U, 10U},
+                }};
+                for (const auto& preset : kMagicPresets) {
+                    auto record = initial_record;
+                    record.species_index = preset.race;
+                    record.archetype_index = preset.archetype;
+                    record.auxiliary[0] = 6U;
+                    record.magic_table_index = preset.table;
+                    record.attributes[0] = preset.body;
+                    record.attributes[5] = preset.willpower;
+                    record.skills.fill(0U);
+                    record.skills[0] = preset.sorcery;
+                    record.inventory_item_codes.fill(0U);
+                    record.inventory_phase_bytes.fill(0U);
+                    record.inventory_item_codes[7] = preset.totem;
+                    record.equipped_inventory_slot = -1;
+                    record.equipped_item_code = 0U;
+                    record.magic_force = 0U;
+                    field_scene.install_party_member_for_dump(
+                        0U, std::move(record), std::string(preset.id),
+                        preset.portrait_family);
+                    field_scene.refresh_field_hud_for_dump();
+                    if (!field_scene.seek_command_overview_page(5U)) {
+                        std::cerr << "field Magic spell dump: could not "
+                                     "select Magic for " << preset.id << "\n";
+                        return 3;
+                    }
+                    field_audio_events.clear();
+                    press_field_port(0x40U);
+                    const auto* table =
+                        find_us_magic_spell_table(preset.table);
+                    if (!field_scene.magic_spell_panel_open() ||
+                        table == nullptr || table->entry_count == 0U) {
+                        std::cerr << "field Magic spell dump: preset did not "
+                                     "open its spell table: " << preset.id
+                                  << "\n";
+                        return 3;
+                    }
+
+                    const auto expected_pool = static_cast<std::uint8_t>(
+                        preset.sorcery / 4U +
+                        ((preset.sorcery % 4U >= 3U) ? 1U : 0U));
+                    const auto expected_physical = static_cast<std::uint8_t>(
+                        preset.body + expected_pool);
+                    const auto expected_mana = static_cast<std::uint8_t>(
+                        preset.willpower + expected_pool);
+                    const auto& physical =
+                        field_scene.magic_physical_defense_view();
+                    const auto& mana = field_scene.magic_mana_defense_view();
+                    const auto expected_bar_row = [](const std::uint8_t value) {
+                        return static_cast<std::uint8_t>(
+                            value == 0U ? 0U : value - 1U);
+                    };
+                    if (physical.value != expected_physical ||
+                        physical.bar_row != expected_bar_row(expected_physical) ||
+                        mana.value != expected_mana ||
+                        mana.bar_row != expected_bar_row(expected_mana)) {
+                        std::cerr << "field Magic spell dump: Body/Willpower "
+                                     "or Sorcery defense values disagreed for "
+                                  << preset.id << "\n";
+                        return 3;
+                    }
+
+                    for (std::size_t entry_index = 0U;
+                         entry_index < table->entry_count; ++entry_index) {
+                        if (entry_index != 0U) {
+                            press_field_port(0x08U);
+                        }
+                        const auto& entry = table->entries[entry_index];
+                        const auto selected =
+                            field_scene.magic_selected_spell();
+                        if (!selected.has_value() ||
+                            selected->spell_code != entry.spell_code ||
+                            field_scene.magic_spell_selection().row != 0U ||
+                            field_scene.magic_spell_selection().column !=
+                                entry_index ||
+                            field_scene.magic_current_force() !=
+                                entry.force_limit ||
+                            field_scene.magic_maximum_force() !=
+                                entry.force_limit) {
+                            std::cerr << "field Magic spell dump: spell or "
+                                         "force maximum disagreed with preset "
+                                      << preset.id << " entry=" << entry_index
+                                      << "\n";
+                            return 3;
+                        }
+                        const auto scene = render_scene();
+                        const auto icon = direct_asset(
+                            "menu/field/magic-spell-icon-" +
+                            std::to_string(entry.spell_code) + ".bmp");
+                        if (!visible_asset_pixels_match(scene, icon, 80, 24)) {
+                            std::cerr << "field Magic spell dump: selected "
+                                         "icon did not match spell "
+                                      << static_cast<int>(entry.spell_code)
+                                      << " for " << preset.id << "\n";
+                            return 3;
+                        }
+                        const auto page_name =
+                            "profile_" + std::string(preset.id) + "_entry_" +
+                            std::to_string(entry_index);
+                        if (!save_scene(page_name, scene)) {
+                            std::cerr << "field Magic spell dump: could not "
+                                         "save " << page_name << "\n";
+                            return 3;
+                        }
+
+                        press_field_port(0x40U); // A opens force selection.
+                        if (!field_scene.magic_force_selection_open() ||
+                            field_scene.magic_maximum_force() !=
+                                entry.force_limit ||
+                            field_scene.magic_current_force() !=
+                                entry.force_limit) {
+                            std::cerr << "field Magic spell dump: force view "
+                                         "did not use selected spell maximum\n";
+                            return 3;
+                        }
+                        for (std::uint8_t step = 1U;
+                             step < entry.force_limit; ++step) {
+                            press_field_port(0x04U);
+                        }
+                        press_field_port(0x04U);
+                        if (field_scene.magic_current_force() != 1U) {
+                            std::cerr << "field Magic spell dump: force "
+                                         "fell below one for " << preset.id
+                                      << " entry=" << entry_index << "\n";
+                            return 3;
+                        }
+                        const auto min_name =
+                            "profile_" + std::string(preset.id) + "_entry_" +
+                            std::to_string(entry_index) + "_force_min";
+                        if (!save_scene(min_name, render_scene())) {
+                            std::cerr << "field Magic spell dump: could not "
+                                         "save force minimum\n";
+                            return 3;
+                        }
+                        for (std::uint8_t step = 1U;
+                             step < entry.force_limit; ++step) {
+                            press_field_port(0x08U);
+                        }
+                        press_field_port(0x08U);
+                        if (field_scene.magic_current_force() !=
+                            entry.force_limit) {
+                            std::cerr << "field Magic spell dump: force "
+                                         "exceeded maximum for " << preset.id
+                                      << " entry=" << entry_index << "\n";
+                            return 3;
+                        }
+                        const auto max_name =
+                            "profile_" + std::string(preset.id) + "_entry_" +
+                            std::to_string(entry_index) + "_force_max";
+                        if (!save_scene(max_name, render_scene())) {
+                            std::cerr << "field Magic spell dump: could not "
+                                         "save force maximum\n";
+                            return 3;
+                        }
+                        press_field_port(0x20U); // C finishes each action.
+                        if (!field_scene.magic_spell_panel_open() ||
+                            field_scene.active_runner_record().magic_force !=
+                                entry.force_limit) {
+                            std::cerr << "field Magic spell dump: force "
+                                         "completion did not publish +0x9D\n";
+                            return 3;
+                        }
+                    }
+                    const auto last_column = static_cast<std::uint8_t>(
+                        table->entry_count - 1U);
+                    press_field_port(0x02U);
+                    press_field_port(0x01U);
+                    if (field_scene.magic_spell_selection().row != 0U ||
+                        field_scene.magic_spell_selection().column !=
+                            last_column) {
+                        std::cerr << "field Magic spell dump: short source "
+                                     "table moved into an empty second row\n";
+                        return 3;
+                    }
+                    press_field_port(0x08U);
+                    if (field_scene.magic_spell_selection().column != 0U) {
+                        std::cerr << "field Magic spell dump: right wrap "
+                                     "failed for " << preset.id << "\n";
+                        return 3;
+                    }
+                    press_field_port(0x04U);
+                    if (field_scene.magic_spell_selection().column !=
+                        last_column) {
+                        std::cerr << "field Magic spell dump: left wrap "
+                                     "failed for " << preset.id << "\n";
+                        return 3;
+                    }
+                    field_scene.set_controller_port_byte(0x80U);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    if (field_scene.magic_spell_panel_open() ||
+                        !field_scene.command_overview_open()) {
+                        std::cerr << "field Magic spell dump: Start did not "
+                                     "return " << preset.id
+                                  << " to the command overview\n";
+                        return 3;
+                    }
+                }
+
+                // The controller port has eight independent bits. Sweep all
+                // 256 possible button masks in each of the three Magic child
+                // loops to exercise every simultaneous-button precedence
+                // combination, not just representative chords.
+                const auto reopen_spell_page = [&] {
+                    if (!field_scene.command_overview_open() ||
+                        !field_scene.seek_command_overview_page(5U)) {
+                        return false;
+                    }
+                    press_field_port(0x40U);
+                    return field_scene.magic_spell_panel_open();
+                };
+                const auto any_magic_confirm = [](const std::uint8_t mask) {
+                    return (mask & 0x70U) != 0U;
+                };
+                if (!reopen_spell_page()) {
+                    std::cerr << "field Magic spell dump: could not start "
+                                 "the exhaustive spell-page input sweep\n";
+                    return 3;
+                }
+                const auto* exhaustive_table = find_us_magic_spell_table(
+                    field_scene.active_runner_record().magic_table_index);
+                if (exhaustive_table == nullptr ||
+                    exhaustive_table->entry_count == 0U) {
+                    std::cerr << "field Magic spell dump: exhaustive sweep "
+                                 "has no active spell table\n";
+                    return 3;
+                }
+                const auto exhaustive_last_column =
+                    static_cast<std::uint8_t>(
+                        exhaustive_table->entry_count - 1U);
+                std::uint8_t expected_column = 0U;
+                for (unsigned mask_value = 0U; mask_value < 256U;
+                     ++mask_value) {
+                    const auto mask = static_cast<std::uint8_t>(mask_value);
+                    press_field_port(mask);
+                    bool start_returns = false;
+                    bool open_force = false;
+                    if ((mask & 0x04U) != 0U) {
+                        expected_column = expected_column == 0U
+                            ? exhaustive_last_column
+                            : static_cast<std::uint8_t>(expected_column - 1U);
+                    } else if ((mask & 0x08U) != 0U) {
+                        expected_column = expected_column ==
+                                                  exhaustive_last_column
+                            ? 0U
+                            : static_cast<std::uint8_t>(expected_column + 1U);
+                    } else if ((mask & 0x03U) != 0U) {
+                        // All source spell tables have fewer than eight
+                        // entries, so Up/Down consume the input without a row
+                        // change and suppress confirm/Start for that poll.
+                    } else if (any_magic_confirm(mask)) {
+                        open_force = true;
+                    } else if ((mask & 0x80U) != 0U) {
+                        start_returns = true;
+                    }
+
+                    if (open_force) {
+                        if (!field_scene.magic_force_selection_open() ||
+                            field_scene.magic_spell_selection().column !=
+                                expected_column) {
+                            std::cerr << "field Magic spell dump: spell page "
+                                         "mask lost confirm/selection order: "
+                                      << mask_value << "\n";
+                            return 3;
+                        }
+                        press_field_port(0x20U);
+                        if (!field_scene.magic_spell_panel_open()) {
+                            std::cerr << "field Magic spell dump: exhaustive "
+                                         "force return failed\n";
+                            return 3;
+                        }
+                    } else if (start_returns) {
+                        if (field_scene.magic_spell_panel_open() ||
+                            !reopen_spell_page()) {
+                            std::cerr << "field Magic spell dump: spell-page "
+                                         "Start precedence failed for mask "
+                                      << mask_value << "\n";
+                            return 3;
+                        }
+                        expected_column = 0U;
+                    } else if (!field_scene.magic_spell_panel_open() ||
+                               field_scene.magic_spell_selection().row != 0U ||
+                               field_scene.magic_spell_selection().column !=
+                                   expected_column) {
+                        std::cerr << "field Magic spell dump: spell-page "
+                                     "selection precedence failed for mask "
+                                  << mask_value << "\n";
+                        return 3;
+                    }
+                }
+
+                if (!field_scene.magic_spell_panel_open()) {
+                    std::cerr << "field Magic spell dump: spell-page sweep "
+                                 "did not leave the route on Magic\n";
+                    return 3;
+                }
+                for (unsigned mask_value = 0U; mask_value < 256U;
+                     ++mask_value) {
+                    auto& runner = field_scene.active_runner_record();
+                    runner.equipped_inventory_slot = -1;
+                    runner.equipped_item_code = 0U;
+                    runner.magic_force = 0U;
+                    press_field_port(0x40U); // Enter force for each mask.
+                    if (!field_scene.magic_force_selection_open()) {
+                        std::cerr << "field Magic spell dump: could not enter "
+                                     "force for mask sweep\n";
+                        return 3;
+                    }
+                    const auto limit = field_scene.magic_maximum_force();
+                    const auto start_force = field_scene.magic_current_force();
+                    const auto mask = static_cast<std::uint8_t>(mask_value);
+                    press_field_port(mask);
+                    auto expected_force = start_force;
+                    enum class ForceOutcome { force, posture, magic };
+                    auto expected_outcome = ForceOutcome::force;
+                    if ((mask & 0x08U) != 0U) {
+                        expected_force = std::min<std::uint16_t>(
+                            limit, static_cast<std::uint16_t>(start_force + 1U));
+                    } else if ((mask & 0x04U) != 0U) {
+                        expected_force = std::max<std::uint16_t>(
+                            1U, static_cast<std::uint16_t>(start_force - 1U));
+                    } else if (any_magic_confirm(mask)) {
+                        expected_outcome = ForceOutcome::magic;
+                    } else if ((mask & 0x02U) != 0U) {
+                        expected_outcome = ForceOutcome::posture;
+                    }
+                    if (field_scene.magic_current_force() != expected_force) {
+                        std::cerr << "field Magic spell dump: force mask "
+                                     "value mismatch: " << mask_value << "\n";
+                        return 3;
+                    }
+                    if (expected_outcome == ForceOutcome::force) {
+                        if (!field_scene.magic_force_selection_open()) {
+                            std::cerr << "field Magic spell dump: force mask "
+                                         "closed despite D-pad priority: "
+                                      << mask_value << "\n";
+                            return 3;
+                        }
+                        press_field_port(0x20U);
+                    } else if (expected_outcome == ForceOutcome::posture) {
+                        if (!field_scene.magic_posture_selection_open()) {
+                            std::cerr << "field Magic spell dump: Down mask "
+                                         "did not enter posture: "
+                                      << mask_value << "\n";
+                            return 3;
+                        }
+                        press_field_port(0x20U);
+                    } else if (!field_scene.magic_spell_panel_open()) {
+                        std::cerr << "field Magic spell dump: force confirm "
+                                     "did not finish: " << mask_value << "\n";
+                        return 3;
+                    }
+                    if (!field_scene.magic_spell_panel_open()) {
+                        std::cerr << "field Magic spell dump: force mask "
+                                     "cleanup did not return to spell page\n";
+                        return 3;
+                    }
+                }
+
+                for (unsigned mask_value = 0U; mask_value < 256U;
+                     ++mask_value) {
+                    auto& runner = field_scene.active_runner_record();
+                    runner.posture = 2U;
+                    runner.equipped_inventory_slot = -1;
+                    runner.equipped_item_code = 0U;
+                    runner.magic_force = 0U;
+                    press_field_port(0x40U);
+                    if (!field_scene.magic_force_selection_open()) {
+                        std::cerr << "field Magic spell dump: posture sweep "
+                                     "could not enter force\n";
+                        return 3;
+                    }
+                    press_field_port(0x02U);
+                    if (!field_scene.magic_posture_selection_open()) {
+                        std::cerr << "field Magic spell dump: posture sweep "
+                                     "could not enter posture\n";
+                        return 3;
+                    }
+                    const auto mask = static_cast<std::uint8_t>(mask_value);
+                    press_field_port(mask);
+                    enum class PostureOutcome { posture, force, magic };
+                    auto expected_outcome = PostureOutcome::posture;
+                    std::uint8_t expected_posture = 2U;
+                    if ((mask & 0x01U) != 0U) {
+                        expected_outcome = any_magic_confirm(mask)
+                            ? PostureOutcome::magic
+                            : PostureOutcome::force;
+                    } else if ((mask & 0x08U) != 0U) {
+                        expected_posture = 3U;
+                    } else if ((mask & 0x04U) != 0U) {
+                        expected_posture = 1U;
+                    } else if (any_magic_confirm(mask)) {
+                        expected_outcome = PostureOutcome::magic;
+                    }
+                    if (field_scene.active_runner_record().posture !=
+                        expected_posture) {
+                        std::cerr << "field Magic spell dump: posture mask "
+                                     "value mismatch: " << mask_value << "\n";
+                        return 3;
+                    }
+                    if (expected_outcome == PostureOutcome::posture) {
+                        if (!field_scene.magic_posture_selection_open()) {
+                            std::cerr << "field Magic spell dump: posture "
+                                         "mask left its loop: " << mask_value
+                                      << "\n";
+                            return 3;
+                        }
+                        press_field_port(0x20U);
+                    } else if (expected_outcome == PostureOutcome::force) {
+                        if (!field_scene.magic_force_selection_open()) {
+                            std::cerr << "field Magic spell dump: Up mask "
+                                         "did not return to force: "
+                                      << mask_value << "\n";
+                            return 3;
+                        }
+                        press_field_port(0x20U);
+                    } else if (!field_scene.magic_spell_panel_open()) {
+                        std::cerr << "field Magic spell dump: posture confirm "
+                                     "did not finish: " << mask_value << "\n";
+                        return 3;
+                    }
+                    if (!field_scene.magic_spell_panel_open()) {
+                        std::cerr << "field Magic spell dump: posture mask "
+                                     "cleanup did not return to spell page\n";
+                        return 3;
+                    }
+                }
                 std::cout << "field_magic_spell_dump=written path="
                           << field_magic_spell_dump_path->string()
-                          << " table=" << initial_record.magic_table_index
+                          << " caster_profiles=5 tables=0..4 "
+                             "spell_entries=21 controller_masks=256x3"
                           << " spell=" << static_cast<int>(first_spell)
                           << "->" << static_cast<int>(moved_spell->spell_code)
-                          << " cursor=4x7frames force=1..3 posture=0..4 "
+                          << " cursor=4x7frames force=1..4 posture=0..4 "
                              "equip=record+0x57/+0x9D return=page6\n";
                 return 0;
             }
@@ -40798,6 +43609,421 @@ int main(int argc, char** argv) {
                                  "retained stale no-run response text\n";
                     return 3;
                 }
+                // ROM 0xF312 waits until any bit in FFDD22's high byte is
+                // nonzero. Verify all 255 controller-edge combinations on
+                // the no-run response, not just the representative Start
+                // return above. The zero-edge case is the 30-frame hold
+                // already checked before this matrix.
+                std::ofstream notebook_input_mask_manifest(
+                    *field_secretary_dump_path /
+                        "notebook-current-run-input-masks.tsv",
+                    std::ios::binary | std::ios::trunc);
+                if (!notebook_input_mask_manifest) {
+                    std::cerr << "field secretary dump: could not create "
+                                 "Current Run input-mask manifest\n";
+                    return 3;
+                }
+                notebook_input_mask_manifest
+                    << "input_mask_decimal\toutcome\tparent_selection_after_event\n"
+                    << "0\theld_30_frames\tn/a\n";
+                for (unsigned int input_mask = 1U; input_mask <= 0xFFU;
+                     ++input_mask) {
+                    tap_qa_controller_button(field_scene, 0x40U);
+                    if (!field_scene
+                             .pocket_secretary_notebook_no_run_waiting()) {
+                        std::cerr << "field secretary dump: Current Run "
+                                     "did not reopen before mask "
+                                  << input_mask << '\n';
+                        return 3;
+                    }
+                    const auto reopened_no_run_scene =
+                        render_secretary_scene();
+                    if (!image_has_green_ink(reopened_no_run_scene, 48, 48,
+                                             240, 24) ||
+                        image_region_differs(held_notebook_no_run_scene,
+                                             reopened_no_run_scene,
+                                             48, 48, 240, 24)) {
+                        std::cerr << "field secretary dump: Current Run "
+                                     "message changed before mask "
+                                  << input_mask << '\n';
+                        return 3;
+                    }
+
+                    tap_qa_controller_button(
+                        field_scene, static_cast<std::uint8_t>(input_mask));
+                    if (!field_scene.pocket_secretary_notebook_open() ||
+                        field_scene
+                            .pocket_secretary_notebook_no_run_waiting() ||
+                        field_scene.pocket_secretary_notebook_selection() !=
+                            0U) {
+                        std::cerr << "field secretary dump: controller mask "
+                                  << input_mask
+                                  << " did not return to Current Run row 0\n";
+                        return 3;
+                    }
+                    const auto mask_return_scene = render_secretary_scene();
+                    if (image_has_green_ink(mask_return_scene, 48, 48,
+                                            240, 8) ||
+                        image_has_green_ink(mask_return_scene, 48, 64,
+                                            240, 8)) {
+                        std::cerr << "field secretary dump: controller mask "
+                                  << input_mask
+                                  << " left stale no-run text\n";
+                        return 3;
+                    }
+                    notebook_input_mask_manifest << input_mask
+                                                 << "\tdismissed\t0\n";
+                }
+                if (!notebook_input_mask_manifest) {
+                    std::cerr << "field secretary dump: input-mask manifest "
+                                 "write failed\n";
+                    return 3;
+                }
+                if (!field_scene.seed_current_run_for_dump(2U)) {
+                    std::cerr << "field secretary dump: accepted Courier "
+                                 "source record could not be seeded\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Current Run.
+                const auto& current_run_view =
+                    field_scene.pocket_secretary_notebook_current_run_for_dump();
+                if (!field_scene.command_overview_open() ||
+                    !field_scene.pocket_secretary_open() ||
+                    field_scene.field_menu_route_screen_for_dump() != 41U ||
+                    !current_run_view.open ||
+                    current_run_view.source_initializer != 2 ||
+                    current_run_view.context != 0 ||
+                    current_run_view.run_type != 2 ||
+                    current_run_view.payment_amount != 55 ||
+                    current_run_view.johnson_name != "Mr. Gunderson" ||
+                    current_run_view.run_type_name != "Courier" ||
+                    current_run_view.body_lines.empty()) {
+                    std::cerr << "field secretary dump: positive Current Run "
+                                 "did not project its accepted source record\n";
+                    return 3;
+                }
+                std::string positive_current_run_body;
+                for (const auto& line : current_run_view.body_lines) {
+                    positive_current_run_body += line;
+                    positive_current_run_body.push_back(' ');
+                }
+                if (positive_current_run_body.find(
+                        "Ares Weapon Emporium") == std::string::npos ||
+                    positive_current_run_body.find("Jackal's Lantern") ==
+                        std::string::npos ||
+                    positive_current_run_body.find("package.") ==
+                        std::string::npos) {
+                    std::cerr << "field secretary dump: positive Current Run "
+                                 "does not preserve the independent Section 03 "
+                                 "Courier route and objective\n";
+                    return 3;
+                }
+                auto positive_current_run_scene = render_secretary_scene();
+                if (!save_notebook_record_scene(
+                        "current-run", "positive", positive_current_run_scene)) {
+                    std::cerr << "field secretary dump: could not save positive "
+                                 "Current Run actual.bmp\n";
+                    return 3;
+                }
+                if (!image_has_green_ink(positive_current_run_scene, 32, 32,
+                                         64, 8) ||
+                    !image_has_green_ink(positive_current_run_scene, 104, 32,
+                                         80, 8) ||
+                    !image_has_green_ink(positive_current_run_scene, 56, 40,
+                                         40, 8) ||
+                    !image_has_green_ink(positive_current_run_scene, 104, 40,
+                                         72, 8) ||
+                    !image_has_green_ink(positive_current_run_scene, 64, 48,
+                                         32, 8) ||
+                    !image_has_green_ink(positive_current_run_scene, 112, 48,
+                                         40, 8)) {
+                    std::cerr << "field secretary dump: positive Current Run "
+                                 "header or negotiated amount is not visible\n";
+                    return 3;
+                }
+                for (std::size_t line = 0;
+                     line < current_run_view.body_lines.size(); ++line) {
+                    const auto& text = current_run_view.body_lines[line];
+                    if (text.size() > 27U) {
+                        std::cerr << "field secretary dump: positive Current "
+                                     "Run line exceeds the source text width\n";
+                        return 3;
+                    }
+                    if (!text.empty() &&
+                        !image_has_green_ink(
+                            positive_current_run_scene, 40,
+                            64 + static_cast<int>(line) * 8, 216, 8)) {
+                        std::cerr << "field secretary dump: positive Current "
+                                     "Run body line " << line
+                                  << " is not visible (y="
+                                  << 64 + static_cast<int>(line) * 8
+                                  << ", text=\"" << text << "\")\n";
+                        return 3;
+                    }
+                }
+                for (int frame = 0; frame < 30; ++frame) {
+                    field_scene.advance_frame();
+                }
+                auto held_positive_current_run_scene =
+                    render_secretary_scene();
+                if (!field_scene
+                         .pocket_secretary_notebook_current_run_for_dump()
+                         .open ||
+                    image_region_differs(positive_current_run_scene,
+                                         held_positive_current_run_scene,
+                                         24, 24, 216, 160) ||
+                    !image_region_differs(positive_current_run_scene,
+                                          held_positive_current_run_scene,
+                                          32, 200, 224, 16) ||
+                    !save_notebook_record_scene(
+                        "current-run", "held-30-frames",
+                        held_positive_current_run_scene)) {
+                    std::cerr << "field secretary dump: positive Current Run "
+                                 "did not hold its text while E660 advanced\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x80U); // Return.
+                if (!field_scene.pocket_secretary_notebook_open() ||
+                    field_scene
+                        .pocket_secretary_notebook_current_run_for_dump()
+                        .open ||
+                    field_scene.pocket_secretary_notebook_selection() != 0U) {
+                    std::cerr << "field secretary dump: positive Current Run "
+                                 "did not return to Notebook row zero\n";
+                    return 3;
+                }
+                QImage positive_current_run_parent_scene =
+                    render_secretary_scene();
+                if (!save_notebook_record_scene(
+                        "current-run", "return", positive_current_run_parent_scene)) {
+                    std::cerr << "field secretary dump: could not save "
+                                 "positive Current Run return frame\n";
+                    return 3;
+                }
+                std::ofstream positive_current_run_input_mask_manifest(
+                    *field_secretary_dump_path /
+                        "notebook-current-run-positive-input-masks.tsv",
+                    std::ios::binary | std::ios::trunc);
+                if (!positive_current_run_input_mask_manifest) {
+                    std::cerr << "field secretary dump: could not create "
+                                 "positive Current Run input-mask manifest\n";
+                    return 3;
+                }
+                positive_current_run_input_mask_manifest
+                    << "input_mask_decimal\toutcome\tparent_selection_after_event\n"
+                    << "0\theld_30_frames\tn/a\n";
+                for (unsigned int input_mask = 1U; input_mask <= 0xFFU;
+                     ++input_mask) {
+                    tap_qa_controller_button(field_scene, 0x40U);
+                    const auto& reopened_view = field_scene
+                        .pocket_secretary_notebook_current_run_for_dump();
+                    if (!reopened_view.open ||
+                        reopened_view.payment_amount != 55 ||
+                        !field_scene.pocket_secretary_notebook_open()) {
+                        std::cerr << "field secretary dump: positive Current "
+                                     "Run did not reopen before mask "
+                                  << input_mask << '\n';
+                        return 3;
+                    }
+                    tap_qa_controller_button(
+                        field_scene, static_cast<std::uint8_t>(input_mask));
+                    if (!field_scene.pocket_secretary_notebook_open() ||
+                        field_scene
+                            .pocket_secretary_notebook_current_run_for_dump()
+                            .open ||
+                        field_scene.pocket_secretary_notebook_selection() !=
+                            0U) {
+                        std::cerr << "field secretary dump: positive Current "
+                                     "Run controller mask " << input_mask
+                                  << " did not return to row zero\n";
+                        return 3;
+                    }
+                    const auto mask_return_scene = render_secretary_scene();
+                    if (image_region_differs(
+                            positive_current_run_parent_scene,
+                            mask_return_scene, 24, 24, 216, 160)) {
+                        std::cerr << "field secretary dump: positive Current "
+                                     "Run controller mask " << input_mask
+                                  << " failed to redraw the same Notebook "
+                                     "parent panel\n";
+                        return 3;
+                    }
+                    positive_current_run_input_mask_manifest
+                        << input_mask << "\tdismissed\t0\n";
+                }
+                if (!positive_current_run_input_mask_manifest) {
+                    std::cerr << "field secretary dump: positive Current Run "
+                                 "input-mask manifest write failed\n";
+                    return 3;
+                }
+                const QImage current_run_font = QImage(QString::fromStdWString(
+                    (asset_root / "menu" / "field" / "font.bmp").wstring()));
+                if (current_run_font.isNull()) {
+                    std::cerr << "field secretary dump: Current Run font "
+                                 "asset could not be loaded\n";
+                    return 3;
+                }
+                constexpr std::array<std::uint8_t, 7> current_run_contexts{
+                    0U, 1U, 0U, 2U, 3U, 1U, 4U};
+                constexpr std::array<std::uint8_t, 7>
+                    current_run_initializers{
+                        0U, 1U, 2U, 3U, 9U, 5U, 8U};
+                constexpr std::array<std::string_view, 7>
+                    current_run_johnsons{
+                        "Mr. Gunderson", "Julius Strouther",
+                        "Mr. Gunderson", "Mortimer Reed",
+                        "Vigore and Jarl", "Julius Strouther",
+                        "Caleb Brightmore"};
+                constexpr std::array<std::string_view, 7>
+                    current_run_type_names{
+                        "Ghoul Bounty", "Bodyguard", "Courier",
+                        "Enforcement", "Acquisition", "Extraction",
+                        "Matrix Run"};
+                constexpr std::array<std::int64_t, 7>
+                    current_run_payments{10, 230, 55, 220, 1760, 575, 6700};
+                constexpr std::array<std::string_view, 7>
+                    current_run_body_tokens{
+                        "Kill as many as possible",
+                        "Escort my client to", "Ares Weapon Emporium",
+                        "Eye Fivers", "A package was taken",
+                        "An employee of", "Aztechnology"};
+                for (std::uint8_t run_type = 0U; run_type <= 6U;
+                     ++run_type) {
+                    if (!field_scene.seed_current_run_for_dump(
+                            run_type, run_type == 6U)) {
+                        std::cerr << "field secretary dump: could not seed "
+                                     "accepted source run type "
+                                  << static_cast<unsigned>(run_type) << '\n';
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene, 0x40U);
+                    const auto& type_view = field_scene
+                        .pocket_secretary_notebook_current_run_for_dump();
+                    if (!type_view.open ||
+                        type_view.source_initializer !=
+                            current_run_initializers[run_type] ||
+                        type_view.context != current_run_contexts[run_type] ||
+                        type_view.run_type != run_type ||
+                        type_view.payment_amount !=
+                            current_run_payments[run_type] ||
+                        type_view.johnson_name !=
+                            current_run_johnsons[run_type] ||
+                        type_view.run_type_name !=
+                            current_run_type_names[run_type] ||
+                        type_view.body_lines.empty() ||
+                        type_view.body_lines.size() > 16U) {
+                        std::cerr << "field secretary dump: Current Run type "
+                                  << static_cast<unsigned>(run_type)
+                                  << " has the wrong typed source view: open="
+                                  << type_view.open << " initializer="
+                                  << type_view.source_initializer
+                                  << " context="
+                                  << static_cast<unsigned>(type_view.context)
+                                  << " run_type="
+                                  << static_cast<unsigned>(type_view.run_type)
+                                  << " payment=" << type_view.payment_amount
+                                  << " Johnson=" << type_view.johnson_name
+                                  << " type_name=" << type_view.run_type_name
+                                  << " body_lines="
+                                  << type_view.body_lines.size() << '\n';
+                        return 3;
+                    }
+                    std::string type_body;
+                    for (const auto& line : type_view.body_lines) {
+                        if (line.size() > 27U) {
+                            std::cerr << "field secretary dump: Current Run "
+                                         "type "
+                                      << static_cast<unsigned>(run_type)
+                                      << " exceeds the ROM text scan width\n";
+                            return 3;
+                        }
+                        type_body += line;
+                        type_body.push_back(' ');
+                    }
+                    if (type_body.find(current_run_body_tokens[run_type]) ==
+                            std::string::npos) {
+                        std::cerr << "field secretary dump: Current Run type "
+                                  << static_cast<unsigned>(run_type)
+                                  << " does not display its source body\n";
+                        return 3;
+                    }
+                    const auto type_scene = render_secretary_scene();
+                    auto payment_text = std::to_string(
+                        current_run_payments[run_type]);
+                    if (payment_text.size() > 3U) {
+                        payment_text.insert(payment_text.size() - 3U, 1U, ',');
+                    }
+                    const auto payment_x = 136 - static_cast<int>(
+                        payment_text.size() * 8U);
+                    if (!source_menu_caption_matches(
+                            type_scene, current_run_font, 32, 32,
+                            type_view.johnson_label) ||
+                        !source_menu_caption_matches(
+                            type_scene, current_run_font, 104, 32,
+                            type_view.johnson_name) ||
+                        !source_menu_caption_matches(
+                            type_scene, current_run_font, 56, 40, "TYPE:") ||
+                        !source_menu_caption_matches(
+                            type_scene, current_run_font, 104, 40,
+                            type_view.run_type_name) ||
+                        !source_menu_caption_matches(
+                            type_scene, current_run_font, 64, 48, "PAY:") ||
+                        !source_menu_caption_matches(
+                            type_scene, current_run_font, payment_x, 48,
+                            payment_text) ||
+                        !source_menu_caption_matches(
+                            type_scene, current_run_font, 144, 48, "$")) {
+                        std::cerr << "field secretary dump: Current Run type "
+                                  << static_cast<unsigned>(run_type)
+                                  << " header or amount pixels do not match "
+                                     "the typed source view\n";
+                        return 3;
+                    }
+                    for (std::size_t line = 0;
+                         line < type_view.body_lines.size(); ++line) {
+                        const auto& text = type_view.body_lines[line];
+                        if (!text.empty() &&
+                            !source_menu_caption_matches(
+                                type_scene, current_run_font, 40,
+                                64 + static_cast<int>(line) * 8, text)) {
+                            std::cerr
+                                << "field secretary dump: Current Run type "
+                                << static_cast<unsigned>(run_type)
+                                << " body line " << line
+                                << " pixel layout does not match its typed "
+                                   "source string\n";
+                            return 3;
+                        }
+                    }
+                    const auto type_name = std::string("type-") +
+                        std::to_string(static_cast<unsigned>(run_type));
+                    if (!save_notebook_record_scene(
+                            "current-run", type_name, type_scene)) {
+                        std::cerr << "field secretary dump: could not save "
+                                     "Current Run type "
+                                  << static_cast<unsigned>(run_type)
+                                  << " actual.bmp\n";
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene, 0x80U);
+                    const auto type_return_scene = render_secretary_scene();
+                    if (!field_scene.pocket_secretary_notebook_open() ||
+                        field_scene.pocket_secretary_notebook_selection() != 0U ||
+                        field_scene
+                            .pocket_secretary_notebook_current_run_for_dump()
+                            .open ||
+                        image_region_differs(
+                            positive_current_run_parent_scene,
+                            type_return_scene, 24, 24, 216, 160) ||
+                        !save_notebook_record_scene(
+                            "current-run", type_name + "-return",
+                            type_return_scene)) {
+                        std::cerr << "field secretary dump: Current Run type "
+                                  << static_cast<unsigned>(run_type)
+                                  << " failed its clean Notebook return\n";
+                        return 3;
+                    }
+                }
                 tap_qa_controller_button(field_scene, 0x10U); // B to parent.
                 if (field_scene.pocket_secretary_notebook_open() ||
                     !field_scene.pocket_secretary_open() ||
@@ -41194,7 +44420,2508 @@ int main(int argc, char** argv) {
                           << '\n';
                 return 0;
             }
+            if (field_profile_combat_bar_permutation_qa_path.has_value()) {
+                using namespace shadowrun::ghidra_conversion;
+                struct ProfileBarExpectation {
+                    std::string_view slug;
+                    std::uint8_t race;
+                    std::uint8_t runner_class;
+                    std::uint8_t command_average;
+                    std::array<std::uint8_t, 5U> attack_values;
+                    std::array<std::uint8_t, 5U> defense_values;
+                };
+                static constexpr std::array<ProfileBarExpectation, 13U>
+                    profiles{{
+                        {"joshua-samurai", 0U, 2U, 4U,
+                         {4U, 5U, 6U, 7U, 8U},
+                         {8U, 7U, 6U, 5U, 4U}},
+                        {"joshua-decker", 0U, 3U, 6U,
+                         {2U, 3U, 4U, 4U, 4U},
+                         {8U, 7U, 5U, 4U, 2U}},
+                        {"joshua-gator-shaman", 0U, 1U, 5U,
+                         {2U, 3U, 4U, 4U, 4U},
+                         {7U, 6U, 5U, 4U, 2U}},
+                        {"rat-shaman", 2U, 1U, 4U,
+                         {2U, 3U, 4U, 4U, 4U},
+                         {8U, 7U, 6U, 5U, 4U}},
+                        {"troll-samurai", 4U, 2U, 3U,
+                         {4U, 4U, 5U, 6U, 7U},
+                         {10U, 10U, 9U, 8U, 7U}},
+                        {"human-mage", 0U, 0U, 5U,
+                         {2U, 3U, 4U, 4U, 4U},
+                         {7U, 6U, 5U, 4U, 2U}},
+                        {"dwarf-decker", 2U, 3U, 5U,
+                         {4U, 5U, 6U, 7U, 8U},
+                         {9U, 8U, 7U, 6U, 4U}},
+                        {"bear-shaman", 3U, 1U, 5U,
+                         {3U, 4U, 5U, 6U, 6U},
+                         {11U, 10U, 9U, 8U, 6U}},
+                        {"elf-decker-1", 1U, 3U, 7U,
+                         {4U, 5U, 7U, 8U, 8U},
+                         {10U, 9U, 7U, 5U, 3U}},
+                        {"human-samurai-1", 0U, 2U, 7U,
+                         {6U, 7U, 9U, 11U, 12U},
+                         {12U, 11U, 9U, 7U, 5U}},
+                        {"elf-mage", 1U, 0U, 7U,
+                         {6U, 7U, 9U, 11U, 12U},
+                         {10U, 9U, 7U, 5U, 3U}},
+                        {"elf-decker-2", 1U, 3U, 9U,
+                         {4U, 6U, 8U, 8U, 8U},
+                         {10U, 8U, 6U, 4U, 1U}},
+                        {"human-samurai-2", 0U, 2U, 8U,
+                         {6U, 8U, 10U, 12U, 12U},
+                         {16U, 14U, 12U, 10U, 8U}},
+                    }};
+                const auto profile_failure = [](const std::string& reason) {
+                    std::cerr << "field profile combat-bar QA: " << reason
+                              << '\n';
+                    return 3;
+                };
+                if (!smoke_state.startup_records.has_value()) {
+                    return profile_failure(
+                        "the source Joshua and recruited templates were not "
+                        "loaded");
+                }
+                std::vector<std::uint8_t> profile_rom_bytes;
+                constexpr std::size_t kJoshuaRecordBase = 0x7291AU;
+                constexpr std::size_t kRecruitRecordBase = 0x72C1AU;
+                constexpr std::size_t kRunnerRecordStride = 0x100U;
+                constexpr std::size_t kWeaponTableBase = 0xD4540U;
+                constexpr std::size_t kWeaponTableStride = 0x30U;
+                constexpr std::size_t kWeaponCapacityOffset = 0x24U;
+                constexpr std::size_t kWeaponCount = 12U;
+                constexpr std::size_t kArmorTableBase = 0xD4D50U;
+                constexpr std::size_t kArmorTableStride = 0x30U;
+                constexpr std::size_t kArmorCount = 7U;
+#ifndef SHADOWRUN_US_ROM_PATH
+                return profile_failure(
+                    "the QA target has no primary US ROM path");
+#else
+                std::ifstream profile_rom_file(SHADOWRUN_US_ROM_PATH,
+                                               std::ios::binary);
+                if (!profile_rom_file) {
+                    return profile_failure(
+                        "could not open the primary US ROM input");
+                }
+                const auto profile_rom_begin =
+                    std::istreambuf_iterator<char>{profile_rom_file};
+                const auto profile_rom_end =
+                    std::istreambuf_iterator<char>{};
+                profile_rom_bytes.assign(profile_rom_begin,
+                                         profile_rom_end);
+                constexpr std::size_t kRequiredRomBytes =
+                    kArmorTableBase + kArmorCount * kArmorTableStride;
+                if (profile_rom_bytes.size() < kRequiredRomBytes) {
+                    return profile_failure(
+                        "the primary US ROM is too short for the source "
+                        "runner and armor tables");
+                }
+#endif
+                std::array<std::uint8_t, kWeaponCount> source_weapon_capacities{};
+                for (std::size_t weapon = 0U;
+                     weapon < source_weapon_capacities.size(); ++weapon) {
+                    const auto capacity_offset =
+                        kWeaponTableBase + weapon * kWeaponTableStride +
+                        kWeaponCapacityOffset;
+                    if (capacity_offset >= profile_rom_bytes.size() ||
+                        profile_rom_bytes[capacity_offset] == 0U) {
+                        return profile_failure(
+                            "a source D4540 weapon capacity is missing or zero");
+                    }
+                    source_weapon_capacities[weapon] =
+                        profile_rom_bytes[capacity_offset];
+                }
+                const auto source_weapon_capacity =
+                    [&source_weapon_capacities](
+                        const std::uint8_t item_code) -> std::uint8_t {
+                    if (item_code == 0U ||
+                        item_code > source_weapon_capacities.size()) {
+                        return 0U;
+                    }
+                    return source_weapon_capacities[item_code - 1U];
+                };
+                const auto source_unequipped_weapon_percent = [](
+                    const std::uint8_t rounds,
+                    const std::uint8_t capacity) -> std::uint8_t {
+                    if (capacity == 0U) {
+                        return rounds;
+                    }
+                    const auto numerator =
+                        static_cast<std::uint16_t>(rounds) * 100U;
+                    return static_cast<std::uint8_t>(
+                        (numerator + capacity - 1U) / capacity);
+                };
+                const auto source_equipped_weapon_rounds = [](
+                    const std::uint8_t percent,
+                    const std::uint8_t capacity) -> std::uint8_t {
+                    const auto scaled =
+                        static_cast<std::uint16_t>(percent) * capacity;
+                    return static_cast<std::uint8_t>((scaled + 50U) / 100U);
+                };
+                const auto source_hud_refreshed_ammo =
+                    [&profile_rom_bytes](const RunnerRecordFields& runner) {
+                        auto rounds = runner.ammo_rounds;
+                        const auto source_equipped_slot =
+                            static_cast<std::uint8_t>(
+                                runner.equipped_inventory_slot);
+                        if ((runner.flags & 0x0100U) == 0U ||
+                            runner.equipped_inventory_slot < 0 ||
+                            source_equipped_slot == 0x7FU ||
+                            runner.equipped_item_code >= 0x0DU) {
+                            return rounds;
+                        }
+                        if (static_cast<std::int8_t>(rounds) <= 0) {
+                            return std::uint8_t{0U};
+                        }
+                        if (runner.equipped_item_code == 0U) {
+                            return rounds;
+                        }
+                        const auto capacity_offset =
+                            kWeaponTableBase +
+                            static_cast<std::size_t>(
+                                runner.equipped_item_code - 1U) *
+                                kWeaponTableStride +
+                            kWeaponCapacityOffset;
+                        if (capacity_offset >= profile_rom_bytes.size()) {
+                            return rounds;
+                        }
+                        return std::min(
+                            rounds, profile_rom_bytes[capacity_offset]);
+                    };
+                const auto& startup_records = *smoke_state.startup_records;
+                const auto output_directory =
+                    *field_profile_combat_bar_permutation_qa_path;
+                std::filesystem::create_directories(output_directory);
+                std::error_code clear_error;
+                clear_qa_bitmap_artifacts(output_directory, clear_error);
+                if (clear_error) {
+                    return profile_failure(
+                        "could not clear prior bitmap artifacts");
+                }
+                const auto region_matches_bar_asset =
+                    [&asset_root](const QImage& scene,
+                                  const EquipmentCombatBarResult& bars) {
+                        if (bars.attack_bar > 22U || bars.defense_bar > 22U) {
+                            return false;
+                        }
+                        const auto matches = [&scene](
+                                                 const std::filesystem::path& path,
+                                                 const int x, const int y) {
+                            const QImage asset(QString::fromStdWString(
+                                path.wstring()));
+                            if (asset.size() != QSize(104, 8) ||
+                                x + asset.width() > scene.width() ||
+                                y + asset.height() > scene.height()) {
+                                return false;
+                            }
+                            return scene.copy(x, y, asset.width(),
+                                              asset.height())
+                                       .convertToFormat(QImage::Format_RGB32) ==
+                                   asset.convertToFormat(QImage::Format_RGB32);
+                        };
+                        const auto menu_root = asset_root / "menu" / "field";
+                        return matches(menu_root /
+                                           ("attack-bar-" +
+                                            std::to_string(bars.attack_bar) +
+                                            ".bmp"),
+                                       144, 104) &&
+                               matches(menu_root /
+                                           ("defense-bar-" +
+                                            std::to_string(bars.defense_bar) +
+                                            ".bmp"),
+                                       144, 112);
+                    };
+                const auto region_matches_asset = [](
+                    const QImage& scene, const QImage& asset, const int x,
+                    const int y) {
+                    if (asset.isNull() || x < 0 || y < 0 ||
+                        x + asset.width() > scene.width() ||
+                        y + asset.height() > scene.height()) {
+                        return false;
+                    }
+                    return scene.copy(x, y, asset.width(), asset.height())
+                               .convertToFormat(QImage::Format_RGB32) ==
+                           asset.convertToFormat(QImage::Format_RGB32);
+                };
+                const auto active_hud_ammo_pixels_match =
+                    [&asset_root, &field_scene, &region_matches_asset](
+                        const QImage& scene,
+                        const std::uint8_t expected_count) {
+                    const auto active_slot =
+                        field_scene.field_active_party_slot_for_dump();
+                    if (active_slot >= kFieldHudSlotCount ||
+                        expected_count >= kFieldHudAmmoCounterCount) {
+                        return false;
+                    }
+                    std::array<FieldHudSlotState, kFieldHudSlotCount>
+                        hud_slot_states{};
+                    for (std::size_t slot = 0U;
+                         slot < hud_slot_states.size(); ++slot) {
+                        hud_slot_states[slot] =
+                            field_scene.field_hud_slot_state_for_dump(slot);
+                    }
+                    if (hud_slot_states[active_slot].ammo_display_value !=
+                        expected_count) {
+                        return false;
+                    }
+                    const auto overlays =
+                        compose_field_hud_overlays(hud_slot_states);
+                    for (const auto& overlay : overlays) {
+                        if (overlay.kind != FieldHudOverlayKind::ammo ||
+                            overlay.slot != active_slot) {
+                            continue;
+                        }
+                        if (overlay.asset_index != expected_count) {
+                            return false;
+                        }
+                        const auto asset_path =
+                            asset_root / "field" / "hud" /
+                            ("ammo-counter-" +
+                             std::to_string(expected_count) + ".bmp");
+                        const QImage asset(QString::fromStdWString(
+                            asset_path.wstring()));
+                        return asset.size() == QSize(16, 8) &&
+                               region_matches_asset(scene, asset,
+                                                    overlay.x, overlay.y);
+                    }
+                    return false;
+                };
+                const auto armor_summary_matches =
+                    [&asset_root, &region_matches_asset](
+                        const QImage& scene,
+                        const std::uint8_t armor_index) {
+                        const auto* armor =
+                            find_us_armor_definition(armor_index);
+                        if (armor == nullptr) {
+                            return false;
+                        }
+                        const auto menu_root = asset_root / "menu" / "field";
+                        const auto secondary = QImage(QString::fromStdWString(
+                            (menu_root /
+                             ("armor-summary-bar-" +
+                              std::to_string(armor->secondary_modifier) +
+                              ".bmp"))
+                                .wstring()));
+                        const auto primary = QImage(QString::fromStdWString(
+                            (menu_root /
+                             ("armor-summary-bar-" +
+                              std::to_string(armor->primary_modifier) +
+                              ".bmp"))
+                                .wstring()));
+                        return region_matches_asset(scene, secondary, 176,
+                                                    144) &&
+                               region_matches_asset(scene, primary, 176, 152);
+                    };
+                const auto armor_icon_matches =
+                    [&asset_root, &region_matches_asset](
+                        const QImage& scene, const RunnerRecordFields& runner,
+                        const std::uint8_t item_code,
+                        const std::size_t slot) {
+                        const auto palette = static_cast<std::uint8_t>(
+                            use_command_overview_alternate_icon_palette(
+                                HudGlyphAttributeInput{
+                                    static_cast<std::int8_t>(
+                                        runner.equipped_item_code),
+                                    static_cast<std::int8_t>(
+                                        runner.archetype_index),
+                                    runner.equipped_inventory_slot})
+                                ? 1U
+                                : 0U);
+                        const auto icon_path =
+                            asset_root / "items" / "armor" / "icons" /
+                            ("item-" + std::to_string(item_code) + "-" +
+                             std::to_string(palette) + ".bmp");
+                        const QImage icon(QString::fromStdWString(
+                            icon_path.wstring()));
+                        if (icon.size() != QSize(24, 16) || slot >= 8U) {
+                            return false;
+                        }
+                        const auto x = 16 +
+                                       static_cast<int>((slot % 2U) * 40U);
+                        const auto y = 120 +
+                                       static_cast<int>((slot / 2U) * 24U);
+                        // The source cursor covers the one-pixel outside
+                        // edge; the interior remains the named ROM-derived
+                        // icon and palette asset.
+                        return region_matches_asset(
+                            scene.copy(x + 1, y + 1, 22, 14),
+                            icon.copy(1, 1, 22, 14), 0, 0);
+                    };
+                const auto armor_cell_marker_matches = [](
+                    const QImage& scene, const std::size_t slot,
+                    const bool equipped) {
+                    if (slot >= 8U) {
+                        return false;
+                    }
+                    const auto x = 16 +
+                                   static_cast<int>((slot % 2U) * 40U) - 5;
+                    const auto y = 120 +
+                                   static_cast<int>((slot / 2U) * 24U) - 4;
+                    const auto pixel = scene.pixelColor(x, y);
+                    const QColor equipped_marker(109, 109, 109);
+                    // Empty inventory cells can retain a black backing pixel
+                    // after a controlled item is inserted. The source marker
+                    // assertion is whether the equipped highlight is present,
+                    // not whether every unhighlighted cell shares one fill.
+                    return equipped ? pixel == equipped_marker
+                                    : pixel != equipped_marker;
+                };
+                const auto press = [&field_scene](
+                                       const std::uint8_t port_byte) {
+                    tap_qa_controller_button(field_scene, port_byte);
+                };
+                std::size_t saved_frames = 0U;
+                std::size_t equipped_profile_frames = 0U;
+                std::size_t equipped_field_frames = 0U;
+                std::size_t armor_profile_cases = 0U;
+                std::size_t armor_clear_actions = 0U;
+                std::size_t armor_frames = 0U;
+                std::size_t detail_value_profile_cases = 0U;
+                std::size_t detail_value_profile_frames = 0U;
+                std::size_t weapon_profile_cases = 0U;
+                std::size_t weapon_profile_frames = 0U;
+                std::size_t weapon_matrix_pairs = 0U;
+                std::size_t weapon_matrix_state_cases = 0U;
+                constexpr std::size_t kDetailValueAssetCount = 40U;
+                const auto detail_value_output_directory =
+                    output_directory / "detail-value-profile-permutation";
+                std::filesystem::create_directories(
+                    detail_value_output_directory);
+                std::error_code detail_value_clear_error;
+                clear_qa_bitmap_artifacts(detail_value_output_directory,
+                                          detail_value_clear_error);
+                if (detail_value_clear_error) {
+                    return profile_failure(
+                        "could not clear the detail-value profile artifacts");
+                }
+                std::ofstream detail_value_manifest(
+                    detail_value_output_directory /
+                        "profile-detail-value-cases.tsv",
+                    std::ios::trunc);
+                if (!detail_value_manifest) {
+                    return profile_failure(
+                        "could not create the detail-value profile manifest");
+                }
+                detail_value_manifest
+                    << "profile\traw_rom_record\ttrace\trace\tclass\t"
+                       "selected_slot\titem_code\tphase\tlabel\tasset\t"
+                       "frame\n";
+                const auto weapon_profile_output_directory =
+                    output_directory / "weapon-profile-permutation";
+                std::filesystem::create_directories(
+                    weapon_profile_output_directory);
+                std::error_code weapon_clear_error;
+                clear_qa_bitmap_artifacts(weapon_profile_output_directory,
+                                          weapon_clear_error);
+                if (weapon_clear_error) {
+                    return profile_failure(
+                        "could not clear the weapon profile artifacts");
+                }
+                std::ofstream weapon_profile_manifest(
+                    weapon_profile_output_directory /
+                        "profile-weapon-cases.tsv",
+                    std::ios::trunc);
+                std::ofstream weapon_matrix_manifest(
+                    weapon_profile_output_directory /
+                        "profile-weapon-ammo-matrix.tsv",
+                    std::ios::trunc);
+                if (!weapon_profile_manifest || !weapon_matrix_manifest) {
+                    return profile_failure(
+                        "could not create weapon profile manifests");
+                }
+                weapon_profile_manifest
+                    << "profile\traw_rom_record\t"
+                       "race\tclass\t"
+                       "source_item\tsource_rounds\tsource_capacity\t"
+                       "target_slot\ttarget_item\ttarget_capacity\t"
+                       "normalized_percent\ttarget_rounds\tclips\t"
+                       "selected_frame\taction_frame\tswitched_menu_frame\t"
+                       "switched_combat_bars_frame\t"
+                       "switched_field_frame\tunequipped_menu_frame\t"
+                       "unequipped_field_frame\treequipped_menu_frame\t"
+                       "reequipped_field_frame\n";
+                weapon_matrix_manifest
+                    << "profile\traw_rom_record\t"
+                       "race\tclass\t"
+                       "old_item\told_capacity\ttarget_item\ttarget_capacity\t"
+                       "legal_old_round_values\tstate_transitions_checked\n";
+                const auto save_weapon_profile_frame =
+                    [&weapon_profile_output_directory,
+                     &weapon_profile_frames](const std::string& name,
+                                              const QImage& image) {
+                    const auto path = weapon_profile_output_directory / name;
+                    if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+                        !image.save(QString::fromStdWString(
+                            path.wstring()))) {
+                        return false;
+                    }
+                    ++weapon_profile_frames;
+                    return true;
+                };
+                const auto armor_output_directory =
+                    output_directory / "armor-profile-permutation";
+                std::filesystem::create_directories(armor_output_directory);
+                std::error_code armor_clear_error;
+                clear_qa_bitmap_artifacts(armor_output_directory,
+                                          armor_clear_error);
+                if (armor_clear_error) {
+                    return profile_failure(
+                        "could not clear the armor profile artifacts");
+                }
+                std::ofstream armor_manifest(
+                    armor_output_directory / "profile-armor-cases.tsv",
+                    std::ios::trunc);
+                if (!armor_manifest) {
+                    return profile_failure(
+                        "could not create the armor profile manifest");
+                }
+                armor_manifest
+                    << "profile\traw_rom_record\ttrace\tclass\t"
+                       "armor_item_code\tarmor_index\tselected_slot\t"
+                       "source_equipped_armor\tselected_primary\t"
+                       "selected_secondary\tAtk\tAtk_bar\tDef\tDef_bar\t"
+                       "selected_frame\tcleared_frame\tequipped_bar_frame\t"
+                       "equipped_field_frame\tunequipped_field_frame\n";
+                const auto save_armor_frame =
+                    [&](const std::string& name, const QImage& image) {
+                        const auto path = armor_output_directory / name;
+                        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+                            !image.save(QString::fromStdWString(
+                                path.wstring()))) {
+                            return false;
+                        }
+                        ++armor_frames;
+                        return true;
+                    };
+                const auto select_armor_cell =
+                    [&](const std::size_t slot) {
+                        if (!field_scene.command_overview_open() ||
+                            slot >= 8U) {
+                            return false;
+                        }
+                        for (std::size_t move = 0U;
+                             move < 7U &&
+                             field_scene.command_overview_primary_page() != 0U;
+                             ++move) {
+                            press(0x04U);
+                        }
+                        const auto column =
+                            static_cast<std::uint8_t>(slot % 2U);
+                        const auto row =
+                            static_cast<std::uint8_t>(slot / 2U);
+                        auto current_row = field_scene.command_overview_view()
+                                               .source_state.secondary_page;
+                        for (std::size_t move = 0U;
+                             move < 4U && current_row != row; ++move) {
+                            press(current_row < row ? 0x02U : 0x01U);
+                            current_row = field_scene.command_overview_view()
+                                              .source_state.secondary_page;
+                        }
+                        for (std::uint8_t move = 0U; move < column; ++move) {
+                            press(0x08U);
+                        }
+                        if (field_scene.command_overview_primary_page() !=
+                                column ||
+                            field_scene.command_overview_view()
+                                    .source_state.secondary_page != row) {
+                            return false;
+                        }
+                        return true;
+                    };
+                const auto move_to_combat_page = [&]() {
+                    for (std::size_t move = 0U;
+                         move < 7U &&
+                         field_scene.command_overview_primary_page() != 2U;
+                         ++move) {
+                        press(field_scene.command_overview_primary_page() < 2U
+                                  ? 0x08U
+                                  : 0x04U);
+                    }
+                    return field_scene.command_overview_open() &&
+                           field_scene.command_overview_primary_page() == 2U;
+                };
+                const auto profile_inputs_unchanged = [](
+                    const RunnerRecordFields& current,
+                    const RunnerRecordFields& baseline,
+                    const std::size_t selected_slot) {
+                    if (current.species_index != baseline.species_index ||
+                        current.archetype_index != baseline.archetype_index ||
+                        current.attributes != baseline.attributes ||
+                        current.skills != baseline.skills ||
+                        current.flags != baseline.flags ||
+                        current.cyberware_flags != baseline.cyberware_flags ||
+                        current.action_profile_modifier_flags !=
+                            baseline.action_profile_modifier_flags ||
+                        current.magic_force != baseline.magic_force ||
+                        current.magic_table_index != baseline.magic_table_index ||
+                        current.auxiliary != baseline.auxiliary ||
+                        current.posture != baseline.posture ||
+                        current.equipped_inventory_slot !=
+                            baseline.equipped_inventory_slot ||
+                        current.equipped_item_code !=
+                            baseline.equipped_item_code ||
+                        current.ammo_rounds != baseline.ammo_rounds ||
+                        current.ammo_clips != baseline.ammo_clips) {
+                        return false;
+                    }
+                    for (std::size_t slot = 0U;
+                         slot < current.inventory_item_codes.size(); ++slot) {
+                        if (slot == selected_slot) {
+                            continue;
+                        }
+                        if (current.inventory_item_codes[slot] !=
+                                baseline.inventory_item_codes[slot] ||
+                            current.inventory_phase_bytes[slot] !=
+                                baseline.inventory_phase_bytes[slot]) {
+                            return false;
+                        }
+                    }
+                    return true;
+                };
+                const auto profile_action_facts_unchanged = [](
+                    const RunnerRecordFields& current,
+                    const RunnerRecordFields& baseline) {
+                    return current.species_index == baseline.species_index &&
+                           current.archetype_index ==
+                               baseline.archetype_index &&
+                           current.attributes == baseline.attributes &&
+                           current.skills == baseline.skills &&
+                           current.flags == baseline.flags &&
+                           current.cyberware_flags ==
+                               baseline.cyberware_flags &&
+                           current.action_profile_modifier_flags ==
+                               baseline.action_profile_modifier_flags &&
+                           current.magic_force == baseline.magic_force &&
+                           current.magic_table_index ==
+                               baseline.magic_table_index &&
+                           current.auxiliary == baseline.auxiliary &&
+                           current.posture == baseline.posture &&
+                           current.equipped_armor_index ==
+                               baseline.equipped_armor_index &&
+                           current.ammo_clips == baseline.ammo_clips &&
+                           current.inventory_item_codes ==
+                               baseline.inventory_item_codes &&
+                           current.inventory_phase_bytes ==
+                               baseline.inventory_phase_bytes;
+                };
+                const auto armor_command_page_matches = [&](
+                    const ProfileBarExpectation& expected) {
+                    const auto& bars =
+                        field_scene.command_overview_combat_bars();
+                    const auto scene = render_qa_field(field_scene);
+                    return field_scene.command_overview_open() &&
+                           field_scene.command_overview_primary_page() == 2U &&
+                           !field_scene.posture_dialog_open() &&
+                           bars.command_average == expected.command_average &&
+                           bars.attack_written && bars.defense_written &&
+                           bars.attack_value == expected.attack_values[0U] &&
+                           bars.attack_bar ==
+                               expected.attack_values[0U] - 1U &&
+                           bars.defense_value == expected.defense_values[0U] &&
+                           bars.defense_bar ==
+                               expected.defense_values[0U] - 1U &&
+                           region_matches_bar_asset(scene, bars);
+                };
+                const auto check_state = [&](
+                    const ProfileBarExpectation& expected,
+                    const std::size_t profile_index,
+                    const std::uint8_t posture,
+                    const std::string_view phase,
+                    const bool save_frame) {
+                    const auto& bars =
+                        field_scene.command_overview_combat_bars();
+                    const auto attack = expected.attack_values[posture];
+                    const auto defense = expected.defense_values[posture];
+                    if (!field_scene.command_overview_open() ||
+                        field_scene.command_overview_primary_page() != 2U ||
+                        field_scene.posture_dialog_value() != posture ||
+                        bars.command_average != expected.command_average ||
+                        !bars.attack_written || !bars.defense_written ||
+                        bars.attack_value != attack ||
+                        bars.attack_bar != attack - 1U ||
+                        bars.defense_value != defense ||
+                        bars.defense_bar != defense - 1U) {
+                        std::cerr << "field profile combat-bar state: "
+                                  << expected.slug << " profile="
+                                  << profile_index << " posture="
+                                  << static_cast<unsigned>(posture)
+                                  << " avg=" << bars.command_average
+                                  << " attack=" << bars.attack_value << "/"
+                                  << static_cast<unsigned>(bars.attack_bar)
+                                  << " defense=" << bars.defense_value << "/"
+                                  << static_cast<unsigned>(bars.defense_bar)
+                                  << '\n';
+                        return false;
+                    }
+                    const auto scene = render_qa_field(field_scene);
+                    if (!region_matches_bar_asset(scene, bars)) {
+                        std::cerr << "field profile combat-bar pixels: "
+                                  << expected.slug << " posture="
+                                  << static_cast<unsigned>(posture)
+                                  << " did not match named Atk/Def assets\n";
+                        return false;
+                    }
+                    if (save_frame) {
+                        const auto path = output_directory /
+                            (std::string(expected.slug) + "-posture-" +
+                             std::to_string(posture) + "-" +
+                             std::string(phase) + ".bmp");
+                        if (scene.size() != QSize(kSceneWidth, kSceneHeight) ||
+                            !scene.save(QString::fromStdWString(
+                                path.wstring()))) {
+                            std::cerr << "field profile combat-bar QA: "
+                                      << "could not save " << path.string()
+                                      << '\n';
+                            return false;
+                        }
+                        ++saved_frames;
+                    }
+                    return true;
+                };
+                struct SourceBarValues {
+                    std::uint16_t command_average = 0U;
+                    std::uint16_t attack = 0U;
+                    std::uint16_t defense = 0U;
+                };
+                const auto source_values_after_weapon_item = [](
+                    const RunnerRecordFields& runner,
+                    const std::uint8_t item_code) {
+                    // ROM 0x55ED6: byte additions, one-bit shift, then the
+                    // first item-0x28 phase. This is computed from the live
+                    // record after the user action, outside the cached bar
+                    // result being checked below.
+                    auto average = static_cast<std::uint8_t>(0U);
+                    average = static_cast<std::uint8_t>(
+                        average + runner.attributes[1U]);
+                    average = static_cast<std::uint8_t>(
+                        average + runner.attributes[4U]);
+                    average = static_cast<std::uint8_t>(
+                        average + runner.attributes[5U]);
+                    average = static_cast<std::uint8_t>(average >> 1U);
+                    for (std::size_t slot = 0U;
+                         slot < runner.inventory_item_codes.size(); ++slot) {
+                        if (runner.inventory_item_codes[slot] == 0x28U) {
+                            average = static_cast<std::uint8_t>(
+                                average + runner.inventory_phase_bytes[slot]);
+                            break;
+                        }
+                    }
+
+                    // ROM 0x12C74 chooses its comparison skill by the
+                    // equipped weapon code: +0x82 for codes 1..7, +0x83 for
+                    // 8..10, and +0x84 for 11..12. Full Defense makes the
+                    // attack base zero, so the displayed value is the larger
+                    // of that skill and +0x81 (minimum one).
+                    const auto comparison_skill_index = item_code < 8U
+                        ? 2U
+                        : item_code < 11U ? 3U : 4U;
+                    const auto selected_skill = std::max(
+                        runner.skills[1U],
+                        runner.skills[comparison_skill_index]);
+                    const auto attack = static_cast<std::uint16_t>(
+                        selected_skill == 0U ? 1U : selected_skill);
+
+                    // At Full Defense, 0x12E3E adds Body with byte wrap.
+                    // 0x55E62 gives flag bit 5 priority over the first
+                    // item-0x27 phase; 0x12E52 accepts only the first set
+                    // cyberware bit in the 9..11 scan.
+                    auto defense = static_cast<std::uint8_t>(
+                        average + runner.attributes[0U]);
+                    std::uint16_t defense_word = defense;
+                    if ((runner.flags & 0x20U) != 0U) {
+                        defense_word = static_cast<std::uint16_t>(
+                            defense_word - 2U);
+                    } else {
+                        for (std::size_t slot = 0U;
+                             slot < runner.inventory_item_codes.size(); ++slot) {
+                            if (runner.inventory_item_codes[slot] == 0x27U) {
+                                defense_word = static_cast<std::uint16_t>(
+                                    defense_word -
+                                    (runner.inventory_phase_bytes[slot] >> 1U));
+                                break;
+                            }
+                        }
+                    }
+                    for (unsigned bit = 9U; bit <= 11U; ++bit) {
+                        if ((runner.cyberware_flags &
+                             (std::uint16_t{1U} << bit)) != 0U) {
+                            defense_word = static_cast<std::uint16_t>(
+                                defense_word + (bit - 8U));
+                            break;
+                        }
+                    }
+                    return SourceBarValues{average, attack, defense_word};
+                };
+
+                for (std::size_t profile_index = 0U;
+                     profile_index < profiles.size(); ++profile_index) {
+                    const auto& expected = profiles[profile_index];
+                    LiveRunnerRecord source_record{};
+                    if (profile_index < kJoshuaArchetypeCount) {
+                        source_record.bytes =
+                            startup_records.joshua_archetypes[profile_index]
+                                .record;
+                    } else {
+                        // Save-roster slot zero is Joshua; recruited template
+                        // one is the first named recruit at 0x72C1A.
+                        const auto roster_template = profile_index - 2U;
+                        source_record.bytes =
+                            startup_records.save_roster_templates
+                                [roster_template]
+                                    .record;
+                    }
+                    const auto source_rom_offset = profile_index <
+                            kJoshuaArchetypeCount
+                        ? kJoshuaRecordBase +
+                              profile_index * kRunnerRecordStride
+                        : kRecruitRecordBase +
+                              (profile_index - kJoshuaArchetypeCount) *
+                                  kRunnerRecordStride;
+                    if (source_rom_offset + kRunnerRecordStride >
+                            profile_rom_bytes.size() ||
+                        !std::equal(
+                            source_record.bytes.begin(),
+                            source_record.bytes.end(),
+                            profile_rom_bytes.begin() +
+                                static_cast<std::ptrdiff_t>(
+                                    source_rom_offset))) {
+                        std::cerr << "field profile combat-bar QA: source "
+                                  << expected.slug
+                                  << " record asset differs from ROM at 0x"
+                                  << std::hex << source_rom_offset << std::dec
+                                  << '\n';
+                        return profile_failure(
+                            "a named source profile is not byte-identical "
+                            "to its primary ROM record");
+                    }
+                    auto profile = read_runner_record_fields(source_record);
+                    if (profile.species_index != expected.race ||
+                        profile.archetype_index != expected.runner_class) {
+                        return profile_failure(
+                            "loaded profile order or race/class identity "
+                            "does not match the ROM source table");
+                    }
+
+                    // Exhaust the source ammo-transfer math over every legal
+                    // magazine count, all twelve D4540 old/new weapon pairs,
+                    // and every race/class source record. The oracle below
+                    // follows the raw 0x125FA ceil and 0x12256 half-up DIVU
+                    // branches, not the conversion helper under test.
+                    for (std::uint8_t old_item = 1U;
+                         old_item <= kWeaponCount; ++old_item) {
+                        const auto old_capacity =
+                            source_weapon_capacity(old_item);
+                        std::size_t old_round_states = 0U;
+                        for (std::uint16_t rounds = 0U;
+                             rounds <= old_capacity; ++rounds) {
+                            ++old_round_states;
+                            for (std::uint8_t target_item = 1U;
+                                 target_item <= kWeaponCount; ++target_item) {
+                                const auto target_capacity =
+                                    source_weapon_capacity(target_item);
+                                auto candidate = profile;
+                                candidate.inventory_item_codes[0U] = old_item;
+                                candidate.inventory_item_codes[1U] =
+                                    target_item;
+                                candidate.inventory_phase_bytes[0U] = 0U;
+                                candidate.inventory_phase_bytes[1U] = 0U;
+                                candidate.equipped_inventory_slot = 0;
+                                candidate.equipped_item_code = old_item;
+                                candidate.ammo_rounds =
+                                    static_cast<std::uint8_t>(rounds);
+                                const auto before = candidate;
+                                const auto selected =
+                                    read_selected_inventory_item(candidate,
+                                                                1U, 0U);
+                                const auto percent =
+                                    source_unequipped_weapon_percent(
+                                        static_cast<std::uint8_t>(rounds),
+                                        old_capacity);
+                                const auto expected_rounds =
+                                    source_equipped_weapon_rounds(
+                                        percent, target_capacity);
+                                if (!selected || selected->slot != 1U ||
+                                    selected->item_code != target_item ||
+                                    toggle_selected_equipment(
+                                        candidate, *selected, old_capacity,
+                                        target_capacity) !=
+                                        EquipmentMutation::equipped ||
+                                    candidate.equipped_inventory_slot != 1 ||
+                                    candidate.equipped_item_code !=
+                                        target_item ||
+                                    candidate.ammo_rounds != expected_rounds ||
+                                    !profile_action_facts_unchanged(candidate,
+                                                                    before)) {
+                                    std::cerr
+                                        << "field weapon ammo matrix: "
+                                        << expected.slug << " old="
+                                        << static_cast<unsigned>(old_item)
+                                        << " rounds=" << rounds
+                                        << " target="
+                                        << static_cast<unsigned>(target_item)
+                                        << " expected="
+                                        << static_cast<unsigned>(expected_rounds)
+                                        << " actual="
+                                        << static_cast<unsigned>(
+                                               candidate.ammo_rounds)
+                                        << '\n';
+                                    return profile_failure(
+                                        "the full ROM capacity/round matrix "
+                                        "did not match 0x125FA/0x12256");
+                                }
+                                ++weapon_matrix_state_cases;
+                            }
+                        }
+                        for (std::uint8_t target_item = 1U;
+                             target_item <= kWeaponCount; ++target_item) {
+                            weapon_matrix_manifest
+                                << expected.slug << '\t' << std::hex
+                                << source_rom_offset << std::dec << '\t'
+                                << static_cast<unsigned>(expected.race) << '\t'
+                                << static_cast<unsigned>(expected.runner_class)
+                                << '\t' << static_cast<unsigned>(old_item)
+                                << '\t' << static_cast<unsigned>(old_capacity)
+                                << '\t' << static_cast<unsigned>(target_item)
+                                << '\t' << static_cast<unsigned>(
+                                       source_weapon_capacity(target_item))
+                                << '\t' << old_round_states << '\t'
+                                << old_round_states << '\n';
+                            ++weapon_matrix_pairs;
+                        }
+                    }
+
+                    // Drive the source item-action screen using each profile's
+                    // real equipped starter weapon, then switch to one
+                    // controlled target item. The target sequence covers all
+                    // twelve weapon rows while retaining each source profile's
+                    // race, class, skills, armor, flags, and clip reserve.
+                    auto weapon_profile = profile;
+                    weapon_profile.posture = 0U;
+                    auto target_weapon = static_cast<std::uint8_t>(
+                        (profile_index % kWeaponCount) + 1U);
+                    if (target_weapon == profile.equipped_item_code) {
+                        target_weapon = static_cast<std::uint8_t>(
+                            (target_weapon % kWeaponCount) + 1U);
+                    }
+                    std::size_t target_slot =
+                        weapon_profile.inventory_item_codes.size();
+                    for (std::size_t slot = 0U;
+                         slot < weapon_profile.inventory_item_codes.size();
+                         ++slot) {
+                        if (weapon_profile.inventory_item_codes[slot] == 0U) {
+                            target_slot = slot;
+                            break;
+                        }
+                    }
+                    if (target_slot >=
+                            weapon_profile.inventory_item_codes.size() ||
+                        std::find(weapon_profile.inventory_item_codes.begin(),
+                                  weapon_profile.inventory_item_codes.end(),
+                                  target_weapon) !=
+                            weapon_profile.inventory_item_codes.end()) {
+                        return profile_failure(
+                            "a source profile has no distinct empty cell for "
+                            "the controlled target weapon");
+                    }
+                    weapon_profile.inventory_item_codes[target_slot] =
+                        target_weapon;
+                    weapon_profile.inventory_phase_bytes[target_slot] = 0U;
+                    field_scene.active_runner_record() = weapon_profile;
+                    field_scene.refresh_field_hud_for_dump();
+                    weapon_profile = field_scene.active_runner_record();
+                    const auto source_weapon =
+                        weapon_profile.equipped_item_code;
+                    const bool source_has_weapon =
+                        weapon_profile.equipped_inventory_slot >= 0 &&
+                        source_weapon > 0U && source_weapon <= kWeaponCount;
+                    const auto old_capacity = source_has_weapon
+                        ? source_weapon_capacity(source_weapon)
+                        : std::uint8_t{0U};
+                    const auto source_rounds = weapon_profile.ammo_rounds;
+                    if ((source_has_weapon &&
+                         (weapon_profile.inventory_item_codes[
+                              static_cast<std::size_t>(
+                                  weapon_profile.equipped_inventory_slot)] !=
+                              source_weapon ||
+                          source_rounds != old_capacity)) ||
+                        (!source_has_weapon &&
+                         weapon_profile.equipped_inventory_slot >= 0 &&
+                         static_cast<std::uint8_t>(
+                             weapon_profile.equipped_inventory_slot) !=
+                             0x7FU)) {
+                        std::cerr << "field profile ammo refresh detail: "
+                                  << expected.slug << " flags=0x" << std::hex
+                                  << weapon_profile.flags << std::dec
+                                  << " slot="
+                                  << static_cast<int>(
+                                         weapon_profile.equipped_inventory_slot)
+                                  << " item="
+                                  << static_cast<unsigned>(source_weapon)
+                                  << " rounds="
+                                  << static_cast<unsigned>(source_rounds)
+                                  << " capacity="
+                                  << static_cast<unsigned>(old_capacity)
+                                  << '\n';
+                        return profile_failure(
+                            "source field refresh did not clamp the actual "
+                            "starter magazine to D4540 capacity");
+                    }
+                    const auto source_percent = source_has_weapon
+                        ? source_unequipped_weapon_percent(source_rounds,
+                                                           old_capacity)
+                        : source_rounds;
+                    const auto target_capacity =
+                        source_weapon_capacity(target_weapon);
+                    const auto target_rounds =
+                        source_equipped_weapon_rounds(source_percent,
+                                                      target_capacity);
+                    const auto source_profile_before_action = weapon_profile;
+                    const auto weapon_prefix =
+                        std::string(expected.slug) + "-target-" +
+                        std::to_string(target_weapon);
+                    if (!field_scene.open_command_overview_for_dump() ||
+                        !select_armor_cell(target_slot)) {
+                        return profile_failure(
+                            "ordinary command inputs did not select the "
+                            "controlled target weapon cell");
+                    }
+                    auto weapon_selection_scene = render_qa_field(field_scene);
+                    const auto weapon_selection_filename =
+                        weapon_prefix + "-selected.bmp";
+                    if (!save_weapon_profile_frame(
+                            weapon_selection_filename,
+                            weapon_selection_scene)) {
+                        return profile_failure(
+                            "could not save the selected target weapon frame");
+                    }
+                    press(0x40U);
+                    if (!field_scene.inventory_action_open() ||
+                        field_scene.inventory_action_selection() != 2U) {
+                        return profile_failure(
+                            "A did not open the default Equip action for the "
+                            "selected target weapon");
+                    }
+                    const auto weapon_action_scene = render_qa_field(field_scene);
+                    const auto weapon_action_filename =
+                        weapon_prefix + "-equip-action.bmp";
+                    if (!save_weapon_profile_frame(weapon_action_filename,
+                                                    weapon_action_scene)) {
+                        return profile_failure(
+                            "could not save the target weapon action frame");
+                    }
+                    press(0x40U);
+                    const auto& switched_record =
+                        field_scene.active_runner_record();
+                    if (field_scene.inventory_action_open() ||
+                        switched_record.equipped_inventory_slot !=
+                            static_cast<std::int8_t>(target_slot) ||
+                        switched_record.equipped_item_code != target_weapon ||
+                        switched_record.ammo_rounds != target_rounds ||
+                        switched_record.ammo_clips !=
+                            source_profile_before_action.ammo_clips ||
+                        !profile_action_facts_unchanged(
+                            switched_record, source_profile_before_action)) {
+                        return profile_failure(
+                            "the source Equip input changed the wrong profile "
+                            "fields or did not convert the magazine");
+                    }
+                    weapon_selection_scene = render_qa_field(field_scene);
+                    if (!active_hud_ammo_pixels_match(weapon_selection_scene,
+                                                      target_rounds)) {
+                        return profile_failure(
+                            "the switched weapon HUD number did not match its "
+                            "D4540 capacity-derived count asset");
+                    }
+                    const auto switched_menu_filename =
+                        weapon_prefix + "-switched-command.bmp";
+                    if (!save_weapon_profile_frame(switched_menu_filename,
+                                                    weapon_selection_scene)) {
+                        return profile_failure(
+                            "could not save the switched command-menu frame");
+                    }
+                    if (!move_to_combat_page()) {
+                        return profile_failure(
+                            "the selected inventory column did not reach "
+                            "the source combat-bar page");
+                    }
+                    const auto expected_target_bars =
+                        source_values_after_weapon_item(switched_record,
+                                                        target_weapon);
+                    const auto& target_bars =
+                        field_scene.command_overview_combat_bars();
+                    const auto switched_combat_bars_scene =
+                        render_qa_field(field_scene);
+                    if (field_scene.command_overview_primary_page() != 2U ||
+                        target_bars.command_average !=
+                            expected_target_bars.command_average ||
+                        !target_bars.attack_written ||
+                        !target_bars.defense_written ||
+                        target_bars.attack_value !=
+                            expected_target_bars.attack ||
+                        target_bars.attack_bar !=
+                            expected_target_bars.attack - 1U ||
+                        target_bars.defense_value !=
+                            expected_target_bars.defense ||
+                        target_bars.defense_bar !=
+                            expected_target_bars.defense - 1U ||
+                        !region_matches_bar_asset(switched_combat_bars_scene,
+                                                  target_bars)) {
+                        std::cerr << "field profile weapon-bar detail: "
+                                  << expected.slug << " target="
+                                  << static_cast<unsigned>(target_weapon)
+                                  << " page="
+                                  << static_cast<unsigned>(
+                                         field_scene.command_overview_primary_page())
+                                  << " expected="
+                                  << expected_target_bars.command_average << '/'
+                                  << expected_target_bars.attack << '/'
+                                  << expected_target_bars.defense
+                                  << " actual=" << target_bars.command_average
+                                  << '/' << target_bars.attack_value << '/'
+                                  << target_bars.defense_value << " bars="
+                                  << static_cast<unsigned>(target_bars.attack_bar)
+                                  << '/' << static_cast<unsigned>(
+                                         target_bars.defense_bar)
+                                  << " assets="
+                                  << region_matches_bar_asset(
+                                         switched_combat_bars_scene,
+                                         target_bars)
+                                  << '\n';
+                        return profile_failure(
+                            "the selected weapon's ROM skill band did not "
+                            "produce the expected Atk/Def values and bars");
+                    }
+                    const auto switched_combat_bars_filename =
+                        weapon_prefix + "-switched-combat-bars.bmp";
+                    if (!save_weapon_profile_frame(
+                            switched_combat_bars_filename,
+                            switched_combat_bars_scene)) {
+                        return profile_failure(
+                            "could not save the switched Atk/Def frame");
+                    }
+                    press(0x80U);
+                    auto switched_field_scene = render_qa_field(field_scene);
+                    if (field_scene.command_overview_open() ||
+                        !active_hud_ammo_pixels_match(switched_field_scene,
+                                                      target_rounds)) {
+                        return profile_failure(
+                            "Start did not return to the field with the "
+                            "converted target magazine displayed");
+                    }
+                    const auto switched_field_filename =
+                        weapon_prefix + "-switched-field.bmp";
+                    if (!save_weapon_profile_frame(switched_field_filename,
+                                                    switched_field_scene) ||
+                        !field_scene.open_command_overview_for_dump() ||
+                        !select_armor_cell(target_slot)) {
+                        return profile_failure(
+                            "could not save and re-enter the switched weapon "
+                            "state");
+                    }
+                    press(0x40U);
+                    if (!field_scene.inventory_action_open() ||
+                        field_scene.inventory_action_selection() != 2U) {
+                        return profile_failure(
+                            "reselected equipped weapon did not open Equip");
+                    }
+                    press(0x40U);
+                    const auto target_percent =
+                        source_unequipped_weapon_percent(target_rounds,
+                                                         target_capacity);
+                    const auto& unequipped_record =
+                        field_scene.active_runner_record();
+                    if (unequipped_record.equipped_inventory_slot != -1 ||
+                        unequipped_record.equipped_item_code != 0U ||
+                        unequipped_record.ammo_rounds != target_percent ||
+                        unequipped_record.inventory_item_codes[target_slot] !=
+                            target_weapon ||
+                        !profile_action_facts_unchanged(
+                            unequipped_record, source_profile_before_action)) {
+                        return profile_failure(
+                            "same-cell unequip did not preserve the weapon "
+                            "percentage and inventory record");
+                    }
+                    auto unequipped_menu_scene =
+                        render_qa_field(field_scene);
+                    if (!active_hud_ammo_pixels_match(unequipped_menu_scene,
+                                                      0U)) {
+                        return profile_failure(
+                            "unequipped percentage leaked into the HUD ammo "
+                            "counter instead of displaying zero");
+                    }
+                    const auto unequipped_menu_filename =
+                        weapon_prefix + "-unequipped-command.bmp";
+                    if (!save_weapon_profile_frame(unequipped_menu_filename,
+                                                    unequipped_menu_scene)) {
+                        return profile_failure(
+                            "could not save the unequipped command-menu frame");
+                    }
+                    press(0x80U);
+                    auto unequipped_field_scene = render_qa_field(field_scene);
+                    if (field_scene.command_overview_open() ||
+                        !active_hud_ammo_pixels_match(unequipped_field_scene,
+                                                      0U)) {
+                        return profile_failure(
+                            "unequipped field return retained stale ammo "
+                            "counter pixels");
+                    }
+                    const auto unequipped_field_filename =
+                        weapon_prefix + "-unequipped-field.bmp";
+                    if (!save_weapon_profile_frame(
+                            unequipped_field_filename,
+                            unequipped_field_scene) ||
+                        !field_scene.open_command_overview_for_dump() ||
+                        !select_armor_cell(target_slot)) {
+                        return profile_failure(
+                            "could not save and re-enter the unequipped "
+                            "weapon state");
+                    }
+                    press(0x40U);
+                    if (!field_scene.inventory_action_open() ||
+                        field_scene.inventory_action_selection() != 2U) {
+                        return profile_failure(
+                            "reselected unequipped weapon did not open Equip");
+                    }
+                    press(0x40U);
+                    const auto reequipped_rounds =
+                        source_equipped_weapon_rounds(target_percent,
+                                                      target_capacity);
+                    const auto& reequipped_record =
+                        field_scene.active_runner_record();
+                    if (reequipped_record.equipped_inventory_slot !=
+                            static_cast<std::int8_t>(target_slot) ||
+                        reequipped_record.equipped_item_code != target_weapon ||
+                        reequipped_record.ammo_rounds != reequipped_rounds ||
+                        !profile_action_facts_unchanged(
+                            reequipped_record, source_profile_before_action)) {
+                        return profile_failure(
+                            "same-cell re-equip did not restore the source "
+                            "round count and profile fields");
+                    }
+                    auto reequipped_menu_scene =
+                        render_qa_field(field_scene);
+                    if (!active_hud_ammo_pixels_match(reequipped_menu_scene,
+                                                      reequipped_rounds)) {
+                        return profile_failure(
+                            "same-cell re-equip did not redraw the exact "
+                            "named ammo counter asset");
+                    }
+                    const auto reequipped_menu_filename =
+                        weapon_prefix + "-reequipped-command.bmp";
+                    if (!save_weapon_profile_frame(reequipped_menu_filename,
+                                                    reequipped_menu_scene)) {
+                        return profile_failure(
+                            "could not save the re-equipped command-menu frame");
+                    }
+                    press(0x80U);
+                    auto reequipped_field_scene = render_qa_field(field_scene);
+                    if (field_scene.command_overview_open() ||
+                        !active_hud_ammo_pixels_match(reequipped_field_scene,
+                                                      reequipped_rounds)) {
+                        return profile_failure(
+                            "re-equipped Start return did not retain the "
+                            "capacity-derived HUD counter");
+                    }
+                    const auto reequipped_field_filename =
+                        weapon_prefix + "-reequipped-field.bmp";
+                    if (!save_weapon_profile_frame(
+                            reequipped_field_filename,
+                            reequipped_field_scene) ||
+                        !field_scene.open_command_overview_for_dump()) {
+                        return profile_failure(
+                            "could not save the re-equipped field frame");
+                    }
+                    press(0x80U);
+                    if (field_scene.command_overview_open() ||
+                        render_qa_field(field_scene) !=
+                            reequipped_field_scene) {
+                        return profile_failure(
+                            "repeated Start left stale command pixels after "
+                            "the weapon route");
+                    }
+                    weapon_profile_manifest
+                        << expected.slug << '\t' << std::hex
+                        << source_rom_offset << std::dec << '\t'
+                        << static_cast<unsigned>(expected.race) << '\t'
+                        << static_cast<unsigned>(expected.runner_class) << '\t'
+                        << static_cast<unsigned>(source_weapon) << '\t'
+                        << static_cast<unsigned>(source_rounds) << '\t'
+                        << static_cast<unsigned>(old_capacity) << '\t'
+                        << target_slot << '\t'
+                        << static_cast<unsigned>(target_weapon) << '\t'
+                        << static_cast<unsigned>(target_capacity) << '\t'
+                        << static_cast<unsigned>(source_percent) << '\t'
+                        << static_cast<unsigned>(target_rounds) << '\t'
+                        << static_cast<unsigned>(weapon_profile.ammo_clips)
+                        << '\t' << weapon_selection_filename << '\t'
+                        << weapon_action_filename << '\t'
+                        << switched_menu_filename << '\t'
+                        << switched_combat_bars_filename << '\t'
+                        << switched_field_filename << '\t'
+                        << unequipped_menu_filename << '\t'
+                        << unequipped_field_filename << '\t'
+                        << reequipped_menu_filename << '\t'
+                        << reequipped_field_filename << '\n';
+                    ++weapon_profile_cases;
+
+                    // Normalize only posture so each profile can traverse
+                    // every live posture through the real command controls.
+                    profile.posture = 0U;
+                    field_scene.active_runner_record() = profile;
+                    const auto field_before_menu = render_qa_field(field_scene);
+                    if (!field_scene.open_command_overview_for_dump()) {
+                        return profile_failure(
+                            "could not open inventory for the source profile");
+                    }
+                    for (std::size_t slot = 0U; slot < 8U; ++slot) {
+                        const auto item_code =
+                            profile.inventory_item_codes[slot];
+                        const auto phase =
+                            profile.inventory_phase_bytes[slot];
+                        const auto has_detail_value =
+                            item_code != 0U && item_code < 0x0DU ||
+                            (item_code >= 0x0DU && item_code <= 0x14U) ||
+                            (item_code >= 0x18U && item_code <= 0x28U);
+                        if (!has_detail_value) {
+                            continue;
+                        }
+                        if (phase >= kDetailValueAssetCount ||
+                            !select_armor_cell(slot)) {
+                            std::cerr
+                                << "field profile combat-bar QA: "
+                                   "inventory detail phase/selection is out "
+                                   "of source range for "
+                                << expected.slug << " slot=" << slot
+                                << " item=0x" << std::hex
+                                << static_cast<unsigned>(item_code)
+                                << " phase=0x"
+                                << static_cast<unsigned>(phase) << std::dec
+                                << '\n';
+                            return profile_failure(
+                                "a source profile selects a detail value "
+                                "outside the 0x6AC46 table or the inventory "
+                                "cursor could not reach it");
+                        }
+                        const auto scene = render_qa_field(field_scene);
+                        const auto asset_path =
+                            asset_root / "menu" / "field" /
+                            ("detail-value-" + std::to_string(phase) +
+                             ".bmp");
+                        const QImage asset(QString::fromStdWString(
+                            asset_path.wstring()));
+                        if (asset.size() != QSize(16, 8) ||
+                            !region_matches_asset(scene, asset, 120, 56)) {
+                            std::cerr
+                                << "field profile combat-bar QA: detail "
+                                   "value pixels do not match the selected "
+                                   "source phase for "
+                                << expected.slug << " slot=" << slot
+                                << " item=0x" << std::hex
+                                << static_cast<unsigned>(item_code)
+                                << " phase=0x"
+                                << static_cast<unsigned>(phase) << std::dec
+                                << '\n';
+                            return profile_failure(
+                                "selected detail value did not render its "
+                                "named 16x8 asset at the ROM destination");
+                        }
+                        std::ostringstream frame_name;
+                        frame_name << expected.slug << "-slot" << slot
+                                   << "-item-" << std::hex << std::setw(2)
+                                   << std::setfill('0')
+                                   << static_cast<unsigned>(item_code)
+                                   << "-phase-" << std::setw(2)
+                                   << static_cast<unsigned>(phase)
+                                   << ".bmp";
+                        const auto frame_path =
+                            detail_value_output_directory / frame_name.str();
+                        if (!scene.save(QString::fromStdWString(
+                                frame_path.wstring()))) {
+                            return profile_failure(
+                                "could not save a selected detail-value frame");
+                        }
+                        detail_value_manifest
+                            << expected.slug << "\t0x" << std::hex
+                            << source_rom_offset << "\t0x12A8C/0x334C\t"
+                            << static_cast<unsigned>(profile.species_index)
+                            << "\t"
+                            << static_cast<unsigned>(profile.archetype_index)
+                            << "\t" << std::dec << slot << "\t0x" << std::hex
+                            << static_cast<unsigned>(item_code) << "\t0x"
+                            << static_cast<unsigned>(phase) << "\t"
+                            << (item_code < 0x0DU
+                                    ? "ammo"
+                                    : item_code <= 0x13U ? "uses" : "rtng")
+                            << "\tdetail-value-" << std::dec
+                            << static_cast<unsigned>(phase) << ".bmp\t"
+                            << frame_name.str() << '\n';
+                        ++detail_value_profile_cases;
+                        ++detail_value_profile_frames;
+                    }
+                    if (!field_scene.seek_command_overview_page(2U) ||
+                        field_scene.posture_dialog_open() ||
+                        !check_state(expected, profile_index, 0U,
+                                     "focused", false)) {
+                        return profile_failure(
+                            "could not enter command page 2 with the source "
+                            "profile's posture-zero bars");
+                    }
+                    const auto command_page_two_base =
+                        render_qa_field(field_scene);
+                    press(0x01U); // Up selects the posture control.
+                    if (!field_scene.posture_dialog_open() ||
+                        !check_state(expected, profile_index, 0U,
+                                     "focused", true)) {
+                        return profile_failure(
+                            "Up did not expose the profile's initial bars "
+                            "in posture focus");
+                    }
+                    for (std::uint8_t posture = 1U; posture <= 4U;
+                         ++posture) {
+                        field_audio_events.clear();
+                        press(0x08U); // Right moves toward Full Offense.
+                        if (field_audio_events !=
+                            std::vector<std::uint16_t>{0x25U} ||
+                            !check_state(expected, profile_index, posture,
+                                         "focused", true)) {
+                            return profile_failure(
+                                "Right failed to update state, bar values, "
+                                "pixels, or source audio at a posture step");
+                        }
+                    }
+                    field_audio_events.clear();
+                    const auto full_offense = render_qa_field(field_scene);
+                    const auto max_bars =
+                        field_scene.command_overview_combat_bars();
+                    press(0x08U); // Source clamps at Full Offense.
+                    if (field_scene.posture_dialog_value() != 4U ||
+                        field_scene.command_overview_combat_bars().attack_value !=
+                            max_bars.attack_value ||
+                        field_scene.command_overview_combat_bars().defense_value !=
+                            max_bars.defense_value ||
+                        field_audio_events !=
+                            std::vector<std::uint16_t>{0x25U} ||
+                        render_qa_field(field_scene) != full_offense) {
+                        return profile_failure(
+                            "Full Offense endpoint did not clamp without "
+                            "changing displayed bars");
+                    }
+                    for (int posture = 3; posture >= 0; --posture) {
+                        field_audio_events.clear();
+                        press(0x04U); // Left returns toward Full Defense.
+                        if (field_scene.posture_dialog_value() != posture ||
+                            field_audio_events !=
+                                std::vector<std::uint16_t>{0x25U} ||
+                            !check_state(expected, profile_index,
+                                         static_cast<std::uint8_t>(posture),
+                                         "focused", false)) {
+                            return profile_failure(
+                                "Left failed to restore each source posture "
+                                "and its Atk/Def values");
+                        }
+                    }
+                    field_audio_events.clear();
+                    const auto full_defense = render_qa_field(field_scene);
+                    const auto min_bars =
+                        field_scene.command_overview_combat_bars();
+                    press(0x04U); // Source clamps at Full Defense.
+                    if (field_scene.posture_dialog_value() != 0U ||
+                        field_scene.command_overview_combat_bars().attack_value !=
+                            min_bars.attack_value ||
+                        field_scene.command_overview_combat_bars().defense_value !=
+                            min_bars.defense_value ||
+                        field_audio_events !=
+                            std::vector<std::uint16_t>{0x25U} ||
+                        render_qa_field(field_scene) != full_defense) {
+                        return profile_failure(
+                            "Full Defense endpoint did not clamp without "
+                            "changing displayed bars");
+                    }
+                    press(0x02U); // Down leaves posture focus.
+                    if (field_scene.posture_dialog_open() ||
+                        !check_state(expected, profile_index, 0U,
+                                     "focused", false) ||
+                        render_qa_field(field_scene) !=
+                            command_page_two_base) {
+                        return profile_failure(
+                            "Down did not restore the exact command page "
+                            "after posture focus");
+                    }
+                    press(0x80U); // Start returns to the field.
+                    if (field_scene.command_overview_open() ||
+                        render_qa_field(field_scene) != field_before_menu) {
+                        return profile_failure(
+                            "Start did not return from each profile audit to "
+                            "its clean field frame");
+                    }
+
+                    // Exercise a real inventory action on each full source
+                    // profile. Preserve its race/class stats, skills, flags,
+                    // and other inventory entries; use the known ROM weapon
+                    // row in slot zero as the controlled action input.
+                    auto equipped_profile = profile;
+                    equipped_profile.posture = 0U;
+                    equipped_profile.inventory_item_codes[0U] = 1U;
+                    equipped_profile.inventory_phase_bytes[0U] = 0U;
+                    equipped_profile.equipped_inventory_slot = -1;
+                    equipped_profile.equipped_item_code = 0U;
+                    field_scene.active_runner_record() = equipped_profile;
+                    const auto field_before_equipment_menu =
+                        render_qa_field(field_scene);
+                    const auto field_before_equipment_path =
+                        output_directory /
+                        (std::string(expected.slug) +
+                         "-field-before-equipment-action.bmp");
+                    if (!field_before_equipment_menu.save(
+                            QString::fromStdWString(
+                                field_before_equipment_path.wstring()))) {
+                        return profile_failure(
+                            "could not save the field frame before the "
+                            "equipment action");
+                    }
+                    if (!field_scene.open_command_overview_for_dump()) {
+                        return profile_failure(
+                            "could not reopen the command menu for the "
+                            "profile equipment action");
+                    }
+                    for (std::size_t move = 0U;
+                         move < 7U &&
+                         field_scene.command_overview_primary_page() != 0U;
+                         ++move) {
+                        press(0x04U); // Left through the command tabs.
+                    }
+                    if (field_scene.command_overview_primary_page() != 0U ||
+                        field_scene.command_overview_view()
+                                .source_state.secondary_page != 0U) {
+                        return profile_failure(
+                            "could not reach the controlled weapon cell with "
+                            "the real command-tab inputs");
+                    }
+                    press(0x40U); // Open Equip/Use.
+                    if (!field_scene.inventory_action_open() ||
+                        field_scene.inventory_action_selection() != 2U) {
+                        return profile_failure(
+                            "the source weapon did not open its Equip/Use "
+                            "action for every profile");
+                    }
+                    press(0x40U); // Equip weapon 1.
+                    const auto& equipped_record =
+                        field_scene.active_runner_record();
+                    if (field_scene.inventory_action_open() ||
+                        equipped_record.equipped_inventory_slot != 0 ||
+                        equipped_record.equipped_item_code != 1U) {
+                        return profile_failure(
+                            "the Equip input did not mutate the live profile "
+                            "record as the selected weapon");
+                    }
+                    press(0x08U);
+                    press(0x08U);
+                    if (field_scene.command_overview_primary_page() != 2U) {
+                        return profile_failure(
+                            "Right inputs did not expose the profile's "
+                            "post-equip combat bars");
+                    }
+                    const auto expected_equipped_bars =
+                        source_values_after_weapon_item(equipped_record, 1U);
+                    const auto& equipped_bars =
+                        field_scene.command_overview_combat_bars();
+                    const auto equipped_scene = render_qa_field(field_scene);
+                    if (equipped_bars.command_average !=
+                            expected_equipped_bars.command_average ||
+                        !equipped_bars.attack_written ||
+                        !equipped_bars.defense_written ||
+                        equipped_bars.attack_value !=
+                            expected_equipped_bars.attack ||
+                        equipped_bars.defense_value !=
+                            expected_equipped_bars.defense ||
+                        !region_matches_bar_asset(equipped_scene,
+                                                  equipped_bars)) {
+                        std::cerr << "field profile combat-bar equip: "
+                                  << expected.slug << " expected avg/Atk/Def="
+                                  << expected_equipped_bars.command_average
+                                  << '/' << expected_equipped_bars.attack << '/'
+                                  << expected_equipped_bars.defense
+                                  << " got=" << equipped_bars.command_average
+                                  << '/' << equipped_bars.attack_value << '/'
+                                  << equipped_bars.defense_value << '\n';
+                        return profile_failure(
+                            "live equipment input did not refresh formula-backed "
+                            "bar values and exact named assets");
+                    }
+                    const auto equipped_capture = output_directory /
+                        (std::string(expected.slug) +
+                         "-weapon-1-equipped-command-bars.bmp");
+                    if (!equipped_scene.save(QString::fromStdWString(
+                            equipped_capture.wstring()))) {
+                        return profile_failure(
+                            "could not save the post-equip full-frame "
+                            "profile capture");
+                    }
+                    ++equipped_profile_frames;
+                    press(0x80U); // Return to the field.
+                    if (field_scene.command_overview_open() ||
+                        field_scene.active_runner_record()
+                                .equipped_inventory_slot != 0 ||
+                        field_scene.active_runner_record()
+                                .equipped_item_code != 1U) {
+                        return profile_failure(
+                            "Start failed to return to the field with the "
+                            "equipment mutation preserved");
+                    }
+                    const auto field_after_equipment =
+                        render_qa_field(field_scene);
+                    const auto field_after_equipment_path =
+                        output_directory /
+                        (std::string(expected.slug) +
+                         "-field-after-equipment-return.bmp");
+                    if (!field_after_equipment.save(QString::fromStdWString(
+                            field_after_equipment_path.wstring()))) {
+                        return profile_failure(
+                            "could not save the field return after the "
+                            "equipment action");
+                    }
+                    ++equipped_field_frames;
+                    // The return frame may legitimately change because the
+                    // live equipment/HUD facts changed. Reopen and return a
+                    // second time; this full-frame comparison checks that
+                    // the new field presentation is stable and no command
+                    // panel pixels are left behind.
+                    if (!field_scene.open_command_overview_for_dump()) {
+                        return profile_failure(
+                            "could not reopen the command menu after the "
+                            "equipment return");
+                    }
+                    press(0x80U);
+                    if (field_scene.command_overview_open() ||
+                        render_qa_field(field_scene) !=
+                            field_after_equipment) {
+                        return profile_failure(
+                            "repeated Start did not reproduce the clean "
+                            "post-equipment field frame");
+                    }
+
+                    // Each raw source preset now carries all seven ROM armor
+                    // rows through the inventory preview, replacement/toggle
+                    // actions, equipped summary, Atk/Def page, and field
+                    // return. Armor is deliberately checked separately from
+                    // the command Defense formula: ROM 0x12E42 reads the
+                    // item-0x27 action modifier, while equipped +0x76 feeds
+                    // the D4D50 armor subtraction in the combat hit path.
+                    const auto source_armor_index =
+                        profile.equipped_armor_index;
+                    const auto source_armor_code =
+                        source_armor_index == 0U
+                            ? std::uint8_t{0U}
+                            : static_cast<std::uint8_t>(
+                                  0x2BU + source_armor_index);
+                    std::size_t source_armor_slot = 8U;
+                    if (source_armor_index != 0U) {
+                        for (std::size_t slot = 0U;
+                             slot < profile.inventory_item_codes.size();
+                             ++slot) {
+                            if (profile.inventory_item_codes[slot] ==
+                                source_armor_code) {
+                                if (source_armor_slot != 8U) {
+                                    return profile_failure(
+                                        "a source armor index maps to more "
+                                        "than one owned armor cell");
+                                }
+                                source_armor_slot = slot;
+                            }
+                        }
+                        if (source_armor_slot == 8U) {
+                            return profile_failure(
+                                "a source equipped armor index has no matching "
+                                "inventory item");
+                        }
+                    }
+
+                    std::size_t empty_armor_slot = 8U;
+                    for (std::size_t slot = 0U;
+                         slot < profile.inventory_item_codes.size(); ++slot) {
+                        if (profile.inventory_item_codes[slot] == 0U) {
+                            empty_armor_slot = slot;
+                            break;
+                        }
+                    }
+                    if (empty_armor_slot == 8U &&
+                        source_armor_index == 0U) {
+                        return profile_failure(
+                            "the source profile has no empty cell for the "
+                            "controlled armor item");
+                    }
+
+                    for (std::uint8_t armor_index = 1U;
+                         armor_index <= kArmorCount; ++armor_index) {
+                        const auto item_code = static_cast<std::uint8_t>(
+                            0x2BU + armor_index);
+                        const auto* armor =
+                            find_us_armor_definition(armor_index);
+                        const auto* mapped_armor =
+                            find_us_armor_definition_for_item_code(item_code);
+                        const auto armor_rom_offset =
+                            kArmorTableBase +
+                            static_cast<std::size_t>(armor_index - 1U) *
+                                kArmorTableStride;
+                        if (armor == nullptr || mapped_armor == nullptr ||
+                            mapped_armor->armor_index != armor_index ||
+                            armor->primary_modifier !=
+                                profile_rom_bytes[armor_rom_offset + 0x25U] ||
+                            armor->secondary_modifier !=
+                                profile_rom_bytes[armor_rom_offset + 0x26U]) {
+                            std::cerr << "field profile armor permutation: "
+                                      << expected.slug << " item_code="
+                                      << static_cast<unsigned>(item_code)
+                                      << " did not match D4D50 +0x25/+0x26\n";
+                            return profile_failure(
+                                "a typed armor row or item mapping differs "
+                                "from the primary ROM");
+                        }
+
+                        auto armor_profile = profile;
+                        armor_profile.posture = 0U;
+                        const bool candidate_is_source_equipment =
+                            source_armor_index == armor_index;
+                        const auto selected_slot =
+                            candidate_is_source_equipment
+                                ? source_armor_slot
+                                : empty_armor_slot;
+                        if (selected_slot >= 8U) {
+                            return profile_failure(
+                                "could not reserve the selected armor cell");
+                        }
+                        if (!candidate_is_source_equipment) {
+                            armor_profile.inventory_item_codes[selected_slot] =
+                                item_code;
+                            armor_profile.inventory_phase_bytes[selected_slot] =
+                                0U;
+                        }
+                        const auto original_selected_phase =
+                            armor_profile.inventory_phase_bytes[selected_slot];
+                        field_scene.active_runner_record() = armor_profile;
+                        field_scene.refresh_field_hud_for_dump();
+                        const auto refreshed_ammo =
+                            source_hud_refreshed_ammo(armor_profile);
+                        auto refreshed_profile = armor_profile;
+                        refreshed_profile.ammo_rounds = refreshed_ammo;
+                        const auto& field_entry_record =
+                            field_scene.active_runner_record();
+                        if (field_entry_record.ammo_rounds != refreshed_ammo ||
+                            field_entry_record.equipped_armor_index !=
+                                refreshed_profile.equipped_armor_index ||
+                            !profile_inputs_unchanged(field_entry_record,
+                                                      refreshed_profile, 8U)) {
+                            std::cerr << "field profile armor refresh: "
+                                      << expected.slug << " item_code="
+                                      << static_cast<unsigned>(
+                                             armor_profile.equipped_item_code)
+                                      << " raw_rounds="
+                                      << static_cast<unsigned>(
+                                             armor_profile.ammo_rounds)
+                                      << " expected_after_0x36FC="
+                                      << static_cast<unsigned>(refreshed_ammo)
+                                      << " actual="
+                                      << static_cast<unsigned>(
+                                             field_entry_record.ammo_rounds)
+                                      << '\n';
+                            return profile_failure(
+                                "the field-entry HUD refresh did not apply "
+                                "the ROM magazine-capacity rule cleanly");
+                        }
+                        armor_profile.ammo_rounds = refreshed_ammo;
+                        if (!field_scene.open_command_overview_for_dump() ||
+                            !move_to_combat_page() ||
+                            !armor_command_page_matches(expected)) {
+                            return profile_failure(
+                                "could not check the source Atk/Def values "
+                                "before an armor action");
+                        }
+                        const auto source_command_page =
+                            render_qa_field(field_scene);
+                        if (source_armor_index != 0U &&
+                            !armor_summary_matches(source_command_page,
+                                                   source_armor_index)) {
+                            return profile_failure(
+                                "the source preset's equipped armor summary "
+                                "did not match its D4D50 row");
+                        }
+                        if (source_armor_index == 0U &&
+                            !save_armor_frame(
+                                std::string(expected.slug) + "-armor-" +
+                                    std::to_string(item_code) +
+                                    "-source-no-armor-command.bmp",
+                                source_command_page)) {
+                            return profile_failure(
+                                "could not save the no-armor baseline page");
+                        }
+                        if (!select_armor_cell(selected_slot)) {
+                            return profile_failure(
+                                "physical d-pad input did not select the "
+                                "source armor inventory cell");
+                        }
+                        auto selected_scene = render_qa_field(field_scene);
+                        const auto armor_prefix =
+                            std::string(expected.slug) + "-armor-" +
+                            std::to_string(item_code);
+                        const auto& selected_record =
+                            field_scene.active_runner_record();
+                        const auto marker_source_slot_matches =
+                            source_armor_index == 0U ||
+                            armor_cell_marker_matches(selected_scene,
+                                                      source_armor_slot,
+                                                      true);
+                        const auto marker_selected_slot_matches =
+                            armor_cell_marker_matches(
+                                selected_scene, selected_slot,
+                                candidate_is_source_equipment);
+                        const bool selected_item_matches =
+                            selected_record.inventory_item_codes[
+                                selected_slot] == item_code;
+                        const bool selected_phase_matches =
+                            selected_record.inventory_phase_bytes[
+                                selected_slot] == original_selected_phase;
+                        const bool selected_armor_matches =
+                            selected_record.equipped_armor_index ==
+                            source_armor_index;
+                        const bool selected_icon_matches =
+                            armor_icon_matches(selected_scene, armor_profile,
+                                               item_code, selected_slot);
+                        const bool selected_summary_matches =
+                            armor_summary_matches(selected_scene, armor_index);
+                        if (!selected_item_matches ||
+                            !selected_phase_matches ||
+                            !selected_armor_matches ||
+                            !marker_source_slot_matches ||
+                            !marker_selected_slot_matches ||
+                            !selected_icon_matches ||
+                            !selected_summary_matches) {
+                            selected_scene.save(QString::fromStdWString(
+                                (armor_output_directory /
+                                 (armor_prefix + "-selected-failure.bmp"))
+                                    .wstring()));
+                            std::cerr << "field profile armor selected: "
+                                      << expected.slug << " item_code="
+                                      << static_cast<unsigned>(item_code)
+                                      << " item=" << selected_item_matches
+                                      << " phase=" << selected_phase_matches
+                                      << " armor=" << selected_armor_matches
+                                      << " source_marker="
+                                      << marker_source_slot_matches
+                                      << " selected_marker="
+                                      << marker_selected_slot_matches
+                                      << " icon=" << selected_icon_matches
+                                      << " summary="
+                                      << selected_summary_matches << '\n';
+                            return profile_failure(
+                                "selected armor icon, equipped marker, phase "
+                                "or D4D50 preview did not match the source "
+                                "profile");
+                        }
+                        if (!save_armor_frame(armor_prefix + "-selected.bmp",
+                                              selected_scene)) {
+                            return profile_failure(
+                                "could not save the selected armor page");
+                        }
+
+                        const auto press_armor_action = [&]() {
+                            field_audio_events.clear();
+                            press(0x40U);
+                            return field_audio_events ==
+                                   std::vector<std::uint16_t>{0x24U};
+                        };
+                        if (!press_armor_action() ||
+                            !field_scene.inventory_action_open() ||
+                            field_scene.inventory_action_selection() != 2U ||
+                            !press_armor_action() ||
+                            field_scene.inventory_action_open()) {
+                            return profile_failure(
+                                "the source A/A Equip route or event-0x24 "
+                                "sound failed for an armor item");
+                        }
+
+                        QImage no_armor_command_page;
+                        if (source_armor_index != 0U) {
+                            const auto& cleared_record =
+                                field_scene.active_runner_record();
+                            selected_scene = render_qa_field(field_scene);
+                            const auto cleared_inputs_match =
+                                profile_inputs_unchanged(
+                                    cleared_record, armor_profile,
+                                    selected_slot);
+                            const auto selected_marker_cleared =
+                                armor_cell_marker_matches(
+                                    selected_scene, selected_slot, false);
+                            const auto source_marker_cleared =
+                                armor_cell_marker_matches(
+                                    selected_scene, source_armor_slot, false);
+                            const auto preview_matches =
+                                armor_summary_matches(selected_scene,
+                                                      armor_index);
+                            if (cleared_record.equipped_armor_index != 0U ||
+                                cleared_record.inventory_phase_bytes[
+                                    selected_slot] != 0U ||
+                                !cleared_inputs_match ||
+                                !selected_marker_cleared ||
+                                !source_marker_cleared || !preview_matches ||
+                                !save_armor_frame(
+                                    armor_prefix + "-replacement-cleared.bmp",
+                                    selected_scene)) {
+                                return profile_failure(
+                                    "the first A action did not clear +0x76 "
+                                    "and the selected phase without changing "
+                                    "other source profile state");
+                            }
+                            ++armor_clear_actions;
+                            if (!move_to_combat_page() ||
+                                !armor_command_page_matches(expected)) {
+                                return profile_failure(
+                                    "clearing armor changed the ROM-derived "
+                                    "command Atk/Def values");
+                            }
+                            no_armor_command_page =
+                                render_qa_field(field_scene);
+                            if (!save_armor_frame(
+                                    armor_prefix +
+                                        "-replacement-cleared-command.bmp",
+                                    no_armor_command_page) ||
+                                !select_armor_cell(selected_slot) ||
+                                field_scene.active_runner_record()
+                                        .inventory_item_codes[selected_slot] !=
+                                    item_code) {
+                                return profile_failure(
+                                    "the cleared-armor command page did not "
+                                    "return to the selected source cell");
+                            }
+                            if (!press_armor_action() ||
+                                !field_scene.inventory_action_open() ||
+                                field_scene.inventory_action_selection() !=
+                                    2U ||
+                                !press_armor_action() ||
+                                field_scene.inventory_action_open()) {
+                                return profile_failure(
+                                    "the second A/A route did not equip the "
+                                    "replacement armor");
+                            }
+                        }
+
+                        const auto& equipped_armor_record =
+                            field_scene.active_runner_record();
+                        selected_scene = render_qa_field(field_scene);
+                        const auto old_armor_marker_cleared =
+                            source_armor_index == 0U ||
+                            candidate_is_source_equipment ||
+                            armor_cell_marker_matches(
+                                selected_scene, source_armor_slot, false);
+                        if (equipped_armor_record.equipped_armor_index !=
+                                armor_index ||
+                            equipped_armor_record.inventory_item_codes[
+                                selected_slot] != item_code ||
+                            equipped_armor_record.inventory_phase_bytes[
+                                selected_slot] != armor_index ||
+                            !profile_inputs_unchanged(equipped_armor_record,
+                                                      armor_profile,
+                                                      selected_slot) ||
+                            !armor_cell_marker_matches(
+                                selected_scene, selected_slot, true) ||
+                            !old_armor_marker_cleared ||
+                            !armor_icon_matches(selected_scene,
+                                                equipped_armor_record,
+                                                item_code, selected_slot) ||
+                            !armor_summary_matches(selected_scene,
+                                                   armor_index)) {
+                            return profile_failure(
+                                "the Equip action did not write +0x76, the "
+                                "selected phase and correct cell marker");
+                        }
+                        if (!move_to_combat_page() ||
+                            !armor_command_page_matches(expected)) {
+                            return profile_failure(
+                                "equipped armor changed the command-screen "
+                                "Atk/Def formula or named bar pixels");
+                        }
+                        auto equipped_command_page =
+                            render_qa_field(field_scene);
+                        if (!armor_summary_matches(equipped_command_page,
+                                                   armor_index) ||
+                            !save_armor_frame(
+                                armor_prefix + "-equipped-command.bmp",
+                                equipped_command_page)) {
+                            return profile_failure(
+                                "the equipped command page did not show the "
+                                "active armor D4D50 summary");
+                        }
+
+                        press(0x80U);
+                        if (field_scene.command_overview_open() ||
+                            field_scene.active_runner_record()
+                                    .equipped_armor_index != armor_index ||
+                            field_scene.active_runner_record()
+                                    .inventory_phase_bytes[selected_slot] !=
+                                armor_index) {
+                            return profile_failure(
+                                "Start failed to preserve the equipped armor "
+                                "in the live runner record");
+                        }
+                        const auto equipped_field_frame =
+                            render_qa_field(field_scene);
+                        if (!save_armor_frame(
+                                armor_prefix + "-equipped-field.bmp",
+                                equipped_field_frame) ||
+                            !field_scene.open_command_overview_for_dump()) {
+                            return profile_failure(
+                                "the equipped armor state did not survive a "
+                                "clean field return and menu re-entry");
+                        }
+                        press(0x80U);
+                        if (field_scene.command_overview_open() ||
+                            render_qa_field(field_scene) !=
+                                equipped_field_frame ||
+                            !field_scene.open_command_overview_for_dump() ||
+                            !select_armor_cell(selected_slot)) {
+                            return profile_failure(
+                                "the equipped armor field return did not "
+                                "remain stable across menu re-entry");
+                        }
+                        const auto reentered_armor_scene =
+                            render_qa_field(field_scene);
+                        if (field_scene.active_runner_record()
+                                    .equipped_armor_index != armor_index ||
+                            !armor_cell_marker_matches(
+                                reentered_armor_scene, selected_slot, true) ||
+                            !armor_summary_matches(reentered_armor_scene,
+                                                   armor_index)) {
+                            return profile_failure(
+                                "the re-entered inventory did not retain the "
+                                "equipped armor marker and selected preview");
+                        }
+                        if (!press_armor_action() ||
+                            !field_scene.inventory_action_open() ||
+                            field_scene.inventory_action_selection() != 2U ||
+                            !press_armor_action() ||
+                            field_scene.inventory_action_open()) {
+                            return profile_failure(
+                                "the source A/A route failed to toggle armor "
+                                "off after menu re-entry");
+                        }
+                        const auto& unequipped_armor_record =
+                            field_scene.active_runner_record();
+                        selected_scene = render_qa_field(field_scene);
+                        if (unequipped_armor_record.equipped_armor_index !=
+                                0U ||
+                            unequipped_armor_record.inventory_phase_bytes[
+                                selected_slot] != 0U ||
+                            !profile_inputs_unchanged(
+                                unequipped_armor_record, armor_profile,
+                                selected_slot) ||
+                            !armor_cell_marker_matches(selected_scene,
+                                                       selected_slot, false) ||
+                            !armor_summary_matches(selected_scene,
+                                                   armor_index)) {
+                            return profile_failure(
+                                "the Unequip action left a stale active armor "
+                                "index, phase, marker or item preview");
+                        }
+                        if (!move_to_combat_page() ||
+                            !armor_command_page_matches(expected)) {
+                            return profile_failure(
+                                "unequipping armor changed the command "
+                                "Atk/Def values or named bar assets");
+                        }
+                        const auto unequipped_command_page =
+                            render_qa_field(field_scene);
+                        const auto& expected_no_armor_page =
+                            source_armor_index == 0U
+                                ? source_command_page
+                                : no_armor_command_page;
+                        if (unequipped_command_page !=
+                                expected_no_armor_page) {
+                            return profile_failure(
+                                "the final no-armor page retained pixels from "
+                                "an equipped armor state");
+                        }
+                        press(0x80U);
+                        if (field_scene.command_overview_open() ||
+                            field_scene.active_runner_record()
+                                    .equipped_armor_index != 0U ||
+                            field_scene.active_runner_record()
+                                    .inventory_phase_bytes[selected_slot] !=
+                                0U) {
+                            return profile_failure(
+                                "Start failed to return with armor unequipped");
+                        }
+                        const auto unequipped_field_frame =
+                            render_qa_field(field_scene);
+                        if (!save_armor_frame(
+                                armor_prefix + "-unequipped-field.bmp",
+                                unequipped_field_frame) ||
+                            !field_scene.open_command_overview_for_dump()) {
+                            return profile_failure(
+                                "could not save or re-enter after the "
+                                "armor unequip return");
+                        }
+                        press(0x80U);
+                        if (field_scene.command_overview_open() ||
+                            render_qa_field(field_scene) !=
+                                unequipped_field_frame) {
+                            return profile_failure(
+                                "Start return after armor unequip did not "
+                                "reproduce the clean field frame");
+                        }
+                        armor_manifest
+                            << expected.slug << '\t' << std::hex
+                            << source_rom_offset << std::dec << '\t'
+                            << static_cast<unsigned>(expected.race) << '\t'
+                            << static_cast<unsigned>(expected.runner_class)
+                            << '\t' << static_cast<unsigned>(item_code)
+                            << '\t' << static_cast<unsigned>(armor_index)
+                            << '\t' << selected_slot << '\t'
+                            << static_cast<unsigned>(source_armor_index) << '\t'
+                            << static_cast<unsigned>(armor->primary_modifier)
+                            << '\t'
+                            << static_cast<unsigned>(armor->secondary_modifier)
+                            << '\t'
+                            << static_cast<unsigned>(expected.attack_values[0U])
+                            << '\t' << static_cast<unsigned>(
+                                   expected.attack_values[0U] - 1U)
+                            << '\t'
+                            << static_cast<unsigned>(expected.defense_values[0U])
+                            << '\t' << static_cast<unsigned>(
+                                   expected.defense_values[0U] - 1U)
+                            << '\t' << armor_prefix << "-selected.bmp\t"
+                            << (source_armor_index == 0U
+                                    ? ""
+                                    : armor_prefix +
+                                          "-replacement-cleared.bmp")
+                            << '\t' << armor_prefix << "-equipped-command.bmp\t"
+                            << armor_prefix << "-equipped-field.bmp\t"
+                            << armor_prefix << "-unequipped-field.bmp\n";
+                        ++armor_profile_cases;
+                    }
+                }
+                armor_manifest.flush();
+                detail_value_manifest.flush();
+                weapon_profile_manifest.flush();
+                weapon_matrix_manifest.flush();
+                std::size_t source_weapon_round_states = 0U;
+                for (const auto capacity : source_weapon_capacities) {
+                    source_weapon_round_states +=
+                        static_cast<std::size_t>(capacity) + 1U;
+                }
+                if (!armor_manifest || saved_frames != 65U ||
+                    !detail_value_manifest ||
+                    detail_value_profile_cases !=
+                        detail_value_profile_frames ||
+                    detail_value_profile_cases < profiles.size() ||
+                    !weapon_profile_manifest || !weapon_matrix_manifest ||
+                    weapon_profile_cases != profiles.size() ||
+                    weapon_profile_frames != profiles.size() * 9U ||
+                    weapon_matrix_pairs !=
+                        profiles.size() * kWeaponCount * kWeaponCount ||
+                    weapon_matrix_state_cases !=
+                        profiles.size() * kWeaponCount *
+                            source_weapon_round_states ||
+                    equipped_profile_frames != 13U ||
+                    equipped_field_frames != 13U ||
+                    armor_profile_cases != profiles.size() * kArmorCount ||
+                    armor_clear_actions !=
+                        (profiles.size() - 1U) * kArmorCount ||
+                    armor_frames !=
+                        (profiles.size() * kArmorCount * 4U) +
+                            ((profiles.size() - 1U) * kArmorCount * 2U) +
+                            kArmorCount) {
+                    return profile_failure(
+                        "did not save all thirteen profiles across five "
+                        "posture states, weapon actions, and armor states");
+                }
+                std::cout << "field_profile_combat_bar_permutation_qa="
+                          << "written path=" << output_directory.string()
+                          << " profiles=13 posture_states=5 rendered_frames="
+                          << saved_frames
+                          << " clamp_edges=2 clean_returns=13 "
+                          << "equipment_actions=13 equipment_bar_frames="
+                          << equipped_profile_frames
+                          << " equipment_field_returns="
+                          << equipped_field_frames
+                          << " armor_profile_cells=" << armor_profile_cases
+                          << " armor_replacements=" << armor_clear_actions
+                          << " armor_frames=" << armor_frames
+                          << " detail_value_profile_cases="
+                          << detail_value_profile_cases
+                          << " detail_value_profile_frames="
+                          << detail_value_profile_frames
+                          << " weapon_profile_cases="
+                          << weapon_profile_cases
+                          << " weapon_profile_frames="
+                          << weapon_profile_frames
+                          << " weapon_capacity_pairs="
+                          << weapon_matrix_pairs
+                          << " weapon_round_transition_states="
+                          << weapon_matrix_state_cases << '\n';
+                return 0;
+            }
+
+            if (field_profile_attributes_skills_permutation_qa_path
+                    .has_value()) {
+                using namespace shadowrun::ghidra_conversion;
+                static constexpr std::array<std::string_view, 13U>
+                    profile_slugs{{
+                        "joshua-samurai", "joshua-decker",
+                        "joshua-gator-shaman", "rat-shaman",
+                        "troll-samurai", "human-mage", "dwarf-decker",
+                        "bear-shaman", "elf-decker-1", "human-samurai-1",
+                        "elf-mage", "elf-decker-2", "human-samurai-2"}};
+                static constexpr std::array<std::uint8_t, 13U>
+                    expected_races{{0U, 0U, 0U, 2U, 4U, 0U, 2U, 3U,
+                                    1U, 0U, 1U, 1U, 0U}};
+                static constexpr std::array<std::uint8_t, 13U>
+                    expected_classes{{2U, 3U, 1U, 1U, 2U, 0U, 3U,
+                                      1U, 3U, 2U, 0U, 3U, 2U}};
+                static constexpr std::array<std::string_view, 5U>
+                    race_names{{"Human", "  Elf", "Dwarf", "  Orc", "Troll"}};
+                static constexpr std::array<std::string_view, 4U>
+                    class_names{{"Mage", "Shaman", "Samurai", "Decker"}};
+                static constexpr std::array<std::string_view, 20U>
+                    cell_labels{{
+                        "Body", "Quickness", "Strength", "Charisma",
+                        "Intelligence", "Willpower", "Essence      .",
+                        "Magic", "Sorcery", "Firearms", "Pistols", "SMGs",
+                        "Shotguns", "Melee Combat", "Throwing", "Computer",
+                        "Biotech", "Electronics", "Reputation", "Negotiation"}};
+                const auto profile_failure = [](const std::string& reason) {
+                    std::cerr << "field profile Attributes/Skills QA: "
+                              << reason << '\n';
+                    return 3;
+                };
+                if (!smoke_state.startup_records.has_value()) {
+                    return profile_failure(
+                        "source Joshua and recruited templates were not "
+                        "loaded");
+                }
+                const auto output_directory =
+                    *field_profile_attributes_skills_permutation_qa_path;
+                std::filesystem::create_directories(output_directory);
+                std::error_code clear_error;
+                clear_qa_bitmap_artifacts(output_directory, clear_error);
+                if (clear_error) {
+                    return profile_failure(
+                        "could not clear prior bitmap artifacts");
+                }
+                const QImage font(QString::fromStdWString(
+                    (asset_root / "menu" / "field" / "font.bmp").wstring()));
+                if (font.isNull()) {
+                    return profile_failure(
+                        "field command font asset is missing");
+                }
+                const auto capture = [&field_scene] {
+                    return render_qa_field(field_scene);
+                };
+                const auto press = [&field_scene](
+                                       const std::uint8_t port_byte) {
+                    tap_qa_controller_button(field_scene, port_byte);
+                };
+                const QColor kSelectedText(109, 73, 146);
+                std::size_t profile_frames = 0U;
+
+                for (std::size_t profile_index = 0U;
+                     profile_index < profile_slugs.size(); ++profile_index) {
+                    LiveRunnerRecord source_record{};
+                    const auto& records = *smoke_state.startup_records;
+                    if (profile_index < kJoshuaArchetypeCount) {
+                        source_record.bytes =
+                            records.joshua_archetypes[profile_index].record;
+                    } else {
+                        const auto roster_template = profile_index - 2U;
+                        source_record.bytes = records.save_roster_templates
+                            [roster_template].record;
+                    }
+                    const auto profile =
+                        read_runner_record_fields(source_record);
+                    if (profile.species_index != expected_races[profile_index] ||
+                        profile.archetype_index !=
+                            expected_classes[profile_index]) {
+                        return profile_failure(
+                            "source profile ordering or race/class identity "
+                            "changed");
+                    }
+                    field_scene.active_runner_record() = profile;
+                    const auto field_before = capture();
+                    if (!field_scene.open_command_overview_for_dump()) {
+                        return profile_failure(
+                            "Start did not open the command overview");
+                    }
+                    const auto command_page_six = capture();
+                    if (!field_scene.seek_command_overview_page(3U)) {
+                        return profile_failure(
+                            "Left did not reach the Attributes/Skills command "
+                            "row");
+                    }
+                    field_audio_events.clear();
+                    press(0x40U); // A opens the command-menu view.
+                    if (!field_scene.attributes_skills_menu_open() ||
+                        field_scene.attributes_skills_menu()
+                            .allows_karma_upgrades() ||
+                        field_scene.attributes_skills_menu()
+                            .state().selection_data_available ||
+                        field_audio_events !=
+                            std::vector<std::uint16_t>{0x24U}) {
+                        return profile_failure(
+                            "A did not enter the read-only Attributes/Skills "
+                            "screen through its action sound");
+                    }
+
+                    const auto base_record =
+                        field_scene.active_runner_record();
+                    const auto initial = capture();
+                    const auto output_path = output_directory /
+                        (std::string(profile_slugs[profile_index]) +
+                         "-actual.bmp");
+                    if (!initial.save(QString::fromStdWString(
+                            output_path.wstring()))) {
+                        return profile_failure(
+                            "could not save source profile screen: " +
+                            output_path.string());
+                    }
+                    ++profile_frames;
+                    const auto name_matches =
+                        source_menu_caption_matches(initial, font, 80, 24,
+                                                    "Joshua");
+                    const auto race_matches = profile.species_index <
+                            race_names.size() &&
+                        source_menu_caption_matches(
+                            initial, font, 80, 32,
+                            race_names[profile.species_index]);
+                    const auto class_matches = profile.archetype_index <
+                            class_names.size() &&
+                        source_menu_caption_matches(
+                            initial, font, 128, 32,
+                            class_names[profile.archetype_index]);
+                    if (initial.size() != QSize(kSceneWidth, kSceneHeight) ||
+                        !name_matches || !race_matches || !class_matches) {
+                        std::cerr << "profile header pixels: name="
+                                  << name_matches << " race=" << race_matches
+                                  << " class=" << class_matches << " species="
+                                  << static_cast<unsigned>(profile.species_index)
+                                  << " archetype="
+                                  << static_cast<unsigned>(
+                                         profile.archetype_index)
+                                  << "\n";
+                        return profile_failure(
+                            "full-screen profile identity header did not show "
+                            "the selected race/class preset");
+                    }
+
+                    const auto check_cells = [&](
+                        const std::uint8_t selected_column,
+                        const std::uint8_t selected_row) {
+                        const auto scene = capture();
+                        const auto& menu =
+                            field_scene.attributes_skills_menu();
+                        const auto& cursor = menu.state().cursor;
+                        if (!menu.is_open() || menu.allows_karma_upgrades() ||
+                            menu.upgrade_prompt_open() ||
+                            cursor.column != selected_column ||
+                            cursor.row != selected_row ||
+                            field_scene.active_runner_record().attributes !=
+                                base_record.attributes ||
+                            field_scene.active_runner_record().skills !=
+                                base_record.skills ||
+                            field_scene.active_runner_record().auxiliary !=
+                                base_record.auxiliary) {
+                            return false;
+                        }
+                        const auto grid = menu.grid(
+                            field_scene.active_runner_record());
+                        for (std::uint8_t column = 0U; column < 2U;
+                             ++column) {
+                            for (std::uint8_t row = 0U; row < 10U; ++row) {
+                                const auto index = row < 4U
+                                    ? static_cast<std::size_t>(
+                                          row + column * 4U)
+                                    : static_cast<std::size_t>(
+                                          row - 4U + column * 6U);
+                                const auto offset = row < 4U
+                                    ? 0x77U + index
+                                    : (index < 6U ? 0x80U + index
+                                                  : 0x87U + index - 6U);
+                                const auto expected_state =
+                                    row == 4U && column == 0U &&
+                                            profile.archetype_index >= 2U
+                                        ? AttributeSkillCellState::class_restricted
+                                        : AttributeSkillCellState::value;
+                                const auto label_index = row < 4U
+                                    ? index
+                                    : 8U + index;
+                                const auto& cell = grid[column][row];
+                                const auto label_x = column == 0U ? 24 : 176;
+                                const auto cell_y = row < 4U
+                                    ? 56 + static_cast<int>(row) * 8
+                                    : 104 + static_cast<int>(row - 4U) * 8;
+                                const auto value_x = label_index == 6U
+                                    ? 272
+                                    : column == 0U ? 136 : 280;
+                                if (cell.label_index != label_index ||
+                                    cell.value != source_record.bytes[offset] ||
+                                    cell.value_index != index ||
+                                    cell.record_offset != offset ||
+                                    cell.state != expected_state) {
+                                    std::cerr
+                                        << "profile grid source mismatch: "
+                                        << profile_slugs[profile_index]
+                                        << " cell="
+                                        << static_cast<unsigned>(column) << ','
+                                        << static_cast<unsigned>(row) << '\n';
+                                    return false;
+                                }
+                                if (column == selected_column &&
+                                    row == selected_row) {
+                                    if (!image_region_has_color(
+                                            scene, label_x, cell_y, 120, 8,
+                                            kSelectedText) ||
+                                        !image_region_has_color(
+                                            scene, value_x, cell_y, 16, 8,
+                                            kSelectedText)) {
+                                        return false;
+                                    }
+                                    continue;
+                                }
+                                const auto label = label_index == 6U
+                                    ? std::string_view("Essence")
+                                    : cell_labels[label_index];
+                                if (!source_menu_caption_matches(
+                                        scene, font, label_x, cell_y, label) ||
+                                    !source_menu_caption_matches(
+                                        scene, font, value_x, cell_y,
+                                        std::to_string(
+                                            source_record.bytes[offset]))) {
+                                    std::cerr
+                                        << "profile grid pixels mismatch: "
+                                        << profile_slugs[profile_index]
+                                        << " cell="
+                                        << static_cast<unsigned>(column) << ','
+                                        << static_cast<unsigned>(row)
+                                        << " selected="
+                                        << static_cast<unsigned>(
+                                               selected_column)
+                                        << ','
+                                        << static_cast<unsigned>(selected_row)
+                                        << '\n';
+                                    return false;
+                                }
+                            }
+                        }
+                        return true;
+                    };
+
+                    if (!check_cells(0U, 0U)) {
+                        return profile_failure(
+                            "the initial Body selection or the other visible "
+                            "ROM grid values did not match the screenshot");
+                    }
+                    for (std::uint8_t column = 0U; column < 2U; ++column) {
+                        if (column == 1U) {
+                            for (std::uint8_t step = 0U; step < 9U; ++step) {
+                                press(0x01U); // Up to the top of column 1.
+                            }
+                            press(0x08U); // Right to the second column.
+                        }
+                        for (std::uint8_t row = 0U; row < 10U; ++row) {
+                            if (row != 0U) {
+                                press(0x02U); // Down to the next grid cell.
+                            }
+                            if (!check_cells(column, row)) {
+                                return profile_failure(
+                                    "a real d-pad edge failed the full grid "
+                                    "value, class restriction, or pixel audit");
+                            }
+                        }
+                    }
+                    press(0x01U); // Deselect the final grid cell.
+                    if (!check_cells(1U, 8U)) {
+                        return profile_failure(
+                            "the final selected value did not redraw exactly "
+                            "when deselected");
+                    }
+                    field_audio_events.clear();
+                    press(0x40U); // A returns to the command page in view-only mode.
+                    const auto command_return = capture();
+                    if (field_scene.attributes_skills_menu_open() ||
+                        !field_scene.command_overview_open() ||
+                        field_scene.command_overview_primary_page() != 6U ||
+                        command_return != command_page_six ||
+                        field_scene.active_runner_record().attributes !=
+                            base_record.attributes ||
+                        field_scene.active_runner_record().skills !=
+                            base_record.skills ||
+                        field_scene.active_runner_record().auxiliary !=
+                            base_record.auxiliary ||
+                        field_audio_events !=
+                            std::vector<std::uint16_t>{0x25U}) {
+                        std::cerr << "profile return detail: profile="
+                                  << profile_slugs[profile_index]
+                                  << " attr_open="
+                                  << field_scene.attributes_skills_menu_open()
+                                  << " command_open="
+                                  << field_scene.command_overview_open()
+                                  << " page=" << static_cast<unsigned>(
+                                         field_scene.command_overview_primary_page())
+                                  << " pixels="
+                                  << (command_return == command_page_six)
+                                  << " attributes="
+                                  << (field_scene.active_runner_record().attributes ==
+                                      base_record.attributes)
+                                  << " skills="
+                                  << (field_scene.active_runner_record().skills ==
+                                      base_record.skills)
+                                  << " auxiliary="
+                                  << (field_scene.active_runner_record().auxiliary ==
+                                      base_record.auxiliary)
+                                  << " audio=" << field_audio_events.size();
+                        for (const auto event : field_audio_events) {
+                            std::cerr << ':' << event;
+                        }
+                        std::cerr << '\n';
+                        return profile_failure(
+                            "A did not restore the command page without a "
+                            "stat, skill, or Karma mutation");
+                    }
+                    press(0x80U); // Start exits the command overview.
+                    if (field_scene.command_overview_open() ||
+                        capture() != field_before) {
+                        return profile_failure(
+                            "Start did not restore the clean field after a "
+                            "profile screen");
+                    }
+                }
+                if (profile_frames != profile_slugs.size()) {
+                    return profile_failure(
+                        "did not save one full-screen image per source "
+                        "profile");
+                }
+                std::cout << "field_profile_attributes_skills_permutation_qa="
+                          << "written path=" << output_directory.string()
+                          << " profiles=" << profile_frames
+                          << " grid_cells_checked=" << profile_frames * 20U
+                          << " controller_cursor_states="
+                          << profile_frames * 20U
+                          << " read_only=1 clean_returns=" << profile_frames
+                          << '\n';
+                return 0;
+            }
+
             if (field_posture_dump_path.has_value()) {
+                if (field_spell_action_bars_qa) {
+                    if (field_archetype != 2U) {
+                        std::cerr << "field spell action-bar QA: expected "
+                                     "the Gator Shaman source profile\n";
+                        return 3;
+                    }
+                    auto& spell_runner = field_scene.active_runner_record();
+                    spell_runner.equipped_inventory_slot = -1;
+                    spell_runner.equipped_item_code = 8U; // Mana Zap.
+                    spell_runner.magic_force = 3U;
+                    spell_runner.posture = 2U; // Neutral.
+                    spell_runner.behavior_meter = 1U; // Capture shows 10%.
+                }
                 const auto capture = [&field_scene] { return render_qa_field(field_scene); };
                 const auto field_before_menu = capture();
                 if (!field_scene.open_command_overview_for_dump()) {
@@ -41239,6 +46966,80 @@ int main(int argc, char** argv) {
                         QImage::Format_RGB32);
                     return actual == expected;
                 };
+                const auto combat_bar_assets_match =
+                    [&asset_root, &region_matches_asset](
+                        const QImage& scene,
+                        const EquipmentCombatBarResult& bars) {
+                        if (bars.attack_bar > 22U ||
+                            bars.defense_bar > 22U) {
+                            return false;
+                        }
+                        const auto attack_asset = QImage(
+                            QString::fromStdWString(
+                                (asset_root / "menu" / "field" /
+                                 ("attack-bar-" +
+                                  std::to_string(bars.attack_bar) + ".bmp"))
+                                    .wstring()));
+                        const auto defense_asset = QImage(
+                            QString::fromStdWString(
+                                (asset_root / "menu" / "field" /
+                                 ("defense-bar-" +
+                                  std::to_string(bars.defense_bar) + ".bmp"))
+                                    .wstring()));
+                        return attack_asset.size() == QSize(104, 8) &&
+                               defense_asset.size() == QSize(104, 8) &&
+                               region_matches_asset(scene, attack_asset, 144,
+                                                    104) &&
+                               region_matches_asset(scene, defense_asset, 144,
+                                                    112);
+                    };
+                const auto font_text_pixels_match = [](
+                    const QImage& scene, const QImage& font,
+                    const int origin_x, const int origin_y,
+                    const std::string_view text) {
+                    auto cursor_x = origin_x;
+                    auto cursor_y = origin_y;
+                    for (const unsigned char code : text) {
+                        if (code < 0x20U || code > 0x7EU) {
+                            cursor_x += 8;
+                            continue;
+                        }
+                        const auto glyph =
+                            static_cast<int>(code - 0x20U);
+                        const auto source_x = (glyph % 16) * 8;
+                        const auto source_y = (glyph / 16) * 8;
+                        if (source_x + 8 > font.width() ||
+                            source_y + 8 > font.height() ||
+                            cursor_x + 8 > scene.width() ||
+                            cursor_y + 8 > scene.height()) {
+                            return false;
+                        }
+                        for (int y = 0; y < 8; ++y) {
+                            for (int x = 0; x < 8; ++x) {
+                                const auto expected = font.pixelColor(
+                                    source_x + x, source_y + y);
+                                const auto coverage = std::max(
+                                    {expected.red(), expected.green(),
+                                     expected.blue()});
+                                if (expected.alpha() == 0 || coverage == 0) {
+                                    continue;
+                                }
+                                const auto actual = scene.pixelColor(
+                                    cursor_x + x, cursor_y + y);
+                                if (actual.green() <= actual.red() + 20 ||
+                                    actual.green() <= actual.blue() + 20) {
+                                    return false;
+                                }
+                            }
+                        }
+                        cursor_x += 8;
+                    }
+                    return true;
+                };
+                const auto source_command_font = QImage(
+                    QString::fromStdWString(
+                        (asset_root / "menu" / "field" / "font.bmp")
+                            .wstring()));
                 const auto same_outside_focus_row = [](
                                                         const QImage& first,
                                                         const QImage& second) {
@@ -41288,6 +47089,19 @@ int main(int argc, char** argv) {
                 }
                 const auto initial_combat_bars =
                     field_scene.command_overview_combat_bars();
+                if (field_spell_action_bars_qa &&
+                    (initial_combat_bars.command_average != 5U ||
+                     initial_combat_bars.attack_value != 6U ||
+                     initial_combat_bars.attack_bar != 5U ||
+                     initial_combat_bars.defense_value != 5U ||
+                     initial_combat_bars.defense_bar != 4U ||
+                     initial_combat_bars.source_data_missing ||
+                     !initial_combat_bars.special_action.menu_service_called ||
+                     initial_combat_bars.special_action.magic_spell_missing)) {
+                    return posture_failure(
+                        "Gator Mana Zap force/posture did not produce the "
+                        "ROM source bar values");
+                }
                 field_audio_events.clear();
                 for (std::uint8_t page = 2U; page <= 6U; ++page) {
                     if (field_scene.command_overview_primary_page() != page) {
@@ -41295,6 +47109,79 @@ int main(int argc, char** argv) {
                             "command page changed outside its input edge");
                     }
                     const auto page_base = capture();
+                    if (!combat_bar_assets_match(page_base,
+                                                 initial_combat_bars)) {
+                        return posture_failure(
+                            "the displayed combat strips do not match the "
+                            "source-selected attack/defense assets");
+                    }
+                    if (field_spell_action_bars_qa) {
+                        if (!save_frame(
+                                "spell-action-page2-before-up.bmp",
+                                page_base)) {
+                            return posture_failure(
+                                "could not save the spell action command page");
+                        }
+                        const auto damage_asset = QImage(
+                            QString::fromStdWString(
+                                (asset_root / "menu" / "field" /
+                                 "damage-bar-0.bmp")
+                                    .wstring()));
+                        const auto spell_name_matches =
+                            font_text_pixels_match(
+                                page_base, source_command_font, 128, 64,
+                                "Mana Zap");
+                        const auto mental_label_matches =
+                            font_text_pixels_match(
+                                page_base, source_command_font, 128, 48,
+                                "Mental");
+                        const auto mental_value_matches =
+                            font_text_pixels_match(
+                                page_base, source_command_font, 208, 48,
+                                "10%");
+                        const auto damage_label_matches =
+                            font_text_pixels_match(
+                                page_base, source_command_font, 112, 80,
+                                "Damage");
+                        const auto damage_row_matches = region_matches_asset(
+                            page_base, damage_asset, 168, 80);
+                        const auto none_label_matches =
+                            font_text_pixels_match(
+                                page_base, source_command_font, 168, 80,
+                                "None");
+                        const auto power_label_matches =
+                            font_text_pixels_match(
+                                page_base, source_command_font, 112, 88,
+                                "Power");
+                        const auto force_label_matches =
+                            font_text_pixels_match(
+                                page_base, source_command_font, 168, 88,
+                                "Very Low");
+                        if (!spell_name_matches || !mental_label_matches ||
+                            !mental_value_matches || !damage_label_matches ||
+                            !none_label_matches || !power_label_matches ||
+                            !force_label_matches) {
+                            std::cerr << "field spell action-bar pixels: "
+                                      << "name=" << spell_name_matches
+                                      << " mental_label="
+                                      << mental_label_matches
+                                      << " mental_value="
+                                      << mental_value_matches
+                                      << " damage_label="
+                                      << damage_label_matches
+                                      << " damage_row=" << damage_row_matches
+                                      << " none=" << none_label_matches
+                                      << " power_label=" << power_label_matches
+                                      << " force=" << force_label_matches
+                                      << " font=" << source_command_font.width()
+                                      << 'x' << source_command_font.height()
+                                      << " damage_asset=" << damage_asset.width()
+                                      << 'x' << damage_asset.height() << '\n';
+                            return posture_failure(
+                                "Gator Mana Zap title, Damage row, or force "
+                                "label disagreed with the ROM source state");
+                        }
+                    }
                     if (!save_frame(press_name(page, "before-up"),
                                     page_base)) {
                         return posture_failure(
@@ -41315,6 +47202,8 @@ int main(int argc, char** argv) {
                         field_scene.posture_dialog_value() != baseline_posture ||
                         !field_audio_events.empty() ||
                         !focus_asset_matches ||
+                        !combat_bar_assets_match(focused,
+                                                 initial_combat_bars) ||
                         image_region_differs(page_base, focused, 176, 168,
                                              64, 8) ||
                         !page_outside_focus_matches ||
@@ -41378,6 +47267,8 @@ int main(int argc, char** argv) {
                                 before_right_bars.attack_value ||
                             after_first_bars.defense_value ==
                                 before_right_bars.defense_value ||
+                            !combat_bar_assets_match(after_first_delta,
+                                                     after_first_bars) ||
                             !image_region_differs(focused, after_first_delta,
                                                   144, 104, 104, 8) ||
                             !image_region_differs(focused, after_first_delta,
@@ -41433,6 +47324,8 @@ int main(int argc, char** argv) {
                             field_scene.command_overview_combat_bars()
                                     .defense_value !=
                                 max_posture_bars.defense_value ||
+                            !combat_bar_assets_match(max_posture_scene,
+                                                     max_posture_bars) ||
                             !image_region_differs(
                                 focused, max_posture_scene, 144, 104, 104, 8) ||
                             !image_region_differs(
@@ -41461,6 +47354,8 @@ int main(int argc, char** argv) {
                             field_scene.command_overview_combat_bars()
                                     .defense_value !=
                                 min_posture_bars.defense_value ||
+                            !combat_bar_assets_match(min_posture_scene,
+                                                     min_posture_bars) ||
                             !image_region_differs(
                                 focused, min_posture_scene, 144, 104, 104, 8) ||
                             !image_region_differs(
@@ -42289,6 +48184,18 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto target_scene = render_scene();
+                const auto detail_value_matches =
+                    [&asset_root](const QImage& scene,
+                                  const std::uint8_t phase) {
+                        const auto path = asset_root / "menu" / "field" /
+                            ("detail-value-" + std::to_string(phase) +
+                             ".bmp");
+                        const QImage asset(QString::fromStdWString(
+                            path.wstring()));
+                        return asset.size() == QSize(16, 8) &&
+                               image_region_matches_rgb32_asset(
+                                   scene, asset, 120, 56);
+                    };
                 if (!field_inventory_selector_survives(
                         target_scene, desired_column, desired_row) ||
                     !target_face_matches(target_scene) ||
@@ -42300,9 +48207,11 @@ int main(int argc, char** argv) {
                         target_scene, QRect(152, 112, 64, 8)) ||
                     !field_hud_face_family_survives(
                         target_scene, asset_root, field_archetype) ||
+                    !detail_value_matches(target_scene, medkit_phase) ||
                     !save_scene("first_aid_target", target_scene)) {
                     std::cerr << "field First Aid dump: prompt, target, "
-                                 "cursor, portrait, or item outline failed\n";
+                                 "cursor, portrait, item outline, or phase "
+                                 "detail value failed\n";
                     return 3;
                 }
                 if (!save_scene("actual", target_scene)) {
@@ -42459,9 +48368,13 @@ int main(int argc, char** argv) {
                     !field_hud_meter_assets_survive(
                         result_scene, asset_root, after_use.delay_meter,
                         after_use.behavior_meter, true) ||
+                    !detail_value_matches(
+                        result_scene,
+                        after_use.inventory_phase_bytes[medkit_slot]) ||
                     !save_scene("first_aid_medkit_used", result_scene)) {
                     std::cerr << "field First Aid dump: result, persistent "
-                                 "selector, target face, or live HUD failed\n";
+                                 "selector, target face, live HUD, or "
+                                 "decremented detail value failed\n";
                     return 3;
                 }
                 // 0x10D30 requests 0x25 on command entry and after each
@@ -42501,6 +48414,1054 @@ int main(int argc, char** argv) {
                                  "selected-item outline\n";
                     return 3;
                 }
+
+                if (!smoke_state.startup_records.has_value()) {
+                    std::cerr << "field First Aid dump: source profile "
+                                 "assets are unavailable\n";
+                    return 3;
+                }
+                constexpr std::size_t kProfileRecordSize = 0x100U;
+                constexpr std::size_t kJoshuaProfileBase = 0x7291AU;
+                constexpr std::size_t kRecruitedProfileBase = 0x72C1AU;
+                constexpr std::size_t kRaceMaximumBase = 0xC22A6U;
+                constexpr std::array<std::string_view, 13U> kProfileSlugs{{
+                    "joshua-samurai", "joshua-decker",
+                    "joshua-gator-shaman", "rat-shaman", "troll-samurai",
+                    "human-mage", "dwarf-decker", "bear-shaman",
+                    "elf-decker-1", "human-samurai-1", "elf-mage",
+                    "elf-decker-2", "human-samurai-2",
+                }};
+                constexpr std::array<std::array<std::uint8_t, 2U>, 13U>
+                    kProfileRaceAndClass{{
+                        {{0U, 2U}}, {{0U, 3U}}, {{0U, 1U}},
+                        {{2U, 1U}}, {{4U, 2U}}, {{0U, 0U}},
+                        {{2U, 3U}}, {{3U, 1U}}, {{1U, 3U}},
+                        {{0U, 2U}}, {{1U, 0U}}, {{1U, 3U}},
+                        {{0U, 2U}},
+                    }};
+                std::ifstream profile_rom_input(SHADOWRUN_US_ROM_PATH,
+                                                std::ios::binary);
+                if (!profile_rom_input) {
+                    std::cerr << "field First Aid dump: could not open the "
+                                 "authoritative US ROM\n";
+                    return 3;
+                }
+                const std::vector<std::uint8_t> profile_rom(
+                    std::istreambuf_iterator<char>{profile_rom_input},
+                    std::istreambuf_iterator<char>{});
+                if (profile_rom.size() <
+                    kRecruitedProfileBase + 10U * kProfileRecordSize) {
+                    std::cerr << "field First Aid dump: US ROM profile "
+                                 "records are truncated\n";
+                    return 3;
+                }
+                const auto profile_dump_directory =
+                    *field_first_aid_dump_path / "profiles";
+                std::filesystem::create_directories(profile_dump_directory);
+                std::error_code profile_dump_clear_error;
+                clear_qa_bitmap_artifacts(profile_dump_directory,
+                                          profile_dump_clear_error);
+                if (profile_dump_clear_error) {
+                    std::cerr << "field First Aid dump: could not clear "
+                                 "prior profile frames: "
+                              << profile_dump_clear_error.message() << '\n';
+                    return 3;
+                }
+                std::ofstream profile_manifest(
+                    *field_first_aid_dump_path /
+                    "profile-permutation.tsv");
+                if (!profile_manifest) {
+                    std::cerr << "field First Aid dump: could not write "
+                                 "profile permutation manifest\n";
+                    return 3;
+                }
+                profile_manifest
+                    << "profile\trom_offset\trace\tclass\tsource_body"
+                       "\ttarget_body\tbiotech"
+                       "\tphysical_before\tmental_before\tdifficulty"
+                       "\tsuccesses\tdice_samples\tphysical_after"
+                       "\tmental_after\tphase_before\tphase_after"
+                       "\tfull_target_message_key"
+                       "\tfull_target_dice_samples"
+                       "\tfull_target_phase_before\tfull_target_phase_after"
+                       "\tfull_target_state_unchanged\n";
+                std::ofstream patch_manifest(
+                    *field_first_aid_dump_path /
+                    "patch-profile-permutation.tsv");
+                if (!patch_manifest) {
+                    std::cerr << "field First Aid dump: could not write "
+                                 "patch profile manifest\n";
+                    return 3;
+                }
+                patch_manifest
+                    << "profile\trom_offset\trace\tclass\tbody\tbiotech"
+                       "\titem_slot\tsource_slot_and_phase\titem_code"
+                       "\titem\tbranch\tphysical_before"
+                       "\tmental_before\tphysical_after\tmental_after"
+                       "\tstatus_before\tstatus_after\tphase_before"
+                       "\tphase_after\tdice_samples\tcontinuation_before"
+                       "\tcontinuation_after\tmessage_key\n";
+
+                for (std::size_t profile_index = 0U;
+                     profile_index < kProfileSlugs.size(); ++profile_index) {
+                    const auto profile_rom_offset = profile_index < 3U
+                        ? kJoshuaProfileBase +
+                              profile_index * kProfileRecordSize
+                        : kRecruitedProfileBase +
+                              (profile_index - 3U) * kProfileRecordSize;
+                    std::array<std::uint8_t, kProfileRecordSize> profile_bytes{};
+                    if (profile_index < 3U) {
+                        profile_bytes = smoke_state.startup_records
+                            ->joshua_archetypes[profile_index].record;
+                    } else {
+                        profile_bytes = smoke_state.startup_records
+                            ->save_roster_templates[profile_index - 2U]
+                            .record;
+                    }
+                    if (!std::equal(
+                            profile_bytes.begin(), profile_bytes.end(),
+                            profile_rom.begin() +
+                                static_cast<std::ptrdiff_t>(
+                                    profile_rom_offset))) {
+                        std::cerr << "field First Aid dump: profile asset "
+                                     "differs from ROM at 0x"
+                                  << std::hex << profile_rom_offset << std::dec
+                                  << '\n';
+                        return 3;
+                    }
+                    const auto race = profile_bytes[0x9AU];
+                    const auto runner_class = profile_bytes[0x9BU];
+                    if (race != kProfileRaceAndClass[profile_index][0U] ||
+                        runner_class !=
+                            kProfileRaceAndClass[profile_index][1U] ||
+                        race >= 5U ||
+                        profile_bytes[0x77U] >
+                            profile_rom[kRaceMaximumBase + race * 6U]) {
+                        std::cerr << "field First Aid dump: invalid race/class "
+                                     "or Body ceiling for profile "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+
+                    shadowrun::ghidra_conversion::LiveRunnerRecord raw_profile{};
+                    raw_profile.bytes = profile_bytes;
+                    auto profile =
+                        shadowrun::ghidra_conversion::read_runner_record_fields(
+                            raw_profile);
+                    if (profile.attributes[0] != profile_bytes[0x77U] ||
+                        profile.skills[8] != profile_bytes[0x89U] ||
+                        profile.species_index != race ||
+                        profile.archetype_index != runner_class) {
+                        std::cerr << "field First Aid dump: typed Body/Biotech "
+                                     "mapping differs from raw profile "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+                    const auto source_body = profile.attributes[0];
+                    const auto source_inventory_item_codes =
+                        profile.inventory_item_codes;
+                    const auto source_inventory_phases =
+                        profile.inventory_phase_bytes;
+                    const auto maximum_body = profile_rom[
+                        kRaceMaximumBase + race * 6U];
+                    // The Troll Samurai case also exercises the legal Body
+                    // ceiling and the Medkit difficulty floor of two.
+                    if (profile_index == 4U) {
+                        profile.attributes[0] = maximum_body;
+                    }
+                    auto medkit = std::find(
+                        profile.inventory_item_codes.begin(),
+                        profile.inventory_item_codes.end(), 0x10U);
+                    if (medkit == profile.inventory_item_codes.end()) {
+                        medkit = std::find(
+                            profile.inventory_item_codes.begin(),
+                            profile.inventory_item_codes.end(), 0U);
+                    }
+                    if (medkit == profile.inventory_item_codes.end()) {
+                        std::cerr << "field First Aid dump: no source Medkit "
+                                     "or empty inventory cell for profile "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+                    const auto profile_medkit_slot = static_cast<std::size_t>(
+                        medkit - profile.inventory_item_codes.begin());
+                    const auto phase_before = static_cast<std::uint8_t>(
+                        profile_index == 0U ? 1U : 2U);
+                    profile.inventory_item_codes[profile_medkit_slot] = 0x10U;
+                    profile.inventory_phase_bytes[profile_medkit_slot] =
+                        phase_before;
+                    const auto physical_before = static_cast<std::uint8_t>(
+                        profile_index == 4U
+                            ? 8U
+                            : (profile_index * 3U) % 10U + 1U);
+                    const auto mental_before = static_cast<std::uint8_t>(
+                        (profile_index * 5U + 2U) % 11U);
+                    profile.delay_meter = physical_before;
+                    profile.behavior_meter = mental_before;
+                    profile.first_aid_continuation = 0x1234U;
+                    std::string profile_name;
+                    for (std::size_t name_byte = 0U; name_byte < 0x0EU;
+                         ++name_byte) {
+                        const auto value =
+                            raw_profile.bytes[0x58U + name_byte];
+                        if (value == 0xFFU) {
+                            break;
+                        }
+                        if (value == 0x80U) {
+                            continue;
+                        }
+                        if (value >= 0x20U && value <= 0x7EU) {
+                            profile_name.push_back(
+                                static_cast<char>(value));
+                        }
+                    }
+                    const auto first_name_byte =
+                        profile_name.find_first_not_of(' ');
+                    if (first_name_byte == std::string::npos) {
+                        profile_name.clear();
+                    } else {
+                        const auto last_name_byte =
+                            profile_name.find_last_not_of(' ');
+                        profile_name = profile_name.substr(
+                            first_name_byte,
+                            last_name_byte - first_name_byte + 1U);
+                    }
+                    if (profile_name.empty()) {
+                        std::cerr << "field First Aid dump: source runner "
+                                     "name is empty for profile "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+                    field_scene.install_party_member_for_dump(
+                        0U, profile, profile_name,
+                        static_cast<std::uint8_t>(profile_index));
+                    field_scene.set_active_party_slot_for_dump(0U);
+                    if (!field_scene.seek_command_overview_page(0U)) {
+                        std::cerr << "field First Aid dump: could not return "
+                                     "to Inventory for profile "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+                    for (int move = 0;
+                         move < 4 && field_scene.command_overview_view()
+                                             .source_state.secondary_page != 0U;
+                         ++move) {
+                        press(0x01U);
+                    }
+                    if (field_scene.command_overview_view()
+                            .source_state.secondary_page != 0U) {
+                        std::cerr << "field First Aid dump: inventory row "
+                                     "did not return to zero\n";
+                        return 3;
+                    }
+                    const auto desired_profile_column =
+                        static_cast<std::uint8_t>(profile_medkit_slot % 2U);
+                    const auto desired_profile_row =
+                        static_cast<std::uint8_t>(profile_medkit_slot / 2U);
+                    if (desired_profile_column != 0U) {
+                        press(0x08U);
+                    }
+                    for (std::uint8_t row = 0U;
+                         row < desired_profile_row; ++row) {
+                        press(0x02U);
+                    }
+                    const auto& profile_cursor = field_scene
+                        .command_overview_view().source_state;
+                    if (profile_cursor.primary_page !=
+                            desired_profile_column ||
+                        profile_cursor.secondary_page != desired_profile_row ||
+                        field_scene.active_runner_record().skills[8] !=
+                            profile_bytes[0x89U] ||
+                        field_scene.active_runner_record()
+                                .inventory_item_codes[profile_medkit_slot] !=
+                            0x10U) {
+                        std::cerr << "field First Aid dump: selected source "
+                                     "profile cell or Biotech changed\n";
+                        return 3;
+                    }
+                    const std::string profile_prefix =
+                        "profiles/" + std::string(kProfileSlugs[profile_index]);
+                    auto profile_item_scene = render_scene();
+                    if (!field_inventory_selector_survives(
+                            profile_item_scene, desired_profile_column,
+                            desired_profile_row) ||
+                        !field_hud_face_family_survives(
+                            profile_item_scene, asset_root, profile_index) ||
+                        !detail_value_matches(profile_item_scene,
+                                              phase_before) ||
+                        !save_scene(profile_prefix + "-inventory-selected",
+                                    profile_item_scene)) {
+                        std::cerr << "field First Aid dump: profile item "
+                                     "selection/detail/portrait failed for "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+
+                    press(0x40U);
+                    if (!field_scene.inventory_action_open() ||
+                        field_scene.inventory_action_selection() != 2U) {
+                        std::cerr << "field First Aid dump: Equip/Use did "
+                                     "not open for profile "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+                    press(0x40U);
+                    if (!field_scene.first_aid_open() ||
+                        field_scene.first_aid_targets().active_count != 1U ||
+                        field_scene.first_aid_targets()
+                                .active_record_indices[0U] != 0U ||
+                        field_scene.first_aid_target_cursor() != 0U) {
+                        std::cerr << "field First Aid dump: active target "
+                                     "route failed for profile "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+                    const auto profile_target_scene = render_scene();
+                    if (!field_inventory_selector_survives(
+                            profile_target_scene, desired_profile_column,
+                            desired_profile_row) ||
+                        !field_hud_face_family_survives(
+                            profile_target_scene, asset_root, profile_index) ||
+                        !detail_value_matches(profile_target_scene,
+                                              phase_before) ||
+                        !region_has_green_ink(
+                            profile_target_scene, QRect(128, 88, 96, 8)) ||
+                        !save_scene(profile_prefix + "-target-selection",
+                                    profile_target_scene)) {
+                        std::cerr << "field First Aid dump: target screen "
+                                     "did not preserve source profile state\n";
+                        return 3;
+                    }
+
+                    const auto difficulty_base = physical_before >= 7U
+                        ? 4U
+                        : physical_before >= 4U ? 6U : 8U;
+                    const auto body_reduction =
+                        static_cast<unsigned>(profile.attributes[0] / 3U);
+                    const auto expected_difficulty =
+                        static_cast<std::uint8_t>(std::max<unsigned>(
+                            2U, difficulty_base > body_reduction
+                                    ? difficulty_base - body_reduction
+                                    : 0U));
+                    const auto initial_random_seed = static_cast<std::uint16_t>(
+                        0x4000U + profile_index * 0x101U);
+                    auto expected_random_seed = initial_random_seed;
+                    std::size_t expected_dice_samples = 0U;
+                    shadowrun::ghidra_conversion::set_source_random_observer({});
+                    const auto expected_successes =
+                        shadowrun::ghidra_conversion::count_thresholded_random_rolls(
+                            profile.skills[8],
+                            static_cast<std::int16_t>(expected_difficulty),
+                            [&expected_random_seed,
+                             &expected_dice_samples](const std::uint16_t bound) {
+                                ++expected_dice_samples;
+                                return shadowrun::ghidra_conversion::
+                                    sample_source_random_bound(
+                                        expected_random_seed, bound);
+                            });
+                    const auto delta = expected_successes == 0U
+                        ? 1U
+                        : expected_successes;
+                    const auto physical_after = std::min<std::uint8_t>(
+                        10U, static_cast<std::uint8_t>(physical_before + delta));
+                    const auto mental_after = std::min<std::uint8_t>(
+                        10U, static_cast<std::uint8_t>(mental_before + delta));
+                    std::size_t actual_dice_samples = 0U;
+                    shadowrun::ghidra_conversion::set_source_random_observer(
+                        [&actual_dice_samples](const int event,
+                                               const std::uint16_t bound,
+                                               const std::int32_t,
+                                               const std::uint16_t) {
+                            if (event == 1 && bound == 6U) {
+                                ++actual_dice_samples;
+                            }
+                        });
+                    field_scene.set_source_random_seed_for_dump(
+                        initial_random_seed);
+                    const auto flags_before = static_cast<std::uint8_t>(
+                        field_scene.active_runner_record().flags >> 8U);
+                    field_scene.set_controller_port_byte(0x40U);
+                    field_scene.advance_frame();
+                    field_scene.set_controller_port_byte(0U);
+                    field_scene.advance_frame();
+                    shadowrun::ghidra_conversion::set_source_random_observer({});
+                    const auto& after_profile_use =
+                        field_scene.active_runner_record();
+                    const auto expected_phase_after =
+                        phase_before == 1U ? 0U : 1U;
+                    const auto expected_item_after =
+                        phase_before == 1U ? 0U : 0x10U;
+                    if (!field_scene.first_aid_result_waiting() ||
+                        field_scene.first_aid_message() !=
+                            FirstAidMessage::medkit_used ||
+                        actual_dice_samples != expected_dice_samples ||
+                        after_profile_use.delay_meter != physical_after ||
+                        after_profile_use.behavior_meter != mental_after ||
+                        after_profile_use.inventory_item_codes[
+                            profile_medkit_slot] != expected_item_after ||
+                        after_profile_use.inventory_phase_bytes[
+                            profile_medkit_slot] != expected_phase_after ||
+                        (static_cast<std::uint8_t>(
+                             after_profile_use.flags >> 8U) !=
+                         static_cast<std::uint8_t>(
+                             (flags_before & ~0x50U) | 0x01U)) ||
+                        after_profile_use.first_aid_continuation != 0xB45CU) {
+                        std::cerr << "field First Aid dump: ROM profile "
+                                     "formula/result mismatch for "
+                                  << kProfileSlugs[profile_index]
+                                  << " biotech="
+                                  << static_cast<unsigned>(profile.skills[8])
+                                  << " target_body="
+                                  << static_cast<unsigned>(profile.attributes[0])
+                                  << " difficulty="
+                                  << static_cast<unsigned>(expected_difficulty)
+                                  << " successes="
+                                  << static_cast<unsigned>(expected_successes)
+                                  << " dice=" << actual_dice_samples << '/'
+                                  << expected_dice_samples << '\n';
+                        return 3;
+                    }
+                    const auto profile_result_scene = render_scene();
+                    const auto expected_result_phase = phase_before == 1U
+                        ? 0U
+                        : expected_phase_after;
+                    if (!field_inventory_selector_survives(
+                            profile_result_scene, desired_profile_column,
+                            desired_profile_row) ||
+                        !field_hud_face_family_survives(
+                            profile_result_scene, asset_root, profile_index) ||
+                        !field_hud_meter_assets_survive(
+                            profile_result_scene, asset_root, physical_after,
+                            mental_after, true) ||
+                        (expected_item_after != 0U &&
+                         !detail_value_matches(profile_result_scene,
+                                               expected_result_phase)) ||
+                        !region_has_green_ink(
+                            profile_result_scene, QRect(136, 200, 96, 8)) ||
+                        !save_scene(profile_prefix + "-medkit-result",
+                                    profile_result_scene)) {
+                        std::cerr << "field First Aid dump: profile result "
+                                     "frame failed for "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+                    press(0x40U);
+                    const auto profile_return_scene = render_scene();
+                    if (field_scene.first_aid_open() ||
+                        field_scene.active_runner_record()
+                                .inventory_item_codes[profile_medkit_slot] !=
+                            expected_item_after ||
+                        field_scene.active_runner_record()
+                                .inventory_phase_bytes[profile_medkit_slot] !=
+                            expected_phase_after ||
+                        field_inventory_selector_survives(
+                            profile_return_scene, desired_profile_column,
+                            desired_profile_row) ||
+                        !field_hud_face_family_survives(
+                            profile_return_scene, asset_root, profile_index) ||
+                        !save_scene(profile_prefix + "-inventory-return",
+                                    profile_return_scene)) {
+                        std::cerr << "field First Aid dump: profile return "
+                                     "or item phase persistence failed for "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+
+                    // The source Medkit guard requires both meters to equal
+                    // ten. Re-enter the real controller route for each source
+                    // profile and verify the no-roll/no-consumption result.
+                    auto& full_target_record =
+                        field_scene.active_runner_record();
+                    full_target_record.delay_meter = 10U;
+                    full_target_record.behavior_meter = 10U;
+                    full_target_record.inventory_item_codes[
+                        profile_medkit_slot] = 0x10U;
+                    full_target_record.inventory_phase_bytes[
+                        profile_medkit_slot] = 1U;
+                    field_scene.refresh_field_hud_for_dump();
+                    const auto full_target_flags =
+                        full_target_record.flags;
+                    const auto full_target_continuation =
+                        full_target_record.first_aid_continuation;
+                    constexpr std::uint8_t kFullTargetPhase = 1U;
+                    const auto step_away = static_cast<std::uint8_t>(
+                        desired_profile_column == 0U ? 0x08U : 0x04U);
+                    const auto step_back = static_cast<std::uint8_t>(
+                        desired_profile_column == 0U ? 0x04U : 0x08U);
+                    press(step_away);
+                    press(step_back);
+                    if (field_scene.command_overview_view()
+                                .source_state.primary_page !=
+                            desired_profile_column ||
+                        field_scene.command_overview_view()
+                                .source_state.secondary_page !=
+                            desired_profile_row) {
+                        std::cerr << "field First Aid dump: could not "
+                                     "reselect full-target Medkit cell for "
+                                     "profile "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+                    press(0x40U);
+                    if (!field_scene.inventory_action_open() ||
+                        field_scene.inventory_action_selection() != 2U) {
+                        std::cerr << "field First Aid dump: full-target "
+                                     "Equip/Use did not open for profile "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+                    press(0x40U);
+                    if (!field_scene.first_aid_open() ||
+                        field_scene.first_aid_targets().active_count != 1U ||
+                        field_scene.first_aid_target_cursor() != 0U) {
+                        std::cerr << "field First Aid dump: full-target "
+                                     "selection did not open for profile "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+                    std::size_t full_target_dice_samples = 0U;
+                    shadowrun::ghidra_conversion::set_source_random_observer(
+                        [&full_target_dice_samples](
+                            const int event, const std::uint16_t bound,
+                            const std::int32_t, const std::uint16_t) {
+                            if (event == 1 && bound == 6U) {
+                                ++full_target_dice_samples;
+                            }
+                        });
+                    press(0x40U);
+                    shadowrun::ghidra_conversion::set_source_random_observer(
+                        {});
+                    const auto& after_full_target_attempt =
+                        field_scene.active_runner_record();
+                    const bool full_target_state_unchanged =
+                        after_full_target_attempt.delay_meter == 10U &&
+                        after_full_target_attempt.behavior_meter == 10U &&
+                        after_full_target_attempt.flags == full_target_flags &&
+                        after_full_target_attempt.first_aid_continuation ==
+                            full_target_continuation &&
+                        after_full_target_attempt.inventory_item_codes[
+                            profile_medkit_slot] == 0x10U &&
+                        after_full_target_attempt.inventory_phase_bytes[
+                            profile_medkit_slot] == kFullTargetPhase;
+                    if (!field_scene.first_aid_result_waiting() ||
+                        field_scene.first_aid_message() !=
+                            FirstAidMessage::target_not_injured ||
+                        full_target_dice_samples != 0U ||
+                        !full_target_state_unchanged) {
+                        std::cerr << "field First Aid dump: fully treated "
+                                     "target rolled, consumed, or changed "
+                                     "state for profile "
+                                  << kProfileSlugs[profile_index]
+                                  << " dice=" << full_target_dice_samples
+                                  << '\n';
+                        return 3;
+                    }
+                    const auto full_target_result_scene = render_scene();
+                    const bool full_target_selector_matches =
+                        field_inventory_selector_survives(
+                            full_target_result_scene,
+                            desired_profile_column, desired_profile_row);
+                    const bool full_target_face_matches =
+                        field_hud_face_family_survives(
+                            full_target_result_scene, asset_root,
+                            profile_index);
+                    const bool full_target_hud_matches =
+                        field_hud_meter_assets_survive(
+                            full_target_result_scene, asset_root, 10U, 10U,
+                            true);
+                    const bool full_target_detail_matches =
+                        detail_value_matches(full_target_result_scene,
+                                             kFullTargetPhase);
+                    const bool full_target_first_line_visible =
+                        region_has_green_ink(
+                            full_target_result_scene,
+                            QRect(104, 104, 144, 8));
+                    const bool full_target_second_line_visible =
+                        region_has_green_ink(
+                            full_target_result_scene,
+                            QRect(104, 112, 144, 8));
+                    const bool full_target_frame_saved = save_scene(
+                        profile_prefix + "-full-target-no-use",
+                        full_target_result_scene);
+                    if (!full_target_selector_matches ||
+                        !full_target_face_matches ||
+                        !full_target_hud_matches ||
+                        !full_target_detail_matches ||
+                        !full_target_first_line_visible ||
+                        !full_target_second_line_visible ||
+                        !full_target_frame_saved) {
+                        std::cerr << "field First Aid dump: full-target "
+                                     "message/frame failed for profile "
+                                  << kProfileSlugs[profile_index]
+                                  << " selector="
+                                  << full_target_selector_matches
+                                  << " face=" << full_target_face_matches
+                                  << " hud=" << full_target_hud_matches
+                                  << " detail=" << full_target_detail_matches
+                                  << " message_lines="
+                                  << full_target_first_line_visible << '/'
+                                  << full_target_second_line_visible
+                                  << " saved=" << full_target_frame_saved
+                                  << '\n';
+                        return 3;
+                    }
+                    press(0x40U);
+                    const auto full_target_return_scene = render_scene();
+                    if (field_scene.first_aid_open() ||
+                        field_scene.active_runner_record()
+                                .inventory_item_codes[profile_medkit_slot] !=
+                            0x10U ||
+                        field_scene.active_runner_record()
+                                .inventory_phase_bytes[profile_medkit_slot] !=
+                            kFullTargetPhase ||
+                        field_scene.active_runner_record().delay_meter !=
+                            10U ||
+                        field_scene.active_runner_record().behavior_meter !=
+                            10U ||
+                        field_inventory_selector_survives(
+                            full_target_return_scene,
+                            desired_profile_column, desired_profile_row) ||
+                        !detail_value_matches(full_target_return_scene,
+                                              kFullTargetPhase)) {
+                        std::cerr << "field First Aid dump: full-target "
+                                     "return mutated the record or retained "
+                                     "the inventory selector for profile "
+                                  << kProfileSlugs[profile_index] << '\n';
+                        return 3;
+                    }
+
+                    const auto run_first_aid_patch_case =
+                        [&](const std::uint8_t item_code,
+                            const std::string_view item_name,
+                            const std::size_t patch_slot,
+                            const std::uint8_t phase_before_patch,
+                            const std::uint8_t physical_before_patch,
+                            const std::uint8_t mental_before_patch,
+                            const bool expect_no_injury) {
+                            const bool source_guard_matches =
+                                (item_code == 0x11U &&
+                                 mental_before_patch == 10U) ||
+                                (item_code == 0x12U &&
+                                 physical_before_patch == 10U);
+                            if ((item_code != 0x11U && item_code != 0x12U) ||
+                                source_guard_matches != expect_no_injury) {
+                                std::cerr << "field First Aid dump: invalid "
+                                             "patch permutation definition for "
+                                          << kProfileSlugs[profile_index]
+                                          << " item=0x" << std::hex
+                                          << static_cast<unsigned>(item_code)
+                                          << std::dec << '\n';
+                                return false;
+                            }
+
+                            auto& patch_record =
+                                field_scene.active_runner_record();
+                            patch_record.inventory_item_codes[patch_slot] =
+                                item_code;
+                            patch_record.inventory_phase_bytes[patch_slot] =
+                                phase_before_patch;
+                            patch_record.delay_meter = physical_before_patch;
+                            patch_record.behavior_meter = mental_before_patch;
+                            patch_record.flags = static_cast<std::uint16_t>(
+                                (patch_record.flags & 0x00FFU) | 0x5100U);
+                            field_scene.refresh_field_hud_for_dump();
+
+                            const auto flags_before_patch =
+                                patch_record.flags;
+                            const auto status_before =
+                                static_cast<std::uint8_t>(
+                                    patch_record.flags >> 8U);
+                            const auto continuation_before =
+                                patch_record.first_aid_continuation;
+                            const auto body_before_patch =
+                                patch_record.attributes[0U];
+                            const auto biotech_before_patch =
+                                patch_record.skills[8U];
+                            const bool source_slot_and_phase =
+                                source_inventory_item_codes[patch_slot] ==
+                                    item_code &&
+                                source_inventory_phases[patch_slot] ==
+                                    phase_before_patch;
+                            const auto patch_column =
+                                static_cast<std::uint8_t>(patch_slot % 2U);
+                            const auto patch_row =
+                                static_cast<std::uint8_t>(patch_slot / 2U);
+                            auto patch_cursor = field_scene
+                                .command_overview_view().source_state;
+                            while (patch_cursor.secondary_page != patch_row) {
+                                press(patch_cursor.secondary_page < patch_row
+                                          ? 0x02U
+                                          : 0x01U);
+                                patch_cursor = field_scene
+                                                  .command_overview_view()
+                                                  .source_state;
+                            }
+                            if (patch_cursor.primary_page != patch_column) {
+                                press(patch_cursor.primary_page < patch_column
+                                          ? 0x08U
+                                          : 0x04U);
+                            } else {
+                                const auto step_away_patch =
+                                    static_cast<std::uint8_t>(
+                                        patch_column == 0U ? 0x08U : 0x04U);
+                                const auto step_back_patch =
+                                    static_cast<std::uint8_t>(
+                                        patch_column == 0U ? 0x04U : 0x08U);
+                                press(step_away_patch);
+                                press(step_back_patch);
+                            }
+                            if (field_scene.command_overview_view()
+                                        .source_state.primary_page !=
+                                    patch_column ||
+                                field_scene.command_overview_view()
+                                        .source_state.secondary_page !=
+                                    patch_row ||
+                                field_scene.active_runner_record()
+                                        .inventory_item_codes[
+                                            patch_slot] != item_code) {
+                                std::cerr << "field First Aid dump: patch cell "
+                                             "could not be reselected for "
+                                          << kProfileSlugs[profile_index]
+                                          << " " << item_name << '\n';
+                                return false;
+                            }
+                            if (!expect_no_injury) {
+                                const auto patch_selected_scene =
+                                    render_scene();
+                                if (!field_inventory_selector_survives(
+                                        patch_selected_scene,
+                                        patch_column, patch_row) ||
+                                    !field_hud_face_family_survives(
+                                        patch_selected_scene, asset_root,
+                                        profile_index) ||
+                                    !detail_value_matches(
+                                        patch_selected_scene,
+                                        phase_before_patch) ||
+                                    !save_scene(
+                                        profile_prefix + "-" +
+                                            std::string(item_name) +
+                                            "-inventory-selected",
+                                        patch_selected_scene)) {
+                                    std::cerr << "field First Aid dump: "
+                                                 "patch item/detail selection "
+                                                 "frame failed for "
+                                              << kProfileSlugs[profile_index]
+                                              << " " << item_name << '\n';
+                                    return false;
+                                }
+                            }
+
+                            press(0x40U);
+                            if (!field_scene.inventory_action_open() ||
+                                field_scene.inventory_action_selection() !=
+                                    2U) {
+                                std::cerr << "field First Aid dump: patch "
+                                             "Equip/Use did not open for "
+                                          << kProfileSlugs[profile_index]
+                                          << " " << item_name << '\n';
+                                return false;
+                            }
+                            press(0x40U);
+                            if (!field_scene.first_aid_open() ||
+                                field_scene.first_aid_targets().active_count !=
+                                    1U ||
+                                field_scene.first_aid_target_cursor() != 0U) {
+                                std::cerr << "field First Aid dump: patch "
+                                             "target list did not open for "
+                                          << kProfileSlugs[profile_index]
+                                          << " " << item_name << '\n';
+                                return false;
+                            }
+
+                            std::size_t random_events = 0U;
+                            shadowrun::ghidra_conversion::
+                                set_source_random_observer(
+                                    [&random_events](
+                                        const int, const std::uint16_t,
+                                        const std::int32_t,
+                                        const std::uint16_t) {
+                                        ++random_events;
+                                    });
+                            press(0x40U);
+                            shadowrun::ghidra_conversion::
+                                set_source_random_observer({});
+
+                            const auto physical_after_patch =
+                                expect_no_injury || item_code == 0x11U
+                                    ? physical_before_patch
+                                    : static_cast<std::uint8_t>(
+                                          std::min<unsigned>(
+                                              10U,
+                                              physical_before_patch + 2U));
+                            const auto mental_after_patch =
+                                expect_no_injury || item_code == 0x12U
+                                    ? mental_before_patch
+                                    : static_cast<std::uint8_t>(
+                                          std::min<unsigned>(
+                                              10U,
+                                              mental_before_patch + 2U));
+                            auto status_after = status_before;
+                            if (!expect_no_injury &&
+                                ((item_code == 0x11U &&
+                                  physical_before_patch != 0U) ||
+                                 (item_code == 0x12U &&
+                                  mental_before_patch != 0U))) {
+                                status_after = static_cast<std::uint8_t>(
+                                    (status_after & ~0x50U) | 0x01U);
+                            }
+                            const auto expected_phase_after =
+                                static_cast<std::uint8_t>(
+                                    expect_no_injury
+                                        ? phase_before_patch
+                                        : phase_before_patch - 1U);
+                            const auto expected_item_after =
+                                expected_phase_after == 0U ? 0U : item_code;
+                            const auto expected_flags_after =
+                                static_cast<std::uint16_t>(
+                                    (flags_before_patch & 0x00FFU) |
+                                    (static_cast<std::uint16_t>(
+                                         status_after)
+                                     << 8U));
+                            const auto expected_message = expect_no_injury
+                                ? FirstAidMessage::target_not_injured
+                                : FirstAidMessage::slap_patch_used;
+                            const auto& after_patch =
+                                field_scene.active_runner_record();
+                            if (!field_scene.first_aid_result_waiting() ||
+                                field_scene.first_aid_message() !=
+                                    expected_message ||
+                                random_events != 0U ||
+                                after_patch.delay_meter !=
+                                    physical_after_patch ||
+                                after_patch.behavior_meter !=
+                                    mental_after_patch ||
+                                after_patch.flags != expected_flags_after ||
+                                after_patch.first_aid_continuation !=
+                                    continuation_before ||
+                                after_patch.attributes[0U] !=
+                                    body_before_patch ||
+                                after_patch.skills[8U] != biotech_before_patch ||
+                                after_patch.inventory_item_codes[
+                                    patch_slot] != expected_item_after ||
+                                after_patch.inventory_phase_bytes[
+                                    patch_slot] !=
+                                    expected_phase_after) {
+                                std::cerr << "field First Aid dump: patch "
+                                             "formula, guard, or item phase "
+                                             "failed for "
+                                          << kProfileSlugs[profile_index]
+                                          << " " << item_name
+                                          << " no_injury=" << expect_no_injury
+                                          << " random_events=" << random_events
+                                          << "\n";
+                                return false;
+                            }
+
+                            const auto patch_result_scene = render_scene();
+                            const auto patch_profile_frame =
+                                field_inventory_selector_survives(
+                                    patch_result_scene,
+                                    patch_column, patch_row) &&
+                                field_hud_face_family_survives(
+                                    patch_result_scene, asset_root,
+                                    profile_index) &&
+                                field_hud_meter_assets_survive(
+                                    patch_result_scene, asset_root,
+                                    physical_after_patch,
+                                    mental_after_patch, true) &&
+                                detail_value_matches(
+                                    patch_result_scene,
+                                    expected_phase_after) &&
+                                (expect_no_injury
+                                     ? region_has_green_ink(
+                                           patch_result_scene,
+                                           QRect(104, 104, 144, 8)) &&
+                                           region_has_green_ink(
+                                               patch_result_scene,
+                                               QRect(104, 112, 144, 8))
+                                     : region_has_green_ink(
+                                           patch_result_scene,
+                                           QRect(104, 104, 152, 8))) &&
+                                save_scene(
+                                    profile_prefix + "-" +
+                                        std::string(item_name) + "-" +
+                                        (expect_no_injury ? "no-use" : "used"),
+                                    patch_result_scene);
+                            if (!patch_profile_frame) {
+                                std::cerr << "field First Aid dump: patch "
+                                             "result frame failed for "
+                                          << kProfileSlugs[profile_index]
+                                          << " " << item_name
+                                          << " no_injury=" << expect_no_injury
+                                          << '\n';
+                                return false;
+                            }
+
+                            press(0x40U);
+                            const auto patch_return_scene = render_scene();
+                            const auto& after_patch_return =
+                                field_scene.active_runner_record();
+                            if (field_scene.first_aid_open() ||
+                                after_patch_return.delay_meter !=
+                                    physical_after_patch ||
+                                after_patch_return.behavior_meter !=
+                                    mental_after_patch ||
+                                after_patch_return.flags !=
+                                    expected_flags_after ||
+                                after_patch_return.first_aid_continuation !=
+                                    continuation_before ||
+                                after_patch_return.inventory_item_codes[
+                                    patch_slot] != expected_item_after ||
+                                after_patch_return.inventory_phase_bytes[
+                                    patch_slot] !=
+                                    expected_phase_after ||
+                                field_inventory_selector_survives(
+                                    patch_return_scene,
+                                    patch_column, patch_row) ||
+                                !detail_value_matches(
+                                    patch_return_scene,
+                                    expected_phase_after)) {
+                                std::cerr << "field First Aid dump: patch "
+                                             "return did not preserve the "
+                                             "result for "
+                                          << kProfileSlugs[profile_index]
+                                          << " " << item_name
+                                          << " no_injury=" << expect_no_injury
+                                          << '\n';
+                                return false;
+                            }
+
+                            patch_manifest
+                                << kProfileSlugs[profile_index] << '\t'
+                                << std::hex << profile_rom_offset << std::dec
+                                << '\t' << static_cast<unsigned>(race)
+                                << '\t'
+                                << static_cast<unsigned>(runner_class) << '\t'
+                                << static_cast<unsigned>(body_before_patch)
+                                << '\t'
+                                << static_cast<unsigned>(biotech_before_patch)
+                                << '\t' << patch_slot << '\t'
+                                << (source_slot_and_phase ? "yes" : "no")
+                                << '\t' << std::hex
+                                << static_cast<unsigned>(item_code) << std::dec
+                                << '\t' << item_name << '\t'
+                                << (expect_no_injury ? "no_injury" : "used")
+                                << '\t'
+                                << static_cast<unsigned>(physical_before_patch)
+                                << '\t'
+                                << static_cast<unsigned>(mental_before_patch)
+                                << '\t'
+                                << static_cast<unsigned>(physical_after_patch)
+                                << '\t'
+                                << static_cast<unsigned>(mental_after_patch)
+                                << '\t'
+                                << static_cast<unsigned>(status_before) << '\t'
+                                << static_cast<unsigned>(status_after) << '\t'
+                                << static_cast<unsigned>(phase_before_patch)
+                                << '\t'
+                                << static_cast<unsigned>(expected_phase_after)
+                                << '\t' << random_events << '\t' << std::hex
+                                << continuation_before << '\t'
+                                << after_patch_return.first_aid_continuation
+                                << std::dec << '\t'
+                                << (expect_no_injury
+                                        ? "items.text.option.first_aid_not_injured"
+                                        : "items.text.option.first_aid_slap_patch_used")
+                                << '\n';
+                            return static_cast<bool>(patch_manifest);
+                        };
+
+                    const auto patch_slot_for =
+                        [&](const std::uint8_t item_code) {
+                            const auto found = std::find(
+                                source_inventory_item_codes.begin(),
+                                source_inventory_item_codes.end(), item_code);
+                            return found ==
+                                           source_inventory_item_codes.end()
+                                       ? profile_medkit_slot
+                                       : static_cast<std::size_t>(
+                                             found -
+                                             source_inventory_item_codes.begin());
+                        };
+                    const auto patch_phase_for =
+                        [&](const std::uint8_t item_code,
+                            const std::size_t item_slot) {
+                            const auto source_phase =
+                                source_inventory_phases[item_slot];
+                            return source_inventory_item_codes[item_slot] ==
+                                           item_code &&
+                                       source_phase >= 2U
+                                   ? source_phase
+                                   : std::uint8_t{2U};
+                        };
+                    const auto stim_slot = patch_slot_for(0x11U);
+                    const auto stim_phase = patch_phase_for(0x11U, stim_slot);
+                    const auto trauma_slot = patch_slot_for(0x12U);
+                    const auto trauma_phase =
+                        patch_phase_for(0x12U, trauma_slot);
+                    const bool profile_even = profile_index % 2U == 0U;
+                    const auto stim_physical = static_cast<std::uint8_t>(
+                        profile_even ? 0U : 3U);
+                    const auto stim_mental = static_cast<std::uint8_t>(
+                        profile_even ? 8U : 6U);
+                    const auto trauma_physical = static_cast<std::uint8_t>(
+                        profile_even ? 8U : 6U);
+                    const auto trauma_mental = static_cast<std::uint8_t>(
+                        profile_even ? 0U : 3U);
+                    if (!run_first_aid_patch_case(
+                            0x11U, "stim-patch", stim_slot, stim_phase,
+                            stim_physical, stim_mental, false) ||
+                        !run_first_aid_patch_case(
+                            0x11U, "stim-patch", stim_slot, stim_phase,
+                            5U, 10U, true) ||
+                        !run_first_aid_patch_case(
+                            0x12U, "trauma-patch", trauma_slot, trauma_phase,
+                            trauma_physical, trauma_mental, false) ||
+                        !run_first_aid_patch_case(
+                            0x12U, "trauma-patch", trauma_slot, trauma_phase,
+                            10U, 5U, true)) {
+                        return 3;
+                    }
+                    profile_manifest
+                        << kProfileSlugs[profile_index] << '\t'
+                        << std::hex << profile_rom_offset << std::dec << '\t'
+                        << static_cast<unsigned>(race) << '\t'
+                        << static_cast<unsigned>(runner_class) << '\t'
+                        << static_cast<unsigned>(source_body) << '\t'
+                        << static_cast<unsigned>(profile.attributes[0]) << '\t'
+                        << static_cast<unsigned>(profile.skills[8]) << '\t'
+                        << static_cast<unsigned>(physical_before) << '\t'
+                        << static_cast<unsigned>(mental_before) << '\t'
+                        << static_cast<unsigned>(expected_difficulty) << '\t'
+                        << static_cast<unsigned>(expected_successes) << '\t'
+                        << expected_dice_samples << '\t'
+                        << static_cast<unsigned>(physical_after) << '\t'
+                        << static_cast<unsigned>(mental_after) << '\t'
+                        << static_cast<unsigned>(phase_before) << '\t'
+                        << static_cast<unsigned>(expected_phase_after) << '\t'
+                        << "items.text.option.first_aid_not_injured" << '\t'
+                        << full_target_dice_samples << '\t'
+                        << static_cast<unsigned>(kFullTargetPhase) << '\t'
+                        << static_cast<unsigned>(
+                               after_full_target_attempt
+                                   .inventory_phase_bytes[
+                                       profile_medkit_slot])
+                        << '\t'
+                        << (full_target_state_unchanged ? "yes" : "no")
+                        << '\n';
+                }
+                profile_manifest.flush();
+                if (!profile_manifest) {
+                    std::cerr << "field First Aid dump: profile manifest "
+                                 "write failed\n";
+                    return 3;
+                }
+                patch_manifest.flush();
+                if (!patch_manifest) {
+                    std::cerr << "field First Aid dump: patch profile "
+                                 "manifest write failed\n";
+                    return 3;
+                }
                 std::cout << "field_first_aid_dump=written path="
                           << field_first_aid_dump_path->string()
                           << " slot=" << medkit_slot
@@ -42508,6 +49469,7 @@ int main(int argc, char** argv) {
                           << static_cast<int>(after_use.delay_meter)
                           << " mental="
                           << static_cast<int>(after_use.behavior_meter)
+                          << " profile_cases=" << kProfileSlugs.size()
                           << "\n";
                 return 0;
             }
@@ -43555,9 +50517,10 @@ int main(int argc, char** argv) {
                 }
                 field_scene.active_runner_record() = original_runner_record;
 
-                // Page two exposes the attack/defense bars. Their indices are
-                // source-derived typed math; verify that the rendered regions
-                // use the direct assets selected by those values.
+                // The fixture restores the source runner record before this
+                // baseline check. Verify that its typed Atk/Def values select
+                // the rendered assets; physical post-equip bar frames across
+                // all profiles are written by the profile permutation QA.
                 press(0x08U);
                 press(0x08U);
                 if (field_scene.command_overview_view().source_state
@@ -43574,7 +50537,8 @@ int main(int argc, char** argv) {
                 if (!bars.attack_written || !bars.defense_written ||
                     !region_matches(combat_scene, attack_asset, 144, 104) ||
                     !region_matches(combat_scene, defense_asset, 144, 112) ||
-                    !save_scene("06_combat_bars_after_equip", combat_scene)) {
+                    !save_scene("06_combat_bars_after_fixture_restore",
+                                combat_scene)) {
                     std::cerr << "field action dump: typed combat math did not "
                                  "select the rendered bar assets\n";
                     return 3;
@@ -45202,6 +52166,61 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
+                // ROM template 0x7351A is a Human Samurai with Frag Grenades
+                // in inventory slots 3 and 4, each at quantity 6. Equip its
+                // first grenade slot as the source-valid input to 0x36FC's
+                // 0x0D..0x0F inventory-phase display path.
+                auto grenade_runner = load_party_record(10U);
+                constexpr std::uint8_t kFragGrenade = 0x0DU;
+                constexpr std::uint8_t kFragGrenadeSlot = 3U;
+                if (grenade_runner.inventory_item_codes[kFragGrenadeSlot] !=
+                        kFragGrenade ||
+                    grenade_runner.inventory_phase_bytes[kFragGrenadeSlot] !=
+                        6U) {
+                    std::cerr << "field HUD grenade QA: source template "
+                                 "0x7351A no longer has six Frag Grenades "
+                                 "in slot 3\n";
+                    return 3;
+                }
+                grenade_runner.equipped_inventory_slot =
+                    static_cast<std::int8_t>(kFragGrenadeSlot);
+                grenade_runner.equipped_item_code = kFragGrenade;
+                party_scene.install_party_member_for_dump(
+                    1U, grenade_runner, "Human Samurai", 3U);
+                party_scene.set_active_party_slot_for_dump(1U);
+                const auto& installed_grenade_runner =
+                    party_scene.field_party_records_for_dump()[1U];
+                QImage party_grenade;
+                const auto grenade_ammo_y = field_hud_vram_y(
+                    static_cast<std::uint16_t>(
+                        kFieldHudAmmoVram + kFieldHudSlotVramStride));
+                if (!save_party_frame("party-grenade-equipped",
+                                      party_grenade) ||
+                    installed_grenade_runner.equipped_inventory_slot !=
+                        static_cast<std::int8_t>(kFragGrenadeSlot) ||
+                    installed_grenade_runner.equipped_item_code !=
+                        kFragGrenade ||
+                    installed_grenade_runner.inventory_phase_bytes[
+                        kFragGrenadeSlot] != 6U ||
+                    !field_hud_party_slot_asset_survives(
+                        party_grenade, asset_root,
+                        "field/hud/party/item-13-palette-" +
+                            std::to_string(item_palette_for(grenade_runner)) +
+                            ".bmp",
+                        288, 128, QSize(24, 16)) ||
+                    !field_hud_party_slot_asset_survives(
+                        party_grenade, asset_root,
+                        "field/hud/ammo-counter-6.bmp",
+                        field_hud_vram_x(kFieldHudAmmoVram), grenade_ammo_y,
+                        QSize(16, 8))) {
+                    std::cerr << "field HUD grenade QA: source Frag Grenade "
+                                 "icon or six-count display did not match its "
+                                 "live record\n";
+                    return 3;
+                }
+
+                party_scene.install_party_member_for_dump(
+                    1U, ricky, "Ricky", 3U);
                 party_scene.set_active_party_slot_for_dump(2U);
                 QImage party_active_winston;
                 if (!save_party_frame("party-active-winston",

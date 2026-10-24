@@ -31,6 +31,11 @@ local cinematic_document = {
         source_confirmed_sequence = {
             presentation = "full_screen_story_pages",
             assetProfileId = "test.story_sequence",
+            assetAlias = "test.story_sequence.art",
+            textLayout = {
+                x = 24, y = 16, columns = 37, rows = 8,
+                inkRgb = { 255, 0, 255 },
+            },
             inputContract = "controller_event",
             returnPolicy = "resume_origin",
             provenance = { romAddresses = { "0x1000" } },
@@ -260,6 +265,7 @@ local actions = {
     end,
 }
 local presented_pages = {}
+local presented_story_pages = {}
 local presented_choices = {}
 local next_button_input = "second"
 local cursor_inputs = { "down", "confirm" }
@@ -272,6 +278,14 @@ local host = {
             text_profile = text_profile,
             presentation = node.presentation or "field_npc",
             input_delay_frames = node.inputDelayFrames or 0,
+        }
+        return true
+    end,
+    present_story_page = function(asset_alias, text_key, layout)
+        presented_story_pages[#presented_story_pages + 1] = {
+            asset_alias = asset_alias,
+            text_key = text_key,
+            layout = layout,
         }
         return true
     end,
@@ -331,7 +345,11 @@ assert(outcome.type == "continue_in_place")
 outcome = session:run("test.page")
 assert(outcome.type == "play_cinematic" and
        presented_pages[#presented_pages].event_id == "page_one" and
-       presented_pages[#presented_pages].speaker_id == "test_speaker")
+       presented_pages[#presented_pages].speaker_id == "test_speaker" and
+       #presented_story_pages == 1 and
+       presented_story_pages[1].asset_alias == "test.story_sequence.art" and
+       presented_story_pages[1].text_key == "test.sequence.page_one" and
+       presented_story_pages[1].layout.columns == 37)
 
 outcome = session:run("test.mode_text")
 assert(outcome.type == "continue_in_place" and

@@ -220,6 +220,37 @@ end)
 -- cyberdeck 0x1822C [C]
 section('cyberdeck 0x1822C [C]', function()
 local CDm = require("menu.screens.cyberdeck").Cyberdeck
+local function complete_pull_plug_exit(r, log, game, label)
+    check(top(r) == S.PULL_PLUG and st(r).matrix_transition and
+          st(r).matrix_transition.elapsed_frames == 0,
+          label .. ": confirmation starts the source exit transition")
+    local sound_count = #log.sounds
+    for _ = 1, 9 do r:frame(P.B) end
+    check(top(r) == S.PULL_PLUG and
+          st(r).matrix_transition.elapsed_frames == 9 and
+          #log.sounds == sound_count,
+          label .. ": transition ignores input through fade VBlank 9")
+    r:frame(P.B)
+    check(top(r) == S.PULL_PLUG and
+          st(r).matrix_transition.elapsed_frames == 10 and
+          #log.sounds == sound_count + 1 and
+          log.sounds[#log.sounds] == MXr.LOGOUT_SOUND,
+          label .. ": sound 0x29 starts display handoff at VBlank 10")
+    for _ = 11, 63 do r:frame(P.A) end
+    check(top(r) == S.PULL_PLUG and
+          st(r).matrix_transition.elapsed_frames == 63 and
+          st(r).matrix_transition.visual.phase == "black" and
+          #log.sounds == sound_count + 1,
+          label .. ": held input cannot shorten the black handoff at VBlank 63")
+    r:frame(0)
+    check(top(r) == S.COMMAND and game.deck_out == 7 and
+          #log.sounds == sound_count + 2 and
+          log.sounds[sound_count + 1] == MXr.LOGOUT_SOUND and
+          log.sounds[sound_count + 2] == E.MenuSound.MOVE,
+          label .. ": deck leaves on source VBlank 64, then Command refresh plays 0x25 (screen=" ..
+          tostring(top(r)) .. ", deck_out=" .. tostring(game.deck_out) ..
+          ", sounds=" .. tostring(#log.sounds) .. ")")
+end
 check(select(1, CDm.cursor_xy(3, 3)) == 0xEC and select(2, CDm.cursor_xy(3, 3)) == 0x10C, "deck cursor FFD986 maths")
 local rc, lc, gc = deck(); check(top(rc) == S.CYBERDECK and gc.deck_in, "deck open")
 local sc = #lc.sounds; rc:frame(P.UP); rc:frame(P.LEFT); check(st(rc).row == 3 and st(rc).col == 3 and #lc.sounds == sc, "grid wrap, silent")
@@ -231,13 +262,22 @@ rc:frame(P.START); rc:frame(P.DOWN); rc:frame(P.A); check(top(rc) == S.CYBERDECK
 rc:frame(P.START); check(top(rc) == S.POCKET_SECRETARY and gc.deck_out == 7, "Start -> leave, PS rebuild")
 rc, lc, gc = deck({ online = true }); rc:frame(P.UP); rc:frame(P.LEFT); rc:frame(P.A); check(top(rc) == S.PULL_PLUG and not st(rc).yes, "plug prompt default No")
 rc:frame(P.A); check(top(rc) == S.CYBERDECK and not gc.logout, "No -> back to grid")
-rc:frame(P.A); rc:frame(P.DOWN); local sp0 = #lc.sounds; rc:frame(P.A); check(top(rc) == S.COMMAND and gc.deck_out == 7 and lc.sounds[sp0 + 1] == MXr.LOGOUT_SOUND, "Yes -> logout sfx 0x29, deck_leave, PS exits [C 0x185CE]")
+rc:frame(P.A); rc:frame(P.DOWN); rc:frame(P.A)
+complete_pull_plug_exit(rc, lc, gc, "Yes -> logout [C 0x185CE]")
 rc, lc, gc = deck({ online = true, ic = 8, combat = true, rolls = { 0 } }); rc:frame(P.UP); rc:frame(P.LEFT); rc:frame(P.A); rc:frame(P.UP); rc:frame(P.A)
 check(gc.party[0].physical == 7 and top(rc) == S.CYBERDECK and lc.sounds[#lc.sounds] == E.MenuSound.DAMAGE, "Black IC fail: -TN/2, alive -> grid")
-rc, lc, gc = deck({ online = true, ic = 8, combat = true, rolls = { 1, 0 }, leader = { stun = 2 } }); rc:frame(P.UP); rc:frame(P.LEFT); rc:frame(P.A); rc:frame(P.UP); rc:frame(P.A)
-check(gc.party[0].stun == 1 and top(rc) == S.COMMAND and gc.deck_out == 7, "Body fail: stun -3 min 1, logout")
-rc, lc, gc = deck({ online = true, ic = 8, combat = true, rolls = { 0 }, leader = { physical = 2 } }); rc:frame(P.UP); rc:frame(P.LEFT); rc:frame(P.A); rc:frame(P.UP); rc:frame(P.A)
-check(gc.party[0].physical == 0 and top(rc) == S.COMMAND and gc.deck_out == 7, "Black IC kills -> logout")
+rc, lc, gc = deck({ online = true, ic = 8, combat = true, rolls = { 1, 1 }, leader = { stun = 2 } }); rc:frame(P.UP); rc:frame(P.LEFT); rc:frame(P.A); rc:frame(P.UP); rc:frame(P.C)
+check(gc.rolls == 2 and gc.party[0].physical == 10 and gc.party[0].stun == 2 and top(rc) == S.PULL_PLUG,
+    "Black IC resisted: successful Body roll avoids damage and still logs out")
+complete_pull_plug_exit(rc, lc, gc, "Black IC resisted")
+rc, lc, gc = deck({ online = true, ic = 8, combat = true, rolls = { 1, 0 }, leader = { stun = 2 } }); rc:frame(P.UP); rc:frame(P.LEFT); rc:frame(P.A); rc:frame(P.UP); rc:frame(P.B)
+check(gc.party[0].stun == 1 and top(rc) == S.PULL_PLUG and lc.sounds[#lc.sounds] == E.MenuSound.DAMAGE,
+    "Body fail: stun -3, clamp to 1, then begin logout")
+complete_pull_plug_exit(rc, lc, gc, "Body fail")
+rc, lc, gc = deck({ online = true, ic = 8, combat = true, rolls = { 0 }, leader = { physical = 2 } }); rc:frame(P.UP); rc:frame(P.LEFT); rc:frame(P.A); rc:frame(P.UP); rc:frame(P.C)
+check(gc.party[0].physical == 0 and top(rc) == S.PULL_PLUG and lc.sounds[#lc.sounds] == E.MenuSound.DAMAGE,
+    "Black IC kills -> begin logout")
+complete_pull_plug_exit(rc, lc, gc, "Black IC kills")
 
 end)
 -- debug menu (hidden row 5, docs/12) [C]

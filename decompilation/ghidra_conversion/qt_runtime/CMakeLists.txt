@@ -93,7 +93,9 @@ target_link_libraries(shadowrun_ghidra_conversion_qt_qa
         Qt6::Network
 )
 target_compile_definitions(shadowrun_ghidra_conversion_qt_qa
-    PRIVATE SHADOWRUN_QT_QA_DRIVER=1)
+    PRIVATE
+        SHADOWRUN_QT_QA_DRIVER=1
+        SHADOWRUN_US_ROM_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin")
 
 add_executable(shadowrun_numeric_visual_renderer_test
     tests/rendering/numeric_visual_renderer_test.cpp
@@ -664,6 +666,49 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_city_inn_
                  --field-tarislar-city-inn-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-city-inn-qa")
 
+# Exercise the two price-boundary outcomes and the no-debit refusal through
+# ordinary input from the same ROM record: 30 pays, 29 is insufficient, and
+# declining keeps the exact-funds wallet unchanged.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_city_inn_paid_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-city-inn-payment-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-city-inn-paid-qa"
+                 paid)
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_city_inn_insufficient_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-city-inn-payment-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-city-inn-insufficient-qa"
+                 insufficient)
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_city_inn_declined_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-city-inn-payment-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-city-inn-declined-qa"
+                 declined)
+
+# Enter Tabatha's service from the field and permute topic order with both
+# Recruit and Thanks outcomes, then follow each source profile/page transition
+# through David's timed Holopix and the same-map return.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_city_inn_tabatha_caleb_recruit_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-city-inn-tabatha-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-city-inn-tabatha-caleb-recruit-qa"
+                 tabatha_caleb_recruit)
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_city_inn_tabatha_caleb_thanks_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-city-inn-tabatha-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-city-inn-tabatha-caleb-thanks-qa"
+                 tabatha_caleb_thanks)
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_city_inn_tabatha_errascoe_recruit_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-city-inn-tabatha-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-city-inn-tabatha-errascoe-recruit-qa"
+                 tabatha_errascoe_recruit)
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_tarislar_city_inn_tabatha_errascoe_thanks_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-tarislar-city-inn-tabatha-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-tarislar-city-inn-tabatha-errascoe-thanks-qa"
+                 tabatha_errascoe_thanks)
+
 # Walk into Wylie's Gala Inn on Scene 3 and exercise the paid room prompt. Its
 # ROM event-table value is scene 13, but the dialog consumes that destination
 # and opens Hotel Options on the same map after the 50-nuyen payment.
@@ -1229,6 +1274,17 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hotel_qa
                  --field-hotel-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-hotel-qa")
 
+# Exercise the Hotel Karma child against every ROM-backed Joshua and recruit
+# profile, including the race ceiling table and each visible upgrade preview.
+# The base Hotel route continues after this audit with its ordinary checkout
+# permutation.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hotel_profile_permutation_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hotel-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hotel-profile-route"
+                 --field-hotel-profile-permutation-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hotel-profile-permutation")
+
 # Both menu routes share the ROM's Attributes/Skills grid and current-Karma
 # value, but render different detail lines. Compare fresh output from each
 # end-to-end route and require only the lower line to differ.
@@ -1360,6 +1416,37 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_sinsearach_gate_ph
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-sinsearach-gate-physical-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-sinsearach-gate-physical-entry-qa")
+
+# Sweep the physical question/answer choices, including question-loop return,
+# the two source question topics, the Elders fallback, and command 0x39 return.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_sinsearach_gate_questions_physical_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-sinsearach-gate-choice-permutation-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-sinsearach-gate-questions-physical-qa"
+                 questions)
+
+# Exercise the hostile bit-18-clear root through ordinary field input. Its
+# A/B/C choices share the question/Elders/Later continuations, while the root
+# text and source branch remain distinct from the friendly questions route.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_sinsearach_gate_hostile_root_physical_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-sinsearach-gate-choice-permutation-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-sinsearach-gate-hostile-root-physical-qa"
+                 hostile-questions)
+
+# Exercise Frosty's unavailable-state self-loop and its separate Elders exit.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_sinsearach_gate_frosty_elders_physical_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-sinsearach-gate-choice-permutation-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-sinsearach-gate-frosty-elders-physical-qa"
+                 frosty-elders)
+
+# Exercise Frosty-left's Later edge, fare refusal, guard reply, and same-map return.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_sinsearach_gate_frosty_later_physical_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-sinsearach-gate-choice-permutation-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-sinsearach-gate-frosty-later-physical-qa"
+                 frosty-later)
 
 # Start a fresh Scene-9 checkpoint, walk into record 230, and follow the Later
 # and Yes choices through the 1,000-nuyen short-wallet result.
@@ -1523,6 +1610,32 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_posture_qa
                  --field-posture-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-posture-qa.bmp")
 
+# Gator's Mana Zap force/posture action drives the source special-action bar
+# path and the C8AE0/D4540 totem modifier. Keep its pixels checked separately
+# from the default Samurai posture path.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_spell_combat_bar_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-archetype gator
+                 --field-spell-action-bars-qa
+                 --field-posture-dump
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-spell-combat-bar-qa/actual.bmp")
+
+# Carry every source Joshua/recruited profile through live command-menu
+# posture and Equip inputs. The QA checks formula-backed Atk/Def pixels before
+# and after equipping a source weapon, then writes complete host frames.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_profile_combat_bar_permutation_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-profile-combat-bar-permutation-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-profile-combat-bars")
+
+# Render each source class/race preset through the view-only field grid while
+# sweeping every cursor cell; compare visible numeric glyphs with the raw
+# source record and ensure the command route cannot spend Karma.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_profile_attributes_skills_permutation_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-profile-attributes-skills-permutation-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-profile-attributes-skills")
+
 # The page-5 A route has two source branches. Exercise the fallback with
 # Samurai's unmodified source record (class 2, +0x7F = 0); the separate spell
 # test uses Gator Shaman's source record. These are runtime regression
@@ -1567,6 +1680,9 @@ add_executable(shadowrun_ghidra_first_aid_conversion_test
 )
 target_link_libraries(shadowrun_ghidra_first_aid_conversion_test
     PRIVATE shadowrun_ghidra_conversion_runtime)
+target_compile_definitions(shadowrun_ghidra_first_aid_conversion_test
+    PRIVATE
+        SHADOWRUN_US_ROM_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin")
 add_test(NAME shadowrun_ghidra_first_aid_conversion
          COMMAND shadowrun_ghidra_first_aid_conversion_test)
 

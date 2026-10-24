@@ -99,5 +99,80 @@ int main() {
         return 13;
     }
 
+    // ROM 0x0D94 waits for any new bit in FFDD22's high byte. Sweep every
+    // possible controller-port byte through the typed sample/latch/wait path:
+    // each nonzero mask must wake once, a held mask and its release must not
+    // wake again, and a fresh press after release must wake again.
+    std::uint32_t audited_masks = 0U;
+    for (std::uint32_t raw_mask = 0U; raw_mask <= 0xFFU; ++raw_mask) {
+        const auto mask = static_cast<std::uint8_t>(raw_mask);
+        ControllerSampleState state{};
+        ControllerLatchState latch{};
+        std::uint32_t frames = 0U;
+        std::uint32_t samples = 0U;
+        const ControllerWaitHooks hooks{
+            [&] { ++frames; },
+            [&] {
+                latch.events = state.events;
+                (void)latch_controller_events(latch);
+            },
+            [&] {
+                sample_controller_input(state, mask);
+                ++samples;
+            },
+            [] {},
+            [&] { return state.events; },
+        };
+
+        if (mask == 0U) {
+            sample_controller_input(state, mask);
+            if (!expect(state.events == 0U)) {
+                return 14;
+            }
+            continue;
+        }
+
+        if (!expect(wait_for_controller_event(hooks) == 1U) ||
+            !expect(frames == 1U && samples == 2U) ||
+            !expect((state.events & 0xFF00U) == 0U) ||
+            !expect(state.events == mask)) {
+            return 15;
+        }
+
+        sample_controller_input(state, mask);
+        if (!expect(state.events == mask)) {
+            return 16;
+        }
+        latch.events = state.events;
+        if (!expect(latch_controller_events(latch) == 0U)) {
+            return 17;
+        }
+
+        sample_controller_input(state, 0U);
+        if (!expect(state.events == 0U)) {
+            return 18;
+        }
+        sample_controller_input(state, mask);
+        const auto expected_event =
+            static_cast<std::uint16_t>(raw_mask << 8U);
+        if (!expect((state.events & 0xFF00U) == expected_event)) {
+            return 19;
+        }
+        latch.events = state.events;
+        latch.extra_events = 0U;
+        latch.confirm_latch = 0;
+        latch.start_latch = 0;
+        if (!expect(latch_controller_events(latch) == expected_event) ||
+            !expect(latch.confirm_latch == -1) ||
+            !expect(latch.start_latch ==
+                    ((mask & 0x80U) != 0U ? -1 : 0))) {
+            return 20;
+        }
+        ++audited_masks;
+    }
+    if (!expect(audited_masks == 255U)) {
+        return 21;
+    }
+
     return 0;
 }

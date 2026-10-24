@@ -370,6 +370,12 @@ public:
     std::string_view active_credits_page_id_for_dump() const noexcept {
         return field_dialogue_.credits_page_id_for_dump();
     }
+    std::string_view active_story_page_text_for_dump() const noexcept {
+        return field_dialogue_.story_page_text_for_dump();
+    }
+    std::string_view active_story_page_text_key_for_dump() const noexcept {
+        return field_dialogue_.story_page_text_key_for_dump();
+    }
     bool seed_cyberspace_access_for_dump();
     bool seed_cyberdeck_reference_frame_for_dump();
     bool seed_cyberdeck_pull_plug_reference_for_dump();

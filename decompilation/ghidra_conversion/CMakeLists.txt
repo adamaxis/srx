@@ -197,10 +197,24 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
             target_link_libraries(${test_target}
                 PRIVATE shadowrun_ghidra_conversion_modules)
         endif()
-        if(test_name STREQUAL "startup_integration" OR
+        if(test_name STREQUAL "equipment_combat_bar" OR
+           test_name STREQUAL "attributes_skills_profile_permutation" OR
+           test_name STREQUAL "startup_integration" OR
            test_name STREQUAL "field_session_source_assets")
             target_compile_definitions(${test_target} PRIVATE
                 SHADOWRUN_CONVERSION_ASSET_ROOT=\"${CMAKE_CURRENT_SOURCE_DIR}/../assets\")
+        endif()
+        if(test_name STREQUAL "attributes_skills_profile_permutation")
+            target_compile_definitions(${test_target} PRIVATE
+                SHADOWRUN_US_ROM_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/../input/shadowrun_genesis_us.bin\")
+        endif()
+        if(test_name STREQUAL "field_hud_ammo_permutation")
+            target_compile_definitions(${test_target} PRIVATE
+                SHADOWRUN_US_ROM_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/../input/shadowrun_genesis_us.bin\")
+        endif()
+        if(test_name STREQUAL "magic_defense_party_permutation")
+            target_compile_definitions(${test_target} PRIVATE
+                SHADOWRUN_US_ROM_PATH=\"${CMAKE_CURRENT_SOURCE_DIR}/../input/shadowrun_genesis_us.bin\")
         endif()
         if(test_name STREQUAL "gameplay_script_menu_route" OR
            test_name STREQUAL "matrix_lua_rules")

@@ -1,11 +1,13 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "enums.hpp"
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace {
 
@@ -21,6 +23,100 @@ bool expect(const bool condition, const char* message) {
         std::cerr << message << '\n';
     }
     return condition;
+}
+
+constexpr std::array<std::string_view, 4> kGhoulAreaTexts{{
+    "in Downtown Seattle.",
+    "in the Puyallup Barrens.",
+    "in the Redmond Barrens.",
+    "in the Penumbra District.",
+}};
+
+bool verify_mortimer_ghoul_area(
+    const std::filesystem::path& script_root,
+    const std::filesystem::path& dialogue_text,
+    const std::uint8_t area_roll) {
+    GameScriptRuntime scripts;
+    if (!expect(scripts.load_package(script_root, dialogue_text),
+                "Mortimer gameplay Lua package did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    scripts.set_location_context(
+        "building", "big_rhino_dark_booth", "big-rhino.mortimer_reed",
+        "mortimer_reed");
+
+    auto task = scripts.start_task("johnson", "interaction");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_say &&
+                    task.operation->dialogue.has_value(),
+                "Mortimer entry did not start before the context-two offer")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.operation.has_value() && task.operation->menu.has_value(),
+                "Mortimer entry did not reach its work menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("work");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_say,
+                "Mortimer work branch skipped its source opening")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "random.bounded_8",
+                "Mortimer offer did not start from its eight ROM rows")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_service_result("roll_3");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "runner.negotiation_skill",
+                "context-two ghoul offer skipped Negotiation")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_service_result("skill_3");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "random.bounded_4",
+                "context-two ghoul offer skipped its payment roll")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_service_result("roll_0");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "random.bounded_4",
+                "context-two ghoul offer skipped its four-area target roll")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_service_result(
+        "roll_" + std::to_string(area_roll));
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_say &&
+                    task.operation->dialogue.has_value(),
+                "context-two ghoul offer did not reach its detail text")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+
+    const auto& text = task.operation->dialogue->inline_text;
+    for (std::size_t index = 0; index < kGhoulAreaTexts.size(); ++index) {
+        const bool present =
+            text.find(kGhoulAreaTexts[index]) != std::string::npos;
+        if (!expect(present == (index == area_roll),
+                    "context-two ghoul offer text did not match its area roll")) {
+            std::cerr << "area_roll=" << static_cast<int>(area_roll) << ": "
+                      << scripts.failure() << '\n';
+            return false;
+        }
+    }
+    return true;
 }
 
 } // namespace
@@ -68,8 +164,11 @@ int main() {
 
     task = scripts.start_task("run_ghoul_bounty", "present_offer");
     if (!expect(task.operation.has_value() &&
-                    task.operation->type == ScriptNativeOperation::Type::ui_say,
-                "ghoul bounty did not present its offer text")) {
+                    task.operation->type == ScriptNativeOperation::Type::ui_say &&
+                    task.operation->dialogue.has_value() &&
+                    task.operation->dialogue->inline_text.find(
+                        "in the Redmond Barrens.") != std::string::npos,
+                "context-zero ghoul offer did not show its ROM target area")) {
         return 6;
     }
     task = scripts.complete_native_operation(true);
@@ -260,6 +359,15 @@ int main() {
         return 19;
     }
 
-    std::cout << "ghoul bounty actor defeat and Johnson-return test passed\n";
+    for (std::size_t area_roll = 0; area_roll < kGhoulAreaTexts.size();
+         ++area_roll) {
+        if (!verify_mortimer_ghoul_area(
+                script_root, dialogue_text,
+                static_cast<std::uint8_t>(area_roll))) {
+            return 20;
+        }
+    }
+
+    std::cout << "ghoul bounty actor defeat, area and Johnson-return test passed\n";
     return 0;
 }

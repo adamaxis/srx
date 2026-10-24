@@ -9408,6 +9408,8 @@ int main() {
                         ScriptNativeOperation::Type::ui_menu &&
                     inn_task.operation->menu.has_value() &&
                     inn_task.operation->menu->id == "inn_service" &&
+                    inn_task.operation->menu->speaker_id ==
+                        "tarislar_city_inn_manager" &&
                     !inn_task.operation->menu->inline_prompt &&
                     inn_task.operation->menu->choices.size() == 3U,
                 "Inn JSON graph did not expose crash, leave, and Tabatha choices")) {
@@ -12435,6 +12437,481 @@ int main() {
                         *sinsearach_fare.dialogue_outcome).arrival_id ==
                         "salish_sinsearach_copt",
                 "Sinsearach paid-flight route did not select numeric Scene 6")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+
+    // Exhaust every combination consumed by the Scene-9 guard-root selector
+    // and command 0x34's Lady Gillian gate. These are flag-space permutations,
+    // not a claim that every combination is reachable through the campaign.
+    std::size_t gate_root_hostile_cases = 0U;
+    std::size_t gate_root_friendly_cases = 0U;
+    std::size_t gate_root_frosty_cases = 0U;
+    std::size_t lady_gillian_available_cases = 0U;
+    sinsearach_fare_funds = 1000U;
+    for (std::uint8_t mask = 0U; mask < 128U; ++mask) {
+        const bool bit_13 = (mask & 0x01U) != 0U;
+        const bool bit_17 = (mask & 0x02U) != 0U;
+        const bool bit_18 = (mask & 0x04U) != 0U;
+        const bool bit_19 = (mask & 0x08U) != 0U;
+        const bool bit_20 = (mask & 0x10U) != 0U;
+        const bool bit_30 = (mask & 0x20U) != 0U;
+        const bool group_item_5 = (mask & 0x40U) != 0U;
+        sinsearach_fare_scripts.set_story_state({
+            {"story_flag_bit_9", false},
+            {"story_flag_bit_13", bit_13},
+            {"story_flag_bit_17", bit_17},
+            {"story_flag_bit_18", bit_18},
+            {"story_flag_bit_19", bit_19},
+            {"story_flag_bit_20", bit_20},
+            {"story_flag_bit_30", bit_30},
+            {"group_item_flag_bit_5", group_item_5},
+        });
+
+        const std::string_view expected_root = !bit_18 || group_item_5
+            ? "hostile_guard"
+            : (bit_20 ? "friendly_guard_with_frosty" : "friendly_guard");
+        auto gate_variant = sinsearach_fare_scripts.start_task(
+            "salish_sinsearach_gate", "present");
+        const auto root_menu = gate_variant.operation.has_value()
+            ? gate_variant.operation->menu
+            : std::optional<ScriptMenuDefinition>{};
+        if (!expect(gate_variant.status ==
+                            ScriptTaskStep::Status::awaiting_native_operation &&
+                        root_menu.has_value() &&
+                        root_menu->id == expected_root,
+                    "Sinsearach guard root disagreed with its ROM flag matrix")) {
+            std::cerr << "mask=" << static_cast<unsigned>(mask) << " "
+                      << sinsearach_fare_scripts.failure() << '\n';
+            return 18;
+        }
+        const std::string_view first_root_choice =
+            expected_root == "friendly_guard_with_frosty"
+                ? "frosty"
+                : "questions";
+        if (!expect(fare_menu_has_choice(
+                        gate_variant, expected_root, first_root_choice) &&
+                        fare_menu_has_choice(gate_variant, expected_root,
+                                             "elders") &&
+                        fare_menu_has_choice(gate_variant, expected_root,
+                                             "later"),
+                    "Sinsearach guard root omitted one of its source choices")) {
+            std::cerr << "mask=" << static_cast<unsigned>(mask) << " "
+                      << sinsearach_fare_scripts.failure() << '\n';
+            return 18;
+        }
+        if (expected_root == "hostile_guard") {
+            ++gate_root_hostile_cases;
+        } else if (expected_root == "friendly_guard") {
+            ++gate_root_friendly_cases;
+        } else {
+            ++gate_root_frosty_cases;
+        }
+
+        gate_variant =
+            sinsearach_fare_scripts.complete_native_menu_choice("elders");
+        gate_variant =
+            sinsearach_fare_scripts.complete_native_menu_choice("thanks");
+        const bool lady_gillian_available =
+            bit_13 && bit_17 && bit_18 && bit_19 && bit_20 &&
+            !group_item_5 && !bit_30;
+        if (lady_gillian_available) {
+            ++lady_gillian_available_cases;
+            const auto menu = gate_variant.operation.has_value()
+                ? gate_variant.operation->menu
+                : std::optional<ScriptMenuDefinition>{};
+            if (!expect(gate_variant.status ==
+                                ScriptTaskStep::Status::awaiting_native_operation &&
+                            menu.has_value() &&
+                            menu->id == "lady_gillian_frosty",
+                        "Sinsearach command 0x34 missed the eligible Lady Gillian root")) {
+                std::cerr << "mask=" << static_cast<unsigned>(mask) << " "
+                          << sinsearach_fare_scripts.failure() << '\n';
+                return 18;
+            }
+            gate_variant = sinsearach_fare_scripts.complete_native_menu_choice(
+                "frosty");
+            if (!expect(spirit_page_is(gate_variant, "frosty_not_ready"),
+                        "Sinsearach bit-9-clear Frosty route changed in the matrix")) {
+                std::cerr << "mask=" << static_cast<unsigned>(mask) << " "
+                          << sinsearach_fare_scripts.failure() << '\n';
+                return 18;
+            }
+            gate_variant =
+                sinsearach_fare_scripts.complete_native_operation(true);
+        } else {
+            if (!expect(spirit_page_is(gate_variant, "elders_escort"),
+                        "Sinsearach command 0x34 opened Lady Gillian outside its ROM gate")) {
+                std::cerr << "mask=" << static_cast<unsigned>(mask) << " "
+                          << sinsearach_fare_scripts.failure() << '\n';
+                return 18;
+            }
+            gate_variant =
+                sinsearach_fare_scripts.complete_native_operation(true);
+            if (!expect(spirit_page_is(gate_variant, "elders_busy"),
+                        "Sinsearach fallback lost the source Elders-busy page")) {
+                std::cerr << "mask=" << static_cast<unsigned>(mask) << " "
+                          << sinsearach_fare_scripts.failure() << '\n';
+                return 18;
+            }
+            gate_variant =
+                sinsearach_fare_scripts.complete_native_operation(true);
+        }
+        if (!expect(fare_menu_has_choices(gate_variant, "copt_fare_offer"),
+                    "Sinsearach gate matrix route did not return to the fare prompt")) {
+            std::cerr << "mask=" << static_cast<unsigned>(mask) << " "
+                      << sinsearach_fare_scripts.failure() << '\n';
+            return 18;
+        }
+        gate_variant =
+            sinsearach_fare_scripts.complete_native_menu_choice("no");
+        gate_variant =
+            sinsearach_fare_scripts.complete_native_operation(true);
+        gate_variant =
+            sinsearach_fare_scripts.complete_native_operation(true);
+        if (!expect(gate_variant.status == ScriptTaskStep::Status::completed &&
+                        gate_variant.dialogue_outcome.has_value() &&
+                        dialogue_outcome_type(*gate_variant.dialogue_outcome) ==
+                            DialogueOutcomeType::continue_in_place &&
+                        sinsearach_fare_funds == 1000U,
+                    "Sinsearach gate matrix did not end cleanly without a fare charge")) {
+            std::cerr << "mask=" << static_cast<unsigned>(mask)
+                      << " status="
+                      << static_cast<unsigned>(gate_variant.status)
+                      << " outcome="
+                      << (gate_variant.dialogue_outcome.has_value()
+                              ? static_cast<unsigned>(dialogue_outcome_type(
+                                    *gate_variant.dialogue_outcome))
+                              : 255U)
+                      << " funds=" << sinsearach_fare_funds << " "
+                      << sinsearach_fare_scripts.failure() << '\n';
+            return 18;
+        }
+    }
+    if (!expect(gate_root_hostile_cases == 96U &&
+                    gate_root_friendly_cases == 16U &&
+                    gate_root_frosty_cases == 16U &&
+                    lady_gillian_available_cases == 1U,
+                "Sinsearach gate matrix did not cover the expected selector populations")) {
+        std::cerr << "hostile=" << gate_root_hostile_cases
+                  << " friendly=" << gate_root_friendly_cases
+                  << " frosty=" << gate_root_frosty_cases
+                  << " lady_gillian=" << lady_gillian_available_cases << '\n';
+        return 18;
+    }
+
+    const auto close_gate_no_fare_route =
+        [&sinsearach_fare_scripts, &sinsearach_fare_funds, &spirit_page_is,
+         &fare_menu_has_choices](ScriptTaskStep& task) {
+            if (!expect(fare_menu_has_choices(task, "copt_fare_offer"),
+                        "Sinsearach branch did not reach the two-choice fare prompt")) {
+                return false;
+            }
+            task = sinsearach_fare_scripts.complete_native_menu_choice("no");
+            if (!expect(spirit_page_is(task, "fare_no_response"),
+                        "Sinsearach No choice omitted Joshua's fare response")) {
+                return false;
+            }
+            task = sinsearach_fare_scripts.complete_native_operation(true);
+            if (!expect(spirit_page_is(task, "fare_no_reply"),
+                        "Sinsearach No choice omitted the guard's reply")) {
+                return false;
+            }
+            task = sinsearach_fare_scripts.complete_native_operation(true);
+            return expect(
+                task.status == ScriptTaskStep::Status::completed &&
+                    task.dialogue_outcome.has_value() &&
+                    dialogue_outcome_type(*task.dialogue_outcome) ==
+                        DialogueOutcomeType::continue_in_place &&
+                    sinsearach_fare_funds == 1000U,
+                "Sinsearach No route failed to return without charging the wallet");
+        };
+
+    sinsearach_fare_scripts.set_story_state({
+        {"story_flag_bit_9", false},
+        {"story_flag_bit_13", false},
+        {"story_flag_bit_17", false},
+        {"story_flag_bit_18", false},
+        {"story_flag_bit_19", false},
+        {"story_flag_bit_20", false},
+        {"story_flag_bit_30", false},
+        {"group_item_flag_bit_5", false},
+    });
+    auto gate_questions = sinsearach_fare_scripts.start_task(
+        "salish_sinsearach_gate", "present");
+    if (!expect(fare_menu_has_choice(
+                    gate_questions, "hostile_guard", "questions"),
+                "Sinsearach hostile root omitted Questions")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    gate_questions =
+        sinsearach_fare_scripts.complete_native_menu_choice("questions");
+    if (!expect(fare_menu_has_choice(
+                    gate_questions, "guard_questions", "caleb"),
+                "Sinsearach Questions omitted Caleb's topic")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    gate_questions =
+        sinsearach_fare_scripts.complete_native_menu_choice("caleb");
+    if (!expect(fare_menu_has_choice(
+                    gate_questions, "guard_answer_followup", "another_question"),
+                "Sinsearach Caleb topic omitted its ROM answer choices")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    gate_questions = sinsearach_fare_scripts.complete_native_menu_choice(
+        "another_question");
+    if (!expect(fare_menu_has_choice(
+                    gate_questions, "guard_questions", "frosty_question"),
+                "Sinsearach question loop omitted Frosty's topic")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    gate_questions = sinsearach_fare_scripts.complete_native_menu_choice(
+        "frosty_question");
+    if (!expect(fare_menu_has_choice(
+                    gate_questions, "guard_answer_followup", "elders"),
+                "Sinsearach Frosty answer omitted its ROM Elders choice")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    gate_questions =
+        sinsearach_fare_scripts.complete_native_menu_choice("elders");
+    if (!expect(fare_menu_has_choice(
+                    gate_questions, "elders_thanks", "thanks"),
+                "Sinsearach question route omitted the Elders welcome response")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    gate_questions =
+        sinsearach_fare_scripts.complete_native_menu_choice("thanks");
+    if (!expect(spirit_page_is(gate_questions, "elders_escort"),
+                "Sinsearach question route ignored the unavailable Lady Gillian gate")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    gate_questions =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!expect(spirit_page_is(gate_questions, "elders_busy"),
+                "Sinsearach question route omitted the busy-Elders response")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    gate_questions =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!close_gate_no_fare_route(gate_questions)) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+
+    sinsearach_fare_scripts.set_story_state({
+        {"story_flag_bit_9", false},
+        {"story_flag_bit_13", false},
+        {"story_flag_bit_17", false},
+        {"story_flag_bit_18", true},
+        {"story_flag_bit_19", false},
+        {"story_flag_bit_20", false},
+        {"story_flag_bit_30", false},
+        {"group_item_flag_bit_5", false},
+    });
+    auto question_later = sinsearach_fare_scripts.start_task(
+        "salish_sinsearach_gate", "present");
+    question_later =
+        sinsearach_fare_scripts.complete_native_menu_choice("questions");
+    question_later =
+        sinsearach_fare_scripts.complete_native_menu_choice("later");
+    const auto* question_later_text = sinsearach_fare_scripts.dialogue_text(
+        "salish.sinsearach.page.guard_later_offer");
+    if (!expect(fare_menu_has_choices(question_later, "copt_fare_offer") &&
+                    question_later_text != nullptr &&
+                    question_later.operation->menu->inline_text ==
+                        *question_later_text,
+                "Sinsearach Questions Later did not select command 0x3A text")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    if (!close_gate_no_fare_route(question_later)) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+
+    sinsearach_fare_scripts.set_story_state({
+        {"story_flag_bit_9", false},
+        {"story_flag_bit_13", false},
+        {"story_flag_bit_17", false},
+        {"story_flag_bit_18", true},
+        {"story_flag_bit_19", false},
+        {"story_flag_bit_20", false},
+        {"story_flag_bit_30", false},
+        {"group_item_flag_bit_5", false},
+    });
+    gate_questions = sinsearach_fare_scripts.start_task(
+        "salish_sinsearach_gate", "present");
+    gate_questions =
+        sinsearach_fare_scripts.complete_native_menu_choice("questions");
+    gate_questions = sinsearach_fare_scripts.complete_native_menu_choice(
+        "frosty_question");
+    if (!expect(fare_menu_has_choice(
+                    gate_questions, "guard_answer_followup", "later"),
+                "Sinsearach friendly root lost the Frosty follow-up menu")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    gate_questions =
+        sinsearach_fare_scripts.complete_native_menu_choice("later");
+    const auto* followup_later_text = sinsearach_fare_scripts.dialogue_text(
+        "salish.sinsearach.page.guard_later_offer");
+    if (!expect(fare_menu_has_choices(gate_questions, "copt_fare_offer") &&
+                    followup_later_text != nullptr &&
+                    gate_questions.operation->menu->inline_text ==
+                        *followup_later_text,
+                "Sinsearach answer follow-up Later did not select command 0x3A text")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    if (!close_gate_no_fare_route(gate_questions)) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+
+    sinsearach_fare_scripts.set_story_state({
+        {"story_flag_bit_9", false},
+        {"story_flag_bit_13", false},
+        {"story_flag_bit_17", false},
+        {"story_flag_bit_18", true},
+        {"story_flag_bit_19", false},
+        {"story_flag_bit_20", true},
+        {"story_flag_bit_30", false},
+        {"group_item_flag_bit_5", false},
+    });
+    auto frosty_left = sinsearach_fare_scripts.start_task(
+        "salish_sinsearach_gate", "present");
+    if (!expect(fare_menu_has_choice(
+                    frosty_left, "friendly_guard_with_frosty", "frosty"),
+                "Sinsearach Frosty-era root omitted Frosty's choice")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    frosty_left =
+        sinsearach_fare_scripts.complete_native_menu_choice("frosty");
+    if (!expect(fare_menu_has_choice(
+                    frosty_left, "friendly_guard_with_frosty", "elders") &&
+                    fare_menu_has_choice(
+                        frosty_left, "friendly_guard_with_frosty", "later"),
+                "Sinsearach Frosty-left loop omitted Elders or Later")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    frosty_left =
+        sinsearach_fare_scripts.complete_native_menu_choice("frosty");
+    if (!expect(fare_menu_has_choice(
+                    frosty_left, "friendly_guard_with_frosty", "frosty"),
+                "Sinsearach Frosty-left repeated choice did not loop")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    frosty_left =
+        sinsearach_fare_scripts.complete_native_menu_choice("later");
+    if (!expect(fare_menu_has_choices(frosty_left, "copt_fare_offer"),
+                "Sinsearach Frosty-left Later did not enter the fare prompt")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    if (!close_gate_no_fare_route(frosty_left)) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+
+    auto frosty_left_elders = sinsearach_fare_scripts.start_task(
+        "salish_sinsearach_gate", "present");
+    frosty_left_elders =
+        sinsearach_fare_scripts.complete_native_menu_choice("frosty");
+    frosty_left_elders =
+        sinsearach_fare_scripts.complete_native_menu_choice("elders");
+    if (!expect(fare_menu_has_choice(
+                    frosty_left_elders, "elders_thanks", "thanks"),
+                "Sinsearach Frosty-left Elders choice did not reach the handoff")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    frosty_left_elders = sinsearach_fare_scripts.complete_native_menu_choice(
+        "thanks");
+    if (!expect(spirit_page_is(frosty_left_elders, "elders_escort"),
+                "Sinsearach Frosty-left Elders choice skipped the ROM fallback")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    frosty_left_elders =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!expect(spirit_page_is(frosty_left_elders, "elders_busy"),
+                "Sinsearach Frosty-left Elders path omitted the busy reply")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    frosty_left_elders =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!close_gate_no_fare_route(frosty_left_elders)) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+
+    sinsearach_fare_funds = 1000U;
+    sinsearach_fare_scripts.set_story_state({
+        {"story_flag_bit_9", false},
+        {"story_flag_bit_13", true},
+        {"story_flag_bit_17", true},
+        {"story_flag_bit_18", true},
+        {"story_flag_bit_19", true},
+        {"story_flag_bit_20", true},
+        {"story_flag_bit_30", false},
+        {"group_item_flag_bit_5", false},
+    });
+    auto return_offer_yes = sinsearach_fare_scripts.start_task(
+        "salish_sinsearach_gate", "present");
+    return_offer_yes =
+        sinsearach_fare_scripts.complete_native_menu_choice("elders");
+    return_offer_yes =
+        sinsearach_fare_scripts.complete_native_menu_choice("thanks");
+    return_offer_yes =
+        sinsearach_fare_scripts.complete_native_menu_choice("frosty");
+    if (!expect(spirit_page_is(return_offer_yes, "frosty_not_ready"),
+                "Sinsearach bit-9-clear Frosty route lost its refusal page")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    return_offer_yes =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!expect(fare_menu_has_choices(return_offer_yes, "copt_fare_offer"),
+                "Sinsearach command 0x39 omitted its Yes/No return offer")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    return_offer_yes =
+        sinsearach_fare_scripts.complete_native_menu_choice("yes");
+    if (!expect(spirit_page_is(return_offer_yes, "fare_yes_response"),
+                "Sinsearach command 0x39 Yes omitted Joshua's reply")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    return_offer_yes =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!expect(spirit_page_is(return_offer_yes, "fare_paid") &&
+                    sinsearach_fare_funds == 0U,
+                "Sinsearach command 0x39 Yes failed the exact-funds debit")) {
+        std::cerr << sinsearach_fare_scripts.failure() << '\n';
+        return 18;
+    }
+    return_offer_yes =
+        sinsearach_fare_scripts.complete_native_operation(true);
+    if (!expect(return_offer_yes.status == ScriptTaskStep::Status::completed &&
+                    return_offer_yes.dialogue_outcome.has_value() &&
+                    dialogue_outcome_type(*return_offer_yes.dialogue_outcome) ==
+                        DialogueOutcomeType::enter_field_scene &&
+                    std::get<EnterFieldSceneOutcome>(
+                        *return_offer_yes.dialogue_outcome).scene_id == 6U,
+                "Sinsearach command 0x39 paid route did not enter numeric Scene 6")) {
         std::cerr << sinsearach_fare_scripts.failure() << '\n';
         return 18;
     }

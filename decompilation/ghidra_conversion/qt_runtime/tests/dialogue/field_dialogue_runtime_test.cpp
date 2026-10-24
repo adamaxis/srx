@@ -19,7 +19,15 @@ namespace {
 using namespace shadowrun::ghidra_conversion;
 using namespace shadowrun::ghidra_conversion::qt_runtime;
 
-bool expect(const bool condition) { return condition; }
+bool expect_impl(const bool condition, const int source_line) {
+    if (!condition) {
+        std::cerr << "field dialogue expectation failed at line "
+                  << source_line << '\n';
+    }
+    return condition;
+}
+
+#define expect(...) expect_impl((__VA_ARGS__), __LINE__)
 
 bool has_green_ink(const QImage& image, const int x, const int y,
                    const int width, const int height) {
@@ -361,7 +369,7 @@ int main() {
     if (!expect(runtime.load_assets(assets.catalog))) {
         return 2;
     }
-    const auto capture_tarislar_inn = [&runtime](
+    const auto capture_tarislar_inn = [&runtime, &assets](
                                            const std::string_view scene) {
         const auto output_dir =
             std::filesystem::current_path() /
@@ -373,6 +381,58 @@ int main() {
         QPainter painter(&image);
         runtime.paint(painter);
         painter.end();
+        const bool manager_screen =
+            scene == "indexed-intro" || scene == "service-options" ||
+            scene == "room-payment" || scene == "room-paid" ||
+            scene == "room-insufficient" ||
+            scene == "tabatha-intro-manager";
+        if (manager_screen) {
+            constexpr std::string_view kManagerPortraitAlias =
+                "dialogue.portraits.tarislar.city.inn.manager";
+            const auto* portrait_record =
+                assets.catalog.find(kManagerPortraitAlias);
+            const QImage portrait = portrait_record != nullptr
+                ? QImage(QString::fromStdWString(
+                      portrait_record->absolute_path.wstring()))
+                : QImage{};
+            if (!expect(runtime.panel().actor_name == "Inn Manager") ||
+                !expect(runtime.panel().portrait_alias ==
+                        kManagerPortraitAlias) ||
+                !expect(!portrait.isNull()) ||
+                !expect(matches_overlay(image, portrait, 16, 32))) {
+                std::cerr << "Tarislar City Inn " << scene
+                          << " did not render the manager portrait selected by the source profile\n";
+                return false;
+            }
+        }
+        const bool narration_screen = scene == "tabatha-intro-phone" ||
+                                     scene == "tabatha-intro-agreement";
+        if (narration_screen &&
+            (!expect(runtime.panel().actor_name == "Narration") ||
+             !expect(runtime.panel().portrait_alias == "none") ||
+             !expect(!has_nonblack_pixel(image, 24, 40, 40, 56)))) {
+            std::cerr << "Tarislar City Inn " << scene
+                      << " should leave the source-described blank vid-phone screen empty\n";
+            return false;
+        }
+        if (scene == "tabatha-apartment-choice") {
+            constexpr std::string_view kTabathaPortraitAlias =
+                "dialogue.portraits.tabatha.shale";
+            const auto* portrait_record =
+                assets.catalog.find(kTabathaPortraitAlias);
+            const QImage portrait = portrait_record != nullptr
+                ? QImage(QString::fromStdWString(
+                      portrait_record->absolute_path.wstring()))
+                : QImage{};
+            if (!expect(runtime.panel().actor_name == "Tabatha Shale") ||
+                !expect(runtime.panel().portrait_alias ==
+                        kTabathaPortraitAlias) ||
+                !expect(!portrait.isNull()) ||
+                !expect(matches_overlay(image, portrait, 16, 32))) {
+                std::cerr << "Tarislar City Inn apartment arrival did not render Tabatha's source portrait\n";
+                return false;
+            }
+        }
         return image.save(QString::fromStdWString(
                               (output_dir / "actual.bmp").wstring()),
                           "BMP");
@@ -727,6 +787,14 @@ int main() {
         {"story_flag_bit_1", false},
         {"story_flag_bit_13", false},
         {"story_flag_bit_30", false},
+        {"notebook_tip_flag_bit_0", true},
+        {"notebook_tip_flag_bit_2", false},
+        {"notebook_tip_flag_bit_4", false},
+        {"notebook_tip_flag_bit_5", false},
+        {"notebook_tip_flag_bit_6", false},
+        {"notebook_tip_flag_bit_8", false},
+        {"mr_johnsons_flag_bit_2", false},
+        {"mr_johnsons_flag_bit_4", false},
     });
     gameplay_scripts.set_location_context(
         "building", "puyallup_site_03_tarislar_city_inn",
@@ -758,12 +826,16 @@ int main() {
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(advance_inn_dialogue(0x2000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(capture_tarislar_inn("tabatha-intro-manager")) ||
         !expect(advance_inn_dialogue(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(capture_tarislar_inn("tabatha-intro-phone")) ||
         !expect(advance_inn_dialogue(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(capture_tarislar_inn("tabatha-intro-agreement")) ||
         !expect(advance_inn_dialogue(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
+        !expect(capture_tarislar_inn("tabatha-apartment-choice")) ||
         !expect(inn_source_triplet_updates == 1U) ||
         !expect(advance_inn_dialogue(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
@@ -1545,11 +1617,11 @@ int main() {
                 std::string_view::npos) ||
         !expect(runtime.panel().text_segments[0].find("Redmond Barrens") !=
                 std::string_view::npos) ||
-        !expect(runtime.panel().text_segments[1].find("package") !=
+        !expect(runtime.panel().text_segments[0].find("package") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().text_segments[2].find("Jackal's Lantern") !=
                 std::string_view::npos) ||
-        !expect(runtime.panel().text_segments[3].find("safe delivery") !=
+        !expect(runtime.panel().text_segments[2].find("safe delivery") !=
                 std::string_view::npos) ||
         !expect(capture_jump_house("run-package-description")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
@@ -1594,9 +1666,36 @@ int main() {
         !expect(capture_jump_house("run-package-accepted")) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::returned_to_field)) {
+        const auto accepted_route =
+            gameplay_scripts.string_map("run_registry", "active_route_ids");
         std::cerr << "Gunderson's courier offer did not show the ROM-derived "
                      "payment, accept it in Lua, and clear the panel before "
-                     "the acceptance response\n";
+                     "the acceptance response; random=" << run_random_call
+                  << '/' << run_random_services.size()
+                  << " active="
+                  << gameplay_scripts.call_string(
+                         "run_registry", "active_run_id").value_or("<none>")
+                  << " result="
+                  << gameplay_scripts.call_string(
+                         "run_registry", "last_offer_result").value_or("<none>")
+                  << " completion="
+                  << gameplay_scripts.call_string(
+                         "run_registry", "active_completion_condition")
+                         .value_or("<none>")
+                  << " route="
+                  << (accepted_route.has_value()
+                          ? accepted_route->at("origin_location") + "->" +
+                                accepted_route->at("destination_location")
+                          : "<none>")
+                  << " options=" << runtime.panel().option_count
+                  << " more=" << runtime.panel().has_more
+                  << " segment_count=" << runtime.panel().text_segment_count;
+        for (std::size_t segment = 0;
+             segment < runtime.panel().text_segment_count; ++segment) {
+            std::cerr << " segment" << segment << "='"
+                      << runtime.panel().text_segments[segment] << "'";
+        }
+        std::cerr << '\n';
         return 108;
     }
 

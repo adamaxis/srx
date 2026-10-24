@@ -138,6 +138,16 @@ public:
     const DialoguePanelView& panel() const noexcept { return panel_; }
     const std::string& failure() const noexcept { return failure_; }
 #ifdef SHADOWRUN_QT_QA_DRIVER
+    std::string_view story_page_text_for_dump() const noexcept {
+        return story_page_text_;
+    }
+    std::string_view story_page_text_key_for_dump() const noexcept {
+        if (!active_script_operation_.has_value() ||
+            !active_script_operation_->story_page.has_value()) {
+            return {};
+        }
+        return active_script_operation_->story_page->text_key;
+    }
     std::string_view credits_page_id_for_dump() const noexcept {
         return credits_page_id_;
     }

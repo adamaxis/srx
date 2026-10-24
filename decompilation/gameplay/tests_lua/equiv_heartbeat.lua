@@ -172,10 +172,29 @@ local function deepcopy(v, seen)
   for k, x in pairs(v) do c[deepcopy(k, seen)] = deepcopy(x, seen) end
   return c
 end
+local function serialize_actor_states_for_parity(actors)
+  -- The split runtime caches the raw record slot on each persistent actor so
+  -- typed host slots can be checked against ROM records. The bfa3908 baseline
+  -- consumes source_record_slot from each heartbeat but does not cache it at
+  -- the actor root. Ignore only that root-level metadata extension here;
+  -- returned states, nested state, contexts, and service traces still compare.
+  local comparable = deepcopy(actors)
+  for _, state in pairs(comparable) do
+    if type(state) == "table" then state.source_record_slot = nil end
+  end
+  return ser(comparable)
+end
 local function norm_err(e) return (tostring(e):gsub("[^%s:]+%.lua:%d+:", "<src>:")) end
 
 local calls, nonnil, errs, mism = 0, 0, 0, 0
 local FRAMES = tonumber(arg[3]) or 120
+local function first_difference(a, b)
+  local offset = 1
+  while offset <= #a and offset <= #b and a:byte(offset) == b:byte(offset) do
+    offset = offset + 1
+  end
+  return offset
+end
 for trial = 1, TRIALS do
   for k in pairs(gameA.actors) do gameA.actors[k] = nil end
   for k in pairs(gameB.actors) do gameB.actors[k] = nil end
@@ -208,12 +227,29 @@ for trial = 1, TRIALS do
     calls = calls + 1
     if okA and rA ~= nil then nonnil = nonnil + 1 end
     if not okA then errs = errs + 1 end
-    local sA = table.concat({ tostring(okA), okA and ser(rA) or norm_err(rA), ser(cA), ser(gameA.actors), table.concat(logA, ";") }, "|")
-    local sB = table.concat({ tostring(okB), okB and ser(rB) or norm_err(rB), ser(cB), ser(gameB.actors), table.concat(logB, ";") }, "|")
+    local partsA = {
+      tostring(okA), okA and ser(rA) or norm_err(rA), ser(cA),
+      serialize_actor_states_for_parity(gameA.actors), table.concat(logA, ";"),
+    }
+    local partsB = {
+      tostring(okB), okB and ser(rB) or norm_err(rB), ser(cB),
+      serialize_actor_states_for_parity(gameB.actors), table.concat(logB, ";"),
+    }
+    local sA, sB = table.concat(partsA, "|"), table.concat(partsB, "|")
     if sA ~= sB then
       mism = mism + 1
       if mism <= 3 then
-        io.stderr:write(("MISMATCH trial %d frame %d\n A: %s\n B: %s\n"):format(trial, frame, sA:sub(1, 600), sB:sub(1, 600)))
+        local labels = { "success", "result", "context", "actors", "services" }
+        io.stderr:write(("MISMATCH trial %d frame %d\n"):format(trial, frame))
+        for index, label in ipairs(labels) do
+          if partsA[index] ~= partsB[index] then
+            local offset = first_difference(partsA[index], partsB[index])
+            io.stderr:write((" %s differs at byte %d\n A: %s\n B: %s\n"):
+              format(label, offset,
+                partsA[index]:sub(math.max(1, offset - 80), offset + 140),
+                partsB[index]:sub(math.max(1, offset - 80), offset + 140)))
+          end
+        end
       end
     end
   end
