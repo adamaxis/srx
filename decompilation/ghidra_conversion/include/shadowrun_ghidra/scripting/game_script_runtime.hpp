@@ -1598,6 +1598,12 @@ public:
         const ScriptActorBehaviorContext& context);
     std::optional<std::string> call_string(
         std::string_view module, std::string_view function);
+    // Generic integer call: module.function(args...) must return an array of
+    // integers (at most 64). Used for small numeric Lua policies such as the
+    // world_links door placement; the Lua side owns the meaning of each slot.
+    std::optional<std::vector<std::int64_t>> call_integers(
+        std::string_view module, std::string_view function,
+        const std::vector<std::int64_t>& arguments);
     // Read an ordered, unique ID array that has no display labels.
     std::optional<std::vector<std::string>> string_list(
         std::string_view module, std::string_view function);

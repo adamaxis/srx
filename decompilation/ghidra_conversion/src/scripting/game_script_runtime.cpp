@@ -10276,6 +10276,63 @@ std::optional<std::string> GameScriptRuntime::call_string(
     return result;
 }
 
+std::optional<std::vector<std::int64_t>> GameScriptRuntime::call_integers(
+    const std::string_view module, const std::string_view function,
+    const std::vector<std::int64_t>& arguments) {
+    constexpr std::size_t kMaximumIntegers = 64U;
+    auto* state = impl_->state;
+    if (!valid_identifier(function) || arguments.size() > kMaximumIntegers) {
+        impl_->failure = "invalid gameplay script integer call";
+        return std::nullopt;
+    }
+    if (!impl_->push_module(module)) {
+        impl_->failure = "gameplay script module is missing: " +
+                         std::string(module);
+        return std::nullopt;
+    }
+    lua_getfield(state, -1, std::string(function).c_str());
+    if (!lua_isfunction(state, -1)) {
+        lua_pop(state, 2);
+        impl_->failure = "script callback is missing: " +
+                         std::string(module) + "." + std::string(function);
+        return std::nullopt;
+    }
+    lua_remove(state, -2);
+    for (const auto value : arguments) {
+        lua_pushinteger(state, static_cast<lua_Integer>(value));
+    }
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, static_cast<int>(arguments.size()), 1, 0) != LUA_OK) {
+        impl_->failure = std::string(module) + "." + std::string(function) +
+                         ": " + stack_error(state);
+        lua_pop(state, 1);
+        return std::nullopt;
+    }
+    std::vector<std::int64_t> result;
+    bool valid = lua_istable(state, -1);
+    if (valid) {
+        const auto count = static_cast<std::size_t>(lua_rawlen(state, -1));
+        valid = count <= kMaximumIntegers;
+        for (std::size_t index = 1U; valid && index <= count; ++index) {
+            lua_rawgeti(state, -1, static_cast<lua_Integer>(index));
+            valid = lua_isinteger(state, -1) != 0;
+            if (valid) {
+                result.push_back(static_cast<std::int64_t>(
+                    lua_tointeger(state, -1)));
+            }
+            lua_pop(state, 1);
+        }
+    }
+    lua_pop(state, 1);
+    if (!valid) {
+        impl_->failure = std::string(module) + "." + std::string(function) +
+                         " must return an integer array";
+        return std::nullopt;
+    }
+    impl_->failure.clear();
+    return result;
+}
+
 std::optional<std::vector<std::string>> GameScriptRuntime::string_list(
     const std::string_view module, const std::string_view function) {
     auto* state = impl_->state;
