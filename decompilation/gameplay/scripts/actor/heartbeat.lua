@@ -7,6 +7,18 @@ local u8, u16, s16 = I.u8, I.u16, I.s16
 local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local ActorStatus = E.ActorStatus
+local ActorFlag, SpriteType = E.ActorFlag, E.SpriteType
+
+-- ROM 0x1E514: bclr #7,+0xB0 (escort; when it was set the ROM also clears FFFC3C,
+-- which the port does not model [H: FFFC3C meaning unknown]) and bclr #0,+0x10
+-- (ACTIVE). The C++ host frees the record slot (0x1A304) unless +0x10 b3 is set
+-- and stops drawing/servicing the record (0x4618/0xA8EA skip inactive records).
+local function deactivate_record(state)
+    state.source_behavior_flags =
+        u8((state.source_behavior_flags or 0) & ~BehaviorFlag.ESCORT)
+    state.source_record_flags =
+        state.source_record_flags & ~ActorStatus.ACTIVE
+end
 local ActorAI = {}
 local states = game.actors
 local pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_slot
@@ -174,6 +186,12 @@ function ActorAI.heartbeat(context)
                 -- and bset #6,+0x10 (DEAD, 0x40). The body stays drawn.
                 state.source_record_flags =
                     state.source_record_flags | ActorStatus.DEAD
+                -- ROM 0xA9DE/0xAA14: a Wendigo (kind 0xE, 14) whose list is
+                -- finished takes 0xA9BE instead: 0xAB02 then 0x1E514, so the
+                -- record leaves the field after its death list.
+                if context.entity_kind == SpriteType.WENDIGO then
+                    deactivate_record(state)
+                end
             end
             return snapshot(state, "hold", reaction_audio_event)
         end
@@ -276,6 +294,24 @@ function ActorAI.heartbeat(context)
                         -- pass, then refreshes target and route policy every
                         -- 21 passes. The +0x3A continuation moves each pass.
                         state.behavior_timer = 0x14
+                        -- ROM 0x13920..0x13974: kind 0xF (0x13A4C), escort
+                        -- (+0xB0 b7, 0x14508) and +0x9E b3 return first;
+                        -- then +0x0C == 0 (off screen, 0x5A56) with +0x9E b2
+                        -- jumps to 0x1E514. Only 0x1E09A (alarm off) sets
+                        -- +0x9E b2, on alarm guards (+0x9E b1); the alarm
+                        -- guard spawn 0x1E0DC is not ported, so this is
+                        -- dormant for list/encounter actors. The +0x9E b5 &&
+                        -- FFDF84 -> 0x13E8C branch sits before it and is not
+                        -- modeled here [H: no b2 pedestrians exist].
+                        local spawn_flags = context.source_spawn_state_flags or 0
+                        if context.entity_kind ~= SpriteType.THON and
+                           (state.source_behavior_flags & BehaviorFlag.ESCORT) == 0 and
+                           (spawn_flags & ActorFlag.QUEST) == 0 and
+                           (spawn_flags & ActorFlag.DESPAWN_OFFSCREEN) ~= 0 and
+                           context.source_projection_active == false then
+                            deactivate_record(state)
+                            return snapshot(state, "hold", nil)
+                        end
                         requested_movement_heading(context, profile, state)
                         local target = retained_linked_target(context, state)
                         if context.action_kind == ActionKind.spell then

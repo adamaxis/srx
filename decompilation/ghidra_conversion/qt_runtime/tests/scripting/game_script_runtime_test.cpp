@@ -6373,6 +6373,48 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 24;
     }
+    // ROM 0xAA14 -> 0xA9BE: a Wendigo (kind 0xE) whose C0B2 list finished
+    // takes 0xAB02 (DEAD, 0x40) and then 0x1E514 (bclr #0,+0x10 ACTIVE).
+    {
+        auto wendigo = actor_context(
+            "wendigo_k0e_none00", "field_wendigo_death_actor", 14U,
+            ScriptActorActionKind::none, 0U, 0U, true);
+        wendigo.dynamic_world_encounter_actor = true;
+        wendigo.source_record_flags = 0x25U;
+        wendigo.entry_animation_frame_count = 2U;
+        wendigo.walk_animation_frame_count = 4U;
+        wendigo.hurt_animation_frame_count = 2U;
+        wendigo.hurt_animation_increment = 0x0300U;
+        wendigo.hurt_animation_threshold = 0x1000U;
+        wendigo.down_audio_event = 0x0056U;
+        // Meters are Lua-owned after spawn, so seed stun 0 at spawn.
+        auto stunned = wendigo.combatant.value_or(ScriptCombatantFacts{});
+        stunned.physical_meter = 10U;
+        stunned.mental_meter = 0U;
+        wendigo.combatant = stunned;
+        const bool spawned = scripts.actor_heartbeat(wendigo).has_value();
+        wendigo.spawn = false;
+        wendigo.phase = ScriptActorHeartbeatPhase::behavior;
+        auto pass = scripts.actor_heartbeat(wendigo);
+        const bool went_down = pass.has_value() &&
+                               pass->animation_id == "down" &&
+                               (pass->source_record_flags & 0x10U) != 0U;
+        if (pass.has_value()) {
+            wendigo.source_record_flags = pass->source_record_flags;
+        }
+        wendigo.phase = ScriptActorHeartbeatPhase::render;
+        for (std::uint8_t frame = 0U; frame < 32U; ++frame) {
+            scripts.actor_heartbeat(wendigo);
+        }
+        wendigo.phase = ScriptActorHeartbeatPhase::behavior;
+        pass = scripts.actor_heartbeat(wendigo);
+        if (!expect(spawned && went_down && pass.has_value() &&
+                        (pass->source_record_flags & 0x41U) == 0x40U,
+                    "Wendigo did not deactivate (0x1E514) after its death list")) {
+            std::cerr << scripts.failure() << '\n';
+            return 24;
+        }
+    }
 
     auto unresolved_weapon_seed = moving_projectile;
     auto unresolved_weapon_context = projectile_behavior_context(

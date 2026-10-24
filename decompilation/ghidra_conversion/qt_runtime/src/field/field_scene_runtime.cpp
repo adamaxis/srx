@@ -5126,6 +5126,31 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 }
             }
         }
+        if (dynamic_world_actor &&
+            actor_flag_is_set(previous_record_flags,
+                              ActorServiceFlag::active) &&
+            !actor_flag_is_set(actor.source_record_flags,
+                               ActorServiceFlag::active)) {
+            // ROM 0x1E514 (Lua deactivate_record): bclr #0,+0x10 removes the
+            // record from 0x4618 drawing and 0xA8EA service; 0x1A304 frees
+            // the record slot unless +0x10 b3 is set.
+            if (actor.target_motion_effect_slot.has_value() &&
+                *actor.target_motion_effect_slot <
+                    field_world_effect_slots_occupied_.size()) {
+                field_world_effect_slots_occupied_[
+                    *actor.target_motion_effect_slot] = false;
+                actor.target_motion_effect_slot.reset();
+            }
+            actor.active = false;
+            if (!actor_flag_is_set(
+                    actor.source_record_flags,
+                    ActorServiceFlag::targets_world_actor_group)) {
+                actor.source_record_slot.reset();
+            }
+            actor.target_selected = false;
+            source_boundary("field.actor.record_deactivated");
+            continue;
+        }
         if (decision->combat_meter_update.has_value() &&
             decision->combat_meter_update->changed) {
             const auto& update = *decision->combat_meter_update;
