@@ -108,12 +108,16 @@ the typed source-context return handler.
 
 The Sinsearach cinematic physical-entry QA boots Scene 9 below record 230,
 uses ordinary Up input to reach the gate event, then follows the Elders, Lady
-Gillian, and Frosty choices through command `0x49`. It advances all three
-pages and checks the same-context return, story bit 30, FFFC34 bits 4/5, and
-the runner source-byte triplet `+3`. The fare physical-entry QA starts from a
-fresh Scene-9 checkpoint, reaches the same record with ordinary Up, selects
-Later and Yes, and captures the offer, Joshua response, and 999-nuyen
-short-wallet page. Its `actual.bmp` is the short-wallet result. The separate
+Gillian, and Frosty choices through command `0x49`. It captures all three
+pages, verifies that an idle poll leaves the first page pixel-identical, and
+advances the page wait with C, Down, then Start. It checks the same-context
+return, story bit 30, FFFC34 bits 4/5, and the runner source-byte triplet
+`+3`. The source loop accepts any new high-byte controller event; this route
+check covers an action, a direction, and Start, while simultaneous-byte and
+per-button input masks are not individually swept. The fare physical-entry QA
+starts from a fresh Scene-9 checkpoint, reaches the same record with ordinary
+Up, selects Later and Yes, and captures the offer, Joshua response, and
+999-nuyen short-wallet page. Its `actual.bmp` is the short-wallet result. The separate
 script-runtime CTest covers the No reply, unchanged short balance, exact
 1,000-nuyen debit, paid-flight page, and typed host-transition boundaries.
 The paid-fare physical-entry QA starts from a separate Scene-9 checkpoint with
@@ -172,3 +176,110 @@ not as a ROM scene name.
   `fn_000566F6.cpp`, `fn_0000C0DA.cpp`, `fn_000011C0.cpp`,
   `fn_000136DE.cpp`, `fn_00003074.cpp`, and `fn_00002B34.cpp`.
 - Host content: `gameplay/dialogue/cinematics.json`.
+
+## 2026-10-23 presenter audit
+
+The physical route QA exposed an asset-registration hole. Both extracted
+320x224 story backgrounds existed as files, and both Lua page catalogs named
+their aliases, but neither alias was present in `assets/resources.tsv`. The
+presenter therefore displayed a green source-boundary fallback instead of
+story art. The first-page check could mistake that panel for a presentation:
+`dialogue_open()` includes source boundaries, and its green error text differed
+from the source art at the checked character cell. The next-page check then
+rejected the unchanged fallback frame. The corrected route also requires the
+expected text key and an empty boundary reason, so that false positive cannot
+recur.
+
+Both aliases are now in the runtime resource manifest. Physical QA requires
+the exact expected page text key at each step and an empty source-boundary
+reason. For every Sinsearach page, QA locates the first non-space source text
+cell, requires magenta ink there at the `0x2106` text origin, and compares the
+art below the text against the extracted asset. It also keeps page one
+unchanged during idle polls and the held-A/release state, then uses C, Down,
+and Start. Spirit Eyes preserves its four keys/art checks and uses B, Left,
+Up, and Start. Both routes pass in Debug and Release, with matching page BMP
+hashes across configurations. This remains host-side evidence; the reviewed
+longplay has no independently identified encounter frame for either ritual.
+
+## 2026-10-23 controller-mask audit
+
+ROM `0x0D94` loops over VBlank, `0x0BF2` latching, and `0x195C` sampling until
+`(FFDD22 & 0xFF00) != 0`, then takes one final sample. `0x195C` puts current
+pressed bits in the low byte and newly pressed bits in the high byte. Thus
+every nonzero eight-bit port mask is accepted on its new press, while a
+repeated held sample and the release have no event high byte. A fresh press
+after release is accepted again. The typed host's story-page event filter is
+`0xFF00`: A/B/C/Start (`0xF000`) plus all four directions (`0x0F00`).
+
+`shadowrun_ghidra_controller_wait` sweeps all 256 port-byte values through the
+host sampler and wait path. For each of the 255 nonzero masks it requires a
+one-frame wake, the final held-only sample, no repeat or release edge, and a
+new edge after re-press. The physical Sinsearach gate QA holds A across the
+transition into page one and verifies the page key and full-frame pixels stay
+unchanged through the held and release samples. Its normal source flow still
+advances across the three ROM pages with C and Down, then closes with Start.
+Debug and Release CTests provide runtime evidence; no independent Genesis
+frame for this encounter has been identified, and the hill stays partial.
+
+## 2026-10-23 Sinsearach gate flag matrix and longplay search
+
+The Scene-9 gate exposes three ROM roots at `0x1FE38`: the hostile root when
+story bit 18 is clear or Group Item bit 5 is set, the plain friendly root when
+both hostile conditions are false and bit 20 is clear, and the friendly root
+with a Frosty choice when bit 20 is set. After the Elders handoff, command
+`0x34` at `0x21CE4` reaches Lady Gillian's `0xF57E4` group only when story bits
+13, 17, 18, 19, and 20 are set, Group Item bit 5 is clear, and story bit 30 is
+clear. The ROM checks each input bit in that order; the JSON condition catalog
+records the same predicate.
+
+`shadowrun_gameplay_script_runtime_qa` now runs every one of the 128 flag-space
+combinations for bits 13/17/18/19/20/30 and Group Item bit 5 through the guard
+root, Elders, and Thanks choice. The outcomes are 96 hostile roots, 16 plain
+friendly roots, and 16 friendly roots with Frosty's option. Command 0x34 takes
+the Lady Gillian branch in exactly one of the 128 combinations; the other 127
+follow the Elders escort/busy path. The test then completes the bit-9-clear
+Frosty result or the busy-Elders result through the no-fare return. These are
+exhaustive selector inputs, not a statement that arbitrary combinations are
+reachable in a real save. Debug and Release pass.
+
+The same script-runtime CTest now traverses the graph's user choices as well:
+Questions to Caleb, Frosty, and Later; answer follow-up to another question,
+Elders, and Later; the Elders welcome and direct Lodge handoffs; Frosty's
+choice, the Frosty-left self-loop, and its Elders/Later exits; and Yes/No from
+both the 0x39 and 0x3A fare prompts. Short-wallet and exact-funds limits are
+covered at their shared 0x38 charge action. The test checks graph choice IDs
+on each of the 128 root states. This is typed graph
+coverage; Qt physical captures still cover the main Frosty route and fare
+routes rather than every alternate prompt.
+
+The physical-entry QA option on the Qt QA executable writes page 0 as
+`actual.bmp` plus all three `frosty-story-page-*.bmp` frames in each build.
+Debug and Release output `actual.bmp` hashes match
+(`E0AFEDC51B51E6C3142863F8102FB27DD00DA52BCA4CB02442B059EE62252E0B`). The
+page captures were inspected at original size: the named ROM art remains below
+y=80, the text starts at (24,16), and magenta ink appears at the first source
+glyph. These are command-line QA captures of the host renderer; they do not
+establish Genesis visual fidelity.
+
+To revisit the earlier no-capture note, I sampled every one-second point in
+the supplied 30-fps longplay dump from 00:00 through 03:00:15 (10,816
+samples) and compared the screen crop x=24..319, y=80..223 against the
+extracted ROM-art crop. No plausible match appeared. The closest sample was
+00:13:24 and remained 56.16 mean absolute RGB levels from the art crop; visual
+inspection shows ordinary field gameplay. Since the cinematic pages wait for
+a controller event, this search should catch any page shown for at least a
+second, but it cannot rule out a shorter transient between samples. An
+independent Genesis encounter capture remains open.
+
+## 2026-10-23 gate choice physical permutations
+
+The earlier note that Qt captures covered only the main Frosty and fare routes
+is superseded by
+[`visual-audits/sinsearach-gate-choice-permutation-audit-2026-10-23.md`](visual-audits/sinsearach-gate-choice-permutation-audit-2026-10-23.md).
+Three Debug/Release ordinary-input routes now capture the Caleb/Frosty
+question loop and Elders fallback, Frosty-left's identical self-loop and
+Elders exit, and Frosty-left's Later/No response through the settled Scene-9
+return. Each prompt checks its ROM-keyed text and visible choice labels; the
+refusal route verifies no wallet debit. All 27 full-frame BMPs match across
+configurations. The hostile root still lacks dedicated physical-input capture,
+and no independent Genesis encounter screenshot has been identified.

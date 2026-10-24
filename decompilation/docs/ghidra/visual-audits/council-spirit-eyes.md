@@ -110,9 +110,11 @@ Genesis dialogue frame.
   into record 96 with ordinary Up and checks `0xFFDB`/event-27 dispatch, the
   opening page before bit 5, command `0x15` and bit 5 after input, both
   one-choice questions, response pages, the first horn request, and clean
-  Scene-4 return. It writes a complete full-frame capture for each step. The
-  captures are internal runtime evidence, not independent Genesis fidelity
-  proof.
+  Scene-4 return. It then requires the four cinematic text keys in ROM order,
+  verifies the art rows against the named extraction, and advances with B,
+  Left, Up, and Start. It writes a complete full-frame capture for every page
+  and transition. The captures are internal runtime evidence, not independent
+  Genesis fidelity proof.
 
 ## Remaining evidence
 
@@ -121,7 +123,8 @@ Genesis dialogue frame.
   Scene-47 record 62 with physical input. The active Qt route currently has a
   seeded QA entry; its JSON precondition exposes missing context as an
   unresolved boundary instead of treating it as a false story fact.
-- Extract the `0x1FE6C2` resource profile into named host assets, present the
-  four-page sequence through a native full-screen presenter, and exercise its
-  source-context return. Independent Genesis dialogue captures remain
-  unavailable, so this hill stays partial.
+- The `0x1FE6C2` profile is extracted into a named host background and the
+  four-page sequence uses the native full-screen presenter. Its route QA
+  verifies source-context return. Independent Genesis dialogue captures
+  remain unavailable, and the Licourtrix physical route is still open, so this
+  hill stays partial.
