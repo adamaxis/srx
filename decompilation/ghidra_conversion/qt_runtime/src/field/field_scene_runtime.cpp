@@ -21718,9 +21718,14 @@ void FieldSceneRuntime::paint_command_overview_magic(
         painter.drawImage(force_tile_x(index), 112,
                           command_overview_magic_force_meter_tiles_[2]);
     }
+    // 0x1232 with d7=1 copies two consecutive words from A2: C85A8/C85AA
+    // during the force loop, C85AC/C85AE afterwards [C ROM 0x101B4].
     const auto marker = magic_force_selection_open() ? 3U : 4U;
     painter.drawImage(force_tile_x(current_force), 112,
                       command_overview_magic_force_meter_tiles_[marker]);
+    painter.drawImage(force_tile_x(static_cast<std::uint16_t>(
+                          current_force + 1U)), 112,
+                      command_overview_magic_force_meter_tiles_[marker + 2U]);
     for (std::uint16_t index = 0U;
          index < maximum_force - current_force; ++index) {
         painter.drawImage(

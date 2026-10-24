@@ -1714,6 +1714,8 @@ menu.field.magic.force.meter.tile.1	menu/field/magic-force-meter-tile-1.bmp	imag
 menu.field.magic.force.meter.tile.2	menu/field/magic-force-meter-tile-2.bmp	image	0	0
 menu.field.magic.force.meter.tile.3	menu/field/magic-force-meter-tile-3.bmp	image	0	0
 menu.field.magic.force.meter.tile.4	menu/field/magic-force-meter-tile-4.bmp	image	0	0
+menu.field.magic.force.meter.tile.5	menu/field/magic-force-meter-tile-5.bmp	image	0	0
+menu.field.magic.force.meter.tile.6	menu/field/magic-force-meter-tile-6.bmp	image	0	0
 menu.field.magic.availability.bar.0	menu/field/magic-availability-bar-0.bmp	image	0	0
 menu.field.magic.availability.bar.1	menu/field/magic-availability-bar-1.bmp	image	0	0
 menu.field.magic.availability.bar.2	menu/field/magic-availability-bar-2.bmp	image	0	0

@@ -1356,6 +1356,8 @@ menu/field/magic-force-meter-tile-1.bmp	sprite	0	0	8	8	0x10172/0xC85A2[1]	extrac
 menu/field/magic-force-meter-tile-2.bmp	sprite	0	0	8	8	0x10172/0xC85A2[2]	extracted
 menu/field/magic-force-meter-tile-3.bmp	sprite	0	0	8	8	0x10172/0xC85A2[3]	extracted
 menu/field/magic-force-meter-tile-4.bmp	sprite	0	0	8	8	0x10172/0xC85A2[4]	extracted
+menu/field/magic-force-meter-tile-5.bmp	sprite	0	0	8	8	0x10172/0xC85A2[5]	extracted
+menu/field/magic-force-meter-tile-6.bmp	sprite	0	0	8	8	0x10172/0xC85A2[6]	extracted
 menu/field/magic-availability-bar-0.bmp	sprite	0	0	56	8	0x1088C/0xC86C0[0]	extracted
 menu/field/magic-availability-bar-1.bmp	sprite	0	0	56	8	0x1088C/0xC86C0[1]	extracted
 menu/field/magic-availability-bar-2.bmp	sprite	0	0	56	8	0x1088C/0xC86C0[2]	extracted

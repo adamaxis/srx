@@ -1050,7 +1050,7 @@ std::array<RgbaImage, 4> decode_genesis_field_magic_cursor_frames(
 // one-tile source rows at C85A2/C85A4/C85A6/C85A8/C85AC.
 std::array<RgbaImage, 5> decode_genesis_field_magic_posture_bars(
     const std::vector<std::uint8_t>& rom);
-std::array<RgbaImage, 5> decode_genesis_field_magic_force_meter_tiles(
+std::array<RgbaImage, 7> decode_genesis_field_magic_force_meter_tiles(
     const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, 4> decode_genesis_field_magic_availability_bars(
     const std::vector<std::uint8_t>& rom);

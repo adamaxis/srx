@@ -8450,10 +8450,10 @@ decode_genesis_field_magic_metric_bars(
                         tile.pixels[source_y * 8U + source_x];
                     auto color =
                         scene.palette[palette_line * 16U + color_index];
-                    // ROM row words retain palette index zero as the black
-                    // meter well; only the separate spell cursor/background
-                    // layers use transparent index-zero pixels.
-                    color.alpha = 255U;
+                    // These rows go to Plane A (VDP reg 2 = 0x30 -> C000,
+                    // ROM 0x378) over the E000 Plane B parchment, so index
+                    // zero is transparent [C emulator run5 8997].
+                    color.alpha = color_index == 0U ? 0U : 255U;
                     image.pixels[y * image.width + column * 8U + x] = color;
                 }
             }
@@ -8535,7 +8535,7 @@ std::array<RgbaImage, 5> decode_genesis_field_magic_posture_bars(
         result[posture] = {
             static_cast<std::uint16_t>(kTileCount * 8U), 8U,
             std::vector<native::Rgba8>(kTileCount * 64U,
-                                       native::Rgba8{0, 0, 0, 255}),
+                                       native::Rgba8{0, 0, 0, 0}),
         };
         for (std::size_t tile = 0; tile < kTileCount; ++tile) {
             const auto entry = read_rom_u16(
@@ -8546,20 +8546,22 @@ std::array<RgbaImage, 5> decode_genesis_field_magic_posture_bars(
                 static_cast<std::size_t>(entry & 0x07FFU),
                 static_cast<std::size_t>((entry >> 13U) & 0x03U),
                 (entry & 0x0800U) != 0U, (entry & 0x1000U) != 0U,
-                static_cast<std::int32_t>(tile * 8U), 0, false);
+                static_cast<std::int32_t>(tile * 8U), 0, true);
         }
     }
     return result;
 }
 
-std::array<RgbaImage, 5> decode_genesis_field_magic_force_meter_tiles(
+std::array<RgbaImage, 7> decode_genesis_field_magic_force_meter_tiles(
     const std::vector<std::uint8_t>& rom) {
-    constexpr std::array<std::size_t, 5> kSourceOffsets{{
+    constexpr std::array<std::size_t, 7> kSourceOffsets{{
         0xC85A2U, // first tile in the meter
         0xC85A4U, // final tile in the meter
         0xC85A6U, // repeated force segment
         0xC85A8U, // current-force marker during the input loop
         0xC85ACU, // final marker when the force loop returns
+        0xC85AAU, // second word of the input-loop marker (0x1232 d7=1)
+        0xC85AEU, // second word of the final marker (0x1232 d7=1)
     }};
     const auto scene = decode_genesis_field_magic_graphics(rom);
     std::array<RgbaImage, kSourceOffsets.size()> result{};
@@ -8570,14 +8572,14 @@ std::array<RgbaImage, 5> decode_genesis_field_magic_force_meter_tiles(
         result[index] = {
             8U, 8U,
             std::vector<native::Rgba8>(64U,
-                                       native::Rgba8{0, 0, 0, 255}),
+                                       native::Rgba8{0, 0, 0, 0}),
         };
         blit_genesis_tile(
             result[index], scene,
             static_cast<std::size_t>(entry & 0x07FFU),
             static_cast<std::size_t>((entry >> 13U) & 0x03U),
             (entry & 0x0800U) != 0U, (entry & 0x1000U) != 0U,
-            0, 0, false);
+            0, 0, true);
     }
     return result;
 }
@@ -8593,7 +8595,7 @@ std::array<RgbaImage, 4> decode_genesis_field_magic_availability_bars(
         result[row] = {
             static_cast<std::uint16_t>(kTileCount * 8U), 8U,
             std::vector<native::Rgba8>(kTileCount * 64U,
-                                       native::Rgba8{0, 0, 0, 255}),
+                                       native::Rgba8{0, 0, 0, 0}),
         };
         for (std::size_t tile = 0; tile < kTileCount; ++tile) {
             const auto entry = read_rom_u16(
@@ -8604,7 +8606,7 @@ std::array<RgbaImage, 4> decode_genesis_field_magic_availability_bars(
                 static_cast<std::size_t>(entry & 0x07FFU),
                 static_cast<std::size_t>((entry >> 13U) & 0x03U),
                 (entry & 0x0800U) != 0U, (entry & 0x1000U) != 0U,
-                static_cast<std::int32_t>(tile * 8U), 0, false);
+                static_cast<std::int32_t>(tile * 8U), 0, true);
         }
     }
     return result;
@@ -8621,7 +8623,7 @@ std::array<RgbaImage, 10> decode_genesis_field_magic_damage_bars(
         result[row] = {
             static_cast<std::uint16_t>(kTileCount * 8U), 8U,
             std::vector<native::Rgba8>(kTileCount * 64U,
-                                       native::Rgba8{0, 0, 0, 255}),
+                                       native::Rgba8{0, 0, 0, 0}),
         };
         for (std::size_t tile = 0; tile < kTileCount; ++tile) {
             const auto entry = read_rom_u16(
@@ -8632,7 +8634,7 @@ std::array<RgbaImage, 10> decode_genesis_field_magic_damage_bars(
                 static_cast<std::size_t>(entry & 0x07FFU),
                 static_cast<std::size_t>((entry >> 13U) & 0x03U),
                 (entry & 0x0800U) != 0U, (entry & 0x1000U) != 0U,
-                static_cast<std::int32_t>(tile * 8U), 0, false);
+                static_cast<std::int32_t>(tile * 8U), 0, true);
         }
     }
     return result;

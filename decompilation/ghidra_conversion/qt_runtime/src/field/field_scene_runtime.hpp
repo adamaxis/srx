@@ -2032,7 +2032,7 @@ private:
     std::array<QImage, kMagicSpellTextCount> command_overview_magic_spell_icons_{};
     std::array<QImage, 4> command_overview_magic_cursor_frames_{};
     std::array<QImage, 5> command_overview_magic_posture_bars_{};
-    std::array<QImage, 5> command_overview_magic_force_meter_tiles_{};
+    std::array<QImage, 7> command_overview_magic_force_meter_tiles_{};
     std::array<QImage, 22> command_overview_magic_metric_bars_{};
     std::array<QImage, 4> command_overview_magic_availability_bars_{};
     std::array<QImage, 10> command_overview_magic_damage_bars_{};

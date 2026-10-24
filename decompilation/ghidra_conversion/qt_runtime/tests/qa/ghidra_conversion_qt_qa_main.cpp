@@ -40004,7 +40004,7 @@ int main(int argc, char** argv) {
                     const auto asset = direct_asset(
                         "menu/field/magic-metric-bar-" +
                         std::to_string(row) + ".bmp");
-                    success_bar_matches = region_matches(
+                    success_bar_matches = visible_asset_pixels_match(
                         moved_scene, asset, 32, 88);
                 }
 
@@ -40033,7 +40033,7 @@ int main(int argc, char** argv) {
                                        ? 128
                                        : 144;
                     defense_bars_match = defense_bars_match &&
-                        region_matches(moved_scene, asset, 32, y);
+                        visible_asset_pixels_match(moved_scene, asset, 32, y);
                 }
 
                 const auto* moved_definition =
@@ -40051,7 +40051,7 @@ int main(int argc, char** argv) {
                             "menu/field/magic-damage-bar-" +
                             std::to_string(
                                 effect.damage_grid->effect_row) + ".bmp");
-                        drain_bar_matches = region_matches(
+                        drain_bar_matches = visible_asset_pixels_match(
                             moved_scene, asset, 32, 104);
                     }
                 }
@@ -40060,7 +40060,7 @@ int main(int argc, char** argv) {
                 const auto posture_bar = direct_asset(
                     "menu/field/magic-posture-bar-" +
                     std::to_string(posture) + ".bmp");
-                const auto posture_bar_matches = region_matches(
+                const auto posture_bar_matches = visible_asset_pixels_match(
                     moved_scene, posture_bar, 160, 136);
                 const auto selected_spell_icon = direct_asset(
                     "menu/field/magic-spell-icon-" +
