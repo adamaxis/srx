@@ -1135,7 +1135,7 @@ FieldSceneRuntime::FieldSceneRuntime(
                 // ROM 0xC9EA routes Hospital Options B through the same
                 // 0x391A active-runner action used by the field controller.
                 if (source_audio_event_callback_) {
-                    source_audio_event_callback_(0x25U);
+                    source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
                 }
                 handle_field_mode_action_event();
                 return "applied";
@@ -2939,7 +2939,7 @@ void FieldSceneRuntime::advance_field_elevator_selector() {
     }
     if (update.sound_effect_requested) {
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
         }
         source_boundary("field.elevator.selector.source_sound_25");
     }
@@ -8507,7 +8507,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         if (source_audio_event_callback_) {
             // ROM 0x391A requests event 0x25 on the field C-button runner
             // selection path.
-            source_audio_event_callback_(0x25U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
         }
         handle_field_mode_action_event();
     };
@@ -11478,20 +11478,20 @@ void FieldSceneRuntime::advance_command_overview_clips(
     switch (event) {
     case ClipsMenuEvent::selection_moved:
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
         }
         source_boundary("field.command_overview.clips.selector_moved");
         break;
     case ClipsMenuEvent::confirmation_opened:
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
         }
         source_boundary(
             "field.command_overview.clips.reload_confirmation_opened");
         break;
     case ClipsMenuEvent::confirmation_toggled:
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
         }
         source_boundary(
             command_overview_clips_.reload_confirmation_yes()
@@ -11500,7 +11500,7 @@ void FieldSceneRuntime::advance_command_overview_clips(
         break;
     case ClipsMenuEvent::reloaded:
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
         }
         refresh_field_hud_runner_slot();
         refresh_command_overview_combat_bars();
@@ -11508,7 +11508,7 @@ void FieldSceneRuntime::advance_command_overview_clips(
         break;
     case ClipsMenuEvent::trade_opened:
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
         }
         source_boundary("field.command_overview.clips.trade.opened");
         if (command_overview_clips_.trade_recipient_record() >=
@@ -11522,28 +11522,28 @@ void FieldSceneRuntime::advance_command_overview_clips(
         break;
     case ClipsMenuEvent::trade_selection_moved:
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
         }
         source_boundary(
             "field.command_overview.clips.trade.selector_moved");
         break;
     case ClipsMenuEvent::trade_quantity_changed:
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
         }
         source_boundary(
             "field.command_overview.clips.trade.quantity_changed");
         break;
     case ClipsMenuEvent::trade_recipient_changed:
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
         }
         source_boundary(
             "field.command_overview.clips.trade.recipient_changed");
         break;
     case ClipsMenuEvent::trade_transferred:
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
         }
         refresh_field_hud_runner_slot();
         refresh_command_overview_combat_bars();
@@ -11553,13 +11553,13 @@ void FieldSceneRuntime::advance_command_overview_clips(
     case ClipsMenuEvent::trade_closed:
         if (source_audio_event_callback_ &&
             (controller_events & 0x7000U) != 0U) {
-            source_audio_event_callback_(0x24U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
         }
         source_boundary("field.command_overview.clips.trade.closed");
         break;
     case ClipsMenuEvent::distributed:
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
         }
         refresh_field_hud_runner_slot();
         refresh_command_overview_combat_bars();
@@ -11567,7 +11567,7 @@ void FieldSceneRuntime::advance_command_overview_clips(
         break;
     case ClipsMenuEvent::message_shown:
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
         }
         switch (command_overview_clips_.message()) {
         case ClipsMenuMessage::out_of_ammo:
@@ -11593,7 +11593,7 @@ void FieldSceneRuntime::advance_command_overview_clips(
     case ClipsMenuEvent::closed:
         if (source_audio_event_callback_ &&
             (controller_events & 0x7000U) != 0U) {
-            source_audio_event_callback_(0x24U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
         }
         // `closed` also describes leaving the nested reload prompt. The
         // runtime remains on the parent Clips screen unless the top-level
@@ -11759,7 +11759,7 @@ void FieldSceneRuntime::advance_command_overview_discard_confirmation(
         // edge; the source toggles its binary choice rather than assigning a
         // direction-specific value. The prompt starts on No.
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
         }
         command_overview_discard_confirmation_.selected_option =
             command_overview_discard_confirmation_.selected_option == 0U ? 1U
@@ -11776,7 +11776,7 @@ void FieldSceneRuntime::advance_command_overview_discard_confirmation(
         return;
     }
     if (source_audio_event_callback_) {
-        source_audio_event_callback_(0x24U);
+        source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
     }
 
     const auto selected = command_overview_selected_inventory_item_;
@@ -11830,10 +11830,10 @@ void FieldSceneRuntime::advance_command_overview_inventory_trade(
     const auto confirm = (controller_events & 0x7000U) != 0U;
     if (left || right) {
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
         }
     } else if (confirm && source_audio_event_callback_) {
-        source_audio_event_callback_(0x24U);
+        source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
     }
 
     std::array<bool, kInventoryTradePartySlotCount> active_slots{};
@@ -11923,7 +11923,7 @@ void FieldSceneRuntime::advance_command_overview_inventory_action(
     switch (result.event) {
     case InventoryActionEvent::action_moved:
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
         }
         source_boundary(
             "field.command_overview.inventory_action.selector_moved");
@@ -11943,7 +11943,7 @@ void FieldSceneRuntime::advance_command_overview_inventory_action(
         // 0x11C3C requests the command-confirm sound before entering the
         // selected equip/discard/trade/cancel handler.
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
         }
         dispatch_command_overview_inventory_action(result);
         break;
@@ -12045,7 +12045,7 @@ void FieldSceneRuntime::advance_command_overview_first_aid(
                 command_overview_first_aid_cursor_,
                 command_overview_first_aid_targets_.active_count, delta);
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
         }
         source_boundary("field.command_overview.first_aid.target_moved");
         return;
@@ -12057,7 +12057,7 @@ void FieldSceneRuntime::advance_command_overview_first_aid(
         return;
     }
     if (source_audio_event_callback_) {
-        source_audio_event_callback_(0x24U);
+        source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
     }
     if (command_overview_first_aid_cursor_ ==
         command_overview_first_aid_targets_.cancel_row()) {
@@ -17574,14 +17574,14 @@ void FieldSceneRuntime::advance_frame() {
             if (transaction_event ==
                 ShopTransactionEvent::confirmation_moved) {
                 if (source_audio_event_callback_) {
-                    source_audio_event_callback_(0x25U);
+                    source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
                 }
                 shop_boundary("confirmation_moved");
             } else if (confirmation_was_open &&
                        !field_shop_menu_.transaction_confirmation_open() &&
                        source_audio_event_callback_) {
                 // 0x57B8C requests event 0x24 on either source exit button.
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
 
             if (transaction_event == ShopTransactionEvent::purchase_applied) {
@@ -17626,19 +17626,19 @@ void FieldSceneRuntime::advance_frame() {
         switch (menu_event) {
         case ShopMenuEvent::selection_moved:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x25U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
             }
             shop_boundary("selection_moved");
             break;
         case ShopMenuEvent::panel_changed:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x25U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
             }
             shop_boundary("panel_changed");
             break;
         case ShopMenuEvent::purchase_selected:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             if (field_shop_menu_.pending_action().has_value() &&
                 field_shop_menu_.pending_action()->offer.has_value() &&
@@ -17666,7 +17666,7 @@ void FieldSceneRuntime::advance_frame() {
             break;
         case ShopMenuEvent::sale_selected:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             if (field_funds_.has_value()) {
                 auto sale_state = make_sale_state(
@@ -17780,7 +17780,7 @@ void FieldSceneRuntime::advance_frame() {
             break;
         case ShopMenuEvent::equipment_upgrade_selected:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             service_wire_upgrade(false);
             break;
@@ -17789,7 +17789,7 @@ void FieldSceneRuntime::advance_frame() {
             break;
         case ShopMenuEvent::source_action_boundary:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             shop_boundary("action_boundary");
             {
@@ -17805,7 +17805,7 @@ void FieldSceneRuntime::advance_frame() {
             break;
         case ShopMenuEvent::active_runner_change_requested:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             handle_field_mode_action_event();
             refresh_field_hud_runner_slot();
@@ -18008,7 +18008,7 @@ void FieldSceneRuntime::advance_frame() {
 
             if (posture_delta != 0) {
                 if (source_audio_event_callback_) {
-                    source_audio_event_callback_(0x25U);
+                    source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
                 }
                 (void)adjust_runner_posture(active_runner_record(),
                                             posture_delta);
@@ -18051,21 +18051,21 @@ void FieldSceneRuntime::advance_frame() {
                 switch (event) {
                 case DismissRunnerMenuEvent::selection_moved:
                     if (source_audio_event_callback_) {
-                        source_audio_event_callback_(0x25U);
+                        source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
                     }
                     source_boundary(
                         "field.pocket_secretary.dismiss_runner.selection_moved");
                     break;
                 case DismissRunnerMenuEvent::abort_selected:
                     if (source_audio_event_callback_) {
-                        source_audio_event_callback_(0x24U);
+                        source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
                     }
                     source_boundary(
                         "field.pocket_secretary.dismiss_runner.abort_selected");
                     break;
                 case DismissRunnerMenuEvent::runner_selected:
                     if (source_audio_event_callback_) {
-                        source_audio_event_callback_(0x24U);
+                        source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
                     }
                     if (dismiss_runner_.selection > 0U &&
                         dismiss_runner_.selection <=
@@ -18167,7 +18167,7 @@ void FieldSceneRuntime::advance_frame() {
                  },
                  [this] {
                      if (source_audio_event_callback_) {
-                         source_audio_event_callback_(0x25U);
+                         source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
                      }
                      handle_field_mode_action_event();
                      source_boundary("field.pocket_secretary.mode_action");
@@ -18355,7 +18355,7 @@ void FieldSceneRuntime::advance_frame() {
             // A/C action selected on the command overview. FBA6 itself has
             // no additional sound call in its Magical Defense fallback.
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             if (command_overview_.view().source_state.primary_page < 2U) {
                 begin_command_overview_inventory_action();
@@ -19870,7 +19870,7 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         // is sound event 0x25 via 0x530DE (emulator: +1 frame after C in
         // Motel Options) [C].
         if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
         }
         handle_field_mode_action_event();
         source_boundary("field.hotel.mode_action");
