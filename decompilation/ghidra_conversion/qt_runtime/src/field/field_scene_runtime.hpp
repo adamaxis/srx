@@ -359,6 +359,11 @@ public:
     bool set_default_actor_physical_meter_for_dump(
         std::uint16_t source_order, std::uint8_t physical_meter) noexcept;
     bool open_command_overview_for_dump();
+    bool menu_display_blank_active_for_dump() const noexcept {
+        return command_overview_start_transition_black_frame_ ||
+               command_overview_start_transition_frames_remaining_ != 0U ||
+               menu_blank_reveal_line_ != 0U;
+    }
 #ifdef SHADOWRUN_QT_QA_DRIVER
     bool dispatch_dialogue_service_for_dump(
         std::string_view service_id, std::string_view return_policy);
@@ -1593,6 +1598,7 @@ private:
     HotelMenuEvent process_hotel_menu_events(std::uint16_t events);
     AttributesSkillsRuntimeEvent process_hotel_karma_screen_events(
         std::uint16_t events);
+    void draw_pocket_secretary_cursor(QPainter& painter, int x, int y) const;
     void draw_command_overview_text(QPainter& painter, int x, int y,
                                     std::string_view text) const;
     void draw_tinted_field_text(QPainter& painter, int x, int y,
@@ -1907,6 +1913,9 @@ private:
     // Grok's emulator trace observed 27 black host frames before it returns.
     std::uint8_t command_overview_start_transition_frames_remaining_ = 0U;
     bool command_overview_start_transition_black_frame_ = false;
+    std::uint16_t menu_blank_reveal_line_pending_ = 0U;
+    std::uint16_t menu_blank_reveal_line_ = 0U;
+    std::vector<std::uint16_t> menu_blank_deferred_sounds_;
     CommandMenuKarmaViewRuntime command_overview_attributes_skills_{};
     HotelKarmaUpgradeRuntime hotel_karma_skills_{};
     std::uint32_t hotel_karma_load_frames_ = 0U;
@@ -2150,6 +2159,7 @@ private:
     std::optional<std::uint16_t> notebook_shadowrunner_flags_ = 0U;
     QImage pocket_secretary_background_;
     QImage pocket_secretary_grid_;
+    QImage pocket_secretary_nuyen_bar_;
     QImage hotel_options_cursor_;
     QImage hotel_checkout_cursor_;
     std::unordered_map<std::string, QImage> runner_preview_panels_;

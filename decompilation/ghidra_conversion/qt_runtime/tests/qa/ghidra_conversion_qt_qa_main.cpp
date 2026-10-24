@@ -35343,11 +35343,12 @@ int main(int argc, char** argv) {
                     std::cerr << "field player action dump: ordinary Start input did not open the command menu\n";
                     return 3;
                 }
-                // The opening Start frame is followed by 26 ROM black
-                // frames. press_field_input() has already advanced the
-                // first countdown frame on key release; finish the remaining
-                // 25 before sending navigation, which the source wait ignores.
-                for (int frame = 0; frame < 25; ++frame) {
+                // The opening Start frame is followed by 27 black frames and
+                // one reveal frame (emulator 8600..8628, command.lua).
+                // press_field_input() has already advanced the first countdown
+                // frame on key release; finish the remaining 27 before sending
+                // navigation, which the source wait ignores.
+                for (int frame = 0; frame < 27; ++frame) {
                     field_scene.advance_frame();
                 }
                 for (int move = 0;
@@ -38454,7 +38455,9 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: the first command-overview load frame was not black\n";
                     return 3;
                 }
-                for (std::uint32_t frame = 2U; frame <= 27U; ++frame) {
+                // Emulator: 28 black frames, then a reveal frame whose rows
+                // above line 175 are still black (display re-enabled mid-frame).
+                for (std::uint32_t frame = 2U; frame <= 28U; ++frame) {
                     advance_field_frame();
                     auto frame_name = std::to_string(frame);
                     if (frame_name.size() < 2U) {
@@ -38471,13 +38474,24 @@ int main(int argc, char** argv) {
                     }
                 }
                 advance_field_frame();
+                {
+                    const auto reveal = capture(
+                        output / "checkout-start-black" / "frame-reveal.bmp");
+                    if (reveal.isNull() ||
+                        image_region_differs(reveal, black_reference, 0, 0, 320, 175) ||
+                        !image_region_differs(reveal, black_reference, 0, 175, 320, 49)) {
+                        std::cerr << "field Hotel QA: reveal frame was not black above line 175\n";
+                        return 3;
+                    }
+                }
+                advance_field_frame();
                 const auto checkout_command_overview = capture(
                     output / "checkout-start-command-overview" /
                     "actual.bmp");
                 if (checkout_command_overview.isNull() ||
                     !image_region_differs(checkout_command_overview,
                                           black_reference, 0, 0, 320, 224)) {
-                    std::cerr << "field Hotel QA: command overview did not appear after 27 black frames\n";
+                    std::cerr << "field Hotel QA: command overview did not appear after 28 black frames and the reveal frame\n";
                     return 3;
                 }
                 mark_route("command-overview-after-checkout",
@@ -40105,6 +40119,7 @@ int main(int argc, char** argv) {
 
                 field_scene.set_controller_port_byte(0x80U);
                 field_scene.advance_frame();
+                settle_qa_menu_blank(field_scene);
                 if (field_scene.magic_spell_panel_open() ||
                     field_scene.magic_selected_spell().has_value() ||
                     !field_scene.command_overview_open() ||
@@ -40158,6 +40173,7 @@ int main(int argc, char** argv) {
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                    settle_qa_menu_blank(field_scene);
                 };
                 press_field_port(0xC0U); // A+Start confirms before Start.
                 if (!field_scene.magic_force_selection_open()) {
@@ -40491,6 +40507,7 @@ int main(int argc, char** argv) {
 
                 field_scene.set_controller_port_byte(0x80U);
                 field_scene.advance_frame();
+                settle_qa_menu_blank(field_scene);
                 if (field_scene.magic_spell_panel_open() ||
                     !field_scene.command_overview_open() ||
                     field_scene.command_overview_view().source_state
@@ -40555,6 +40572,7 @@ int main(int argc, char** argv) {
                         0U, std::move(record), std::string(preset.id),
                         preset.portrait_family);
                     field_scene.refresh_field_hud_for_dump();
+                    settle_qa_menu_blank(field_scene);
                     if (!field_scene.seek_command_overview_page(5U)) {
                         std::cerr << "field Magic spell dump: could not "
                                      "select Magic for " << preset.id << "\n";
@@ -40739,6 +40757,7 @@ int main(int argc, char** argv) {
                 // loops to exercise every simultaneous-button precedence
                 // combination, not just representative chords.
                 const auto reopen_spell_page = [&] {
+                    settle_qa_menu_blank(field_scene);
                     if (!field_scene.command_overview_open() ||
                         !field_scene.seek_command_overview_page(5U)) {
                         return false;
@@ -41692,6 +41711,7 @@ int main(int argc, char** argv) {
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                    settle_qa_menu_blank(field_scene);
                 };
                 // Give the diagnostic runner a known valid Body increase so
                 // the same fixture can exercise both prompt choices. Seed it
@@ -42603,6 +42623,7 @@ int main(int argc, char** argv) {
                         field_scene.advance_frame();
                         field_scene.set_controller_port_byte(0U);
                         field_scene.advance_frame();
+                        settle_qa_menu_blank(field_scene);
                     };
                 press_secretary_button(0x02U);
                 if (field_scene.pocket_secretary_selection() != 1U) {
@@ -42852,9 +42873,11 @@ int main(int argc, char** argv) {
                     field_scene.pocket_secretary_notebook_selection() != 0U ||
                     field_audio_events !=
                         std::vector<std::uint16_t>{0x25U} ||
+                    // x>=272 is the field HUD sidebar (0x10A7E bezel), where
+                    // the C reselect legitimately moves the leader frame.
                     image_region_differs(notebook_scene,
                                          notebook_after_mode_action,
-                                         32, 32, 256, 160) ||
+                                         32, 32, 240, 160) ||
                     !save_secretary_scene("notebook-mode-action",
                                           notebook_after_mode_action)) {
                     std::cerr << "field secretary dump: Notebook C did not "
@@ -43133,7 +43156,7 @@ int main(int argc, char** argv) {
                         std::vector<std::uint16_t>{0x25U} ||
                     image_region_differs(johnsons_scene,
                                          johnsons_after_mode_action,
-                                         32, 32, 256, 160) ||
+                                         32, 32, 240, 160) /* x>=272: HUD sidebar leader moves on C */ ||
                     !save_secretary_scene(
                         "notebook-mr-johnsons-mode-action",
                         johnsons_after_mode_action)) {
@@ -43610,8 +43633,9 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 notebook_scene = render_secretary_scene();
-                if (image_has_green_ink(notebook_scene, 48, 48, 240, 8) ||
-                    image_has_green_ink(notebook_scene, 48, 64, 240, 8)) {
+                // Stop at x=272: the HUD sidebar (0x10A7E bezel) has green bars.
+                if (image_has_green_ink(notebook_scene, 48, 48, 224, 8) ||
+                    image_has_green_ink(notebook_scene, 48, 64, 224, 8)) {
                     std::cerr << "field secretary dump: rebuilt Notebook "
                                  "retained stale no-run response text\n";
                     return 3;
@@ -43670,9 +43694,9 @@ int main(int argc, char** argv) {
                     }
                     const auto mask_return_scene = render_secretary_scene();
                     if (image_has_green_ink(mask_return_scene, 48, 48,
-                                            240, 8) ||
+                                            224, 8) ||
                         image_has_green_ink(mask_return_scene, 48, 64,
-                                            240, 8)) {
+                                            224, 8)) {
                         std::cerr << "field secretary dump: controller mask "
                                   << input_mask
                                   << " left stale no-run text\n";
@@ -44105,8 +44129,10 @@ int main(int argc, char** argv) {
                     image_has_green_ink(dismiss_scene, 136, 104, 8, 8) ||
                     !image_region_differs(dismiss_parent_scene, dismiss_scene,
                                           136, 96, 8, 16) ||
-                    image_region_differs(dismiss_parent_scene, dismiss_scene,
-                                         160, 144, 32, 32) ||
+                    // (Parent-vs-child compare at the preview cell dropped: the
+                    // parent now carries the 0xC3F8 nuyen bar there, which the
+                    // child's 0x12C5A grid rebuild clears. The held/preview
+                    // checks below still cover the cell.)
                     has_parent_option(dismiss_scene, 0) ||
                     has_parent_option(dismiss_scene, 1) ||
                     has_parent_option(dismiss_scene, 2) ||

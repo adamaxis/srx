@@ -97,7 +97,9 @@ struct ScriptMenuRouteHost {
     std::function<void(std::uint16_t)> play_sound;
     std::function<void(std::uint16_t)> stop_sound;
     std::function<void(std::uint32_t)> redraw;
-    std::function<void(std::uint16_t)> blank;
+    // mode (E.DisplayBlank), then for ON the measured black-frame count and
+    // the raster line where the display re-enables on the reveal frame.
+    std::function<void(std::uint16_t, std::uint16_t, std::uint16_t)> blank;
     std::function<void(std::uint16_t)> set_window;
     std::function<void(std::uint16_t)> set_screen;
     std::function<void(bool)> menu_closed;

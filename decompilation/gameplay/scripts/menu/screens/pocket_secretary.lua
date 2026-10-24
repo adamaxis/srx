@@ -15,7 +15,9 @@ function M.enter(st, ctx)
     Grid.reset()
     st.grid_effect_frames = 0
     st.max = ctx.game.pocket_extra_row() and 5 or 4
-    ctx.host.blank(E.DisplayBlank.OFF); ctx.redraw(R.FULL); ctx.host.blank(E.DisplayBlank.ON)    -- build (docs/09 s10.7) [C]
+    -- 0x10918..0x10AE6 build with display off (docs/09 s10.7) [C]; 15 black frames, display back on at line 216
+    -- (emulator 8660..8675) [C emulator]
+    ctx.host.blank(E.DisplayBlank.OFF); ctx.redraw(R.FULL); ctx.host.blank(E.DisplayBlank.ON, 15, 216)
 end
 function M.input(st, events, ctx)
     st.grid_effect_frames = Grid.advance(ctx)                  -- 0xE660, three ROM RNG draws per frame [C]

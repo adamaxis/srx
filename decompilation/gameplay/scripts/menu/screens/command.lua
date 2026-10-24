@@ -35,7 +35,8 @@ local function build(st, ctx, full)
         st.page, st.row = Page.POCKET_SECRETARY, 0          -- 0x10F50 [C]
         ctx.host.blank(E.DisplayBlank.OFF)
         ctx.redraw(R.FULL)
-        ctx.host.blank(E.DisplayBlank.ON)
+        -- 28 black frames, display back on at line 175 (emulator 8600..8628 open, 8720..8748 return) [C emulator]
+        ctx.host.blank(E.DisplayBlank.ON, 28, 175)
     else
         ctx.redraw(M.REFRESH)                              -- 0x10D90: panels without blanking [C]
     end

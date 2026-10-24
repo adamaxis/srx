@@ -33,6 +33,16 @@ void settle_qa_dialogue_input(FieldSceneRuntime& field_scene) {
     field_scene.advance_frame();
 }
 
+// Lua-timed display-off builds (host.blank holds) drop input and defer their
+// sounds; let the emulator-measured black/reveal frames elapse.
+void settle_qa_menu_blank(FieldSceneRuntime& field_scene) {
+    for (int guard = 0; guard < 64 &&
+                        field_scene.menu_display_blank_active_for_dump();
+         ++guard) {
+        field_scene.advance_frame();
+    }
+}
+
 void tap_qa_controller_button(FieldSceneRuntime& field_scene,
                               const std::uint8_t port_byte) {
     settle_qa_dialogue_input(field_scene);
@@ -40,6 +50,7 @@ void tap_qa_controller_button(FieldSceneRuntime& field_scene,
     field_scene.advance_frame();
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
+    settle_qa_menu_blank(field_scene);
 }
 
 void clear_qa_bitmap_artifacts(const std::filesystem::path& output,

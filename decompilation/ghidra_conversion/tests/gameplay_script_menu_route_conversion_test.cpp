@@ -393,7 +393,8 @@ int main() {
         stopped_sounds.push_back(sound);
     };
     bindings.host.redraw = [](std::uint32_t) {};
-    bindings.host.blank = [&blank_modes](const std::uint16_t mode) {
+    bindings.host.blank = [&blank_modes](const std::uint16_t mode,
+                                         std::uint16_t, std::uint16_t) {
         blank_modes.push_back(mode);
     };
     bindings.host.set_window = [&windows](const std::uint16_t window) {

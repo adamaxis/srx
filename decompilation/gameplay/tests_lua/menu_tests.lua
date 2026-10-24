@@ -11,7 +11,7 @@ local function mk(o)
     local host = {
         play_sound = function(id) log.sounds[#log.sounds + 1] = id end,
         redraw = function() log.redraws = log.redraws + 1 end,
-        blank = function(m) log.blanks[#log.blanks + 1] = m end,
+        blank = function(m, n, line) log.blanks[#log.blanks + 1] = m; if n then log.hold = { n, line } end end,
         set_window = function(w) log.windows[#log.windows + 1] = w end,
         set_screen = function() end,
         menu_closed = function() log.closed = true end,
@@ -45,6 +45,7 @@ local function clear(log) log.sounds = {} end
 local r, log = mk(); check(st(r).page == Pg.POCKET_SECRETARY and st(r).row == 0, "open page")
 check(log.sounds[1] == E.MenuSound.MOVE and #log.sounds == 1, "open sound")
 check(log.blanks[1] == E.DisplayBlank.OFF and log.blanks[2] == E.DisplayBlank.ON, "blank")
+check(log.hold and log.hold[1] == 28 and log.hold[2] == 175, "build blank hold (emulator 28 black, line 175)")
 check(log.windows[1] == E.WindowPlane.SIDEBAR, "sidebar visible")
 -- page wrap 6->0->6 [C 0x114A0]
 r:frame(P.RIGHT); check(st(r).page == 0, "wrap up")

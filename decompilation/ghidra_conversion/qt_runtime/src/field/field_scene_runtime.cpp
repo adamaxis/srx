@@ -6619,6 +6619,11 @@ bool FieldSceneRuntime::load_field_hud_overlays(
 
 bool FieldSceneRuntime::load_command_overview_assets(
     const ConversionAssetCatalog& catalog) {
+    // Optional until assets are regenerated with the 0xC3F8 nuyen bar.
+    if (catalog.find("menu.pocket.secretary.nuyen.bar") != nullptr) {
+        (void)load_image(catalog, "menu.pocket.secretary.nuyen.bar",
+                         pocket_secretary_nuyen_bar_);
+    }
     if (!load_image(catalog, kCommandOverviewBackgroundAlias,
                     command_overview_background_) ||
         !load_image(catalog, kCommandOverviewInventoryBoxesAlias,
@@ -8510,7 +8515,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.run_command_overview = [this] {
         open_command_overview();
-        if (command_overview_.open()) {
+        if (command_overview_.open() &&
+            !command_overview_start_transition_black_frame_) {
             // The callback runs after this host frame's ordinary menu service
             // point, so the opening frame itself is the first black frame.
             command_overview_start_transition_frames_remaining_ = 26U;
@@ -8639,6 +8645,12 @@ void FieldSceneRuntime::install_test_deck() {
 void FieldSceneRuntime::configure_field_menu_route() {
     scripting::ScriptMenuRouteBindings bindings;
     bindings.host.play_sound = [this](const std::uint16_t sound) {
+        if (command_overview_start_transition_black_frame_) {
+            // Display is off while the build runs; sounds queued after the
+            // build (e.g. 0x10E2E's 0x25) start once it re-enables [C order].
+            menu_blank_deferred_sounds_.push_back(sound);
+            return;
+        }
         if (source_audio_event_callback_) {
             source_audio_event_callback_(sound);
         }
@@ -8652,7 +8664,21 @@ void FieldSceneRuntime::configure_field_menu_route() {
     // frame. These callbacks are retained as presenter boundaries for the
     // later screen ports; they do not execute source tile/VDP operations.
     bindings.host.redraw = [](const std::uint32_t) {};
-    bindings.host.blank = [](const std::uint16_t) {};
+    bindings.host.blank = [this](const std::uint16_t mode,
+                                 const std::uint16_t black_frames,
+                                 const std::uint16_t reveal_line) {
+        // Lua passes the emulator-measured length of a display-off build
+        // (VDP $8134 .. $8174). The opening frame is the first black frame.
+        if (mode != static_cast<std::uint16_t>(srx::DisplayBlank::ON) ||
+            black_frames == 0U || !command_overview_.open()) {
+            return;
+        }
+        command_overview_start_transition_frames_remaining_ =
+            static_cast<std::uint8_t>(black_frames - 1U);
+        command_overview_start_transition_black_frame_ = true;
+        menu_blank_reveal_line_pending_ = reveal_line;
+        menu_blank_reveal_line_ = 0U;
+    };
     bindings.host.set_window = [](const std::uint16_t) {};
     bindings.host.set_screen = [this](const std::uint16_t screen) {
         const auto matrix_entry_screen = static_cast<std::uint16_t>(
@@ -17466,13 +17492,29 @@ void FieldSceneRuntime::advance_frame() {
         return;
     }
     if (command_overview_.open()) {
+        menu_blank_reveal_line_ = 0U;
         if (command_overview_start_transition_frames_remaining_ != 0U) {
             command_overview_start_transition_black_frame_ = true;
             --command_overview_start_transition_frames_remaining_;
             source_boundary("field.command_overview.start_black_frame");
             return;
         }
-        command_overview_start_transition_black_frame_ = false;
+        if (command_overview_start_transition_black_frame_) {
+            command_overview_start_transition_black_frame_ = false;
+            for (const auto sound : menu_blank_deferred_sounds_) {
+                if (source_audio_event_callback_) {
+                    source_audio_event_callback_(sound);
+                }
+            }
+            menu_blank_deferred_sounds_.clear();
+            if (menu_blank_reveal_line_pending_ != 0U) {
+                // The display re-enables mid-frame: rows above this line
+                // stay black for one frame (emulator measurement) [C].
+                menu_blank_reveal_line_ = menu_blank_reveal_line_pending_;
+                menu_blank_reveal_line_pending_ = 0U;
+                return;
+            }
+        }
         // This is the non-blocking host form of the source command loop's
         // wait/latch/sample sequence. Field movement and world services stay
         // suspended until Start returns from the overview.
@@ -17957,6 +17999,9 @@ void FieldSceneRuntime::advance_frame() {
             field_runtime_state_.display_service_word = 0U;
             command_overview_start_transition_frames_remaining_ = 0U;
             command_overview_start_transition_black_frame_ = false;
+            menu_blank_reveal_line_ = 0U;
+            menu_blank_reveal_line_pending_ = 0U;
+            menu_blank_deferred_sounds_.clear();
             source_boundary("field.command_overview.returned_to_field");
             command_overview_inventory_action_ = InventoryActionMenuState{};
             command_overview_selected_inventory_item_.reset();
@@ -18076,8 +18121,7 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
     advance_frame();
     set_controller_port_byte(static_cast<std::uint8_t>(
         field_controller_port_byte_ & static_cast<std::uint8_t>(~0x80U)));
-    while (command_overview_start_transition_black_frame_ ||
-           command_overview_start_transition_frames_remaining_ != 0U) {
+    while (menu_display_blank_active_for_dump()) {
         advance_frame();
     }
     return command_overview_.open();
@@ -21100,6 +21144,20 @@ void FieldSceneRuntime::paint_command_overview_clips(
                                        footer_index]));
 }
 
+void FieldSceneRuntime::draw_pocket_secretary_cursor(QPainter& painter,
+                                                     const int x,
+                                                     const int y) const {
+    // ROM 0xC376 writes tile 0x05FF into plane-B column 9 (x=72). 0xC0C2
+    // loads the arrow glyph there; the emulator's Main Menu shows that arrow,
+    // not the font's lowercase x [C emulator frame 8690]. The extracted
+    // asset is cropped one column from the left (origin x=1).
+    if (hotel_options_cursor_.isNull()) {
+        draw_command_overview_text(painter, x, y, "x");
+        return;
+    }
+    painter.drawImage(x + 1, y, hotel_options_cursor_);
+}
+
 void FieldSceneRuntime::paint_command_overview_posture_panel(
     QPainter& painter) const {
     // ROM 0x11900 redraws the common lower shell after Clips clears the
@@ -21762,7 +21820,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         // ROM 0xC2A6 writes C1418 at C216 with C0DA. The embedded 0x80
         // markers advance eight pixels per row, leaving one blank row
         // between options. C376 writes its right cursor tile at C3A2, x=136;
-        // C1320 maps tile 0x05FF to the source lowercase-x glyph.
+        // tile 0x05FF holds the 0xC0C2 arrow (see draw_pocket_secretary_cursor).
         if (matrix_search) {
             // The console is an overlay on the field; restore the map and HUD
             // outside the central frame after laying down its opaque art.
@@ -21770,6 +21828,14 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         } else {
             painter.drawImage(0, 0, pocket_secretary_background_);
             painter.drawImage(24, 24, pocket_secretary_grid_);
+            // 0x10A7E's bezel is only 0x21 cells wide, so the window-plane
+            // party HUD stays visible from x=272 (emulator 8690 vs 8640:
+            // identical pixels for x >= 272) [C].
+            painter.save();
+            painter.setClipRect(QRect(272, 0, 48, 224));
+            painter.drawImage(0, 0, field_hud_);
+            paint_field_hud_overlays(painter);
+            painter.restore();
         }
         // ROM 0xE660's C13E8/C13F8 destinations map to these twelve 8x8
         // cells in the lower shared frame. Each call replaces one adjacent
@@ -22640,8 +22706,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             if (selected_row >= 0 &&
                 static_cast<std::size_t>(selected_row) <
                     routed_menu.top_option_labels.size()) {
-                draw_command_overview_text(
-                    painter, 72, 56 + selected_row * 16, "x");
+                draw_pocket_secretary_cursor(
+                    painter, 72,
+                    56 + selected_row * 16);
             }
             return;
         }
@@ -22665,8 +22732,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             if (selected_row >= 0 &&
                 static_cast<std::size_t>(selected_row) <
                     debug_menu.top_option_labels.size()) {
-                draw_command_overview_text(
-                    painter, 72, 56 + selected_row * 16, "x");
+                draw_pocket_secretary_cursor(
+                    painter, 72,
+                    56 + selected_row * 16);
             }
             return;
         }
@@ -22725,9 +22793,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                         }
                     }
                     if (page.selection < page.visible_count) {
-                        draw_command_overview_text(
+                        draw_pocket_secretary_cursor(
                             painter, 72,
-                            56 + static_cast<int>(page.selection) * 16, "x");
+                            56 + static_cast<int>(page.selection) * 16);
                     }
                     return true;
                 };
@@ -22789,9 +22857,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                             .notebook_mr_johnson_names[source_index]);
                 }
                 if (page.selection < page.visible_count) {
-                    draw_command_overview_text(
+                    draw_pocket_secretary_cursor(
                         painter, 72,
-                        56 + static_cast<int>(page.selection) * 16, "x");
+                        56 + static_cast<int>(page.selection) * 16);
                 }
                 return;
             }
@@ -22907,11 +22975,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             }
             if (pocket_secretary_.notebook.selection <
                 pocket_secretary_.notebook.option_count) {
-                draw_command_overview_text(
+                draw_pocket_secretary_cursor(
                     painter, 72,
-                    56 + static_cast<int>(
-                             pocket_secretary_.notebook.selection) * 16,
-                    "x");
+                    56 + static_cast<int>(pocket_secretary_.notebook.selection) * 16);
             }
             return;
         }
@@ -22938,10 +23004,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             }
             if (dismiss_runner_.selection <=
                 dismiss_runner_.candidate_count) {
-                draw_command_overview_text(
+                draw_pocket_secretary_cursor(
                     painter, 72,
-                    64 + static_cast<int>(dismiss_runner_.selection) * 16,
-                    "x");
+                    64 + static_cast<int>(dismiss_runner_.selection) * 16);
             }
             if (const auto slot = dismiss_runner_preview_slot();
                 slot.has_value() &&
@@ -23029,14 +23094,27 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 painter, 88, 56 + static_cast<int>(row) * 16,
                 pocket_secretary_menu_content_.choices[row].label);
         }
+        if (!pocket_secretary_nuyen_bar_.isNull()) {
+            // ROM 0xC3F8: the 20x3 map replaces plane-A cells at (56,152), so
+            // its colour-0 pixels expose the bezel, not the C3E6 grid [C].
+            const QRect bar(56, 152, pocket_secretary_nuyen_bar_.width(),
+                            pocket_secretary_nuyen_bar_.height());
+            painter.drawImage(bar, pocket_secretary_background_, bar);
+            painter.drawImage(bar.topLeft(), pocket_secretary_nuyen_bar_);
+            // 0xC216 writes digits right to left from $CA2C (last cell at
+            // x=176), inserting C1320 entry 0x18 (',') every three digits.
+            draw_command_overview_number(
+                painter, command_overview_font_, 184, 160,
+                field_funds_.value_or(0U), NumericVisualAlignment::right,
+                true);
+        }
         if (pocket_secretary_.selection <=
             pocket_secretary_.maximum_selection) {
             // ROM 0xC376 writes the selector into plane-B column 9 (x=72),
             // in the gutter before the option labels begin at x=88.
-            draw_command_overview_text(
+            draw_pocket_secretary_cursor(
                 painter, 72,
-                56 + static_cast<int>(pocket_secretary_.selection) * 16,
-                "x");
+                56 + static_cast<int>(pocket_secretary_.selection) * 16);
         }
         return;
     }
@@ -23970,7 +24048,14 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
             return;
         }
         paint_command_overview(painter);
+        const auto blank_reveal_rows = [&] {
+            if (menu_blank_reveal_line_ != 0U) {
+                painter.fillRect(QRect(0, 0, 320, menu_blank_reveal_line_),
+                                 Qt::black);
+            }
+        };
         if (command_overview_attributes_skills_.is_open()) {
+            blank_reveal_rows();
             apply_palette_fade();
             return;
         }
@@ -23983,6 +24068,7 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
             painter.drawImage(0, 0, field_hud_);
             paint_field_hud_overlays(painter);
         }
+        blank_reveal_rows();
         apply_palette_fade();
         return;
     }

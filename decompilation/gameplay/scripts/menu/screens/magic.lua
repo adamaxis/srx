@@ -109,7 +109,8 @@ function M.enter(st, ctx)
     st.cursor_phase = 0
     ctx.host.blank(E.DisplayBlank.OFF)
     ctx.redraw(R.FULL)
-    ctx.host.blank(E.DisplayBlank.ON)
+    -- 12 black frames, display back on at line 149 (emulator 8820..8832) [C emulator]
+    ctx.host.blank(E.DisplayBlank.ON, 12, 149)
     local entry = M.selected(st.table, st.sel)
     st.force = M.initial_force(record, entry)
     publish_view(st, ctx, entry, st.force)

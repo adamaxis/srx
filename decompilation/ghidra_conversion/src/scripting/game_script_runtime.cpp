@@ -1087,7 +1087,9 @@ struct GameScriptRuntime::Impl {
         case MenuBinding::blank:
             if (self->menu_route_bindings.host.blank) {
                 self->menu_route_bindings.host.blank(
-                    static_cast<std::uint16_t>(integer_argument(1)));
+                    static_cast<std::uint16_t>(integer_argument(1)),
+                    static_cast<std::uint16_t>(integer_argument(2)),
+                    static_cast<std::uint16_t>(integer_argument(3)));
             }
             return 0;
         case MenuBinding::set_window:
