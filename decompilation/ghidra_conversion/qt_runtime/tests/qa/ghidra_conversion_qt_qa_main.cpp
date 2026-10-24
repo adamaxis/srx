@@ -50146,8 +50146,11 @@ int main(int argc, char** argv) {
                 const auto& weapon_two_equipped =
                     field_scene.active_runner_record();
                 const auto weapon_two_equipped_scene = render_scene();
+                // ROM 0x11136 advances A0 per slot before 0x3602, so slot 1
+                // tests the name byte at +0x58 and keeps palette 0x2000
+                // (variant 0) even while it holds the equipped weapon [C].
                 const auto weapon_two_equipped_icon =
-                    direct_weapon_icon(2U, 1U);
+                    direct_weapon_icon(2U, 0U);
                 if (weapon_two_equipped.equipped_inventory_slot != 1 ||
                     weapon_two_equipped.equipped_item_code != 2U ||
                     weapon_two_equipped.ammo_rounds != 6U ||

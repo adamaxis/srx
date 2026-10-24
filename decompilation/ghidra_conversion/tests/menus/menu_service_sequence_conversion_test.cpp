@@ -421,7 +421,8 @@ int main() {
         !use_command_overview_alternate_icon_palette({6U, 2U, -1}) ||
         !use_command_overview_alternate_icon_palette({14U, 1U, 0}) ||
         use_command_overview_alternate_icon_palette({5U, 1U, -1}) ||
-        !use_command_overview_alternate_icon_palette({6U, 1U, -1})) {
+        !use_command_overview_alternate_icon_palette({6U, 1U, -1}) ||
+        use_command_overview_alternate_icon_palette({0x15, 2, 4})) {
         return 58;
     }
 

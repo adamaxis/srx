@@ -23381,10 +23381,16 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         {{16, 120}}, {{56, 120}}, {{16, 144}}, {{56, 144}},
         {{16, 168}}, {{56, 168}}, {{16, 192}}, {{56, 192}},
     }};
-    const auto icon_variant = command_overview_uses_alternate_icon_palette(
-                                  active_runner_record())
-                                  ? 1U
-                                  : 0U;
+    // ROM 0x11136 calls 0x3602 per slot but ADDQ.L #1,A0 after each one,
+    // so slot i tests record +0x57+i/+0x9B+i/+0x56+i [C]. Only slot 0 reads
+    // the equipped-item bytes. For slots 1..7 the +0x57+i byte is the
+    // equipped code (i=1) or the 0x58 name span, and every ROM roster name
+    // (0x72972 + 0x100*n) is printable ASCII there, so 0x3602 always
+    // returns 0x2000 (palette line 1, variant 0) for them [C].
+    const auto slot0_variant = command_overview_uses_alternate_icon_palette(
+                                   active_runner_record())
+                                   ? 1U
+                                   : 0U;
     for (std::size_t slot = 0;
          slot < active_runner_record().inventory_item_codes.size();
          ++slot) {
@@ -23393,6 +23399,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         if (item_code == 0U || item_code > 50U) {
             continue;
         }
+        const auto icon_variant = slot == 0U ? slot0_variant : 0U;
         const auto& icon =
             command_overview_inventory_icons_[item_code - 1U][icon_variant];
         painter.drawImage(kInventoryIconPositions[slot][0],

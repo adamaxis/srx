@@ -167,22 +167,10 @@ std::uint16_t select_hud_glyph_attribute_flags(
 
 bool use_command_overview_alternate_icon_palette(
     const HudGlyphAttributeInput& input) {
-    // This is the source 0x3602 branch expressed as a typed predicate. It is
-    // intentionally separate from the glyph attribute word: the host uses
-    // the result to choose one of two extracted icon variants.
-    if (input.action_code == 0) {
-        return false;
-    }
-    if (input.class_code >= 2) {
-        return true;
-    }
-    if (input.equipped_slot >= 0) {
-        return input.action_code < 15;
-    }
-    if (input.action_code < 6) {
-        return false;
-    }
-    return true;
+    // Source 0x3602 returns 0x6000 for the alternate icon variant. Reuse the
+    // exact flag routine: class >= 2 still tests item < 0x0F, not always
+    // alternate [C].
+    return select_hud_glyph_attribute_flags(input) == 0x6000U;
 }
 
 namespace {

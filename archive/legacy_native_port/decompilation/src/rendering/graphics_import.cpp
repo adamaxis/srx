@@ -3894,7 +3894,9 @@ decode_genesis_field_menu_status_bars(
                     const auto color_index = tile.pixels[
                         source_y * 8U + source_x];
                     auto color = palette[16U + color_index];
-                    color.alpha = 255;
+                    // Plane colour 0 is transparent: the emulator shows the
+                    // command background through it around the bar [C].
+                    color.alpha = color_index == 0U ? 0U : 255U;
                     bars[status].pixels[pixel_y * bars[status].width +
                                         tile_position * 8U + pixel_x] = color;
                 }
