@@ -715,18 +715,40 @@ std::optional<std::uint16_t> source_delay_mode(
 // Command-overview text is CRAM line 1 index 10 = 0x02C2 (emulator run5
 // FFD8F4 while the Start menu is open) [C]. The glyph atlas coverage is
 // 0xDB, so the tint is pre-scaled to land on levels (1,6,1).
-QColor command_overview_text_tint() {
+QColor cram_text_tint(const std::uint16_t cram) {
     constexpr int kGlyphCoverage = 0xDB;
     const auto level = [](const int cram_nibble) {
         return ((cram_nibble >> 1) * 255 + 3) / 7;
     };
-    constexpr std::uint16_t kTextCram = 0x02C2U;
     const auto scale = [&](const int value) {
         return std::min(255, (value * 255 + kGlyphCoverage / 2) / kGlyphCoverage);
     };
-    return QColor(scale(level(kTextCram & 0xF)),
-                  scale(level((kTextCram >> 4) & 0xF)),
-                  scale(level((kTextCram >> 8) & 0xF)));
+    return QColor(scale(level(cram & 0xF)),
+                  scale(level((cram >> 4) & 0xF)),
+                  scale(level((cram >> 8) & 0xF)));
+}
+
+QColor command_overview_text_tint() {
+    return cram_text_tint(0x02C2U);
+}
+
+// ROM 0xD03C/0xD046 (Attributes/Skills page, shared by the Command and
+// Hotel Karma entries) rewrites the text CRAM: FFD8D4 (the 0x4000 text
+// line) = 0x02C2 bright green for the focused row and description, and
+// FFD8F4 (the 0x6000 base-grid line) = 0x0060 dim green [C ROM; emulator
+// e2 8844: focus 20ce20, others 006500].
+QColor attributes_focus_text_tint() {
+    return cram_text_tint(0x02C2U);
+}
+
+QColor attributes_base_text_tint() {
+    return cram_text_tint(0x0060U);
+}
+
+// ROM 0xC1AD8.. stores " Pistols", " SMGs", " Shotguns" with a leading space
+// (Firearms sub-skills); the text catalog trims it [C ROM].
+int attributes_label_indent(const std::size_t label_index) {
+    return label_index >= 10U && label_index <= 12U ? 8 : 0;
 }
 
 // The ROM menu strings carry their layout as padding: runner names are
@@ -20968,10 +20990,10 @@ void FieldSceneRuntime::paint_command_overview_clips(
     // source 20x20 cell region. The field HUD is composed afterward as a
     // separate shared layer.
     painter.fillRect(96, 16, 160, 160, Qt::black);
-    // The clear includes the top 16 pixels of the shared posture panel.
-    // ROM 0x11B5C re-enters 0x11900 after that clear, rebuilding this shell
-    // before installing the Clips row. Restore the panel as one unit here.
-    paint_command_overview_posture_panel(painter);
+    // ROM 0x11B5C then calls 0x11900, which covers the posture box (21x3
+    // cells at $EA18, x=96 y=160) with the C1320 blank tile until 0x11928
+    // restores it after the result text [C emulator e1 8840/9020].
+    painter.fillRect(96, 160, 168, 24, Qt::black);
 
     // The parent command tabs occupy the full 160 px panel. CD33E/CD37A are
     // only 15 cells wide, so replacing just their centered 120 px strip can
@@ -21075,6 +21097,23 @@ void FieldSceneRuntime::paint_command_overview_clips(
         // parent row here; showing the child Clips/Trade row would be stale.
         painter.drawImage(kButtonPanelRect, command_overview_background_,
                           kButtonPanelRect);
+        // Neither path rewrites the y=200 footer row, so the top-level
+        // caption chosen before the message stays visible ("Trade" under
+        // the no-party message [C emulator e1 9040]; Reload cases [H]).
+        const auto message = command_overview_clips_.message();
+        if (message == ClipsMenuMessage::no_party_members ||
+            message == ClipsMenuMessage::out_of_ammo ||
+            message == ClipsMenuMessage::item_does_not_use_clips) {
+            const auto parent_selection = command_overview_clips_.selection();
+            const auto parent_footer =
+                parent_selection >= 2U && parent_selection <= 5U
+                    ? static_cast<std::size_t>(parent_selection - 2U)
+                    : 0U;
+            draw_command_overview_text(
+                painter, 112, 200,
+                centered_command_footer(
+                    field_menu_text_.clips_commands[parent_footer]));
+        }
         switch (command_overview_clips_.message()) {
         case ClipsMenuMessage::out_of_ammo: {
             const auto active_slot = field_party_roster_.active_slot();
@@ -21121,9 +21160,11 @@ void FieldSceneRuntime::paint_command_overview_clips(
 
     draw_command_overview_text(painter, 136, 72,
                                field_menu_text_.clips_counter_label);
+    // ROM 0x11B82/0xC216: digits are written right-to-left from cell $C4B4
+    // (x=208), so the ones digit occupies 208..215 [C emulator e1 8840].
     draw_command_overview_number(
-        painter, command_overview_font_, 208, 72,
-        active_runner_record().ammo_clips);
+        painter, command_overview_font_, 216, 72,
+        active_runner_record().ammo_clips, NumericVisualAlignment::right);
     const auto selection = command_overview_clips_.selection();
     if (selection >= static_cast<std::uint8_t>(ClipsCommand::reload) &&
         selection <= static_cast<std::uint8_t>(ClipsCommand::cancel)) {
@@ -21171,7 +21212,10 @@ void FieldSceneRuntime::paint_command_overview_posture_panel(
     const auto posture = std::min<std::size_t>(
         active_runner_record().posture,
         command_overview_status_bars_.size() - 1U);
-    painter.drawImage(176, 168, command_overview_status_bars_[posture]);
+    // 0x11B1A writes the 8x1-cell strip at $CAAC (x=176 y=168); the extracted
+    // BMP is its trimmed 57x6 art, which starts 3 px right and 1 px down in
+    // that strip [C emulator e1 8640: best fit (179,169)].
+    painter.drawImage(179, 169, command_overview_status_bars_[posture]);
     draw_command_overview_text(
         painter,
         centered_text_x(136, kMenuLabelCells,
@@ -21196,7 +21240,10 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
     const auto runner_name = field_party_roster_.name(slot).empty()
                                  ? field_menu_text_.runner_names[0]
                                  : field_party_roster_.name(slot);
-    draw_command_overview_text(painter, 80, 24, runner_name);
+    // ROM 0xD134: record +0x58 untrimmed at C194 (x80,y24) [C].
+    draw_command_overview_text(
+        painter, 80 + 8 * field_party_roster_.name_leading_pad(slot), 24,
+        runner_name);
     if (record.species_index < field_menu_text_.race_names.size()) {
         draw_command_overview_text(
             painter, 80, 32,
@@ -21209,8 +21256,14 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
     }
     // The source calls 0x110EC with VDP destination E132. That is the same
     // runner panel family used at E104 on the command page, shifted to x=200.
-    if (slot < field_hud_faces_.size() &&
-        !field_hud_faces_[slot].isNull()) {
+    // 0xD0FE loads the line palette chosen by record+0x2C (>>13) from
+    // 0x18ACB6, so the panel is the record's preview panel, not the field
+    // HUD face [C emulator e2 8900: red-jacket shaman panel].
+    if (const auto* preview = runner_preview_panel_for_record(record);
+        preview != nullptr) {
+        painter.drawImage(200, 16, *preview);
+    } else if (slot < field_hud_faces_.size() &&
+               !field_hud_faces_[slot].isNull()) {
         painter.drawImage(200, 16, field_hud_faces_[slot]);
     }
 
@@ -21235,27 +21288,45 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
                 // selection layer.
                 continue;
             }
-            draw_command_overview_text(
-                painter, x, y,
-                field_menu_text_.attribute_skill_labels[cell.label_index]);
-            // The source places the static Essence value one tile to the
-            // left of the other right-column values. When Essence is focused,
-            // 0xD5DC replaces it with the live and secondary values below.
-            const auto value_x = cell.label_index == 6U
-                                     ? 272
-                                     : (column == 0U ? 136 : 280);
-            draw_command_overview_number(
-                painter, command_overview_font_, value_x, y, cell.value);
+            draw_tinted_field_text(
+                painter, x + attributes_label_indent(cell.label_index), y,
+                field_menu_text_.attribute_skill_labels[cell.label_index],
+                attributes_base_text_tint());
+            if (cell.label_index == 6U) {
+                // ROM 0xD1DC skips +0x7D, prints +0x7E one cell left (x=272),
+                // then 0xD1FE prints +0x8E at x=288 around the label's '.'
+                // [C ROM; emulator e2 8900 "6.0"].
+                draw_numeric_visual(
+                    painter, command_overview_font_, 272, y,
+                    record.cyberware_essence_tens(),
+                    NumericVisualAlignment::left, false,
+                    attributes_base_text_tint());
+                draw_numeric_visual(
+                    painter, command_overview_font_, 288, y,
+                    record.cyberware_essence_ones(),
+                    NumericVisualAlignment::left, false,
+                    attributes_base_text_tint());
+                continue;
+            }
+            // 0xD1E8: the Magic row prints +0x7F (auxiliary[0]), not the
+            // contiguous grid byte +0x7E [C ROM].
+            const auto shown = cell.label_index == 7U
+                                   ? static_cast<unsigned>(record.auxiliary[0U])
+                                   : static_cast<unsigned>(cell.value);
+            draw_numeric_visual(painter, command_overview_font_,
+                                column == 0U ? 136 : 280, y,
+                                shown, NumericVisualAlignment::left,
+                                false, attributes_base_text_tint());
         }
     }
 
     const auto draw_detail_text = [&](const int x, const int y,
                                       const std::string_view text,
                                       const std::uint16_t text_mode) {
-        const auto palette_line = text_mode == 0x4000U
-                                      ? HotelMenuPaletteLine::checkout
-                                      : HotelMenuPaletteLine::status_and_options;
-        draw_hotel_menu_text(painter, x, y, text, palette_line);
+        draw_tinted_field_text(painter, x, y, text,
+                               text_mode == 0x4000U
+                                   ? attributes_focus_text_tint()
+                                   : attributes_base_text_tint());
     };
     CyberwareDetailCallbacks detail_callbacks{};
     detail_callbacks.render_selected_label =
@@ -21279,7 +21350,8 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
             }
             if (label_index < field_menu_text_.attribute_skill_labels.size()) {
                 draw_detail_text(
-                    x, y, field_menu_text_.attribute_skill_labels[label_index],
+                    x + attributes_label_indent(label_index), y,
+                    field_menu_text_.attribute_skill_labels[label_index],
                     text_mode);
             }
         };
@@ -21317,14 +21389,11 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
                 y = 56;
                 break;
             }
-            if (text_mode == 0x4000U) {
-                draw_numeric_visual(
-                    painter, hotel_checkout_font_, x, y, value,
-                    NumericVisualAlignment::left, false);
-            } else {
-                draw_command_overview_number(
-                    painter, command_overview_font_, x, y, value);
-            }
+            draw_numeric_visual(painter, command_overview_font_, x, y, value,
+                                NumericVisualAlignment::left, false,
+                                text_mode == 0x4000U
+                                    ? attributes_focus_text_tint()
+                                    : attributes_base_text_tint());
         };
     detail_callbacks.render_cyberware_modifier_label =
         [&](const CyberwareDetailModifierField field,
@@ -21355,10 +21424,10 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
         field_menu_text_.attribute_skill_descriptions.size()) {
         // 0xC1B70 description, three 8-px rows from (24,168) [C: emulator
         // run3 8600 rows 168/176/184].
-        draw_hotel_menu_text(
+        draw_tinted_field_text(
             painter, 24, 168,
             field_menu_text_.attribute_skill_descriptions[selected.label_index],
-            HotelMenuPaletteLine::checkout);
+            attributes_focus_text_tint());
     }
 
     if (menu.allows_karma_upgrades()) {

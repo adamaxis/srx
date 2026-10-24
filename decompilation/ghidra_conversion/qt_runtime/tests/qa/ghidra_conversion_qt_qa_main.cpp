@@ -27,7 +27,8 @@ namespace {
 
 bool source_menu_caption_matches(const QImage& scene, const QImage& font,
                                 const int origin_x, const int origin_y,
-                                const std::string_view text) {
+                                const std::string_view text,
+                                const QColor tint = QColor(42, 255, 42)) {
     if (font.isNull() || font.width() < 8 || font.height() < 8 ||
         origin_x < 0 || origin_y < 0 ||
         origin_x + static_cast<int>(text.size() * 8U) > scene.width() ||
@@ -78,7 +79,8 @@ bool source_menu_caption_matches(const QImage& scene, const QImage& font,
                 // run5 FFD8F4); the presenter pre-scales the tint for the
                 // atlas' 0xDB coverage, so the reference does the same.
                 tinted_glyph.setPixelColor(
-                    glyph_x, glyph_y, QColor(42, 255, 42, alpha));
+                    glyph_x, glyph_y,
+                    QColor(tint.red(), tint.green(), tint.blue(), alpha));
             }
         }
         painter.drawImage(cursor_x, 0, tinted_glyph);
@@ -37549,6 +37551,20 @@ int main(int argc, char** argv) {
                                     : record.skills[value_index];
                                 const auto selected =
                                     cell_column == column && cell_row == row;
+                                // ROM 0xD046 base grid CRAM 0x0060; 0xD1DC
+                                // shows Essence +0x7E/+0x8E and Magic +0x7F;
+                                // 0xC1AD8 sub-skills carry a leading space.
+                                const QColor kBaseGrid(0, 127, 0);
+                                const auto base_tint =
+                                    std::optional<QColor>(kBaseGrid);
+                                const auto label_indent =
+                                    label_index >= 10U && label_index <= 12U
+                                        ? 8 : 0;
+                                const auto shown_value = label_index == 6U
+                                    ? record.attributes[7U]
+                                    : label_index == 7U
+                                        ? record.auxiliary[0U]
+                                        : source_value;
                                 const auto label_text = label_index == 6U
                                     ? std::string_view("Essence")
                                     : cell_labels[label_index];
@@ -37561,9 +37577,12 @@ int main(int argc, char** argv) {
                                     return false;
                                 }
                                 if (selected) {
-                                    if (!source_menu_direct_asset_text_matches(
-                                            image, purple_font, label_x,
-                                            cell_y, label_text)) {
+                                    // ROM 0xD03C (shared by the 0xD024 Hotel
+                                    // entry): focus CRAM 0x02C2 bright green.
+                                    if (!source_menu_caption_matches(
+                                            image, green_font,
+                                            label_x + label_indent, cell_y,
+                                            label_text)) {
                                         reason = "selected label did not use the Hotel palette at the ROM cursor position";
                                         return false;
                                     }
@@ -37571,52 +37590,58 @@ int main(int argc, char** argv) {
                                     if (cell_row >= 4U) {
                                         current_matches =
                                             numeric_visual_patch_matches(
-                                                image, purple_font,
+                                                image, green_font,
                                                 cell_column == 0U ? 136 : 280,
                                                 cell_y,
                                                 record.skills[value_index],
-                                                std::nullopt);
+                                                color_tint);
                                     } else if (value_index < 6U) {
                                         current_matches =
                                             numeric_visual_patch_matches(
-                                                image, purple_font,
+                                                image, green_font,
                                                 cell_column == 0U ? 136 : 280,
                                                 cell_y,
                                                 record.attributes[value_index],
-                                                std::nullopt);
+                                                color_tint);
                                     } else if (value_index == 6U) {
                                         // D5DC reads +0x7E and +0x8E as the
                                         // tens and ones of live Essence.
                                         current_matches =
                                             numeric_visual_patch_matches(
-                                                image, purple_font, 272, 72,
+                                                image, green_font, 272, 72,
                                                 record.attributes[7U],
-                                                std::nullopt) &&
+                                                color_tint) &&
                                             numeric_visual_patch_matches(
-                                                image, purple_font, 288, 72,
+                                                image, green_font, 288, 72,
                                                 record.auxiliary[3U],
-                                                std::nullopt);
+                                                color_tint);
                                     } else {
                                         // The focused Magic detail is +0x7F;
                                         // the base grid byte at +0x7E is the
                                         // Essence tens digit.
                                         current_matches =
                                             numeric_visual_patch_matches(
-                                                image, purple_font, 280, 80,
+                                                image, green_font, 280, 80,
                                                 record.auxiliary[0U],
-                                                std::nullopt);
+                                                color_tint);
                                     }
                                     if (!current_matches) {
                                         reason = "selected numeric detail did not follow its ROM-backed stat/Essence/Magic source";
                                         return false;
                                     }
                                 } else if (!source_menu_caption_matches(
-                                               image, green_font, label_x,
-                                               cell_y, label_text) ||
+                                               image, green_font,
+                                               label_x + label_indent, cell_y,
+                                               label_text, kBaseGrid) ||
                                            !numeric_visual_patch_matches(
                                                image, green_font, value_x,
-                                               cell_y, source_value,
-                                               color_tint)) {
+                                               cell_y, shown_value,
+                                               base_tint) ||
+                                           (label_index == 6U &&
+                                            !numeric_visual_patch_matches(
+                                                image, green_font, 288, 72,
+                                                record.auxiliary[3U],
+                                                base_tint))) {
                                     reason = "unselected grid label/value pixels did not match the live ROM profile";
                                     return false;
                                 }
@@ -38071,8 +38096,8 @@ int main(int argc, char** argv) {
                             applied_record, 0U, 0U);
                         const auto applied_body_pixels =
                             numeric_visual_patch_matches(
-                                applied_frame, purple_font, 136, 56,
-                                body_current + 1U, std::nullopt);
+                                applied_frame, green_font, 136, 56,
+                                body_current + 1U, color_tint);
                         const auto applied_karma_pixels =
                             numeric_visual_patch_matches(
                                 applied_frame, green_font, 120, 160, 0U,
@@ -41869,7 +41894,9 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                const QColor kSelectedKarmaText(109, 73, 146);
+                // ROM 0xD03C: focused row = CRAM 0x02C2 (bright green)
+                // [C emulator e2 8844].
+                const QColor kSelectedKarmaText(36, 219, 36);
                 int captured_cell_count = 0;
                 for (std::uint8_t column = 0U; column < 2U; ++column) {
                     if (column == 1U) {
@@ -41945,7 +41972,7 @@ int main(int argc, char** argv) {
                                          "cell ("
                                       << static_cast<unsigned>(column) << ','
                                       << static_cast<unsigned>(row)
-                                      << ") is missing its purple selected "
+                                      << ") is missing its bright selected "
                                          "label/value or second Essence "
                                          "value (label=" << has_selected_label
                                       << ", value=" << has_selected_value
@@ -46661,7 +46688,10 @@ int main(int argc, char** argv) {
                                        const std::uint8_t port_byte) {
                     tap_qa_controller_button(field_scene, port_byte);
                 };
-                const QColor kSelectedText(109, 73, 146);
+                // ROM 0xD03C/0xD046: focus CRAM 0x02C2, base grid 0x0060
+                // [C emulator e2 8844].
+                const QColor kSelectedText(36, 219, 36);
+                const QColor kBaseGridTint(0, 127, 0);
                 std::size_t profile_frames = 0U;
 
                 for (std::size_t profile_index = 0U;
@@ -46724,8 +46754,10 @@ int main(int argc, char** argv) {
                             output_path.string());
                     }
                     ++profile_frames;
+                    // ROM 0xD134 prints the untrimmed +0x58 field
+                    // ("   Joshua") at C194, so the name starts at x=104 [C].
                     const auto name_matches =
-                        source_menu_caption_matches(initial, font, 80, 24,
+                        source_menu_caption_matches(initial, font, 104, 24,
                                                     "Joshua");
                     const auto race_matches = profile.species_index <
                             race_names.size() &&
@@ -46829,12 +46861,31 @@ int main(int argc, char** argv) {
                                 const auto label = label_index == 6U
                                     ? std::string_view("Essence")
                                     : cell_labels[label_index];
+                                // 0xD1DC: Essence shows +0x7E (and +0x8E at
+                                // x=288); Magic shows +0x7F. Sub-skills carry
+                                // a leading space in ROM 0xC1AD8.
+                                const auto display_offset =
+                                    label_index == 6U ? 0x7EU
+                                    : label_index == 7U ? 0x7FU
+                                                        : offset;
+                                const auto indent =
+                                    label_index >= 10U && label_index <= 12U
+                                        ? 8
+                                        : 0;
                                 if (!source_menu_caption_matches(
-                                        scene, font, label_x, cell_y, label) ||
+                                        scene, font, label_x + indent, cell_y,
+                                        label, kBaseGridTint) ||
                                     !source_menu_caption_matches(
                                         scene, font, value_x, cell_y,
                                         std::to_string(
-                                            source_record.bytes[offset]))) {
+                                            source_record.bytes[display_offset]),
+                                        kBaseGridTint) ||
+                                    (label_index == 6U &&
+                                     !source_menu_caption_matches(
+                                         scene, font, 288, cell_y,
+                                         std::to_string(
+                                             source_record.bytes[0x8EU]),
+                                         kBaseGridTint))) {
                                     std::cerr
                                         << "profile grid pixels mismatch: "
                                         << profile_slugs[profile_index]
@@ -51498,17 +51549,32 @@ int main(int argc, char** argv) {
                         if (parent.size() != child.size()) {
                             return false;
                         }
-                        // ROM 0x11B5C redraws the shared shell after the
-                        // center clear. The posture strip must survive Clips
-                        // entry pixel-for-pixel above the replacement row.
+                        // ROM 0x11B5C calls 0x11900, which covers the posture
+                        // box (21x3 cells at $EA18: x=96 y=160) with the
+                        // C1320 blank until 0x11928 restores it [C emulator
+                        // e1 8840]. The parent page shows the posture strip.
+                        bool parent_has_posture = false;
                         for (int y = 160; y < 184; ++y) {
-                            for (int x = 96; x < 256; ++x) {
-                                if (parent.pixel(x, y) != child.pixel(x, y)) {
+                            for (int x = 96; x < 264; ++x) {
+                                if ((child.pixel(x, y) & 0x00FFFFFFU) != 0U) {
                                     return false;
                                 }
+                                parent_has_posture =
+                                    parent_has_posture ||
+                                    (parent.pixel(x, y) & 0x00FFFFFFU) != 0U;
                             }
                         }
-                        return true;
+                        // 0xC216 writes the clip count right-to-left from
+                        // $C4B4, so the ones digit lands in x=208..215.
+                        bool digit_at_208 = false;
+                        for (int y = 72; y < 80; ++y) {
+                            for (int x = 208; x < 216; ++x) {
+                                digit_at_208 =
+                                    digit_at_208 ||
+                                    (child.pixel(x, y) & 0x00FFFFFFU) != 0U;
+                            }
+                        }
+                        return parent_has_posture && digit_at_208;
                     };
 
                 const auto clips_focus = std::array<QImage, 4>{
@@ -51570,8 +51636,8 @@ int main(int argc, char** argv) {
                                 initial_clips_scene) ||
                     !save_scene("actual", initial_clips_scene)) {
                     std::cerr << "field clips dump: Clips child did not "
-                                 "replace the command row and restore the "
-                                 "shared posture panel\n";
+                                 "replace the command row, cover the posture "
+                                 "box (0x11900) or right-align the count\n";
                     return 3;
                 }
 
@@ -51686,10 +51752,24 @@ int main(int argc, char** argv) {
                     field_scene.clips_menu_message() !=
                         ClipsMenuMessage::no_party_members ||
                     !clips_result_screen_matches(no_party_scene) ||
+                    ![&no_party_scene] {
+                        // The y=200 footer keeps "Trade" under the message
+                        // [C emulator e1 9040].
+                        for (int y = 200; y < 208; ++y) {
+                            for (int x = 112; x < 208; ++x) {
+                                if (QColor(no_party_scene.pixel(x, y))
+                                        .green() > 150) {
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    }() ||
                     !save_scene("05a_clips_no_party_message",
                                 no_party_scene)) {
                     std::cerr << "field clips dump: no-recipient Trade did "
-                                 "not replace the selector with its message\n";
+                                 "not replace the selector with its message "
+                                 "(or dropped the Trade footer)\n";
                     return 3;
                 }
                 press(0x40U); // Return to Command.

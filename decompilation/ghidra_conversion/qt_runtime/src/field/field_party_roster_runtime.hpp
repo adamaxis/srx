@@ -73,6 +73,12 @@ public:
                    : 0U;
     }
 
+    // Leading blanks of the source +0x58 name field (ROM 0xD134 prints the
+    // untrimmed field at C194, so "   Joshua" starts 3 cells right) [C].
+    std::uint8_t name_leading_pad(std::size_t slot) const noexcept {
+        return slot < name_pads_.size() ? name_pads_[slot] : 0U;
+    }
+
     const std::string& name(std::size_t slot) const noexcept {
         static const std::string kEmptyName;
         return slot < names_.size() ? names_[slot] : kEmptyName;
@@ -93,12 +99,14 @@ public:
     }
 
 private:
+    static std::uint8_t read_runner_name_pad(const LiveRunnerRecord& record);
     static std::string read_runner_name(
         const LiveRunnerRecord& record);
     static void mark_slot_active(RunnerRecordFields& record) noexcept;
 
     std::array<RunnerRecordFields, kSlotCount> records_{};
     std::array<std::string, kSlotCount> names_{};
+    std::array<std::uint8_t, kSlotCount> name_pads_{};
     std::array<bool, kSlotCount> active_slots_{};
     std::array<std::uint8_t, kSlotCount> portrait_asset_families_{};
     std::size_t active_slot_ = 0U;
