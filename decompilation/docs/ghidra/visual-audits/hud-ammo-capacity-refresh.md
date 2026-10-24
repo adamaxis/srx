@@ -126,3 +126,7 @@ remains equipped, and the previous item image clears.
   visible 37-on-hand route remains unreconciled with ROM's normal unarmed
   `00` branch, so the combined `32/37/4` report stays partial pending a
   matching normal-play state or independent capture.
+
+The wider capacity, 31-row counter-graphics, SMG service, grenade quantity,
+and inactive/unarmed state sweep is documented in the [field HUD ammo counter
+permutation audit](field-hud-ammo-counter-permutation-audit-2026-10-23.md).

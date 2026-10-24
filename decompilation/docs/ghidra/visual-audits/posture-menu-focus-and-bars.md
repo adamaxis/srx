@@ -1,9 +1,10 @@
 # Command-menu posture focus and combat bars
 
-This review covers the `0x119CE` focus row and the posture state change in the
-field command menu. It does not claim that the separate overhead combat loop,
-the negative-equipped-slot special branch, or AI posture decisions are
-implemented.
+This review covers the `0x119CE` focus row, posture state changes, and the
+Atk/Def values presented by the field command menu. The linked combat-bar
+audit now includes the higher-mode negative `+0x56` spell-action path. The
+separate overhead combat loop and AI posture decisions remain outside this
+review.
 
 ## Evidence
 
@@ -19,9 +20,11 @@ implemented.
   and corresponding Release output. The CLI `actual.bmp` is a real focused
   posture state. Frame QA compares the named focus asset, full command-page
   pixels, status, and combat-bar regions.
-- Independent visuals: supplied longplay sections show neighboring command
-  pages, but no selected-posture transition or horizontal posture change was
-  identified.
+- Independent visuals: section-06 frame `002550` shows the Human Shaman's
+  Mana Zap command page with `Damage None`, `Power Very Low`, Neutral posture,
+  and Atk/Def strips. The nearest extracted bar rows are Atk 5 and Def 4;
+  video compression prevents exact pixel comparison. No selected-posture
+  focus or horizontal-change transition was identified independently.
 
 ## Eight verification questions
 
@@ -76,25 +79,47 @@ implemented.
    field frame is pixel-identical to the pre-menu capture. No old selector or
    command graphics remain over the returned screen.
 
+## Spell action path added to this review
+
+The source's negative `+0x56` branch uses the active D4EA0 spell row for its
+title/detail and `+0x9D` for the Power label. The Qt field presenter now passes
+the active runner's Sorcery, Magic cap, force, spell row, item catalog, and
+C8AE0 selector into the special combat-bar calculation. Its visual QA starts
+from the Gator Shaman record and checks Mana Zap at force 3 / Neutral posture:
+Attack 6 (bar row 5), Defense 5 (bar row 4), `Damage None`, and `Power Very
+Low`. The corresponding full-frame actual.bmp is byte-identical between
+Debug and Release. The complete 13-profile and 260-case spell matrix is
+documented in [the equipment combat-bar audit](equipment-combat-bar-profile-permutation-audit-2026-10-23.md).
+
+The source screenshot supports this exact Gator context. It does not cover the
+other class/race profiles or force values, and it is not a pixel-perfect
+golden.
+
 ## Outcome
 
 - **Code changed:** Lua `menu.route`, `screens.command`, and `screens.posture`
-  now own command navigation and posture focus. C++ provides live record
-  access and paints the typed presenter state. Other child-screen behavior is
-  still behind the explicit legacy adapter.
+  own command navigation and posture focus. C++ passes the live spell action
+  inputs into the special combat-bar calculation and paints the D4EA0 spell
+  title and force details from source data. The Bear totem modifier's D4540
+  word was corrected from `0x0202` to `0x0002`. Other child-screen behavior
+  is still behind the explicit legacy adapter.
 - **Behavior implemented:** Up focuses posture on pages 2..6; Down silently
   deselects; a single Start from focus exits the full command menu;
   Left/Right update typed posture, source labels, attack/defense bars, and
   event `0x25`, with source clamping.
-- **Internally checked:** the production Lua route CTest and
-  `shadowrun_ghidra_conversion_qt_field_posture_qa` passed in Debug and
-  Release and wrote the frames above. The shared audio
-  test separately verifies event `0x25` playback.
-- **Independently visually checked:** no matching Genesis selected-posture
-  sequence found.
+- **Internally checked:** the combat-bar profile/permutation test,
+  `shadowrun_ghidra_conversion_qt_field_posture_qa`,
+  `shadowrun_ghidra_conversion_qt_field_spell_combat_bar_qa`, and
+  `shadowrun_ghidra_conversion_qt_field_magic_spell_qa` passed in Debug and
+  Release. The shared audio test separately verifies event `0x25` playback.
+- **Independently visually checked:** section-06 frame `002550` supports the
+  Mana Zap action details and nearest bar rows. No matching Genesis
+  selected-posture sequence or route-specific audio loopback was found.
 - **Reported behavior resolved:** the requested menu navigation and visible
   combat-bar response pass internal checks; exact Genesis appearance and
   route-specific audio output remain unverified.
 
-The posture UI remains partial because source combat/AI consumers and the
-negative `+0x56` special attack branch remain incomplete.
+The posture and command-bar hills remain partial: other command callers,
+overhead combat, AI posture decisions, exhaustive learned-stat/equipment
+mutations, an independent selected-posture frame, and route-specific audio
+loopback remain open.

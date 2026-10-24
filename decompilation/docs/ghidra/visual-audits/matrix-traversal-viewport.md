@@ -899,26 +899,32 @@ cadence, the original logout-transition artwork, and other field-resume/death
 paths are not defended. Do not use the flat system-map capture or node-action
 panel as a traversal reference.
 
-### Pull Plug logout cadence (2026-10-22)
+### Pull Plug logout cadence and visual audit (updated 2026-10-23)
 
-ROM `0x18776` performs five palette-fade steps, each held for two VBlanks,
-before `0x26A00` begins. `0x26A00` requests sound `0x29` on entry and runs a
-54-VBlank display handoff (`14 + 6 + 11 + 6 + 6 + 11`). The route now shares
-one Lua transition clock across Pull Plug, Crash System, and overload. The Qt
-Pull Plug presenter applies the five fade levels to the entire 320x224 frame,
-then holds black for those 54 VBlanks. A typed completed-transition result
-lets the field host skip its separate 60-frame modal fade while keeping the
-held confirmation blocked until release.
+ROM entry `0x18450` reaches the Yes/logout branch at `0x185CE`: it sets
+`FFF0DC = FF`, calls `0x18776`, then calls `0x26A00` before handing back to the
+field route at `0x18694`. Direct US-ROM disassembly confirms that `0x18776`
+waits two VBlanks for each of five palette steps (10 total). `0x26A00` starts
+sound `0x29` on entry and runs 54 VBlanks of cross sweep, center dot, sparkle,
+dot, and blank holds (`14 + 6 + 11 + 6 + 6 + 11`). Lua uses one 64-VBlank
+clock for Pull Plug, Crash System, and overload; the typed completion result
+lets the field host skip a second, separate 60-frame modal fade.
 
-The Debug/Release route test checks the two-VBlank fade cadence, one `0x29`
-sound at VBlank 10, the full 64-VBlank total, and completed-result propagation.
-The Debug/Release `field_matrix_traversal_entry_qa` also writes full 320x224
-captures for the prompt, fade start, fade black, handoff black at VBlank 63,
-field return while A remains held, and the first field frame after release.
-All six frames were opened at original size. The prompt layout was inspected
-beside independent Section 15 frame `005400`; that frame has the same selected
-No row and retained deck surface. Program icons and ratings are fixture state,
-so only the screen structure and placement are compared. No independent
-longplay capture of the 64-frame logout sequence was located. The black hold
-is a timing placeholder; the source line-collapse and center-dot artwork from
-`0x26A00` remains unported.
+Debug/Release `field_matrix_traversal_entry_qa` captures the prompt, fade,
+cross bounds, dot/sparkle phases, black tail, VBlank-63 hold, and field return
+at VBlank 64 while checking that a held confirm does not bypass the transition.
+The six native 320x224 phase images were inspected beside independent Section
+15 Genesis frames `005420`, `005427`, `005430`, `005435`, `005440`, and `005445`.
+They show the same full cross, collapsed cross, center dot, sparkle, returning
+dot, and blank frame. Thresholded white-pixel mask IoU is respectively
+0.998, 0.992, 1.000, 0.957, 1.000, and 1.000; the small cross/sparkle
+differences are consistent with video compression. The images and timing
+checks supersede the earlier note that described the line art as unported and
+the black hold as a placeholder.
+
+The Lua submenu test now follows the user-action path through the complete
+transition: it covers default-No dismissal, a normal Yes exit, surviving
+Black-IC shock returning to the deck, resisted and failed Body rolls, death,
+the 10-VBlank sound edge, ignored input before completion, and the VBlank-64
+return. The final Command rebuild also plays its source `0x25` refresh sound
+after the Matrix `0x29` logout sound. See `gameplay/tests_lua/submenu_tests.lua`.

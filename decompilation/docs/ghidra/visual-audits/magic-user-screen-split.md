@@ -33,7 +33,9 @@ unmodified record.
 
 1. **Does it look correct? — Unknown for the complete split.** The independent
    longplay has matching magic-user screens, but no Samurai/Decker Defense
-   page. The internal Samurai frame now shows the `Magical Defense` title and
+   page in sections 01-41. Sections 08-41 were sampled every second with a title
+   locator and manually checked at the top candidate frames; that bounded search
+   is not proof that no brief or differently rendered Defense page occurs. The internal Samurai frame now shows the `Magical Defense` title and
    two distinct strips on a cleared center panel. This corrects the prior Qt
    capture, where model, weapon, and Atk/Def details remained behind the
    fallback. It is not independent proof of Genesis appearance. The full-screen Qt images
@@ -140,7 +142,7 @@ unmodified record.
   `video analysis/long_gameplay_video_early_sections_ffmpeg_30fps_320x224/section_06_combat_inventory_delivery_0510-0600/`
   frames `000001`, `000002`, `000005`, `000015`, `000020`, and `000030`
   support the magic-user spell and action views. No corresponding non-magic
-  Defense screen was found.
+  Defense screen was found in the reviewed and sampled sections 01-41.
 - **Retained comparison artifacts:** the Oct. 9 full-screen contact sheet and
   close-ups in the Debug dump directory were inspected. The older Oct. 4 zooms
   and contact sheet in the Debug dump directory were also inspected. Their

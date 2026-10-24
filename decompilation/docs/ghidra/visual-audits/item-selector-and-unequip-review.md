@@ -107,7 +107,8 @@ under `decompilation/ghidra_conversion/build/conversion/qt/release/qt_runtime/fi
   `01_inventory_action_cancel.bmp`, `02_inventory_action_reselected.bmp`,
   `03_inventory_action_unselected.bmp`, `04_inventory_action_reselected.bmp`,
   `05_fresh_unequipped_baseline.bmp`, `05_weapon_1_unequipped.bmp`,
-  `05_weapon_1_unequipped_frame30.bmp`, `06_combat_bars_after_equip.bmp`,
+  `05_weapon_1_unequipped_frame30.bmp`,
+  `06_combat_bars_after_fixture_restore.bmp`,
   `07_discard_confirmation_no.bmp`, `08_discard_confirmation_yes.bmp`,
   `09_inventory_after_discard.bmp`.
 - Weapons and Clips: `10_weapon_2_equipped_at_50_percent.bmp`,
