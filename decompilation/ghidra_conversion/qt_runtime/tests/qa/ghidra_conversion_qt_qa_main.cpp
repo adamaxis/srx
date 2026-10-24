@@ -42277,15 +42277,24 @@ int main(int argc, char** argv) {
                     image_region_differs(command_page_scene, cyberware_scene,
                                          8, 112, 80, 96) ||
                     image_region_differs(command_page_scene, cyberware_scene,
-                                         120, 168, 144, 24) ||
-                    image_region_differs(command_page_scene, cyberware_scene,
-                                         96, 192, 168, 16) ||
+                                         96, 184, 168, 24) ||
                     image_region_differs(command_page_scene, cyberware_scene,
                                          272, 0, 48, 224)) {
                     std::cerr << "field Cyberware dump: shared portrait, "
                                  "inventory, posture, command row, or HUD "
                                  "was not preserved\n";
                     return 3;
+                }
+                // 0x11900 covers the posture box (x=96 y=160, 21x3 cells)
+                // with the blank C1320 tile [C emulator run5 9530].
+                for (int y = 160; y < 184; ++y) {
+                    for (int x = 96; x < 264; ++x) {
+                        if ((cyberware_scene.pixel(x, y) & 0x00FFFFFFU) != 0U) {
+                            std::cerr << "field Cyberware dump: posture box "
+                                         "was not covered by 0x11900\n";
+                            return 3;
+                        }
+                    }
                 }
                 if (!cyberware_scene.save(QString::fromStdWString(
                         field_cyberware_dump_path->wstring()))) {

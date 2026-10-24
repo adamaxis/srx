@@ -23510,12 +23510,13 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
 
     if (command_overview_cyberware_active_) {
         // ROM 0x11950 rebuilds the center name-plane region before writing
-        // C1A2/C328/C31C. Keep the command screen's separate portrait,
-        // inventory, posture, tab, and right-HUD layers in the composition;
-        // replace only the central text panel so old status text cannot show
-        // through the Cyberware rows.
+        // C1A2/C328/C31C; replace only the central text panel so old status
+        // text cannot show through the Cyberware rows. Its 0x11900 then
+        // covers the posture box (21x3 cells at $EA18, x=96 y=160) with the
+        // C1320 blank tile; 0x11928 restores it on exit [C emulator 9530].
         painter.drawImage(96, 16, command_overview_background_, 96, 16,
                           168, 144);
+        painter.fillRect(96, 160, 168, 24, Qt::black);
         draw_command_overview_text(
             painter, 136, 24, field_menu_text_.cyberware_title_lines[0]);
         draw_command_overview_text(
