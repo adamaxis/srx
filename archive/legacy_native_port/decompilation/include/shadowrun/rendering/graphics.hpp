@@ -855,6 +855,8 @@ GenesisFieldHudPartyAssets decode_genesis_field_hud_party_assets(
 // writes, independent of the field command-screen base.
 RgbaImage decode_genesis_pocket_secretary_background(
     const std::vector<std::uint8_t>& rom);
+RgbaImage decode_genesis_pocket_secretary_nuyen_bar(
+    const std::vector<std::uint8_t>& rom);
 // ROM 0xC3E6 repeats the C1320 space-glyph tile with palette line 3 across
 // the 28x21 Pocket Secretary content area. Extract that layer separately.
 RgbaImage decode_genesis_pocket_secretary_grid(

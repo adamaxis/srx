@@ -1239,6 +1239,7 @@ field.hud.ammo.counter.62	field/hud/ammo-counter-62.bmp	image	0	0
 field.hud.ammo.counter.63	field/hud/ammo-counter-63.bmp	image	0	0
 menu.pocket.secretary.background	menu/pocket-secretary/background.bmp	image	0	0
 menu.pocket.secretary.grid	menu/pocket-secretary/grid.bmp	image	0	0
+menu.pocket.secretary.nuyen.bar	menu/pocket-secretary/nuyen-bar.bmp	image	0	0
 menu.field.background	menu/field/background.bmp	image	0	0
 menu.field.elevator.selector.background.frame.0	menu/field/elevator-selector-background-frame-0.bmp	image	0	0
 menu.field.elevator.selector.background.frame.1	menu/field/elevator-selector-background-frame-1.bmp	image	0	0
@@ -1534,11 +1535,11 @@ items.armor.icons.item.49.0	items/armor/icons/item-49-0.bmp	image	0	0
 items.armor.icons.item.49.1	items/armor/icons/item-49-1.bmp	image	0	0
 items.armor.icons.item.50.0	items/armor/icons/item-50-0.bmp	image	0	0
 items.armor.icons.item.50.1	items/armor/icons/item-50-1.bmp	image	0	0
-menu.field.status.bar.0	menu/field/status-bar-0.bmp	image	0	0
-menu.field.status.bar.1	menu/field/status-bar-1.bmp	image	0	0
-menu.field.status.bar.2	menu/field/status-bar-2.bmp	image	0	0
-menu.field.status.bar.3	menu/field/status-bar-3.bmp	image	0	0
-menu.field.status.bar.4	menu/field/status-bar-4.bmp	image	0	0
+menu.field.status.bar.0	menu/field/status-bar-0.bmp	image	3	1
+menu.field.status.bar.1	menu/field/status-bar-1.bmp	image	3	1
+menu.field.status.bar.2	menu/field/status-bar-2.bmp	image	3	1
+menu.field.status.bar.3	menu/field/status-bar-3.bmp	image	3	1
+menu.field.status.bar.4	menu/field/status-bar-4.bmp	image	3	1
 menu.field.damage.bar.0	menu/field/damage-bar-0.bmp	image	0	0
 menu.field.damage.bar.1	menu/field/damage-bar-1.bmp	image	0	0
 menu.field.damage.bar.2	menu/field/damage-bar-2.bmp	image	0	0

@@ -7228,6 +7228,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         shadowrun::graphics::decode_genesis_pocket_secretary_grid(rom),
         "background", "0xC3E6/0x12C5A/0xC1320/0xC1064", false, manifest,
         written, missing, blank);
+    write_catalog_asset(
+        root, "menu/pocket-secretary/nuyen-bar.bmp",
+        shadowrun::graphics::decode_genesis_pocket_secretary_nuyen_bar(rom),
+        "sprite", "0xC3F8/0xCD996/0xCAB0C/0xD29D6", false, manifest, written,
+        missing, blank);
     write("menu/field/background.bmp", assets.field_menu_background, "background",
           "0x10F50", false);
     for (std::size_t frame = 0; frame < 17U; ++frame) {

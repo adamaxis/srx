@@ -8879,6 +8879,29 @@ RgbaImage decode_genesis_pocket_secretary_background(
     return image;
 }
 
+RgbaImage decode_genesis_pocket_secretary_nuyen_bar(
+    const std::vector<std::uint8_t>& rom) {
+    // ROM 0xC3F8 (called by the 0xC2A6 Main Menu) passes d7=0x13/d1=2 to
+    // the 0x1232 dbra writer: a 20x3 map at 0xCD996 to plane cell $C98E
+    // (x=56, y=152) with D2=0, then 0xC216
+    // right-aligns the FFFBFE funds ending at $CA2C (x=176, y=160) [C].
+    // Patterns are the 0x10918 upload (0xCAB0C at 0x1E20) and palette set
+    // 0xD29D6. Colour 0 stays transparent over the Pocket Secretary grid.
+    constexpr std::size_t kColumns = 20U;
+    constexpr std::size_t kRows = 3U;
+    GenesisBootPatternData scene{
+        decode_genesis_1530_vram(rom, 0xCAB0CU, 0x1E20U),
+        read_genesis_palette_set(rom, 0xD29D6U),
+    };
+    RgbaImage image{static_cast<std::uint16_t>(kColumns * 8U),
+                    static_cast<std::uint16_t>(kRows * 8U),
+                    std::vector<native::Rgba8>(kColumns * kRows * 64U,
+                                               native::Rgba8{0, 0, 0, 0})};
+    blit_genesis_name_table(rom, scene, image, 0xCD996U, kColumns, kRows,
+                            0xC98EU, 0xC98EU, 0, true);
+    return image;
+}
+
 RgbaImage decode_genesis_pocket_secretary_grid(
     const std::vector<std::uint8_t>& rom) {
     constexpr std::size_t kPatternStreamOffset = 0xC1064U;
