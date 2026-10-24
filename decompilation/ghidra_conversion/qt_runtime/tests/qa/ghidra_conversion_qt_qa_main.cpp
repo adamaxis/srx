@@ -24988,6 +24988,9 @@ int run_field_mode_13_entry_qa(
     const auto selected = std::find(
         source_boundaries.begin(), source_boundaries.end(),
         "field.mode_transition.destination_selected");
+    const auto lua_graph = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.mode_transition.lua_room_graph_selected");
     const auto queued = std::find(
         source_boundaries.begin(), source_boundaries.end(),
         "field.world_activity.pending_actor_list_queued");
@@ -25001,6 +25004,7 @@ int run_field_mode_13_entry_qa(
                 .world_activity_countdown == 0U ||
         runner.x != 0x5E80U || runner.y != 0x1300U || !actors_match ||
         selected == source_boundaries.end() || queued == source_boundaries.end() ||
+        lua_graph == source_boundaries.end() ||
         entry_image.size() != QSize(kSceneWidth, kSceneHeight) ||
         !entry_image.save(QString::fromStdWString(entry_image_path.wstring()))) {
         std::cerr << "Mode-13 entry QA: ROM-selected Scene 47 route failed "

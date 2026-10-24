@@ -8098,6 +8098,22 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                         source_boundary(
                             "field.mode_transition.schedule_timeout");
                     }});
+            // Lua world_links owns the 0x2CE0 room graph. The converted
+            // routine above still drives the 0x13 activity gate; any
+            // disagreement between the two is a data error.
+            const auto lua_exit = game_scripts_.call_integers(
+                "world_links", "cave_exit_flat",
+                {static_cast<std::int64_t>(runtime.transition_context),
+                 static_cast<std::int64_t>(runtime.mode_event_code)});
+            if (plan.resolved &&
+                (!lua_exit.has_value() || lua_exit->size() != 4U ||
+                 (*lua_exit)[0] != plan.next_mode_index ||
+                 (*lua_exit)[1] != plan.scene_id ||
+                 (*lua_exit)[2] != plan.override_x ||
+                 (*lua_exit)[3] != plan.override_y)) {
+                source_boundary("field.mode_transition.lua_room_graph_mismatch");
+                return false;
+            }
             if (!plan.resolved || !plan.spawn_position_available ||
                 !field_session_source_assets_ ||
                 plan.scene_id >=
@@ -8114,6 +8130,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 source_boundary("field.mode_transition.actor_list_missing");
                 return false;
             }
+            source_boundary("field.mode_transition.lua_room_graph_selected");
             runtime.transition_context = plan.next_mode_index;
             runtime.scene_id = plan.scene_id;
             field_movement_transition_state_.field_transition_context =

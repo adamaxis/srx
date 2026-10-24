@@ -96,6 +96,9 @@ check(W.service_at(2, 4) == nil and W.service_kind_flat(2, 4)[1] == E.ServiceKin
 
 -- 4. Cave graph (doc 19 section 3).
 local c = W.cave_exit(0, 0)
+local cf = W.cave_exit_flat(0, 8)
+check(cf[1] == 5 and cf[2] == 0x2D and cf[3] == 0x5E00 and cf[4] == 0x2280, "cave_exit_flat room 0 code 8")
+check(W.cave_exit_flat(0, 12)[1] == -1 and W.cave_exit_flat(99, 8)[1] == -1, "cave_exit_flat rejects bad input")
 check(c.room == 5 and c.scene == 0x2D and c.x == 0x5E00 and c.y == 0x2280, "room 0 dir 0")
 local edges = { {0,5},{0,6},{0,7},{1,7},{1,11},{2,4},{2,5},{2,9},{2,10},{3,13},{3,15},{3,16},{4,5},{7,8},
     {10,11},{11,12},{12,13},{14,15},{16,17},{16,18},{18,21},{19,20},{20,21},{21,23},{22,23} }

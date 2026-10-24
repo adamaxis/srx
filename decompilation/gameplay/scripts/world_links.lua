@@ -156,6 +156,17 @@ function WorldLinks.cave_exit(room, dir)
 end
 
 -- Host adapters: flat integer arrays across the C++ boundary.
+-- cave_exit_flat(room, event_code) -> { room, scene, x, y } or { -1 }.
+-- event_code is the FFFBF9 zone code 8..11 (0x2CE0 subtracts 8).
+function WorldLinks.cave_exit_flat(room, event_code)
+    local G = Data.room_graph
+    local dir = event_code - 8
+    if dir < 0 or dir > 3 or G.next[room] == nil then return { -1 } end
+    local c = WorldLinks.cave_exit(room, dir)
+    if c.scene == nil or c.x == nil then return { -1 } end
+    return { c.room, c.scene, c.x, c.y }
+end
+
 -- door_contact_flat(scene_mode, lead_x, lead_y, camera_x, camera_y, p0, p1, p2)
 --   -> { saved(0/1), row, contact_heading, x1, y1, x2, y2, x3, y3, cam_x, cam_y }
 function WorldLinks.door_contact_flat(scene_mode, lx, ly, cx, cy, p0, p1, p2)
