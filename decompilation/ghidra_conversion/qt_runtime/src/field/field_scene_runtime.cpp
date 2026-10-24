@@ -572,6 +572,10 @@ constexpr std::string_view kFieldEntityStrikeAliasPrefix =
     "field.entities.strike.";
 constexpr std::string_view kFieldEntityCastAliasPrefix =
     "field.entities.spell.";
+constexpr std::string_view kFieldEntityDownAliasPrefix =
+    "field.entities.down.";
+// Source +0x10 bit4 (E.RunnerStatus.DOWN 0x10) in the high byte of flags.
+constexpr std::uint16_t kRunnerFlagsDown = 0x1000U;
 constexpr std::uint8_t kFieldPlayerPoseFirearm = 0U;
 constexpr std::uint8_t kFieldPlayerPoseStrike = 1U;
 constexpr std::uint8_t kFieldPlayerPoseCast = 2U;
@@ -13200,6 +13204,22 @@ bool FieldSceneRuntime::bootstrap(
             field_entity_cast_images_[direction] =
                 flipped_image(field_entity_cast_images_[direction], Qt::Horizontal);
         }
+        for (std::size_t frame = 0U; frame < 2U; ++frame) {
+            const auto down_alias =
+                std::string(kFieldEntityDownAliasPrefix) +
+                std::to_string(direction) + "." + std::to_string(frame);
+            auto& down = field_entity_down_images_[direction][frame];
+            if (!load_sprite_image(
+                    startup_state.asset_catalog.catalog, down_alias, down,
+                    field_entity_down_origin_x_[direction][frame],
+                    field_entity_down_origin_y_[direction][frame])) {
+                source_boundary("field.bootstrap.entity_assets_missing");
+                return false;
+            }
+            if (horizontal_flip) {
+                down = flipped_image(down, Qt::Horizontal);
+            }
+        }
         // The ordinary movement poses come from the C062 positive-marker
         // list, extracted as separate host files. C0B2 is a different finite
         // behavior-transition sequence. Direction 5..7 descriptor records
@@ -14218,7 +14238,11 @@ FieldSceneRuntime::heartbeat_field_player(
         }
     }
     if (phase == scripting::ScriptActorHeartbeatPhase::render) {
-        actor_context.animation_mode = field_entity_attack_pose_active_
+        const bool runner_down =
+            (active_runner_record().flags & kRunnerFlagsDown) != 0U;
+        actor_context.animation_mode = runner_down
+            ? scripting::ScriptActorAnimationMode::runner_down
+            : field_entity_attack_pose_active_
             ? (field_entity_attack_pose_kind_ == kFieldPlayerPoseStrike
                    ? scripting::ScriptActorAnimationMode::strike
                    : field_entity_attack_pose_kind_ == kFieldPlayerPoseCast
@@ -14227,7 +14251,12 @@ FieldSceneRuntime::heartbeat_field_player(
             : field_entity_walking_
                   ? scripting::ScriptActorAnimationMode::walking
                   : scripting::ScriptActorAnimationMode::idle;
-        if (field_entity_attack_pose_active_) {
+        if (runner_down) {
+            // ROM 0xB35C: C0B2 direction = round(+0x2E / 0x2000) & 7.
+            actor_context.animation_direction_override =
+                static_cast<std::uint8_t>(
+                    ((field_movement_state_.heading + 0x1000U) >> 13U) & 7U);
+        } else if (field_entity_attack_pose_active_) {
             actor_context.animation_direction_override =
                 field_entity_attack_direction_;
         } else if (field_entity_animation_selector_ <= 0x001CU &&
@@ -14384,8 +14413,70 @@ FieldSceneRuntime::heartbeat_field_player(
     return actor_decision;
 }
 
+void FieldSceneRuntime::resolve_field_party_wipe() {
+    // ROM 0xC64C/0xC716: the run-failure branches (FFFBED) and the
+    // DocWagon scene move (0x2A32 -> 0x136DE) are not ported [H].
+    auto& records = field_party_roster_.records();
+    const auto status = [this, &records](const std::size_t index) {
+        const auto flags =
+            static_cast<std::int64_t>(records[index].flags >> 8U);
+        return field_party_roster_.slot_active(index)
+            ? flags : (flags & ~std::int64_t{0x01});
+    };
+    const auto story = game_scripts_.story_state();
+    const auto bit0 = story.find("story_flag_bit_0");
+    const bool docwagon = bit0 != story.end() && bit0->second;
+    const auto wipe = game_scripts_.call_integers(
+        "party_down", "resolve_wipe_flat",
+        {static_cast<std::int64_t>(field_funds_.value_or(0U)),
+         docwagon ? 1 : 0,
+         status(0U), records[0].delay_meter, records[0].behavior_meter,
+         status(1U), records[1].delay_meter, records[1].behavior_meter,
+         status(2U), records[2].delay_meter, records[2].behavior_meter});
+    if (!wipe.has_value() || wipe->size() != 7U) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.party_wipe.lua_failed");
+        return;
+    }
+    for (std::size_t index = 2U; index >= 1U; --index) {
+        if ((*wipe)[2U + index] != 0 &&
+            field_party_roster_.deactivate_party_member(index)) {
+            source_boundary("field.party_wipe.hired_runner_dismissed");
+        }
+    }
+    records[0].flags = static_cast<std::uint16_t>(
+        (records[0].flags & 0x00ffU) |
+        (static_cast<std::uint16_t>((*wipe)[0] & 0xff) << 8U));
+    records[0].delay_meter = static_cast<std::uint8_t>((*wipe)[1]);
+    records[0].behavior_meter = static_cast<std::uint8_t>((*wipe)[2]);
+    field_party_roster_.set_active_slot(0U);
+    if (field_funds_.has_value()) {
+        field_funds_ = static_cast<std::uint32_t>((*wipe)[5]);
+    }
+    refresh_field_hud_runner_slot();
+    source_boundary((*wipe)[6] != 0 ? "field.party_wipe.docwagon"
+                                    : "field.party_wipe.little_chiba");
+    game_scripts_.set_location_context("field_map", "party_wipe",
+                                       "field.world_event", "field_narrator");
+    if (!field_dialogue_.open_gameplay_task("party_down", "present_wake")) {
+        source_boundary("field.party_wipe.wake_text_open_failed");
+    }
+}
+
 void FieldSceneRuntime::advance_field_movement() {
     if (!field_entity_.active) {
+        return;
+    }
+    if (field_party_wipe_countdown_ != 0U) {
+        // ROM 0xAF4 blocks the player service while FFE166 is nonzero;
+        // 0x1DDC6 decrements it and enters 0xC64C at zero.
+        if (--field_party_wipe_countdown_ == 0U) {
+            resolve_field_party_wipe();
+        }
+        return;
+    }
+    if ((active_runner_record().flags & kRunnerFlagsDown) != 0U) {
+        // ROM 0xB330 installs 0xB38A at +0x3A: no input or movement.
         return;
     }
     if (field_terrain_probe_trace_enabled_) {
@@ -15507,6 +15598,44 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
                 (target.flags & 0x00ffU) |
                 (static_cast<std::uint16_t>(
                      update.source_record_flags) << 8U));
+        }
+        if (update.physical && target.delay_meter == 0U &&
+            (target.flags & kRunnerFlagsDown) == 0U) {
+            // ROM 0xAFF2 -> 0xB330: a zero +0x4C downs the runner. Lua owns
+            // the flag, sound, C0B2 selector and the 0xABB6 wipe check.
+            const auto& records = field_party_roster_.records();
+            const auto status = [this, &records](const std::size_t index) {
+                const auto flags =
+                    static_cast<std::int64_t>(records[index].flags >> 8U);
+                return field_party_roster_.slot_active(index)
+                    ? flags : (flags & ~std::int64_t{0x01});
+            };
+            const auto heading = slot == field_party_roster_.active_slot()
+                ? field_movement_state_.heading
+                : std::uint16_t{0U};
+            const auto down = game_scripts_.call_integers(
+                "party_down", "runner_down_flat",
+                {static_cast<std::int64_t>(slot), status(0U), status(1U),
+                 status(2U), static_cast<std::int64_t>(target.kind),
+                 static_cast<std::int64_t>(heading)});
+            if (!down.has_value() || down->size() != 4U) {
+                failure_ = game_scripts_.failure();
+                report("party_runner_down_failed");
+                return false;
+            }
+            target.flags = static_cast<std::uint16_t>(
+                (target.flags & 0x00ffU) |
+                (static_cast<std::uint16_t>((*down)[0] & 0xff) << 8U));
+            if ((*down)[1] != 0 && source_audio_event_callback_) {
+                source_audio_event_callback_(
+                    static_cast<std::uint16_t>((*down)[1]));
+            }
+            if ((*down)[3] != 0) {
+                field_party_wipe_countdown_ =
+                    static_cast<std::uint8_t>((*down)[3]);
+                report("party_wipe_countdown_started");
+            }
+            report("party_runner_down");
         }
         if (slot == field_party_roster_.active_slot()) {
             refresh_field_hud_runner_slot();
@@ -20151,29 +20280,38 @@ void FieldSceneRuntime::paint_field_scene_entities(
         const auto attack_pose = field_entity_animation_id_ == "attack";
         const auto strike_pose = field_entity_animation_id_ == "strike";
         const auto cast_pose = field_entity_animation_id_ == "cast";
+        const auto down_pose = field_entity_animation_id_ == "runner_down";
         const auto strike_frame = static_cast<std::size_t>(
             field_entity_animation_.frame & 1U);
+        const auto down_frame = static_cast<std::size_t>(
+            field_entity_animation_.frame == 0U ? 0U : 1U);
         const auto movement_frames =
             field_entity_walk_images_[direction].size();
         const auto frame = movement_frames == 0U
             ? 0U
             : static_cast<std::size_t>(field_entity_animation_.frame) %
                   movement_frames;
-        const auto& image = strike_pose
+        const auto& image = down_pose
+            ? field_entity_down_images_[direction][down_frame]
+            : strike_pose
             ? field_entity_strike_images_[direction][strike_frame]
             : cast_pose ? field_entity_cast_images_[direction]
             : attack_pose
             ? field_entity_attack_images_[direction]
             : walking ? field_entity_walk_images_[direction][frame]
                       : field_entity_idle_images_[direction];
-        const auto origin_x = strike_pose
+        const auto origin_x = down_pose
+            ? field_entity_down_origin_x_[direction][down_frame]
+            : strike_pose
             ? field_entity_strike_origin_x_[direction][strike_frame]
             : cast_pose ? field_entity_cast_origin_x_[direction]
             : attack_pose
             ? field_entity_attack_origin_x_[direction]
             : walking ? field_entity_walk_origin_x_[direction][frame]
                       : field_entity_idle_origin_x_[direction];
-        const auto origin_y = strike_pose
+        const auto origin_y = down_pose
+            ? field_entity_down_origin_y_[direction][down_frame]
+            : strike_pose
             ? field_entity_strike_origin_y_[direction][strike_frame]
             : cast_pose ? field_entity_cast_origin_y_[direction]
             : attack_pose

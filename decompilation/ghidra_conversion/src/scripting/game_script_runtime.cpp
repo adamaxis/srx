@@ -7958,6 +7958,9 @@ GameScriptRuntime::actor_heartbeat(
     case ScriptActorAnimationMode::cast:
         animation_mode = "cast";
         break;
+    case ScriptActorAnimationMode::runner_down:
+        animation_mode = "runner_down";
+        break;
     default:
         return fail("gameplay Lua actor animation mode is invalid");
     }
@@ -9433,6 +9436,7 @@ GameScriptRuntime::actor_heartbeat(
          decision.animation_id == "attack" ||
          decision.animation_id == "strike" ||
          decision.animation_id == "cast" ||
+         decision.animation_id == "runner_down" ||
          decision.animation_id == "projectile" ||
          decision.animation_id == "hurt" ||
          decision.animation_id == "down" ||
@@ -9468,10 +9472,15 @@ GameScriptRuntime::actor_heartbeat(
     if ((decision.animation_id == "walk" ||
          decision.animation_id == "attack" ||
          decision.animation_id == "strike" ||
-         decision.animation_id == "cast") &&
+         decision.animation_id == "cast" ||
+         decision.animation_id == "runner_down") &&
         context.profile_id != "field_runner_k03_none00" &&
         !dynamic_creature_walk) {
         return fail("actor_ai.heartbeat returned an unsupported actor animation");
+    }
+    if (decision.animation_id == "runner_down" &&
+        decision.animation_frame > 7U) {
+        return fail("actor_ai.heartbeat returned an unsupported C0B2 down frame");
     }
     if (decision.animation_id == "strike" && decision.animation_frame > 1U) {
         return fail("actor_ai.heartbeat returned an unsupported C0A2 strike frame");

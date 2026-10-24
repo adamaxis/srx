@@ -5637,6 +5637,29 @@ int main() {
     }
     player_strike_render.animation_mode = ScriptActorAnimationMode::cast;
     const auto cast_pose = scripts.actor_heartbeat(player_strike_render);
+    // ROM 0xB330: C0B2 runner-down list, selector 0xE8 + dir*4, holds the
+    // last entry.
+    player_strike_render.animation_mode = ScriptActorAnimationMode::runner_down;
+    std::optional<ScriptActorBehaviorDecision> down_first;
+    std::optional<ScriptActorBehaviorDecision> down_last;
+    for (std::size_t pass = 0U; pass < 80U; ++pass) {
+        const auto pose = scripts.actor_heartbeat(player_strike_render);
+        if (pass == 0U) {
+            down_first = pose;
+        }
+        down_last = pose;
+    }
+    if (!expect(
+            down_first.has_value() &&
+                down_first->animation_id == "runner_down" &&
+                down_first->animation_frame == 0U &&
+                down_first->animation_selector ==
+                    std::optional<std::uint16_t>{0x00F0U} &&
+                down_last.has_value() && down_last->animation_frame == 7U,
+            "Lua runner_down did not follow the 0xB330 C0B2 list")) {
+        std::cerr << scripts.failure() << '\n';
+        return 108;
+    }
     if (!expect(
             player_strike_dead.has_value() &&
                 player_strike_dead->source_action_dispatch ==

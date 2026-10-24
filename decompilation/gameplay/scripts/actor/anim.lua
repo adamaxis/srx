@@ -437,6 +437,26 @@ local function advance_player_animation(state, context)
         state.animation_accumulator = accumulated
         return
     end
+    if context.animation_mode == "runner_down" then
+        -- ROM 0xB330 selects C0B2[dir] (0xE8..0x104). Its finite 0x8008
+        -- list advances +0x200 per pass and holds on entry 7; entries 1..7
+        -- share one descriptor.
+        if state.animation_id ~= "runner_down" then
+            state.animation_frame = 0
+            state.animation_accumulator = 0
+        end
+        state.animation_id = "runner_down"
+        state.animation_selector = 0xE8 + state.direction * 4
+        local accumulated = state.animation_accumulator + 0x0200
+        if accumulated >= 0x1000 then
+            accumulated = accumulated - 0x1000
+            if state.animation_frame < 7 then
+                state.animation_frame = state.animation_frame + 1
+            end
+        end
+        state.animation_accumulator = accumulated
+        return
+    end
     if context.animation_mode == "cast" then
         -- ROM 0xAF7C/0xAFAE select C082[dir] (0x80..0x9C), one frame.
         state.animation_id = "cast"

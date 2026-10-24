@@ -258,6 +258,18 @@
           "continuation_key": "",
           "title_key": "field.cyberspace.no_mpcp"
         },
+        "party_wipe_docwagon": {
+          "continuation_key": "",
+          "title_key": "party_wipe.docwagon"
+        },
+        "party_wipe_docwagon_dropoff": {
+          "continuation_key": "",
+          "title_key": "party_wipe.docwagon_dropoff"
+        },
+        "party_wipe_little_chiba": {
+          "continuation_key": "",
+          "title_key": "party_wipe.little_chiba"
+        },
         "phone_no_contacts": {
           "continuation_key": "",
           "title_key": "field.main_menu.vid_phone.no_contacts"

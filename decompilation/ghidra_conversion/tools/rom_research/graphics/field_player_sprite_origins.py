@@ -24,6 +24,7 @@ MOVEMENT_SELECTORS = 0xC062
 ATTACK_SELECTORS = 0xC042
 STRIKE_SELECTORS = 0xC0A2  # 0xB1DC unarmed strike, two frames
 SPELL_SELECTORS = 0xC082   # 0xAF7C/0xAFAE spell pose, one frame
+DOWN_SELECTORS = 0xC0B2    # 0xB330 down pose; 0x8008 list holds frame 1
 DIRECTIONS = 8
 
 
@@ -95,6 +96,9 @@ def main():
             rows[f'field.entities.strike.{d}.{f}'] = desc
     for d, descs in enumerate(sequences(SPELL_SELECTORS)):
         rows[f'field.entities.spell.{d}'] = descs[0]
+    for d, descs in enumerate(sequences(DOWN_SELECTORS)):
+        for f, desc in enumerate(descs[:2]):
+            rows[f'field.entities.down.{d}.{f}'] = desc
     lines = open(root + 'resources.tsv').read().split('\n')
     changed = 0
     for n, line in enumerate(lines):

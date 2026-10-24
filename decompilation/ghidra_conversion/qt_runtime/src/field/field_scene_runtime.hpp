@@ -1442,6 +1442,7 @@ private:
     std::optional<scripting::ScriptActorBehaviorDecision>
     heartbeat_field_player(scripting::ScriptActorHeartbeatPhase phase);
     void advance_player_weapon_action_gate();
+    void resolve_field_party_wipe();
     void advance_field_movement();
     void advance_field_actor_animation();
     void advance_default_field_actor_animations();
@@ -2190,6 +2191,13 @@ private:
     std::array<QImage, 8> field_entity_cast_images_{};
     std::array<int, 8> field_entity_cast_origin_x_{};
     std::array<int, 8> field_entity_cast_origin_y_{};
+    // ROM 0xB330 C0B2 runner-down list: entry 0 then a held entry 1.
+    std::array<std::array<QImage, 2>, 8> field_entity_down_images_{};
+    std::array<std::array<int, 2>, 8> field_entity_down_origin_x_{};
+    std::array<std::array<int, 2>, 8> field_entity_down_origin_y_{};
+    // FFE166: 0xABB6 arms 0x3C frames when the whole party is down; 0x1DDC6
+    // counts it down and 0xC64C resolves the wipe at zero.
+    std::uint8_t field_party_wipe_countdown_ = 0;
     std::array<DefaultActorArtwork, 2> field_default_actor_artwork_{};
     std::unordered_map<std::string, DefaultActorArtwork>
         field_dynamic_actor_artwork_;
