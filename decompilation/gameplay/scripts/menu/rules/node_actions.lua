@@ -192,7 +192,7 @@ function M.gate(pool, computer, node, st, roll)
     return ok
 end
 -- 0x54A8E random alert (each loop pass): rand(10) < FFF0A8 -> FFF0A8 = 0, raise_alert(+1) (0x1989A); unless logged out
--- (FFF0B1) text 0x1669E8, 25-frame wait (0xC24), button (0xD94).
+-- (FFF0B1) text 0x1669E8, 26-VBlank wait (0xC24 d5 = 0x19), button (0xD94).
 function M.random_alert(st, rand)
     if rand(10) >= (st.attempts or 0) then return false end
     st.attempts = 0; return true
