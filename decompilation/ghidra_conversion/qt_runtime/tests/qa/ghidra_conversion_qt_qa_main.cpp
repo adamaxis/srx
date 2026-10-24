@@ -4114,7 +4114,23 @@ int run_scene2_event9_gang_contract_entry_qa(
     // rectangle occupies the south half of that wall; approach from the open
     // row below it with ordinary Up input, as the ROM collision map requires.
     field_scene.set_field_entity_world_position_for_dump(0x6900U, 0x4A00U);
-    field_scene.set_field_camera_world_position_for_dump(0x6900U, 0x4A00U);
+    {
+        // Scene profile words 4/5 are the camera maxima (scene 2: 0x6700,
+        // 0x4400). The ROM camera never exceeds them, so clamp the fixture.
+        const auto& profile = field_scene.state().field_scene_buffers.profile;
+        if (profile.size() < 6U) {
+            std::cerr << "Scene-2 event-9 gang-contract QA: no scene profile\n";
+            return 3;
+        }
+        const auto camera_x = static_cast<std::uint16_t>(
+            std::min<std::uint32_t>(0x6900U, profile[4]));
+        const auto camera_y = static_cast<std::uint16_t>(
+            std::min<std::uint32_t>(0x4A00U, profile[5]));
+        field_scene.set_field_camera_world_position_for_dump(camera_x,
+                                                             camera_y);
+        std::cout << "gang_contract_fixture_camera=0x" << std::hex
+                  << camera_x << ",0x" << camera_y << std::dec << '\n';
+    }
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
     const auto save = [&render, &output](const std::string_view name) {
         const auto image = render();
