@@ -3,6 +3,19 @@
 -- 0x55C76 trial sequence and returns the resulting meter snapshot.
 local Combat = {}
 
+-- ROM 0x490A spell-callback table: the callbacks for action codes 1 (0x521E),
+-- 2 (0x5152), 8 (0x508A) and 9 (0x4FE2) call 0xB0AC / 0xB0E4 instead of
+-- 0xAFF2 when the spell changed the target's +0x4C to zero. 0xB0AC selects
+-- pose 0xE0, 0xB0E4 pose 0xE4. Code 2's caller (0x51C8) skips kind 0xF.
+-- [H: codes are E.SpellType + 1 (code 12 = heal), i.e. flame dart/bolt and
+-- mana zap/blast; the names are not traced.]
+local SpellDeath = {
+    [1] = { pose = 0xE0 },
+    [2] = { pose = 0xE0, excluded_kind = 0x0F },
+    [8] = { pose = 0xE4 },
+    [9] = { pose = 0xE4 },
+}
+
 local function signed_byte(value)
     value = value & 0xff
     return value >= 0x80 and value - 0x100 or value
@@ -364,7 +377,7 @@ local function copy_combatant(record)
 end
 
 local function commit_combatant_meters(target, defender, physical_meter,
-                                      mental_meter, source_flags)
+                                      mental_meter, source_flags, spell_death)
     if type(source_flags) == "number" then
         defender.source_flags = source_flags & 0xff
     end
@@ -389,6 +402,9 @@ local function commit_combatant_meters(target, defender, physical_meter,
         state.incoming_hit = {
             physical_meter = physical_meter,
             mental_meter = mental_meter,
+            spell_death_pose = physical_meter == 0 and spell_death ~= nil and
+                spell_death.excluded_kind ~= defender.record_type and
+                spell_death.pose or nil,
         }
     end
     return true
@@ -717,7 +733,8 @@ function Combat.resolve_spell_impact(context, pending, target)
     result.physical_meter = physical_meter
     result.mental_meter = mental_meter
     result.changed = commit_combatant_meters(
-        target, defender, physical_meter, mental_meter)
+        target, defender, physical_meter, mental_meter, nil,
+        SpellDeath[pending.action_code])
     result.outcome = result.changed and "effect_applied" or "effect_no_change"
     return result
 end

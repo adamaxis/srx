@@ -253,8 +253,35 @@ local function begin_received_hit_reaction(state, context)
     if (state.source_record_flags & ActorStatus.DOWN) ~= 0 then
         return nil
     end
+    if hit.physical_meter == 0 and hit.spell_death_pose ~= nil and
+       (state.source_record_flags & ActorStatus.AI_RUNNER) == 0 and
+       context.entity_kind ~= SpriteType.HELL_HOUND then
+        -- 0xB0AC/0xB0E4 (spell death): pose 0xE0/0xE4, continuation
+        -- 0xB0D4/0xB10C, no +0x10 b4 and no cue. 0xA9A6 then runs 0xAB02 and
+        -- 0x1E514 when the list finishes. Kinds 12..15 point 0xE0/0xE4 at
+        -- their C0B2 list; kinds 3..11 use 10 (0xE0) / 9 (0xE4) frames at
+        -- 0x280 whose art is not extracted, so the C0B2 art and cadence
+        -- stand in [H: humanoid spell-death art gap]. Unreachable live:
+        -- player spells on world actors are not ported.
+        if type(context.entry_animation_frame_count) ~= "number" or
+           context.entry_animation_frame_count < 1 or
+           context.entry_animation_frame_count > 8 then
+            return nil
+        end
+        state.damage_reaction_active = true
+        state.damage_reaction_animation_complete = false
+        state.animation_frame = 0
+        state.animation_accumulator = 0
+        state.animation_id = "down"
+        state.animation_selector = hit.spell_death_pose
+        state.spell_death = true
+        state.hurt_behavior_timer = 0
+        state.movement_active = false
+        return nil
+    end
     if hit.physical_meter == 0 then
         -- 0xAFF2: zero +0x4C enters 0xB330 directly, whatever the pose.
+        -- (0xB0AC/0xB0E4 send +0x10 b3 records and kind 0xC here too.)
         return begin_down_reaction(state, context)
     end
     local frame_count = context.hurt_animation_frame_count

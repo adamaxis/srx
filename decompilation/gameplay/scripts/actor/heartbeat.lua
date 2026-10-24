@@ -189,7 +189,10 @@ function ActorAI.heartbeat(context)
                 -- ROM 0xA9DE/0xAA14: a Wendigo (kind 0xE, 14) whose list is
                 -- finished takes 0xA9BE instead: 0xAB02 then 0x1E514, so the
                 -- record leaves the field after its death list.
-                if context.entity_kind == SpriteType.WENDIGO then
+                -- 0xA9A6: a finished 0xB0D4/0xB10C spell-death list does the
+                -- same for every kind.
+                if context.entity_kind == SpriteType.WENDIGO or
+                   state.spell_death then
                     deactivate_record(state)
                 end
             end
