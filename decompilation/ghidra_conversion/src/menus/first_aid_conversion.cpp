@@ -152,7 +152,7 @@ FirstAidItemResolution use_first_aid_item(
     const FirstAidUserState& user,
     FirstAidTargetState& target,
     const FirstAidRollService& roll_service) {
-    if (item_code < 0x10U || item_code > 0x13U) {
+    if (item_code < 0x10U || item_code > 0x12U) {
         return {FirstAidItemResult::invalid_item, FirstAidMessage::none, 0U};
     }
     if (phase == 0U) {

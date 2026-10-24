@@ -7,7 +7,11 @@ int main() {
     using namespace shadowrun::ghidra_conversion;
 
     if (build_numeric_visual(0U).bitmap_font_text() != "0" ||
+        build_numeric_visual(40U, true).bitmap_font_text() != "40" ||
+        build_numeric_visual(55U, true).bitmap_font_text() != "55" ||
         build_numeric_visual(1234U, true).bitmap_font_text() != "1,234" ||
+        build_numeric_visual(6450U, true).bitmap_font_text() != "6,450" ||
+        build_numeric_visual(6700U, true).bitmap_font_text() != "6,700" ||
         build_numeric_visual(1234567U, true).pixel_width() != 72U ||
         build_numeric_visual(1234U, false).bitmap_font_text() != "1234") {
         return 5;
@@ -26,11 +30,29 @@ int main() {
         return 2;
     }
 
+    if (build_grouped_decimal_glyphs(40U) !=
+            std::vector<std::uint16_t>{0x10U, 0x14U} ||
+        build_grouped_decimal_glyphs(55U) !=
+            std::vector<std::uint16_t>{0x15U, 0x15U}) {
+        return 7;
+    }
+
     if (build_grouped_decimal_glyphs(1234U) !=
         std::vector<std::uint16_t>{0x14U, 0x13U, 0x12U,
                                    kDecimalGroupSeparatorGlyphTableIndex,
                                    0x11U}) {
         return 3;
+    }
+
+    if (build_grouped_decimal_glyphs(6450U) !=
+        std::vector<std::uint16_t>{0x10U, 0x15U, 0x14U,
+                                   kDecimalGroupSeparatorGlyphTableIndex,
+                                   0x16U} ||
+        build_grouped_decimal_glyphs(6700U) !=
+            std::vector<std::uint16_t>{0x10U, 0x10U, 0x17U,
+                                       kDecimalGroupSeparatorGlyphTableIndex,
+                                       0x16U}) {
+        return 6;
     }
 
     if (build_grouped_decimal_glyphs(1234567U) !=

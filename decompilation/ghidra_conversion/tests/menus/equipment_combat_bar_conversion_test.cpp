@@ -1,8 +1,195 @@
 #include "shadowrun_ghidra/menus/equipment_combat_bar_conversion.hpp"
 #include "shadowrun_ghidra/menus/magic_menu_conversion.hpp"
+#include "shadowrun_ghidra/core/asset_catalog_conversion.hpp"
+#include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
+#include "shadowrun_ghidra/session/startup_record_assets_conversion.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
+#include <filesystem>
+#include <iostream>
 #include <vector>
+
+namespace {
+
+struct RomProfileBarExpectation {
+    std::uint8_t race = 0;
+    std::uint8_t runner_class = 0;
+    std::uint8_t command_average = 0;
+    std::array<std::uint8_t, 5U> attack_values{};
+    std::array<std::uint8_t, 5U> defense_values{};
+};
+
+constexpr std::array<RomProfileBarExpectation, 13U> kRomProfileBars = {{
+    {0U, 2U, 4U, {4U, 5U, 6U, 7U, 8U}, {8U, 7U, 6U, 5U, 4U}},
+    {0U, 3U, 6U, {2U, 3U, 4U, 4U, 4U}, {8U, 7U, 5U, 4U, 2U}},
+    {0U, 1U, 5U, {2U, 3U, 4U, 4U, 4U}, {7U, 6U, 5U, 4U, 2U}},
+    {2U, 1U, 4U, {2U, 3U, 4U, 4U, 4U}, {8U, 7U, 6U, 5U, 4U}},
+    {4U, 2U, 3U, {4U, 4U, 5U, 6U, 7U}, {10U, 10U, 9U, 8U, 7U}},
+    {0U, 0U, 5U, {2U, 3U, 4U, 4U, 4U}, {7U, 6U, 5U, 4U, 2U}},
+    {2U, 3U, 5U, {4U, 5U, 6U, 7U, 8U}, {9U, 8U, 7U, 6U, 4U}},
+    {3U, 1U, 5U, {3U, 4U, 5U, 6U, 6U}, {11U, 10U, 9U, 8U, 6U}},
+    {1U, 3U, 7U, {4U, 5U, 7U, 8U, 8U}, {10U, 9U, 7U, 5U, 3U}},
+    {0U, 2U, 7U, {6U, 7U, 9U, 11U, 12U}, {12U, 11U, 9U, 7U, 5U}},
+    {1U, 0U, 7U, {6U, 7U, 9U, 11U, 12U}, {10U, 9U, 7U, 5U, 3U}},
+    {1U, 3U, 9U, {4U, 6U, 8U, 8U, 8U}, {10U, 8U, 6U, 4U, 1U}},
+    {0U, 2U, 8U, {6U, 8U, 10U, 12U, 12U}, {16U, 14U, 12U, 10U, 8U}},
+}};
+
+constexpr std::array<std::array<std::uint16_t, 3U>, 3U>
+    kRomTotemActionModifiers = {{{0x0002U, 0xFFFFU, 0x0000U},
+                                 {0xFFFFU, 0x0002U, 0x0000U},
+                                 {0x0000U, 0x0000U, 0x0002U}}};
+
+shadowrun::ghidra_conversion::EquipmentCombatInput make_profile_bar_input(
+    const shadowrun::ghidra_conversion::RunnerRecordFields& record) {
+    using namespace shadowrun::ghidra_conversion;
+    EquipmentCombatInput input{};
+    input.attributes = record.attributes;
+    input.skills = {record.skills[1],  record.skills[2], record.skills[3],
+                    record.skills[4],  record.skills[5], record.auxiliary[1],
+                    record.skills[6],  record.skills[7], record.skills[8],
+                    record.skills[9],  record.skills[10], record.skills[11]};
+    input.inventory_item_codes = record.inventory_item_codes;
+    input.inventory_phase_bytes = record.inventory_phase_bytes;
+    input.display_state = record.equipped_inventory_slot;
+    input.active_item_code = record.equipped_item_code;
+    input.posture = record.posture;
+    input.selected_inventory_slot =
+        static_cast<std::uint8_t>(record.inventory_item_codes.size());
+    input.cyberware_flags = record.cyberware_flags;
+    input.action_flags = static_cast<std::uint8_t>(record.flags & 0xFFU);
+    input.source_mode = 2U;
+    return input;
+}
+
+bool check_rom_profile_bars(
+    const shadowrun::ghidra_conversion::LiveRunnerRecord& live_record,
+    const RomProfileBarExpectation& expected,
+    const std::size_t profile_index) {
+    using namespace shadowrun::ghidra_conversion;
+    const auto fields = read_runner_record_fields(live_record);
+    if (fields.species_index != expected.race ||
+        fields.archetype_index != expected.runner_class) {
+        std::cerr << "ROM combat-bar profile identity mismatch at row "
+                  << profile_index << '\n';
+        return false;
+    }
+    auto input = make_profile_bar_input(fields);
+    for (std::uint8_t posture = 0U; posture <= 4U; ++posture) {
+        input.posture = posture;
+        const auto bars = compute_equipment_combat_bars(input);
+        const auto attack = expected.attack_values[posture];
+        const auto defense = expected.defense_values[posture];
+        if (!bars.attack_written || !bars.defense_written ||
+            bars.command_average != expected.command_average ||
+            bars.attack_value != attack || bars.attack_bar != attack - 1U ||
+            bars.defense_value != defense ||
+            bars.defense_bar != defense - 1U) {
+            std::cerr << "ROM combat-bar profile mismatch at row "
+                      << profile_index << " posture="
+                      << static_cast<unsigned>(posture)
+                      << " average=" << bars.command_average
+                      << " attack=" << bars.attack_value << "/"
+                      << static_cast<unsigned>(bars.attack_bar)
+                      << " defense=" << bars.defense_value << "/"
+                      << static_cast<unsigned>(bars.defense_bar) << '\n';
+            return false;
+        }
+    }
+    return true;
+}
+
+std::uint16_t add_source_byte_to_word(const std::uint16_t value,
+                                     const std::uint8_t addition) {
+    const auto low = static_cast<std::uint8_t>(
+        static_cast<std::uint8_t>(value) + addition);
+    return static_cast<std::uint16_t>((value & 0xFF00U) | low);
+}
+
+std::uint16_t expected_rom_spell_attack_value(
+    const shadowrun::ghidra_conversion::LiveRunnerRecord& record,
+    const std::uint8_t spell_code,
+    const std::uint8_t force,
+    const std::uint8_t posture) {
+    using namespace shadowrun::ghidra_conversion;
+
+    // This test oracle follows the source field operations at 0x12FA4 and
+    // 0x12CEE independently of compute_equipment_combat_bars: item 0x18,
+    // posture reduction, the +0x7F cap, +0x9D force, matching spell focus,
+    // and the C8AE0/D4540 slot-7 totem modifier.
+    std::uint16_t sorcery = record.bytes[0x80U];
+    for (std::size_t slot = 7U; slot-- > 0U;) {
+        if (record.bytes[0x66U + slot] != 0x18U) {
+            continue;
+        }
+        sorcery = add_source_byte_to_word(
+            sorcery, record.bytes[0x6EU + slot]);
+        break;
+    }
+    const auto posture_reduction = static_cast<std::uint16_t>(
+        (static_cast<std::uint32_t>(sorcery) * posture * 25U) / 100U);
+    auto value = static_cast<std::uint8_t>(std::min<std::uint16_t>(
+        posture_reduction, record.bytes[0x7FU]));
+    value = static_cast<std::uint8_t>(value + force);
+
+    const auto matching_spell_focus =
+        static_cast<std::uint8_t>(0x19U + spell_code);
+    for (std::size_t slot = 7U; slot-- > 0U;) {
+        if (record.bytes[0x66U + slot] != matching_spell_focus) {
+            continue;
+        }
+        value = static_cast<std::uint8_t>(
+            value + record.bytes[0x6EU + slot]);
+        break;
+    }
+
+    const auto totem_code = record.bytes[0x6DU];
+    if (totem_code >= 0x29U && totem_code <= 0x2BU) {
+        const auto action_index = static_cast<std::size_t>(spell_code);
+        const auto selector =
+            us_special_item_modifier_selector_table()
+                .field_selectors[action_index];
+        if (selector >= 0 && selector <= 2) {
+            const auto totem_index =
+                static_cast<std::size_t>(totem_code - 0x29U);
+            const auto modifier = kRomTotemActionModifiers[totem_index]
+                                                               [static_cast<std::size_t>(selector)];
+            value = static_cast<std::uint16_t>(
+                static_cast<std::uint16_t>(value) +
+                static_cast<std::int16_t>(modifier));
+            if (static_cast<std::int16_t>(value) <= 0) {
+                value = 1U;
+            }
+        }
+    }
+    return value;
+}
+
+shadowrun::ghidra_conversion::EquipmentCombatInput make_spell_bar_input(
+    const shadowrun::ghidra_conversion::LiveRunnerRecord& live_record,
+    const shadowrun::ghidra_conversion::MagicSpellDefinition& spell,
+    const std::uint8_t force,
+    const std::uint8_t posture) {
+    using namespace shadowrun::ghidra_conversion;
+    const auto fields = read_runner_record_fields(live_record);
+    auto input = make_profile_bar_input(fields);
+    input.display_state = -1;
+    input.active_item_code =
+        static_cast<std::uint8_t>(spell.spell_code + 1U);
+    input.source_action_code = input.active_item_code;
+    input.posture = posture;
+    input.special_item18_base = live_record.bytes[0x80U];
+    input.roll_count_cap = live_record.bytes[0x7FU];
+    input.auxiliary_roll_bonus = force;
+    input.special_magic_spell = spell;
+    input.item_catalog = &us_item_catalog();
+    input.selector_table = &us_special_item_modifier_selector_table();
+    return input;
+}
+
+} // namespace
 
 int main() {
     using namespace shadowrun::ghidra_conversion;
@@ -51,8 +238,8 @@ int main() {
 
     const auto result = compute_equipment_combat_bars(input);
     if (result.command_average != 8U || result.attack_value != 4U ||
-        result.attack_bar != 3U || result.defense_value != 18U ||
-        result.defense_bar != 17U || !result.attack_written ||
+        result.attack_bar != 3U || result.defense_value != 6U ||
+        result.defense_bar != 5U || !result.attack_written ||
         !result.defense_written) {
         return 1;
     }
@@ -158,8 +345,270 @@ int main() {
     input.selected_inventory_slot = 2U;
     input.active_item_code = 2U;
     const auto flagged_defense = compute_equipment_combat_bars(input);
-    if (flagged_defense.defense_value != 15U) {
+    if (flagged_defense.defense_value != 3U) {
         return 7;
+    }
+
+    // ROM 0x12E52..0x12E6A awards only the first set bit in +0x90 bits
+    // 9..11; an empty group adds nothing. Sweep all eight bit combinations.
+    EquipmentCombatInput defense_source_case{};
+    defense_source_case.attributes = {5U, 6U, 0U, 0U, 6U, 6U, 0U, 0U};
+    defense_source_case.source_mode = 2U;
+    defense_source_case.display_state = 0x7F;
+    defense_source_case.skills[4] = 2U;
+    const std::array<std::uint16_t, 8U> expected_cyberware_defense = {
+        14U, 15U, 16U, 15U, 17U, 15U, 16U, 15U};
+    for (std::uint16_t mask = 0U; mask < expected_cyberware_defense.size();
+         ++mask) {
+        defense_source_case.cyberware_flags =
+            static_cast<std::uint16_t>(mask << 9U);
+        const auto cyberware_result =
+            compute_equipment_combat_bars(defense_source_case);
+        if (!cyberware_result.defense_written ||
+            cyberware_result.command_average != 9U ||
+            cyberware_result.defense_value !=
+                expected_cyberware_defense[mask]) {
+            return 32;
+        }
+    }
+
+    // The first item-0x27 slot is used, while +0x11 bit 5 takes priority
+    // over every item phase and subtracts two directly.
+    defense_source_case.cyberware_flags = 0U;
+    defense_source_case.inventory_item_codes[0] = 0x27U;
+    defense_source_case.inventory_phase_bytes[0] = 8U;
+    defense_source_case.inventory_item_codes[1] = 0x27U;
+    defense_source_case.inventory_phase_bytes[1] = 2U;
+    auto item_phase_defense =
+        compute_equipment_combat_bars(defense_source_case);
+    if (item_phase_defense.defense_value != 10U) {
+        return 33;
+    }
+    defense_source_case.action_flags = 0x20U;
+    item_phase_defense = compute_equipment_combat_bars(defense_source_case);
+    if (item_phase_defense.defense_value != 12U) {
+        return 34;
+    }
+
+    // ROM 0x12E3E adds +0x77 to D6's low byte, not as an unbounded word sum.
+    EquipmentCombatInput wrapped_defense_input{};
+    wrapped_defense_input.source_mode = 2U;
+    wrapped_defense_input.display_state = 0x7F;
+    wrapped_defense_input.attributes[0] = 20U;
+    wrapped_defense_input.inventory_item_codes[0] = 0x28U;
+    wrapped_defense_input.inventory_phase_bytes[0] = 250U;
+    wrapped_defense_input.cyberware_flags = 1U << 9U;
+    const auto wrapped_defense =
+        compute_equipment_combat_bars(wrapped_defense_input);
+    if (wrapped_defense.command_average != 250U ||
+        wrapped_defense.defense_value != 15U) {
+        return 35;
+    }
+
+    // A zero command average writes the chosen attack strip and returns
+    // before 0x12E12's defense path, including the higher-mode +0x85 case.
+    EquipmentCombatInput zero_average_input{};
+    zero_average_input.source_mode = 2U;
+    zero_average_input.display_state = 0x7F;
+    zero_average_input.skills[4] = 7U;
+    zero_average_input.posture = 4U;
+    const auto zero_average = compute_equipment_combat_bars(zero_average_input);
+    if (zero_average.command_average != 0U || !zero_average.attack_written ||
+        zero_average.attack_value != 7U || zero_average.attack_bar != 6U ||
+        zero_average.defense_written) {
+        return 36;
+    }
+
+    // The lower-mode action gates differ at 0x17: 0x10 exits before either
+    // strip, whereas 0x17 writes the attack and enters defense for nonzero
+    // command values. Zero command values again stop after attack.
+    auto lower_mode_input = defense_source_case;
+    lower_mode_input.source_mode = 0U;
+    lower_mode_input.display_state = 0;
+    lower_mode_input.action_flags = 0U;
+    lower_mode_input.inventory_item_codes = {};
+    lower_mode_input.inventory_phase_bytes = {};
+    lower_mode_input.source_action_code = 0x10U;
+    auto lower_mode_result = compute_equipment_combat_bars(lower_mode_input);
+    if (lower_mode_result.attack_written ||
+        lower_mode_result.defense_written) {
+        return 37;
+    }
+    lower_mode_input.source_action_code = 0x17U;
+    lower_mode_input.skills[4] = 3U;
+    lower_mode_result = compute_equipment_combat_bars(lower_mode_input);
+    if (!lower_mode_result.attack_written ||
+        !lower_mode_result.defense_written) {
+        return 38;
+    }
+    lower_mode_input.attributes[1] = 0U;
+    lower_mode_input.attributes[4] = 0U;
+    lower_mode_input.attributes[5] = 0U;
+    lower_mode_input.source_action_code = 0x17U;
+    lower_mode_result = compute_equipment_combat_bars(lower_mode_input);
+    if (!lower_mode_result.attack_written ||
+        lower_mode_result.defense_written) {
+        return 39;
+    }
+
+    // The preset sweep reads the three selectable Joshua records and the ten
+    // named recruited records from their ROM-extracted raw assets. Expected
+    // bar values below are pinned from the ROM's 0x12CEE/0x55ED6/0x55F20
+    // branches for every reachable posture, retaining each profile's own
+    // class, race, equipped action, skills, inventory, flags, and cyberware.
+    const auto asset_catalog = load_conversion_asset_catalog(
+        std::filesystem::path(SHADOWRUN_CONVERSION_ASSET_ROOT));
+    if (!asset_catalog.complete()) {
+        std::cerr << "could not load ROM profile assets for combat-bar audit\n";
+        return 40;
+    }
+    const auto startup_records =
+        load_startup_record_assets(asset_catalog.catalog);
+    if (!startup_records.complete()) {
+        std::cerr << "could not load startup runner records for combat-bar "
+                     "audit\n";
+        return 41;
+    }
+    for (std::size_t totem = 0U; totem < kRomTotemActionModifiers.size();
+         ++totem) {
+        const auto item_code = static_cast<std::uint8_t>(0x29U + totem);
+        const auto& item = us_item_catalog()[item_code - 1U];
+        for (std::size_t selector = 0U; selector < 3U; ++selector) {
+            if (item.source_action_modifier_word(
+                    static_cast<std::int8_t>(selector)) !=
+                kRomTotemActionModifiers[totem][selector]) {
+                std::cerr << "US totem modifier catalog differs from the ROM "
+                          << "bytes for item "
+                          << static_cast<unsigned>(item_code)
+                          << " selector " << selector << '\n';
+                return 48;
+            }
+        }
+    }
+    std::size_t profile_index = 0U;
+    for (const auto& archetype :
+         startup_records.assets->joshua_archetypes) {
+        LiveRunnerRecord live_record{};
+        live_record.bytes = archetype.record;
+        if (!check_rom_profile_bars(live_record,
+                                    kRomProfileBars[profile_index],
+                                    profile_index)) {
+            return 42;
+        }
+        ++profile_index;
+    }
+    for (std::size_t index = 0U; index < 10U; ++index) {
+        LiveRunnerRecord live_record{};
+        live_record.bytes =
+            startup_records.assets->save_roster_templates[index + 1U].record;
+        if (!check_rom_profile_bars(live_record,
+                                    kRomProfileBars[profile_index],
+                                    profile_index)) {
+            return 43;
+        }
+        ++profile_index;
+    }
+
+    // Each of the five ROM spell tables belongs to a different source runner
+    // profile. Sweep every listed spell, each legal force, and all five
+    // posture values through the command overview's special-action bars.
+    // Table entries are the source's force limits from 0x166AD8; the static
+    // profile bar rows above anchor the paired defense result.
+    std::array<LiveRunnerRecord, 5U> caster_records{};
+    caster_records[0U].bytes =
+        startup_records.assets->save_roster_templates[1U].record;
+    caster_records[1U].bytes =
+        startup_records.assets->save_roster_templates[3U].record;
+    caster_records[2U].bytes =
+        startup_records.assets->save_roster_templates[5U].record;
+    caster_records[3U].bytes =
+        startup_records.assets->save_roster_templates[8U].record;
+    caster_records[4U].bytes =
+        startup_records.assets->joshua_archetypes[2U].record;
+    constexpr std::array<std::size_t, 5U> kCasterProfileIndices = {
+        3U, 5U, 7U, 10U, 2U};
+    std::size_t spell_force_posture_cases = 0U;
+    for (std::size_t table_index = 0U;
+         table_index < caster_records.size(); ++table_index) {
+        const auto fields = read_runner_record_fields(caster_records[table_index]);
+        const auto* spell_table = find_us_magic_spell_table(
+            static_cast<std::uint16_t>(table_index));
+        if (spell_table == nullptr ||
+            fields.magic_table_index != table_index ||
+            fields.archetype_index > 1U || fields.auxiliary[0U] == 0U ||
+            spell_table->entry_count == 0U) {
+            std::cerr << "ROM caster profile/table mismatch at table "
+                      << table_index << '\n';
+            return 44;
+        }
+
+        for (std::size_t entry_index = 0U;
+             entry_index < spell_table->entry_count; ++entry_index) {
+            const auto& entry = spell_table->entries[entry_index];
+            const auto* spell = find_us_magic_spell(entry.spell_code);
+            if (spell == nullptr || entry.force_limit == 0U) {
+                std::cerr << "ROM spell table has an invalid entry at table "
+                          << table_index << " entry " << entry_index << '\n';
+                return 45;
+            }
+            for (std::uint8_t force = 1U; force <= entry.force_limit; ++force) {
+                for (std::uint8_t posture = 0U; posture <= 4U; ++posture) {
+                    const auto combat_input = make_spell_bar_input(
+                        caster_records[table_index], *spell, force, posture);
+                    const auto bars =
+                        compute_equipment_combat_bars(combat_input);
+                    const auto expected_attack = expected_rom_spell_attack_value(
+                        caster_records[table_index], entry.spell_code, force,
+                        posture);
+                    const auto profile_row =
+                        kCasterProfileIndices[table_index];
+                    const auto expected_defense =
+                        kRomProfileBars[profile_row].defense_values[posture];
+                    if (!bars.attack_written || !bars.defense_written ||
+                        bars.source_data_missing ||
+                        bars.command_average !=
+                            kRomProfileBars[profile_row].command_average ||
+                        bars.attack_value != expected_attack ||
+                        bars.attack_bar != expected_attack - 1U ||
+                        bars.defense_value != expected_defense ||
+                        bars.defense_bar != expected_defense - 1U ||
+                        !bars.special_action.menu_service_called ||
+                        bars.special_action.magic_spell_missing ||
+                        !bars.special_action.residual_calculated) {
+                        std::cerr << "ROM spell combat-bar permutation mismatch"
+                                  << " table=" << table_index
+                                  << " spell="
+                                  << static_cast<unsigned>(entry.spell_code)
+                                  << " force=" << static_cast<unsigned>(force)
+                                  << " posture="
+                                  << static_cast<unsigned>(posture)
+                                  << " attack=" << bars.attack_value << "/"
+                                  << static_cast<unsigned>(bars.attack_bar)
+                                  << " defense=" << bars.defense_value << "/"
+                                  << static_cast<unsigned>(bars.defense_bar)
+                                  << '\n';
+                        return 46;
+                    }
+                    ++spell_force_posture_cases;
+                }
+            }
+        }
+    }
+
+    // Section 06 frames 000015-000020 select Gator Shaman Mana Zap at force
+    // three and Neutral posture. The parent command page's section-06 frame
+    // 002550 shows Atk row 5 and Def row 4, matching this source-derived pair.
+    const auto gator_mana_zap = compute_equipment_combat_bars(
+        make_spell_bar_input(caster_records[4U], *find_us_magic_spell(7U),
+                             3U, 2U));
+    if (spell_force_posture_cases != 260U ||
+        gator_mana_zap.command_average != 5U ||
+        gator_mana_zap.attack_value != 6U ||
+        gator_mana_zap.attack_bar != 5U ||
+        gator_mana_zap.defense_value != 5U ||
+        gator_mana_zap.defense_bar != 4U ||
+        gator_mana_zap.source_data_missing) {
+        return 47;
     }
 
     MagicActionEffectValueInput metric_input{};

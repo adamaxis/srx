@@ -84,6 +84,97 @@ std::string read_multiline_rom_text(const std::vector<std::uint8_t>& rom,
     return text;
 }
 
+std::array<shadowrun::graphics::RgbaImage, 40>
+decode_field_menu_detail_value_assets(
+    const std::vector<std::uint8_t>& rom) {
+    constexpr std::size_t kValueTableOffset = 0x6AC46U;
+    constexpr std::size_t kValueCount = 40U;
+    constexpr std::size_t kEntryStride = 4U;
+    constexpr std::size_t kTileSourceOffset = 0x6A5BEU;
+    constexpr std::size_t kTileVramBase = 0xDAC0U;
+    constexpr std::size_t kTileSourceBytes = 0x4C0U;
+    constexpr std::size_t kTileCount = kTileSourceBytes / 32U;
+    constexpr std::uint16_t kPaletteLineOne = 0x2000U;
+
+    // ROM 0x334C copies this raw tile block to VRAM $DAC0. The 40 two-word
+    // rows at 0x6AC46 reference tiles $6D7..$6FB in that block. 0x12A8C
+    // selects one row from the active inventory slot's +$6E byte and writes
+    // it with palette line 1; 0xC8BB6 is a different upload used by the
+    // command tabs and does not contain these counter glyphs.
+    if (kTileSourceOffset > rom.size() ||
+        kTileSourceBytes > rom.size() - kTileSourceOffset ||
+        kValueTableOffset > rom.size() ||
+        kValueCount * kEntryStride > rom.size() - kValueTableOffset) {
+        throw std::out_of_range(
+            "Genesis field-menu detail value resources are truncated");
+    }
+
+    std::array<shadowrun::native::Rgba8, 64> palette{};
+    const auto first_palette_line = shadowrun::graphics::read_genesis_palette(
+        rom, 0xD29D6U);
+    std::copy(first_palette_line.begin(), first_palette_line.end(),
+              palette.begin());
+    for (std::size_t index = 16U; index < palette.size(); ++index) {
+        const auto color_offset = 0x18AC56U + (index - 16U) * 2U;
+        palette[index] = shadowrun::graphics::decode_genesis_cram_word(
+            read_big_endian_word(rom, color_offset), index % 16U == 0U);
+    }
+
+    std::array<shadowrun::graphics::RgbaImage, kValueCount> values{};
+    for (std::size_t value = 0U; value < values.size(); ++value) {
+        auto& image = values[value];
+        image.width = 16U;
+        image.height = 8U;
+        image.pixels.assign(
+            static_cast<std::size_t>(image.width) * image.height,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 255U});
+
+        for (std::size_t tile_position = 0U; tile_position < 2U;
+             ++tile_position) {
+            const auto table_word = static_cast<std::uint16_t>(
+                read_big_endian_word(
+                    rom, kValueTableOffset + value * kEntryStride +
+                             tile_position * 2U) |
+                kPaletteLineOne);
+            const auto tile_index = static_cast<std::size_t>(
+                table_word & 0x07FFU);
+            const auto tile_vram_offset = tile_index * 32U;
+            if (tile_vram_offset < kTileVramBase ||
+                tile_vram_offset - kTileVramBase + 32U > kTileSourceBytes ||
+                tile_index < kTileVramBase / 32U ||
+                tile_index - kTileVramBase / 32U >= kTileCount) {
+                throw std::out_of_range(
+                    "Genesis field-menu value row references a tile outside "
+                    "the 0x334C counter upload");
+            }
+            const auto source_offset =
+                kTileSourceOffset + tile_vram_offset - kTileVramBase;
+            const auto tile = shadowrun::graphics::decode_genesis_tile(
+                rom.data() + source_offset, 32U);
+            const auto palette_line = static_cast<std::size_t>(
+                (table_word >> 13U) & 0x03U);
+            const auto hflip = (table_word & 0x0800U) != 0U;
+            const auto vflip = (table_word & 0x1000U) != 0U;
+            for (std::size_t y = 0U; y < 8U; ++y) {
+                for (std::size_t x = 0U; x < 8U; ++x) {
+                    const auto source_x = hflip ? 7U - x : x;
+                    const auto source_y = vflip ? 7U - y : y;
+                    const auto color_index = tile.pixels[
+                        source_y * 8U + source_x];
+                    auto color = palette[palette_line * 16U + color_index];
+                    // The source window plane paints color zero as black.
+                    // Keeping the complete row opaque preserves its fixed
+                    // 16x8 destination and does not crop the leading zero.
+                    color.alpha = 255U;
+                    image.pixels[y * image.width + tile_position * 8U + x] =
+                        color;
+                }
+            }
+        }
+    }
+    return values;
+}
+
 shadowrun::graphics::RgbaImage decode_field_service_cyberware_icon(
     const std::vector<std::uint8_t>& rom, const std::size_t category) {
     constexpr std::size_t kIconTableOffset = 0xD177CU;
@@ -7372,8 +7463,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     write_array("menu/field/armor-summary-bar-",
                 assets.field_menu_armor_summary_bars, "sprite",
                 "0x11352/0xCF884", true);
-    write_array("menu/field/detail-value-", assets.field_menu_detail_values, "sprite",
-                "0x13000", true);
+    const auto field_menu_detail_values =
+        decode_field_menu_detail_value_assets(rom);
+    write_rgba_array(
+        "menu/field/detail-value-", field_menu_detail_values, "sprite",
+        "0x12A8C/0x6AC46/0x334C/0x6A5BE/0xDAC0/palette-line=1", false);
     write_array("menu/field/attack-bar-", assets.field_menu_attack_bars, "sprite",
                 "0x12CEE/0xCF3D4", true);
     write_array("menu/field/defense-bar-", assets.field_menu_defense_bars, "sprite",

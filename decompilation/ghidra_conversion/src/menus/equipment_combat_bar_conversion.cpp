@@ -107,6 +107,18 @@ std::uint16_t apply_defense_action_modifier_impl(
     return value;
 }
 
+std::uint16_t cyberware_defense_bonus(
+    const std::uint16_t cyberware_flags) {
+    // ROM 0x12E52..0x12E6A scans bits 9 through 11 and exits after the first
+    // set bit. The amount is the selected bit index minus 8; no set bit adds 0.
+    for (unsigned bit = 9U; bit <= 11U; ++bit) {
+        if ((cyberware_flags & (std::uint16_t{1U} << bit)) != 0U) {
+            return static_cast<std::uint16_t>(bit - 8U);
+        }
+    }
+    return 0U;
+}
+
 } // namespace
 
 std::uint16_t apply_equipment_defense_action_modifier(
@@ -234,6 +246,13 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
         }
     }
 
+    // 0x12D06..0x12E0E is an attack-only path when the command average is
+    // zero; it writes its selected attack strip and returns before defense.
+    if (result.command_average == 0U) {
+        result.defense_written = false;
+        return result;
+    }
+
     // 0x12E12 applies this rejection only in the lower source modes. In the
     // higher mode, the special action path proceeds directly to defense.
     const auto action_code = selected_action_code(input);
@@ -245,20 +264,14 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
 
     auto defense_value = posture_value(result.command_average, input.posture,
                                        true);
-    defense_value = static_cast<std::uint16_t>(
+    // 0x12E3E uses ADD.B into D6's low byte. Preserve that byte wrap rather
+    // than widening this source operation to an unrestricted host word sum.
+    defense_value = static_cast<std::uint8_t>(
         defense_value + input.attributes[0]);
     defense_value = apply_equipment_defense_action_modifier(
         input, defense_value);
-    unsigned cyberware_adjustment = 9U;
-    for (unsigned bit = 9U; bit <= 11U; ++bit) {
-        if ((input.cyberware_flags & (std::uint16_t{1U} << bit)) != 0U) {
-            cyberware_adjustment -= 8U;
-        } else {
-            ++cyberware_adjustment;
-        }
-    }
     result.defense_value = static_cast<std::uint16_t>(
-        defense_value + cyberware_adjustment);
+        defense_value + cyberware_defense_bonus(input.cyberware_flags));
     result.defense_bar = bar_index(result.defense_value);
     return result;
 }

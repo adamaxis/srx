@@ -228,8 +228,7 @@ function Force.input(st, events, ctx)
         return
     end
 
-    if events & (P.A | P.B) ~= 0 or
-       (events & P.C ~= 0 and events & P.DOWN ~= 0) then
+    if events & (P.A | P.B | P.C) ~= 0 then
         return { transition = T.POP, result = { force = st.force } }
     end
     if events & P.DOWN ~= 0 then
@@ -278,9 +277,13 @@ end
 
 function MagicPosture.input(st, events, ctx)
     next_cursor(st)
+    local finish = events & (P.A | P.B | P.C) ~= 0
     if events & P.UP ~= 0 then
         Posture.adjust(ctx, 0)
-        return { transition = T.POP, result = { finish = false } }
+        -- 0x10722 returns on Up before reading action buttons. Its 0xFF5A
+        -- caller then checks the still-latched A/C/B edges, so Up+A/B/C
+        -- completes the action while Up alone returns to force selection.
+        return { transition = T.POP, result = { finish = finish } }
     end
     if events & P.RIGHT ~= 0 then
         Posture.adjust(ctx, 1)
@@ -294,7 +297,7 @@ function MagicPosture.input(st, events, ctx)
         ctx.redraw(R.COMBAT_BARS | R.POSTURE_BLOCK | R.SUBMENU)
         return
     end
-    if events & (P.A | P.B | P.C) ~= 0 then
+    if finish then
         Posture.adjust(ctx, 0)
         return { transition = T.POP, result = { finish = true } }
     end

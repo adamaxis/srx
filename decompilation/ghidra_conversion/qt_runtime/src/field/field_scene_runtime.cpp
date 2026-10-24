@@ -20814,6 +20814,23 @@ void FieldSceneRuntime::refresh_command_overview_combat_bars() {
     // branch. It uses +0x56/+0x57 directly for the attack strip and still
     // performs the typed defense calculation below it.
     input.source_mode = 2U;
+    // When +0x56 is negative, 0x12D74/0x12FA4 uses the active action's
+    // Sorcery, Magic cap, and current force before applying item-focus and
+    // slot-7 totem data. Keep those values sourced from the selected live
+    // runner record so class/race presets and the action's force remain part
+    // of the displayed number.
+    input.special_item18_base = record.skills[0U]; // +0x80 Sorcery.
+    input.roll_count_cap = record.auxiliary[0U]; // +0x7F Magic cap.
+    input.auxiliary_roll_bonus = record.magic_force; // +0x9D current force.
+    if (input.display_state < 0 && input.active_item_code > 0U) {
+        const auto* spell = find_us_magic_spell(static_cast<std::uint8_t>(
+            input.active_item_code - 1U));
+        if (spell != nullptr) {
+            input.special_magic_spell = *spell;
+        }
+    }
+    input.item_catalog = &us_item_catalog();
+    input.selector_table = &us_special_item_modifier_selector_table();
     command_overview_combat_bars_ = compute_equipment_combat_bars(input);
 }
 
@@ -23133,12 +23150,22 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 "%");
         const auto equipped_item_code =
             active_runner_record().equipped_item_code;
-        if (equipped_item_code > 0U &&
-            equipped_item_code <= field_menu_text_.items.size()) {
-            // ROM 0x111E8 renders the active equipment title before the
-            // 0x12EAE damage/power detail rows. These two ROM-backed Lua
-            // catalog entries occupy the same name/category rows used by
-            // inventory detail: Model 101T / Light Pistol for item 2.
+        const bool special_spell_action =
+            active_runner_record().equipped_inventory_slot < 0 &&
+            equipped_item_code > 0U &&
+            static_cast<std::size_t>(equipped_item_code) <=
+                field_menu_text_.magic_spell_names.size();
+        if (special_spell_action) {
+            // ROM 0x111E8 indexes D4EA0 when record +0x56 is negative. The
+            // same +0x57 value indexes D4540 only for a nonnegative slot.
+            const auto spell_code = static_cast<std::size_t>(
+                equipped_item_code - 1U);
+            draw_command_overview_text(
+                painter, 128, 64,
+                field_menu_text_.magic_spell_names[spell_code]);
+        } else if (equipped_item_code > 0U &&
+                   equipped_item_code <= field_menu_text_.items.size()) {
+            // Ordinary equipment uses the one-based D4540 item row.
             const auto item_index =
                 static_cast<std::size_t>(equipped_item_code - 1U);
             draw_command_overview_text(
@@ -23149,8 +23176,49 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     field_menu_text_.items[item_index].category);
             }
         }
-        draw_item_detail_rows(active_runner_record().equipped_item_code,
-                              std::nullopt, false);
+        if (special_spell_action) {
+            const auto* spell = find_us_magic_spell(
+                static_cast<std::uint8_t>(equipped_item_code - 1U));
+            if (spell != nullptr && spell->availability_byte >= 0) {
+                // ROM 0x12EAE takes the signed D4EA0 +0x25 row through the
+                // ordinary Damage strip, while 0x13000 selects the Power
+                // label from current force +0x9D. Negative source rows exit
+                // before these two detail cells are written.
+                draw_command_overview_text(
+                    painter, 112, 80, field_menu_text_.damage_label);
+                const auto damage_row = static_cast<std::size_t>(
+                    spell->availability_byte);
+                if (damage_row < command_overview_damage_bars_.size()) {
+                    painter.drawImage(
+                        168, 80,
+                        command_overview_damage_bars_[damage_row]);
+                }
+                const MagicActionEffectValueInput effect_input{
+                    active_runner_record().magic_force,
+                    magic_action_record_from_runner(active_runner_record()),
+                    *spell};
+                const auto effect =
+                    refresh_magic_action_effect_value(effect_input);
+                if (effect.residual_valid && effect.residual_effect <= 0) {
+                    draw_command_overview_text(
+                        painter, 168, 80, field_menu_text_.none_label);
+                }
+                draw_command_overview_text(
+                    painter, 112, 88, field_menu_text_.power_label);
+                if (!field_menu_text_.power_labels.empty()) {
+                    const auto force_row = std::min<std::size_t>(
+                        active_runner_record().magic_force == 0U
+                            ? 0U
+                            : active_runner_record().magic_force - 1U,
+                        field_menu_text_.power_labels.size() - 1U);
+                    draw_command_overview_text(
+                        painter, 168, 88,
+                        field_menu_text_.power_labels[force_row]);
+                }
+            }
+        } else {
+            draw_item_detail_rows(equipped_item_code, std::nullopt, false);
+        }
         draw_command_overview_text(painter, 112, 104,
                                    field_menu_text_.attack_label);
         draw_command_overview_text(painter, 112, 112,

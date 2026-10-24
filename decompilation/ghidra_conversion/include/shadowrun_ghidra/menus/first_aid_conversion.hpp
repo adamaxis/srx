@@ -101,7 +101,7 @@ struct FirstAidItemResolution {
 };
 
 // ROM 0x12466/0x1247E/0x124AE plus the 0x1253E medkit leaf. Item codes
-// 0x10..0x13 are the four source First Aid entries. A phase byte is consumed
+// 0x10..0x12 are the source First Aid entries. A phase byte is consumed
 // only after a target effect succeeds; a final phase clears the item code as
 // 0x1275C does for a medical cell.
 FirstAidItemResolution use_first_aid_item(
