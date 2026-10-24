@@ -1,5 +1,7 @@
 -- Shop content and selection behavior come from the ROM service tables.
 -- Native presenters draw these Lua-owned states and apply typed transactions.
+local E = require("enums")
+
 local Shop = {}
 
 local function menu_snapshot(menu, open, event)
@@ -79,16 +81,18 @@ function Shop.advance_menu(controller_events)
     end
 
     -- Source input priority follows 0x56AC0: cursor, panel, confirm,
-    -- runner-menu setup, then return to the field caller.
-    if (controller_events & 0x0400) ~= 0 then
+    -- runner-menu setup, then return to the field caller. Masks are the
+    -- FFDD22 edge byte: LEFT 0x0400, UP 0x0100, RIGHT 0x0800, DOWN 0x0200,
+    -- A|B 0x5000, C 0x2000, START 0x8000 [C].
+    if (controller_events & E.Pad.LEFT) ~= 0 then
         return move_cursor(-1)
-    elseif (controller_events & 0x0100) ~= 0 then
+    elseif (controller_events & E.Pad.UP) ~= 0 then
         return move_panel(-1)
-    elseif (controller_events & 0x0800) ~= 0 then
+    elseif (controller_events & E.Pad.RIGHT) ~= 0 then
         return move_cursor(1)
-    elseif (controller_events & 0x0200) ~= 0 then
+    elseif (controller_events & E.Pad.DOWN) ~= 0 then
         return move_panel(1)
-    elseif (controller_events & (0x4000 | 0x1000)) ~= 0 then
+    elseif (controller_events & (E.Pad.A | E.Pad.B)) ~= 0 then
         if menu.action_panel == 0 then
             menu.selected_action = menu.action_cursor
             return snapshot("no_change")
@@ -111,12 +115,12 @@ function Shop.advance_menu(controller_events)
                 and "purchase_selected" or "offer_unavailable")
         end
         return snapshot("source_action_boundary")
-    elseif (controller_events & 0x2000) ~= 0 then
+    elseif (controller_events & E.Pad.C) ~= 0 then
         menu.action_cursor = 0
         menu.action_panel = 0
         menu.selected_action = 0
         return snapshot("active_runner_change_requested")
-    elseif (controller_events & 0x8000) ~= 0 then
+    elseif (controller_events & E.Pad.START) ~= 0 then
         local closed = menu_snapshot(menu, false, "returned_to_field")
         game.shop_menu = nil
         return closed
