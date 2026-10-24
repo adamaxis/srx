@@ -109,6 +109,7 @@ function ActorAI.heartbeat(context)
         return nil
     end
     state.source_action_dispatch = nil
+    state.strike_heading = nil
     state.spell_action_resolution = nil
     state.source_record_flags = context.source_record_flags or
                                 state.source_record_flags

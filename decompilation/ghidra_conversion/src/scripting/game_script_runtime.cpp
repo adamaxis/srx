@@ -7952,6 +7952,12 @@ GameScriptRuntime::actor_heartbeat(
     case ScriptActorAnimationMode::attack:
         animation_mode = "attack";
         break;
+    case ScriptActorAnimationMode::strike:
+        animation_mode = "strike";
+        break;
+    case ScriptActorAnimationMode::cast:
+        animation_mode = "cast";
+        break;
     default:
         return fail("gameplay Lua actor animation mode is invalid");
     }
@@ -9425,6 +9431,8 @@ GameScriptRuntime::actor_heartbeat(
          decision.animation_id == "walk" ||
          decision.animation_id == "action" ||
          decision.animation_id == "attack" ||
+         decision.animation_id == "strike" ||
+         decision.animation_id == "cast" ||
          decision.animation_id == "projectile" ||
          decision.animation_id == "hurt" ||
          decision.animation_id == "down" ||
@@ -9458,10 +9466,15 @@ GameScriptRuntime::actor_heartbeat(
         context.action_kind == ScriptActorActionKind::item &&
         decision.animation_id == "weapon";
     if ((decision.animation_id == "walk" ||
-         decision.animation_id == "attack") &&
+         decision.animation_id == "attack" ||
+         decision.animation_id == "strike" ||
+         decision.animation_id == "cast") &&
         context.profile_id != "field_runner_k03_none00" &&
         !dynamic_creature_walk) {
         return fail("actor_ai.heartbeat returned an unsupported actor animation");
+    }
+    if (decision.animation_id == "strike" && decision.animation_frame > 1U) {
+        return fail("actor_ai.heartbeat returned an unsupported C0A2 strike frame");
     }
     if (decision.animation_id == "action" &&
         (!dynamic_creature_action ||
@@ -9518,6 +9531,18 @@ GameScriptRuntime::actor_heartbeat(
         }
         decision.target_heading_audio_event =
             static_cast<std::uint16_t>(event);
+    }
+    lua_pop(state, 1);
+    lua_getfield(state, decision_table, "strike_heading");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        std::uint32_t heading = 0U;
+        if (!read_integer(state, -1, 0xFFFFU, heading) ||
+            !context.player_melee_available ||
+            context.dynamic_world_encounter_actor ||
+            context.phase != ScriptActorHeartbeatPhase::behavior) {
+            return fail("actor_ai.heartbeat returned an invalid strike heading");
+        }
+        decision.strike_heading = static_cast<std::uint16_t>(heading);
     }
     lua_pop(state, 1);
     lua_getfield(state, decision_table, "weapon_item_id");

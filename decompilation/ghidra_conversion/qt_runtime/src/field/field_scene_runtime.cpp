@@ -568,6 +568,13 @@ constexpr std::string_view kFieldEntityWalkAliasPrefix =
     "field.entities.movement.";
 constexpr std::string_view kFieldEntityAttackAliasPrefix =
     "field.entities.attack.";
+constexpr std::string_view kFieldEntityStrikeAliasPrefix =
+    "field.entities.strike.";
+constexpr std::string_view kFieldEntityCastAliasPrefix =
+    "field.entities.spell.";
+constexpr std::uint8_t kFieldPlayerPoseFirearm = 0U;
+constexpr std::uint8_t kFieldPlayerPoseStrike = 1U;
+constexpr std::uint8_t kFieldPlayerPoseCast = 2U;
 struct FieldSpellEffectProfile {
     std::uint8_t action_code;
     std::string_view asset_id;
@@ -13163,6 +13170,36 @@ bool FieldSceneRuntime::bootstrap(
             field_entity_attack_images_[direction] =
                 flipped_image(field_entity_attack_images_[direction], Qt::Horizontal);
         }
+        for (std::size_t frame = 0U; frame < 2U; ++frame) {
+            const auto strike_alias =
+                std::string(kFieldEntityStrikeAliasPrefix) +
+                std::to_string(direction) + "." + std::to_string(frame);
+            auto& strike = field_entity_strike_images_[direction][frame];
+            if (!load_sprite_image(
+                    startup_state.asset_catalog.catalog, strike_alias, strike,
+                    field_entity_strike_origin_x_[direction][frame],
+                    field_entity_strike_origin_y_[direction][frame])) {
+                source_boundary("field.bootstrap.entity_assets_missing");
+                return false;
+            }
+            if (horizontal_flip) {
+                strike = flipped_image(strike, Qt::Horizontal);
+            }
+        }
+        const auto cast_alias = std::string(kFieldEntityCastAliasPrefix) +
+                                std::to_string(direction);
+        if (!load_sprite_image(
+                startup_state.asset_catalog.catalog, cast_alias,
+                field_entity_cast_images_[direction],
+                field_entity_cast_origin_x_[direction],
+                field_entity_cast_origin_y_[direction])) {
+            source_boundary("field.bootstrap.entity_assets_missing");
+            return false;
+        }
+        if (horizontal_flip) {
+            field_entity_cast_images_[direction] =
+                flipped_image(field_entity_cast_images_[direction], Qt::Horizontal);
+        }
         // The ordinary movement poses come from the C062 positive-marker
         // list, extracted as separate host files. C0B2 is a different finite
         // behavior-transition sequence. Direction 5..7 descriptor records
@@ -14138,8 +14175,18 @@ FieldSceneRuntime::heartbeat_field_player(
                 candidate.id = target->actor_instance_id;
                 candidate.world_x = target->world_position.x;
                 candidate.world_y = target->world_position.y;
-                candidate.heading = target->movement_state.heading;
-                candidate.service_flags = 0x01U;
+                // ROM 0x15D3C self->link bearing (strike/spell aim) and
+                // 0x15C58 distance via 0x14D58; +0x2E kept separately.
+                const auto link = measure_entity_target_heading_and_distance(
+                    field_entity_.world_position.x,
+                    field_entity_.world_position.y,
+                    target->world_position.x, target->world_position.y);
+                candidate.heading = static_cast<std::uint16_t>(link.heading);
+                candidate.distance = static_cast<std::uint16_t>(link.distance);
+                candidate.source_record_heading =
+                    target->movement_state.heading;
+                // ROM 0x15C58 tests the record's real +0x10 bits 0 and 6.
+                candidate.service_flags = target->source_record_flags;
                 candidate.interaction_flags =
                     target->source_interaction_flags;
                 candidate.behavior_flags = target->source_behavior_flags;
@@ -14150,14 +14197,6 @@ FieldSceneRuntime::heartbeat_field_player(
                 candidate.source_record_slot =
                     static_cast<std::uint8_t>(target_slot);
                 candidate.combatant = target->combatant;
-                // ROM 0x15C58 measures the linked record via 0x14D58.
-                candidate.distance = static_cast<std::uint16_t>(
-                    measure_entity_target_heading_and_distance(
-                        field_entity_.world_position.x,
-                        field_entity_.world_position.y,
-                        target->world_position.x,
-                        target->world_position.y)
-                        .distance);
                 actor_context.ai_target_candidates.push_back(
                     std::move(candidate));
             }
@@ -14180,7 +14219,11 @@ FieldSceneRuntime::heartbeat_field_player(
     }
     if (phase == scripting::ScriptActorHeartbeatPhase::render) {
         actor_context.animation_mode = field_entity_attack_pose_active_
-            ? scripting::ScriptActorAnimationMode::attack
+            ? (field_entity_attack_pose_kind_ == kFieldPlayerPoseStrike
+                   ? scripting::ScriptActorAnimationMode::strike
+                   : field_entity_attack_pose_kind_ == kFieldPlayerPoseCast
+                         ? scripting::ScriptActorAnimationMode::cast
+                         : scripting::ScriptActorAnimationMode::attack)
             : field_entity_walking_
                   ? scripting::ScriptActorAnimationMode::walking
                   : scripting::ScriptActorAnimationMode::idle;
@@ -14546,6 +14589,24 @@ void FieldSceneRuntime::service_player_melee(
                               runner.cyberware_flags},
         decode_entity_delay_scale(1U));
     runner.animation_action_gate = delay.animation_delay;
+    // ROM 0xB212..0xB23A: a linked strike turns +0x34/+0x2E to the Lua
+    // bearing; +0x16 = C0A2[dir(+0x2E)], then 0xAF6C clears the frame clock.
+    if (decision.strike_heading.has_value()) {
+        field_movement_state_.heading = *decision.strike_heading;
+        field_target_heading_ = *decision.strike_heading;
+    }
+    const auto strike_direction = field_movement_direction_from_heading(
+        field_movement_state_.heading);
+    field_entity_animation_selector_ =
+        static_cast<std::uint16_t>(0x00C0U + strike_direction * 4U);
+    field_entity_attack_direction_ = strike_direction;
+    field_entity_.direction = strike_direction;
+    field_entity_walking_ = false;
+    field_entity_attack_pose_active_ = true;
+    field_entity_attack_pose_kind_ = kFieldPlayerPoseStrike;
+    field_entity_animation_.accumulator = 0;
+    field_entity_animation_.frame = 0U;
+    field_entity_animation_.redraw_requested = true;
     if (source_audio_event_callback_) {
         if (decision.audio_event.has_value()) {
             source_audio_event_callback_(*decision.audio_event);
@@ -15005,6 +15066,7 @@ void FieldSceneRuntime::service_player_weapon_action(
     field_entity_.direction = direction;
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = true;
+    field_entity_attack_pose_kind_ = kFieldPlayerPoseFirearm;
     source_boundary("field.combat.player_weapon_spawned");
 }
 
@@ -16236,6 +16298,7 @@ void FieldSceneRuntime::snapshot_world_activity_source_scene() {
         field_player_animation_reset_pending_;
     snapshot.player_walking = field_entity_walking_;
     snapshot.player_attack_pose = field_entity_attack_pose_active_;
+    snapshot.player_attack_pose_kind = field_entity_attack_pose_kind_;
     snapshot.player_attack_direction = field_entity_attack_direction_;
     snapshot.target_heading = field_target_heading_;
     snapshot.return_anchor = pending_field_return_anchor_;
@@ -16356,6 +16419,7 @@ bool FieldSceneRuntime::restore_world_activity_source_scene(
         snapshot.player_animation_reset_pending;
     field_entity_walking_ = snapshot.player_walking;
     field_entity_attack_pose_active_ = snapshot.player_attack_pose;
+    field_entity_attack_pose_kind_ = snapshot.player_attack_pose_kind;
     field_entity_attack_direction_ = snapshot.player_attack_direction;
     field_target_heading_ = snapshot.target_heading;
 
@@ -20085,21 +20149,34 @@ void FieldSceneRuntime::paint_field_scene_entities(
             field_entity_idle_images_.size());
         const auto walking = field_entity_animation_id_ == "walk";
         const auto attack_pose = field_entity_animation_id_ == "attack";
+        const auto strike_pose = field_entity_animation_id_ == "strike";
+        const auto cast_pose = field_entity_animation_id_ == "cast";
+        const auto strike_frame = static_cast<std::size_t>(
+            field_entity_animation_.frame & 1U);
         const auto movement_frames =
             field_entity_walk_images_[direction].size();
         const auto frame = movement_frames == 0U
             ? 0U
             : static_cast<std::size_t>(field_entity_animation_.frame) %
                   movement_frames;
-        const auto& image = attack_pose
+        const auto& image = strike_pose
+            ? field_entity_strike_images_[direction][strike_frame]
+            : cast_pose ? field_entity_cast_images_[direction]
+            : attack_pose
             ? field_entity_attack_images_[direction]
             : walking ? field_entity_walk_images_[direction][frame]
                       : field_entity_idle_images_[direction];
-        const auto origin_x = attack_pose
+        const auto origin_x = strike_pose
+            ? field_entity_strike_origin_x_[direction][strike_frame]
+            : cast_pose ? field_entity_cast_origin_x_[direction]
+            : attack_pose
             ? field_entity_attack_origin_x_[direction]
             : walking ? field_entity_walk_origin_x_[direction][frame]
                       : field_entity_idle_origin_x_[direction];
-        const auto origin_y = attack_pose
+        const auto origin_y = strike_pose
+            ? field_entity_strike_origin_y_[direction][strike_frame]
+            : cast_pose ? field_entity_cast_origin_y_[direction]
+            : attack_pose
             ? field_entity_attack_origin_y_[direction]
             : walking ? field_entity_walk_origin_y_[direction][frame]
                       : field_entity_idle_origin_y_[direction];

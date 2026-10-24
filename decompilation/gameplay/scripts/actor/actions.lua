@@ -545,8 +545,9 @@ end
 -- 0x15C84/0x15C58 then accepts only an active target closer than 0x200.
 -- In range it requests 0x4D (0x4E when FFF9F8 bit 7) and runs the shared
 -- 0x55C76 reaction. Returns swing audio and the optional heading audio.
--- [H] the 0xAFF2 hit pose and 0x15A8C hit-spark slot spawned when a meter
--- changes are not modelled for the player strike.
+-- [C] the target's 0xAFF2 hit pose is the incoming_hit reaction that
+-- combat.commit_combatant_meters raises for world actors.
+-- [H] the 0x15A8C spark child (0xAC4E, kind 1 art) is not spawned.
 function R.begin_player_melee(state, context)
     if context.phase ~= "behavior" or
        context.player_melee_available ~= true or
@@ -560,7 +561,16 @@ function R.begin_player_melee(state, context)
         or SoundId.MELEE_SWING
     local target = type(context.ai_target_candidates) == "table" and
         context.ai_target_candidates[1] or nil
+    if type(target) == "table" and type(target.heading) == "number" then
+        -- ROM 0xB212: 0x15D3C self->target bearing to +0x34 and +0x2E.
+        state.strike_heading = target.heading & 0xffff
+    end
+    -- ROM 0x15C58: target +0x10 bit 0 set, bit 6 clear, 0x14D58 < 0x200.
+    local flags = type(target) == "table" and target.service_flags or nil
     if type(target) ~= "table" or type(target.distance) ~= "number" or
+       type(flags) ~= "number" or
+       (flags & ActorStatus.ACTIVE) == 0 or
+       (flags & ActorStatus.DEAD) ~= 0 or
        (target.distance & 0xffff) >= 0x200 then
         state.source_action_dispatch = "player_melee"
         return swing

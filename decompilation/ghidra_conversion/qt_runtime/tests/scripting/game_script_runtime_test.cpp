@@ -5616,7 +5616,49 @@ int main() {
     player_strike.ai_target_candidates.front().distance = 0x0300U;
     const auto player_strike_miss = scripts.actor_heartbeat(player_strike);
     player_strike.ai_target_candidates.front().distance = 0x0100U;
+    player_strike.ai_target_candidates.front().heading = 0x4000U;
     const auto player_strike_hit = scripts.actor_heartbeat(player_strike);
+    // ROM 0x15C58: a record with +0x10 bit 6 set is never in range.
+    player_strike.ai_target_candidates.front().service_flags = 0x41U;
+    const auto player_strike_dead = scripts.actor_heartbeat(player_strike);
+    player_strike.ai_target_candidates.front().service_flags = 0x01U;
+    auto player_strike_render = player_strike;
+    player_strike_render.phase = ScriptActorHeartbeatPhase::render;
+    player_strike_render.animation_mode = ScriptActorAnimationMode::strike;
+    player_strike_render.animation_direction_override = 2U;
+    std::optional<ScriptActorBehaviorDecision> strike_frame_zero;
+    std::optional<ScriptActorBehaviorDecision> strike_frame_one;
+    for (std::size_t pass = 0U; pass < 12U; ++pass) {
+        const auto pose = scripts.actor_heartbeat(player_strike_render);
+        if (pass == 0U) {
+            strike_frame_zero = pose;
+        }
+        strike_frame_one = pose;
+    }
+    player_strike_render.animation_mode = ScriptActorAnimationMode::cast;
+    const auto cast_pose = scripts.actor_heartbeat(player_strike_render);
+    if (!expect(
+            player_strike_dead.has_value() &&
+                player_strike_dead->source_action_dispatch ==
+                    std::optional<std::string>{"player_melee"} &&
+                player_strike_hit.has_value() &&
+                player_strike_hit->strike_heading ==
+                    std::optional<std::uint16_t>{0x4000U} &&
+                strike_frame_zero.has_value() &&
+                strike_frame_zero->animation_id == "strike" &&
+                strike_frame_zero->animation_frame == 0U &&
+                strike_frame_zero->animation_selector ==
+                    std::optional<std::uint16_t>{0x00C8U} &&
+                !strike_frame_zero->strike_heading.has_value() &&
+                strike_frame_one.has_value() &&
+                strike_frame_one->animation_frame == 1U &&
+                cast_pose.has_value() && cast_pose->animation_id == "cast" &&
+                cast_pose->animation_selector ==
+                    std::optional<std::uint16_t>{0x0088U},
+            "Lua player strike did not follow 0x15C58 flags or the C0A2 pose")) {
+        std::cerr << scripts.failure() << '\n';
+        return 108;
+    }
     if (!expect(
             player_strike_miss.has_value() &&
                 player_strike_miss->source_action_dispatch ==

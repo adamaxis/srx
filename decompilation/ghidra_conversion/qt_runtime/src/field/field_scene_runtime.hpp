@@ -1877,6 +1877,7 @@ private:
         bool player_animation_reset_pending = false;
         bool player_walking = false;
         bool player_attack_pose = false;
+        std::uint8_t player_attack_pose_kind = 0U;
         std::uint8_t player_attack_direction = 0U;
         std::uint16_t target_heading = 0U;
         FieldLocationReturnAnchor return_anchor =
@@ -2182,6 +2183,13 @@ private:
     std::array<QImage, 8> field_entity_attack_images_{};
     std::array<int, 8> field_entity_attack_origin_x_{};
     std::array<int, 8> field_entity_attack_origin_y_{};
+    // ROM C0A2 unarmed strike (two frames) and C082 spell pose (one frame).
+    std::array<std::array<QImage, 2>, 8> field_entity_strike_images_{};
+    std::array<std::array<int, 2>, 8> field_entity_strike_origin_x_{};
+    std::array<std::array<int, 2>, 8> field_entity_strike_origin_y_{};
+    std::array<QImage, 8> field_entity_cast_images_{};
+    std::array<int, 8> field_entity_cast_origin_x_{};
+    std::array<int, 8> field_entity_cast_origin_y_{};
     std::array<DefaultActorArtwork, 2> field_default_actor_artwork_{};
     std::unordered_map<std::string, DefaultActorArtwork>
         field_dynamic_actor_artwork_;
@@ -2231,6 +2239,9 @@ private:
     bool field_player_animation_reset_pending_ = false;
     bool field_entity_walking_ = false;
     bool field_entity_attack_pose_active_ = false;
+    // Which list the active +0x16 pose came from: 0 firearm C042,
+    // 1 unarmed strike C0A2, 2 spell C082.
+    std::uint8_t field_entity_attack_pose_kind_ = 0U;
     std::uint8_t field_entity_attack_direction_ = 0U;
     bool field_combat_input_suppressed_until_release_ = false;
     std::array<MovementOffset, integration::kFieldMovementDirectionCount>

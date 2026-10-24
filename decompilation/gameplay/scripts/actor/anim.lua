@@ -25,6 +25,8 @@ local function snapshot(state, action, audio_event, projectile_movement,
     end
     local combat_meter_update = state.combat_meter_update
     state.combat_meter_update = nil
+    local strike_heading = state.strike_heading
+    state.strike_heading = nil
     return {
         actor_id = state.actor_id,
         profile_id = state.profile_id,
@@ -45,6 +47,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
         combat_action_requested = state.combat_action_requested,
         audio_event = audio_event,
         target_heading_audio_event = target_heading_audio_event,
+        strike_heading = strike_heading,
         weapon_item_id = state.weapon_item_id,
         animation_increment = state.animation_increment,
         movement_heading = state.movement_heading,
@@ -411,6 +414,33 @@ local function advance_player_animation(state, context)
     if context.animation_mode == "attack" then
         state.animation_id = "attack"
         state.animation_selector = nil
+        state.animation_frame = 0
+        state.animation_accumulator = 0
+        return
+    end
+    if context.animation_mode == "strike" then
+        -- ROM 0xB1DC selects C0A2[dir] (0xC0..0xDC). Its finite 0x8002 list
+        -- holds two frames advanced by +0x200 per 0x5FDC pass, then holds.
+        if state.animation_id ~= "strike" then
+            state.animation_frame = 0
+            state.animation_accumulator = 0
+        end
+        state.animation_id = "strike"
+        state.animation_selector = 0xC0 + state.direction * 4
+        local accumulated = state.animation_accumulator + 0x0200
+        if accumulated >= 0x1000 then
+            accumulated = accumulated - 0x1000
+            if state.animation_frame < 1 then
+                state.animation_frame = state.animation_frame + 1
+            end
+        end
+        state.animation_accumulator = accumulated
+        return
+    end
+    if context.animation_mode == "cast" then
+        -- ROM 0xAF7C/0xAFAE select C082[dir] (0x80..0x9C), one frame.
+        state.animation_id = "cast"
+        state.animation_selector = 0x80 + state.direction * 4
         state.animation_frame = 0
         state.animation_accumulator = 0
         return

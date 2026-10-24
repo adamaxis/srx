@@ -1065,6 +1065,8 @@ enum class ScriptActorAnimationMode : std::uint8_t {
     idle,
     walking,
     attack,
+    strike, // ROM 0xB1DC C0A2 unarmed strike list
+    cast,   // ROM 0xAF7C/0xAFAE C082 spell pose
 };
 
 struct ScriptMovementOffset {
@@ -1412,6 +1414,9 @@ struct ScriptActorBehaviorDecision {
     bool transition_complete = false;
     std::optional<std::uint16_t> audio_event;
     std::optional<std::uint16_t> target_heading_audio_event;
+    // ROM 0xB212: a +0xA2-linked unarmed strike writes the 0x15D3C bearing
+    // to +0x34 and +0x2E before selecting C0A2. Player behavior pass only.
+    std::optional<std::uint16_t> strike_heading;
     std::optional<std::uint8_t> weapon_item_id;
     std::optional<std::uint16_t> movement_heading;
     std::optional<std::uint16_t> movement_current_heading;
