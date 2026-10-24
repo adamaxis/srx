@@ -1706,12 +1706,12 @@ int main() {
                     julius_task.operation->type ==
                         ScriptNativeOperation::Type::service_call &&
                     julius_task.operation->service_id ==
-                        "johnson.purchase_quinton_contact",
+                        "building.charge_1000",
                 "Julius contact purchase did not request the typed host transaction")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
-    julius_task = scripts.complete_native_service_result("purchased");
+    julius_task = scripts.complete_native_service_result("paid");
     if (!expect(julius_task.operation.has_value() &&
                     julius_task.operation->menu.has_value() &&
                     julius_task.operation->menu->id == "contacts_purchased" &&
@@ -1900,12 +1900,12 @@ int main() {
                     mortimer_task.operation->type ==
                         ScriptNativeOperation::Type::service_call &&
                     mortimer_task.operation->service_id ==
-                        "johnson.purchase_alesandro_contact",
+                        "building.charge_1500",
                 "Mortimer contact did not call the typed purchase service")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
-    mortimer_task = scripts.complete_native_service_result("purchased");
+    mortimer_task = scripts.complete_native_service_result("paid");
     if (!expect(mortimer_task.operation.has_value() &&
                     mortimer_task.operation->menu.has_value() &&
                     mortimer_task.operation->menu->id == "contacts_purchased" &&

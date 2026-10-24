@@ -1139,13 +1139,23 @@ FieldSceneRuntime::FieldSceneRuntime(
                 handle_field_mode_action_event();
                 return "applied";
             }
-            if (service_id == "party.award_karma_2") {
-                if (!field_party_roster_.available()) {
+            constexpr std::string_view kAwardKarmaPrefix =
+                "party.award_karma_";
+            if (service_id.rfind(kAwardKarmaPrefix, 0U) == 0U) {
+                const auto amount_text =
+                    service_id.substr(kAwardKarmaPrefix.size());
+                std::uint32_t amount = 0U;
+                const auto parsed = std::from_chars(
+                    amount_text.data(),
+                    amount_text.data() + amount_text.size(), amount);
+                if (amount_text.empty() || parsed.ec != std::errc{} ||
+                    parsed.ptr != amount_text.data() + amount_text.size() ||
+                    amount > 0xFFU || !field_party_roster_.available()) {
                     return std::nullopt;
                 }
                 for (auto& runner : field_party_roster_.records()) {
                     runner.auxiliary[2U] = static_cast<std::uint8_t>(
-                        runner.auxiliary[2U] + 2U);
+                        runner.auxiliary[2U] + amount);
                 }
                 return "applied";
             }
@@ -1374,26 +1384,7 @@ FieldSceneRuntime::FieldSceneRuntime(
                                  std::string(*script_result)}
                            : std::nullopt;
             }
-            std::uint32_t finder_fee = 0U;
-            if (service_id == "johnson.purchase_decker_contact" ||
-                service_id == "johnson.purchase_quinton_contact") {
-                finder_fee = 1000U;
-            } else if (service_id ==
-                       "johnson.purchase_alesandro_contact") {
-                // ROM command 0x50 at 0x221BA charges 1,500 nuyen for
-                // Mortimer Reed's Alesandro Hobbs contact.
-                finder_fee = 1500U;
-            } else {
-                return std::nullopt;
-            }
-            if (!field_funds_.has_value()) {
-                return std::nullopt;
-            }
-            if (*field_funds_ < finder_fee) {
-                return "insufficient";
-            }
-            *field_funds_ -= finder_fee;
-            return "purchased";
+            return std::nullopt;
         });
     configure_callbacks();
 }

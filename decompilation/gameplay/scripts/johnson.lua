@@ -110,12 +110,28 @@ local function answer_questions()
     end
 end
 
+-- Finder fees (nuyen) charged through the generic building.charge_<n>
+-- host service. ROM 0x2218E charges 1,000 for Gunderson's decker and
+-- Julius's Quinton contacts; ROM cmd 0x50 at 0x221BA charges 1,500 for
+-- Mortimer's Alesandro Hobbs contact.
+local FINDER_FEES = { decker = 1000, quinton = 1000, alesandro = 1500 }
+
+-- Returns "purchased", "insufficient" or nil (host could not charge).
+local function purchase_contact(contact)
+    local result = game.services.call(
+        "building", "charge_" .. tostring(FINDER_FEES[contact]))
+    if result == "paid" then
+        return "purchased"
+    end
+    return result
+end
+
 local function present_decker_offer()
     game.ui.say("contacts-introduction")
     if game.ui.menu("decker_offer", { "accept", "back" }) ~= "accept" then
         return "back"
     end
-    return game.services.call("johnson", "purchase_decker_contact")
+    return purchase_contact("decker")
 end
 
 local function present_information(root_menu)
@@ -208,8 +224,7 @@ local function present_julius_information()
                "accept" then
                 return "back"
             end
-            local purchase = game.services.call(
-                "johnson", "purchase_quinton_contact")
+            local purchase = purchase_contact("quinton")
             if purchase == "purchased" then
                 -- ROM command 0x2218E charges 1,000 nuyen and sets FFFC2C
                 -- bit 0, the Captain Quinton contact row.
@@ -290,8 +305,7 @@ local function present_mortimer_information()
         elseif topic == "contacts" then
             if game.ui.menu("contacts_offer", { "accept", "back" }) ==
                "accept" then
-                local purchase = game.services.call(
-                    "johnson", "purchase_alesandro_contact")
+                local purchase = purchase_contact("alesandro")
                 if purchase == "purchased" then
                     -- ROM command 0x50 charges 1,500 and sets FFFC2C bit 1.
                     game.state.vid_phone_contact_1 = true

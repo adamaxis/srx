@@ -131,6 +131,9 @@ int main() {
     std::size_t decker_contact_purchase_calls = 0U;
     std::uint32_t julius_contact_funds = 1000U;
     std::size_t julius_contact_purchase_calls = 0U;
+    // Finder fees are the generic building.charge_<n> host service; the
+    // 1,000 charge belongs to Gunderson until the Julius phase begins.
+    bool julius_contact_phase = false;
     std::uint32_t mortimer_contact_funds = 1500U;
     std::size_t mortimer_contact_purchase_calls = 0U;
     std::uint32_t inn_funds = 30U;
@@ -297,6 +300,7 @@ int main() {
     runtime.set_native_script_service_callback(
         [&decker_contact_funds, &decker_contact_purchase_calls,
          &julius_contact_funds, &julius_contact_purchase_calls,
+         &julius_contact_phase,
          &mortimer_contact_funds, &mortimer_contact_purchase_calls,
          &inn_funds, &inn_source_triplet_updates,
          &room_payment_funds, &room_payment_outcome,
@@ -337,34 +341,29 @@ int main() {
                 ++inn_source_triplet_updates;
                 return "applied";
             }
-            if (service_id == "johnson.purchase_quinton_contact") {
-                ++julius_contact_purchase_calls;
-                constexpr std::uint32_t kFinderFee = 1000U;
-                if (julius_contact_funds < kFinderFee) {
+            const auto finder_fee = [](std::uint32_t& funds,
+                                       std::size_t& calls,
+                                       const std::uint32_t fee)
+                -> std::optional<std::string> {
+                ++calls;
+                if (funds < fee) {
                     return "insufficient";
                 }
-                julius_contact_funds -= kFinderFee;
-                return "purchased";
+                funds -= fee;
+                return "paid";
+            };
+            if (service_id == "building.charge_1500") {
+                return finder_fee(mortimer_contact_funds,
+                                  mortimer_contact_purchase_calls, 1500U);
             }
-            if (service_id == "johnson.purchase_alesandro_contact") {
-                ++mortimer_contact_purchase_calls;
-                constexpr std::uint32_t kFinderFee = 1500U;
-                if (mortimer_contact_funds < kFinderFee) {
-                    return "insufficient";
-                }
-                mortimer_contact_funds -= kFinderFee;
-                return "purchased";
-            }
-            if (service_id != "johnson.purchase_decker_contact") {
+            if (service_id != "building.charge_1000") {
                 return std::nullopt;
             }
-            ++decker_contact_purchase_calls;
-            constexpr std::uint32_t kFinderFee = 1000U;
-            if (decker_contact_funds < kFinderFee) {
-                return "insufficient";
-            }
-            decker_contact_funds -= kFinderFee;
-            return "purchased";
+            return julius_contact_phase
+                       ? finder_fee(julius_contact_funds,
+                                    julius_contact_purchase_calls, 1000U)
+                       : finder_fee(decker_contact_funds,
+                                    decker_contact_purchase_calls, 1000U);
         });
     if (!expect(runtime.load_assets(assets.catalog))) {
         return 2;
@@ -1296,6 +1295,7 @@ int main() {
                      "or missed the ROM fallback descriptor\n";
         return 107;
     }
+    julius_contact_phase = true;
 
     const auto capture_julius = [&runtime](const std::string_view scene) {
         const auto output_dir = std::filesystem::current_path() /
