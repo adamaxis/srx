@@ -2061,6 +2061,46 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
+    // Map-edge scroll: the camera follow stops at scene-profile word 4
+    // (scene 2: 0x6700 -> 1648 px = image_width 1920 - 272). The map must
+    // scroll with the same camera the actors are projected from; a map-side
+    // clamp to width-320 left it 48 px behind and actors slid against it.
+    const auto& edge_profile = field_scene.state().field_scene_buffers.profile;
+    const auto edge_camera_x = edge_profile.size() > 4U ? edge_profile[4] : 0U;
+    const auto edge_camera_y = field_scene.state().field_scene_buffers.camera_y;
+    field_scene.set_field_camera_world_position_for_dump(edge_camera_x,
+                                                         edge_camera_y);
+    const auto edge_frame = render_qa_field(field_scene, true);
+    const QImage edge_map = field_scene.field_map_for_dump().convertToFormat(
+        QImage::Format_RGB32);
+    const int edge_origin_x = static_cast<int>(edge_camera_x >> 4U);
+    const int edge_origin_y = static_cast<int>(edge_camera_y >> 4U);
+    std::size_t edge_samples = 0U;
+    std::size_t edge_matches = 0U;
+    for (int y = 0; y < kSceneHeight; y += 2) {
+        for (int x = 0; x < 272; x += 2) {
+            const int map_x = edge_origin_x + x;
+            const int map_y = edge_origin_y + y;
+            if (map_x >= edge_map.width() || map_y >= edge_map.height()) {
+                continue;
+            }
+            ++edge_samples;
+            edge_matches += edge_frame.pixel(x, y) == edge_map.pixel(map_x, map_y);
+        }
+    }
+    const auto edge_match_percent =
+        edge_samples == 0U ? 0U : edge_matches * 100U / edge_samples;
+    if (edge_camera_x != 0x6700U || edge_samples == 0U ||
+        edge_match_percent < 90U ||
+        !edge_frame.save(QString::fromStdWString(
+            (output / "map-edge-scroll.bmp").wstring()))) {
+        std::cerr << "field random-encounter QA: map did not scroll with the "
+                     "actor camera at the profile edge camera_x=0x"
+                  << std::hex << edge_camera_x << std::dec
+                  << " match=" << edge_match_percent << "%\n";
+        return 3;
+    }
+
     std::cout << "field_random_encounter_spawn_qa=passed scene=2 selector=1+2 actors=2 active="
               << actors_after << " long_trace_active=" << actors_after_1200
               << " visible=" << visible_before << ','
@@ -2099,9 +2139,7 @@ int run_field_random_encounter_spawn_qa(
     std::cout << "} runner="
               << field_scene.field_entity_world_position().x << ','
               << field_scene.field_entity_world_position().y
-              << " viewport_world_origin="
-              << field_scene.state().field_scene_buffers.camera_x << ','
-              << field_scene.state().field_scene_buffers.camera_y
+              << " map_edge_scroll_match=" << edge_match_percent << '%'
               << " target_selected=" << *selected_actor_after_release
               << " visible_fixture_actor_count=" << visible_fixture_count
               << " creature_walk_frames="

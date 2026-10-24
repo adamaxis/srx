@@ -24690,10 +24690,13 @@ void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
         0, static_cast<int>(scene.camera_x >> 4U));
     const auto camera_y = std::max(
         0, static_cast<int>(scene.camera_y >> 4U));
-    const auto max_x = std::max(0, field_map_.width() - 320);
-    const auto max_y = std::max(0, field_map_.height() - 224);
-    const auto viewport_x = std::min(camera_x, max_x);
-    const auto viewport_y = std::min(camera_y, max_y);
+    // The camera follow already clamps to the scene profile words 2..5; in
+    // 55 of 56 ROM scene profiles max_x>>4 == image_width-272 (272 px
+    // playfield, HUD window over x=272..319). A further clamp to width-320
+    // froze the map 48 px early while actors, projected from the same raw
+    // camera, kept scrolling, so they slid against the map at the edge.
+    const auto viewport_x = camera_x;
+    const auto viewport_y = camera_y;
     // ROM 0x481E builds ordinary field actors with sprite priority clear.
     // Preserve the source map's high-priority tiles over those actors; the
     // same draw order must hold for every scene loaded from a map resource.
