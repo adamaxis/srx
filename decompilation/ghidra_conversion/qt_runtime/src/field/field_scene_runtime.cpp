@@ -76,6 +76,19 @@ constexpr std::array<std::array<int, 2>, 12> kHospitalRandomGridOrigins{{
     {{56, 200}}, {{200, 200}}, {{56, 208}}, {{200, 208}},
 }};
 
+void make_random_grid_black_transparent(QImage& image) {
+    image = image.convertToFormat(QImage::Format_ARGB32);
+    for (int y = 0; y < image.height(); ++y) {
+        auto* const pixels = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            if (qRed(pixels[x]) == 0 && qGreen(pixels[x]) == 0 &&
+                qBlue(pixels[x]) == 0) {
+                pixels[x] = qRgba(0, 0, 0, 0);
+            }
+        }
+    }
+}
+
 bool read_save_integer(const QJsonObject& object, const char* key,
                        const std::int64_t minimum,
                        const std::int64_t maximum,
@@ -6973,10 +6986,11 @@ bool FieldSceneRuntime::load_command_overview_assets(
                   std::to_string(2U - index)
             : std::string(kRandomGridIndexedAliasPrefix) +
                   std::to_string(index - 3U);
-        if (!load_image(catalog, alias,
-                        dismiss_runner_random_grid_patterns_[index])) {
+        auto& pattern = dismiss_runner_random_grid_patterns_[index];
+        if (!load_image(catalog, alias, pattern)) {
             return false;
         }
+        make_random_grid_black_transparent(pattern);
     }
     for (std::size_t index = 0;
          index < command_overview_magic_spell_icons_.size(); ++index) {

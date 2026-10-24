@@ -38,6 +38,7 @@
 #include <QString>
 #include <QTimer>
 #include <QWidget>
+#include <QtGlobal>
 
 #include <algorithm>
 #include <array>
@@ -167,8 +168,10 @@ public:
           // frame by frame and logs every (frame, op, id).
           audio_playback_(std::make_unique<AudioPlaybackService>(
               audio_alias_resolver(),
-              headless_replay ? AudioPlaybackService::Output::null
-                              : AudioPlaybackService::Output::device)),
+              headless_replay ||
+                      qEnvironmentVariableIntValue("SRX_HEADLESS") != 0
+                  ? AudioPlaybackService::Output::null
+                  : AudioPlaybackService::Output::device)),
           field_scene_runtime_([this](const std::string_view boundary) {
               record_debug_source_event(boundary);
               // The New Game opening walk's arm/consume boundaries close the

@@ -42548,11 +42548,39 @@ int main(int argc, char** argv) {
                     expected_yellow_grid = QImage(QString::fromStdWString(
                         yellow_grid_resource->absolute_path.wstring()));
                 }
+                const auto* secretary_background_resource =
+                    smoke_state.asset_catalog.catalog.find(
+                        "menu.pocket.secretary.background");
+                const auto* secretary_grid_resource =
+                    smoke_state.asset_catalog.catalog.find(
+                        "menu.pocket.secretary.grid");
+                QImage expected_cell_backing(16, 8,
+                                             QImage::Format_ARGB32_Premultiplied);
+                expected_cell_backing.fill(Qt::black);
+                QImage secretary_background;
+                QImage secretary_grid;
+                if (secretary_background_resource != nullptr) {
+                    secretary_background = QImage(QString::fromStdWString(
+                        secretary_background_resource->absolute_path.wstring()));
+                }
+                if (secretary_grid_resource != nullptr) {
+                    secretary_grid = QImage(QString::fromStdWString(
+                        secretary_grid_resource->absolute_path.wstring()));
+                }
+                if (!secretary_background.isNull() &&
+                    !secretary_grid.isNull()) {
+                    QPainter backing_painter(&expected_cell_backing);
+                    backing_painter.drawImage(-40, -200,
+                                              secretary_background);
+                    backing_painter.drawImage(-16, -176, secretary_grid);
+                }
                 if (field_scene.source_random_seed_for_dump() != 0x4BC9U ||
                     expected_yellow_grid.isNull() ||
-                    secretary_scene.copy(QRect(40, 200, 16, 8)) !=
-                        expected_yellow_grid.convertToFormat(
-                            QImage::Format_RGB32) ||
+                    secretary_background.isNull() ||
+                    secretary_grid.isNull() ||
+                    !image_cell_matches_black_transparent_pattern(
+                        secretary_scene, expected_yellow_grid,
+                        expected_cell_backing, 40, 200) ||
                     !save_secretary_scene(
                         "random-grid-source-roll-0", secretary_scene)) {
                     std::cerr << "field secretary dump: E660 source roll 0 "

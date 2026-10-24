@@ -131,6 +131,31 @@ bool image_region_matches_rgb32_asset(const QImage& scene,
            asset.convertToFormat(QImage::Format_RGB32);
 }
 
+bool image_cell_matches_black_transparent_pattern(
+    const QImage& scene, const QImage& pattern,
+    const QImage& backing, const int origin_x, const int origin_y) {
+    if (pattern.isNull() || backing.size() != pattern.size() ||
+        origin_x < 0 || origin_y < 0 ||
+        origin_x + pattern.width() > scene.width() ||
+        origin_y + pattern.height() > scene.height()) {
+        return false;
+    }
+    for (int y = 0; y < pattern.height(); ++y) {
+        for (int x = 0; x < pattern.width(); ++x) {
+            const auto pattern_pixel = pattern.pixelColor(x, y);
+            const auto expected = pattern_pixel.red() == 0 &&
+                                          pattern_pixel.green() == 0 &&
+                                          pattern_pixel.blue() == 0
+                                      ? backing.pixelColor(x, y)
+                                      : pattern_pixel;
+            if (scene.pixelColor(origin_x + x, origin_y + y) != expected) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool image_region_differs(const QImage& first, const QImage& second,
                           const int x, const int y, const int width,
                           const int height) {
