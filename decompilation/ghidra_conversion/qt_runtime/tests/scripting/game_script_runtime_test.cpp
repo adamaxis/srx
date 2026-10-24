@@ -5606,6 +5606,36 @@ int main() {
         return 106;
     }
 
+    // ROM 0xAD86/0xB1DC: an empty +0x57 swings (0x4C); within 0x200 of the
+    // selected target 0x55C76 resolves and the 0x4D/0x4E cue follows.
+    auto player_strike = player_cast;
+    player_strike.player_spell_available = false;
+    player_strike.player_spell_code = 0U;
+    player_strike.player_melee_available = true;
+    player_strike.entity_kind = 0x03U;
+    player_strike.ai_target_candidates.front().distance = 0x0300U;
+    const auto player_strike_miss = scripts.actor_heartbeat(player_strike);
+    player_strike.ai_target_candidates.front().distance = 0x0100U;
+    const auto player_strike_hit = scripts.actor_heartbeat(player_strike);
+    if (!expect(
+            player_strike_miss.has_value() &&
+                player_strike_miss->source_action_dispatch ==
+                    std::optional<std::string>{"player_melee"} &&
+                player_strike_miss->audio_event ==
+                    std::optional<std::uint16_t>{0x004CU} &&
+                !player_strike_miss->target_heading_audio_event.has_value() &&
+                !player_strike_miss->combat_meter_update.has_value() &&
+                player_strike_hit.has_value() &&
+                player_strike_hit->source_action_dispatch ==
+                    std::optional<std::string>{"player_melee_hit"} &&
+                player_strike_hit->audio_event ==
+                    std::optional<std::uint16_t>{0x004CU} &&
+                player_strike_hit->target_heading_audio_event.has_value(),
+            "Lua player strike did not follow the 0xB1DC range gate")) {
+        std::cerr << scripts.failure() << '\n';
+        return 107;
+    }
+
     auto projectile_context = actor_context(
         "weapon_projectile", "field_weapon_slot_9", 3U,
         ScriptActorActionKind::none, 0U, 0U, true);

@@ -14094,7 +14094,15 @@ FieldSceneRuntime::heartbeat_field_player(
             classify_field_combat_action(runner.equipped_inventory_slot,
                                          runner.equipped_item_code) ==
                 FieldCombatActionKind::magic_spell;
-        if (actor_context.player_spell_available) {
+        // ROM 0xAD86 -> 0xB1DC: non-negative +0x56 and +0x57 == 0.
+        actor_context.player_melee_available =
+            (runner.flags & 0x0300U) == 0x0300U &&
+            runner.equipped_inventory_slot >= 0 &&
+            runner.equipped_item_code == 0U;
+        actor_context.target_heading_audio_alternate =
+            (field_random_seed_ & 0x8000U) != 0U;
+        if (actor_context.player_spell_available ||
+            actor_context.player_melee_available) {
             actor_context.player_spell_code = runner.equipped_item_code;
             actor_context.action_profile_modifiers =
                 script_action_profile_modifiers(
@@ -14139,6 +14147,14 @@ FieldSceneRuntime::heartbeat_field_player(
                 candidate.source_record_slot =
                     static_cast<std::uint8_t>(target_slot);
                 candidate.combatant = target->combatant;
+                // ROM 0x15C58 measures the linked record via 0x14D58.
+                candidate.distance = static_cast<std::uint16_t>(
+                    measure_entity_target_heading_and_distance(
+                        field_entity_.world_position.x,
+                        field_entity_.world_position.y,
+                        target->world_position.x,
+                        target->world_position.y)
+                        .distance);
                 actor_context.ai_target_candidates.push_back(
                     std::move(candidate));
             }
@@ -14342,6 +14358,7 @@ void FieldSceneRuntime::advance_field_movement() {
     }
 
     service_player_spell_cast(*actor_decision);
+    service_player_melee(*actor_decision);
     service_player_weapon_action(
         actor_decision->combat_action_requested);
 
@@ -14508,6 +14525,42 @@ void FieldSceneRuntime::service_player_spell_cast(
             ? "field.combat.player_spell.effect_requested"
             : "field.combat.player_spell.action_resolved");
     }
+}
+
+void FieldSceneRuntime::service_player_melee(
+    const scripting::ScriptActorBehaviorDecision& decision) {
+    if (!decision.source_action_dispatch.has_value() ||
+        (*decision.source_action_dispatch != "player_melee" &&
+         *decision.source_action_dispatch != "player_melee_hit")) {
+        return;
+    }
+    auto& runner = active_runner_record();
+    // ROM 0xB1DC: 0xABFC mode 1 first, then the 0x4C/0x55 swing request.
+    EntityDelayState delay{runner.animation_action_gate};
+    update_entity_animation_delay(
+        delay,
+        EntityDelayAttributes{runner.attributes[1U], runner.attributes[4U],
+                              runner.cyberware_flags},
+        decode_entity_delay_scale(1U));
+    runner.animation_action_gate = delay.animation_delay;
+    if (source_audio_event_callback_) {
+        if (decision.audio_event.has_value()) {
+            source_audio_event_callback_(*decision.audio_event);
+        }
+        // 0xB25E: in-range strikes add the 0x4D/0x4E target cue.
+        if (decision.target_heading_audio_event.has_value()) {
+            source_audio_event_callback_(*decision.target_heading_audio_event);
+        }
+    }
+    if (decision.combat_meter_update.has_value() &&
+        !apply_script_combat_meter_update(*decision.combat_meter_update,
+                                          "field.combat.player_melee")) {
+        return;
+    }
+    refresh_field_hud_runner_slot();
+    source_boundary(*decision.source_action_dispatch == "player_melee_hit"
+        ? "field.combat.player_melee.hit"
+        : "field.combat.player_melee.swing");
 }
 
 bool FieldSceneRuntime::probe_action_line_clear(

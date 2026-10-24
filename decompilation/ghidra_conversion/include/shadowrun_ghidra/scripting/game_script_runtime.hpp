@@ -1262,6 +1262,9 @@ struct ScriptActorBehaviorContext {
     // ai_target_candidates[1]; Lua owns the cast policy.
     bool player_spell_available = false;
     std::uint8_t player_spell_code = 0;
+    // ROM 0xAD86: non-negative +0x56 with +0x57 == 0 enters the 0xB1DC
+    // unarmed strike.
+    bool player_melee_available = false;
     std::uint8_t controller_nibble = 0;
     std::array<std::uint16_t, 16> controller_heading_table{};
     std::optional<std::uint16_t> movement_heading_override;

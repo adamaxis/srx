@@ -1535,6 +1535,8 @@ private:
                                  std::uint16_t target_y);
     void service_player_spell_cast(
         const scripting::ScriptActorBehaviorDecision& decision);
+    void service_player_melee(
+        const scripting::ScriptActorBehaviorDecision& decision);
     DefaultActorSpriteView default_actor_sprite_view(
         const DefaultFieldActorPresentation& actor) const;
     const QImage* runner_preview_panel_for_record(

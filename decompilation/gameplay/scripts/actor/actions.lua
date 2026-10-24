@@ -539,6 +539,43 @@ function R.begin_player_spell_cast(state, context)
     return resolution.audio_event
 end
 
+-- ROM 0xAD86: a non-negative +0x56 with +0x57 == 0 jumps to 0xB1DC, the
+-- unarmed strike. It reloads the delay in mode 1 (0xABFC) and requests 0x4C
+-- (0x55 when +0x0E == 0x0C). With a +0xA2 link it turns toward the target;
+-- 0x15C84/0x15C58 then accepts only an active target closer than 0x200.
+-- In range it requests 0x4D (0x4E when FFF9F8 bit 7) and runs the shared
+-- 0x55C76 reaction. Returns swing audio and the optional heading audio.
+-- [H] the 0xAFF2 hit pose and 0x15A8C hit-spark slot spawned when a meter
+-- changes are not modelled for the player strike.
+function R.begin_player_melee(state, context)
+    if context.phase ~= "behavior" or
+       context.player_melee_available ~= true or
+       context.combat_confirm_held ~= true or
+       context.combat_action_ready ~= true or
+       context.combat_input_blocked == true then
+        return nil
+    end
+    state.combat_action_requested = false
+    local swing = context.entity_kind == 0x0C and SoundId.MELEE_SWING_ALT
+        or SoundId.MELEE_SWING
+    local target = type(context.ai_target_candidates) == "table" and
+        context.ai_target_candidates[1] or nil
+    if type(target) ~= "table" or type(target.distance) ~= "number" or
+       (target.distance & 0xffff) >= 0x200 then
+        state.source_action_dispatch = "player_melee"
+        return swing
+    end
+    local combat = game.modules.combat
+    local update = type(combat) == "table" and
+        type(combat.resolve_reaction) == "function" and
+        combat.resolve_reaction(context, target) or nil
+    state.source_action_dispatch = "player_melee_hit"
+    state.combat_meter_update = update
+    local heading_event = context.target_heading_audio_alternate
+        and SoundId.TARGET_HEADING_ALT or SoundId.TARGET_HEADING
+    return swing, heading_event
+end
+
 local function actor_matches_pending_spell_target(context, pending)
     if context.actor_id == pending.target_id then
         return true

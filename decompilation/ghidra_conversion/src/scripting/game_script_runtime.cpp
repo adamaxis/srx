@@ -7993,6 +7993,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "player_spell_available");
     lua_pushinteger(state, context.player_spell_code);
     lua_setfield(state, -2, "player_spell_code");
+    lua_pushboolean(state, context.player_melee_available);
+    lua_setfield(state, -2, "player_melee_available");
     lua_pushboolean(state, context.combat_input_blocked);
     lua_setfield(state, -2, "combat_input_blocked");
     lua_pushinteger(state, context.controller_nibble);
@@ -8899,7 +8901,8 @@ GameScriptRuntime::actor_heartbeat(
                 target_combatant = &*target->combatant;
                 target_is_world_actor = target->world_activity_actor;
                 target_linked =
-                    context.dynamic_world_encounter_actor &&
+                    (context.dynamic_world_encounter_actor ||
+                     context.player_melee_available) &&
                     context.phase == ScriptActorHeartbeatPhase::behavior &&
                     (update.record_type < 3U) != target_is_world_actor &&
                     ((update.record_type < 3U &&
@@ -9505,8 +9508,11 @@ GameScriptRuntime::actor_heartbeat(
         std::uint32_t event = 0U;
         if (!read_integer(state, -1, 0xFFFFU, event) ||
             (event != 0x004DU && event != 0x004EU) ||
-            !context.dynamic_world_encounter_actor ||
-            decision.animation_id != "action") {
+            (!(context.player_melee_available &&
+               !context.dynamic_world_encounter_actor &&
+               context.phase == ScriptActorHeartbeatPhase::behavior) &&
+             (!context.dynamic_world_encounter_actor ||
+              decision.animation_id != "action"))) {
             return fail(
                 "actor_ai.heartbeat returned an invalid target-heading audio event");
         }
@@ -9934,8 +9940,12 @@ GameScriptRuntime::actor_heartbeat(
             source_action_dispatch == "player_spell" ||
             source_action_dispatch == "player_spell_blocked" ||
             source_action_dispatch == "player_spell_no_target";
-        const bool player_label_matches = player_spell_label &&
-            context.player_spell_available &&
+        const bool player_melee_label =
+            source_action_dispatch == "player_melee" ||
+            source_action_dispatch == "player_melee_hit";
+        const bool player_label_matches =
+            ((player_spell_label && context.player_spell_available) ||
+             (player_melee_label && context.player_melee_available)) &&
             !context.dynamic_world_encounter_actor &&
             context.phase == ScriptActorHeartbeatPhase::behavior;
         if (player_label_matches) {
@@ -10095,10 +10105,29 @@ GameScriptRuntime::actor_heartbeat(
         (spell_pose && decision.spell_action_resolution.has_value() &&
          spell_action_audio_matches) ||
         player_spell_cast;
+    // ROM 0xB1DC: the player strike always requests 0x4C/0x55; only an
+    // in-range strike adds the 0x4D/0x4E heading cue.
+    const bool player_melee_dispatch =
+        context.player_melee_available &&
+        !context.dynamic_world_encounter_actor &&
+        context.phase == ScriptActorHeartbeatPhase::behavior &&
+        decision.source_action_dispatch.has_value() &&
+        (*decision.source_action_dispatch == "player_melee" ||
+         *decision.source_action_dispatch == "player_melee_hit");
+    const bool player_melee_hit = player_melee_dispatch &&
+        *decision.source_action_dispatch == "player_melee_hit";
+    if (player_melee_dispatch &&
+        (!decision.audio_event.has_value() ||
+         (*decision.audio_event != 0x004CU &&
+          *decision.audio_event != 0x0055U) ||
+         (decision.combat_meter_update.has_value() && !player_melee_hit))) {
+        return fail("actor_ai.heartbeat returned an invalid player strike");
+    }
     if (((begins_entry != decision.audio_event.has_value()) &&
          !projectile_behavior && !begins_dynamic_target_action &&
-         !dynamic_hit_reaction_audio && !spell_action_audio) ||
-        (begins_dynamic_target_action !=
+         !dynamic_hit_reaction_audio && !spell_action_audio &&
+         !player_melee_dispatch) ||
+        ((begins_dynamic_target_action || player_melee_hit) !=
          decision.target_heading_audio_event.has_value()) ||
         (decision.animation_id == "action" &&
          decision.audio_event.has_value() &&

@@ -203,6 +203,12 @@ function ActorAI.heartbeat(context)
             if cast_audio ~= nil then
                 audio_event = cast_audio
             end
+            local swing_audio, strike_heading_audio =
+                R.begin_player_melee(state, context)
+            if swing_audio ~= nil then
+                audio_event = swing_audio
+                target_heading_audio_event = strike_heading_audio
+            end
         end
         if context.phase == "render" then
             state.movement_step = nil
