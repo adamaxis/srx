@@ -9973,7 +9973,8 @@ GameScriptRuntime::actor_heartbeat(
         const bool player_spell_label =
             source_action_dispatch == "player_spell" ||
             source_action_dispatch == "player_spell_blocked" ||
-            source_action_dispatch == "player_spell_no_target";
+            source_action_dispatch == "player_spell_no_target" ||
+            source_action_dispatch == "player_spell_suppressed";
         const bool player_melee_label =
             source_action_dispatch == "player_melee" ||
             source_action_dispatch == "player_melee_hit";

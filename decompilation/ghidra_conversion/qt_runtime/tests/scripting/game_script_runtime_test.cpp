@@ -5567,6 +5567,20 @@ int main() {
             return bound == 0U ? std::nullopt
                                : std::optional<std::uint16_t>{0U};
         };
+    // ROM 0xAE6E: FFE186 == 3 returns before the cast (0xAF7C pose only).
+    auto player_cast_scene3 = player_cast;
+    player_cast_scene3.world_scene_state = 3U;
+    const auto player_cast_suppressed =
+        scripts.actor_heartbeat(player_cast_scene3);
+    if (!expect(player_cast_suppressed.has_value() &&
+                    player_cast_suppressed->source_action_dispatch ==
+                        std::optional<std::string>{"player_spell_suppressed"} &&
+                    !player_cast_suppressed->spell_action_resolution
+                         .has_value(),
+                "Lua player spell ignored the 0xAE6E FFE186 gate")) {
+        std::cerr << scripts.failure() << '\n';
+        return 108;
+    }
     const auto player_cast_no_target = scripts.actor_heartbeat(player_cast);
     ScriptActorTargetCandidate cast_target{};
     cast_target.id = "field_actor_slot_3";

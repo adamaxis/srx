@@ -14614,8 +14614,11 @@ void FieldSceneRuntime::advance_player_weapon_action_gate() {
 
 void FieldSceneRuntime::service_player_spell_cast(
     const scripting::ScriptActorBehaviorDecision& decision) {
-    const bool blocked = decision.source_action_dispatch.has_value() &&
-        *decision.source_action_dispatch == "player_spell_blocked";
+    const auto dispatch = decision.source_action_dispatch.value_or("");
+    // 0xAD94: no cast (blocked line, FFE186 == 3, no +0xA2) still runs 0xAF7C.
+    const bool blocked = dispatch == "player_spell_blocked" ||
+        dispatch == "player_spell_suppressed" ||
+        dispatch == "player_spell_no_target";
     if (!decision.spell_action_resolution.has_value() && !blocked) {
         return;
     }
@@ -14654,9 +14657,26 @@ void FieldSceneRuntime::service_player_spell_cast(
                               runner.cyberware_flags},
         decode_entity_delay_scale(0U));
     runner.animation_action_gate = delay.animation_delay;
+    // 0xAF7C/0xAFAE: +0x16 = C082[dir(+0x2E)], then 0xAF6C clears the clock.
+    const auto cast_direction = field_movement_direction_from_heading(
+        field_movement_state_.heading);
+    field_entity_animation_selector_ =
+        static_cast<std::uint16_t>(0x0080U + cast_direction * 4U);
+    field_entity_attack_direction_ = cast_direction;
+    field_entity_.direction = cast_direction;
+    field_entity_walking_ = false;
+    field_entity_attack_pose_active_ = true;
+    field_entity_attack_pose_kind_ = kFieldPlayerPoseCast;
+    field_entity_animation_.accumulator = 0;
+    field_entity_animation_.frame = 0U;
+    field_entity_animation_.redraw_requested = true;
     refresh_field_hud_runner_slot();
     if (blocked) {
-        source_boundary("field.combat.player_spell.blocked");
+        source_boundary(dispatch == "player_spell_blocked"
+            ? "field.combat.player_spell.blocked"
+            : dispatch == "player_spell_suppressed"
+            ? "field.combat.player_spell.scene_suppressed"
+            : "field.combat.player_spell.no_target");
     } else {
         source_boundary(decision.spell_action_resolution->effect_requested
             ? "field.combat.player_spell.effect_requested"

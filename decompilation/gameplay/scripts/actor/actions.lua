@@ -500,14 +500,21 @@ end
 -- 0x15D3C and runs the 0x14D8E line probe; carry set clears FFF0DD and the
 -- 0xAF7C pose runs without a cast. Otherwise it jumps to 0x1033E, the same
 -- spell action NPCs reach from 0x13FFE. Returns the 0x4946 audio event.
--- [H] 0xAE6E also jumps to 0x1033E with no +0xA2 link; that untargeted
--- path is not ported, so no cast is made without a target.
+-- ROM 0xAE6E returns at once while FFE186 == 3 (FFF0DD cleared). Every
+-- path then falls back to 0xAD94: FFF0DD set -> 0xAFAE, clear -> 0xAF7C;
+-- both reload the delay (0xABFC mode 0) and set +0x16 = C082[dir(+0x2E)].
+-- [H] 0xAE6E also jumps to 0x1033E with no +0xA2 link, reading a stale a1
+-- as the defender; that untargeted roll is not ported (pose only).
 function R.begin_player_spell_cast(state, context)
     if context.phase ~= "behavior" or
        context.player_spell_available ~= true or
        context.combat_confirm_held ~= true or
        context.combat_action_ready ~= true or
        context.combat_input_blocked == true then
+        return nil
+    end
+    if context.world_scene_state == 3 then
+        state.source_action_dispatch = "player_spell_suppressed"
         return nil
     end
     local target = type(context.ai_target_candidates) == "table" and
