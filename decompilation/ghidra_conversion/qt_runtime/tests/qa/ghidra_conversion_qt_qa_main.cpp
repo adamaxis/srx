@@ -37305,7 +37305,9 @@ int main(int argc, char** argv) {
                     manifest << "profile\traw_rom_record\tcolumn\t"
                                 "cursor_row\trecord_offset\tcurrent\t"
                                 "preview_status\tnext\tcost\tkarma\tframe\n";
-                    const QColor kGreen(0, 255, 0);
+                    // Menu text is CRAM 0x02C2 (levels 1,6,1), the same tint
+                    // as source_menu_caption_matches() [C].
+                    const QColor kGreen(42, 255, 42);
                     const auto color_tint =
                         std::optional<QColor>(kGreen);
                     const auto expected_preview = [&rom_bytes](
