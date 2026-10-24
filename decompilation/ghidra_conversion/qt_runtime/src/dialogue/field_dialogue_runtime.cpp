@@ -1535,8 +1535,9 @@ std::string_view FieldDialogueRuntime::field_console_menu_title() const noexcept
 }
 
 bool FieldDialogueRuntime::uses_hospital_menu_layout() const noexcept {
-    if (!panel_.open || !active_script_menu_.has_value() ||
-        active_script_menu_->text_profile != "council_island_hospital") {
+    // The 0xC928 menu ids are unique to the shared hospital service; every
+    // data.hospital_sites profile (Council Island, Little Chiba's) uses them.
+    if (!panel_.open || !active_script_menu_.has_value()) {
         return false;
     }
     const auto& id = active_script_menu_->id;
@@ -1548,7 +1549,6 @@ bool FieldDialogueRuntime::uses_hospital_menu_layout() const noexcept {
 bool FieldDialogueRuntime::uses_hospital_medical_attention_layout()
     const noexcept {
     return panel_.open && active_script_menu_.has_value() &&
-           active_script_menu_->text_profile == "council_island_hospital" &&
            active_script_menu_->id == "hospital_medical_attention";
 }
 

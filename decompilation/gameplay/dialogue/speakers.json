@@ -179,6 +179,29 @@
       "portrait_alias": "none",
       "text_profile": "council_island_hospital"
     },
+    "little_chiba_narrator": {
+      "events": {
+        "medical_attention_insufficient_funds": {
+          "continuation_key": "",
+          "title_key": "hospital.medical.insufficient_funds"
+        },
+        "medical_attention_not_needed": {
+          "continuation_key": "",
+          "title_key": "hospital.medical.not_needed"
+        },
+        "package_handoff": {
+          "continuation_key": "",
+          "title_key": "field.mode.little_chiba.package_handoff"
+        },
+        "package_payment": {
+          "continuation_key": "",
+          "title_key": "field.mode.little_chiba.package_payment"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "little_chiba"
+    },
     "council_medicine_lodge_narrator": {
       "events": {
         "farewell": {

@@ -199,6 +199,37 @@
         }
       }
     },
+    "little_chiba": {
+      "hospital_leave_confirmation": {
+        "choice_label_keys": {
+          "no": "ui.option.no",
+          "yes": "ui.option.yes"
+        },
+        "title_key": "hospital.leave.prompt"
+      },
+      "hospital_medical_attention": {
+        "choice_label_keys": {
+          "level_100": "hospital.medical.row.100",
+          "level_40": "hospital.medical.row.40",
+          "level_70": "hospital.medical.row.70",
+          "level_90": "hospital.medical.row.90"
+        }
+      },
+      "hospital_options": {
+        "choice_label_keys": {
+          "cyberware": "hospital.options.cyberware",
+          "exit": "hospital.options.exit",
+          "medical_attention": "hospital.options.medical_attention"
+        },
+        "title_key": "hospital.options.title"
+      },
+      "hospital_service_offer": {
+        "choice_label_keys": {
+          "leave": "council_island_hospital.option.leave",
+          "services": "council_island_hospital.option.services"
+        }
+      }
+    },
     "council_medicine_lodge": {
       "medicine_lodge_service_offer": {
         "choice_label_keys": {

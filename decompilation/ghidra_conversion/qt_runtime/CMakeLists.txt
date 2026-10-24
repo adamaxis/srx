@@ -905,9 +905,17 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_c0_exit_qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-c0-exit-qa")
 
 # Normal Right then Up+Right input from New Game contacts scene-2 collision
-# record 93 (C1/event 1). Its map event-table row 1 selects resource scene
-# 0x1A; this captures the source fade and complete destination scene after the
-# typed world-activity resource selection and scene re-entry.
+# record 93 (C1/event 1). Without a run, ROM 0x1F830 opens Little Chiba's
+# prompt and Hospital Options on the same map; Exit -> Yes returns the lead
+# outward (heading 0x8000).
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_little_chiba_hospital_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-little-chiba-hospital-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-little-chiba-hospital-qa")
+
+# The same contact during a type-5 run targeting 2/1 resumes event-table row 1
+# (resource scene 0x1A); this captures the complete destination scene after
+# the typed world-activity resource selection and scene re-entry.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene26-event1-entry-qa

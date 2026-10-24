@@ -16,8 +16,20 @@
         "returnAnchor": "collision_probe_lead",
         "returnFacing": "face_away_from_entry"
       },
+      "tasks": {
+        "fieldExitPrompt": {
+          "module": "council_island_hospital",
+          "function": "present_field_exit_prompt"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "little_chibas_chop_shop",
+        "textProfile": "little_chiba",
+        "speakerId": "little_chiba_narrator"
+      },
       "provenance": {
-        "evidence": "ROM scene 2 collision record 93 at 0x17314C; event-table row 1 at 0x172CDD selects numeric resource-activity scene 26."
+        "evidence": "ROM scene 2 collision record 93 at 0x17314C; event-table row 1 at 0x172CDD = 0x1A (scene 26) is source evidence only. ROM 0x1F830 matches FFFBF8/F9 = 2/1, sets text root FFF0B6 = 8 and runs the shared mode-exit prompt 0x1F246; the services reply opens Hospital Options 0xC928 on the same map, and every branch ends with d6 = FFFF, so the event-table scene is not loaded [C]. Emulator: Hospital Options opens in scene 2; Exit -> Yes leaves the lead at contact + row DOWN (28424,9670), heading 0x8000 [C emu, doc 27 sections 6-7]. Scene 26 is entered only by a type-4/5 Johnson run whose target is 2/1 (run stage 0x1EEDC precedes 0x1F5CA) [C + C emu]."
       }
     }
   ]
