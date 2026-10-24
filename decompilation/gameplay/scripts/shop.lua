@@ -410,6 +410,8 @@ Shop.catalog = {
                 offer(0x1B, 0x03, 0x14),
                 offer(0x1C, 0x02, 0x00),
                 offer(0x1C, 0x03, 0x14),
+                offer(0x24, 0x02, 0x00), -- Heal Wounds focus, 0x1AAEBC [C]
+                offer(0x24, 0x03, 0x14),
         }),
     },
     wire_masters = {
