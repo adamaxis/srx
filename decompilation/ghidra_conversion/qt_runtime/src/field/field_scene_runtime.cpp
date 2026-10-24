@@ -5032,6 +5032,7 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 ? "field.actor.spell.effect_requested"
                 : "field.actor.spell.action_resolved");
         }
+        const auto previous_record_flags = actor.source_record_flags;
         if (dynamic_world_actor) {
             actor.source_record_flags = decision->source_record_flags;
             actor.source_behavior_flags = decision->source_behavior_flags;
@@ -5060,9 +5061,15 @@ void FieldSceneRuntime::advance_default_field_actors() {
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
+        // ROM 0xAB02 runs once, when the 0xB330 death list (C0B2) finishes
+        // and it latches +0x10 bit 6 (effect_locked/DEAD). Lua reports that
+        // edge; spawn no longer plays a death list (combat-fixes-1).
         const bool transition_just_completed =
             dynamic_world_actor &&
-            !actor.transition_complete && decision->transition_complete &&
+            !actor_flag_is_set(previous_record_flags,
+                               ActorServiceFlag::effect_locked) &&
+            actor_flag_is_set(actor.source_record_flags,
+                              ActorServiceFlag::effect_locked) &&
             actor_flag_is_set(actor.source_spawn_state_flags,
                               ActorSpawnStateFlag::world_activity_member) &&
             !actor_flag_is_set(

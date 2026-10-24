@@ -830,7 +830,14 @@ int run_field_random_encounter_spawn_qa(
         positions_changed(edge_positions_after_30,
                           edge_positions_after_180) ||
         positions_changed(edge_positions_after_180, actor_positions);
-    const std::vector<std::uint16_t> expected_entry_audio{0x2EU, 0x2EU};
+    // combat-fixes-1: ROM 0x1E25A spawns encounter actors live; the B05E
+    // death cue (0x2E for Weenrs) and C0B2 list belong to 0xB330 only, so an
+    // unhurt encounter must never publish it.
+    const std::vector<std::uint16_t> expected_entry_audio{};
+    const bool spawn_death_cue_seen = std::find(
+        field_audio_events.begin() +
+            static_cast<std::ptrdiff_t>(audio_start),
+        field_audio_events.end(), 0x002EU) != field_audio_events.end();
     bool approach_attack_cued = false;
     for (std::size_t index = audio_start + expected_entry_audio.size();
          index + 1U < field_audio_events.size(); ++index) {
@@ -842,7 +849,7 @@ int run_field_random_encounter_spawn_qa(
         }
     }
     if (!after_30_saved || !after_180_saved || !after_480_saved ||
-        !after_1200_saved || !actual_saved ||
+        !after_1200_saved || !actual_saved || spawn_death_cue_seen ||
         actor_count_after_480 != actors_after ||
         actor_positions.size() != 2U ||
         !natural_edge_ai_moved ||
@@ -1257,7 +1264,7 @@ int run_field_random_encounter_spawn_qa(
         field_scene.advance_frame();
     }
     if (!hit_encounter_entry_complete) {
-        std::cerr << "field random-encounter QA: source C0B2 entry did not finish before the weapon-hit fixture\n";
+        std::cerr << "field random-encounter QA: live-spawn entry delay did not finish before the weapon-hit fixture\n";
         return 3;
     }
 
@@ -1982,12 +1989,23 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
-    // The ROM actor service begins C0B2 only after each actor's randomized
-    // entry delay. Its B05E[kind] cue therefore belongs to a later heartbeat,
-    // not to the selector/list-dispatch frame.
+    // combat-fixes-1: ROM 0x1E25A spawns each encounter actor live. The
+    // per-actor entry delay only holds its AI; no C0B2 list and no B05E cue
+    // play at spawn (those belong to 0xB330 death). Completion must still
+    // follow each actor's own delay.
     const auto maximum_entry_delay = *std::max_element(
         production_seed->actor_entry_delays.begin(),
         production_seed->actor_entry_delays.end());
+    const auto completed_count = [&field_scene]() {
+        std::size_t count = 0U;
+        for (std::uint16_t order = 0U; order < 2U; ++order) {
+            if (field_scene.default_actor_transition_complete_for_dump(order) ==
+                std::optional<bool>{true}) {
+                ++count;
+            }
+        }
+        return count;
+    };
     bool entry_heartbeat_cadence_matches = true;
     for (std::uint16_t service_pass = 1U;
          service_pass <=
@@ -1995,21 +2013,17 @@ int run_field_random_encounter_spawn_qa(
          ++service_pass) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
-        const auto expected_started = static_cast<std::size_t>(
+        const auto expected_complete = static_cast<std::size_t>(
             std::count_if(
                 production_seed->actor_entry_delays.begin(),
                 production_seed->actor_entry_delays.end(),
                 [service_pass](const std::uint8_t delay) {
                     return delay < service_pass;
                 }));
-        const auto current_audio_count = field_audio_events.size() -
-                                         production_audio_start;
         entry_heartbeat_cadence_matches =
             entry_heartbeat_cadence_matches &&
-            field_scene.default_actor_transition_started_count_for_dump() ==
-                expected_started &&
-            current_audio_count == expected_started &&
-            std::all_of(
+            completed_count() == expected_complete &&
+            std::none_of(
                 field_audio_events.begin() + static_cast<std::ptrdiff_t>(
                     production_audio_start),
                 field_audio_events.end(), [](const std::uint16_t event) {
@@ -2026,14 +2040,10 @@ int run_field_random_encounter_spawn_qa(
     const auto production_entry_audio_count = field_audio_events.size() -
                                               production_audio_start;
     if (!production_entry_cue_frame_saved ||
-        production_entry_audio_count != 2U ||
-        field_audio_events[production_audio_start] != 0x002EU ||
-        field_audio_events[production_audio_start + 1U] != 0x002EU ||
-        field_scene.default_actor_transition_started_count_for_dump() !=
-            2U ||
+        completed_count() != 2U ||
         !entry_heartbeat_cadence_matches ||
         !field_hud_chrome_survives(production_entry_cue_frame, asset_root)) {
-        std::cerr << "field random-encounter QA: two Weenr B05E entry cues did not follow their per-actor delays"
+        std::cerr << "field random-encounter QA: live-spawn entry delays or spawn silence diverged"
                   << " audio_count=" << production_entry_audio_count
                   << " transitions_started="
                   << field_scene.default_actor_transition_started_count_for_dump();
@@ -2128,7 +2138,7 @@ int run_field_random_encounter_spawn_qa(
                      production_seed->actor_entry_delays[0])
               << ',' << static_cast<unsigned>(
                      production_seed->actor_entry_delays[1])
-              << ",entry_cues:2x0x2E} "
+              << ",spawn_death_cues:0} "
               << " artifacts=" << output.string() << '\n';
     return 0;
 }

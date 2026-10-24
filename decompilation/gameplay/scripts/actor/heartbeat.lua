@@ -160,6 +160,13 @@ function ActorAI.heartbeat(context)
                         0x0200, 0x1000) then
                     return nil
                 end
+            elseif state.damage_reaction_animation_complete and
+                   (state.source_record_flags & ActorStatus.DEAD) == 0 then
+                -- ROM 0xA93E: the finished C0B2 list sets pose bit 15, so the
+                -- next 0xA8EA service enters 0xAB02 once: drops, FFE177--,
+                -- and bset #6,+0x10 (DEAD, 0x40). The body stays drawn.
+                state.source_record_flags =
+                    state.source_record_flags | ActorStatus.DEAD
             end
             return snapshot(state, "hold", reaction_audio_event)
         end
@@ -204,10 +211,7 @@ function ActorAI.heartbeat(context)
                 state.movement_heading = nil
             end
             if profile.dynamic_encounter_only then
-                if state.transition_started and
-                   not state.transition_complete then
-                    advance_entry_animation(state)
-                elseif state.animation_id == "action" then
+                if state.animation_id == "action" then
                     if not advance_dynamic_actor_action_animation(state) then
                         return nil
                     end
@@ -242,27 +246,20 @@ function ActorAI.heartbeat(context)
         else
             state.movement_step = nil
             if profile.dynamic_encounter_only then
-                if not state.transition_started then
-                    -- ROM 0x13904 services +0xB6 before it enters 0xB330.
+                if not state.transition_complete then
+                    -- ROM 0x1E25A spawns the encounter record live: posture
+                    -- +0x4D=4, +0x9E.6 hostile, then 0x1DBAA (combat on).
+                    -- No death/"entry" list is selected at spawn; C0B2 is
+                    -- read only by 0xB330 (callers 0xAA4C zero meter,
+                    -- 0xB002..0xB0F4 hit path, 0xE4BA). The seeded delay is
+                    -- the +0xB6 think timer that 0x13904 counts down while
+                    -- the actor idles (it stays hittable meanwhile).
+                    state.transition_started = true
                     if state.entry_delay == 0 then
-                        state.transition_started = true
-                        state.animation_id = "entry"
-                        state.animation_frame = 0
-                        state.animation_accumulator = -16
-                        state.behavior_timer = 20
-                        action = "play_entry"
-                        audio_event = profile.entry_audio_event
+                        state.transition_complete = true
+                        state.behavior_timer = 0
                     else
                         state.entry_delay = state.entry_delay - 1
-                    end
-                elseif not state.transition_complete then
-                    if state.behavior_timer == 0 then
-                        state.behavior_timer = 20
-                        if state.transition_frame_list_finished then
-                            state.transition_complete = true
-                        end
-                    else
-                        state.behavior_timer = state.behavior_timer - 1
                     end
                 else
                     if state.behavior_timer > 0 then
