@@ -27,6 +27,57 @@ and adds `FFFBF3` to byte `+0x8D` in all three runner records. When the run type
 is zero, it multiplies the per-ghoul amount by the ghoul count in `FFFBF0`.
 It then resets the active run state through `0x1E68C`.
 
+The visible `FFFBF4` amount is `base_payment + 5 * roll`. Raw `0x1E69C` reads
+the first live runner's Negotiation byte at `FF018C`, sets
+`bound = negotiation_scale * skill + 1`, samples below that bound, then adds
+five per result. The host `runner.negotiation_skill` service uses the first
+party record and `RunnerSkillIndex::negotiation` (skill index 11, live byte
+`+0x8C`), matching the source field. There is no direct class/race term in
+this formula; the thirteen ROM presets differ through their Negotiation
+values, which range from 0 to 4. The Attributes/Skills source permits ranks
+0-12 for Negotiation; only Sorcery has the class restriction in that grid.
+
+Pure-Lua `run_offer_payment_profile_tests.lua` checks all 40 source offer rows,
+all 13 valid skill ranks, and both ends of each bounded roll (1,040 results).
+That includes the actual preset range. The maximum generated amount across
+these rows is 6,450 nuyen at preset rank 4 (base 6,350, scale 5); at the
+upgrade cap, it is 6,700 (base 6,100, scale 10). The common detail builder at
+`0x1EE64` passes `FFFBF4` to the grouped decimal renderer `0xC216` at `$C322`.
+The raw formatter emits the least significant digits first and inserts the
+group separator after every three digits, so the audited maximum is presented
+as `6,700`. The Lua test verifies the amount across all source rows and ranks,
+but it does not execute the ROM glyph formatter or verify visible pixels. No
+independent Genesis Current Run screenshot has been identified. The Ghidra
+export `fn_0000C216.cpp` agrees with the ROM loop and is only a cross-check.
+`shadowrun_ghidra_decimal_glyph` checks that the host glyph sequence and
+bitmap-font text render 6,450 and 6,700 as grouped values; this is internal
+conversion coverage only. Profile values are listed in the [Attributes/Skills
+profile audit](attributes-skills-profile-permutation-audit-2026-10-23.md).
+
+### Independent longplay payment anchor
+
+Independent 320x224 longplay frame
+`video analysis/long_gameplay_video_early_sections_ffmpeg_30fps_320x224/section_03_jump_house_stoker_job_0118-0238/frame_003300.png`
+shows the Jump House offer with base `40` and negotiated payment `55`. Raw
+context-zero row index 4 at `0xF3EBC` is Package Delivery, progress 1, base 40,
+negotiation scale 1. Raw `0x2148A` calls `0x1E69C`; that routine stores base 40
+in `FFF0C0` and computes `FFFBF4` from the first live runner's `FF018C`
+Negotiation skill. The offer renderer passes both values to grouped decimal
+formatter `0xC216` at `0x21526`/`0x2153C`.
+
+The later same-session status frame
+`video analysis/long_gameplay_video_early_sections_ffmpeg_30fps_320x224/section_06_combat_inventory_delivery_0510-0600/frame_002550.png`
+identifies Joshua as Human Shaman. The ROM preset `Joshua Gator Shaman` is
+Human/Shaman with Negotiation 3. That makes the bound 4, and the visible
+difference of 15 implies roll 3: `40 + 5 * 3 = 55`. The Lua matrix now locks
+this row/profile/roll anchor, and the Debug/Release decimal-glyph CTest checks
+the displayed values 40 and 55.
+
+This is independent visual agreement for the Johnson offer path and its shared
+payment calculation. The skill and roll are derived by joining the separate
+profile frame and ROM preset with the displayed amount. The Notebook Current
+Run detail page itself remains unimplemented and has no independent screenshot.
+
 The source initializer table at `0xF3DC6` maps to canonical run handlers in
 `0xF3E56`. Initializers 6/7/8 share canonical type 6 but select simple,
 moderate, and expert Matrix bands. Initializers 9/10 are package-recovery route
@@ -38,6 +89,19 @@ both the source initializer and canonical handler ID.
 - The registry chooses a source row from the selected context and dispatches
   to dedicated Lua modules for canonical run types 0 through 6. New Game still
   uses context 0.
+- ROM `0x2148A` runs the selected offer initializer; `0x214B0` dispatches the
+  offer text formatter through `0xF3E1E`. For types 0-6 those formatters are
+  the same type-specific helper entries used by the Notebook Current Run
+  handlers, tying the offer text and Current Run text to the same live fields.
+- Ghoul initializer `0x1E744` sets `FFFBEE=2` for context 0 and rolls the area
+  below 4 for other contexts; Current Run helper `0x1E78C` renders the area
+  selected by that field. Lua already retained that selection as
+  `offer.area_id`, but `run_ghoul_bounty.present_offer` had always displayed
+  area 2. It now uses the stored area with an invalid-area guard. The focused
+  Debug/Release `shadowrun_ghidra_run_actor_defeat` test checks context 0's
+  Redmond branch and all four Mortimer/context-2 area rolls (0-3), verifying
+  each corresponding area label. This verifies offer text generation, not the
+  unimplemented Notebook Current Run detail screen.
 - New Game selects context 0; the scene-18, scene-11, scene-14, and scene-12
   Johnson profiles select contexts 1 through 4. Their work branches read the
   same typed offer tables; each location's dialogue and question gates stay in
