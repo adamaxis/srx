@@ -45,7 +45,7 @@ local function clear(log) log.sounds = {} end
 local r, log = mk(); check(st(r).page == Pg.POCKET_SECRETARY and st(r).row == 0, "open page")
 check(log.sounds[1] == E.MenuSound.MOVE and #log.sounds == 1, "open sound")
 check(log.blanks[1] == E.DisplayBlank.OFF and log.blanks[2] == E.DisplayBlank.ON, "blank")
-check(log.hold and log.hold[1] == 28 and log.hold[2] == 175, "build blank hold (emulator 28 black, line 175)")
+check(log.hold and log.hold[1] == 27 and log.hold[2] == 175, "open build blank hold (emulator 27 black, line 175)")
 check(log.windows[1] == E.WindowPlane.SIDEBAR, "sidebar visible")
 -- page wrap 6->0->6 [C 0x114A0]
 r:frame(P.RIGHT); check(st(r).page == 0, "wrap up")

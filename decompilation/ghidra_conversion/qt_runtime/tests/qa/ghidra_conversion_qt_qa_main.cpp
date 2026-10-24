@@ -35343,12 +35343,12 @@ int main(int argc, char** argv) {
                     std::cerr << "field player action dump: ordinary Start input did not open the command menu\n";
                     return 3;
                 }
-                // The opening Start frame is followed by 27 black frames and
-                // one reveal frame (emulator 8600..8628, command.lua).
+                // The opening Start frame starts 27 black frames and one
+                // reveal frame (emulator 8601..8628, command.lua).
                 // press_field_input() has already advanced the first countdown
-                // frame on key release; finish the remaining 27 before sending
+                // frame on key release; finish the remaining 26 before sending
                 // navigation, which the source wait ignores.
-                for (int frame = 0; frame < 27; ++frame) {
+                for (int frame = 0; frame < 26; ++frame) {
                     field_scene.advance_frame();
                 }
                 for (int move = 0;
@@ -38455,9 +38455,9 @@ int main(int argc, char** argv) {
                     std::cerr << "field Hotel QA: the first command-overview load frame was not black\n";
                     return 3;
                 }
-                // Emulator: 28 black frames, then a reveal frame whose rows
+                // Emulator: 27 black frames, then a reveal frame whose rows
                 // above line 175 are still black (display re-enabled mid-frame).
-                for (std::uint32_t frame = 2U; frame <= 28U; ++frame) {
+                for (std::uint32_t frame = 2U; frame <= 27U; ++frame) {
                     advance_field_frame();
                     auto frame_name = std::to_string(frame);
                     if (frame_name.size() < 2U) {
@@ -38491,7 +38491,7 @@ int main(int argc, char** argv) {
                 if (checkout_command_overview.isNull() ||
                     !image_region_differs(checkout_command_overview,
                                           black_reference, 0, 0, 320, 224)) {
-                    std::cerr << "field Hotel QA: command overview did not appear after 28 black frames and the reveal frame\n";
+                    std::cerr << "field Hotel QA: command overview did not appear after 27 black frames and the reveal frame\n";
                     return 3;
                 }
                 mark_route("command-overview-after-checkout",

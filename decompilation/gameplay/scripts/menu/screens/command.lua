@@ -29,14 +29,17 @@ local function reselect_if_incapacitated(ctx)
 end
 
 -- Full build: 0x10D30 (display off ... on) then 0x10E2E. [C]
-local function build(st, ctx, full)
+-- 0x10D30 display-off span, emulator-measured [C emulator]: from the field the
+-- display drops mid-frame 8600, then 8601..8627 black (27), reveal at line 175
+-- on 8628; on a return the frame of the input is already black: 8720..8747 (28).
+local BLANK_OPEN, BLANK_RETURN, BLANK_REVEAL_LINE = 27, 28, 175
+local function build(st, ctx, full, black_frames)
     if full then
         reselect_if_incapacitated(ctx)
         st.page, st.row = Page.POCKET_SECRETARY, 0          -- 0x10F50 [C]
         ctx.host.blank(E.DisplayBlank.OFF)
         ctx.redraw(R.FULL)
-        -- 28 black frames, display back on at line 175 (emulator 8600..8628 open, 8720..8748 return) [C emulator]
-        ctx.host.blank(E.DisplayBlank.ON, 28, 175)
+        ctx.host.blank(E.DisplayBlank.ON, black_frames or BLANK_RETURN, BLANK_REVEAL_LINE)
     else
         ctx.redraw(M.REFRESH)                              -- 0x10D90: panels without blanking [C]
     end
@@ -45,7 +48,7 @@ local function build(st, ctx, full)
     ctx.redraw(M.REFRESH)
 end
 
-function M.enter(st, ctx) build(st, ctx, true) end
+function M.enter(st, ctx) build(st, ctx, true, BLANK_OPEN) end
 
 -- 0x11592: inventory cursor sprite at (page*0x28, row*0x18) + item detail [C]
 local function inventory_cursor(st, ctx) ctx.redraw(R.INVENTORY_CURSOR | R.ITEM_PICTURE | R.ITEM_HEADER) end
