@@ -999,7 +999,7 @@ struct GameScriptRuntime::Impl {
         consume_debug_unlock,
         nuyen,
         set_nuyen,
-        request_taxi_destination,
+        begin_taxi_cabbie,
         set_contact_flags,
         set_walk_fast,
         install_test_deck,
@@ -1675,10 +1675,10 @@ struct GameScriptRuntime::Impl {
                         std::max(integer_argument(1), 0)));
             }
             return 0;
-        case MenuBinding::request_taxi_destination: {
+        case MenuBinding::begin_taxi_cabbie: {
             const bool accepted =
-                self->menu_route_bindings.game.request_taxi_destination &&
-                self->menu_route_bindings.game.request_taxi_destination(
+                self->menu_route_bindings.game.begin_taxi_cabbie &&
+                self->menu_route_bindings.game.begin_taxi_cabbie(
                     integer_argument(1));
             lua_pushboolean(lua, accepted ? 1 : 0);
             return 1;
@@ -1796,8 +1796,8 @@ struct GameScriptRuntime::Impl {
         add_menu_binding(state, table_index, "nuyen", MenuBinding::nuyen);
         add_menu_binding(state, table_index, "set_nuyen",
                          MenuBinding::set_nuyen);
-        add_menu_binding(state, table_index, "request_taxi_destination",
-                         MenuBinding::request_taxi_destination);
+        add_menu_binding(state, table_index, "begin_taxi_cabbie",
+                         MenuBinding::begin_taxi_cabbie);
         add_menu_binding(state, table_index, "consume_debug_unlock",
                          MenuBinding::consume_debug_unlock);
         add_menu_binding(state, table_index, "set_contact_flags",
@@ -3388,6 +3388,14 @@ struct GameScriptRuntime::Impl {
             if (self->field_mode_context.transition_context.has_value()) {
                 lua_pushinteger(
                     lua, *self->field_mode_context.transition_context);
+            } else {
+                lua_pushnil(lua);
+            }
+        } else if (field == "taxi_destination_region") {
+            if (self->field_mode_context.taxi_destination_region.has_value()) {
+                lua_pushinteger(
+                    lua,
+                    *self->field_mode_context.taxi_destination_region);
             } else {
                 lua_pushnil(lua);
             }

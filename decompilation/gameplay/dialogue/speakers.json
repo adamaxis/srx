@@ -1312,6 +1312,41 @@
       "portrait_alias": "none",
       "text_profile": "wanderer.vigore_jarl"
     },
+    "taxi_cabbie": {
+      "events": {
+        "already_there": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.already_there"
+        },
+        "free_ride_armband": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.free_ride_armband"
+        },
+        "hop_in": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.hop_in"
+        },
+        "insufficient_funds_free_ride": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.insufficient_funds_free_ride"
+        },
+        "ride_offer": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.ride_offer"
+        },
+        "traffic_blocked": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.traffic_blocked"
+        },
+        "visa_required": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.visa_required"
+        }
+      },
+      "name": "Taxi Cabbie",
+      "portrait_alias": "none",
+      "text_profile": "field.taxi"
+    },
     "wylie_gala_inn_narrator": {
       "events": {
         "free_stay": {

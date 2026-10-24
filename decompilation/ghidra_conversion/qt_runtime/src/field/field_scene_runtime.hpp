@@ -2296,6 +2296,7 @@ private:
     bool matrix_field_return_transition_pending_ = false;
     bool field_taxi_transition_active_ = false;
     std::optional<std::uint16_t> field_taxi_pending_destination_;
+    std::optional<std::uint16_t> field_taxi_cabbie_destination_;
     bool field_phone_transition_active_ = false;
     std::optional<std::uint16_t> field_phone_pending_destination_;
     bool field_dialogue_scene_transition_active_ = false;

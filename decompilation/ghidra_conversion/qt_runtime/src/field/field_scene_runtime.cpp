@@ -9090,17 +9090,21 @@ void FieldSceneRuntime::configure_field_menu_route() {
         field_funds_ = amount;
     };
     bindings.game.nuyen = [this] { return field_funds_; };
-    bindings.game.request_taxi_destination = [this](const int destination) {
+    bindings.game.begin_taxi_cabbie = [this](const int destination) {
         if (!field_taxi_route_active_ || destination < 0 || destination > 6 ||
             field_taxi_pending_destination_.has_value() ||
+            field_taxi_cabbie_destination_.has_value() ||
+            field_dialogue_.open() ||
             !field_session_source_assets_ ||
             static_cast<std::size_t>(destination) >=
                 field_session_source_assets_->field_scene_resources.size()) {
             return false;
         }
-        field_taxi_pending_destination_ =
+        // ROM 0x20714 opens the cabbie dialogue here; 0x136B6 travels only
+        // after that dialogue accepts and clears FFF0E0 [C].
+        field_taxi_cabbie_destination_ =
             static_cast<std::uint16_t>(destination);
-        source_boundary("field.taxi.destination_requested");
+        source_boundary("field.taxi.cabbie_requested");
         return true;
     };
     bindings.game.consume_debug_unlock = [this] {
@@ -9385,6 +9389,30 @@ void FieldSceneRuntime::advance_field_menu_route() {
     if (route_state.top_grid_effect_frames.has_value()) {
         dismiss_runner_effect_frames_ = static_cast<std::uint32_t>(
             std::max(0, *route_state.top_grid_effect_frames));
+    }
+    if (!route_state.open && field_taxi_cabbie_destination_.has_value() &&
+        !field_dialogue_.open()) {
+        const auto destination = *field_taxi_cabbie_destination_;
+        const auto current_region = static_cast<std::uint8_t>(
+            state_.field_scene_buffers.scene_reference);
+        game_scripts_.set_location_context(
+            "activity", "taxi_cabbie", "field.taxi", "taxi_cabbie",
+            "cabbie", current_region);
+        scripting::ScriptFieldModeContext context{
+            state_.field_scene_buffers.field_resource_mode,
+            field_movement_transition_state_.mode_event_code,
+            field_exit_alternate_result_,
+            state_.field_scene_buffers.scene_mode,
+            field_movement_transition_state_.field_transition_context};
+        context.taxi_destination_region =
+            static_cast<std::uint8_t>(destination);
+        game_scripts_.set_field_mode_context(std::move(context));
+        if (!field_dialogue_.open_gameplay_task("taxi_cabbie", "present")) {
+            field_taxi_cabbie_destination_.reset();
+            source_boundary("field.taxi.cabbie_dialogue_open_failed");
+        } else {
+            source_boundary("field.taxi.cabbie_dialogue_opened");
+        }
     }
 }
 
@@ -12961,6 +12989,7 @@ bool FieldSceneRuntime::bootstrap(
     field_taxi_route_active_ = false;
     field_taxi_transition_active_ = false;
     field_taxi_pending_destination_.reset();
+    field_taxi_cabbie_destination_.reset();
     field_phone_transition_active_ = false;
     field_phone_pending_destination_.reset();
     field_dialogue_scene_transition_active_ = false;
@@ -17525,7 +17554,37 @@ void FieldSceneRuntime::advance_frame() {
         } else if (result == FieldDialogueAdvanceResult::returned_to_field) {
             hospital_service_session_active_ = false;
             source_boundary("field.dialogue.returned_to_field");
-            if (field_mode_entry_transition_pending_) {
+            bool taxi_departure_started = false;
+            if (field_taxi_cabbie_destination_.has_value()) {
+                const auto destination = *field_taxi_cabbie_destination_;
+                const auto task_result =
+                    field_dialogue_.take_gameplay_task_result();
+                field_taxi_cabbie_destination_.reset();
+                if (task_result ==
+                    std::optional<std::string>{"taxi_ride_accepted"}) {
+                    if (destination ==
+                        state_.field_scene_buffers.scene_reference) {
+                        source_boundary(
+                            "field.taxi.accepted_current_region_ignored");
+                    } else {
+                        field_taxi_pending_destination_ = destination;
+                        if (field_elevator_scene_transition_.begin_fade_out()) {
+                            field_taxi_transition_active_ = true;
+                            taxi_departure_started = true;
+                            source_boundary(
+                                "field.taxi.destination_fade_out_started");
+                        } else {
+                            field_taxi_pending_destination_.reset();
+                            source_boundary(
+                                "field.taxi.destination_transition_busy");
+                        }
+                    }
+                }
+            }
+            if (taxi_departure_started) {
+                // The cabbie task has already accepted and started the taxi
+                // route; the next host frame advances its source fade.
+            } else if (field_mode_entry_transition_pending_) {
                 const auto expected_result =
                     active_field_script_route_.has_value()
                         ? active_field_script_route_->
@@ -18615,7 +18674,8 @@ void FieldSceneRuntime::advance_frame() {
             if (matrix_field_return_transition_pending_) {
                 matrix_field_return_transition_pending_ = false;
                 begin_field_modal_return_transition();
-            } else if (!field_taxi_transition_active_) {
+            } else if (!field_taxi_transition_active_ &&
+                       !field_dialogue_.open()) {
                 advance_field_scene_transition_after_modal();
             }
         } else if (!menu_route_active_ &&

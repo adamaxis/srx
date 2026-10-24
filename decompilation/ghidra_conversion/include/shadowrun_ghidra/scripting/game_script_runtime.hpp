@@ -277,7 +277,7 @@ struct ScriptMenuRouteGame {
     std::function<int(int)> save_status;
     std::function<std::optional<std::uint32_t>()> nuyen;
     std::function<void(std::uint32_t)> set_nuyen;
-    std::function<bool(int)> request_taxi_destination;
+    std::function<bool(int)> begin_taxi_cabbie;
     std::function<void()> consume_debug_unlock;
     std::function<void(std::uint32_t)> set_contact_flags;
     std::function<void()> set_walk_fast;
@@ -751,6 +751,9 @@ struct ScriptFieldModeContext {
     // A named modal variant lets a shared field-mode presenter resolve
     // service-specific notices without encoding content keys in C++.
     std::string prompt_variant;
+    // Selector-confirmed target passed to the Lua cabbie dialogue; mapped from
+    // the destination table at 0xD445D [C].
+    std::optional<std::uint8_t> taxi_destination_region;
 };
 
 enum class ScriptRunFieldEventAction : std::uint8_t {

@@ -430,7 +430,7 @@ int main() {
     bindings.game.set_leader_posture = [&posture](const int value) {
         posture = value;
     };
-    bindings.game.request_taxi_destination =
+    bindings.game.begin_taxi_cabbie =
         [&taxi_destination](const int destination) {
             if (destination < 0 || destination > 6) return false;
             taxi_destination = destination;
@@ -3205,8 +3205,8 @@ int main() {
           failures);
 
     // Taxi's Lua menu uses the same seven ROM destinations and cab outline
-    // records as the opening selector. The current Redmond map begins at its
-    // source cursor position, right selects Renraku, and A commits that mode.
+    // records as the opening selector. Confirm requests the cabbie dialogue;
+    // travel is dispatched only after that field task accepts the ride.
     ScriptMenuRouteStartArguments taxi_arguments{};
     taxi_arguments.taxi_current_region = 2U;
     check(runtime.open_menu_route(kTaxiSelector, taxi_arguments),
@@ -3240,10 +3240,10 @@ int main() {
     for (int frame = 0; frame < 10; ++frame) {
         runtime.advance_menu_route(0U);
     }
-    runtime.advance_menu_route(0x4000U); // A: request travel.
+    runtime.advance_menu_route(0x4000U); // A: request the cabbie dialogue.
     check(!runtime.menu_route_snapshot().open && taxi_destination == 5 &&
               closed_count == 10,
-          "taxi confirm requests the selected scene and exits the route",
+          "taxi confirm requests cabbie dialogue for the selected region",
           failures);
     check(runtime.open_menu_route(kTaxiSelector, taxi_arguments),
           "taxi selector can be reopened after a completed selection",
@@ -3251,10 +3251,10 @@ int main() {
     for (int frame = 0; frame < 10; ++frame) {
         runtime.advance_menu_route(0U);
     }
-    runtime.advance_menu_route(0x8000U); // Start: commit current mode.
+    runtime.advance_menu_route(0x8000U); // Start: request a cabbie dialogue.
     check(!runtime.menu_route_snapshot().open && taxi_destination == 2 &&
               closed_count == 11,
-          "taxi Start commits the current region through the source route",
+          "taxi Start requests the current region's cabbie dialogue",
           failures);
 
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST

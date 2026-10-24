@@ -240,6 +240,20 @@
         }
       }
     },
+    "field.taxi": {
+      "fare_offer": {
+        "choice_label_keys": {
+          "changed_mind": "field.taxi.option.changed_mind",
+          "sure_thing": "field.taxi.option.sure_thing"
+        }
+      },
+      "ride_offer": {
+        "choice_label_keys": {
+          "no": "field.taxi.option.no",
+          "yes": "field.taxi.option.yes"
+        }
+      }
+    },
     "field.activity": {
       "resource_main": {
         "choice_label_keys": {

@@ -51,6 +51,11 @@ E.WeaponSlot  = { NONE = 0x7F }                                                 
 E.FIRST_NON_WEAPON = E.ItemId.FRAG_GRENADE
 
 E.Pickup = { CLIPS_FLAG = 0xC000, NUYEN_FLAG = 0x8000, GARGOYLE_HORN = 0x64, HOUND_PELT = 0x65 }  -- 0x133A6 [C]
+-- Group-item bits in FFFC22; the Pocket Secretary rows identify these items [C].
+E.GroupItemBit = {
+    INDIAN_LANDS_VISA = 1, -- FFFC22 bit 1, pocket_secretary row indian_lands_visa [C]
+    ORK_ARMBAND = 14,      -- FFFC22 bit 14; taxi checks leader FF018F bit 5 [C]
+}
 
 -- Spell types: spell record = item 0x33 + type; held weapon_code = type + 1 [C]
 E.SpellType = { FLAME_DART = 0, FLAME_BOLT = 1, HELLBLAST = 2, INVISIBILITY = 3, SLEEP = 4, STINK = 5,

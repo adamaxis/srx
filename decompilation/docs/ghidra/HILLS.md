@@ -235,6 +235,16 @@ so the visual hill remains partial. `contacts.json` binds each traced contact
 to either a JSON graph and action module or a legacy Lua service function; the
 shared terminal resolves these bindings without a contact-ID branch.
 
+Taxi confirmation now starts the Lua cabbie dialogue before the host stages a
+destination. ROM `0x20714` checks the service story bit and the already-there
+case; `0x2076A` handles the armband and Salish visa gates; `0x208A8` confirms
+the fare and applies the insufficient-funds ride; `0x208FE` publishes the
+accepted destination and consumes a Salish visa [C]. The Qt taxi QA covers the
+already-there response, normal fare deduction, and Downtown arrival, while
+`taxi_cabbie_tests` covers the fare comments and gate permutations. The hill
+remains partial pending an independent full cabbie-dialogue reference and a
+CLI `actual.bmp` dump.
+
 Capt. Quinton's full call graph is connected. The ROM menu rooted at `0x1096F4`
 reaches Firepower (`0x109750`) and Contacts (`0x109780`); command IDs `0x68`-
 `0x6A` dispatch through `0x12CCB4` to handlers `0x22898`, `0x228D0`, and

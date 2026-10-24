@@ -41455,6 +41455,13 @@ int main(int argc, char** argv) {
                                  "start in the expected Redmond scene\n";
                     return 3;
                 }
+                if (!field_scene.set_story_flag_for_dump(0U, true)) {
+                    std::cerr << "field taxi dump: could not seed the source "
+                                 "taxi availability story flag\n";
+                    return 3;
+                }
+                field_scene.set_group_item_flags_for_dump(0U);
+                field_scene.set_field_funds_for_dump(100U);
                 const auto field_before_taxi = capture_field_scene();
                 if (!field_scene.open_taxi_selector_for_dump(
                         kRedmondRegion)) {
@@ -41632,19 +41639,30 @@ int main(int argc, char** argv) {
                 }
                 field_scene.set_controller_port_byte(0x80U);
                 field_scene.advance_frame();
-                if (field_scene.command_overview_open() ||
+                if (!field_scene.dialogue_open()) {
+                    std::cerr << "field taxi dump: confirming the current "
+                                 "region did not show the cabbie response\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Dismiss.
+                if (field_scene.dialogue_open() ||
+                    !finish_field_modal_return_transition(field_scene) ||
+                    field_scene.command_overview_open() ||
+                    field_scene.field_scene_reference_for_dump() !=
+                        kRedmondRegion ||
+                    field_scene.field_funds_for_dump() !=
+                        std::optional<std::uint32_t>{100U} ||
                     capture_field_scene() != field_before_taxi) {
-                    std::cerr << "field taxi dump: cancel left a stale screen "
-                                 "or failed to return to the field\n";
+                    std::cerr << "field taxi dump: already-there dialogue "
+                                 "failed to return without a fare or trip\n";
                     return 3;
                 }
                 field_scene.set_controller_port_byte(0U);
 
                 // Re-enter the selector, choose Downtown through its ROM
-                // cursor order, and confirm. This exercises the live Lua
-                // request callback and the field-scene fade/load route rather
-                // than treating a valid selector screenshot as proof of
-                // travel.
+                // cursor order, accept both cabbie prompts, and dismiss the
+                // ride page. This exercises the field dialogue task before
+                // the destination fade/load route.
                 if (!field_scene.open_taxi_selector_for_dump(
                         kRedmondRegion)) {
                     std::cerr << "field taxi dump: selector did not reopen "
@@ -41662,7 +41680,31 @@ int main(int argc, char** argv) {
                 for (int frame = 0; frame < 12; ++frame) {
                     field_scene.advance_frame();
                 }
-                tap_qa_controller_button(field_scene, 0x40U); // A: travel.
+                tap_qa_controller_button(field_scene, 0x40U); // A: cabbie call.
+                if (!field_scene.dialogue_open()) {
+                    std::cerr << "field taxi dump: selector confirmation did "
+                                 "not open cabbie dialogue\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Yes: ride.
+                if (!field_scene.dialogue_open()) {
+                    std::cerr << "field taxi dump: Yes did not open the fare "
+                                 "offer\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Sure thing.
+                if (!field_scene.dialogue_open()) {
+                    std::cerr << "field taxi dump: fare acceptance did not "
+                                 "show the cabbie's ride page\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Hop in.
+                const auto taxi_funds = field_scene.field_funds_for_dump();
+                if (!taxi_funds.has_value() || *taxi_funds != 80U) {
+                    std::cerr << "field taxi dump: accepted cab fare did not "
+                                 "deduct 20 nuyen\n";
+                    return 3;
+                }
                 for (int frame = 0;
                      frame < 120U &&
                      field_scene.field_scene_reference_for_dump() != 0U;
