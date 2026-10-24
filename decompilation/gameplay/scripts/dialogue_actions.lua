@@ -150,8 +150,7 @@ local function register_core_actions(registry)
 
     -- Shared FFFBFB progression step implemented by ROM helper 0x1F1E0.
     registry:register("field.advance_strike_team_counter", function()
-        local result = game.services.call(
-            "field", "advance_strike_team_counter")
+        local result = require("story_state").advance_strike_team()
         return result == "applied" and result or "service_unavailable"
     end)
 

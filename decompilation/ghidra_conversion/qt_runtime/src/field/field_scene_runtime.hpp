@@ -2178,8 +2178,15 @@ private:
     std::vector<EntityServiceTargetRecord> field_entity_target_records_{16U};
     std::optional<scripting::ScriptFieldEncounterOutcome>
         pending_field_encounter_outcome_;
-    std::optional<std::uint32_t>
-        field_pending_story_world_effect_sequence_list_;
+    // Story world-effect actor list queued by Lua (story_state.lua data),
+    // e.g. Boris's Strike Team list 0x1D6FD0 in scene 2 (ROM 0x1F1E0).
+    struct PendingStoryWorldEffect {
+        std::uint16_t scene = 0U;
+        std::uint32_t list = 0U;
+        std::uint8_t actor_count = 0U;
+        std::string name;
+    };
+    std::optional<PendingStoryWorldEffect> field_pending_story_world_effect_;
     std::optional<std::uint16_t>
         pending_world_activity_script_actor_scene_;
     std::vector<scripting::ScriptWorldActivityActor>

@@ -1159,45 +1159,100 @@ FieldSceneRuntime::FieldSceneRuntime(
                 }
                 return "applied";
             }
-            if (service_id == "field.mako_result_state_available") {
-                return field_heat_level_.has_value() &&
-                               field_strike_team_counter_.has_value() &&
-                               notebook_tip_flags_resolved_ &&
-                               field_mode_flags_resolved_ &&
-                               field_party_roster_.available()
-                           ? std::optional<std::string>{"available"}
-                           : std::nullopt;
+            if (service_id == "field.scene_reference") {
+                return "scene_" + std::to_string(
+                    state_.field_scene_buffers.scene_reference);
             }
-            if (service_id == "field.add_heat_2_capped_8") {
-                if (!field_heat_level_.has_value()) {
+            // Generic story bytes. Lua names them by ROM address
+            // (E.StoryByte); unknown addresses or unrestored values are nil.
+            const auto story_byte = [this](const std::string_view hex)
+                -> std::optional<std::uint8_t>* {
+                std::uint32_t address = 0U;
+                const auto parsed = std::from_chars(
+                    hex.data(), hex.data() + hex.size(), address, 16);
+                if (hex.empty() || parsed.ec != std::errc{} ||
+                    parsed.ptr != hex.data() + hex.size()) {
+                    return nullptr;
+                }
+                switch (address) {
+                case 0xFFFBFAU: return &field_heat_level_;
+                case 0xFFFBFBU: return &field_strike_team_counter_;
+                default: return nullptr;
+                }
+            };
+            constexpr std::string_view kStoryByteGetPrefix =
+                "story.byte_get_";
+            if (service_id.rfind(kStoryByteGetPrefix, 0U) == 0U) {
+                auto* value =
+                    story_byte(service_id.substr(kStoryByteGetPrefix.size()));
+                if (value == nullptr || !value->has_value()) {
                     return std::nullopt;
                 }
-                field_heat_level_ = static_cast<std::uint8_t>(
-                    std::min<unsigned int>(
-                        8U, static_cast<unsigned int>(*field_heat_level_) +
-                                2U));
+                return "value_" + std::to_string(**value);
+            }
+            constexpr std::string_view kStoryByteSetPrefix =
+                "story.byte_set_";
+            if (service_id.rfind(kStoryByteSetPrefix, 0U) == 0U) {
+                const auto args = service_id.substr(kStoryByteSetPrefix.size());
+                const auto split = args.find('_');
+                if (split == std::string_view::npos) {
+                    return std::nullopt;
+                }
+                auto* target = story_byte(args.substr(0U, split));
+                const auto value_text = args.substr(split + 1U);
+                unsigned value = 0U;
+                const auto parsed = std::from_chars(
+                    value_text.data(), value_text.data() + value_text.size(),
+                    value);
+                if (target == nullptr || value_text.empty() ||
+                    parsed.ec != std::errc{} ||
+                    parsed.ptr != value_text.data() + value_text.size() ||
+                    value > 0xFFU) {
+                    return std::nullopt;
+                }
+                *target = static_cast<std::uint8_t>(value);
                 return "applied";
             }
-            if (service_id == "field.advance_strike_team_counter") {
-                if (!field_strike_team_counter_.has_value()) {
+            if (service_id == "story.world_effect_idle") {
+                return field_pending_story_world_effect_.has_value() ||
+                               pending_field_encounter_outcome_.has_value()
+                           ? "busy"
+                           : "idle";
+            }
+            // story.queue_world_effect_<scene>_<list hex>_<actors>_<name>
+            constexpr std::string_view kQueueWorldEffectPrefix =
+                "story.queue_world_effect_";
+            if (service_id.rfind(kQueueWorldEffectPrefix, 0U) == 0U) {
+                auto rest = service_id.substr(kQueueWorldEffectPrefix.size());
+                std::array<std::uint32_t, 3U> numbers{};
+                for (std::size_t index = 0U; index < numbers.size(); ++index) {
+                    const auto split = rest.find('_');
+                    if (split == std::string_view::npos) {
+                        return std::nullopt;
+                    }
+                    const auto text = rest.substr(0U, split);
+                    const auto parsed = std::from_chars(
+                        text.data(), text.data() + text.size(), numbers[index],
+                        index == 1U ? 16 : 10);
+                    if (text.empty() || parsed.ec != std::errc{} ||
+                        parsed.ptr != text.data() + text.size()) {
+                        return std::nullopt;
+                    }
+                    rest = rest.substr(split + 1U);
+                }
+                if (rest.empty() || numbers[2] == 0U || numbers[2] > 0xFFU ||
+                    numbers[0] != state_.field_scene_buffers.scene_reference ||
+                    field_pending_story_world_effect_.has_value() ||
+                    pending_field_encounter_outcome_.has_value()) {
                     return std::nullopt;
                 }
-                if (state_.field_scene_buffers.scene_reference == 2U &&
-                    (field_pending_story_world_effect_sequence_list_.has_value() ||
-                     pending_field_encounter_outcome_.has_value())) {
-                    return std::nullopt;
-                }
-                field_strike_team_counter_ = static_cast<std::uint8_t>(
-                    std::min<unsigned int>(
-                        8U, static_cast<unsigned int>(
-                                *field_strike_team_counter_) + 1U));
-                if (state_.field_scene_buffers.scene_reference == 2U) {
-                    field_pending_story_world_effect_sequence_list_ =
-                        0x1D6FD0U;
-                    this->source_boundary(
-                        "field.world_activity.boris_strike_team_list_queued");
-                }
-                return "applied";
+                field_pending_story_world_effect_ = PendingStoryWorldEffect{
+                    static_cast<std::uint16_t>(numbers[0]), numbers[1],
+                    static_cast<std::uint8_t>(numbers[2]), std::string(rest)};
+                this->source_boundary(
+                    "field.world_activity." + std::string(rest) +
+                    "_list_queued");
+                return "queued";
             }
             if (service_id == "field.queue_mako_actor_list") {
                 if (field_pending_route_actor_list_.has_value() ||
@@ -6211,43 +6266,45 @@ void FieldSceneRuntime::reset_field_entity_service_records() {
 }
 
 bool FieldSceneRuntime::process_pending_story_world_effect_sequence() {
-    if (field_pending_story_world_effect_sequence_list_.has_value()) {
-        const auto sequence_list_offset =
-            *field_pending_story_world_effect_sequence_list_;
-        field_pending_story_world_effect_sequence_list_.reset();
-        const auto scene_id = state_.field_scene_buffers.scene_reference;
-        if (scene_id != 2U || sequence_list_offset != 0x1D6FD0U) {
-            source_boundary(
-                "field.world_activity.story_sequence_context_unresolved");
-            return true;
-        }
-        auto outcome = game_scripts_.resolve_field_actor_sequence(
-            scene_id, sequence_list_offset);
-        if (!outcome.has_value() ||
-            outcome->kind != scripting::
-                ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence ||
-            outcome->placement_policy != scripting::
-                ScriptFieldEncounterPlacementPolicy::map_derived_candidates ||
-            outcome->actors.size() != 2U ||
-            std::any_of(outcome->actors.begin(), outcome->actors.end(),
-                        [sequence_list_offset](const auto& actor) {
-                            return actor.sequence_list_offset !=
-                                   sequence_list_offset;
-                        })) {
-            failure_ = game_scripts_.failure().empty()
-                ? "Boris story sequence did not resolve its two map-placed actors"
-                : game_scripts_.failure();
-            source_boundary(
-                "field.world_activity.boris_strike_team_list_unresolved");
-            return true;
-        }
-        pending_field_encounter_outcome_ = std::move(*outcome);
+    if (!field_pending_story_world_effect_.has_value()) {
+        return false;
+    }
+    const auto effect = std::move(*field_pending_story_world_effect_);
+    field_pending_story_world_effect_.reset();
+    const auto scene_id = state_.field_scene_buffers.scene_reference;
+    if (scene_id != effect.scene) {
         source_boundary(
-            "field.world_activity.boris_strike_team_sequence_resolved");
-        spawn_field_world_effect_sequence();
+            "field.world_activity.story_sequence_context_unresolved");
         return true;
     }
-    return false;
+    const auto sequence_list_offset = effect.list;
+    auto outcome = game_scripts_.resolve_field_actor_sequence(
+        scene_id, sequence_list_offset);
+    if (!outcome.has_value() ||
+        outcome->kind != scripting::
+            ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence ||
+        outcome->placement_policy != scripting::
+            ScriptFieldEncounterPlacementPolicy::map_derived_candidates ||
+        outcome->actors.size() != effect.actor_count ||
+        std::any_of(outcome->actors.begin(), outcome->actors.end(),
+                    [sequence_list_offset](const auto& actor) {
+                        return actor.sequence_list_offset !=
+                               sequence_list_offset;
+                    })) {
+        failure_ = game_scripts_.failure().empty()
+            ? "Story world-effect list " + effect.name +
+                  " did not resolve its " +
+                  std::to_string(effect.actor_count) + " map-placed actors"
+            : game_scripts_.failure();
+        source_boundary(
+            "field.world_activity." + effect.name + "_list_unresolved");
+        return true;
+    }
+    pending_field_encounter_outcome_ = std::move(*outcome);
+    source_boundary(
+        "field.world_activity." + effect.name + "_sequence_resolved");
+    spawn_field_world_effect_sequence();
+    return true;
 }
 
 void FieldSceneRuntime::trigger_field_world_effect_sequence() {
@@ -12295,7 +12352,7 @@ bool FieldSceneRuntime::bootstrap(
     field_pending_mode_transition_scene_.reset();
     field_pending_mode_transition_spawn_.reset();
     field_pending_mode_transition_actor_list_.reset();
-    field_pending_story_world_effect_sequence_list_.reset();
+    field_pending_story_world_effect_.reset();
     field_pending_route_actor_list_.reset();
     field_pending_actor_list_transition_group_.reset();
     field_mako_actor_transitions_remaining_.reset();
