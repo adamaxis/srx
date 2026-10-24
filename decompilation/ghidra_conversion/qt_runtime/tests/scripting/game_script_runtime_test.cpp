@@ -5378,28 +5378,30 @@ int main() {
                     ScriptActorBehaviorDecision::Action::hold &&
                 guard_entry_spawn.has_value() &&
                 guard_entry_spawn->animation_id == "idle" &&
+                // Default-list actors spawn live (meter 10): 0xB330/C0B2
+                // runs only after the meter reaches zero, never at spawn.
                 guard_entry.has_value() &&
                 guard_entry->action ==
-                    ScriptActorBehaviorDecision::Action::
-                        play_entry_animation &&
+                    ScriptActorBehaviorDecision::Action::hold &&
                 guard_entry->package_id ==
                     "corp_security.max_power_heavy_pistol" &&
-                guard_entry->animation_id == "entry" &&
-                guard_entry->animation_frame == 0U &&
-                guard_entry->animation_accumulator == -16 &&
-                guard_entry->audio_event == 0x002EU &&
+                guard_entry->animation_id == "idle" &&
+                guard_entry->transition_started &&
+                guard_entry->transition_complete &&
+                !guard_entry->audio_event.has_value() &&
                 guard_entry->weapon_item_id == 6U &&
                 guard_hold.has_value() &&
                 guard_hold->animation_frame == 0U &&
                 guard_entry_last_frame.has_value() &&
-                guard_entry_last_frame->animation_id == "entry" &&
-                guard_entry_last_frame->animation_frame == 1U &&
+                guard_entry_last_frame->animation_id == "idle" &&
+                guard_entry_last_frame->animation_frame == 0U &&
                 pedestrian_spawn.has_value() &&
                 pedestrian_spawn->animation_id == "idle" &&
                 pedestrian_entry.has_value() &&
                 pedestrian_entry->package_id ==
                     "pedestrian.no_active_action" &&
-                pedestrian_entry->audio_event == 0x002FU &&
+                pedestrian_entry->animation_id == "idle" &&
+                !pedestrian_entry->audio_event.has_value() &&
                 !pedestrian_entry->weapon_item_id.has_value() &&
                 target_marker_action_0.has_value() &&
                 target_marker_action_0->target_marker_visible &&

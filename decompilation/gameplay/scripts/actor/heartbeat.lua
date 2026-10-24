@@ -16,7 +16,6 @@ local function advance_dynamic_actor_action_animation(...) return R.advance_dyna
 local function advance_dynamic_actor_item_action_animation(...) return R.advance_dynamic_actor_item_action_animation(...) end   -- from actor/anim.lua
 local function advance_dynamic_actor_walk_animation(...) return R.advance_dynamic_actor_walk_animation(...) end   -- from actor/anim.lua
 local function advance_entity_movement(...) return R.advance_entity_movement(...) end   -- from actor/movement.lua
-local function advance_entry_animation(...) return R.advance_entry_animation(...) end   -- from actor/anim.lua
 local function advance_finite_actor_animation(...) return R.advance_finite_actor_animation(...) end   -- from actor/anim.lua
 local function advance_player_animation(...) return R.advance_player_animation(...) end   -- from actor/anim.lua
 local function advance_received_hit_reaction(...) return R.advance_received_hit_reaction(...) end   -- from actor/anim.lua
@@ -438,32 +437,23 @@ function ActorAI.heartbeat(context)
     end
 
     if context.phase == "render" then
-        advance_entry_animation(state)
+        -- ROM 0x4618 draws the record's current pose. A default-list actor is
+        -- placed live by 0x43B6/0x4466 with a nonzero +0x4C meter, so it
+        -- shows its idle (C052) pose. C0B2 is selected only by 0xB330 after
+        -- the meter reaches zero; it is never a spawn sequence.
         return snapshot(state, action, nil)
     end
     state.movement_heading = nil
 
-    -- ROM 0x13904 services the actor's signed initial delay before B330.
-    if not state.transition_started then
+    -- The seeded delay is the +0xB6 think timer 0x13904 counts down; the
+    -- actor stays live (idle, hittable) meanwhile. No death list, no cue.
+    state.transition_started = true
+    if not state.transition_complete then
         if state.entry_delay == 0 then
-            state.transition_started = true
-            state.animation_id = "entry"
-            state.animation_frame = 0
-            state.animation_accumulator = -16
-            state.behavior_timer = 20
-            action = "play_entry"
-            audio_event = profile.death_audio_event
+            state.transition_complete = true
+            state.behavior_timer = 0
         else
             state.entry_delay = state.entry_delay - 1
-        end
-    elseif not state.transition_complete then
-        if state.behavior_timer == 0 then
-            state.behavior_timer = 20
-            if state.transition_frame_list_finished then
-                state.transition_complete = true
-            end
-        else
-            state.behavior_timer = state.behavior_timer - 1
         end
     end
 

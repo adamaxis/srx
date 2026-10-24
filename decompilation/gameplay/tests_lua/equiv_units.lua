@@ -110,7 +110,12 @@ local ARGS = {
 }
 math.randomseed(SEED)
 local targets = {}
-for name, f in pairs(REG) do if type(f) == "function" and origf[name] then targets[#targets + 1] = name end end
+-- Functions whose behavior was deliberately changed to match the ROM after the split; the
+-- pre-split reference is wrong for them by design. See reference/INTENDED_DIVERGENCES.md.
+local INTENDED = {
+  advance_target_marker = "ROM 0x5C7E tiers the target's meter (a5a74ea3)",
+}
+for name, f in pairs(REG) do if type(f) == "function" and origf[name] and not INTENDED[name] then targets[#targets + 1] = name end end
 table.sort(targets)
 local total, mism, perfn = 0, 0, {}
 for _, name in ipairs(targets) do
