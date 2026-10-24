@@ -79,3 +79,12 @@ reset(5, 3, 0); host.facts.notebook_tip_flag_bit_49 = nil
 check(Club.apply_mako_callback() == "service_unavailable" and host.karma == 0, "unresolved facts")
 
 print(("story_state tests passed: %d checks"):format(checks))
+
+-- Route actor lists: queue id carries the data-table descriptor.
+local seen
+game.services.call = function(domain, op) seen = domain .. "." .. op; return "queued" end
+local Routes = require("route_actor_lists")
+assert(Routes.queue("club_penumbra_mako") == "queued" and
+       seen == "field.queue_route_actor_list_17_47_1e628_4_club_penumbra_mako", seen)
+assert(type(Routes.complete_club_penumbra_mako) == "function")
+print("route_actor_lists tests passed")

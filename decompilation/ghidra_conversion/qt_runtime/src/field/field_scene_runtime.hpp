@@ -1416,8 +1416,17 @@ private:
         dialogue_scene_entry,
     };
 
-    enum class FieldRoutePendingActorList : std::uint8_t {
-        club_penumbra_mako,
+    // A route actor list queued by Lua (route_actor_lists.lua data): when
+    // the party enters consume_scene, the source_scene activity list
+    // pending_list_<list> is published and `transitions` actor behavior
+    // transitions are counted down before route_actor_lists.complete_<name>
+    // runs. E.g. club_penumbra_mako: scene 17, scene 47 list 0x1E628, 4.
+    struct FieldRoutePendingActorList {
+        std::uint16_t consume_scene = 0U;
+        std::uint16_t source_scene = 0U;
+        std::uint32_t list = 0U;
+        std::uint8_t transitions = 0U;
+        std::string name;
     };
 
     struct DefaultFieldActorPresentation;
@@ -1736,8 +1745,8 @@ private:
         // package, but their lifetime is tied to the selected scene script,
         // not to a random encounter sequence.
         bool world_activity_script_actor = false;
-        std::optional<FieldRoutePendingActorList>
-            actor_list_completion_group;
+        // Name of the route actor list whose transition this actor owes.
+        std::optional<std::string> actor_list_completion_group;
         bool target_selected = false;
         bool target_marker_visible = false;
         bool target_marker_animating = false;
@@ -2272,9 +2281,10 @@ private:
     std::optional<FieldRoutePendingActorList>
         field_pending_actor_list_transition_group_;
     std::optional<std::uint8_t>
-        field_mako_actor_transitions_remaining_;
-    std::optional<FieldRoutePendingActorList>
-        field_pending_actor_list_callback_;
+        field_route_actor_transitions_remaining_;
+    // Route actor list whose transitions are being counted down.
+    std::string field_active_route_actor_list_;
+    std::optional<std::string> field_pending_actor_list_callback_;
     std::int8_t field_indexed_title_service_result_ = 0;
     // FFDD64: 0x53A78 stores the index of the trigger service it dispatches.
     // 0x2196C sets that bit of FFFC1E (field_exit_world_flags_). Lua reads

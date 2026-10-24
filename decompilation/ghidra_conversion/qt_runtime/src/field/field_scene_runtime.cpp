@@ -63,6 +63,7 @@
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <cstdio>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -1254,18 +1255,47 @@ FieldSceneRuntime::FieldSceneRuntime(
                     "_list_queued");
                 return "queued";
             }
-            if (service_id == "field.queue_mako_actor_list") {
+            // field.queue_route_actor_list_<consume scene>_<source scene>_
+            //     <list hex>_<transitions>_<name>
+            constexpr std::string_view kQueueRouteActorListPrefix =
+                "field.queue_route_actor_list_";
+            if (service_id.rfind(kQueueRouteActorListPrefix, 0U) == 0U) {
                 if (field_pending_route_actor_list_.has_value() ||
                     field_pending_actor_list_transition_group_.has_value() ||
-                    field_mako_actor_transitions_remaining_.has_value() ||
+                    field_route_actor_transitions_remaining_.has_value() ||
                     field_pending_actor_list_callback_.has_value() ||
                     !pending_world_activity_script_actors_.empty()) {
                     return std::nullopt;
                 }
-                field_pending_route_actor_list_ =
-                    FieldRoutePendingActorList::club_penumbra_mako;
-                this->source_boundary(
-                    "field.world_activity.club_penumbra_mako_list_queued");
+                auto rest =
+                    service_id.substr(kQueueRouteActorListPrefix.size());
+                std::array<std::uint32_t, 4U> numbers{};
+                for (std::size_t index = 0U; index < numbers.size(); ++index) {
+                    const auto split = rest.find('_');
+                    if (split == std::string_view::npos) {
+                        return std::nullopt;
+                    }
+                    const auto text = rest.substr(0U, split);
+                    const auto parsed = std::from_chars(
+                        text.data(), text.data() + text.size(), numbers[index],
+                        index == 2U ? 16 : 10);
+                    if (text.empty() || parsed.ec != std::errc{} ||
+                        parsed.ptr != text.data() + text.size()) {
+                        return std::nullopt;
+                    }
+                    rest = rest.substr(split + 1U);
+                }
+                if (rest.empty() || numbers[0] > 0xFFFFU ||
+                    numbers[1] > 0xFFFFU || numbers[3] == 0U ||
+                    numbers[3] > 0xFFU) {
+                    return std::nullopt;
+                }
+                field_pending_route_actor_list_ = FieldRoutePendingActorList{
+                    static_cast<std::uint16_t>(numbers[0]),
+                    static_cast<std::uint16_t>(numbers[1]), numbers[2],
+                    static_cast<std::uint8_t>(numbers[3]), std::string(rest)};
+                this->source_boundary("field.world_activity." +
+                                      std::string(rest) + "_list_queued");
                 return "queued";
             }
             constexpr std::string_view kRunnerTripletPrefix =
@@ -1614,9 +1644,9 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                   field_runtime_state_.world_activity_countdown);
     fields.insert(
         QStringLiteral("field.debug.mako_actor_transitions_remaining"),
-        field_mako_actor_transitions_remaining_.has_value()
+        field_route_actor_transitions_remaining_.has_value()
             ? QJsonValue(static_cast<int>(
-                  *field_mako_actor_transitions_remaining_))
+                  *field_route_actor_transitions_remaining_))
             : QJsonValue(-1));
     fields.insert(QStringLiteral("field.debug.actor_list_callback_pending"),
                   field_pending_actor_list_callback_.has_value());
@@ -4139,34 +4169,35 @@ void FieldSceneRuntime::initialize_default_field_actors(
         }
     };
     if (field_pending_route_actor_list_.has_value() &&
-        scene_reference == 17U) {
+        scene_reference == field_pending_route_actor_list_->consume_scene) {
         const auto pending_route_list = *field_pending_route_actor_list_;
         field_pending_route_actor_list_.reset();
-        const auto list_id =
-            pending_route_list ==
-                    FieldRoutePendingActorList::club_penumbra_mako
-                ? std::string_view{"pending_list_1e628"}
-                : std::string_view{};
-        // The extractor records this reusable source list in Scene 47's
-        // activity table. The ROM's 0x43B6 consumer drains FFE120 without a
-        // scene check; the Club finalizer enters Scene 17 before that pass.
-        auto actors = list_id.empty()
-            ? std::optional<
-                  std::vector<scripting::ScriptWorldActivityActor>>{}
-            : game_scripts_.world_activity_actors_for_list_id(
-                  47U, list_id);
-        const bool has_source_four_actor_list =
-            actors.has_value() && actors->size() == 4U;
+        char list_id[32]{};
+        std::snprintf(list_id, sizeof(list_id), "pending_list_%05x",
+                      static_cast<unsigned>(pending_route_list.list));
+        // The extractor records the reusable source list in the source
+        // scene's activity table (Mako: Scene 47). The ROM's 0x43B6 consumer
+        // drains FFE120 without a scene check; the Club finalizer enters
+        // Scene 17 before that pass.
+        auto actors = game_scripts_.world_activity_actors_for_list_id(
+            pending_route_list.source_scene, list_id);
+        const bool has_source_actor_list =
+            actors.has_value() &&
+            actors->size() == pending_route_list.transitions;
         queue_pending_actor_list(
             std::move(actors),
-            "field.world_activity.club_penumbra_mako_list_unresolved");
-        if (has_source_four_actor_list &&
+            "field.world_activity." + pending_route_list.name +
+                "_list_unresolved");
+        if (has_source_actor_list &&
             pending_world_activity_script_actor_scene_ == scene_reference &&
-            pending_world_activity_script_actors_.size() == 4U) {
+            pending_world_activity_script_actors_.size() ==
+                pending_route_list.transitions) {
             field_pending_actor_list_transition_group_ = pending_route_list;
-            // ROM 0x43B6 seeds FFE177 with the four actor behavior
-            // transitions still outstanding for list 0x1E628.
-            field_mako_actor_transitions_remaining_ = 4U;
+            field_active_route_actor_list_ = pending_route_list.name;
+            // ROM 0x43B6 seeds FFE177 with the actor behavior transitions
+            // still outstanding for the list (four for 0x1E628).
+            field_route_actor_transitions_remaining_ =
+                pending_route_list.transitions;
         }
     } else if (field_pending_mode_transition_actor_list_.has_value()) {
         const auto list_id = field_mode_pending_actor_list_id(
@@ -4405,8 +4436,12 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             source_actor.source_interaction_flags;
         actor.source_spawn_state_flags =
             source_actor.source_spawn_state_flags;
-        actor.actor_list_completion_group =
-            field_pending_actor_list_transition_group_;
+        if (field_pending_actor_list_transition_group_.has_value()) {
+            actor.actor_list_completion_group =
+                field_pending_actor_list_transition_group_->name;
+        } else {
+            actor.actor_list_completion_group.reset();
+        }
         actor.source_action_slot = source_actor.source_action_slot;
         actor.source_action_ammo = source_actor.source_action_ammo;
         actor.source_action_counter = source_actor.source_action_counter;
@@ -4554,16 +4589,17 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
     pending_world_activity_script_actors_.clear();
     pending_world_activity_script_actor_scene_.reset();
     if (field_pending_actor_list_transition_group_.has_value()) {
-        if (expected_actor_count != 4U || published != expected_actor_count) {
+        const auto& group = *field_pending_actor_list_transition_group_;
+        if (expected_actor_count != group.transitions ||
+            published != expected_actor_count) {
             for (auto& actor : field_default_actors_) {
-                if (actor.actor_list_completion_group ==
-                    field_pending_actor_list_transition_group_) {
+                if (actor.actor_list_completion_group == group.name) {
                     actor.actor_list_completion_group.reset();
                 }
             }
-            field_mako_actor_transitions_remaining_.reset();
-            source_boundary(
-                "field.world_activity.club_penumbra_mako_actor_list_incomplete");
+            field_route_actor_transitions_remaining_.reset();
+            source_boundary("field.world_activity." + group.name +
+                            "_actor_list_incomplete");
         }
         field_pending_actor_list_transition_group_.reset();
     }
@@ -5157,21 +5193,24 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 source_boundary(
                     "field.random_encounter.sequence_transitions_complete");
             }
-            if (actor.actor_list_completion_group ==
-                    FieldRoutePendingActorList::club_penumbra_mako &&
-                field_mako_actor_transitions_remaining_.has_value() &&
-                *field_mako_actor_transitions_remaining_ != 0U) {
+            if (actor.actor_list_completion_group.has_value() &&
+                *actor.actor_list_completion_group ==
+                    field_active_route_actor_list_ &&
+                field_route_actor_transitions_remaining_.has_value() &&
+                *field_route_actor_transitions_remaining_ != 0U) {
                 actor.actor_list_completion_group.reset();
-                --*field_mako_actor_transitions_remaining_;
-                source_boundary(
-                    "field.world_activity.club_penumbra_mako_actor_transition_completed");
-                if (*field_mako_actor_transitions_remaining_ == 0U) {
-                    field_mako_actor_transitions_remaining_.reset();
+                --*field_route_actor_transitions_remaining_;
+                source_boundary("field.world_activity." +
+                                field_active_route_actor_list_ +
+                                "_actor_transition_completed");
+                if (*field_route_actor_transitions_remaining_ == 0U) {
+                    field_route_actor_transitions_remaining_.reset();
                     reset_field_entity_service_records();
                     field_pending_actor_list_callback_ =
-                        FieldRoutePendingActorList::club_penumbra_mako;
-                    source_boundary(
-                        "field.world_activity.club_penumbra_mako_callback_dispatch_pending");
+                        field_active_route_actor_list_;
+                    source_boundary("field.world_activity." +
+                                    field_active_route_actor_list_ +
+                                    "_callback_dispatch_pending");
                 }
             }
         }
@@ -5274,17 +5313,18 @@ void FieldSceneRuntime::advance_default_field_actors() {
         }
         resolve_default_actor_proximity(actor);
     }
-    if (field_pending_actor_list_callback_ ==
-            FieldRoutePendingActorList::club_penumbra_mako &&
+    if (field_pending_actor_list_callback_.has_value() &&
         !field_dialogue_.open()) {
+        const auto name = std::move(*field_pending_actor_list_callback_);
         field_pending_actor_list_callback_.reset();
-        if (field_dialogue_.open_gameplay_task(
-                "club_penumbra", "present_mako_activity_result")) {
-            source_boundary(
-                "field.world_activity.club_penumbra_mako_callback_dispatched");
+        // route_actor_lists.lua maps complete_<name> to the list's callback.
+        if (field_dialogue_.open_gameplay_task("route_actor_lists",
+                                               "complete_" + name)) {
+            source_boundary("field.world_activity." + name +
+                            "_callback_dispatched");
         } else {
-            source_boundary(
-                "field.world_activity.club_penumbra_mako_callback_dialogue_open_failed");
+            source_boundary("field.world_activity." + name +
+                            "_callback_dialogue_open_failed");
         }
     }
 }
@@ -12355,8 +12395,9 @@ bool FieldSceneRuntime::bootstrap(
     field_pending_story_world_effect_.reset();
     field_pending_route_actor_list_.reset();
     field_pending_actor_list_transition_group_.reset();
-    field_mako_actor_transitions_remaining_.reset();
+    field_route_actor_transitions_remaining_.reset();
     field_pending_actor_list_callback_.reset();
+    field_active_route_actor_list_.clear();
     field_world_activity_state_ = WorldActivityState{};
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     world_activity_routine_state_ = WorldActivityRoutineState{};
