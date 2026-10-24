@@ -33,13 +33,22 @@ end
 -- display drops mid-frame 8600, then 8601..8627 black (27), reveal at line 175
 -- on 8628; on a return the frame of the input is already black: 8720..8747 (28).
 local BLANK_OPEN, BLANK_RETURN, BLANK_REVEAL_LINE = 27, 28, 175
-local function build(st, ctx, full, black_frames)
+-- Return from Attributes/Skills (exit 0xD4A0 already blanked two staged
+-- frames) [C emulator e2]: 8962..8988 black (27), reveal at line 211 on 8989;
+-- the display comes on mid-line, so row 211 is black left of x=218; on 8990
+-- the item-detail block (x 112..247, rows 24..131) is not drawn yet.
+local AS_RETURN = { black = 27, line = 211,
+                    reveal = { [0] = { { 0, 211, 218, 1 } }, [1] = { { 112, 24, 136, 108 } } } }
+local function build(st, ctx, full, black_frames, reveal_line, reveal)
     if full then
         reselect_if_incapacitated(ctx)
         st.page, st.row = Page.POCKET_SECRETARY, 0          -- 0x10F50 [C]
         ctx.host.blank(E.DisplayBlank.OFF)
         ctx.redraw(R.FULL)
-        ctx.host.blank(E.DisplayBlank.ON, black_frames or BLANK_RETURN, BLANK_REVEAL_LINE)
+        for frame, rects in pairs(reveal or {}) do
+            for _, r in ipairs(rects) do ctx.host.mask(E.MenuMask.REVEAL, frame, r[1], r[2], r[3], r[4]) end
+        end
+        ctx.host.blank(E.DisplayBlank.ON, black_frames or BLANK_RETURN, reveal_line or BLANK_REVEAL_LINE)
     else
         ctx.redraw(M.REFRESH)                              -- 0x10D90: panels without blanking [C]
     end
@@ -124,7 +133,7 @@ function M.child_returned(st, child, res, ctx)
     end
     local p = st.page
     if p < Page.CLIPS then inventory_cursor(st, ctx); return end
-    if p == Page.ATTRIBUTES_SKILLS then build(st, ctx, true); return end   -- re-init: 0x10F50 resets page to 6 [C]
+    if p == Page.ATTRIBUTES_SKILLS then build(st, ctx, true, AS_RETURN.black, AS_RETURN.line, AS_RETURN.reveal); return end   -- re-init: 0x10F50 resets page to 6 [C]
     if p == Page.POCKET_SECRETARY then
         if res.exit_menu then reselect_if_incapacitated(ctx); return { transition = T.EXIT } end   -- FFF0CD [C]
         build(st, ctx, true); return

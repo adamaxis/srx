@@ -965,6 +965,7 @@ struct GameScriptRuntime::Impl {
         stop_sound,
         redraw,
         blank,
+        mask,
         set_window,
         set_screen,
         menu_closed,
@@ -1090,6 +1091,17 @@ struct GameScriptRuntime::Impl {
                     static_cast<std::uint16_t>(integer_argument(1)),
                     static_cast<std::uint16_t>(integer_argument(2)),
                     static_cast<std::uint16_t>(integer_argument(3)));
+            }
+            return 0;
+        case MenuBinding::mask:
+            if (self->menu_route_bindings.host.mask) {
+                self->menu_route_bindings.host.mask(
+                    static_cast<std::uint16_t>(integer_argument(1)),
+                    static_cast<std::uint16_t>(integer_argument(2)),
+                    static_cast<std::int16_t>(integer_argument(3)),
+                    static_cast<std::int16_t>(integer_argument(4)),
+                    static_cast<std::int16_t>(integer_argument(5)),
+                    static_cast<std::int16_t>(integer_argument(6)));
             }
             return 0;
         case MenuBinding::set_window:
@@ -1729,6 +1741,7 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::stop_sound);
         add_menu_binding(state, table_index, "redraw", MenuBinding::redraw);
         add_menu_binding(state, table_index, "blank", MenuBinding::blank);
+        add_menu_binding(state, table_index, "mask", MenuBinding::mask);
         add_menu_binding(state, table_index, "set_window",
                          MenuBinding::set_window);
         add_menu_binding(state, table_index, "set_screen",

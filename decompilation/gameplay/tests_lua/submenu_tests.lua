@@ -26,6 +26,7 @@ local function mk(o)
         play_sound = function(id) log.sounds[#log.sounds + 1] = id end, redraw = function() end,
         blank = function(m) log.blanks[#log.blanks + 1] = m end,
         set_window = function(w) log.windows[#log.windows + 1] = w end, set_screen = function() end,
+        mask = function() end,
         menu_closed = function() log.closed = true end,
         legacy_open = function(s) log.legacy[#log.legacy + 1] = s end,
         legacy_advance = function(s, ev) if ev & P.START ~= 0 then return false, o.legacy_exit end; return true end,

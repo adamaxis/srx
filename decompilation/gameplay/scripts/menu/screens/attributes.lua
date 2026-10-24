@@ -52,13 +52,26 @@ local function moved(st, ctx)
     ctx.redraw(R.SUBMENU)
     if st.karma and M.preview(rec(ctx), st.col, st.row) == "at_limit" then return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE, args = { message = MM.MAX_LEVEL } } end
 end
+-- Exit 0xD4A0 [C]: VDP reg 0x11=$91 (window = field sidebar from x>=272),
+-- then CPU fills of tile $07FF over plane FFDD16 (0xFFE) and FFDD14 (0x102A)
+-- race the raster. Emulator e2 [C]: input frame 8960 shows the screen with
+-- its text cleared; 8961 only the sidebar above line 127; then black.
+local LEAD_TEXT = { { 80, 24, 104, 16 }, { 24, 56, 240, 32 }, { 264, 56, 8, 8 },
+                    { 24, 104, 240, 48 }, { 120, 160, 8, 8 }, { 24, 168, 240, 24 } }
+local LEAD_SIDEBAR = { { 0, 0, 272, 224 }, { 272, 127, 48, 97 } }
+local function exit(ctx)
+    ctx.host.set_window(E.WindowPlane.SIDEBAR)
+    for _, r in ipairs(LEAD_TEXT) do ctx.host.mask(E.MenuMask.LEAD, 0, r[1], r[2], r[3], r[4]) end
+    for _, r in ipairs(LEAD_SIDEBAR) do ctx.host.mask(E.MenuMask.LEAD, 1, r[1], r[2], r[3], r[4]) end
+    return { transition = T.POP, result = { exit_as = true } }
+end
 function M.input(st, events, ctx)
     if events & P.LEFT ~= 0 then st.col = 0; return moved(st, ctx) end
     if events & P.RIGHT ~= 0 then st.col = 1; return moved(st, ctx) end
     if events & P.UP ~= 0 then if st.row > 0 then st.row = st.row - 1 end; return moved(st, ctx) end
     if events & P.DOWN ~= 0 then if st.row < M.ROWS - 1 then st.row = st.row + 1 end; return moved(st, ctx) end
     if events & (P.A | P.B) ~= 0 then
-        if not st.karma then return { transition = T.POP } end    -- view-only: upgrade key leaves (selection_data_unavailable)
+        if not st.karma then return exit(ctx) end    -- view-only (0xD33A -> 0xD4A0): upgrade key leaves (selection_data_unavailable)
         local r = rec(ctx)
         if st.col == 1 and (st.row == 2 or st.row == 3) then return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE, args = { message = MM.NOT_RAISABLE } } end
         if st.col == 0 and st.row == 4 and r.archetype >= E.Archetype.CASTER_LIMIT then return { transition = T.PUSH, screen = E.MenuScreen.MESSAGE, args = { message = MM.MAGE_ONLY } } end
@@ -68,7 +81,7 @@ function M.input(st, events, ctx)
         return { transition = T.PUSH, screen = E.MenuScreen.UPGRADE_PROMPT, args = { col = st.col, row = st.row } }
     end
     if events & P.C ~= 0 then st.col = 0; ctx.game.reselect_leader(); ctx.redraw(R.SUBMENU | R.SIDEBAR_SLOT); return end
-    if events & P.START ~= 0 then return { transition = T.POP } end
+    if events & P.START ~= 0 then return exit(ctx) end
 end
 function M.child_returned(st, child, res, ctx) ctx.redraw(R.SUBMENU | R.COMBAT_BARS) end
 

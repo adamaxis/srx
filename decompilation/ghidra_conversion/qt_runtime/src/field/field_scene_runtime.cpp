@@ -8701,7 +8701,26 @@ void FieldSceneRuntime::configure_field_menu_route() {
         menu_blank_reveal_line_pending_ = reveal_line;
         menu_blank_reveal_line_ = 0U;
     };
-    bindings.host.set_window = [](const std::uint16_t) {};
+    bindings.host.mask = [this](const std::uint16_t phase,
+                                const std::uint16_t frame,
+                                const std::int16_t x, const std::int16_t y,
+                                const std::int16_t w, const std::int16_t h) {
+        if (!command_overview_.open()) {
+            return;
+        }
+        auto& masks =
+            phase == static_cast<std::uint16_t>(srx::MenuMask::LEAD)
+                ? menu_lead_masks_
+                : menu_reveal_masks_pending_;
+        if (masks.size() <= frame) {
+            masks.resize(static_cast<std::size_t>(frame) + 1U);
+        }
+        masks[frame].emplace_back(x, y, w, h);
+    };
+    bindings.host.set_window = [this](const std::uint16_t window) {
+        menu_window_sidebar_ =
+            window == static_cast<std::uint16_t>(srx::WindowPlane::SIDEBAR);
+    };
     bindings.host.set_screen = [this](const std::uint16_t screen) {
         const auto matrix_entry_screen = static_cast<std::uint16_t>(
             srx::MenuScreen::MATRIX_ENTRY);
@@ -17515,6 +17534,16 @@ void FieldSceneRuntime::advance_frame() {
     }
     if (command_overview_.open()) {
         menu_blank_reveal_line_ = 0U;
+        if (!menu_reveal_masks_.empty()) {
+            menu_reveal_masks_.erase(menu_reveal_masks_.begin());
+        }
+        if (!menu_lead_masks_.empty()) {
+            // Staged frames before the display goes off; the frame after
+            // the last one is the first black frame of the hold.
+            menu_lead_masks_.erase(menu_lead_masks_.begin());
+            source_boundary("field.command_overview.lead_frame");
+            return;
+        }
         if (command_overview_start_transition_frames_remaining_ != 0U) {
             command_overview_start_transition_black_frame_ = true;
             --command_overview_start_transition_frames_remaining_;
@@ -17529,6 +17558,8 @@ void FieldSceneRuntime::advance_frame() {
                 }
             }
             menu_blank_deferred_sounds_.clear();
+            menu_reveal_masks_ = std::move(menu_reveal_masks_pending_);
+            menu_reveal_masks_pending_.clear();
             if (menu_blank_reveal_line_pending_ != 0U) {
                 // The display re-enables mid-frame: rows above this line
                 // stay black for one frame (emulator measurement) [C].
@@ -18024,6 +18055,9 @@ void FieldSceneRuntime::advance_frame() {
             menu_blank_reveal_line_ = 0U;
             menu_blank_reveal_line_pending_ = 0U;
             menu_blank_deferred_sounds_.clear();
+            menu_lead_masks_.clear();
+            menu_reveal_masks_pending_.clear();
+            menu_reveal_masks_.clear();
             source_boundary("field.command_overview.returned_to_field");
             command_overview_inventory_action_ = InventoryActionMenuState{};
             command_overview_selected_inventory_item_.reset();
@@ -24117,6 +24151,26 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         return;
     }
     if (command_overview_.open()) {
+        if (!menu_lead_masks_.empty() && !menu_last_frame_.isNull()) {
+            // Lua-staged lead frame: the closing screen as last shown, with
+            // the regions the source has already cleared painted black.
+            painter.drawImage(0, 0, menu_last_frame_);
+            if (menu_window_sidebar_) {
+                // VDP reg 0x11=$91: the window plane shows the field
+                // sidebar from x>=272 over whatever the planes still hold.
+                painter.save();
+                painter.setClipRect(QRect(272, 0, 48, 224));
+                painter.drawImage(0, 0, field_hud_);
+                paint_field_hud_overlays(painter);
+                painter.restore();
+            }
+            for (const auto& rect : menu_lead_masks_.front()) {
+                painter.fillRect(rect, Qt::black);
+            }
+            scene_painter.end();
+            target_painter.drawImage(0, 0, scene);
+            return;
+        }
         if (command_overview_start_transition_black_frame_) {
             scene_painter.end();
             target_painter.drawImage(0, 0, scene);
@@ -24127,6 +24181,13 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
             if (menu_blank_reveal_line_ != 0U) {
                 painter.fillRect(QRect(0, 0, 320, menu_blank_reveal_line_),
                                  Qt::black);
+            }
+            if (!menu_reveal_masks_.empty()) {
+                for (const auto& rect : menu_reveal_masks_.front()) {
+                    painter.fillRect(rect, Qt::black);
+                }
+            } else if (menu_blank_reveal_line_ == 0U) {
+                menu_last_frame_ = scene.copy();
             }
         };
         if (command_overview_attributes_skills_.is_open()) {

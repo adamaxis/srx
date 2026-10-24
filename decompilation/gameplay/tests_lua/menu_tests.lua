@@ -13,6 +13,7 @@ local function mk(o)
         redraw = function() log.redraws = log.redraws + 1 end,
         blank = function(m, n, line) log.blanks[#log.blanks + 1] = m; if n then log.hold = { n, line } end end,
         set_window = function(w) log.windows[#log.windows + 1] = w end,
+        mask = function(phase, frame, x, y, w, h) log.masks = log.masks or {}; log.masks[#log.masks + 1] = { phase, frame, x, y, w, h } end,
         set_screen = function() end,
         menu_closed = function() log.closed = true end,
         legacy_open = function(s) log.legacy[#log.legacy + 1] = s end,
@@ -47,6 +48,19 @@ check(log.sounds[1] == E.MenuSound.MOVE and #log.sounds == 1, "open sound")
 check(log.blanks[1] == E.DisplayBlank.OFF and log.blanks[2] == E.DisplayBlank.ON, "blank")
 check(log.hold and log.hold[1] == 27 and log.hold[2] == 175, "open build blank hold (emulator 27 black, line 175)")
 check(log.windows[1] == E.WindowPlane.SIDEBAR, "sidebar visible")
+-- AS exit 0xD4A0 staged frames + return build [C emulator e2 8960..8990]
+do
+    local ra, la = mk(); st(ra).page = Pg.ATTRIBUTES_SKILLS; ra:frame(P.A)
+    check(ra:top().screen == S.ATTRIBUTES_SKILLS, "AS open")
+    la.masks = {}; la.hold = nil; ra:frame(P.START)
+    local lead0, lead1, rev0, rev1 = 0, 0, 0, 0
+    for _, m in ipairs(la.masks) do
+        if m[1] == E.MenuMask.LEAD then if m[2] == 0 then lead0 = lead0 + 1 else lead1 = lead1 + 1 end
+        elseif m[2] == 0 then rev0 = rev0 + 1 else rev1 = rev1 + 1 end
+    end
+    check(ra:top().screen == S.COMMAND and lead0 == 6 and lead1 == 2 and rev0 == 1 and rev1 == 1, "AS exit masks")
+    check(la.hold and la.hold[1] == 27 and la.hold[2] == 211, "AS return hold 27 black, line 211")
+end
 -- page wrap 6->0->6 [C 0x114A0]
 r:frame(P.RIGHT); check(st(r).page == 0, "wrap up")
 r:frame(P.LEFT); check(st(r).page == 6, "wrap down")

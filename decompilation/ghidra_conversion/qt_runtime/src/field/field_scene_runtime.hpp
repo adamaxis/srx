@@ -362,7 +362,8 @@ public:
     bool menu_display_blank_active_for_dump() const noexcept {
         return command_overview_start_transition_black_frame_ ||
                command_overview_start_transition_frames_remaining_ != 0U ||
-               menu_blank_reveal_line_ != 0U;
+               menu_blank_reveal_line_ != 0U || !menu_lead_masks_.empty() ||
+               !menu_reveal_masks_pending_.empty() || !menu_reveal_masks_.empty();
     }
 #ifdef SHADOWRUN_QT_QA_DRIVER
     bool dispatch_dialogue_service_for_dump(
@@ -1914,6 +1915,13 @@ private:
     std::uint8_t command_overview_start_transition_frames_remaining_ = 0U;
     bool command_overview_start_transition_black_frame_ = false;
     std::uint16_t menu_blank_reveal_line_pending_ = 0U;
+    // Lua-staged partial frames around a display-off build (E.MenuMask):
+    // each entry is the list of black rects for one frame.
+    std::vector<std::vector<QRect>> menu_lead_masks_;
+    std::vector<std::vector<QRect>> menu_reveal_masks_pending_;
+    std::vector<std::vector<QRect>> menu_reveal_masks_;
+    mutable QImage menu_last_frame_;
+    bool menu_window_sidebar_ = false;
     std::uint16_t menu_blank_reveal_line_ = 0U;
     std::vector<std::uint16_t> menu_blank_deferred_sounds_;
     CommandMenuKarmaViewRuntime command_overview_attributes_skills_{};

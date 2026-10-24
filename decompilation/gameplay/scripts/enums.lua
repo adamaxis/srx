@@ -207,6 +207,7 @@ E.MenuRegion = { ITEM_PICTURE = 0x0001, ITEM_HEADER = 0x0002, RATING = 0x0004, D
                  MESSAGE = 0x2000, SUBMENU = 0x4000, FULL = 0x8000 }
 E.MenuTransition = { NONE = 0, PUSH = 1, POP = 2, REPLACE = 3, REBUILD = 4, EXIT = 5 }
 E.DisplayBlank = { OFF = 0x8134, ON = 0x8174 }   -- VDP reg 1 writes around a build [C]
+E.MenuMask = { LEAD = 1, REVEAL = 2 }   -- port host phases for staged partial frames (not ROM values)
 E.WindowPlane = { SIDEBAR = 0x9191, OFF = 0x9100 } -- VDP reg 0x11 [C]
 
 -- Runner record view used by menu rules (C++ proxies these onto FF0100+0x100*slot) [C offsets: srx runner_record_access]

@@ -100,6 +100,12 @@ struct ScriptMenuRouteHost {
     // mode (E.DisplayBlank), then for ON the measured black-frame count and
     // the raster line where the display re-enables on the reveal frame.
     std::function<void(std::uint16_t, std::uint16_t, std::uint16_t)> blank;
+    // phase (E.MenuMask), staged frame index, then a black rect x,y,w,h.
+    // LEAD frames show the last menu frame before the display goes off;
+    // REVEAL frames start on the frame the display comes back on.
+    std::function<void(std::uint16_t, std::uint16_t, std::int16_t,
+                       std::int16_t, std::int16_t, std::int16_t)>
+        mask;
     std::function<void(std::uint16_t)> set_window;
     std::function<void(std::uint16_t)> set_screen;
     std::function<void(bool)> menu_closed;
