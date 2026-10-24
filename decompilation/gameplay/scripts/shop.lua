@@ -1,6 +1,7 @@
 -- Shop content and selection behavior come from the ROM service tables.
 -- Native presenters draw these Lua-owned states and apply typed transactions.
 local Shop = {}
+local E = require("enums")
 
 local function menu_snapshot(menu, open, event)
     return {
@@ -80,15 +81,15 @@ function Shop.advance_menu(controller_events)
 
     -- Source input priority follows 0x56AC0: cursor, panel, confirm,
     -- runner-menu setup, then return to the field caller.
-    if (controller_events & 0x0400) ~= 0 then
+    if (controller_events & E.Pad.LEFT) ~= 0 then -- 0x0400
         return move_cursor(-1)
-    elseif (controller_events & 0x0100) ~= 0 then
+    elseif (controller_events & E.Pad.UP) ~= 0 then -- 0x0100
         return move_panel(-1)
-    elseif (controller_events & 0x0800) ~= 0 then
+    elseif (controller_events & E.Pad.RIGHT) ~= 0 then -- 0x0800
         return move_cursor(1)
-    elseif (controller_events & 0x0200) ~= 0 then
+    elseif (controller_events & E.Pad.DOWN) ~= 0 then -- 0x0200
         return move_panel(1)
-    elseif (controller_events & (0x4000 | 0x1000)) ~= 0 then
+    elseif (controller_events & (E.Pad.A | E.Pad.B)) ~= 0 then -- 0x4000|0x1000
         if menu.action_panel == 0 then
             menu.selected_action = menu.action_cursor
             return snapshot("no_change")
@@ -111,12 +112,12 @@ function Shop.advance_menu(controller_events)
                 and "purchase_selected" or "offer_unavailable")
         end
         return snapshot("source_action_boundary")
-    elseif (controller_events & 0x2000) ~= 0 then
+    elseif (controller_events & E.Pad.C) ~= 0 then -- 0x2000
         menu.action_cursor = 0
         menu.action_panel = 0
         menu.selected_action = 0
         return snapshot("active_runner_change_requested")
-    elseif (controller_events & 0x8000) ~= 0 then
+    elseif (controller_events & E.Pad.START) ~= 0 then -- 0x8000
         local closed = menu_snapshot(menu, false, "returned_to_field")
         game.shop_menu = nil
         return closed

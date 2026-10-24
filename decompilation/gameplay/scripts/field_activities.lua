@@ -5,33 +5,9 @@ local Dialogue = require("dialogue")
 local DialogueGraph = require("dialogue_graph")
 local MatrixPasscodes = require("data.matrix_passcodes")
 
--- ROM 0x0DBF8 seeds FFF118 (Matrix node) and FFFBBC (system) from the active
--- resource scene before presenting its Cyberspace / Exit Main Menu.
-local resource_scene_matrix_targets = {
-    [21] = { system_id = 0x16, node_id = 0x0D },
-    [22] = { system_id = 0x16, node_id = 0x0D },
-    [23] = { system_id = 0x16, node_id = 0x06 },
-    [24] = { system_id = 0x16, node_id = 0x08 },
-    [25] = { system_id = 0x16, node_id = 0x0F },
-    [26] = { system_id = 0x18, node_id = 0x16 },
-    [27] = { system_id = 0x18, node_id = 0x03 },
-    [28] = { system_id = 0x18, node_id = 0x09 },
-    [29] = { system_id = 0x18, node_id = 0x1A },
-    [30] = { system_id = 0x14, node_id = 0x07 },
-    [31] = { system_id = 0x14, node_id = 0x02 },
-    [32] = { system_id = 0x14, node_id = 0x09 },
-    [33] = { system_id = 0x14, node_id = 0x18 },
-    [34] = { system_id = 0x14, node_id = 0x0E },
-    [35] = { system_id = 0x15, node_id = 0x03 },
-    [36] = { system_id = 0x15, node_id = 0x04 },
-    [37] = { system_id = 0x15, node_id = 0x08 },
-    [38] = { system_id = 0x15, node_id = 0x13 },
-    [39] = { system_id = 0x15, node_id = 0x14 },
-    [40] = { system_id = 0x15, node_id = 0x12 },
-    [41] = { system_id = 0x17, node_id = 0x15 },
-    [42] = { system_id = 0x17, node_id = 0x09 },
-    [43] = { system_id = 0x17, node_id = 0x0B },
-}
+-- ROM 0x0DBF8 resource-scene Matrix targets (FFF118 node, FFFBBC system).
+local resource_scene_matrix_targets =
+    require("data.resource_scene_matrix_targets")
 
 -- Resolve legacy service functions and JSON-graph action providers while this
 -- module is initialized. The contact catalog supplies graph scope or the
