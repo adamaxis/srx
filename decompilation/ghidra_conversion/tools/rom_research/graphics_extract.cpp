@@ -6014,6 +6014,249 @@ void write_asset_readme(const std::filesystem::path& root) {
                "FFEF10..13 sample pointers are resolved offline.\n";
 }
 
+// Story-page illustrations shown by the 0x5D1F6 cinematic pages. Each ROM
+// profile (0x1FE690 Sinsearach, 0x1FE6C2 Spirit Eyes) names the shared VDP
+// setup 0x1FE638, a 64-colour CRAM set, one 0x1530 pattern stream uploaded to
+// VRAM $3020 and one 0x1728 layout. This mirrors the offline importer
+// extract_cinematic_story_art.py so --all-assets regenerates both pages and
+// their resources.tsv aliases instead of dropping them.
+struct StoryPageProfile {
+    const char* relative_name;
+    const char* alias;
+    std::size_t profile_offset;
+};
+
+constexpr std::array<StoryPageProfile, 2U> kStoryPageProfiles{{
+    {"cinematics/salish-sinsearach-frosty-harlequin.bmp",
+     "cinematic.salish.sinsearach.frosty_harlequin_exposition.art",
+     0x1FE690U},
+    {"cinematics/salish-spirit-eyes-ritual.bmp",
+     "cinematic.salish.spirit_eyes.ritual_of_binding.art", 0x1FE6C2U},
+}};
+
+std::vector<std::uint8_t> decode_story_page_1530_stream(
+    const std::vector<std::uint8_t>& rom, const std::size_t source_offset,
+    std::uint16_t& counter_out) {
+    const auto counter = read_big_endian_word(rom, source_offset);
+    auto cursor = source_offset + 2U;
+    auto remaining = counter;
+    std::array<std::uint8_t, 0x800U> ring{};
+    std::size_t ring_index = 0U;
+    std::uint8_t control = 0U;
+    int control_bits_remaining = 1;
+    std::vector<std::uint8_t> output;
+    const auto read_byte = [&]() {
+        if (cursor >= rom.size()) {
+            throw std::runtime_error("story-page 0x1530 stream is truncated");
+        }
+        return rom[cursor++];
+    };
+    const auto emit = [&](const std::uint8_t value) {
+        ring[ring_index] = value;
+        ring_index = (ring_index + 1U) & 0x07FFU;
+        output.push_back(value);
+        remaining = static_cast<std::uint16_t>(remaining - 1U);
+    };
+    for (;;) {
+        if (--control_bits_remaining == 0) {
+            control = read_byte();
+            control_bits_remaining = 8;
+        }
+        const bool compressed = (control & 0x80U) != 0U;
+        control = static_cast<std::uint8_t>(control << 1U);
+        if (!compressed) {
+            emit(read_byte());
+        } else {
+            const auto descriptor = read_byte();
+            if ((descriptor & 0x80U) == 0U) {
+                const auto count = (descriptor & 0x7FU) + 3U;
+                const auto value = read_byte();
+                for (unsigned i = 0U; i < count; ++i) emit(value);
+            } else {
+                const auto offset_low = read_byte();
+                const auto distance =
+                    ((static_cast<std::size_t>(offset_low) << 3U) |
+                     ((descriptor >> 4U) & 0x07U)) & 0x07FFU;
+                const auto count = (descriptor & 0x0FU) + 3U;
+                auto source_index = (ring_index - distance) & 0x07FFU;
+                for (unsigned i = 0U; i < count; ++i) {
+                    emit(ring[source_index]);
+                    source_index = (source_index + 1U) & 0x07FFU;
+                }
+            }
+        }
+        if (remaining == 0xFFFFU) {
+            if (output.size() != static_cast<std::size_t>(counter) + 1U) {
+                throw std::runtime_error(
+                    "story-page 0x1530 stream size mismatch");
+            }
+            counter_out = counter;
+            return output;
+        }
+        if (output.size() > static_cast<std::size_t>(counter) + 64U) {
+            throw std::runtime_error(
+                "story-page 0x1530 stream exceeded its counter");
+        }
+    }
+}
+
+shadowrun::graphics::RgbaImage extract_story_page_image(
+    const std::vector<std::uint8_t>& rom, const std::size_t offset) {
+    constexpr std::size_t kWidth = 320U;
+    constexpr std::size_t kHeight = 224U;
+    const auto vdp_setup = read_big_endian_long(rom, offset);
+    const auto palette_offset = read_big_endian_long(rom, offset + 4U);
+    const auto pattern_pointer = read_big_endian_long(rom, offset + 0x10U);
+    const auto pattern_target =
+        read_big_endian_long(rom, offset + 0x14U) & 0xFFFFU;
+    const auto pattern_auxiliary =
+        read_big_endian_long(rom, offset + 0x18U) & 0xFFFFU;
+    const auto pattern_terminator = read_big_endian_long(rom, offset + 0x1CU);
+    const auto layout_pointer = read_big_endian_long(rom, offset + 0x20U);
+    const auto layout_destination =
+        read_big_endian_long(rom, offset + 0x24U) & 0xFFFFU;
+    const std::size_t width = read_big_endian_word(rom, offset + 0x28U) + 1U;
+    const std::size_t height = read_big_endian_word(rom, offset + 0x2AU) + 1U;
+    const auto layout_attribute = read_big_endian_word(rom, offset + 0x2CU);
+    const auto layout_terminator = read_big_endian_long(rom, offset + 0x2EU);
+    bool mode_words_clear = true;
+    for (std::size_t index = 0U; index < 4U; ++index) {
+        mode_words_clear = mode_words_clear &&
+            read_big_endian_word(rom, offset + 8U + index * 2U) == 0U;
+    }
+    if (vdp_setup != 0x1FE638U || !mode_words_clear ||
+        (pattern_pointer & 1U) == 0U || (layout_pointer & 1U) == 0U ||
+        pattern_target != 0x3020U || pattern_auxiliary != 0U ||
+        pattern_terminator != 0U || layout_terminator != 0U || width > 40U ||
+        height > 28U || layout_attribute != 0U) {
+        throw std::runtime_error("story-page profile layout changed");
+    }
+
+    std::uint16_t counter = 0U;
+    const auto patterns =
+        decode_story_page_1530_stream(rom, pattern_pointer & ~1U, counter);
+    std::vector<std::uint8_t> vram(0x10000U, 0U);
+    if (pattern_target + patterns.size() > vram.size()) {
+        throw std::runtime_error("story-page pattern upload exceeds VRAM");
+    }
+    // 0x1530's paired-byte VDP write order.
+    std::uint16_t data_word = 0U;
+    std::uint16_t remaining = counter;
+    std::size_t word_index = 0U;
+    for (const auto value : patterns) {
+        data_word = static_cast<std::uint16_t>((data_word & 0xFF00U) | value);
+        if ((remaining & 1U) != 0U) {
+            data_word = static_cast<std::uint16_t>(data_word << 8U);
+        } else {
+            const auto destination = pattern_target + word_index * 2U;
+            vram[destination] = static_cast<std::uint8_t>(data_word >> 8U);
+            vram[destination + 1U] = static_cast<std::uint8_t>(data_word);
+            ++word_index;
+        }
+        remaining = static_cast<std::uint16_t>(remaining - 1U);
+    }
+
+    // 0x1728 row layout.
+    auto cursor = static_cast<std::size_t>(layout_pointer & ~1U);
+    const auto tile_base = read_big_endian_word(rom, cursor);
+    cursor += 2U;
+    const auto target_count = width * height;
+    std::vector<std::uint16_t> cells;
+    const auto read_delta = [&](const bool word_sized) -> std::uint16_t {
+        if (word_sized) {
+            const auto value = read_big_endian_word(rom, cursor);
+            cursor += 2U;
+            return value;
+        }
+        if (cursor >= rom.size()) {
+            throw std::runtime_error("story-page 0x1728 layout is truncated");
+        }
+        return rom[cursor++];
+    };
+    while (cells.size() < target_count) {
+        if (cursor >= rom.size()) {
+            throw std::runtime_error("story-page 0x1728 layout is truncated");
+        }
+        const auto descriptor = rom[cursor++];
+        if (descriptor == 0U) break;
+        const bool word_sized = (descriptor & 0x20U) != 0U;
+        const std::size_t encoded_count = descriptor & 0x1FU;
+        if (descriptor > 0xC0U) {
+            for (std::size_t i = 0U; i < std::max<std::size_t>(1U, encoded_count);
+                 ++i) {
+                cells.push_back(static_cast<std::uint16_t>(
+                    tile_base + read_delta(word_sized) + layout_attribute));
+                if (cells.size() == target_count) break;
+            }
+            continue;
+        }
+        // ROM 0x1728 selects -1 through 0x40, 0 through 0x80, then +1.
+        const int step = descriptor <= 0x40U ? -1 : descriptor <= 0x80U ? 0 : 1;
+        auto tile_word = static_cast<std::uint16_t>(
+            tile_base + read_delta(word_sized) + layout_attribute);
+        for (std::size_t i = 0U; i < encoded_count + 1U; ++i) {
+            cells.push_back(tile_word);
+            if (cells.size() == target_count) break;
+            tile_word = static_cast<std::uint16_t>(tile_word + step);
+        }
+    }
+    cells.resize(target_count, layout_attribute);
+    const auto first_tile = pattern_target / 32U;
+    const auto tile_limit = first_tile + patterns.size() / 32U;
+    for (const auto word : cells) {
+        const auto tile = static_cast<std::size_t>(word & 0x07FFU);
+        if (tile < first_tile || tile >= tile_limit) {
+            throw std::runtime_error(
+                "story-page layout references tiles outside its upload");
+        }
+    }
+
+    const auto expand = [](const unsigned value) {
+        return static_cast<std::uint8_t>((value << 5U) | (value << 2U) |
+                                         (value >> 1U));
+    };
+    std::array<shadowrun::native::Rgba8, 64U> palette{};
+    for (std::size_t index = 0U; index < palette.size(); ++index) {
+        const auto value = read_big_endian_word(rom, palette_offset + index * 2U);
+        palette[index] = shadowrun::native::Rgba8{
+            expand((value >> 1U) & 0x07U), expand((value >> 5U) & 0x07U),
+            expand((value >> 9U) & 0x07U), 0xFFU};
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        static_cast<std::uint16_t>(kWidth), static_cast<std::uint16_t>(kHeight),
+        std::vector<shadowrun::native::Rgba8>(
+            kWidth * kHeight, shadowrun::native::Rgba8{0U, 0U, 0U, 0xFFU})};
+    const auto plane_word = (layout_destination & 0x3FFFU) / 2U;
+    const auto origin_x = (plane_word % 64U) * 8U;
+    const auto origin_y = (plane_word / 64U) * 8U;
+    for (std::size_t cell = 0U; cell < cells.size(); ++cell) {
+        const auto word = cells[cell];
+        const auto tile_offset = static_cast<std::size_t>(word & 0x07FFU) * 32U;
+        const bool flip_x = (word & 0x0800U) != 0U;
+        const bool flip_y = (word & 0x1000U) != 0U;
+        const auto palette_base = ((word >> 13U) & 0x03U) * 16U;
+        const auto cell_x = origin_x + (cell % width) * 8U;
+        const auto cell_y = origin_y + (cell / width) * 8U;
+        for (std::size_t y = 0U; y < 8U; ++y) {
+            for (std::size_t x = 0U; x < 8U; ++x) {
+                const auto source_x = flip_x ? 7U - x : x;
+                const auto source_y = flip_y ? 7U - y : y;
+                const auto packed =
+                    vram[tile_offset + source_y * 4U + source_x / 2U];
+                const auto color_index =
+                    (source_x % 2U) == 0U ? (packed >> 4U) : (packed & 0x0FU);
+                const auto screen_x = cell_x + x;
+                const auto screen_y = cell_y + y;
+                if (screen_x >= kWidth || screen_y >= kHeight) continue;
+                image.pixels[screen_y * kWidth + screen_x] =
+                    palette[palette_base + color_index];
+            }
+        }
+    }
+    return image;
+}
+
 void write_runtime_resource_manifest(const std::filesystem::path& root) {
     std::ifstream catalog(root / "catalog.tsv", std::ios::binary);
     if (!catalog) {
@@ -6221,7 +6464,13 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         if (relative.find("-gray-") != std::string::npos) {
             continue;
         }
-        const auto alias = shadowrun::resources::alias_for_path(relative);
+        auto alias = shadowrun::resources::alias_for_path(relative);
+        for (const auto& story_page : kStoryPageProfiles) {
+            if (relative == story_page.relative_name) {
+                // Lua cinematic pages name these by their story role.
+                alias = story_page.alias;
+            }
+        }
         if (!aliases.insert(alias).second) {
             throw std::runtime_error("duplicate generated resource alias: " +
                                      alias);
@@ -6306,6 +6555,21 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                       notebook_tips.end());
     write_dialogue_text_catalog(rom, root, assets, field_text);
     write_tarislar_tomb_credits_asset(rom, root);
+    for (const auto& story_page : kStoryPageProfiles) {
+        std::ostringstream provenance;
+        provenance << std::hex << std::uppercase << "profile 0x"
+                   << story_page.profile_offset << "; palette 0x"
+                   << read_big_endian_long(rom, story_page.profile_offset + 4U)
+                   << "; patterns 0x"
+                   << read_big_endian_long(rom, story_page.profile_offset + 0x10U)
+                   << "; layout 0x"
+                   << read_big_endian_long(rom, story_page.profile_offset + 0x20U);
+        write_catalog_asset(
+            root, story_page.relative_name,
+            extract_story_page_image(rom, story_page.profile_offset),
+            "background", provenance.str(), false, manifest, written, missing,
+            blank);
+    }
     const auto tomb_prelude_backgrounds =
         extract_scene55_background_images(rom);
     write_catalog_asset(
