@@ -12,7 +12,7 @@ local BehaviorFlag = R.BehaviorFlag   -- from actor/tables.lua
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
 local ActorFlag = R.ActorFlag   -- from actor/tables.lua
 local EntityMotionDistanceBounds = R.EntityMotionDistanceBounds   -- from actor/tables.lua
-local EntryAudioEventByKind = R.EntryAudioEventByKind   -- from actor/tables.lua
+local DeathAudioEventByKind = R.DeathAudioEventByKind   -- from actor/tables.lua
 local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
 local profiles = R.profiles   -- from actor/tables.lua
 local ActorProfileCatalog = require("data.actor_profiles")
@@ -79,7 +79,7 @@ local function dynamic_encounter_profile(context)
         controls_movement = source_actor_profile.controls_movement,
         dynamic_encounter_only =
             source_actor_profile.dynamic_encounter_only,
-        entry_audio_event = source_actor_profile.entry_sound,
+        death_audio_event = source_actor_profile.death_sound,
         source_profile = source_actor_profile,
     }
 end

@@ -452,7 +452,7 @@ function ActorAI.heartbeat(context)
             state.animation_accumulator = -16
             state.behavior_timer = 20
             action = "play_entry"
-            audio_event = profile.entry_audio_event
+            audio_event = profile.death_audio_event
         else
             state.entry_delay = state.entry_delay - 1
         end
