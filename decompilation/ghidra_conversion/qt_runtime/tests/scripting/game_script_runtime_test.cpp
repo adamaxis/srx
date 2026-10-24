@@ -9230,8 +9230,9 @@ int main() {
     unresolved_resource_entry = scripts.complete_native_menu_input("confirm");
     if (!expect(unresolved_resource_entry.status ==
                         ScriptTaskStep::Status::completed &&
-                    unresolved_resource_entry.result_id == std::optional<
-                        std::string>{"resource_matrix_target_unresolved"},
+                    unresolved_resource_entry.dialogue_outcome.has_value() &&
+                    std::holds_alternative<SourceBoundaryOutcome>(
+                        *unresolved_resource_entry.dialogue_outcome),
                 "unmapped resource scene did not report its Lua boundary")) {
         std::cerr << scripts.failure() << '\n';
         return 15;
