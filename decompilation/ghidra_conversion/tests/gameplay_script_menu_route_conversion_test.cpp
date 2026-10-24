@@ -306,6 +306,7 @@ int main() {
 #endif
 
     int failures = 0;
+    [[maybe_unused]] bool longplay_reference_missing = false;
     verify_cyberdeck_file_value_bridge(failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     verify_matrix_datastore_field_projection(failures);
@@ -3439,6 +3440,15 @@ int main() {
         const auto actual_alert_saved = !best_alert_frame.isNull() &&
             best_alert_frame.save(
                 QString::fromStdString(actual_alert_path.string()));
+        // The longplay reference frames are an untracked local capture. When
+        // the file is absent the render checks above still run, and the
+        // reference comparison is reported as a ctest skip (exit 77) instead
+        // of a failure.
+        if (!std::filesystem::exists(independent_alert_path)) {
+            longplay_reference_missing = true;
+            std::cout << "SKIP: longplay reference frame absent: "
+                      << independent_alert_path << '\n';
+        } else {
         check(independent_alert.size() == QSize(320, 224),
               "Section 15 Active Alert reference is a complete 320x224 frame",
               failures);
@@ -3464,12 +3474,17 @@ int main() {
                       << best_full_frame_error << " bottom_mean_rgb_error="
                       << best_bottom_band_error << " full_frame=320x224\n";
         }
+        }
     }
 #endif
 
     if (failures != 0) {
         std::cerr << "menu route failures: " << failures << '\n';
         return 1;
+    }
+    if (longplay_reference_missing) {
+        std::cout << "menu route checks passed; longplay reference skipped\n";
+        return 77;
     }
     std::cout << "menu route checks passed\n";
     return 0;

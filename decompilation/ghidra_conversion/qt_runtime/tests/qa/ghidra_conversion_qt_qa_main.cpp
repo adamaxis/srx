@@ -29760,6 +29760,10 @@ int main(int argc, char** argv) {
             if (field_matrix_traversal_entry_qa_path.has_value()) {
                 const auto output = *field_matrix_traversal_entry_qa_path;
                 std::filesystem::create_directories(output);
+                // The longplay reference frames under "video analysis/" are an
+                // untracked local capture. Without them every runtime check still
+                // runs, and the exit is 77 (ctest skip) instead of a failure.
+                bool longplay_reference_missing = false;
                 std::error_code clear_error;
                 clear_qa_bitmap_artifacts(output, clear_error);
                 if (clear_error) {
@@ -30161,13 +30165,18 @@ int main(int argc, char** argv) {
                             "section_21_source_4620-4920" /
                             ("frame_00" +
                              std::to_string(anchor.source_frame) + ".png");
+                        const bool reference_present =
+                            std::filesystem::exists(reference_path);
+                        longplay_reference_missing =
+                            longplay_reference_missing || !reference_present;
                         const QImage reference(
                             QString::fromStdString(reference_path.string()));
                         const auto overlap = green_model_overlap(
                             image, reference, QRect(110, 45, 100, 67));
-                        if (reference.size() !=
-                                QSize(kSceneWidth, kSceneHeight) ||
-                            overlap < 0.80) {
+                        if (reference_present &&
+                            (reference.size() !=
+                                 QSize(kSceneWidth, kSceneHeight) ||
+                             overlap < 0.80)) {
                             std::cerr << "Matrix traversal entry QA: model "
                                          "shape at source frame "
                                       << anchor.source_frame
@@ -30553,6 +30562,10 @@ int main(int argc, char** argv) {
                     "video analysis" /
                     "long_gameplay_video_rest_ffmpeg_30fps_320x224" /
                     "section_15_source_2820-3120" / "frame_004440.png";
+                const bool model0_reference_present =
+                    std::filesystem::exists(model0_reference_path);
+                longplay_reference_missing =
+                    longplay_reference_missing || !model0_reference_present;
                 const QImage model0_reference(
                     QString::fromStdString(
                         model0_reference_path.string()));
@@ -30579,12 +30592,13 @@ int main(int argc, char** argv) {
                     route.top_matrix_traversal_view->model_canvas_width != 110 ||
                     route.top_matrix_traversal_view->model_canvas_height != 62 ||
                     !complete_frame(model0_image) ||
-                    model0_reference.size() !=
-                        QSize(kSceneWidth, kSceneHeight) ||
                     model0_host_bounds.isNull() ||
-                    model0_reference_bounds.isNull() ||
-                    model0_host_bounds != model0_reference_bounds ||
-                    model0_mask_overlap < 0.80) {
+                    (model0_reference_present &&
+                     (model0_reference.size() !=
+                          QSize(kSceneWidth, kSceneHeight) ||
+                      model0_reference_bounds.isNull() ||
+                      model0_host_bounds != model0_reference_bounds ||
+                      model0_mask_overlap < 0.80))) {
                     std::cerr << "Matrix model-0 QA: Green-4 System Access "
                                  "route or full-frame reference capture is "
                                  "invalid; host bounds="
@@ -30962,6 +30976,11 @@ int main(int argc, char** argv) {
                           << "degrade_action=verified "
                           << "transition_art=verified "
                           << "world_effect_gate_negative=verified\n";
+                if (longplay_reference_missing) {
+                    std::cout << "SKIP: longplay reference frames absent; "
+                                 "runtime checks passed\n";
+                    return 77;
+                }
                 return 0;
             }
             if (field_matrix_cyber_info_qa_path.has_value()) {

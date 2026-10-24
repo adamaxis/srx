@@ -233,6 +233,10 @@ target_compile_definitions(shadowrun_gameplay_script_menu_route_test PRIVATE
     SHADOWRUN_MATRIX_MAP_QT_TEST=1)
 add_test(NAME shadowrun_ghidra_gameplay_script_menu_route
          COMMAND shadowrun_gameplay_script_menu_route_test)
+# Exit 77 means every render check passed but the untracked longplay
+# reference frame ("video analysis/...") is not present on this machine.
+set_tests_properties(shadowrun_ghidra_gameplay_script_menu_route PROPERTIES
+    SKIP_RETURN_CODE 77)
 
 add_executable(shadowrun_world_content_tsv_loader_test
     tests/scripting/world_content_tsv_loader_test.cpp)
@@ -1224,6 +1228,8 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_matrix_traversal_e
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-matrix-traversal-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-matrix-traversal-entry-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_matrix_traversal_entry_qa
+    PROPERTIES SKIP_RETURN_CODE 77)
 
 # The runner summary uses the equipped item's Lua-backed name/category before
 # its ROM-indexed damage and power rows. Keep that shared menu panel covered by
