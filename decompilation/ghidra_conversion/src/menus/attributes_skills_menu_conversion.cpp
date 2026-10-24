@@ -399,6 +399,12 @@ AttributeSkillUpgradePreview preview_attribute_skill_upgrade(
     // The left-column middle skill branch in 0xD958 uses the second skill's
     // current value when the selected skill is zero. Preserve that source
     // dependency instead of reducing every skill to one generic formula.
+    // 0xD920 tests the selected skill's own value + 1 against 0x0D before
+    // the Firearms substitution below.
+    if (static_cast<unsigned>(preview.current_value) + 1U >= 0x0DU) {
+        preview.status = AttributeSkillUpgradeStatus::at_limit;
+        return preview;
+    }
     auto next_base = static_cast<unsigned>(preview.current_value);
     const bool reduced_skill_cost = cursor.column == 0U &&
                                     source.value_index >= 2U &&
@@ -407,10 +413,6 @@ AttributeSkillUpgradePreview preview_attribute_skill_upgrade(
         next_base = record.skills[1U];
     }
     const auto next = next_base + 1U;
-    if (next >= 0x0DU) {
-        preview.status = AttributeSkillUpgradeStatus::at_limit;
-        return preview;
-    }
     preview.next_value = static_cast<std::uint8_t>(next);
     if (reduced_skill_cost) {
         preview.karma_cost = static_cast<std::uint16_t>(
@@ -425,7 +427,13 @@ AttributeSkillUpgradePreview preview_attribute_skill_upgrade(
 AttributeSkillUpgradeResult apply_attribute_skill_upgrade(
     RunnerRecordFields& record, const AttributeSkillCursor cursor,
     const bool confirmed) {
-    const auto preview = preview_attribute_skill_upgrade(record, cursor);
+    return apply_attribute_skill_upgrade(
+        record, preview_attribute_skill_upgrade(record, cursor), confirmed);
+}
+
+AttributeSkillUpgradeResult apply_attribute_skill_upgrade(
+    RunnerRecordFields& record, const AttributeSkillUpgradePreview& preview,
+    const bool confirmed) {
     switch (preview.status) {
     case AttributeSkillUpgradeStatus::invalid_selection:
         return AttributeSkillUpgradeResult::invalid_selection;

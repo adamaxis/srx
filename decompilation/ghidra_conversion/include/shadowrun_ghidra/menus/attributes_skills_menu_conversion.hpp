@@ -245,4 +245,9 @@ AttributeSkillUpgradePreview preview_attribute_skill_upgrade(
 AttributeSkillUpgradeResult apply_attribute_skill_upgrade(
     RunnerRecordFields& record, AttributeSkillCursor cursor, bool confirmed);
 
+// 0xD3EA with a preview produced by the caller's rule source (Lua karma.lua).
+AttributeSkillUpgradeResult apply_attribute_skill_upgrade(
+    RunnerRecordFields& record, const AttributeSkillUpgradePreview& preview,
+    bool confirmed);
+
 } // namespace shadowrun::ghidra_conversion

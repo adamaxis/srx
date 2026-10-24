@@ -217,6 +217,8 @@ E.RunnerField = { STATUS = 0x10, STATE_FN = 0x3A, PHYSICAL = 0x4C, POSTURE = 0x4
                   WEAPON_SLOT = 0x56, WEAPON_CODE = 0x57, INVENTORY = 0x66, ITEM_PHASE = 0x6E, ARMOR = 0x76,
                   ATTRIBUTES = 0x77, MAGIC = 0x7F, SKILLS_A = 0x80, SKILLS_B = 0x87, KARMA = 0x8D, SPECIES = 0x9A,
                   ARCHETYPE = 0x9B, STUN = 0x9C, FORCE = 0x9D, SPELL_TABLE = 0xA0 }
+E.KarmaUpgrade = { AVAILABLE = 0, INVALID = 1, NOT_UPGRADEABLE = 2, UNKNOWN_SPECIES = 3,
+                  CLASS_RESTRICTED = 4, AT_LIMIT = 5 }   -- 0xD82A preview outcome (D9DE = error path) [C]
 E.Archetype = { CASTER_LIMIT = 2 }        -- +0x9B < 2 = magic user (0xFBA6 path, Sorcery gate) [C]
 E.Skill = { SORCERY = 0, FIREARMS = 1, PISTOLS = 2, SMGS = 3, SHOTGUNS = 4, BIOTECH = 8 }   -- index into skills[] [C 0x12C74; BIOTECH srx]
 E.ItemAction = { EQUIP_OR_USE = 2, DISCARD = 3, TRADE = 4, CANCEL = 5 }   -- FFF0D0 reused as selector 0x11780 [C]

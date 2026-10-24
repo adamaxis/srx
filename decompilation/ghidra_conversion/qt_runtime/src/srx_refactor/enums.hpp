@@ -282,6 +282,14 @@ enum class ItemKind : std::int64_t {
     TOTEM = 0xF,
     ARMOR = 0x10,
 };
+enum class KarmaUpgrade : std::int64_t {
+    AVAILABLE = 0x0,
+    INVALID = 0x1,
+    NOT_UPGRADEABLE = 0x2,
+    UNKNOWN_SPECIES = 0x3,
+    CLASS_RESTRICTED = 0x4,
+    AT_LIMIT = 0x5,
+};
 enum class LinkCode : std::int64_t {
     ROW_MASK = 0x3,
     ROW_SHIFT = 0x5,

@@ -19683,6 +19683,48 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         source_boundary("field.hotel.checked_out");
         break;
     case HotelMenuEvent::karma_screen_opened:
+        // ROM 0xD82A rules come from Lua karma.lua; C++ keeps the grid
+        // layout (cell -> record offset) and cross-checks Lua's cell.
+        hotel_karma_skills_.set_upgrade_rule(
+            [this](const RunnerRecordFields& record,
+                   const AttributeSkillCursor cursor) {
+                auto preview = preview_attribute_skill_upgrade(record, cursor);
+                if (preview.status ==
+                    AttributeSkillUpgradeStatus::invalid_selection) {
+                    return preview;
+                }
+                const bool skill =
+                    preview.section == AttributeSkillSection::skill;
+                const auto lua = game_scripts_.call_integers(
+                    "karma", "upgrade_preview_flat",
+                    {cursor.column, cursor.row, preview.current_value,
+                     record.species_index, record.archetype_index,
+                     record.skills[1U]});
+                constexpr std::array kStatus{
+                    AttributeSkillUpgradeStatus::available,
+                    AttributeSkillUpgradeStatus::invalid_selection,
+                    AttributeSkillUpgradeStatus::attribute_not_upgradeable,
+                    AttributeSkillUpgradeStatus::unknown_species,
+                    AttributeSkillUpgradeStatus::class_restricted,
+                    AttributeSkillUpgradeStatus::at_limit};
+                if (!lua.has_value() || lua->size() != 5U ||
+                    (*lua)[0] < 0 ||
+                    (*lua)[0] >= static_cast<std::int64_t>(kStatus.size()) ||
+                    (*lua)[1] != (skill ? 1 : 0) ||
+                    (*lua)[2] != preview.value_index ||
+                    (*lua)[3] < 0 || (*lua)[3] > 0xFF ||
+                    (*lua)[4] < 0 || (*lua)[4] > 0xFF) {
+                    source_boundary("field.hotel.karma_rule_script_failed");
+                    preview.status =
+                        AttributeSkillUpgradeStatus::invalid_selection;
+                    return preview;
+                }
+                preview.status =
+                    kStatus[static_cast<std::size_t>((*lua)[0])];
+                preview.next_value = static_cast<std::uint8_t>((*lua)[3]);
+                preview.karma_cost = static_cast<std::uint16_t>((*lua)[4]);
+                return preview;
+            });
         hotel_karma_skills_.open(active_runner_record());
         hotel_karma_load_frames_ = hotel_karma_load_black_frames_;
         source_boundary("field.hotel.karma_screen.opened");
