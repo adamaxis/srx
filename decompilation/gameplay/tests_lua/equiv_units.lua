@@ -116,6 +116,17 @@ local INTENDED = {
   advance_target_marker = "ROM 0x5C7E tiers the target's meter (a5a74ea3)",
   advance_player_animation = "actor/animator.lua 0x600E wrap/0x5FDC signed word; equal on frame 0..3/acc 0..0xFFF (animator_tests)",
 }
+-- Fields added by actor/think.lua (0x13904 gate outputs). Stripped before comparing so the
+-- rest of the result/state must still match the pre-split reference exactly.
+local THINK_FIELDS = { "world_activity_requested", "field_event_request", "source_spawn_state_flags",
+  "ai_think_path", "ai_think_gap", "ai_deactivate_requested" }
+local function strip_think(v, seen)
+  if type(v) ~= "table" then return v end
+  seen = seen or {}; if seen[v] then return v end; seen[v] = true
+  for _, k in ipairs(THINK_FIELDS) do v[k] = nil end
+  for _, x in pairs(v) do strip_think(x, seen) end
+  return v
+end
 for name, f in pairs(REG) do if type(f) == "function" and origf[name] and not INTENDED[name] then targets[#targets + 1] = name end end
 table.sort(targets)
 local total, mism, perfn = 0, 0, {}
@@ -146,6 +157,7 @@ for _, name in ipairs(targets) do
     _G.game = gameA; local ra = table.pack(pcall(fa, table.unpack(argsA, 1, 5)))
     _G.game = gameB; local rb = table.pack(pcall(fb, table.unpack(argsB, 1, 5)))
     local function sig(r, s, c, g, log, x)
+      strip_think(r); strip_think(s); strip_think(g.actors)
       return table.concat({ tostring(r[1]), r[1] and ser({ table.unpack(r, 2, r.n) }) or H.norm_err(r[2]), ser(s), ser(c), ser(g.actors), ser(x), table.concat(log, ";") }, "|")
     end
     total = total + 1

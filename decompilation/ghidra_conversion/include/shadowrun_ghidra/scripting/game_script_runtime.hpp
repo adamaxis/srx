@@ -1233,6 +1233,14 @@ using ScriptActorRandomBound =
 // True when 0x14D8E leaves carry clear for these linked world coordinates.
 using ScriptActorActionLineClear =
     std::function<bool(std::uint16_t world_x, std::uint16_t world_y)>;
+struct ScriptActorDestinationMeasurement {
+    std::uint16_t heading = 0;
+    std::uint16_t distance = 0;
+    std::uint16_t step_cost = 0;
+};
+using ScriptActorDestinationMeasure =
+    std::function<std::optional<ScriptActorDestinationMeasurement>(
+        std::uint16_t world_x, std::uint16_t world_y)>;
 
 // Source-derived identity and spawn facts passed to an actor's Lua heartbeat.
 // Lua owns per-instance behavior state; the host retains world facts and
@@ -1297,6 +1305,20 @@ struct ScriptActorBehaviorContext {
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t source_behavior_flags = 0;
     std::uint8_t source_spawn_state_flags = 0;
+    // FFE175 has no recovered producer in the host; nil means unknown [H].
+    std::optional<bool> source_think_suppressed;
+    // FFE16F / FFDF40 actor-think inputs. Alarm remains optional until the
+    // field security fact is known; scene mode and camera/profile bounds are
+    // populated from the live field state [C].
+    std::optional<bool> source_alarm_active;
+    std::optional<std::uint16_t> source_scene_mode;
+    std::optional<std::uint8_t> controlled_runner_slot;
+    std::optional<std::uint16_t> source_camera_x;
+    std::optional<std::uint16_t> source_camera_y;
+    std::optional<std::uint16_t> source_camera_limit_x;
+    std::optional<std::uint16_t> source_camera_limit_y;
+    // The FF13AE facing reference has no recovered producer in this host [H].
+    std::optional<std::uint16_t> guard_facing_reference;
     std::uint8_t source_action_slot = 0;
     std::uint8_t source_action_ammo = 0;
     std::uint8_t source_action_counter = 0;
@@ -1373,6 +1395,8 @@ struct ScriptActorBehaviorContext {
     // Closed over the caster. Unset means the host cannot run 0x14D8E
     // honestly, and Lua then refuses the cast.
     ScriptActorActionLineClear action_line_clear;
+    // Source geometry fact service for a Lua-selected world destination.
+    ScriptActorDestinationMeasure measure_destination;
     // Source +0x4C physical meter. Lua retains this separate field for the
     // Scene-55 ending scan without exposing combatant facts to static actors.
     std::optional<std::uint8_t> source_physical_meter;
@@ -1400,6 +1424,9 @@ struct ScriptActorBehaviorDecision {
     std::uint8_t animation_frame = 0;
     std::uint8_t source_record_flags = 0;
     std::uint8_t source_behavior_flags = 0;
+    std::uint8_t source_spawn_state_flags = 0;
+    bool world_activity_requested = false;
+    std::optional<std::uint32_t> field_event_request;
     std::uint16_t source_animation_selector = 0;
     std::optional<std::uint16_t> animation_selector;
     bool combat_action_requested = false;

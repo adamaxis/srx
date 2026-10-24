@@ -16,6 +16,10 @@ local weapon_projectile_descriptor_increment = R.weapon_projectile_descriptor_in
 
 local function snapshot(state, action, audio_event, projectile_movement,
                         target_heading_audio_event)
+    local world_activity_requested = state.world_activity_requested == true
+    local field_event_request = state.field_event_request
+    state.world_activity_requested = false
+    state.field_event_request = nil
     if state.animation_id == "idle" then
         state.animation_frame = 0
         state.source_animation_selector =
@@ -35,6 +39,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
         action = action,
         animation = state.animation_id,
         source_record_flags = state.source_record_flags,
+        source_spawn_state_flags = state.source_spawn_state_flags or 0,
         animation_selector = state.animation_selector,
         direction = state.direction,
         frame = state.animation_frame,
@@ -42,6 +47,8 @@ local function snapshot(state, action, audio_event, projectile_movement,
         transition_started = state.transition_started,
         transition_complete = state.transition_complete,
         source_behavior_flags = state.source_behavior_flags,
+        world_activity_requested = world_activity_requested,
+        field_event_request = field_event_request,
         source_animation_selector = state.source_animation_selector,
         combat_action_requested = state.combat_action_requested,
         audio_event = audio_event,

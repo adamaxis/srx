@@ -43,6 +43,8 @@ local function begin_received_hit_reaction(...) return R.begin_received_hit_reac
 local function begin_spell_cast(...) return R.begin_spell_cast(...) end   -- from actor/actions.lua
 local function classify_item_dispatch(...) return R.classify_item_dispatch(...) end   -- from actor/actions.lua
 local function classify_spell_dispatch(...) return R.classify_spell_dispatch(...) end   -- from actor/actions.lua
+local function advance_think(...) return R.advance_think(...) end   -- from actor/think.lua
+local function apply_think_path(...) return R.apply_think_path(...) end   -- from actor/think.lua
 local function direction_from_heading(...) return R.direction_from_heading(...) end   -- from actor/targeting.lua
 local function finish_entity_movement(...) return R.finish_entity_movement(...) end   -- from actor/movement.lua
 local function first_wounded_party_runner(...) return R.first_wounded_party_runner(...) end   -- from actor/actions.lua
@@ -128,6 +130,8 @@ function ActorAI.heartbeat(context)
                                   state.source_physical_meter
     state.source_record_slot = context.source_record_slot or
                                state.source_record_slot
+    state.source_spawn_state_flags = context.source_spawn_state_flags or
+                                     state.source_spawn_state_flags or 0
     state.source_behavior_flags = context.source_behavior_flags or
                                   state.source_behavior_flags
     state.source_action_slot = context.source_action_slot or
@@ -296,31 +300,17 @@ function ActorAI.heartbeat(context)
                         state.entry_delay = state.entry_delay - 1
                     end
                 else
-                    if state.behavior_timer > 0 then
-                        state.behavior_timer = state.behavior_timer - 1
-                    else
-                        -- ROM 0x13904 decrements +0xB6 on every actor-service
-                        -- pass, then refreshes target and route policy every
-                        -- 21 passes. The +0x3A continuation moves each pass.
-                        state.behavior_timer = 0x14
-                        -- ROM 0x13920..0x13974: kind 0xF (0x13A4C), escort
-                        -- (+0xB0 b7, 0x14508) and +0x9E b3 return first;
-                        -- then +0x0C == 0 (off screen, 0x5A56) with +0x9E b2
-                        -- jumps to 0x1E514. Only 0x1E09A (alarm off) sets
-                        -- +0x9E b2, on alarm guards (+0x9E b1); the alarm
-                        -- guard spawn 0x1E0DC is not ported, so this is
-                        -- dormant for list/encounter actors. The +0x9E b5 &&
-                        -- FFDF84 -> 0x13E8C branch sits before it and is not
-                        -- modeled here [H: no b2 pedestrians exist].
-                        local spawn_flags = context.source_spawn_state_flags or 0
-                        if context.entity_kind ~= SpriteType.THON and
-                           (state.source_behavior_flags & BehaviorFlag.ESCORT) == 0 and
-                           (spawn_flags & ActorFlag.QUEST) == 0 and
-                           (spawn_flags & ActorFlag.DESPAWN_OFFSCREEN) ~= 0 and
-                           context.source_projection_active == false then
+                    local think_path = advance_think(state, context)
+                    if apply_think_path(state, context, think_path) then
+                        if state.ai_deactivate_requested then
                             deactivate_record(state)
                             return snapshot(state, "hold", nil)
                         end
+                    else
+                        -- 0x13904 refreshes target/routing every 21 actor
+                        -- service passes; +0x3A continues movement each pass.
+                        -- Patrol/follow names currently fall through to the
+                        -- existing target path until typed route data exists [H].
                         requested_movement_heading(context, profile, state)
                         local target = retained_linked_target(context, state)
                         if context.action_kind == ActionKind.spell then

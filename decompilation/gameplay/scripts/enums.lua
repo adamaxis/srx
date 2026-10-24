@@ -129,12 +129,13 @@ E.SceneId = { ALARM_COMBAT = 0x14, FINAL = 0x37 }                               
 E.EventFn = { GUARD_SPOTS_YOU = 0x20FEC }                                            -- scheduled via 0x1E2E0 [C]
 
 E.AiTuning = {   -- [C] unless marked
-    THINK_FRAMES = 0x14, ANIM_BUSY = 0x3C, ARRIVE_DIST = 0x1E0, FLANK_RADIUS = 0xE0, FLANK_ANGLE = 0x6000,
+    THINK_FRAMES = 0x14, THINK_RETRY = -1, -- 0x13904 + FFE175 retry remains negative [C]
+    ANIM_BUSY = 0x3C, ARRIVE_DIST = 0x1E0, FLANK_RADIUS = 0xE0, FLANK_ANGLE = 0x6000,
     FLEE_OFFSET = 0x2580, FLEE_CAMERA_BIAS = 0xA00, ENGAGE_DIST = 0x500, WATCH_DIST = 0x640,
     THON_PERIOD = 8, HURT_BELOW = 4, CAST_MIN_STUN = 5, SPELL_GATE_MAX = 2, APPROACH_TICKS = 6,
     QUARTER_TURN = 0x4000, NO_TARGET = 0x12345678, STEER_NONE = 0x1000, ALARM_FRAMES = 0x960,
     RELOAD_ROUNDS = 0x26, PATH_TRIES = 5, ANIM_TIMER_MASK = 0x7FF,
-    ENDING_HOLD_ROUNDS = 0x28,   -- 0x13D20 [C value, H meaning]
+    ENDING_HOLD_ROUNDS = 0x28,   -- +0x4E tests at 0x13D20 and 0x139AA [C value, H meaning]
 }
 E.Collision = { BLOCKED = 0x7F, LOW_BITS = 0x1F, IMPASSABLE_FROM = 0x18 }   -- repo movement_collision_code [H names, C values]
 E.EntryDelayMax = { STATIC = 15, DYNAMIC_ENCOUNTER = 0x28 }                   -- repo heartbeat guard [H names]

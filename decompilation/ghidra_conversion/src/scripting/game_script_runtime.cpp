@@ -3476,6 +3476,41 @@ struct GameScriptRuntime::Impl {
         }
     }
 
+    static int actor_measure_destination(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        std::uint32_t x = 0U;
+        std::uint32_t y = 0U;
+        if (self == nullptr || self->active_actor_context == nullptr ||
+            !self->active_actor_context->measure_destination ||
+            !read_integer(lua, 1,
+                          std::numeric_limits<std::uint16_t>::max(), x) ||
+            !read_integer(lua, 2,
+                          std::numeric_limits<std::uint16_t>::max(), y)) {
+            return luaL_error(
+                lua, "actor destination measure expects world coordinates");
+        }
+        try {
+            const auto measured =
+                self->active_actor_context->measure_destination(
+                    static_cast<std::uint16_t>(x),
+                    static_cast<std::uint16_t>(y));
+            if (!measured.has_value()) {
+                lua_pushnil(lua);
+                return 1;
+            }
+            lua_createtable(lua, 0, 3);
+            lua_pushinteger(lua, measured->heading);
+            lua_setfield(lua, -2, "heading");
+            lua_pushinteger(lua, measured->distance);
+            lua_setfield(lua, -2, "distance");
+            lua_pushinteger(lua, measured->step_cost);
+            lua_setfield(lua, -2, "step_cost");
+            return 1;
+        } catch (...) {
+            return luaL_error(lua, "actor destination measure failed");
+        }
+    }
+
     static int movement_route(lua_State* lua) {
         auto* self = from_upvalue(lua);
         std::uint32_t route_key = 0U;
@@ -8055,6 +8090,42 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "source_item_spawn_result");
     lua_pushinteger(state, context.source_spawn_state_flags);
     lua_setfield(state, -2, "source_spawn_state_flags");
+    if (context.source_think_suppressed.has_value()) {
+        lua_pushboolean(state, *context.source_think_suppressed ? 1 : 0);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_think_suppressed");
+    if (context.source_alarm_active.has_value()) {
+        lua_pushboolean(state, *context.source_alarm_active ? 1 : 0);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_alarm_active");
+    const auto push_optional_actor_integer = [state](
+        const char* field, const std::optional<std::uint16_t>& value) {
+        if (value.has_value()) {
+            lua_pushinteger(state, *value);
+        } else {
+            lua_pushnil(state);
+        }
+        lua_setfield(state, -2, field);
+    };
+    push_optional_actor_integer("source_scene_mode", context.source_scene_mode);
+    push_optional_actor_integer("source_camera_x", context.source_camera_x);
+    push_optional_actor_integer("source_camera_y", context.source_camera_y);
+    push_optional_actor_integer("source_camera_limit_x",
+                                context.source_camera_limit_x);
+    push_optional_actor_integer("source_camera_limit_y",
+                                context.source_camera_limit_y);
+    push_optional_actor_integer("guard_facing_reference",
+                                context.guard_facing_reference);
+    if (context.controlled_runner_slot.has_value()) {
+        lua_pushinteger(state, *context.controlled_runner_slot);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "controlled_runner_slot");
     lua_pushboolean(state, context.world_activity_active);
     lua_setfield(state, -2, "world_activity_active");
     lua_pushinteger(state, context.world_scene_state);
@@ -8360,6 +8431,13 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "action_line_clear");
+    if (context.measure_destination) {
+        lua_pushlightuserdata(state, impl_.get());
+        lua_pushcclosure(state, Impl::actor_measure_destination, 1);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "measure_destination");
     lua_pushlstring(state, heartbeat_phase.data(), heartbeat_phase.size());
     lua_setfield(state, -2, "phase");
     lua_pushlstring(state, animation_mode.data(), animation_mode.size());
@@ -8590,6 +8668,24 @@ GameScriptRuntime::actor_heartbeat(
     }
     decision.source_behavior_flags =
         static_cast<std::uint8_t>(returned_action_code);
+    if (!read_field_integer(state, decision_table,
+                            "source_spawn_state_flags", 0xFFU,
+                            returned_action_code)) {
+        return fail("actor_ai.heartbeat returned invalid source spawn flags");
+    }
+    decision.source_spawn_state_flags =
+        static_cast<std::uint8_t>(returned_action_code);
+    if (!read_field_boolean(state, decision_table,
+                            "world_activity_requested",
+                            decision.world_activity_requested)) {
+        return fail("actor_ai.heartbeat returned an invalid activity request");
+    }
+    if (!read_optional_field_u32(
+            state, decision_table, "field_event_request",
+            std::numeric_limits<std::uint32_t>::max(),
+            decision.field_event_request)) {
+        return fail("actor_ai.heartbeat returned an invalid field event request");
+    }
     if (!read_field_integer(state, decision_table,
                             "source_animation_selector", 0xFFFFU,
                             returned_action_code)) {

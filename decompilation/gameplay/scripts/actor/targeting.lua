@@ -293,6 +293,7 @@ local function initial_state(context, profile)
         action_kind = context.action_kind,
         action_code = context.action_code,
         source_record_flags = context.source_record_flags or 0,
+        source_spawn_state_flags = context.source_spawn_state_flags or 0,
         source_physical_meter = context.source_physical_meter,
         source_record_slot = context.source_record_slot,
         source_behavior_flags = context.source_behavior_flags or 0,

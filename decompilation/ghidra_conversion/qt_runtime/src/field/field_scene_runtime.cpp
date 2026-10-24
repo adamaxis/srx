@@ -4578,6 +4578,22 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 actor.source_item_spawn_result;
             context.source_spawn_state_flags =
                 actor.source_spawn_state_flags;
+            context.source_alarm_active = field_matrix_field_state_.alarm;
+            context.source_scene_mode =
+                field_movement_transition_state_.world_mode;
+            context.controlled_runner_slot = static_cast<std::uint8_t>(
+                field_party_roster_.active_slot());
+            // FFDDC6/FFDDC8 are the live camera origin; profile words +8/+10
+            // are FFDDCE/FFDDD0, the scene's far camera bounds [C].
+            const auto& field_profile = state_.field_scene_buffers.profile;
+            if (field_profile.size() > 5U) {
+                context.source_camera_x = static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_x);
+                context.source_camera_y = static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_y);
+                context.source_camera_limit_x = field_profile[4U];
+                context.source_camera_limit_y = field_profile[5U];
+            }
             context.world_activity_active =
                 world_frame_logic_state_.world_active != 0U;
             context.world_scene_state =
@@ -4892,6 +4908,27 @@ void FieldSceneRuntime::advance_default_field_actors() {
                     !probe_result.source_carry;
             };
 
+            context.measure_destination = [
+                &actor](const std::uint16_t target_x,
+                        const std::uint16_t target_y)
+                -> std::optional<scripting::
+                    ScriptActorDestinationMeasurement> {
+                // 0x15CA4 provides heading/distance, and 0x1460E compares the
+                // direct route step cost to the arrival threshold [C].
+                const auto measurement =
+                    measure_entity_target_heading_and_distance(
+                        actor.world_position.x, actor.world_position.y,
+                        target_x, target_y);
+                const auto route_cost = std::min<std::uint32_t>(
+                    compute_record_diagonal_step_cost(
+                        actor.world_position.x, actor.world_position.y,
+                        target_x, target_y),
+                    std::numeric_limits<std::uint16_t>::max());
+                return scripting::ScriptActorDestinationMeasurement{
+                    measurement.heading, measurement.distance,
+                    static_cast<std::uint16_t>(route_cost)};
+            };
+
             const bool has_candidate_in_source_pool = std::any_of(
                 context.ai_target_candidates.begin(),
                 context.ai_target_candidates.end(),
@@ -5049,9 +5086,30 @@ void FieldSceneRuntime::advance_default_field_actors() {
         if (dynamic_world_actor) {
             actor.source_record_flags = decision->source_record_flags;
             actor.source_behavior_flags = decision->source_behavior_flags;
+            actor.source_spawn_state_flags =
+                decision->source_spawn_state_flags;
             actor.source_animation_selector =
                 decision->source_animation_selector;
             actor.combatant.source_flags = actor.source_record_flags;
+        }
+        if (dynamic_world_actor && decision->world_activity_requested) {
+            // 0x1DBAA's FFDF84/FFDF86 effect uses the existing timeout model [C].
+            if (schedule_world_activity_timeout(
+                    field_world_activity_timeout_state_)) {
+                world_frame_logic_state_.world_active =
+                    static_cast<std::uint16_t>(
+                        field_world_activity_timeout_state_.timeout_marker);
+                world_frame_logic_state_.cleanup_countdown =
+                    static_cast<std::int16_t>(
+                        field_world_activity_timeout_state_.timeout_frames);
+                source_boundary("field.actor.think_world_activity_requested");
+            } else {
+                source_boundary("field.actor.think_world_activity_request_gated");
+            }
+        }
+        if (dynamic_world_actor && decision->field_event_request.has_value()) {
+            // 0x1E2E0 event scheduling has no typed field-event queue yet [H].
+            source_boundary("field.actor.think_field_event_request_unresolved");
         }
         if (decision->target_motion_effect_slot_request.has_value()) {
             const auto slot = *decision->target_motion_effect_slot_request;
