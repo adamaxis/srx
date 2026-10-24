@@ -195,17 +195,18 @@ and the source action loop are implemented. In the Qt conversion the visible
 yellowish selector is a one-pixel outline directly on the 24x16 item art; it is
 not the larger equipment-cell rectangle.
 first A/B edge enters the four-choice `0x11740` loop; the second A/B edge
-confirms its selected action. The source `Equip/Unequip`, `Discard`, `Trade`,
-`Cancel`, and medical `First Aid` choices are now routed by Lua modules under
-`gameplay/scripts/menu/screens/item_action.lua`, with inventory and medical
-rules in the adjacent `rules/` files. `field_init.lua` registers these screens
-as active route owners, so the prior C++ input handlers are bypassed while the
-Lua route is open. C++ supplies typed party snapshots, capacity and roll
-services, and commits; Qt presents the Lua-selected screen through the shared
-field panel. Possession and equipment stay separate: an item in one of the
-eight cells is not active until the source equip action sets the live record's
-equipped slot/item bytes. Medical items remain on their First Aid path and do
-not enter the generic Equip/Unequip branch.
+confirms its selected action. The Lua script-menu path routes `Equip/Unequip`,
+`Discard`, `Trade`, `Cancel`, and `First Aid` through
+`gameplay/scripts/menu/screens/item_action.lua` and adjacent `rules/` files.
+`field_init.lua` registers that path for the gameplay-script menu runtime. The
+Qt field First Aid QA exercises a separate `FieldSceneRuntime` C++ controller
+and typed effect helper, so the repository currently has parallel First Aid
+state paths rather than one established Lua-owned state for that Qt route.
+The inventory audit must keep their coverage distinct until they are unified.
+Possession and equipment stay separate: an item in one of the eight cells is
+not active until the source equip action sets the live record's equipped
+slot/item bytes. Medical items remain on their First Aid path and do not enter
+the generic Equip/Unequip branch.
 The four source action positions are now declared as stable IDs by
 `gameplay/scripts/items.lua`; the field text catalog checks their ROM order,
 and the Qt dispatcher resolves the selected typed source action to its Lua ID.
@@ -224,13 +225,14 @@ not present in the supplied longplay, so visual fidelity remains partial.
 Inventory-action confirm also now emits the source `0x24` request before the
 item handler; the mapped audio file runs 2.484 seconds including its release
 tail. The wait itself does not issue another sound request.
-The target-effect leaf at `0x1253E` has the same typed source-derived rules in
-Lua: its full-target gate, difficulty formula, roll-result fallback, meter
-order, status transition, and `0xB45C` continuation. The `0x12298`
-active-target/CANCEL list, wrapped target cursor, `0x12466`/`0x1247E` patch
-branches, and `0x124AE` phase consumption also run in Lua. A typed host roll
-service supplies the shared source RNG; the medkit rule itself remains in
-Lua.
+The Lua menu model contains the source-derived `0x1253E` full-target gate,
+difficulty formula, roll-result fallback, meter order, status transition, and
+`0xB45C` continuation, plus the `0x12298` active-target/CANCEL list, wrapped
+cursor, `0x12466`/`0x1247E` patch branches, and `0x124AE` phase consumption.
+The Qt field runtime also has a separate C++ First Aid controller/effect path:
+`field_scene_runtime.cpp` reads active-runner `skills[8]`, creates target
+state, and calls `use_first_aid_item` directly. Those two paths have not yet
+been unified under Lua's authoritative menu state.
 The armor-selection leaf at `0x11352` is separately represented in
 `armor_selection_conversion`. The Qt inventory now presents the same typed
 selection directly: item code minus `0x2B` chooses the lower armor panel at
@@ -252,25 +254,43 @@ keeping their existing typed state and input path. Debug/Release script,
 catalog, and full-screen route QA cover the bindings; see the
 [shared UI Lua content review](visual-audits/shared-ui-lua-content.md).
 If the discarded cell is live equipment, its weapon or armor state is cleared
-with it. First Aid now follows `0x12298`/`0x1253E`: it builds the active
-record target list plus the source `CANCEL` row, preserves the target cursor,
-uses the `0x0DBA` Biotech roll for medkits, applies the `0x3674` physical and
-`0x37EC` mental writers for patches, shows the source result strings, and
-decrements/removes the selected phase byte only after a successful use. The
+with it. First Aid behavior is implemented in both the Lua item-action
+screen and the Qt field runtime. The Qt route follows `0x12298`/`0x1253E`:
+it builds the active-record target list plus the source `CANCEL` row, preserves
+the target cursor, uses the `0x0DBA` Biotech roll for medkits, applies the
+`0x3674` physical and `0x37EC` mental writers, shows the source result
+strings, and decrements/removes the selected phase byte only after a
+successful use. The
 Trade magic-item rejection, recipient/full-inventory gate, Yes/No confirmation,
 and `0x129FE` possession transfer are now connected in the Qt conversion
 through typed roster and item records. The recipient HUD-panel call at
 `0x110E8`, Windows loopback capture for this exact Trade route, and an independent Trade capture remain open.
 
-The active Lua route retains the selected inventory slot while First Aid is
+The Qt field route retains the selected inventory slot while First Aid is
 open, accepts A for target choice, waits for a fresh controller edge to dismiss
 the result, and returns to the same Inventory page. Its CTest writes
 `actual.bmp` and target/CANCEL/use/return checkpoints and checks the live HUD
-and one-pixel item selector. Debug and Release route tests cover the Lua rule
-and the whole-screen output; their BMP hashes match and the captured screens
-were reviewed. The hill remains partial while the host random seed differs
-from source startup, Windows loopback for this exact route remains unrecorded,
-and the recruited-runner visual roster is unavailable.
+and one-pixel item selector. Debug and Release route captures match and were
+reviewed. The ROM-backed helper matrix checks 436,320 treatment outcomes and
+1,313 fully treated guards across all thirteen source profiles. Physical Qt
+QA now drives all thirteen raw-ROM profiles through both successful-use and
+fully-treated controller routes, including the source
+`items.text.option.first_aid_not_injured` result, zero dice, unchanged meters,
+status, continuation, item and phase, and clean Inventory return. It also
+drives the Stim Patch mental-meter branch and full-mental guard plus the
+Trauma Patch physical-meter branch and full-physical guard across all thirteen
+profiles. These checks cover the conditional opposite-meter status-bit writes,
+no-RNG behavior, patch phase decrement/retention, and
+`items.text.option.first_aid_slap_patch_used`. Debug and Release write 143
+profile BMPs with matching SHA-256; the Medkit and 52-row patch manifests also
+match. Independent section-06 frame 002563 supports the selected Stim Patch
+layout at uses 04, while the Gator starter template has phase 06; no supplied
+Genesis frame shows either patch effect or its no-injury guard. Host
+screenshots do not add independent Genesis visual proof. The audit does not
+resolve the duplicate Lua/C++ state paths. The hill remains partial while the
+host random seed differs from source startup, Windows loopback for this exact
+route remains unrecorded, and recruited-runner visual screens are
+unavailable.
 
 ### Posture (`0x11928`, `0x119CE`, `0x11ABE`, `0x11AE4`)
 
@@ -522,7 +542,7 @@ static text-asset data. Stoker command `0x30` adds `FFFC30` bit 1, exposing
 the next Tips & Clues record; command `0x31` sets `FFFC27` bit 0, exposing
 Mr. Johnsons. `FFFC2A` remains clear until a runner-information event writes
 it. A restored save that omits these flags stops at an explicit boundary. The
-native screen displays the exact `0xF2E2` no-current-run response.
+handler at `0xF2E2` displays the exact no-current-run response; Debug/Release physical QA holds on zero input for 30 frames and covers every nonzero controller byte (`0x01..0xFF`), with each return restoring Notebook row 0 and clearing the response text. The input-mask manifests match.
 The `0xF236` Notebook loop sends C through `0x391A`, which requests event
 `0x25` and returns to the same selected Notebook row. Qt now preserves that
 page/selection and emits the event; QA checks both the callback and the full
@@ -643,8 +663,8 @@ of a port.
 | Hospital Options | `0x1FA02`, `0xC928`, `0xCE7C` | Partial | Scene-4 record 93/event 4 is reached by ordinary Up and opens the nurse prompt; A opens the same-map three-row menu, with Cyberware and No/Yes exit handoff covered in Debug/Release physical and full-frame QA. Medical Attention `0xCA2E`, B/action `0x391A`, and independent Genesis hospital visuals remain open; see `visual-audits/council-island-hospital-options.md` |
 | Cyberware | `0x11950` | Partial | Empty branch and source bit 0..14 installed-row scan use a typed model; the center child panel now preserves the shared command portrait, inventory, posture, tab, and right HUD. Debug/Release full-screen QA checks entry, 30-frame hold, return, reopen, and both populated/empty states. No independent Genesis Cyberware image or mutation flow is available |
 | Runner switching | `0x391A` | Partial | Qt C input now syncs `RunnerSwitchState` with the typed active party, moves the source `+0x10` selection marker, requests event `0x25`, and refreshes the active record/HUD used by held-A actions. Debug/Release route QA confirms no-eligible Joshua retention and C-selects a source save-template Ricky before reloading his record. Normal story recruitment/save restore, the source world-target/fade/animation tail, and an independent Genesis C-switch capture remain open |
-| Pocket Secretary / Notebook | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF236`, `0xF2E2`, `0xF33E`, `0xF312`, `0xF5F4`, `0xF6DC`, `0xF840`, `0x18150`, `0xC448` | Partial | Qt connects the source five-row base, Group Items empty/populated branches, Cyberdeck no-deck response, and installed-deck `0x18150` route through the typed deck screen. Ordinary-input Debug/Release QA captures the selected parent row, full deck screen, and same-row return; the full deck frame was inspected against independent Section 15 frame `004220`. Notebook base list, Current Run no-run wait/return, Mr. Johnsons, Contacts, and Shadowrunners pages are connected. ROM-derived full-frame Debug/Release QA covers Contacts/Shadowrunners list, details, paging, exact-eight behavior, and clean parent returns. The Notebook dump checks coordinates and stale-row clearing. The Dismiss route checks fixed Abort/name placement, compact-marker state, selected-runner preview, current-runner replacement, and inner-panel replacement on return. F312/C448 call E660 once per VBlank; the typed random 1x2 effect is checked against child text and controls. Positive current-run records, normal quest/deck acquisition and restored-save flags, Save/Load, restricted-mode gates, route-specific Windows audio loopback, and independent Genesis frames for the remaining pages remain open. Shared audio QA verifies decoded playback/default-output state/duration. Existing NativePort menu paths do not count as Qt implementation evidence. |
-| Magic | `0xFBA6`, `0x10260`, `0x10276`, `0x102EC`, `0x1055E`, `0x105E6`, `0x1088C`, `0x11190` | Partial | Qt connects the typed Magical Defense fallback and spell-panel display/browsing. Spell QA checks the corrected DBF spell-table bounds, complete 3x3 icons, selected header glyph, four metric rows, live selection/four cursor phases, command-center clearing, retained HUD/portrait, and return/reopen; independent longplay frames 000001/000002/000005 were inspected. Source cursor phase advances every seven field frames. Parent event 0x24 maps to `menu-024.flac` (2.484 s metadata); shared audio QA verifies decoding, PlayingState on the default output, duration, and stop, while Windows loopback for the exact Magic route remains unrecorded. Target/effect action and broader independent visual coverage remain open |
+| Pocket Secretary / Notebook | `0xC2A6`, `0xC3E6`, `0xC376`, `0xC8C8`, `0xF236`, `0xF2E2`, `0x1E72C`, `0xF33E`, `0xF312`, `0xF5F4`, `0xF6DC`, `0xF840`, `0x18150`, `0xC448` | Partial | Qt connects the source five-row base, Group Items empty/populated branches, Cyberdeck no-deck response, and installed-deck `0x18150` route through the typed deck screen. Ordinary-input Debug/Release QA captures the selected parent row, full deck screen, and same-row return; the full deck frame was inspected against independent Section 15 frame `004220`. Notebook base list, Current Run no-run wait/return, Mr. Johnsons, Contacts, and Shadowrunners pages are connected. ROM-derived full-frame Debug/Release QA covers Contacts/Shadowrunners list, details, paging, exact-eight behavior, and clean parent returns. The Notebook dump checks coordinates and stale-row clearing. The Dismiss route checks fixed Abort/name placement, compact-marker state, selected-runner preview, current-runner replacement, and inner-panel replacement on return. F312/C448 call E660 once per VBlank; the typed random 1x2 effect is checked against child text and controls. The 0x1E72C active-run handler table and common payment path are traced, with per-type text operands mapped to Lua offer fields. Positive rendering, source bounds, and restored-save paths remain open. Normal quest/deck acquisition and restored-save flags, Save/Load, restricted-mode gates, route-specific Windows audio loopback, and independent Genesis frames for the remaining pages remain open. Shared audio QA verifies decoded playback/default-output state/duration. Existing NativePort menu paths do not count as Qt implementation evidence. |
+| Magic | `0xFBA6`, `0x10260`, `0x10276`, `0x102EC`, `0x1055E`, `0x105E6`, `0x1088C`, `0x11190` | Partial | Qt connects the typed Magical Defense fallback and spell-panel display/browsing. Spell QA checks the corrected DBF spell-table bounds, complete 3x3 icons, selected header glyph, four metric rows, live selection/four cursor phases, command-center clearing, retained HUD/portrait, and return/reopen; independent longplay frames 000001/000002/000005 were inspected. Source cursor phase advances every seven field frames. Parent event 0x24 maps to `menu-024.flac` (2.484 s metadata); shared audio QA verifies decoding, PlayingState on the default output, duration, and stop, while Windows loopback for the exact Magic route remains unrecorded. Target/effect action and broader independent visual coverage remains open; a one-second candidate search of sections 08-41 found no non-magic Defense frame, but is not proof of absence |
 | Matrix/cyberdeck | `0x181F8`, `0x1822C`, `0x18D1A`, `0x18F5E`, `0x54662` and typed Lua session/menu paths | Partial | The isolated Storage screen hill (`0x18D1A`/`0x18F5E`) is defended for traced behavior and source-positioned layout by Debug/Release route and full-frame QA, including view, erase, and empty-storage paths; an independent Genesis Storage comparison remains unavailable. Cyberdeck and static node traversal routes render the typed node, fixed blue traversal floor, HUD, deck footer, and ROM-selected world-effect phase. Debug/Release QA rejects node-security recoloring of the floor. Debug/Release QA also compares the settled System 1/node 0 Green-4 model 0 crop with Section 15 frame 004440: green bounds match and silhouette IoU is 0.858. The host uses Medic-1 while the reference uses Analyze-2, so this is not a full-frame comparison. The rank-zero model palette follows the `0x19DF2` gate. A typed-snapshot presenter check compares all six System 15/node 13 mode-3 phases against Section 15 frame `004800`; the best candidate has full-frame mean RGB error `9.653` and a complete `actual.bmp` was inspected. `0x1A908` stores the selected effect mode before `0x54662` raises node knowledge, so later alert changes do not reselect that record. Mode zero uses a four-phase raw-cadence entry branch; nonzero modes add the current node reaction delta. The mode-3 fixture predicts phase 4 after 238 serviced entry ticks. The typed-snapshot presenter check's phase-5 best match at frame `004800` does not establish the live route's stored mode or phase. The separate `0x5672C` VBlank palette path can cycle CRAM `$C014` under `FFDDC4=0` and `FFDF40=0`, but those Matrix gates are unverified. The live frame comparison, later Active Alert frames, the 56-frame entry projection, moving camera, raised action/hand effects, and live Matrix actor cadence remain open. See `visual-audits/matrix-storage-screen.md` and `visual-audits/matrix-traversal-viewport.md` |
 | Field combat | source target/action loops | Pending | Posture consumers, damage, ammo/spell drain, and animation are pending |
 
@@ -715,8 +735,14 @@ behavior:
   weapon Damage/Power rows are emitted only for item codes below `0x10`.
   Medkits and the later item categories therefore cannot acquire a weapon
   damage stat merely because a table record has a nonzero field. The adjacent
-  `0x12B8E` branch now selects the source `ammo`, `uses`, and `rtng` labels;
-  the value tile table at `0x6AC46` is still pending native asset extraction.
+  `0x12B8E` branch selects the source `ammo`, `uses`, and `rtng` labels.
+  `0x12A8C` reads the selected inventory cell's `+0x6E` phase and indexes the
+  40-row two-word table at `0x6AC46`; `0x334C` uploads its glyph patterns from
+  `0x6A5BE` to VRAM `0xDAC0`. The active extractor now writes those 40 fixed
+  16x8 palette-line-1 assets. Debug/Release QA follows all eligible occupied
+  item cells in the 13 ROM runner templates and verifies First Aid's `06` to
+  `05` decrement. Independent section-06 frames 002580/002610/002640 show
+  `06`/`05`/`04`; other profiles and phase values remain host-only evidence.
 - The reviewed `0x12168` item-code split now sends `0x14`, `0x16`, and
   `0x18..0x2B` through the source `0x121C0` automatic-use acknowledgement;
   native tests verify that the item remains in its possession cell and does
