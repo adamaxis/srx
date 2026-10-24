@@ -65,6 +65,12 @@ function M.advance_exit_transition(transition)
     return transition.elapsed_frames == M.EXIT_FADE_FRAMES,
            transition.frames_remaining <= 0
 end
+-- 0xC24 waits d5 + 1 VBlanks (dbra) [C]. Jack-in 0xE47A d5 = 0x14; random
+-- alert 0x54AD4 d5 = 0x19; overload 0x198F4 d5 = 0x1E. 0xD94 then waits one
+-- more VBlank before it samples the pad edge.
+M.JACK_IN_WAIT_FRAMES = 0x14 + 1
+M.ALERT_MESSAGE_WAIT_FRAMES = 0x19 + 1
+M.OVERLOAD_MESSAGE_WAIT_FRAMES = 0x1E + 1
 M.NO_IC, M.UNSEEN = 0x45, -1
 -- 0x1833C..0x18418: the visible deck grid is four columns by four rows.
 -- Direction priority is up, down, left, right; movement wraps silently.

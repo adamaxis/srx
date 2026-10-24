@@ -1,7 +1,8 @@
 -- Field Matrix entry shared by known passcodes and System Search.
--- ROM 0xE47A plays 0x1A, waits 20 VBlanks, then calls 0x181F8.
+-- ROM 0xE47A plays 0x1A, waits 21 VBlanks (0xC24, d5 = 0x14), then calls 0x181F8.
 local E = require("enums")
 local MatrixSession = require("menu.matrix_session")
+local MatrixRules = require("menu.rules.matrix")
 
 local M = { window = E.WindowPlane.OFF }
 local R, T = E.MenuRegion, E.MenuTransition
@@ -19,7 +20,7 @@ function M.new(args)
         node_ic_condition = args.node_ic_condition,
         node_knowledge_rank = args.node_knowledge_rank,
         return_to_field = args.return_to_field == true,
-        wait_frames = 20,
+        wait_frames = MatrixRules.JACK_IN_WAIT_FRAMES,
         title = "",
         text = "",
         labels = {},

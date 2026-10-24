@@ -29981,7 +29981,7 @@ int main(int argc, char** argv) {
                                  "System 2/node 2 route did not open\n";
                     return 3;
                 }
-                for (int frame = 0; frame < 20; ++frame) {
+                for (int frame = 0; frame < 21; ++frame) { // 0xC24 d5=0x14: 21 VBlanks [C]
                     field_scene.advance_frame();
                 }
                 if (field_scene.field_menu_route_screen_for_dump() !=
@@ -30523,7 +30523,7 @@ int main(int argc, char** argv) {
                                  "did not open\n";
                     return 3;
                 }
-                for (int frame = 0; frame < 20; ++frame) {
+                for (int frame = 0; frame < 21; ++frame) {
                     model0_scene.advance_frame();
                 }
                 if (model0_scene.field_menu_route_screen_for_dump() !=
@@ -30642,7 +30642,7 @@ int main(int argc, char** argv) {
                                  "after the source encounter\n";
                     return 3;
                 }
-                for (int frame = 0; frame < 20; ++frame) {
+                for (int frame = 0; frame < 21; ++frame) {
                     gate_scene.advance_frame();
                 }
                 if (gate_scene.field_menu_route_screen_for_dump() !=
@@ -31068,13 +31068,13 @@ int main(int argc, char** argv) {
                               << '\n';
                     return 3;
                 }
-                for (std::uint32_t frame = 0U; frame < 20U; ++frame) {
+                for (std::uint32_t frame = 0U; frame < 21U; ++frame) {
                     field_scene.advance_frame();
                 }
                 if (field_scene.field_menu_route_screen_for_dump() !=
                     static_cast<std::uint16_t>(
                         srx::MenuScreen::CYBERDECK)) {
-                    std::cerr << "Matrix CyberInfo QA: the 20-frame jack-in "
+                    std::cerr << "Matrix CyberInfo QA: the 21-frame jack-in "
                                  "did not enter the 0x181F8 deck loop\n";
                     return 3;
                 }

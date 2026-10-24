@@ -21798,7 +21798,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         if (field_matrix_route_active_ &&
             routed_screen == srx::MenuScreen::MATRIX_ENTRY) {
             // 0xE47A leaves the shared interface while it plays the jack-in
-            // cue and waits 20 VBlanks. Clear the whole frame so field/menu
+            // cue and waits 21 VBlanks (0xC24, d5 = 0x14). Clear the whole frame so field/menu
             // controls cannot remain visible beneath the transition.
             painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
             return;

@@ -295,9 +295,9 @@ rd:frame(P.A); for _ = 1, 3 do rd:frame(P.DOWN) end; rd:frame(P.A); check(top(rd
 rd:frame(P.UP); check(st(rd).system == 0, "pick clamp lo"); for _ = 1, 30 do rd:frame(P.DOWN) end; check(st(rd).system == 0x18, "pick clamp hi")
 -- 0x59B10 writes FFFBBC and jumps to 0xE47A; its 20-VBlank entry opens 0x181F8.
 rd:frame(P.A); check(ld.sounds[#ld.sounds] == E.MenuSound.JACK_IN and top(rd) == S.MATRIX_ENTRY, "pick system -> shared Matrix entry [C 0x59B10]")
-for _ = 1, 19 do rd:frame(0) end; check(top(rd) == S.MATRIX_ENTRY, "still waiting at frame 19")
+for _ = 1, 20 do rd:frame(0) end; check(top(rd) == S.MATRIX_ENTRY, "still waiting at frame 20 (0xC24 d5=0x14 -> 21 VBlanks)")
 rd:frame(0); check(top(rd) == S.CYBERDECK and st(rd).system_id == 0x18 and st(rd).matrix_session,
-    "frame 20 -> 0x181F8 Matrix deck loop for system 0x18 [C] (screen=" .. tostring(top(rd)) ..
+    "frame 21 -> 0x181F8 Matrix deck loop for system 0x18 [C] (screen=" .. tostring(top(rd)) ..
     ", system=" .. tostring(st(rd).system_id) .. ", session=" .. tostring(st(rd).matrix_session) ..
     ", wait=" .. tostring(st(rd).wait_frames) .. ", jack=" .. tostring(gd.jack) .. ")")
 rd:frame(P.START); check(top(rd) == S.MATRIX_NODE_ACTION and

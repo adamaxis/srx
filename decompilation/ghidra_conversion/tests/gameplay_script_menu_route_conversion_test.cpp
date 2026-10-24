@@ -1314,11 +1314,11 @@ int main() {
               sounds.back() == 0x1AU && debug_unlock_consumptions == 1,
           "Matrix entry plays the ROM jack-in effect and consumes the title unlock",
           failures);
-    for (int frame = 0; frame < 19; ++frame) {
+    for (int frame = 0; frame < 20; ++frame) {
         runtime.advance_menu_route(0U);
     }
     check(runtime.menu_route_snapshot().top_screen == kMatrixEntry,
-          "Matrix entry keeps the source 20-frame transition", failures);
+          "Matrix entry keeps the source 21-VBlank transition (0xC24 d5=0x14)", failures);
     runtime.advance_menu_route(0U);
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kCyberdeck &&
@@ -1840,16 +1840,16 @@ int main() {
               random_bounds.size() == transfer_rng_count,
           "Transfer Data begins the ROM search without rolling before its first wait",
           failures);
-    for (int frame = 0; frame < 19; ++frame) {
+    for (int frame = 0; frame < 20; ++frame) {
         runtime.advance_menu_route(0U);
     }
     check(runtime.menu_route_snapshot().top_text ==
               "   Browsing the|datastore you find|",
-          "the first search dot waits a full 20 frames", failures);
+          "the first search dot waits a full 21 VBlanks", failures);
     runtime.advance_menu_route(0U);
     route = runtime.menu_route_snapshot();
     check(route.top_text == "   Browsing the|datastore you find|.",
-          "the first source dot appears on frame 20", failures);
+          "the first source dot appears on frame 21", failures);
 
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     const auto save_transfer_frame = [&failures, &node_background_for,
@@ -1920,16 +1920,16 @@ int main() {
 #endif
 
     for (int dot = 2; dot <= 4; ++dot) {
-        for (int frame = 0; frame < 20; ++frame) {
+        for (int frame = 0; frame < 21; ++frame) {
             runtime.advance_menu_route(0U);
         }
         route = runtime.menu_route_snapshot();
         check(route.top_text ==
                   "   Browsing the|datastore you find|" +
                       std::string(static_cast<std::size_t>(dot), '.'),
-              "search dots retain the ROM's 20-frame cadence", failures);
+              "search dots retain the ROM's 21-VBlank cadence", failures);
     }
-    for (int frame = 0; frame < 9; ++frame) {
+    for (int frame = 0; frame < 10; ++frame) {
         runtime.advance_menu_route(0U);
     }
     route = runtime.menu_route_snapshot();
@@ -1940,7 +1940,7 @@ int main() {
                   std::vector<std::string>{"Yes", "No"} &&
               route.top_row == 0 &&
               random_bounds.size() == transfer_rng_count + 3U,
-          "successful search previews the ROM file after the final 9-frame pause",
+          "successful search previews the ROM file after the final 10-VBlank pause",
           failures);
     const auto transfer_file_prompt = route;
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
@@ -1973,7 +1973,7 @@ int main() {
           "canceled download returns to the same datastore", failures);
 
     runtime.advance_menu_route(0x4000U); // Retry Transfer Data; Yes is default.
-    for (int frame = 0; frame < 89; ++frame) {
+    for (int frame = 0; frame < 94; ++frame) {
         runtime.advance_menu_route(0U);
     }
     route = runtime.menu_route_snapshot();
@@ -1996,7 +1996,7 @@ int main() {
     matrix_world_state.run = ScriptMatrixRunState{0, 0, 0, 0, 1, 0};
     matrix_search_miss = true;
     runtime.advance_menu_route(0x4000U); // Search again with a forced miss.
-    for (int frame = 0; frame < 89; ++frame) {
+    for (int frame = 0; frame < 94; ++frame) {
         runtime.advance_menu_route(0U);
     }
     matrix_search_miss = false;
@@ -2013,7 +2013,7 @@ int main() {
 
     matrix_deck.storage = 20U; // The first 20 Mp file consumes all storage.
     runtime.advance_menu_route(0x4000U);
-    for (int frame = 0; frame < 89; ++frame) {
+    for (int frame = 0; frame < 94; ++frame) {
         runtime.advance_menu_route(0U);
     }
     runtime.advance_menu_route(0x4000U); // Yes reaches the storage check.
@@ -2457,7 +2457,7 @@ int main() {
     runtime.advance_menu_route(0x4000U);
     check(runtime.menu_route_snapshot().top_title == "Matrix Message",
           "system alert ignores input during its 25-frame wait", failures);
-    for (int frame = 0; frame < 24; ++frame) runtime.advance_menu_route(0U);
+    for (int frame = 0; frame < 25; ++frame) runtime.advance_menu_route(0U);
     check(runtime.menu_route_snapshot().top_title == "Matrix Message",
           "system alert remains visible for the full source wait", failures);
     runtime.advance_menu_route(0U); // Complete frame 25 of the notice delay.
@@ -2479,7 +2479,7 @@ int main() {
               route.top_matrix_alert == 1 && sounds.back() == 0x52U,
           "second random alert raises active status and plays its sound",
           failures);
-    for (int frame = 0; frame < 25; ++frame) runtime.advance_menu_route(0U);
+    for (int frame = 0; frame < 26; ++frame) runtime.advance_menu_route(0U);
     runtime.advance_menu_route(0x4000U); // Dismiss active-alert notice.
     matrix_alert_roll_value = 0xFFFF;
     runtime.advance_menu_route(0x0100U); // Select Leave Node.
@@ -2597,17 +2597,17 @@ int main() {
     };
     capture_shutdown_frame(3);
 #endif
-    for (int frame = 0; frame < 59; ++frame) runtime.advance_menu_route(0U);
+    for (int frame = 0; frame < 60; ++frame) runtime.advance_menu_route(0U);
     check(runtime.menu_route_snapshot().top_matrix_countdown == 3,
-          "Crash System holds each count for 60 frames", failures);
+          "Crash System holds each count for 61 VBlanks", failures);
     runtime.advance_menu_route(0U);
     check(runtime.menu_route_snapshot().top_matrix_countdown == 2,
-          "Crash System changes from three to two after 60 frames", failures);
+          "Crash System changes from three to two after 61 VBlanks", failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     capture_shutdown_frame(2);
 #endif
     for (const int expected : {2, 1, 0}) {
-        for (int frame = 0; frame < 60; ++frame) {
+        for (int frame = 0; frame < 61; ++frame) {
             runtime.advance_menu_route(0U);
         }
         if (expected > 0) {
@@ -2732,7 +2732,7 @@ int main() {
     check(route.top_title == "Matrix Message" &&
               route.top_matrix_alert == 0,
           "overload QA first reaches the passive alert state", failures);
-    for (int frame = 0; frame < 25; ++frame) runtime.advance_menu_route(0U);
+    for (int frame = 0; frame < 26; ++frame) runtime.advance_menu_route(0U);
     runtime.advance_menu_route(0x4000U); // Dismiss passive alert.
     runtime.advance_menu_route(0x0200U); // Select Lockout.
     runtime.advance_menu_route(0x4000U); // Run Lockout.
@@ -2744,7 +2744,7 @@ int main() {
     check(route.top_title == "Matrix Message" &&
               route.top_matrix_alert == 1,
           "overload QA reaches the active alert state", failures);
-    for (int frame = 0; frame < 25; ++frame) runtime.advance_menu_route(0U);
+    for (int frame = 0; frame < 26; ++frame) runtime.advance_menu_route(0U);
     runtime.advance_menu_route(0x4000U); // Dismiss active alert.
     // The selected Lockout row is preserved across the alert message.
     const auto sounds_before_overload = sounds.size();
@@ -2838,13 +2838,13 @@ int main() {
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     save_transfer_frame("system-overload-message.bmp", route);
 #endif
-    for (int frame = 0; frame < 29; ++frame) runtime.advance_menu_route(0U);
-    runtime.advance_menu_route(0x4000U); // Input during the 30-frame wait.
+    for (int frame = 0; frame < 30; ++frame) runtime.advance_menu_route(0U);
+    runtime.advance_menu_route(0x4000U); // Input during the 31-VBlank wait (d5=0x1E).
     check(runtime.menu_route_snapshot().open &&
               runtime.menu_route_snapshot().top_title == "Matrix Message",
-          "overload message cannot be dismissed before its 30-frame wait",
+          "overload message cannot be dismissed before its 31-VBlank wait",
           failures);
-    runtime.advance_menu_route(0x4000U); // 0xD94 any-edge wait after 30 frames.
+    runtime.advance_menu_route(0x4000U); // 0xD94 any-edge wait after 31 VBlanks.
     check(!runtime.menu_route_snapshot().open && closed_count == 8,
           "overload exits the Matrix route after message and input waits",
           failures);
@@ -2883,11 +2883,11 @@ int main() {
           failures);
     check(sounds.back() == 0x1AU,
           "System Search plays the source jack-in sound after selection", failures);
-    for (int frame = 0; frame < 19; ++frame) {
+    for (int frame = 0; frame < 20; ++frame) {
         runtime.advance_menu_route(0U);
     }
     check(runtime.menu_route_snapshot().top_screen == kMatrixEntry,
-          "field Matrix entry waits 20 VBlanks before building a session", failures);
+          "field Matrix entry waits 21 VBlanks before building a session", failures);
     runtime.advance_menu_route(0U);
     route = runtime.menu_route_snapshot();
     check(route.open && route.top_screen == kCyberdeck &&
