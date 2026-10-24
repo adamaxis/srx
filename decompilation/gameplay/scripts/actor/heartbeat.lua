@@ -198,6 +198,12 @@ function ActorAI.heartbeat(context)
             context.combat_confirm_held == true and
             context.combat_action_ready == true and
             context.combat_input_blocked ~= true
+        if not profile.dynamic_encounter_only then
+            local cast_audio = R.begin_player_spell_cast(state, context)
+            if cast_audio ~= nil then
+                audio_event = cast_audio
+            end
+        end
         if context.phase == "render" then
             state.movement_step = nil
             if not profile.dynamic_encounter_only then

@@ -1529,6 +1529,12 @@ private:
     void spawn_field_world_effect_sequence();
     void reset_field_entity_service_records();
     void refresh_world_entity_service_targets();
+    bool probe_action_line_clear(const SpawnEntityParentState& parent,
+                                 std::optional<std::size_t> protected_source_slot,
+                                 std::uint16_t target_x,
+                                 std::uint16_t target_y);
+    void service_player_spell_cast(
+        const scripting::ScriptActorBehaviorDecision& decision);
     DefaultActorSpriteView default_actor_sprite_view(
         const DefaultFieldActorPresentation& actor) const;
     const QImage* runner_preview_panel_for_record(

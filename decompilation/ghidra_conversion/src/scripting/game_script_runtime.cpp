@@ -7989,6 +7989,10 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "combat_action_ready");
     lua_pushboolean(state, context.combat_action_available);
     lua_setfield(state, -2, "combat_action_available");
+    lua_pushboolean(state, context.player_spell_available);
+    lua_setfield(state, -2, "player_spell_available");
+    lua_pushinteger(state, context.player_spell_code);
+    lua_setfield(state, -2, "player_spell_code");
     lua_pushboolean(state, context.combat_input_blocked);
     lua_setfield(state, -2, "combat_input_blocked");
     lua_pushinteger(state, context.controller_nibble);
@@ -9146,7 +9150,8 @@ GameScriptRuntime::actor_heartbeat(
             });
         const bool linked_target =
             target != context.ai_target_candidates.end() &&
-            context.dynamic_world_encounter_actor &&
+            (context.dynamic_world_encounter_actor ||
+             context.player_spell_available) &&
             context.phase == ScriptActorHeartbeatPhase::behavior &&
             target->world_activity_actor !=
                 (resolution.target_record_type < 3U) &&
@@ -9154,9 +9159,16 @@ GameScriptRuntime::actor_heartbeat(
               resolution.target_record_slot < 3U) ||
              (resolution.target_record_type >= 3U &&
               resolution.target_record_slot >= 3U));
-        if (!known_outcome || action_code != context.action_code ||
+        // The field player's cast code is offered separately; its profile
+        // action code stays "none" for movement and weapon services.
+        const auto caster_action_code =
+            context.player_spell_available &&
+                    !context.dynamic_world_encounter_actor
+                ? context.player_spell_code
+                : context.action_code;
+        if (!known_outcome || action_code != caster_action_code ||
             !context.combatant.has_value() || !linked_target ||
-            resolution.action_code != context.action_code ||
+            resolution.action_code != caster_action_code ||
             resolution.effect_requested != effect_outcome ||
             (resolution.effect_started &&
              (!resolution.effect_requested ||
@@ -9918,7 +9930,17 @@ GameScriptRuntime::actor_heartbeat(
             (shared_label && (spell_context || item_context)) ||
             (spell_label && spell_context) ||
             (item_label && item_context);
-        if (!label_matches ||
+        const bool player_spell_label =
+            source_action_dispatch == "player_spell" ||
+            source_action_dispatch == "player_spell_blocked" ||
+            source_action_dispatch == "player_spell_no_target";
+        const bool player_label_matches = player_spell_label &&
+            context.player_spell_available &&
+            !context.dynamic_world_encounter_actor &&
+            context.phase == ScriptActorHeartbeatPhase::behavior;
+        if (player_label_matches) {
+            // Field-player 0xAE6E dispatch; validated below.
+        } else if (!label_matches ||
             !context.dynamic_world_encounter_actor ||
             context.phase != ScriptActorHeartbeatPhase::behavior) {
             return fail("actor_ai.heartbeat returned an invalid action dispatch");
@@ -10015,7 +10037,15 @@ GameScriptRuntime::actor_heartbeat(
         (!spell_pose || decision.action_delay < 0x0F)) {
         return fail("actor_ai.heartbeat returned an unsupported spell dispatch");
     }
-    if (decision.spell_action_resolution.has_value() &&
+    const bool player_spell_cast =
+        context.player_spell_available &&
+        !context.dynamic_world_encounter_actor &&
+        context.phase == ScriptActorHeartbeatPhase::behavior &&
+        decision.source_action_dispatch.has_value() &&
+        *decision.source_action_dispatch == "player_spell" &&
+        decision.spell_action_resolution.has_value() &&
+        spell_action_audio_matches && !spell_pose;
+    if (decision.spell_action_resolution.has_value() && !player_spell_cast &&
         (!spell_pose || !decision.source_action_dispatch.has_value() ||
          *decision.source_action_dispatch != "spell" ||
          !spell_action_audio_matches)) {
@@ -10062,8 +10092,9 @@ GameScriptRuntime::actor_heartbeat(
          (context.down_audio_event.has_value() &&
           *decision.audio_event == *context.down_audio_event));
     const bool spell_action_audio =
-        spell_pose && decision.spell_action_resolution.has_value() &&
-        spell_action_audio_matches;
+        (spell_pose && decision.spell_action_resolution.has_value() &&
+         spell_action_audio_matches) ||
+        player_spell_cast;
     if (((begins_entry != decision.audio_event.has_value()) &&
          !projectile_behavior && !begins_dynamic_target_action &&
          !dynamic_hit_reaction_audio && !spell_action_audio) ||

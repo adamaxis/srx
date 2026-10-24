@@ -417,6 +417,13 @@ local function begin_spell_cast(state, context, target, resolution)
     state.spell_effect_action_code = 0
     state.spell_effect_slot_released = nil
     state.spell_effect_resolution = nil
+    R.queue_spell_effect(state, context, target, resolution)
+end
+
+-- 0x1033E's successful dispatch reserves a shared effect record; the target
+-- record's heartbeat owns the delayed 0x521E callback. Shared by NPC casts
+-- (0x13FFE) and the field player's held-A cast (0xAE6E).
+function R.queue_spell_effect(state, context, target, resolution)
     if type(resolution) == "table" and resolution.effect_started == true and
        type(resolution.spell_effect_slot) == "number" and
        type(target.id) == "string" and
@@ -486,6 +493,50 @@ local function begin_spell_cast(state, context, target, resolution)
                 target.source_record_slot] = pending
         end
     end
+end
+
+-- ROM 0xACAE -> 0xAD86: a negative +0x56 sends held A to 0xAE6E. With a
+-- B-selected +0xA2 target other than the caster, 0xAE6E aims +0x2E through
+-- 0x15D3C and runs the 0x14D8E line probe; carry set clears FFF0DD and the
+-- 0xAF7C pose runs without a cast. Otherwise it jumps to 0x1033E, the same
+-- spell action NPCs reach from 0x13FFE. Returns the 0x4946 audio event.
+-- [H] 0xAE6E also jumps to 0x1033E with no +0xA2 link; that untargeted
+-- path is not ported, so no cast is made without a target.
+function R.begin_player_spell_cast(state, context)
+    if context.phase ~= "behavior" or
+       context.player_spell_available ~= true or
+       context.combat_confirm_held ~= true or
+       context.combat_action_ready ~= true or
+       context.combat_input_blocked == true then
+        return nil
+    end
+    local target = type(context.ai_target_candidates) == "table" and
+        context.ai_target_candidates[1] or nil
+    if type(target) ~= "table" then
+        state.source_action_dispatch = "player_spell_no_target"
+        return nil
+    end
+    if not action_line_clear(context, target) then
+        state.source_action_dispatch = "player_spell_blocked"
+        return nil
+    end
+    local combat = game.modules.combat
+    if type(combat) ~= "table" or
+       type(combat.resolve_spell_action) ~= "function" then
+        return nil
+    end
+    local cast_context = setmetatable(
+        {action_code = context.player_spell_code},
+        {__index = context})
+    local resolution = combat.resolve_spell_action(cast_context, target)
+    if resolution == nil then
+        return nil
+    end
+    state.source_action_dispatch = "player_spell"
+    state.spell_action_resolution = resolution
+    state.combat_action_requested = false
+    R.queue_spell_effect(state, cast_context, target, resolution)
+    return resolution.audio_event
 end
 
 local function actor_matches_pending_spell_target(context, pending)

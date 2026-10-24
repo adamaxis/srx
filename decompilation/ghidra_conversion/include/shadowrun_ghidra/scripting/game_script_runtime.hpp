@@ -1256,6 +1256,12 @@ struct ScriptActorBehaviorContext {
     bool combat_action_ready = false;
     bool combat_action_available = false;
     bool combat_input_blocked = false;
+    // ROM 0xAD86: a negative +0x56 sends the field player's held-A action
+    // to 0xAE6E/0x1033E. The host offers the equipped D4EA0 row code
+    // (+0x57, spell row + 1) and the B-selected +0xA2 target in
+    // ai_target_candidates[1]; Lua owns the cast policy.
+    bool player_spell_available = false;
+    std::uint8_t player_spell_code = 0;
     std::uint8_t controller_nibble = 0;
     std::array<std::uint16_t, 16> controller_heading_table{};
     std::optional<std::uint16_t> movement_heading_override;

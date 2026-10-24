@@ -4883,13 +4883,12 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 return static_cast<std::uint16_t>(choice);
             };
 
-            context.action_line_clear = [this, &actor, current_scene](
+            context.action_line_clear = [this, &actor](
                 const std::uint16_t target_x,
                 const std::uint16_t target_y) {
                 // ROM 0x13FFE calls 0x14D8E before it enters the spell or
                 // item branch. Keep the script's target policy in Lua and
                 // provide the source terrain and linked-record queries here.
-                EntityAnimationSpawnProbeState probe_state{};
                 const SpawnEntityParentState parent{
                     actor.world_position.x,
                     actor.world_position.y,
@@ -4898,106 +4897,14 @@ void FieldSceneRuntime::advance_default_field_actors() {
                     actor.source_interaction_flags,
                     actor.source_behavior_flags,
                     actor.source_spawn_state_flags};
-                std::optional<SpawnEntityLinkedState> linked_target{
-                    SpawnEntityLinkedState{target_x, target_y, 0x01U, false}};
-                EntityAnimationSpawnProbeRequest request{};
-                request.parent = parent;
-                request.linked_target = linked_target;
-                request.protected_source_candidate =
+                return probe_action_line_clear(
+                    parent,
                     actor.source_record_slot.has_value()
                         ? std::optional<std::size_t>{
                               static_cast<std::size_t>(
                                   *actor.source_record_slot)}
-                        : std::nullopt;
-
-                EntityCollisionRecord probe_collision_record{};
-                std::array<std::uint8_t, 4> probe_sample_state{};
-                std::vector<CollisionCandidate> collision_candidates(10U);
-                for (std::size_t slot = 0U;
-                     slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
-                    if (!field_party_roster_.slot_active(slot)) {
-                        continue;
-                    }
-                    auto position = state_.field_scene_buffers
-                                        .source_metadata
-                                        .initial_field_records[slot];
-                    if (slot == field_party_roster_.active_slot() &&
-                        field_entity_.active) {
-                        position = field_entity_.world_position;
-                    }
-                    const auto& runner = field_party_roster_.records()[slot];
-                    auto& candidate = collision_candidates[slot];
-                    candidate.world_x = position.x;
-                    candidate.world_y = position.y;
-                    candidate.flags = static_cast<std::uint8_t>(
-                        runner.flags >> 8U);
-                    candidate.interaction_flags =
-                        static_cast<std::uint8_t>(runner.flags & 0x00FFU);
-                    candidate.collision_enabled = runner.delay_meter != 0U;
-                }
-                for (const auto& target : field_default_actors_) {
-                    if (!target.active ||
-                        target.scene_reference != current_scene ||
-                        !target.source_record_slot.has_value()) {
-                        continue;
-                    }
-                    const auto slot = static_cast<std::size_t>(
-                        *target.source_record_slot);
-                    if (slot >= collision_candidates.size()) {
-                        continue;
-                    }
-                    auto& candidate = collision_candidates[slot];
-                    candidate.world_x = target.world_position.x;
-                    candidate.world_y = target.world_position.y;
-                    candidate.flags = target.source_record_flags;
-                    candidate.interaction_flags =
-                        target.source_interaction_flags;
-                    candidate.behavior_flags = target.source_behavior_flags;
-                    candidate.collision_enabled =
-                        target.physical_meter != 0U;
-                }
-
-                const auto probe_result = probe_entity_spawn_collision_window(
-                    probe_state,
-                    request,
-                    EntityAnimationSpawnProbeCallbacks{
-                        [this, &probe_state,
-                         &probe_collision_record, &probe_sample_state](
-                            const std::int32_t fixed_x,
-                            const std::int32_t fixed_y) {
-                            // 0x14F26 supplies 16.16 values. The field
-                            // collision service takes the source 16.4 word;
-                            // retaining the high word preserves world units.
-                            const auto collision_coordinate = [](
-                                const std::int32_t value) {
-                                return static_cast<std::uint16_t>(
-                                    static_cast<std::uint32_t>(value) >> 16U);
-                            };
-                            bool terrain_boundary_active = false;
-                            bool outside_bounds = false;
-                            const auto collision_code =
-                                evaluate_field_collision(
-                                    collision_coordinate(fixed_x),
-                                    collision_coordinate(fixed_y),
-                                    probe_collision_record,
-                                    probe_sample_state,
-                                    probe_state.scratch_record
-                                        .behavior_defaults.flags,
-                                    false,
-                                    nullptr,
-                                    &terrain_boundary_active,
-                                    &outside_bounds);
-                            return EntityTerrainProbeSample{
-                                static_cast<std::uint16_t>(collision_code),
-                                terrain_boundary_active, outside_bounds};
-                        },
-                        [&collision_candidates](
-                            const EntityCollisionSearchContext& collision) {
-                            return find_colliding_entity(
-                                collision, collision_candidates);
-                        }});
-                return !probe_result.boundary_unresolved &&
-                    !probe_result.source_carry;
+                        : std::nullopt,
+                    target_x, target_y);
             };
 
             const bool has_candidate_in_source_pool = std::any_of(
@@ -14180,6 +14087,77 @@ FieldSceneRuntime::heartbeat_field_player(
         actor_context.combat_action_available = weapon_action_available;
         actor_context.combat_input_blocked =
             field_combat_input_suppressed_until_release_;
+        // ROM 0xAD86: negative +0x56 selects the 0xAE6E spell branch. The
+        // B-selected record is the +0xA2 link it aims at.
+        actor_context.player_spell_available =
+            (runner.flags & 0x0300U) == 0x0300U &&
+            classify_field_combat_action(runner.equipped_inventory_slot,
+                                         runner.equipped_item_code) ==
+                FieldCombatActionKind::magic_spell;
+        if (actor_context.player_spell_available) {
+            actor_context.player_spell_code = runner.equipped_item_code;
+            actor_context.action_profile_modifiers =
+                script_action_profile_modifiers(
+                    state_.action_selection_profiles);
+            actor_context.action_attribute_selectors =
+                script_action_attribute_selectors();
+            actor_context.world_effect_slot_occupancy =
+                field_world_effect_slots_occupied_;
+            const auto selected = field_entity_target_owner_.selected_target;
+            const auto target = !selected.has_value()
+                ? field_default_actors_.end()
+                : std::find_if(
+                      field_default_actors_.begin(),
+                      field_default_actors_.end(),
+                      [this, &selected](const auto& actor) {
+                          return actor.active &&
+                              actor.scene_reference ==
+                                  state_.field_scene_buffers
+                                      .scene_reference &&
+                              actor.source_record_slot.has_value() &&
+                              static_cast<std::size_t>(
+                                  *actor.source_record_slot) == *selected;
+                      });
+            const auto target_slot = target == field_default_actors_.end()
+                ? std::size_t{0U}
+                : static_cast<std::size_t>(*target->source_record_slot);
+            if (target != field_default_actors_.end() && target_slot >= 3U &&
+                target_slot <= 0xFFU) {
+                scripting::ScriptActorTargetCandidate candidate{};
+                candidate.id = target->actor_instance_id;
+                candidate.world_x = target->world_position.x;
+                candidate.world_y = target->world_position.y;
+                candidate.heading = target->movement_state.heading;
+                candidate.service_flags = 0x01U;
+                candidate.interaction_flags =
+                    target->source_interaction_flags;
+                candidate.behavior_flags = target->source_behavior_flags;
+                candidate.spawn_state_flags =
+                    target->source_spawn_state_flags;
+                // Slots 3..9 are world records, never party lanes.
+                candidate.world_activity_actor = true;
+                candidate.source_record_slot =
+                    static_cast<std::uint8_t>(target_slot);
+                candidate.combatant = target->combatant;
+                actor_context.ai_target_candidates.push_back(
+                    std::move(candidate));
+            }
+            actor_context.action_line_clear = [this, &runner](
+                const std::uint16_t target_x,
+                const std::uint16_t target_y) {
+                const SpawnEntityParentState parent{
+                    field_entity_.world_position.x,
+                    field_entity_.world_position.y,
+                    field_movement_state_.heading,
+                    static_cast<std::uint8_t>(runner.flags >> 8U),
+                    static_cast<std::uint8_t>(runner.flags & 0x00FFU),
+                    0U,
+                    0U};
+                return probe_action_line_clear(
+                    parent, field_party_roster_.active_slot(), target_x,
+                    target_y);
+            };
+        }
     }
     if (phase == scripting::ScriptActorHeartbeatPhase::render) {
         actor_context.animation_mode = field_entity_attack_pose_active_
@@ -14363,6 +14341,7 @@ void FieldSceneRuntime::advance_field_movement() {
         return;
     }
 
+    service_player_spell_cast(*actor_decision);
     service_player_weapon_action(
         actor_decision->combat_action_requested);
 
@@ -14477,6 +14456,163 @@ void FieldSceneRuntime::advance_player_weapon_action_gate() {
         field_entity_animation_.redraw_requested = true;
     }
     source_boundary("field.combat.player_attack_pose_expired");
+}
+
+void FieldSceneRuntime::service_player_spell_cast(
+    const scripting::ScriptActorBehaviorDecision& decision) {
+    const bool blocked = decision.source_action_dispatch.has_value() &&
+        *decision.source_action_dispatch == "player_spell_blocked";
+    if (!decision.spell_action_resolution.has_value() && !blocked) {
+        return;
+    }
+    auto& runner = active_runner_record();
+    if (decision.spell_action_resolution.has_value()) {
+        const auto& resolution = *decision.spell_action_resolution;
+        if (resolution.effect_started &&
+            resolution.spell_effect_slot.has_value()) {
+            const auto slot = *resolution.spell_effect_slot;
+            if (slot >= field_world_effect_slots_occupied_.size() ||
+                field_world_effect_slots_occupied_[slot] ||
+                resolution.target_id.empty() ||
+                !field_spell_effect_slot_target_ids_[slot].empty()) {
+                failure_ = "Lua selected an occupied spell effect record";
+                source_boundary(
+                    "field.combat.player_spell.effect_slot_invalid");
+                return;
+            }
+            field_world_effect_slots_occupied_[slot] = true;
+            field_spell_effect_slot_target_ids_[slot] = resolution.target_id;
+            source_boundary("field.combat.player_spell.effect_slot_reserved");
+        }
+        // 0x1033E writes the caster's +0x9C meter and 0x10660 fetish cells.
+        runner.behavior_meter = resolution.mental_meter;
+        runner.inventory_item_codes = resolution.item_codes;
+        runner.inventory_phase_bytes = resolution.item_phases;
+        if (decision.audio_event.has_value() && source_audio_event_callback_) {
+            source_audio_event_callback_(*decision.audio_event);
+        }
+    }
+    // 0xAFAE (cast) and 0xAF7C (blocked) both call 0xABFC with mode 0.
+    EntityDelayState delay{runner.animation_action_gate};
+    update_entity_animation_delay(
+        delay,
+        EntityDelayAttributes{runner.attributes[1U], runner.attributes[4U],
+                              runner.cyberware_flags},
+        decode_entity_delay_scale(0U));
+    runner.animation_action_gate = delay.animation_delay;
+    refresh_field_hud_runner_slot();
+    if (blocked) {
+        source_boundary("field.combat.player_spell.blocked");
+    } else {
+        source_boundary(decision.spell_action_resolution->effect_requested
+            ? "field.combat.player_spell.effect_requested"
+            : "field.combat.player_spell.action_resolved");
+    }
+}
+
+bool FieldSceneRuntime::probe_action_line_clear(
+    const SpawnEntityParentState& parent,
+    const std::optional<std::size_t> protected_source_slot,
+    const std::uint16_t target_x,
+    const std::uint16_t target_y) {
+    // ROM 0x14D8E line probe, reached from the NPC 0x13FFE spell/item branch
+    // and the field player's 0xAE6E cast. Lua owns the target policy.
+    EntityAnimationSpawnProbeState probe_state{};
+    std::optional<SpawnEntityLinkedState> linked_target{
+        SpawnEntityLinkedState{target_x, target_y, 0x01U, false}};
+    EntityAnimationSpawnProbeRequest request{};
+    request.parent = parent;
+    request.linked_target = linked_target;
+    request.protected_source_candidate = protected_source_slot;
+
+    EntityCollisionRecord probe_collision_record{};
+    std::array<std::uint8_t, 4> probe_sample_state{};
+    std::vector<CollisionCandidate> collision_candidates(10U);
+    for (std::size_t slot = 0U;
+         slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
+        if (!field_party_roster_.slot_active(slot)) {
+            continue;
+        }
+        auto position = state_.field_scene_buffers
+                            .source_metadata
+                            .initial_field_records[slot];
+        if (slot == field_party_roster_.active_slot() &&
+            field_entity_.active) {
+            position = field_entity_.world_position;
+        }
+        const auto& runner = field_party_roster_.records()[slot];
+        auto& candidate = collision_candidates[slot];
+        candidate.world_x = position.x;
+        candidate.world_y = position.y;
+        candidate.flags = static_cast<std::uint8_t>(
+            runner.flags >> 8U);
+        candidate.interaction_flags =
+            static_cast<std::uint8_t>(runner.flags & 0x00FFU);
+        candidate.collision_enabled = runner.delay_meter != 0U;
+    }
+    for (const auto& target : field_default_actors_) {
+        if (!target.active ||
+            target.scene_reference != state_.field_scene_buffers.scene_reference ||
+            !target.source_record_slot.has_value()) {
+            continue;
+        }
+        const auto slot = static_cast<std::size_t>(
+            *target.source_record_slot);
+        if (slot >= collision_candidates.size()) {
+            continue;
+        }
+        auto& candidate = collision_candidates[slot];
+        candidate.world_x = target.world_position.x;
+        candidate.world_y = target.world_position.y;
+        candidate.flags = target.source_record_flags;
+        candidate.interaction_flags =
+            target.source_interaction_flags;
+        candidate.behavior_flags = target.source_behavior_flags;
+        candidate.collision_enabled =
+            target.physical_meter != 0U;
+    }
+
+    const auto probe_result = probe_entity_spawn_collision_window(
+        probe_state,
+        request,
+        EntityAnimationSpawnProbeCallbacks{
+            [this, &probe_state,
+             &probe_collision_record, &probe_sample_state](
+                const std::int32_t fixed_x,
+                const std::int32_t fixed_y) {
+                // 0x14F26 supplies 16.16 values. The field
+                // collision service takes the source 16.4 word;
+                // retaining the high word preserves world units.
+                const auto collision_coordinate = [](
+                    const std::int32_t value) {
+                    return static_cast<std::uint16_t>(
+                        static_cast<std::uint32_t>(value) >> 16U);
+                };
+                bool terrain_boundary_active = false;
+                bool outside_bounds = false;
+                const auto collision_code =
+                    evaluate_field_collision(
+                        collision_coordinate(fixed_x),
+                        collision_coordinate(fixed_y),
+                        probe_collision_record,
+                        probe_sample_state,
+                        probe_state.scratch_record
+                            .behavior_defaults.flags,
+                        false,
+                        nullptr,
+                        &terrain_boundary_active,
+                        &outside_bounds);
+                return EntityTerrainProbeSample{
+                    static_cast<std::uint16_t>(collision_code),
+                    terrain_boundary_active, outside_bounds};
+            },
+            [&collision_candidates](
+                const EntityCollisionSearchContext& collision) {
+                return find_colliding_entity(
+                    collision, collision_candidates);
+            }});
+    return !probe_result.boundary_unresolved &&
+        !probe_result.source_carry;
 }
 
 void FieldSceneRuntime::service_player_weapon_action(

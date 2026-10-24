@@ -5551,6 +5551,61 @@ int main() {
         return 17;
     }
 
+    // ROM 0xAD86/0xAE6E: a field player holding a spell casts through the
+    // shared 0x1033E resolution; no target or a blocked line suppresses it.
+    auto player_cast = player_movement;
+    player_cast.combat_input_blocked = false;
+    player_cast.combat_action_ready = true;
+    player_cast.combat_confirm_held = true;
+    player_cast.player_spell_available = true;
+    player_cast.player_spell_code = 1U;
+    player_cast.source_record_slot = 0U;
+    player_cast.combatant = spell_caster;
+    player_cast.ai_target_candidates.clear();
+    player_cast.ai_random_bound =
+        [](const std::uint16_t bound) -> std::optional<std::uint16_t> {
+            return bound == 0U ? std::nullopt
+                               : std::optional<std::uint16_t>{0U};
+        };
+    const auto player_cast_no_target = scripts.actor_heartbeat(player_cast);
+    ScriptActorTargetCandidate cast_target{};
+    cast_target.id = "field_actor_slot_3";
+    cast_target.world_x = 0x0040U;
+    cast_target.world_y = 0x0040U;
+    cast_target.service_flags = 0x01U;
+    cast_target.world_activity_actor = true;
+    cast_target.source_record_slot = 3U;
+    cast_target.combatant = spell_target;
+    cast_target.combatant->record_type = 7U;
+    player_cast.ai_target_candidates.push_back(cast_target);
+    player_cast.action_line_clear =
+        [](std::uint16_t, std::uint16_t) { return false; };
+    const auto player_cast_blocked = scripts.actor_heartbeat(player_cast);
+    player_cast.action_line_clear =
+        [](std::uint16_t, std::uint16_t) { return true; };
+    const auto player_cast_resolved = scripts.actor_heartbeat(player_cast);
+    if (!expect(
+            player_cast_no_target.has_value() &&
+                player_cast_no_target->source_action_dispatch ==
+                    std::optional<std::string>{"player_spell_no_target"} &&
+                !player_cast_no_target->spell_action_resolution.has_value() &&
+                player_cast_blocked.has_value() &&
+                player_cast_blocked->source_action_dispatch ==
+                    std::optional<std::string>{"player_spell_blocked"} &&
+                !player_cast_blocked->spell_action_resolution.has_value() &&
+                player_cast_resolved.has_value() &&
+                player_cast_resolved->source_action_dispatch ==
+                    std::optional<std::string>{"player_spell"} &&
+                player_cast_resolved->spell_action_resolution.has_value() &&
+                player_cast_resolved->spell_action_resolution->action_code ==
+                    1U &&
+                player_cast_resolved->spell_action_resolution->target_id ==
+                    "field_actor_slot_3",
+            "Lua player spell cast did not follow the 0xAE6E target/line gates")) {
+        std::cerr << scripts.failure() << '\n';
+        return 106;
+    }
+
     auto projectile_context = actor_context(
         "weapon_projectile", "field_weapon_slot_9", 3U,
         ScriptActorActionKind::none, 0U, 0U, true);
