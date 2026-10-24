@@ -36323,6 +36323,10 @@ int main(int argc, char** argv) {
                     const auto runner_action_path =
                         field_hospital_menu_dump_path->parent_path() /
                         "runner-action-return.bmp";
+                    // A clean build tree has no output directory yet; the
+                    // final dump below creates it too late for this image.
+                    std::filesystem::create_directories(
+                        runner_action_path.parent_path());
                     if (!runner_action_scene.save(QString::fromStdWString(
                             runner_action_path.wstring()))) {
                         std::cerr << "hospital menu dump: could not write runner-action-return.bmp\n";
@@ -36394,6 +36398,16 @@ int main(int argc, char** argv) {
                 if (followup_result) {
                     prompt_opened = field_scene.open_stoker_dialogue_for_dump(
                         StokerMotelPromptId::manager_greeting_with_package);
+                    // ROM root 0xF4AFC (indexed trigger 0, 0x53AB6) starts
+                    // with the sign page (text 0x1167EB) and links to the
+                    // three-choice manager record 0xF4B10. A continues the
+                    // sign page before C selects the package/debt branch.
+                    if (prompt_opened) {
+                        prompt_opened =
+                            field_scene.advance_stoker_dialogue_for_dump(
+                                0x4000U) ==
+                            FieldDialogueAdvanceResult::prompt_advanced;
+                    }
                     if (prompt_opened) {
                         prompt_opened =
                             field_scene.advance_stoker_dialogue_for_dump(
@@ -36500,8 +36514,34 @@ int main(int argc, char** argv) {
 
                 if (referral_followup_result ||
                     debt_payment_insufficient_result) {
-                    if (field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+                    // The JSON graph ends at a typed continue_in_place
+                    // terminal; the field coordinator dispatches it the same
+                    // way the live route does before returning to the map.
+                    const auto final_advance =
+                        field_scene.advance_stoker_dialogue_for_dump(0x4000U);
+                    bool returned_to_map =
+                        final_advance ==
                             FieldDialogueAdvanceResult::returned_to_field ||
+                        (final_advance ==
+                             FieldDialogueAdvanceResult::typed_outcome_requested &&
+                         field_scene.dispatch_dialogue_outcome_for_dump() &&
+                         !field_scene.dialogue_open());
+                    // continue_in_place starts the ordinary modal-return
+                    // fade; the field menu cannot open until it finishes.
+                    for (std::size_t frame = 0U;
+                         returned_to_map && frame < 120U &&
+                         field_scene
+                                 .field_modal_return_transition_frames_for_dump() !=
+                             0U;
+                         ++frame) {
+                        field_scene.advance_frame();
+                    }
+                    returned_to_map =
+                        returned_to_map &&
+                        field_scene
+                                .field_modal_return_transition_frames_for_dump() ==
+                            0U;
+                    if (!returned_to_map ||
                         !field_scene.open_command_overview_for_dump() ||
                         !field_scene.seek_command_overview_page(6U)) {
                         std::cerr << "field dialogue dump: could not return to the field Notebook route\n";
