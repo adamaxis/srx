@@ -1101,7 +1101,7 @@ int run_field_random_encounter_spawn_qa(
         save("target-selection-b-static.bmp", target_selection_static_image);
     const QImage target_marker_tile(QString::fromStdWString(
         (asset_root / "field" / "entities" / "target-marker" /
-         "scene-2-action-0-2.png")
+         "scene-2-action-9-plus.png")
             .wstring()));
     const auto marker_corner_pixel_matches =
         marker_steady.has_value()
@@ -1119,7 +1119,9 @@ int run_field_random_encounter_spawn_qa(
         !marker_during_shrink.has_value() ||
         !marker_during_shrink->visible ||
         !marker_during_shrink->animating ||
-        marker_during_shrink->style != 0U ||
+        // combat-fixes-1: an unhurt Weenr (+0x4C = +0x9C = 10) is in the
+        // ROM 0x5C7E >= 9 tier (0x5DD4, tile 0x5E7 palette 3).
+        marker_during_shrink->style != 3U ||
         marker_during_shrink->radius > 64U ||
         marker_during_shrink->radius % 8U != 0U ||
         !marker_steady.has_value() || !marker_steady->visible ||

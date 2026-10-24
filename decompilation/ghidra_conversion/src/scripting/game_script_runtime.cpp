@@ -8237,6 +8237,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "combat_meter_service_blocked");
     lua_pushboolean(state, context.target_selection_latched);
     lua_setfield(state, -2, "target_selection_latched");
+    lua_pushboolean(state, context.target_marker_reads_stun_meter);
+    lua_setfield(state, -2, "target_marker_reads_stun_meter");
     lua_pushboolean(state, context.target_selection_requested);
     lua_setfield(state, -2, "target_selection_requested");
     lua_pushboolean(state, context.target_selection_advances_cursor);

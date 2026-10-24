@@ -479,6 +479,17 @@ constexpr bool actor_flag_is_set(const std::uint8_t flags,
     return (flags & actor_flag_mask(flag)) != 0U;
 }
 
+// ROM 0x5C82..0x5CBA, leader record FFFC04: +0x56 < 0 (spell) with +0x57
+// == 5, or +0x56 >= 0 with +0x57 == 0 (unarmed) and +0x91 bits 3/2 (hand
+// cyberware) clear, makes the target marker tier +0x9C instead of +0x4C.
+bool target_marker_reads_stun_meter(const RunnerRecordFields& leader) {
+    if (leader.equipped_inventory_slot < 0) {
+        return leader.equipped_item_code == 5U;
+    }
+    return leader.equipped_item_code == 0U &&
+           (leader.cyberware_flags & 0x000CU) == 0U;
+}
+
 scripting::ScriptCombatantFacts script_combatant_facts(
     const RunnerRecordFields& record) {
     scripting::ScriptCombatantFacts facts{};
@@ -4532,6 +4543,8 @@ void FieldSceneRuntime::advance_default_field_actors() {
         };
         context.walk_fast_enabled = field_walk_fast_enabled_;
         context.target_selection_latched = actor.target_selected;
+        context.target_marker_reads_stun_meter =
+            target_marker_reads_stun_meter(active_runner_record());
         context.action_profile_modifiers =
             script_action_profile_modifiers(state_.action_selection_profiles);
         context.action_attribute_selectors =
@@ -15481,6 +15494,8 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         }
         context.phase = scripting::ScriptActorHeartbeatPhase::render;
         context.target_selection_latched = actor.target_selected;
+        context.target_marker_reads_stun_meter =
+            target_marker_reads_stun_meter(active_runner_record());
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();

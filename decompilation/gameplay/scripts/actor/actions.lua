@@ -125,15 +125,30 @@ local function advance_target_marker(state, context)
         return
     end
 
-    -- ROM 0x5C7E chooses a tile/palette group from the actor's +0x4C action
-    -- byte. The alternate +0x9C path depends on mode/runner flags which are
-    -- not present on these world-encounter records yet.
-    local action_code = context.action_code or 0
-    if action_code >= 9 then
+    -- ROM 0x5C7E tiers the TARGET's condition meter, not an action byte:
+    -- d0 = +0x4C (physical), or +0x9C (stun) when the leader record's
+    -- weapon rule says so (target_marker_reads_stun_meter, 0x5C82..0x5CBA).
+    -- <3 -> 0x5D92 (tile 0x5E7 pal 1), 3..5 -> 0x5DBE (0x5E5),
+    -- 6..8 -> 0x5DA8 (0x5E6), >=9 -> 0x5DD4 (0x5E7 pal 3).
+    local combatant = type(state.combatant) == "table" and state.combatant
+        or (type(context.combatant) == "table" and context.combatant or nil)
+    local meter
+    if context.target_marker_reads_stun_meter == true then
+        meter = combatant and combatant.mental_meter
+    else
+        meter = combatant and combatant.physical_meter
+        if type(meter) ~= "number" then
+            meter = context.source_physical_meter
+        end
+    end
+    if type(meter) ~= "number" then
+        meter = 0
+    end
+    if meter >= 9 then
         state.target_marker_style = 3
-    elseif action_code >= 6 then
+    elseif meter >= 6 then
         state.target_marker_style = 2
-    elseif action_code >= 3 then
+    elseif meter >= 3 then
         state.target_marker_style = 1
     else
         state.target_marker_style = 0

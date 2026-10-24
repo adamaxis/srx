@@ -3006,11 +3006,19 @@ int main() {
                    const std::string_view profile_id,
                    const std::uint16_t entity_kind,
                    const ScriptActorActionKind action_kind,
-                   const std::uint8_t action_code)
+                   const std::uint8_t action_code,
+                   const std::uint8_t physical_meter,
+                   const std::uint8_t mental_meter,
+                   const bool reads_stun_meter)
             -> std::optional<ScriptActorBehaviorDecision> {
         auto context = actor_context(profile_id, actor_id, entity_kind, action_kind,
                                      action_code, 0U, true);
         context.dynamic_world_encounter_actor = true;
+        ScriptCombatantFacts marker_facts{};
+        marker_facts.physical_meter = physical_meter;
+        marker_facts.mental_meter = mental_meter;
+        context.combatant = marker_facts;
+        context.target_marker_reads_stun_meter = reads_stun_meter;
         context.source_record_flags = 0x01U;
         context.entry_animation_frame_count = 4U;
         context.walk_animation_frame_count = 4U;
@@ -3029,18 +3037,24 @@ int main() {
         }
         return decision;
     };
+    // combat-fixes-1: ROM 0x5C7E tiers the target's +0x4C physical meter
+    // (or +0x9C stun per the leader weapon rule), never its action code.
+    // The action codes below deliberately disagree with the meters.
     const auto target_marker_action_0 = target_marker_style_for_action(
-        "target_marker_action_0", "hell_hound_k0c_none00", 12U,
-        ScriptActorActionKind::none, 0U);
+        "target_marker_action_0", "elven_mage_k06_spell09", 6U,
+        ScriptActorActionKind::spell, 9U, 2U, 10U, false);
     const auto target_marker_action_3 = target_marker_style_for_action(
         "target_marker_action_3", "eye5r_2_k07_item04", 7U,
-        ScriptActorActionKind::item, 4U);
+        ScriptActorActionKind::item, 4U, 5U, 0U, false);
     const auto target_marker_action_6 = target_marker_style_for_action(
         "target_marker_action_6", "rat_shaman_k0b_spell06", 11U,
-        ScriptActorActionKind::spell, 6U);
+        ScriptActorActionKind::spell, 6U, 6U, 1U, false);
     const auto target_marker_action_9 = target_marker_style_for_action(
-        "target_marker_action_9", "elven_mage_k06_spell09", 6U,
-        ScriptActorActionKind::spell, 9U);
+        "target_marker_action_9", "hell_hound_k0c_none00", 12U,
+        ScriptActorActionKind::none, 0U, 10U, 10U, false);
+    const auto target_marker_stun_0 = target_marker_style_for_action(
+        "target_marker_stun_0", "hell_hound_k0c_none00", 12U,
+        ScriptActorActionKind::none, 0U, 10U, 2U, true);
 
     auto target_marker_animation_context = actor_context(
         "marker_animation_k06_none00", "target_marker_animation", 6U,
@@ -5397,6 +5411,8 @@ int main() {
                 target_marker_action_6->target_marker_style == 2U &&
                 target_marker_action_9.has_value() &&
                 target_marker_action_9->target_marker_style == 3U &&
+                target_marker_stun_0.has_value() &&
+                target_marker_stun_0->target_marker_style == 0U &&
                 target_marker_spawn.has_value() &&
                 target_marker_first.has_value() &&
                 target_marker_first->target_marker_visible &&

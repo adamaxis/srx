@@ -1342,6 +1342,10 @@ struct ScriptActorBehaviorContext {
     // ROM +0x11.4 target-selection latch, forwarded as a fact; Lua owns the
     // visible 0x5C7E marker cadence and returns its presentation state.
     bool target_selection_latched = false;
+    // ROM 0x5C82..0x5CBA: the leader (FFFC04) record's +0x56/+0x57/+0x91
+    // choose whether the 0x5C7E marker tiers the target's +0x9C stun meter
+    // (unarmed with no hand cyberware, or spell 5) instead of +0x4C.
+    bool target_marker_reads_stun_meter = false;
     bool target_selection_requested = false;
     bool target_selection_advances_cursor = false;
     bool target_selection_special_marker = false;
