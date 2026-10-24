@@ -8649,6 +8649,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
             case srx::MenuScreen::MR_JOHNSONS:
             case srx::MenuScreen::NOTEBOOK_CONTACTS:
             case srx::MenuScreen::NOTEBOOK_SHADOWRUNNERS:
+            case srx::MenuScreen::NOTEBOOK_CURRENT_RUN:
             case srx::MenuScreen::MESSAGE:
             case srx::MenuScreen::DISMISS_RUNNER:
             case srx::MenuScreen::SAVE_LOAD:
@@ -10183,10 +10184,13 @@ void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
         screen == srx::MenuScreen::NOTEBOOK_CONTACTS;
     const bool shadowrunners_page =
         screen == srx::MenuScreen::NOTEBOOK_SHADOWRUNNERS;
+    const bool current_run_page =
+        screen == srx::MenuScreen::NOTEBOOK_CURRENT_RUN;
     auto& notebook = pocket_secretary_.notebook;
     if (screen != srx::MenuScreen::NOTEBOOK &&
         screen != srx::MenuScreen::NOTEBOOK_TIPS &&
         screen != srx::MenuScreen::MR_JOHNSONS && !no_current_run &&
+        !current_run_page &&
         !johnson_detail && !contacts_page && !shadowrunners_page &&
         !contacts_detail && !shadowrunners_detail) {
         notebook = NotebookMenuState{};
@@ -10195,6 +10199,26 @@ void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
 
     notebook.open = true;
     notebook.no_current_run_wait = no_current_run;
+    notebook.current_run.open = current_run_page;
+    if (current_run_page &&
+        route_state.top_notebook_current_run.has_value()) {
+        const auto& source_view =
+            *route_state.top_notebook_current_run;
+        auto& current_run = notebook.current_run;
+        current_run.source_initializer = source_view.source_initializer;
+        current_run.context = source_view.context;
+        current_run.run_type = source_view.run_type;
+        current_run.payment_amount = source_view.payment_amount;
+        current_run.johnson_label = source_view.johnson_label;
+        current_run.johnson_name = source_view.johnson_name;
+        current_run.run_type_label = source_view.run_type_label;
+        current_run.run_type_name = source_view.run_type_name;
+        current_run.payment_label = source_view.payment_label;
+        current_run.currency_symbol = source_view.currency_symbol;
+        current_run.body_lines = source_view.body_lines;
+    } else if (!current_run_page) {
+        notebook.current_run = NotebookMenuState::CurrentRunState{};
+    }
     notebook.tips.open = screen == srx::MenuScreen::NOTEBOOK_TIPS;
     notebook.mr_johnsons.open = screen == srx::MenuScreen::MR_JOHNSONS ||
                                 johnson_detail;
@@ -18293,6 +18317,164 @@ bool FieldSceneRuntime::seed_run_target_for_dump(
     return game_scripts_.restore_run_registry_state(registry_state);
 }
 
+bool FieldSceneRuntime::seed_current_run_for_dump(
+    const std::uint8_t source_run_type,
+    const bool matrix_max_payment) {
+    if (!ready_ || source_run_type > 6U ||
+        (matrix_max_payment && source_run_type != 6U)) {
+        return false;
+    }
+
+    using PersistentValue = scripting::ScriptPersistentValue;
+    const auto type = static_cast<std::size_t>(source_run_type);
+    // Each case is an accepted offer row from the ROM context table. The
+    // values below keep the QA seed tied to real initializer/context/payment
+    // combinations while presenting each of the seven shared detail handlers.
+    static constexpr std::array<std::uint8_t, 7> kContexts{
+        0U, 1U, 0U, 2U, 3U, 1U, 2U};
+    static constexpr std::array<std::uint8_t, 7> kInitializers{
+        0U, 1U, 2U, 3U, 9U, 5U, 6U};
+    static constexpr std::array<std::int64_t, 7> kProgressDeltas{
+        1, 1, 1, 2, 3, 2, 2};
+    static constexpr std::array<std::int64_t, 7> kBasePayments{
+        10, 200, 40, 190, 1700, 500, 425};
+    static constexpr std::array<std::int64_t, 7> kNegotiationScales{
+        3, 2, 1, 2, 4, 5, 1};
+    static constexpr std::array<std::string_view, 7> kIds{
+        "ghoul_bounty", "bodyguard_escort", "package_delivery",
+        "gang_contract", "package_recovery", "employee_recruitment",
+        "matrix_objective"};
+    static constexpr std::array<std::string_view, 7> kCategories{
+        "bounty", "escort", "courier", "gang", "recovery",
+        "extraction", "matrix"};
+    static constexpr std::array<std::string_view, 7> kObjectives{
+        "kill_ghouls_in_redmond", "escort_client_to_destination",
+        "deliver_package_to_destination", "resolve_the_selected_gang_contract",
+        "recover_the_client_package", "recruit_the_selected_employee",
+        "complete_the_selected_matrix_objective"};
+    static constexpr std::array<std::string_view, 7> kCompletionConditions{
+        "return_to_johnson_for_payment",
+        "client_reaches_destination_alive", "package_delivered_safely",
+        "return_to_the_johnson_after_the_gang_contract",
+        "return_the_recovered_package_to_the_johnson",
+        "return_to_johnson_after_the_recruitment",
+        "complete_the_source_matrix_objective"};
+
+    const auto scalar = [](auto value) {
+        PersistentValue result{};
+        result.value = value;
+        return result;
+    };
+    const auto location = [&scalar](const std::int64_t area_id,
+                                    const std::int64_t location_id) {
+        return PersistentValue{PersistentValue::Object{
+            {"area_id", scalar(area_id)},
+            {"location_id", scalar(location_id)},
+        }};
+    };
+    PersistentValue::Object route_fields;
+    if (source_run_type == 1U) {
+        route_fields.emplace("origin", location(2, 6));
+        route_fields.emplace("destination", location(5, 6));
+        route_fields.emplace("client_id", scalar(std::int64_t{7}));
+    } else if (source_run_type == 2U) {
+        // Section 03 video route: Ares Weapon Emporium to Jackal's Lantern.
+        route_fields.emplace("origin", location(2, 11));
+        route_fields.emplace("destination", location(2, 5));
+    } else if (source_run_type == 3U) {
+        route_fields.emplace("target", location(3, 4));
+    } else if (source_run_type == 4U) {
+        // First site in the source two-site package-recovery pool.
+        route_fields.emplace("target", location(1, 2));
+    } else if (source_run_type == 5U) {
+        // First site in the shared four-site employee-recruitment pool.
+        route_fields.emplace("target", location(0, 5));
+    }
+    const PersistentValue route{std::move(route_fields)};
+
+    const auto context = matrix_max_payment
+        ? std::uint8_t{4U}
+        : kContexts[type];
+    const auto source_initializer = matrix_max_payment
+        ? std::uint8_t{8U}
+        : kInitializers[type];
+    const auto progress_delta = matrix_max_payment
+        ? std::int64_t{5}
+        : kProgressDeltas[type];
+    const auto base_payment = matrix_max_payment
+        ? std::int64_t{6100}
+        : kBasePayments[type];
+    const auto negotiation_scale = matrix_max_payment
+        ? std::int64_t{10}
+        : kNegotiationScales[type];
+    const std::int64_t negotiation_skill = matrix_max_payment
+        ? 12
+        : (source_run_type == 0U ? 0 : 3);
+    const auto negotiation_bound =
+        negotiation_scale * negotiation_skill + 1;
+    const auto negotiation_roll = negotiation_bound - 1;
+    const PersistentValue payment{PersistentValue::Object{
+        {"base_amount", scalar(base_payment)},
+        {"negotiated_amount",
+         scalar(base_payment + negotiation_roll * 5)},
+        {"negotiation_skill", scalar(negotiation_skill)},
+        {"negotiation_bound", scalar(negotiation_bound)},
+        {"negotiation_roll", scalar(negotiation_roll)},
+    }};
+    PersistentValue::Object offer_fields{
+        {"id", scalar(std::string(kIds[type]))},
+        {"category", scalar(std::string(kCategories[type]))},
+        {"objective", scalar(std::string(kObjectives[type]))},
+        {"completion_condition",
+         scalar(std::string(kCompletionConditions[type]))},
+        {"runner_progress_delta", scalar(progress_delta)},
+        {"source_offer_type", scalar(static_cast<std::int64_t>(source_initializer))},
+        {"source_offer_context", scalar(static_cast<std::int64_t>(context))},
+        {"source_run_type", scalar(static_cast<std::int64_t>(source_run_type))},
+        {"context", scalar(static_cast<std::int64_t>(context))},
+        {"route", route},
+        {"payment", payment},
+    };
+    if (source_run_type == 0U) {
+        offer_fields.emplace("area_id", scalar(std::int64_t{2}));
+        offer_fields.emplace("ghoul_kill_count", scalar(std::int64_t{19}));
+    } else if (source_run_type == 3U) {
+        offer_fields.emplace("variant", scalar(std::int64_t{1}));
+    } else if (source_run_type == 5U) {
+        offer_fields.emplace("client_id", scalar(std::int64_t{0}));
+    } else if (source_run_type == 6U) {
+        // The regular case is a simple row. The optional maximum-payment case
+        // is source Matrix Expert row 7, rank 12, roll 120, displaying 6,700.
+        const auto objective_index = matrix_max_payment ? 0 : 2;
+        const auto objective_class = matrix_max_payment ? 4 : 0;
+        const auto objective_value = matrix_max_payment ? 20 : 1;
+        const auto matrix_state = matrix_max_payment ? 1 : -1;
+        const auto target_system_id = matrix_max_payment ? 7 : 0;
+        offer_fields.emplace("objective_index", scalar(objective_index));
+        offer_fields.emplace("target_system_id", scalar(target_system_id));
+        offer_fields.emplace(
+            "matrix_run_state",
+            PersistentValue{PersistentValue::Object{
+                {"state", scalar(matrix_state)},
+                {"objective", scalar(objective_class)},
+                {"value", scalar(objective_value)},
+                {"size", scalar(std::int64_t{20})},
+                {"fc28", scalar(std::int64_t{0})},
+                {"fc1c", scalar(std::int64_t{0})},
+                {"target_system_id", scalar(target_system_id)},
+            }});
+    }
+    const PersistentValue active_offer{std::move(offer_fields)};
+    const PersistentValue registry_state{PersistentValue::Object{
+        {"schema_version", scalar(std::int64_t{1})},
+        {"current_offer", scalar(std::monostate{})},
+        {"active_offer", active_offer},
+        {"last_completed_offer", scalar(std::monostate{})},
+        {"last_offer_result", scalar(std::string("accepted"))},
+    }};
+    return game_scripts_.restore_run_registry_state(registry_state);
+}
+
 bool FieldSceneRuntime::open_taxi_selector_for_dump(
     const std::uint8_t current_region) {
     if (!ready_ || current_region > 6U) {
@@ -22570,6 +22752,50 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     184, 184,
                     static_cast<std::size_t>(tips.selection) + 1U);
                 draw_right_aligned_decimal(232, 184, tips.visible_count);
+                return;
+            }
+            if (pocket_secretary_.notebook.current_run.open) {
+                const auto& current_run =
+                    pocket_secretary_.notebook.current_run;
+                painter.drawImage(QRect(24, 48, 224, 136),
+                                  pocket_secretary_grid_,
+                                  QRect(0, 24, 224, 136));
+                if (current_run.payment_amount >= 0 &&
+                    !current_run.johnson_label.empty() &&
+                    !current_run.johnson_name.empty() &&
+                    !current_run.run_type_label.empty() &&
+                    !current_run.run_type_name.empty() &&
+                    !current_run.payment_label.empty() &&
+                    !current_run.currency_symbol.empty()) {
+                    // ROM 0x1EE64 places these values into the source text
+                    // layout at C208, C21A, C29A, and C322. The host uses the
+                    // same 8-pixel cells and draws the saved amount rightward
+                    // from the source's least-significant-digit position.
+                    draw_command_overview_text(
+                        painter, 32, 32, current_run.johnson_label);
+                    draw_command_overview_text(
+                        painter, 104, 32, current_run.johnson_name);
+                    draw_command_overview_text(
+                        painter, 56, 40, current_run.run_type_label);
+                    draw_command_overview_text(
+                        painter, 104, 40, current_run.run_type_name);
+                    draw_command_overview_text(
+                        painter, 64, 48, current_run.payment_label);
+                    draw_command_overview_number(
+                        painter, command_overview_font_, 136, 48,
+                        static_cast<std::uint32_t>(
+                            current_run.payment_amount),
+                        NumericVisualAlignment::right, true);
+                    draw_command_overview_text(
+                        painter, 144, 48, current_run.currency_symbol);
+                    for (std::size_t line = 0;
+                         line < current_run.body_lines.size(); ++line) {
+                        draw_command_overview_text(
+                            painter, 40,
+                            64 + static_cast<int>(line) * 8,
+                            current_run.body_lines[line]);
+                    }
+                }
                 return;
             }
             if (pocket_secretary_.notebook.no_current_run_wait) {

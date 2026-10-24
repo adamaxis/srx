@@ -434,6 +434,20 @@ struct ScriptMatrixLogoutVisual {
     int vertical_bottom = 224;
 };
 
+struct ScriptNotebookCurrentRunView {
+    int source_initializer = -1;
+    int context = -1;
+    int run_type = -1;
+    int payment_amount = -1;
+    std::string johnson_label;
+    std::string johnson_name;
+    std::string run_type_label;
+    std::string run_type_name;
+    std::string payment_label;
+    std::string currency_symbol;
+    std::vector<std::string> body_lines;
+};
+
 struct ScriptMenuRouteSnapshot {
     bool open = false;
     std::uint16_t top_screen = 0U;
@@ -465,6 +479,7 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_page;
     std::optional<int> top_detail_index;
     std::optional<int> top_detail_row;
+    std::optional<ScriptNotebookCurrentRunView> top_notebook_current_run;
     bool top_matrix_state_present = false;
     std::optional<int> top_matrix_system_id;
     std::optional<int> top_matrix_node;

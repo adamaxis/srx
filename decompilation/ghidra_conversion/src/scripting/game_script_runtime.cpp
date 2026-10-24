@@ -1929,6 +1929,39 @@ struct GameScriptRuntime::Impl {
             lua_pop(lua, 1);
             return values;
         };
+        const auto read_text_array = [lua](
+            const int table_index, const char* name,
+            const std::size_t maximum_count)
+            -> std::optional<std::vector<std::string>> {
+            std::vector<std::string> values;
+            lua_getfield(lua, table_index, name);
+            if (!lua_istable(lua, -1)) {
+                lua_pop(lua, 1);
+                return std::nullopt;
+            }
+            const auto array_index = lua_absindex(lua, -1);
+            const auto count = static_cast<std::size_t>(
+                lua_rawlen(lua, array_index));
+            if (count == 0U || count > maximum_count) {
+                lua_pop(lua, 1);
+                return std::nullopt;
+            }
+            values.reserve(count);
+            for (std::size_t index = 0U; index < count; ++index) {
+                lua_rawgeti(lua, array_index,
+                            static_cast<lua_Integer>(index + 1U));
+                std::string value;
+                const bool valid = read_string_allow_empty(lua, -1, value);
+                lua_pop(lua, 1);
+                if (!valid) {
+                    lua_pop(lua, 1);
+                    return std::nullopt;
+                }
+                values.push_back(std::move(value));
+            }
+            lua_pop(lua, 1);
+            return values;
+        };
         lua_getfield(state, route_index, "top");
         lua_pushvalue(state, route_index);
         if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
@@ -1970,6 +2003,60 @@ struct GameScriptRuntime::Impl {
                 (void)read_field_text(
                     state, screen_state_index, "description",
                     menu_route_state.top_matrix_deck_description);
+                if (menu_route_state.top_screen == 41U) {
+                    lua_getfield(state, screen_state_index, "view");
+                    if (lua_istable(state, -1)) {
+                        const auto view_index = lua_absindex(state, -1);
+                        ScriptNotebookCurrentRunView view;
+                        const auto initializer = read_optional(
+                            view_index, "source_initializer");
+                        const auto context = read_optional(
+                            view_index, "context");
+                        const auto run_type = read_optional(
+                            view_index, "run_type");
+                        const auto payment = read_optional(
+                            view_index, "payment_amount");
+                        const auto body_lines = read_text_array(
+                            view_index, "body_lines", 16U);
+                        const bool labels_valid =
+                            read_field_string(state, view_index,
+                                              "johnson_label",
+                                              view.johnson_label) &&
+                            read_field_string(state, view_index,
+                                              "johnson_name",
+                                              view.johnson_name) &&
+                            read_field_string(state, view_index,
+                                              "run_type_label",
+                                              view.run_type_label) &&
+                            read_field_string(state, view_index,
+                                              "run_type_name",
+                                              view.run_type_name) &&
+                            read_field_string(state, view_index,
+                                              "payment_label",
+                                              view.payment_label) &&
+                            read_field_string(state, view_index,
+                                              "currency_symbol",
+                                              view.currency_symbol);
+                        if (initializer.has_value() &&
+                            *initializer >= 0 && *initializer <= 12 &&
+                            context.has_value() && *context >= 0 &&
+                            *context <= 4 && run_type.has_value() &&
+                            *run_type >= 0 && *run_type <= 6 &&
+                            payment.has_value() && *payment >= 0 &&
+                            *payment <= 0xFFFF && labels_valid &&
+                            body_lines.has_value() &&
+                            !body_lines->empty()) {
+                            view.source_initializer = *initializer;
+                            view.context = *context;
+                            view.run_type = *run_type;
+                            view.payment_amount = *payment;
+                            view.body_lines = *body_lines;
+                            menu_route_state.top_notebook_current_run =
+                                std::move(view);
+                        }
+                    }
+                    lua_pop(state, 1);
+                }
                 const auto detail_labels = read_string_array(
                     screen_state_index, "program_detail_labels", 3U);
                 if (detail_labels.size() ==

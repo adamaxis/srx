@@ -2,7 +2,9 @@ package.path = "decompilation/gameplay/scripts/?.lua;" .. package.path
 
 local EmployeeRecruitment = require("run_employee_recruitment")
 local PackageRecovery = require("run_package_recovery")
+local PackageDelivery = require("run_package_delivery")
 local GangContract = require("run_gang_contract")
+local RunSupport = require("run_support")
 local active_offer = {
     id = "employee_recruitment",
     route = { target = { area_id = 5, location_id = 6 } },
@@ -22,9 +24,23 @@ end
 local presented
 game = {
     runs = { registry = { active_offer = active_offer } },
+    modules = {
+        run_support = {
+            amount_in_reserved_field = function(amount, width)
+                local digits = tostring(amount)
+                return string.rep(" ", math.max(0, width - #digits)) .. digits
+            end,
+            resolve_offer_decision = function(choice) return "accepted:" .. choice end,
+        },
+    },
     ui = {
         say_text = function(text, continuation)
             presented = { text = text, continuation = continuation }
+        end,
+        prompt_text = function(id, _, choices)
+            assert(id == "run_acceptance")
+            assert(choices[1] == "yes" and choices[2] == "no")
+            return "yes"
         end,
     },
 }
@@ -93,4 +109,78 @@ assert(presented.text ==
     "  Slot off, frag-face!!!\n\n" ..
     "<Guess what happens next.>")
 
-print("run target event tests passed: recruitment, recovery, and gang entry")
+-- ROM 0x1EBAA streams route phrases continuously; only F23B8's two 0x80
+-- controls create a blank row before the destination instruction. Exercise
+-- every source location-roll pair across all five contexts, including
+-- short Council Island/Renraku labels that expose forced-break differences.
+local delivery_offer = {
+    id = "package_delivery",
+    payment = { base_amount = 400, negotiated_amount = 450 },
+}
+local delivery_route_cases = 0
+local function check_delivery_route(origin_area, origin_location,
+                                    destination_area, destination_location)
+    local origin_name = RunSupport.location_names[origin_area][origin_location]
+    local destination_name =
+        RunSupport.location_names[destination_area][destination_location]
+    local origin_suffix = RunSupport.area_suffixes[origin_area]
+    local destination_suffix = RunSupport.area_suffixes[destination_area]
+    assert(origin_name ~= nil and destination_name ~= nil and
+           origin_suffix ~= nil and destination_suffix ~= nil,
+        "source courier route pool has an unmapped text field")
+    delivery_offer.route = {
+        origin = {
+            area_id = origin_area,
+            location_id = origin_location,
+            location_name = origin_name,
+            area_suffix = origin_suffix,
+        },
+        destination = {
+            area_id = destination_area,
+            location_id = destination_location,
+            location_name = destination_name,
+            area_suffix = destination_suffix,
+        },
+    }
+    game.runs.registry.current_offer = delivery_offer
+    assert(PackageDelivery.present_offer() == "accepted:yes")
+    assert(presented ~= nil and presented.continuation == true)
+    local expected = "Go to " .. origin_name .. " " .. origin_suffix .. "  " ..
+        "A contact there will give you a package.||Take it to " ..
+        destination_name .. " " .. destination_suffix .. "  " ..
+        "You will be paid upon safe delivery of the package."
+    assert(presented.text == expected,
+        "courier detail changed its ROM text stream for a source route")
+    delivery_route_cases = delivery_route_cases + 1
+end
+
+local source_contexts = { 0, 1, 2, 3, 4 }
+for _, context in ipairs(source_contexts) do
+    for origin_area = 0, 5 do
+        local origin_rolls = RunSupport.location_rolls_by_area[origin_area]
+        for destination_area = 0, 5 do
+            local jump_house_route = context == 0
+                and origin_area == 2 and destination_area == 2
+            local route_is_valid = jump_house_route or
+                context ~= 0 and destination_area ~= origin_area
+            if route_is_valid then
+                local destination_rolls =
+                    RunSupport.location_rolls_by_area[destination_area]
+                for _, origin_location in ipairs(origin_rolls) do
+                    for _, destination_location in ipairs(destination_rolls) do
+                        if not jump_house_route or
+                           origin_location ~= destination_location then
+                            check_delivery_route(
+                                origin_area, origin_location,
+                                destination_area, destination_location)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+assert(delivery_route_cases == 12090,
+    "courier route presentation did not cover the full source pool")
+
+print("run target event tests passed: recruitment, recovery, gang entry, and 12090 courier routes")

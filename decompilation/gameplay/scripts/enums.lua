@@ -189,7 +189,8 @@ E.MenuScreen = { COMMAND = 1, POSTURE = 2, ITEM_ACTION = 3, CLIPS = 4, ATTRIBUTE
                  DECK_PROGRAM = 31, DECK_CYBERINFO = 32, DECK_STORAGE = 33, DECK_MAP = 34,
                  NOTEBOOK_CONTACTS = 35, NOTEBOOK_SHADOWRUNNERS = 36,
                  MATRIX_NODE_ACTION = 37, MATRIX_ENTRY = 38,
-                 MATRIX_SEARCH = 39, TAXI_SELECTOR = 40 }   -- Taxi destinations follow ROM 0x134D2/0xD4456/0xD445D
+                 MATRIX_SEARCH = 39, TAXI_SELECTOR = 40,
+                 NOTEBOOK_CURRENT_RUN = 41 }   -- Positive detail page follows 0x1E72C; taxi destinations follow 0x134D2/0xD4456/0xD445D
 -- Presenter regions (docs/09 section 10.1 coordinates) [C positions]
 E.MenuRegion = { ITEM_PICTURE = 0x0001, ITEM_HEADER = 0x0002, RATING = 0x0004, DAMAGE_POWER = 0x0008, COMBAT_BARS = 0x0010,
                  WEAPON_BARS = 0x0020, ARMOR = 0x0040, POSTURE_BLOCK = 0x0080, BUTTON_STRIP = 0x0100,

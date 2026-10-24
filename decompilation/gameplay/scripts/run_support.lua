@@ -1,6 +1,8 @@
 -- Shared source data and helpers for independently-authored run modules.
 local Support = {}
 local E = require("enums")
+local OfferData = require("data.johnson_run_offers")
+local MatrixCatalog = require("data.matrix_run_catalog")
 
 Support.area_suffixes = {
     -- ROM F1E58 strings used by the contract location formatter.
@@ -10,6 +12,7 @@ Support.area_suffixes = {
     [3] = "in the Penumbra District.",
     [4] = "on Council Island.",
     [5] = "in the Renraku Arcology.",
+    [6] = "in the AmerIndian Lands.",
 }
 
 Support.location_names = {
@@ -98,9 +101,9 @@ Support.client_names = {
 -- selected target location. These strings are kept as content, separate from
 -- route selection and shared payment rules.
 Support.gang_contract_texts = {
-    "They have been defacing and damaging buildings in that area. I find this appalling!||Show them how I feel about vandals and return to me for your payment.",
-    "They have been feeding Renraku a lot of information.||Renraku has been using this info to find and eliminate Johnsons. Needless to say, this makes me uneasy.||\"Discuss\" this matter with them and return here to collect your fee.",
-    "Their recent antics have been most heinous!||I want you to tell them to quit terrorizing the locals. And make it stick!||Payment will be rendered when the gang is no longer a problem.",
+    "They have been defacing and damaging buildings in that area.  I find this appalling!||Show them how I feel about vandals and return to me for your payment.",
+    "They have been feeding Renraku a lot of information.||Renraku has been using this info to find and eliminate Johnsons.  Needless to say, this makes me uneasy.||\"Discuss\" this matter with them and return here to collect your fee.",
+    "Their recent antics have been most heinous!||I want you to tell them to quit terrorizing the locals.  And make it stick!||Payment will be rendered when the gang is no longer a problem.",
     "Their payments are late on an insurance policy they have with me.||You will be payed when you return with their premiums.",
 }
 
@@ -125,6 +128,248 @@ Support.run_target_pools = {
     },
     renraku = { area_id = 5, location_id = 6 },
 }
+
+local run_context_names = {
+    [E.RunOfferContext.JUMP_HOUSE] = "Mr. Gunderson",
+    [E.RunOfferContext.SCENE_18] = "Julius Strouther",
+    [E.RunOfferContext.BIG_RHINO] = "Mortimer Reed",
+    [E.RunOfferContext.WANDERER] = "Vigore and Jarl",
+    [E.RunOfferContext.ICARUS_DESCENDING] = "Caleb Brightmore",
+}
+
+local run_type_names = {
+    [E.RunType.GHOUL_BOUNTY] = "Ghoul Bounty",
+    [E.RunType.BODYGUARD_ESCORT] = "Bodyguard",
+    [E.RunType.PACKAGE_DELIVERY] = "Courier",
+    [E.RunType.GANG_CONTRACT] = "Enforcement",
+    [E.RunType.PACKAGE_RECOVERY] = "Acquisition",
+    [E.RunType.EMPLOYEE_RECRUITMENT] = "Extraction",
+    [E.RunType.MATRIX_OBJECTIVE] = "Matrix Run",
+}
+
+local function source_location(pair)
+    if type(pair) ~= "table" then return nil end
+    local area_id = pair.area_id
+    local location_id = pair.location_id
+    if type(area_id) ~= "number" or area_id % 1 ~= 0 or
+       type(location_id) ~= "number" or location_id % 1 ~= 0 then
+        return nil
+    end
+    local area = Support.area_suffixes[area_id]
+    local locations = Support.location_names[area_id]
+    local location = type(locations) == "table" and
+        locations[location_id] or nil
+    if area == nil or location == nil then return nil end
+    return location, area
+end
+
+local function source_client(client_id)
+    if type(client_id) ~= "number" or client_id % 1 ~= 0 or
+       client_id < 0 or client_id >= #Support.client_names then
+        return nil
+    end
+    return Support.client_names[client_id + 1]
+end
+
+local function source_run_body(offer, run_type)
+    local body = {}
+    local function copy(text, spaces)
+        if type(text) ~= "string" then return false end
+        body[#body + 1] = text
+        body[#body + 1] = string.rep(" ", spaces)
+        return true
+    end
+    local function route_pair(pair)
+        local location, area = source_location(pair)
+        if location == nil then return nil end
+        return location, area
+    end
+
+    if run_type == E.RunType.GHOUL_BOUNTY then
+        local area = Support.area_suffixes[offer.area_id]
+        if area == nil or offer.area_id < 0 or offer.area_id > 3 then
+            return nil
+        end
+        copy("There is a community of Ghouls somewhere", 1) -- F2520, D1=0.
+        copy(area, 2)                                        -- F1E58, D1=1.
+        copy("They have been preying on the citizens there." ..
+             "\n\nKill as many as possible and return here for payment.",
+             1)                                              -- F2549, D1=0.
+    elseif run_type == E.RunType.BODYGUARD_ESCORT or
+           run_type == E.RunType.PACKAGE_DELIVERY then
+        local origin, origin_area = route_pair(
+            offer.route and offer.route.origin)
+        local destination, destination_area = route_pair(
+            offer.route and offer.route.destination)
+        if origin == nil or destination == nil then return nil end
+        copy("Go to", 1)                                    -- F23B2, D1=0.
+        copy(origin, 1)
+        copy(origin_area, 2)
+        if run_type == E.RunType.BODYGUARD_ESCORT then
+            local client = source_client(offer.route.client_id)
+            if client == nil then return nil end
+            copy("There you will meet my client,", 1)       -- F34C8.
+            copy(client, 2)                                 -- F35A6, D1=1.
+            copy("\n\nEscort my client to", 1)             -- F34E7, D1=0.
+            copy(destination, 1)
+            copy(destination_area, 2)
+            copy("You will be paid by my client upon safe arrival at the specified destination.",
+                 0)                                         -- F34FD, D1=-1.
+        else
+            copy("A contact there will give you a package.\n\nTake it to", 1)
+                                                            -- F23B8, D1=0.
+            copy(destination, 1)
+            copy(destination_area, 2)
+            copy("You will be paid upon safe delivery of the package.", 0)
+                                                            -- F23ED, D1=-1.
+        end
+    elseif run_type == E.RunType.GANG_CONTRACT or
+           run_type == E.RunType.PACKAGE_RECOVERY then
+        local target, area = route_pair(offer.route and offer.route.target)
+        if target == nil then return nil end
+        if run_type == E.RunType.GANG_CONTRACT then
+            if type(offer.variant) ~= "number" or
+               offer.variant % 1 ~= 0 or offer.variant < 0 or
+               offer.variant >= #Support.gang_contract_texts then
+                return nil
+            end
+            -- 0x1ECA4 removes "to" from F23B2 because each gang target
+            -- begins with "see", yielding "Go see <gang>".
+            copy("Go ", 0)
+            copy(target, 1)
+            copy(area, 2)
+            copy(Support.gang_contract_texts[offer.variant + 1]:gsub("|", "\n"), 0)
+        else
+            copy("Go to", 1)                                -- F23B2, D1=0.
+            copy(target, 1)
+            copy(area, 2)
+            copy("A package was taken from a courier of mine." ..
+                 "\n\nGet the package and bring it back to me." ..
+                 "\n\nI will then pay you for your services.", 0)
+                                                            -- F367C, D1=-1.
+        end
+    elseif run_type == E.RunType.EMPLOYEE_RECRUITMENT then
+        local target, area = route_pair(offer.route and offer.route.target)
+        local client = source_client(offer.client_id)
+        if target == nil or area == nil or client == nil then return nil end
+        area = area:gsub("%.$", ",", 1)                     -- 0x1E91A.
+        copy("An employee of", 1)                          -- F39BE, D1=0.
+        copy(target, 1)
+        copy(area, 0)
+        body[#body + 1] = " "                               -- 0x1E91A.
+        copy(client, 0)
+        body[#body + 1] = ", "                              -- 0x1E91A.
+        copy("wishes for a change in career.", 2)           -- F39CD, D1=1.
+        copy("Unfortunately, his current employer frowns upon this." ..
+             "\n\nAssist my client with his professional growth and return here " ..
+             "to receive full compensation for your services.", 0)
+                                                            -- F39EC, D1=-1.
+    elseif run_type == E.RunType.MATRIX_OBJECTIVE then
+        local objective_index = offer.objective_index
+        if type(objective_index) ~= "number" or
+           objective_index % 1 ~= 0 or objective_index < 0 or
+           objective_index >= #MatrixCatalog.objectives then
+            return nil
+        end
+        local objective = MatrixCatalog.objectives[objective_index + 1]
+        if objective_index < 17 then
+            local target_system_id = offer.target_system_id
+            local system_name = type(target_system_id) == "number" and
+                MatrixCatalog.systems[target_system_id] or nil
+            if system_name == nil then return nil end
+            copy(system_name, 1)                             -- C19C6, D1=0.
+        end
+        copy(objective.description, 0)                      -- F25AE, D1=-1.
+    else
+        return nil
+    end
+    return table.concat(body)
+end
+
+function Support.wrap_current_run_body(body)
+    assert(type(body) == "string")
+    local lines = {}
+    local source_scan_width = 27 -- C168 receives D1=0x1A (27 scan cells).
+    local function wrap_line(line)
+        if line == "" then
+            lines[#lines + 1] = ""
+            return
+        end
+        while #line > 0 do
+            local scanned = 0
+            local last_fitting_space = 0
+            for index = 1, #line do
+                scanned = index
+                if line:sub(index, index) == " " then
+                    if scanned < source_scan_width then
+                        last_fitting_space = scanned
+                    else
+                        break
+                    end
+                end
+            end
+            local consumed = scanned
+            if scanned > source_scan_width then
+                -- C168 retains the last space whose scan count is below
+                -- width. The separator belongs to the consumed span but is
+                -- not visible at the end of the native text row.
+                consumed = last_fitting_space > 0
+                    and last_fitting_space or source_scan_width
+            end
+            if consumed <= 0 then return end
+            lines[#lines + 1] = line:sub(1, consumed):gsub(" +$", "")
+            line = line:sub(consumed + 1)
+        end
+    end
+    local start = 1
+    for index = 1, #body + 1 do
+        if index > #body or body:sub(index, index) == "\n" then
+            wrap_line(body:sub(start, index - 1))
+            start = index + 1
+        end
+    end
+    return lines
+end
+
+-- The Notebook Current Run page displays the accepted source record's stored
+-- payment and source-selected route fields. It does not reroll or recompute
+-- the Johnson offer. Text fragments and trailing spaces follow the shared
+-- Current Run handlers at 0x1E72C/0x1EE64 and their C134 copy parameters.
+function Support.current_run_view(offer)
+    if type(offer) ~= "table" then return nil end
+    local initializer = offer.source_offer_type or offer.source_initializer
+    local resolved = type(initializer) == "number" and
+        OfferData.run_by_initializer[initializer] or nil
+    if resolved == nil or offer.source_run_type ~= resolved.type then
+        return nil
+    end
+    local context = offer.source_offer_context or offer.context
+    local johnson_name = run_context_names[context]
+    local run_type_name = run_type_names[resolved.type]
+    local payment = type(offer.payment) == "table" and
+        offer.payment.negotiated_amount or nil
+    if johnson_name == nil or run_type_name == nil or
+       type(payment) ~= "number" or payment % 1 ~= 0 or
+       payment < 0 or payment > 0xFFFF then
+        return nil
+    end
+    local body = source_run_body(offer, resolved.type)
+    if body == nil or body == "" then return nil end
+    return {
+        source_initializer = initializer,
+        context = context,
+        run_type = resolved.type,
+        johnson_label = "JOHNSON:",
+        johnson_name = johnson_name,
+        run_type_label = "TYPE:",
+        run_type_name = run_type_name,
+        payment_label = "PAY:",
+        payment_amount = payment,
+        currency_symbol = "$",
+        body = body,
+        body_lines = Support.wrap_current_run_body(body),
+    }
+end
 
 function Support.bounded_random(bound)
     local result = game.services.call(

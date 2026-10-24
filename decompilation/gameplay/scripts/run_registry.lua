@@ -544,6 +544,67 @@ function Registry.validate_saved_state(state)
         return false, "The save has an unsupported run-state version."
     end
 
+    local function integer_between(value, minimum, maximum)
+        return type(value) == "number" and value % 1 == 0 and
+               value >= minimum and value <= maximum
+    end
+
+    -- The saved page and Johnson-return context are derived from the same
+    -- accepted ROM offer. Validate the joined row rather than trusting a
+    -- separately saved initializer, context, progress, or payment tuple.
+    local function valid_source_offer(offer)
+        local initializer = offer.source_offer_type or
+            offer.source_initializer
+        local has_source_metadata = initializer ~= nil or
+            offer.source_offer_context ~= nil or
+            offer.source_run_type ~= nil
+        if not has_source_metadata then return true end
+        if not integer_between(initializer, 0, 0xFF) or
+           (offer.source_offer_type ~= nil and
+            offer.source_initializer ~= nil and
+            offer.source_offer_type ~= offer.source_initializer) then
+            return false
+        end
+
+        local resolved = OfferData.run_by_initializer[initializer]
+        local context = offer.source_offer_context
+        if resolved == nil or
+           not integer_between(context, 0, 0xFF) or
+           OfferData.contexts[context] == nil or
+           offer.context ~= context or
+           offer.id ~= resolved.id or
+           offer.source_run_type ~= resolved.type then
+            return false
+        end
+
+        local payment = offer.payment
+        if type(payment) ~= "table" or
+           not integer_between(payment.base_amount, 0, 0xFFFF) or
+           not integer_between(payment.negotiated_amount, 0, 0xFFFF) or
+           not integer_between(payment.negotiation_skill, 0, 12) or
+           not integer_between(payment.negotiation_bound, 1, 0xFFFF) or
+           not integer_between(payment.negotiation_roll, 0, 0xFFFF) then
+            return false
+        end
+
+        for _, source_record in ipairs(OfferData.contexts[context]) do
+            if source_record.source_initializer == initializer and
+               source_record.base_payment == payment.base_amount and
+               source_record.runner_progress_delta ==
+                   offer.runner_progress_delta then
+                local expected_bound = source_record.negotiation_scale *
+                    payment.negotiation_skill + 1
+                if payment.negotiation_bound == expected_bound and
+                   payment.negotiation_roll < expected_bound and
+                   payment.negotiated_amount == payment.base_amount +
+                       payment.negotiation_roll * 5 then
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
     local function valid_offer(offer)
         if offer == nil then return true end
         if type(offer) ~= "table" or type(offer.id) ~= "string" or
@@ -562,17 +623,7 @@ function Registry.validate_saved_state(state)
             offer.source_run_type < 0 or offer.source_run_type > 255) then
             return false
         end
-        if offer.source_offer_type ~= nil then
-            local initializer = offer.source_offer_type
-            local context = offer.source_offer_context
-            local resolved = type(initializer) == "number" and
-                OfferData.run_by_initializer[initializer] or nil
-            if resolved == nil or type(context) ~= "number" or
-               context % 1 ~= 0 or OfferData.contexts[context] == nil or
-               offer.source_run_type ~= resolved.type then
-                return false
-            end
-        end
+        if not valid_source_offer(offer) then return false end
         if offer.source_run_type == E.RunType.MATRIX_OBJECTIVE then
             if not valid_matrix_run_state(offer.matrix_run_state) then
                 return false

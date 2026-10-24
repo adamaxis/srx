@@ -100,6 +100,21 @@ local function active_run_id()
     return id
 end
 
+local function active_run_view()
+    local live = rawget(_G, "game")
+    local runs = type(live) == "table" and live.runs or nil
+    local registry = type(runs) == "table" and runs.registry or nil
+    local modules = type(live) == "table" and live.modules or nil
+    local support = type(modules) == "table" and modules.run_support or nil
+    if type(registry) ~= "table" or
+       type(registry.active_offer) ~= "table" or
+       type(support) ~= "table" or
+       type(support.current_run_view) ~= "function" then
+        return nil
+    end
+    return support.current_run_view(registry.active_offer)
+end
+
 function Notebook.new()
     return { row = 0, grid_cells = Grid.cells,
              grid_effect_frames = Grid.frames }
@@ -139,8 +154,13 @@ function Notebook.input(st, events, ctx)
                          args = { message = MM.NO_CURRENT_RUN,
                                   grid_effect = true } }
             end
-            ctx.host.notebook_boundary(
-                E.NotebookBoundary.CURRENT_RUN_UNRESOLVED)
+            local view = active_run_view()
+            if view ~= nil then
+                return { transition = T.PUSH,
+                         screen = E.MenuScreen.NOTEBOOK_CURRENT_RUN,
+                         args = { view = view } }
+            end
+            ctx.host.notebook_boundary(E.NotebookBoundary.CURRENT_RUN_UNRESOLVED)
             return
         end
         if opt == N.TIPS_AND_CLUES then
@@ -355,6 +375,26 @@ local Contacts = make_record_page(13, E.MenuMessage.NOTEBOOK_CONTACT_DETAIL)
 local Shadowrunners = make_record_page(
     10, E.MenuMessage.NOTEBOOK_SHADOWRUNNER_DETAIL)
 
+-- Positive Current Run is a single read page followed by ROM 0xF312's fresh
+-- high-byte controller edge. The accepted Lua offer supplies the typed view;
+-- Qt only paints it and forwards the edge.
+local CurrentRun = { window = E.WindowPlane.SIDEBAR }
+function CurrentRun.new(args)
+    return { view = args.view, grid_cells = Grid.cells,
+             grid_effect_frames = Grid.frames }
+end
+function CurrentRun.enter(st, ctx)
+    if type(st.view) ~= "table" or type(st.view.body_lines) ~= "table" then
+        return { transition = T.POP }
+    end
+    ctx.redraw(R.SUBMENU)
+end
+function CurrentRun.input(st, events, ctx)
+    st.grid_effect_frames = Grid.advance(ctx)
+    st.grid_cells = Grid.cells
+    if events & P.EDGES ~= 0 then return { transition = T.POP } end
+end
+
 -- Dismiss Runner 0xC448: rows = Abort + candidates (slots 1..2 active); Up/Down 0x25; A/B/C 0x24 [srx FSR sounds H]
 local Dismiss = { window = E.WindowPlane.SIDEBAR }
 function Dismiss.new() return { row = 0, grid_cells = Grid.cells, grid_effect_frames = Grid.frames } end
@@ -384,4 +424,5 @@ end
 return { PocketSecretary = M, GroupItems = GroupItems, Notebook = Notebook,
          Tips = Tips, Johnsons = Johnsons, Contacts = Contacts,
          Shadowrunners = Shadowrunners, Dismiss = Dismiss,
+         CurrentRun = CurrentRun,
          row_cursor = Cursor.step }

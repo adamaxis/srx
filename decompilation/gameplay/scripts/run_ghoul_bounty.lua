@@ -64,13 +64,14 @@ end
 function GhoulBounty.present_offer()
     local offer = game.runs.registry.current_offer
     assert(offer ~= nil and offer.id == "ghoul_bounty")
-    local area = game.modules.run_support.area_suffixes[2]
+    local support = game.modules.run_support
+    local area = support.area_suffixes[offer.area_id]
+    assert(area ~= nil, "ghoul bounty has an invalid target area")
     game.ui.say_text(
         "There is a community of Ghouls somewhere " .. area ..
         "|They have been preying on the citizens there." ..
         "|Kill as many as possible and return here for payment.", true)
     local payment = offer.payment
-    local support = game.modules.run_support
     local prompt =
         "<You are offered" ..
         support.amount_in_reserved_field(payment.base_amount, 6) ..

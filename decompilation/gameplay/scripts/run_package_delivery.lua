@@ -21,13 +21,16 @@ function PackageDelivery.present_offer()
     local offer = game.runs.registry.current_offer
     assert(offer ~= nil and offer.id == "package_delivery")
     local route = offer.route
+    -- ROM 0x1EBAA appends the origin, area suffix, and F23B8 stream into one
+    -- text buffer. F23B8 alone supplies the two 0x80 row breaks before
+    -- "Take it to"; the other phrase boundaries wrap naturally at 26 columns.
     game.ui.say_text(
         "Go to " .. route.origin.location_name .. " " ..
-        route.origin.area_suffix ..
-        "|A contact there will give you a package." ..
-        "|Take it to " .. route.destination.location_name .. " " ..
-        route.destination.area_suffix ..
-        "|You will be paid upon safe delivery of the package.", true)
+        route.origin.area_suffix .. "  " ..
+        "A contact there will give you a package." ..
+        "||Take it to " .. route.destination.location_name .. " " ..
+        route.destination.area_suffix .. "  " ..
+        "You will be paid upon safe delivery of the package.", true)
     local payment = offer.payment
     local support = game.modules.run_support
     local prompt =

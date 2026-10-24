@@ -22,6 +22,7 @@ extern "C" {
 #include <limits>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 using shadowrun::ghidra_conversion::scripting::GameScriptRuntime;
@@ -33,6 +34,7 @@ using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteGame;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuPartyMember;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteBindings;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteStartArguments;
+using shadowrun::ghidra_conversion::scripting::ScriptPersistentValue;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunState;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixDatastoreFacts;
 using shadowrun::ghidra_conversion::scripting::
@@ -68,6 +70,7 @@ constexpr std::uint16_t kMatrixEntry = 38U;
 constexpr std::uint16_t kMatrixSearch = 39U;
 constexpr std::uint16_t kDeckCyberInfo = 32U;
 constexpr std::uint16_t kTaxiSelector = 40U;
+constexpr std::uint16_t kNotebookCurrentRun = 41U;
 constexpr std::uint16_t kCommandPagePocketSecretary = 6U;
 constexpr std::array<std::uint8_t, 8> kMatrixLogoutSparkleRows{{
     0x08U, 0x2AU, 0x1CU, 0xFFU, 0x1CU, 0x2AU, 0x08U, 0x08U}};
@@ -95,6 +98,65 @@ void check(const bool condition, const char* message, int& failures) {
         ++failures;
         std::cerr << "FAIL: " << message << '\n';
     }
+}
+
+ScriptPersistentValue persistent_integer(const std::int64_t value) {
+    ScriptPersistentValue result;
+    result.value = value;
+    return result;
+}
+
+ScriptPersistentValue persistent_string(std::string value) {
+    ScriptPersistentValue result;
+    result.value = std::move(value);
+    return result;
+}
+
+ScriptPersistentValue persistent_object(
+    ScriptPersistentValue::Object value) {
+    ScriptPersistentValue result;
+    result.value = std::move(value);
+    return result;
+}
+
+ScriptPersistentValue current_package_run_state() {
+    using Object = ScriptPersistentValue::Object;
+    Object origin;
+    origin.emplace("area_id", persistent_integer(2));
+    origin.emplace("location_id", persistent_integer(2));
+    Object destination;
+    destination.emplace("area_id", persistent_integer(2));
+    destination.emplace("location_id", persistent_integer(4));
+    Object route;
+    route.emplace("origin", persistent_object(std::move(origin)));
+    route.emplace("destination", persistent_object(std::move(destination)));
+    Object payment;
+    payment.emplace("base_amount", persistent_integer(40));
+    payment.emplace("negotiated_amount", persistent_integer(55));
+    payment.emplace("negotiation_skill", persistent_integer(3));
+    payment.emplace("negotiation_bound", persistent_integer(4));
+    payment.emplace("negotiation_roll", persistent_integer(3));
+    Object offer;
+    offer.emplace("id", persistent_string("package_delivery"));
+    offer.emplace("category", persistent_string("courier"));
+    offer.emplace("objective",
+                  persistent_string("deliver_package_to_destination"));
+    offer.emplace("completion_condition",
+                  persistent_string("package_delivered_safely"));
+    offer.emplace("runner_progress_delta", persistent_integer(1));
+    offer.emplace("source_offer_type", persistent_integer(2));
+    offer.emplace("source_offer_context", persistent_integer(0));
+    offer.emplace("source_run_type", persistent_integer(2));
+    offer.emplace("context", persistent_integer(0));
+    offer.emplace("route", persistent_object(std::move(route)));
+    offer.emplace("payment", persistent_object(std::move(payment)));
+    Object saved;
+    saved.emplace("schema_version", persistent_integer(1));
+    saved.emplace("current_offer", ScriptPersistentValue{});
+    saved.emplace("active_offer", persistent_object(std::move(offer)));
+    saved.emplace("last_completed_offer", ScriptPersistentValue{});
+    saved.emplace("last_offer_result", persistent_string("accepted"));
+    return persistent_object(std::move(saved));
 }
 
 void verify_cyberdeck_file_value_bridge(int& failures) {
@@ -671,6 +733,77 @@ int main() {
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kNotebook && route.top_row == 0,
           "Notebook no-run response returns to the selected row", failures);
+    const auto saved_package_run = current_package_run_state();
+    check(runtime.restore_run_registry_state(saved_package_run),
+          "restore a source-shaped accepted Courier offer", failures);
+    if (!runtime.failure().empty()) {
+        std::cerr << "Current Run test restore error: " << runtime.failure()
+                  << '\n';
+    }
+    runtime.advance_menu_route(0x4000U); // Open the accepted Current Run.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kNotebookCurrentRun &&
+              route.top_notebook_current_run.has_value() &&
+              route.top_notebook_current_run->source_initializer == 2 &&
+              route.top_notebook_current_run->context == 0 &&
+              route.top_notebook_current_run->run_type == 2 &&
+              route.top_notebook_current_run->johnson_name ==
+                  "Mr. Gunderson" &&
+              route.top_notebook_current_run->run_type_name == "Courier" &&
+              route.top_notebook_current_run->payment_amount == 55 &&
+              !route.top_notebook_current_run->body_lines.empty(),
+          "accepted offer maps live source fields into a typed Current Run view",
+          failures);
+    if (route.top_notebook_current_run.has_value()) {
+        std::string body;
+        for (const auto& line :
+             route.top_notebook_current_run->body_lines) {
+            check(line.size() <= 27U,
+                  "Current Run body line respects the source width", failures);
+            body += line;
+            body.push_back(' ');
+        }
+        check(body.find("Stoker's Coffin Motel") != std::string::npos &&
+                  body.find("the Jump House") != std::string::npos &&
+                  body.find("package.") != std::string::npos,
+              "Courier details resolve the accepted route and fixed text",
+              failures);
+    }
+    const auto current_run_frames = route.top_grid_effect_frames.value_or(0);
+    const auto current_run_draws = random_bounds.size();
+    runtime.advance_menu_route(0U); // F312 zero-edge hold.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kNotebookCurrentRun &&
+              route.top_grid_effect_frames == current_run_frames + 1 &&
+              random_bounds.size() == current_run_draws + 3U,
+          "positive Current Run holds on zero input and advances E660",
+          failures);
+    runtime.advance_menu_route(0x1000U); // B: return to Notebook.
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kNotebook && route.top_row == 0,
+          "positive Current Run returns to Notebook row zero", failures);
+    for (std::uint16_t mask = 1U; mask <= 0x00FFU; ++mask) {
+        runtime.advance_menu_route(0x4000U); // Reopen Current Run.
+        auto positive = runtime.menu_route_snapshot();
+        check(positive.top_screen == kNotebookCurrentRun &&
+                  positive.top_notebook_current_run.has_value(),
+              "positive Current Run reopens after a prior controller mask",
+              failures);
+        const auto held_frames = positive.top_grid_effect_frames.value_or(0);
+        const auto held_draws = random_bounds.size();
+        runtime.advance_menu_route(0U);
+        positive = runtime.menu_route_snapshot();
+        check(positive.top_screen == kNotebookCurrentRun &&
+                  positive.top_grid_effect_frames == held_frames + 1 &&
+                  random_bounds.size() == held_draws + 3U,
+              "each positive Current Run route holds on zero input", failures);
+        runtime.advance_menu_route(static_cast<std::uint16_t>(mask << 8U));
+        route = runtime.menu_route_snapshot();
+        check(route.top_screen == kNotebook && route.top_row == 0 &&
+                  !route.top_notebook_current_run.has_value(),
+              "every nonzero controller mask dismisses and redraws Current Run",
+              failures);
+    }
     runtime.advance_menu_route(0x0200U); // Tips & Clues.
     runtime.advance_menu_route(0x4000U);
     route = runtime.menu_route_snapshot();

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <functional>
+#include <string>
 #include <vector>
 
 namespace shadowrun::ghidra_conversion {
@@ -30,6 +31,20 @@ struct NotebookMenuState {
     bool open = false;
     bool no_current_run_wait = false;
     bool current_run_available = false;
+    struct CurrentRunState {
+        bool open = false;
+        int source_initializer = -1;
+        int context = -1;
+        int run_type = -1;
+        int payment_amount = -1;
+        std::string johnson_label;
+        std::string johnson_name;
+        std::string run_type_label;
+        std::string run_type_name;
+        std::string payment_label;
+        std::string currency_symbol;
+        std::vector<std::string> body_lines;
+    } current_run{};
     struct TipsState {
         std::array<std::uint8_t, kNotebookTipCount> visible_source_indices{};
         std::uint8_t visible_count = 0U;

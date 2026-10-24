@@ -380,6 +380,8 @@ public:
     bool seed_run_target_for_dump(std::string_view run_id,
                                   std::uint8_t map_id,
                                   std::uint8_t event_id);
+    bool seed_current_run_for_dump(std::uint8_t source_run_type,
+                                   bool matrix_max_payment = false);
     bool field_dialogue_uses_console_layout_for_dump() const noexcept {
         return field_dialogue_.uses_field_console_menu_layout();
     }
@@ -1026,6 +1028,10 @@ public:
     }
     bool pocket_secretary_notebook_no_run_waiting() const noexcept {
         return pocket_secretary_.notebook.no_current_run_wait;
+    }
+    const NotebookMenuState::CurrentRunState&
+    pocket_secretary_notebook_current_run_for_dump() const noexcept {
+        return pocket_secretary_.notebook.current_run;
     }
     std::uint8_t pocket_secretary_notebook_selection() const noexcept {
         return pocket_secretary_.notebook.selection;
