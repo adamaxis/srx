@@ -100,6 +100,15 @@ local cf = W.cave_exit_flat(0, 8)
 check(W.entry_room_flat(6)[1] == 0 and W.entry_room_flat(9)[1] == 3 and W.entry_room_flat(2)[1] == -1, "entry_room_flat")
 check(D.room_graph.scene[W.entry_room_flat(9)[1]] == 9 and D.room_graph.scene[W.entry_room_flat(6)[1]] == 6, "entry rooms match room scenes")
 check(cf[1] == 5 and cf[2] == 0x2D and cf[3] == 0x5E00 and cf[4] == 0x2280, "cave_exit_flat room 0 code 8")
+-- ROM 0x2E72/0x2E42/0x2ED2/0x2D92 vectors (Lua is the sole room graph).
+local function cave_is(room, code, m, sc, x, y)
+    local t = W.cave_exit_flat(room, code)
+    return t[1] == m and t[2] == sc and t[3] == x and t[4] == y
+end
+check(cave_is(0, 11, 0, 0x06, 0x0500, 0x5580), "cave_exit_flat room 0 code 11")
+check(cave_is(2, 8, 4, 0x2C, 0x2E00, 0x3880), "cave_exit_flat room 2 code 8")
+check(cave_is(0x14, 8, 0x13, 0x2F, 0x5E80, 0x1300), "cave_exit_flat room 0x14 -> mode 0x13")
+check(W.cave_exit_flat(25, 8)[1] == -1, "cave_exit_flat room 25 out of table")
 check(W.cave_exit_flat(0, 12)[1] == -1 and W.cave_exit_flat(99, 8)[1] == -1, "cave_exit_flat rejects bad input")
 check(c.room == 5 and c.scene == 0x2D and c.x == 0x5E00 and c.y == 0x2280, "room 0 dir 0")
 local edges = { {0,5},{0,6},{0,7},{1,7},{1,11},{2,4},{2,5},{2,9},{2,10},{3,13},{3,15},{3,16},{4,5},{7,8},

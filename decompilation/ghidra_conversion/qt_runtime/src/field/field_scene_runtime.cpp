@@ -7983,11 +7983,27 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.advance_field_mode_transition =
         [this](integration::FieldRuntimeCoordinatorState& runtime) {
+            // Lua world_links owns the 0x2CE0 room graph (sole source); the
+            // converted routine keeps only the mode 0x13 activity gate.
+            const auto lua_exit = game_scripts_.call_integers(
+                "world_links", "cave_exit_flat",
+                {static_cast<std::int64_t>(runtime.transition_context),
+                 static_cast<std::int64_t>(runtime.mode_event_code)});
+            std::optional<FieldModeTransitionExit> exit;
+            if (lua_exit.has_value() && lua_exit->size() == 4U &&
+                (*lua_exit)[0] >= 0) {
+                exit = FieldModeTransitionExit{
+                    static_cast<std::int16_t>((*lua_exit)[0]),
+                    static_cast<std::uint16_t>((*lua_exit)[1]),
+                    static_cast<std::uint16_t>((*lua_exit)[2]),
+                    static_cast<std::uint16_t>((*lua_exit)[3])};
+            }
             const auto plan = advance_field_mode_transition(
                 FieldModeTransitionInput{
                     runtime.mode_event_code,
                     runtime.transition_context,
-                    runtime.world_activity_flags},
+                    runtime.world_activity_flags,
+                    exit},
                 FieldModeTransitionCallbacks{
                     [this] {
                         const auto continuation =
@@ -8016,21 +8032,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                         source_boundary(
                             "field.mode_transition.schedule_timeout");
                     }});
-            // Lua world_links owns the 0x2CE0 room graph. The converted
-            // routine above still drives the 0x13 activity gate; any
-            // disagreement between the two is a data error.
-            const auto lua_exit = game_scripts_.call_integers(
-                "world_links", "cave_exit_flat",
-                {static_cast<std::int64_t>(runtime.transition_context),
-                 static_cast<std::int64_t>(runtime.mode_event_code)});
-            if (plan.resolved &&
-                (!lua_exit.has_value() || lua_exit->size() != 4U ||
-                 (*lua_exit)[0] != plan.next_mode_index ||
-                 (*lua_exit)[1] != plan.scene_id ||
-                 (*lua_exit)[2] != plan.override_x ||
-                 (*lua_exit)[3] != plan.override_y)) {
-                source_boundary("field.mode_transition.lua_room_graph_mismatch");
-                return false;
+            if (!exit.has_value()) {
+                source_boundary("field.mode_transition.lua_room_graph_missing");
             }
             if (!plan.resolved || !plan.spawn_position_available ||
                 !field_session_source_assets_ ||
