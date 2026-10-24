@@ -12241,8 +12241,6 @@ bool FieldSceneRuntime::bootstrap(
         return false;
     }
     field_movement_direction_offsets_ = assets.field_movement_direction_offsets;
-    field_collision_probe_offset_banks_ =
-        assets.field_collision_probe_offset_banks;
     field_controller_heading_table_ = assets.field_controller_heading_table;
     field_movement_route_sources_ = assets.field_movement_routes;
     for (std::size_t index = 0; index < field_movement_routes_.size();
@@ -13688,13 +13686,11 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
         const std::array<std::uint8_t, 3> probe_bytes{
             field_terrain_sample_state_[0], field_terrain_sample_state_[1],
             field_terrain_sample_state_[2]};
-        build_collision_probe_points(
-            field_collision_probe_state_,
-            field_movement_transition_state_.world_mode != 0U,
-            field_entity_.world_position.x, field_entity_.world_position.y,
-            probe_bytes, field_collision_probe_offset_banks_,
-            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
-            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y));
+        // ROM 0xB834 -> 0xBC36 at every door contact. Lua world_links picks
+        // the door row from the probe codes and, in the outdoor field,
+        // returns the FFDF44..4E party points and FFDF50/52 camera. The
+        // host only mirrors that RAM record; it has no copy of the math.
+        record_field_door_contact(probe_bytes);
         return MovementProjectionPreparation{
             field_collision_probe_state_.selected_offset_bank};
     };
@@ -15941,6 +15937,18 @@ void FieldSceneRuntime::snapshot_world_activity_source_scene() {
             // FFDF44; 0x2F32/0x2FA4 copy that anchor into the runner records
             // when the source field map is rebuilt.
             const auto& anchor = field_collision_probe_state_.points[0U];
+            // 0x2F32 copies all three FFDF44.. points into the runner
+            // records, so runners 2 and 3 return beside the lead.
+            auto& return_records =
+                snapshot.scene_buffers.source_metadata.initial_field_records;
+            for (std::size_t index = 0U;
+                 index < field_collision_probe_state_.points.size() &&
+                 index < return_records.size();
+                 ++index) {
+                return_records[index] = SceneRunnerPosition{
+                    field_collision_probe_state_.points[index].x,
+                    field_collision_probe_state_.points[index].y};
+            }
             snapshot.controlled_actor.world_position =
                 SceneRunnerPosition{anchor.x, anchor.y};
             snapshot.controlled_actor.projection.world_x = anchor.x;
@@ -15964,8 +15972,8 @@ void FieldSceneRuntime::snapshot_world_activity_source_scene() {
 
             if (snapshot.return_facing ==
                 FieldLocationReturnFacing::face_away_from_entry) {
-                const auto return_heading = static_cast<std::uint16_t>(
-                    snapshot.movement.heading ^ 0x8000U);
+                const auto return_heading =
+                    field_door_exit_heading(snapshot.movement.heading);
                 snapshot.movement.heading = return_heading;
                 snapshot.movement.animation_heading = return_heading;
                 snapshot.target_heading = return_heading;
@@ -16352,6 +16360,62 @@ void FieldSceneRuntime::handle_game_script_task_step(
     source_boundary("field.map_event.new_game_opening_walk_started");
 }
 
+void FieldSceneRuntime::record_field_door_contact(
+    const std::array<std::uint8_t, 3>& probe_bytes) {
+    const auto result = game_scripts_.call_integers(
+        "world_links", "door_contact_flat",
+        {static_cast<std::int64_t>(field_movement_transition_state_.world_mode),
+         static_cast<std::int64_t>(field_entity_.world_position.x),
+         static_cast<std::int64_t>(field_entity_.world_position.y),
+         static_cast<std::int64_t>(static_cast<std::uint16_t>(
+             state_.field_scene_buffers.camera_x)),
+         static_cast<std::int64_t>(static_cast<std::uint16_t>(
+             state_.field_scene_buffers.camera_y)),
+         probe_bytes[0], probe_bytes[1], probe_bytes[2]});
+    if (!result.has_value() || result->size() < 3U) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.door.contact_script_failed");
+        return;
+    }
+    // D4 is written before the FFDF40 test, so the row updates even when
+    // the return point is kept (saved == 0 away from the outdoor field).
+    field_collision_probe_state_.selected_offset_bank =
+        static_cast<std::uint8_t>((*result)[1]);
+    if ((*result)[0] == 0 || result->size() < 11U) {
+        return;
+    }
+    for (std::size_t index = 0U;
+         index < field_collision_probe_state_.points.size(); ++index) {
+        field_collision_probe_state_.points[index] = CollisionProbePoint{
+            static_cast<std::uint16_t>((*result)[3U + index * 2U]),
+            static_cast<std::uint16_t>((*result)[4U + index * 2U])};
+    }
+    field_collision_probe_state_.camera_x =
+        static_cast<std::uint16_t>((*result)[9]);
+    field_collision_probe_state_.camera_y =
+        static_cast<std::uint16_t>((*result)[10]);
+    field_collision_probe_state_.initialized = true;
+}
+
+std::uint16_t FieldSceneRuntime::field_door_exit_heading(
+    const std::uint16_t entry_heading) {
+    // E.LinkFacing: PRESERVE_ENTRY = 0, FACE_AWAY = 1.
+    const std::int64_t facing =
+        pending_field_return_facing_ ==
+                FieldLocationReturnFacing::face_away_from_entry
+            ? 1
+            : 0;
+    const auto result = game_scripts_.call_integers(
+        "world_links", "exit_heading_flat",
+        {facing, static_cast<std::int64_t>(entry_heading)});
+    if (!result.has_value() || result->size() != 1U) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.door.exit_heading_script_failed");
+        return entry_heading;
+    }
+    return static_cast<std::uint16_t>((*result)[0]);
+}
+
 void FieldSceneRuntime::save_field_door_return_point() {
     // ROM 0xBC36 has already expanded the selected 0xBD34 bank around the
     // contact position. Those three positions, rather than an inferred
@@ -16363,18 +16427,18 @@ void FieldSceneRuntime::save_field_door_return_point() {
         source_boundary("field.door.return_policy_or_source_position_missing");
         return;
     }
-    const auto heading = field_movement_state_.heading;
     field_door_return_point_.valid = true;
-    field_door_return_point_.lead = SceneRunnerPosition{
-        field_collision_probe_state_.points[0].x,
-        field_collision_probe_state_.points[0].y};
+    for (std::size_t index = 0U;
+         index < field_door_return_point_.party.size(); ++index) {
+        field_door_return_point_.party[index] = SceneRunnerPosition{
+            field_collision_probe_state_.points[index].x,
+            field_collision_probe_state_.points[index].y};
+    }
+    field_door_return_point_.lead = field_door_return_point_.party[0U];
     // The entity-owned link chooses whether to retain its entry heading or
-    // resume facing away from the doorway.
+    // resume facing away from the doorway (Lua world_links.exit_heading).
     field_door_return_point_.heading =
-        pending_field_return_facing_ ==
-                FieldLocationReturnFacing::face_away_from_entry
-            ? static_cast<std::uint16_t>(heading ^ 0x8000U)
-            : heading;
+        field_door_exit_heading(field_movement_state_.heading);
     field_door_return_point_.camera_x =
         field_collision_probe_state_.camera_x;
     field_door_return_point_.camera_y =
@@ -16395,6 +16459,14 @@ void FieldSceneRuntime::begin_field_door_return() {
     field_entity_.projection.world_y = point.lead.y;
     field_movement_state_.position_x = point.lead.x;
     field_movement_state_.position_y = point.lead.y;
+    // 0x2F32 copies FFDF44..4E into all three runner records.
+    auto& return_records =
+        state_.field_scene_buffers.source_metadata.initial_field_records;
+    for (std::size_t index = 0U;
+         index < point.party.size() && index < return_records.size();
+         ++index) {
+        return_records[index] = point.party[index];
+    }
     field_movement_state_.heading = point.heading;
     field_movement_state_.animation_heading = point.heading;
     field_target_heading_ = point.heading;

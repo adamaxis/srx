@@ -2208,7 +2208,6 @@ private:
     bool field_combat_input_suppressed_until_release_ = false;
     std::array<MovementOffset, integration::kFieldMovementDirectionCount>
         field_movement_direction_offsets_{};
-    CollisionProbeOffsetBank field_collision_probe_offset_banks_{};
     std::array<std::uint16_t,
                integration::kFieldControllerHeadingTableCount>
         field_controller_heading_table_{};
@@ -2281,6 +2280,8 @@ private:
     struct FieldDoorReturnPoint {
         bool valid = false;
         SceneRunnerPosition lead{};
+        // FFDF44..4E: lead, runner 2, runner 3.
+        std::array<SceneRunnerPosition, 3> party{};
         std::uint16_t heading = 0U;
         std::uint16_t camera_x = 0U;
         std::uint16_t camera_y = 0U;
@@ -2296,6 +2297,9 @@ private:
     std::uint32_t checkout_camera_settle_start_frame_ = 0U;
     mutable QImage field_door_return_modal_frame_;
     void save_field_door_return_point();
+    void record_field_door_contact(
+        const std::array<std::uint8_t, 3>& probe_bytes);
+    std::uint16_t field_door_exit_heading(std::uint16_t entry_heading);
     void begin_field_door_return();
     bool advance_field_door_return();
     std::uint8_t field_door_return_palette_level() const noexcept;

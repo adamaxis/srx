@@ -26,17 +26,8 @@ struct CollisionProbeState {
 using CollisionProbeOffsetBank =
     std::array<std::array<CollisionProbeOffset, 3>, 4>;
 
-// ROM 0xBC36: D4 is the first negative FFEF10..12 byte, ROL.B #3 and AND #3,
-// written before TST.W FFDF40. A nonzero FFDF40 RTS with D4 set and leaves
-// FFDF44/camera words. Zero copies three 0xBD34 bank offsets and FFDDC6/C8.
-void build_collision_probe_points(
-    CollisionProbeState& state,
-    bool collision_mode_active,
-    std::uint16_t entity_x,
-    std::uint16_t entity_y,
-    const std::array<std::uint8_t, 3>& probe_bytes,
-    const CollisionProbeOffsetBank& offset_banks,
-    std::uint16_t camera_x,
-    std::uint16_t camera_y);
+// ROM 0xBC36 door-contact math (row from FFEF10..12, 0xBD34 offsets, the
+// FFDF40 gate) lives in Lua world_links.door_contact. CollisionProbeState is
+// only the host mirror of the FFDF44..52 record it returns.
 
 } // namespace shadowrun::ghidra_conversion
