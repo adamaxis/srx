@@ -9743,10 +9743,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
 
     // ROM 0x5C7E selects one of four target-marker tile/palette variants,
     // while 0x1406 loads the current scene's palette for the shared object
-    // atlas. Bake a scene-specific 8x8 tile for each source action-code group;
+    // atlas. Bake a scene-specific 8x8 tile for each target meter tier (physical, or stun per 0x5C7E);
     // Qt consumes these named assets without a runtime VRAM atlas.
     constexpr std::array<std::string_view, 4> kTargetMarkerGroups{{
-        "action-0-2", "action-3-5", "action-6-8", "action-9-plus",
+        "meter-0-2", "meter-3-5", "meter-6-8", "meter-9-plus",
     }};
     for (std::uint16_t scene_id = 0U;
          scene_id < shadowrun::rom::kFieldModeCount; ++scene_id) {

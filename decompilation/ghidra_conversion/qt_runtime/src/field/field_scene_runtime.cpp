@@ -3254,7 +3254,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
     constexpr std::string_view kActorTableAlias =
         "field.entities.world.activity.encounter.actors";
     constexpr std::array<std::string_view, 4> kTargetMarkerGroups{{
-        "action.0.2", "action.3.5", "action.6.8", "action.9.plus",
+        "meter.0.2", "meter.3.5", "meter.6.8", "meter.9.plus",
     }};
     field_target_marker_images_by_scene_.clear();
     field_target_marker_images_by_scene_.resize(56U);

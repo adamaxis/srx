@@ -1101,7 +1101,7 @@ int run_field_random_encounter_spawn_qa(
         save("target-selection-b-static.bmp", target_selection_static_image);
     const QImage target_marker_tile(QString::fromStdWString(
         (asset_root / "field" / "entities" / "target-marker" /
-         "scene-2-action-9-plus.png")
+         "scene-2-meter-9-plus.png")
             .wstring()));
     const auto marker_corner_pixel_matches =
         marker_steady.has_value()
