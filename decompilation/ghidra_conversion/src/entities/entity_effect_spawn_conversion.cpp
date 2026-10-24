@@ -30,18 +30,19 @@ struct DirectionOffsets {
 };
 
 DirectionOffsets direction_offsets(const std::uint16_t heading) {
-    // ROM 0x15A4C/0x15A6C, indexed by the same rotated heading used by
-    // 0x14FF8. These are source word values, expressed as signed host deltas.
+    // ROM 0x15A4C (position) / 0x15A6C (FFDD60/62 probe): signed words,
+    // indexed by the rotated heading used by 0x14FF8. Gameplay copy lives in
+    // gameplay/scripts/effect_spawn.lua.
     static constexpr std::int16_t kPositionOffsets[8][2] = {
-        {0x0000, 0x0050}, {0x007C, 0x0084},
+        {0x0000, -0x00B0}, {0x007C, -0x007C},
         {0x00B0, 0x0000}, {0x007C, 0x007C},
-        {0x0000, 0x00B0}, {0x0084, 0x007C},
-        {0x0050, 0x0000}, {0x0084, 0x0084}};
+        {0x0000, 0x00B0}, {-0x007C, 0x007C},
+        {-0x00B0, 0x0000}, {-0x007C, -0x007C}};
     static constexpr std::int16_t kProbeOffsets[8][2] = {
-        {0x0040, 0x0000}, {0x0020, 0x0010},
-        {0x0080, 0x00C0}, {0x00D0, 0x0050},
-        {0x0000, 0x0020}, {0x0080, 0x0040},
-        {0x0080, 0x00C0}, {0x0000, 0x0040}};
+        {0x0040, -0x0100}, {0x0120, -0x00F0},
+        {0x0180, -0x0040}, {0x00D0, 0x0050},
+        {0x0000, 0x0020}, {-0x0180, 0x0040},
+        {-0x0180, -0x0040}, {-0x0100, -0x00C0}};
     const auto index = direction_index(heading);
     return DirectionOffsets{
         kPositionOffsets[index][0], kPositionOffsets[index][1],

@@ -45,4 +45,15 @@ function EntityMotion.heading_offsets(heading)
     }
 end
 
+-- Generic ROM scaling: MULS.W #mul then ASR.L #shift (0x1575A uses 8/5,
+-- 0x157F2 uses 8/4).
+function EntityMotion.scaled_heading_offsets(heading, mul, shift)
+    local index = ((heading >> 8) & 0xfe) >> 1
+    local d = 1 << shift
+    return {
+        horizontal = (signed_word(heading_wave[index + 1]) * mul) // d,
+        vertical = (signed_word(heading_wave[((index + 96) & 0x7f) + 1]) * mul) // d,
+    }
+end
+
 return EntityMotion
