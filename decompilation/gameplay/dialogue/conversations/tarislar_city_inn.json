@@ -25,6 +25,7 @@
         },
         "manager_options": {
           "type": "choice",
+          "speakerId": "tarislar_city_inn_manager",
           "menuId": "inn_service",
           "inputContract": "buttons_abc",
           "choices": [
@@ -35,6 +36,7 @@
         },
         "room_payment": {
           "type": "choice",
+          "speakerId": "tarislar_city_inn_manager",
           "menuId": "room_payment",
           "inputContract": "buttons_abc",
           "choices": [
@@ -91,6 +93,7 @@
         },
         "tabatha_intro_1": {
           "type": "page",
+          "speakerId": "tarislar_city_inn_narrator",
           "eventId": "shale_intro_1",
           "inputDelayFrames": 12,
           "next": "tabatha_intro_2",
@@ -98,6 +101,7 @@
         },
         "tabatha_intro_2": {
           "type": "page",
+          "speakerId": "tarislar_city_inn_narrator",
           "eventId": "shale_intro_2",
           "inputDelayFrames": 12,
           "next": "tabatha_acceptance_effects",
@@ -232,7 +236,7 @@
         },
         "tabatha_state_boundary": {
           "type": "source_boundary",
-          "reason": "ROM command 0x14 at 0x21862 requires the runner source-byte-triplet service, which is unavailable in this session."
+          "reason": "ROM command 0x14 at 0x21862 requires a resolved runner source-byte triplet and FFFC30/FFFC27 story state; this session does not provide all of them."
         },
         "stay_on_map": {
           "type": "terminal",

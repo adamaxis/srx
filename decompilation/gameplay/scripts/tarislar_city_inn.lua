@@ -46,6 +46,21 @@ end
 local function apply_tabatha_acceptance()
     -- ROM command 0x14 at 0x21862 increments the source runner-byte triplet,
     -- sets FFFC30 bits 2/4/5/6/8, FFFC34 bits 2/4, and FFFC27 bits 2/4.
+    -- The host deliberately leaves saved Notebook/referral words unresolved
+    -- until their load path is modeled. Check every guarded story store before
+    -- the runner service can mutate the Karma triplet, so a partial acceptance
+    -- never writes only part of command 0x14's state.
+    for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
+        if game.state["notebook_tip_flag_bit_" .. bit] == nil then
+            return "service_unavailable"
+        end
+    end
+    for _, bit in ipairs({ 2, 4 }) do
+        if game.state["mr_johnsons_flag_bit_" .. bit] == nil then
+            return "service_unavailable"
+        end
+    end
+
     if game.services.call("runner", "adjust_source_byte_triplet_1") ~=
        "applied" then
         return "service_unavailable"
@@ -55,8 +70,9 @@ local function apply_tabatha_acceptance()
     end
     game.state.field_mode_effect_flag_bit_2 = true
     game.state.field_mode_effect_flag_bit_4 = true
-    game.state.mr_johnsons_flag_bit_2 = true
-    game.state.mr_johnsons_flag_bit_4 = true
+    for _, bit in ipairs({ 2, 4 }) do
+        game.state["mr_johnsons_flag_bit_" .. bit] = true
+    end
     return "applied"
 end
 

@@ -798,7 +798,14 @@
         "shale_intro_0": {
           "continuation_key": "shared.more",
           "title_key": "tarislar.city_inn.shale.0"
-        },
+        }
+      },
+      "name": "Inn Manager",
+      "portrait_alias": "dialogue.portraits.tarislar.city.inn.manager",
+      "text_profile": "tarislar.city_inn"
+    },
+    "tarislar_city_inn_narrator": {
+      "events": {
         "shale_intro_1": {
           "continuation_key": "shared.more",
           "title_key": "tarislar.city_inn.shale.1"
@@ -808,8 +815,8 @@
           "title_key": "tarislar.city_inn.shale.2"
         }
       },
-      "name": "Inn Manager",
-      "portrait_alias": "dialogue.portraits.tarislar.city.inn.manager",
+      "name": "Narration",
+      "portrait_alias": "none",
       "text_profile": "tarislar.city_inn"
     },
     "tarislar_city_inn_shale": {

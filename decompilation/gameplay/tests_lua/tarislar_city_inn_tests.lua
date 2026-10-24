@@ -134,6 +134,15 @@ local function queue(...)
     service_calls = {}
 end
 
+local function seed_tabatha_acceptance_flags()
+    game.state.notebook_tip_flag_bit_0 = true -- Fresh New Game FFFC30 seed.
+    for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
+        game.state["notebook_tip_flag_bit_" .. bit] = false
+    end
+    game.state.mr_johnsons_flag_bit_2 = false
+    game.state.mr_johnsons_flag_bit_4 = false
+end
+
 local function location_task_result(expected, ...)
     queue(...)
     local outcome = Inn.present_indexed_title_service()
@@ -209,6 +218,7 @@ assert(speeches[#speeches].event == "leave")
 game.state.story_flag_bit_1 = false
 game.state.story_trigger_active_1 = nil
 triplet_result = "applied"
+seed_tabatha_acceptance_flags()
 local refusal_route = location_task_result("continue_in_place",
     "more", "shale", "more", "more", "more", "about_michael", "more",
     "caleb", "errascoe", "recruit", "more", "more", "more", "more")
@@ -236,6 +246,9 @@ assert(#speeches == 10 and speeches[1].event == "entry" and
        speeches[9].event == "room_reentry" and
        speeches[10].event == "holopix_revealed")
 assert(speeches[1].speaker_id == "tarislar_city_inn_manager" and
+       speeches[2].speaker_id == "tarislar_city_inn_manager" and
+       speeches[3].speaker_id == "tarislar_city_inn_narrator" and
+       speeches[4].speaker_id == "tarislar_city_inn_narrator" and
        speeches[5].speaker_id == "tarislar_city_inn_shale" and
        speeches[8].speaker_id == "tarislar_city_inn_renraku" and
        speeches[9].speaker_id == "tarislar_city_inn_shale" and
@@ -270,14 +283,15 @@ game.state.story_flag_bit_1 = false
 game.state.story_flag_bit_30 = false
 game.state.story_flag_bit_13 = false
 triplet_result = "applied"
+seed_tabatha_acceptance_flags()
 location_task_result("continue_in_place",
     "more", "shale", "more", "more", "more", "about_michael", "more",
     "errascoe", "caleb", "thanks", "more", "more", "more")
-assert(speeches[7].event == "shale_attack" and
-       speeches[8].event == "attack_aftermath" and
-       speeches[9].event == "room_reentry" and
-       speeches[10].event == "holopix_revealed" and
-       speeches[10].speaker_id == "tarislar_city_inn_david_owlfeather")
+assert(#speeches == 9 and speeches[6].event == "shale_attack" and
+       speeches[7].event == "attack_aftermath" and
+       speeches[8].event == "room_reentry" and
+       speeches[9].event == "holopix_revealed" and
+       speeches[9].speaker_id == "tarislar_city_inn_david_owlfeather")
 assert(prompts[4].id == "shale_after_errascoe" and
        prompts[4].text == script_text["tarislar.city_inn.shale.errascoe"] and
        #prompts[4].choices == 1 and prompts[4].choices[1] == "caleb")
@@ -287,9 +301,26 @@ assert(prompts[5].id == "shale_followup_after_errascoe" and
        #prompts[5].choices == 2 and prompts[5].choices[1] == "recruit" and
        prompts[5].choices[2] == "thanks")
 
--- If the session cannot apply command 0x14's source byte update, the script
--- reports that failure instead of claiming acceptance completed.
+-- A restored checkpoint with unresolved story stores must not partially
+-- apply command 0x14 or call the Karma service before reporting its boundary.
 game.state.story_flag_bit_1 = false
+for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
+    game.state["notebook_tip_flag_bit_" .. bit] = nil
+end
+game.state.mr_johnsons_flag_bit_2 = nil
+game.state.mr_johnsons_flag_bit_4 = nil
+triplet_result = "applied"
+local unresolved_story_state = location_task_result("source_boundary",
+    "more", "shale", "more", "more", "more")
+assert(unresolved_story_state.reason:find("0x21862", 1, true))
+assert(#service_calls == 0 and
+       game.state.notebook_tip_flag_bit_2 == nil and
+       game.state.mr_johnsons_flag_bit_2 == nil)
+
+-- A resolved story state with an unavailable runner service also leaves all
+-- acceptance flags untouched.
+game.state.story_flag_bit_1 = false
+seed_tabatha_acceptance_flags()
 triplet_result = "unavailable"
 local state_boundary = location_task_result("source_boundary",
     "more", "shale", "more", "more", "more")
