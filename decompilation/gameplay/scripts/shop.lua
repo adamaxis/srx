@@ -152,6 +152,27 @@ local function key_rows(ids, make_key)
     return keys
 end
 
+-- Host open profile for a field shop route. menu_kind picks the native
+-- menu layout (field_store, medicine_lodge, wire_masters); boundary_tag names
+-- QA boundaries; gate "runner_deck_fact" means the store opens only when the
+-- runner feature flag bit 0 (deck owned) is set, else the shared
+-- "store_closed" field-mode notice shows [C ROM Microtronics gate].
+local host_open_profiles = {
+    ares_weapon_emporium = { boundary_tag = "ares" },
+    medicine_lodge = { menu_kind = "medicine_lodge" },
+    wire_masters = { menu_kind = "wire_masters" },
+    microtronics = { gate = "runner_deck_fact" },
+}
+
+function Shop.host_open_profile(service_id)
+    local profile = host_open_profiles[service_id] or {}
+    return {
+        menu_kind = profile.menu_kind or "field_store",
+        boundary_tag = profile.boundary_tag or service_id,
+        gate = profile.gate or "open",
+    }
+end
+
 function Shop.services()
     local ids = {
         "weapons_world",

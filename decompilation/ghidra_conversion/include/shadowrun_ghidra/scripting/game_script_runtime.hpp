@@ -1609,6 +1609,10 @@ public:
         std::string_view module, std::string_view function);
     std::optional<ScriptStringMap> string_map(
         std::string_view module, std::string_view function);
+    // module.function(argument) with one identifier argument.
+    std::optional<ScriptStringMap> string_map(
+        std::string_view module, std::string_view function,
+        std::optional<std::string_view> argument);
     std::optional<ScriptSpeakerProfile> speaker_profile(
         std::string_view speaker_id);
     std::optional<ScriptDialogueTextKeys> dialogue_event_text_keys(

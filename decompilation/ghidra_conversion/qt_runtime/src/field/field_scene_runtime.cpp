@@ -16916,13 +16916,13 @@ void FieldSceneRuntime::advance_frame() {
         ::shadowrun::ghidra_conversion::sample_controller_input(
             field_controller_sample_state_, field_controller_port_byte_);
         if ((field_controller_sample_state_.events & 0xFF00U) != 0U) {
+            source_boundary("field.shop." + field_shop_notice_service_id_ +
+                            ".store_closed_dismissed");
             field_shop_notice_active_ = false;
             field_shop_notice_service_id_.clear();
             field_shop_notice_text_key_.clear();
             state_.display_service_word = 0U;
             field_runtime_state_.display_service_word = 0U;
-            source_boundary(
-                "field.shop.microtronics.store_closed_dismissed");
         }
         return;
     }
@@ -16942,11 +16942,28 @@ void FieldSceneRuntime::advance_frame() {
                 const auto service_id =
                     field_shop_route_pending_service_id_;
                 field_shop_route_pending_service_id_.clear();
-                if (service_id == "microtronics") {
+                // shop.lua owns the per-store menu kind, boundary tag and
+                // open gate; the host only applies them.
+                const auto host_profile = game_scripts_.string_map(
+                    "shop", "host_open_profile", service_id);
+                const auto profile_value =
+                    [&host_profile](const char* key,
+                                    std::string_view fallback) {
+                        if (!host_profile.has_value()) {
+                            return std::string(fallback);
+                        }
+                        const auto found = host_profile->find(key);
+                        return found == host_profile->end()
+                            ? std::string(fallback)
+                            : found->second;
+                    };
+                const auto menu_kind = profile_value("menu_kind", "field_store");
+                const auto shop_tag = profile_value("boundary_tag", service_id);
+                if (profile_value("gate", "open") == "runner_deck_fact") {
                     if (!field_runner_feature_flags_.has_value()) {
                         field_shop_active_definition_.reset();
-                        source_boundary(
-                            "field.shop.microtronics.deck_fact_unresolved");
+                        source_boundary("field.shop." + service_id +
+                                        ".deck_fact_unresolved");
                         return;
                     }
                     if ((*field_runner_feature_flags_ & 0x01U) == 0U) {
@@ -16960,8 +16977,8 @@ void FieldSceneRuntime::advance_frame() {
                             "field_mode", "mode_text_content");
                         if (!content.has_value()) {
                             field_shop_active_definition_.reset();
-                            source_boundary(
-                                "field.shop.microtronics.store_closed_text_unavailable");
+                            source_boundary("field.shop." + service_id +
+                                            ".store_closed_text_unavailable");
                             return;
                         }
                         const auto status = content->find("status");
@@ -16972,16 +16989,16 @@ void FieldSceneRuntime::advance_frame() {
                             game_scripts_.dialogue_text(text_key->second) ==
                                 nullptr) {
                             field_shop_active_definition_.reset();
-                            source_boundary(
-                                "field.shop.microtronics.store_closed_text_unavailable");
+                            source_boundary("field.shop." + service_id +
+                                            ".store_closed_text_unavailable");
                             return;
                         }
                         field_shop_notice_active_ = true;
                         field_shop_notice_service_id_ = service_id;
                         field_shop_notice_text_key_ = text_key->second;
                         field_shop_active_definition_.reset();
-                        source_boundary(
-                            "field.shop.microtronics.store_closed");
+                        source_boundary("field.shop." + service_id +
+                                        ".store_closed");
                         return;
                     }
                 }
@@ -16993,7 +17010,7 @@ void FieldSceneRuntime::advance_frame() {
                       field_shop_active_definition_->groups.size() == 6U) ||
                      (field_shop_active_definition_->menu_result == 0 &&
                       field_shop_active_definition_->groups.size() == 4U) ||
-                     (service_id == "wire_masters" &&
+                     (menu_kind == "wire_masters" &&
                       field_shop_active_definition_->menu_mode == 7U &&
                       field_shop_active_definition_->menu_result == 1 &&
                       field_shop_active_definition_->groups.size() == 1U &&
@@ -17006,14 +17023,11 @@ void FieldSceneRuntime::advance_frame() {
                     field_shop_active_definition_.reset();
                     return;
                 }
-                const auto shop_id = service_id == "medicine_lodge"
+                const auto shop_id = menu_kind == "medicine_lodge"
                     ? ShopId::medicine_lodge
-                    : service_id == "wire_masters"
+                    : menu_kind == "wire_masters"
                           ? ShopId::wire_masters
                           : ShopId::field_store;
-                const auto shop_tag = service_id == "ares_weapon_emporium"
-                    ? std::string_view{"ares"}
-                    : std::string_view{service_id};
                 const auto script_menu = game_scripts_.open_shop_menu(
                     service_id);
                 if (field_shop_active_definition_.has_value() &&
@@ -17233,10 +17247,16 @@ void FieldSceneRuntime::advance_frame() {
             switch (field_shop_menu_.shop()) {
             case ShopId::field_store:
                 if (field_shop_active_definition_.has_value()) {
-                    return field_shop_active_definition_->id ==
-                                   "ares_weapon_emporium"
-                               ? std::string{"ares"}
-                               : field_shop_active_definition_->id;
+                    const auto& id = field_shop_active_definition_->id;
+                    const auto profile = game_scripts_.string_map(
+                        "shop", "host_open_profile", id);
+                    if (profile.has_value()) {
+                        const auto tag = profile->find("boundary_tag");
+                        if (tag != profile->end()) {
+                            return tag->second;
+                        }
+                    }
+                    return id;
                 }
                 return "field_store";
             case ShopId::medicine_lodge: return "medicine_lodge";

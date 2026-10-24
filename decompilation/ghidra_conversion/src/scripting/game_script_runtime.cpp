@@ -10539,8 +10539,15 @@ void GameScriptRuntime::cancel_task() noexcept {
 
 std::optional<ScriptStringMap> GameScriptRuntime::string_map(
     const std::string_view module, const std::string_view function) {
+    return string_map(module, function, std::nullopt);
+}
+
+std::optional<ScriptStringMap> GameScriptRuntime::string_map(
+    const std::string_view module, const std::string_view function,
+    const std::optional<std::string_view> argument) {
     auto* state = impl_->state;
-    if (state == nullptr || !valid_identifier(function)) {
+    if (state == nullptr || !valid_identifier(function) ||
+        (argument.has_value() && !valid_identifier(*argument))) {
         impl_->failure = "invalid gameplay script string-map callback";
         return std::nullopt;
     }
@@ -10557,8 +10564,13 @@ std::optional<ScriptStringMap> GameScriptRuntime::string_map(
         return std::nullopt;
     }
     lua_remove(state, -2);
+    int argument_count = 0;
+    if (argument.has_value()) {
+        lua_pushlstring(state, argument->data(), argument->size());
+        argument_count = 1;
+    }
     ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state, 0, 1, 0) != LUA_OK) {
+    if (lua_pcall(state, argument_count, 1, 0) != LUA_OK) {
         impl_->failure = std::string(module) + "." + std::string(function) +
                          ": " + stack_error(state);
         lua_pop(state, 1);
