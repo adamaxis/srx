@@ -1663,7 +1663,8 @@ private:
     void advance_field_alarm(bool direct_raise = false,
                              bool clear_alarm = false,
                              bool disable_alarm = false,
-                             bool reset_alarm = false);
+                             bool reset_alarm = false,
+                             bool scene_exit = false);
     void apply_field_alarm_result(
         const scripting::ScriptFieldAlarmResult& result,
         std::uint16_t scene_reference);

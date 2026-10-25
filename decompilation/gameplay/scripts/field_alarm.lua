@@ -40,6 +40,7 @@ local function valid_facts(facts)
         (facts.clear_alarm == nil or type(facts.clear_alarm) == "boolean") and
         (facts.disable_alarm == nil or type(facts.disable_alarm) == "boolean") and
         (facts.reset == nil or type(facts.reset) == "boolean") and
+        (facts.scene_exit == nil or type(facts.scene_exit) == "boolean") and
         (facts.reinforcement_list_address == nil or
          is_integer(facts.reinforcement_list_address, 0,
                     E.FieldAlarm.LIST_ADDRESS_MAX)) and
@@ -141,6 +142,19 @@ function M.tick(facts)
     if not valid_facts(facts) then return nil end
     local result = state_result(facts)
 
+    if facts.scene_exit then
+        -- ROM 0x167AE clears FFE16F/FFE170 on scene entry. Use the shared
+        -- alarm-off side effects from 0x1E09A as well, so sound 0x30 stops
+        -- and alarm reinforcements receive the 0x1E0B8 despawn flag. [C]
+        result.disabled = false
+        local clear = M.clear(result, result.actors)
+        -- Only an active alarm is still playing sound 0x30; an already
+        -- cleared alarm (0x1E09A ran earlier) needs no second stop. [C]
+        result.sound_stop = clear.was_active and clear.sound_stop or nil
+        result.clear_flags = clear.was_active and
+            "promote_reinforcement" or nil
+        return result
+    end
     if facts.reset then
         return M.reset(result)
     end

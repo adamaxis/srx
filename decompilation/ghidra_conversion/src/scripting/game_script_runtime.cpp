@@ -7380,6 +7380,7 @@ GameScriptRuntime::evaluate_field_alarm(const ScriptFieldAlarmInput& input) {
     set_boolean("clear_alarm", input.clear_alarm);
     set_boolean("disable_alarm", input.disable_alarm);
     set_boolean("reset", input.reset);
+    set_boolean("scene_exit", input.scene_exit);
     if (input.rng.has_value()) {
         set_integer("rng", *input.rng);
     } else {

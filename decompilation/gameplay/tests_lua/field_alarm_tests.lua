@@ -2,6 +2,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;" .. package.path
 
 local E = require("enums")
 local Alarm = require("field_alarm")
+local Encounters = require("field_encounters")
 
 local checks = 0
 local function eq(actual, expected, label)
@@ -129,6 +130,45 @@ eq(explicit_clear.disabled, false,
    "ordinary security success does not set FFE170")
 eq(explicit_clear.sound_stop, E.SoundId.ALARM,
    "ordinary security success stops the alarm sound")
+
+-- ROM 0x167AE resets FFE16F/FFE170 at scene entry. Its alarm cleanup also
+-- takes 0x1E09A/0x1E0B8 side effects so a scene exit stops sound 0x30 and
+-- promotes published reinforcements before 0x1E166 evaluates 0x1E20A again.
+local scene_exit = Alarm.tick(facts({
+    alarm = true,
+    disabled = true,
+    timer = E.AiTuning.ALARM_FRAMES,
+    scene_exit = true,
+    actors = {
+        { flags9e = E.ActorFlag.REINFORCEMENT },
+        { flags9e = E.ActorFlag.SPOTTED },
+    },
+}))
+eq(scene_exit.alarm, false, "scene entry clears FFE16F")
+eq(scene_exit.disabled, false, "scene entry clears FFE170")
+eq(scene_exit.sound_stop, E.SoundId.ALARM,
+   "scene exit stops the alarm sound resource")
+eq(scene_exit.actors[1].flags9e,
+   E.ActorFlag.REINFORCEMENT | E.ActorFlag.DESPAWN_OFFSCREEN,
+   "scene exit marks alarm responders for despawn")
+eq(scene_exit.actors[2].flags9e, E.ActorFlag.SPOTTED,
+   "scene exit preserves unrelated actor flags")
+local quiet_exit = Alarm.tick(facts({ alarm = false, scene_exit = true }))
+eq(quiet_exit.sound_stop, nil,
+   "scene exit with no active alarm sends no second 0x30 stop")
+eq(Encounters.trigger_attempt({
+       scene_id = E.FieldAlarmRomLayout.FIRST_LIST_SCENE,
+       frame_counter = E.FieldEncounter.FRAME_VALUE,
+       display_service_word = 0,
+       leader_protected = false,
+       field_activity_lock_active = false,
+       field_alarm_active = scene_exit.alarm,
+       combat_active = false,
+       encounter_actor_count = 0,
+       probability_roll = 0,
+       probability_threshold = E.FieldAlarm.WORD_MAX,
+   }), "select_scene_outcome",
+   "scene exit restores the ordinary table instead of alarm list 0x1E20A")
 
 local reset = Alarm.tick(facts({ alarm = true, disabled = true, reset = true }))
 eq(reset.alarm, false, "projected-cell reset clears FFE16F")

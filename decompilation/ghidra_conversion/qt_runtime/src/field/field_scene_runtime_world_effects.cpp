@@ -294,7 +294,8 @@ std::int16_t FieldSceneRuntime::select_field_world_effect_sequence() {
 void FieldSceneRuntime::advance_field_alarm(const bool direct_raise,
                                            const bool clear_alarm,
                                            const bool disable_alarm,
-                                           const bool reset_alarm) {
+                                           const bool reset_alarm,
+                                           const bool scene_exit) {
     const auto scene_reference =
         state_.field_scene_buffers.scene_reference;
     auto profile = game_scripts_.field_alarm_profile(scene_reference);
@@ -321,6 +322,7 @@ void FieldSceneRuntime::advance_field_alarm(const bool direct_raise,
     input.clear_alarm = clear_alarm;
     input.disable_alarm = disable_alarm;
     input.reset = reset_alarm;
+    input.scene_exit = scene_exit;
     input.regions = std::move(profile->regions);
     input.reinforcement_list_address =
         profile->reinforcement_list_address;

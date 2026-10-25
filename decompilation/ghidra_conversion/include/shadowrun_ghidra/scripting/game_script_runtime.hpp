@@ -966,6 +966,7 @@ struct ScriptFieldAlarmInput {
     bool clear_alarm = false;
     bool disable_alarm = false;
     bool reset = false;
+    bool scene_exit = false;
     std::vector<ScriptFieldAlarmRegion> regions;
     std::vector<ScriptFieldAlarmActorFlags> actors;
     std::optional<std::uint32_t> reinforcement_list_address;

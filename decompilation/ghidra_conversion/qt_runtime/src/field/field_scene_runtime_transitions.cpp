@@ -172,6 +172,14 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         return false;
     }
 
+    if (state_.field_scene_buffers.initialized &&
+        (!same_scene || force_scene_entry)) {
+        // ROM 0x167AE clears the field alarm/security latches on scene entry.
+        // Route that reset through Lua's shared 0x1E09A cleanup too, stopping
+        // the alarm cue and marking published alarm responders to despawn.
+        advance_field_alarm(false, false, false, false, true);
+    }
+
     state_.field_scene_buffers = std::move(next_buffers);
     field_map_ = std::move(next_field_map);
     field_map_priority_overlay_ =
