@@ -8712,3 +8712,8 @@ audio.effects.resource.087	audio/sound-effects/resource-087.flac	audio	0	0
 audio.effects.resource.088	audio/sound-effects/resource-088.flac	audio	0	0
 audio.effects.resource.089	audio/sound-effects/resource-089.flac	audio	0	0
 audio.effects.resource.090	audio/sound-effects/resource-090.flac	audio	0	0
+field.entities.effects.hit.spark.frame.0	field/entities/effects/hit-spark-frame-0.bmp	image	-3	-1
+field.entities.effects.hit.spark.frame.1	field/entities/effects/hit-spark-frame-1.bmp	image	-8	-7
+field.entities.effects.hit.spark.frame.2	field/entities/effects/hit-spark-frame-2.bmp	image	-8	-7
+field.entities.effects.hit.spark.frame.3	field/entities/effects/hit-spark-frame-3.bmp	image	-8	-7
+field.entities.effects.hit.spark.frame.4	field/entities/effects/hit-spark-frame-4.bmp	image	-8	-7

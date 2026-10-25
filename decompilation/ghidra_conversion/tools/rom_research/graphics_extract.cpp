@@ -5897,6 +5897,213 @@ ExtractedSpriteListFrame decode_field_entity_sprite_list(
     return {std::move(image), min_x, min_y};
 }
 
+void update_hit_spark_resource_manifest(
+    const std::filesystem::path& root,
+    const std::vector<std::string>& hit_spark_rows) {
+    constexpr std::string_view kHeader =
+        "alias\tpath\tkind\torigin_x\torigin_y";
+    constexpr std::string_view kAliasPrefix =
+        "field.entities.effects.hit.spark.frame.";
+    if (hit_spark_rows.size() != 5U) {
+        throw std::runtime_error(
+            "player hit-spark resource import requires five direct rows");
+    }
+
+    const auto manifest_path =
+        root / std::string(shadowrun::resources::kManifestFile);
+    std::ifstream prior(manifest_path, std::ios::binary);
+    if (!prior) {
+        throw std::runtime_error(
+            "cannot read existing resource manifest for hit-spark import");
+    }
+    std::string header;
+    std::getline(prior, header);
+    if (header != kHeader) {
+        throw std::runtime_error(
+            "existing resource manifest has an unsupported header");
+    }
+    std::vector<std::string> rows;
+    std::string row;
+    while (std::getline(prior, row)) {
+        if (row.empty() ||
+            row.compare(0U, kAliasPrefix.size(), kAliasPrefix) == 0) {
+            continue;
+        }
+        rows.push_back(std::move(row));
+    }
+
+    // Append only the new direct-image rows; preserve all preexisting state,
+    // text, audio, and image rows in their current order.
+    rows.insert(rows.end(), hit_spark_rows.begin(), hit_spark_rows.end());
+
+    std::ofstream output(manifest_path,
+                         std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error(
+            "cannot update direct resource manifest with hit-spark rows");
+    }
+    output << kHeader << '\n';
+    for (const auto& manifest_row : rows) {
+        output << manifest_row << '\n';
+    }
+    if (!output) {
+        throw std::runtime_error(
+            "cannot finish direct hit-spark resource manifest update");
+    }
+}
+
+void extract_field_player_hit_spark_assets(
+    const std::vector<std::uint8_t>& rom,
+    const std::filesystem::path& root) {
+    constexpr std::uint16_t kEntityKind = 1U;
+    constexpr std::uint16_t kSelector = 4U;
+    constexpr std::uint16_t kPaletteAttributes = 0x2000U;
+    constexpr std::uint16_t kFrameMarker = 0x8005U;
+    constexpr std::uint16_t kFrameIncrement = 0x0400U;
+    constexpr std::size_t kStatePointerTable = 0x62ACU;
+    constexpr std::size_t kObjectVramSize = 0x10000U;
+    constexpr std::size_t kObjectVramStart = 0xB000U;
+    constexpr std::size_t kObjectPatternSource = 0xE44D8U;
+    constexpr std::size_t kObjectPatternBytes = 0x0D00U;
+    constexpr std::size_t kCommonFieldPaletteTail = 0x18AC56U;
+    constexpr std::string_view kAssetPrefix =
+        "field/entities/effects/hit-spark-frame-";
+    constexpr std::string_view kCatalogHeader =
+        "asset\tkind\tx\ty\twidth\theight\tsource\tstatus";
+    constexpr std::string_view kProvenance =
+        "0xB1DC/0x15A8C/0x15118/0x600E/0x62AC/0x634C/0x7330 "
+        "kind=1 selector=4 [C]; "
+        "0xE44D8 object patterns -> VRAM 0xB000 via 0x1406/0x0F5C; "
+        "palette line 1 from 0x566C2";
+
+    const auto first_pointer = static_cast<std::size_t>(
+        read_big_endian_long(
+            rom, kStatePointerTable +
+                    static_cast<std::size_t>(kEntityKind) * 4U));
+    const auto state_list = static_cast<std::size_t>(
+        read_big_endian_long(rom, first_pointer + kSelector));
+    if (read_big_endian_word(rom, state_list) != kFrameMarker ||
+        read_big_endian_word(rom, state_list + 2U) != kFrameIncrement) {
+        throw std::runtime_error(
+            "player hit-spark kind-1 selector-4 source list changed");
+    }
+
+    const auto resources =
+        shadowrun::graphics::read_genesis_field_mode_resources(rom, 0U);
+    if (resources.object_pattern_data_offset != kObjectPatternSource ||
+        resources.object_pattern_vram_offset != kObjectVramStart ||
+        resources.object_pattern_byte_count != kObjectPatternBytes ||
+        kObjectPatternSource > rom.size() ||
+        kObjectPatternBytes > rom.size() - kObjectPatternSource) {
+        throw std::runtime_error(
+            "shared field object-pattern source no longer matches the hit spark");
+    }
+    std::vector<std::uint8_t> object_vram(kObjectVramSize, 0U);
+    std::copy_n(
+        rom.begin() + static_cast<std::ptrdiff_t>(kObjectPatternSource),
+        kObjectPatternBytes,
+        object_vram.begin() + static_cast<std::ptrdiff_t>(kObjectVramStart));
+
+    // 0x566C2 replaces CRAM lines 1..3 from the shared field palette tail [C].
+    // The child writes 0x2000 to +0x2C, selecting palette line 1 [C].
+    auto palette = shadowrun::graphics::read_genesis_palette_set(
+        rom, resources.palette_offset);
+    if (kCommonFieldPaletteTail > rom.size() ||
+        48U * 2U > rom.size() - kCommonFieldPaletteTail) {
+        throw std::runtime_error("shared field palette tail is truncated");
+    }
+    for (std::size_t index = 16U; index < palette.size(); ++index) {
+        palette[index] = shadowrun::graphics::decode_genesis_cram_word(
+            read_big_endian_word(
+                rom, kCommonFieldPaletteTail + (index - 16U) * 2U),
+            index % 16U == 0U);
+    }
+
+    const auto catalog_path = root / "catalog.tsv";
+    std::ifstream catalog_source(catalog_path, std::ios::binary);
+    if (!catalog_source) {
+        throw std::runtime_error(
+            "cannot read existing catalog for hit-spark asset import");
+    }
+    std::string catalog_header;
+    std::getline(catalog_source, catalog_header);
+    if (catalog_header != kCatalogHeader) {
+        throw std::runtime_error(
+            "existing asset catalog has an unsupported header");
+    }
+    std::vector<std::string> catalog_rows;
+    std::string row;
+    while (std::getline(catalog_source, row)) {
+        if (row.empty() ||
+            row.compare(0U, kAssetPrefix.size(), kAssetPrefix) == 0) {
+            continue;
+        }
+        catalog_rows.push_back(std::move(row));
+    }
+
+    const auto temporary_rows_path = root / ".hit-spark-catalog-rows.tsv";
+    std::ofstream temporary_rows(temporary_rows_path,
+                                 std::ios::binary | std::ios::trunc);
+    if (!temporary_rows) {
+        throw std::runtime_error(
+            "cannot create temporary hit-spark catalog rows");
+    }
+    std::size_t written = 0U;
+    std::size_t missing = 0U;
+    std::size_t blank = 0U;
+    std::vector<std::string> hit_spark_resource_rows;
+    for (std::size_t frame = 0U; frame < 5U; ++frame) {
+        const auto list = static_cast<std::size_t>(read_big_endian_long(
+            rom, state_list + 4U + frame * 4U));
+        const auto decoded = decode_field_entity_sprite_list(
+            rom, object_vram, list, palette, kPaletteAttributes);
+        const auto asset_path = std::string(kAssetPrefix) +
+                                std::to_string(frame) + ".bmp";
+        const auto alias = "field.entities.effects.hit.spark.frame." +
+                           std::to_string(frame);
+        const auto origin_x = decoded.origin_x;
+        const auto origin_y = decoded.origin_y;
+        write_catalog_asset(
+            root, asset_path,
+            decoded.image, "sprite", std::string(kProvenance), true,
+            temporary_rows, written, missing, blank,
+            origin_x, origin_y);
+        hit_spark_resource_rows.push_back(
+            alias + '\t' + asset_path + "\timage\t" +
+            std::to_string(origin_x) + '\t' + std::to_string(origin_y));
+    }
+    temporary_rows.close();
+    if (!temporary_rows || written != 5U || missing != 0U || blank != 0U) {
+        throw std::runtime_error(
+            "player hit-spark extraction did not produce five visible frames");
+    }
+
+    std::ifstream generated_rows(temporary_rows_path, std::ios::binary);
+    while (std::getline(generated_rows, row)) {
+        if (!row.empty()) {
+            catalog_rows.push_back(std::move(row));
+        }
+    }
+    generated_rows.close();
+    std::error_code remove_error;
+    std::filesystem::remove(temporary_rows_path, remove_error);
+    std::ofstream catalog_output(catalog_path,
+                                 std::ios::binary | std::ios::trunc);
+    if (!catalog_output) {
+        throw std::runtime_error(
+            "cannot update catalog with hit-spark assets");
+    }
+    catalog_output << kCatalogHeader << '\n';
+    for (const auto& catalog_row : catalog_rows) {
+        catalog_output << catalog_row << '\n';
+    }
+    if (!catalog_output) {
+        throw std::runtime_error(
+            "cannot finish the hit-spark asset catalog update");
+    }
+    update_hit_spark_resource_manifest(root, hit_spark_resource_rows);
+}
+
 void append_title_boot_catalog(const std::filesystem::path& root,
                                std::ofstream& manifest) {
     std::ifstream source(root / "manifest.tsv", std::ios::binary);
@@ -11128,6 +11335,21 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+    if (argc == 4 &&
+        std::string(argv[3]) == "--field-player-hit-spark-assets") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const std::filesystem::path root(argv[2]);
+            extract_field_player_hit_spark_assets(rom, root);
+            std::cout << "five player hit-spark frames extracted from "
+                      << "0x7330 using field object patterns at 0xE44D8; "
+                      << "catalog and direct-resource rows updated\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
     if (argc == 4 && std::string(argv[3]) == "--all-assets") {
         try {
             const auto rom = read_file(argv[1]);
@@ -12882,6 +13104,8 @@ int main(int argc, char** argv) {
                      "--title-boot-assets\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
                      "--all-assets\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
+                      "--field-player-hit-spark-assets\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
                      "--matrix-cyberdeck-selectors\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "
