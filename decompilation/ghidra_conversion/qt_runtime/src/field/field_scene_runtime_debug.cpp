@@ -1105,6 +1105,18 @@ bool FieldSceneRuntime::set_field_spell_effect_for_dump(
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+std::int16_t FieldSceneRuntime::probe_field_collision_for_dump(
+    const std::uint16_t x, const std::uint16_t y) {
+    EntityCollisionRecord collision_record{};
+    std::array<std::uint8_t, 4> sample_state{};
+    return evaluate_field_collision(
+        x, y, collision_record, sample_state,
+        field_entity_behavior_flags_, false);
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::set_selected_default_actor_world_position_for_dump(
     const std::uint16_t x, const std::uint16_t y) noexcept {
     if (!field_entity_target_owner_.selected_target.has_value()) {

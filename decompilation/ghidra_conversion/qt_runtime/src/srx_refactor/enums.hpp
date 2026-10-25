@@ -295,6 +295,14 @@ enum class FieldAlarmRomLayout : std::int64_t {
     PROFILE_TABLE_ADDRESS = 0x3232,
     SCENE_21_REINFORCEMENT_LIST = 0x1D7460,
 };
+enum class FieldBarrier : std::int64_t {
+    CELL_COUNT = 0x5,
+    OCTANT_MASK = 0x7,
+    SUPER_MAX_ACTION_CODE = 0x9,
+    HEADING_OCTANT_SHIFT = 0xD,
+    CELL_CODE_BARRIER = 0x7E,
+    CELL_CODE_SUPER_BARRIER = 0x7F,
+};
 enum class FieldEncounter : std::int64_t {
     FRAME_VALUE = 0xA,
     SOURCE_SEQUENCE_SENTINEL = 0xFF,
@@ -809,6 +817,22 @@ enum class SoundId : std::int64_t {
     DECK_JINGLE = 0x5B,
     SEGA_LOGO_SHOCK = 0x5C,
     SHADOWRUN_LOGO_REVEAL = 0x5D,
+};
+enum class SpellActionCode : std::int64_t {
+    FLAME_DART = 0x1,
+    FLAME_BOLT = 0x2,
+    HELLBLAST = 0x3,
+    INVISIBILITY = 0x4,
+    SLEEP = 0x5,
+    STINK = 0x6,
+    SUPER_BARRIER = 0x7,
+    MANA_ZAP = 0x8,
+    MANA_BLAST = 0x9,
+    MANA_STORM = 0xA,
+    ROCKSKIN = 0xB,
+    HEAL_WOUNDS = 0xC,
+    CONFUSION = 0xD,
+    BARRIER = 0xE,
 };
 enum class SpellType : std::int64_t {
     FLAME_DART = 0x0,

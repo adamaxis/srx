@@ -7,7 +7,9 @@ FieldCombatActionKind classify_field_combat_action(
     const std::uint8_t action_code) {
     constexpr std::uint8_t kFirstActionCode = 1U;
     constexpr std::uint8_t kLastWeaponActionCode = 12U;
-    constexpr std::uint8_t kLastSpellActionCode = 13U;
+    // Spell action 14 is Barrier; ROM 0x15830 dispatches both action 7 and 14
+    // to the field-barrier branch before the ordinary target effect path [C].
+    constexpr std::uint8_t kLastSpellActionCode = 14U;
     constexpr std::uint8_t kFirstEffectRecordCode = 13U;
     constexpr std::uint8_t kLastEffectRecordCode = 15U;
 

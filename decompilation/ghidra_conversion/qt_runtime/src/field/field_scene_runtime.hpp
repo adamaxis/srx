@@ -151,6 +151,14 @@ struct FieldCreatureAttackEffectDebugState {
     std::int16_t action_delay = 0;
 };
 
+struct FieldBarrierCollisionCell {
+    std::uint16_t cell_index = 0U;
+    std::uint8_t code = 0U;
+};
+
+inline constexpr std::size_t kFieldBarrierCollisionCellCount =
+    static_cast<std::size_t>(srx::v(srx::FieldBarrier::CELL_COUNT));
+
 constexpr std::uint32_t field_flag_mask(
     const FieldWorldFactFlag flag) noexcept {
     return std::uint32_t{1U} << static_cast<std::uint8_t>(flag);
@@ -1348,6 +1356,14 @@ public:
     bool field_entity_active_for_dump() const noexcept {
         return field_entity_.active;
     }
+    bool field_barrier_collision_overlay_active_for_dump() const noexcept {
+        return field_barrier_collision_overlay_active_;
+    }
+    const std::array<FieldBarrierCollisionCell,
+                     kFieldBarrierCollisionCellCount>&
+    field_barrier_collision_overlay_cells_for_dump() const noexcept {
+        return field_barrier_collision_overlay_cells_;
+    }
     std::uint8_t controller_nibble_for_dump() const noexcept {
         return field_controller_nibble_;
     }
@@ -1398,6 +1414,14 @@ public:
     std::uint16_t field_entity_heading_for_dump() const noexcept {
         return field_movement_state_.heading;
     }
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    void set_field_entity_heading_for_dump(std::uint16_t heading) noexcept {
+        field_movement_state_.heading = heading;
+        field_movement_state_.animation_heading = heading;
+    }
+    std::int16_t probe_field_collision_for_dump(
+        std::uint16_t x, std::uint16_t y);
+#endif // SHADOWRUN_QT_QA_DRIVER
     std::uint8_t field_movement_route_flags_for_dump() const noexcept {
         return field_movement_behavior_record_.route_flags;
     }
@@ -1564,6 +1588,12 @@ private:
         std::uint16_t* terrain_collision_code_output = nullptr,
         bool* terrain_boundary_active_output = nullptr,
         bool* outside_bounds_output = nullptr);
+    void set_field_barrier_collision_overlay(
+        const std::array<FieldBarrierCollisionCell,
+                         kFieldBarrierCollisionCellCount>& cells) noexcept;
+    void clear_field_barrier_collision_overlay() noexcept;
+    std::uint8_t terrain_collision_map_byte(std::uint16_t tile_index) const
+        noexcept;
     void source_boundary(std::string_view boundary) const;
     bool load_image(const ConversionAssetCatalog& catalog,
                     std::string_view alias,
@@ -2313,6 +2343,10 @@ private:
     bool target_candidate_lists_seeded_ = false;
     std::array<bool, 18> field_world_effect_slots_occupied_{};
     std::array<std::string, 18> field_spell_effect_slot_target_ids_{};
+    bool field_barrier_collision_overlay_active_ = false;
+    std::array<FieldBarrierCollisionCell,
+               kFieldBarrierCollisionCellCount>
+        field_barrier_collision_overlay_cells_{};
     EntityServiceTargetOwner field_entity_target_owner_{};
     std::vector<EntityServiceTargetRecord> field_entity_target_records_{16U};
     std::optional<scripting::ScriptFieldEncounterOutcome>

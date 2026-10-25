@@ -8183,6 +8183,7 @@ bool FieldSceneRuntime::bootstrap(
     world_activity_return_snapshot_.reset();
     field_weapon_projectiles_.clear();
     field_hit_sparks_.clear();
+    clear_field_barrier_collision_overlay();
     field_weapon_slots_occupied_.fill(false);
     last_field_weapon_spawn_result_ = EntitySpawnCycleResult{};
     field_security_floor_index_.reset();
@@ -9408,6 +9409,40 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
                                     field_entity_behavior_flags_, true);
 }
 
+void FieldSceneRuntime::set_field_barrier_collision_overlay(
+    const std::array<FieldBarrierCollisionCell,
+                     kFieldBarrierCollisionCellCount>& cells) noexcept {
+    field_barrier_collision_overlay_cells_ = cells;
+    field_barrier_collision_overlay_active_ = true;
+}
+
+void FieldSceneRuntime::clear_field_barrier_collision_overlay() noexcept {
+    field_barrier_collision_overlay_active_ = false;
+    field_barrier_collision_overlay_cells_ = {};
+}
+
+std::uint8_t FieldSceneRuntime::terrain_collision_map_byte(
+    const std::uint16_t tile_index) const noexcept {
+    const auto& collision_map =
+        state_.field_scene_buffers.source_metadata.terrain_collision_map;
+    // [H] The ROM writes FF1700 without a map-length check; the host ignores
+    // overlay entries outside this imported map to avoid an invalid read.
+    if (tile_index >= collision_map.size()) {
+        return static_cast<std::uint8_t>(
+            srx::v(srx::Collision::BLOCKED));
+    }
+    if (field_barrier_collision_overlay_active_) {
+        for (const auto& cell : field_barrier_collision_overlay_cells_) {
+            if (cell.cell_index < collision_map.size() &&
+                cell.cell_index == tile_index) {
+                // ROM 0x4A6E/0x4A7E substitutes this byte in FF1700 [C].
+                return cell.code;
+            }
+        }
+    }
+    return collision_map[tile_index];
+}
+
 std::int16_t FieldSceneRuntime::evaluate_field_collision(
     const std::uint16_t candidate_x,
     const std::uint16_t candidate_y,
@@ -9443,13 +9478,7 @@ std::int16_t FieldSceneRuntime::evaluate_field_collision(
                         return sample_terrain_collision_tiles(
                             normalized_x, normalized_y, expanded_probe,
                             [this](const std::uint16_t tile_index) {
-                                const auto& collision_map =
-                                    state_.field_scene_buffers.source_metadata
-                                        .terrain_collision_map;
-                                if (tile_index >= collision_map.size()) {
-                                    return static_cast<std::uint8_t>(0x7FU);
-                                }
-                                return collision_map[tile_index];
+                                return terrain_collision_map_byte(tile_index);
                             });
                     },
                     [this](const std::uint8_t object_id,

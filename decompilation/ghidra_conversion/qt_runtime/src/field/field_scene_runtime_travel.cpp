@@ -356,6 +356,8 @@ bool FieldSceneRuntime::transition_to_field_destination(
     world_activity_return_snapshot_.reset();
     field_weapon_projectiles_.clear();
     field_hit_sparks_.clear();
+    // ROM scene entry 0x16AB8 tears down the global barrier through 0x4B6C [C].
+    clear_field_barrier_collision_overlay();
     field_weapon_slots_occupied_.fill(false);
     last_field_weapon_spawn_result_ = EntitySpawnCycleResult{};
     field_camera_alignment_ready_ = false;
