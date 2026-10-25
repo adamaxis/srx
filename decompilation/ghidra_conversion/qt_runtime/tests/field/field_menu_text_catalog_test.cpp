@@ -384,7 +384,7 @@ int main() {
         text.catalog.notebook_no_run_lines !=
             std::array<std::string, kNotebookNoRunLineCount>{
                 " You are not currently", "engaged in a shadowrun.",
-                "     Get a job!!"} ||
+                "\n     Get a job!!"} ||
         text.catalog.notebook_mr_johnson_names != expected_johnson_names ||
         text.catalog.notebook_mr_johnson_details != expected_johnson_details ||
         text.catalog.notebook_contact_names != expected_contact_names ||

@@ -23175,7 +23175,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             draw_command_overview_text(
                 painter, 88, 32, field_menu_text_.notebook_labels[0]);
             draw_command_overview_text(
-                painter, 72, 40, pocket_secretary_menu_content_.separator);
+                painter, 72, 40,
+                field_menu_text_.notebook_tips_separator); // [C] F33E reads C56D6 (16 cells).
             for (std::size_t row = 0;
                  row < pocket_secretary_.notebook.option_count; ++row) {
                 const auto label_index = static_cast<std::size_t>(

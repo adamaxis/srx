@@ -54,6 +54,7 @@ end
 function M.child_returned(st, child, res, ctx)
     if res.exit_menu then return { transition = T.POP, result = { exit_menu = true } } end
     if res.exit_secretary then return { transition = T.POP, result = { exit_menu = false } } end    -- FFF0DC < 0 only [C]   -- FFF0DC<0 -> rts; FFF0CD -> exit [C]
+    st.row = 0 -- [C] 0xC2C8 clears the shared row before the C2AA rebuild.
     -- Direct children redraw only the inner C3E6 grid before returning to
     -- C2AA. The lower bezel is outside that clear and keeps its E660 writes.
     st.grid_effect_frames = Grid.frames
@@ -138,13 +139,13 @@ function Notebook.enter(st, ctx)
 end
 function Notebook.input(st, events, ctx)
     st.grid_effect_frames = Grid.advance(ctx)
-    if events & (P.B | P.START) ~= 0 then return { transition = T.POP } end
+    if events & P.START ~= 0 then return { transition = T.POP } end
     if events & (P.UP | P.DOWN) ~= 0 then
         local n = #st.options
         st.row = Cursor.step(st.row, events & P.UP ~= 0 and -1 or 1, n - 1)
         ctx.redraw(R.SUBMENU); return
     end
-    if events & P.A ~= 0 then
+    if events & (P.A | P.B) ~= 0 then
         local refreshed = ctx.game.notebook()
         if refreshed then st.nb = refreshed end
         st.nb.active_run_id = active_run_id()
@@ -217,6 +218,7 @@ function Notebook.input(st, events, ctx)
     end
 end
 function Notebook.child_returned(st, child, res, ctx)
+    st.row = 0 -- [C] F236 rebuild clears the shared row before drawing.
     st.grid_effect_frames = Grid.frames
     st.grid_cells = Grid.cells
     ctx.redraw(R.SUBMENU)

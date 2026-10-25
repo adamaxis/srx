@@ -187,13 +187,72 @@ r7:frame(P.C); check(g7.reselects == 1, "C -> 0x391A [C]")
 r7:frame(P.A); check(top(r7) == S.NOTEBOOK and #st(r7).options == 2, "notebook gated rows")
 r7:frame(P.DOWN); r7:frame(P.A); check(top(r7) == S.NOTEBOOK_TIPS and #st(r7).visible == 2, "tips flags")
 r7:frame(P.RIGHT); r7:frame(P.RIGHT); check(st(r7).page == 1, "tips clamp")
-r7:frame(P.B); r7:frame(P.B); check(top(r7) == S.POCKET_SECRETARY, "back to PS")
+r7:frame(P.B); r7:frame(P.START); check(top(r7) == S.POCKET_SECRETARY, "Tips B, then Notebook Start returns to PS [C]")
 r7:frame(P.DOWN); r7:frame(P.DOWN); r7:frame(P.A); check(top(r7) == S.MESSAGE and st(r7).message == MM.NO_CYBERDECK, "no deck")
 r7:frame(P.A); r7:frame(P.START); check(top(r7) == S.COMMAND and r7:is_open(), "PS start -> command rebuild")
 local r8, l8 = mk({ party = { [0] = runner(), [1] = runner() } }); r8:frame(P.A); for _ = 1, 3 do r8:frame(P.DOWN) end
 r8:frame(P.A); check(top(r8) == S.DISMISS_RUNNER, "dismiss open"); r8:frame(P.DOWN); r8:frame(P.A)
 check(l8.dismissed == 1 and top(r8) == S.POCKET_SECRETARY, "dismiss runner 1")
 end)
+-- [C] C2C8 resets the Pocket Secretary row on a child return and C2AA rebuilds.
+do
+    local parent_return = mk()
+    parent_return:frame(P.A)
+    parent_return:frame(P.DOWN)
+    parent_return:frame(P.A)
+    check(top(parent_return) == S.GROUP_ITEMS and
+          parent_return.stack[2].state.row == 1,
+          "Group Items opens from Pocket Secretary row 1")
+    parent_return:frame(P.START)
+    check(top(parent_return) == S.POCKET_SECRETARY and
+          parent_return.stack[2].state.row == 0,
+          "Pocket Secretary child return rebuilds at row 0 [C]")
+end
+
+-- [C] F236's B branch shares A dispatch; only Start returns to the parent.
+do
+    local notebook_return = mk()
+    notebook_return:frame(P.A)
+    notebook_return:frame(P.A)
+    notebook_return:frame(P.DOWN)
+    notebook_return:frame(P.B)
+    check(top(notebook_return) == S.NOTEBOOK_TIPS and
+          notebook_return.stack[3].state.row == 1,
+          "Notebook B dispatches the selected Tips row like A [C]")
+    notebook_return:frame(P.B)
+    check(top(notebook_return) == S.NOTEBOOK and
+          notebook_return.stack[3].state.row == 0,
+          "Notebook child return rebuilds at Current Run row 0 [C]")
+    notebook_return:frame(P.START)
+    check(top(notebook_return) == S.POCKET_SECRETARY and
+          notebook_return.stack[2].state.row == 0,
+          "Notebook Start returns to Pocket Secretary [C]")
+end
+
+-- [C] C56E7 carries the blank no-run row; C56D6 is the 16-cell Notebook underline.
+do
+    local file = io.open("decompilation/assets/dialogue/script-text.json", "rb")
+    local catalog = file and file:read("*a") or ""
+    if file then file:close() end
+    local function raw_json_value(key)
+        local marker = '"' .. key .. '": "'
+        local start = catalog:find(marker, 1, true)
+        if not start then return nil end
+        start = start + #marker
+        local finish = catalog:find('"', start, true)
+        return finish and catalog:sub(start, finish - 1) or nil
+    end
+    local last_line = raw_json_value(
+        "pocket_secretary.notebook.no_run.option.last_line")
+    check(last_line == "\\n     Get a job!!",
+          "Current Run text retains its blank line before Get a job [C]")
+    local underline = raw_json_value(
+        "pocket_secretary.notebook.tips.option.separator") or ""
+    local slash_count = select(2, underline:gsub("\\", ""))
+    check(underline:sub(1, 1) == "[" and slash_count == 30,
+          "Notebook separator asset encodes the 16-cell underline [C]")
+end
+
 -- save/load 0xEFB4 [C] -- srx host JSON saves (screens/save_load.lua): combat gate FFDF84 [C 0xEFE6], two slots.
 -- ROM 0xEFC4 gates first on FFDF40 ("outside only", text 0xC26C3) [C].
 section('save/load 0xEFB4 [C]', function()
@@ -207,7 +266,7 @@ r9, l9, g9 = sl({ save_status = { [0] = 1 } }); check(top(r9) == S.SAVE_LOAD, "s
 r9:frame(P.UP); check(st(r9).row == 1 and #l9.sounds == s9, "2 rows, silent wrap"); r9:frame(P.UP)
 r9:frame(P.B); check(top(r9) == S.SAVE_SLOT and st(r9).labels[1] == "Game 1: Saved" and st(r9).labels[2] == "Game 2: Empty", "B confirms; slot labels from save_status")
 r9:frame(P.START); check(top(r9) == S.POCKET_SECRETARY and g9.saved == nil, "slot Start = abort -> PS")
-r9:frame(P.A); r9:frame(P.A); r9:frame(P.DOWN); r9:frame(P.C)
+r9:frame(P.UP); r9:frame(P.A); r9:frame(P.A); r9:frame(P.DOWN); r9:frame(P.C)
 check(g9.saved == 1 and st(r9).message == MM.GAME_SAVED, "save slot 2"); r9:frame(P.A)
 check(not r9:is_open() and l9.closed, "save -> FFF0CD exits menu [C 0xF178]")
 r9, l9, g9 = sl({ save_ok = false }); r9:frame(P.A); r9:frame(P.A)
@@ -287,12 +346,12 @@ local rd, ld, gd = mk({ extra = true, party = { [0] = runner({ karma = 250, stat
 rd:frame(P.A); rd:frame(P.UP); rd:frame(P.A); check(top(rd) == S.DEBUG_MENU, "row 5 -> debug menu")
 rd:frame(P.UP); check(st(rd).row == 7, "debug cursor wraps to 7")
 rd:frame(P.DOWN); rd:frame(P.A); check(gd.nuyen == 0x3D090 and gd.unlock == false and top(rd) == S.POCKET_SECRETARY, "Nuyen = 250000, FFF101 cleared")
-rd:frame(P.A); for _ = 1, 5 do rd:frame(P.DOWN) end; rd:frame(P.A)
+rd:frame(P.UP); rd:frame(P.A); for _ = 1, 5 do rd:frame(P.DOWN) end; rd:frame(P.A)
 check(gd.party[0].karma == 4 and gd.party[1].karma == 11, "+10 karma wraps byte [C +0x8D]")
-rd:frame(P.A); for _ = 1, 4 do rd:frame(P.DOWN) end; rd:frame(P.A)
+rd:frame(P.UP); rd:frame(P.A); for _ = 1, 4 do rd:frame(P.DOWN) end; rd:frame(P.A)
 check(gd.party[0].status == E.RunnerStatus.ACTIVE and gd.party[0].physical == 10, "heal all clears DOWN")
-rd:frame(P.A); rd:frame(P.DOWN); rd:frame(P.A); check(gd.spells.entry_count == 14 and gd.spells.entries[1].code == 13 and gd.spells.entries[14].code == 0 and gd.spells.entries[1].force_limit == 4, "spells 13..0 force 4 [C 0x59B34]")
-rd:frame(P.A); for _ = 1, 3 do rd:frame(P.DOWN) end; rd:frame(P.A); check(top(rd) == S.DEBUG_PICK_SYSTEM, "pick system")
+rd:frame(P.UP); rd:frame(P.A); rd:frame(P.DOWN); rd:frame(P.A); check(gd.spells.entry_count == 14 and gd.spells.entries[1].code == 13 and gd.spells.entries[14].code == 0 and gd.spells.entries[1].force_limit == 4, "spells 13..0 force 4 [C 0x59B34]")
+rd:frame(P.UP); rd:frame(P.A); for _ = 1, 3 do rd:frame(P.DOWN) end; rd:frame(P.A); check(top(rd) == S.DEBUG_PICK_SYSTEM, "pick system")
 rd:frame(P.UP); check(st(rd).system == 0, "pick clamp lo"); for _ = 1, 30 do rd:frame(P.DOWN) end; check(st(rd).system == 0x18, "pick clamp hi")
 -- 0x59B10 writes FFFBBC and jumps to 0xE47A; its 20-VBlank entry opens 0x181F8.
 rd:frame(P.A); check(ld.sounds[#ld.sounds] == E.MenuSound.JACK_IN and top(rd) == S.MATRIX_ENTRY, "pick system -> shared Matrix entry [C 0x59B10]")

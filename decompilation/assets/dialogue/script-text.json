@@ -962,7 +962,7 @@
     "pocket_secretary.notebook.option.shadowrunners": "Shadowrunners",
     "pocket_secretary.notebook.no_run.option.first_line": " You are not currently",
     "pocket_secretary.notebook.no_run.option.second_line": "engaged in a shadowrun.",
-    "pocket_secretary.notebook.no_run.option.last_line": "     Get a job!!",
+    "pocket_secretary.notebook.no_run.option.last_line": "\n     Get a job!!",
     "pocket_secretary.notebook.mr_johnson.name.option.gunderson": "Mr. Gunderson",
     "pocket_secretary.notebook.mr_johnson.name.option.julius_strouther": "Julius Strouther",
     "pocket_secretary.notebook.mr_johnson.name.option.mortimer_reed": "Mortimer Reed",

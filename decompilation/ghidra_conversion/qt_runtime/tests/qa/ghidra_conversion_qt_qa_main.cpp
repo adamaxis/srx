@@ -42635,7 +42635,7 @@ int main(int argc, char** argv) {
                                  "& Clues without a Contacts row\n";
                     return 3;
                 }
-                tap_qa_controller_button(field_scene, 0x10U);
+                tap_qa_controller_button(field_scene, 0x80U); // [C] F236 Start returns; B dispatches.
                 if (!field_scene.pocket_secretary_open() ||
                     field_scene.pocket_secretary_notebook_open()) {
                     std::cerr << "field secretary dump: fresh Notebook did "
@@ -42982,7 +42982,7 @@ int main(int argc, char** argv) {
                 press_secretary_button(0x80U);
                 if (!field_scene.pocket_secretary_open() ||
                     field_scene.pocket_secretary_group_items_waiting() ||
-                    field_scene.pocket_secretary_selection() != 1U ||
+                    field_scene.pocket_secretary_selection() != 0U ||
                     !save_secretary_scene("group-items-populated-return",
                                           render_secretary_scene())) {
                     std::cerr << "field secretary dump: populated Group "
@@ -42991,6 +42991,7 @@ int main(int argc, char** argv) {
                 }
 
                 field_scene.set_group_item_flags_for_dump(0U);
+                press_secretary_button(0x02U); // [C] Child return reset to Pocket Secretary row 0.
                 press_secretary_button(0x40U);
                 if (!field_scene.pocket_secretary_open() ||
                     !field_scene.pocket_secretary_group_items_waiting()) {
@@ -43029,7 +43030,7 @@ int main(int argc, char** argv) {
                 press_secretary_button(0x80U);
                 if (!field_scene.pocket_secretary_open() ||
                     field_scene.pocket_secretary_group_items_waiting() ||
-                    field_scene.pocket_secretary_selection() != 1U) {
+                    field_scene.pocket_secretary_selection() != 0U) {
                     std::cerr << "field secretary dump: Group Items did not "
                                  "return to its selected parent row\n";
                     return 3;
@@ -43045,6 +43046,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
+                press_secretary_button(0x02U);
                 press_secretary_button(0x02U);
                 if (field_scene.pocket_secretary_selection() != 2U) {
                     std::cerr << "field secretary dump: could not select "
@@ -43127,7 +43129,7 @@ int main(int argc, char** argv) {
                 if (!field_scene.pocket_secretary_open() ||
                     field_scene
                         .pocket_secretary_cyberdeck_unavailable_waiting() ||
-                    field_scene.pocket_secretary_selection() != 2U) {
+                    field_scene.pocket_secretary_selection() != 0U) {
                     std::cerr << "field secretary dump: Start did not return "
                                  "to the selected parent row\n";
                     return 3;
@@ -43142,8 +43144,6 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                press_secretary_button(0x01U); // Up to Notebook.
-                press_secretary_button(0x01U);
                 if (field_scene.pocket_secretary_selection() != 0U) {
                     std::cerr << "field secretary dump: could not return to "
                                  "the Notebook row\n";
@@ -43166,8 +43166,11 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 auto notebook_scene = render_secretary_scene();
+                // [C] F33E uses the C56D6 separator; emulator e3 at 8860
+                // shows its last cells through x=199.
                 if (!image_has_green_ink(notebook_scene, 88, 32, 96, 8) ||
                     !image_has_green_ink(notebook_scene, 72, 40, 128, 8) ||
+                    !image_has_green_ink(notebook_scene, 192, 40, 8, 8) ||
                     !image_has_green_ink(notebook_scene, 88, 56, 160, 8) ||
                     !image_has_green_ink(notebook_scene, 88, 72, 160, 8) ||
                     !image_has_green_ink(notebook_scene, 88, 88, 160, 8) ||
@@ -43255,10 +43258,13 @@ int main(int argc, char** argv) {
                 }
                 press_secretary_button(0x40U); // A returns to Notebook.
                 auto notebook_after_tips = render_secretary_scene();
+                // [C] The F236 rebuild redraws the Notebook panel at row 0;
+                // compare its content panel with the earlier clean row-0 dump.
                 if (!field_scene.pocket_secretary_notebook_open() ||
                     field_scene.pocket_secretary_notebook_tips_open() ||
-                    field_scene.pocket_secretary_notebook_selection() != 1U ||
-                    image_has_green_ink(notebook_after_tips, 40, 56, 40, 16) ||
+                    field_scene.pocket_secretary_notebook_selection() != 0U ||
+                    image_region_differs(notebook_scene, notebook_after_tips,
+                                         24, 24, 224, 160) ||
                     image_has_green_ink(notebook_after_tips, 136, 184,
                                         104, 8) ||
                     !save_notebook_tips_scene("return-a",
@@ -43280,6 +43286,7 @@ int main(int argc, char** argv) {
                                  "typed Tips event bits\n";
                     return 3;
                 }
+                press_secretary_button(0x02U); // [C] F236 child rebuild starts at row 0; move to Tips.
                 press_secretary_button(0x40U); // Reopen with four pages.
                 if (!field_scene.pocket_secretary_notebook_tips_open() ||
                     field_scene.pocket_secretary_notebook_visible_tip_count() !=
@@ -43408,8 +43415,9 @@ int main(int argc, char** argv) {
                 // command-0x31 writer for bit 0; other story writers remain
                 // unresolved and are not inferred from this fixture state.
                 field_audio_events.clear();
-                press_secretary_button(0x02U); // Contacts row.
-                press_secretary_button(0x02U); // Mr. Johnsons row.
+                press_secretary_button(0x02U); // [C] F236 child rebuild starts at row 0; Down to Tips.
+                press_secretary_button(0x02U); // Down to Contacts.
+                press_secretary_button(0x02U); // Down to Mr. Johnsons.
                 if (field_scene.pocket_secretary_notebook_selection() != 3U ||
                     !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: Notebook did not "
@@ -43596,9 +43604,9 @@ int main(int argc, char** argv) {
                 if (field_scene
                         .pocket_secretary_notebook_mr_johnsons_open() ||
                     !field_scene.pocket_secretary_notebook_open() ||
-                    field_scene.pocket_secretary_notebook_selection() != 3U ||
+                    field_scene.pocket_secretary_notebook_selection() != 0U ||
                     !image_has_green_ink(notebook_after_johnsons,
-                                         88, 104, 128, 8) ||
+                                         88, 56, 128, 8) ||
                     image_has_green_ink(notebook_after_johnsons,
                                         48, 56, 24, 56) ||
                     !field_audio_events.empty() ||
@@ -43608,7 +43616,8 @@ int main(int argc, char** argv) {
                                  "rebuild the selected Notebook row cleanly\n";
                     return 3;
                 }
-                tap_qa_controller_button(field_scene, 0x01U); // Contacts row.
+                press_secretary_button(0x02U); // [C] Move from F236 row 0 to Contacts.
+                press_secretary_button(0x02U);
                 if (field_scene.pocket_secretary_notebook_selection() != 2U) {
                     std::cerr << "field secretary dump: Contacts row did not "
                                  "follow the Notebook cursor\n";
@@ -43735,7 +43744,7 @@ int main(int argc, char** argv) {
                 const auto contacts_parent_stale_ink = image_has_green_ink(
                     contacts_parent_return, 48, 56, 24, 128);
                 if (!field_scene.pocket_secretary_notebook_open() ||
-                    field_scene.pocket_secretary_notebook_selection() != 2U ||
+                    field_scene.pocket_secretary_notebook_selection() != 0U ||
                     field_scene.pocket_secretary_notebook_contacts_open() ||
                     contacts_parent_stale_ink) {
                     std::cerr << "field secretary dump: Contacts return left "
@@ -43757,6 +43766,8 @@ int main(int argc, char** argv) {
                                  "eight-record Contacts boundary\n";
                     return 3;
                 }
+                press_secretary_button(0x02U); // [C] F236 rebuild reset; move to Contacts.
+                press_secretary_button(0x02U);
                 press_secretary_button(0x40U); // Reopen Contacts.
                 if (!field_scene.pocket_secretary_notebook_contacts_open() ||
                     field_scene
@@ -43786,7 +43797,9 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 press_secretary_button(0x02U);
-                press_secretary_button(0x02U); // Shadowrunners row.
+                press_secretary_button(0x02U);
+                press_secretary_button(0x02U);
+                press_secretary_button(0x02U); // [C] F236 reset; move to Shadowrunners.
                 if (field_scene.pocket_secretary_notebook_selection() != 4U) {
                     std::cerr << "field secretary dump: Shadowrunners row was "
                                  "not appended after Mr. Johnsons\n";
@@ -43871,16 +43884,13 @@ int main(int argc, char** argv) {
                 press_secretary_button(0x40U); // Prior Screen.
                 press_secretary_button(0x80U); // Return to Notebook.
                 if (!field_scene.pocket_secretary_notebook_open() ||
-                    field_scene.pocket_secretary_notebook_selection() != 4U ||
+                    field_scene.pocket_secretary_notebook_selection() != 0U ||
                     field_scene.pocket_secretary_notebook_shadowrunners_open()) {
                     std::cerr << "field secretary dump: Shadowrunners return "
                                  "did not restore its parent row\n";
                     return 3;
                 }
-                tap_qa_controller_button(field_scene, 0x01U); // Up to row 3.
-                tap_qa_controller_button(field_scene, 0x01U); // Up.
-                tap_qa_controller_button(field_scene, 0x01U); // Up.
-                tap_qa_controller_button(field_scene, 0x01U); // Up to row 0.
+                // [C] F236 rebuild returns at row 0, which is Current Run.
                 tap_qa_controller_button(field_scene, 0x40U); // Current Run.
                 if (!field_scene.pocket_secretary_notebook_no_run_waiting()) {
                     std::cerr << "field secretary dump: Current Run did not "
@@ -43888,20 +43898,29 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 auto notebook_no_run_scene = render_secretary_scene();
-                for (std::size_t line = 0; line < 3U; ++line) {
+                // [C] C56E7 has two newline bytes; emulator e3 at 8800
+                // places Get a job!! at y=72 with a blank row at y=64.
+                constexpr std::array<int, 3> kNoRunTextRows{{48, 56, 72}};
+                for (const int row_y : kNoRunTextRows) {
                     if (!image_has_green_ink(
                             notebook_no_run_scene, 48,
-                            48 + static_cast<int>(line) * 8, 240, 8)) {
+                            row_y, 240, 8)) {
                         std::cerr << "field secretary dump: no-run source "
-                                     "line "
-                                  << line << " has no visible text\n";
+                                     "line at y="
+                                  << row_y << " has no visible text\n";
                         return 3;
                     }
                 }
+                if (image_has_green_ink(notebook_no_run_scene, 48, 64,
+                                        240, 8)) {
+                    std::cerr << "field secretary dump: no-run blank line "
+                                 "at y=64 contains ink\n";
+                    return 3;
+                }
                 if (image_has_green_ink(notebook_no_run_scene, 88, 32,
                                         96, 8) ||
-                    image_has_green_ink(notebook_no_run_scene, 88, 72,
-                                        160, 8) ||
+                    image_has_green_ink(notebook_no_run_scene, 184, 72,
+                                        16, 8) ||
                     image_has_green_ink(notebook_no_run_scene, 88, 88,
                                         160, 8) ||
                     image_has_green_ink(notebook_no_run_scene, 88, 104,
@@ -44369,7 +44388,7 @@ int main(int argc, char** argv) {
                         return 3;
                     }
                 }
-                tap_qa_controller_button(field_scene, 0x10U); // B to parent.
+                tap_qa_controller_button(field_scene, 0x80U); // [C] F23A Start returns to Pocket Secretary; B dispatches.
                 if (field_scene.pocket_secretary_notebook_open() ||
                     !field_scene.pocket_secretary_open() ||
                     field_scene.pocket_secretary_selection() != 0U ||
@@ -44400,8 +44419,14 @@ int main(int argc, char** argv) {
                         // these source screens. Compare the full content
                         // panel after return so no child labels, selector, or
                         // graphics can survive beneath the parent buttons.
+                        // [C] C2C8 resets the parent row to 0, so ignore the
+                        // selector's 8-pixel column while checking the panel.
                         return !image_region_differs(
-                            dismiss_parent_scene, scene, 24, 24, 216, 168);
+                                   dismiss_parent_scene, scene,
+                                   24, 24, 48, 168) &&
+                               !image_region_differs(
+                                   dismiss_parent_scene, scene,
+                                   80, 24, 160, 168);
                     };
                 field_audio_events.clear();
                 press_secretary_button(0x40U);
@@ -44573,7 +44598,7 @@ int main(int argc, char** argv) {
                 press_secretary_button(0x10U); // Source B confirms the row.
                 if (field_scene.pocket_secretary_dismiss_runner_open() ||
                     !field_scene.pocket_secretary_open() ||
-                    field_scene.pocket_secretary_selection() != 3U ||
+                    field_scene.pocket_secretary_selection() != 0U ||
                     field_scene.field_party_slot_active_for_dump(1U) ||
                     !field_scene.field_party_slot_active_for_dump(2U) ||
                     (field_scene.field_party_records_for_dump()[1].flags &
@@ -44595,6 +44620,9 @@ int main(int argc, char** argv) {
                 }
 
                 field_audio_events.clear();
+                press_secretary_button(0x02U); // [C] C2C8 child rebuild reset; move to Dismiss Runner.
+                press_secretary_button(0x02U);
+                press_secretary_button(0x02U);
                 press_secretary_button(0x40U);
                 if (!field_scene.pocket_secretary_dismiss_runner_open() ||
                     field_scene.dismiss_runner_option_count() != 2U) {
@@ -44624,6 +44652,9 @@ int main(int argc, char** argv) {
                 }
 
                 field_audio_events.clear();
+                press_secretary_button(0x02U); // [C] C2C8 child rebuild reset; select Dismiss Runner again.
+                press_secretary_button(0x02U);
+                press_secretary_button(0x02U);
                 press_secretary_button(0x40U);
                 if (!field_scene.pocket_secretary_dismiss_runner_open()) {
                     std::cerr << "field secretary dump: could not reopen "
@@ -44648,6 +44679,9 @@ int main(int argc, char** argv) {
                                  "runner for dismissal replacement\n";
                     return 3;
                 }
+                press_secretary_button(0x02U); // [C] C2C8 child rebuild reset; select Dismiss Runner again.
+                press_secretary_button(0x02U);
+                press_secretary_button(0x02U);
                 press_secretary_button(0x40U);
                 field_audio_events.clear();
                 press_secretary_button(0x02U); // Select current runner.
@@ -44734,25 +44768,27 @@ int main(int argc, char** argv) {
                                  "screen is cropped or its footer is missing\n";
                     return 3;
                 }
-                press_secretary_button(0x80U); // Start returns to the same row.
+                press_secretary_button(0x80U); // [C] C2C8 child return resets Pocket Secretary to row 0.
                 const auto installed_deck_return = render_secretary_scene();
                 if (field_scene.field_menu_route_screen_for_dump() !=
                         static_cast<std::uint16_t>(
                             srx::MenuScreen::POCKET_SECRETARY) ||
                     !field_scene.pocket_secretary_open() ||
-                    field_scene.pocket_secretary_selection() != 2U ||
-                    installed_deck_return.copy(
-                        QRect(0, 0, kSceneWidth, 192)) !=
-                        installed_deck_parent.copy(
-                            QRect(0, 0, kSceneWidth, 192)) ||
+                    field_scene.pocket_secretary_selection() != 0U ||
+                    image_region_differs(installed_deck_parent,
+                                         installed_deck_return,
+                                         24, 24, 48, 168) ||
+                    image_region_differs(installed_deck_parent,
+                                         installed_deck_return,
+                                         80, 24, 160, 168) ||
                     !save_secretary_scene("cyberdeck-present-return",
                                           installed_deck_return)) {
                     std::cerr << "field secretary dump: Start did not return "
-                                 "to the selected Cyberdeck row cleanly\n";
+                                 "to Pocket Secretary row zero cleanly\n";
                     return 3;
                 }
                 std::cout << "installed_cyberdeck_route=field_secretary,"
-                             "typed_deck_screen,full_footer,same_row_return\n";
+                             "typed_deck_screen,full_footer,row_zero_return\n";
                 std::cout << "dismiss_runner_review=fixed_abort,active_list,"
                              "compact_marker,active_runner_switch,e660_cadence "
                              "e660_pixels=pending "
