@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <cstdio>
 #include "ghidra_conversion_qt_window.hpp"
 #include "enums.hpp"
 #include "genesis_image_compositor.hpp"
@@ -784,6 +786,36 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
+    // Opt-in diagnostic: SRX_QA_ENCOUNTER_TIMELINE=1 saves one frame per
+    // second for 60 s plus a positions log, then stops before the checks.
+    if (const char* timeline = std::getenv("SRX_QA_ENCOUNTER_TIMELINE");
+        timeline != nullptr && timeline[0] == '1') {
+        std::ofstream log(output / "timeline.tsv");
+        log << "frame\trunner_x\trunner_y\tactors\n";
+        for (std::uint32_t frame = 0U; frame <= 3600U; ++frame) {
+            if (frame % 60U == 0U) {
+                char name[32];
+                std::snprintf(name, sizeof(name), "timeline-%02u.bmp",
+                              frame / 60U);
+                save(name, render());
+            }
+            if (frame % 15U == 0U) {
+                const auto& lead = field_scene.field_entity_world_position();
+                log << frame << '\t' << lead.x << '\t' << lead.y << '\t';
+                for (const auto& actor :
+                     field_scene.active_default_actor_positions_for_dump()) {
+                    log << actor.x << ',' << actor.y << ' ';
+                }
+                log << '\t'
+                    << field_scene.default_actor_animation_id_for_dump(0U)
+                           .value_or("-")
+                    << '\n';
+            }
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+        return 0;
+    }
     const auto advance_and_capture = [&field_scene, &render, &save](
                                         const std::uint16_t frames,
                                         const std::string& name) {
