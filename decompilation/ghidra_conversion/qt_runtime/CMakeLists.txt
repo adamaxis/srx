@@ -27,6 +27,8 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_scene_runtime_player_actions.cpp
     src/field/field_scene_runtime_debug.cpp
     src/field/field_scene_runtime_travel.cpp
+    src/field/field_scene_runtime_shop_paint.cpp
+    src/field/field_scene_runtime_world_effects.cpp
     src/field/field_map_composition.cpp
     src/field/matrix_map_presenter.cpp
     src/field/elevator_selector_runtime.cpp

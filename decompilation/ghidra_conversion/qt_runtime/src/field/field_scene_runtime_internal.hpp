@@ -5,6 +5,12 @@
 #include <cstdint>
 #include <string_view>
 
+#include <QColor>
+#include <QPainter>
+
+#include "shadowrun_ghidra/field/field_action_progression_purchase_conversion.hpp"
+#include "numeric_visual_renderer.hpp"
+
 #include "field_scene_runtime.hpp"
 
 namespace shadowrun::ghidra_conversion::qt_runtime::field_scene_detail {
@@ -103,5 +109,89 @@ inline EntityActionRecord magic_action_record_from_runner(
     result.item_phases = runner.inventory_phase_bytes;
     return result;
 }
+
+
+namespace {
+constexpr std::size_t kFieldSpellProgressionRecordCapacity = 8U;
+
+FieldActionCostContext field_shop_cost_context(
+    const std::uint8_t menu_mode, const RunnerRecordFields& runner,
+    const std::uint8_t runner_feature_flags) {
+    // Preserve the source mode, active runner's +0x8C statistic, feature
+    // flags, and ROM action-cost table selector for each field shop.
+    return FieldActionCostContext{
+        menu_mode, runner_feature_flags, runner.skills[11], 2U};
+}
+
+void draw_command_overview_number(
+    QPainter& painter, const QImage& font, const int x, const int y,
+    const std::uint32_t value,
+    const NumericVisualAlignment alignment = NumericVisualAlignment::left,
+    const bool group_thousands = false) {
+    draw_numeric_visual(painter, font, x, y, value, alignment,
+                        group_thousands, QColor(0, 255, 0));
+}
+
+struct FieldShopProgressionInput {
+    FieldActionProgressionTables tables{};
+    FieldActionProgressionPurchaseState state{};
+};
+
+std::optional<FieldShopProgressionInput> make_field_shop_progression_input(
+    const ShopMenuController& menu, const RunnerRecordFields& runner,
+    const std::uint32_t funds, const MagicSpellTable& spell_table,
+    const std::uint8_t runner_feature_flags) {
+    const auto menu_mode = menu.menu_mode();
+    if (menu.menu_result() != 0 ||
+        menu.selected_group() != ShopActionGroup::magic_spells ||
+        menu_mode < 3U || menu_mode > 5U ||
+        spell_table.entry_count > kFieldSpellProgressionRecordCapacity) {
+        return std::nullopt;
+    }
+
+    FieldShopProgressionInput result;
+    const auto mode_index = static_cast<std::size_t>(menu_mode - 3U);
+    const auto offer_count = menu.progression_offer_count(
+        ShopActionGroup::magic_spells);
+    if (offer_count >
+        result.tables.saved_selection_zero_by_menu_mode[mode_index].size()) {
+        return std::nullopt;
+    }
+    for (std::size_t index = 0U; index < offer_count; ++index) {
+        const auto offer = menu.progression_offer(
+            ShopActionGroup::magic_spells, index);
+        if (!offer.has_value()) {
+            return std::nullopt;
+        }
+        result.tables.saved_selection_zero_by_menu_mode[mode_index][index] = {
+            offer->action_code, offer->source_metadata, offer->base_cost};
+    }
+
+    result.state.menu_mode = menu_mode;
+    result.state.saved_selection = 0;
+    result.state.primary_cursor = static_cast<std::int8_t>(
+        menu.selected_cursor());
+    result.state.runner_archetype_status = static_cast<std::int8_t>(
+        runner.archetype_index);
+    // Source +0x7F is the active runner's spell progression ceiling.
+    result.state.runner_progression_limit =
+        static_cast<std::int8_t>(runner.auxiliary[0]);
+    result.state.funds = funds;
+    result.state.cost_context =
+        field_shop_cost_context(menu_mode, runner, runner_feature_flags);
+    result.state.ledger.source_record_count_word =
+        spell_table.entry_count == 0U
+            ? 0U
+            : static_cast<std::uint16_t>(spell_table.entry_count - 1U);
+    result.state.ledger.records.resize(
+        kFieldSpellProgressionRecordCapacity);
+    for (std::size_t index = 0U; index < spell_table.entry_count; ++index) {
+        result.state.ledger.records[index] = {
+            spell_table.entries[index].spell_code,
+            spell_table.entries[index].force_limit};
+    }
+    return result;
+}
+} // namespace
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime::field_scene_detail
