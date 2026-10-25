@@ -693,6 +693,7 @@ void FieldSceneRuntime::service_player_spell_cast(
         // shared effect record. Clear the host-owned record even if the new
         // 0x1582A allocation later finds the pool full [C].
         if (field_barrier) {
+            clear_field_barrier_collision_overlay();
             for (std::size_t slot = 0U;
                  slot < field_spell_effect_slot_target_ids_.size(); ++slot) {
                 if (field_spell_effect_slot_target_ids_[slot] ==
@@ -722,6 +723,56 @@ void FieldSceneRuntime::service_player_spell_cast(
             field_spell_effect_slot_target_ids_[slot] =
                 std::string(owner_id);
             source_boundary("field.combat.player_spell.effect_slot_reserved");
+
+            if (field_barrier) {
+                // ROM 0x49FA reads caster +0x2E, 0x4A14/0x4A24 read its
+                // world Y/X, and 0x4A74 selects the cell byte from +0x57 [C].
+                // These are the typed field position, movement heading, and
+                // active runner's equipped action code.
+                const auto placement = game_scripts_.call_integers(
+                    "field_barrier", "place_flat",
+                    {field_entity_.world_position.x,
+                     field_entity_.world_position.y,
+                     field_movement_state_.heading,
+                     runner.equipped_item_code});
+                const auto expected_code = runner.equipped_item_code <=
+                        static_cast<std::uint8_t>(srx::v(
+                            srx::FieldBarrier::SUPER_MAX_ACTION_CODE))
+                    ? srx::v(srx::FieldBarrier::CELL_CODE_SUPER_BARRIER)
+                    : srx::v(srx::FieldBarrier::CELL_CODE_BARRIER);
+                const auto placement_size =
+                    kFieldBarrierCollisionCellCount + 4U;
+                const bool placement_valid = placement.has_value() &&
+                    placement->size() == placement_size &&
+                    placement->at(0U) >= 0 && placement->at(0U) <= 7 &&
+                    placement->at(1U) >= 0 && placement->at(1U) <= 0xFFFF &&
+                    placement->at(2U) >= 0 && placement->at(2U) <= 0xFFFF &&
+                    placement->back() == expected_code;
+                bool cells_valid = placement_valid;
+                std::array<FieldBarrierCollisionCell,
+                           kFieldBarrierCollisionCellCount> cells{};
+                for (std::size_t index = 0U;
+                     cells_valid && index < cells.size(); ++index) {
+                    const auto value = placement->at(index + 3U);
+                    cells_valid = value >= 0 && value <= 0xFFFF;
+                    if (cells_valid) {
+                        cells[index] = FieldBarrierCollisionCell{
+                            static_cast<std::uint16_t>(value),
+                            static_cast<std::uint8_t>(placement->back())};
+                    }
+                }
+                if (!cells_valid) {
+                    failure_ = game_scripts_.failure().empty()
+                        ? "Lua returned an invalid field barrier placement"
+                        : game_scripts_.failure();
+                    source_boundary(
+                        "field.combat.player_spell.barrier_placement_unresolved");
+                } else {
+                    set_field_barrier_collision_overlay(cells);
+                    source_boundary(
+                        "field.combat.player_spell.barrier_collision_started");
+                }
+            }
         }
         if (resolution.roll_attempted) {
             // 0x103B2 publishes the caster's threshold result at +0x9F [C].
@@ -1168,6 +1219,11 @@ void FieldSceneRuntime::advance_field_actor_animation() {
                     source_boundary(
                         "field.player.spell.effect_slot_release_invalid");
                 } else {
+                    if (field_spell_effect_slot_target_ids_[slot] ==
+                        kFieldPlayerBarrierEffectOwner) {
+                        // ROM 0x4ADC expires the record through 0x4B6C [C].
+                        clear_field_barrier_collision_overlay();
+                    }
                     field_world_effect_slots_occupied_[slot] = false;
                     field_spell_effect_slot_target_ids_[slot].clear();
                     source_boundary(

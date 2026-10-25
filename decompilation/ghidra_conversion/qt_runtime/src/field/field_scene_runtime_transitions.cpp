@@ -184,6 +184,8 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     if (!same_scene || force_scene_entry) {
         field_weapon_projectiles_.clear();
         field_hit_sparks_.clear();
+        // ROM scene load 0x16AB8 calls 0x4B6C before installing the new map [C].
+        clear_field_barrier_collision_overlay();
         field_weapon_slots_occupied_.fill(false);
         // 0x167AE may arm FFDF84/FFDF86 while selecting a new field scene.
         // Its later 0x2BD2 re-entry prepares that scene again, but the timeout
@@ -335,11 +337,13 @@ void FieldSceneRuntime::snapshot_world_activity_source_scene() {
     pending_field_return_facing_ =
         FieldLocationReturnFacing::preserve_entry_heading;
 
+    // ROM 0x2934's frame path when FFDF8A != 0 calls 0x4B6C [C].
     // ROM 0x16E30 retires pending entity effects and clears effect-slot
     // occupancy before the resource scene is prepared. Gun projectiles use
     // those typed host slots in this field presenter.
     field_weapon_projectiles_.clear();
     field_hit_sparks_.clear();
+    clear_field_barrier_collision_overlay();
     field_weapon_slots_occupied_.fill(false);
     source_boundary("field.world_activity.source_scene_snapshotted");
 }

@@ -22,12 +22,12 @@ int main() {
                     FieldCombatActionKind::magic_spell &&
                 classify_field_combat_action(-1, 13U) ==
                     FieldCombatActionKind::magic_spell &&
+                classify_field_combat_action(-1, 14U) ==
+                    FieldCombatActionKind::magic_spell &&
                 classify_field_combat_action(0, 13U) ==
                     FieldCombatActionKind::effect_record &&
                 classify_field_combat_action(0, 15U) ==
                     FieldCombatActionKind::effect_record &&
-                classify_field_combat_action(-1, 14U) ==
-                    FieldCombatActionKind::unsupported &&
                 classify_field_combat_action(0, 16U) ==
                     FieldCombatActionKind::unsupported)) {
         return 1;
