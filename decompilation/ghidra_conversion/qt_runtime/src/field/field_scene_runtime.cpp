@@ -33,7 +33,6 @@
 #include "shadowrun_ghidra/entities/heading_animation_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_state_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_metric_conversion.hpp"
-#include "shadowrun_ghidra/entities/entity_delay_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_combat_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_transition_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_spawn_probe_conversion.hpp"
@@ -708,20 +707,6 @@ FieldActionCostContext field_shop_cost_context(
     // flags, and ROM action-cost table selector for each field shop.
     return FieldActionCostContext{
         menu_mode, runner_feature_flags, runner.skills[11], 2U};
-}
-
-std::optional<std::uint16_t> source_delay_mode(
-    const std::string_view scale) {
-    if (scale == "normal") {
-        return 0U;
-    }
-    if (scale == "half") {
-        return 1U;
-    }
-    if (scale == "double") {
-        return 2U;
-    }
-    return std::nullopt;
 }
 
 void draw_command_overview_number(
@@ -14265,16 +14250,6 @@ void FieldSceneRuntime::service_player_weapon_action(
         return;
     }
 
-    const auto* weapon_template =
-        weapon_template_for_item_code(runner.equipped_item_code);
-    const auto attack_delay_mode = weapon_template == nullptr
-        ? std::optional<std::uint16_t>{}
-        : source_delay_mode(weapon_template->attack_delay_scale);
-    if (!attack_delay_mode.has_value()) {
-        source_boundary("field.combat.weapon_template_unresolved");
-        return;
-    }
-
     const PlayerActionDispatchCallbacks reload_callbacks{
         [this](const std::uint16_t event) {
             if (source_audio_event_callback_) {
@@ -14285,16 +14260,22 @@ void FieldSceneRuntime::service_player_weapon_action(
         [this](const std::uint8_t item_code) {
             return weapon_magazine_capacity_for_item(item_code);
         };
-    const WeaponReloadDelayModeLookup reload_delay_mode_lookup =
-        [this](const std::uint8_t item_code) {
-            const auto* weapon = weapon_template_for_item_code(item_code);
-            return weapon == nullptr
-                       ? std::optional<std::uint16_t>{}
-                       : source_delay_mode(weapon->reload_delay_scale);
+    const PlayerActionDelayLookup reload_delay_lookup =
+        [this](const RunnerRecordFields& source_record,
+               const PlayerActionDelayStage stage) {
+            const auto purpose =
+                stage == PlayerActionDelayStage::weapon_action
+                    ? scripting::ScriptPlayerDelayPurpose::reload_action
+                    : scripting::ScriptPlayerDelayPurpose::shared_action;
+            return game_scripts_.player_weapon_action_delay(
+                source_record.attributes[1U],
+                source_record.attributes[4U],
+                source_record.cyberware_flags,
+                source_record.equipped_item_code, purpose);
         };
     if (runner.ammo_rounds == 0U) {
         const auto reload = dispatch_player_action_if_ready(
-            runner, weapon_capacity_lookup, reload_delay_mode_lookup,
+            runner, weapon_capacity_lookup, reload_delay_lookup,
             reload_callbacks);
         if (reload.status == PlayerActionDispatchStatus::serviced) {
             refresh_field_hud_runner_slot();
@@ -14524,7 +14505,7 @@ void FieldSceneRuntime::service_player_weapon_action(
         if (spawn_cycle.action == EntitySpawnCycleAction::no_primary_slot ||
             spawn_cycle.action == EntitySpawnCycleAction::no_secondary_slot) {
             const auto fallback = dispatch_player_action_if_ready(
-                runner, weapon_capacity_lookup, reload_delay_mode_lookup,
+                runner, weapon_capacity_lookup, reload_delay_lookup,
                 reload_callbacks);
             if (fallback.status == PlayerActionDispatchStatus::serviced) {
                 refresh_field_hud_runner_slot();
@@ -14542,16 +14523,17 @@ void FieldSceneRuntime::service_player_weapon_action(
         spawned_heading);
     set_entity_heading_with_field_animation(
         attack_pose, spawned_heading,
-        *attack_delay_mode, kFieldAttackAnimationSelectors,
-        [this, &runner](const std::uint16_t delay_mode) {
-            EntityDelayState delay{runner.animation_action_gate};
-            update_entity_animation_delay(
-                delay,
-                EntityDelayAttributes{runner.attributes[1U],
-                                      runner.attributes[4U],
-                                      runner.cyberware_flags},
-                decode_entity_delay_scale(delay_mode));
-            runner.animation_action_gate = delay.animation_delay;
+        kFieldAttackAnimationSelectors,
+        [this, &runner] {
+            const auto delay = game_scripts_.player_weapon_action_delay(
+                runner.attributes[1U], runner.attributes[4U],
+                runner.cyberware_flags, runner.equipped_item_code,
+                scripting::ScriptPlayerDelayPurpose::weapon_attack);
+            if (!delay.has_value()) {
+                source_boundary("field.combat.player_weapon_delay_unresolved");
+                return;
+            }
+            runner.animation_action_gate = *delay;
         },
         [this] {
             field_entity_animation_.accumulator = 0;

@@ -29,6 +29,19 @@ void set_entity_heading_with_field_animation(
     reset_animation();
 }
 
+void set_entity_heading_with_field_animation(
+    HeadingAnimationState& entity,
+    const std::uint16_t heading,
+    const std::array<std::uint16_t, 8>& direction_animations,
+    const ScriptDelayScheduler& schedule_delay,
+    const AnimationReset& reset_animation) {
+    entity.heading = heading;
+    entity.continuation = MovementContinuation::ReevaluateCollision;
+    entity.direction_animation = direction_animations[direction_index(heading)];
+    schedule_delay();
+    reset_animation();
+}
+
 void set_entity_heading_with_alternate_animation(
     HeadingAnimationState& entity,
     const std::uint16_t heading,

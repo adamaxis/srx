@@ -826,6 +826,16 @@ enum class ScriptActorActionKind : std::uint8_t {
     spell,
 };
 
+enum class ScriptPlayerDelayPurpose : std::uint8_t {
+    // ROM 0xACAE enters the weapon firing path, which uses the weapon's
+    // attack_delay_scale when resetting +0xDC. [C]
+    weapon_attack,
+    // ROM 0x14226 selects its helper scale from equipped +0x57. [C]
+    reload_action,
+    // ROM 0xACAE's shared tail replaces the helper delay with mode 0. [C]
+    shared_action,
+};
+
 enum class ScriptFieldEncounterOutcomeKind : std::uint8_t {
     dialogue_event,
     dynamic_world_effect_sequence,
@@ -1601,6 +1611,13 @@ public:
                               std::optional<std::uint8_t> scene_id =
                                   std::nullopt);
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
+    // Lua resolves attack/reload mode from the weapon data and applies the
+    // shared 0xABFC / 0xD7EA calculation to the marshalled runner facts. [C]
+    std::optional<std::int16_t> player_weapon_action_delay(
+        std::uint8_t primary_attribute,
+        std::uint8_t secondary_attribute,
+        std::uint16_t capability_flags, std::uint8_t weapon_code,
+        ScriptPlayerDelayPurpose purpose);
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
     // ROM 0x5D29C checks the six live records at FF0500..FF0A00 on effect

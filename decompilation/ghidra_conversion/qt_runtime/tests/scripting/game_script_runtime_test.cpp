@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+#include "enums.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
@@ -595,6 +596,31 @@ int main() {
                     std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
                         "dialogue" / "script-text.json"),
                 "gameplay Lua package did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    const auto player_attack_delay = scripts.player_weapon_action_delay(
+        0U, 0U, 0U,
+        static_cast<std::uint8_t>(srx::ItemId::WARHAWK),
+        ScriptPlayerDelayPurpose::weapon_attack);
+    const auto player_reload_action_delay =
+        scripts.player_weapon_action_delay(
+            0U, 0U, 0U,
+            static_cast<std::uint8_t>(srx::ItemId::WARHAWK),
+            ScriptPlayerDelayPurpose::reload_action);
+    const auto player_shared_action_delay = scripts.player_weapon_action_delay(
+        0U, 0U, 0U,
+        static_cast<std::uint8_t>(srx::ItemId::WARHAWK),
+        ScriptPlayerDelayPurpose::shared_action);
+    if (!expect(
+            player_attack_delay == static_cast<std::int16_t>(
+                srx::v(srx::ActionDelay::BASE) / 2) &&
+                player_reload_action_delay == static_cast<std::int16_t>(
+                    srx::v(srx::ActionDelay::BASE) *
+                    srx::v(srx::ActionDelayMode::DOUBLE)) &&
+                player_shared_action_delay == static_cast<std::int16_t>(
+                    srx::v(srx::ActionDelay::BASE)),
+            "player weapon delay bridge did not resolve Lua-owned modes")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

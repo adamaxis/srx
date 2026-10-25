@@ -3,6 +3,7 @@
 local R = require("actor.registry")
 local E = require("enums")
 local I = require("lib.int68k")
+local Delay = require("actor.delay")
 local u8, u16, s16 = I.u8, I.u16, I.s16
 local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
@@ -17,40 +18,7 @@ local item_action_pose_selectors = R.item_action_pose_selectors   -- from actor/
 local spell_pose_selectors = R.spell_pose_selectors   -- from actor/anim.lua
 local Animator = R.Animator   -- from actor/animator.lua
 
-local function source_action_delay(context, state, mode)
-    -- ROM 0xB11C clears D0 before 0xABFC. 0xD7EA adds the first enabled
-    -- +0x90 capability modifier to the wrapped average of +0x78/+0x7B.
-    local capability_flags = context.delay_capability_flags or
-        state.delay_capability_flags or 0
-    local modifier = 0
-    for bit = 12, 14 do
-        if (capability_flags & (1 << bit)) ~= 0 then
-            modifier = (bit - 11) * 4
-            break
-        end
-    end
-    local primary = context.delay_primary_attribute or
-        state.delay_primary_attribute or 0
-    local secondary = context.delay_secondary_attribute or
-        state.delay_secondary_attribute or 0
-    local wrapped_sum = u8(primary + secondary)
-    local factor = (wrapped_sum >> 1) + modifier - 1
-    if factor < 0 then
-        factor = 0
-    end
-    local delay = 0x6a - factor * 4
-    -- ROM 0xABFC halves D2 with ASR when D0 is 1 (the B1DC target-action
-    -- transition). Keep the ordinary full reset used by B11C as mode 0.
-    if mode == 1 then
-        delay = math.floor(delay / 2)
-    elseif mode == 2 then
-        delay = delay * 2
-    end
-    if delay < 0x0f then
-        delay = 0x0f
-    end
-    return delay
-end
+local source_action_delay = Delay.actor_action_delay
 
 local function advance_source_action_delay(state, context)
     if context.phase ~= "behavior" or

@@ -12,6 +12,12 @@ bool expect(const bool condition) { return condition; }
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
+    const PlayerActionDelayLookup delay_lookup =
+        [](const RunnerRecordFields&, const PlayerActionDelayStage stage)
+            -> std::optional<std::int16_t> {
+        return stage == PlayerActionDelayStage::weapon_action ? 53 : 106;
+    };
+
     RunnerRecordFields record{};
     record.flags = 0x0100U;
     record.equipped_inventory_slot = 0;
@@ -19,7 +25,8 @@ int main() {
     record.ammo_rounds = 2U;
     record.ammo_clips = 3U;
     record.animation_action_gate = -1;
-    if (!expect(dispatch_player_action_if_ready(record, us_item_catalog())
+    if (!expect(dispatch_player_action_if_ready(record, us_item_catalog(),
+                                                delay_lookup)
                         .status ==
                     PlayerActionDispatchStatus::waiting_for_loaded_rounds &&
                 record.ammo_rounds == 2U && record.ammo_clips == 3U)) {
@@ -28,7 +35,8 @@ int main() {
 
     record.ammo_rounds = 0U;
     record.ammo_clips = 0U;
-    if (!expect(dispatch_player_action_if_ready(record, us_item_catalog())
+    if (!expect(dispatch_player_action_if_ready(record, us_item_catalog(),
+                                                delay_lookup)
                         .status ==
                     PlayerActionDispatchStatus::waiting_for_clip_reserve &&
                 record.ammo_rounds == 0U && record.ammo_clips == 0U)) {
@@ -37,7 +45,8 @@ int main() {
 
     record.ammo_clips = 3U;
     record.animation_action_gate = 0;
-    if (!expect(dispatch_player_action_if_ready(record, us_item_catalog())
+    if (!expect(dispatch_player_action_if_ready(record, us_item_catalog(),
+                                                delay_lookup)
                         .status ==
                     PlayerActionDispatchStatus::waiting_for_animation_gate &&
                 record.ammo_clips == 3U)) {
@@ -57,7 +66,7 @@ int main() {
     std::vector<std::uint8_t> clips_at_audio;
     std::vector<std::uint8_t> rounds_at_audio;
     const auto reload = dispatch_player_action_if_ready(
-        record, us_item_catalog(),
+        record, us_item_catalog(), delay_lookup,
         {[&](const std::uint16_t event) {
             events.push_back(event);
             clips_at_audio.push_back(record.ammo_clips);

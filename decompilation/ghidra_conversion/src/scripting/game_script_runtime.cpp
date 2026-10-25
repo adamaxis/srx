@@ -10262,6 +10262,72 @@ std::optional<bool> GameScriptRuntime::has_world_scene_effect_target(
     return result;
 }
 
+std::optional<std::int16_t> GameScriptRuntime::player_weapon_action_delay(
+    const std::uint8_t primary_attribute,
+    const std::uint8_t secondary_attribute,
+    const std::uint16_t capability_flags, const std::uint8_t weapon_code,
+    const ScriptPlayerDelayPurpose purpose) {
+    auto* state = impl_->state;
+    const auto stack_base = state == nullptr ? 0 : lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<std::int16_t> {
+        if (state != nullptr) {
+            lua_settop(state, stack_base);
+        }
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (state == nullptr) {
+        return fail("gameplay Lua player delay state is unavailable");
+    }
+
+    std::string_view use;
+    switch (purpose) {
+    case ScriptPlayerDelayPurpose::weapon_attack:
+        use = "attack";
+        break;
+    case ScriptPlayerDelayPurpose::reload_action:
+        use = "reload_action";
+        break;
+    case ScriptPlayerDelayPurpose::shared_action:
+        use = "shared_action";
+        break;
+    default:
+        return fail("player weapon delay purpose is invalid");
+    }
+
+    if (!impl_->push_module("actor.delay")) {
+        return fail("gameplay Lua actor.delay module is missing");
+    }
+    lua_getfield(state, -1, "player_weapon_action_delay");
+    if (!lua_isfunction(state, -1)) {
+        return fail("actor.delay.player_weapon_action_delay is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, primary_attribute);
+    lua_pushinteger(state, secondary_attribute);
+    lua_pushinteger(state, capability_flags);
+    lua_pushinteger(state, weapon_code);
+    lua_pushlstring(state, use.data(), use.size());
+
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 5, 1, 0) != LUA_OK) {
+        return fail("actor.delay.player_weapon_action_delay: " +
+                    stack_error(state));
+    }
+    std::uint32_t delay = 0U;
+    if (!read_integer(
+            state, -1,
+            static_cast<std::uint32_t>(
+                std::numeric_limits<std::int16_t>::max()),
+            delay)) {
+        return fail("actor.delay.player_weapon_action_delay returned no delay");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return static_cast<std::int16_t>(delay);
+}
+
 std::optional<ScriptTarislarTombOutroStep>
 GameScriptRuntime::advance_tarislar_tomb_outro(
     const std::uint16_t scene_id, const std::uint8_t scene_state,

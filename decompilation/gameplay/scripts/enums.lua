@@ -34,6 +34,16 @@ E.SceneMode = { NONE = 0, STREET = 1, BUILDING = 2, CAVE = 3 }  -- FFDF40: 1 sce
 E.StateFn   = { IDLE = 0xB45C, WALK = 0xB574, PROJECTILE = 0xAC4E }                 -- +0x3A handlers [C]
 E.CombatPhase = { NONE = 0, ATTACK_ANIM = 1, APPROACH = 2, HOLD = 3 }               -- FFDFE0 [C]
 E.EndingState = { NONE = 0, FINAL_FIGHT = 3 }                                        -- FFE186 [C]
+
+-- Shared 0xABFC / 0xD7EA delay calculation. D0=0 is unchanged, D0=2 doubles,
+-- and every other nonzero D0 is signed-halved; D7EA scans +0x90 bits 12..14
+-- in priority order and 0xABFC clamps the result to 0x0F. [C]
+-- Source callers use only 0, 1, and 2 [C].
+E.ActionDelayMode = { NORMAL = 0, HALF = 1, DOUBLE = 2 } -- 0xABFC D0 modes [C]
+E.ActionDelay = { BASE = 0x6A, FACTOR_STEP = 4, MINIMUM = 0x0F }                -- 0xABFC [C]
+E.DelayCapability = { FIRST_BIT = 12, SECOND_BIT = 13, THIRD_BIT = 14,
+                       MODIFIER_ORIGIN = 11 }                                    -- 0xD7EA +0x90 scan [C]
+
 E.SpriteType  = { FIELD_RUNNER = 3, CORP_GUARD = 5, GHOUL = 7, PEDESTRIAN = 11, HELL_HOUND = 12, GARGOYLE = 13,
                   WENDIGO = 14, THON = 15 }   -- +0x0E [C: 7,12,13,15 from our trace; 3,5,11,14 names from pre-module actor_ai.lua:40-46]
 

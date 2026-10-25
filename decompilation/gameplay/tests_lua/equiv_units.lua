@@ -152,6 +152,7 @@ local INTENDED = {
   begin_dynamic_target_action = "0xC0A2 pose, rate, selector, and cue now come from generated ROM animation data",
   begin_dynamic_item_action = "0xC042 pose and rate now come from generated ROM animation data",
   begin_received_hit_reaction = "0xC072/C0B2 pose data and B03E/B05E cues now come from generated ROM animation data",
+  source_action_delay = "0xABFC now signed-halves every nonzero D0 other than 2 [C]",
   think = "merged R.think API replaces the former advance_think/apply_think_path pair",
 }
 -- Fields added by actor/think.lua (0x13904 gate outputs). Stripped before comparing so the

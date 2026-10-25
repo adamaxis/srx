@@ -10,6 +10,7 @@ purpose, so the reference is wrong for them:
 | a5a74ea3 | the target marker tiers the target's meter (<3, 3-5, 6-8, >=9) | 0x5C7E |
 | (item 1) | default-list actors spawn live; the C0B2 death list is never played at spawn | 0x4618, 0xB330 |
 | (item 1) | Wendigo (kind 0xE) and special-death actors deactivate after their list | 0xAA2C, 0x1E514 |
+| (item 2) | action delay uses signed ASR for every nonzero D0 other than 2, sharing the player path | 0xABFC, 0xD7EA [C] |
 
 `equiv_units` skips the functions in its INTENDED table. `equiv_heartbeat` is informational
 (printed, not gating) in run_lua_suites.sh.

@@ -145,6 +145,8 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_map_composition_qa
 
 add_executable(shadowrun_gameplay_script_runtime_test
     tests/scripting/game_script_runtime_test.cpp)
+target_include_directories(shadowrun_gameplay_script_runtime_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/srx_refactor")
 target_link_libraries(shadowrun_gameplay_script_runtime_test
     PRIVATE shadowrun_gameplay_script_runtime)
 target_compile_definitions(shadowrun_gameplay_script_runtime_test PRIVATE
@@ -1983,6 +1985,7 @@ add_test(NAME shadowrun_ghidra_shop_menu_runtime
 # source tables and ammo/paired-slot ordering independently of the presenter.
 foreach(SHADOWRUN_GHIDRA_ENTITY_TEST IN ITEMS
         entity_combat entity_transition entity_animation_spawn_probe
+        entity_animation_player_action entity_delay
         entity_proximity_collision movement_metric)
     add_executable(shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test
         ../tests/entities/${SHADOWRUN_GHIDRA_ENTITY_TEST}_conversion_test.cpp

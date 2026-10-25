@@ -13,6 +13,17 @@ enum class Accessory : std::int64_t {
 enum class AccessoryMask : std::int64_t {
     SILENCED = 0x6,
 };
+enum class ActionDelay : std::int64_t {
+    FACTOR_STEP = 0x4,
+    MINIMUM = 0xF,
+    BASE = 0x6A,
+};
+enum class ActionDelayMode : std::int64_t {
+    NORMAL = 0x0,
+    HALF = 0x1,
+    DOUBLE = 0x2,
+    OTHER_NONZERO_TEST = 0x3,
+};
 enum class ActorField : std::int64_t {
     X = 0x0,
     Y = 0x4,
@@ -91,7 +102,7 @@ enum class ActorStatusEx : std::int64_t {
     UNSEEN = 0x80,
 };
 enum class AiTuning : std::int64_t {
-    THINK_RETRY = -1,
+    THINK_RETRY = -0x1,
     FOLLOW_COLLISION_CLEAR_MAX = 0x0,
     FOLLOW_FIRST_LEADER_SLOT = 0x0,
     FOLLOW_FIRST_SLOT = 0x0,
@@ -195,6 +206,15 @@ enum class DebugOption : std::int64_t {
     CONTACTS = 0x6,
     WALK_FAST = 0x7,
 };
+enum class DelayCapability : std::int64_t {
+    MODIFIER_ORIGIN = 0xB,
+    FIRST_BIT = 0xC,
+    SECOND_BIT = 0xD,
+    THIRD_BIT = 0xE,
+};
+enum class DelayInput : std::int64_t {
+    BYTE_MAX = 0xFF,
+};
 enum class Direction : std::int64_t {
     UP = 0x0,
     RIGHT = 0x2,
@@ -294,7 +314,7 @@ enum class MatrixDeckMode : std::int64_t {
     ATTACK = 0xFF,
 };
 enum class MatrixModeResult : std::int64_t {
-    ATTACK = -1,
+    ATTACK = -0x1,
     BALANCED = 0x0,
     DEFENSE = 0x1,
 };
