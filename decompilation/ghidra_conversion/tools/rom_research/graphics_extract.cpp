@@ -9769,6 +9769,30 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                         std::to_string(kind_source.palette_line),
                     true, manifest, written, missing, blank,
                     frame.origin_x, frame.origin_y);
+                if (kind_source.entity_kind == 3U &&
+                    kind_source.palette_line == 3U &&
+                    kind_source.sprite_stem == "actor-kind-3-palette-3") {
+                    // The field runner uses the same kind-3/palette-3 ROM
+                    // state lists as this actor profile. Publish named player
+                    // aliases from the exact C072 descriptor, retaining its
+                    // ROM-derived sprite origin for resources.tsv.
+                    write_catalog_asset(
+                        root, "field/entities/hurt-" +
+                                  std::to_string(direction) + "-" +
+                                  std::to_string(frame_index) + ".bmp",
+                        frame.image, "sprite",
+                        "0xAFF2/0xC072/0x5FDC/0x600E player kind=3 "
+                        "descriptor=" +
+                            format_offset(static_cast<std::uint32_t>(
+                                frame.descriptor_offset)) +
+                            " selector=" + format_offset(hurt_selector) +
+                            " frame=" + std::to_string(frame_index) +
+                            " increment=" +
+                            std::to_string(hurt_increment) +
+                            " palette-line=3",
+                        true, manifest, written, missing, blank,
+                        frame.origin_x, frame.origin_y);
+                }
             }
 
             const auto entry_selector = read_big_endian_word(
