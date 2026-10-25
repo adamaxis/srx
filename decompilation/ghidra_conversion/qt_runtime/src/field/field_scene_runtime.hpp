@@ -1643,6 +1643,7 @@ private:
     void advance_command_overview_inventory_trade(
         std::uint16_t controller_events);
     void configure_field_menu_route();
+    void flush_menu_blank_deferred_sounds();
     void advance_field_menu_route();
     void synchronize_command_overview_return_transition(
         const scripting::ScriptMenuRouteSnapshot& route_state);

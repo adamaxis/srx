@@ -8678,6 +8678,15 @@ void FieldSceneRuntime::install_test_deck() {
     field_matrix_deck_record_ = std::move(deck);
 }
 
+void FieldSceneRuntime::flush_menu_blank_deferred_sounds() {
+    for (const auto sound : menu_blank_deferred_sounds_) {
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(sound);
+        }
+    }
+    menu_blank_deferred_sounds_.clear();
+}
+
 void FieldSceneRuntime::configure_field_menu_route() {
     scripting::ScriptMenuRouteBindings bindings;
     bindings.host.play_sound = [this](const std::uint16_t sound) {
@@ -17650,6 +17659,9 @@ void FieldSceneRuntime::advance_frame() {
         menu_blank_reveal_line_ = 0U;
         if (!menu_reveal_masks_.empty()) {
             menu_reveal_masks_.erase(menu_reveal_masks_.begin());
+            if (menu_reveal_masks_.size() <= 1U) {
+                flush_menu_blank_deferred_sounds();
+            }
         }
         if (!menu_lead_masks_.empty()) {
             // Staged frames before the display goes off; the frame after
@@ -17666,14 +17678,14 @@ void FieldSceneRuntime::advance_frame() {
         }
         if (command_overview_start_transition_black_frame_) {
             command_overview_start_transition_black_frame_ = false;
-            for (const auto sound : menu_blank_deferred_sounds_) {
-                if (source_audio_event_callback_) {
-                    source_audio_event_callback_(sound);
-                }
-            }
-            menu_blank_deferred_sounds_.clear();
             menu_reveal_masks_ = std::move(menu_reveal_masks_pending_);
             menu_reveal_masks_pending_.clear();
+            // 0x10E2E queues 0x25 after the staged build; it reaches the
+            // driver on the last staged reveal frame (Command open e6 8629,
+            // reopen e3 9849) [C emulator].
+            if (menu_reveal_masks_.size() <= 1U) {
+                flush_menu_blank_deferred_sounds();
+            }
             if (menu_blank_reveal_line_pending_ != 0U) {
                 // The display re-enables mid-frame: rows above this line
                 // stay black for one frame (emulator measurement) [C].
