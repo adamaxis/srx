@@ -714,13 +714,21 @@ local function begin_dynamic_target_action(state, context, target)
         return nil
     end
 
-    local direction = R.direction_from_heading(u16(
-        state.movement_current_heading or context.initial_heading or 0))
+    -- ROM 0xB1FC..0xB21C re-measures the linked target with 0x15D3C and
+    -- stores it in +0x34 and +0x2E before picking the C0A2 direction, so the
+    -- strike faces the target, not the last walk heading [C].
+    local heading = state.movement_current_heading or context.initial_heading or 0
+    if type(target) == "table" and type(target.heading) == "number" then
+        heading = target.heading
+    end
+    heading = u16(heading)
+    local direction = R.direction_from_heading(heading)
     local animation = Animator.list(state.entity_kind,
                                     Animator.Pose.ACTION, direction)
     if animation == nil or animation.finite ~= true then
         return nil
     end
+    state.movement_current_heading = heading
 
     -- ROM 0xB1DC selects C0A2 for the accepted target heading, requests the
     -- kind-specific action cue, resets +0x1A/+0x1E, and applies delay mode 1.
