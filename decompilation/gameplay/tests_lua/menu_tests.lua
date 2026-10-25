@@ -102,6 +102,61 @@ end
 -- page wrap 6->0->6 [C 0x114A0]
 r:frame(P.RIGHT); check(st(r).page == 0, "wrap up")
 r:frame(P.LEFT); check(st(r).page == 6, "wrap down")
+-- [C emulator] Model 101T appears after eight VBlanks; Armor Clothing after seven.
+-- [H] The Lua hold represents the CPU-bound picture decode and extends the
+-- measured per-picture delays to the native menu route.
+do
+    local held, held_log, held_game = mk({ items = {
+        [0] = E.ItemId.MODEL_101T,
+        [1] = E.ItemId.ARMOR_CLOTHING,
+        [2] = E.ItemId.FETISH,
+    } })
+    local runner = held_game.party[0]
+    runner.weapon_slot, runner.weapon_code, runner.rounds = 0,
+        E.ItemId.MODEL_101T, 12
+    clear(held_log)
+    held:frame(P.RIGHT)
+    check(st(held).page == 0 and st(held).inventory_cursor_hidden_frames == 1 and
+          st(held).inventory_cursor_hidden and
+          not st(held).inventory_detail_pending and
+          st(held).inventory_ammo_count == 12 and
+          held_log.sounds[1] == E.MenuSound.MOVE,
+          "inventory entry draws details and sound while cursor waits one frame [C emulator]")
+    held:frame(0)
+    check(st(held).inventory_cursor_hidden_frames == 0 and
+          not st(held).inventory_cursor_hidden,
+          "inventory entry cursor appears on the next frame [C emulator]")
+
+    held:frame(P.RIGHT)
+    check(st(held).inventory_item_hold_frames == 7 and
+          st(held).inventory_detail_pending and
+          st(held).inventory_cursor_hidden and
+          st(held).inventory_ammo_count == nil and #held_log.sounds == 1,
+          "armor detail holds blank with deferred sound [C emulator]")
+    for _ = 1, 6 do held:frame(0) end
+    check(st(held).inventory_detail_pending and #held_log.sounds == 1,
+          "seven-frame picture hold keeps panel blank for six following frames [C emulator]")
+    held:frame(0)
+    check(not st(held).inventory_detail_pending and
+          not st(held).inventory_cursor_hidden and #held_log.sounds == 2 and
+          held_log.sounds[2] == E.MenuSound.MOVE,
+          "armor detail and MOVE cue appear on the seventh following frame [C emulator]")
+
+    held:frame(P.LEFT)
+    check(st(held).inventory_item_hold_frames == 8 and
+          st(held).inventory_detail_pending and #held_log.sounds == 2 and
+          st(held).inventory_cursor_hidden and
+          st(held).inventory_ammo_count == 12,
+          "pistol detail uses the measured eight-frame hold and live rounds [C emulator]")
+    for _ = 1, 7 do held:frame(0) end
+    check(st(held).inventory_detail_pending and #held_log.sounds == 2,
+          "pistol detail remains blank through seven following frames [C emulator]")
+    held:frame(0)
+    check(not st(held).inventory_detail_pending and
+          not st(held).inventory_cursor_hidden and #held_log.sounds == 3 and
+          held_log.sounds[3] == E.MenuSound.MOVE,
+          "pistol detail and MOVE cue appear on the eighth following frame [C emulator]")
+end
 -- inventory row clamp 0..3
 r:frame(P.RIGHT); for _ = 1, 6 do r:frame(P.DOWN) end; check(st(r).row == 3, "row clamp hi")
 for _ = 1, 6 do r:frame(P.UP) end; check(st(r).row == 0, "row clamp lo")

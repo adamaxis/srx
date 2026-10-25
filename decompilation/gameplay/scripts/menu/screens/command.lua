@@ -16,7 +16,13 @@ local CHILD = {   -- 0xD2A0A jump table, indexed page-2 [C]
     [Page.POCKET_SECRETARY] = E.MenuScreen.POCKET_SECRETARY,
 }
 
-function M.new() return { page = Page.POCKET_SECRETARY, row = 0, posture_gate = false, panel_dirty = false } end
+function M.new()
+    return {
+        page = Page.POCKET_SECRETARY, row = 0, posture_gate = false,
+        panel_dirty = false, inventory_item_hold_frames = 0,
+        inventory_cursor_hidden_frames = 0, inventory_cursor_hidden = false,
+    }
+end
 
 local function leader(ctx) return ctx.game.party()[ctx.game.active_slot()] end
 
@@ -109,19 +115,96 @@ function M.step_row(st, d, events, ctx)
     return { transition = T.PUSH, screen = E.MenuScreen.POSTURE }
 end
 
-local function after_move(st, ctx) ctx.sound(S.MOVE); ctx.redraw(M.REFRESH) end
+-- [C emulator] Item-picture changes held the detail panel blank for seven
+-- frames on Armor Clothing and Fetish, and eight on Model 101T. [H] Other
+-- item pictures use the seven-frame fallback until measured separately.
+local ITEM_PICTURE_HOLD_FRAMES = {
+    [E.ItemId.MODEL_101T] = 8,
+    [E.ItemId.ARMOR_CLOTHING] = 7,
+    [E.ItemId.FETISH] = 7,
+}
+
+local function selected_inventory_item(st, ctx)
+    if st.page >= Page.CLIPS then return nil end
+    return Inv.selected(leader(ctx), st.page, st.row)
+end
+
+local function update_inventory_ammo_count(st, ctx)
+    st.inventory_ammo_count = nil
+    local record = leader(ctx)
+    local selected = selected_inventory_item(st, ctx)
+    if selected and selected.code < E.ItemId.FRAG_GRENADE and
+       selected.slot == record.weapon_slot and
+       selected.code == record.weapon_code then
+        st.inventory_ammo_count = record.rounds
+    end
+end
+
+local function finish_move(st, old_page, old_row, ctx)
+    local moved_inventory_item = old_page < Page.CLIPS and
+        st.page < Page.CLIPS and (old_page ~= st.page or old_row ~= st.row)
+    local previous = moved_inventory_item and
+        Inv.selected(leader(ctx), old_page, old_row) or nil
+    local selected = moved_inventory_item and selected_inventory_item(st, ctx) or nil
+    if previous and selected then
+        st.inventory_item_hold_frames =
+            ITEM_PICTURE_HOLD_FRAMES[selected.code] or 7
+        st.inventory_detail_pending = true
+        st.inventory_cursor_hidden_frames = 0
+        st.inventory_cursor_hidden = true
+        ctx.redraw(M.REFRESH)
+    else
+        st.inventory_item_hold_frames = 0
+        st.inventory_detail_pending = false
+        -- [C emulator] On entry, the inventory art and MOVE cue appear on the
+        -- input frame; only the yellow slot cursor waits one frame.
+        st.inventory_cursor_hidden_frames =
+            old_page >= Page.CLIPS and st.page < Page.CLIPS and 1 or 0
+        st.inventory_cursor_hidden =
+            st.inventory_cursor_hidden_frames > 0
+        ctx.sound(S.MOVE)
+        ctx.redraw(M.REFRESH)
+    end
+    update_inventory_ammo_count(st, ctx)
+end
 
 function M.input(st, events, ctx)
-    -- priority order of 0x10DD8..0x10F2A [C]
-    if events & P.LEFT ~= 0 then M.step_page(st, -1, ctx); after_move(st, ctx); return end
-    if events & P.UP ~= 0 then
-        local r = M.step_row(st, -1, events, ctx); if r then return r end
-        after_move(st, ctx); return
+    if st.inventory_item_hold_frames > 0 then
+        st.inventory_item_hold_frames = st.inventory_item_hold_frames - 1
+        if st.inventory_item_hold_frames == 0 then
+            st.inventory_detail_pending = false
+            st.inventory_cursor_hidden = false
+            update_inventory_ammo_count(st, ctx)
+            ctx.sound(S.MOVE)
+            ctx.redraw(M.REFRESH)
+        end
+        return
     end
-    if events & P.RIGHT ~= 0 then M.step_page(st, 1, ctx); after_move(st, ctx); return end
+    if st.inventory_cursor_hidden_frames > 0 then
+        st.inventory_cursor_hidden_frames =
+            st.inventory_cursor_hidden_frames - 1
+        st.inventory_cursor_hidden =
+            st.inventory_cursor_hidden_frames > 0
+    end
+    update_inventory_ammo_count(st, ctx)
+    -- priority order of 0x10DD8..0x10F2A [C]
+    if events & P.LEFT ~= 0 then
+        local old_page, old_row = st.page, st.row
+        M.step_page(st, -1, ctx); finish_move(st, old_page, old_row, ctx); return
+    end
+    if events & P.UP ~= 0 then
+        local old_page, old_row = st.page, st.row
+        local r = M.step_row(st, -1, events, ctx); if r then return r end
+        finish_move(st, old_page, old_row, ctx); return
+    end
+    if events & P.RIGHT ~= 0 then
+        local old_page, old_row = st.page, st.row
+        M.step_page(st, 1, ctx); finish_move(st, old_page, old_row, ctx); return
+    end
     if events & P.DOWN ~= 0 then
+        local old_page, old_row = st.page, st.row
         local r = M.step_row(st, 1, events, ctx); if r then return r end
-        after_move(st, ctx); return
+        finish_move(st, old_page, old_row, ctx); return
     end
     if events & (P.A | P.B) ~= 0 then
         ctx.sound(S.SELECT)                                  -- 0x10E4E [C]
@@ -146,6 +229,7 @@ end
 
 -- What 0x10D30's loop does after the child routine returns; FFF0D0 was saved/restored around it [C]
 function M.child_returned(st, child, res, ctx)
+    update_inventory_ammo_count(st, ctx)
     if child == E.MenuScreen.POSTURE then
         if res.exit_menu then reselect_if_incapacitated(ctx); return { transition = T.EXIT } end  -- FFF0B1 [C]
         -- 0x119CE returns through 0x11506 into the command loop. It redraws

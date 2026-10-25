@@ -35491,6 +35491,8 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto press_field_input = [&](const std::uint8_t input) {
+                    const auto previous =
+                        qa_command_inventory_selection(field_scene);
                     settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(input);
                     field_scene.advance_frame();
@@ -35500,6 +35502,8 @@ int main(int argc, char** argv) {
                     field_scene.advance_frame();
                     const bool release_saved =
                         capture_weapon_switch_frame("released", 0U);
+                    settle_qa_command_inventory_item_change(field_scene,
+                                                            previous);
                     return press_saved && release_saved;
                 };
                 if (!press_field_input(0x80U) ||
@@ -45247,7 +45251,11 @@ int main(int argc, char** argv) {
                 };
                 const auto press = [&field_scene](
                                        const std::uint8_t port_byte) {
+                    const auto previous =
+                        qa_command_inventory_selection(field_scene);
                     tap_qa_controller_button(field_scene, port_byte);
+                    settle_qa_command_inventory_item_change(field_scene,
+                                                            previous);
                     if (!field_scene.command_overview_open()) {
                         (void)finish_command_overview_field_return_for_qa(
                             field_scene);
@@ -45287,7 +45295,7 @@ int main(int argc, char** argv) {
                 }
                 detail_value_manifest
                     << "profile\traw_rom_record\ttrace\trace\tclass\t"
-                       "selected_slot\titem_code\tphase\tlabel\tasset\t"
+                       "selected_slot\titem_code\tdetail_value\tlabel\tasset\t"
                        "frame\n";
                 const auto weapon_profile_output_directory =
                     output_directory / "weapon-profile-permutation";
@@ -46186,35 +46194,59 @@ int main(int argc, char** argv) {
                                 "cursor could not reach it");
                         }
                         const auto scene = render_qa_field(field_scene);
+                        const bool weapon_item = item_code <
+                            static_cast<std::uint8_t>(
+                                srx::ItemId::FRAG_GRENADE);
+                        const bool selected_equipped_weapon = weapon_item &&
+                            profile.equipped_inventory_slot ==
+                                static_cast<std::int8_t>(slot) &&
+                            profile.equipped_item_code == item_code;
+                        const auto displayed_value = weapon_item
+                            ? profile.ammo_rounds
+                            : phase;
                         const auto asset_path =
                             asset_root / "menu" / "field" /
-                            ("detail-value-" + std::to_string(phase) +
+                            ("detail-value-" +
+                             std::to_string(displayed_value) +
                              ".bmp");
                         const QImage asset(QString::fromStdWString(
                             asset_path.wstring()));
-                        if (asset.size() != QSize(16, 8) ||
-                            !region_matches_asset(scene, asset, 120, 56)) {
+                        QImage empty_ammo_value(16, 8,
+                                                QImage::Format_RGB32);
+                        empty_ammo_value.fill(Qt::black);
+                        const bool value_matches = weapon_item
+                            ? (selected_equipped_weapon &&
+                               asset.size() == QSize(16, 8) &&
+                               region_matches_asset(scene, asset, 120, 56))
+                            : (asset.size() == QSize(16, 8) &&
+                               region_matches_asset(scene, asset, 120, 56));
+                        const bool empty_ammo_matches = weapon_item &&
+                            !selected_equipped_weapon &&
+                            region_matches_asset(scene, empty_ammo_value,
+                                                 120, 56);
+                        if (!value_matches && !empty_ammo_matches) {
                             std::cerr
                                 << "field profile combat-bar QA: detail "
                                    "value pixels do not match the selected "
-                                   "source phase for "
+                                   "Lua ammo count or item detail for "
                                 << expected.slug << " slot=" << slot
-                                << " item=0x" << std::hex
+                                << " item="
                                 << static_cast<unsigned>(item_code)
-                                << " phase=0x"
-                                << static_cast<unsigned>(phase) << std::dec
+                                << " phase="
+                                << static_cast<unsigned>(phase) << " rounds="
+                                << static_cast<unsigned>(profile.ammo_rounds)
                                 << '\n';
                             return profile_failure(
-                                "selected detail value did not render its "
-                                "named 16x8 asset at the ROM destination");
+                                "selected detail did not render its named "
+                                "16x8 ammo or item asset at the ROM destination");
                         }
                         std::ostringstream frame_name;
                         frame_name << expected.slug << "-slot" << slot
                                    << "-item-" << std::hex << std::setw(2)
                                    << std::setfill('0')
                                    << static_cast<unsigned>(item_code)
-                                   << "-phase-" << std::setw(2)
-                                   << static_cast<unsigned>(phase)
+                                   << "-value-" << std::setw(2)
+                                   << static_cast<unsigned>(displayed_value)
                                    << ".bmp";
                         const auto frame_path =
                             detail_value_output_directory / frame_name.str();
@@ -46231,17 +46263,24 @@ int main(int argc, char** argv) {
                             << static_cast<unsigned>(profile.archetype_index)
                             << "\t" << std::dec << slot << "\t0x" << std::hex
                             << static_cast<unsigned>(item_code) << "\t0x"
-                            << static_cast<unsigned>(phase) << "\t"
+                            << static_cast<unsigned>(displayed_value) << "\t"
                             << (item_code < 0x0DU
                                     ? "ammo"
                                     : item_code <= 0x13U ? "uses" : "rtng")
                             << "\tdetail-value-" << std::dec
-                            << static_cast<unsigned>(phase) << ".bmp\t"
+                            << static_cast<unsigned>(displayed_value) << ".bmp\t"
                             << frame_name.str() << '\n';
                         ++detail_value_profile_cases;
                         ++detail_value_profile_frames;
                     }
-                    if (!field_scene.seek_command_overview_page(2U) ||
+                    for (std::size_t move = 0U;
+                         move < 3U &&
+                         field_scene.command_overview_primary_page() != 2U;
+                         ++move) {
+                        press(static_cast<std::uint8_t>(
+                            srx::Pad::HELD_RIGHT));
+                    }
+                    if (field_scene.command_overview_primary_page() != 2U ||
                         field_scene.posture_dialog_open() ||
                         !check_state(expected, profile_index, 0U,
                                      "focused", false)) {
@@ -48065,11 +48104,15 @@ int main(int argc, char** argv) {
                             .wstring()));
                 };
                 const auto press = [&](const std::uint8_t port_byte) {
+                    const auto previous =
+                        qa_command_inventory_selection(field_scene);
                     settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                    settle_qa_command_inventory_item_change(field_scene,
+                                                            previous);
                 };
                 const auto region_has_green_ink = image_region_has_dominant_green_ink;
                 const auto same_region = [](const QImage& left,
@@ -48258,11 +48301,15 @@ int main(int argc, char** argv) {
                             .wstring()));
                 };
                 const auto press = [&](const std::uint8_t port_byte) {
+                    const auto previous =
+                        qa_command_inventory_selection(field_scene);
                     settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                    settle_qa_command_inventory_item_change(field_scene,
+                                                            previous);
                 };
                 const auto has_green_ink = image_region_has_dominant_green_ink;
                 const auto image_region_matches = [](
@@ -48636,11 +48683,15 @@ int main(int argc, char** argv) {
                             .wstring()));
                 };
                 const auto press = [&](const std::uint8_t port_byte) {
+                    const auto previous =
+                        qa_command_inventory_selection(field_scene);
                     settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                    settle_qa_command_inventory_item_change(field_scene,
+                                                            previous);
                 };
                 const auto region_has_green_ink = image_region_has_dominant_green_ink;
                 const auto target_face_matches = [&](const QImage& scene) {
@@ -49169,7 +49220,15 @@ int main(int argc, char** argv) {
                         0U, profile, profile_name,
                         static_cast<std::uint8_t>(profile_index));
                     field_scene.set_active_party_slot_for_dump(0U);
-                    if (!field_scene.seek_command_overview_page(0U)) {
+                    for (int move = 0;
+                         move < 7 && field_scene.command_overview_view()
+                                             .source_state.primary_page != 0U;
+                         ++move) {
+                        press(static_cast<std::uint8_t>(
+                            srx::Pad::HELD_LEFT));
+                    }
+                    if (field_scene.command_overview_view()
+                            .source_state.primary_page != 0U) {
                         std::cerr << "field First Aid dump: could not return "
                                      "to Inventory for profile "
                                   << kProfileSlugs[profile_index] << '\n';
@@ -49179,11 +49238,25 @@ int main(int argc, char** argv) {
                          move < 4 && field_scene.command_overview_view()
                                              .source_state.secondary_page != 0U;
                          ++move) {
-                        press(0x01U);
+                        press(static_cast<std::uint8_t>(
+                            srx::Pad::HELD_UP));
                     }
                     if (field_scene.command_overview_view()
                             .source_state.secondary_page != 0U) {
                         std::cerr << "field First Aid dump: inventory row "
+                                     "did not return to zero\n";
+                        return 3;
+                    }
+                    for (int move = 0;
+                         move < 2 && field_scene.command_overview_view()
+                                             .source_state.primary_page != 0U;
+                         ++move) {
+                        press(static_cast<std::uint8_t>(
+                            srx::Pad::HELD_LEFT));
+                    }
+                    if (field_scene.command_overview_view()
+                            .source_state.primary_page != 0U) {
+                        std::cerr << "field First Aid dump: inventory column "
                                      "did not return to zero\n";
                         return 3;
                     }
@@ -49192,11 +49265,13 @@ int main(int argc, char** argv) {
                     const auto desired_profile_row =
                         static_cast<std::uint8_t>(profile_medkit_slot / 2U);
                     if (desired_profile_column != 0U) {
-                        press(0x08U);
+                        press(static_cast<std::uint8_t>(
+                            srx::Pad::HELD_RIGHT));
                     }
                     for (std::uint8_t row = 0U;
                          row < desired_profile_row; ++row) {
-                        press(0x02U);
+                        press(static_cast<std::uint8_t>(
+                            srx::Pad::HELD_DOWN));
                     }
                     const auto& profile_cursor = field_scene
                         .command_overview_view().source_state;
@@ -49209,7 +49284,29 @@ int main(int argc, char** argv) {
                                 .inventory_item_codes[profile_medkit_slot] !=
                             0x10U) {
                         std::cerr << "field First Aid dump: selected source "
-                                     "profile cell or Biotech changed\n";
+                                     "profile cell or Biotech changed: wanted="
+                                  << static_cast<unsigned>(
+                                         desired_profile_column)
+                                  << ','
+                                  << static_cast<unsigned>(
+                                         desired_profile_row)
+                                  << " got="
+                                  << static_cast<unsigned>(
+                                         profile_cursor.primary_page)
+                                  << ','
+                                  << static_cast<unsigned>(
+                                         profile_cursor.secondary_page)
+                                  << " biotech="
+                                  << static_cast<unsigned>(field_scene
+                                         .active_runner_record().skills[8])
+                                  << " expected="
+                                  << static_cast<unsigned>(profile.skills[8])
+                                  << " item="
+                                  << static_cast<unsigned>(field_scene
+                                         .active_runner_record()
+                                         .inventory_item_codes[
+                                             profile_medkit_slot])
+                                  << '\n';
                         return 3;
                     }
                     const std::string profile_prefix =
@@ -50058,11 +50155,15 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto press = [&](const std::uint8_t port_byte) {
+                    const auto previous =
+                        qa_command_inventory_selection(field_scene);
                     settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                    settle_qa_command_inventory_item_change(field_scene,
+                                                            previous);
                 };
                 const auto press_with_expected_audio =
                     [&](const std::uint8_t port_byte,
@@ -50283,9 +50384,25 @@ int main(int argc, char** argv) {
                             secondary_page > 3U) {
                             return QImage{};
                         }
+                        for (std::size_t frame = 0U; frame < 16U; ++frame) {
+                            const auto route = fresh_scene
+                                .field_menu_route_snapshot_for_dump();
+                            if (!route.root_inventory_cursor_hidden
+                                     .value_or(false)) {
+                                break;
+                            }
+                            fresh_scene.set_controller_port_byte(0U);
+                            fresh_scene.advance_frame();
+                        }
                         for (std::uint8_t row = 0U; row < secondary_page;
                              ++row) {
-                            tap_qa_controller_button(fresh_scene, 0x02U);
+                            const auto previous =
+                                qa_command_inventory_selection(fresh_scene);
+                            tap_qa_controller_button(
+                                fresh_scene, static_cast<std::uint8_t>(
+                                    srx::Pad::HELD_DOWN));
+                            settle_qa_command_inventory_item_change(
+                                fresh_scene, previous);
                         }
                         QImage image(kSceneWidth, kSceneHeight,
                                      QImage::Format_RGB32);

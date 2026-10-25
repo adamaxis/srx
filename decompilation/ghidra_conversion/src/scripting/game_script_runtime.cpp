@@ -3210,6 +3210,20 @@ struct GameScriptRuntime::Impl {
                 const auto state_index = lua_absindex(state, -1);
                 menu_route_state.page = read_optional(state_index, "page");
                 menu_route_state.row = read_optional(state_index, "row");
+                lua_getfield(state, state_index, "inventory_detail_pending");
+                if (lua_isboolean(state, -1)) {
+                    menu_route_state.root_inventory_detail_pending =
+                        lua_toboolean(state, -1) != 0;
+                }
+                lua_pop(state, 1);
+                lua_getfield(state, state_index, "inventory_cursor_hidden");
+                if (lua_isboolean(state, -1)) {
+                    menu_route_state.root_inventory_cursor_hidden =
+                        lua_toboolean(state, -1) != 0;
+                }
+                lua_pop(state, 1);
+                menu_route_state.root_inventory_ammo_count =
+                    read_optional(state_index, "inventory_ammo_count");
             }
         }
         lua_settop(state, base);

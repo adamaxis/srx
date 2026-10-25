@@ -491,6 +491,9 @@ struct ScriptMenuRouteSnapshot {
     std::optional<ScriptMenuRouteLayout> top_layout;
     std::optional<int> page;
     std::optional<int> row;
+    std::optional<bool> root_inventory_detail_pending;
+    std::optional<bool> root_inventory_cursor_hidden;
+    std::optional<int> root_inventory_ammo_count;
     std::optional<int> top_column;
     std::optional<int> top_row;
     std::optional<int> top_selection;

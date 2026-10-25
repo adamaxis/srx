@@ -10575,6 +10575,13 @@ void FieldSceneRuntime::synchronize_command_overview_clips_from_route(
 
 void FieldSceneRuntime::synchronize_command_overview_inventory_from_route(
     const scripting::ScriptMenuRouteSnapshot& route_state) {
+    command_overview_inventory_detail_pending_ =
+        route_state.root_inventory_detail_pending.value_or(false);
+    command_overview_inventory_cursor_hidden_ =
+        route_state.root_inventory_cursor_hidden.value_or(false);
+    command_overview_inventory_ammo_count_ =
+        route_state.root_inventory_ammo_count;
+
     const auto action = static_cast<std::uint16_t>(
         srx::MenuScreen::ITEM_ACTION);
     const auto discard = static_cast<std::uint16_t>(
@@ -23469,14 +23476,36 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             if (!label_index.has_value()) {
                 return;
             }
-            draw_command_overview_text(
-                painter, 112, 48,
-                field_menu_text_.item_detail_labels[*label_index]);
-            const auto phase = active_runner_record()
-                                   .inventory_phase_bytes[*selected_slot];
-            if (phase < command_overview_detail_values_.size()) {
-                painter.drawImage(120, 56,
-                                  command_overview_detail_values_[phase]);
+            if (item.weapon.has_value()) {
+                // ROM 0x12BF0 selects the purple Ammo text with palette
+                // attribute 0x4000. Frame e6 8720's matching palette entry
+                // at FFD8D4 is 0x0846 [C]. The count uses the named 0x12A8C
+                // detail row, whose source words select palette line 0x2000 [C].
+                constexpr std::uint16_t kAmmoLabelColor = 2118U;
+                draw_tinted_field_text(
+                    painter, 112, 48,
+                    field_menu_text_.item_detail_labels[*label_index],
+                    cram_text_tint(kAmmoLabelColor));
+                if (command_overview_inventory_ammo_count_.has_value() &&
+                    *command_overview_inventory_ammo_count_ >= 0 &&
+                    static_cast<std::size_t>(
+                        *command_overview_inventory_ammo_count_) <
+                        command_overview_detail_values_.size()) {
+                    painter.drawImage(
+                        120, 56,
+                        command_overview_detail_values_[static_cast<std::size_t>(
+                            *command_overview_inventory_ammo_count_)]);
+                }
+            } else {
+                draw_command_overview_text(
+                    painter, 112, 48,
+                    field_menu_text_.item_detail_labels[*label_index]);
+                const auto phase = active_runner_record()
+                                       .inventory_phase_bytes[*selected_slot];
+                if (phase < command_overview_detail_values_.size()) {
+                    painter.drawImage(120, 56,
+                                      command_overview_detail_values_[phase]);
+                }
             }
         };
     const auto draw_armor_summary = [this, &painter](
@@ -23524,6 +23553,11 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     };
 
     const auto& view = command_overview_.view();
+    if (command_overview_inventory_detail_pending_) {
+        // ROM 0x12C36 clears the selected-item detail panel during the
+        // picture refresh. Leave the runner name and inventory grid visible.
+        painter.fillRect(QRect(112, 24, 136, 96), Qt::black);
+    }
     if (view.source_state.primary_page >= 2U &&
         !command_overview_clips_.is_open()) {
         const auto race = active_runner_record().species_index;
@@ -23656,7 +23690,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     command_overview_combat_bars_.defense_bar]);
         }
         draw_armor_summary(active_runner_record().equipped_armor_index);
-    } else if (!command_overview_clips_.is_open()) {
+    } else if (!command_overview_clips_.is_open() &&
+               !command_overview_inventory_detail_pending_) {
         const auto slot = view.source_state.secondary_page * 2U +
                           view.source_state.primary_page;
         if (slot < active_runner_record().inventory_item_codes.size()) {
@@ -23765,6 +23800,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     }
 
     if (view.source_state.primary_page < 2U &&
+        !command_overview_inventory_cursor_hidden_ &&
         !command_overview_inventory_selector_suppressed_) {
         // ROM 0x11592 builds the cursor SAT entry from the 0xD29F6 list:
         // x = FFF0D0*0x28 + 0x008C, y = FFF0D1*0x18 + 0x00F4. The Genesis

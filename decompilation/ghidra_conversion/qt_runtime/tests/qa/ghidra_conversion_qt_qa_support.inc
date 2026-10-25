@@ -53,6 +53,50 @@ void tap_qa_controller_button(FieldSceneRuntime& field_scene,
     settle_qa_menu_blank(field_scene);
 }
 
+struct QaCommandInventorySelection {
+    bool active = false;
+    std::uint8_t page = 0U;
+    std::uint8_t row = 0U;
+    std::uint8_t item_code = 0U;
+};
+
+QaCommandInventorySelection qa_command_inventory_selection(
+    const FieldSceneRuntime& field_scene) {
+    if (!field_scene.command_overview_open()) {
+        return {};
+    }
+    const auto& selection = field_scene.command_overview_view().source_state;
+    if (selection.primary_page >= 2U || selection.secondary_page >= 4U) {
+        return {};
+    }
+    const auto slot = static_cast<std::size_t>(selection.secondary_page) * 2U +
+                      selection.primary_page;
+    return {true, selection.primary_page, selection.secondary_page,
+            field_scene.active_runner_record().inventory_item_codes[slot]};
+}
+
+void settle_qa_command_inventory_item_change(
+    FieldSceneRuntime& field_scene,
+    const QaCommandInventorySelection& previous) {
+    if (!previous.active || !field_scene.command_overview_open()) {
+        return;
+    }
+    const auto current = qa_command_inventory_selection(field_scene);
+    if (!current.active ||
+        (previous.page == current.page && previous.row == current.row) ||
+        previous.item_code == 0U || current.item_code == 0U) {
+        return;
+    }
+
+    // [C emulator] The source holds the panel for up to eight frames when
+    // changing between occupied inventory cells. The tap's release frame
+    // already advances Lua's hold once; seven empty frames finish that hold.
+    for (std::size_t frame = 0U; frame < 7U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+}
+
 void clear_qa_bitmap_artifacts(const std::filesystem::path& output,
                                std::error_code& error) {
     for (std::filesystem::directory_iterator item(output, error), end;
