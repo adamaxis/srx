@@ -13,9 +13,9 @@ local pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_s
 local spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot
 local BehaviorFlag = R.BehaviorFlag   -- from actor/tables.lua
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
-local function direction_from_heading(...) return R.direction_from_heading(...) end   -- from actor/targeting.lua
 local item_action_pose_selectors = R.item_action_pose_selectors   -- from actor/tables.lua
 local spell_pose_selectors = R.spell_pose_selectors   -- from actor/anim.lua
+local Animator = R.Animator   -- from actor/animator.lua
 
 local function source_action_delay(context, state, mode)
     -- ROM 0xB11C clears D0 before 0xABFC. 0xD7EA adds the first enabled
@@ -101,7 +101,7 @@ local function request_target_motion_effect(state, context, heading)
             state.target_motion_effect_countdown = 0
             state.target_motion_effect_phase = 0
             state.target_motion_effect_direction =
-                direction_from_heading(heading)
+                R.direction_from_heading(heading)
             -- 0x14C7C sets +0x11.6; 0x13FFE then enters 0xB11C, which
             -- resets +0xDC with the actor's source-derived delay attributes.
             state.action_delay = source_action_delay(context, state)
@@ -374,7 +374,7 @@ local function select_c082_directional_pose(state, heading)
     if type(heading) ~= "number" then
         return nil
     end
-    local direction = direction_from_heading(u16(heading))
+    local direction = R.direction_from_heading(u16(heading))
     local selector = spell_pose_selectors[direction + 1]
     if type(selector) ~= "number" then
         return nil
@@ -415,13 +415,10 @@ local function begin_dynamic_item_action(state, context, target)
     if type(heading) ~= "number" then
         return false
     end
-    local direction = direction_from_heading(heading)
-    local frame_count = context.item_action_frame_count
-    local increment = context.item_action_increment
-    local threshold = context.item_action_threshold
-    if type(frame_count) ~= "number" or frame_count < 1 or frame_count > 8 or
-       type(increment) ~= "number" or increment < 1 or increment > 0xffff or
-       type(threshold) ~= "number" or threshold ~= 0x1000 then
+    local direction = R.direction_from_heading(heading)
+    local animation = Animator.list(state.entity_kind, Animator.Pose.ITEM,
+                                    direction)
+    if animation == nil or animation.finite ~= true then
         return false
     end
 
@@ -432,12 +429,11 @@ local function begin_dynamic_item_action(state, context, target)
     state.animation_id = "weapon"
     state.animation_frame = 0
     state.animation_accumulator = 0
-    state.animation_increment = increment
+    state.animation_increment = animation.rate
+    state.animation_period = Animator.PERIOD
     state.source_animation_selector =
         item_action_pose_selectors[direction + 1]
-    state.item_action_frame_count = frame_count
-    state.item_action_increment = increment
-    state.item_action_threshold = threshold
+    state.animation_selector = state.source_animation_selector
     state.item_action_complete = false
     state.action_delay = source_action_delay(context, state, 0)
     state.ai_target_engaged = false
@@ -450,7 +446,7 @@ local function begin_spell_cast(state, context, target, resolution)
     -- effect record through 0x15830; its 0x521E phase clock owns the delayed
     -- target callback.
     local heading = target.heading & 0xffff
-    local direction = direction_from_heading(heading)
+    local direction = R.direction_from_heading(heading)
     state.direction = direction
     state.animation_id = "spell"
     state.animation_selector = spell_pose_selectors[direction + 1]
@@ -746,14 +742,15 @@ end
 
 local function begin_dynamic_target_action(state, context, target)
     if not context.dynamic_world_encounter_actor or
-       state.action_delay >= 0 or state.target_motion_effect_active or
-       type(context.action_animation_frame_count) ~= "number" or
-       context.action_animation_frame_count < 1 or
-       type(context.action_animation_increment) ~= "number" or
-       context.action_animation_increment < 1 or
-       type(context.action_animation_threshold) ~= "number" or
-       context.action_animation_threshold < 1 or
-       type(context.action_animation_audio_event) ~= "number" then
+       state.action_delay >= 0 or state.target_motion_effect_active then
+        return nil
+    end
+
+    local direction = R.direction_from_heading(u16(
+        state.movement_current_heading or context.initial_heading or 0))
+    local animation = Animator.list(state.entity_kind,
+                                    Animator.Pose.ACTION, direction)
+    if animation == nil or animation.finite ~= true then
         return nil
     end
 
@@ -762,8 +759,11 @@ local function begin_dynamic_target_action(state, context, target)
     state.animation_id = "action"
     state.animation_frame = 0
     state.animation_accumulator = 0
-    state.animation_increment = context.action_animation_increment
-    state.animation_period = context.action_animation_threshold
+    state.direction = direction
+    state.animation_selector = Animator.Pose.ACTION + direction * 4
+    state.source_animation_selector = state.animation_selector
+    state.animation_increment = animation.rate
+    state.animation_period = Animator.PERIOD
     state.action_animation_complete = false
     state.action_delay = source_action_delay(context, state, 1)
     -- ROM 0xB284 invokes the shared 0x55C76 reaction only after the linked
@@ -773,7 +773,9 @@ local function begin_dynamic_target_action(state, context, target)
         context, target)
     local heading_event = context.target_heading_audio_alternate
         and SoundId.TARGET_HEADING_ALT or SoundId.TARGET_HEADING
-    return context.action_animation_audio_event, heading_event
+    local action_audio_event = state.entity_kind == E.SpriteType.HELL_HOUND
+        and SoundId.MELEE_SWING_ALT or SoundId.MELEE_SWING
+    return action_audio_event, heading_event
 end
 
 

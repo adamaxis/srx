@@ -72,11 +72,6 @@ function ActorAI.heartbeat(context)
        type(context.entry_delay) ~= "number" or context.entry_delay < 0 or
        context.entry_delay >
            (context.dynamic_world_encounter_actor and EntryDelayMax.DYNAMIC_ENCOUNTER or EntryDelayMax.STATIC) or
-       (context.dynamic_world_encounter_actor and
-        (type(context.entry_animation_frame_count) ~= "number" or
-         context.entry_animation_frame_count % 1 ~= 0 or
-         context.entry_animation_frame_count < 1 or
-         context.entry_animation_frame_count > 8)) or
        (context.phase ~= "behavior" and context.phase ~= "render") then
         return nil
     end
@@ -126,6 +121,14 @@ function ActorAI.heartbeat(context)
     state.spell_action_resolution = nil
     state.source_record_flags = context.source_record_flags or
                                 state.source_record_flags
+    if state.damage_reaction_active and state.animation_id == "down" and
+       not state.spell_death then
+        -- 0xB330 sets +0x10 bit 4 and leaves it set while the ordinary down
+        -- reaction is active. Preserve that Lua-owned transition if a later
+        -- host pass still carries the pre-transition record byte [C].
+        state.source_record_flags = state.source_record_flags |
+                                    ActorStatus.DOWN
+    end
     state.source_physical_meter = context.source_physical_meter or
                                   state.source_physical_meter
     state.source_record_slot = context.source_record_slot or
@@ -180,13 +183,8 @@ function ActorAI.heartbeat(context)
                 state.movement_step = nil
                 -- The death list's ROM rate/count for this kind; the art
                 -- count stands in when the list has no extracted frames.
-                local rate, rom_count = R.death_list(state)
-                local count = context.entry_animation_frame_count
-                if state.spell_death_pose ~= nil and rom_count ~= nil then
-                    count = rom_count -- E0/E4 art not extracted: C++ clamps to the E8 art
-                end
-                if not advance_finite_actor_animation(
-                        state, count, rate, R.Animator.PERIOD) then
+                local animation = R.death_list(state)
+                if not R.advance_finite_actor_animation(state, animation) then
                     return nil
                 end
             elseif state.damage_reaction_animation_complete and
@@ -212,13 +210,12 @@ function ActorAI.heartbeat(context)
             if context.phase == "render" and
                state.animation_id == "hurt" then
                 state.movement_step = nil
-                if not advance_finite_actor_animation(
-                        state, context.hurt_animation_frame_count,
-                        context.hurt_animation_increment,
-                        context.hurt_animation_threshold) then
+                local animation = R.Animator.list(
+                    state.entity_kind, R.Animator.Pose.HURT, state.direction)
+                if not R.advance_finite_actor_animation(state, animation) then
                     return nil
                 end
-                return snapshot(state, "hold", nil)
+                return R.snapshot(state, "hold", nil)
             elseif context.phase == "behavior" and not reaction_started then
                 -- B07E remains the actor continuation while the ordinary AI
                 -- coordinator can replace C072 with C062 after a movement

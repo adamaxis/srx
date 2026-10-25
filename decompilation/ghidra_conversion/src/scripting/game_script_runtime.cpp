@@ -26,6 +26,9 @@ extern "C" {
 namespace shadowrun::ghidra_conversion::scripting {
 namespace {
 
+// E.ActorStatus.DOWN (0x10): actor record +0x10 bit 4, set at 0xB356 [C].
+constexpr std::uint8_t kActorStatusDown = 0x10U;
+
 constexpr std::size_t kMaximumScriptModules = 128U;
 constexpr std::size_t kMaximumMapEventRules = 512U;
 // The command overview has seven source rows; Pocket Secretary's extended
@@ -8006,8 +8009,6 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "projectile_action_code");
     lua_pushinteger(state, context.entry_delay);
     lua_setfield(state, -2, "entry_delay");
-    lua_pushinteger(state, context.entry_animation_frame_count);
-    lua_setfield(state, -2, "entry_animation_frame_count");
     lua_pushboolean(state, context.entry_started);
     lua_setfield(state, -2, "entry_started");
     lua_pushboolean(state, context.entry_complete);
@@ -8166,44 +8167,6 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "world_scene_state");
     lua_pushinteger(state, context.ai_animation_frame);
     lua_setfield(state, -2, "ai_animation_frame");
-    lua_pushinteger(state, context.walk_animation_frame_count);
-    lua_setfield(state, -2, "walk_animation_frame_count");
-    lua_pushinteger(state, context.action_animation_frame_count);
-    lua_setfield(state, -2, "action_animation_frame_count");
-    lua_pushinteger(state, context.action_animation_increment);
-    lua_setfield(state, -2, "action_animation_increment");
-    lua_pushinteger(state, context.action_animation_threshold);
-    lua_setfield(state, -2, "action_animation_threshold");
-    lua_pushinteger(state, context.item_action_frame_count);
-    lua_setfield(state, -2, "item_action_frame_count");
-    lua_pushinteger(state, context.item_action_increment);
-    lua_setfield(state, -2, "item_action_increment");
-    lua_pushinteger(state, context.item_action_threshold);
-    lua_setfield(state, -2, "item_action_threshold");
-    if (context.action_animation_audio_event.has_value()) {
-        lua_pushinteger(state, *context.action_animation_audio_event);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "action_animation_audio_event");
-    lua_pushinteger(state, context.hurt_animation_frame_count);
-    lua_setfield(state, -2, "hurt_animation_frame_count");
-    lua_pushinteger(state, context.hurt_animation_increment);
-    lua_setfield(state, -2, "hurt_animation_increment");
-    lua_pushinteger(state, context.hurt_animation_threshold);
-    lua_setfield(state, -2, "hurt_animation_threshold");
-    if (context.hurt_audio_event.has_value()) {
-        lua_pushinteger(state, *context.hurt_audio_event);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "hurt_audio_event");
-    if (context.down_audio_event.has_value()) {
-        lua_pushinteger(state, *context.down_audio_event);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "down_audio_event");
     lua_pushboolean(state, context.target_heading_audio_alternate);
     lua_setfield(state, -2, "target_heading_audio_alternate");
     lua_pushinteger(state, context.initial_action_delay);
@@ -9591,31 +9554,28 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat returned an unsupported actor animation");
     }
     if (decision.animation_id == "action" &&
-        (!dynamic_creature_action ||
-         context.action_animation_frame_count == 0U ||
-         context.action_animation_increment == 0U ||
-         context.action_animation_threshold == 0U)) {
+        !dynamic_creature_action) {
         return fail("actor_ai.heartbeat returned an unsupported target action pose");
     }
     if (decision.animation_id == "hurt" &&
-        (!dynamic_creature_hurt ||
-         context.hurt_animation_frame_count == 0U ||
-         context.hurt_animation_increment == 0U ||
-         context.hurt_animation_threshold == 0U ||
-         decision.animation_frame >= context.hurt_animation_frame_count)) {
+        !dynamic_creature_hurt) {
         return fail("actor_ai.heartbeat returned an unsupported hit reaction pose");
     }
-    if (decision.animation_id == "down" &&
-        (!dynamic_creature_down || context.entry_animation_frame_count == 0U ||
-         decision.animation_frame >= context.entry_animation_frame_count ||
-         (decision.source_record_flags & 0x10U) == 0U)) {
-        return fail("actor_ai.heartbeat returned an unsupported exhausted pose");
+    if (decision.animation_id == "down") {
+        if (!dynamic_creature_down) {
+            return fail(
+                "actor_ai.heartbeat returned an unsupported exhausted pose "
+                "for a non-encounter actor");
+        }
+        if ((decision.source_record_flags & kActorStatusDown) == 0U) {
+            return fail(
+                "actor_ai.heartbeat returned an exhausted pose without the "
+                "DOWN source flag (flags=" +
+                std::to_string(decision.source_record_flags) + ")");
+        }
     }
     if (decision.animation_id == "weapon" &&
-        (!dynamic_item_action || context.item_action_frame_count == 0U ||
-         context.item_action_increment == 0U ||
-         context.item_action_threshold != 0x1000U ||
-         decision.animation_frame >= context.item_action_frame_count ||
+        (!dynamic_item_action ||
          (decision.source_animation_selector & 0x7FFFU) !=
              static_cast<std::uint16_t>(0x40U + decision.direction * 4U))) {
         return fail("actor_ai.heartbeat returned an unsupported C042 item-action pose");
@@ -10195,23 +10155,17 @@ GameScriptRuntime::actor_heartbeat(
     const bool begins_dynamic_target_action =
         decision.animation_id == "action" &&
         decision.audio_event.has_value() &&
-        context.dynamic_world_encounter_actor &&
-        context.action_animation_audio_event.has_value() &&
-        *decision.audio_event == *context.action_animation_audio_event;
-    const bool dynamic_hit_reaction_audio =
+        context.dynamic_world_encounter_actor;
+    const bool dynamic_actor_behavior_audio =
         decision.audio_event.has_value() &&
         context.phase == ScriptActorHeartbeatPhase::behavior &&
-        context.dynamic_world_encounter_actor &&
-        ((context.hurt_audio_event.has_value() &&
-          *decision.audio_event == *context.hurt_audio_event) ||
-         (context.down_audio_event.has_value() &&
-          *decision.audio_event == *context.down_audio_event));
+        context.dynamic_world_encounter_actor;
     const bool spell_action_audio =
         spell_pose && decision.spell_action_resolution.has_value() &&
         spell_action_audio_matches;
     if (((begins_entry != decision.audio_event.has_value()) &&
          !projectile_behavior && !begins_dynamic_target_action &&
-         !dynamic_hit_reaction_audio && !spell_action_audio) ||
+         !dynamic_actor_behavior_audio && !spell_action_audio) ||
         (begins_dynamic_target_action !=
          decision.target_heading_audio_event.has_value()) ||
         (decision.animation_id == "action" &&

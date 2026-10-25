@@ -2942,7 +2942,6 @@ int main() {
             context.dynamic_world_encounter_actor = true;
             context.source_record_slot = slot;
             context.source_record_flags = service_flags;
-            context.entry_animation_frame_count = 4U;
             ScriptCombatantFacts combatant{};
             combatant.record_type = slot;
             combatant.physical_meter = physical_meter;
@@ -3020,8 +3019,6 @@ int main() {
         context.combatant = marker_facts;
         context.target_marker_reads_stun_meter = reads_stun_meter;
         context.source_record_flags = 0x01U;
-        context.entry_animation_frame_count = 4U;
-        context.walk_animation_frame_count = 4U;
         if (!scripts.actor_heartbeat(context).has_value()) {
             std::cerr << "target marker actor spawn failed for " << profile_id
                       << ": " << scripts.failure() << '\n';
@@ -3061,8 +3058,6 @@ int main() {
         ScriptActorActionKind::none, 0U, 0U, true);
     target_marker_animation_context.dynamic_world_encounter_actor = true;
     target_marker_animation_context.source_record_flags = 0x01U;
-    target_marker_animation_context.entry_animation_frame_count = 4U;
-    target_marker_animation_context.walk_animation_frame_count = 4U;
     const auto target_marker_spawn =
         scripts.actor_heartbeat(target_marker_animation_context);
     target_marker_animation_context.spawn = false;
@@ -3144,8 +3139,6 @@ int main() {
     hound_effect_context.dynamic_world_encounter_actor = true;
     hound_effect_context.source_record_flags = 0x01U;
     hound_effect_context.movement_allowed = true;
-    hound_effect_context.entry_animation_frame_count = 1U;
-    hound_effect_context.walk_animation_frame_count = 1U;
     hound_effect_context.delay_primary_attribute = 8U;
     hound_effect_context.delay_secondary_attribute = 2U;
     hound_effect_context.ai_target_candidates.push_back(
@@ -3253,8 +3246,6 @@ int main() {
                 0U, true);
             context.dynamic_world_encounter_actor = true;
             context.source_record_flags = 0x25U;
-            context.entry_animation_frame_count = 1U;
-            context.walk_animation_frame_count = 4U;
             context.initial_action_delay = initial_action_delay;
             context.ai_animation_frame = ai_animation_frame;
             context.movement_allowed = true;
@@ -3426,12 +3417,6 @@ int main() {
         ScriptActorActionKind::none, 0U, 0U, true);
     c0a2_action_context.dynamic_world_encounter_actor = true;
     c0a2_action_context.source_record_flags = 0x25U;
-    c0a2_action_context.entry_animation_frame_count = 1U;
-    c0a2_action_context.walk_animation_frame_count = 4U;
-    c0a2_action_context.action_animation_frame_count = 2U;
-    c0a2_action_context.action_animation_increment = 0x0200U;
-    c0a2_action_context.action_animation_threshold = 0x1000U;
-    c0a2_action_context.action_animation_audio_event = 0x004CU;
     c0a2_action_context.initial_action_delay = 0;
     c0a2_action_context.delay_primary_attribute = 4U;
     c0a2_action_context.delay_secondary_attribute = 6U;
@@ -3708,8 +3693,6 @@ int main() {
         context.dynamic_world_encounter_actor = true;
         context.source_record_flags = 0x01U;
         context.world_scene_state = world_scene_state;
-        context.entry_animation_frame_count = 1U;
-        context.walk_animation_frame_count = 4U;
         context.initial_action_delay = initial_delay;
         context.movement_scene_id = 2U;
         context.movement_allowed = true;
@@ -4007,7 +3990,9 @@ int main() {
     spell_caster.record_type = 7U;
     spell_caster.source_flags = 0x01U;
     spell_caster.physical_meter = 10U;
-    spell_caster.mental_meter = 0U;
+    // Keep the caster out of the ROM's zero-stun down transition while the
+    // spell tests exercise 0x1033E and its source-derived combat results.
+    spell_caster.mental_meter = 2U;
     spell_caster.posture = 4U;
     spell_caster.command_attribute_7c = 8U;
     spell_caster.item18_base = 8U;
@@ -4522,8 +4507,6 @@ int main() {
         // begins with the ROM record's clear flag and validates the decision.
         context.source_behavior_flags = 0U;
         context.source_animation_selector = 0U;
-        context.entry_animation_frame_count = 1U;
-        context.walk_animation_frame_count = 4U;
         context.initial_action_delay = initial_delay;
         context.movement_allowed = true;
         context.source_projection_active = projection;
@@ -4689,11 +4672,6 @@ int main() {
         context.source_action_ammo = 10U;
         context.source_action_counter = 0U;
         context.source_animation_selector = 0U;
-        context.entry_animation_frame_count = 1U;
-        context.walk_animation_frame_count = 4U;
-        context.item_action_frame_count = 1U;
-        context.item_action_increment = 0x0080U;
-        context.item_action_threshold = 0x1000U;
         context.initial_action_delay = 0;
         context.movement_allowed = true;
         context.source_projection_active = true;
@@ -5020,6 +4998,8 @@ int main() {
     ScriptCombatantFacts catalog_attacker{};
     catalog_attacker.record_type = 7U;
     catalog_attacker.source_flags = 0x25U;
+    catalog_attacker.physical_meter = 10U;
+    catalog_attacker.mental_meter = 10U;
     catalog_attacker.cyberware_flags = 0x0008U;
     catalog_attacker.command_attribute_77 = 2U;
     catalog_attacker.command_attribute_78 = 4U;
@@ -5057,8 +5037,6 @@ int main() {
             row.action_code, 0U, true);
         context.dynamic_world_encounter_actor = true;
         context.source_record_flags = 0x01U;
-        context.entry_animation_frame_count = 1U;
-        context.walk_animation_frame_count = 4U;
         context.movement_allowed = true;
         context.initial_action_delay = 0;
         if (row.decision == CatalogDecision::hound_effect) {
@@ -5067,10 +5045,6 @@ int main() {
             context.delay_secondary_attribute = 2U;
         }
         if (row.decision == CatalogDecision::unarmed) {
-            context.action_animation_frame_count = 2U;
-            context.action_animation_increment = 0x0200U;
-            context.action_animation_threshold = 0x1000U;
-            context.action_animation_audio_event = 0x004CU;
             context.combatant = catalog_attacker;
             context.action_attribute_selectors = {
                 catalog_spell_rows[5U].attribute_selector,
@@ -5264,12 +5238,6 @@ int main() {
         ScriptActorActionKind::none, 0U, 0U, true);
     combat_probe_context.dynamic_world_encounter_actor = true;
     combat_probe_context.source_record_flags = 0x25U;
-    combat_probe_context.entry_animation_frame_count = 1U;
-    combat_probe_context.walk_animation_frame_count = 4U;
-    combat_probe_context.action_animation_frame_count = 2U;
-    combat_probe_context.action_animation_increment = 0x0200U;
-    combat_probe_context.action_animation_threshold = 0x1000U;
-    combat_probe_context.action_animation_audio_event = 0x004CU;
     combat_probe_context.initial_action_delay = 0;
     combat_probe_context.delay_primary_attribute = 4U;
     combat_probe_context.delay_secondary_attribute = 6U;
@@ -5281,6 +5249,8 @@ int main() {
     ScriptCombatantFacts attacker_facts{};
     attacker_facts.record_type = 7U;
     attacker_facts.source_flags = 0x25U;
+    attacker_facts.physical_meter = 10U;
+    attacker_facts.mental_meter = 10U;
     attacker_facts.cyberware_flags = 0x0008U;
     attacker_facts.command_attribute_77 = 2U;
     attacker_facts.command_attribute_78 = 4U;
@@ -5863,13 +5833,6 @@ int main() {
             ScriptActorActionKind::none, 0U, 0U, true);
         context.dynamic_world_encounter_actor = true;
         context.source_record_flags = 0x25U;
-        context.entry_animation_frame_count = 2U;
-        context.walk_animation_frame_count = 4U;
-        context.hurt_animation_frame_count = 2U;
-        context.hurt_animation_increment = 0x0300U;
-        context.hurt_animation_threshold = 0x1000U;
-        context.hurt_audio_event = 0x0057U;
-        context.down_audio_event = 0x0056U;
         return context;
     };
     const auto configure_encounter_movement = [](
@@ -5984,8 +5947,6 @@ int main() {
         // This case exercises the linked-target combat route; FFDF84 is the
         // source combat gate that keeps the patrol selector out of the case [C].
         posture_band_actor.world_activity_active = true;
-        posture_band_actor.entry_animation_frame_count = 2U;
-        posture_band_actor.walk_animation_frame_count = 4U;
         configure_encounter_movement(posture_band_actor, target_distance);
         posture_band_actor.ai_target_candidates.front().world_activity_actor =
             true;
@@ -6384,12 +6345,6 @@ int main() {
             ScriptActorActionKind::none, 0U, 0U, true);
         wendigo.dynamic_world_encounter_actor = true;
         wendigo.source_record_flags = 0x25U;
-        wendigo.entry_animation_frame_count = 2U;
-        wendigo.walk_animation_frame_count = 4U;
-        wendigo.hurt_animation_frame_count = 2U;
-        wendigo.hurt_animation_increment = 0x0300U;
-        wendigo.hurt_animation_threshold = 0x1000U;
-        wendigo.down_audio_event = 0x0056U;
         // Meters are Lua-owned after spawn, so seed stun 0 at spawn.
         auto stunned = wendigo.combatant.value_or(ScriptCombatantFacts{});
         stunned.physical_meter = 10U;
@@ -6406,7 +6361,9 @@ int main() {
             wendigo.source_record_flags = pass->source_record_flags;
         }
         wendigo.phase = ScriptActorHeartbeatPhase::render;
-        for (std::uint8_t frame = 0U; frame < 32U; ++frame) {
+        // Kind 14's ROM C0B2 list has eight entries at the Lua-owned rate;
+        // let all eight source frames complete before the behavior pass.
+        for (std::uint8_t frame = 0U; frame < 64U; ++frame) {
             scripts.actor_heartbeat(wendigo);
         }
         wendigo.phase = ScriptActorHeartbeatPhase::behavior;

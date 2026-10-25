@@ -1343,25 +1343,6 @@ struct ScriptActorBehaviorContext {
     bool world_activity_active = false;
     // ROM 0x14C7C's kind-0xD branch checks animation frame +0x1E here.
     std::int16_t ai_animation_frame = 0;
-    // Positive C062 loop length supplied from extracted source art.
-    std::uint8_t walk_animation_frame_count = 0;
-    // Directional C0A2 target-action facts extracted to a named actor profile.
-    // Lua owns the per-instance frame accumulator and finite-list completion.
-    std::uint8_t action_animation_frame_count = 0;
-    std::uint16_t action_animation_increment = 0;
-    std::uint16_t action_animation_threshold = 0;
-    std::optional<std::uint16_t> action_animation_audio_event;
-    // Directional C042 item-action frames extracted from the actor state list.
-    std::uint8_t item_action_frame_count = 0;
-    std::uint16_t item_action_increment = 0;
-    std::uint16_t item_action_threshold = 0;
-    // Directional C072/C0B2 hit-reaction facts extracted from each actor
-    // template. Lua owns the reaction timer and finite animation state.
-    std::uint8_t hurt_animation_frame_count = 0;
-    std::uint16_t hurt_animation_increment = 0;
-    std::uint16_t hurt_animation_threshold = 0;
-    std::optional<std::uint16_t> hurt_audio_event;
-    std::optional<std::uint16_t> down_audio_event;
     // ROM FFF9F8 bit 7 selects 0x4D vs 0x4E after the target heading is
     // accepted. The source condition is a fact; Lua chooses the cue.
     bool target_heading_audio_alternate = false;
@@ -1389,7 +1370,6 @@ struct ScriptActorBehaviorContext {
     std::vector<ScriptActorTargetCandidate> ai_target_candidates;
     std::vector<ScriptActorTargetCandidate> world_target_selection_candidates;
     ScriptActorRandomBound ai_random_bound;
-    std::uint8_t entry_animation_frame_count = 2;
     std::optional<ScriptCombatantFacts> combatant;
     std::array<ScriptActionProfileModifierPair, 5>
         action_profile_modifiers{};

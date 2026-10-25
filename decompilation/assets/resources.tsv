@@ -348,12 +348,9 @@ field.entities.default.actors	field/entities/default-actors.tsv	state	0	0
 field.entities.default.actor.waypoints	field/entities/default-actor-waypoints.tsv	state	0	0
 field.entities.world.activity.actors	field/entities/world-activity-actors.tsv	state	0	0
 field.entities.world.activity.encounter.actors	field/entities/dynamic-world-activity-actors.tsv	state	0	0
-field.entities.actor.action.profiles	field/entities/actor-action-profiles.tsv	state	0	0
-field.entities.actor.reaction.profiles	field/entities/actor-reaction-profiles.tsv	state	0	0
 records.startup.joshua.archetypes	records/startup/joshua-archetypes.bin	state	0	0
 records.startup.recruited.runners	records/startup/recruited-runner-records.bin	state	0	0
 records.startup.save.roster.header	records/startup/save-roster-header.bin	state	0	0
-field.entities.actor.item.action.profiles	field/entities/actor-item-action-profiles.tsv	state	0	0
 audio.manifest	audio/audio_manifest.tsv	state	0	0
 menu.field.service.routes	menu/field/service-routes.tsv	text	0	0
 title.background	title/background.bmp	image	0	0

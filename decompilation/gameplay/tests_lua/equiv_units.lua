@@ -11,6 +11,7 @@ local logA, logB = {}, {}
 local gameA, gameB = H.make_game(logA), H.make_game(logB)
 _G.game = gameA; local A = dofile(H.ORIG)
 _G.game = gameB; require("actor.init"); local REG = require("actor.registry")
+local E = require("enums")
 
 -- collect the original's local functions by name via upvalues
 local origf, seen = {}, {}
@@ -70,22 +71,55 @@ local function projectile_source()
     heading = R(0, 0xffff), saved_position_x = R(0, 0xffff), saved_position_y = R(0, 0xffff),
     animation_selector = pick({ 0x8000, 0, R(0, 0xffff) }), action_result = R(0, 255) }
 end
+local function canonical_animation_state(st, pose)
+  st.entity_kind = E.SpriteType.CORP_GUARD
+  st.direction = 0
+  return REG.Animator.list(st.entity_kind, pose, st.direction)
+end
 local SHAPE = {
+  advance_dynamic_actor_walk_animation = function(st, ctx)
+    local list = canonical_animation_state(st, REG.Animator.Pose.WALK)
+    ctx.walk_animation_frame_count = list.count
+    st.walk_animation_frame_count = list.count
+    st.animation_timing_word = 9
+    st.animation_frame = 0
+    st.animation_accumulator = 0
+  end,
+  advance_dynamic_actor_action_animation = function(st)
+    local list = canonical_animation_state(st, REG.Animator.Pose.ACTION)
+    st.action_animation_frame_count = list.count
+    st.action_animation_increment = list.rate
+    st.action_animation_threshold = REG.Animator.PERIOD
+    st.animation_frame = 0
+    st.animation_accumulator = 0
+    st.action_animation_complete = false
+  end,
+  advance_dynamic_actor_item_action_animation = function(st)
+    local list = canonical_animation_state(st, REG.Animator.Pose.ITEM)
+    st.item_action_frame_count = list.count
+    st.item_action_increment = list.rate
+    st.item_action_threshold = REG.Animator.PERIOD
+    st.source_animation_selector = REG.Animator.Pose.ITEM
+    st.animation_frame = 0
+    st.animation_accumulator = 0
+    st.item_action_complete = false
+  end,
   begin_dynamic_target_action = function(st, ctx)
     ctx.dynamic_world_encounter_actor = true; st.action_delay = -R(1, 10); st.target_motion_effect_active = false
-    ctx.action_animation_frame_count = R(1, 8); ctx.action_animation_increment = R(1, 0x400)
-    ctx.action_animation_threshold = R(1, 0x1000); ctx.action_animation_audio_event = R(0, 0x60)
+    ctx.entity_kind = E.SpriteType.CORP_GUARD; st.entity_kind = E.SpriteType.CORP_GUARD
+    st.movement_current_heading = 0x1000; ctx.initial_heading = 0x1000
   end,
   projectile_movement_snapshot = function(st, ctx) ctx.projectile_movement = projectile_source() end,
   projectile_heartbeat = function(st, ctx) ctx.projectile_movement = projectile_source(); st.attack_seed_resolved = R(2) == 1 end,
   begin_received_hit_reaction = function(st, ctx)
     ctx.dynamic_world_encounter_actor = true
-    st.incoming_hit = { action_result = R(0, 255), damage = R(0, 5), source = "a1", down = R(3) == 1 }
-    ctx.hurt_animation_frame_count = R(1, 8); ctx.hurt_animation_increment = R(1, 0x400); ctx.hurt_animation_threshold = R(1, 0x1000)
+    ctx.entity_kind = E.SpriteType.CORP_GUARD; st.entity_kind = E.SpriteType.CORP_GUARD
+    st.incoming_hit = { action_result = R(0, 255), damage = R(0, 5), source = "a1",
+      physical_meter = R(0, 5), mental_meter = R(0, 5), down = R(3) == 1 }
   end,
   begin_dynamic_item_action = function(st, ctx)
     ctx.dynamic_world_encounter_actor = true; ctx.action_kind = "item"; ctx.action_code = R(1, 15); st.action_delay = -R(1, 5)
-    ctx.item_action_frame_count = R(1, 8); ctx.item_action_increment = R(1, 0x400); ctx.item_action_threshold = R(1, 0x1000)
+    ctx.entity_kind = E.SpriteType.CORP_GUARD; st.entity_kind = E.SpriteType.CORP_GUARD
     ctx.source_item_spawn_result = "spawned"; ctx.action_line_clear = R(4) ~= 1
   end,
   begin_spell_cast = function(st, ctx)
@@ -115,6 +149,10 @@ local targets = {}
 local INTENDED = {
   advance_target_marker = "ROM 0x5C7E tiers the target's meter (a5a74ea3)",
   advance_player_animation = "actor/animator.lua 0x600E wrap/0x5FDC signed word; equal on frame 0..3/acc 0..0xFFF (animator_tests)",
+  begin_dynamic_target_action = "0xC0A2 pose, rate, selector, and cue now come from generated ROM animation data",
+  begin_dynamic_item_action = "0xC042 pose and rate now come from generated ROM animation data",
+  begin_received_hit_reaction = "0xC072/C0B2 pose data and B03E/B05E cues now come from generated ROM animation data",
+  think = "merged R.think API replaces the former advance_think/apply_think_path pair",
 }
 -- Fields added by actor/think.lua (0x13904 gate outputs). Stripped before comparing so the
 -- rest of the result/state must still match the pre-split reference exactly.
@@ -138,7 +176,12 @@ for _, name in ipairs(targets) do
   for t = 1, TRIALS do
     local ctx = H.context(pick({ "field_player_runner", "a1", "a2" }))
     local st = random_state(ctx)
-    if SHAPE[name] and t % 4 ~= 0 then SHAPE[name](st, ctx) end
+    local canonical_animation = name == "advance_dynamic_actor_action_animation" or
+      name == "advance_dynamic_actor_item_action_animation" or
+      name == "advance_dynamic_actor_walk_animation"
+    if SHAPE[name] and (canonical_animation or t % 4 ~= 0) then
+      SHAPE[name](st, ctx)
+    end
     local extra = { pick({ H.cand(1), H.num(), nil, 1, 2 }), pick({ { action_result = H.num(), effect_started = H.bool(), spell_effect_slot = R(0, 7), combatant = H.bool() }, H.num(), nil, 0x1000 }), pick({ H.num(), nil, 0x1000 }) }
     local others = {}
     for i = 1, 2 do others["a" .. i] = random_state(ctx) end

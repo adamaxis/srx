@@ -1729,9 +1729,6 @@ private:
         std::uint16_t source_animation_selector = 0;
         std::optional<scripting::ScriptActorItemSpawnResult>
             source_item_spawn_result;
-        std::uint8_t item_action_frame_count = 0;
-        std::uint16_t item_action_increment = 0;
-        std::uint16_t item_action_threshold = 0;
         scripting::ScriptCombatantFacts combatant{};
         std::optional<std::uint8_t> effect_slot;
         bool temporary_world_encounter = false;
@@ -1765,17 +1762,6 @@ private:
         bool movement_state_initialized = false;
         std::string ordered_overrides;
         std::uint8_t initial_behavior_delay = 0;
-        std::uint8_t entry_animation_frame_count = 2;
-        std::uint8_t walk_animation_frame_count = 0;
-        std::uint8_t action_animation_frame_count = 0;
-        std::uint16_t action_animation_increment = 0;
-        std::uint16_t action_animation_threshold = 0;
-        std::uint16_t action_animation_audio_event = 0;
-        std::uint8_t hurt_animation_frame_count = 0;
-        std::uint16_t hurt_animation_increment = 0;
-        std::uint16_t hurt_animation_threshold = 0;
-        std::uint16_t hurt_audio_event = 0;
-        std::uint16_t down_audio_event = 0;
         std::uint8_t animation_direction = 0;
         std::string animation_id = "idle";
         std::uint8_t animation_frame = 0;
@@ -1792,9 +1778,9 @@ private:
         std::array<QImage, 8> spell_images{};
         std::array<int, 8> spell_origin_x{};
         std::array<int, 8> spell_origin_y{};
-        std::array<std::array<QImage, 8>, 8> entry_images{};
-        std::array<std::array<int, 8>, 8> entry_origin_x{};
-        std::array<std::array<int, 8>, 8> entry_origin_y{};
+        std::array<std::vector<QImage>, 8> entry_images{};
+        std::array<std::vector<int>, 8> entry_origin_x{};
+        std::array<std::vector<int>, 8> entry_origin_y{};
         std::array<std::vector<QImage>, 8> walk_images{};
         std::array<std::vector<int>, 8> walk_origin_x{};
         std::array<std::vector<int>, 8> walk_origin_y{};
@@ -1807,20 +1793,6 @@ private:
         std::array<std::vector<QImage>, 8> hurt_images{};
         std::array<std::vector<int>, 8> hurt_origin_x{};
         std::array<std::vector<int>, 8> hurt_origin_y{};
-        std::uint8_t walk_frame_count = 0;
-        std::uint8_t entry_frame_count = 2;
-        std::uint8_t action_frame_count = 0;
-        std::uint16_t action_frame_increment = 0;
-        std::uint16_t action_frame_threshold = 0;
-        std::uint16_t action_audio_event = 0;
-        std::uint8_t item_action_frame_count = 0;
-        std::uint16_t item_action_increment = 0;
-        std::uint16_t item_action_threshold = 0;
-        std::uint8_t hurt_frame_count = 0;
-        std::uint16_t hurt_frame_increment = 0;
-        std::uint16_t hurt_frame_threshold = 0;
-        std::uint16_t hurt_audio_event = 0;
-        std::uint16_t down_audio_event = 0;
     };
 
     struct CreatureEffectArtwork {

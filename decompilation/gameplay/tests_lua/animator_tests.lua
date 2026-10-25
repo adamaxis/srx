@@ -49,7 +49,12 @@ end
 check(same, "player path unchanged on live domain")
 
 -- Death list rate per kind: THON 0x80, spell death uses the E0/E4 list.
-local r, c = R.death_list({ entity_kind = 15 }); check(r == 0x80 and c == 1, "THON down rate 0x80")
-r, c = R.death_list({ entity_kind = 5, spell_death_pose = 0xE0 }); check(r == 0x280 and c == 10, "E0 list 10 @0x280")
+local death = R.death_list({ entity_kind = 15 })
+check(death.rate == 0x80 and death.count == 1, "THON down rate 0x80")
+death = R.death_list({ entity_kind = 5, spell_death_pose = 0xE0 })
+check(death.rate == 0x280 and death.count == 10, "E0 list 10 @0x280")
+check(A.hurt_audio(5) == A.LISTS.audio.hurt_by_kind[5] and
+      A.down_audio(12) == A.LISTS.audio.down_by_kind[12],
+      "hurt and down cues come from the generated ROM tables")
 print(string.format("animator tests: %d/%d passed", pass, total))
 if pass ~= total then os.exit(1) end

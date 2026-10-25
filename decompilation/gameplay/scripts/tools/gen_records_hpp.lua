@@ -12,7 +12,7 @@ w("#pragma once\n#include <array>\n#include <cstdint>\n#include \"enums.hpp\"\nn
 w("struct Item { uint8_t id; const char* name; ItemKind kind; uint16_t price; uint8_t b24, b25, b26, b27; uint32_t icon, detail; };  // 0xD4540")
 w("struct Spell { uint8_t type, item_id; const char* name; uint8_t drain_level, damage_class, drain_modifier, flag27; int8_t totem_category; uint32_t icon, description; };  // 0xD4EA0, 0x10660, 0xC8AE0")
 w("struct AccessoryRec { Accessory id; const char* name; uint32_t name_addr; std::array<uint16_t, 3> price_by_shop; };  // 0x1AAE07, 0x1AAE8C (0x58628)")
-w("struct ActorProfile { const char* id; const char* package_id; int16_t sprite_type; const char* action_kind; uint8_t action_code; int16_t weapon; int16_t death_sound; bool controls_movement, projectile, dynamic_encounter_only; };  // repo profiles + 0xB05E")
+w("struct ActorProfile { const char* id; const char* package_id; int16_t sprite_type; const char* action_kind; uint8_t action_code; int16_t weapon; bool controls_movement, projectile, dynamic_encounter_only; };  // repo profiles")
 w("inline constexpr std::array<Item, 50> kItems{{")
 for id = 1, 0x32 do local r = I[id]
   local kind; for k, v in pairs(require("enums").ItemKind) do if v == r.kind then kind = k end end
@@ -30,8 +30,8 @@ end
 local ids = {}; for k in pairs(P) do ids[#ids + 1] = k end; table.sort(ids)
 w(string.format("}};\ninline constexpr std::array<ActorProfile, %d> kActorProfiles{{", #ids))
 for _, k in ipairs(ids) do local p = P[k]
-  w(string.format("  {%s, %s, %d, %s, %d, %d, %d, %s, %s, %s},", q(p.id), p.package_id and q(p.package_id) or "nullptr", p.sprite_type or -1,
-    q(p.action_kind), p.action_code or 0, p.weapon or -1, p.death_sound or -1, tostring(p.controls_movement), tostring(p.projectile), tostring(p.dynamic_encounter_only)))
+  w(string.format("  {%s, %s, %d, %s, %d, %d, %s, %s, %s},", q(p.id), p.package_id and q(p.package_id) or "nullptr", p.sprite_type or -1,
+    q(p.action_kind), p.action_code or 0, p.weapon or -1, tostring(p.controls_movement), tostring(p.projectile), tostring(p.dynamic_encounter_only)))
 end
 w("}};")
 w("inline const Item& item(ItemId id) { return kItems.at(v(id) - 1); }")

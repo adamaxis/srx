@@ -18,9 +18,24 @@ Animator.Pose = { IDLE = 0x00, WALK = 0x20, ITEM = 0x40, HURT = 0x60, SPELL = 0x
 -- (0x28) 0xBADE copies to +0xCA [C].
 Animator.PLAYER_SPEED = 0x28
 
-function Animator.list(kind, pose)
+function Animator.list(kind, pose, direction)
     local by_kind = LISTS[kind]
-    return by_kind and by_kind[pose] or nil
+    local list = by_kind and by_kind[pose] or nil
+    if list == nil or direction == nil or list.by_dir == nil then
+        return list
+    end
+    if type(direction) ~= "number" or direction < 0 or direction > 7 then
+        return nil
+    end
+    return list.by_dir[direction + 1]
+end
+
+function Animator.hurt_audio(kind)
+    return LISTS.audio and LISTS.audio.hurt_by_kind[kind] or nil
+end
+
+function Animator.down_audio(kind)
+    return LISTS.audio and LISTS.audio.down_by_kind[kind] or nil
 end
 
 local function signed(word)
