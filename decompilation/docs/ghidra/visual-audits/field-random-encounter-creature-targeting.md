@@ -284,12 +284,18 @@ child action after `0x55C76` remain open.
    nearby field artwork. The full frames show each phase and the actor's
    continuing animation; the exact object/effect depth order is not confirmed
    by an independent capture for this encounter.
-5. **What sound accompanies it?** Neither the `0x14C7C` close-attack branch
-   nor its `0x4E86` phase path requests sound. The QA observes no audio request;
-   there is no source duration to reproduce for this effect.
+5. **What sound accompanies it?** The `0x4E86` plume phase path requests no
+   sound. The close attack at `0xB11C` calls `0x55B16`, compares the defender's
+   `+0x4C` and `+0x9C`, then calls `0xAFF2` when either changes. For a nonzero
+   physical meter, `0xAFF2` selects C072 and installs `0xB07E`, which requests
+   the kind-3 `0xB03E` cue after eight actor services [C]. The QA asserts no
+   audio during the plume window; the host accepts the runner's delayed `0x40`
+   hurt cue on its own heartbeat. [H] cue timing vs. the plume window is not
+   yet confirmed against an emulator trace.
 6. **Were neighboring areas checked?** The full-screen captures preserve the
    whole map and right-side HUD. The HUD remains pixel-identical across all
-   phases. The effect overlaps scene artwork in the diagnostic image; because
+   phases unless `0x55B16` changed the leader's `+0x4C`/`+0x9C` meters, which
+   repaints the meter column [C]. The effect overlaps scene artwork in the diagnostic image; because
    there is no matching independent Genesis sequence, the object-depth result
    remains unverified. Since the Hound keeps animating, the QA does not claim
    full-frame equality at release or use it to prove absence of stale pixels;

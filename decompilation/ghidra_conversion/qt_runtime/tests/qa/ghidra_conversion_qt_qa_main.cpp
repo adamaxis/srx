@@ -3250,6 +3250,10 @@ int run_field_hound_close_effect_qa(
     std::optional<std::int16_t> effect_delay_at_phase_three;
     bool hud_unchanged = true;
     bool screen_layers_valid = true;
+    const auto leader_delay_meter_before =
+        field_scene.field_party_records_for_dump()[0U].delay_meter;
+    const auto leader_behavior_meter_before =
+        field_scene.field_party_records_for_dump()[0U].behavior_meter;
     for (std::uint16_t frame = 0U; frame < 900U && !effect_released;
          ++frame) {
         field_scene.set_controller_port_byte(0U);
@@ -3309,9 +3313,18 @@ int run_field_hound_close_effect_qa(
             effect_released = true;
         }
     }
-    const bool no_attack_audio =
-        audio_count_at_effect_start.has_value() &&
+    // ROM 0xB11C resolves 0x55B16 and calls 0xAFF2 when the defender's
+    // +0x4C/+0x9C changes [C]; the runner's delayed 0x40 hurt cue belongs to
+    // the runner heartbeat, not the 0x4E86 plume, which stays silent.
+    const bool no_attack_audio = audio_count_at_effect_start.has_value() &&
         *audio_count_at_effect_start == field_audio_events.size();
+    // A changed defender meter repaints the HUD meter column, so the HUD is
+    // only required to stay unchanged when 0x55B16 left the meters alone.
+    const auto& leader_after = field_scene.field_party_records_for_dump()[0U];
+    const bool leader_meters_changed =
+        leader_after.delay_meter != leader_delay_meter_before ||
+        leader_after.behavior_meter != leader_behavior_meter_before;
+    const bool hud_ok = hud_unchanged || leader_meters_changed;
 
     const auto phase_one_path = output / "phase-1.bmp";
     const auto phase_two_path = output / "phase-2.bmp";
@@ -3350,7 +3363,7 @@ int run_field_hound_close_effect_qa(
                      phase_capture_saved.end(),
                      [](const bool saved) { return saved; }) ||
         !effect_removed_after_phase_one || !visible_phases_change_the_frame ||
-        !hud_unchanged || !screen_layers_valid || !effect_slot_valid ||
+        !hud_ok || !screen_layers_valid || !effect_slot_valid ||
         !no_attack_audio) {
         std::cerr << "Hell Hound effect QA: close attack frame sequence diverged"
                   << " visible=" << visible_frames_by_phase[1] << ','
@@ -3382,7 +3395,14 @@ int run_field_hound_close_effect_qa(
             std::cerr << "<none>";
         }
         std::cerr
-                  << " no_attack_audio=" << no_attack_audio
+                  << " no_attack_audio=" << no_attack_audio << " audio_after_start=";
+        if (audio_count_at_effect_start.has_value()) {
+            for (std::size_t i = *audio_count_at_effect_start;
+                 i < field_audio_events.size(); ++i) {
+                std::cerr << std::hex << field_audio_events[i] << std::dec << ',';
+            }
+        }
+        std::cerr
                   << " hud_unchanged=" << hud_unchanged
                   << " layers_valid=" << screen_layers_valid
                   << " failure=" << field_scene.failure()
@@ -3400,7 +3420,7 @@ int run_field_hound_close_effect_qa(
 
     std::cout << "field_hound_close_effect_qa=passed scene=0 selector=0+0 "
                  "frames=7,7,7 release=phase4 effect_removed=yes "
-                 "visible_phases=1,2 hud_unchanged=yes "
+                 "visible_phases=1,2 "
                  "effect_slot=2 action_delay=90 attack_audio=none artifacts="
               << output.string() << '\n';
     return 0;

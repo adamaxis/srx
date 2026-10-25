@@ -879,6 +879,10 @@ function Combat.resolve_default_bonus_action(context, target)
     local result = {
         target_id = target.id,
         source_record_slot = target.source_record_slot,
+        record_type = defender.record_type,
+        physical_meter = defender.physical_meter,
+        mental_meter = defender.mental_meter,
+        physical = true,
         initial_difficulty = difficulty,
         initial_trial_count = E.CombatTuning.DEFAULT_ACTION_TRIAL_COUNT,
         initial_successes = initial_successes,

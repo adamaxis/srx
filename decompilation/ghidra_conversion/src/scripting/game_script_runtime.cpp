@@ -10896,6 +10896,13 @@ GameScriptRuntime::actor_heartbeat(
         (spell_pose && decision.spell_action_resolution.has_value() &&
          spell_action_audio_matches) ||
         player_spell_cast;
+    // ROM 0xAFF2 selects the kind-3 C072 pose for a nonzero physical meter;
+    // its 0xB07E continuation emits the 0xB03E (0x40) cue after eight actor
+    // services. This delayed cue belongs to any runner's hurt pose.
+    const bool player_hurt_audio =
+        context.phase == ScriptActorHeartbeatPhase::behavior &&
+        decision.animation_id == "runner_hurt" &&
+        decision.audio_event == std::optional<std::uint16_t>{0x0040U};
     // ROM 0xB1DC: the player strike always requests 0x4C/0x55; only an
     // in-range strike adds the 0x4D/0x4E heading cue.
     const bool player_melee_dispatch =
@@ -10921,7 +10928,14 @@ GameScriptRuntime::actor_heartbeat(
         decision.animation_id == "action" &&
         decision.combat_meter_update.has_value() &&
         decision.combat_meter_update->changed;
-    const bool hit_spark_expected = actor_melee_hit ||
+    // ROM 0x13FFE -> 0xB11C: the Hell Hound close effect resolves 0x55B16 and
+    // allocates the 0xB146 child (same init) only on changed meters [C].
+    const bool actor_close_effect_hit =
+        context.phase == ScriptActorHeartbeatPhase::behavior &&
+        decision.target_motion_effect_slot_request.has_value() &&
+        decision.combat_meter_update.has_value() &&
+        decision.combat_meter_update->changed;
+    const bool hit_spark_expected = actor_melee_hit || actor_close_effect_hit ||
         (player_melee_hit &&
          decision.combat_meter_update.has_value() &&
          decision.combat_meter_update->changed);
@@ -10975,7 +10989,7 @@ GameScriptRuntime::actor_heartbeat(
     if (((begins_entry != decision.audio_event.has_value()) &&
          !projectile_behavior && !begins_dynamic_target_action &&
          !dynamic_actor_behavior_audio && !spell_action_audio &&
-         !player_melee_dispatch) ||
+         !player_melee_dispatch && !player_hurt_audio) ||
         ((begins_dynamic_target_action || player_melee_hit) !=
          decision.target_heading_audio_event.has_value()) ||
         (decision.animation_id == "action" &&
