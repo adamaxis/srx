@@ -745,6 +745,257 @@
         return 0;
     }
 
+    int run_sega_shock_qa(
+        const std::filesystem::path& output_directory) {
+        host_frame_timer_.stop();
+        std::filesystem::create_directories(output_directory);
+        std::ofstream trace(output_directory / "sega-shock-qa.tsv");
+        if (!trace) {
+            std::cerr << "Sega shock QA: could not open trace in "
+                      << output_directory.string() << '\n';
+            return 3;
+        }
+        trace << "label\tsource_updates\tfigure_y\tphase_delay\tphase\t"
+                 "phase_countdown\tlightning\tblue_dark\tblue_light\t"
+                 "white\tpixel_differences\timage\n";
+
+        const auto fail = [](const std::string& message) {
+            std::cerr << "Sega shock QA: " << message << '\n';
+            return 3;
+        };
+        using PresentationStage =
+            PreTitleSequenceState::PresentationStage;
+        constexpr std::uint32_t kMaximumSourceUpdates = 700U;
+        constexpr std::uint32_t kRomPhaseCadence = 4U;
+        std::uint32_t source_updates = 0U;
+        const auto advance_one = [&] {
+            if (state_.phase != StartupIntegrationPhase::pre_title ||
+                source_updates >= kMaximumSourceUpdates) {
+                return false;
+            }
+            advance_one_source_frame();
+            ++source_updates;
+            return state_.phase == StartupIntegrationPhase::pre_title;
+        };
+        const auto advance_until = [&](const auto& predicate) {
+            while (!predicate()) {
+                if (!advance_one()) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        if (state_.phase != StartupIntegrationPhase::pre_title ||
+            !advance_until([&] {
+                return state_.pre_title.figure_y == 0x0160 &&
+                       state_.pre_title.sega_phase_delay == 0x0014;
+            })) {
+            return fail("boot did not reach the ROM Sega delay setup");
+        }
+        const auto delay_start_update = source_updates;
+        if (!advance_until([&] {
+                return state_.pre_title.presentation_stage ==
+                       PresentationStage::sega_shock;
+            }) ||
+            source_updates - delay_start_update != 21U ||
+            state_.pre_title.sega_phase_delay != -1 ||
+            state_.pre_title.sega_lightning_batches_active) {
+            return fail("the 0x5D746 delay did not reach the pre-shock frame");
+        }
+
+        const auto* lightning_record =
+            state_.asset_catalog.catalog.find("boot.sega.lightning.0");
+        const auto lightning_image =
+            draw_asset_cache_.find("boot.sega.lightning.0");
+        if (lightning_record == nullptr ||
+            lightning_image == draw_asset_cache_.end() ||
+            lightning_image->second.isNull() ||
+            lightning_image->second.height() <= 4) {
+            return fail("the named ROM lightning asset is unavailable");
+        }
+        // Leave the four rows where the figure's hands overlap the arc art out
+        // of the pixel oracle; the lightning list itself is the 0x5DA20/38
+        // composition drawn at 0x0158/0x00D8, Y=$0120.
+        const QRect shock_region(
+            lightning_record->origin_x, lightning_record->origin_y,
+            lightning_image->second.width(), lightning_image->second.height() - 4);
+        if (!QRect(0, 0, kSceneWidth, kSceneHeight).contains(shock_region)) {
+            return fail("the lightning asset lies outside the composed frame");
+        }
+
+        // Palette line 1 at ROM 0x5DC66 uses CRAM words $0A60, $0C82, $0EEE
+        // for sprite indices 13..15 (words at 0x5DCA0..0x5DCA4).
+        const std::array<QRgb, 3> shock_palette{{
+            qRgb(0, 109, 182), qRgb(36, 146, 219), qRgb(255, 255, 255)}};
+        const auto palette_counts = [&](const QImage& image) {
+            std::array<std::uint32_t, 3> counts{};
+            for (int y = shock_region.top(); y <= shock_region.bottom(); ++y) {
+                for (int x = shock_region.left(); x <= shock_region.right(); ++x) {
+                    const auto pixel = image.pixel(x, y) & 0x00FFFFFFU;
+                    for (std::size_t color = 0; color < shock_palette.size();
+                         ++color) {
+                        if (pixel == (shock_palette[color] & 0x00FFFFFFU)) {
+                            ++counts[color];
+                        }
+                    }
+                }
+            }
+            return counts;
+        };
+        const auto pixel_difference_count = [&](const QImage& first,
+                                                const QImage& second) {
+            std::uint32_t differences = 0U;
+            for (int y = shock_region.top(); y <= shock_region.bottom(); ++y) {
+                for (int x = shock_region.left(); x <= shock_region.right(); ++x) {
+                    if ((first.pixel(x, y) & 0x00FFFFFFU) !=
+                        (second.pixel(x, y) & 0x00FFFFFFU)) {
+                        ++differences;
+                    }
+                }
+            }
+            return differences;
+        };
+        const auto save_frame = [&](const std::string& label,
+                                    const std::string& filename,
+                                    const QImage& image,
+                                    const std::uint32_t differences) {
+            const auto path = output_directory / filename;
+            if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+                !image.save(QString::fromStdWString(path.wstring()), "PNG")) {
+                return false;
+            }
+            const auto counts = palette_counts(image);
+            trace << label << '\t' << source_updates << '\t'
+                  << state_.pre_title.figure_y << '\t'
+                  << state_.pre_title.sega_phase_delay << '\t'
+                  << state_.pre_title.sega_lightning_phase << '\t'
+                  << state_.pre_title.logo_phase_countdown << '\t'
+                  << (state_.pre_title.sega_lightning_batches_active ? 1 : 0)
+                  << '\t' << counts[0] << '\t' << counts[1] << '\t'
+                  << counts[2] << '\t' << differences << '\t' << filename
+                  << '\n';
+            return true;
+        };
+        const auto shock_before = render_scene();
+        const auto before_counts = palette_counts(shock_before);
+        if (!save_frame("pre_shock", "shock-before.png", shock_before, 0U) ||
+            before_counts[0] != 0U || before_counts[1] != 0U ||
+            before_counts[2] != 0U) {
+            return fail("the pre-shock frame already contains Sega lightning");
+        }
+
+        std::array<std::uint16_t, 3> sampled_phases{};
+        std::array<QImage, 3> sampled_images{};
+        for (std::size_t sample = 0U; sample < sampled_phases.size(); ++sample) {
+            if (sample == 0U) {
+                if (!advance_one()) {
+                    return fail("runtime ended before the first lightning frame");
+                }
+            } else {
+                const auto previous_phase = sampled_phases[sample - 1U];
+                const auto previous_update = source_updates;
+                while (state_.pre_title.sega_lightning_phase == previous_phase) {
+                    if (!advance_one() ||
+                        state_.pre_title.presentation_stage !=
+                            PresentationStage::sega_shock ||
+                        !state_.pre_title.sega_lightning_batches_active) {
+                        return fail("the ROM lightning phase ended before its next step");
+                    }
+                }
+                const auto phase_delta = static_cast<std::uint16_t>(
+                    (state_.pre_title.sega_lightning_phase + 6U -
+                     previous_phase) % 6U);
+                if (source_updates - previous_update != kRomPhaseCadence ||
+                    phase_delta != 1U) {
+                    return fail("0x5D996 phase did not advance one step every four source frames");
+                }
+            }
+            if (state_.pre_title.presentation_stage !=
+                    PresentationStage::sega_shock ||
+                !state_.pre_title.sega_lightning_batches_active) {
+                return fail("0x5D996 did not publish an active shock frame");
+            }
+            sampled_phases[sample] =
+                state_.pre_title.sega_lightning_phase;
+            sampled_images[sample] = render_scene();
+            const auto differences =
+                pixel_difference_count(shock_before, sampled_images[sample]);
+            const auto counts = palette_counts(sampled_images[sample]);
+            const auto palette_pixels = counts[0] + counts[1] + counts[2];
+            if (differences < 500U || counts[0] < 100U || counts[1] < 100U ||
+                counts[2] < 100U || differences < palette_pixels) {
+                return fail("composed shock frame lacks ROM-colored lightning pixels");
+            }
+            const auto filename = "shock-phase-" +
+                                  std::to_string(sampled_phases[sample]) +
+                                  ".png";
+            if (!save_frame("lightning_phase_" +
+                                std::to_string(sampled_phases[sample]),
+                            filename, sampled_images[sample], differences)) {
+                return fail("could not save a composed lightning PNG");
+            }
+            if (sample > 0U &&
+                pixel_difference_count(sampled_images[sample - 1U],
+                                       sampled_images[sample]) == 0U) {
+                return fail("later ROM lightning phase has identical pixels");
+            }
+        }
+
+        const auto actual_path = output_directory / "actual.bmp";
+        if (!sampled_images[0].save(
+                QString::fromStdWString(actual_path.wstring()), "BMP") ||
+            QImage(QString::fromStdWString(actual_path.wstring()))
+                    .convertToFormat(QImage::Format_RGB32) !=
+                sampled_images[0]) {
+            return fail("could not write the representative actual.bmp frame");
+        }
+
+        if (!advance_until([&] {
+                return state_.pre_title.presentation_stage ==
+                           PresentationStage::sega_strobe &&
+                       state_.pre_title.sega_lightning_batches_active;
+            })) {
+            return fail("the ROM did not reach its lightning-to-strobe handoff");
+        }
+        const auto strobe_handoff = render_scene();
+        const auto handoff_differences =
+            pixel_difference_count(shock_before, strobe_handoff);
+        const auto handoff_counts = palette_counts(strobe_handoff);
+        const auto handoff_palette_pixels =
+            handoff_counts[0] + handoff_counts[1] + handoff_counts[2];
+        if (handoff_differences < 500U || handoff_counts[0] < 100U ||
+            handoff_counts[1] < 100U || handoff_counts[2] < 100U ||
+            handoff_differences < handoff_palette_pixels ||
+            !save_frame("strobe_handoff", "shock-strobe-handoff.png",
+                        strobe_handoff, handoff_differences)) {
+            return fail("the final source-built lightning frame is not visible");
+        }
+        if (!advance_one() ||
+            state_.pre_title.presentation_stage !=
+                PresentationStage::sega_strobe ||
+            state_.pre_title.sega_lightning_batches_active) {
+            return fail("0x5D996 lightning survived the ROM strobe handoff");
+        }
+        const auto shock_ended = render_scene();
+        const auto ended_counts = palette_counts(shock_ended);
+        const auto ended_differences =
+            pixel_difference_count(strobe_handoff, shock_ended);
+        if (ended_counts[0] != 0U || ended_counts[1] != 0U ||
+            ended_counts[2] != 0U ||
+            ended_differences < handoff_palette_pixels ||
+            !save_frame("lightning_cleared", "shock-ended.png", shock_ended,
+                        ended_differences)) {
+            return fail("ROM-ended shock left blue lightning pixels in the frame");
+        }
+
+        std::cout << "sega_shock_qa=passed delay_frames=21 phase_cadence="
+                  << kRomPhaseCadence << " phases=" << sampled_phases[0]
+                  << ',' << sampled_phases[1] << ',' << sampled_phases[2]
+                  << " clear_update=" << source_updates << " captures="
+                  << output_directory.string() << '\n';
+        return 0;
+    }
+
     // Deterministic visual-audit entry point. The phase transitions and
     // opening frames are still driven by the converted source contracts;
     // this only exposes their existing Qt presentation as an image dump.

@@ -437,6 +437,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_boot_fasa_qa
                  --boot-fasa-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/boot-fasa-qa")
 
+# Capture the ROM-timed Sega lightning phases as composed Qt frames, including
+# the palette colors and the strobe handoff that clears the effect.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_sega_shock_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --sega-shock-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/sega-shock-qa")
+
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_action_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-action-dump

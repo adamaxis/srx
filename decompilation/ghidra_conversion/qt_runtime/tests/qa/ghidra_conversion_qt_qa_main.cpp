@@ -29484,6 +29484,7 @@ int main(int argc, char** argv) {
         std::optional<std::uint32_t> boot_dump_frame;
         std::optional<std::filesystem::path> boot_dump_path;
         std::optional<std::filesystem::path> boot_fasa_qa_path;
+        std::optional<std::filesystem::path> sega_shock_qa_path;
         std::optional<std::string> startup_dump_stage;
         std::optional<std::uint32_t> startup_dump_selection;
         std::optional<std::uint32_t> startup_dump_frame;
@@ -30647,6 +30648,10 @@ int main(int argc, char** argv) {
             if (std::string(argv[index]) == "--boot-fasa-qa" &&
                 index + 1 < argc) {
                 boot_fasa_qa_path = std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--sega-shock-qa" &&
+                index + 1 < argc) {
+                sega_shock_qa_path = std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--startup-dump" &&
                 index + 4 < argc) {
@@ -55071,6 +55076,9 @@ int main(int argc, char** argv) {
         }
         if (boot_fasa_qa_path.has_value()) {
             return window.run_boot_fasa_qa(*boot_fasa_qa_path);
+        }
+        if (sega_shock_qa_path.has_value()) {
+            return window.run_sega_shock_qa(*sega_shock_qa_path);
         }
         if (startup_dump_stage.has_value() &&
             startup_dump_selection.has_value() &&
