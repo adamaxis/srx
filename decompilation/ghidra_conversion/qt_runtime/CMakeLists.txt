@@ -38,6 +38,8 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_menu_text_catalog.cpp
     src/field/field_command_overview_bridge.cpp
     src/rendering/genesis_image_compositor.cpp
+    src/rendering/vdp_sprite_limits.cpp
+    src/rendering/vdp_frame_latch.cpp
     src/rendering/numeric_visual_renderer.cpp
     src/dialogue/dialogue_panel.cpp
     src/dialogue/dialogue_panel_presenter.cpp
@@ -1771,6 +1773,20 @@ target_link_libraries(shadowrun_ghidra_genesis_image_compositor_test
     PRIVATE Qt6::Gui)
 add_test(NAME shadowrun_ghidra_genesis_image_compositor
          COMMAND shadowrun_ghidra_genesis_image_compositor_test)
+
+add_executable(shadowrun_ghidra_vdp_rendering_helpers_test
+    tests/rendering/vdp_rendering_helpers_test.cpp
+    src/rendering/vdp_sprite_limits.cpp
+    src/rendering/vdp_frame_latch.cpp
+)
+target_include_directories(shadowrun_ghidra_vdp_rendering_helpers_test
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
+set_target_properties(shadowrun_ghidra_vdp_rendering_helpers_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+add_test(NAME shadowrun_ghidra_vdp_rendering_helpers
+         COMMAND shadowrun_ghidra_vdp_rendering_helpers_test)
 
 add_executable(shadowrun_ghidra_bmp_alpha_load_test
     tests/rendering/bmp_alpha_load_test.cpp
