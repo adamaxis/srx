@@ -115,8 +115,8 @@ function M.step_row(st, d, events, ctx)
     return { transition = T.PUSH, screen = E.MenuScreen.POSTURE }
 end
 
--- [C emulator] Item-picture changes held the detail panel blank for seven
--- frames on Armor Clothing and Fetish, and eight on Model 101T. [H] Other
+-- [C emulator] Item-picture changes delay the MOVE request seven frames on
+-- Armor Clothing and Fetish, and eight on Model 101T; the panel follows one frame later. [H] Other
 -- item pictures use the seven-frame fallback until measured separately.
 local ITEM_PICTURE_HOLD_FRAMES = {
     [E.ItemId.MODEL_101T] = 8,
@@ -172,12 +172,20 @@ function M.input(st, events, ctx)
     if st.inventory_item_hold_frames > 0 then
         st.inventory_item_hold_frames = st.inventory_item_hold_frames - 1
         if st.inventory_item_hold_frames == 0 then
-            st.inventory_detail_pending = false
-            st.inventory_cursor_hidden = false
-            update_inventory_ammo_count(st, ctx)
+            -- [C emulator e6 + zsnd] MOVE is requested on 8747/8788/8827, but the
+            -- panel is complete only one frame later (8748/8789/8828; 8747 and
+            -- 8827 show a partial upload). Keep the panel blank for that frame [H partial].
             ctx.sound(S.MOVE)
-            ctx.redraw(M.REFRESH)
+            st.inventory_detail_reveal_frames = 1
         end
+        return
+    end
+    if (st.inventory_detail_reveal_frames or 0) > 0 then
+        st.inventory_detail_reveal_frames = 0
+        st.inventory_detail_pending = false
+        st.inventory_cursor_hidden = false
+        update_inventory_ammo_count(st, ctx)
+        ctx.redraw(M.REFRESH)
         return
     end
     if st.inventory_cursor_hidden_frames > 0 then

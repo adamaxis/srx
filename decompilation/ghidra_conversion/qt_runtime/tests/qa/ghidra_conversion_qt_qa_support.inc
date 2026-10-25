@@ -90,8 +90,10 @@ void settle_qa_command_inventory_item_change(
 
     // [C emulator] The source holds the panel for up to eight frames when
     // changing between occupied inventory cells. The tap's release frame
-    // already advances Lua's hold once; seven empty frames finish that hold.
-    for (std::size_t frame = 0U; frame < 7U; ++frame) {
+    // already advances Lua's hold once; seven empty frames finish that hold
+    // and one more reveals the panel (it completes one frame after the MOVE
+    // cue, emulator e6 8748/8789/8828).
+    for (std::size_t frame = 0U; frame < 8U; ++frame) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
     }

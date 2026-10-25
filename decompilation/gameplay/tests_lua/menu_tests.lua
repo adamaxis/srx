@@ -137,10 +137,13 @@ do
     check(st(held).inventory_detail_pending and #held_log.sounds == 1,
           "seven-frame picture hold keeps panel blank for six following frames [C emulator]")
     held:frame(0)
-    check(not st(held).inventory_detail_pending and
-          not st(held).inventory_cursor_hidden and #held_log.sounds == 2 and
+    check(st(held).inventory_detail_pending and #held_log.sounds == 2 and
           held_log.sounds[2] == E.MenuSound.MOVE,
-          "armor detail and MOVE cue appear on the seventh following frame [C emulator]")
+          "armor MOVE cue on the seventh following frame, panel still blank [C emulator zsnd e6]")
+    held:frame(0)
+    check(not st(held).inventory_detail_pending and
+          not st(held).inventory_cursor_hidden and #held_log.sounds == 2,
+          "armor detail appears one frame after the MOVE cue [C emulator e6 8748/8789]")
 
     held:frame(P.LEFT)
     check(st(held).inventory_item_hold_frames == 8 and
@@ -152,10 +155,13 @@ do
     check(st(held).inventory_detail_pending and #held_log.sounds == 2,
           "pistol detail remains blank through seven following frames [C emulator]")
     held:frame(0)
-    check(not st(held).inventory_detail_pending and
-          not st(held).inventory_cursor_hidden and #held_log.sounds == 3 and
+    check(st(held).inventory_detail_pending and #held_log.sounds == 3 and
           held_log.sounds[3] == E.MenuSound.MOVE,
-          "pistol detail and MOVE cue appear on the eighth following frame [C emulator]")
+          "pistol MOVE cue on the eighth following frame, panel still blank [C emulator zsnd e6]")
+    held:frame(0)
+    check(not st(held).inventory_detail_pending and
+          not st(held).inventory_cursor_hidden and #held_log.sounds == 3,
+          "pistol detail appears one frame after the MOVE cue [C emulator e6 8748/8789]")
 end
 -- inventory row clamp 0..3
 r:frame(P.RIGHT); for _ = 1, 6 do r:frame(P.DOWN) end; check(st(r).row == 3, "row clamp hi")
