@@ -2,6 +2,7 @@
 -- typed actor records and bounded ROM random draws; this module owns the
 -- 0x55C76 trial sequence and returns the resulting meter snapshot.
 local Combat = {}
+local E = require("enums")
 
 -- ROM 0x490A spell-callback table: the callbacks for action codes 1 (0x521E),
 -- 2 (0x5152), 8 (0x508A) and 9 (0x4FE2) call 0xB0AC / 0xB0E4 instead of
@@ -10,10 +11,10 @@ local Combat = {}
 -- [H: codes are E.SpellType + 1 (code 12 = heal), i.e. flame dart/bolt and
 -- mana zap/blast; the names are not traced.]
 local SpellDeath = {
-    [1] = { pose = 0xE0 },
-    [2] = { pose = 0xE0, excluded_kind = 0x0F },
-    [8] = { pose = 0xE4 },
-    [9] = { pose = 0xE4 },
+    [1] = { pose = E.ActorPose.SPELL_DEATH_E0 },
+    [2] = { pose = E.ActorPose.SPELL_DEATH_E0, excluded_kind = E.SpriteType.THON },
+    [8] = { pose = E.ActorPose.SPELL_DEATH_E4 },
+    [9] = { pose = E.ActorPose.SPELL_DEATH_E4 },
 }
 
 local function signed_byte(value)

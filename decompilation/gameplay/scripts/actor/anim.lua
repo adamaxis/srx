@@ -238,13 +238,11 @@ local function begin_received_hit_reaction(state, context)
     if hit.physical_meter == 0 and hit.spell_death_pose ~= nil and
        (state.source_record_flags & ActorStatus.AI_RUNNER) == 0 and
        context.entity_kind ~= SpriteType.HELL_HOUND then
-        -- 0xB0AC/0xB0E4 (spell death): pose 0xE0/0xE4, continuation
-        -- 0xB0D4/0xB10C, no +0x10 b4 and no cue. 0xA9A6 then runs 0xAB02 and
-        -- 0x1E514 when the list finishes. Kinds 12..15 point 0xE0/0xE4 at
-        -- their C0B2 list; kinds 3..11 use 10 (0xE0) / 9 (0xE4) frames at
-        -- 0x280 whose art is not extracted, so the C0B2 art and cadence
-        -- stand in [H: humanoid spell-death art gap]. Unreachable live:
-        -- player spells on world actors are not ported.
+        -- 0xB0AC/0xB0E4 (spell death): pose E.ActorPose.SPELL_DEATH_E0/E4,
+        -- continuation 0xB0D4/0xB10C, no +0x10 b4 and no cue. 0xA9A6 then
+        -- runs 0xAB02 and 0x1E514 when the list finishes. The selected kind's
+        -- single undirected list supplies its own art and cadence [C: 0x62AC].
+        -- Player spells on world actors are not connected to the live route [H].
         state.damage_reaction_active = true
         state.damage_reaction_animation_complete = false
         state.animation_frame = 0

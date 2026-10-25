@@ -147,6 +147,8 @@ target_link_libraries(shadowrun_ghidra_asset_import
 add_executable(shadowrun_graphics_extract
     tools/rom_research/graphics_extract.cpp
     tools/rom_research/field_mode_profile_import.cpp)
+target_include_directories(shadowrun_graphics_extract PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/qt_runtime/src/srx_refactor")
 target_link_libraries(shadowrun_graphics_extract PRIVATE
     shadowrun_ghidra_asset_import shadowrun_ghidra_asset_import_support
     ZLIB::ZLIB)

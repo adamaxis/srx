@@ -84,6 +84,18 @@ enum class ActorPool : std::int64_t {
     OTHERS = 0x7,
     STRIDE = 0x100,
 };
+enum class ActorPose : std::int64_t {
+    IDLE = 0x0,
+    WALK = 0x20,
+    ITEM = 0x40,
+    HURT = 0x60,
+    SPELL = 0x80,
+    WEAPON = 0xA0,
+    ACTION = 0xC0,
+    SPELL_DEATH_E0 = 0xE0,
+    SPELL_DEATH_E4 = 0xE4,
+    DEATH = 0xE8,
+};
 enum class ActorRaceOrState : std::int64_t {
     GHOUL_BOUNTY_TARGET = 0x42,
 };

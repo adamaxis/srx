@@ -46,6 +46,11 @@ E.DelayCapability = { FIRST_BIT = 12, SECOND_BIT = 13, THIRD_BIT = 14,
 
 E.SpriteType  = { FIELD_RUNNER = 3, CORP_GUARD = 5, GHOUL = 7, PEDESTRIAN = 11, HELL_HOUND = 12, GARGOYLE = 13,
                   WENDIGO = 14, THON = 15 }   -- +0x0E [C: 7,12,13,15 from our trace; 3,5,11,14 names from pre-module actor_ai.lua:40-46]
+-- Pose bases selected from actor +0x16 by the actor animation service [C: 0x600E].
+E.ActorPose = { IDLE = 0x00, WALK = 0x20, ITEM = 0x40, HURT = 0x60,
+                SPELL = 0x80, WEAPON = 0xA0, ACTION = 0xC0,
+                SPELL_DEATH_E0 = 0xE0, SPELL_DEATH_E4 = 0xE4,
+                DEATH = 0xE8 } -- spell-death selected at 0xB0AC/0xB0E4 [C]
 
 -- Item codes (= +0x57 for weapons, = inventory byte); records 0xD4540 + 0x30*(code-1) (doc 08) [C]
 E.ItemId = {

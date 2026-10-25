@@ -3218,6 +3218,26 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
                                artwork.idle_origin_y[direction])) {
             return false;
         }
+        for (std::uint8_t frame = 0U;
+             frame < kActorArtFrameScanLimit; ++frame) {
+            const auto spell_alias =
+                actor_asset_prefixes[kind_index] + ".spell.dir." +
+                std::to_string(direction) + ".frame." +
+                std::to_string(frame);
+            if (catalog.find(spell_alias) == nullptr) {
+                break;
+            }
+            artwork.spell_images[direction].emplace_back();
+            artwork.spell_origin_x[direction].push_back(0);
+            artwork.spell_origin_y[direction].push_back(0);
+            const auto image_index = artwork.spell_images[direction].size() - 1U;
+            if (!load_sprite_image(catalog, spell_alias,
+                                   artwork.spell_images[direction][image_index],
+                                   artwork.spell_origin_x[direction][image_index],
+                                   artwork.spell_origin_y[direction][image_index])) {
+                return false;
+            }
+        }
         for (std::size_t frame = 0; frame < kActorArtFrameScanLimit; ++frame) {
             const auto entry_alias =
                 actor_asset_prefixes[kind_index] + ".entry.dir." +
@@ -3248,6 +3268,82 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             return false;
         }
         loaded_directions[kind_index][direction] = true;
+    }
+
+    for (std::size_t kind_index = 0U;
+         kind_index < actor_asset_prefixes.size(); ++kind_index) {
+        if (actor_asset_prefixes[kind_index].empty()) {
+            continue;
+        }
+        auto& artwork = field_default_actor_artwork_[kind_index];
+        for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
+            auto& frames = artwork.spell_images[direction];
+            for (std::uint8_t frame =
+                     static_cast<std::uint8_t>(frames.size());
+                 frame < kActorArtFrameScanLimit; ++frame) {
+                const auto alias = actor_asset_prefixes[kind_index] +
+                    ".spell.dir." + std::to_string(direction) +
+                    ".frame." + std::to_string(frame);
+                if (catalog.find(alias) == nullptr) {
+                    break;
+                }
+                frames.emplace_back();
+                artwork.spell_origin_x[direction].push_back(0);
+                artwork.spell_origin_y[direction].push_back(0);
+                const auto image_index = frames.size() - 1U;
+                if (!load_sprite_image(
+                        catalog, alias, frames[image_index],
+                        artwork.spell_origin_x[direction][image_index],
+                        artwork.spell_origin_y[direction][image_index])) {
+                    return false;
+                }
+            }
+            if (frames.empty()) {
+                failure_ = "default actor C082 spell art is missing a direction";
+                return false;
+            }
+        }
+        const auto load_spell_death_frames =
+            [this, &catalog, &actor_asset_prefixes, kind_index](
+                const std::string_view pose_name,
+                std::vector<QImage>& images,
+                std::vector<int>& origin_x,
+                std::vector<int>& origin_y) {
+                for (std::uint8_t frame = 0U;
+                     frame < kActorArtFrameScanLimit; ++frame) {
+                    const auto alias = actor_asset_prefixes[kind_index] +
+                        "." + std::string(pose_name) + ".frame." +
+                        std::to_string(frame);
+                    if (catalog.find(alias) == nullptr) {
+                        break;
+                    }
+                    images.emplace_back();
+                    origin_x.push_back(0);
+                    origin_y.push_back(0);
+                    const auto image_index = images.size() - 1U;
+                    if (!load_sprite_image(catalog, alias,
+                                           images[image_index],
+                                           origin_x[image_index],
+                                           origin_y[image_index])) {
+                        return false;
+                    }
+                }
+                if (images.empty()) {
+                    failure_ = "default actor spell-death art is missing a list";
+                    return false;
+                }
+                return true;
+            };
+        if (!load_spell_death_frames(
+                "spell.death.e0", artwork.spell_death_e0_images,
+                artwork.spell_death_e0_origin_x,
+                artwork.spell_death_e0_origin_y) ||
+            !load_spell_death_frames(
+                "spell.death.e4", artwork.spell_death_e4_images,
+                artwork.spell_death_e4_origin_x,
+                artwork.spell_death_e4_origin_y)) {
+            return false;
+        }
     }
     return true;
 }
@@ -3569,12 +3665,30 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                     artwork.idle_origin_y[direction])) {
                 return false;
             }
-            const auto spell_alias = alias_prefix + ".spell" + suffix;
-            if (!load_sprite_image(
-                    catalog, spell_alias,
-                    artwork.spell_images[direction],
-                    artwork.spell_origin_x[direction],
-                    artwork.spell_origin_y[direction])) {
+            for (std::uint8_t frame = 0U;
+                 frame < kActorArtFrameScanLimit; ++frame) {
+                const auto spell_alias =
+                    alias_prefix + ".spell.dir." +
+                    std::to_string(direction) + ".frame." +
+                    std::to_string(frame);
+                if (catalog.find(spell_alias) == nullptr) {
+                    break;
+                }
+                artwork.spell_images[direction].emplace_back();
+                artwork.spell_origin_x[direction].push_back(0);
+                artwork.spell_origin_y[direction].push_back(0);
+                const auto image_index =
+                    artwork.spell_images[direction].size() - 1U;
+                if (!load_sprite_image(
+                        catalog, spell_alias,
+                        artwork.spell_images[direction][image_index],
+                        artwork.spell_origin_x[direction][image_index],
+                        artwork.spell_origin_y[direction][image_index])) {
+                    return false;
+                }
+            }
+            if (artwork.spell_images[direction].empty()) {
+                failure_ = "dynamic actor C082 spell art is missing a direction";
                 return false;
             }
             for (std::uint8_t frame = 0U; frame < kActorArtFrameScanLimit; ++frame) {
@@ -3695,6 +3809,47 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                     return false;
                 }
             }
+        }
+        const auto load_spell_death_frames =
+            [this, &catalog, &alias_prefix](
+                const std::string_view pose_name,
+                std::vector<QImage>& images,
+                std::vector<int>& origin_x,
+                std::vector<int>& origin_y) {
+                for (std::uint8_t frame = 0U;
+                     frame < kActorArtFrameScanLimit; ++frame) {
+                    const auto alias =
+                        alias_prefix + "." + std::string(pose_name) +
+                        ".frame." + std::to_string(frame);
+                    if (catalog.find(alias) == nullptr) {
+                        break;
+                    }
+                    images.emplace_back();
+                    origin_x.push_back(0);
+                    origin_y.push_back(0);
+                    const auto image_index = images.size() - 1U;
+                    if (!load_sprite_image(catalog, alias,
+                                           images[image_index],
+                                           origin_x[image_index],
+                                           origin_y[image_index])) {
+                        return false;
+                    }
+                }
+                if (images.empty()) {
+                    failure_ = "dynamic actor spell-death art is missing a list";
+                    return false;
+                }
+                return true;
+            };
+        if (!load_spell_death_frames(
+                "spell.death.e0", artwork.spell_death_e0_images,
+                artwork.spell_death_e0_origin_x,
+                artwork.spell_death_e0_origin_y) ||
+            !load_spell_death_frames(
+                "spell.death.e4", artwork.spell_death_e4_images,
+                artwork.spell_death_e4_origin_x,
+                artwork.spell_death_e4_origin_y)) {
+            return false;
         }
         if (entity_kind < 3U || entity_kind > 14U) {
             failure_ = "dynamic actor source kind is outside the supported range";
@@ -5479,12 +5634,17 @@ FieldSceneRuntime::default_actor_sprite_view(
             artwork->walk_origin_y[direction][frame]};
     }
     if (actor.animation_id == "spell") {
-        // 0xAF7C/0xAFAE install a directional C082 selector and 0xAFE0 holds
-        // that first source frame until another actor state replaces it.
+        // Lua's C082 animator owns the frame index [C: 0xAF7C/0xAFAE/0x600E].
+        const auto& frames = artwork->spell_images[direction];
+        if (frames.empty()) {
+            return {};
+        }
+        const auto frame = std::min<std::size_t>(
+            actor.animation_frame, frames.size() - 1U);
         return DefaultActorSpriteView{
-            &artwork->spell_images[direction],
-            artwork->spell_origin_x[direction],
-            artwork->spell_origin_y[direction]};
+            &frames[frame],
+            artwork->spell_origin_x[direction][frame],
+            artwork->spell_origin_y[direction][frame]};
     }
     if (actor.animation_id == "weapon") {
         const auto& frames = artwork->item_action_images[direction];
@@ -5521,6 +5681,33 @@ FieldSceneRuntime::default_actor_sprite_view(
             &frames[frame],
             artwork->hurt_origin_x[direction][frame],
             artwork->hurt_origin_y[direction][frame]};
+    }
+    if (actor.animation_id == "down") {
+        // The source selector preserves the spell-death list; Lua owns its
+        // frame index [C: 0xB0AC/0xB0E4/0x600E].
+        const auto selector = actor.source_animation_selector;
+        const auto e0 = static_cast<std::uint16_t>(
+            srx::ActorPose::SPELL_DEATH_E0);  // pose base 0xE0 [C]
+        const auto e4 = static_cast<std::uint16_t>(
+            srx::ActorPose::SPELL_DEATH_E4);  // pose base 0xE4 [C]
+        const std::vector<QImage>* images = nullptr;
+        const std::vector<int>* origin_x = nullptr;
+        const std::vector<int>* origin_y = nullptr;
+        if (selector == e0) {
+            images = &artwork->spell_death_e0_images;
+            origin_x = &artwork->spell_death_e0_origin_x;
+            origin_y = &artwork->spell_death_e0_origin_y;
+        } else if (selector == e4) {
+            images = &artwork->spell_death_e4_images;
+            origin_x = &artwork->spell_death_e4_origin_x;
+            origin_y = &artwork->spell_death_e4_origin_y;
+        }
+        if (images != nullptr && !images->empty()) {
+            const auto frame = std::min<std::size_t>(
+                actor.animation_frame, images->size() - 1U);
+            return DefaultActorSpriteView{
+                &(*images)[frame], (*origin_x)[frame], (*origin_y)[frame]};
+        }
     }
     if (actor.animation_id != "entry" && actor.animation_id != "down") {
         return {};

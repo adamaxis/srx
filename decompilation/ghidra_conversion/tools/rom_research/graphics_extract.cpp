@@ -3,6 +3,7 @@
 #include "shadowrun/rendering/asset_taxonomy.hpp"
 #include "shadowrun/rendering/resource_manifest.hpp"
 #include "field_mode_profile_import.hpp"
+#include "enums.hpp"
 
 #include <algorithm>
 #include <array>
@@ -9158,7 +9159,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             // This is a distinct ROM format: 0x600E resolves a one-frame
             // state list whose entry is a seven-record VDP sprite list, not
             // an 0x8002 bitmap descriptor. The mode-55 marker-2 path loads
-            // the matching tile data via 0x5BA4C/0x1530 at VRAM 0x5920.
+            // the matching tile data via 0x5BA4C/0x1530 at VRAM 0x5920 [C].
             if (kind_source.actor_name != "Thon" ||
                 kind_source.palette_line != 1U) {
                 throw std::runtime_error(
@@ -9226,9 +9227,98 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 root, asset_stem + "-idle.bmp", thon_frame.image, "sprite",
                 "ROM 0x62AC/0xC052/0x600E/0x622C/0x624C/0xA77A Thon "
                 "seven-piece idle sprite list; 0x5BA4C/0x1530 loads "
-                "0x1EBDEE at VRAM 0x5920; template palette line 1",
+                "0x1EBDEE at VRAM 0x5920; template palette line 1 [C]",
                 true, manifest, written, missing, blank,
                 thon_frame.origin_x, thon_frame.origin_y);
+            for (std::size_t direction = 0U; direction < 8U; ++direction) {
+                const auto selector = read_big_endian_word(
+                    rom, kSpellSelectorTableOffset + direction * 2U);
+                const auto state_list = static_cast<std::size_t>(
+                    read_big_endian_long(rom, state_table + selector));
+                const auto marker = read_big_endian_word(rom, state_list);
+                const auto frame_count = static_cast<std::uint16_t>(
+                    marker & 0x7FFFU);
+                if ((marker & 0x8000U) == 0U || frame_count == 0U ||
+                    frame_count > 16U) {
+                    throw std::runtime_error(
+                        "Thon C082 spell list has an unsupported frame count");
+                }
+                for (std::uint16_t frame_index = 0U;
+                     frame_index < frame_count; ++frame_index) {
+                    const auto sprite_list = static_cast<std::size_t>(
+                        read_big_endian_long(
+                            rom, state_list + 4U +
+                                     static_cast<std::size_t>(frame_index) * 4U));
+                    const auto frame = decode_field_entity_sprite_list(
+                        rom, thon_vram, sprite_list, palette,
+                        template_palette_attributes);
+                    write_catalog_asset(
+                        root, asset_stem + "-spell-dir-" +
+                                  std::to_string(direction) + "-frame-" +
+                                  std::to_string(frame_index) + ".bmp",
+                        frame.image, "sprite",
+                        "ROM 0xAF7C/0xAFAE/0xC082/0x600E/0x622C kind=15 "
+                        "Thon sprite list=" +
+                            format_offset(static_cast<std::uint32_t>(
+                                sprite_list)) +
+                            " frame=" + std::to_string(frame_index) +
+                            " template palette attributes=" +
+                            format_offset(template_palette_attributes) +
+                            " [C]",
+                        true, manifest, written, missing, blank,
+                        frame.origin_x, frame.origin_y);
+                }
+            }
+            constexpr std::array<std::pair<srx::ActorPose,
+                                           std::string_view>, 2>
+                kThonSpellDeathPoses{{
+                    {srx::ActorPose::SPELL_DEATH_E0, "spell-death-e0"},
+                    {srx::ActorPose::SPELL_DEATH_E4, "spell-death-e4"},
+                }};
+            for (const auto& [pose, pose_name] : kThonSpellDeathPoses) {
+                const auto pose_selector =
+                    static_cast<std::uint16_t>(pose);
+                const auto state_list = static_cast<std::size_t>(
+                    read_big_endian_long(
+                        rom, state_table + pose_selector));
+                const auto marker = read_big_endian_word(rom, state_list);
+                const auto frame_count = static_cast<std::uint16_t>(
+                    marker & 0x7FFFU);
+                if ((marker & 0x8000U) == 0U || frame_count == 0U ||
+                    frame_count > 16U) {
+                    throw std::runtime_error(
+                        "Thon spell-death list has an unsupported frame count");
+                }
+                for (std::uint16_t frame_index = 0U;
+                     frame_index < frame_count; ++frame_index) {
+                    const auto sprite_list = static_cast<std::size_t>(
+                        read_big_endian_long(
+                            rom, state_list + 4U +
+                                     static_cast<std::size_t>(frame_index) * 4U));
+                    if (sprite_list == 0U) {
+                        throw std::runtime_error(
+                            "Thon spell-death frame has a null sprite-list pointer");
+                    }
+                    const auto frame = decode_field_entity_sprite_list(
+                        rom, thon_vram, sprite_list, palette,
+                        template_palette_attributes);
+                    write_catalog_asset(
+                        root, asset_stem + "-" + std::string(pose_name) +
+                                  "-frame-" + std::to_string(frame_index) +
+                                  ".bmp",
+                        frame.image, "sprite",
+                        "ROM 0x62AC/0xB0AC/0xB0E4/0x600E/0x622C kind=15 "
+                        "Thon sprite list=" +
+                            format_offset(static_cast<std::uint32_t>(
+                                sprite_list)) +
+                            " frame=" + std::to_string(frame_index) +
+                            " template palette attributes=" +
+                            format_offset(template_palette_attributes) +
+                            " [C]",
+                        true, manifest, written, missing, blank,
+                        frame.origin_x, frame.origin_y);
+                }
+            }
             continue;
         }
         // Static map inhabitants use the ordinary human actor kinds. The
@@ -9268,37 +9358,102 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 true, manifest, written, missing, blank,
                 idle_frame.origin_x, idle_frame.origin_y);
 
-            // AF7C/AFAE install the directional C082 state and switch the
-            // actor callback to 0xAFE0. That callback is a NOP, so the cast
-            // pose holds the first C082 image until another actor action
-            // replaces it. Export that source frame as an ordinary host
-            // sprite with its descriptor origin for the Qt field renderer.
-            const auto spell_selector = read_big_endian_word(
-                rom, kSpellSelectorTableOffset + direction * 2U);
-            const auto spell_frame =
-                shadowrun::graphics::decode_genesis_field_entity_state_frame(
-                    rom, kind_source.entity_kind, kind_source.palette_line,
-                    spell_selector, 0U);
-            const auto spell_name = asset_stem +
-                (direction == 0U
-                     ? std::string("-spell.bmp")
-                     : "-spell-dir-" + std::to_string(direction) + ".bmp");
-            write_catalog_asset(
-                root, spell_name, spell_frame.image, "sprite",
-                "0xAF7C/0xAFAE/0xC082/0xAFE0/0x600E actor=" +
-                    kind_source.actor_name + " kind=" +
-                    std::to_string(kind_source.entity_kind) + " template=" +
-                    format_offset(kind_source.template_offset) +
-                    " selector=" + format_offset(spell_selector) +
-                    " frame=0 palette-line=" +
-                    std::to_string(kind_source.palette_line),
-                true, manifest, written, missing, blank,
-                spell_frame.origin_x, spell_frame.origin_y);
             const auto kind_state_pointer = static_cast<std::size_t>(
                 read_big_endian_long(
-                    rom, 0x62ACU +
+                    rom, kActorStatePointerTableOffset +
                              static_cast<std::size_t>(kind_source.entity_kind) *
                                  4U));
+
+            // AF7C/AFAE install the directional C082 state. Export every
+            // source frame as an ordinary host sprite with its
+            // descriptor origin for the Qt field renderer [C: 0x600E].
+            const auto spell_selector = read_big_endian_word(
+                rom, kSpellSelectorTableOffset + direction * 2U);
+            const auto spell_list = static_cast<std::size_t>(
+                read_big_endian_long(rom, kind_state_pointer +
+                                             (spell_selector & 0x7FFFU)));
+            const auto spell_marker = read_big_endian_word(rom, spell_list);
+            const auto spell_frame_count = static_cast<std::uint16_t>(
+                spell_marker & 0x7FFFU);
+            if (spell_frame_count == 0U || spell_frame_count > 16U) {
+                throw std::runtime_error(
+                    "dynamic actor C082 spell list has an unsupported frame count");
+            }
+            for (std::uint16_t frame_index = 0U;
+                 frame_index < spell_frame_count; ++frame_index) {
+                const auto frame =
+                    shadowrun::graphics::decode_genesis_field_entity_state_frame(
+                        rom, kind_source.entity_kind,
+                        kind_source.palette_line, spell_selector, frame_index);
+                write_catalog_asset(
+                    root, asset_stem + "-spell-dir-" +
+                              std::to_string(direction) + "-frame-" +
+                              std::to_string(frame_index) + ".bmp",
+                    frame.image, "sprite",
+                    "ROM 0xAF7C/0xAFAE/0xC082/0x600E kind=" +
+                        std::to_string(kind_source.entity_kind) +
+                        " template=" +
+                        format_offset(kind_source.template_offset) +
+                        " selector=" + format_offset(spell_selector) +
+                        " frame=" + std::to_string(frame_index) +
+                        " palette-line=" +
+                        std::to_string(kind_source.palette_line) + " [C]",
+                    true, manifest, written, missing, blank,
+                    frame.origin_x, frame.origin_y);
+            }
+
+            // 0xB0AC/0xB0E4 install undirected, finite spell-death lists.
+            // 0x600E selects each frame record. 0x60FA queues its descriptor
+            // and mapping pointer for the field renderer; 0x3EFE expands the
+            // selected tile pixels. The actor template supplies the palette
+            // line for the field record [C].
+            if (direction == 0U) {
+                constexpr std::array<std::pair<srx::ActorPose,
+                                               std::string_view>, 2>
+                    kSpellDeathPoses{{
+                        {srx::ActorPose::SPELL_DEATH_E0, "spell-death-e0"},
+                        {srx::ActorPose::SPELL_DEATH_E4, "spell-death-e4"},
+                    }};
+                for (const auto& [pose, pose_name] : kSpellDeathPoses) {
+                    const auto pose_selector =
+                        static_cast<std::uint16_t>(pose);
+                    const auto list_offset = static_cast<std::size_t>(
+                        read_big_endian_long(
+                            rom, kind_state_pointer + pose_selector));
+                    const auto marker = read_big_endian_word(rom, list_offset);
+                    const auto frame_count = static_cast<std::uint16_t>(
+                        marker & 0x7FFFU);
+                    if ((marker & 0x8000U) == 0U || frame_count == 0U ||
+                        frame_count > 16U) {
+                        throw std::runtime_error(
+                            "ROM spell-death list has an unsupported frame count");
+                    }
+                    for (std::uint16_t frame_index = 0U;
+                         frame_index < frame_count; ++frame_index) {
+                        const auto frame =
+                            shadowrun::graphics::decode_genesis_field_entity_state_frame(
+                                rom, kind_source.entity_kind,
+                                kind_source.palette_line, pose_selector,
+                                frame_index);
+                        write_catalog_asset(
+                            root, asset_stem + "-" +
+                                      std::string(pose_name) + "-frame-" +
+                                      std::to_string(frame_index) + ".bmp",
+                            frame.image, "sprite",
+                            "ROM 0x62AC/0xB0AC/0xB0E4/0x600E/0x60FA/0x3EFE kind=" +
+                                std::to_string(kind_source.entity_kind) +
+                                " list=" +
+                                format_offset(static_cast<std::uint32_t>(
+                                    list_offset)) +
+                                " frame=" + std::to_string(frame_index) +
+                                " palette-line=" +
+                                std::to_string(kind_source.palette_line) +
+                                " [C]",
+                            true, manifest, written, missing, blank,
+                            frame.origin_x, frame.origin_y);
+                    }
+                }
+            }
 
             // ROM 0xB39A selects one of the directional C042 item-action
             // lists after the projectile service. Keep these separate from

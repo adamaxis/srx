@@ -3,6 +3,7 @@
 -- anim.lua steps through here; none keeps its own accumulator arithmetic.
 local R = require("actor.registry")
 local I = require("lib.int68k")
+local E = require("enums")
 local u16 = I.u16
 local LISTS = require("data.actor_anim_lists")
 
@@ -11,9 +12,7 @@ Animator.LISTS = LISTS
 -- +0x1C: every actor list is timed against 0x1000 (spawn template) [C].
 Animator.PERIOD = 0x1000
 -- Pose bases (+0x16 & 0x7FFF without the direction*4) [C].
-Animator.Pose = { IDLE = 0x00, WALK = 0x20, ITEM = 0x40, HURT = 0x60, SPELL = 0x80,
-                  WEAPON = 0xA0, ACTION = 0xC0, SPELL_DEATH_E0 = 0xE0,
-                  SPELL_DEATH_E4 = 0xE4, DEATH = 0xE8 }
+Animator.Pose = E.ActorPose
 -- 0xBABC moves the controlled runner with vector table 0xC002, whose +4 word
 -- (0x28) 0xBADE copies to +0xCA [C].
 Animator.PLAYER_SPEED = 0x28

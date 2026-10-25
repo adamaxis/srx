@@ -1775,9 +1775,15 @@ private:
         std::array<QImage, 8> idle_images{};
         std::array<int, 8> idle_origin_x{};
         std::array<int, 8> idle_origin_y{};
-        std::array<QImage, 8> spell_images{};
-        std::array<int, 8> spell_origin_x{};
-        std::array<int, 8> spell_origin_y{};
+        std::array<std::vector<QImage>, 8> spell_images{};
+        std::array<std::vector<int>, 8> spell_origin_x{};
+        std::array<std::vector<int>, 8> spell_origin_y{};
+        std::vector<QImage> spell_death_e0_images{};
+        std::vector<int> spell_death_e0_origin_x{};
+        std::vector<int> spell_death_e0_origin_y{};
+        std::vector<QImage> spell_death_e4_images{};
+        std::vector<int> spell_death_e4_origin_x{};
+        std::vector<int> spell_death_e4_origin_y{};
         std::array<std::vector<QImage>, 8> entry_images{};
         std::array<std::vector<int>, 8> entry_origin_x{};
         std::array<std::vector<int>, 8> entry_origin_y{};

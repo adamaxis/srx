@@ -3,9 +3,15 @@
 local rom = assert(io.open(assert(arg[1], "rom path"), "rb")):read("a")
 local function W(a) return (string.unpack(">I2", rom, a + 1)) end
 local function L(a) return (string.unpack(">I4", rom, a + 1)) end
-local POSES = { {"IDLE", 0x00}, {"WALK", 0x20}, {"ITEM", 0x40}, {"HURT", 0x60}, {"SPELL", 0x80},
-                {"WEAPON", 0xA0}, {"ACTION", 0xC0}, {"SPELL_DEATH_E0", 0xE0}, {"SPELL_DEATH_E4", 0xE4},
-                {"DEATH", 0xE8} }
+local E = require("enums")
+local Pose = E.ActorPose
+local POSES = { {"IDLE", Pose.IDLE}, {"WALK", Pose.WALK},
+                {"ITEM", Pose.ITEM}, {"HURT", Pose.HURT},
+                {"SPELL", Pose.SPELL}, {"WEAPON", Pose.WEAPON},
+                {"ACTION", Pose.ACTION},
+                {"SPELL_DEATH_E0", Pose.SPELL_DEATH_E0},
+                {"SPELL_DEATH_E4", Pose.SPELL_DEATH_E4},
+                {"DEATH", Pose.DEATH} }
 local HURT_AUDIO_TABLE = 0xB03E -- 0xB07E indexes this by actor +0x0E [C].
 local DOWN_AUDIO_TABLE = 0xB05E -- 0xB340 indexes this by actor +0x0E [C].
 local out = {}
@@ -22,7 +28,8 @@ for kind = 3, 15 do
     p(string.format("    [%d] = {  -- table 0x%X", kind, pt))
     for _, pose in ipairs(POSES) do
         local name, base = pose[1], pose[2]
-        local dirs = (base == 0xE0 or base == 0xE4) and 1 or 8
+        local dirs = (base == Pose.SPELL_DEATH_E0 or
+                      base == Pose.SPELL_DEATH_E4) and 1 or 8
         local rows, same = {}, true
         for d = 0, dirs - 1 do
             local lp = L(pt + base + d * 4)

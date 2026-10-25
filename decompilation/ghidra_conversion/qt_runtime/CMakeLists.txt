@@ -1,5 +1,26 @@
 find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia Network)
 
+# Decode imported actor BMPs and query the Lua-owned Animator.list counts.
+# This is a headless asset QA target; it does not construct the game window or
+# start audio.
+add_executable(shadowrun_ghidra_actor_animation_art_qa
+    tests/qa/actor_animation_art_qa.cpp)
+target_include_directories(shadowrun_ghidra_actor_animation_art_qa
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/srx_refactor"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/lua-5.4.9/src")
+target_compile_definitions(shadowrun_ghidra_actor_animation_art_qa
+    PRIVATE
+        SRX_ACTOR_ANIMATION_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        SRX_ACTOR_ANIMATION_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts")
+target_link_libraries(shadowrun_ghidra_actor_animation_art_qa
+    PRIVATE shadowrun_lua_5_4_9 Qt6::Gui)
+add_test(NAME shadowrun_ghidra_conversion_qt_actor_animation_art_qa
+         COMMAND shadowrun_ghidra_actor_animation_art_qa)
+set_tests_properties(shadowrun_ghidra_conversion_qt_actor_animation_art_qa
+    PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+
 set(SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/app"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/audio"
