@@ -6,6 +6,28 @@ local Inv, FA = require("menu.rules.inventory"), require("menu.rules.first_aid")
 local P, A, R, T, S = E.Pad, E.ItemAction, E.MenuRegion, E.MenuTransition, E.MenuSound
 local DETAIL = R.SIDEBAR_SLOT | R.COMBAT_BARS | R.ITEM_PICTURE | R.ITEM_HEADER | R.RATING | R.DAMAGE_POWER | R.WEAPON_BARS | R.ARMOR
 
+-- ROM 0x117BA..0x117D0 and 0x11824..0x1183A draw the selector's 17-cell
+-- footer from D1D94. First Aid codes choose D1E6C at 0x11788..0x11798.
+-- Keep the source padding because the host draws this field at x=112 as-is.
+local ACTION_FOOTERS = {
+    [A.EQUIP_OR_USE] = "  Equip/Unequip  ",
+    [A.DISCARD] = "     Discard     ",
+    [A.TRADE] = "      Trade      ",
+    [A.CANCEL] = "     Cancel      ",
+}
+local FIRST_AID_FOOTERS = {
+    [A.EQUIP_OR_USE] = "    First Aid    ",
+    [A.DISCARD] = "     Discard     ",
+    [A.TRADE] = "      Trade      ",
+    [A.CANCEL] = "     Cancel      ",
+}
+
+local function action_footer(selector, sel)
+    local labels = sel and Inv.classify(sel.code, true) == E.ItemBranch.FIRST_AID
+        and FIRST_AID_FOOTERS or ACTION_FOOTERS
+    return labels[selector] or ""
+end
+
 local function active_member(party, ctx)
     return party[ctx.game.active_slot()]
 end
@@ -18,16 +40,26 @@ end
 
 -- ---- action row ---------------------------------------------------------------------------------------------
 local M = { window = E.WindowPlane.SIDEBAR }
-function M.new(a) return { column = a.column, row = a.row, selector = A.EQUIP_OR_USE } end
+function M.new(a)
+    return { column = a.column, row = a.row, selector = A.EQUIP_OR_USE,
+             footer_text = ACTION_FOOTERS[A.EQUIP_OR_USE] }
+end
 function M.enter(st, ctx)
     st.sel = Inv.selected(active_member(ctx.game.party(), ctx),
                           st.column, st.row)
+    st.footer_text = action_footer(st.selector, st.sel)
     ctx.redraw(R.BUTTON_STRIP | R.COMMAND_LABEL)
 end
 function M.input(st, events, ctx)
     local left, right = events & P.LEFT ~= 0, events & P.RIGHT ~= 0
     local nxt = wrap(st.selector, left, right)
-    if nxt ~= st.selector then st.selector = nxt; ctx.sound(S.MOVE); ctx.redraw(R.BUTTON_STRIP | R.COMMAND_LABEL); return end
+    if nxt ~= st.selector then
+        st.selector = nxt
+        st.footer_text = action_footer(st.selector, st.sel)
+        ctx.sound(S.MOVE)
+        ctx.redraw(R.BUTTON_STRIP | R.COMMAND_LABEL)
+        return
+    end
     -- ROM 0x11852..0x118A0: A/B confirm; C falls through; Start exits silently.
     if events & (P.A | P.B) == 0 then
         if events & P.START ~= 0 then return { transition = T.POP } end

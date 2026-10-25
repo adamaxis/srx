@@ -3894,7 +3894,9 @@ decode_genesis_field_menu_status_bars(
                     const auto color_index = tile.pixels[
                         source_y * 8U + source_x];
                     auto color = palette[16U + color_index];
-                    color.alpha = 255;
+                    // Plane colour 0 is transparent: the emulator shows the
+                    // command background through it around the bar [C].
+                    color.alpha = color_index == 0U ? 0U : 255U;
                     bars[status].pixels[pixel_y * bars[status].width +
                                         tile_position * 8U + pixel_x] = color;
                 }
@@ -8448,10 +8450,10 @@ decode_genesis_field_magic_metric_bars(
                         tile.pixels[source_y * 8U + source_x];
                     auto color =
                         scene.palette[palette_line * 16U + color_index];
-                    // ROM row words retain palette index zero as the black
-                    // meter well; only the separate spell cursor/background
-                    // layers use transparent index-zero pixels.
-                    color.alpha = 255U;
+                    // These rows go to Plane A (VDP reg 2 = 0x30 -> C000,
+                    // ROM 0x378) over the E000 Plane B parchment, so index
+                    // zero is transparent [C emulator run5 8997].
+                    color.alpha = color_index == 0U ? 0U : 255U;
                     image.pixels[y * image.width + column * 8U + x] = color;
                 }
             }
@@ -8533,7 +8535,7 @@ std::array<RgbaImage, 5> decode_genesis_field_magic_posture_bars(
         result[posture] = {
             static_cast<std::uint16_t>(kTileCount * 8U), 8U,
             std::vector<native::Rgba8>(kTileCount * 64U,
-                                       native::Rgba8{0, 0, 0, 255}),
+                                       native::Rgba8{0, 0, 0, 0}),
         };
         for (std::size_t tile = 0; tile < kTileCount; ++tile) {
             const auto entry = read_rom_u16(
@@ -8544,20 +8546,22 @@ std::array<RgbaImage, 5> decode_genesis_field_magic_posture_bars(
                 static_cast<std::size_t>(entry & 0x07FFU),
                 static_cast<std::size_t>((entry >> 13U) & 0x03U),
                 (entry & 0x0800U) != 0U, (entry & 0x1000U) != 0U,
-                static_cast<std::int32_t>(tile * 8U), 0, false);
+                static_cast<std::int32_t>(tile * 8U), 0, true);
         }
     }
     return result;
 }
 
-std::array<RgbaImage, 5> decode_genesis_field_magic_force_meter_tiles(
+std::array<RgbaImage, 7> decode_genesis_field_magic_force_meter_tiles(
     const std::vector<std::uint8_t>& rom) {
-    constexpr std::array<std::size_t, 5> kSourceOffsets{{
+    constexpr std::array<std::size_t, 7> kSourceOffsets{{
         0xC85A2U, // first tile in the meter
         0xC85A4U, // final tile in the meter
         0xC85A6U, // repeated force segment
         0xC85A8U, // current-force marker during the input loop
         0xC85ACU, // final marker when the force loop returns
+        0xC85AAU, // second word of the input-loop marker (0x1232 d7=1)
+        0xC85AEU, // second word of the final marker (0x1232 d7=1)
     }};
     const auto scene = decode_genesis_field_magic_graphics(rom);
     std::array<RgbaImage, kSourceOffsets.size()> result{};
@@ -8568,14 +8572,14 @@ std::array<RgbaImage, 5> decode_genesis_field_magic_force_meter_tiles(
         result[index] = {
             8U, 8U,
             std::vector<native::Rgba8>(64U,
-                                       native::Rgba8{0, 0, 0, 255}),
+                                       native::Rgba8{0, 0, 0, 0}),
         };
         blit_genesis_tile(
             result[index], scene,
             static_cast<std::size_t>(entry & 0x07FFU),
             static_cast<std::size_t>((entry >> 13U) & 0x03U),
             (entry & 0x0800U) != 0U, (entry & 0x1000U) != 0U,
-            0, 0, false);
+            0, 0, true);
     }
     return result;
 }
@@ -8591,7 +8595,7 @@ std::array<RgbaImage, 4> decode_genesis_field_magic_availability_bars(
         result[row] = {
             static_cast<std::uint16_t>(kTileCount * 8U), 8U,
             std::vector<native::Rgba8>(kTileCount * 64U,
-                                       native::Rgba8{0, 0, 0, 255}),
+                                       native::Rgba8{0, 0, 0, 0}),
         };
         for (std::size_t tile = 0; tile < kTileCount; ++tile) {
             const auto entry = read_rom_u16(
@@ -8602,7 +8606,7 @@ std::array<RgbaImage, 4> decode_genesis_field_magic_availability_bars(
                 static_cast<std::size_t>(entry & 0x07FFU),
                 static_cast<std::size_t>((entry >> 13U) & 0x03U),
                 (entry & 0x0800U) != 0U, (entry & 0x1000U) != 0U,
-                static_cast<std::int32_t>(tile * 8U), 0, false);
+                static_cast<std::int32_t>(tile * 8U), 0, true);
         }
     }
     return result;
@@ -8619,7 +8623,7 @@ std::array<RgbaImage, 10> decode_genesis_field_magic_damage_bars(
         result[row] = {
             static_cast<std::uint16_t>(kTileCount * 8U), 8U,
             std::vector<native::Rgba8>(kTileCount * 64U,
-                                       native::Rgba8{0, 0, 0, 255}),
+                                       native::Rgba8{0, 0, 0, 0}),
         };
         for (std::size_t tile = 0; tile < kTileCount; ++tile) {
             const auto entry = read_rom_u16(
@@ -8630,7 +8634,7 @@ std::array<RgbaImage, 10> decode_genesis_field_magic_damage_bars(
                 static_cast<std::size_t>(entry & 0x07FFU),
                 static_cast<std::size_t>((entry >> 13U) & 0x03U),
                 (entry & 0x0800U) != 0U, (entry & 0x1000U) != 0U,
-                static_cast<std::int32_t>(tile * 8U), 0, false);
+                static_cast<std::int32_t>(tile * 8U), 0, true);
         }
     }
     return result;
@@ -8877,6 +8881,29 @@ RgbaImage decode_genesis_pocket_secretary_background(
     return image;
 }
 
+RgbaImage decode_genesis_pocket_secretary_nuyen_bar(
+    const std::vector<std::uint8_t>& rom) {
+    // ROM 0xC3F8 (called by the 0xC2A6 Main Menu) passes d7=0x13/d1=2 to
+    // the 0x1232 dbra writer: a 20x3 map at 0xCD996 to plane cell $C98E
+    // (x=56, y=152) with D2=0, then 0xC216
+    // right-aligns the FFFBFE funds ending at $CA2C (x=176, y=160) [C].
+    // Patterns are the 0x10918 upload (0xCAB0C at 0x1E20) and palette set
+    // 0xD29D6. Colour 0 stays transparent over the Pocket Secretary grid.
+    constexpr std::size_t kColumns = 20U;
+    constexpr std::size_t kRows = 3U;
+    GenesisBootPatternData scene{
+        decode_genesis_1530_vram(rom, 0xCAB0CU, 0x1E20U),
+        read_genesis_palette_set(rom, 0xD29D6U),
+    };
+    RgbaImage image{static_cast<std::uint16_t>(kColumns * 8U),
+                    static_cast<std::uint16_t>(kRows * 8U),
+                    std::vector<native::Rgba8>(kColumns * kRows * 64U,
+                                               native::Rgba8{0, 0, 0, 0})};
+    blit_genesis_name_table(rom, scene, image, 0xCD996U, kColumns, kRows,
+                            0xC98EU, 0xC98EU, 0, true);
+    return image;
+}
+
 RgbaImage decode_genesis_pocket_secretary_grid(
     const std::vector<std::uint8_t>& rom) {
     constexpr std::size_t kPatternStreamOffset = 0xC1064U;
@@ -8961,6 +8988,26 @@ RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom) {
         }
     }
     return shifted;
+}
+
+RgbaImage decode_genesis_field_hud_active_frame(
+    const std::vector<std::uint8_t>& rom) {
+    // 0x39F2 stamps the active runner's frame: the 6x8 name block at
+    // 0x6AADE (tiles 0x6D6..0x6F7, palette line 3) at window address
+    // 0xF144 + slot * 0x400, over the 0x6AA7E inactive frame that 0x334C
+    // wrote for every slot. Emulator run5 window plane, slot 0: E6EA E6EB..
+    // vs slots 1-2: E6E8 E6E9.. [C]. Decoded for slot 0; the host offsets
+    // it by 64 px per slot.
+    GenesisBootPatternData scene{
+        std::vector<std::uint8_t>(0x10000U, 0),
+        read_genesis_command_palette_set(rom),
+    };
+    write_genesis_f5c_vram(rom, 0x6A5BEU, 0xDAC0U, 0x4C0U,
+                           scene.pattern_vram);
+    auto image = make_transparent_title_layer();
+    blit_genesis_name_table(rom, scene, image, 0x6AADEU, 6U, 8U,
+                            0xF144U, 0xF000U, 0x6000U, true);
+    return image;
 }
 
 GenesisFieldHudLayers decode_genesis_field_hud_layers(

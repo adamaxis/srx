@@ -42,9 +42,19 @@ std::string FieldPartyRosterRuntime::read_runner_name(
     return value.substr(first, last - first + 1U);
 }
 
+std::uint8_t FieldPartyRosterRuntime::read_runner_name_pad(
+    const LiveRunnerRecord& record) {
+    std::uint8_t pad = 0U;
+    while (pad < 0x0EU && record.bytes[0x58U + pad] == 0x20U) {
+        ++pad;
+    }
+    return pad < 0x0EU ? pad : 0U;
+}
+
 void FieldPartyRosterRuntime::clear() noexcept {
     records_ = {};
     names_ = {};
+    name_pads_ = {};
     active_slots_ = {};
     portrait_asset_families_ = {};
     active_slot_ = 0U;
@@ -137,6 +147,7 @@ FieldPartyRosterRuntime::Source FieldPartyRosterRuntime::initialize(
         secondary_compact_marker_ = restored.roster.secondary_marker;
         records_[0] = read_runner_record_fields(restored.roster.default_record);
         names_[0] = read_runner_name(restored.roster.default_record);
+        name_pads_[0] = read_runner_name_pad(restored.roster.default_record);
         mark_slot_active(records_[0]);
         active_slots_[0] = true;
         if (startup_state.startup_records.has_value()) {
@@ -157,6 +168,7 @@ FieldPartyRosterRuntime::Source FieldPartyRosterRuntime::initialize(
             records_[1] =
                 read_runner_record_fields(restored.roster.primary_record);
             names_[1] = read_runner_name(restored.roster.primary_record);
+            name_pads_[1] = read_runner_name_pad(restored.roster.primary_record);
             mark_slot_active(records_[1]);
             active_slots_[1] = true;
             if (restored.roster.primary_marker > 0U &&
@@ -169,6 +181,7 @@ FieldPartyRosterRuntime::Source FieldPartyRosterRuntime::initialize(
             records_[2] =
                 read_runner_record_fields(restored.roster.secondary_record);
             names_[2] = read_runner_name(restored.roster.secondary_record);
+            name_pads_[2] = read_runner_name_pad(restored.roster.secondary_record);
             mark_slot_active(records_[2]);
             active_slots_[2] = true;
             if (restored.roster.secondary_marker > 0U &&
@@ -187,6 +200,7 @@ FieldPartyRosterRuntime::Source FieldPartyRosterRuntime::initialize(
         LiveRunnerRecord raw_joshua{};
         raw_joshua.bytes = startup_state.joshua_selection->live_joshua_record;
         names_[0] = read_runner_name(raw_joshua);
+        name_pads_[0] = read_runner_name_pad(raw_joshua);
         mark_slot_active(records_[0]);
         active_slots_[0] = true;
         const auto selected = static_cast<std::uint8_t>(

@@ -1681,6 +1681,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_posture_qa
                  --field-posture-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-posture-qa.bmp")
 
+# Emulator routes e3/e4: root Start keeps the menu through P+2, fades it to
+# black at P+15, holds black through P+99, and restores the field at P+112.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_command_overview_close_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-command-overview-close-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-command-overview-close-qa")
+
 # Gator's Mana Zap force/posture action drives the source special-action bar
 # path and the C8AE0/D4540 totem modifier. Keep its pixels checked separately
 # from the default Samurai posture path.

@@ -95,6 +95,21 @@ function PocketSecretary.dismiss_separator_text()
         { "separator" }, "pocket_secretary.dismiss.text.option.")
 end
 
+function PocketSecretary.save_load_options()
+    return text_entries(
+        { "save_game", "load_game" }, "pocket_secretary.save_load.option.")
+end
+
+function PocketSecretary.save_load_slot_titles()
+    return text_entries(
+        { "save_game", "load_game" }, "pocket_secretary.save_load.title.")
+end
+
+function PocketSecretary.save_load_slots()
+    return text_entries(
+        { "game_1", "game_2" }, "pocket_secretary.save_load.slot.")
+end
+
 function PocketSecretary.notebook_no_run_lines()
     return text_entries(
         { "first_line", "second_line", "last_line" },

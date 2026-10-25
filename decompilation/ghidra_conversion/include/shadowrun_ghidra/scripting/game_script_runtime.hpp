@@ -97,15 +97,31 @@ struct ScriptMenuRouteHost {
     std::function<void(std::uint16_t)> play_sound;
     std::function<void(std::uint16_t)> stop_sound;
     std::function<void(std::uint32_t)> redraw;
-    std::function<void(std::uint16_t)> blank;
+    // mode (E.DisplayBlank), then for ON the measured black-frame count and
+    // the raster line where the display re-enables on the reveal frame.
+    std::function<void(std::uint16_t, std::uint16_t, std::uint16_t)> blank;
+    // phase (E.MenuMask), staged frame index, then a black rect x,y,w,h.
+    // LEAD frames show the last menu frame before the display goes off;
+    // REVEAL frames start on the frame the display comes back on.
+    std::function<void(std::uint16_t, std::uint16_t, std::int16_t,
+                       std::int16_t, std::int16_t, std::int16_t)>
+        mask;
     std::function<void(std::uint16_t)> set_window;
     std::function<void(std::uint16_t)> set_screen;
-    std::function<void(bool)> menu_closed;
+    std::function<void(bool, bool)> menu_closed;
     std::function<void(std::uint16_t, const ScriptMenuRouteArgs&)>
         legacy_open;
     std::function<std::pair<bool, bool>(std::uint16_t, std::uint16_t)>
         legacy_advance;
     std::function<void(ScriptNotebookBoundary)> notebook_boundary;
+};
+
+enum class ScriptFieldReturnTransitionPhase : std::uint8_t {
+    none = 0U,
+    menu_fade_out = 1U,
+    black_hold = 2U,
+    field_fade_in = 3U,
+    complete = 4U,
 };
 
 struct ScriptMenuPartyMember {
@@ -448,14 +464,36 @@ struct ScriptNotebookCurrentRunView {
     std::vector<std::string> body_lines;
 };
 
+struct ScriptMenuRouteLayout {
+    std::optional<int> title_x;
+    std::optional<int> title_y;
+    std::optional<int> separator_x;
+    std::optional<int> separator_y;
+    std::optional<int> label_x;
+    std::optional<int> label_y;
+    std::optional<int> cursor_x;
+    std::optional<int> cursor_y;
+    std::optional<int> row_spacing;
+};
+
 struct ScriptMenuRouteSnapshot {
     bool open = false;
+    bool field_return_transition_active = false;
+    std::uint16_t field_return_transition_elapsed_frames = 0U;
+    std::uint8_t field_return_transition_palette_step = 0U;
+    ScriptFieldReturnTransitionPhase field_return_transition_phase =
+        ScriptFieldReturnTransitionPhase::none;
     std::uint16_t top_screen = 0U;
     std::string top_title;
     std::string top_text;
+    std::string top_footer_text;
     std::vector<std::string> top_option_labels;
+    std::optional<ScriptMenuRouteLayout> top_layout;
     std::optional<int> page;
     std::optional<int> row;
+    std::optional<bool> root_inventory_detail_pending;
+    std::optional<bool> root_inventory_cursor_hidden;
+    std::optional<int> root_inventory_ammo_count;
     std::optional<int> top_column;
     std::optional<int> top_row;
     std::optional<int> top_selection;
@@ -546,6 +584,23 @@ struct ScriptMenuRouteSnapshot {
         int column = 0;
         int table_entry_index = 0;
         int spell_code = -1;
+        int title_icon_x = 80;
+        int title_icon_y = 24;
+        int title_text_x = 128;
+        int title_text_y = 32;
+        int spell_grid_x = 32;
+        int spell_grid_y = 168;
+        int spell_grid_column_step = 32;
+        int spell_grid_row_step = 24;
+        int spell_grid_icon_width = 24;
+        int spell_grid_icon_height = 16;
+        int cursor_offset_x = 0;
+        int cursor_offset_y = 0;
+        int posture_bar_x = 160;
+        int posture_bar_y = 136;
+        int posture_text_x = 160;
+        int posture_text_y = 144;
+        std::vector<int> spell_codes;
         int force = 1;
         int maximum_force = 1;
         int success_value = 0;

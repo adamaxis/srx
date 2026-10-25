@@ -364,6 +364,12 @@ public:
     // Penumbra Mako list member so 0xB330/0xAB02 run as in combat.
     std::size_t defeat_mako_actor_list_for_qa() noexcept;
     bool open_command_overview_for_dump();
+    bool menu_display_blank_active_for_dump() const noexcept {
+        return command_overview_start_transition_black_frame_ ||
+               command_overview_start_transition_frames_remaining_ != 0U ||
+               menu_blank_reveal_line_ != 0U || !menu_lead_masks_.empty() ||
+               !menu_reveal_masks_pending_.empty() || !menu_reveal_masks_.empty();
+    }
 #ifdef SHADOWRUN_QT_QA_DRIVER
     bool field_alarm_active_for_dump() const noexcept {
         return field_matrix_field_state_.alarm.value_or(false);
@@ -1174,8 +1180,8 @@ public:
         notebook_referral_flags_ = static_cast<std::uint8_t>(flags & 0x1FU);
         return true;
     }
-    // QA may combine a restored positional checkpoint with the known New Game
-    // FFFC27 seed. Production save restoration still leaves this state unknown.
+    // QA can explicitly seed FFFC27 to exercise referral-gated Notebook rows.
+    // Production New Game and save restoration keep their own source state.
     void seed_notebook_referral_flags_for_qa(std::uint8_t flags) noexcept {
         notebook_referral_flags_ = flags;
     }
@@ -1195,9 +1201,8 @@ public:
         notebook_contacts_flags_ = flags;
         return true;
     }
-    // QA may combine a restored positional checkpoint with a known fresh-run
-    // contact seed from ROM startup 0x59C48. Production save restoration must
-    // continue to leave unknown contact state unresolved.
+    // QA can explicitly seed FFFC2C to exercise Contacts gates and Vid-Phone
+    // records. Production New Game and save restoration keep their own state.
     void seed_notebook_contact_flags_for_qa(std::uint32_t flags) noexcept {
         notebook_contacts_flags_ = flags;
     }
@@ -1672,6 +1677,7 @@ private:
     HotelMenuEvent process_hotel_menu_events(std::uint16_t events);
     AttributesSkillsRuntimeEvent process_hotel_karma_screen_events(
         std::uint16_t events);
+    void draw_pocket_secretary_cursor(QPainter& painter, int x, int y) const;
     void draw_command_overview_text(QPainter& painter, int x, int y,
                                     std::string_view text) const;
     void draw_tinted_field_text(QPainter& painter, int x, int y,
@@ -1683,6 +1689,7 @@ private:
                               std::string_view text,
                               HotelMenuPaletteLine palette_line) const;
     void refresh_command_overview_combat_bars();
+    EquipmentCombatInput command_overview_combat_input() const;
     void refresh_command_overview_item_detail();
     void refresh_field_hud_runner_slot();
     void initialize_field_party_roster(
@@ -1716,7 +1723,11 @@ private:
     void advance_command_overview_inventory_trade(
         std::uint16_t controller_events);
     void configure_field_menu_route();
+    void flush_menu_blank_deferred_sounds();
     void advance_field_menu_route();
+    void synchronize_command_overview_return_transition(
+        const scripting::ScriptMenuRouteSnapshot& route_state);
+    void advance_command_overview_return_transition();
     bool save_game_slot(int slot);
     bool load_game_slot(int slot);
     int game_save_slot_status(int slot) const;
@@ -1972,6 +1983,18 @@ private:
     // Grok's emulator trace observed 27 black host frames before it returns.
     std::uint8_t command_overview_start_transition_frames_remaining_ = 0U;
     bool command_overview_start_transition_black_frame_ = false;
+    std::uint16_t menu_blank_reveal_line_pending_ = 0U;
+    // Lua-staged partial frames around a display-off build (E.MenuMask):
+    // each entry is the list of black rects for one frame.
+    std::vector<std::vector<QRect>> menu_lead_masks_;
+    std::vector<std::vector<QRect>> menu_reveal_masks_pending_;
+    std::vector<std::vector<QRect>> menu_reveal_masks_;
+    mutable QImage menu_last_frame_;
+    mutable bool menu_last_frame_is_field_ = false;
+    QImage command_overview_return_image_;
+    bool menu_window_sidebar_ = false;
+    std::uint16_t menu_blank_reveal_line_ = 0U;
+    std::vector<std::uint16_t> menu_blank_deferred_sounds_;
     CommandMenuKarmaViewRuntime command_overview_attributes_skills_{};
     HotelKarmaUpgradeRuntime hotel_karma_skills_{};
     std::uint32_t hotel_karma_load_frames_ = 0U;
@@ -2030,6 +2053,7 @@ private:
     std::vector<std::pair<std::uint16_t, std::uint16_t>> field_map_cell_words_;
     std::size_t field_map_cell_columns_ = 0U;
     QImage field_hud_;
+    QImage field_hud_active_frame_;
     QImage field_service_background_;
     QImage field_taxi_map_;
     std::array<QImage, 8> field_taxi_cursor_tiles_{};
@@ -2090,7 +2114,7 @@ private:
     std::array<QImage, kMagicSpellTextCount> command_overview_magic_spell_icons_{};
     std::array<QImage, 4> command_overview_magic_cursor_frames_{};
     std::array<QImage, 5> command_overview_magic_posture_bars_{};
-    std::array<QImage, 5> command_overview_magic_force_meter_tiles_{};
+    std::array<QImage, 7> command_overview_magic_force_meter_tiles_{};
     std::array<QImage, 22> command_overview_magic_metric_bars_{};
     std::array<QImage, 4> command_overview_magic_availability_bars_{};
     std::array<QImage, 10> command_overview_magic_damage_bars_{};
@@ -2143,6 +2167,9 @@ private:
     bool command_overview_inventory_action_active_ = false;
     bool command_overview_inventory_lua_route_active_ = false;
     bool command_overview_inventory_selector_suppressed_ = false;
+    bool command_overview_inventory_detail_pending_ = false;
+    bool command_overview_inventory_cursor_hidden_ = false;
+    std::optional<int> command_overview_inventory_ammo_count_;
     bool command_overview_discard_confirmation_active_ = false;
     std::array<QImage, kFieldHudSlotCount> field_hud_faces_{};
     std::array<QImage, kFieldHudSlotCount> field_hud_items_{};
@@ -2204,9 +2231,10 @@ private:
     bool notebook_tip_flags_resolved_ = true;
     // FFFC2C's low 13 bits gate the Contacts page, while its next 13 bits
     // record Vid-Phone calls. FFFC27 and FFFC2A gate Mr. Johnsons and
-    // Shadowrunners. Fresh New Game seeds Contacts to 0x1C7F at 0x59C48;
-    // a loaded save restores the full FFFC2C longword when available.
-    std::optional<std::uint32_t> notebook_contacts_flags_ = 0x1C7FU;
+    // Shadowrunners. Fresh New Game leaves Contacts clear: 0x59C48 is the
+    // debug-menu Contacts effect (table 0x1D90C0, entry 6), not New Game
+    // setup. A loaded save restores FFFC2C when available.
+    std::optional<std::uint32_t> notebook_contacts_flags_ = 0U;
     // FFFBFA is the numeric Lone Star heat level (0..8), read by encounters
     // and cleared by the Vid-Phone record deletion service. Older host saves
     // do not contain it, so restored sessions keep the source value unknown.
@@ -2219,6 +2247,7 @@ private:
     std::optional<std::uint16_t> notebook_shadowrunner_flags_ = 0U;
     QImage pocket_secretary_background_;
     QImage pocket_secretary_grid_;
+    QImage pocket_secretary_nuyen_bar_;
     QImage hotel_options_cursor_;
     QImage hotel_checkout_cursor_;
     std::unordered_map<std::string, QImage> runner_preview_panels_;
@@ -2390,6 +2419,12 @@ private:
     std::optional<std::uint8_t> field_active_story_trigger_;
     std::uint8_t field_palette_fade_steps_ = 0U;
     std::uint8_t field_modal_return_transition_frames_remaining_ = 0U;
+    bool command_overview_return_transition_active_ = false;
+    std::uint16_t command_overview_return_transition_elapsed_frames_ = 0U;
+    std::uint8_t command_overview_return_palette_step_ = 0U;
+    scripting::ScriptFieldReturnTransitionPhase
+        command_overview_return_transition_phase_ =
+            scripting::ScriptFieldReturnTransitionPhase::none;
     // Source return point captured from the ROM-generated 0xBC36 position
     // triplet (FFDF44..4F) and camera snapshot (FFDF50/52).
     struct FieldDoorReturnPoint {

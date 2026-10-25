@@ -22,6 +22,9 @@ inline constexpr std::uint16_t kInitialFieldSceneReference = 2U;
 inline constexpr std::uint8_t kFieldModalReturnTransitionFrames = 60U;
 
 inline constexpr std::string_view kFieldHudAlias = "field.hud.background";
+// ROM 0x39F2: the active runner's 6x8 frame block (0x6AADE), decoded at
+// slot 0's window address 0xF144 (x 272, y 16) [C].
+inline constexpr std::string_view kFieldHudActiveFrameAlias = "field.hud.active.frame";
 inline constexpr std::string_view kFieldHudFaceAliasPrefix = "field.hud.face.";
 inline constexpr std::string_view kFieldHudItemAliasPrefix = "field.hud.item.";
 inline constexpr std::string_view kFieldHudUnarmedItemAliasPrefix =
@@ -123,13 +126,72 @@ FieldActionCostContext field_shop_cost_context(
         menu_mode, runner_feature_flags, runner.skills[11], 2U};
 }
 
+// Command-overview text is CRAM line 1 index 10 = 0x02C2 (emulator run5
+// FFD8F4 while the Start menu is open) [C]. The glyph atlas coverage is
+// 0xDB, so the tint is pre-scaled to land on levels (1,6,1).
+QColor cram_text_tint(const std::uint16_t cram) {
+    constexpr int kGlyphCoverage = 0xDB;
+    const auto level = [](const int cram_nibble) {
+        return ((cram_nibble >> 1) * 255 + 3) / 7;
+    };
+    const auto scale = [&](const int value) {
+        return std::min(255, (value * 255 + kGlyphCoverage / 2) / kGlyphCoverage);
+    };
+    return QColor(scale(level(cram & 0xF)),
+                  scale(level((cram >> 4) & 0xF)),
+                  scale(level((cram >> 8) & 0xF)));
+}
+
+QColor command_overview_text_tint() {
+    return cram_text_tint(0x02C2U);
+}
+
+// ROM 0xD03C/0xD046 (Attributes/Skills page, shared by the Command and
+// Hotel Karma entries) rewrites the text CRAM: FFD8D4 (the 0x4000 text
+// line) = 0x02C2 bright green for the focused row and description, and
+// FFD8F4 (the 0x6000 base-grid line) = 0x0060 dim green [C ROM; emulator
+// e2 8844: focus 20ce20, others 006500].
+QColor attributes_focus_text_tint() {
+    return cram_text_tint(0x02C2U);
+}
+
+QColor attributes_base_text_tint() {
+    return cram_text_tint(0x0060U);
+}
+
+// ROM 0xC1AD8.. stores " Pistols", " SMGs", " Shotguns" with a leading space
+// (Firearms sub-skills); the text catalog trims it [C ROM].
+int attributes_label_indent(const std::size_t label_index) {
+    return label_index >= 10U && label_index <= 12U ? 8 : 0;
+}
+
+// The ROM menu strings carry their layout as padding: runner names are
+// centred in 13 cells ("   Joshua    ", ROM 0x72972), posture and item
+// labels in 12 ("  Neutral   " 0xD1A21, " Model 101T " 0xD4571), and
+// "Physical   0%" (0xD198C) right-aligns the value to cell 13 [C]. The
+// text catalog stores trimmed strings, so the presenter re-applies it.
+constexpr int kRunnerNameCells = 13;
+constexpr int kMenuLabelCells = 12;
+constexpr int kMetricValueRightEdge = 128 + 13 * 8;
+
+int centered_text_x(const int x, const int field_cells,
+                    const std::string_view text) {
+    const auto length = static_cast<int>(text.size());
+    return length >= field_cells ? x : x + ((field_cells - length) / 2) * 8;
+}
+
+int right_aligned_text_x(const int right_edge,
+                         const std::string_view text) {
+    return right_edge - static_cast<int>(text.size()) * 8;
+}
+
 void draw_command_overview_number(
     QPainter& painter, const QImage& font, const int x, const int y,
     const std::uint32_t value,
     const NumericVisualAlignment alignment = NumericVisualAlignment::left,
     const bool group_thousands = false) {
     draw_numeric_visual(painter, font, x, y, value, alignment,
-                        group_thousands, QColor(0, 255, 0));
+                        group_thousands, command_overview_text_tint());
 }
 
 struct FieldShopProgressionInput {

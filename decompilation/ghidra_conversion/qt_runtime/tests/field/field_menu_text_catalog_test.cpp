@@ -368,9 +368,29 @@ int main() {
                 "   Dismiss", "    Who??", "    Abort"} ||
         text.catalog.dismiss_runner_separator !=
             std::string("[") + std::string(12U, static_cast<char>(92)) ||
+        text.catalog.dismiss_runner_separator_text_id != "separator" ||
+        text.catalog.save_load_option_text_ids !=
+            std::array<std::string, kSaveLoadOptionCount>{
+                "save_game", "load_game"} ||
+        text.catalog.save_load_option_labels !=
+            std::array<std::string, kSaveLoadOptionCount>{
+                "Save Game", "Load Game"} ||
+        text.catalog.save_load_slot_title_text_ids !=
+            std::array<std::string, kSaveLoadOptionCount>{
+                "save_game", "load_game"} ||
+        text.catalog.save_load_slot_titles !=
+            std::array<std::string, kSaveLoadOptionCount>{
+                " Save Game", " Load Game"} ||
+        text.catalog.save_load_slot_text_ids !=
+            std::array<std::string, kSaveLoadSlotLabelCount>{
+                "game_1", "game_2"} ||
+        text.catalog.save_load_slot_labels !=
+            std::array<std::string, kSaveLoadSlotLabelCount>{
+                "Game 1", "Game 2"} ||
         text.catalog.pocket_secretary_cyberdeck_unavailable_lines !=
             std::array<std::string, kCyberdeckUnavailableLineCount>{
-                " You do not have", "  a cyberdeck!!", " Keep looking."} ||
+                " You do not have", "  a cyberdeck!!",
+                "\n Keep looking."} ||
         text.catalog.pocket_secretary_group_item_names !=
             expected_group_item_names ||
         text.catalog.pocket_secretary_group_items_empty_lines !=
@@ -384,7 +404,7 @@ int main() {
         text.catalog.notebook_no_run_lines !=
             std::array<std::string, kNotebookNoRunLineCount>{
                 " You are not currently", "engaged in a shadowrun.",
-                "     Get a job!!"} ||
+                "\n     Get a job!!"} ||
         text.catalog.notebook_mr_johnson_names != expected_johnson_names ||
         text.catalog.notebook_mr_johnson_details != expected_johnson_details ||
         text.catalog.notebook_contact_names != expected_contact_names ||

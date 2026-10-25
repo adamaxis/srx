@@ -417,6 +417,10 @@ enum class MatrixModeResult : std::int64_t {
     BALANCED = 0x0,
     DEFENSE = 0x1,
 };
+enum class MenuMask : std::int64_t {
+    LEAD = 0x1,
+    REVEAL = 0x2,
+};
 enum class MenuMessage : std::int64_t {
     OUT_OF_AMMO = 0x1,
     ITEM_NO_CLIPS = 0x2,

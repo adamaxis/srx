@@ -1,7 +1,7 @@
 -- rules/inventory.lua: item selection, equip, discard, trade rules (srx inventory_action_conversion.cpp, ROM cited).
 -- Runner tables are 0-based arrays: inventory[0..7], phase[0..7]; weapon_slot -1 (= +0x56 0x7F/neg) when none.
 local E = require("enums")
-local B = E.ItemBranch
+local B, I = E.ItemBranch, E.ItemId
 local M = {}
 
 M.SLOTS, M.ROWS = 8, 4
@@ -16,9 +16,12 @@ end
 
 -- 0x121C0 classification [srx C]
 function M.classify(code, pending_medical)
-    if pending_medical and code >= 0x10 and code <= 0x12 then return B.FIRST_AID end
-    if code == 0x13 or code == 0x14 or code == 0x16 or (code >= 0x18 and code < 0x2C) then return B.AUTOMATIC_USE end
-    if code < 0x18 then return B.WEAPON_OR_GEAR end
+    -- 0x121C0 [C]: medical 0x10..0x12; fetish, passkey, goggles and the
+    -- power focus .. totems (0x18..0x2B) are automatic use; armor starts at 0x2C.
+    if pending_medical and code >= I.MEDKIT and code <= I.TRAUMA_PATCH then return B.FIRST_AID end
+    if code == I.FETISH or code == I.MAGLOCK_PASSKEY or code == I.SMART_GOGGLES or
+        (code >= I.POWER_FOCUS and code < I.ARMOR_VEST) then return B.AUTOMATIC_USE end
+    if code < I.POWER_FOCUS then return B.WEAPON_OR_GEAR end
     return B.ARMOR
 end
 

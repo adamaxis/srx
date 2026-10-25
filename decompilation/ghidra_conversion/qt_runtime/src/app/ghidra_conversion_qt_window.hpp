@@ -38,6 +38,7 @@
 #include <QString>
 #include <QTimer>
 #include <QWidget>
+#include <QtGlobal>
 
 #include <algorithm>
 #include <array>
@@ -167,8 +168,10 @@ public:
           // frame by frame and logs every (frame, op, id).
           audio_playback_(std::make_unique<AudioPlaybackService>(
               audio_alias_resolver(),
-              headless_replay ? AudioPlaybackService::Output::null
-                              : AudioPlaybackService::Output::device)),
+              headless_replay ||
+                      qEnvironmentVariableIntValue("SRX_HEADLESS") != 0
+                  ? AudioPlaybackService::Output::null
+                  : AudioPlaybackService::Output::device)),
           field_scene_runtime_([this](const std::string_view boundary) {
               record_debug_source_event(boundary);
               // The New Game opening walk's arm/consume boundaries close the
@@ -232,6 +235,10 @@ public:
         host_frame_timer_.start();
         update_window_title();
         if (debug_port.has_value()) {
+            debug_fast_stepping_ = qEnvironmentVariableIntValue("SRX_DEBUG_FAST") != 0;
+            if (debug_fast_stepping_) {
+                host_frame_timer_.setInterval(0);
+            }
             frame_stepper_.pause();
             debug_server_ = std::make_unique<FrameDebugServer>(
                 *debug_port, frame_stepper_,
@@ -265,6 +272,18 @@ public:
                         return false;
                     }
                     return true;
+                },
+                [this](QString* error) {
+                    return field_scene_runtime_
+                        .capture_game_save_snapshot_for_dump(error);
+                },
+                [this](const QJsonObject& snapshot, QString* error) {
+                    const auto restored = field_scene_runtime_
+                        .restore_game_save_snapshot_for_dump(snapshot, error);
+                    if (restored) {
+                        update();
+                    }
+                    return restored;
                 });
         }
         if (debug_event_queue_enabled_ || input_log_.recording()) {
@@ -1420,8 +1439,13 @@ private:
         if (replay_diverged_) {
             return;
         }
-        const auto due_frames = consume_host_frames(
-            host_frame_deadline_ns_, host_clock_.nsecsElapsed());
+        // Debug-port fast stepping (SRX_DEBUG_FAST=1): scripted sessions
+        // run their requested steps as fast as the host can, instead of
+        // at the 60 Hz deadline. Paused/free-run semantics are unchanged.
+        const auto due_frames = debug_fast_stepping_
+            ? kDebugFastFramesPerTick
+            : consume_host_frames(host_frame_deadline_ns_,
+                                  host_clock_.nsecsElapsed());
         const auto frames = frame_stepper_.frames_to_advance(due_frames);
         bool replay_input_applied = false;
         int advanced_frames = 0;
@@ -2518,6 +2542,8 @@ private:
     TitleModeEntryServiceCallbacks title_mode_entry_callbacks_;
     TitleIdleRestartFadeState title_idle_restart_fade_;
     QTimer host_frame_timer_;
+    static constexpr std::uint32_t kDebugFastFramesPerTick = 64U;
+    bool debug_fast_stepping_ = false;
     QElapsedTimer host_clock_;
     std::unique_ptr<FrameDebugServer> debug_server_;
     std::vector<PendingRemoteKey> pending_remote_keys_;

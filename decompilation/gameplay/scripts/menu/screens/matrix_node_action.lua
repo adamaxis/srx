@@ -388,7 +388,7 @@ local function show_random_alert(st, ctx)
     else
         st.matrix_message_kind = "system_alert"
         st.matrix_message = MatrixText.SYSTEM_ALERT
-        st.message_delay_frames = 25
+        st.message_delay_frames = MatrixRules.ALERT_MESSAGE_WAIT_FRAMES
     end
     refresh(st)
     ctx.redraw(R.FULL)
@@ -519,8 +519,8 @@ local function start_transfer(st, ctx)
         return
     end
 
-    -- 0x54D3A prints a dot every 20 frames; after the fourth dot the ROM
-    -- waits 9 more frames before checking story files and running detection.
+    -- 0x54D3A prints a dot every 21 VBlanks; after the fourth dot the ROM
+    -- waits 10 more before checking story files and running detection.
     st.transfer = { phase = "search", frames = NodeActions.SEARCH_DOT_FRAMES,
                     dots = 0, return_row = st.transfer_return_row }
     refresh(st)
@@ -554,7 +554,7 @@ local function advance_transfer_search(st, ctx)
     if transfer.dots < 4 then
         transfer.dots = transfer.dots + 1
         transfer.frames = transfer.dots < 4 and
-                          NodeActions.SEARCH_DOT_FRAMES or 9
+                          NodeActions.SEARCH_DOT_FRAMES or NodeActions.SEARCH_TAIL_FRAMES
         refresh(st)
         ctx.redraw(R.FULL)
         return
@@ -620,7 +620,7 @@ local function advance_matrix_transition(st, ctx)
         end
         st.matrix_message_kind = "system_overload"
         st.matrix_message = MatrixText.SYSTEM_OVERLOAD
-        st.message_delay_frames = 30
+        st.message_delay_frames = MatrixRules.OVERLOAD_MESSAGE_WAIT_FRAMES
         refresh(st)
     end
     ctx.redraw(R.FULL)

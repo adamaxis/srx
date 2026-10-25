@@ -76,6 +76,7 @@ using field_scene_detail::kSceneProfileEntityPositionWord;
 using field_scene_detail::kFieldModalReturnTransitionFrames;
 using field_scene_detail::magic_action_record_from_runner;
 using field_scene_detail::kFieldHudAlias;
+using field_scene_detail::kFieldHudActiveFrameAlias;
 using field_scene_detail::kFieldHudFaceAliasPrefix;
 using field_scene_detail::kFieldHudItemAliasPrefix;
 using field_scene_detail::kFieldHudUnarmedItemAliasPrefix;
@@ -113,12 +114,35 @@ using field_scene_detail::kGenesisSpriteOrigin;
 using field_scene_detail::kFieldSpellProgressionRecordCapacity;
 using field_scene_detail::field_shop_cost_context;
 using field_scene_detail::draw_command_overview_number;
+using field_scene_detail::cram_text_tint;
+using field_scene_detail::command_overview_text_tint;
+using field_scene_detail::attributes_focus_text_tint;
+using field_scene_detail::attributes_base_text_tint;
+using field_scene_detail::attributes_label_indent;
+using field_scene_detail::kRunnerNameCells;
+using field_scene_detail::kMenuLabelCells;
+using field_scene_detail::kMetricValueRightEdge;
+using field_scene_detail::centered_text_x;
+using field_scene_detail::right_aligned_text_x;
 using field_scene_detail::make_field_shop_progression_input;
 namespace {
 
 // Port-side scan limit for extracted per-direction actor art frames; the
 // longest 0x62AC list has 10 frames (0x75E8) [C], so 16 is headroom [H].
 constexpr std::uint8_t kActorArtFrameScanLimit = 16U;
+
+void make_random_grid_black_transparent(QImage& image) {
+    image = image.convertToFormat(QImage::Format_ARGB32);
+    for (int y = 0; y < image.height(); ++y) {
+        auto* const pixels = reinterpret_cast<QRgb*>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            if (qRed(pixels[x]) == 0 && qGreen(pixels[x]) == 0 &&
+                qBlue(pixels[x]) == 0) {
+                pixels[x] = qRgba(0, 0, 0, 0);
+            }
+        }
+    }
+}
 
 // Qt 6.9 added QImage::flipped(Qt::Orientations); 6.8 (Debian/Ubuntu packages)
 // only has mirrored(bool, bool). Same pixels either way.
@@ -5053,6 +5077,11 @@ bool FieldSceneRuntime::process_pending_story_world_effect_sequence() {
 
 bool FieldSceneRuntime::load_command_overview_assets(
     const ConversionAssetCatalog& catalog) {
+    // Optional until assets are regenerated with the 0xC3F8 nuyen bar.
+    if (catalog.find("menu.pocket.secretary.nuyen.bar") != nullptr) {
+        (void)load_image(catalog, "menu.pocket.secretary.nuyen.bar",
+                         pocket_secretary_nuyen_bar_);
+    }
     if (!load_image(catalog, kCommandOverviewBackgroundAlias,
                     command_overview_background_) ||
         !load_image(catalog, kCommandOverviewInventoryBoxesAlias,
@@ -5380,10 +5409,11 @@ bool FieldSceneRuntime::load_command_overview_assets(
                   std::to_string(2U - index)
             : std::string(kRandomGridIndexedAliasPrefix) +
                   std::to_string(index - 3U);
-        if (!load_image(catalog, alias,
-                        dismiss_runner_random_grid_patterns_[index])) {
+        auto& pattern = dismiss_runner_random_grid_patterns_[index];
+        if (!load_image(catalog, alias, pattern)) {
             return false;
         }
+        make_random_grid_black_transparent(pattern);
     }
     for (std::size_t index = 0;
          index < command_overview_magic_spell_icons_.size(); ++index) {
@@ -6981,7 +7011,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.run_command_overview = [this] {
         open_command_overview();
-        if (command_overview_.open()) {
+        if (command_overview_.open() &&
+            !command_overview_start_transition_black_frame_) {
             // The callback runs after this host frame's ordinary menu service
             // point, so the opening frame itself is the first black frame.
             command_overview_start_transition_frames_remaining_ = 26U;
@@ -7082,9 +7113,24 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
 
 
 
+void FieldSceneRuntime::flush_menu_blank_deferred_sounds() {
+    for (const auto sound : menu_blank_deferred_sounds_) {
+        if (source_audio_event_callback_) {
+            source_audio_event_callback_(sound);
+        }
+    }
+    menu_blank_deferred_sounds_.clear();
+}
+
 void FieldSceneRuntime::configure_field_menu_route() {
     scripting::ScriptMenuRouteBindings bindings;
     bindings.host.play_sound = [this](const std::uint16_t sound) {
+        if (command_overview_start_transition_black_frame_) {
+            // Display is off while the build runs; sounds queued after the
+            // build (e.g. 0x10E2E's 0x25) start once it re-enables [C order].
+            menu_blank_deferred_sounds_.push_back(sound);
+            return;
+        }
         if (source_audio_event_callback_) {
             source_audio_event_callback_(sound);
         }
@@ -7098,8 +7144,43 @@ void FieldSceneRuntime::configure_field_menu_route() {
     // frame. These callbacks are retained as presenter boundaries for the
     // later screen ports; they do not execute source tile/VDP operations.
     bindings.host.redraw = [](const std::uint32_t) {};
-    bindings.host.blank = [](const std::uint16_t) {};
-    bindings.host.set_window = [](const std::uint16_t) {};
+    bindings.host.blank = [this](const std::uint16_t mode,
+                                 const std::uint16_t black_frames,
+                                 const std::uint16_t reveal_line) {
+        // Lua passes the emulator-measured length of a display-off build
+        // (VDP $8134 .. $8174). The opening frame is the first black frame.
+        if (mode != static_cast<std::uint16_t>(srx::DisplayBlank::ON) ||
+            black_frames == 0U || !command_overview_.open()) {
+            return;
+        }
+        command_overview_start_transition_frames_remaining_ =
+            static_cast<std::uint8_t>(black_frames - 1U);
+        command_overview_start_transition_black_frame_ = true;
+        menu_blank_reveal_line_pending_ = reveal_line;
+        menu_blank_reveal_line_ = 0U;
+    };
+    bindings.host.mask = [this](const std::uint16_t phase,
+                                const std::uint16_t frame,
+                                const std::int16_t x, const std::int16_t y,
+                                const std::int16_t w, const std::int16_t h) {
+        if (!command_overview_.open() &&
+            menu_route_screen_ != static_cast<std::uint16_t>(
+                                      srx::MenuScreen::COMMAND)) {
+            return;
+        }
+        auto& masks =
+            phase == static_cast<std::uint16_t>(srx::MenuMask::LEAD)
+                ? menu_lead_masks_
+                : menu_reveal_masks_pending_;
+        if (masks.size() <= frame) {
+            masks.resize(static_cast<std::size_t>(frame) + 1U);
+        }
+        masks[frame].emplace_back(x, y, w, h);
+    };
+    bindings.host.set_window = [this](const std::uint16_t window) {
+        menu_window_sidebar_ =
+            window == static_cast<std::uint16_t>(srx::WindowPlane::SIDEBAR);
+    };
     bindings.host.set_screen = [this](const std::uint16_t screen) {
         const auto matrix_entry_screen = static_cast<std::uint16_t>(
             srx::MenuScreen::MATRIX_ENTRY);
@@ -7213,7 +7294,34 @@ void FieldSceneRuntime::configure_field_menu_route() {
             screen == static_cast<std::uint16_t>(srx::MenuScreen::POSTURE);
     };
     bindings.host.menu_closed = [this](
-                                    const bool matrix_logout_transition_complete) {
+                                    const bool matrix_logout_transition_complete,
+                                    const bool field_return_transition) {
+        if (field_return_transition) {
+            QImage menu_frame(320, 224,
+                              QImage::Format_ARGB32_Premultiplied);
+            menu_frame.fill(Qt::black);
+            QPainter menu_painter(&menu_frame);
+            paint(menu_painter);
+            menu_painter.end();
+            command_overview_return_image_ = std::move(menu_frame);
+            command_overview_return_transition_active_ = true;
+            command_overview_return_transition_elapsed_frames_ = 0U;
+            command_overview_return_palette_step_ = 0U;
+            command_overview_return_transition_phase_ =
+                scripting::ScriptFieldReturnTransitionPhase::menu_fade_out;
+            field_modal_return_transition_frames_remaining_ = 0U;
+            field_palette_fade_steps_ = 0U;
+            field_modal_return_blocked_inputs_ =
+                static_cast<std::uint8_t>(
+                    field_controller_sample_state_.held);
+            field_controller_sample_state_.events =
+                static_cast<std::uint16_t>(
+                    static_cast<std::uint8_t>(
+                        field_controller_sample_state_.held));
+            field_controller_latch_state_ = ControllerLatchState{};
+            field_entity_animation_.redraw_requested = true;
+            source_boundary("field.command_overview.return_fade_started");
+        }
         matrix_field_return_transition_pending_ =
             matrix_return_to_field_on_close_ &&
             !matrix_logout_transition_complete;
@@ -7536,7 +7644,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
             debug_menu_unlocked_ ? 5U : 4U;
     };
     bindings.game.set_contact_flags = [this](const std::uint32_t flags) {
-        // ROM 0x59C48 replaces the entire FFFC2C long with its fixed seed.
+        // ROM 0x59C48 is debug-menu Contacts handler table entry 6 at
+        // 0x1D90C0; it replaces the entire FFFC2C long with the debug seed.
         notebook_contacts_flags_ = flags;
     };
     bindings.game.set_walk_fast = [this] {
@@ -7742,6 +7851,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
 void FieldSceneRuntime::advance_field_menu_route() {
     game_scripts_.advance_menu_route(field_controller_sample_state_.events);
     const auto route_state = game_scripts_.menu_route_snapshot();
+    synchronize_command_overview_return_transition(route_state);
     synchronize_command_overview_clips_from_route(route_state);
     synchronize_command_overview_inventory_from_route(route_state);
     synchronize_command_overview_magic_from_route(route_state);
@@ -7922,8 +8032,8 @@ bool FieldSceneRuntime::bootstrap(
     dismiss_runner_random_grid_effect_ = RandomGridEffectState{};
     dismiss_runner_effect_frames_ = 0U;
     dismiss_runner_random_grid_cells_.fill(-1);
-    // The 0x59C48 New Game path begins without the FF018F deck-present bit.
-    // The loaded-save contract does not yet expose this global, so keep that
+    // A fresh New Game begins without the FF018F deck-present bit. The
+    // loaded-save contract does not yet expose this global, so keep that
     // branch explicit instead of treating an unknown saved bit as clear.
     cyberdeck_available_ = restored_field_state == nullptr
                                ? std::optional<bool>{false}
@@ -7941,10 +8051,11 @@ bool FieldSceneRuntime::bootstrap(
     // ROM startup 0x084E seeds FFFC30 bit 0 for a fresh New Game.
     notebook_tip_flags_ = {{1U, 0U, 0U}};
     notebook_tip_flags_resolved_ = restored_field_state == nullptr;
-    // 0x82A clears FFFC2C/27/2A; New Game setup later calls 0x59C48 to seed
-    // the Contacts gate to 0x1C7F. No loaded-save adapter restores these.
+    // Startup routine 0x82A clears FFFC2C/27/2A. The only ROM reference to
+    // 0x59C48 is debug-menu handler table entry 6 (Contacts) at 0x1D90C0;
+    // New Game does not call it, so fresh Contacts flags remain clear.
     notebook_contacts_flags_ = restored_field_state == nullptr
-                                   ? std::optional<std::uint32_t>{0x1C7FU}
+                                   ? std::optional<std::uint32_t>{0U}
                                    : std::nullopt;
     notebook_referral_flags_ = restored_field_state == nullptr
                                    ? std::optional<std::uint8_t>{0U}
@@ -8071,7 +8182,7 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_behavior_flags_ = 0U;
     field_exit_alternate_result_ = 0;
     field_exit_world_flags_ = 0U;
-    // New Game seeds FFFC30 bit 0 at ROM 0x59C48.
+    // Startup routine 0x084E seeds FFFC30 bit 0 for a fresh New Game.
     field_mode_flags_ = 1U;
     field_mode_flags_resolved_ = restored_field_state == nullptr;
     field_mode_effect_flags_ = 0U;
@@ -8793,6 +8904,8 @@ bool FieldSceneRuntime::bootstrap(
                     field_map_priority_overlay_) ||
         !load_image(startup_state.asset_catalog.catalog, kFieldHudAlias,
                     field_hud_) ||
+        !load_image(startup_state.asset_catalog.catalog,
+                    kFieldHudActiveFrameAlias, field_hud_active_frame_) ||
         !load_image(startup_state.asset_catalog.catalog,
                     "menu.field.service.background",
                     field_service_background_) ||
@@ -10876,6 +10989,10 @@ void FieldSceneRuntime::advance_frame() {
         return;
     }
     service_scene_music_latch();
+    if (command_overview_return_transition_active_) {
+        advance_command_overview_return_transition();
+        return;
+    }
     if (tarislar_credits_title_return_.is_presenting()) {
         const auto update = tarislar_credits_title_return_.advance();
         if (update.completed) {
@@ -11769,13 +11886,44 @@ void FieldSceneRuntime::advance_frame() {
         return;
     }
     if (command_overview_.open()) {
+        menu_blank_reveal_line_ = 0U;
+        if (!menu_reveal_masks_.empty()) {
+            menu_reveal_masks_.erase(menu_reveal_masks_.begin());
+            if (menu_reveal_masks_.size() <= 1U) {
+                flush_menu_blank_deferred_sounds();
+            }
+        }
+        if (!menu_lead_masks_.empty()) {
+            // Staged frames before the display goes off; the frame after
+            // the last one is the first black frame of the hold.
+            menu_lead_masks_.erase(menu_lead_masks_.begin());
+            source_boundary("field.command_overview.lead_frame");
+            return;
+        }
         if (command_overview_start_transition_frames_remaining_ != 0U) {
             command_overview_start_transition_black_frame_ = true;
             --command_overview_start_transition_frames_remaining_;
             source_boundary("field.command_overview.start_black_frame");
             return;
         }
-        command_overview_start_transition_black_frame_ = false;
+        if (command_overview_start_transition_black_frame_) {
+            command_overview_start_transition_black_frame_ = false;
+            menu_reveal_masks_ = std::move(menu_reveal_masks_pending_);
+            menu_reveal_masks_pending_.clear();
+            // 0x10E2E queues 0x25 after the staged build; it reaches the
+            // driver on the last staged reveal frame (Command open e6 8629,
+            // reopen e3 9849) [C emulator].
+            if (menu_reveal_masks_.size() <= 1U) {
+                flush_menu_blank_deferred_sounds();
+            }
+            if (menu_blank_reveal_line_pending_ != 0U) {
+                // The display re-enables mid-frame: rows above this line
+                // stay black for one frame (emulator measurement) [C].
+                menu_blank_reveal_line_ = menu_blank_reveal_line_pending_;
+                menu_blank_reveal_line_pending_ = 0U;
+                return;
+            }
+        }
         // This is the non-blocking host form of the source command loop's
         // wait/latch/sample sequence. Field movement and world services stay
         // suspended until Start returns from the overview.
@@ -12260,6 +12408,12 @@ void FieldSceneRuntime::advance_frame() {
             field_runtime_state_.display_service_word = 0U;
             command_overview_start_transition_frames_remaining_ = 0U;
             command_overview_start_transition_black_frame_ = false;
+            menu_blank_reveal_line_ = 0U;
+            menu_blank_reveal_line_pending_ = 0U;
+            menu_blank_deferred_sounds_.clear();
+            menu_lead_masks_.clear();
+            menu_reveal_masks_pending_.clear();
+            menu_reveal_masks_.clear();
             source_boundary("field.command_overview.returned_to_field");
             command_overview_inventory_action_ = InventoryActionMenuState{};
             command_overview_selected_inventory_item_.reset();
@@ -12739,6 +12893,18 @@ void FieldSceneRuntime::paint_field_scene_entities(
 }
 
 void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
+    // ROM 0x39F2 stamps the bright frame at 0xF144 + slot * 0x400 before
+    // 0x3548/0x38FA redraw the faces, items and counters. Emulator run5:
+    // slot 0 window cells E6EA.. vs E6E8.. for the inactive slots [C].
+    {
+        constexpr int kHudX = 272;
+        constexpr int kFrameY = 16;
+        constexpr int kSlotPitch = 64;
+        const auto slot = static_cast<int>(field_party_roster_.active_slot());
+        painter.drawImage(kHudX, kFrameY + slot * kSlotPitch,
+                          field_hud_active_frame_, kHudX, kFrameY, 48,
+                          kSlotPitch);
+    }
     const auto image_for = [this](const FieldHudOverlay& overlay)
         -> const QImage* {
         switch (overlay.kind) {
@@ -12879,7 +13045,7 @@ FieldActionBaseCostLookup FieldSceneRuntime::item_resale_base_lookup() const {
 void FieldSceneRuntime::draw_command_overview_text(
     QPainter& painter, const int x, const int y,
     const std::string_view text) const {
-    draw_tinted_field_text(painter, x, y, text, QColor(0, 255, 0));
+    draw_tinted_field_text(painter, x, y, text, command_overview_text_tint());
 }
 
 
@@ -12898,10 +13064,10 @@ void FieldSceneRuntime::paint_command_overview_clips(
     // source 20x20 cell region. The field HUD is composed afterward as a
     // separate shared layer.
     painter.fillRect(96, 16, 160, 160, Qt::black);
-    // The clear includes the top 16 pixels of the shared posture panel.
-    // ROM 0x11B5C re-enters 0x11900 after that clear, rebuilding this shell
-    // before installing the Clips row. Restore the panel as one unit here.
-    paint_command_overview_posture_panel(painter);
+    // ROM 0x11B5C then calls 0x11900, which covers the posture box (21x3
+    // cells at $EA18, x=96 y=160) with the C1320 blank tile until 0x11928
+    // restores it after the result text [C emulator e1 8840/9020].
+    painter.fillRect(96, 160, 168, 24, Qt::black);
 
     // The parent command tabs occupy the full 160 px panel. CD33E/CD37A are
     // only 15 cells wide, so replacing just their centered 120 px strip can
@@ -13005,6 +13171,23 @@ void FieldSceneRuntime::paint_command_overview_clips(
         // parent row here; showing the child Clips/Trade row would be stale.
         painter.drawImage(kButtonPanelRect, command_overview_background_,
                           kButtonPanelRect);
+        // Neither path rewrites the y=200 footer row, so the top-level
+        // caption chosen before the message stays visible ("Trade" under
+        // the no-party message [C emulator e1 9040]; Reload cases [H]).
+        const auto message = command_overview_clips_.message();
+        if (message == ClipsMenuMessage::no_party_members ||
+            message == ClipsMenuMessage::out_of_ammo ||
+            message == ClipsMenuMessage::item_does_not_use_clips) {
+            const auto parent_selection = command_overview_clips_.selection();
+            const auto parent_footer =
+                parent_selection >= 2U && parent_selection <= 5U
+                    ? static_cast<std::size_t>(parent_selection - 2U)
+                    : 0U;
+            draw_command_overview_text(
+                painter, 112, 200,
+                centered_command_footer(
+                    field_menu_text_.clips_commands[parent_footer]));
+        }
         switch (command_overview_clips_.message()) {
         case ClipsMenuMessage::out_of_ammo: {
             const auto active_slot = field_party_roster_.active_slot();
@@ -13051,9 +13234,11 @@ void FieldSceneRuntime::paint_command_overview_clips(
 
     draw_command_overview_text(painter, 136, 72,
                                field_menu_text_.clips_counter_label);
+    // ROM 0x11B82/0xC216: digits are written right-to-left from cell $C4B4
+    // (x=208), so the ones digit occupies 208..215 [C emulator e1 8840].
     draw_command_overview_number(
-        painter, command_overview_font_, 208, 72,
-        active_runner_record().ammo_clips);
+        painter, command_overview_font_, 216, 72,
+        active_runner_record().ammo_clips, NumericVisualAlignment::right);
     const auto selection = command_overview_clips_.selection();
     if (selection >= static_cast<std::uint8_t>(ClipsCommand::reload) &&
         selection <= static_cast<std::uint8_t>(ClipsCommand::cancel)) {
@@ -13074,6 +13259,20 @@ void FieldSceneRuntime::paint_command_overview_clips(
                                        footer_index]));
 }
 
+void FieldSceneRuntime::draw_pocket_secretary_cursor(QPainter& painter,
+                                                     const int x,
+                                                     const int y) const {
+    // ROM 0xC376 writes tile 0x05FF into plane-B column 9 (x=72). 0xC0C2
+    // loads the arrow glyph there; the emulator's Main Menu shows that arrow,
+    // not the font's lowercase x [C emulator frame 8690]. The extracted
+    // asset is cropped one column from the left (origin x=1).
+    if (hotel_options_cursor_.isNull()) {
+        draw_command_overview_text(painter, x, y, "x");
+        return;
+    }
+    painter.drawImage(x + 1, y, hotel_options_cursor_);
+}
+
 void FieldSceneRuntime::paint_command_overview_posture_panel(
     QPainter& painter) const {
     // ROM 0x11900 redraws the common lower shell after Clips clears the
@@ -13087,9 +13286,15 @@ void FieldSceneRuntime::paint_command_overview_posture_panel(
     const auto posture = std::min<std::size_t>(
         active_runner_record().posture,
         command_overview_status_bars_.size() - 1U);
-    painter.drawImage(176, 168, command_overview_status_bars_[posture]);
-    draw_command_overview_text(painter, 136, 176,
-                               field_menu_text_.status_names[posture]);
+    // 0x11B1A writes the 8x1-cell strip at $CAAC (x=176 y=168); the extracted
+    // BMP is its trimmed 57x6 art, which starts 3 px right and 1 px down in
+    // that strip [C emulator e1 8640: best fit (179,169)].
+    painter.drawImage(179, 169, command_overview_status_bars_[posture]);
+    draw_command_overview_text(
+        painter,
+        centered_text_x(136, kMenuLabelCells,
+                        field_menu_text_.status_names[posture]),
+        176, field_menu_text_.status_names[posture]);
     if (posture_dialog_active_) {
         painter.drawImage(120, 168, posture_focus_);
     }
@@ -13109,7 +13314,10 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
     const auto runner_name = field_party_roster_.name(slot).empty()
                                  ? field_menu_text_.runner_names[0]
                                  : field_party_roster_.name(slot);
-    draw_command_overview_text(painter, 80, 24, runner_name);
+    // ROM 0xD134: record +0x58 untrimmed at C194 (x80,y24) [C].
+    draw_command_overview_text(
+        painter, 80 + 8 * field_party_roster_.name_leading_pad(slot), 24,
+        runner_name);
     if (record.species_index < field_menu_text_.race_names.size()) {
         draw_command_overview_text(
             painter, 80, 32,
@@ -13122,8 +13330,14 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
     }
     // The source calls 0x110EC with VDP destination E132. That is the same
     // runner panel family used at E104 on the command page, shifted to x=200.
-    if (slot < field_hud_faces_.size() &&
-        !field_hud_faces_[slot].isNull()) {
+    // 0xD0FE loads the line palette chosen by record+0x2C (>>13) from
+    // 0x18ACB6, so the panel is the record's preview panel, not the field
+    // HUD face [C emulator e2 8900: red-jacket shaman panel].
+    if (const auto* preview = runner_preview_panel_for_record(record);
+        preview != nullptr) {
+        painter.drawImage(200, 16, *preview);
+    } else if (slot < field_hud_faces_.size() &&
+               !field_hud_faces_[slot].isNull()) {
         painter.drawImage(200, 16, field_hud_faces_[slot]);
     }
 
@@ -13148,27 +13362,45 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
                 // selection layer.
                 continue;
             }
-            draw_command_overview_text(
-                painter, x, y,
-                field_menu_text_.attribute_skill_labels[cell.label_index]);
-            // The source places the static Essence value one tile to the
-            // left of the other right-column values. When Essence is focused,
-            // 0xD5DC replaces it with the live and secondary values below.
-            const auto value_x = cell.label_index == 6U
-                                     ? 272
-                                     : (column == 0U ? 136 : 280);
-            draw_command_overview_number(
-                painter, command_overview_font_, value_x, y, cell.value);
+            draw_tinted_field_text(
+                painter, x + attributes_label_indent(cell.label_index), y,
+                field_menu_text_.attribute_skill_labels[cell.label_index],
+                attributes_base_text_tint());
+            if (cell.label_index == 6U) {
+                // ROM 0xD1DC skips +0x7D, prints +0x7E one cell left (x=272),
+                // then 0xD1FE prints +0x8E at x=288 around the label's '.'
+                // [C ROM; emulator e2 8900 "6.0"].
+                draw_numeric_visual(
+                    painter, command_overview_font_, 272, y,
+                    record.cyberware_essence_tens(),
+                    NumericVisualAlignment::left, false,
+                    attributes_base_text_tint());
+                draw_numeric_visual(
+                    painter, command_overview_font_, 288, y,
+                    record.cyberware_essence_ones(),
+                    NumericVisualAlignment::left, false,
+                    attributes_base_text_tint());
+                continue;
+            }
+            // 0xD1E8: the Magic row prints +0x7F (auxiliary[0]), not the
+            // contiguous grid byte +0x7E [C ROM].
+            const auto shown = cell.label_index == 7U
+                                   ? static_cast<unsigned>(record.auxiliary[0U])
+                                   : static_cast<unsigned>(cell.value);
+            draw_numeric_visual(painter, command_overview_font_,
+                                column == 0U ? 136 : 280, y,
+                                shown, NumericVisualAlignment::left,
+                                false, attributes_base_text_tint());
         }
     }
 
     const auto draw_detail_text = [&](const int x, const int y,
                                       const std::string_view text,
                                       const std::uint16_t text_mode) {
-        const auto palette_line = text_mode == 0x4000U
-                                      ? HotelMenuPaletteLine::checkout
-                                      : HotelMenuPaletteLine::status_and_options;
-        draw_hotel_menu_text(painter, x, y, text, palette_line);
+        draw_tinted_field_text(painter, x, y, text,
+                               text_mode == 0x4000U
+                                   ? attributes_focus_text_tint()
+                                   : attributes_base_text_tint());
     };
     CyberwareDetailCallbacks detail_callbacks{};
     detail_callbacks.render_selected_label =
@@ -13192,7 +13424,8 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
             }
             if (label_index < field_menu_text_.attribute_skill_labels.size()) {
                 draw_detail_text(
-                    x, y, field_menu_text_.attribute_skill_labels[label_index],
+                    x + attributes_label_indent(label_index), y,
+                    field_menu_text_.attribute_skill_labels[label_index],
                     text_mode);
             }
         };
@@ -13230,14 +13463,11 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
                 y = 56;
                 break;
             }
-            if (text_mode == 0x4000U) {
-                draw_numeric_visual(
-                    painter, hotel_checkout_font_, x, y, value,
-                    NumericVisualAlignment::left, false);
-            } else {
-                draw_command_overview_number(
-                    painter, command_overview_font_, x, y, value);
-            }
+            draw_numeric_visual(painter, command_overview_font_, x, y, value,
+                                NumericVisualAlignment::left, false,
+                                text_mode == 0x4000U
+                                    ? attributes_focus_text_tint()
+                                    : attributes_base_text_tint());
         };
     detail_callbacks.render_cyberware_modifier_label =
         [&](const CyberwareDetailModifierField field,
@@ -13268,10 +13498,10 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
         field_menu_text_.attribute_skill_descriptions.size()) {
         // 0xC1B70 description, three 8-px rows from (24,168) [C: emulator
         // run3 8600 rows 168/176/184].
-        draw_hotel_menu_text(
+        draw_tinted_field_text(
             painter, 24, 168,
             field_menu_text_.attribute_skill_descriptions[selected.label_index],
-            HotelMenuPaletteLine::checkout);
+            attributes_focus_text_tint());
     }
 
     if (menu.allows_karma_upgrades()) {
@@ -13348,21 +13578,55 @@ void FieldSceneRuntime::paint_command_overview_magic(
             : nullptr;
     const auto* table = field_magic_spell_table(
         active_runner_record().magic_table_index);
-    if (table != nullptr) {
+    const auto draw_spell_slot = [this, &painter, lua_view](
+                                     const std::size_t index,
+                                     const int spell_code) {
+        if (spell_code < 0 ||
+            static_cast<std::size_t>(spell_code) >=
+                command_overview_magic_spell_icons_.size()) {
+            return;
+        }
+        const auto column = index % 7U;
+        const auto row = index / 7U;
+        const auto x = lua_view != nullptr
+                           ? lua_view->spell_grid_x +
+                                 static_cast<int>(column) *
+                                     lua_view->spell_grid_column_step
+                           : 32 + static_cast<int>(column * 32U);
+        const auto y = lua_view != nullptr
+                           ? lua_view->spell_grid_y +
+                                 static_cast<int>(row) *
+                                     lua_view->spell_grid_row_step
+                           : 168 + static_cast<int>(row * 24U);
+        const auto& icon = command_overview_magic_spell_icons_[
+            static_cast<std::size_t>(spell_code)];
+        if (lua_view != nullptr) {
+            painter.save();
+            // The ROM redraws the 16-pixel-high cell borders over glyph spill;
+            // e6 9060/9265/9400 show no third icon row below y=183 [C emulator].
+            painter.setClipRect(
+                QRect(x, y, lua_view->spell_grid_icon_width,
+                      lua_view->spell_grid_icon_height),
+                Qt::IntersectClip);
+            painter.drawImage(x, y, icon);
+            painter.restore();
+        } else {
+            painter.drawImage(x, y, icon);
+        }
+    };
+    if (lua_view != nullptr) {
+        for (std::size_t index = 0U;
+             index < lua_view->spell_codes.size(); ++index) {
+            draw_spell_slot(index, lua_view->spell_codes[index]);
+        }
+    } else if (table != nullptr) {
         for (std::size_t index = 0;
              index < table->entry_count &&
              index < kMagicSpellTableEntryCapacity;
              ++index) {
-            const auto spell_code = table->entries[index].spell_code;
-            if (spell_code >= command_overview_magic_spell_icons_.size()) {
-                continue;
-            }
-            const auto column = index % 7U;
-            const auto row = index / 7U;
-            painter.drawImage(
-                32 + static_cast<int>(column * 32U),
-                168 + static_cast<int>(row * 24U),
-                command_overview_magic_spell_icons_[spell_code]);
+            draw_spell_slot(
+                index,
+                static_cast<int>(table->entries[index].spell_code));
         }
     }
 
@@ -13378,15 +13642,30 @@ void FieldSceneRuntime::paint_command_overview_magic(
     const auto spell_code = static_cast<std::uint8_t>(selected_spell_code);
     const auto* spell = find_us_magic_spell(spell_code);
     if (spell_code < field_menu_text_.magic_spell_names.size()) {
-        // ROM 0x10276 sends the selected D4EA0 glyph triplet to C194, which
-        // is the 24x24 cell beside the spell title. The menu row below uses
-        // the same named glyph assets at its separate list destinations.
+        // ROM 0x10276 selects the glyph pointer at D4EA0 + 0x1A; 0x11190
+        // transfers six tile words as a 3x2, 24x16 glyph into C194. Clip the
+        // shared 24x24 extracted image to those source-written rows. The Lua
+        // layout uses the e6 title origin: its first visible glyph is at
+        // x=128 in frames 9060/9265/9400, while the old paint origin put it at
+        // x=112 [C].
         if (spell_code < command_overview_magic_spell_icons_.size()) {
+            const auto title_icon_x =
+                lua_view != nullptr ? lua_view->title_icon_x : 80;
+            const auto title_icon_y =
+                lua_view != nullptr ? lua_view->title_icon_y : 24;
+            painter.save();
+            painter.setClipRect(
+                QRect(title_icon_x, title_icon_y, 24, 16),
+                Qt::IntersectClip);
             painter.drawImage(
-                80, 24, command_overview_magic_spell_icons_[spell_code]);
+                title_icon_x, title_icon_y,
+                command_overview_magic_spell_icons_[spell_code]);
+            painter.restore();
         }
         draw_field_menu_font_text(
-            painter, 112, 32,
+            painter,
+            lua_view != nullptr ? lua_view->title_text_x : 128,
+            lua_view != nullptr ? lua_view->title_text_y : 32,
             field_menu_text_.magic_spell_names[spell_code],
             magic_menu_font_);
         if (magic_force_selection_open() ||
@@ -13593,13 +13872,49 @@ void FieldSceneRuntime::paint_command_overview_magic(
         }
     }
 
+    const auto posture_value =
+        lua_view != nullptr ? lua_view->posture : runner.posture;
     const auto posture = std::min<std::size_t>(
-        runner.posture, command_overview_magic_posture_bars_.size() - 1U);
-    painter.drawImage(160, 136,
-                      command_overview_magic_posture_bars_[posture]);
+        static_cast<std::size_t>(posture_value),
+        command_overview_magic_posture_bars_.size() - 1U);
+    auto posture_bar = command_overview_magic_posture_bars_[posture].copy();
+    QRect marker_pixels;
+    for (int y = 0; y < posture_bar.height(); ++y) {
+        for (int x = 0; x < posture_bar.width(); ++x) {
+            const auto color = posture_bar.pixelColor(x, y);
+            if (color.alpha() > 0 && color.red() > 0 &&
+                color.red() == color.green() &&
+                color.green() == color.blue()) {
+                marker_pixels |= QRect(x, y, 1, 1);
+            }
+        }
+    }
+    if (!marker_pixels.isNull()) {
+        const auto halo = marker_pixels.adjusted(-1, -1, 1, 1);
+        // ROM 0x107CE selects the C8600 posture row. e6 9060/9265/9400 show
+        // the gray marker without the asset's pale one-pixel halo [C].
+        for (int y = halo.top(); y <= halo.bottom(); ++y) {
+            for (int x = halo.left(); x <= halo.right(); ++x) {
+                const auto on_halo =
+                    x == halo.left() || x == halo.right() ||
+                    y == halo.top() || y == halo.bottom();
+                if (on_halo && x >= 0 && y >= 0 &&
+                    x < posture_bar.width() && y < posture_bar.height()) {
+                    posture_bar.setPixelColor(x, y, QColor(0, 0, 0, 0));
+                }
+            }
+        }
+    }
+    painter.drawImage(
+        lua_view != nullptr ? lua_view->posture_bar_x : 160,
+        lua_view != nullptr ? lua_view->posture_bar_y : 136,
+        posture_bar);
     if (posture < field_menu_text_.status_names.size()) {
         draw_field_menu_font_text(
-            painter, 160, 144, field_menu_text_.status_names[posture],
+            painter,
+            lua_view != nullptr ? lua_view->posture_text_x : 160,
+            lua_view != nullptr ? lua_view->posture_text_y : 144,
+            field_menu_text_.status_names[posture],
             magic_menu_font_);
     }
 
@@ -13619,9 +13934,14 @@ void FieldSceneRuntime::paint_command_overview_magic(
         painter.drawImage(force_tile_x(index), 112,
                           command_overview_magic_force_meter_tiles_[2]);
     }
+    // 0x1232 with d7=1 copies two consecutive words from A2: C85A8/C85AA
+    // during the force loop, C85AC/C85AE afterwards [C ROM 0x101B4].
     const auto marker = magic_force_selection_open() ? 3U : 4U;
     painter.drawImage(force_tile_x(current_force), 112,
                       command_overview_magic_force_meter_tiles_[marker]);
+    painter.drawImage(force_tile_x(static_cast<std::uint16_t>(
+                          current_force + 1U)), 112,
+                      command_overview_magic_force_meter_tiles_[marker + 2U]);
     for (std::uint16_t index = 0U;
          index < maximum_force - current_force; ++index) {
         painter.drawImage(
@@ -13637,8 +13957,12 @@ void FieldSceneRuntime::paint_command_overview_magic(
         magic_cursor_phase() %
         command_overview_magic_cursor_frames_.size());
     painter.drawImage(
-        static_cast<int>(selection.column) * 32,
-        static_cast<int>(selection.row) * 24,
+        lua_view != nullptr
+            ? lua_view->cursor_offset_x
+            : static_cast<int>(selection.column) * 32,
+        lua_view != nullptr
+            ? lua_view->cursor_offset_y
+            : static_cast<int>(selection.row) * 24,
         command_overview_magic_cursor_frames_[phase]);
 }
 
@@ -13721,7 +14045,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         // ROM 0xC2A6 writes C1418 at C216 with C0DA. The embedded 0x80
         // markers advance eight pixels per row, leaving one blank row
         // between options. C376 writes its right cursor tile at C3A2, x=136;
-        // C1320 maps tile 0x05FF to the source lowercase-x glyph.
+        // tile 0x05FF holds the 0xC0C2 arrow (see draw_pocket_secretary_cursor).
         if (matrix_search) {
             // The console is an overlay on the field; restore the map and HUD
             // outside the central frame after laying down its opaque art.
@@ -13729,6 +14053,14 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         } else {
             painter.drawImage(0, 0, pocket_secretary_background_);
             painter.drawImage(24, 24, pocket_secretary_grid_);
+            // 0x10A7E's bezel is only 0x21 cells wide, so the window-plane
+            // party HUD stays visible from x=272 (emulator 8690 vs 8640:
+            // identical pixels for x >= 272) [C].
+            painter.save();
+            painter.setClipRect(QRect(272, 0, 48, 224));
+            painter.drawImage(0, 0, field_hud_);
+            paint_field_hud_overlays(painter);
+            painter.restore();
         }
         // ROM 0xE660's C13E8/C13F8 destinations map to these twelve 8x8
         // cells in the lower shared frame. Each call replaces one adjacent
@@ -13757,7 +14089,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         if (field_matrix_route_active_ &&
             routed_screen == srx::MenuScreen::MATRIX_ENTRY) {
             // 0xE47A leaves the shared interface while it plays the jack-in
-            // cue and waits 20 VBlanks. Clear the whole frame so field/menu
+            // cue and waits 21 VBlanks (0xC24, d5 = 0x14). Clear the whole frame so field/menu
             // controls cannot remain visible beneath the transition.
             painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
             return;
@@ -14575,25 +14907,66 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 }
                 return;
             }
-            if (!routed_menu.top_title.empty()) {
+            const auto layout = routed_menu.top_layout.value_or(
+                scripting::ScriptMenuRouteLayout{});
+            const auto title_x = layout.title_x.value_or(88);
+            const auto title_y = layout.title_y.value_or(32);
+            const auto separator_x = layout.separator_x.value_or(72);
+            const auto separator_y = layout.separator_y.value_or(40);
+            const auto label_x = layout.label_x.value_or(88);
+            const auto label_y = layout.label_y.value_or(56);
+            const auto cursor_x = layout.cursor_x.value_or(72);
+            const auto cursor_y = layout.cursor_y.value_or(56);
+            const auto row_spacing = layout.row_spacing.value_or(16);
+            const bool save_slot_screen =
+                menu_route_screen_ == static_cast<std::uint16_t>(
+                                          srx::MenuScreen::SAVE_SLOT);
+            if (save_slot_screen) {
+                const auto title_id = std::find(
+                    field_menu_text_.save_load_slot_title_text_ids.begin(),
+                    field_menu_text_.save_load_slot_title_text_ids.end(),
+                    routed_menu.top_title);
+                if (title_id !=
+                    field_menu_text_.save_load_slot_title_text_ids.end()) {
+                    const auto title_index = static_cast<std::size_t>(
+                        title_id -
+                        field_menu_text_.save_load_slot_title_text_ids.begin());
+                    draw_command_overview_text(
+                        painter, title_x, title_y,
+                        field_menu_text_.save_load_slot_titles[title_index]);
+                }
                 draw_command_overview_text(
-                    painter, 88, 32, routed_menu.top_title);
-                draw_command_overview_text(
-                    painter, 72, 40,
+                    painter, separator_x, separator_y,
                     pocket_secretary_menu_content_.separator);
             }
+            const auto& label_ids =
+                save_slot_screen
+                    ? field_menu_text_.save_load_slot_text_ids
+                    : field_menu_text_.save_load_option_text_ids;
+            const auto& labels =
+                save_slot_screen
+                    ? field_menu_text_.save_load_slot_labels
+                    : field_menu_text_.save_load_option_labels;
             for (std::size_t row = 0;
                  row < routed_menu.top_option_labels.size(); ++row) {
-                draw_command_overview_text(
-                    painter, 88, 56 + static_cast<int>(row) * 16,
+                const auto label_id = std::find(
+                    label_ids.begin(), label_ids.end(),
                     routed_menu.top_option_labels[row]);
+                if (label_id == label_ids.end()) continue;
+                const auto label_index = static_cast<std::size_t>(
+                    label_id - label_ids.begin());
+                draw_command_overview_text(
+                    painter, label_x,
+                    label_y + static_cast<int>(row) * row_spacing,
+                    labels[label_index]);
             }
             const auto selected_row = routed_menu.top_row.value_or(0);
             if (selected_row >= 0 &&
                 static_cast<std::size_t>(selected_row) <
                     routed_menu.top_option_labels.size()) {
-                draw_command_overview_text(
-                    painter, 72, 56 + selected_row * 16, "x");
+                draw_pocket_secretary_cursor(
+                    painter, cursor_x,
+                    cursor_y + selected_row * row_spacing);
             }
             return;
         }
@@ -14617,8 +14990,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             if (selected_row >= 0 &&
                 static_cast<std::size_t>(selected_row) <
                     debug_menu.top_option_labels.size()) {
-                draw_command_overview_text(
-                    painter, 72, 56 + selected_row * 16, "x");
+                draw_pocket_secretary_cursor(
+                    painter, 72,
+                    56 + selected_row * 16);
             }
             return;
         }
@@ -14677,9 +15051,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                         }
                     }
                     if (page.selection < page.visible_count) {
-                        draw_command_overview_text(
+                        draw_pocket_secretary_cursor(
                             painter, 72,
-                            56 + static_cast<int>(page.selection) * 16, "x");
+                            56 + static_cast<int>(page.selection) * 16);
                     }
                     return true;
                 };
@@ -14741,9 +15115,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                             .notebook_mr_johnson_names[source_index]);
                 }
                 if (page.selection < page.visible_count) {
-                    draw_command_overview_text(
+                    draw_pocket_secretary_cursor(
                         painter, 72,
-                        56 + static_cast<int>(page.selection) * 16, "x");
+                        56 + static_cast<int>(page.selection) * 16);
                 }
                 return;
             }
@@ -14844,7 +15218,8 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             draw_command_overview_text(
                 painter, 88, 32, field_menu_text_.notebook_labels[0]);
             draw_command_overview_text(
-                painter, 72, 40, pocket_secretary_menu_content_.separator);
+                painter, 72, 40,
+                field_menu_text_.notebook_tips_separator); // [C] F33E reads C56D6 (16 cells).
             for (std::size_t row = 0;
                  row < pocket_secretary_.notebook.option_count; ++row) {
                 const auto label_index = static_cast<std::size_t>(
@@ -14859,11 +15234,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             }
             if (pocket_secretary_.notebook.selection <
                 pocket_secretary_.notebook.option_count) {
-                draw_command_overview_text(
+                draw_pocket_secretary_cursor(
                     painter, 72,
-                    56 + static_cast<int>(
-                             pocket_secretary_.notebook.selection) * 16,
-                    "x");
+                    56 + static_cast<int>(pocket_secretary_.notebook.selection) * 16);
             }
             return;
         }
@@ -14877,8 +15250,17 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 painter, 88, 32, field_menu_text_.dismiss_runner_labels[0]);
             draw_command_overview_text(
                 painter, 88, 40, field_menu_text_.dismiss_runner_labels[1]);
+            const auto separator_x = routed_menu.top_layout.has_value()
+                                         ? routed_menu.top_layout->separator_x
+                                               .value_or(88)
+                                         : 88;
+            const auto separator_y = routed_menu.top_layout.has_value()
+                                         ? routed_menu.top_layout->separator_y
+                                               .value_or(48)
+                                         : 48;
             draw_command_overview_text(
-                painter, 72, 48, field_menu_text_.dismiss_runner_separator);
+                painter, separator_x, separator_y,
+                field_menu_text_.dismiss_runner_separator);
             draw_command_overview_text(
                 painter, 88, 64, field_menu_text_.dismiss_runner_labels[2]);
             for (std::size_t row = 0;
@@ -14890,10 +15272,9 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             }
             if (dismiss_runner_.selection <=
                 dismiss_runner_.candidate_count) {
-                draw_command_overview_text(
+                draw_pocket_secretary_cursor(
                     painter, 72,
-                    64 + static_cast<int>(dismiss_runner_.selection) * 16,
-                    "x");
+                    64 + static_cast<int>(dismiss_runner_.selection) * 16);
             }
             if (const auto slot = dismiss_runner_preview_slot();
                 slot.has_value() &&
@@ -14981,14 +15362,27 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 painter, 88, 56 + static_cast<int>(row) * 16,
                 pocket_secretary_menu_content_.choices[row].label);
         }
+        if (!pocket_secretary_nuyen_bar_.isNull()) {
+            // ROM 0xC3F8: the 20x3 map replaces plane-A cells at (56,152), so
+            // its colour-0 pixels expose the bezel, not the C3E6 grid [C].
+            const QRect bar(56, 152, pocket_secretary_nuyen_bar_.width(),
+                            pocket_secretary_nuyen_bar_.height());
+            painter.drawImage(bar, pocket_secretary_background_, bar);
+            painter.drawImage(bar.topLeft(), pocket_secretary_nuyen_bar_);
+            // 0xC216 writes digits right to left from $CA2C (last cell at
+            // x=176), inserting C1320 entry 0x18 (',') every three digits.
+            draw_command_overview_number(
+                painter, command_overview_font_, 184, 160,
+                field_funds_.value_or(0U), NumericVisualAlignment::right,
+                true);
+        }
         if (pocket_secretary_.selection <=
             pocket_secretary_.maximum_selection) {
             // ROM 0xC376 writes the selector into plane-B column 9 (x=72),
             // in the gutter before the option labels begin at x=88.
-            draw_command_overview_text(
+            draw_pocket_secretary_cursor(
                 painter, 72,
-                56 + static_cast<int>(pocket_secretary_.selection) * 16,
-                "x");
+                56 + static_cast<int>(pocket_secretary_.selection) * 16);
         }
         return;
     }
@@ -15008,11 +15402,16 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             command_overview_portraits_[field_joshua_archetype_selection_]);
     }
 
-    draw_command_overview_text(
-        painter, 128, 8,
-        field_party_roster_.name(field_party_roster_.active_slot()).empty()
-            ? field_menu_text_.runner_names[0]
-            : field_party_roster_.name(field_party_roster_.active_slot()));
+    {
+        // ROM 0x1111A: record +0x58 at plane cell (16,1).
+        const std::string_view name =
+            field_party_roster_.name(field_party_roster_.active_slot()).empty()
+                ? std::string_view(field_menu_text_.runner_names[0])
+                : std::string_view(field_party_roster_.name(
+                      field_party_roster_.active_slot()));
+        draw_command_overview_text(
+            painter, centered_text_x(128, kRunnerNameCells, name), 8, name);
+    }
 
     // 0x11928/0x11AE4 places the five-state bar and status name. Keeping this
     // in a helper lets child screens restore the shared panel after clearing
@@ -15073,14 +15472,36 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             if (!label_index.has_value()) {
                 return;
             }
-            draw_command_overview_text(
-                painter, 112, 48,
-                field_menu_text_.item_detail_labels[*label_index]);
-            const auto phase = active_runner_record()
-                                   .inventory_phase_bytes[*selected_slot];
-            if (phase < command_overview_detail_values_.size()) {
-                painter.drawImage(120, 56,
-                                  command_overview_detail_values_[phase]);
+            if (item.weapon.has_value()) {
+                // ROM 0x12BF0 selects the purple Ammo text with palette
+                // attribute 0x4000. Frame e6 8720's matching palette entry
+                // at FFD8D4 is 0x0846 [C]. The count uses the named 0x12A8C
+                // detail row, whose source words select palette line 0x2000 [C].
+                constexpr std::uint16_t kAmmoLabelColor = 2118U;
+                draw_tinted_field_text(
+                    painter, 112, 48,
+                    field_menu_text_.item_detail_labels[*label_index],
+                    cram_text_tint(kAmmoLabelColor));
+                if (command_overview_inventory_ammo_count_.has_value() &&
+                    *command_overview_inventory_ammo_count_ >= 0 &&
+                    static_cast<std::size_t>(
+                        *command_overview_inventory_ammo_count_) <
+                        command_overview_detail_values_.size()) {
+                    painter.drawImage(
+                        120, 56,
+                        command_overview_detail_values_[static_cast<std::size_t>(
+                            *command_overview_inventory_ammo_count_)]);
+                }
+            } else {
+                draw_command_overview_text(
+                    painter, 112, 48,
+                    field_menu_text_.item_detail_labels[*label_index]);
+                const auto phase = active_runner_record()
+                                       .inventory_phase_bytes[*selected_slot];
+                if (phase < command_overview_detail_values_.size()) {
+                    painter.drawImage(120, 56,
+                                      command_overview_detail_values_[phase]);
+                }
             }
         };
     const auto draw_armor_summary = [this, &painter](
@@ -15128,6 +15549,11 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     };
 
     const auto& view = command_overview_.view();
+    if (command_overview_inventory_detail_pending_) {
+        // ROM 0x12C36 clears the selected-item detail panel during the
+        // picture refresh. Leave the runner name and inventory grid visible.
+        painter.fillRect(QRect(112, 24, 136, 96), Qt::black);
+    }
     if (view.source_state.primary_page >= 2U &&
         !command_overview_clips_.is_open()) {
         const auto race = active_runner_record().species_index;
@@ -15145,18 +15571,26 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                    field_menu_text_.physical_label);
         draw_command_overview_text(painter, 128, 48,
                                    field_menu_text_.mental_label);
-        draw_command_overview_text(
-            painter, 208, 40,
-            std::to_string(std::min<unsigned>(
-                100U, static_cast<unsigned>(
-                          active_runner_record().delay_meter) * 10U)) +
-                "%");
-        draw_command_overview_text(
-            painter, 208, 48,
-            std::to_string(std::min<unsigned>(
-                100U, static_cast<unsigned>(
-                          active_runner_record().behavior_meter) * 10U)) +
-                "%");
+        {
+            const auto value = std::to_string(std::min<unsigned>(
+                                   100U, static_cast<unsigned>(
+                                             active_runner_record().delay_meter) *
+                                             10U)) +
+                               "%";
+            draw_command_overview_text(
+                painter, right_aligned_text_x(kMetricValueRightEdge, value),
+                40, value);
+        }
+        {
+            const auto value = std::to_string(std::min<unsigned>(
+                                   100U, static_cast<unsigned>(
+                                             active_runner_record().behavior_meter) *
+                                             10U)) +
+                               "%";
+            draw_command_overview_text(
+                painter, right_aligned_text_x(kMetricValueRightEdge, value),
+                48, value);
+        }
         const auto equipped_item_code =
             active_runner_record().equipped_item_code;
         const bool special_spell_action =
@@ -15177,12 +15611,15 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             // Ordinary equipment uses the one-based D4540 item row.
             const auto item_index =
                 static_cast<std::size_t>(equipped_item_code - 1U);
+            const auto& item_text = field_menu_text_.items[item_index];
             draw_command_overview_text(
-                painter, 128, 64, field_menu_text_.items[item_index].name);
-            if (!field_menu_text_.items[item_index].category.empty()) {
+                painter, centered_text_x(128, kMenuLabelCells, item_text.name),
+                64, item_text.name);
+            if (!item_text.category.empty()) {
                 draw_command_overview_text(
-                    painter, 128, 72,
-                    field_menu_text_.items[item_index].category);
+                    painter,
+                    centered_text_x(128, kMenuLabelCells, item_text.category),
+                    72, item_text.category);
             }
         }
         if (special_spell_action) {
@@ -15249,27 +15686,67 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     command_overview_combat_bars_.defense_bar]);
         }
         draw_armor_summary(active_runner_record().equipped_armor_index);
-    } else if (!command_overview_clips_.is_open()) {
+    } else if (!command_overview_clips_.is_open() &&
+               !command_overview_inventory_detail_pending_) {
         const auto slot = view.source_state.secondary_page * 2U +
                           view.source_state.primary_page;
         if (slot < active_runner_record().inventory_item_codes.size()) {
             const auto item_code =
                 active_runner_record().inventory_item_codes[slot];
             if (item_code >= 1U && item_code <= field_menu_text_.items.size()) {
+                const auto& selected_item = field_menu_text_.items[
+                    static_cast<std::size_t>(item_code - 1U)].definition;
+                const auto& selected_text = field_menu_text_.items[
+                    static_cast<std::size_t>(item_code - 1U)];
+                // ROM 0x12A8C writes the selected D4540 row at C420, and
+                // 0x111E8 uses that same twelve-cell field for equipped-item
+                // text. Armor Clothing's D4D80 row pads "Armor" and
+                // "Clothing" into that field; script text is trimmed, so
+                // restore its per-line centering here. The emulator's e4
+                // 8800 pixels begin at x=153 and x=145. Keep weapon text at
+                // its existing origin.
+                const auto armor_name_x = selected_item.armor.has_value()
+                    ? centered_text_x(128, kMenuLabelCells,
+                                      selected_text.name)
+                    : 128;
+                const auto armor_category_x = selected_item.armor.has_value()
+                    ? centered_text_x(128, kMenuLabelCells,
+                                      selected_text.category)
+                    : 128;
                 draw_command_overview_text(
-                    painter, 128, 64,
-                    field_menu_text_.items[item_code - 1U].name);
+                    painter, armor_name_x, 64, selected_text.name);
                 draw_command_overview_text(
-                    painter, 128, 72,
-                    field_menu_text_.items[item_code - 1U].category);
+                    painter, armor_category_x, 72, selected_text.category);
                 draw_item_detail_rows(item_code, slot, true);
+                // ROM 0x11592 ends every non-empty cell with 0x11ABE ->
+                // 0x12CEE in the lower source mode (FFF0D0 = column < 2):
+                // e6 shows Atk/Def for the pistol (8700, 8789) and clears
+                // both rows for Armor (8740) and the Fetish (8820) [C].
+                auto bar_input = command_overview_combat_input();
+                bar_input.source_mode = static_cast<std::uint8_t>(
+                    view.source_state.primary_page);
+                bar_input.selected_inventory_slot =
+                    static_cast<std::uint8_t>(slot);
+                const auto bars = compute_equipment_combat_bars(bar_input);
+                if (bars.attack_written &&
+                    bars.attack_bar < command_overview_attack_bars_.size()) {
+                    draw_command_overview_text(
+                        painter, 112, 104, field_menu_text_.attack_label);
+                    painter.drawImage(
+                        144, 104, command_overview_attack_bars_[bars.attack_bar]);
+                }
+                if (bars.defense_written &&
+                    bars.defense_bar < command_overview_defense_bars_.size()) {
+                    draw_command_overview_text(
+                        painter, 112, 112, field_menu_text_.defense_label);
+                    painter.drawImage(
+                        144, 112, command_overview_defense_bars_[bars.defense_bar]);
+                }
                 // ROM 0x12A8C sends selected armor to 0x11352. It previews
                 // the selected D4D50 row in the lower armor summary at
                 // C820/C922/C92C/C9AC, then restores the equipped record.
                 // Repaint that panel from typed state rather than placing a
                 // second Wpns/Guns pair beside the selected-item text.
-                const auto& selected_item = field_menu_text_.items[
-                    static_cast<std::size_t>(item_code - 1U)].definition;
                 if (selected_item.armor.has_value()) {
                     draw_armor_summary(
                         selected_item.armor->armor_index);
@@ -15317,10 +15794,16 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         {{16, 120}}, {{56, 120}}, {{16, 144}}, {{56, 144}},
         {{16, 168}}, {{56, 168}}, {{16, 192}}, {{56, 192}},
     }};
-    const auto icon_variant = command_overview_uses_alternate_icon_palette(
-                                  active_runner_record())
-                                  ? 1U
-                                  : 0U;
+    // ROM 0x11136 calls 0x3602 per slot but ADDQ.L #1,A0 after each one,
+    // so slot i tests record +0x57+i/+0x9B+i/+0x56+i [C]. Only slot 0 reads
+    // the equipped-item bytes. For slots 1..7 the +0x57+i byte is the
+    // equipped code (i=1) or the 0x58 name span, and every ROM roster name
+    // (0x72972 + 0x100*n) is printable ASCII there, so 0x3602 always
+    // returns 0x2000 (palette line 1, variant 0) for them [C].
+    const auto slot0_variant = command_overview_uses_alternate_icon_palette(
+                                   active_runner_record())
+                                   ? 1U
+                                   : 0U;
     for (std::size_t slot = 0;
          slot < active_runner_record().inventory_item_codes.size();
          ++slot) {
@@ -15329,6 +15812,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         if (item_code == 0U || item_code > 50U) {
             continue;
         }
+        const auto icon_variant = slot == 0U ? slot0_variant : 0U;
         const auto& icon =
             command_overview_inventory_icons_[item_code - 1U][icon_variant];
         painter.drawImage(kInventoryIconPositions[slot][0],
@@ -15336,6 +15820,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     }
 
     if (view.source_state.primary_page < 2U &&
+        !command_overview_inventory_cursor_hidden_ &&
         !command_overview_inventory_selector_suppressed_) {
         // ROM 0x11592 builds the cursor SAT entry from the 0xD29F6 list:
         // x = FFF0D0*0x28 + 0x008C, y = FFF0D1*0x18 + 0x00F4. The Genesis
@@ -15361,12 +15846,13 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
 
     if (command_overview_cyberware_active_) {
         // ROM 0x11950 rebuilds the center name-plane region before writing
-        // C1A2/C328/C31C. Keep the command screen's separate portrait,
-        // inventory, posture, tab, and right-HUD layers in the composition;
-        // replace only the central text panel so old status text cannot show
-        // through the Cyberware rows.
+        // C1A2/C328/C31C; replace only the central text panel so old status
+        // text cannot show through the Cyberware rows. Its 0x11900 then
+        // covers the posture box (21x3 cells at $EA18, x=96 y=160) with the
+        // C1320 blank tile; 0x11928 restores it on exit [C emulator 9530].
         painter.drawImage(96, 16, command_overview_background_, 96, 16,
                           168, 144);
+        painter.fillRect(96, 160, 168, 24, Qt::black);
         draw_command_overview_text(
             painter, 136, 24, field_menu_text_.cyberware_title_lines[0]);
         draw_command_overview_text(
@@ -15454,14 +15940,15 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                   kCommandOverviewActionFocusY,
                                   command_overview_action_focus_[focus_index]);
             }
-            // ROM 0x117D0/0x11712 shows the Inventory footer for the item
-            // action row. First Aid changes it only after entering its child.
-            const auto inventory_page = view.source_state.primary_page;
-            if (inventory_page < field_menu_text_.command_labels.size()) {
+            // ROM 0x117BA..0x117D0 selects D1D94 or D1E6C and 0x11824..
+            // 0x1183A redraws that selector's padded 17-cell footer. Lua
+            // supplies the selected table entry; draw its source padding at
+            // the existing x=112, y=200 field without recentering it.
+            const auto action_footer =
+                game_scripts_.menu_route_snapshot().top_footer_text;
+            if (!action_footer.empty()) {
                 draw_command_overview_text(
-                    painter, 112, 200,
-                    centered_command_footer(
-                        field_menu_text_.command_labels[inventory_page]));
+                    painter, 112, 200, action_footer);
             }
         }
     } else if (!clips_owns_button_panel &&
@@ -15676,6 +16163,23 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         return;
     }
 
+    if (command_overview_return_transition_active_ &&
+        command_overview_return_transition_phase_ ==
+            scripting::ScriptFieldReturnTransitionPhase::menu_fade_out) {
+        target_painter.drawImage(
+            0, 0,
+            transition_genesis_cram_image(
+                command_overview_return_image_,
+                command_overview_return_palette_step_, true));
+        return;
+    }
+    if (command_overview_return_transition_active_ &&
+        command_overview_return_transition_phase_ ==
+            scripting::ScriptFieldReturnTransitionPhase::black_hold) {
+        target_painter.fillRect(0, 0, 320, 224, Qt::black);
+        return;
+    }
+
     QImage scene(320, 224, QImage::Format_ARGB32_Premultiplied);
     scene.fill(Qt::black);
     QPainter scene_painter(&scene);
@@ -15685,7 +16189,13 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         std::uint8_t palette_passes = 0U;
         bool toward_black = true;
         bool transition_active = false;
-        if (tarislar_credits_title_return_.is_presenting()) {
+        if (command_overview_return_transition_active_ &&
+            command_overview_return_transition_phase_ ==
+                scripting::ScriptFieldReturnTransitionPhase::field_fade_in) {
+            palette_passes = command_overview_return_palette_step_;
+            toward_black = false;
+            transition_active = true;
+        } else if (tarislar_credits_title_return_.is_presenting()) {
             palette_passes =
                 tarislar_credits_title_return_.palette_passes_to_black();
             transition_active = palette_passes != 0U;
@@ -15914,13 +16424,48 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         return;
     }
     if (command_overview_.open()) {
+        if (!menu_lead_masks_.empty() && !menu_last_frame_.isNull()) {
+            // Lua-staged lead frame: the closing screen as last shown, with
+            // the regions the source has already cleared painted black.
+            painter.drawImage(0, 0, menu_last_frame_);
+            if (!menu_last_frame_is_field_ && menu_window_sidebar_) {
+                // VDP reg 0x11=$91: the window plane shows the field
+                // sidebar from x>=272 over whatever the planes still hold.
+                painter.save();
+                painter.setClipRect(QRect(272, 0, 48, 224));
+                painter.drawImage(0, 0, field_hud_);
+                paint_field_hud_overlays(painter);
+                painter.restore();
+            }
+            for (const auto& rect : menu_lead_masks_.front()) {
+                painter.fillRect(rect, Qt::black);
+            }
+            scene_painter.end();
+            target_painter.drawImage(0, 0, scene);
+            return;
+        }
         if (command_overview_start_transition_black_frame_) {
             scene_painter.end();
             target_painter.drawImage(0, 0, scene);
             return;
         }
         paint_command_overview(painter);
+        const auto blank_reveal_rows = [&] {
+            if (menu_blank_reveal_line_ != 0U) {
+                painter.fillRect(QRect(0, 0, 320, menu_blank_reveal_line_),
+                                 Qt::black);
+            }
+            if (!menu_reveal_masks_.empty()) {
+                for (const auto& rect : menu_reveal_masks_.front()) {
+                    painter.fillRect(rect, Qt::black);
+                }
+            } else if (menu_blank_reveal_line_ == 0U) {
+                menu_last_frame_ = scene.copy();
+                menu_last_frame_is_field_ = false;
+            }
+        };
         if (command_overview_attributes_skills_.is_open()) {
+            blank_reveal_rows();
             apply_palette_fade();
             return;
         }
@@ -15933,11 +16478,14 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
             painter.drawImage(0, 0, field_hud_);
             paint_field_hud_overlays(painter);
         }
+        blank_reveal_rows();
         apply_palette_fade();
         return;
     }
     paint_field_scene(painter);
     apply_palette_fade();
+    menu_last_frame_ = scene.copy();
+    menu_last_frame_is_field_ = true;
 }
 
 

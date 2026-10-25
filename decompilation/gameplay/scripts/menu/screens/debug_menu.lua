@@ -75,7 +75,7 @@ M.effects = {
         ctx.game.commit_party(party) -- ROM 0x59C2A increments +0x8D.
     end,
     [D.CONTACTS] = function(ctx)
-        ctx.game.set_contact_flags(M.contacts) -- ROM 0x59C48 writes FFFC2C.
+        ctx.game.set_contact_flags(M.contacts) -- ROM 0x59C48; handler table 0x1D90C0, entry 6.
     end,
     [D.TEST_DECK] = function(ctx)
         ctx.game.install_test_deck() -- ROM 0x59B7E seeds the deck and passcodes.

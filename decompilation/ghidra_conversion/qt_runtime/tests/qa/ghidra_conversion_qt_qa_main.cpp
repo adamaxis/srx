@@ -32,7 +32,8 @@ namespace {
 
 bool source_menu_caption_matches(const QImage& scene, const QImage& font,
                                 const int origin_x, const int origin_y,
-                                const std::string_view text) {
+                                const std::string_view text,
+                                const QColor tint = QColor(42, 255, 42)) {
     if (font.isNull() || font.width() < 8 || font.height() < 8 ||
         origin_x < 0 || origin_y < 0 ||
         origin_x + static_cast<int>(text.size() * 8U) > scene.width() ||
@@ -79,8 +80,12 @@ bool source_menu_caption_matches(const QImage& scene, const QImage& font,
                     (static_cast<std::uint32_t>(source_pixel.alpha()) *
                      static_cast<std::uint32_t>(coverage)) /
                     255U);
+                // Command text is CRAM 0x02C2 = levels (1,6,1) (emulator
+                // run5 FFD8F4); the presenter pre-scales the tint for the
+                // atlas' 0xDB coverage, so the reference does the same.
                 tinted_glyph.setPixelColor(
-                    glyph_x, glyph_y, QColor(0, 255, 0, alpha));
+                    glyph_x, glyph_y,
+                    QColor(tint.red(), tint.green(), tint.blue(), alpha));
             }
         }
         painter.drawImage(cursor_x, 0, tinted_glyph);
@@ -625,6 +630,152 @@ int run_field_world_effect_repaint_qa(
 // Field audio rules (doc 26 phases 1/3): scene-init music from profile
 // +0x40 through audio.lua, the Start-menu duck 0xB62 (op 0x20 level 8) and
 // its 0xB7A restore, and music on a resource-scene change.
+bool finish_command_overview_field_return_for_qa(
+    FieldSceneRuntime& field_scene) {
+    // ROM 0xB62 -> 0x10D30 returns through 0x2BD2/0x131C. Emulator routes e3
+    // and e4 agree: menu through P+2, black P+15..P+99, field live at P+112.
+    for (std::uint16_t frame = 0U; frame < 113U; ++frame) {
+        const auto route = field_scene.field_menu_route_snapshot_for_dump();
+        if (!route.field_return_transition_active) {
+            return route.field_return_transition_phase ==
+                   shadowrun::ghidra_conversion::scripting::
+                       ScriptFieldReturnTransitionPhase::complete;
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    return !field_scene.field_menu_route_snapshot_for_dump()
+                .field_return_transition_active;
+}
+
+int run_field_command_overview_close_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output_directory) {
+    using Phase = shadowrun::ghidra_conversion::scripting::
+        ScriptFieldReturnTransitionPhase;
+    std::filesystem::create_directories(output_directory);
+    const auto save = [&output_directory](const std::filesystem::path& name,
+                                          const QImage& image) {
+        return save_qa_image(output_directory, name, image);
+    };
+    const auto same_image = [](const QImage& first, const QImage& second) {
+        return !image_region_differs(first, second, 0, 0,
+                                     kSceneWidth, kSceneHeight);
+    };
+    const auto is_black = [&same_image](const QImage& image) {
+        QImage black(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        black.fill(Qt::black);
+        return same_image(image, black);
+    };
+    const auto field_before = render_qa_field(field_scene);
+    if (field_before.isNull() ||
+        !field_scene.open_command_overview_for_dump()) {
+        std::cerr << "command overview close QA: could not open the root menu\n";
+        return 3;
+    }
+    const auto menu_before_close = render_qa_field(field_scene);
+    if (menu_before_close.isNull() ||
+        !save("menu-before-close.bmp", menu_before_close)) {
+        std::cerr << "command overview close QA: could not save the menu frame\n";
+        return 3;
+    }
+
+    constexpr auto start_port = static_cast<std::uint8_t>(
+        static_cast<std::uint16_t>(srx::Pad::START) >> 8U);
+    field_scene.set_controller_port_byte(start_port);
+    field_scene.advance_frame(); // P: Start exits the command overview.
+    if (field_scene.command_overview_open()) {
+        std::cerr << "command overview close QA: Start left the root menu open\n";
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame(); // P+1
+    field_scene.advance_frame(); // P+2
+    auto route = field_scene.field_menu_route_snapshot_for_dump();
+    const auto menu_at_p2 = render_qa_field(field_scene);
+    if (!route.field_return_transition_active ||
+        route.field_return_transition_elapsed_frames != 2U ||
+        route.field_return_transition_phase != Phase::menu_fade_out ||
+        route.field_return_transition_palette_step != 0U ||
+        !same_image(menu_at_p2, menu_before_close) ||
+        !save("menu-at-P+2.bmp", menu_at_p2)) {
+        std::cerr << "command overview close QA: the menu changed before P+3\n";
+        return 3;
+    }
+
+    QImage field_at_p112;
+    for (std::uint16_t frame = 3U; frame <= 112U; ++frame) {
+        field_scene.set_controller_port_byte(frame == 50U ? start_port : 0U);
+        field_scene.advance_frame();
+        route = field_scene.field_menu_route_snapshot_for_dump();
+        const auto image = render_qa_field(field_scene);
+        if (route.field_return_transition_elapsed_frames != frame) {
+            std::cerr << "command overview close QA: Lua close clock diverged at P+"
+                      << frame << '\n';
+            return 3;
+        }
+        if (frame <= 15U) {
+            const auto expected_step = static_cast<std::uint8_t>(
+                (frame - 1U) / 2U);
+            if (route.field_return_transition_phase != Phase::menu_fade_out ||
+                route.field_return_transition_palette_step != expected_step) {
+                std::cerr << "command overview close QA: menu CRAM fade step diverged at P+"
+                          << frame << '\n';
+                return 3;
+            }
+        }
+        if (frame >= 15U && frame <= 99U && !is_black(image)) {
+            std::cerr << "command overview close QA: expected black at P+"
+                      << frame << '\n';
+            return 3;
+        }
+        if (frame == 15U && !save("black-at-P+15.bmp", image)) {
+            return 3;
+        }
+        if (frame == 50U &&
+            (field_scene.command_overview_open() ||
+             !route.field_return_transition_active ||
+             route.field_return_transition_phase != Phase::black_hold)) {
+            std::cerr << "command overview close QA: Start during black hold was not ignored\n";
+            return 3;
+        }
+        if (frame == 99U && !save("black-at-P+99.bmp", image)) {
+            return 3;
+        }
+        if (frame >= 100U && frame < 112U) {
+            const auto expected_step = static_cast<std::uint8_t>(
+                (frame - 98U) / 2U);
+            if (route.field_return_transition_phase != Phase::field_fade_in ||
+                route.field_return_transition_palette_step != expected_step ||
+                is_black(image)) {
+                std::cerr << "command overview close QA: field fade-in diverged at P+"
+                          << frame << '\n';
+                return 3;
+            }
+            if (frame == 100U) {
+                if (!save("field-fade-in-P+100.bmp", image)) {
+                    return 3;
+                }
+            }
+        }
+        if (frame == 112U) {
+            field_at_p112 = image;
+            if (route.field_return_transition_active ||
+                route.field_return_transition_phase != Phase::complete ||
+                !same_image(field_at_p112, field_before) ||
+                !save("actual.bmp", field_at_p112)) {
+                std::cerr << "command overview close QA: field was not fully live at P+112\n";
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_port_byte(0U);
+    std::cout << "field_command_overview_close_qa=passed frames=112"
+              << " menu=P+2 black=P+15..P+99 field=P+112"
+              << " ignored_start_during_black=1\n";
+    return 0;
+}
+
 int run_field_audio_qa(FieldSceneRuntime& field_scene) {
     const auto print = [](const auto& values) {
         std::ostringstream text;
@@ -672,6 +823,10 @@ int run_field_audio_qa(FieldSceneRuntime& field_scene) {
         field_scene.field_attenuation_requests() != restored) {
         std::cerr << "field audio QA: after Start exit attenuation ="
                   << print(field_scene.field_attenuation_requests()) << "\n";
+        return 1;
+    }
+    if (!finish_command_overview_field_return_for_qa(field_scene)) {
+        std::cerr << "field audio QA: field-return transition did not finish\n";
         return 1;
     }
     if (field_scene.field_music_requests() != boot_music) {
@@ -26718,9 +26873,8 @@ int run_field_vid_phone_physical_entry_qa(
         rectangles[kTerminalRecord].top != 0x0060U ||
         rectangles[kTerminalRecord].bottom != 0x007FU ||
         rectangles[kTerminalRecord].value != 0x00DFU) {
-        std::cerr << "Vid-Phone physical-entry QA: scene-0 checkpoint, ROM "
-                     "event-31 rectangle, or New Game contact flags do not "
-                     "match; scene="
+        std::cerr << "Vid-Phone physical-entry QA: scene-0 checkpoint or ROM "
+                     "event-31 rectangle do not match; scene="
                   << static_cast<unsigned>(
                          field_scene.field_scene_reference_for_dump())
                   << " position=" << std::hex << initial.x << ',' << initial.y
@@ -26744,7 +26898,7 @@ int run_field_vid_phone_physical_entry_qa(
     field_scene.seed_notebook_contact_flags_for_qa(0x1C7FU);
     if (field_scene.notebook_contact_flags_for_dump() !=
         std::optional<std::uint32_t>{0x1C7FU}) {
-        std::cerr << "Vid-Phone physical-entry QA: ROM New Game contact "
+        std::cerr << "Vid-Phone physical-entry QA: explicit Contacts QA "
                      "fixture did not seed\n";
         return 3;
     }
@@ -28190,6 +28344,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_secretary_dump_path;
         std::optional<std::filesystem::path> field_posture_dump_path;
         std::optional<std::filesystem::path>
+            field_command_overview_close_qa_path;
+        std::optional<std::filesystem::path>
             field_profile_combat_bar_permutation_qa_path;
         bool field_spell_action_bars_qa = false;
         std::optional<std::filesystem::path> field_action_dump_path;
@@ -29186,6 +29342,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_posture_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-command-overview-close-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_command_overview_close_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -30559,7 +30722,7 @@ int main(int argc, char** argv) {
                                  "System 2/node 2 route did not open\n";
                     return 3;
                 }
-                for (int frame = 0; frame < 20; ++frame) {
+                for (int frame = 0; frame < 21; ++frame) { // 0xC24 d5=0x14: 21 VBlanks [C]
                     field_scene.advance_frame();
                 }
                 if (field_scene.field_menu_route_screen_for_dump() !=
@@ -31106,7 +31269,7 @@ int main(int argc, char** argv) {
                                  "did not open\n";
                     return 3;
                 }
-                for (int frame = 0; frame < 20; ++frame) {
+                for (int frame = 0; frame < 21; ++frame) {
                     model0_scene.advance_frame();
                 }
                 if (model0_scene.field_menu_route_screen_for_dump() !=
@@ -31230,7 +31393,7 @@ int main(int argc, char** argv) {
                                  "after the source encounter\n";
                     return 3;
                 }
-                for (int frame = 0; frame < 20; ++frame) {
+                for (int frame = 0; frame < 21; ++frame) {
                     gate_scene.advance_frame();
                 }
                 if (gate_scene.field_menu_route_screen_for_dump() !=
@@ -31661,13 +31824,13 @@ int main(int argc, char** argv) {
                               << '\n';
                     return 3;
                 }
-                for (std::uint32_t frame = 0U; frame < 20U; ++frame) {
+                for (std::uint32_t frame = 0U; frame < 21U; ++frame) {
                     field_scene.advance_frame();
                 }
                 if (field_scene.field_menu_route_screen_for_dump() !=
                     static_cast<std::uint16_t>(
                         srx::MenuScreen::CYBERDECK)) {
-                    std::cerr << "Matrix CyberInfo QA: the 20-frame jack-in "
+                    std::cerr << "Matrix CyberInfo QA: the 21-frame jack-in "
                                  "did not enter the 0x181F8 deck loop\n";
                     return 3;
                 }
@@ -33653,6 +33816,10 @@ int main(int argc, char** argv) {
             if (field_terrain_mark_qa_path.has_value()) {
                 return run_field_terrain_mark_qa(
                     field_scene, *field_terrain_mark_qa_path);
+            }
+            if (field_command_overview_close_qa_path.has_value()) {
+                return run_field_command_overview_close_qa(
+                    field_scene, *field_command_overview_close_qa_path);
             }
             if (field_audio_qa) {
                 return run_field_audio_qa(field_scene);
@@ -35939,6 +36106,8 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto press_field_input = [&](const std::uint8_t input) {
+                    const auto previous =
+                        qa_command_inventory_selection(field_scene);
                     settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(input);
                     field_scene.advance_frame();
@@ -35948,6 +36117,8 @@ int main(int argc, char** argv) {
                     field_scene.advance_frame();
                     const bool release_saved =
                         capture_weapon_switch_frame("released", 0U);
+                    settle_qa_command_inventory_item_change(field_scene,
+                                                            previous);
                     return press_saved && release_saved;
                 };
                 if (!press_field_input(0x80U) ||
@@ -35955,11 +36126,14 @@ int main(int argc, char** argv) {
                     std::cerr << "field player action dump: ordinary Start input did not open the command menu\n";
                     return 3;
                 }
-                // The opening Start frame is followed by 26 ROM black
-                // frames. press_field_input() has already advanced the
-                // first countdown frame on key release; finish the remaining
-                // 25 before sending navigation, which the source wait ignores.
-                for (int frame = 0; frame < 25; ++frame) {
+                // The opening Start frame starts 27 black frames and one
+                // reveal frame (emulator 8601..8628, command.lua).
+                // The Start frame is the lead frame (field rows 0..29, emulator
+                // 8600); press_field_input() has already advanced the first
+                // black frame on key release; finish the remaining 26 black
+                // frames and the reveal before sending navigation, which the
+                // source wait ignores.
+                for (int frame = 0; frame < 27; ++frame) {
                     field_scene.advance_frame();
                 }
                 for (int move = 0;
@@ -36007,6 +36181,11 @@ int main(int argc, char** argv) {
                 }
                 if (!press_field_input(0x80U)) {
                     std::cerr << "field player action dump: could not save the Start return frames\n";
+                    return 3;
+                }
+                if (!finish_command_overview_field_return_for_qa(
+                        field_scene)) {
+                    std::cerr << "field player action dump: command return did not reach P+112\n";
                     return 3;
                 }
                 const auto weapon_two_field_return = render_scene();
@@ -36822,6 +37001,11 @@ int main(int argc, char** argv) {
                 }
                 field_scene.set_controller_port_byte(0U);
                 field_scene.advance_frame();
+                if (!finish_command_overview_field_return_for_qa(
+                        field_scene)) {
+                    std::cerr << "field command reopen smoke: return transition did not finish\n";
+                    return 3;
+                }
                 if (!field_scene.open_command_overview_for_dump()) {
                     std::cerr << "field command reopen smoke: second open failed\n";
                     return 3;
@@ -36996,6 +37180,17 @@ int main(int argc, char** argv) {
                 const bool followup_result = debt_followup_result ||
                                              referral_followup_result ||
                                              debt_payment_insufficient_result;
+                if (followup_result) {
+                    // New Game starts with no Contacts row. This follow-up
+                    // QA explicitly enables one contact so the independent
+                    // Contacts and referral gates remain covered together.
+                    constexpr auto kContactsRowQaSeed =
+                        std::uint32_t{1U}
+                        << static_cast<std::uint32_t>(
+                               srx::VidPhoneContact::CAPT_QUINTON_JAYMES);
+                    field_scene.seed_notebook_contact_flags_for_qa(
+                        kContactsRowQaSeed);
+                }
                 const bool room_payment_result = room_paid_result ||
                                                  room_insufficient_result;
                 const auto prompt = arrival_result || room_payment_result
@@ -37957,7 +38152,9 @@ int main(int argc, char** argv) {
                     manifest << "profile\traw_rom_record\tcolumn\t"
                                 "cursor_row\trecord_offset\tcurrent\t"
                                 "preview_status\tnext\tcost\tkarma\tframe\n";
-                    const QColor kGreen(0, 255, 0);
+                    // Menu text is CRAM 0x02C2 (levels 1,6,1), the same tint
+                    // as source_menu_caption_matches() [C].
+                    const QColor kGreen(42, 255, 42);
                     const auto color_tint =
                         std::optional<QColor>(kGreen);
                     const auto expected_preview = [&rom_bytes](
@@ -38198,6 +38395,20 @@ int main(int argc, char** argv) {
                                     : record.skills[value_index];
                                 const auto selected =
                                     cell_column == column && cell_row == row;
+                                // ROM 0xD046 base grid CRAM 0x0060; 0xD1DC
+                                // shows Essence +0x7E/+0x8E and Magic +0x7F;
+                                // 0xC1AD8 sub-skills carry a leading space.
+                                const QColor kBaseGrid(0, 127, 0);
+                                const auto base_tint =
+                                    std::optional<QColor>(kBaseGrid);
+                                const auto label_indent =
+                                    label_index >= 10U && label_index <= 12U
+                                        ? 8 : 0;
+                                const auto shown_value = label_index == 6U
+                                    ? record.attributes[7U]
+                                    : label_index == 7U
+                                        ? record.auxiliary[0U]
+                                        : source_value;
                                 const auto label_text = label_index == 6U
                                     ? std::string_view("Essence")
                                     : cell_labels[label_index];
@@ -38210,9 +38421,12 @@ int main(int argc, char** argv) {
                                     return false;
                                 }
                                 if (selected) {
-                                    if (!source_menu_direct_asset_text_matches(
-                                            image, purple_font, label_x,
-                                            cell_y, label_text)) {
+                                    // ROM 0xD03C (shared by the 0xD024 Hotel
+                                    // entry): focus CRAM 0x02C2 bright green.
+                                    if (!source_menu_caption_matches(
+                                            image, green_font,
+                                            label_x + label_indent, cell_y,
+                                            label_text)) {
                                         reason = "selected label did not use the Hotel palette at the ROM cursor position";
                                         return false;
                                     }
@@ -38220,52 +38434,58 @@ int main(int argc, char** argv) {
                                     if (cell_row >= 4U) {
                                         current_matches =
                                             numeric_visual_patch_matches(
-                                                image, purple_font,
+                                                image, green_font,
                                                 cell_column == 0U ? 136 : 280,
                                                 cell_y,
                                                 record.skills[value_index],
-                                                std::nullopt);
+                                                color_tint);
                                     } else if (value_index < 6U) {
                                         current_matches =
                                             numeric_visual_patch_matches(
-                                                image, purple_font,
+                                                image, green_font,
                                                 cell_column == 0U ? 136 : 280,
                                                 cell_y,
                                                 record.attributes[value_index],
-                                                std::nullopt);
+                                                color_tint);
                                     } else if (value_index == 6U) {
                                         // D5DC reads +0x7E and +0x8E as the
                                         // tens and ones of live Essence.
                                         current_matches =
                                             numeric_visual_patch_matches(
-                                                image, purple_font, 272, 72,
+                                                image, green_font, 272, 72,
                                                 record.attributes[7U],
-                                                std::nullopt) &&
+                                                color_tint) &&
                                             numeric_visual_patch_matches(
-                                                image, purple_font, 288, 72,
+                                                image, green_font, 288, 72,
                                                 record.auxiliary[3U],
-                                                std::nullopt);
+                                                color_tint);
                                     } else {
                                         // The focused Magic detail is +0x7F;
                                         // the base grid byte at +0x7E is the
                                         // Essence tens digit.
                                         current_matches =
                                             numeric_visual_patch_matches(
-                                                image, purple_font, 280, 80,
+                                                image, green_font, 280, 80,
                                                 record.auxiliary[0U],
-                                                std::nullopt);
+                                                color_tint);
                                     }
                                     if (!current_matches) {
                                         reason = "selected numeric detail did not follow its ROM-backed stat/Essence/Magic source";
                                         return false;
                                     }
                                 } else if (!source_menu_caption_matches(
-                                               image, green_font, label_x,
-                                               cell_y, label_text) ||
+                                               image, green_font,
+                                               label_x + label_indent, cell_y,
+                                               label_text, kBaseGrid) ||
                                            !numeric_visual_patch_matches(
                                                image, green_font, value_x,
-                                               cell_y, source_value,
-                                               color_tint)) {
+                                               cell_y, shown_value,
+                                               base_tint) ||
+                                           (label_index == 6U &&
+                                            !numeric_visual_patch_matches(
+                                                image, green_font, 288, 72,
+                                                record.auxiliary[3U],
+                                                base_tint))) {
                                     reason = "unselected grid label/value pixels did not match the live ROM profile";
                                     return false;
                                 }
@@ -38720,8 +38940,8 @@ int main(int argc, char** argv) {
                             applied_record, 0U, 0U);
                         const auto applied_body_pixels =
                             numeric_visual_patch_matches(
-                                applied_frame, purple_font, 136, 56,
-                                body_current + 1U, std::nullopt);
+                                applied_frame, green_font, 136, 56,
+                                body_current + 1U, color_tint);
                         const auto applied_karma_pixels =
                             numeric_visual_patch_matches(
                                 applied_frame, green_font, 120, 160, 0U,
@@ -39099,12 +39319,17 @@ int main(int argc, char** argv) {
                 }
                 auto command_black = capture(
                     output / "checkout-start-black" / "frame-01.bmp");
+                // Emulator e2 8600: the Start frame keeps field rows 0..29 and
+                // blanks the rest; 27 black frames follow.
                 if (command_black.isNull() ||
-                    !same_pixels(command_black, black_reference)) {
-                    std::cerr << "field Hotel QA: the first command-overview load frame was not black\n";
+                    image_region_differs(command_black, black_reference, 0, 30, 320, 194) ||
+                    !image_region_differs(command_black, black_reference, 0, 0, 320, 30)) {
+                    std::cerr << "field Hotel QA: the first command-overview load frame was not the field lead frame\n";
                     return 3;
                 }
-                for (std::uint32_t frame = 2U; frame <= 27U; ++frame) {
+                // Emulator: 27 black frames, then a reveal frame whose rows
+                // above line 175 are still black (display re-enabled mid-frame).
+                for (std::uint32_t frame = 2U; frame <= 28U; ++frame) {
                     advance_field_frame();
                     auto frame_name = std::to_string(frame);
                     if (frame_name.size() < 2U) {
@@ -39121,18 +39346,34 @@ int main(int argc, char** argv) {
                     }
                 }
                 advance_field_frame();
+                {
+                    const auto reveal = capture(
+                        output / "checkout-start-black" / "frame-reveal.bmp");
+                    if (reveal.isNull() ||
+                        image_region_differs(reveal, black_reference, 0, 0, 320, 175) ||
+                        !image_region_differs(reveal, black_reference, 0, 175, 320, 49)) {
+                        std::cerr << "field Hotel QA: reveal frame was not black above line 175\n";
+                        return 3;
+                    }
+                }
+                advance_field_frame();
                 const auto checkout_command_overview = capture(
                     output / "checkout-start-command-overview" /
                     "actual.bmp");
                 if (checkout_command_overview.isNull() ||
                     !image_region_differs(checkout_command_overview,
                                           black_reference, 0, 0, 320, 224)) {
-                    std::cerr << "field Hotel QA: command overview did not appear after 27 black frames\n";
+                    std::cerr << "field Hotel QA: command overview did not appear after 27 black frames and the reveal frame\n";
                     return 3;
                 }
                 mark_route("command-overview-after-checkout",
                            "Start; 27 black frames");
                 press_button(0x80U);
+                if (!finish_command_overview_field_return_for_qa(
+                        field_scene)) {
+                    std::cerr << "field Hotel QA: command return did not reach P+112\n";
+                    return 3;
+                }
                 const auto checkout_start_return = capture(
                     output / "checkout-start-return" / "actual.bmp");
                 QImage checkout_start_field_only(
@@ -40563,8 +40804,19 @@ int main(int argc, char** argv) {
                     const auto icon = direct_asset(
                         "menu/field/magic-spell-icon-" +
                         std::to_string(code) + ".bmp");
+                    // e6 9060/9265/9400 show no third icon row below y=183;
+                    // ROM 0xFDAE redraws the slot borders after the glyphs [C].
+                    auto visible_icon = icon.convertToFormat(
+                        QImage::Format_ARGB32);
+                    for (int y = 16; y < visible_icon.height(); ++y) {
+                        for (int x = 0; x < visible_icon.width(); ++x) {
+                            auto color = visible_icon.pixelColor(x, y);
+                            color.setAlpha(0);
+                            visible_icon.setPixelColor(x, y, color);
+                        }
+                    }
                     if (!visible_asset_pixels_match(
-                            moved_scene, icon,
+                            moved_scene, visible_icon,
                             32 + static_cast<int>((index % 7U) * 32U),
                             168 + static_cast<int>((index / 7U) * 24U))) {
                         unselected_spell_icons_match = false;
@@ -40640,7 +40892,7 @@ int main(int argc, char** argv) {
                     const auto asset = direct_asset(
                         "menu/field/magic-metric-bar-" +
                         std::to_string(row) + ".bmp");
-                    success_bar_matches = region_matches(
+                    success_bar_matches = visible_asset_pixels_match(
                         moved_scene, asset, 32, 88);
                 }
 
@@ -40669,7 +40921,7 @@ int main(int argc, char** argv) {
                                        ? 128
                                        : 144;
                     defense_bars_match = defense_bars_match &&
-                        region_matches(moved_scene, asset, 32, y);
+                        visible_asset_pixels_match(moved_scene, asset, 32, y);
                 }
 
                 const auto* moved_definition =
@@ -40687,7 +40939,7 @@ int main(int argc, char** argv) {
                             "menu/field/magic-damage-bar-" +
                             std::to_string(
                                 effect.damage_grid->effect_row) + ".bmp");
-                        drain_bar_matches = region_matches(
+                        drain_bar_matches = visible_asset_pixels_match(
                             moved_scene, asset, 32, 104);
                     }
                 }
@@ -40696,14 +40948,66 @@ int main(int argc, char** argv) {
                 const auto posture_bar = direct_asset(
                     "menu/field/magic-posture-bar-" +
                     std::to_string(posture) + ".bmp");
-                const auto posture_bar_matches = region_matches(
-                    moved_scene, posture_bar, 160, 136);
+                // e6 9060/9265/9400 show only the gray 3x6 posture marker,
+                // without the pale one-pixel asset halo [C emulator].
+                auto posture_bar_expected = posture_bar.convertToFormat(
+                    QImage::Format_ARGB32);
+                QRect posture_marker_pixels;
+                for (int y = 0; y < posture_bar_expected.height(); ++y) {
+                    for (int x = 0; x < posture_bar_expected.width(); ++x) {
+                        const auto color = posture_bar_expected.pixelColor(x, y);
+                        if (color.alpha() > 0 && color.red() > 0 &&
+                            color.red() == color.green() &&
+                            color.green() == color.blue()) {
+                            posture_marker_pixels |= QRect(x, y, 1, 1);
+                        }
+                    }
+                }
+                const auto posture_marker_halo =
+                    posture_marker_pixels.adjusted(-1, -1, 1, 1);
+                for (int y = posture_marker_halo.top();
+                     y <= posture_marker_halo.bottom(); ++y) {
+                    for (int x = posture_marker_halo.left();
+                         x <= posture_marker_halo.right(); ++x) {
+                        const auto on_halo =
+                            x == posture_marker_halo.left() ||
+                            x == posture_marker_halo.right() ||
+                            y == posture_marker_halo.top() ||
+                            y == posture_marker_halo.bottom();
+                        if (on_halo && x >= 0 && y >= 0 &&
+                            x < posture_bar_expected.width() &&
+                            y < posture_bar_expected.height()) {
+                            posture_bar_expected.setPixelColor(
+                                x, y, QColor(0, 0, 0, 0));
+                        }
+                    }
+                }
+                const auto posture_bar_matches = visible_asset_pixels_match(
+                    moved_scene, posture_bar_expected, 160, 136);
                 const auto selected_spell_icon = direct_asset(
                     "menu/field/magic-spell-icon-" +
                     std::to_string(moved_spell->spell_code) + ".bmp");
-                const auto selected_spell_icon_matches =
-                    visible_asset_pixels_match(
-                        moved_scene, selected_spell_icon, 80, 24);
+                QImage expected_title_cell(
+                    24, 24, QImage::Format_ARGB32_Premultiplied);
+                expected_title_cell.fill(Qt::black);
+                QPainter expected_title_painter(&expected_title_cell);
+                const auto panel_background = direct_asset(
+                    "menu/field/magic-panel-background.bmp");
+                expected_title_painter.drawImage(-80, -24,
+                                                 panel_background);
+                expected_title_painter.save();
+                expected_title_painter.setClipRect(QRect(0, 0, 24, 16));
+                expected_title_painter.drawImage(0, 0,
+                                                 selected_spell_icon);
+                expected_title_painter.restore();
+                expected_title_painter.end();
+                // ROM 0x11190 transfers six D4EA0 tile words into C194:
+                // three columns by two rows. The extra asset row must not
+                // spill into the title cell [C].
+                const auto selected_spell_icon_matches = region_matches(
+                    moved_scene,
+                    expected_title_cell.convertToFormat(QImage::Format_RGB32),
+                    80, 24);
                 if (moved_scene == spell_panel_scene ||
                     moved_spell->spell_code != 10U ||
                     !unselected_spell_icons_match ||
@@ -40755,6 +41059,7 @@ int main(int argc, char** argv) {
 
                 field_scene.set_controller_port_byte(0x80U);
                 field_scene.advance_frame();
+                settle_qa_menu_blank(field_scene);
                 if (field_scene.magic_spell_panel_open() ||
                     field_scene.magic_selected_spell().has_value() ||
                     !field_scene.command_overview_open() ||
@@ -40808,6 +41113,7 @@ int main(int argc, char** argv) {
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                    settle_qa_menu_blank(field_scene);
                 };
                 press_field_port(0xC0U); // A+Start confirms before Start.
                 if (!field_scene.magic_force_selection_open()) {
@@ -41141,6 +41447,7 @@ int main(int argc, char** argv) {
 
                 field_scene.set_controller_port_byte(0x80U);
                 field_scene.advance_frame();
+                settle_qa_menu_blank(field_scene);
                 if (field_scene.magic_spell_panel_open() ||
                     !field_scene.command_overview_open() ||
                     field_scene.command_overview_view().source_state
@@ -41205,6 +41512,7 @@ int main(int argc, char** argv) {
                         0U, std::move(record), std::string(preset.id),
                         preset.portrait_family);
                     field_scene.refresh_field_hud_for_dump();
+                    settle_qa_menu_blank(field_scene);
                     if (!field_scene.seek_command_overview_page(5U)) {
                         std::cerr << "field Magic spell dump: could not "
                                      "select Magic for " << preset.id << "\n";
@@ -41273,7 +41581,10 @@ int main(int argc, char** argv) {
                         const auto icon = direct_asset(
                             "menu/field/magic-spell-icon-" +
                             std::to_string(entry.spell_code) + ".bmp");
-                        if (!visible_asset_pixels_match(scene, icon, 80, 24)) {
+                        // ROM 0x11190 writes a 3x2-tile (24x16) title glyph
+                        // into C194; the presenter clips to those rows [C].
+                        if (!visible_asset_pixels_match(
+                                scene, icon.copy(0, 0, 24, 16), 80, 24)) {
                             std::cerr << "field Magic spell dump: selected "
                                          "icon did not match spell "
                                       << static_cast<int>(entry.spell_code)
@@ -41389,6 +41700,7 @@ int main(int argc, char** argv) {
                 // loops to exercise every simultaneous-button precedence
                 // combination, not just representative chords.
                 const auto reopen_spell_page = [&] {
+                    settle_qa_menu_blank(field_scene);
                     if (!field_scene.command_overview_open() ||
                         !field_scene.seek_command_overview_page(5U)) {
                         return false;
@@ -42337,6 +42649,11 @@ int main(int argc, char** argv) {
                 }
                 field_scene.set_controller_port_byte(0U);
                 field_scene.advance_frame();
+                if (!finish_command_overview_field_return_for_qa(
+                        field_scene)) {
+                    std::cerr << "field command dump: return transition did not reach P+112\n";
+                    return 3;
+                }
                 const auto returned_field_scene = capture_field_scene();
                 if (returned_field_scene != field_before_command) {
                     std::cerr << "field command dump: 0x2BD2 return did not "
@@ -42384,6 +42701,7 @@ int main(int argc, char** argv) {
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                    settle_qa_menu_blank(field_scene);
                 };
                 // Give the diagnostic runner a known valid Body increase so
                 // the same fixture can exercise both prompt choices. Seed it
@@ -42485,8 +42803,10 @@ int main(int argc, char** argv) {
                               << actual_saved << ")\n";
                     return 3;
                 }
+                // Command text is CRAM 0x02C2 = levels (1,6,1) (emulator run5
+                // FFD8F4); the earlier (0,219,0) was the host's pure green.
                 if (!image_region_has_color(initial_scene, 120, 160, 40, 8,
-                                            QColor(0, 219, 0)) ||
+                                            QColor(36, 219, 36)) ||
                     image_region_has_color(initial_scene, 64, 200, 224, 8,
                                            QColor(109, 73, 146))) {
                     std::cerr << "field Attributes/Skills dump: command "
@@ -42539,7 +42859,9 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                const QColor kSelectedKarmaText(109, 73, 146);
+                // ROM 0xD03C: focused row = CRAM 0x02C2 (bright green)
+                // [C emulator e2 8844].
+                const QColor kSelectedKarmaText(36, 219, 36);
                 int captured_cell_count = 0;
                 for (std::uint8_t column = 0U; column < 2U; ++column) {
                     if (column == 1U) {
@@ -42615,7 +42937,7 @@ int main(int argc, char** argv) {
                                          "cell ("
                                       << static_cast<unsigned>(column) << ','
                                       << static_cast<unsigned>(row)
-                                      << ") is missing its purple selected "
+                                      << ") is missing its bright selected "
                                          "label/value or second Essence "
                                          "value (label=" << has_selected_label
                                       << ", value=" << has_selected_value
@@ -42947,15 +43269,24 @@ int main(int argc, char** argv) {
                     image_region_differs(command_page_scene, cyberware_scene,
                                          8, 112, 80, 96) ||
                     image_region_differs(command_page_scene, cyberware_scene,
-                                         120, 168, 144, 24) ||
-                    image_region_differs(command_page_scene, cyberware_scene,
-                                         96, 192, 168, 16) ||
+                                         96, 184, 168, 24) ||
                     image_region_differs(command_page_scene, cyberware_scene,
                                          272, 0, 48, 224)) {
                     std::cerr << "field Cyberware dump: shared portrait, "
                                  "inventory, posture, command row, or HUD "
                                  "was not preserved\n";
                     return 3;
+                }
+                // 0x11900 covers the posture box (x=96 y=160, 21x3 cells)
+                // with the blank C1320 tile [C emulator run5 9530].
+                for (int y = 160; y < 184; ++y) {
+                    for (int x = 96; x < 264; ++x) {
+                        if ((cyberware_scene.pixel(x, y) & 0x00FFFFFFU) != 0U) {
+                            std::cerr << "field Cyberware dump: posture box "
+                                         "was not covered by 0x11900\n";
+                            return 3;
+                        }
+                    }
                 }
                 if (!cyberware_scene.save(QString::fromStdWString(
                         field_cyberware_dump_path->wstring()))) {
@@ -43032,9 +43363,61 @@ int main(int argc, char** argv) {
                                  "page 6\n";
                     return 3;
                 }
-                // Fixture only: force the ROM's known ten Contacts bits and
-                // all ten Shadowrunners bits so both source list branches and
-                // continuation pages are exercised in this repeatable dump.
+                const auto fresh_contact_flags =
+                    field_scene.notebook_contact_flags_for_dump();
+                if (!fresh_contact_flags.has_value() ||
+                    *fresh_contact_flags != 0U) {
+                    std::cerr << "field secretary dump: fresh New Game "
+                                 "Contacts flags are not clear\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.pocket_secretary_open()) {
+                    std::cerr << "field secretary dump: fresh New Game "
+                                 "Pocket Secretary did not open\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto fresh_notebook_scene =
+                    render_qa_field(field_scene);
+                const auto fresh_notebook_path =
+                    *field_secretary_dump_path /
+                    "new-game-notebook-no-contacts.bmp";
+                std::filesystem::create_directories(
+                    *field_secretary_dump_path);
+                if (!field_scene.pocket_secretary_notebook_open() ||
+                    field_scene.pocket_secretary_notebook_option_count() !=
+                        2U ||
+                    !image_has_green_ink(fresh_notebook_scene, 88, 56,
+                                         160, 8) ||
+                    !image_has_green_ink(fresh_notebook_scene, 88, 72,
+                                         160, 8) ||
+                    image_has_green_ink(fresh_notebook_scene, 88, 88,
+                                       160, 8) ||
+                    !fresh_notebook_scene.save(QString::fromStdWString(
+                        fresh_notebook_path.wstring()))) {
+                    std::cerr << "field secretary dump: fresh New Game "
+                                 "Notebook should show Current Run and Tips "
+                                 "& Clues without a Contacts row\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x80U); // [C] F236 Start returns; B dispatches.
+                if (!field_scene.pocket_secretary_open() ||
+                    field_scene.pocket_secretary_notebook_open()) {
+                    std::cerr << "field secretary dump: fresh Notebook did "
+                                 "not return to Pocket Secretary\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x80U);
+                if (field_scene.pocket_secretary_open()) {
+                    std::cerr << "field secretary dump: fresh Pocket "
+                                 "Secretary did not close cleanly\n";
+                    return 3;
+                }
+                // Fixture only: explicitly install the Contacts debug-option
+                // mask and all ten Shadowrunners bits so both source list
+                // branches and continuation pages are exercised below.
                 if (!field_scene.set_notebook_contact_flags_for_dump(0x1C7FU) ||
                     !field_scene.set_notebook_shadowrunner_flags_for_dump(
                         0x03FFU)) {
@@ -43177,11 +43560,39 @@ int main(int argc, char** argv) {
                     expected_yellow_grid = QImage(QString::fromStdWString(
                         yellow_grid_resource->absolute_path.wstring()));
                 }
+                const auto* secretary_background_resource =
+                    smoke_state.asset_catalog.catalog.find(
+                        "menu.pocket.secretary.background");
+                const auto* secretary_grid_resource =
+                    smoke_state.asset_catalog.catalog.find(
+                        "menu.pocket.secretary.grid");
+                QImage expected_cell_backing(16, 8,
+                                             QImage::Format_ARGB32_Premultiplied);
+                expected_cell_backing.fill(Qt::black);
+                QImage secretary_background;
+                QImage secretary_grid;
+                if (secretary_background_resource != nullptr) {
+                    secretary_background = QImage(QString::fromStdWString(
+                        secretary_background_resource->absolute_path.wstring()));
+                }
+                if (secretary_grid_resource != nullptr) {
+                    secretary_grid = QImage(QString::fromStdWString(
+                        secretary_grid_resource->absolute_path.wstring()));
+                }
+                if (!secretary_background.isNull() &&
+                    !secretary_grid.isNull()) {
+                    QPainter backing_painter(&expected_cell_backing);
+                    backing_painter.drawImage(-40, -200,
+                                              secretary_background);
+                    backing_painter.drawImage(-16, -176, secretary_grid);
+                }
                 if (field_scene.source_random_seed_for_dump() != 0x4BC9U ||
                     expected_yellow_grid.isNull() ||
-                    secretary_scene.copy(QRect(40, 200, 16, 8)) !=
-                        expected_yellow_grid.convertToFormat(
-                            QImage::Format_RGB32) ||
+                    secretary_background.isNull() ||
+                    secretary_grid.isNull() ||
+                    !image_cell_matches_black_transparent_pattern(
+                        secretary_scene, expected_yellow_grid,
+                        expected_cell_backing, 40, 200) ||
                     !save_secretary_scene(
                         "random-grid-source-roll-0", secretary_scene)) {
                     std::cerr << "field secretary dump: E660 source roll 0 "
@@ -43293,6 +43704,7 @@ int main(int argc, char** argv) {
                         field_scene.advance_frame();
                         field_scene.set_controller_port_byte(0U);
                         field_scene.advance_frame();
+                        settle_qa_menu_blank(field_scene);
                     };
                 press_secretary_button(0x02U);
                 if (field_scene.pocket_secretary_selection() != 1U) {
@@ -43337,7 +43749,7 @@ int main(int argc, char** argv) {
                 press_secretary_button(0x80U);
                 if (!field_scene.pocket_secretary_open() ||
                     field_scene.pocket_secretary_group_items_waiting() ||
-                    field_scene.pocket_secretary_selection() != 1U ||
+                    field_scene.pocket_secretary_selection() != 0U ||
                     !save_secretary_scene("group-items-populated-return",
                                           render_secretary_scene())) {
                     std::cerr << "field secretary dump: populated Group "
@@ -43346,6 +43758,7 @@ int main(int argc, char** argv) {
                 }
 
                 field_scene.set_group_item_flags_for_dump(0U);
+                press_secretary_button(0x02U); // [C] Child return reset to Pocket Secretary row 0.
                 press_secretary_button(0x40U);
                 if (!field_scene.pocket_secretary_open() ||
                     !field_scene.pocket_secretary_group_items_waiting()) {
@@ -43384,7 +43797,7 @@ int main(int argc, char** argv) {
                 press_secretary_button(0x80U);
                 if (!field_scene.pocket_secretary_open() ||
                     field_scene.pocket_secretary_group_items_waiting() ||
-                    field_scene.pocket_secretary_selection() != 1U) {
+                    field_scene.pocket_secretary_selection() != 0U) {
                     std::cerr << "field secretary dump: Group Items did not "
                                  "return to its selected parent row\n";
                     return 3;
@@ -43400,6 +43813,7 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
+                press_secretary_button(0x02U);
                 press_secretary_button(0x02U);
                 if (field_scene.pocket_secretary_selection() != 2U) {
                     std::cerr << "field secretary dump: could not select "
@@ -43419,18 +43833,23 @@ int main(int argc, char** argv) {
                 }
                 auto cyberdeck_scene = render_secretary_scene();
                 for (std::size_t line = 0; line < 3U; ++line) {
+                    const auto expected_y =
+                        64 + static_cast<int>(line) * 8 +
+                        (line == 2U ? 8 : 0);
                     if (!image_has_green_ink(
                             cyberdeck_scene, 56,
-                            64 + static_cast<int>(line) * 8, 240, 8)) {
+                            expected_y, 240, 8)) {
                         std::cerr << "field secretary dump: Cyberdeck source "
                                      "response line "
                                   << line << " has no visible text\n";
                         return 3;
                     }
                 }
-                if (image_has_green_ink(cyberdeck_scene, 88, 32, 80, 8)) {
+                if (image_has_green_ink(cyberdeck_scene, 56, 80, 240, 8) ||
+                    image_has_green_ink(cyberdeck_scene, 88, 32, 80, 8)) {
                     std::cerr << "field secretary dump: C3E6 response screen "
-                                 "left parent title text visible\n";
+                                 "lost the ROM blank line or left parent title "
+                                 "text visible\n";
                     return 3;
                 }
                 if (!save_secretary_scene("cyberdeck_unavailable",
@@ -43482,7 +43901,7 @@ int main(int argc, char** argv) {
                 if (!field_scene.pocket_secretary_open() ||
                     field_scene
                         .pocket_secretary_cyberdeck_unavailable_waiting() ||
-                    field_scene.pocket_secretary_selection() != 2U) {
+                    field_scene.pocket_secretary_selection() != 0U) {
                     std::cerr << "field secretary dump: Start did not return "
                                  "to the selected parent row\n";
                     return 3;
@@ -43497,8 +43916,6 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
-                press_secretary_button(0x01U); // Up to Notebook.
-                press_secretary_button(0x01U);
                 if (field_scene.pocket_secretary_selection() != 0U) {
                     std::cerr << "field secretary dump: could not return to "
                                  "the Notebook row\n";
@@ -43521,8 +43938,11 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 auto notebook_scene = render_secretary_scene();
+                // [C] F33E uses the C56D6 separator; emulator e3 at 8860
+                // shows its last cells through x=199.
                 if (!image_has_green_ink(notebook_scene, 88, 32, 96, 8) ||
                     !image_has_green_ink(notebook_scene, 72, 40, 128, 8) ||
+                    !image_has_green_ink(notebook_scene, 192, 40, 8, 8) ||
                     !image_has_green_ink(notebook_scene, 88, 56, 160, 8) ||
                     !image_has_green_ink(notebook_scene, 88, 72, 160, 8) ||
                     !image_has_green_ink(notebook_scene, 88, 88, 160, 8) ||
@@ -43542,9 +43962,11 @@ int main(int argc, char** argv) {
                     field_scene.pocket_secretary_notebook_selection() != 0U ||
                     field_audio_events !=
                         std::vector<std::uint16_t>{0x25U} ||
+                    // x>=272 is the field HUD sidebar (0x10A7E bezel), where
+                    // the C reselect legitimately moves the leader frame.
                     image_region_differs(notebook_scene,
                                          notebook_after_mode_action,
-                                         32, 32, 256, 160) ||
+                                         32, 32, 240, 160) ||
                     !save_secretary_scene("notebook-mode-action",
                                           notebook_after_mode_action)) {
                     std::cerr << "field secretary dump: Notebook C did not "
@@ -43608,10 +44030,13 @@ int main(int argc, char** argv) {
                 }
                 press_secretary_button(0x40U); // A returns to Notebook.
                 auto notebook_after_tips = render_secretary_scene();
+                // [C] The F236 rebuild redraws the Notebook panel at row 0;
+                // compare its content panel with the earlier clean row-0 dump.
                 if (!field_scene.pocket_secretary_notebook_open() ||
                     field_scene.pocket_secretary_notebook_tips_open() ||
-                    field_scene.pocket_secretary_notebook_selection() != 1U ||
-                    image_has_green_ink(notebook_after_tips, 40, 56, 40, 16) ||
+                    field_scene.pocket_secretary_notebook_selection() != 0U ||
+                    image_region_differs(notebook_scene, notebook_after_tips,
+                                         24, 24, 224, 160) ||
                     image_has_green_ink(notebook_after_tips, 136, 184,
                                         104, 8) ||
                     !save_notebook_tips_scene("return-a",
@@ -43633,6 +44058,7 @@ int main(int argc, char** argv) {
                                  "typed Tips event bits\n";
                     return 3;
                 }
+                press_secretary_button(0x02U); // [C] F236 child rebuild starts at row 0; move to Tips.
                 press_secretary_button(0x40U); // Reopen with four pages.
                 if (!field_scene.pocket_secretary_notebook_tips_open() ||
                     field_scene.pocket_secretary_notebook_visible_tip_count() !=
@@ -43761,8 +44187,9 @@ int main(int argc, char** argv) {
                 // command-0x31 writer for bit 0; other story writers remain
                 // unresolved and are not inferred from this fixture state.
                 field_audio_events.clear();
-                press_secretary_button(0x02U); // Contacts row.
-                press_secretary_button(0x02U); // Mr. Johnsons row.
+                press_secretary_button(0x02U); // [C] F236 child rebuild starts at row 0; Down to Tips.
+                press_secretary_button(0x02U); // Down to Contacts.
+                press_secretary_button(0x02U); // Down to Mr. Johnsons.
                 if (field_scene.pocket_secretary_notebook_selection() != 3U ||
                     !field_audio_events.empty()) {
                     std::cerr << "field secretary dump: Notebook did not "
@@ -43823,7 +44250,7 @@ int main(int argc, char** argv) {
                         std::vector<std::uint16_t>{0x25U} ||
                     image_region_differs(johnsons_scene,
                                          johnsons_after_mode_action,
-                                         32, 32, 256, 160) ||
+                                         32, 32, 240, 160) /* x>=272: HUD sidebar leader moves on C */ ||
                     !save_secretary_scene(
                         "notebook-mr-johnsons-mode-action",
                         johnsons_after_mode_action)) {
@@ -43949,9 +44376,9 @@ int main(int argc, char** argv) {
                 if (field_scene
                         .pocket_secretary_notebook_mr_johnsons_open() ||
                     !field_scene.pocket_secretary_notebook_open() ||
-                    field_scene.pocket_secretary_notebook_selection() != 3U ||
+                    field_scene.pocket_secretary_notebook_selection() != 0U ||
                     !image_has_green_ink(notebook_after_johnsons,
-                                         88, 104, 128, 8) ||
+                                         88, 56, 128, 8) ||
                     image_has_green_ink(notebook_after_johnsons,
                                         48, 56, 24, 56) ||
                     !field_audio_events.empty() ||
@@ -43961,7 +44388,8 @@ int main(int argc, char** argv) {
                                  "rebuild the selected Notebook row cleanly\n";
                     return 3;
                 }
-                tap_qa_controller_button(field_scene, 0x01U); // Contacts row.
+                press_secretary_button(0x02U); // [C] Move from F236 row 0 to Contacts.
+                press_secretary_button(0x02U);
                 if (field_scene.pocket_secretary_notebook_selection() != 2U) {
                     std::cerr << "field secretary dump: Contacts row did not "
                                  "follow the Notebook cursor\n";
@@ -44088,7 +44516,7 @@ int main(int argc, char** argv) {
                 const auto contacts_parent_stale_ink = image_has_green_ink(
                     contacts_parent_return, 48, 56, 24, 128);
                 if (!field_scene.pocket_secretary_notebook_open() ||
-                    field_scene.pocket_secretary_notebook_selection() != 2U ||
+                    field_scene.pocket_secretary_notebook_selection() != 0U ||
                     field_scene.pocket_secretary_notebook_contacts_open() ||
                     contacts_parent_stale_ink) {
                     std::cerr << "field secretary dump: Contacts return left "
@@ -44110,6 +44538,8 @@ int main(int argc, char** argv) {
                                  "eight-record Contacts boundary\n";
                     return 3;
                 }
+                press_secretary_button(0x02U); // [C] F236 rebuild reset; move to Contacts.
+                press_secretary_button(0x02U);
                 press_secretary_button(0x40U); // Reopen Contacts.
                 if (!field_scene.pocket_secretary_notebook_contacts_open() ||
                     field_scene
@@ -44139,7 +44569,9 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 press_secretary_button(0x02U);
-                press_secretary_button(0x02U); // Shadowrunners row.
+                press_secretary_button(0x02U);
+                press_secretary_button(0x02U);
+                press_secretary_button(0x02U); // [C] F236 reset; move to Shadowrunners.
                 if (field_scene.pocket_secretary_notebook_selection() != 4U) {
                     std::cerr << "field secretary dump: Shadowrunners row was "
                                  "not appended after Mr. Johnsons\n";
@@ -44224,16 +44656,13 @@ int main(int argc, char** argv) {
                 press_secretary_button(0x40U); // Prior Screen.
                 press_secretary_button(0x80U); // Return to Notebook.
                 if (!field_scene.pocket_secretary_notebook_open() ||
-                    field_scene.pocket_secretary_notebook_selection() != 4U ||
+                    field_scene.pocket_secretary_notebook_selection() != 0U ||
                     field_scene.pocket_secretary_notebook_shadowrunners_open()) {
                     std::cerr << "field secretary dump: Shadowrunners return "
                                  "did not restore its parent row\n";
                     return 3;
                 }
-                tap_qa_controller_button(field_scene, 0x01U); // Up to row 3.
-                tap_qa_controller_button(field_scene, 0x01U); // Up.
-                tap_qa_controller_button(field_scene, 0x01U); // Up.
-                tap_qa_controller_button(field_scene, 0x01U); // Up to row 0.
+                // [C] F236 rebuild returns at row 0, which is Current Run.
                 tap_qa_controller_button(field_scene, 0x40U); // Current Run.
                 if (!field_scene.pocket_secretary_notebook_no_run_waiting()) {
                     std::cerr << "field secretary dump: Current Run did not "
@@ -44241,20 +44670,29 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 auto notebook_no_run_scene = render_secretary_scene();
-                for (std::size_t line = 0; line < 3U; ++line) {
+                // [C] C56E7 has two newline bytes; emulator e3 at 8800
+                // places Get a job!! at y=72 with a blank row at y=64.
+                constexpr std::array<int, 3> kNoRunTextRows{{48, 56, 72}};
+                for (const int row_y : kNoRunTextRows) {
                     if (!image_has_green_ink(
                             notebook_no_run_scene, 48,
-                            48 + static_cast<int>(line) * 8, 240, 8)) {
+                            row_y, 240, 8)) {
                         std::cerr << "field secretary dump: no-run source "
-                                     "line "
-                                  << line << " has no visible text\n";
+                                     "line at y="
+                                  << row_y << " has no visible text\n";
                         return 3;
                     }
                 }
+                if (image_has_green_ink(notebook_no_run_scene, 48, 64,
+                                        240, 8)) {
+                    std::cerr << "field secretary dump: no-run blank line "
+                                 "at y=64 contains ink\n";
+                    return 3;
+                }
                 if (image_has_green_ink(notebook_no_run_scene, 88, 32,
                                         96, 8) ||
-                    image_has_green_ink(notebook_no_run_scene, 88, 72,
-                                        160, 8) ||
+                    image_has_green_ink(notebook_no_run_scene, 184, 72,
+                                        16, 8) ||
                     image_has_green_ink(notebook_no_run_scene, 88, 88,
                                         160, 8) ||
                     image_has_green_ink(notebook_no_run_scene, 88, 104,
@@ -44300,8 +44738,9 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 notebook_scene = render_secretary_scene();
-                if (image_has_green_ink(notebook_scene, 48, 48, 240, 8) ||
-                    image_has_green_ink(notebook_scene, 48, 64, 240, 8)) {
+                // Stop at x=272: the HUD sidebar (0x10A7E bezel) has green bars.
+                if (image_has_green_ink(notebook_scene, 48, 48, 224, 8) ||
+                    image_has_green_ink(notebook_scene, 48, 64, 224, 8)) {
                     std::cerr << "field secretary dump: rebuilt Notebook "
                                  "retained stale no-run response text\n";
                     return 3;
@@ -44360,9 +44799,9 @@ int main(int argc, char** argv) {
                     }
                     const auto mask_return_scene = render_secretary_scene();
                     if (image_has_green_ink(mask_return_scene, 48, 48,
-                                            240, 8) ||
+                                            224, 8) ||
                         image_has_green_ink(mask_return_scene, 48, 64,
-                                            240, 8)) {
+                                            224, 8)) {
                         std::cerr << "field secretary dump: controller mask "
                                   << input_mask
                                   << " left stale no-run text\n";
@@ -44721,7 +45160,7 @@ int main(int argc, char** argv) {
                         return 3;
                     }
                 }
-                tap_qa_controller_button(field_scene, 0x10U); // B to parent.
+                tap_qa_controller_button(field_scene, 0x80U); // [C] F23A Start returns to Pocket Secretary; B dispatches.
                 if (field_scene.pocket_secretary_notebook_open() ||
                     !field_scene.pocket_secretary_open() ||
                     field_scene.pocket_secretary_selection() != 0U ||
@@ -44752,15 +45191,24 @@ int main(int argc, char** argv) {
                         // these source screens. Compare the full content
                         // panel after return so no child labels, selector, or
                         // graphics can survive beneath the parent buttons.
+                        // [C] C2C8 resets the parent row to 0, so ignore the
+                        // selector's 8-pixel column while checking the panel.
                         return !image_region_differs(
-                            dismiss_parent_scene, scene, 24, 24, 216, 168);
+                                   dismiss_parent_scene, scene,
+                                   24, 24, 48, 168) &&
+                               !image_region_differs(
+                                   dismiss_parent_scene, scene,
+                                   80, 24, 160, 168);
                     };
                 field_audio_events.clear();
                 press_secretary_button(0x40U);
                 if (!field_scene.pocket_secretary_dismiss_runner_open() ||
                     field_scene.dismiss_runner_selection() != 0U ||
                     field_scene.dismiss_runner_option_count() != 3U ||
-                    !field_audio_events.empty()) {
+                    // [C ROM 0xC4C0 bra 0xC4FA; emulator zsnd e5] Dismiss
+                    // entry sends one MOVE (0x25) request.
+                    field_audio_events.size() != 1U ||
+                    field_audio_events.front() != 0x25U) {
                     std::cerr << "field secretary dump: Dismiss Runner "
                                  "entry state or source audio event is wrong "
                               << "open="
@@ -44787,7 +45235,9 @@ int main(int argc, char** argv) {
                 };
                 if (!image_has_green_ink(dismiss_scene, 88, 32, 112, 8) ||
                     !image_has_green_ink(dismiss_scene, 88, 40, 112, 8) ||
-                    !image_has_green_ink(dismiss_scene, 72, 48, 160, 8) ||
+                    !image_has_green_ink(dismiss_scene, 88, 48, 104, 8) ||
+                    image_has_green_ink(dismiss_scene, 72, 48, 16, 8) ||
+                    image_has_green_ink(dismiss_scene, 192, 48, 8, 8) ||
                     !image_has_green_ink(dismiss_scene, 88, 64, 112, 8) ||
                     !image_has_green_ink(dismiss_scene, 88, 80, 112, 8) ||
                     !image_has_green_ink(dismiss_scene, 88, 96, 112, 8) ||
@@ -44795,8 +45245,10 @@ int main(int argc, char** argv) {
                     image_has_green_ink(dismiss_scene, 136, 104, 8, 8) ||
                     !image_region_differs(dismiss_parent_scene, dismiss_scene,
                                           136, 96, 8, 16) ||
-                    image_region_differs(dismiss_parent_scene, dismiss_scene,
-                                         160, 144, 32, 32) ||
+                    // (Parent-vs-child compare at the preview cell dropped: the
+                    // parent now carries the 0xC3F8 nuyen bar there, which the
+                    // child's 0x12C5A grid rebuild clears. The held/preview
+                    // checks below still cover the cell.)
                     has_parent_option(dismiss_scene, 0) ||
                     has_parent_option(dismiss_scene, 1) ||
                     has_parent_option(dismiss_scene, 2) ||
@@ -44923,7 +45375,7 @@ int main(int argc, char** argv) {
                 press_secretary_button(0x10U); // Source B confirms the row.
                 if (field_scene.pocket_secretary_dismiss_runner_open() ||
                     !field_scene.pocket_secretary_open() ||
-                    field_scene.pocket_secretary_selection() != 3U ||
+                    field_scene.pocket_secretary_selection() != 0U ||
                     field_scene.field_party_slot_active_for_dump(1U) ||
                     !field_scene.field_party_slot_active_for_dump(2U) ||
                     (field_scene.field_party_records_for_dump()[1].flags &
@@ -44945,6 +45397,9 @@ int main(int argc, char** argv) {
                 }
 
                 field_audio_events.clear();
+                press_secretary_button(0x02U); // [C] C2C8 child rebuild reset; move to Dismiss Runner.
+                press_secretary_button(0x02U);
+                press_secretary_button(0x02U);
                 press_secretary_button(0x40U);
                 if (!field_scene.pocket_secretary_dismiss_runner_open() ||
                     field_scene.dismiss_runner_option_count() != 2U) {
@@ -44974,6 +45429,9 @@ int main(int argc, char** argv) {
                 }
 
                 field_audio_events.clear();
+                press_secretary_button(0x02U); // [C] C2C8 child rebuild reset; select Dismiss Runner again.
+                press_secretary_button(0x02U);
+                press_secretary_button(0x02U);
                 press_secretary_button(0x40U);
                 if (!field_scene.pocket_secretary_dismiss_runner_open()) {
                     std::cerr << "field secretary dump: could not reopen "
@@ -44998,6 +45456,9 @@ int main(int argc, char** argv) {
                                  "runner for dismissal replacement\n";
                     return 3;
                 }
+                press_secretary_button(0x02U); // [C] C2C8 child rebuild reset; select Dismiss Runner again.
+                press_secretary_button(0x02U);
+                press_secretary_button(0x02U);
                 press_secretary_button(0x40U);
                 field_audio_events.clear();
                 press_secretary_button(0x02U); // Select current runner.
@@ -45084,25 +45545,106 @@ int main(int argc, char** argv) {
                                  "screen is cropped or its footer is missing\n";
                     return 3;
                 }
-                press_secretary_button(0x80U); // Start returns to the same row.
+                press_secretary_button(0x80U); // [C] C2C8 child return resets Pocket Secretary to row 0.
                 const auto installed_deck_return = render_secretary_scene();
                 if (field_scene.field_menu_route_screen_for_dump() !=
                         static_cast<std::uint16_t>(
                             srx::MenuScreen::POCKET_SECRETARY) ||
                     !field_scene.pocket_secretary_open() ||
-                    field_scene.pocket_secretary_selection() != 2U ||
-                    installed_deck_return.copy(
-                        QRect(0, 0, kSceneWidth, 192)) !=
-                        installed_deck_parent.copy(
-                            QRect(0, 0, kSceneWidth, 192)) ||
+                    field_scene.pocket_secretary_selection() != 0U ||
+                    image_region_differs(installed_deck_parent,
+                                         installed_deck_return,
+                                         24, 24, 48, 168) ||
+                    image_region_differs(installed_deck_parent,
+                                         installed_deck_return,
+                                         80, 24, 160, 168) ||
                     !save_secretary_scene("cyberdeck-present-return",
                                           installed_deck_return)) {
                     std::cerr << "field secretary dump: Start did not return "
-                                 "to the selected Cyberdeck row cleanly\n";
+                                 "to Pocket Secretary row zero cleanly\n";
+                    return 3;
+                }
+                for (int step = 0;
+                     field_scene.pocket_secretary_selection() != 4U &&
+                     step < 5;
+                     ++step) {
+                    press_secretary_button(0x02U);
+                }
+                if (field_scene.pocket_secretary_selection() != 4U) {
+                    std::cerr << "field secretary dump: could not select "
+                                 "Save/Load\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U);
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                    static_cast<std::uint16_t>(srx::MenuScreen::SAVE_LOAD)) {
+                    std::cerr << "field secretary dump: Save/Load did not "
+                                 "open its typed option screen\n";
+                    return 3;
+                }
+                auto save_load_options_scene = render_secretary_scene();
+                if (image_has_green_ink(save_load_options_scene, 24, 24,
+                                        224, 24) ||
+                    image_has_green_ink(save_load_options_scene, 72, 56,
+                                        176, 24) ||
+                    !image_has_green_ink(save_load_options_scene, 80, 80,
+                                         8, 8) ||
+                    !image_has_green_ink(save_load_options_scene, 96, 80,
+                                         80, 8) ||
+                    !image_has_green_ink(save_load_options_scene, 96, 96,
+                                         80, 8) ||
+                    !save_secretary_scene("save-load-options-actual",
+                                          save_load_options_scene)) {
+                    std::cerr << "field secretary dump: Save/Load option "
+                                 "title, cursor, or source row pixels do not "
+                                 "match 0xC2600 at y=80/96\n";
+                    return 3;
+                }
+                press_secretary_button(0x02U); // Select Load Game from the source two-row list.
+                press_secretary_button(0x40U);
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                    static_cast<std::uint16_t>(srx::MenuScreen::SAVE_SLOT)) {
+                    std::cerr << "field secretary dump: Load Game did not "
+                                 "open the source slot screen\n";
+                    return 3;
+                }
+                const auto save_load_slots_scene = render_secretary_scene();
+                if (!image_has_green_ink(save_load_slots_scene, 88, 32,
+                                         96, 8) ||
+                    !image_has_green_ink(save_load_slots_scene, 88, 40,
+                                         88, 8) ||
+                    image_has_green_ink(save_load_slots_scene, 72, 40,
+                                        16, 8) ||
+                    !image_has_green_ink(save_load_slots_scene, 96, 56,
+                                         8, 8) ||
+                    !image_has_green_ink(save_load_slots_scene, 112, 56,
+                                         64, 8) ||
+                    !image_has_green_ink(save_load_slots_scene, 112, 72,
+                                         64, 8) ||
+                    image_has_green_ink(save_load_slots_scene, 160, 56,
+                                        80, 8) ||
+                    image_has_green_ink(save_load_slots_scene, 160, 72,
+                                        80, 8) ||
+                    !save_secretary_scene("save-load-slots-empty",
+                                          save_load_slots_scene)) {
+                    std::cerr << "field secretary dump: source Game 1/Game 2 "
+                                 "labels, title, or empty-slot text pixels "
+                                 "do not match 0x1B6518\n";
+                    return 3;
+                }
+                press_secretary_button(0x80U);
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::POCKET_SECRETARY) ||
+                    !field_scene.pocket_secretary_open()) {
+                    std::cerr << "field secretary dump: slot Start did not "
+                                 "return to Pocket Secretary\n";
                     return 3;
                 }
                 std::cout << "installed_cyberdeck_route=field_secretary,"
-                             "typed_deck_screen,full_footer,same_row_return\n";
+                             "typed_deck_screen,full_footer,row_zero_return\n";
+                std::cout << "save_load_review=0xC2600_rows_y80_96,"
+                             "0x1B6518_static_slots,no_empty_suffix\n";
                 std::cout << "dismiss_runner_review=fixed_abort,active_list,"
                              "compact_marker,active_runner_switch,e660_cadence "
                              "e660_pixels=pending "
@@ -45190,6 +45732,7 @@ int main(int argc, char** argv) {
                 constexpr std::size_t kArmorTableBase = 0xD4D50U;
                 constexpr std::size_t kArmorTableStride = 0x30U;
                 constexpr std::size_t kArmorCount = 7U;
+                constexpr std::uint8_t kArmorClothingIndex = 2U;
 #ifndef SHADOWRUN_US_ROM_PATH
                 return profile_failure(
                     "the QA target has no primary US ROM path");
@@ -45294,6 +45837,12 @@ int main(int argc, char** argv) {
                 if (clear_error) {
                     return profile_failure(
                         "could not clear prior bitmap artifacts");
+                }
+                const QImage menu_font(QString::fromStdWString(
+                    (asset_root / "menu" / "field" / "font.bmp").wstring()));
+                if (menu_font.isNull()) {
+                    return profile_failure(
+                        "the command-overview font asset was not loaded");
                 }
                 const auto region_matches_bar_asset =
                     [&asset_root](const QImage& scene,
@@ -45465,7 +46014,15 @@ int main(int argc, char** argv) {
                 };
                 const auto press = [&field_scene](
                                        const std::uint8_t port_byte) {
+                    const auto previous =
+                        qa_command_inventory_selection(field_scene);
                     tap_qa_controller_button(field_scene, port_byte);
+                    settle_qa_command_inventory_item_change(field_scene,
+                                                            previous);
+                    if (!field_scene.command_overview_open()) {
+                        (void)finish_command_overview_field_return_for_qa(
+                            field_scene);
+                    }
                 };
                 std::size_t saved_frames = 0U;
                 std::size_t equipped_profile_frames = 0U;
@@ -45501,7 +46058,7 @@ int main(int argc, char** argv) {
                 }
                 detail_value_manifest
                     << "profile\traw_rom_record\ttrace\trace\tclass\t"
-                       "selected_slot\titem_code\tphase\tlabel\tasset\t"
+                       "selected_slot\titem_code\tdetail_value\tlabel\tasset\t"
                        "frame\n";
                 const auto weapon_profile_output_directory =
                     output_directory / "weapon-profile-permutation";
@@ -46400,35 +46957,59 @@ int main(int argc, char** argv) {
                                 "cursor could not reach it");
                         }
                         const auto scene = render_qa_field(field_scene);
+                        const bool weapon_item = item_code <
+                            static_cast<std::uint8_t>(
+                                srx::ItemId::FRAG_GRENADE);
+                        const bool selected_equipped_weapon = weapon_item &&
+                            profile.equipped_inventory_slot ==
+                                static_cast<std::int8_t>(slot) &&
+                            profile.equipped_item_code == item_code;
+                        const auto displayed_value = weapon_item
+                            ? profile.ammo_rounds
+                            : phase;
                         const auto asset_path =
                             asset_root / "menu" / "field" /
-                            ("detail-value-" + std::to_string(phase) +
+                            ("detail-value-" +
+                             std::to_string(displayed_value) +
                              ".bmp");
                         const QImage asset(QString::fromStdWString(
                             asset_path.wstring()));
-                        if (asset.size() != QSize(16, 8) ||
-                            !region_matches_asset(scene, asset, 120, 56)) {
+                        QImage empty_ammo_value(16, 8,
+                                                QImage::Format_RGB32);
+                        empty_ammo_value.fill(Qt::black);
+                        const bool value_matches = weapon_item
+                            ? (selected_equipped_weapon &&
+                               asset.size() == QSize(16, 8) &&
+                               region_matches_asset(scene, asset, 120, 56))
+                            : (asset.size() == QSize(16, 8) &&
+                               region_matches_asset(scene, asset, 120, 56));
+                        const bool empty_ammo_matches = weapon_item &&
+                            !selected_equipped_weapon &&
+                            region_matches_asset(scene, empty_ammo_value,
+                                                 120, 56);
+                        if (!value_matches && !empty_ammo_matches) {
                             std::cerr
                                 << "field profile combat-bar QA: detail "
                                    "value pixels do not match the selected "
-                                   "source phase for "
+                                   "Lua ammo count or item detail for "
                                 << expected.slug << " slot=" << slot
-                                << " item=0x" << std::hex
+                                << " item="
                                 << static_cast<unsigned>(item_code)
-                                << " phase=0x"
-                                << static_cast<unsigned>(phase) << std::dec
+                                << " phase="
+                                << static_cast<unsigned>(phase) << " rounds="
+                                << static_cast<unsigned>(profile.ammo_rounds)
                                 << '\n';
                             return profile_failure(
-                                "selected detail value did not render its "
-                                "named 16x8 asset at the ROM destination");
+                                "selected detail did not render its named "
+                                "16x8 ammo or item asset at the ROM destination");
                         }
                         std::ostringstream frame_name;
                         frame_name << expected.slug << "-slot" << slot
                                    << "-item-" << std::hex << std::setw(2)
                                    << std::setfill('0')
                                    << static_cast<unsigned>(item_code)
-                                   << "-phase-" << std::setw(2)
-                                   << static_cast<unsigned>(phase)
+                                   << "-value-" << std::setw(2)
+                                   << static_cast<unsigned>(displayed_value)
                                    << ".bmp";
                         const auto frame_path =
                             detail_value_output_directory / frame_name.str();
@@ -46445,17 +47026,24 @@ int main(int argc, char** argv) {
                             << static_cast<unsigned>(profile.archetype_index)
                             << "\t" << std::dec << slot << "\t0x" << std::hex
                             << static_cast<unsigned>(item_code) << "\t0x"
-                            << static_cast<unsigned>(phase) << "\t"
+                            << static_cast<unsigned>(displayed_value) << "\t"
                             << (item_code < 0x0DU
                                     ? "ammo"
                                     : item_code <= 0x13U ? "uses" : "rtng")
                             << "\tdetail-value-" << std::dec
-                            << static_cast<unsigned>(phase) << ".bmp\t"
+                            << static_cast<unsigned>(displayed_value) << ".bmp\t"
                             << frame_name.str() << '\n';
                         ++detail_value_profile_cases;
                         ++detail_value_profile_frames;
                     }
-                    if (!field_scene.seek_command_overview_page(2U) ||
+                    for (std::size_t move = 0U;
+                         move < 3U &&
+                         field_scene.command_overview_primary_page() != 2U;
+                         ++move) {
+                        press(static_cast<std::uint8_t>(
+                            srx::Pad::HELD_RIGHT));
+                    }
+                    if (field_scene.command_overview_primary_page() != 2U ||
                         field_scene.posture_dialog_open() ||
                         !check_state(expected, profile_index, 0U,
                                      "focused", false)) {
@@ -46885,13 +47473,25 @@ int main(int argc, char** argv) {
                                                item_code, selected_slot);
                         const bool selected_summary_matches =
                             armor_summary_matches(selected_scene, armor_index);
+                        // ROM 0x12A8C draws the selected D4540 row at C420;
+                        // item 0x2D is the D4D80 "   Armor    /  Clothing  "
+                        // record. The real e4 8800 frame lights Armor at
+                        // x=153 and Clothing at x=145 (rows 64..79).
+                        const bool armor_detail_text_matches =
+                            armor_index != kArmorClothingIndex ||
+                            (source_menu_caption_matches(
+                                 selected_scene, menu_font, 152, 64, "Armor") &&
+                             source_menu_caption_matches(
+                                 selected_scene, menu_font, 144, 72,
+                                 "Clothing"));
                         if (!selected_item_matches ||
                             !selected_phase_matches ||
                             !selected_armor_matches ||
                             !marker_source_slot_matches ||
                             !marker_selected_slot_matches ||
                             !selected_icon_matches ||
-                            !selected_summary_matches) {
+                            !selected_summary_matches ||
+                            !armor_detail_text_matches) {
                             selected_scene.save(QString::fromStdWString(
                                 (armor_output_directory /
                                  (armor_prefix + "-selected-failure.bmp"))
@@ -46908,11 +47508,13 @@ int main(int argc, char** argv) {
                                       << marker_selected_slot_matches
                                       << " icon=" << selected_icon_matches
                                       << " summary="
-                                      << selected_summary_matches << '\n';
+                                      << selected_summary_matches
+                                      << " detail_text="
+                                      << armor_detail_text_matches << '\n';
                             return profile_failure(
                                 "selected armor icon, equipped marker, phase "
-                                "or D4D50 preview did not match the source "
-                                "profile");
+                                "D4D50 preview, or D4D80 text origin did not "
+                                "match the source profile");
                         }
                         if (!save_armor_frame(armor_prefix + "-selected.bmp",
                                               selected_scene)) {
@@ -47315,8 +47917,15 @@ int main(int argc, char** argv) {
                 const auto press = [&field_scene](
                                        const std::uint8_t port_byte) {
                     tap_qa_controller_button(field_scene, port_byte);
+                    if (!field_scene.command_overview_open()) {
+                        (void)finish_command_overview_field_return_for_qa(
+                            field_scene);
+                    }
                 };
-                const QColor kSelectedText(109, 73, 146);
+                // ROM 0xD03C/0xD046: focus CRAM 0x02C2, base grid 0x0060
+                // [C emulator e2 8844].
+                const QColor kSelectedText(36, 219, 36);
+                const QColor kBaseGridTint(0, 127, 0);
                 std::size_t profile_frames = 0U;
 
                 for (std::size_t profile_index = 0U;
@@ -47379,8 +47988,10 @@ int main(int argc, char** argv) {
                             output_path.string());
                     }
                     ++profile_frames;
+                    // ROM 0xD134 prints the untrimmed +0x58 field
+                    // ("   Joshua") at C194, so the name starts at x=104 [C].
                     const auto name_matches =
-                        source_menu_caption_matches(initial, font, 80, 24,
+                        source_menu_caption_matches(initial, font, 104, 24,
                                                     "Joshua");
                     const auto race_matches = profile.species_index <
                             race_names.size() &&
@@ -47484,12 +48095,31 @@ int main(int argc, char** argv) {
                                 const auto label = label_index == 6U
                                     ? std::string_view("Essence")
                                     : cell_labels[label_index];
+                                // 0xD1DC: Essence shows +0x7E (and +0x8E at
+                                // x=288); Magic shows +0x7F. Sub-skills carry
+                                // a leading space in ROM 0xC1AD8.
+                                const auto display_offset =
+                                    label_index == 6U ? 0x7EU
+                                    : label_index == 7U ? 0x7FU
+                                                        : offset;
+                                const auto indent =
+                                    label_index >= 10U && label_index <= 12U
+                                        ? 8
+                                        : 0;
                                 if (!source_menu_caption_matches(
-                                        scene, font, label_x, cell_y, label) ||
+                                        scene, font, label_x + indent, cell_y,
+                                        label, kBaseGridTint) ||
                                     !source_menu_caption_matches(
                                         scene, font, value_x, cell_y,
                                         std::to_string(
-                                            source_record.bytes[offset]))) {
+                                            source_record.bytes[display_offset]),
+                                        kBaseGridTint) ||
+                                    (label_index == 6U &&
+                                     !source_menu_caption_matches(
+                                         scene, font, 288, cell_y,
+                                         std::to_string(
+                                             source_record.bytes[0x8EU]),
+                                         kBaseGridTint))) {
                                     std::cerr
                                         << "profile grid pixels mismatch: "
                                         << profile_slugs[profile_index]
@@ -48178,6 +48808,11 @@ int main(int argc, char** argv) {
 
                 field_audio_events.clear();
                 press(0x80U); // ROM FFF0B1 makes Start exit the whole menu.
+                if (!finish_command_overview_field_return_for_qa(
+                        field_scene)) {
+                    return posture_failure(
+                        "Start return did not finish the emulator P+112 field fade");
+                }
                 const auto field_after_menu = capture();
                 if (field_scene.posture_dialog_open() ||
                     field_scene.command_overview_open() ||
@@ -48232,11 +48867,15 @@ int main(int argc, char** argv) {
                             .wstring()));
                 };
                 const auto press = [&](const std::uint8_t port_byte) {
+                    const auto previous =
+                        qa_command_inventory_selection(field_scene);
                     settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                    settle_qa_command_inventory_item_change(field_scene,
+                                                            previous);
                 };
                 const auto region_has_green_ink = image_region_has_dominant_green_ink;
                 const auto same_region = [](const QImage& left,
@@ -48285,6 +48924,9 @@ int main(int argc, char** argv) {
                                  "not open\n";
                     return 3;
                 }
+                // ROM 0x117BA/0x11824 select and redraw the action-row
+                // caption. Emulator e4 frames 8819..8820 show Inventory
+                // changing to Equip/Unequip when A opens the row.
                 const auto action_open_scene = render_scene();
 
                 field_scene.set_controller_port_byte(0x40U);
@@ -48422,11 +49064,15 @@ int main(int argc, char** argv) {
                             .wstring()));
                 };
                 const auto press = [&](const std::uint8_t port_byte) {
+                    const auto previous =
+                        qa_command_inventory_selection(field_scene);
                     settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                    settle_qa_command_inventory_item_change(field_scene,
+                                                            previous);
                 };
                 const auto has_green_ink = image_region_has_dominant_green_ink;
                 const auto image_region_matches = [](
@@ -48800,11 +49446,15 @@ int main(int argc, char** argv) {
                             .wstring()));
                 };
                 const auto press = [&](const std::uint8_t port_byte) {
+                    const auto previous =
+                        qa_command_inventory_selection(field_scene);
                     settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                    settle_qa_command_inventory_item_change(field_scene,
+                                                            previous);
                 };
                 const auto region_has_green_ink = image_region_has_dominant_green_ink;
                 const auto target_face_matches = [&](const QImage& scene) {
@@ -49333,7 +49983,15 @@ int main(int argc, char** argv) {
                         0U, profile, profile_name,
                         static_cast<std::uint8_t>(profile_index));
                     field_scene.set_active_party_slot_for_dump(0U);
-                    if (!field_scene.seek_command_overview_page(0U)) {
+                    for (int move = 0;
+                         move < 7 && field_scene.command_overview_view()
+                                             .source_state.primary_page != 0U;
+                         ++move) {
+                        press(static_cast<std::uint8_t>(
+                            srx::Pad::HELD_LEFT));
+                    }
+                    if (field_scene.command_overview_view()
+                            .source_state.primary_page != 0U) {
                         std::cerr << "field First Aid dump: could not return "
                                      "to Inventory for profile "
                                   << kProfileSlugs[profile_index] << '\n';
@@ -49343,11 +50001,25 @@ int main(int argc, char** argv) {
                          move < 4 && field_scene.command_overview_view()
                                              .source_state.secondary_page != 0U;
                          ++move) {
-                        press(0x01U);
+                        press(static_cast<std::uint8_t>(
+                            srx::Pad::HELD_UP));
                     }
                     if (field_scene.command_overview_view()
                             .source_state.secondary_page != 0U) {
                         std::cerr << "field First Aid dump: inventory row "
+                                     "did not return to zero\n";
+                        return 3;
+                    }
+                    for (int move = 0;
+                         move < 2 && field_scene.command_overview_view()
+                                             .source_state.primary_page != 0U;
+                         ++move) {
+                        press(static_cast<std::uint8_t>(
+                            srx::Pad::HELD_LEFT));
+                    }
+                    if (field_scene.command_overview_view()
+                            .source_state.primary_page != 0U) {
+                        std::cerr << "field First Aid dump: inventory column "
                                      "did not return to zero\n";
                         return 3;
                     }
@@ -49356,11 +50028,13 @@ int main(int argc, char** argv) {
                     const auto desired_profile_row =
                         static_cast<std::uint8_t>(profile_medkit_slot / 2U);
                     if (desired_profile_column != 0U) {
-                        press(0x08U);
+                        press(static_cast<std::uint8_t>(
+                            srx::Pad::HELD_RIGHT));
                     }
                     for (std::uint8_t row = 0U;
                          row < desired_profile_row; ++row) {
-                        press(0x02U);
+                        press(static_cast<std::uint8_t>(
+                            srx::Pad::HELD_DOWN));
                     }
                     const auto& profile_cursor = field_scene
                         .command_overview_view().source_state;
@@ -49373,7 +50047,29 @@ int main(int argc, char** argv) {
                                 .inventory_item_codes[profile_medkit_slot] !=
                             0x10U) {
                         std::cerr << "field First Aid dump: selected source "
-                                     "profile cell or Biotech changed\n";
+                                     "profile cell or Biotech changed: wanted="
+                                  << static_cast<unsigned>(
+                                         desired_profile_column)
+                                  << ','
+                                  << static_cast<unsigned>(
+                                         desired_profile_row)
+                                  << " got="
+                                  << static_cast<unsigned>(
+                                         profile_cursor.primary_page)
+                                  << ','
+                                  << static_cast<unsigned>(
+                                         profile_cursor.secondary_page)
+                                  << " biotech="
+                                  << static_cast<unsigned>(field_scene
+                                         .active_runner_record().skills[8])
+                                  << " expected="
+                                  << static_cast<unsigned>(profile.skills[8])
+                                  << " item="
+                                  << static_cast<unsigned>(field_scene
+                                         .active_runner_record()
+                                         .inventory_item_codes[
+                                             profile_medkit_slot])
+                                  << '\n';
                         return 3;
                     }
                     const std::string profile_prefix =
@@ -50222,11 +50918,15 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto press = [&](const std::uint8_t port_byte) {
+                    const auto previous =
+                        qa_command_inventory_selection(field_scene);
                     settle_qa_dialogue_input(field_scene);
                     field_scene.set_controller_port_byte(port_byte);
                     field_scene.advance_frame();
                     field_scene.set_controller_port_byte(0U);
                     field_scene.advance_frame();
+                    settle_qa_command_inventory_item_change(field_scene,
+                                                            previous);
                 };
                 const auto press_with_expected_audio =
                     [&](const std::uint8_t port_byte,
@@ -50447,9 +51147,25 @@ int main(int argc, char** argv) {
                             secondary_page > 3U) {
                             return QImage{};
                         }
+                        for (std::size_t frame = 0U; frame < 16U; ++frame) {
+                            const auto route = fresh_scene
+                                .field_menu_route_snapshot_for_dump();
+                            if (!route.root_inventory_cursor_hidden
+                                     .value_or(false)) {
+                                break;
+                            }
+                            fresh_scene.set_controller_port_byte(0U);
+                            fresh_scene.advance_frame();
+                        }
                         for (std::uint8_t row = 0U; row < secondary_page;
                              ++row) {
-                            tap_qa_controller_button(fresh_scene, 0x02U);
+                            const auto previous =
+                                qa_command_inventory_selection(fresh_scene);
+                            tap_qa_controller_button(
+                                fresh_scene, static_cast<std::uint8_t>(
+                                    srx::Pad::HELD_DOWN));
+                            settle_qa_command_inventory_item_change(
+                                fresh_scene, previous);
                         }
                         QImage image(kSceneWidth, kSceneHeight,
                                      QImage::Format_RGB32);
@@ -50564,7 +51280,7 @@ int main(int argc, char** argv) {
                 if (!region_matches(action_open_scene, focus_equip, 136, 184) ||
                     !source_menu_caption_matches(
                         action_open_scene, direct_asset("font.bmp"), 112,
-                        200, "    Inventory    ") ||
+                        200, "  Equip/Unequip  ") ||
                     !field_inventory_selector_survives(action_open_scene, 0U,
                                                        0U) ||
                     !weapon_damage_row_matches(action_open_scene, 1U) ||
@@ -50595,7 +51311,7 @@ int main(int argc, char** argv) {
                                     184) ||
                     !source_menu_caption_matches(
                         action_cancel_scene, direct_asset("font.bmp"), 112,
-                        200, "    Inventory    ") ||
+                        200, "     Cancel      ") ||
                     !save_scene("01_inventory_action_cancel",
                                 action_cancel_scene)) {
                     std::cerr << "field action dump: cancel focus is "
@@ -50612,6 +51328,9 @@ int main(int argc, char** argv) {
                 const auto action_reselected_scene = render_scene();
                 if (!region_matches(action_reselected_scene, focus_equip, 136,
                                     184) ||
+                    !source_menu_caption_matches(
+                        action_reselected_scene, direct_asset("font.bmp"),
+                        112, 200, "  Equip/Unequip  ") ||
                     !same_image(action_open_scene, action_reselected_scene) ||
                     !save_scene("02_inventory_action_reselected",
                                 action_reselected_scene)) {
@@ -50836,8 +51555,11 @@ int main(int argc, char** argv) {
                 const auto& weapon_two_equipped =
                     field_scene.active_runner_record();
                 const auto weapon_two_equipped_scene = render_scene();
+                // ROM 0x11136 advances A0 per slot before 0x3602, so slot 1
+                // tests the name byte at +0x58 and keeps palette 0x2000
+                // (variant 0) even while it holds the equipped weapon [C].
                 const auto weapon_two_equipped_icon =
-                    direct_weapon_icon(2U, 1U);
+                    direct_weapon_icon(2U, 0U);
                 if (weapon_two_equipped.equipped_inventory_slot != 1 ||
                     weapon_two_equipped.equipped_item_code != 2U ||
                     weapon_two_equipped.ammo_rounds != 6U ||
@@ -52150,17 +52872,32 @@ int main(int argc, char** argv) {
                         if (parent.size() != child.size()) {
                             return false;
                         }
-                        // ROM 0x11B5C redraws the shared shell after the
-                        // center clear. The posture strip must survive Clips
-                        // entry pixel-for-pixel above the replacement row.
+                        // ROM 0x11B5C calls 0x11900, which covers the posture
+                        // box (21x3 cells at $EA18: x=96 y=160) with the
+                        // C1320 blank until 0x11928 restores it [C emulator
+                        // e1 8840]. The parent page shows the posture strip.
+                        bool parent_has_posture = false;
                         for (int y = 160; y < 184; ++y) {
-                            for (int x = 96; x < 256; ++x) {
-                                if (parent.pixel(x, y) != child.pixel(x, y)) {
+                            for (int x = 96; x < 264; ++x) {
+                                if ((child.pixel(x, y) & 0x00FFFFFFU) != 0U) {
                                     return false;
                                 }
+                                parent_has_posture =
+                                    parent_has_posture ||
+                                    (parent.pixel(x, y) & 0x00FFFFFFU) != 0U;
                             }
                         }
-                        return true;
+                        // 0xC216 writes the clip count right-to-left from
+                        // $C4B4, so the ones digit lands in x=208..215.
+                        bool digit_at_208 = false;
+                        for (int y = 72; y < 80; ++y) {
+                            for (int x = 208; x < 216; ++x) {
+                                digit_at_208 =
+                                    digit_at_208 ||
+                                    (child.pixel(x, y) & 0x00FFFFFFU) != 0U;
+                            }
+                        }
+                        return parent_has_posture && digit_at_208;
                     };
 
                 const auto clips_focus = std::array<QImage, 4>{
@@ -52222,8 +52959,8 @@ int main(int argc, char** argv) {
                                 initial_clips_scene) ||
                     !save_scene("actual", initial_clips_scene)) {
                     std::cerr << "field clips dump: Clips child did not "
-                                 "replace the command row and restore the "
-                                 "shared posture panel\n";
+                                 "replace the command row, cover the posture "
+                                 "box (0x11900) or right-align the count\n";
                     return 3;
                 }
 
@@ -52338,10 +53075,24 @@ int main(int argc, char** argv) {
                     field_scene.clips_menu_message() !=
                         ClipsMenuMessage::no_party_members ||
                     !clips_result_screen_matches(no_party_scene) ||
+                    ![&no_party_scene] {
+                        // The y=200 footer keeps "Trade" under the message
+                        // [C emulator e1 9040].
+                        for (int y = 200; y < 208; ++y) {
+                            for (int x = 112; x < 208; ++x) {
+                                if (QColor(no_party_scene.pixel(x, y))
+                                        .green() > 150) {
+                                    return true;
+                                }
+                            }
+                        }
+                        return false;
+                    }() ||
                     !save_scene("05a_clips_no_party_message",
                                 no_party_scene)) {
                     std::cerr << "field clips dump: no-recipient Trade did "
-                                 "not replace the selector with its message\n";
+                                 "not replace the selector with its message "
+                                 "(or dropped the Trade footer)\n";
                     return 3;
                 }
                 press(0x40U); // Return to Command.

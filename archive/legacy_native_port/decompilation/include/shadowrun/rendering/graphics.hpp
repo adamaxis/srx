@@ -791,6 +791,8 @@ decode_genesis_intro_wilderness_pan_frames(
 // slots 0x6AA7E at the $F000 plane alias. The native image retains the
 // visible 48px right column.
 RgbaImage decode_genesis_field_hud(const std::vector<std::uint8_t>& rom);
+RgbaImage decode_genesis_field_hud_active_frame(
+    const std::vector<std::uint8_t>& rom);
 struct GenesisFieldHudLayers {
     std::array<RgbaImage, 3> faces{};
     std::array<RgbaImage, 3> item_blocks{};
@@ -852,6 +854,8 @@ GenesisFieldHudPartyAssets decode_genesis_field_hud_party_assets(
 // Pocket Secretary bezel from ROM 0x10A7E's four raw 0x1232 name-table
 // writes, independent of the field command-screen base.
 RgbaImage decode_genesis_pocket_secretary_background(
+    const std::vector<std::uint8_t>& rom);
+RgbaImage decode_genesis_pocket_secretary_nuyen_bar(
     const std::vector<std::uint8_t>& rom);
 // ROM 0xC3E6 repeats the C1320 space-glyph tile with palette line 3 across
 // the 28x21 Pocket Secretary content area. Extract that layer separately.
@@ -1046,7 +1050,7 @@ std::array<RgbaImage, 4> decode_genesis_field_magic_cursor_frames(
 // one-tile source rows at C85A2/C85A4/C85A6/C85A8/C85AC.
 std::array<RgbaImage, 5> decode_genesis_field_magic_posture_bars(
     const std::vector<std::uint8_t>& rom);
-std::array<RgbaImage, 5> decode_genesis_field_magic_force_meter_tiles(
+std::array<RgbaImage, 7> decode_genesis_field_magic_force_meter_tiles(
     const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, 4> decode_genesis_field_magic_availability_bars(
     const std::vector<std::uint8_t>& rom);

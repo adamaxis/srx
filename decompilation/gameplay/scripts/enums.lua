@@ -111,11 +111,15 @@ E.ItemId = {
     ALLEGIANCE = 0x0B, ROOMSWEEPER = 0x0C, FRAG_GRENADE = 0x0D, SCATTER_GRENADE = 0x0E,
     CONCUSSION_GRENADE = 0x0F, MEDKIT = 0x10, STIM_PATCH = 0x11, TRAUMA_PATCH = 0x12, FETISH = 0x13,
     MAGLOCK_PASSKEY = 0x14, ELECTRONIC_KIT = 0x15, SMART_GOGGLES = 0x16,
-    POWER_FOCUS = 0x18, -- raw 0x18: Power Focus source item record [C]
-    COMBAT_SENSE_SPELL_LOCK = 0x28, -- raw 0x28: Combat Sense Spell Lock source item record [C]
-    RAT_TOTEM = 0x29, -- raw 0x29: Rat Totem source item record [C]
-    GATOR_TOTEM = 0x2A, -- raw 0x2A: Gator Totem source item record [C]
-    BEAR_TOTEM = 0x2B, -- raw 0x2B: Bear Totem source item record [C]
+    -- 0x17..0x32 names from the record strings at 0xD4540 + 0x30*(code-1) [C].
+    ENCHANTED_DAGGER = 0x17, POWER_FOCUS = 0x18,
+    FLAME_DART_FOCUS = 0x19, FLAME_BOLT_FOCUS = 0x1A, HELLBLAST_FOCUS = 0x1B, INVISIBILITY_FOCUS = 0x1C,
+    SLEEP_FOCUS = 0x1D, STINK_FOCUS = 0x1E, SUPER_BARRIER_FOCUS = 0x1F, MANA_ZAP_FOCUS = 0x20,
+    MANA_BLAST_FOCUS = 0x21, MANA_STORM_FOCUS = 0x22, ROCKSKIN_FOCUS = 0x23, HEAL_WOUNDS_FOCUS = 0x24,
+    CONFUSION_FOCUS = 0x25, BARRIER_FOCUS = 0x26, PROTECTION_TALISMAN = 0x27, COMBAT_SENSE_SPELL_LOCK = 0x28,
+    RAT_TOTEM = 0x29, GATOR_TOTEM = 0x2A, BEAR_TOTEM = 0x2B,
+    ARMOR_VEST = 0x2C, ARMOR_CLOTHING = 0x2D, ARMOR_JACKET = 0x2E, VEST_WITH_PLATES = 0x2F,
+    LINED_DUSTER = 0x30, LIGHT_COMBAT_ARMOR = 0x31, HEAVY_COMBAT_ARMOR = 0x32,
 }
 E.CombatTargetClass = {
     DIFFICULTY_PLUS_TWO = 0x16, -- raw 0x16: condition modifier adds two [C value, H class identity]
@@ -380,7 +384,20 @@ E.MenuRegion = { ITEM_PICTURE = 0x0001, ITEM_HEADER = 0x0002, RATING = 0x0004, D
                  COMMAND_LABEL = 0x0200, INVENTORY_CURSOR = 0x0400, POSTURE_LABEL = 0x0800, SIDEBAR_SLOT = 0x1000,
                  MESSAGE = 0x2000, SUBMENU = 0x4000, FULL = 0x8000 }
 E.MenuTransition = { NONE = 0, PUSH = 1, POP = 2, REPLACE = 3, REBUILD = 4, EXIT = 5 }
+E.FieldReturnTransitionPhase = {
+    NONE = 0, MENU_FADE_OUT = 1, BLACK_HOLD = 2, FIELD_FADE_IN = 3, COMPLETE = 4,
+}
+E.FieldReturnTransitionTiming = {
+    MENU_UNCHANGED_THROUGH = 2,
+    FADE_OUT_FIRST_FRAME = 3,
+    FADE_OUT_LAST_FRAME = 15,
+    BLACK_HOLD_LAST_FRAME = 99,
+    FADE_IN_FIRST_FRAME = 100,
+    FIELD_LIVE_FRAME = 112,
+    PALETTE_STEPS = 7,
+}
 E.DisplayBlank = { OFF = 0x8134, ON = 0x8174 }   -- VDP reg 1 writes around a build [C]
+E.MenuMask = { LEAD = 1, REVEAL = 2 }   -- port host phases for staged partial frames (not ROM values)
 E.WindowPlane = { SIDEBAR = 0x9191, OFF = 0x9100 } -- VDP reg 0x11 [C]
 
 -- Runner record view used by menu rules (C++ proxies these onto FF0100+0x100*slot) [C offsets: srx runner_record_access]

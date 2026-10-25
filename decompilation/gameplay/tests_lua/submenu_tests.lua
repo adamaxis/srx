@@ -26,6 +26,7 @@ local function mk(o)
         play_sound = function(id) log.sounds[#log.sounds + 1] = id end, redraw = function() end,
         blank = function(m) log.blanks[#log.blanks + 1] = m end,
         set_window = function(w) log.windows[#log.windows + 1] = w end, set_screen = function() end,
+        mask = function() end,
         menu_closed = function() log.closed = true end,
         legacy_open = function(s) log.legacy[#log.legacy + 1] = s end,
         legacy_advance = function(s, ev) if ev & P.START ~= 0 then return false, o.legacy_exit end; return true end,
@@ -165,13 +166,78 @@ local r5 = mk(); page(r5, E.MenuPage.MAGIC); r5:frame(P.A); check(top(r5) == S.M
 local spells = { entry_count = 3, entries = { sp(0, 4), sp(1, 2), sp(2, 6) } }
 local r6, _, g6 = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
 page(r6, E.MenuPage.MAGIC); r6:frame(P.A); check(top(r6) == S.MAGIC, "caster spell grid")
-r6:frame(P.LEFT); check(st(r6).sel.column == 2, "column wrap to last")
+local magic_view = st(r6).magic_view
+check(magic_view.title_text_x == 128 and magic_view.spell_codes[1] == 0 and
+      magic_view.spell_codes[2] == 1 and magic_view.spell_codes[3] == 2 and
+      magic_view.spell_codes[4] == nil and
+      magic_view.spell_grid_icon_height == 16 and
+      magic_view.cursor_offset_x == 0 and magic_view.cursor_offset_y == 0,
+      "Lua publishes spell grid/title layout; e6 9060 shows no third icon row [C]")
+r6:frame(P.LEFT); check(st(r6).sel.column == 2 and
+      st(r6).magic_view.cursor_offset_x == 64 and
+      st(r6).magic_view.cursor_offset_y == 0,
+      "FDFE cursor column offset uses 32-pixel stride [C]")
 r6:frame(P.DOWN); check(st(r6).sel.row == 0, "single row: no row move")
 r6:frame(P.A); check(top(r6) == S.MAGIC_FORCE and st(r6).force == 6, "force starts at limit")
 r6:frame(P.RIGHT); check(st(r6).force == 6, "force clamp hi"); r6:frame(P.LEFT); check(st(r6).force == 5, "force -1")
 r6:frame(P.DOWN); check(top(r6) == S.MAGIC_POSTURE, "down -> posture"); r6:frame(P.UP); check(top(r6) == S.MAGIC_FORCE, "up -> force")
 r6:frame(P.DOWN); r6:frame(P.A)
 check(top(r6) == S.MAGIC and g6.party[0].weapon_code == 3 and g6.party[0].force == 5 and g6.party[0].weapon_slot == -1, "spell equipped")
+
+local offset_spells = { entry_count = 14, entries = {
+    sp(0, 1), sp(1, 1), sp(2, 1), sp(3, 1),
+    sp(4, 1), sp(5, 1), sp(6, 1), sp(7, 1),
+    sp(8, 1), sp(9, 1), sp(10, 1), sp(11, 1),
+    sp(12, 1), sp(13, 1),
+} }
+local r_cursor = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = offset_spells })
+page(r_cursor, E.MenuPage.MAGIC); r_cursor:frame(P.A)
+r_cursor:frame(P.RIGHT)
+r_cursor:frame(P.DOWN)
+check(st(r_cursor).sel.column == 1 and st(r_cursor).sel.row == 1 and
+      st(r_cursor).magic_view.cursor_offset_x == 32 and
+      st(r_cursor).magic_view.cursor_offset_y == 24,
+      "FDFE cursor row offset uses 24-pixel stride [C]")
+
+-- e6 opens Magic with A at 8940; F0DA/F0DB = 5/1 on the first lit frame
+-- 8952, then phase 0 at 9060, 1 at 9265 and 1 at 9400 [C]. The live host
+-- skips menu heartbeats during the 12 blank frames, so heartbeat n after A
+-- is e6 frame 8952 + n.
+local r_phase = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
+page(r_phase, E.MenuPage.MAGIC); r_phase:frame(P.A)
+check(st(r_phase).magic_view.cursor_phase == 1 and st(r_phase).cursor_timer == 5,
+      "Magic entry leaves FDFE timer/phase 5/1 (e6 8952) [C]")
+local function run_to(r, from, to) for _ = from + 1, to do r:frame(0) end end
+run_to(r_phase, 8952, 8958)
+check(st(r_phase).magic_view.cursor_phase == 2 and st(r_phase).cursor_timer == 6, "Magic first tick at e6 8958 [C]")
+run_to(r_phase, 8958, 9060)
+check(st(r_phase).magic_view.cursor_phase == 0, "Magic cursor phase at e6 9060 [C]")
+run_to(r_phase, 9060, 9265)
+check(st(r_phase).magic_view.cursor_phase == 1, "Magic cursor phase at e6 9265 [C]")
+run_to(r_phase, 9265, 9400)
+check(st(r_phase).magic_view.cursor_phase == 1, "Magic cursor phase at e6 9400 [C]")
+
+-- e6 B 9060 -> Set Force & Posture, A 9260 -> back: FDFE ticks stay on
+-- 9043 + 7k across both transitions, so the clock never resets [C emulator].
+local function phase_trace(with_force)
+    local r = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
+    page(r, E.MenuPage.MAGIC); r:frame(P.A)
+    local trace = {}
+    for f = 1, 460 do
+        local key = 0
+        if with_force and f == 120 then key = P.B end
+        if with_force and f == 320 then key = P.A end
+        r:frame(key)
+        if f > 320 and top(r) == S.MAGIC then trace[#trace + 1] = st(r).magic_view.cursor_phase end
+    end
+    return trace, top(r)
+end
+local plain = phase_trace(false)
+local pushed, last_top = phase_trace(true)
+check(last_top == S.MAGIC and #pushed == #plain, "Force round trip returns to spell select")
+local same = true
+for i = 1, #plain do if plain[i] ~= pushed[i] then same = false end end
+check(same, "Magic cursor clock persists across Set Force & Posture [C e6]")
 
 end)
 -- ---- pocket secretary --------------------------------------------------------------------------------------
@@ -186,13 +252,87 @@ r7:frame(P.C); check(g7.reselects == 1, "C -> 0x391A [C]")
 r7:frame(P.A); check(top(r7) == S.NOTEBOOK and #st(r7).options == 2, "notebook gated rows")
 r7:frame(P.DOWN); r7:frame(P.A); check(top(r7) == S.NOTEBOOK_TIPS and #st(r7).visible == 2, "tips flags")
 r7:frame(P.RIGHT); r7:frame(P.RIGHT); check(st(r7).page == 1, "tips clamp")
-r7:frame(P.B); r7:frame(P.B); check(top(r7) == S.POCKET_SECRETARY, "back to PS")
+r7:frame(P.B); r7:frame(P.START); check(top(r7) == S.POCKET_SECRETARY, "Tips B, then Notebook Start returns to PS [C]")
 r7:frame(P.DOWN); r7:frame(P.DOWN); r7:frame(P.A); check(top(r7) == S.MESSAGE and st(r7).message == MM.NO_CYBERDECK, "no deck")
 r7:frame(P.A); r7:frame(P.START); check(top(r7) == S.COMMAND and r7:is_open(), "PS start -> command rebuild")
 local r8, l8 = mk({ party = { [0] = runner(), [1] = runner() } }); r8:frame(P.A); for _ = 1, 3 do r8:frame(P.DOWN) end
-r8:frame(P.A); check(top(r8) == S.DISMISS_RUNNER, "dismiss open"); r8:frame(P.DOWN); r8:frame(P.A)
+local dismiss_sound_start = #l8.sounds
+r8:frame(P.A)
+check(top(r8) == S.DISMISS_RUNNER and
+      #l8.sounds == dismiss_sound_start + 1 and
+      l8.sounds[#l8.sounds] == E.MenuSound.MOVE,
+      "Dismiss Runner open plays the ROM 0x25 move cue [C ROM 0xC4C0 -> 0xC4FA]")
+r8:frame(P.DOWN); r8:frame(P.A)
 check(l8.dismissed == 1 and top(r8) == S.POCKET_SECRETARY, "dismiss runner 1")
 end)
+-- [C] C2C8 resets the Pocket Secretary row on a child return and C2AA rebuilds.
+do
+    local parent_return = mk()
+    parent_return:frame(P.A)
+    parent_return:frame(P.DOWN)
+    parent_return:frame(P.A)
+    check(top(parent_return) == S.GROUP_ITEMS and
+          parent_return.stack[2].state.row == 1,
+          "Group Items opens from Pocket Secretary row 1")
+    parent_return:frame(P.START)
+    check(top(parent_return) == S.POCKET_SECRETARY and
+          parent_return.stack[2].state.row == 0,
+          "Pocket Secretary child return rebuilds at row 0 [C]")
+end
+
+-- [C] F236's B branch shares A dispatch; only Start returns to the parent.
+do
+    local notebook_return = mk()
+    notebook_return:frame(P.A)
+    notebook_return:frame(P.A)
+    notebook_return:frame(P.DOWN)
+    notebook_return:frame(P.B)
+    check(top(notebook_return) == S.NOTEBOOK_TIPS and
+          notebook_return.stack[3].state.row == 1,
+          "Notebook B dispatches the selected Tips row like A [C]")
+    notebook_return:frame(P.B)
+    check(top(notebook_return) == S.NOTEBOOK and
+          notebook_return.stack[3].state.row == 0,
+          "Notebook child return rebuilds at Current Run row 0 [C]")
+    notebook_return:frame(P.START)
+    check(top(notebook_return) == S.POCKET_SECRETARY and
+          notebook_return.stack[2].state.row == 0,
+          "Notebook Start returns to Pocket Secretary [C]")
+end
+
+-- [C] C56E7 carries the blank no-run row; C56D6 is the 16-cell Notebook underline.
+do
+    local file = io.open("decompilation/assets/dialogue/script-text.json", "rb")
+    local catalog = file and file:read("*a") or ""
+    if file then file:close() end
+    local function raw_json_value(key)
+        local marker = '"' .. key .. '": "'
+        local start = catalog:find(marker, 1, true)
+        if not start then return nil end
+        start = start + #marker
+        local finish = catalog:find('"', start, true)
+        return finish and catalog:sub(start, finish - 1) or nil
+    end
+    local last_line = raw_json_value(
+        "pocket_secretary.notebook.no_run.option.last_line")
+    check(last_line == "\\n     Get a job!!",
+          "Current Run text retains its blank line before Get a job [C]")
+    local cyberdeck_last_line = raw_json_value(
+        "pocket_secretary.cyberdeck.option.look_for_deck")
+    check(cyberdeck_last_line == "\\n Keep looking.",
+          "Cyberdeck no-deck text retains its ROM blank line [C]")
+    local dismiss_separator = raw_json_value(
+        "pocket_secretary.dismiss.text.option.separator") or ""
+    local encoded_slash_count = select(2, dismiss_separator:gsub("\\", ""))
+    check(dismiss_separator:sub(1, 1) == "[" and encoded_slash_count == 24,
+          "Dismiss separator preserves the 12 ROM backslashes at C1499 [C]")
+    local underline = raw_json_value(
+        "pocket_secretary.notebook.tips.option.separator") or ""
+    local slash_count = select(2, underline:gsub("\\", ""))
+    check(underline:sub(1, 1) == "[" and slash_count == 30,
+          "Notebook separator asset encodes the 16-cell underline [C]")
+end
+
 -- save/load 0xEFB4 [C] -- srx host JSON saves (screens/save_load.lua): combat gate FFDF84 [C 0xEFE6], two slots.
 -- ROM 0xEFC4 gates first on FFDF40 ("outside only", text 0xC26C3) [C].
 section('save/load 0xEFB4 [C]', function()
@@ -202,17 +342,19 @@ r9:frame(P.A); check(top(r9) == S.POCKET_SECRETARY, "gate -> PS rebuild")
 r9 = sl({ scene = 2 }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_OUTSIDE_ONLY, "gate FFDF40 [C 0xEFC4]")
 r9:frame(P.A); check(top(r9) == S.POCKET_SECRETARY, "outside gate -> PS rebuild")
 r9 = sl({ scene = 1, combat = true }); check(st(r9).message == MM.SAVE_OUTSIDE_ONLY, "FFDF40 checked before FFDF84 [C 0xEFC4 < 0xEFE6]")
-r9, l9, g9 = sl({ save_status = { [0] = 1 } }); check(top(r9) == S.SAVE_LOAD, "save/load open"); local s9 = #l9.sounds
+r9, l9, g9 = sl({ save_status = { [0] = 1 } }); check(top(r9) == S.SAVE_LOAD and st(r9).title == "" and st(r9).labels[1] == "save_game" and st(r9).labels[2] == "load_game", "Save/Load uses its ROM text IDs without a title [C]"); local s9 = #l9.sounds
+check(st(r9).layout.label_x == 96 and st(r9).layout.label_y == 80 and st(r9).layout.cursor_x == 80 and st(r9).layout.cursor_y == 80 and st(r9).layout.row_spacing == 16, "Save/Load option rows use ROM C518/C514 coordinates [C]")
 r9:frame(P.UP); check(st(r9).row == 1 and #l9.sounds == s9, "2 rows, silent wrap"); r9:frame(P.UP)
-r9:frame(P.B); check(top(r9) == S.SAVE_SLOT and st(r9).labels[1] == "Game 1: Saved" and st(r9).labels[2] == "Game 2: Empty", "B confirms; slot labels from save_status")
+r9:frame(P.B); check(top(r9) == S.SAVE_SLOT and st(r9).title == "save_game" and st(r9).labels[1] == "game_1" and st(r9).labels[2] == "game_2", "B confirms; occupied slots keep the static Game N labels [C]")
+check(st(r9).layout.title_x == 88 and st(r9).layout.separator_x == 88 and st(r9).layout.label_x == 112 and st(r9).layout.cursor_x == 96 and st(r9).layout.label_y == 56, "Save Slot rows use ROM C39C/C398 coordinates [C]")
 r9:frame(P.START); check(top(r9) == S.POCKET_SECRETARY and g9.saved == nil, "slot Start = abort -> PS")
-r9:frame(P.A); r9:frame(P.A); r9:frame(P.DOWN); r9:frame(P.C)
+r9:frame(P.UP); r9:frame(P.A); r9:frame(P.A); r9:frame(P.DOWN); r9:frame(P.C)
 check(g9.saved == 1 and st(r9).message == MM.GAME_SAVED, "save slot 2"); r9:frame(P.A)
 check(not r9:is_open() and l9.closed, "save -> FFF0CD exits menu [C 0xF178]")
 r9, l9, g9 = sl({ save_ok = false }); r9:frame(P.A); r9:frame(P.A)
 check(st(r9).message == MM.GAME_SAVED and st(r9).title == "Could not write this save slot.", "write failure text"); r9:frame(P.A)
 check(top(r9) == S.SAVE_SLOT, "failed save stays on the slot list")
-r9, l9, g9 = sl(); r9:frame(P.DOWN); r9:frame(P.A); r9:frame(P.A); check(g9.loaded == 0 and st(r9).message == MM.LOAD_EMPTY, "load empty")
+r9, l9, g9 = sl(); r9:frame(P.DOWN); r9:frame(P.A); check(top(r9) == S.SAVE_SLOT and st(r9).title == "load_game" and st(r9).labels[1] == "game_1" and st(r9).labels[2] == "game_2", "Load Slot shows only the ROM Game N labels [C]"); r9:frame(P.A); check(g9.loaded == 0 and st(r9).message == MM.LOAD_EMPTY, "load empty")
 r9:frame(P.A); check(top(r9) == S.SAVE_SLOT, "load empty returns to the slot list [srx]")
 r9 = sl({ load_ok = true }); r9:frame(P.DOWN); r9:frame(P.A); r9:frame(P.A); check(st(r9).message == MM.LOAD_OK, "load ok")
 r9:frame(P.START); check(not r9:is_open(), "any edge dismisses, load exits the menu")
@@ -286,18 +428,18 @@ local rd, ld, gd = mk({ extra = true, party = { [0] = runner({ karma = 250, stat
 rd:frame(P.A); rd:frame(P.UP); rd:frame(P.A); check(top(rd) == S.DEBUG_MENU, "row 5 -> debug menu")
 rd:frame(P.UP); check(st(rd).row == 7, "debug cursor wraps to 7")
 rd:frame(P.DOWN); rd:frame(P.A); check(gd.nuyen == 0x3D090 and gd.unlock == false and top(rd) == S.POCKET_SECRETARY, "Nuyen = 250000, FFF101 cleared")
-rd:frame(P.A); for _ = 1, 5 do rd:frame(P.DOWN) end; rd:frame(P.A)
+rd:frame(P.UP); rd:frame(P.A); for _ = 1, 5 do rd:frame(P.DOWN) end; rd:frame(P.A)
 check(gd.party[0].karma == 4 and gd.party[1].karma == 11, "+10 karma wraps byte [C +0x8D]")
-rd:frame(P.A); for _ = 1, 4 do rd:frame(P.DOWN) end; rd:frame(P.A)
+rd:frame(P.UP); rd:frame(P.A); for _ = 1, 4 do rd:frame(P.DOWN) end; rd:frame(P.A)
 check(gd.party[0].status == E.RunnerStatus.ACTIVE and gd.party[0].physical == 10, "heal all clears DOWN")
-rd:frame(P.A); rd:frame(P.DOWN); rd:frame(P.A); check(gd.spells.entry_count == 14 and gd.spells.entries[1].code == 13 and gd.spells.entries[14].code == 0 and gd.spells.entries[1].force_limit == 4, "spells 13..0 force 4 [C 0x59B34]")
-rd:frame(P.A); for _ = 1, 3 do rd:frame(P.DOWN) end; rd:frame(P.A); check(top(rd) == S.DEBUG_PICK_SYSTEM, "pick system")
+rd:frame(P.UP); rd:frame(P.A); rd:frame(P.DOWN); rd:frame(P.A); check(gd.spells.entry_count == 14 and gd.spells.entries[1].code == 13 and gd.spells.entries[14].code == 0 and gd.spells.entries[1].force_limit == 4, "spells 13..0 force 4 [C 0x59B34]")
+rd:frame(P.UP); rd:frame(P.A); for _ = 1, 3 do rd:frame(P.DOWN) end; rd:frame(P.A); check(top(rd) == S.DEBUG_PICK_SYSTEM, "pick system")
 rd:frame(P.UP); check(st(rd).system == 0, "pick clamp lo"); for _ = 1, 30 do rd:frame(P.DOWN) end; check(st(rd).system == 0x18, "pick clamp hi")
 -- 0x59B10 writes FFFBBC and jumps to 0xE47A; its 20-VBlank entry opens 0x181F8.
 rd:frame(P.A); check(ld.sounds[#ld.sounds] == E.MenuSound.JACK_IN and top(rd) == S.MATRIX_ENTRY, "pick system -> shared Matrix entry [C 0x59B10]")
-for _ = 1, 19 do rd:frame(0) end; check(top(rd) == S.MATRIX_ENTRY, "still waiting at frame 19")
+for _ = 1, 20 do rd:frame(0) end; check(top(rd) == S.MATRIX_ENTRY, "still waiting at frame 20 (0xC24 d5=0x14 -> 21 VBlanks)")
 rd:frame(0); check(top(rd) == S.CYBERDECK and st(rd).system_id == 0x18 and st(rd).matrix_session,
-    "frame 20 -> 0x181F8 Matrix deck loop for system 0x18 [C] (screen=" .. tostring(top(rd)) ..
+    "frame 21 -> 0x181F8 Matrix deck loop for system 0x18 [C] (screen=" .. tostring(top(rd)) ..
     ", system=" .. tostring(st(rd).system_id) .. ", session=" .. tostring(st(rd).matrix_session) ..
     ", wait=" .. tostring(st(rd).wait_frames) .. ", jack=" .. tostring(gd.jack) .. ")")
 rd:frame(P.START); check(top(rd) == S.MATRIX_NODE_ACTION and

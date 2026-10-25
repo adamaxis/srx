@@ -88,8 +88,7 @@ bool FieldSceneRuntime::open_command_overview_for_dump() {
     advance_frame();
     set_controller_port_byte(static_cast<std::uint8_t>(
         field_controller_port_byte_ & static_cast<std::uint8_t>(~0x80U)));
-    while (command_overview_start_transition_black_frame_ ||
-           command_overview_start_transition_frames_remaining_ != 0U) {
+    while (menu_display_blank_active_for_dump()) {
         advance_frame();
     }
     return command_overview_.open();

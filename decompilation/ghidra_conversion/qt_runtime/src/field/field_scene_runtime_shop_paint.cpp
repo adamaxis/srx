@@ -876,6 +876,11 @@ void FieldSceneRuntime::refresh_command_overview_combat_bars() {
         return;
     }
 
+    const auto input = command_overview_combat_input();
+    command_overview_combat_bars_ = compute_equipment_combat_bars(input);
+}
+
+EquipmentCombatInput FieldSceneRuntime::command_overview_combat_input() const {
     const auto& record = active_runner_record();
     EquipmentCombatInput input{};
     input.attributes = record.attributes;
@@ -919,7 +924,7 @@ void FieldSceneRuntime::refresh_command_overview_combat_bars() {
     }
     input.item_catalog = &us_item_catalog();
     input.selector_table = &us_special_item_modifier_selector_table();
-    command_overview_combat_bars_ = compute_equipment_combat_bars(input);
+    return input;
 }
 
 void FieldSceneRuntime::refresh_command_overview_item_detail() {

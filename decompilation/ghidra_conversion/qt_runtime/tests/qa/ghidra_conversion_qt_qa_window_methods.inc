@@ -9,6 +9,23 @@
         }
     }
 
+    bool qa_finish_command_overview_field_return() {
+        // ROM 0xB62 -> 0x10D30 returns through 0x2BD2/0x131C; keep this
+        // re-entry QA behind the emulator's P+112 field-live frame.
+        for (std::uint16_t frame = 0U; frame < 113U; ++frame) {
+            const auto route =
+                field_scene_runtime_.field_menu_route_snapshot_for_dump();
+            if (!route.field_return_transition_active) {
+                return route.field_return_transition_phase ==
+                       scripting::ScriptFieldReturnTransitionPhase::complete;
+            }
+            field_scene_runtime_.set_controller_port_byte(0U);
+            field_scene_runtime_.advance_frame();
+        }
+        return !field_scene_runtime_.field_menu_route_snapshot_for_dump()
+                    .field_return_transition_active;
+    }
+
     bool startup_shell_survives(const QImage& scene) const {
         const auto shell = draw_asset_cache_.find("menu.startup.background");
         if (shell == draw_asset_cache_.end()) {
@@ -4046,6 +4063,9 @@
         record("field.command_overview.returned_to_field");
         if (!write_snapshot("101_field_after_command_close")) {
             return 3;
+        }
+        if (!qa_finish_command_overview_field_return()) {
+            return fail("field command overview return did not finish at P+112");
         }
         field_scene_runtime_.set_controller_port_byte(0U);
         field_scene_runtime_.advance_frame();

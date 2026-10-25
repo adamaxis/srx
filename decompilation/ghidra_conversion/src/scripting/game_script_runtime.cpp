@@ -977,6 +977,7 @@ struct GameScriptRuntime::Impl {
         stop_sound,
         redraw,
         blank,
+        mask,
         set_window,
         set_screen,
         menu_closed,
@@ -1099,7 +1100,20 @@ struct GameScriptRuntime::Impl {
         case MenuBinding::blank:
             if (self->menu_route_bindings.host.blank) {
                 self->menu_route_bindings.host.blank(
-                    static_cast<std::uint16_t>(integer_argument(1)));
+                    static_cast<std::uint16_t>(integer_argument(1)),
+                    static_cast<std::uint16_t>(integer_argument(2)),
+                    static_cast<std::uint16_t>(integer_argument(3)));
+            }
+            return 0;
+        case MenuBinding::mask:
+            if (self->menu_route_bindings.host.mask) {
+                self->menu_route_bindings.host.mask(
+                    static_cast<std::uint16_t>(integer_argument(1)),
+                    static_cast<std::uint16_t>(integer_argument(2)),
+                    static_cast<std::int16_t>(integer_argument(3)),
+                    static_cast<std::int16_t>(integer_argument(4)),
+                    static_cast<std::int16_t>(integer_argument(5)),
+                    static_cast<std::int16_t>(integer_argument(6)));
             }
             return 0;
         case MenuBinding::set_window:
@@ -1117,7 +1131,8 @@ struct GameScriptRuntime::Impl {
         case MenuBinding::menu_closed:
             if (self->menu_route_bindings.host.menu_closed) {
                 self->menu_route_bindings.host.menu_closed(
-                    lua_toboolean(lua, 1) != 0);
+                    lua_toboolean(lua, 1) != 0,
+                    lua_toboolean(lua, 2) != 0);
             }
             return 0;
         case MenuBinding::legacy_open: {
@@ -1739,6 +1754,7 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::stop_sound);
         add_menu_binding(state, table_index, "redraw", MenuBinding::redraw);
         add_menu_binding(state, table_index, "blank", MenuBinding::blank);
+        add_menu_binding(state, table_index, "mask", MenuBinding::mask);
         add_menu_binding(state, table_index, "set_window",
                          MenuBinding::set_window);
         add_menu_binding(state, table_index, "set_screen",
@@ -1865,6 +1881,62 @@ struct GameScriptRuntime::Impl {
         }
         menu_route_state.open = lua_toboolean(state, -1) != 0;
         lua_pop(state, 1);
+        lua_getfield(state, route_index, "field_return_transition_snapshot");
+        if (lua_isfunction(state, -1)) {
+            lua_pushvalue(state, route_index);
+            if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+                failure = "menu route field return transition query failed: " +
+                          stack_error(state);
+                lua_settop(state, base);
+                return false;
+            }
+            if (lua_istable(state, -1)) {
+                const auto transition_index = lua_absindex(state, -1);
+                lua_getfield(state, transition_index, "active");
+                menu_route_state.field_return_transition_active =
+                    lua_toboolean(state, -1) != 0;
+                lua_pop(state, 1);
+                auto* lua_context = state;
+                const auto read_transition_integer =
+                    [lua_context, transition_index](const char* field)
+                    -> std::optional<lua_Integer> {
+                    lua_getfield(lua_context, transition_index, field);
+                    int is_integer = 0;
+                    const auto value =
+                        lua_tointegerx(lua_context, -1, &is_integer);
+                    lua_pop(lua_context, 1);
+                    return is_integer ? std::optional<lua_Integer>(value)
+                                      : std::nullopt;
+                };
+                const auto elapsed =
+                    read_transition_integer("elapsed_frames");
+                if (elapsed.has_value() && *elapsed >= 0 &&
+                    *elapsed <= static_cast<lua_Integer>(
+                                    std::numeric_limits<std::uint16_t>::max())) {
+                    menu_route_state.field_return_transition_elapsed_frames =
+                        static_cast<std::uint16_t>(*elapsed);
+                }
+                const auto palette_step =
+                    read_transition_integer("palette_step");
+                if (palette_step.has_value() && *palette_step >= 0 &&
+                    *palette_step <= static_cast<lua_Integer>(
+                                         std::numeric_limits<std::uint8_t>::max())) {
+                    menu_route_state.field_return_transition_palette_step =
+                        static_cast<std::uint8_t>(*palette_step);
+                }
+                const auto phase = read_transition_integer("phase");
+                if (phase.has_value() && *phase >= static_cast<lua_Integer>(
+                                             ScriptFieldReturnTransitionPhase::none) &&
+                    *phase <= static_cast<lua_Integer>(
+                                  ScriptFieldReturnTransitionPhase::complete)) {
+                    menu_route_state.field_return_transition_phase =
+                        static_cast<ScriptFieldReturnTransitionPhase>(*phase);
+                }
+            }
+            lua_pop(state, 1);
+        } else {
+            lua_pop(state, 1);
+        }
         if (!menu_route_state.open) {
             lua_settop(state, base);
             return true;
@@ -2012,9 +2084,31 @@ struct GameScriptRuntime::Impl {
                 lua_pop(state, 1);
                 (void)read_field_text(state, screen_state_index, "text",
                                       menu_route_state.top_text);
+                (void)read_field_text(state, screen_state_index,
+                                      "footer_text",
+                                      menu_route_state.top_footer_text);
                 (void)read_field_text(
                     state, screen_state_index, "description",
                     menu_route_state.top_matrix_deck_description);
+                lua_getfield(state, screen_state_index, "layout");
+                if (lua_istable(state, -1)) {
+                    const auto layout_index = lua_absindex(state, -1);
+                    ScriptMenuRouteLayout layout;
+                    layout.title_x = read_optional(layout_index, "title_x");
+                    layout.title_y = read_optional(layout_index, "title_y");
+                    layout.separator_x =
+                        read_optional(layout_index, "separator_x");
+                    layout.separator_y =
+                        read_optional(layout_index, "separator_y");
+                    layout.label_x = read_optional(layout_index, "label_x");
+                    layout.label_y = read_optional(layout_index, "label_y");
+                    layout.cursor_x = read_optional(layout_index, "cursor_x");
+                    layout.cursor_y = read_optional(layout_index, "cursor_y");
+                    layout.row_spacing =
+                        read_optional(layout_index, "row_spacing");
+                    menu_route_state.top_layout = std::move(layout);
+                }
+                lua_pop(state, 1);
                 if (menu_route_state.top_screen == 41U) {
                     lua_getfield(state, screen_state_index, "view");
                     if (lua_istable(state, -1)) {
@@ -2816,6 +2910,44 @@ struct GameScriptRuntime::Impl {
                             .value_or(0);
                     view.spell_code =
                         read_optional(view_index, "spell_code").value_or(-1);
+                    view.title_icon_x =
+                        read_optional(view_index, "title_icon_x").value_or(80);
+                    view.title_icon_y =
+                        read_optional(view_index, "title_icon_y").value_or(24);
+                    view.title_text_x =
+                        read_optional(view_index, "title_text_x").value_or(128);
+                    view.title_text_y =
+                        read_optional(view_index, "title_text_y").value_or(32);
+                    view.spell_grid_x =
+                        read_optional(view_index, "spell_grid_x").value_or(32);
+                    view.spell_grid_y =
+                        read_optional(view_index, "spell_grid_y").value_or(168);
+                    view.spell_grid_column_step =
+                        read_optional(view_index, "spell_grid_column_step")
+                            .value_or(32);
+                    view.spell_grid_row_step =
+                        read_optional(view_index, "spell_grid_row_step")
+                            .value_or(24);
+                    view.spell_grid_icon_width =
+                        read_optional(view_index, "spell_grid_icon_width")
+                            .value_or(24);
+                    view.spell_grid_icon_height =
+                        read_optional(view_index, "spell_grid_icon_height")
+                            .value_or(16);
+                    view.cursor_offset_x =
+                        read_optional(view_index, "cursor_offset_x").value_or(0);
+                    view.cursor_offset_y =
+                        read_optional(view_index, "cursor_offset_y").value_or(0);
+                    view.posture_bar_x =
+                        read_optional(view_index, "posture_bar_x").value_or(160);
+                    view.posture_bar_y =
+                        read_optional(view_index, "posture_bar_y").value_or(136);
+                    view.posture_text_x =
+                        read_optional(view_index, "posture_text_x").value_or(160);
+                    view.posture_text_y =
+                        read_optional(view_index, "posture_text_y").value_or(144);
+                    view.spell_codes = read_integer_array(
+                        view_index, "spell_codes", 14U, 0, 13);
                     view.force =
                         read_optional(view_index, "force").value_or(1);
                     view.maximum_force =
@@ -3128,6 +3260,20 @@ struct GameScriptRuntime::Impl {
                 const auto state_index = lua_absindex(state, -1);
                 menu_route_state.page = read_optional(state_index, "page");
                 menu_route_state.row = read_optional(state_index, "row");
+                lua_getfield(state, state_index, "inventory_detail_pending");
+                if (lua_isboolean(state, -1)) {
+                    menu_route_state.root_inventory_detail_pending =
+                        lua_toboolean(state, -1) != 0;
+                }
+                lua_pop(state, 1);
+                lua_getfield(state, state_index, "inventory_cursor_hidden");
+                if (lua_isboolean(state, -1)) {
+                    menu_route_state.root_inventory_cursor_hidden =
+                        lua_toboolean(state, -1) != 0;
+                }
+                lua_pop(state, 1);
+                menu_route_state.root_inventory_ammo_count =
+                    read_optional(state_index, "inventory_ammo_count");
             }
         }
         lua_settop(state, base);
@@ -11858,7 +12004,8 @@ bool GameScriptRuntime::open_menu_route(
 void GameScriptRuntime::advance_menu_route(const std::uint16_t events) {
     auto* state = impl_->state;
     if (state == nullptr || impl_->menu_route_reference == LUA_NOREF ||
-        !impl_->menu_route_state.open) {
+        (!impl_->menu_route_state.open &&
+         !impl_->menu_route_state.field_return_transition_active)) {
         return;
     }
     impl_->failure.clear();

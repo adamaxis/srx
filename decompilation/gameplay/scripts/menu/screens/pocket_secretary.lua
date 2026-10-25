@@ -15,7 +15,9 @@ function M.enter(st, ctx)
     Grid.reset()
     st.grid_effect_frames = 0
     st.max = ctx.game.pocket_extra_row() and 5 or 4
-    ctx.host.blank(E.DisplayBlank.OFF); ctx.redraw(R.FULL); ctx.host.blank(E.DisplayBlank.ON)    -- build (docs/09 s10.7) [C]
+    -- 0x10918..0x10AE6 build with display off (docs/09 s10.7) [C]; 15 black frames, display back on at line 216
+    -- (emulator 8660..8675) [C emulator]
+    ctx.host.blank(E.DisplayBlank.OFF); ctx.redraw(R.FULL); ctx.host.blank(E.DisplayBlank.ON, 15, 216)
 end
 function M.input(st, events, ctx)
     st.grid_effect_frames = Grid.advance(ctx)                  -- 0xE660, three ROM RNG draws per frame [C]
@@ -52,6 +54,7 @@ end
 function M.child_returned(st, child, res, ctx)
     if res.exit_menu then return { transition = T.POP, result = { exit_menu = true } } end
     if res.exit_secretary then return { transition = T.POP, result = { exit_menu = false } } end    -- FFF0DC < 0 only [C]   -- FFF0DC<0 -> rts; FFF0CD -> exit [C]
+    st.row = 0 -- [C] 0xC2C8 clears the shared row before the C2AA rebuild.
     -- Direct children redraw only the inner C3E6 grid before returning to
     -- C2AA. The lower bezel is outside that clear and keeps its E660 writes.
     st.grid_effect_frames = Grid.frames
@@ -136,13 +139,13 @@ function Notebook.enter(st, ctx)
 end
 function Notebook.input(st, events, ctx)
     st.grid_effect_frames = Grid.advance(ctx)
-    if events & (P.B | P.START) ~= 0 then return { transition = T.POP } end
+    if events & P.START ~= 0 then return { transition = T.POP } end
     if events & (P.UP | P.DOWN) ~= 0 then
         local n = #st.options
         st.row = Cursor.step(st.row, events & P.UP ~= 0 and -1 or 1, n - 1)
         ctx.redraw(R.SUBMENU); return
     end
-    if events & P.A ~= 0 then
+    if events & (P.A | P.B) ~= 0 then
         local refreshed = ctx.game.notebook()
         if refreshed then st.nb = refreshed end
         st.nb.active_run_id = active_run_id()
@@ -215,6 +218,7 @@ function Notebook.input(st, events, ctx)
     end
 end
 function Notebook.child_returned(st, child, res, ctx)
+    st.row = 0 -- [C] F236 rebuild clears the shared row before drawing.
     st.grid_effect_frames = Grid.frames
     st.grid_cells = Grid.cells
     ctx.redraw(R.SUBMENU)
@@ -395,10 +399,16 @@ function CurrentRun.input(st, events, ctx)
     if events & P.EDGES ~= 0 then return { transition = T.POP } end
 end
 
--- Dismiss Runner 0xC448: rows = Abort + candidates (slots 1..2 active); Up/Down 0x25; A/B/C 0x24 [srx FSR sounds H]
+-- Dismiss Runner 0xC448: rows = Abort + candidates (slots 1..2 active); ROM 0xC4C0 branches to 0xC4FA and plays MOVE on open [C ROM].
 local Dismiss = { window = E.WindowPlane.SIDEBAR }
-function Dismiss.new() return { row = 0, grid_cells = Grid.cells, grid_effect_frames = Grid.frames } end
+function Dismiss.new()
+    return {
+        row = 0, grid_cells = Grid.cells, grid_effect_frames = Grid.frames,
+        layout = { separator_x = 88, separator_y = 48 }, -- C448 text at C216 [C]
+    }
+end
 function Dismiss.enter(st, ctx)
+    ctx.sound(E.MenuSound.MOVE)
     -- C448 replaces the inner panel but shares the parent's E660 lower bezel.
     st.grid_effect_frames = Grid.frames
     st.candidates = {}

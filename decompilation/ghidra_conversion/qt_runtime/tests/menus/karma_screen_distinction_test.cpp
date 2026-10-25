@@ -63,7 +63,9 @@ int main(int argc, char** argv) {
         }
     }
 
-    const auto current_karma_color = QColor(0, 219, 0);
+    // Command text is CRAM 0x02C2 = levels (1,6,1) (emulator run5 FFD8F4,
+    // Start menu open); the earlier (0,219,0) was the host's pure green.
+    const auto current_karma_color = QColor(36, 219, 36);
     const auto hotel_upgrade_color = QColor(109, 73, 146);
     if (!detail_differs ||
         !contains_color(view_only, current_karma_color, kKarmaTotalX,

@@ -1,6 +1,6 @@
 -- rules/first_aid.lua: ROM 0x1253E..0x125F8 medkit and slap-patch effects.
 local E = require("enums")
-local S = E.RunnerStatus
+local S, I = E.RunnerStatus, E.ItemId
 local M = { REVIVED_STATE = E.StateFn.IDLE }   -- continuation 0xB45C after treatment
 
 local function add(v, d) local c = v + d; if c <= 0 then return 0 end; return math.min(c, 10) end
@@ -36,15 +36,15 @@ end
 -- returns message (E.MenuMessage) or nil when the item cannot be used
 function M.use(user, slot, t, roll)
     local code, ph = user.inventory[slot], user.phase[slot]
-    if code < 0x10 or code > 0x12 or ph == 0 then return nil end
-    if code == 0x10 then
+    if code < I.MEDKIT or code > I.TRAUMA_PATCH or ph == 0 then return nil end
+    if code == I.MEDKIT then         -- 0x10
         if t.physical == 10 and t.stun == 10 then return E.MenuMessage.NOT_INJURED end
         local s = roll(user.skills[E.Skill.BIOTECH], M.difficulty(t))
         local d = s == 0 and 1 or s
         phys(t, d); mental(t, d); revive(t); t.state_function = M.REVIVED_STATE
         consume(user, slot); return E.MenuMessage.FIRST_AID_USED
     end
-    if code == 0x11 then
+    if code == I.STIM_PATCH then     -- 0x11
         if t.stun == 10 then return E.MenuMessage.NOT_INJURED end
         mental(t, 2); if t.physical ~= 0 then revive(t) end
     else

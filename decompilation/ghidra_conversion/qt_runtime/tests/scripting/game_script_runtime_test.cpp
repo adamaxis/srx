@@ -8792,10 +8792,12 @@ int main() {
                     medicine_lodge->groups[1].offers[1].type == 0x26U &&
                     medicine_lodge->groups[1].offers[1].quantity == 0x14U &&
                     medicine_lodge->groups[2].id == "magic_foci" &&
-                    medicine_lodge->groups[2].offers.size() == 4U &&
+                    medicine_lodge->groups[2].offers.size() == 6U &&
                     medicine_lodge->groups[2].offers[0].type == 0x1BU &&
                     medicine_lodge->groups[2].offers[1].value == 0x03U &&
                     medicine_lodge->groups[2].offers[3].quantity == 0x14U &&
+                    medicine_lodge->groups[2].offers[4].type == 0x24U &&
+                    medicine_lodge->groups[2].offers[5].quantity == 0x14U &&
                     medicine_lodge->groups[3].id == "sell" &&
                     medicine_lodge->groups[3].offers.empty(),
                 "Medicine Lodge item rows differ from ROM 0x1AAEF8/0x1AAEB0")) {

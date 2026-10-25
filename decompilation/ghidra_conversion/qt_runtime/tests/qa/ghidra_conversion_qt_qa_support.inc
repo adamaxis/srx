@@ -33,6 +33,16 @@ void settle_qa_dialogue_input(FieldSceneRuntime& field_scene) {
     field_scene.advance_frame();
 }
 
+// Lua-timed display-off builds (host.blank holds) drop input and defer their
+// sounds; let the emulator-measured black/reveal frames elapse.
+void settle_qa_menu_blank(FieldSceneRuntime& field_scene) {
+    for (int guard = 0; guard < 64 &&
+                        field_scene.menu_display_blank_active_for_dump();
+         ++guard) {
+        field_scene.advance_frame();
+    }
+}
+
 void tap_qa_controller_button(FieldSceneRuntime& field_scene,
                               const std::uint8_t port_byte) {
     settle_qa_dialogue_input(field_scene);
@@ -40,6 +50,53 @@ void tap_qa_controller_button(FieldSceneRuntime& field_scene,
     field_scene.advance_frame();
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
+    settle_qa_menu_blank(field_scene);
+}
+
+struct QaCommandInventorySelection {
+    bool active = false;
+    std::uint8_t page = 0U;
+    std::uint8_t row = 0U;
+    std::uint8_t item_code = 0U;
+};
+
+QaCommandInventorySelection qa_command_inventory_selection(
+    const FieldSceneRuntime& field_scene) {
+    if (!field_scene.command_overview_open()) {
+        return {};
+    }
+    const auto& selection = field_scene.command_overview_view().source_state;
+    if (selection.primary_page >= 2U || selection.secondary_page >= 4U) {
+        return {};
+    }
+    const auto slot = static_cast<std::size_t>(selection.secondary_page) * 2U +
+                      selection.primary_page;
+    return {true, selection.primary_page, selection.secondary_page,
+            field_scene.active_runner_record().inventory_item_codes[slot]};
+}
+
+void settle_qa_command_inventory_item_change(
+    FieldSceneRuntime& field_scene,
+    const QaCommandInventorySelection& previous) {
+    if (!previous.active || !field_scene.command_overview_open()) {
+        return;
+    }
+    const auto current = qa_command_inventory_selection(field_scene);
+    if (!current.active ||
+        (previous.page == current.page && previous.row == current.row) ||
+        previous.item_code == 0U || current.item_code == 0U) {
+        return;
+    }
+
+    // [C emulator] The source holds the panel for up to eight frames when
+    // changing between occupied inventory cells. The tap's release frame
+    // already advances Lua's hold once; seven empty frames finish that hold
+    // and one more reveals the panel (it completes one frame after the MOVE
+    // cue, emulator e6 8748/8789/8828).
+    for (std::size_t frame = 0U; frame < 8U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
 }
 
 void clear_qa_bitmap_artifacts(const std::filesystem::path& output,
@@ -118,6 +175,31 @@ bool image_region_matches_rgb32_asset(const QImage& scene,
     }
     return scene.copy(origin_x, origin_y, asset.width(), asset.height()) ==
            asset.convertToFormat(QImage::Format_RGB32);
+}
+
+bool image_cell_matches_black_transparent_pattern(
+    const QImage& scene, const QImage& pattern,
+    const QImage& backing, const int origin_x, const int origin_y) {
+    if (pattern.isNull() || backing.size() != pattern.size() ||
+        origin_x < 0 || origin_y < 0 ||
+        origin_x + pattern.width() > scene.width() ||
+        origin_y + pattern.height() > scene.height()) {
+        return false;
+    }
+    for (int y = 0; y < pattern.height(); ++y) {
+        for (int x = 0; x < pattern.width(); ++x) {
+            const auto pattern_pixel = pattern.pixelColor(x, y);
+            const auto expected = pattern_pixel.red() == 0 &&
+                                          pattern_pixel.green() == 0 &&
+                                          pattern_pixel.blue() == 0
+                                      ? backing.pixelColor(x, y)
+                                      : pattern_pixel;
+            if (scene.pixelColor(origin_x + x, origin_y + y) != expected) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 bool image_region_differs(const QImage& first, const QImage& second,

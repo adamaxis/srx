@@ -12,7 +12,11 @@ M.TEXT = { ALERT_CANCELLED = 0x1666A8, NO_ALERTS = 0x1666DD, SHUTDOWN = 0x166A44
     OBJECTIVE_FOUND = 0x166770, UPLOAD_DONE = 0x16692D, STORED_OBJECTIVE = 0x1667DD, STORED = 0x1667F8,
     SEARCH_DOT = 0x166848, STORY_FILE = 0x166968, DOWNLOAD_FILE = 0x1667CE,
     DOWNLOAD_CANCELLED = 0x1667BA, FIVE_FILES = 0x16681B, NO_STORAGE = 0xE383D }
-M.SEARCH_DOT_FRAMES, M.SHUTDOWN_STEP_FRAMES = 20, 60
+-- 0xC24 waits d5 + 1 VBlanks [C]: search dots 0x54D3A d5 = 0x14, search tail
+-- 0x54D50 d5 = 9, Crash System digits 0x54BAE d5 = 0x3C.
+M.SEARCH_DOT_FRAMES = 0x14 + 1
+M.SEARCH_TAIL_FRAMES = 9 + 1
+M.SHUTDOWN_STEP_FRAMES = 0x3C + 1
 
 local function complete(run)                       -- shared "run complete" (0x54B34 / 0x54F72 / 0x5559E)
     run.fc28 = run.fc28 & ~1; run.state = 1; run.fc1c = run.fc1c | 0x80
@@ -38,7 +42,7 @@ function M.cancel_alert(st)
     end
     return { text = M.TEXT.NO_ALERTS }
 end
--- 0x54B34 Crash System: countdown 3..0 at 60 frames, fade 0x18776, logout 0x26A00.
+-- 0x54B34 Crash System: countdown 3..0 at 61 VBlanks each, fade 0x18776, logout 0x26A00.
 function M.crash_system(run, field, actors)
     if run and run.state < 0 and run.objective < 0 then complete(run) end
     M.alarm_off(field, actors)                          -- 0x1E09A
@@ -187,7 +191,7 @@ function M.gate(pool, computer, node, st, roll)
     return ok
 end
 -- 0x54A8E random alert (each loop pass): rand(10) < FFF0A8 -> FFF0A8 = 0, raise_alert(+1) (0x1989A); unless logged out
--- (FFF0B1) text 0x1669E8, 25-frame wait (0xC24), button (0xD94).
+-- (FFF0B1) text 0x1669E8, 26-VBlank wait (0xC24 d5 = 0x19), button (0xD94).
 function M.random_alert(st, rand)
     if rand(10) >= (st.attempts or 0) then return false end
     st.attempts = 0; return true

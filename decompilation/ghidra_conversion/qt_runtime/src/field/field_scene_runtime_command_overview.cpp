@@ -363,8 +363,72 @@ void FieldSceneRuntime::synchronize_command_overview_clips_from_route(
         message);
 }
 
+void FieldSceneRuntime::synchronize_command_overview_return_transition(
+    const scripting::ScriptMenuRouteSnapshot& route_state) {
+    if (route_state.field_return_transition_phase ==
+        scripting::ScriptFieldReturnTransitionPhase::none) {
+        return;
+    }
+
+    const auto was_active = command_overview_return_transition_active_;
+    command_overview_return_transition_active_ =
+        route_state.field_return_transition_active;
+    command_overview_return_transition_elapsed_frames_ =
+        route_state.field_return_transition_elapsed_frames;
+    command_overview_return_palette_step_ =
+        route_state.field_return_transition_palette_step;
+    command_overview_return_transition_phase_ =
+        route_state.field_return_transition_phase;
+
+    if (command_overview_return_transition_phase_ ==
+        scripting::ScriptFieldReturnTransitionPhase::field_fade_in) {
+        field_palette_fade_steps_ =
+            command_overview_return_palette_step_;
+    } else {
+        field_palette_fade_steps_ = 0U;
+    }
+    if (!command_overview_return_transition_active_ &&
+        command_overview_return_transition_phase_ ==
+            scripting::ScriptFieldReturnTransitionPhase::complete) {
+        field_palette_fade_steps_ = 0U;
+        command_overview_return_image_ = QImage{};
+        field_entity_animation_.redraw_requested = true;
+        if (was_active) {
+            source_boundary("field.command_overview.return_fade_completed");
+        }
+    }
+}
+
+void FieldSceneRuntime::advance_command_overview_return_transition() {
+    field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(
+        field_modal_return_blocked_inputs_ & field_controller_port_byte_);
+    ::shadowrun::ghidra_conversion::sample_controller_input(
+        field_controller_sample_state_, field_controller_port_byte_);
+    field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(
+        field_modal_return_blocked_inputs_ |
+        static_cast<std::uint8_t>(field_controller_sample_state_.held));
+    field_controller_sample_state_.events = static_cast<std::uint16_t>(
+        static_cast<std::uint8_t>(field_controller_sample_state_.held));
+    field_controller_latch_state_ = ControllerLatchState{};
+
+    game_scripts_.advance_menu_route(0U);
+    if (!game_scripts_.failure().empty()) {
+        failure_ = game_scripts_.failure();
+        return;
+    }
+    synchronize_command_overview_return_transition(
+        game_scripts_.menu_route_snapshot());
+}
+
 void FieldSceneRuntime::synchronize_command_overview_inventory_from_route(
     const scripting::ScriptMenuRouteSnapshot& route_state) {
+    command_overview_inventory_detail_pending_ =
+        route_state.root_inventory_detail_pending.value_or(false);
+    command_overview_inventory_cursor_hidden_ =
+        route_state.root_inventory_cursor_hidden.value_or(false);
+    command_overview_inventory_ammo_count_ =
+        route_state.root_inventory_ammo_count;
+
     const auto action = static_cast<std::uint16_t>(
         srx::MenuScreen::ITEM_ACTION);
     const auto discard = static_cast<std::uint16_t>(
