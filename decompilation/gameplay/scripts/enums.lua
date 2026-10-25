@@ -79,6 +79,18 @@ E.DelayCapability = { FIRST_BIT = 12, SECOND_BIT = 13, THIRD_BIT = 14,
 
 E.SpriteType  = { FIELD_RUNNER = 3, CORP_GUARD = 5, GHOUL = 7, PEDESTRIAN = 11, HELL_HOUND = 12, GARGOYLE = 13,
                   WENDIGO = 14, THON = 15 }   -- +0x0E [C: 7,12,13,15 from our trace; 3,5,11,14 names from pre-module actor_ai.lua:40-46]
+E.SpriteType.HIT_SPARK = 0x01 -- raw 0x01: child +0x0E at 0xB2C2 [C]
+E.HitSpark = {
+    SELECTOR = 0x0004, -- raw 0x0004: child +0x16 at 0xB2BC [C]
+    PALETTE_ATTRIBUTES = 0x2000, -- raw 0x2000: child +0x2C at 0xB2E4 [C]
+    TARGET_Y_OFFSET = 0x0010, -- raw 0x0010: target Y adjustment at 0xB2DC [C]
+    RANGE_LIMIT = 0x0200, -- raw 0x0200: linked strike range gate at 0x15C58 [C]
+    FRAME_COUNT = 0x0005, -- raw 0x0005: finite list marker at 0x7330 [C]
+    FRAME_INCREMENT = 0x0400, -- raw 0x0400: finite list timing word at 0x7332 [C]
+    FRAME_PERIOD = 0x1000, -- raw 0x1000: +0x1C default at 0x15118 [C]
+    FINISHED_SELECTOR_BIT = 0x8000, -- raw 0x8000: finite selector bit set by 0x600E [C]
+    WORD_MODULUS = 0x10000, -- raw 0x10000: 16-bit accumulator wrap at 0x5FDC [C]
+}
 -- Pose bases selected from actor +0x16 by the actor animation service [C: 0x600E].
 E.ActorPose = { IDLE = 0x00, WALK = 0x20, ITEM = 0x40, HURT = 0x60,
                 SPELL = 0x80, WEAPON = 0xA0, ACTION = 0xC0,

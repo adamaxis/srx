@@ -58,6 +58,9 @@ function ActorAI.heartbeat(context)
         if profile.projectile_animation then
             return R.projectile_heartbeat(state, context)
         end
+        if profile.hit_spark_animation then
+            return R.hit_spark_heartbeat(state, context)
+        end
         if profile.controls_movement and not profile.dynamic_encounter_only then
             state.combat_action_requested =
                 context.phase == "behavior" and
@@ -126,6 +129,9 @@ function ActorAI.heartbeat(context)
     R.advance_world_target_selection(state, context)
     if profile.projectile_animation then
         return R.projectile_heartbeat(state, context)
+    end
+    if profile.hit_spark_animation then
+        return R.hit_spark_heartbeat(state, context)
     end
     R.advance_target_marker(state, context)
     R.advance_target_motion_effect(state, context)

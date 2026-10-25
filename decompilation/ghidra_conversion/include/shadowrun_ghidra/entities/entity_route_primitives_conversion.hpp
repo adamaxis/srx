@@ -258,6 +258,7 @@ struct ReactionAuxiliaryChild {
     std::int16_t animation_selector = 4;
     std::uint16_t world_x = 0;
     std::uint16_t world_y = 0;
+    std::uint16_t palette_attributes = 0x2000U; // +0x2C palette line 1 [C]
     std::uint16_t heading = 0x2000;
     AuxiliaryChildContinuation continuation =
         AuxiliaryChildContinuation::retire_when_selector_negative;

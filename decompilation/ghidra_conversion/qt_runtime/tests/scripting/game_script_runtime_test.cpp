@@ -5419,10 +5419,65 @@ int main() {
                 combat_probe_action->combat_meter_update->physical &&
                 combat_probe_action->combat_meter_update->changed &&
                 combat_probe_action->combat_meter_update->physical_meter == 7U &&
-                combat_probe_action->combat_meter_update->mental_meter == 10U,
+                combat_probe_action->combat_meter_update->mental_meter == 10U &&
+                combat_probe_action->hit_spark_spawn_request.has_value() &&
+                combat_probe_action->hit_spark_spawn_request->target_id ==
+                    combat_target.id &&
+                combat_probe_action->hit_spark_spawn_request->world_x ==
+                    combat_target.world_x &&
+                combat_probe_action->hit_spark_spawn_request->world_y ==
+                    combat_target.world_y,
             "Lua did not resolve the ROM close-target reaction into the typed party meter update")) {
         std::cerr << scripts.failure() << '\n';
         return 67;
+    }
+
+    // The shared 0xAC4E child uses the five-frame kind-1 selector at the
+    // source render cadence, then retires on the following behavior pass [C].
+    auto hit_spark_context = actor_context(
+        "field_hit_spark", "field_hit_spark_slot_9", 1U,
+        ScriptActorActionKind::none, 0U, 0U, true);
+    hit_spark_context.initial_heading = 0x2000U;
+    hit_spark_context.phase = ScriptActorHeartbeatPhase::render;
+    hit_spark_context.hit_spark_animation = ScriptActorHitSparkAnimation{
+        4U, 5U, 0U, 0, 0x0400, 0x1000};
+    std::array<std::size_t, 5> hit_spark_frame_passes{};
+    std::optional<ScriptActorBehaviorDecision> hit_spark_last_frame;
+    for (std::size_t pass = 0U; pass < 20U; ++pass) {
+        hit_spark_last_frame = scripts.actor_heartbeat(hit_spark_context);
+        if (!hit_spark_last_frame.has_value() ||
+            hit_spark_last_frame->animation_id != "hit_spark" ||
+            hit_spark_last_frame->animation_frame >=
+                hit_spark_frame_passes.size() ||
+            !hit_spark_last_frame->animation_selector.has_value() ||
+            !hit_spark_last_frame->animation_increment.has_value()) {
+            std::cerr << scripts.failure() << '\n';
+            return 68;
+        }
+        ++hit_spark_frame_passes[hit_spark_last_frame->animation_frame];
+        hit_spark_context.spawn = false;
+        auto& animation = *hit_spark_context.hit_spark_animation;
+        animation.selector = *hit_spark_last_frame->animation_selector;
+        animation.frame = hit_spark_last_frame->animation_frame;
+        animation.accumulator = hit_spark_last_frame->animation_accumulator;
+        animation.increment = *hit_spark_last_frame->animation_increment;
+    }
+    const std::array<std::size_t, 5> expected_hit_spark_frame_passes{
+        3U, 4U, 4U, 4U, 5U};
+    hit_spark_context.phase = ScriptActorHeartbeatPhase::behavior;
+    const auto hit_spark_retire_decision =
+        scripts.actor_heartbeat(hit_spark_context);
+    if (!expect(
+            hit_spark_frame_passes == expected_hit_spark_frame_passes &&
+                hit_spark_last_frame.has_value() &&
+                hit_spark_last_frame->animation_frame == 4U &&
+                hit_spark_last_frame->animation_selector ==
+                    std::optional<std::uint16_t>{0x8004U} &&
+                hit_spark_retire_decision.has_value() &&
+                hit_spark_retire_decision->hit_spark_retired,
+            "the hit spark did not follow its finite ROM frame sequence")) {
+        std::cerr << scripts.failure() << '\n';
+        return 69;
     }
 
     if (!expect(

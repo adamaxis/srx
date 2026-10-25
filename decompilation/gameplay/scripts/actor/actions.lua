@@ -748,8 +748,24 @@ local function begin_dynamic_target_action(state, context, target)
     -- ROM 0xB284 invokes the shared 0x55C76 reaction only after the linked
     -- heading is accepted. Lua resolves the source-derived action now and
     -- returns a one-heartbeat meter update for the host to apply.
-    state.combat_meter_update = game.modules.combat.resolve_reaction(
-        context, target)
+    local update = game.modules.combat.resolve_reaction(context, target)
+    state.combat_meter_update = update
+    if type(update) == "table" and update.changed == true and
+       type(target) == "table" and
+       type(target.world_x) == "number" and
+       type(target.world_y) == "number" then
+        -- ROM 0xB278..0xB29A saves target +0x4C/+0x9C around 0x55C76 and
+        -- enters the 0xB29E child init only when either byte changed [C].
+        -- 0xB1DC (entered from the 0x141D8 accept path) reaches this for
+        -- enemy strikes too, so this is the same child core wires in
+        -- begin_player_melee (core 5d5c24ef). The 0xB11C/0x55B16 variant
+        -- (0xB146 child, identical init) has no port path yet [H].
+        state.hit_spark_spawn_request = {
+            target_id = target.id,
+            world_x = target.world_x,
+            world_y = target.world_y,
+        }
+    end
     local heading_event = context.target_heading_audio_alternate
         and SoundId.TARGET_HEADING_ALT or SoundId.TARGET_HEADING
     local action_audio_event = state.entity_kind == E.SpriteType.HELL_HOUND

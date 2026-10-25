@@ -136,6 +136,12 @@ local profiles = {
         action_code = 0,
         projectile_animation = true,
     },
+    ["field_hit_spark"] = {
+        package_id = "combat.player_hit_spark",
+        action_kind = ActionKind.none,
+        action_code = 0,
+        hit_spark_animation = true,
+    },
 }
 
 -- The extracted profile records supply ROM identity and equipment facts;
@@ -153,6 +159,7 @@ for profile_id, profile in pairs(profiles) do
     profile.weapon_item_id = source_profile.weapon
     profile.controls_movement = source_profile.controls_movement
     profile.projectile_animation = source_profile.projectile
+    profile.hit_spark_animation = profile_id == "field_hit_spark"
     profile.dynamic_encounter_only = source_profile.dynamic_encounter_only
 end
 

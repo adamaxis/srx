@@ -16,6 +16,7 @@
 #include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_route_primitives_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_service_target_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_transition_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_projection_conversion.hpp"
@@ -1448,6 +1449,8 @@ private:
     void advance_field_movement();
     void advance_field_actor_animation();
     void advance_default_field_actor_animations();
+    void advance_field_hit_spark_behaviors();
+    void advance_field_hit_spark_animations();
     void advance_tarislar_tomb_outro();
     void advance_field_weapon_projectile_animations();
     void advance_field_weapon_projectiles();
@@ -1510,6 +1513,8 @@ private:
                     QImage& destination);
     bool load_field_weapon_spawn_assets(
         const ConversionAssetCatalog& catalog);
+    bool load_field_hit_spark_assets(
+        const ConversionAssetCatalog& catalog);
     bool load_field_default_actor_assets(
         const ConversionAssetCatalog& catalog);
     bool load_dynamic_world_actor_artwork(
@@ -1524,6 +1529,8 @@ private:
         DefaultFieldActorPresentation& actor,
         const scripting::ScriptActorBehaviorContext& context,
         const scripting::ScriptActorBehaviorDecision& decision);
+    void spawn_field_hit_spark(
+        const scripting::ScriptActorHitSparkSpawnRequest& request);
     bool apply_scripted_field_entity_target_selection(
         const std::optional<std::string>& selected_actor_id);
     void trigger_field_world_effect_sequence();
@@ -1713,6 +1720,13 @@ private:
         bool secondary_animation_script_initialized = false;
         bool secondary_active = false;
         std::optional<std::uint16_t> secondary_slot;
+    };
+
+    struct FieldHitSparkPresentation {
+        ReactionAuxiliaryChild child{};
+        std::string actor_instance_id;
+        EntityAnimationState animation{};
+        bool script_initialized = false;
     };
 
     struct DefaultFieldActorPresentation {
@@ -2196,7 +2210,11 @@ private:
     std::array<std::vector<int>, 16> field_weapon_projectile_origin_y_{};
     std::vector<FieldWeaponProjectilePresentation>
         field_weapon_projectiles_;
-    // ROM 0x15A8C scans the six combat slots 9..14. These slots are separate
+    std::array<QImage, 5> field_hit_spark_images_{};
+    std::array<int, 5> field_hit_spark_origin_x_{};
+    std::array<int, 5> field_hit_spark_origin_y_{};
+    std::vector<FieldHitSparkPresentation> field_hit_sparks_;
+    // ROM 0x15A8C scans the six shared child slots 9..14. These are separate
     // from the ten auxiliary world-map entries in field_entity_table_.
     std::array<bool, 6> field_weapon_slots_occupied_{};
     EntitySpawnCycleResult last_field_weapon_spawn_result_{};

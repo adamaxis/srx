@@ -7,6 +7,7 @@ local u8, u16, s16 = I.u8, I.u16, I.s16
 local Animator = R.Animator   -- from actor/animator.lua
 local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local HitSpark = E.HitSpark
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
 local SpriteType = R.SpriteType   -- from actor/tables.lua
 local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
@@ -33,7 +34,11 @@ local function snapshot(state, action, audio_event, projectile_movement,
     end
     local combat_meter_update = state.combat_meter_update
     state.combat_meter_update = nil
-    return {
+    local strike_heading = state.strike_heading
+    state.strike_heading = nil
+    local hit_spark_spawn_request = state.hit_spark_spawn_request
+    state.hit_spark_spawn_request = nil
+    local result = {
         actor_id = state.actor_id,
         profile_id = state.profile_id,
         package_id = state.package_id,
@@ -91,12 +96,18 @@ local function snapshot(state, action, audio_event, projectile_movement,
         selected_world_actor_id = state.target_selection_processed
             and state.selected_world_actor_id or nil,
         combat_meter_update = combat_meter_update,
+        strike_heading = strike_heading,
+        hit_spark_spawn_request = hit_spark_spawn_request,
         spell_action_resolution = state.spell_action_resolution,
         spell_effect_resolution = state.spell_effect_resolution,
         source_action_dispatch = state.source_action_dispatch,
         movement_step = state.movement_step,
         projectile_movement = projectile_movement,
     }
+    if state.profile_id == "field_hit_spark" then
+        result.hit_spark_retired = state.hit_spark_retired == true
+    end
+    return result
 end
 
 local function advance_projectile_animation(state, context)
@@ -126,6 +137,65 @@ local function advance_projectile_animation(state, context)
     state.animation_increment = weapon_projectile_descriptor_increment
     state.animation_id = "projectile"
     return true
+end
+
+local function advance_hit_spark_animation(state, context)
+    local animation = context.hit_spark_animation
+    if context.phase ~= "render" or type(animation) ~= "table" or
+       type(animation.selector) ~= "number" or
+       type(animation.frame_count) ~= "number" or
+       animation.frame_count ~= HitSpark.FRAME_COUNT or
+       type(animation.period) ~= "number" or
+       animation.period ~= HitSpark.FRAME_PERIOD then
+        return false
+    end
+
+    -- 0x15118 initializes +0x1C to 0x1000; the kind-1 list at 0x7330 sets
+    -- +0x18 to 0x0400. 0x5FDC advances +0x1E, then 0x600E marks the
+    -- selector negative after the fifth list entry [C].
+    state.animation_selector = animation.selector
+    state.animation_period = animation.period
+    state.animation_frame_count = animation.frame_count
+    local accumulated_word =
+        u16(state.animation_accumulator + HitSpark.FRAME_INCREMENT)
+    local accumulated_signed = accumulated_word
+    if accumulated_word >= HitSpark.FINISHED_SELECTOR_BIT then
+        accumulated_signed = accumulated_word - HitSpark.WORD_MODULUS
+    end
+    if state.animation_period <= accumulated_signed then
+        state.animation_frame = u16(state.animation_frame + 1)
+        state.animation_accumulator =
+            u16(accumulated_word - state.animation_period)
+        if state.animation_accumulator >= HitSpark.FINISHED_SELECTOR_BIT then
+            state.animation_accumulator = state.animation_accumulator -
+                HitSpark.WORD_MODULUS
+        end
+    else
+        state.animation_accumulator = accumulated_signed
+    end
+    if state.animation_frame_count <= state.animation_frame then
+        state.animation_selector = state.animation_selector |
+            HitSpark.FINISHED_SELECTOR_BIT
+        state.animation_frame = state.animation_frame_count - 1
+    end
+    state.animation_increment = HitSpark.FRAME_INCREMENT
+    state.animation_id = "hit_spark"
+    return true
+end
+
+local function hit_spark_heartbeat(state, context)
+    if context.phase == "render" then
+        if not advance_hit_spark_animation(state, context) then
+            return nil
+        end
+    elseif context.phase == "behavior" then
+        -- ROM 0xAC4E clears +0x10 bit 0 after 0x600E marks +0x16 negative [C].
+        state.hit_spark_retired =
+            (state.animation_selector & HitSpark.FINISHED_SELECTOR_BIT) ~= 0
+    else
+        return nil
+    end
+    return snapshot(state, "hold", nil)
 end
 
 -- ROM 0xC0B2 death list (pose 0xE8) or a 0xB0AC/0xB0E4 spell-death list
@@ -405,6 +475,8 @@ end
 -- register this module's definitions
 R.snapshot = snapshot
 R.advance_projectile_animation = advance_projectile_animation
+R.advance_hit_spark_animation = advance_hit_spark_animation
+R.hit_spark_heartbeat = hit_spark_heartbeat
 R.advance_entry_animation = advance_entry_animation
 R.death_list = death_list
 R.advance_finite_actor_animation = advance_finite_actor_animation
