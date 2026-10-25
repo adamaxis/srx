@@ -321,7 +321,7 @@ local function defense_modifier(value, attacker)
         return value - 2
     end
     for slot = 1, 8 do
-        if attacker.item_codes[slot] == 0x27 then
+        if attacker.item_codes[slot] == E.ItemId.PROTECTION_TALISMAN then
             return value - math.floor(attacker.item_phases[slot] / 2)
         end
     end
@@ -832,6 +832,94 @@ function Combat.resolve_spell_impact(context, pending, target)
     result.changed = commit_combatant_meters(
         target, defender, physical_meter, mental_meter, nil,
         SpellDeath[pending.action_code])
+    result.outcome = result.changed and "effect_applied" or "effect_no_change"
+    return result
+end
+
+-- ROM 0x55B16: the default difficulty-four action roll grants a six-roll
+-- bonus, then enters 0x559BC with difficulty six, target +0x77 trials, and
+-- action value two. This is distinct from the peer reaction at 0x55C76.
+function Combat.resolve_default_bonus_action(context, target)
+    if type(context) ~= "table" or type(target) ~= "table" or
+       type(context.combatant) ~= "table" or
+       type(target.combatant) ~= "table" or
+       type(context.ai_random_bound) ~= "function" then
+        return nil
+    end
+    local attacker = copy_combatant(context.combatant)
+    local defender = copy_combatant(target.combatant)
+    local difficulty = condition_modifier(
+        E.CombatTuning.DEFAULT_ACTION_DIFFICULTY, attacker, defender)
+    difficulty = dynamic_status_modifier(difficulty, attacker, defender,
+                                         context)
+    if difficulty == nil then
+        return nil
+    end
+    difficulty = add_wound_difficulty_penalty(
+        difficulty, attacker.physical_meter, attacker.mental_meter)
+    difficulty = math.max(difficulty, 2)
+
+    local initial_successes = thresholded_rolls(
+        E.CombatTuning.DEFAULT_ACTION_TRIAL_COUNT, difficulty,
+        context.ai_random_bound)
+    if initial_successes == nil then
+        return nil
+    end
+    attacker.action_result = initial_successes
+    attacker.auxiliary_roll_bonus =
+        E.CombatTuning.DEFAULT_ACTION_TRIAL_COUNT
+
+    local target_trials = defender.command_attribute_77
+    if type(target.id) ~= "string" or type(target_trials) ~= "number" then
+        return nil
+    end
+    local target_successes = thresholded_rolls(
+        target_trials, E.CombatTuning.DEFAULT_ACTION_CONTINUATION_DIFFICULTY,
+        context.ai_random_bound)
+    local result = {
+        target_id = target.id,
+        source_record_slot = target.source_record_slot,
+        initial_difficulty = difficulty,
+        initial_trial_count = E.CombatTuning.DEFAULT_ACTION_TRIAL_COUNT,
+        initial_successes = initial_successes,
+        combatant = attacker,
+        continuation_difficulty =
+            E.CombatTuning.DEFAULT_ACTION_CONTINUATION_DIFFICULTY,
+        continuation_trial_count = target_trials,
+        changed = false,
+    }
+    if target_successes == nil then
+        result.outcome = "random_service_unavailable"
+        return result
+    end
+    result.continuation_successes = target_successes
+
+    -- 0x559CE..0x559F0 compares the first result with the target roll using
+    -- signed-byte arithmetic, then caps the action value at ten.
+    local delta = signed_byte(initial_successes - target_successes)
+    local action_value = E.CombatTuning.DEFAULT_ACTION_VALUE + delta
+    if action_value > E.CombatTuning.ACTION_VALUE_MAX then
+        action_value = E.CombatTuning.ACTION_VALUE_MAX
+    end
+    if action_value <= 0 then
+        result.outcome = "action_value_nonpositive"
+        return result
+    end
+
+    action_value = defense_modifier(action_value, attacker)
+    if action_value <= 0 then
+        result.outcome = "defense_threshold_failed"
+        return result
+    end
+
+    -- FFF0CC's default mode selects the physical meter. The source's alternate
+    -- meter cases remain owned by their caller-specific combat paths.
+    local physical_meter, mental_meter = adjusted_meters(
+        defender, true, action_value, context)
+    result.physical_meter = physical_meter
+    result.mental_meter = mental_meter
+    result.changed = commit_combatant_meters(
+        target, defender, physical_meter, mental_meter)
     result.outcome = result.changed and "effect_applied" or "effect_no_change"
     return result
 end

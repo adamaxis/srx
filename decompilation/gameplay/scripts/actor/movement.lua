@@ -335,7 +335,7 @@ local function resolve_source_target_motion(context, state, target)
         if distance < AiTuning.HELL_HOUND_CLOSE_RANGE then
             if state.action_delay < 0 then
                 accepted = R.request_target_motion_effect(
-                    state, context, heading)
+                    state, context, heading, target)
                 if accepted then
                     state.movement_current_heading = heading
                 end

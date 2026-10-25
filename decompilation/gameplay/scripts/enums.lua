@@ -129,6 +129,13 @@ E.ItemId = {
 E.CombatTargetClass = {
     DIFFICULTY_PLUS_TWO = 0x16, -- raw 0x16: condition modifier adds two [C value, H class identity]
 }
+E.CombatTuning = {
+    DEFAULT_ACTION_DIFFICULTY = 4, -- 0x55B16 initial threshold [C]
+    DEFAULT_ACTION_TRIAL_COUNT = 6, -- 0x55B16 bounded six-sided rolls [C]
+    DEFAULT_ACTION_CONTINUATION_DIFFICULTY = 6, -- 0x55B54 -> 0x559BC [C]
+    DEFAULT_ACTION_VALUE = 2, -- 0x55B54 seeds the 0x559BC continuation [C]
+    ACTION_VALUE_MAX = 10, -- 0x559F0 clamp [C]
+}
 E.CyberwareMask = {
     CYBEREYES = 0x0002, -- raw 0x0002: cyberware word bit 1 [C]
     HAND_RAZORS = 0x0004, -- raw 0x0004: cyberware word bit 2 [C]

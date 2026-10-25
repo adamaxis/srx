@@ -8,6 +8,7 @@ purpose, so the reference is wrong for them:
 | 17130f9c | encounter actors spawn live; the end-of-combat gate waits for the DEAD edge | 0xAB02 |
 | 623300eb | a zero stun/physical meter enters 0xB330 on the service pass | 0xA912..0xAA54 |
 | a5a74ea3 | the target marker tiers the target's meter (<3, 3-5, 6-8, >=9) | 0x5C7E |
+| (item 3) | the delayed close-range Hell Hound path resolves 0x55B16 and requests the 0xB146 child on changed defender meters | 0x14C7C, 0x13FFE, 0xB11C, 0x55B16 |
 | (item 1) | default-list actors spawn live; the C0B2 death list is never played at spawn | 0x4618, 0xB330 |
 | (item 1) | Wendigo (kind 0xE) and special-death actors deactivate after their list | 0xAA2C, 0x1E514 |
 | (item 2) | action delay uses signed ASR for every nonzero D0 other than 2, sharing the player path | 0xABFC, 0xD7EA [C] |

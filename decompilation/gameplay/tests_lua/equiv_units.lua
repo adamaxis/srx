@@ -148,6 +148,7 @@ local targets = {}
 -- pre-split reference is wrong for them by design. See reference/INTENDED_DIVERGENCES.md.
 local INTENDED = {
   advance_target_marker = "ROM 0x5C7E tiers the target's meter (a5a74ea3)",
+  request_target_motion_effect = "Hell Hound 0xB11C resolves 0x55B16 and emits the 0xB146 child request on changed defender meters",
   advance_player_animation = "actor/animator.lua 0x600E wrap/0x5FDC signed word; equal on frame 0..3/acc 0..0xFFF (animator_tests)",
   begin_dynamic_target_action = "0xC0A2 pose, rate, selector, and cue now come from generated ROM animation data",
   begin_dynamic_item_action = "0xC042 pose and rate now come from generated ROM animation data",

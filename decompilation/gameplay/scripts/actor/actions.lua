@@ -61,7 +61,7 @@ local function advance_target_motion_effect(state, context)
     state.target_motion_effect_visible = true
 end
 
-local function request_target_motion_effect(state, context, heading)
+local function request_target_motion_effect(state, context, heading, target)
     for slot = 0, 17 do
         if context.world_effect_slot_occupancy[slot + 1] ~= true then
             state.target_motion_effect_active = true
@@ -71,8 +71,32 @@ local function request_target_motion_effect(state, context, heading)
             state.target_motion_effect_phase = 0
             state.target_motion_effect_direction =
                 R.direction_from_heading(heading)
-            -- 0x14C7C sets +0x11.6; 0x13FFE then enters 0xB11C, which
-            -- resets +0xDC with the actor's source-derived delay attributes.
+            -- ROM 0x14C7C sets +0x11.6 for a close, delayed Hell Hound with
+            -- a free effect slot; 0x13FFE dispatches 0xB11C. That path uses
+            -- 0x55B16 and spawns its 0xB146 child only when +0x4C or +0x9C
+            -- changes [C].
+            local combat = game.modules.combat
+            local update = type(combat) == "table" and
+                type(combat.resolve_default_bonus_action) == "function" and
+                combat.resolve_default_bonus_action(context, target) or nil
+            if type(update) == "table" and
+               type(update.combatant) == "table" then
+                state.combatant = update.combatant
+                state.action_result = update.combatant.action_result or
+                    state.action_result
+            end
+            state.combat_meter_update = update
+            if type(update) == "table" and update.changed == true and
+               type(target) == "table" and
+               type(target.world_x) == "number" and
+               type(target.world_y) == "number" then
+                state.hit_spark_spawn_request = {
+                    target_id = target.id,
+                    world_x = target.world_x,
+                    world_y = target.world_y,
+                }
+            end
+            -- ROM 0xB19A resets +0xDC after the optional child allocation.
             state.action_delay = source_action_delay(context, state)
             return true
         end
@@ -944,8 +968,8 @@ local function begin_dynamic_target_action(state, context, target)
         -- enters the 0xB29E child init only when either byte changed [C].
         -- 0xB1DC (entered from the 0x141D8 accept path) reaches this for
         -- enemy strikes too, so this is the same child core wires in
-        -- begin_player_melee (core 5d5c24ef). The 0xB11C/0x55B16 variant
-        -- (0xB146 child, identical init) has no port path yet [H].
+        -- begin_player_melee (core 5d5c24ef). The Hell Hound 0xB11C path
+        -- uses 0x55B16 and the 0xB146 child with the same init [C].
         state.hit_spark_spawn_request = {
             target_id = target.id,
             world_x = target.world_x,
