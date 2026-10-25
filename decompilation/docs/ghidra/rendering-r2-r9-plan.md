@@ -80,3 +80,11 @@ Hook points below are given by function name, because FSR line numbers move with
 3. PlaneStreamer runtime metatile writes and headless field-scene QA. **Done.**
 4. Capture a field scene where the B-minus-A vertical offset is nonzero. **Pending; no independent field FFDD0E write is currently modeled.**
 5. Compose swap in `paint_field_scene`. **Pending combat merge.**
+
+
+## FFDD0E (plane B vertical scroll) capture, 2026-10-25
+Evidence comes from a headless Genesis Plus GX trace from power-on with no input (`/tmp/boot_dd0e.py`). Captures and the trace are in `shadowrun/out/ffdd0e_capture/`: `trace.txt`, `f*_B*_A*.png` and `sheet.png`.
+- **Title screen [C].** 0x1A9E is the title loop (0xE10 = 3600 frames, entered from boot at 0x7BA). 0x1AA8/0x1AB0 set FFDD0E = FFE00A = 0. In the loop, 0x26D0 runs `addq #1, FFDD0E` once every 5 frames (FFDD2E reloads with 4) and sets FFEF14 bit 3. The trace shows this: DD0E goes 1 at frame 789, 2 at 794 and so on, reaching 721 at 8864, then resets to 0 at 8965, while DD0A, DD08 and DD0C stay 0. Plane B (the circuit-board backdrop) scrolls up under a fixed plane A logo. This is the nonzero plane B offset scene.
+- **Intro [C].** 0x5B06E steps FFDD0E up to 0x78. 0x5BCE0 subtracts 2 from both FFDD0A and FFDD0E (down to -0x90). During the pre-title sequence (frames 219..) the trace shows DD0A moving alone while DD0E stays 0.
+- **Field [C, emulator].** 23 field save states (`shadowrun/emu/doors/*.state`) were each run 120 frames. FFDD0E - FFDD0A = 0 and FFDD0C - FFDD08 = 0 in every frame. This matches 0x3CF2..0x3CFE adding the same step to both, and the 0x1406 descriptors (+8..+15) all seed equal A/B words: 0x1FD8, 0x59D3E, 0x5B4A8, 0x5B528, 0x5B574 and 0x5C966 are all 0. The field VDP mirror's B offset of 0 is therefore correct for the field and no longer [H].
+- **Port status.** The title screen already applies FFDD0E (`draw_wrapped_vertical_image` in the app window, not core-owned). [H] It wraps at the 224-px resource height, while a 64x32-cell plane wraps at 256 px. Above 224 the ROM shows name-table rows 28..31 instead of the top of the image. Owner: video/title. Verify with a frame at DD0E in 224..255 (about frame 1909+).

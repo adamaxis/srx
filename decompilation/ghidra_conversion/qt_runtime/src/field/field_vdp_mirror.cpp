@@ -379,12 +379,12 @@ bool FieldVdpMirror::stream_viewport() {
     const auto vertical = static_cast<std::int16_t>(viewport_y_ & 0x00FF);
     const auto plane_b_vertical = static_cast<std::int16_t>(
         (viewport_y_ + plane_b_vertical_offset_) & 0x00FF);
-    // ROM 0x1AB0 copies FFE00A to FFDD0E (0x1AA8 zeroes FFE00A first) [C];
-    // 0x3CF2..0x3CFE add the same
-    // camera step to both scroll words [C]. The port tracks those steps in
-    // vertical_bias_a/b; their difference is the known Plane-B offset. The
-    // field port has no separate FFDD0E writer, so that offset is currently 0
-    // [H]. ROM 0x26E2's independent increment is outside the field path [C].
+    // ROM 0x1AB0 copies FFE00A to FFDD0E (0x1AA8 zeroes FFE00A first), and
+    // 0x3CF2..0x3CFE add the same camera step to FFDD0A and FFDD0E [C]. The
+    // port tracks those steps in vertical_bias_a/b; their difference is the
+    // Plane-B offset. In the field it is 0: 23 emulator field states show
+    // FFDD0E - FFDD0A == 0 [C, emulator]. The 0x26D0/0x26E2 increment belongs
+    // to the 0x1A9E title loop, outside the field path [C].
     model_.set_scroll({horizontal, vertical, horizontal, plane_b_vertical});
     return true;
 }
