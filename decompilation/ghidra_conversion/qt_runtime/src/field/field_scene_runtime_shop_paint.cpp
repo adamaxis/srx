@@ -748,7 +748,8 @@ void FieldSceneRuntime::paint_field_shop_notice(QPainter& painter) const {
 
 void FieldSceneRuntime::draw_tinted_field_text(
     QPainter& painter, const int x, const int y,
-    const std::string_view text, const QColor color) const {
+    const std::string_view text, const QColor color,
+    const bool opaque_palette_pixels) const {
     if (command_overview_font_.isNull() || command_overview_font_.width() < 8 ||
         command_overview_font_.height() < 8) {
         return;
@@ -790,7 +791,17 @@ void FieldSceneRuntime::draw_tinted_field_text(
                      static_cast<std::uint32_t>(coverage)) /
                     255U);
                 auto tinted_color = color;
-                tinted_color.setAlpha(alpha);
+                if (opaque_palette_pixels) {
+                    const auto covered_channel = [alpha](const int channel) {
+                        return (channel * alpha + 127) / 255;
+                    };
+                    tinted_color = QColor(
+                        covered_channel(color.red()),
+                        covered_channel(color.green()),
+                        covered_channel(color.blue()));
+                } else {
+                    tinted_color.setAlpha(alpha);
+                }
                 tinted_glyph.setPixelColor(glyph_x, glyph_y,
                                            tinted_color);
             }

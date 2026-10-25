@@ -13466,8 +13466,9 @@ FieldActionBaseCostLookup FieldSceneRuntime::item_resale_base_lookup() const {
 
 void FieldSceneRuntime::draw_command_overview_text(
     QPainter& painter, const int x, const int y,
-    const std::string_view text) const {
-    draw_tinted_field_text(painter, x, y, text, command_overview_text_tint());
+    const std::string_view text, const bool opaque_palette_pixels) const {
+    draw_tinted_field_text(painter, x, y, text, command_overview_text_tint(),
+                           opaque_palette_pixels);
 }
 
 
@@ -16311,9 +16312,13 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 if (bit >= field_menu_text_.cyberware_entries.size()) {
                     continue;
                 }
+                const auto row_y = 48 + static_cast<int>(row) * 16;
+                // Overflow rows land over the patterned footer. The source
+                // name-table pixel is a palette color, so do not alpha-blend
+                // its font-atlas coverage with the footer beneath it.
                 draw_command_overview_text(
-                    painter, 112, 48 + static_cast<int>(row) * 16,
-                    field_menu_text_.cyberware_entries[bit]);
+                    painter, 112, row_y,
+                    field_menu_text_.cyberware_entries[bit], row_y >= 192);
             }
         }
     }

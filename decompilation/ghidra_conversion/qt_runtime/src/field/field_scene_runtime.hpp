@@ -1768,9 +1768,11 @@ private:
         std::uint16_t events);
     void draw_pocket_secretary_cursor(QPainter& painter, int x, int y) const;
     void draw_command_overview_text(QPainter& painter, int x, int y,
-                                    std::string_view text) const;
+                                    std::string_view text,
+                                    bool opaque_palette_pixels = false) const;
     void draw_tinted_field_text(QPainter& painter, int x, int y,
-                                std::string_view text, QColor color) const;
+                                std::string_view text, QColor color,
+                                bool opaque_palette_pixels = false) const;
     void draw_field_menu_font_text(QPainter& painter, int x, int y,
                                    std::string_view text,
                                    const QImage& font) const;
