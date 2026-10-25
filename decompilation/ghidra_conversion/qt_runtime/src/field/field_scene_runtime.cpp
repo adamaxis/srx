@@ -4003,6 +4003,11 @@ void FieldSceneRuntime::advance_default_field_actors(
                 }
             }
         }
+        // ROM 0xB1DC/0xB29E: a changed dynamic-actor strike shares the
+        // player-strike 0x15A8C/0xAC4E hit-spark child [C].
+        if (decision->hit_spark_spawn_request.has_value()) {
+            spawn_field_hit_spark(*decision->hit_spark_spawn_request);
+        }
         if (dynamic_world_actor &&
             decision->movement_step.has_value()) {
             const auto& step = *decision->movement_step;

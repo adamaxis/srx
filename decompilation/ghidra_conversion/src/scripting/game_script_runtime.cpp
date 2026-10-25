@@ -10905,11 +10905,19 @@ GameScriptRuntime::actor_heartbeat(
          (decision.combat_meter_update.has_value() && !player_melee_hit))) {
         return fail("actor_ai.heartbeat returned an invalid player strike");
     }
-    const bool hit_spark_expected = player_melee_hit &&
+    // ROM 0xB1DC is also entered from the 0x141D8 enemy accept path, so a
+    // changed dynamic-actor melee reaches the same 0xB29E child init [C].
+    const bool actor_melee_hit = context.dynamic_world_encounter_actor &&
+        context.phase == ScriptActorHeartbeatPhase::behavior &&
+        decision.animation_id == "action" &&
         decision.combat_meter_update.has_value() &&
         decision.combat_meter_update->changed;
+    const bool hit_spark_expected = actor_melee_hit ||
+        (player_melee_hit &&
+         decision.combat_meter_update.has_value() &&
+         decision.combat_meter_update->changed);
     if (hit_spark_expected != decision.hit_spark_spawn_request.has_value()) {
-        return fail("actor_ai.heartbeat returned a hit-spark request inconsistent with the changed player strike");
+        return fail("actor_ai.heartbeat returned a hit-spark request inconsistent with the changed strike");
     }
     if (decision.hit_spark_spawn_request.has_value()) {
         const auto& request = *decision.hit_spark_spawn_request;
@@ -10921,11 +10929,11 @@ GameScriptRuntime::actor_heartbeat(
                        candidate.world_x == request.world_x &&
                        candidate.world_y == request.world_y;
             });
-        if (!player_melee_hit || !decision.combat_meter_update.has_value() ||
+        if (!hit_spark_expected || !decision.combat_meter_update.has_value() ||
             !decision.combat_meter_update->changed ||
             decision.combat_meter_update->target_id != request.target_id ||
             target == context.ai_target_candidates.end()) {
-            return fail("actor_ai.heartbeat requested a hit spark outside the resolved player strike target");
+            return fail("actor_ai.heartbeat requested a hit spark outside the resolved strike target");
         }
     }
     const bool hit_spark_actor = context.profile_id == "field_hit_spark";

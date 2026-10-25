@@ -5420,7 +5420,14 @@ int main() {
                 combat_probe_action->combat_meter_update->physical &&
                 combat_probe_action->combat_meter_update->changed &&
                 combat_probe_action->combat_meter_update->physical_meter == 7U &&
-                combat_probe_action->combat_meter_update->mental_meter == 10U,
+                combat_probe_action->combat_meter_update->mental_meter == 10U &&
+                combat_probe_action->hit_spark_spawn_request.has_value() &&
+                combat_probe_action->hit_spark_spawn_request->target_id ==
+                    combat_target.id &&
+                combat_probe_action->hit_spark_spawn_request->world_x ==
+                    combat_target.world_x &&
+                combat_probe_action->hit_spark_spawn_request->world_y ==
+                    combat_target.world_y,
             "Lua did not resolve the ROM close-target reaction into the typed party meter update")) {
         std::cerr << scripts.failure() << '\n';
         return 67;
