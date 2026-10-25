@@ -1404,6 +1404,14 @@ int run_field_random_encounter_spawn_qa(
         timeline != nullptr && timeline[0] == '1') {
         std::ofstream log(output / "timeline.tsv");
         log << "frame\trunner_x\trunner_y\tactors\n";
+        // SRX_QA_ENCOUNTER_TIMELINE_STRIDE overrides the 15-frame sample
+        // stride (1 = every frame) for per-frame ROM trace comparison.
+        std::uint32_t timeline_stride = 15U;
+        if (const char* stride =
+                std::getenv("SRX_QA_ENCOUNTER_TIMELINE_STRIDE");
+            stride != nullptr && std::atoi(stride) > 0) {
+            timeline_stride = static_cast<std::uint32_t>(std::atoi(stride));
+        }
         for (std::uint32_t frame = 0U; frame <= 3600U; ++frame) {
             if (frame % 60U == 0U) {
                 char name[32];
@@ -1411,7 +1419,7 @@ int run_field_random_encounter_spawn_qa(
                               frame / 60U);
                 save(name, render());
             }
-            if (frame % 15U == 0U) {
+            if (frame % timeline_stride == 0U) {
                 const auto& lead = field_scene.field_entity_world_position();
                 log << frame << '\t' << lead.x << '\t' << lead.y << '\t';
                 for (const auto& actor :
