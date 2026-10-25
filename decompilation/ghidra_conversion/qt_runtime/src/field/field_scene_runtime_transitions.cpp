@@ -434,6 +434,12 @@ bool FieldSceneRuntime::restore_world_activity_source_scene(
         return false;
     }
 
+    // Returning from a building/resource scene is a full field entry even
+    // when it restores the same scene id. ROM 0x2822-0x2830 sets FFE172;
+    // 0x2900 consumes it to send FFDE06 to 0x530EA. Ordinary same-scene
+    // redraws through 0x2BD2 still leave the music latch clear.
+    scene_music_latch_ = true;
+
     field_runtime_state_.field_transition_requested = false;
     runtime_state.field_transition_requested = false;
     source_boundary("field.world_activity.source_scene_restored");

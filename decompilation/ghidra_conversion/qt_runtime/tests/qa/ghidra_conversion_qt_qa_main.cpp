@@ -1017,9 +1017,29 @@ int run_field_audio_qa(FieldSceneRuntime& field_scene) {
         return 1;
     }
     field_scene.advance_frame();   // 0x2900 services FFE172 on the next tick
-    if (field_scene.field_music_requests().size() != 2U) {
+    const auto activity_music = field_scene.field_music_requests();
+    // Resource scenes 21-43 use profile music 0x06 at +0x40.
+    const auto building_music = static_cast<std::uint16_t>(
+        srx::MusicId::FIELD_06);
+    const std::vector<std::uint16_t> entered_activity_music{
+        boot_music[0], building_music};
+    if (activity_music != entered_activity_music) {
         std::cerr << "field audio QA: resource-scene change music ="
-                  << print(field_scene.field_music_requests()) << "\n";
+                  << print(activity_music) << "\n";
+        return 1;
+    }
+    if (!field_scene.return_from_world_activity_for_dump()) {
+        std::cerr << "field audio QA: world activity did not return to its "
+                     "source scene\n";
+        return 1;
+    }
+    field_scene.advance_frame(); // 0x2900 consumes the activity-return latch
+    const std::vector<std::uint16_t> returned_music{
+        boot_music[0], building_music, boot_music[0]};
+    if (field_scene.field_music_requests() != returned_music) {
+        std::cerr << "field audio QA: source -> building -> source music ="
+                  << print(field_scene.field_music_requests())
+                  << " expected=" << print(returned_music) << "\n";
         return 1;
     }
     std::cout << "field_audio_qa=passed music=" << print(field_scene.field_music_requests())
