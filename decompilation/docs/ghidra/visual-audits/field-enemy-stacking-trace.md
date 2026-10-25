@@ -32,7 +32,17 @@ User report: enemies stand on top of the runner or each other. Port capture: run
 - [C] No source/port difference was found in the ordinary Weenr approach acceptance threshold or actor-occupancy behavior, so no ROM-fidelity fix is indicated. The ROM trace itself permits near-coincident enemies.
 - [C] The reported port X-only gap is `15584-15455 = 129` world units. [H] Whether the port's full ROM distance metric is below `<0x200` depends on the missing enemy Y coordinate; the trace also began at a different approach phase, so these data do not establish a stop-logic mismatch.
 
+## Port stop measurements
+
+- [C] Ran `/workspace/srx_int_build/shadowrun_ghidra_conversion_qt_qa --assets ../../../assets --field-random-encounter-spawn-qa /workspace/stack_trace/port_run` with `QT_QPA_PLATFORM=offscreen SRX_HEADLESS=1 SDL_AUDIODRIVER=dummy SRX_QA_ENCOUNTER_TIMELINE=1`; it completed with exit status 0. The existing [QA mode](<../../../ghidra_conversion/qt_runtime/tests/qa/ghidra_conversion_qt_qa_main.cpp:1363>) spawns Scene 2's ordered two-Weenr encounter and leaves the runner at `(15584,11520)`. The 15-frame position samples are in `port_run/timeline.tsv` (not committed), with image captures alongside it.
+- [C] The first sampled final positions occur at frame 165 and repeat in all 230 samples through frame 3600: source actor 0 / Weenr 0 at `(15455,11595)` and source actor 1 / Weenr 1 at `(15455,11579)`. Their runner deltas are `(-129,+75)` and `(-129,+59)`.
+- [C] At those positions the ROM metric distances to the runner are **166** for Weenr 0 and **158** for Weenr 1 (Euclidean **149.2** and **141.9**). Both are inside the `<0x200` gate. Their separation is **16** by the ROM metric and Euclidean distance.
+- [C] The ROM trace's stable positions were **305** metric for Weenr 6 and **356** for Weenr 7, so the port positions are closer to the runner by **139** and **198** metric units respectively. The port pair spacing (16) is also below the ROM trace's closest pair spacing (26 metric / 23.4 Euclidean at frame 19; stable-frame-20 spacing was 93 metric / 83.4 Euclidean).
+- [C] The searched field runtime has no `SRX_TRACE`/`SRX_LOG` actor-position logger; this QA diagnostic samples every 15 frames, so frame 165 is the first recorded final position, not an exact per-frame stop timestamp. No code patch was needed to obtain the requested coordinates.
+- [H] The port's observed stop positions differ from the ROM trace by stopping substantially closer to the runner, while remaining inside the same `<0x200` acceptance range. This establishes a positional difference; the capture alone does not isolate whether route or service timing explains it, nor demonstrate a different acceptance threshold.
+
 ## Conclusion
 
 - [C] ROM has no actor-to-actor occupancy avoidance; enemies may overlap each other. No port change made.
-- [H] Next evidence needed: port enemy Y at the stop, to compute the ROM metric against the 0x200 gate.
+- [C] The port stops inside the same `<0x200` gate, but 139/198 metric units closer to the runner than the ROM trace, with tighter pair spacing (16 vs 26 at the closest).
+- [H] This is a possible divergence in route or service timing (the ROM refreshes the policy at 0x13904 on a 21-pass `+0xB6` cadence). It is not isolated yet, and no port change has been made.
