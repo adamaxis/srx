@@ -21728,20 +21728,25 @@ void FieldSceneRuntime::paint_command_overview_magic(
     const auto spell_code = static_cast<std::uint8_t>(selected_spell_code);
     const auto* spell = find_us_magic_spell(spell_code);
     if (spell_code < field_menu_text_.magic_spell_names.size()) {
-        // ROM 0x10276 sends the selected D4EA0 glyph triplet to C194, which
-        // is the 24x24 cell beside the spell title. The menu row below uses
-        // the same named glyph assets at its separate list destinations. The
-        // Lua layout uses the e6 title origin: its first visible glyph is at
+        // ROM 0x10276 selects the glyph pointer at D4EA0 + 0x1A; 0x11190
+        // transfers six tile words as a 3x2, 24x16 glyph into C194. Clip the
+        // shared 24x24 extracted image to those source-written rows. The Lua
+        // layout uses the e6 title origin: its first visible glyph is at
         // x=128 in frames 9060/9265/9400, while the old paint origin put it at
-        // x=112 [C emulator].
+        // x=112 [C].
         if (spell_code < command_overview_magic_spell_icons_.size()) {
             const auto title_icon_x =
                 lua_view != nullptr ? lua_view->title_icon_x : 80;
             const auto title_icon_y =
                 lua_view != nullptr ? lua_view->title_icon_y : 24;
+            painter.save();
+            painter.setClipRect(
+                QRect(title_icon_x, title_icon_y, 24, 16),
+                Qt::IntersectClip);
             painter.drawImage(
                 title_icon_x, title_icon_y,
                 command_overview_magic_spell_icons_[spell_code]);
+            painter.restore();
         }
         draw_field_menu_font_text(
             painter,

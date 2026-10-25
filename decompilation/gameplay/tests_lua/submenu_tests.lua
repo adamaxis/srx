@@ -170,9 +170,13 @@ local magic_view = st(r6).magic_view
 check(magic_view.title_text_x == 128 and magic_view.spell_codes[1] == 0 and
       magic_view.spell_codes[2] == 1 and magic_view.spell_codes[3] == 2 and
       magic_view.spell_codes[4] == nil and
-      magic_view.spell_grid_icon_height == 16,
+      magic_view.spell_grid_icon_height == 16 and
+      magic_view.cursor_offset_x == 0 and magic_view.cursor_offset_y == 0,
       "Lua publishes spell grid/title layout; e6 9060 shows no third icon row [C]")
-r6:frame(P.LEFT); check(st(r6).sel.column == 2, "column wrap to last")
+r6:frame(P.LEFT); check(st(r6).sel.column == 2 and
+      st(r6).magic_view.cursor_offset_x == 64 and
+      st(r6).magic_view.cursor_offset_y == 0,
+      "FDFE cursor column offset uses 32-pixel stride [C]")
 r6:frame(P.DOWN); check(st(r6).sel.row == 0, "single row: no row move")
 r6:frame(P.A); check(top(r6) == S.MAGIC_FORCE and st(r6).force == 6, "force starts at limit")
 r6:frame(P.RIGHT); check(st(r6).force == 6, "force clamp hi"); r6:frame(P.LEFT); check(st(r6).force == 5, "force -1")
@@ -180,18 +184,33 @@ r6:frame(P.DOWN); check(top(r6) == S.MAGIC_POSTURE, "down -> posture"); r6:frame
 r6:frame(P.DOWN); r6:frame(P.A)
 check(top(r6) == S.MAGIC and g6.party[0].weapon_code == 3 and g6.party[0].force == 5 and g6.party[0].weapon_slot == -1, "spell equipped")
 
+local offset_spells = { entry_count = 14, entries = {
+    sp(0, 1), sp(1, 1), sp(2, 1), sp(3, 1),
+    sp(4, 1), sp(5, 1), sp(6, 1), sp(7, 1),
+    sp(8, 1), sp(9, 1), sp(10, 1), sp(11, 1),
+    sp(12, 1), sp(13, 1),
+} }
+local r_cursor = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = offset_spells })
+page(r_cursor, E.MenuPage.MAGIC); r_cursor:frame(P.A)
+r_cursor:frame(P.RIGHT)
+r_cursor:frame(P.DOWN)
+check(st(r_cursor).sel.column == 1 and st(r_cursor).sel.row == 1 and
+      st(r_cursor).magic_view.cursor_offset_x == 32 and
+      st(r_cursor).magic_view.cursor_offset_y == 24,
+      "FDFE cursor row offset uses 24-pixel stride [C]")
+
 -- e6 opens Magic with A at 8940. RAM first shows DA/DB=5/1 at 8952,
 -- then 2/0 at 9060, 0/1 at 9265, and 5/1 at 9400; matching port frames
--- are 9253/9458/9593 [C emulator]. The ten-heartbeat entry hold approximates
--- the setup interval before the first 0xFDFE phase update [H].
+-- are 9253/9458/9593 [C]. The ten-heartbeat entry hold approximates the
+-- setup interval before the first FDFE phase update [H].
 local r_phase = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
 page(r_phase, E.MenuPage.MAGIC); r_phase:frame(P.A)
 for _ = 1, 120 do r_phase:frame(0) end
-check(st(r_phase).magic_view.cursor_phase == 0, "Magic cursor phase at e6 9060 [C emulator]")
+check(st(r_phase).magic_view.cursor_phase == 0, "Magic cursor phase at e6 9060 [C]")
 for _ = 121, 325 do r_phase:frame(0) end
-check(st(r_phase).magic_view.cursor_phase == 1, "Magic cursor phase at e6 9265 [C emulator]")
+check(st(r_phase).magic_view.cursor_phase == 1, "Magic cursor phase at e6 9265 [C]")
 for _ = 326, 460 do r_phase:frame(0) end
-check(st(r_phase).magic_view.cursor_phase == 1, "Magic cursor phase at e6 9400 [C emulator]")
+check(st(r_phase).magic_view.cursor_phase == 1, "Magic cursor phase at e6 9400 [C]")
 
 end)
 -- ---- pocket secretary --------------------------------------------------------------------------------------

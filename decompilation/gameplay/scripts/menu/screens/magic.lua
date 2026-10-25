@@ -6,13 +6,13 @@ local P, R, T = E.Pad, E.MenuRegion, E.MenuTransition
 local Posture = require("menu.screens.posture")
 local Rules = require("menu.rules.magic")
 
--- ROM 0xFBA6 lays out the icon cells in a seven-column grid; 0xFDFE applies
--- the selected-cell offsets to the cursor sprite. ROM 0x10276 sends the spell
--- name to C21C; e6 9060/9265/9400 show its first visible glyph at x=128, while
--- port 9253/9458/9593 start at x=112 [C emulator].
--- The lower grid exposes only the first 16 icon pixels: 0xFDFE redraws its
--- slot borders through 0xFDAE after the 0xFBA6 glyph writes; e6 9060/9265/
--- 9400 show no third icon row below y=183 [C].
+-- ROM FBA6 lays out the icon cells in a seven-column grid; FDFE applies the
+-- selected-cell offsets to the cursor sprite. ROM 10276 sends the spell name
+-- to C21C; e6 9060/9265/9400 show its first visible glyph at x=128 [C],
+-- while the paired port captures start at x=112 [H].
+-- FBA6 transfers three columns by two rows for each spell glyph, and FDAE
+-- redraws the lower slot borders after those writes; e6 9060/9265/9400 show
+-- no third icon row below y=183 [C].
 local LAYOUT = {
     title_icon_x = 80, title_icon_y = 24,
     title_text_x = 128, title_text_y = 32,
@@ -24,10 +24,11 @@ local LAYOUT = {
     posture_text_x = 160, posture_text_y = 144,
 }
 
--- ROM 0xFBA6 resets the overlay phase. e6 has the A edge at 8940 and first
--- shows cursor RAM DA/DB=5/1 at 8952 [C emulator]. This ten-heartbeat hold
--- models the CPU-bound entry interval [H], not a ROM wait, and aligns the
--- measured phases at e6 9060/9265/9400 with port 9253/9458/9593 [C emulator].
+-- ROM FBA6 clears the overlay phase; FDFE advances it every seven field
+-- frames and wraps after four frames [C]. e6 shows phase 0 at 9060 and phase
+-- 1 at 9265/9400 [C]. The ten-heartbeat entry hold is an [H] timing estimate
+-- that maps Lua to those samples. The paired port captures show phase 3 at
+-- 9458/9593 [H], so their phase mismatch remains unresolved.
 local CURSOR_STARTUP_HEARTBEATS = 10
 
 local function active_record(ctx)

@@ -40332,9 +40332,27 @@ int main(int argc, char** argv) {
                 const auto selected_spell_icon = direct_asset(
                     "menu/field/magic-spell-icon-" +
                     std::to_string(moved_spell->spell_code) + ".bmp");
-                const auto selected_spell_icon_matches =
-                    visible_asset_pixels_match(
-                        moved_scene, selected_spell_icon, 80, 24);
+                QImage expected_title_cell(
+                    24, 24, QImage::Format_ARGB32_Premultiplied);
+                expected_title_cell.fill(Qt::black);
+                QPainter expected_title_painter(&expected_title_cell);
+                const auto panel_background = direct_asset(
+                    "menu/field/magic-panel-background.bmp");
+                expected_title_painter.drawImage(-80, -24,
+                                                 panel_background);
+                expected_title_painter.save();
+                expected_title_painter.setClipRect(QRect(0, 0, 24, 16));
+                expected_title_painter.drawImage(0, 0,
+                                                 selected_spell_icon);
+                expected_title_painter.restore();
+                expected_title_painter.end();
+                // ROM 0x11190 transfers six D4EA0 tile words into C194:
+                // three columns by two rows. The extra asset row must not
+                // spill into the title cell [C].
+                const auto selected_spell_icon_matches = region_matches(
+                    moved_scene,
+                    expected_title_cell.convertToFormat(QImage::Format_RGB32),
+                    80, 24);
                 if (moved_scene == spell_panel_scene ||
                     moved_spell->spell_code != 10U ||
                     !unselected_spell_icons_match ||
@@ -40908,7 +40926,10 @@ int main(int argc, char** argv) {
                         const auto icon = direct_asset(
                             "menu/field/magic-spell-icon-" +
                             std::to_string(entry.spell_code) + ".bmp");
-                        if (!visible_asset_pixels_match(scene, icon, 80, 24)) {
+                        // ROM 0x11190 writes a 3x2-tile (24x16) title glyph
+                        // into C194; the presenter clips to those rows [C].
+                        if (!visible_asset_pixels_match(
+                                scene, icon.copy(0, 0, 24, 16), 80, 24)) {
                             std::cerr << "field Magic spell dump: selected "
                                          "icon did not match spell "
                                       << static_cast<int>(entry.spell_code)
