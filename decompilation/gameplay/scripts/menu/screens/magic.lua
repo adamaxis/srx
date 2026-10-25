@@ -25,11 +25,16 @@ local LAYOUT = {
 }
 
 -- ROM FBA6 clears the overlay phase; FDFE advances it every seven field
--- frames and wraps after four frames [C]. e6 shows phase 0 at 9060 and phase
--- 1 at 9265/9400 [C]. The ten-heartbeat entry hold is an [H] timing estimate
--- that maps Lua to those samples. The paired port captures show phase 3 at
--- 9458/9593 [H], so their phase mismatch remains unresolved.
-local CURSOR_STARTUP_HEARTBEATS = 10
+-- frames and wraps after four frames [C]. e6 RAM F0DA/F0DB (timer/phase)
+-- reads 0/0 through the 12 black build frames, then 5/1 on the first lit
+-- frame 8952 and ticks to 6/2 at 8958 [C emulator]. The host holds menu
+-- heartbeats while the display is blanked, so entry leaves 5/1 and the first
+-- heartbeat (8953) continues from there. e6 also shows one free-running
+-- seven-frame clock across spell select <-> Set Force & Posture (B 9060,
+-- A 9260, B 9380): ticks stay on 9043 + 7k [C emulator], so the child
+-- screens inherit and hand back the timer and phase.
+local CURSOR_ENTRY_TIMER, CURSOR_ENTRY_PHASE = 5, 1
+local CURSOR_STARTUP_HEARTBEATS = 0
 
 local function active_record(ctx)
     return ctx.game.party()[ctx.game.active_slot()]
@@ -159,8 +164,8 @@ function M.enter(st, ctx)
         return { transition = T.POP }
     end
     st.last_entry = st.table.entry_count - 1
-    st.cursor_timer = 0
-    st.cursor_phase = 0
+    st.cursor_timer = CURSOR_ENTRY_TIMER
+    st.cursor_phase = CURSOR_ENTRY_PHASE
     st.cursor_startup_heartbeats = CURSOR_STARTUP_HEARTBEATS
     ctx.host.blank(E.DisplayBlank.OFF)
     ctx.redraw(R.FULL)
@@ -218,6 +223,8 @@ function M.input(st, events, ctx)
                 row = st.sel.row,
                 column = st.sel.column,
                 table_entry_index = index,
+                cursor_timer = st.cursor_timer,
+                cursor_phase = st.cursor_phase,
             },
         }
     end
@@ -229,6 +236,9 @@ end
 
 function M.child_returned(st, child, result, ctx)
     if child ~= E.MenuScreen.MAGIC_FORCE then return end
+    st.cursor_timer = result.cursor_timer or st.cursor_timer
+    st.cursor_phase = result.cursor_phase or st.cursor_phase
+    st.cursor_startup_heartbeats = 0
     local party = ctx.game.party()
     local record = party[ctx.game.active_slot()]
     record.weapon_slot = -1
@@ -250,8 +260,8 @@ function Force.new(args)
         row = args.row,
         column = args.column,
         table_entry_index = args.table_entry_index,
-        cursor_timer = 0,
-        cursor_phase = 0,
+        cursor_timer = args.cursor_timer or 0,
+        cursor_phase = args.cursor_phase or 0,
     }
 end
 
@@ -287,7 +297,8 @@ function Force.input(st, events, ctx)
     end
 
     if events & (P.A | P.B | P.C) ~= 0 then
-        return { transition = T.POP, result = { force = st.force } }
+        return { transition = T.POP, result = { force = st.force,
+                 cursor_timer = st.cursor_timer, cursor_phase = st.cursor_phase } }
     end
     if events & P.DOWN ~= 0 then
         Posture.adjust(ctx, 0)
@@ -301,6 +312,8 @@ function Force.input(st, events, ctx)
                 row = st.row,
                 column = st.column,
                 table_entry_index = st.table_entry_index,
+                cursor_timer = st.cursor_timer,
+                cursor_phase = st.cursor_phase,
             },
         }
     end
@@ -308,8 +321,11 @@ function Force.input(st, events, ctx)
 end
 
 function Force.child_returned(st, child, result, ctx)
+    st.cursor_timer = result.cursor_timer or st.cursor_timer
+    st.cursor_phase = result.cursor_phase or st.cursor_phase
     if child == E.MenuScreen.MAGIC_POSTURE and result.finish then
-        return { transition = T.POP, result = { force = st.force } }
+        return { transition = T.POP, result = { force = st.force,
+                 cursor_timer = st.cursor_timer, cursor_phase = st.cursor_phase } }
     end
 end
 
@@ -324,8 +340,8 @@ function MagicPosture.new(args)
         row = args.row,
         column = args.column,
         table_entry_index = args.table_entry_index,
-        cursor_timer = 0,
-        cursor_phase = 0,
+        cursor_timer = args.cursor_timer or 0,
+        cursor_phase = args.cursor_phase or 0,
     }
 end
 
@@ -341,7 +357,8 @@ function MagicPosture.input(st, events, ctx)
         -- 0x10722 returns on Up before reading action buttons. Its 0xFF5A
         -- caller then checks the still-latched A/C/B edges, so Up+A/B/C
         -- completes the action while Up alone returns to force selection.
-        return { transition = T.POP, result = { finish = finish } }
+        return { transition = T.POP, result = { finish = finish,
+                 cursor_timer = st.cursor_timer, cursor_phase = st.cursor_phase } }
     end
     if events & P.RIGHT ~= 0 then
         Posture.adjust(ctx, 1)
@@ -357,7 +374,8 @@ function MagicPosture.input(st, events, ctx)
     end
     if finish then
         Posture.adjust(ctx, 0)
-        return { transition = T.POP, result = { finish = true } }
+        return { transition = T.POP, result = { finish = true,
+                 cursor_timer = st.cursor_timer, cursor_phase = st.cursor_phase } }
     end
     force_view(st, ctx)
 end

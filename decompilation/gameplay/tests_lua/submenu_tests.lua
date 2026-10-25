@@ -199,18 +199,45 @@ check(st(r_cursor).sel.column == 1 and st(r_cursor).sel.row == 1 and
       st(r_cursor).magic_view.cursor_offset_y == 24,
       "FDFE cursor row offset uses 24-pixel stride [C]")
 
--- e6 opens Magic with A at 8940. RAM first shows DA/DB=5/1 at 8952,
--- then 2/0 at 9060, 0/1 at 9265, and 5/1 at 9400; matching port frames
--- are 9253/9458/9593 [C]. The ten-heartbeat entry hold approximates the
--- setup interval before the first FDFE phase update [H].
+-- e6 opens Magic with A at 8940; F0DA/F0DB = 5/1 on the first lit frame
+-- 8952, then phase 0 at 9060, 1 at 9265 and 1 at 9400 [C]. The live host
+-- skips menu heartbeats during the 12 blank frames, so heartbeat n after A
+-- is e6 frame 8952 + n.
 local r_phase = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
 page(r_phase, E.MenuPage.MAGIC); r_phase:frame(P.A)
-for _ = 1, 120 do r_phase:frame(0) end
+check(st(r_phase).magic_view.cursor_phase == 1 and st(r_phase).cursor_timer == 5,
+      "Magic entry leaves FDFE timer/phase 5/1 (e6 8952) [C]")
+local function run_to(r, from, to) for _ = from + 1, to do r:frame(0) end end
+run_to(r_phase, 8952, 8958)
+check(st(r_phase).magic_view.cursor_phase == 2 and st(r_phase).cursor_timer == 6, "Magic first tick at e6 8958 [C]")
+run_to(r_phase, 8958, 9060)
 check(st(r_phase).magic_view.cursor_phase == 0, "Magic cursor phase at e6 9060 [C]")
-for _ = 121, 325 do r_phase:frame(0) end
+run_to(r_phase, 9060, 9265)
 check(st(r_phase).magic_view.cursor_phase == 1, "Magic cursor phase at e6 9265 [C]")
-for _ = 326, 460 do r_phase:frame(0) end
+run_to(r_phase, 9265, 9400)
 check(st(r_phase).magic_view.cursor_phase == 1, "Magic cursor phase at e6 9400 [C]")
+
+-- e6 B 9060 -> Set Force & Posture, A 9260 -> back: FDFE ticks stay on
+-- 9043 + 7k across both transitions, so the clock never resets [C emulator].
+local function phase_trace(with_force)
+    local r = mk({ leader = { archetype = 0, magic = 3, weapon_slot = -1, weapon_code = 0 }, spells = spells })
+    page(r, E.MenuPage.MAGIC); r:frame(P.A)
+    local trace = {}
+    for f = 1, 460 do
+        local key = 0
+        if with_force and f == 120 then key = P.B end
+        if with_force and f == 320 then key = P.A end
+        r:frame(key)
+        if f > 320 and top(r) == S.MAGIC then trace[#trace + 1] = st(r).magic_view.cursor_phase end
+    end
+    return trace, top(r)
+end
+local plain = phase_trace(false)
+local pushed, last_top = phase_trace(true)
+check(last_top == S.MAGIC and #pushed == #plain, "Force round trip returns to spell select")
+local same = true
+for i = 1, #plain do if plain[i] ~= pushed[i] then same = false end end
+check(same, "Magic cursor clock persists across Set Force & Posture [C e6]")
 
 end)
 -- ---- pocket secretary --------------------------------------------------------------------------------------
