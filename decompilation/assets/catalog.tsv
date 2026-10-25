@@ -1346,6 +1346,10 @@ menu/field/magic-cursor-frame-0.bmp	sprite	0	0	320	224	0xFDFE/0xC8B3E/0x1378[0]	
 menu/field/magic-cursor-frame-1.bmp	sprite	0	0	320	224	0xFDFE/0xC8B3E/0x1378[1]	extracted
 menu/field/magic-cursor-frame-2.bmp	sprite	0	0	320	224	0xFDFE/0xC8B3E/0x1378[2]	extracted
 menu/field/magic-cursor-frame-3.bmp	sprite	0	0	320	224	0xFDFE/0xC8B3E/0x1378[3]	extracted
+menu/field/magic-header-frame-0.bmp	sprite	0	0	320	224	0xFDAE/0xC8AEE/0x1232[0]	extracted
+menu/field/magic-header-frame-1.bmp	sprite	0	0	320	224	0xFDAE/0xC8AEE/0x1232[1]	extracted
+menu/field/magic-header-frame-2.bmp	sprite	0	0	320	224	0xFDAE/0xC8AEE/0x1232[2]	extracted
+menu/field/magic-header-frame-3.bmp	sprite	0	0	320	224	0xFDAE/0xC8AEE/0x1232[3]	extracted
 menu/field/magic-posture-bar-0.bmp	sprite	0	0	64	8	0x107CE/0xC8600[0]	extracted
 menu/field/magic-posture-bar-1.bmp	sprite	0	0	64	8	0x107CE/0xC8600[1]	extracted
 menu/field/magic-posture-bar-2.bmp	sprite	0	0	64	8	0x107CE/0xC8600[2]	extracted

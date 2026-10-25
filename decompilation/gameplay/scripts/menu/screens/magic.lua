@@ -45,11 +45,18 @@ local function next_cursor(st)
         st.cursor_startup_heartbeats = st.cursor_startup_heartbeats - 1
         return
     end
+    -- 0xFDFE only queues the SAT upload, so the slot ring shows the phase
+    -- from before this tick for one frame [C e6 8958/8959].
+    st.cursor_sat_phase = st.cursor_phase
     if st.cursor_timer == 0 then
         st.cursor_timer = 6
         st.cursor_phase = (st.cursor_phase + 1) % 4
     else
         st.cursor_timer = st.cursor_timer - 1
+    end
+    if st.magic_view then
+        st.magic_view.cursor_phase = st.cursor_phase
+        st.magic_view.cursor_sat_phase = st.cursor_sat_phase
     end
 end
 
@@ -75,6 +82,7 @@ local function publish_layout(values, st, table_)
         values.spell_codes[index] = table_.entries[index].code
     end
     values.cursor_phase = st.cursor_phase
+    values.cursor_sat_phase = st.cursor_sat_phase or st.cursor_phase
 end
 
 local function publish_view(st, ctx, entry, force)
@@ -166,6 +174,7 @@ function M.enter(st, ctx)
     st.last_entry = st.table.entry_count - 1
     st.cursor_timer = CURSOR_ENTRY_TIMER
     st.cursor_phase = CURSOR_ENTRY_PHASE
+    st.cursor_sat_phase = CURSOR_ENTRY_PHASE
     st.cursor_startup_heartbeats = CURSOR_STARTUP_HEARTBEATS
     ctx.host.blank(E.DisplayBlank.OFF)
     ctx.redraw(R.FULL)

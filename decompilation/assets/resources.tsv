@@ -1703,6 +1703,10 @@ menu.field.magic.cursor.frame.0	menu/field/magic-cursor-frame-0.bmp	image	0	0
 menu.field.magic.cursor.frame.1	menu/field/magic-cursor-frame-1.bmp	image	0	0
 menu.field.magic.cursor.frame.2	menu/field/magic-cursor-frame-2.bmp	image	0	0
 menu.field.magic.cursor.frame.3	menu/field/magic-cursor-frame-3.bmp	image	0	0
+menu.field.magic.header.frame.0	menu/field/magic-header-frame-0.bmp	image	0	0
+menu.field.magic.header.frame.1	menu/field/magic-header-frame-1.bmp	image	0	0
+menu.field.magic.header.frame.2	menu/field/magic-header-frame-2.bmp	image	0	0
+menu.field.magic.header.frame.3	menu/field/magic-header-frame-3.bmp	image	0	0
 menu.field.magic.posture.bar.0	menu/field/magic-posture-bar-0.bmp	image	0	0
 menu.field.magic.posture.bar.1	menu/field/magic-posture-bar-1.bmp	image	0	0
 menu.field.magic.posture.bar.2	menu/field/magic-posture-bar-2.bmp	image	0	0

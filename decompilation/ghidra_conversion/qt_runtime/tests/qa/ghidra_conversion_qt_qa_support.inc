@@ -411,13 +411,15 @@ bool field_command_shell_survives(
 bool field_inventory_selector_survives(const QImage& scene,
                                        const std::uint8_t primary,
                                        const std::uint8_t secondary) {
-    constexpr int kItemXOrigin = 16;
-    constexpr int kItemYOrigin = 120;
+    // Emulator e6 8710/8748/8830: the gold ring is 28x20 at
+    // (14 + col*40, 118 + row*24), two pixels inside the 32x24 sprite [C].
+    constexpr int kItemXOrigin = 14;
+    constexpr int kItemYOrigin = 118;
     constexpr int kCellWidth = 40;
     constexpr int kCellHeight = 24;
-    constexpr int kOutlineWidth = 24;
-    constexpr int kOutlineHeight = 16;
-    const QColor gold(196, 190, 39);
+    constexpr int kOutlineWidth = 28;
+    constexpr int kOutlineHeight = 20;
+    const QColor gold(255, 219, 0);
     const auto x = kItemXOrigin + static_cast<int>(primary) * kCellWidth;
     const auto y = kItemYOrigin + static_cast<int>(secondary) * kCellHeight;
     if (x < 0 || y < 0 || x + kOutlineWidth > scene.width() ||
@@ -425,8 +427,7 @@ bool field_inventory_selector_survives(const QImage& scene,
         return false;
     }
 
-    // The one-pixel gold stroke hugs the 24x16 item image. Reject the previous
-    // wider cursor-footprint rectangle at its upper-left and lower-right.
+    // Reject a wider rectangle at the upper-left and lower-right.
     if (scene.pixelColor(x - 2, y - 2) == gold ||
         scene.pixelColor(x + kOutlineWidth + 1,
                          y + kOutlineHeight + 1) == gold) {

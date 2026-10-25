@@ -121,6 +121,8 @@ using field_scene_detail::attributes_base_text_tint;
 using field_scene_detail::attributes_label_indent;
 using field_scene_detail::kRunnerNameCells;
 using field_scene_detail::kMenuLabelCells;
+using field_scene_detail::kItemNameLeadCells;
+using field_scene_detail::kItemCategoryLeadCells;
 using field_scene_detail::kMetricValueRightEdge;
 using field_scene_detail::centered_text_x;
 using field_scene_detail::right_aligned_text_x;
@@ -5435,6 +5437,12 @@ bool FieldSceneRuntime::load_command_overview_assets(
                         "menu.field.magic.cursor.frame." +
                             std::to_string(phase),
                         command_overview_magic_cursor_frames_[phase])) {
+            return false;
+        }
+        if (!load_image(catalog,
+                        "menu.field.magic.header.frame." +
+                            std::to_string(phase),
+                        command_overview_magic_header_frames_[phase])) {
             return false;
         }
     }
@@ -13294,7 +13302,11 @@ void FieldSceneRuntime::paint_command_overview_posture_panel(
     // 0x11B1A writes the 8x1-cell strip at $CAAC (x=176 y=168); the extracted
     // BMP is its trimmed 57x6 art, which starts 3 px right and 1 px down in
     // that strip [C emulator e1 8640: best fit (179,169)].
-    painter.drawImage(179, 169, command_overview_status_bars_[posture]);
+    // The inventory detail refresh also empties the bar fill for its hold:
+    // e6 8740-8746, 8780-8787, 8820-8826 show only the frame [C emulator].
+    if (!command_overview_inventory_detail_pending_) {
+        painter.drawImage(179, 169, command_overview_status_bars_[posture]);
+    }
     draw_command_overview_text(
         painter,
         centered_text_x(136, kMenuLabelCells,
@@ -13577,6 +13589,11 @@ void FieldSceneRuntime::paint_command_overview_magic(
     // overview shell is therefore absent beneath transparent Magic cells;
     // its separately presented right-hand field HUD is composed afterward.
     painter.drawImage(0, 0, command_overview_magic_panel_background_);
+    // 0xFDAE rewrites the red header frame strips on Plane A every heartbeat
+    // from C8AEE[F0DB]; the plane write shows on the tick frame itself
+    // [C ROM 0xFDAE, emulator e6 8958/8965].
+    painter.drawImage(0, 0, command_overview_magic_header_frames_[
+        magic_cursor_phase() % command_overview_magic_header_frames_.size()]);
     const auto* const lua_view =
         menu_route_active_ && menu_route_magic_view_.has_value()
             ? &*menu_route_magic_view_
@@ -13958,9 +13975,11 @@ void FieldSceneRuntime::paint_command_overview_magic(
                       112, command_overview_magic_force_meter_tiles_[1]);
 
     const auto selection = magic_spell_selection();
-    const auto phase = static_cast<std::size_t>(
-        magic_cursor_phase() %
-        command_overview_magic_cursor_frames_.size());
+    const auto sat_phase = lua_view != nullptr && lua_view->cursor_sat_phase >= 0
+                               ? lua_view->cursor_sat_phase
+                               : static_cast<int>(magic_cursor_phase());
+    const auto phase = static_cast<std::size_t>(sat_phase) %
+                       command_overview_magic_cursor_frames_.size();
     painter.drawImage(
         lua_view != nullptr
             ? lua_view->cursor_offset_x
@@ -15498,9 +15517,12 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                             *command_overview_inventory_ammo_count_)]);
                 }
             } else {
-                draw_command_overview_text(
+                // The Uses label shares the purple 0x4000 line with Ammo:
+                // e6 8830 (Fetish) and e7 (Stim Patch) [C emulator].
+                draw_tinted_field_text(
                     painter, 112, 48,
-                    field_menu_text_.item_detail_labels[*label_index]);
+                    field_menu_text_.item_detail_labels[*label_index],
+                    cram_text_tint(2118U));
                 const auto phase = active_runner_record()
                                        .inventory_phase_bytes[*selected_slot];
                 if (phase < command_overview_detail_values_.size()) {
@@ -15703,21 +15725,15 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                     static_cast<std::size_t>(item_code - 1U)].definition;
                 const auto& selected_text = field_menu_text_.items[
                     static_cast<std::size_t>(item_code - 1U)];
-                // ROM 0x12A8C writes the selected D4540 row at C420, and
-                // 0x111E8 uses that same twelve-cell field for equipped-item
-                // text. Armor Clothing's D4D80 row pads "Armor" and
-                // "Clothing" into that field; script text is trimmed, so
-                // restore its per-line centering here. The emulator's e4
-                // 8800 pixels begin at x=153 and x=145. Keep weapon text at
-                // its existing origin.
-                const auto armor_name_x = selected_item.armor.has_value()
-                    ? centered_text_x(128, kMenuLabelCells,
-                                      selected_text.name)
-                    : 128;
-                const auto armor_category_x = selected_item.armor.has_value()
-                    ? centered_text_x(128, kMenuLabelCells,
-                                      selected_text.category)
-                    : 128;
+                // ROM 0x12A8C writes the selected D4540 row at C420 with its
+                // ROM padding (e4 8800 Armor at x=153/145, e6 8701
+                // "Model 101T" at x=136) [C emulator].
+                const auto lead_index = static_cast<std::size_t>(
+                    std::clamp<int>(item_code - 1, 0, 49));
+                const auto armor_name_x =
+                    128 + kItemNameLeadCells[lead_index] * 8;
+                const auto armor_category_x =
+                    128 + kItemCategoryLeadCells[lead_index] * 8;
                 draw_command_overview_text(
                     painter, armor_name_x, 64, selected_text.name);
                 draw_command_overview_text(
@@ -15829,18 +15845,20 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         !command_overview_inventory_selector_suppressed_) {
         // ROM 0x11592 builds the cursor SAT entry from the 0xD29F6 list:
         // x = FFF0D0*0x28 + 0x008C, y = FFF0D1*0x18 + 0x00F4. The Genesis
-        // SAT origin adds 0x80 on both axes. The 24x16 item graphic starts
-        // four pixels inside that 32x24 sprite footprint. Section 06 frames
-        // 2580, 2610, and 2640 show a one-pixel warm-gold outline hugging the
-        // item graphic; outlining the larger SAT footprint leaves the broad
-        // rectangular margin that is absent from those captures.
-        const auto x = 16 + static_cast<int>(
+        // SAT origin adds 0x80 on both axes, so the 32x24 sprite sits at
+        // (12 + col*40, 116 + row*24). Emulator e6 8710/8748/8830 shows its
+        // gold one-pixel ring 2 px inside that footprint: 28x20 at
+        // (14 + col*40, 118 + row*24), over the equipment border's outer
+        // ring [C emulator; supersedes the longplay estimate].
+        const auto x = 14 + static_cast<int>(
                                view.source_state.primary_page * 40U);
-        const auto y = 120 + static_cast<int>(
+        const auto y = 118 + static_cast<int>(
                                 view.source_state.secondary_page * 24U);
-        constexpr int kOutlineWidth = 24;
-        constexpr int kOutlineHeight = 16;
-        const QColor selector_color(196, 190, 39);
+        constexpr int kOutlineWidth = 28;
+        constexpr int kOutlineHeight = 20;
+        // Emulator e6 8701/8748 ring pixels are 238,206,0 = Genesis levels
+        // R7 G6 B0 [C emulator].
+        const QColor selector_color(255, 219, 0);
         painter.fillRect(x, y, kOutlineWidth, 1, selector_color);
         painter.fillRect(x, y + kOutlineHeight - 1,
                          kOutlineWidth, 1, selector_color);

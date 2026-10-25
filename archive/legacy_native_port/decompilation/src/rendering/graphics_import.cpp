@@ -8524,6 +8524,54 @@ std::array<RgbaImage, 4> decode_genesis_field_magic_cursor_frames(
     return result;
 }
 
+std::array<RgbaImage, 4> decode_genesis_field_magic_header_frames(
+    const std::vector<std::uint8_t>& rom) {
+    // 0xFDAE (called every Magic heartbeat from 0xFDFE) indexes C8AEE by
+    // the F0DB phase, then sends four source pointers through 0x1232 with
+    // d2=0: two 5x1 strips at VRAM C112/C292 and two 1x2 strips at
+    // C192/C19A. Plane A is at C000 with 64 cells per row, so these are
+    // cells (9,2), (9,5), (9,3) and (13,3) [C ROM 0xFDAE/0x1232].
+    constexpr std::size_t kHeaderFrameTable = 0xC8AEEU;
+    struct Strip { std::size_t columns, rows, cell_x, cell_y; };
+    constexpr std::array<Strip, 4> kStrips{{
+        {5U, 1U, 9U, 2U}, {5U, 1U, 9U, 5U}, {1U, 2U, 9U, 3U},
+        {1U, 2U, 13U, 3U}}};
+    const auto scene = decode_genesis_field_magic_graphics(rom);
+    std::array<RgbaImage, 4> result{};
+    for (std::size_t phase = 0; phase < result.size(); ++phase) {
+        const auto list = static_cast<std::size_t>(read_rom_u32(
+            rom, kHeaderFrameTable + phase * 4U,
+            "Genesis Magic header frame pointer is truncated"));
+        auto& image = result[phase];
+        image = make_transparent_title_layer();
+        for (std::size_t strip = 0; strip < kStrips.size(); ++strip) {
+            auto source = static_cast<std::size_t>(read_rom_u32(
+                rom, list + strip * 4U,
+                "Genesis Magic header frame strip is truncated"));
+            const auto& layout = kStrips[strip];
+            for (std::size_t row = 0; row < layout.rows; ++row) {
+                for (std::size_t column = 0; column < layout.columns;
+                     ++column) {
+                    const auto word = read_rom_u16(
+                        rom, source,
+                        "Genesis Magic header frame word is truncated");
+                    source += 2U;
+                    blit_genesis_tile(
+                        image, scene,
+                        static_cast<std::size_t>(word & 0x07FFU),
+                        static_cast<std::size_t>((word >> 13U) & 0x03U),
+                        (word & 0x0800U) != 0U, (word & 0x1000U) != 0U,
+                        static_cast<std::int32_t>(
+                            (layout.cell_x + column) * 8U),
+                        static_cast<std::int32_t>(
+                            (layout.cell_y + row) * 8U), true);
+                }
+            }
+        }
+    }
+    return result;
+}
+
 std::array<RgbaImage, 5> decode_genesis_field_magic_posture_bars(
     const std::vector<std::uint8_t>& rom) {
     constexpr std::size_t kPostureTable = 0xC8600U;

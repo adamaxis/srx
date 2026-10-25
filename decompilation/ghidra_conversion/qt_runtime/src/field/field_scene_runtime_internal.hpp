@@ -171,6 +171,13 @@ int attributes_label_indent(const std::size_t label_index) {
 // "Physical   0%" (0xD198C) right-aligns the value to cell 13 [C]. The
 // text catalog stores trimmed strings, so the presenter re-applies it.
 constexpr int kRunnerNameCells = 13;
+// Leading pad cells of each D4540 item record (stride 0x30, item codes
+// 1..50): name then category. The ROM padding is not a uniform centring
+// rule ("   Special  ", " Spell Focus"), so it is kept per record [C ROM].
+// Code 44 keeps " Armor Vest " in its second field; the catalog moves it to
+// the name, so its name lead is that field's single pad cell.
+constexpr std::array<std::uint8_t, 50> kItemNameLeadCells{{1,1,0,0,2,1,2,3,3,2,1,0,4,3,1,3,4,3,3,2,1,4,1,4,1,1,2,0,4,4,0,2,1,1,2,1,2,3,1,0,5,4,4,1,3,3,4,3,3,3}};
+constexpr std::array<std::uint8_t, 50> kItemCategoryLeadCells{{3,0,0,0,0,0,0,4,5,4,2,2,3,3,3,0,4,4,0,2,4,3,2,4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,4,4,4,1,2,3,2,3,0,0}};
 constexpr int kMenuLabelCells = 12;
 constexpr int kMetricValueRightEdge = 128 + 13 * 8;
 

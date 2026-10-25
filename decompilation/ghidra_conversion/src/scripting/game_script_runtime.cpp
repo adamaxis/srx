@@ -2978,6 +2978,9 @@ struct GameScriptRuntime::Impl {
                         read_optional(view_index, "posture").value_or(0);
                     view.cursor_phase =
                         read_optional(view_index, "cursor_phase").value_or(0);
+                    view.cursor_sat_phase =
+                        read_optional(view_index, "cursor_sat_phase")
+                            .value_or(-1);
                     menu_route_state.magic_view = view;
                 }
                 lua_pop(state, 1);
