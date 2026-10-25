@@ -329,7 +329,9 @@ end
 
 local function stop_route(state)
     -- 0x1460E clears the current walk continuation when the selected point
-    -- is within the source arrival metric [C].
+    -- is within the source arrival metric [C]. The route is cleared here
+    -- unconditionally because set_idle returns early while a busy animation
+    -- (selector > ANIM_BUSY) is playing; set_idle then only swaps the pose.
     state.movement_active = false
     state.movement_heading = nil
     state.movement_route_distance = nil

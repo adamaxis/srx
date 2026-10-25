@@ -46,4 +46,16 @@ assert(Delay.player_weapon_action_delay(0, 0, 0, E.ItemId.ROOMSWEEPER,
 assert(Delay.player_weapon_action_delay(0, 0, 0, E.ItemId.STREETLINE_SPECIAL,
        use.RELOAD_ACTION) == E.ActionDelay.BASE)
 
+-- 0x14226 selects D0=2 only for codes 5, 11, 12; the weapon rows are the
+-- single source, so check that exactly those rows carry the double scale. [C]
+local Weapons = require("data.weapons")
+local reload_double = { [E.ItemId.WARHAWK] = true, [E.ItemId.ALLEGIANCE] = true,
+                        [E.ItemId.ROOMSWEEPER] = true }
+for _, code in pairs(E.ItemId) do
+    local weapon = Weapons.get(code)
+    if weapon ~= nil then
+        assert((weapon.reload_delay_scale == "double") == (reload_double[code] == true))
+    end
+end
+
 print("shared actor/player delay calculations: ok")

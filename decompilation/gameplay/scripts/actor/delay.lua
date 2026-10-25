@@ -82,22 +82,10 @@ local function weapon_mode(weapon_code, use)
     end
 
     if use == Use.RELOAD_ACTION then
-        local reload_mode = weapon_scale_modes[weapon.reload_delay_scale]
-        if reload_mode == nil then
-            return nil
-        end
-
         -- ROM 0x14226 decrements +0x57 first and selects D0=2 only for
-        -- equipped codes 5, 11, and 12; the weapon rows carry that same scale. [C]
-        local source_mode =
-            (weapon_code == E.ItemId.WARHAWK or
-             weapon_code == E.ItemId.ALLEGIANCE or
-             weapon_code == E.ItemId.ROOMSWEEPER) and
-                Mode.DOUBLE or Mode.NORMAL
-        if reload_mode ~= source_mode then
-            return nil
-        end
-        return source_mode
+        -- equipped codes 5, 11, and 12; data/weapons.lua carries that per-row
+        -- reload_delay_scale and is the single source (delay_tests checks it). [C]
+        return weapon_scale_modes[weapon.reload_delay_scale]
     end
 
     if use == Use.SHARED_ACTION then
