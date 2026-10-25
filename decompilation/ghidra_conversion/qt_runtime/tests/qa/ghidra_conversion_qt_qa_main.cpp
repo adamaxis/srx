@@ -810,6 +810,16 @@ int run_field_party_wipe_qa(
     field_scene.set_source_random_seed_for_dump(0x4000U);
     field_scene.set_field_world_frame_counter_for_dump(0x0200U);
 
+    // ROM 0x391A cycles after 0xC716 [C]. Seed both hired records and start on
+    // slot 2 so the wipe dismisses them and the source walk returns to Joshua.
+    RunnerRecordFields first_hire{};
+    first_hire.record_type = 1U;
+    RunnerRecordFields second_hire{};
+    second_hire.record_type = 2U;
+    field_scene.install_party_member_for_dump(1U, first_hire, "Runner 1");
+    field_scene.install_party_member_for_dump(2U, second_hire, "Runner 2");
+    field_scene.set_active_party_slot_for_dump(2U);
+
     const auto exercise_wipe = [&field_scene, &output](
                                    const bool motel_bill_paid,
                                    const std::uint16_t expected_scene,
@@ -819,6 +829,11 @@ int run_field_party_wipe_qa(
         if (!field_scene.set_story_flag_for_dump(0U, motel_bill_paid)) {
             return false;
         }
+        if (!field_scene.seed_current_run_for_dump(
+                static_cast<std::uint8_t>(srx::RunType::BODYGUARD_ESCORT))) {
+            return false;
+        }
+        field_scene.set_world_effect_player_spawn_pending_for_dump(true);
         field_scene.arm_party_wipe_countdown_for_dump();
         for (std::uint8_t frame = 0U; frame < 0x3CU; ++frame) {
             field_scene.set_controller_port_byte(0U);
@@ -840,12 +855,26 @@ int run_field_party_wipe_qa(
             field_scene.advance_frame();
         }
         const auto arrival = field_scene.field_entity_world_position();
+        const auto active_slot = field_scene.field_active_party_slot_for_dump();
+        const auto& leader = field_scene.field_party_records_for_dump()[0U];
+        const auto leader_flags = static_cast<std::uint8_t>(leader.flags >> 8U);
+        const auto leader_hud = field_scene.field_hud_slot_state_for_dump(0U);
+        const auto& fade_marker =
+            field_scene.field_effect_fade_marker_for_dump();
+        const bool runner_refresh_ok = active_slot == 0U &&
+            (leader_flags & static_cast<std::uint8_t>(srx::RunnerStatus::ACTIVE)) != 0U &&
+            (leader_flags & (static_cast<std::uint8_t>(srx::RunnerStatus::DOWN) |
+                             static_cast<std::uint8_t>(srx::RunnerStatus::DEAD))) == 0U &&
+            leader_hud.primary_runner && leader_hud.flags_byte == leader_flags &&
+            fade_marker.marker == -1 && fade_marker.countdown == 3U &&
+            !field_scene.world_effect_player_spawn_pending_for_dump();
         const auto image = render_qa_field(field_scene);
         return !field_scene.dialogue_open() &&
                field_scene.elevator_scene_transition_phase_for_dump() ==
                    ElevatorSceneTransitionPhase::idle &&
                field_scene.field_scene_reference_for_dump() == expected_scene &&
                arrival.x == expected_x && arrival.y == expected_y &&
+               runner_refresh_ok &&
                save_qa_image(output, image_name, image);
     };
 
