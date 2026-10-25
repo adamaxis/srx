@@ -705,6 +705,11 @@ bool FieldSceneRuntime::dispatch_field_interaction_through_coordinator_for_dump(
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+void FieldSceneRuntime::seed_field_door_contact_for_dump(
+    const std::array<std::uint8_t, 3> probe_codes) {
+    record_field_door_contact(probe_codes);
+}
+
 bool FieldSceneRuntime::initialize_world_activity_for_dump(
     const std::uint8_t mode_event_code,
     const std::uint16_t random_seed) {
@@ -739,13 +744,12 @@ bool FieldSceneRuntime::initialize_world_activity_for_dump(
             event_metadata.event_mode_table});
     if (!event_route.has_value() ||
         event_route->kind != FieldScriptRouteKind::area_event ||
-        event_route->area_event_destination_mode !=
-            WorldActivityMode::resource_activity ||
+        !event_route->area_event_destination_mode.has_value() ||
         !event_route->area_event_target.has_value()) {
         if (event_route.has_value()) {
             failure_ =
-                "injected world-activity event did not resolve to a "
-                "resource area (scene=" +
+                "injected world-activity event did not resolve to an "
+                "area destination (scene=" +
                 std::to_string(field_runtime_state_.scene_id) + ", mode=" +
                 std::to_string(field_runtime_state_.field_mode) +
                 ", event=" + std::to_string(mode_event_code) +
@@ -763,13 +767,20 @@ bool FieldSceneRuntime::initialize_world_activity_for_dump(
         return false;
     }
     active_field_script_route_ = *event_route;
+    pending_field_return_anchor_ = event_route->return_anchor;
+    pending_field_return_facing_ = event_route->return_facing;
 
     field_runtime_callbacks_.initialize_world_activity_mode(
         field_runtime_state_);
+    const bool is_resource_activity =
+        *event_route->area_event_destination_mode ==
+        WorldActivityMode::resource_activity;
     if (field_runtime_state_.field_transition_requested ||
         world_activity_routine_state_.mode !=
-            WorldActivityMode::resource_activity ||
-        !field_security_floor_index_.has_value()) {
+            *event_route->area_event_destination_mode ||
+        world_activity_routine_state_.scene_id !=
+            *event_route->area_event_target ||
+        (is_resource_activity && !field_security_floor_index_.has_value())) {
         return false;
     }
 
@@ -780,8 +791,10 @@ bool FieldSceneRuntime::initialize_world_activity_for_dump(
     advance_field_scene_transition_after_modal();
     return state_.field_scene_buffers.scene_reference ==
                world_activity_routine_state_.scene_id &&
-           field_security_floor_index_.value() <
-               world_activity_routine_state_.resource_random_index_bound;
+           (!is_resource_activity ||
+            (field_security_floor_index_.has_value() &&
+             *field_security_floor_index_ <
+                 world_activity_routine_state_.resource_random_index_bound));
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 

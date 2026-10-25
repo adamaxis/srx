@@ -660,9 +660,9 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_boris_greenhouse_s
                  --field-boris-greenhouse-strike-team-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-boris-greenhouse-strike-team-qa")
 
-# Enter each Scene 14 south-edge event-0 rectangle independently with ordinary
-# Down input. Its null event-table pointer selects field Scene 0 through the
-# ROM's generic handler.
+# Resolve Scene-1 record 73 through Lua, then reach each Scene-14 south-edge
+# event-0 rectangle independently with ordinary Down input. The null-table
+# route restores the saved Scene-1 doorway anchor and outward heading.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_wanderer_south_exit_record_7_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-wanderer-south-exit-record-7-qa

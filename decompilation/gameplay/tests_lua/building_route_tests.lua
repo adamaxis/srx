@@ -2,6 +2,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
 local Building = require("building")
+local E = require("enums")
 
 local base_link = {
     source_scene = 1,
@@ -567,18 +568,13 @@ assert(motel_paid.kind == "area_event" and
        motel_paid.area_event_target == 26 and
        motel_paid.entry_dialogue_module == nil)
 
--- The Wanderer map's south-edge exit uses the ROM's null event-table
--- fallback. Lua resolves the source-audited route without reproducing its
--- null-pointer address calculation at runtime.
+-- Shared field-scene south exits return through the source snapshot when the
+-- event-0 table pointer is null; they do not select static field scene 0.
 local wanderer_exit_link = {
-    source_scene = 14,
+    source_scene = E.Scene.WANDERER,
     source_event = "event_0",
-    route_kind = "area_event_override",
-    script = "area_event_table",
-    destination_scene = 0,
-    destination_mode = "field",
-    source_table_destination = 0,
-    source_route_policy = "suppress_source_route",
+    route_kind = "source_activity_return",
+    script = "source_activity_return",
     route_priority = 0,
 }
 game.modules.world_content_data.entities.source_test.links = {
@@ -596,11 +592,45 @@ local wanderer_exit = Building.resolve_field_location_route({
     event_table = {},
     alternate_result = 0,
 })
-assert(wanderer_exit.kind == "area_event" and
-       wanderer_exit.script == "area_event_table" and
-       wanderer_exit.area_event_target == 0 and
-       wanderer_exit.area_event_destination_mode == "field" and
-       wanderer_exit.entry_dialogue_module == nil and
-       wanderer_exit.return_anchor == nil)
+assert(wanderer_exit.kind == "source_activity_return" and
+       wanderer_exit.script == "source_activity_return" and
+       wanderer_exit.area_event_target == nil)
+
+game.modules.world_content_data.entities.source_test.links = {
+    {
+        source_scene = E.Scene.JUMP_HOUSE,
+        source_event = "event_0",
+        route_kind = "source_activity_return",
+        script = "source_activity_return",
+        route_priority = 0,
+    },
+}
+game.modules.world_content_data.areas[E.Scene.JUMP_HOUSE] = {
+    { entity_id = "source_test" },
+}
+local jump_house_exit = Building.resolve_field_location_route({
+    scene_id = E.Scene.JUMP_HOUSE,
+    building_interaction_mode = false,
+    event_code = "event_0",
+    event_index = 0,
+    event_table_available = false,
+    event_table = {},
+    alternate_result = 0,
+})
+assert(jump_house_exit.kind == "source_activity_return" and
+       jump_house_exit.script == "source_activity_return" and
+       jump_house_exit.area_event_target == nil)
+local jump_house_exit_with_table = Building.resolve_field_location_route({
+    scene_id = E.Scene.JUMP_HOUSE,
+    building_interaction_mode = false,
+    event_code = "event_0",
+    event_index = 0,
+    event_table_available = true,
+    event_table = { 0 },
+    alternate_result = 0,
+})
+assert(jump_house_exit_with_table.kind == "source_boundary" and
+       jump_house_exit_with_table.boundary_reason:match(
+           "source_activity_return_context_mismatch") ~= nil)
 
 print("building route tests passed: conditional variants and entry tasks")

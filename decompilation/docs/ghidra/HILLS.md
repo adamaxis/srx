@@ -577,22 +577,22 @@ regression evidence only. The field entry route verifies ordinary collision,
 modal dismissal, transition, and a clean scene-13 redraw.
 This hill remains partial: Debug/Release QA now walks into scene-13 event 30
 from the clear adjoining lane with ordinary Up input and opens Gunderson's Lua
-menu. Debug/Release ordinary Down QA from Scene 13's ROM profile spawn reaches
-event 0 and completes the null-table fallback into field scene 0. Both builds
-save matching full 320x224 captures and route.tsv. The FFFC27 bit-3 alternate
-Vigore response and follow-up are now covered by the dialogue-runtime CTest
-and matching Debug/Release captures; independent Genesis visuals remain open.
-Work/quest branches, remaining actor population, audio/timing, and independent
-Decker-branch visuals also remain open. The static scene-0 destination does
-not establish a dynamic return map or an exit placement/facing rule. See
+menu. Debug/Release ordinary Down QA now enters the Scene-13 south exit after
+record 85/event 4 and restores Scene 2 at the saved entry probe facing out of
+the door. Both builds save matching full 320x224 captures and route.tsv. The
+FFFC27 bit-3 alternate Vigore response and follow-up are covered by the
+dialogue-runtime CTest and matching Debug/Release captures; independent Genesis
+visuals remain open. Work/quest branches, remaining actor population,
+audio/timing, and independent Decker-branch visuals also remain open. See
 [`Jump House entry and Gunderson audit`](visual-audits/jump-house-entry-and-gunderson.md).
 
-Scene 14's lower event-0 rectangles (records 7 and 8) now have a shared Lua
-location link for the null-table ROM destination, field scene 0. Separate
-Debug/Release ordinary-Down QA cases enter each rectangle and complete the
-transition; each writes full-screen approach, contact, and destination BMPs
-plus route.tsv. This confirms the static scene-0 result, not a reverse route,
-prior-map return, or exit placement/facing rule. Scene-14 event 30 now checks
+Scene 14's lower event-0 rectangles (records 7 and 8) now use the shared Lua
+source-activity return route for the null event table. Each Debug/Release QA
+case resolves Scene-1 record 73's event-0 row through Lua, seeds its saved door
+probe from that collision record, then enters one south exit with ordinary
+Down. It asserts return to Scene 1 at the saved door probe facing outward.
+Each writes full-screen approach, contact, and return BMPs plus route.tsv.
+Scene-14 event 30 now checks
 FFFC1E bit 16 before its normal Johnson root; the set branch clears context 3
 through the Lua run registry and shows the ROM's blank-profile, no-choice
 booth-vacated page. Debug/Release ordinary-Up QA writes matching full-screen

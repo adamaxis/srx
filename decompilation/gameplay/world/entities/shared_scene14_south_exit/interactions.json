@@ -9,16 +9,12 @@
         "eventCode": "event_0"
       },
       "route": {
-        "kind": "area_event_override",
-        "script": "area_event_table",
-        "sourceRoutePolicy": "suppress_source_route",
-        "priority": 0,
-        "destinationScene": 0,
-        "destinationMode": "field",
-        "sourceTableDestination": 0
+        "kind": "source_activity_return",
+        "script": "source_activity_return",
+        "priority": 0
       },
       "provenance": {
-        "evidence": "ROM scene-14 profile 0x1D5B52 has a null event-table pointer at 0x1D5BA0. The generic event-0 handler at 0x167AE reads ROM byte 0 (0x00), selecting field scene 0; records 7/8 are at 0x1D5BFC/0x1D5C06."
+        "evidence": "ROM scene-14 profile 0x1D5B52 has a null event-table pointer at 0x1D5BA0. Event-0 exit records 7/8 at 0x1D5BFC/0x1D5C06 follows the FFDF40 -> 0x00A72 -> 0x1E43C -> 0x2F32 path, restoring the source scene snapshot and saved entry door anchor."
       }
     }
   ]

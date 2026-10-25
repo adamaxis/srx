@@ -5,10 +5,9 @@ route and has ordinary-input QA. Scene-13 event 30 opens the Lua Johnson
 interaction. The baseline question chain, source-gated Vigore/Errascoe
 branches, and Decker contact purchase are connected through the shared Lua
 presenter. Debug and Release ordinary-input QA now covers event 30 and the
-Scene-13 south-edge event-0 route into field scene 0. The work-contract
-transaction and independent contact-screen comparison remain open. Event 0
-does not prove a dynamic return to the prior map or an exit placement/facing
-override.
+Scene-13 south-edge event-0 route now restores Scene 2 at the saved
+entry probe with outward heading. The work-contract transaction and
+independent contact-screen comparison remain open.
 
 ROM values and control flow below are primary. Mike's map supplies a
 human-readable location label; section-03 longplay frames supply independent

@@ -15,6 +15,9 @@
 --   leave an interior scene (FFDF42 -> 0x2F32): scene block restored from
 --     FFDE26, camera = FFDF50/52, party at FFDF44..; heading is NOT written,
 --     the party keeps the heading it walked out of the interior with.
+--   null-table event-0 exits (FFDF40 -> 0x00A72 -> 0x1E43C -> 0x2F32):
+--     restore the saved source field scene, including its entry door anchor;
+--     Scene 13/14 south exits use this path rather than scene 0.
 local E = require("enums")
 local Data = require("data.world_links_data")
 

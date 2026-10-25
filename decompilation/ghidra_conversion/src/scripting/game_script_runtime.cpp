@@ -5455,7 +5455,11 @@ GameScriptRuntime::resolve_field_location_route(
     } else if (kind_name == "source_activity_return" &&
                script_name == "source_activity_return" && no_target &&
                !destination_mode.has_value() &&
-               context.scene_id >= 21U && context.scene_id <= 43U &&
+               ((context.scene_id >= 21U && context.scene_id <= 43U) ||
+                context.scene_id == field_scene_id_value(
+                    FieldSceneId::jump_house) ||
+                context.scene_id == field_scene_id_value(
+                    FieldSceneId::wanderer)) &&
                context.event_code == FieldCollisionEventCode::event_0 &&
                !context.event_table_available) {
         route.kind = FieldScriptRouteKind::source_activity_return;

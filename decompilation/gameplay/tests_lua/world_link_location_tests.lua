@@ -30,6 +30,7 @@ end
 
 local HOSPITAL_ID = "downtown_site_12_seattle_general_hospital"
 local SHARED_EXIT_ID = "shared_scene13_south_exit"
+local WANDERER_EXIT_ID = "shared_scene14_south_exit"
 local hospital_interaction = {
     id = "rom_event_00",
     source = { sceneId = 0, eventCode = "event_0" },
@@ -56,15 +57,20 @@ local hospital_interaction = {
 }
 local shared_exit_interaction = {
     id = "rom_event_0",
-    source = { sceneId = 13, eventCode = "event_0" },
+    source = { sceneId = E.Scene.JUMP_HOUSE, eventCode = "event_0" },
     route = {
-        kind = "area_event_override",
-        script = "area_event_table",
-        sourceRoutePolicy = "suppress_source_route",
+        kind = "source_activity_return",
+        script = "source_activity_return",
         priority = 0,
-        destinationScene = 0,
-        destinationMode = "field",
-        sourceTableDestination = 0,
+    },
+}
+local wanderer_exit_interaction = {
+    id = "rom_event_0",
+    source = { sceneId = E.Scene.WANDERER, eventCode = "event_0" },
+    route = {
+        kind = "source_activity_return",
+        script = "source_activity_return",
+        priority = 0,
     },
 }
 
@@ -91,13 +97,18 @@ game = {
             entities = {
                 [HOSPITAL_ID] = { id = HOSPITAL_ID, links = {} },
                 [SHARED_EXIT_ID] = { id = SHARED_EXIT_ID, links = {} },
+                [WANDERER_EXIT_ID] = { id = WANDERER_EXIT_ID, links = {} },
             },
             areas = {
                 [0] = {
                     { instance_id = "hospital", entity_id = HOSPITAL_ID },
                 },
-                [13] = {
+                [E.Scene.JUMP_HOUSE] = {
                     { instance_id = "shared_exit", entity_id = SHARED_EXIT_ID },
+                },
+                [E.Scene.WANDERER] = {
+                    { instance_id = "wanderer_exit",
+                      entity_id = WANDERER_EXIT_ID },
                 },
             },
         },
@@ -111,6 +122,10 @@ game = {
             [SHARED_EXIT_ID] = {
                 interactions = interaction_document(
                     SHARED_EXIT_ID, shared_exit_interaction),
+            },
+            [WANDERER_EXIT_ID] = {
+                interactions = interaction_document(
+                    WANDERER_EXIT_ID, wanderer_exit_interaction),
             },
         },
         location_conditions = { schemaVersion = 1, conditions = {} },
@@ -169,11 +184,10 @@ check(contains(script_text, '"seattle_general_hospital.entry.default"') and
       contains(script_text, "Dr. Haversheen"),
       "Seattle General's 0x11199C entry page is imported as named text")
 
--- The reported Gunderson exit is the shared Scene-13 south-edge route. Its
--- null table pointer at 0x1B3C54 makes 0x167AE read ROM byte 0, so the existing
--- route to Downtown Scene 0 matches the source and must remain unchanged.
+-- Scene-13 event 0 has a null event table, but the exit follows the saved
+-- source-scene path through FFDF40 -> 0x00A72 -> 0x1E43C -> 0x2F32.
 local gunderson_exit = Building.resolve_field_location_route({
-    scene_id = 13,
+    scene_id = E.Scene.JUMP_HOUSE,
     building_interaction_mode = false,
     event_code = "event_0",
     event_index = 0,
@@ -186,13 +200,35 @@ local gunderson_json = read_file(
     "/interactions.json")
 check(WorldLinks.event_destination(13, 0) == nil and
       D.scenes[13].event_table_address == nil and
-      gunderson_exit.kind == "area_event" and
-      gunderson_exit.area_event_target == 0 and
-      contains(gunderson_json, '"destinationScene": 0') and
-      contains(gunderson_json, '"sourceTableDestination": 0') and
+      gunderson_exit.kind == "source_activity_return" and
+      gunderson_exit.script == "source_activity_return" and
+      gunderson_exit.area_event_target == nil and
+      contains(gunderson_json, '"kind": "source_activity_return"') and
+      contains(gunderson_json, '"script": "source_activity_return"') and
       contains(gunderson_json, "0x1B3C54") and
-      contains(gunderson_json, "0x167AE"),
-      "Scene-13 event 0 remains the ROM's static field-Scene-0 fallback")
+      contains(gunderson_json, "FFDF40 -> 0x00A72 -> 0x1E43C -> 0x2F32"),
+      "Scene-13 event 0 restores its source field snapshot")
+
+local wanderer_exit = Building.resolve_field_location_route({
+    scene_id = E.Scene.WANDERER,
+    building_interaction_mode = false,
+    event_code = "event_0",
+    event_index = 0,
+    event_table_available = false,
+    event_table = {},
+    alternate_result = 0,
+})
+local wanderer_json = read_file(
+    "decompilation/gameplay/world/entities/" .. WANDERER_EXIT_ID ..
+    "/interactions.json")
+check(WorldLinks.event_destination(E.Scene.WANDERER, 0) == nil and
+      D.scenes[E.Scene.WANDERER].event_table_address == nil and
+      wanderer_exit.kind == "source_activity_return" and
+      wanderer_exit.area_event_target == nil and
+      contains(wanderer_json, '"kind": "source_activity_return"') and
+      contains(wanderer_json, "0x1D5BA0") and
+      contains(wanderer_json, "0x1D5BFC/0x1D5C06"),
+      "Scene-14 event 0 restores its source field snapshot")
 
 print(string.format("world_link_location_tests: %d/%d", pass, total))
 os.exit(pass == total and 0 or 1)

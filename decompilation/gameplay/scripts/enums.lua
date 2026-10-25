@@ -51,7 +51,10 @@ E.ActorAnimation = {
 
 E.Posture   = { FULL_DEFENSE = 0, MEDIUM_DEFENSE = 1, NEUTRAL = 2, MEDIUM_OFFENSE = 3, FULL_OFFENSE = 4 }  -- +0x4D, names 0xD1A05 [C]
 E.SceneMode = { NONE = 0, STREET = 1, BUILDING = 2, CAVE = 3 }  -- FFDF40: 1 scenes <0x15, 2 0x15-0x2B, 3 0x2C-0x37 [C]
-E.Scene = { LAST_ID = 55 } -- raw 0x37: last ROM scene ID [C]
+E.Scene = {
+    JUMP_HOUSE = 13, WANDERER = 14, -- 0x1B3C06 / 0x1D5B52 scene profiles [C]
+    LAST_ID = 55,
+} -- raw 0x37: last ROM scene ID [C]
 E.FieldAlarm = {
     TILE_SHIFT = 4, -- player world position to alarm tile coordinates [C]
     FRAME_MASK = 0x3F, -- FFDF88 cadence mask [C]

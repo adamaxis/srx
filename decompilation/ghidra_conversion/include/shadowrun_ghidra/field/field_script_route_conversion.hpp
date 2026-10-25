@@ -12,6 +12,8 @@ namespace shadowrun::ghidra_conversion {
 
 enum class FieldSceneId : std::uint8_t {
     stoker_motel_street = 2,
+    jump_house = 13,
+    wanderer = 14,
     scene_20 = 20,
 };
 

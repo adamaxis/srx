@@ -1343,22 +1343,31 @@ int main() {
     const auto club_penumbra_exterior_route =
         scripts.resolve_field_location_route(club_penumbra_exterior);
     FieldScriptRouteContext scene13_south_exit{};
-    scene13_south_exit.scene_id = 13U;
+    scene13_south_exit.scene_id = field_scene_id_value(
+        FieldSceneId::jump_house);
     scene13_south_exit.event_code = FieldCollisionEventCode::event_0;
     scene13_south_exit.event_table_available = false;
     const auto scene13_south_exit_route =
         scripts.resolve_field_location_route(scene13_south_exit);
+    FieldScriptRouteContext scene14_south_exit = scene13_south_exit;
+    scene14_south_exit.scene_id = field_scene_id_value(
+        FieldSceneId::wanderer);
+    const auto scene14_south_exit_route =
+        scripts.resolve_field_location_route(scene14_south_exit);
     if (!expect(
             scene13_south_exit_route.has_value() &&
                 scene13_south_exit_route->kind ==
-                    FieldScriptRouteKind::area_event &&
+                    FieldScriptRouteKind::source_activity_return &&
                 scene13_south_exit_route->script ==
-                    FieldScriptId::area_event_table &&
-                scene13_south_exit_route->area_event_target == 0U &&
-                scene13_south_exit_route->area_event_destination_mode ==
-                    WorldActivityMode::field &&
-                scene13_south_exit_route->entry_dialogue_module.empty(),
-            "Scene 13's null-table event 0 did not select its authored scene-0 route")) {
+                    FieldScriptId::source_activity_return &&
+                !scene13_south_exit_route->area_event_target.has_value() &&
+                scene14_south_exit_route.has_value() &&
+                scene14_south_exit_route->kind ==
+                    FieldScriptRouteKind::source_activity_return &&
+                scene14_south_exit_route->script ==
+                    FieldScriptId::source_activity_return &&
+                !scene14_south_exit_route->area_event_target.has_value(),
+            "Scene 13/14 null-table event 0 did not restore the source field scene")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }

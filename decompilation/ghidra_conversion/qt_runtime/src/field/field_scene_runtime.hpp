@@ -489,6 +489,8 @@ public:
     CollisionProbeState field_collision_probe_state_for_dump() const noexcept {
         return field_collision_probe_state_;
     }
+    void seed_field_door_contact_for_dump(
+        std::array<std::uint8_t, 3> probe_codes);
 #endif
     bool open_attributes_skills_for_dump();
     bool attributes_skills_menu_open() const noexcept {

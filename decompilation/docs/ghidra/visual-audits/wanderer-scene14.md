@@ -4,8 +4,8 @@ Status: partial. The map viewer now models the room's named fixtures and the
 scene-14 event-30 dialogue profile. The first-visit intro, conditional credit
 root, and post-Ito booth-vacated branch use the shared Lua Johnson interaction.
 The departure branch is physically exercised in Debug and Release. The
-work/quest choice effects remain incomplete. The lower event-0 transition to
-field scene 0 is source-traced and physically exercised.
+work/quest choice effects remain incomplete. The lower event-0 source-scene
+return is source-traced and physically exercised.
 
 ## ROM trace
 
@@ -45,18 +45,18 @@ field scene 0 is source-traced and physically exercised.
   profile with no portrait.
 - Scene-14 event records 7 and 8 (`0x1D5BFC`, `0x1D5C06`) are adjacent
   event-0 cells at the lower map edge, with no event table. The profile pointer
-  at `0x1D5BA0` is null; the generic `0x167AE` selector reads ROM byte 0 and
-  chooses field scene 0. The shared Lua location-link resolver now represents
-  that static source result. It does not infer a return to Puyallup, a dynamic
-  prior-map destination, or a special exit position or heading.
-- Debug and Release physical-input QA cases start one cell north of each
-  rectangle, enter record 7 or record 8 with ordinary Down, and complete the
-  scene-0 transition. Each case saves full 320x224 approach, event-contact,
-  and destination captures plus a route manifest. The contact capture is the
-  first full-screen black fade frame; `route.tsv` records the contact position,
-  and `actual.bmp` shows the completed scene-0 destination. These captures
-  verify the host path; no independent Scene-14 gameplay frame has been
-  identified.
+  at `0x1D5BA0` is null; the FFDF40 event-0 path branches through
+  `0x00A72 -> 0x1E43C -> 0x2F32` and restores the saved source scene. The Lua
+  entity route is a no-target `source_activity_return` action. Scene 1 record
+  73/event 0 supplies the Wanderer entry used by physical QA, including the
+  saved door probe and outward facing.
+- Debug and Release QA cases resolve Scene-1 record 73's event-0 row through
+  Lua and seed the source door probe from its `0xC0` collision code. Ordinary
+  Down input then enters record 7 or record 8. Each asserts return to Scene 1
+  at the saved collision-probe lead with the outward heading, and saves full
+  320x224 approach, event-contact, and return captures plus a route manifest.
+  These captures verify the host path; no independent Scene-14 gameplay frame
+  has been identified.
 - `shadowrun_ghidra_conversion_qt_field_wanderer_vacated_entry_qa` starts one
   cell south of record 9, sets `FFFC1E` bit 16, and enters event 30 with
   ordinary Up input. It checks the closing text, blank portrait well, and zero
@@ -100,8 +100,8 @@ from appearance alone. Floor texture remains part of the map background.
    interaction, default actors, dynamic world-event actor candidates, map
    artwork, and authored entity annotations remain separate. The lower event-0
    records are outside the visible map and are shown as small selectable edge
-   markers instead of large rectangles over empty canvas. Their destination is
-   now identified as field scene 0 by the null-table fallback.
+   markers instead of large rectangles over empty canvas. Their destination
+   restores the saved source scene through the null-table event-0 path.
 7. **Do multiple frames support this interpretation?** A 1-fps scan of the
    extracted longplay folders found no strong Scene-14 map match. The best
    downsampled match scored `0.393`; a known Scene-13 frame matched its map at

@@ -3,6 +3,7 @@
 -- the location interaction or the table destination without naming unknown
 -- places or inventing an interior.
 local Building = {}
+local E = require("enums")
 local World = require("world_content")
 local ConditionEvaluator = require("condition_evaluator")
 local condition_evaluator = ConditionEvaluator.new(
@@ -483,6 +484,26 @@ function Building.resolve_field_location_route(context)
             }, link, context)
             if is_boundary then return route end
             return add_location_script_tasks(route, link)
+        elseif link.route_kind == route_kind.source_activity_return and
+               link.script == route_script.source_activity_return then
+            -- Scene 13/14 have null event-table pointers. Their event-0 exit
+            -- follows the saved source field context through 0x2F32; only
+            -- those two source-traced exits may select this authored route.
+            if (context.scene_id ~= E.Scene.JUMP_HOUSE and
+                context.scene_id ~= E.Scene.WANDERER) or
+               context.event_code ~= "event_0" or
+               context.event_index ~= 0 or
+               context.event_table_available ~= false then
+                return source_boundary(context.event_code,
+                    "location.source_activity_return_context_mismatch:" ..
+                    (link.entity_id or "location") .. "." ..
+                    (link.link_id or link.id or "unnamed"))
+            end
+            return {
+                kind = route_kind.source_activity_return,
+                script = route_script.source_activity_return,
+                event_code = context.event_code,
+            }
         end
     end
 
