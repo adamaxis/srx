@@ -233,6 +233,56 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
     endforeach()
 endif()
 
+# Build-time asset import. The game reads individually named files under
+# decompilation/assets/; most are gitignored and produced from the user's ROM.
+# Re-runs only when the extractor, the ROM, or resources.tsv change.
+option(SRX_AUTO_EXTRACT_ASSETS
+       "Run shadowrun_graphics_extract --all-assets as part of the build" ON)
+set(SHADOWRUN_US_ROM "${CMAKE_CURRENT_SOURCE_DIR}/../input/shadowrun_genesis_us.bin"
+    CACHE FILEPATH "US Shadowrun Genesis ROM used for asset extraction")
+set(SHADOWRUN_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets"
+    CACHE PATH "Asset directory the build-time extraction writes into")
+set(srx_extract_assets_enabled FALSE)
+if(SRX_AUTO_EXTRACT_ASSETS)
+    if(EXISTS "${SHADOWRUN_US_ROM}")
+        find_package(Git QUIET)
+        set(srx_assets_stamp "${CMAKE_CURRENT_BINARY_DIR}/srx_assets_extracted.stamp")
+        add_custom_command(
+            OUTPUT "${srx_assets_stamp}"
+            COMMAND "${CMAKE_COMMAND}"
+                "-DEXTRACTOR=$<TARGET_FILE:shadowrun_graphics_extract>"
+                "-DROM=${SHADOWRUN_US_ROM}"
+                "-DSTAGING=${CMAKE_CURRENT_BINARY_DIR}/srx_assets_staging"
+                "-DDEST=${SHADOWRUN_ASSET_DIR}"
+                "-DSTAMP=${srx_assets_stamp}"
+                "-DGIT_EXECUTABLE=${GIT_EXECUTABLE}"
+                -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/srx_extract_assets.cmake"
+            DEPENDS shadowrun_graphics_extract
+                    "${SHADOWRUN_US_ROM}"
+                    "${SHADOWRUN_ASSET_DIR}/resources.tsv"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/srx_extract_assets.cmake"
+            COMMENT "Extracting game assets (shadowrun_graphics_extract --all-assets)"
+            USES_TERMINAL
+            VERBATIM)
+        add_custom_target(srx_extract_assets ALL DEPENDS "${srx_assets_stamp}")
+        set(srx_extract_assets_enabled TRUE)
+    else()
+        message(WARNING
+            "SRX_AUTO_EXTRACT_ASSETS: ROM not found at '${SHADOWRUN_US_ROM}'; "
+            "skipping asset extraction. Set -DSHADOWRUN_US_ROM=<path> or run "
+            "shadowrun_graphics_extract <rom> <assets> --all-assets manually.")
+    endif()
+endif()
+
 if (SHADOWRUN_GHIDRA_QT_FRONTEND)
     add_subdirectory(qt_runtime)
+endif()
+
+if(srx_extract_assets_enabled)
+    foreach(srx_asset_consumer shadowrun_ghidra_conversion_qt
+                               shadowrun_ghidra_conversion_qt_qa)
+        if(TARGET ${srx_asset_consumer})
+            add_dependencies(${srx_asset_consumer} srx_extract_assets)
+        endif()
+    endforeach()
 endif()

@@ -166,6 +166,64 @@ const char* startup_integration_phase_name(
     return "unknown";
 }
 
+const char* startup_integration_start_result_name(
+    const StartupIntegrationStartResult result) {
+    switch (result) {
+    case StartupIntegrationStartResult::assets_missing:
+        return "assets_missing";
+    case StartupIntegrationStartResult::callback_unresolved:
+        return "callback_unresolved";
+    case StartupIntegrationStartResult::boot_in_progress:
+        return "boot_in_progress";
+    case StartupIntegrationStartResult::title_ready:
+        return "title_ready";
+    }
+    return "unknown";
+}
+
+std::string describe_startup_integration_failure(
+    const StartupIntegrationStartResult result,
+    const StartupIntegrationState& state) {
+    std::string text = "converted startup did not enter pre_title; result=";
+    text += startup_integration_start_result_name(result);
+    text += " phase=";
+    text += startup_integration_phase_name(state.phase);
+    if (result != StartupIntegrationStartResult::assets_missing) {
+        return text;
+    }
+    constexpr std::size_t kMaxListed = 40U;
+    std::size_t listed = 0U;
+    std::size_t total = 0U;
+    const auto add = [&](const std::string& line) {
+        ++total;
+        if (listed < kMaxListed) {
+            text += "\n  ";
+            text += line;
+            ++listed;
+        }
+    };
+    for (const auto& error : state.asset_catalog.errors) {
+        add(error);
+    }
+    for (const auto& alias : state.required_boot_assets.missing_aliases) {
+        add("missing boot asset alias: " + alias);
+    }
+    for (const auto& error : state.startup_record_asset_errors) {
+        add("startup record: " + error);
+    }
+    for (const auto& error : state.field_session_source_asset_errors) {
+        add("field session: " + error);
+    }
+    if (total > listed) {
+        text += "\n  ... and " + std::to_string(total - listed) + " more";
+    }
+    if (total != 0U) {
+        text += "\nRe-run the build with SRX_AUTO_EXTRACT_ASSETS=ON (default) "
+                "or shadowrun_graphics_extract <rom> <assets> --all-assets.";
+    }
+    return text;
+}
+
 StartupIntegrationStartResult start_startup_integration(
     const std::filesystem::path& asset_root,
     StartupIntegrationState& state,

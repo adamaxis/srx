@@ -216,8 +216,7 @@ public:
             asset_root_, state_, startup_callbacks_);
         if (result != StartupIntegrationStartResult::boot_in_progress) {
             throw std::runtime_error(
-                "converted startup did not enter pre_title; phase=" +
-                std::string(startup_integration_phase_name(state_.phase)));
+                describe_startup_integration_failure(result, state_));
         }
         load_startup_script_content();
 

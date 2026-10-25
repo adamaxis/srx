@@ -99,8 +99,15 @@ Screen map: `decompilation/docs/ghidra/screen-system-audit.md` and
 - The Ghidra Qt executable consumes individually named files under
   `decompilation/assets/`
   directly. Do not create or depend on an aggregate serializer or pack.
-- `shadowrun_graphics_extract --all-assets` is the explicit offline import
-  step. Do not attach extraction to CTest or ordinary executable builds.
+- `shadowrun_graphics_extract --all-assets` is the asset import step. The
+  CMake build runs it by default (`SRX_AUTO_EXTRACT_ASSETS=ON`, ROM from
+  `SHADOWRUN_US_ROM`, default `decompilation/input/shadowrun_genesis_us.bin`)
+  through `cmake/srx_extract_assets.cmake`: it extracts into the build tree and
+  copies into `decompilation/assets/` without overwriting git-tracked files,
+  and re-runs only when the extractor, the ROM, or `resources.tsv` change. A
+  missing ROM is a configure warning, not an error. Opt out with
+  `-DSRX_AUTO_EXTRACT_ASSETS=OFF` and run the extractor by hand. Do not attach
+  extraction to CTest.
 - Genesis 4-bit tiles and 9-bit CRAM become RGBA8 at extraction. Preserve the
   look, not VRAM limits.
 - Host may run at 60 FPS. Animation cadence still follows ROM counters.

@@ -71,6 +71,16 @@ enum class StartupIntegrationEvent {
 };
 
 const char* startup_integration_phase_name(StartupIntegrationPhase phase);
+const char* startup_integration_start_result_name(
+    StartupIntegrationStartResult result);
+
+struct StartupIntegrationState;
+// Host-facing failure text: the result name, the phase, and (for
+// assets_missing) every catalog, boot-set, startup-record, and field-session
+// error, so a missing extracted file is named instead of reported as a phase.
+std::string describe_startup_integration_failure(
+    StartupIntegrationStartResult result,
+    const StartupIntegrationState& state);
 
 // The conversion layer accepts a host save image only after the menu's
 // source-derived validation boundary reports it loaded. The image itself is
