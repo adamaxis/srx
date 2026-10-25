@@ -1045,6 +1045,11 @@ std::array<RgbaImage, 14> decode_genesis_field_magic_spell_icons(
     const std::vector<std::uint8_t>& rom);
 std::array<RgbaImage, 4> decode_genesis_field_magic_cursor_frames(
     const std::vector<std::uint8_t>& rom);
+// ROM 0xFDAE writes the four Plane A strips of the animated header spell
+// frame from C8AEE[F0DB] through 0x1232 at C112/C292 (5x1) and C192/C19A
+// (1x2); one 320x224 layer per phase.
+std::array<RgbaImage, 4> decode_genesis_field_magic_header_frames(
+    const std::vector<std::uint8_t>& rom);
 // ROM 0x107CE writes the selected eight-tile posture row from C8600 at C8A8.
 // ROM 0x10172 composes the live current/maximum force meter from these five
 // one-tile source rows at C85A2/C85A4/C85A6/C85A8/C85AC.

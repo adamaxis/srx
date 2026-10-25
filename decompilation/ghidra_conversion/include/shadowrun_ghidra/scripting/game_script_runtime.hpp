@@ -614,6 +614,10 @@ struct ScriptMenuRouteSnapshot {
         int mana_defense_row = -1;
         int posture = 0;
         int cursor_phase = 0;
+        // Phase whose SAT list is on screen: 0xFDFE builds FFD986 and only
+        // requests the upload (FFD980), so the slot ring lags F0DB by one
+        // frame [C e6 8958/8959]. -1 = follow cursor_phase.
+        int cursor_sat_phase = -1;
         bool present = false;
     };
     std::optional<MagicView> magic_view;

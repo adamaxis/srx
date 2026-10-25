@@ -7500,6 +7500,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         shadowrun::graphics::decode_genesis_field_magic_cursor_frames(rom),
         "sprite", "0xFDFE/0xC8B3E/0x1378", false);
     write_rgba_array(
+        "menu/field/magic-header-frame-",
+        shadowrun::graphics::decode_genesis_field_magic_header_frames(rom),
+        "sprite", "0xFDAE/0xC8AEE/0x1232", false);
+    write_rgba_array(
         "menu/field/magic-posture-bar-",
         shadowrun::graphics::decode_genesis_field_magic_posture_bars(rom),
         "sprite", "0x107CE/0xC8600", false);

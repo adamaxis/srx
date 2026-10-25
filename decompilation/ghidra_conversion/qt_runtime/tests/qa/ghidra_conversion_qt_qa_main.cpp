@@ -40340,6 +40340,14 @@ int main(int argc, char** argv) {
                     "menu/field/magic-panel-background.bmp");
                 expected_title_painter.drawImage(-80, -24,
                                                  panel_background);
+                // 0xFDAE's lower 5x1 header-frame strip (C292, y=40)
+                // overwrites the title cell's bottom tile row [C ROM].
+                expected_title_painter.drawImage(
+                    -80, -24,
+                    direct_asset("menu/field/magic-header-frame-" +
+                                 std::to_string(
+                                     field_scene.magic_cursor_phase() % 4U) +
+                                 ".bmp"));
                 expected_title_painter.save();
                 expected_title_painter.setClipRect(QRect(0, 0, 24, 16));
                 expected_title_painter.drawImage(0, 0,
