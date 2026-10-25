@@ -7093,6 +7093,8 @@ int run_field_scene20_physical_entry_qa(
     if (!record_actor_animation(0U)) {
         return 3;
     }
+    const auto actor_visible_at_entry =
+        field_scene.visible_default_actor_count_for_dump();
     QImage actor_frame_8;
     QImage actor_frame_30;
     QImage actor_frame_40;
@@ -7124,8 +7126,9 @@ int run_field_scene20_physical_entry_qa(
         ++frame;
     }
     if (field_scene.default_actor_transition_complete_count_for_dump() != 7U ||
-        // Default-list actors spawn live (9304db25): ROM 0x4618 draws the
-        // current pose and the 0x2E/0x2F death cues come only from 0xB330.
+        // Default-list actors spawn live (9304db25): ROM 0x4618 runs 0x5A56/
+        // 0x5FDC/0x600E on the current pose list, and the 0x2E/0x2F death
+        // cues (B05E[kind]) are sent only by 0xB350 inside 0xB330 [C].
         actor_audio_event_count(0x2EU) != actor_audio_2e_at_entry ||
         actor_audio_event_count(0x2FU) != actor_audio_2f_at_entry ||
         field_scene.dialogue_open() || field_scene.command_overview_open() ||
@@ -7138,9 +7141,15 @@ int run_field_scene20_physical_entry_qa(
     }
     actor_frame_40 = render();
     if (!save_image("scene20-frame-40", actor_frame_40) ||
-        actor_frame_8 != actor_frame_30 || actor_frame_30 != actor_frame_40) {
-        std::cerr << "Scene-20 physical-entry QA: the live default actors did "
-                     "not hold their idle pose from frame 8 to frame 40\n";
+        actor_visible_at_entry == 0U ||
+        field_scene.visible_default_actor_count_for_dump() <
+            actor_visible_at_entry) {
+        // Only visibility is pinned: every 0x62AC IDLE list is one frame, so
+        // live actors add no pixel change, and after 0x14 frames they may
+        // start 0x13904 think paths (patrol); a pixel sequence is not a ROM
+        // fact. No spawn-time death means none may vanish.
+        std::cerr << "Scene-20 physical-entry QA: live default actors were "
+                     "not drawn at entry or vanished by frame 40\n";
         return 3;
     }
 
@@ -7162,6 +7171,8 @@ int run_field_scene20_physical_entry_qa(
             field_scene.visible_default_actor_count_for_dump() != 2U ||
             field_scene.default_actor_transition_complete_count_for_dump() !=
                 7U ||
+            // Every 0x62AC IDLE list (pose 0x00) has one frame [C]; the old
+            // pin of 1 was the DEATH list's terminal frame.
             order_3_frame != std::optional<std::uint8_t>{0U} ||
             order_4_frame != std::optional<std::uint8_t>{0U} ||
             actor_audio_event_count(0x2EU) != actor_audio_2e_after_entry ||
