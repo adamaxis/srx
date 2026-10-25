@@ -363,11 +363,11 @@ void DialoguePanelPresenter::paint(QPainter& painter,
     painter.fillRect(0, 0, 320, 224, Qt::black);
     painter.drawImage(0, 0, panel_frames_[frame_index]);
 
-    // 0x1F5A8 clears both Plane-A content wells after the shared Plane-B
-    // frame is installed. Repeating those black fills also guarantees each
-    // changed page removes the previous text and choice rows before drawing.
+    // 0x1F5A8 fills the Plane-A wells with the blank font tile after the
+    // shared Plane-B frame is installed. Keep the bottom 8px of the frame
+    // visible while clearing the black content under the three button rows.
     painter.fillRect(QRect(88, 16, 216, 120), Qt::black);
-    painter.fillRect(QRect(16, 152, 296, 72), Qt::black);
+    painter.fillRect(QRect(16, 152, 296, 64), Qt::black);
 
     if (!panel.portrait_alias.empty()) {
         const auto portrait = portraits_.find(

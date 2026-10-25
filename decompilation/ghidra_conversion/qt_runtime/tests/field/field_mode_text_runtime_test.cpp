@@ -45,6 +45,21 @@ bool region_is_color(const QImage& image, const int x, const int y,
     return true;
 }
 
+bool region_has_gray_frame_pixels(const QImage& image, const int x, const int y,
+                                  const int width, const int height) {
+    for (int row = y; row < y + height; ++row) {
+        for (int column = x; column < x + width; ++column) {
+            const auto pixel = image.pixelColor(column, row);
+            if (pixel.red() == pixel.green() &&
+                pixel.green() == pixel.blue() && pixel.red() > 32 &&
+                pixel.red() < 224) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 } // namespace
 
 int main() {
@@ -96,8 +111,10 @@ int main() {
     if (!expect(has_green_ink(image, 88, 16, 216, 120)) ||
         !expect(!region_is_color(image, 16, 32, 56, 72,
                                  QColor(0, 0, 0))) ||
-        !expect(region_is_color(image, 16, 152, 296, 72,
-                                QColor(0, 0, 0)))) {
+        !expect(region_is_color(image, 16, 152, 296, 64,
+                                QColor(0, 0, 0))) ||
+        // Longplay 002/f_0540.jpg shows this gray bottom frame edge.
+        !expect(region_has_gray_frame_pixels(image, 16, 216, 296, 8))) {
         return 6;
     }
 

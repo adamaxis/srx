@@ -5,6 +5,7 @@
 
 #include <QImage>
 #include <QPainter>
+#include <QRect>
 
 #include <algorithm>
 #include <array>
@@ -15,6 +16,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -208,6 +210,80 @@ bool save_dialogue_capture(const DialoguePanelPresenter& presenter,
     return frame.save(QString::fromStdWString(path.wstring()), "BMP");
 }
 
+QImage render_dialogue_buffer(const DialoguePanelPresenter& presenter,
+                              const DialoguePanelView& panel) {
+    QImage frame(320, 224, QImage::Format_ARGB32_Premultiplied);
+    frame.fill(Qt::black);
+    QPainter painter(&frame);
+    presenter.paint(painter, panel);
+    painter.end();
+    return frame;
+}
+
+int wrapped_rows(const DialoguePanelView& panel, const int max_columns) {
+    int rows = 0;
+    for (std::size_t segment_index = 0U;
+         segment_index < panel.text_segment_count; ++segment_index) {
+        const auto text = panel.text_segments[segment_index];
+        if (text.empty()) {
+            ++rows;
+            continue;
+        }
+        std::size_t cursor = 0U;
+        int segment_rows = 0;
+        while (cursor < text.size()) {
+            if (segment_rows != 0) {
+                while (cursor < text.size() && text[cursor] == ' ') {
+                    ++cursor;
+                }
+            }
+            if (cursor >= text.size()) {
+                break;
+            }
+            const auto remaining = text.substr(cursor);
+            auto length = std::min<std::size_t>(
+                remaining.size(), static_cast<std::size_t>(max_columns));
+            if (length < remaining.size()) {
+                const auto break_at = remaining.rfind(' ', length);
+                if (break_at != std::string_view::npos && break_at != 0U) {
+                    length = break_at;
+                }
+            }
+            cursor += length;
+            ++segment_rows;
+            while (cursor < text.size() && text[cursor] == ' ') {
+                ++cursor;
+            }
+        }
+        rows += segment_rows;
+    }
+    return rows;
+}
+
+std::size_t green_pixels(const QImage& image, const QRect& rect) {
+    std::size_t count = 0U;
+    for (int y = rect.y(); y < rect.y() + rect.height(); ++y) {
+        for (int x = rect.x(); x < rect.x() + rect.width(); ++x) {
+            const auto color = image.pixelColor(x, y);
+            if (color.red() == 0 && color.green() != 0 && color.blue() == 0) {
+                ++count;
+            }
+        }
+    }
+    return count;
+}
+
+bool has_nonblack_pixels(const QImage& image, const QRect& rect) {
+    for (int y = rect.y(); y < rect.y() + rect.height(); ++y) {
+        for (int x = rect.x(); x < rect.x() + rect.width(); ++x) {
+            if (image.pixelColor(x, y) != QColor(Qt::black)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 } // namespace
 
 int main(const int argc, char** argv) {
@@ -280,6 +356,114 @@ int main(const int argc, char** argv) {
                        ? std::string_view{}
                        : std::string_view(binding->second);
         };
+
+    // ROM geometry: 0x10984 installs the shared 320x224 panel frame, and
+    // 0x1F3C4 writes its A/B/C markers at 0xCF11C, 0xCF124, and 0xCF12C.
+    // 0x1F5A8 writes the C116/C984 content grids from the blank space tile at
+    // 0xC1320, leaving the frame's bottom edge visible.
+    // ROM record 0xF4EF4 supplies the 14-row Tarislar City Inn page below,
+    // the longest dialogue page (256 characters); prompt 0x11B5A0 supplies
+    // the hostile Sinsearach page with three visible A/B/C choices. The panel
+    // instruction paths are in decompilation/export/disassembly.s at 0x10984,
+    // 0x1F3C4, and 0x1F5A8; 0xF4EF4 and 0x11B5A0 are dialogue data records.
+    {
+        const auto tinn_profile =
+            scripts.speaker_profile("tarislar_city_inn_shale");
+        const auto last_run_keys = tinn_profile.has_value()
+            ? scripts.dialogue_event_text_keys(
+                  tinn_profile->id, tinn_profile->text_profile,
+                  "shale_last_run")
+            : std::nullopt;
+        if (!tinn_profile.has_value() || !last_run_keys.has_value() ||
+            last_run_keys->title_key !=
+                "tarislar.city_inn.shale.last_run") {
+            std::cerr << "longest dialogue page is not bound to the Lua page\n";
+            return 27;
+        }
+        const DialogueSpeakerPresentation tinn_speaker{
+            tinn_profile->id, tinn_profile->name,
+            tinn_profile->text_profile, tinn_profile->portrait_alias};
+        const auto longest_page = make_script_dialogue_panel_view(
+            tinn_speaker, last_run_keys->title_key,
+            last_run_keys->continuation_key, resolve_text);
+        const auto* longest_source_text =
+            scripts.dialogue_text(last_run_keys->title_key);
+        if (!longest_page.has_value() || !longest_page->source_complete ||
+            longest_source_text == nullptr ||
+            longest_source_text->size() != 256U ||
+            wrapped_rows(*longest_page, 26) != 14) {
+            std::cerr << "longest dialogue page no longer wraps to 14 rows\n";
+            return 28;
+        }
+        auto longest_text_only = *longest_page;
+        longest_text_only.has_more = false;
+        longest_text_only.continuation_label = {};
+        longest_text_only.option_count = 0U;
+        const auto longest_image =
+            render_dialogue_buffer(presenter, longest_text_only);
+        if (green_pixels(longest_image, QRect(88, 16, 216, 120)) == 0U ||
+            green_pixels(longest_image, QRect(88, 120, 216, 8)) == 0U ||
+            green_pixels(longest_image, QRect(16, 152, 296, 72)) != 0U) {
+            std::cerr << "longest dialogue glyphs entered the lower choice well\n";
+            return 29;
+        }
+
+        const auto guard_profile =
+            scripts.speaker_profile("salish_sinsearach_guard");
+        if (!guard_profile.has_value()) {
+            std::cerr << "Sinsearach guard speaker profile is unavailable\n";
+            return 30;
+        }
+        scripting::ScriptMenuDefinition guard_menu{};
+        guard_menu.speaker_id = guard_profile->id;
+        guard_menu.text_profile = guard_profile->text_profile;
+        guard_menu.id = "hostile_guard";
+        guard_menu.choices = {{"questions", {}, {}},
+                              {"elders", {}, {}},
+                              {"later", {}, {}}};
+        const auto resolved_guard_menu =
+            scripts.resolve_dialogue_menu(std::move(guard_menu));
+        if (!resolved_guard_menu.has_value() ||
+            resolved_guard_menu->title_key !=
+                "salish.sinsearach.page.guard_hostile" ||
+            resolved_guard_menu->choices.size() != 3U) {
+            std::cerr << "maximum A/B/C dialogue menu did not resolve\n";
+            return 31;
+        }
+        const DialogueSpeakerPresentation guard_speaker{
+            guard_profile->id, guard_profile->name,
+            guard_profile->text_profile, guard_profile->portrait_alias};
+        std::vector<std::pair<std::string, std::string>> guard_choice_keys;
+        guard_choice_keys.reserve(resolved_guard_menu->choices.size());
+        for (const auto& choice : resolved_guard_menu->choices) {
+            guard_choice_keys.emplace_back(choice.id, choice.label_key);
+        }
+        const auto guard_panel = make_script_menu_panel_view(
+            guard_speaker, resolved_guard_menu->title_key, guard_choice_keys,
+            resolve_text);
+        if (!guard_panel.source_complete || guard_panel.option_count != 3U ||
+            wrapped_rows(guard_panel, 26) != 14) {
+            std::cerr << "maximum-choice prompt no longer has three options\n";
+            return 32;
+        }
+        const auto guard_image = render_dialogue_buffer(presenter, guard_panel);
+        for (std::size_t row = 0U; row < guard_panel.option_count; ++row) {
+            const auto y = 152 + static_cast<int>(row * 24U);
+            if (!has_nonblack_pixels(guard_image, QRect(16, y, 16, 16)) ||
+                green_pixels(guard_image, QRect(48, y, 256, 16)) == 0U) {
+                std::cerr << "dialogue choice row is missing at y=" << y
+                          << '\n';
+                return 33;
+            }
+        }
+        for (int x = 16; x < 312; ++x) {
+            if (guard_image.pixelColor(x, 223) != QColor(146, 146, 146)) {
+                std::cerr << "bottom ROM frame border is missing at x=" << x
+                          << '\n';
+                return 34;
+            }
+        }
+    }
 
     constexpr std::array<std::string_view, 9> kGenericRunnerIds{{
         "ricky", "winston_marrs", "trent", "petr_uvehr", "walking_bear",
