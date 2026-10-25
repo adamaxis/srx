@@ -214,14 +214,18 @@ function M.input(st, events, ctx)
     if events & (P.A | P.B | P.C) ~= 0 then
         local entry, index = M.selected(st.table, st.sel)
         if not entry then return end
-        local party = ctx.game.party()
-        local record = party[ctx.game.active_slot()]
+        local record = ctx.game.party()[ctx.game.active_slot()]
         local force = M.initial_force(record, entry)
-        if record.weapon_slot >= 0 and record.weapon_code ~= 0 then
-            record.rounds = force
-        end
-        record.weapon_code = entry.code + 1
-        ctx.game.commit_party(party)
+        -- The ROM stores the spell code (and force over the rounds of an
+        -- equipped weapon) here, but the sidebar slot is only redrawn when
+        -- Force returns: e6 9060-9259 keep the pistol and "12" while Force
+        -- is open [C emulator]. The port's HUD reads the live record, so the
+        -- write is applied in child_returned, before any other reader.
+        st.pending_spell = {
+            code = entry.code + 1,
+            rounds = (record.weapon_slot >= 0 and record.weapon_code ~= 0)
+                and force or nil,
+        }
         return {
             transition = T.PUSH,
             screen = E.MenuScreen.MAGIC_FORCE,
@@ -250,6 +254,12 @@ function M.child_returned(st, child, result, ctx)
     st.cursor_startup_heartbeats = 0
     local party = ctx.game.party()
     local record = party[ctx.game.active_slot()]
+    local pending = st.pending_spell
+    st.pending_spell = nil
+    if pending then
+        if pending.rounds then record.rounds = pending.rounds end
+        record.weapon_code = pending.code
+    end
     record.weapon_slot = -1
     record.force = result.force or record.force
     ctx.game.commit_party(party)
