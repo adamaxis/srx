@@ -857,6 +857,8 @@ FieldSceneRuntime::FieldSceneRuntime(
                 switch (address) {
                 case 0xFFFBFAU: return &field_heat_level_;
                 case 0xFFFBFBU: return &field_strike_team_counter_;
+                case 0xFFE187U: return &field_fuchi_safe_context_;
+                case 0xFFE191U: return &field_alarm_transition_pending_;
                 default: return nullptr;
                 }
             };
@@ -1406,7 +1408,8 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     event_route.entry_location_id,
                     event_route.entry_text_profile,
                     event_route.entry_speaker_id,
-                    event_route.entry_event_id);
+                    event_route.entry_event_id,
+                    runtime_state.scene_id);
                 if (!field_dialogue_.open_gameplay_task(
                         event_route.entry_dialogue_module,
                         event_route.entry_dialogue_function)) {
@@ -1853,6 +1856,8 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
                 "field_scene_" + std::to_string(actor.scene_reference) +
                 "_actor_" + std::to_string(actor.source_order);
             actor.script_profile_id = fields[3];
+            actor.source_profile_patrol_actor =
+                actor.script_profile_id == "pedestrian_k0b_none00";
             actor.sprite_stem = fields[5];
             if (actor.script_profile_id.empty()) {
                 failure_ = "default actor Lua profile identity is empty";
@@ -2144,6 +2149,31 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             }
             if (frames.empty()) {
                 failure_ = "default actor C082 spell art is missing a direction";
+                return false;
+            }
+
+            auto& walk_frames = artwork.walk_images[direction];
+            for (std::uint8_t frame = 0U;
+                 frame < kActorArtFrameScanLimit; ++frame) {
+                const auto alias = actor_asset_prefixes[kind_index] +
+                    ".walk.dir." + std::to_string(direction) +
+                    ".frame." + std::to_string(frame);
+                if (catalog.find(alias) == nullptr) {
+                    break;
+                }
+                walk_frames.emplace_back();
+                artwork.walk_origin_x[direction].push_back(0);
+                artwork.walk_origin_y[direction].push_back(0);
+                const auto image_index = walk_frames.size() - 1U;
+                if (!load_sprite_image(
+                        catalog, alias, walk_frames[image_index],
+                        artwork.walk_origin_x[direction][image_index],
+                        artwork.walk_origin_y[direction][image_index])) {
+                    return false;
+                }
+            }
+            if (walk_frames.empty()) {
+                failure_ = "default actor C062 walk art is missing a direction";
                 return false;
             }
         }
@@ -2899,6 +2929,14 @@ void FieldSceneRuntime::initialize_default_field_actors(
         }
         actor.source_record_slot = kFieldWorldActorSlots[next_source_slot++];
         actor.active = true;
+        actor.movement_state = EntityMovementStepState{};
+        actor.movement_state.position_x = actor.world_position.x;
+        actor.movement_state.position_y = actor.world_position.y;
+        actor.movement_state.heading = actor.initial_heading;
+        actor.movement_state.animation_heading = actor.initial_heading;
+        actor.movement_state.collision_extent = 0U;
+        actor.movement_terrain_collision_code = 0U;
+        actor.movement_state_initialized = true;
         // ROM 0x44BC copies the common +0x10 service byte 0x05 before it
         // publishes a template actor into the seven world-actor records.
         actor.source_record_flags = static_cast<std::uint8_t>(
@@ -2929,6 +2967,12 @@ void FieldSceneRuntime::initialize_default_field_actors(
         context.source_actor_posture = actor.combatant.posture;
         context.source_record_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
+        const auto source_slot = static_cast<std::uint8_t>(
+            *actor.source_record_slot);
+        if (static_cast<std::size_t>(source_slot) >=
+            FieldPartyRosterRuntime::kSlotCount) {
+            context.source_actor_slot = source_slot;
+        }
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
@@ -3345,6 +3389,8 @@ void FieldSceneRuntime::advance_default_field_actors(
         auto& actor = *actor_record;
         const bool dynamic_world_actor = actor.temporary_world_encounter ||
                                          actor.world_activity_script_actor;
+        const bool source_profile_patrol_actor =
+            actor.source_profile_patrol_actor;
         scripting::ScriptActorBehaviorContext context{
             actor.script_profile_id,
             actor.entity_kind,
@@ -3354,7 +3400,7 @@ void FieldSceneRuntime::advance_default_field_actors(
             actor.transition_started,
             actor.transition_complete,
             actor.actor_instance_id,
-            dynamic_world_actor
+            dynamic_world_actor || source_profile_patrol_actor
                 ? actor.movement_state.heading
                 : actor.initial_heading,
             false,
@@ -3856,6 +3902,10 @@ void FieldSceneRuntime::advance_default_field_actors(
             }
         }
 
+        if (source_profile_patrol_actor) {
+            provide_source_profile_patrol_movement_services(context, actor);
+        }
+
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();
@@ -4139,7 +4189,7 @@ void FieldSceneRuntime::advance_default_field_actors(
         if (decision->hit_spark_spawn_request.has_value()) {
             spawn_field_hit_spark(*decision->hit_spark_spawn_request);
         }
-        if (dynamic_world_actor &&
+        if ((dynamic_world_actor || source_profile_patrol_actor) &&
             decision->movement_step.has_value()) {
             const auto& step = *decision->movement_step;
             actor.movement_state.position_x = step.state.position_x;
@@ -6774,6 +6824,63 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             }
         }
         if (continuation == MovementModeTransitionContinuation::
+                                projected_terrain_event) {
+            // ROM 0x20C90 checks the independent Renraku/Fuchi safe bodies
+            // after 0x16760 marked this terrain cell. FFE178 only gates the
+            // Renraku body; Lua applies that gate and FFE187's Fuchi gate.
+            const auto decision = game_scripts_.resolve_field_safe_action(
+                state_.field_scene_buffers.scene_reference,
+                field_movement_transition_state_
+                    .projected_terrain_event_published,
+                field_fuchi_safe_context_.value_or(0U));
+            if (!decision.has_value()) {
+                failure_ = game_scripts_.failure();
+                source_boundary("field.safe.policy_unresolved");
+                return integration::PendingFieldSceneHandlerResult::unresolved;
+            }
+            if (decision->reset_strike_team_counter) {
+                // ROM 0x540D6 clears FFFBFB before its first alarm call.
+                field_strike_team_counter_ =
+                    decision->strike_team_counter_value;
+            }
+            if (decision->raise_alarm) {
+                // ROM 0x540D6 calls 0x1E04A after awarding the map overlay.
+                advance_field_alarm(true);
+            }
+            if (decision->queue_alarm_transition) {
+                // ROM 0x540D6 sets FFE191 after the immediate 0x1E04A call;
+                // 0x2940 consumes it on the next world-frame service pass.
+                field_alarm_transition_pending_ =
+                    decision->alarm_transition_pending_value;
+            }
+            if (decision->action ==
+                scripting::ScriptFieldSafeAction::
+                    fuchi_prototype_cyberheart) {
+                game_scripts_.set_location_context(
+                    "building", "penumbra_site_02_fuchi", "penumbra.fuchi",
+                    "fuchi_offices_narrator", "safe_found",
+                    static_cast<std::uint8_t>(
+                        state_.field_scene_buffers.scene_reference));
+                if (!field_dialogue_.open_gameplay_task(
+                        "fuchi_offices",
+                        "present_cyberheart_safe_found")) {
+                    source_boundary(
+                        "field.safe.fuchi_cyberheart_text_unresolved");
+                    return integration::PendingFieldSceneHandlerResult::unresolved;
+                }
+            }
+            source_boundary(
+                decision->action ==
+                        scripting::ScriptFieldSafeAction::renraku_map_overlay
+                    ? "field.safe.renraku_map_overlay_awarded"
+                    : decision->action ==
+                          scripting::ScriptFieldSafeAction::
+                              fuchi_prototype_cyberheart
+                          ? "field.safe.fuchi_prototype_cyberheart_awarded"
+                          : "field.safe.no_reward");
+            return integration::PendingFieldSceneHandlerResult::resumed_field;
+        }
+        if (continuation == MovementModeTransitionContinuation::
                                 guard_spotted_field_event) {
             // 0x20FEC points at the 0x121238/0x122030 field-message program.
             // The current gameplay message runner cannot decode that record [H].
@@ -7239,6 +7346,14 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         source_boundary("field.world_logic.process_terrain_work_batch");
     };
     world_frame_logic_callbacks_.advance_world_effect_trigger = [this] {
+        if (field_alarm_transition_pending_.value_or(0U) != 0U) {
+            // ROM 0x2940 clears FFE16F, consumes FFE191, and calls 0x1E04A.
+            // The safe handler already made its immediate 0x1E04A call; this
+            // frame service preserves the separate deferred transition.
+            field_alarm_transition_pending_ = 0U;
+            field_matrix_field_state_.alarm = false;
+            advance_field_alarm(true);
+        }
         advance_field_alarm();
     };
     world_frame_logic_callbacks_.trigger_world_effect_sequence = [this] {
@@ -8108,6 +8223,8 @@ bool FieldSceneRuntime::bootstrap(
     field_matrix_field_state_ = scripting::ScriptMatrixFieldState{};
     field_matrix_field_state_.alarm = false;
     field_alarm_timer_ = 0;
+    field_fuchi_safe_context_ = 0U; // FFE187 starts clear [C].
+    field_alarm_transition_pending_ = 0U; // FFE191 starts clear [C].
     field_matrix_field_state_.security_off = false;
     // Startup 0x007F6 calls 0x53290; field mode also calls it when 0x17490
     // detects a system change. A fresh bootstrap starts a new RAM bank, and
@@ -9404,6 +9521,8 @@ void FieldSceneRuntime::record_field_activity_start(
                            scene_55_tomb_credits_callback ||
         continuation == MovementModeTransitionContinuation::
                            mode_table_world_activity ||
+        continuation == MovementModeTransitionContinuation::
+                           projected_terrain_event ||
         continuation == MovementModeTransitionContinuation::
                            guard_spotted_field_event) {
         field_runtime_state_.pending_field_scene_handler = true;
@@ -10918,9 +11037,16 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         };
         context.movement_scene_id = current_scene;
         if (actor.source_record_slot.has_value()) {
-            context.source_record_slot = static_cast<std::uint8_t>(
+            const auto source_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
+            context.source_record_slot = source_slot;
+            if (static_cast<std::size_t>(source_slot) >=
+                FieldPartyRosterRuntime::kSlotCount) {
+                context.source_actor_slot = source_slot;
+            }
         }
+        context.source_profile_patrol_actor =
+            actor.source_profile_patrol_actor;
         context.combatant = actor.combatant;
         context.source_actor_posture = actor.combatant.posture;
         context.source_record_flags = actor.source_record_flags;

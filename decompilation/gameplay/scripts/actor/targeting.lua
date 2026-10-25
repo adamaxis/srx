@@ -343,8 +343,11 @@ local function initial_state(context, profile)
         hurt_behavior_timer = 0,
         hurt_audio_event = nil,
         hurt_audio_emitted = false,
-        movement_current_heading = profile.controls_movement
-            and context.initial_heading or nil,
+        movement_current_heading =
+            (profile.controls_movement or
+             (profile.source_profile_patrol and
+              type(context.source_actor_slot) == "number")) and
+            context.initial_heading or nil,
         movement_route_distance = nil,
         movement_active = false,
         transition_started = false,

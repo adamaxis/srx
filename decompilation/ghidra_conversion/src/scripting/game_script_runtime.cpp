@@ -6239,6 +6239,93 @@ GameScriptRuntime::resolve_field_collision_event(
     return decision;
 }
 
+std::optional<ScriptFieldSafeDecision>
+GameScriptRuntime::resolve_field_safe_action(
+    const std::uint16_t scene_id,
+    const bool projected_terrain_event_published,
+    const std::uint8_t fuchi_safe_context) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for field safe policy";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptFieldSafeDecision> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("field_safes")) {
+        return fail("field_safes.lua module is missing");
+    }
+    lua_getfield(state, -1, "resolve");
+    if (!lua_isfunction(state, -1)) {
+        return fail("field_safes.resolve is missing");
+    }
+
+    lua_createtable(state, 0, 3);
+    const auto input_index = lua_absindex(state, -1);
+    lua_pushinteger(state, scene_id);
+    lua_setfield(state, input_index, "scene_id");
+    lua_pushboolean(state, projected_terrain_event_published);
+    lua_setfield(state, input_index, "projected_terrain_event_published");
+    lua_pushinteger(state, fuchi_safe_context);
+    lua_setfield(state, input_index, "fuchi_safe_context");
+
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("field_safes.resolve failed");
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("field_safes.resolve returned no decision");
+    }
+    const auto result_index = lua_absindex(state, -1);
+    std::string action_name;
+    bool raise_alarm = false;
+    bool reset_strike_team_counter = false;
+    bool queue_alarm_transition = false;
+    std::uint32_t strike_team_counter_value = 0U;
+    std::uint32_t alarm_transition_pending_value = 0U;
+    if (!read_field_string(state, result_index, "action", action_name) ||
+        !read_field_boolean(state, result_index, "raise_alarm", raise_alarm) ||
+        !read_field_boolean(state, result_index,
+                            "reset_strike_team_counter",
+                            reset_strike_team_counter) ||
+        !read_field_boolean(state, result_index, "queue_alarm_transition",
+                            queue_alarm_transition) ||
+        !read_field_integer(state, result_index, "strike_team_counter_value",
+                            0xFFU, strike_team_counter_value) ||
+        !read_field_integer(state, result_index,
+                            "alarm_transition_pending_value", 0xFFU,
+                            alarm_transition_pending_value)) {
+        return fail("field_safes.resolve returned invalid fields");
+    }
+
+    ScriptFieldSafeDecision decision{};
+    if (action_name == "none") {
+        decision.action = ScriptFieldSafeAction::none;
+    } else if (action_name == "renraku_map_overlay") {
+        decision.action = ScriptFieldSafeAction::renraku_map_overlay;
+    } else if (action_name == "fuchi_prototype_cyberheart") {
+        decision.action =
+            ScriptFieldSafeAction::fuchi_prototype_cyberheart;
+    } else {
+        return fail("field_safes.resolve returned an unknown action");
+    }
+    decision.raise_alarm = raise_alarm;
+    decision.reset_strike_team_counter = reset_strike_team_counter;
+    decision.queue_alarm_transition = queue_alarm_transition;
+    decision.strike_team_counter_value =
+        static_cast<std::uint8_t>(strike_team_counter_value);
+    decision.alarm_transition_pending_value =
+        static_cast<std::uint8_t>(alarm_transition_pending_value);
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return decision;
+}
+
 std::optional<ScriptFieldEncounterOutcome>
 GameScriptRuntime::resolve_field_encounter(
     const std::uint16_t scene_id, const std::uint8_t first_roll,
@@ -10197,7 +10284,8 @@ GameScriptRuntime::actor_heartbeat(
     // heartbeat may therefore report the walk/attack pose last selected by
     // the render heartbeat without advancing that animation itself.
     const bool dynamic_creature_walk =
-        context.dynamic_world_encounter_actor &&
+        (context.dynamic_world_encounter_actor ||
+         context.source_profile_patrol_actor) &&
         decision.animation_id == "walk";
     const bool dynamic_creature_action =
         context.dynamic_world_encounter_actor &&
@@ -10380,7 +10468,9 @@ GameScriptRuntime::actor_heartbeat(
         std::uint32_t heading = 0U;
         const bool movement_actor =
             context.profile_id == "field_runner_k03_none00" ||
-            context.dynamic_world_encounter_actor;
+            context.dynamic_world_encounter_actor ||
+            (context.source_profile_patrol_actor &&
+             context.source_actor_slot.has_value());
         // Lua snapshots retain the last selected route heading during the
         // separate render heartbeat. It is applied only on behavior passes;
         // render passes must still be able to return the same typed actor
@@ -10416,7 +10506,9 @@ GameScriptRuntime::actor_heartbeat(
     if (lua_type(state, -1) != LUA_TNIL) {
         if (!lua_istable(state, -1) ||
             (context.profile_id != "field_runner_k03_none00" &&
-             !context.dynamic_world_encounter_actor) ||
+             !context.dynamic_world_encounter_actor &&
+             !(context.source_profile_patrol_actor &&
+               context.source_actor_slot.has_value())) ||
             context.phase != ScriptActorHeartbeatPhase::behavior ||
             !context.movement_allowed ||
             !context.movement_services_available) {

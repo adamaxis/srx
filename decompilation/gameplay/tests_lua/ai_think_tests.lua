@@ -504,6 +504,43 @@ if patrol_route ~= nil then
           "0x142F6 clears +0xE4 and wraps to the spawn pair [C]")
 end
 
+local redmond_route_records = WaypointLists[0x172D1C]
+local redmond_expected = {
+    { offset = 0x172D58, x = 10240, y = 8704 },
+    { offset = 0x172D68, x = 21248, y = 9472 },
+    { offset = 0x172D78, x = 25216, y = 2944 },
+}
+for source_order = 0, 2 do
+    local route = redmond_route_records and redmond_route_records[source_order]
+    local expected = redmond_expected[source_order + 1]
+    local valid = route ~= nil and route.position_offset == expected.offset and
+        route.initial ~= nil and type(route.points) == "table"
+    check(valid,
+          string.format("scene-2 pedestrian %d has its ROM 0x172D1C route", source_order))
+    if valid then
+        local route_context = context({
+            entity_kind = E.SpriteType.PEDESTRIAN,
+            source_record_flags = E.ActorStatus.ACTIVE,
+            source_spawn_state_flags = pedestrian,
+            source_actor_slot = source_order + 3,
+            source_actor_list_offset = 0x172D1C,
+            source_actor_source_order = source_order,
+            source_world_x = route.initial.x,
+            source_world_y = route.initial.y,
+        })
+        route_context.measure_destination = function()
+            return { heading = 0, distance = 0, step_cost = 0 }
+        end
+        local pedestrian_state = state()
+        check(R.think(pedestrian_state, route_context) and
+              pedestrian_state.ai_route_target_x == expected.x and
+              pedestrian_state.ai_route_target_y == expected.y and
+              pedestrian_state.ai_waypoint_index ==
+                  E.AiTuning.PATROL_WAYPOINT_STRIDE,
+              string.format("0x142F4 selects pedestrian %d's first Redmond waypoint", source_order))
+    end
+end
+
 local collision = game.movement.collision
 game.movement.collision = function() return 0, 0 end
 local function formation_case(actor_slot, leader_slot, leader_heading,

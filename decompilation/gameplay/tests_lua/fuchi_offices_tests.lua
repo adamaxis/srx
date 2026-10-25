@@ -48,10 +48,31 @@ local gated_entry = {
     entry_continue_outcome_type = "resume_source_route",
 }
 
+local story_bytes = {}
 game = {
     state = { story_flag_bit_25 = true, story_flag_bit_14 = false },
-    location = { type = "building", id = "penumbra_site_02_fuchi" },
-    field = { event_code = 2, alternate_result = 0 },
+    location = {
+        type = "building", id = "penumbra_site_02_fuchi", scene_id = 3,
+    },
+    field = { mode = 2, event_code = 2, alternate_result = 0 },
+    services = { call = function(domain, operation)
+        if domain == "field" and operation == "scene_reference" then
+            return "scene_3"
+        end
+        assert(domain == "story", "unexpected service " .. domain .. "." .. operation)
+        local address = operation:match("^byte_get_(%x+)$")
+        if address then
+            local value = story_bytes[tonumber(address, 16)]
+            return value ~= nil and ("value_" .. value) or nil
+        end
+        local address_text, value_text =
+            operation:match("^byte_set_(%x+)_(%d+)$")
+        if address_text then
+            story_bytes[tonumber(address_text, 16)] = tonumber(value_text)
+            return "applied"
+        end
+        error("unexpected story service " .. operation)
+    end },
     ui = {
         say = function(event_id)
             game.last_dialogue_event = event_id
@@ -114,7 +135,8 @@ local entry_outcome = FuchiOffices.present_cyberheart_entry()
 assert(entry_outcome.type == "resume_source_route")
 assert(game.last_dialogue_event == "entry" and
        game.state.story_trigger_active_14 == true and
-       game.state.story_flag_bit_14 == false)
+       game.state.story_flag_bit_14 == false and
+       story_bytes[0xFFE187] == 0xFF)
 
 local event = Dialogue.event_text_keys(
     "fuchi_offices_narrator", "penumbra.fuchi", "entry")

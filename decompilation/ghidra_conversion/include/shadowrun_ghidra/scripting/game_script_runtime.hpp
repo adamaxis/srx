@@ -920,6 +920,21 @@ enum class ScriptFieldEncounterTriggerAction : std::uint8_t {
     select_scene_outcome,
 };
 
+enum class ScriptFieldSafeAction : std::uint8_t {
+    none,
+    renraku_map_overlay,
+    fuchi_prototype_cyberheart,
+};
+
+struct ScriptFieldSafeDecision {
+    ScriptFieldSafeAction action = ScriptFieldSafeAction::none;
+    bool raise_alarm = false;
+    bool reset_strike_team_counter = false;
+    bool queue_alarm_transition = false;
+    std::uint8_t strike_team_counter_value = 0;
+    std::uint8_t alarm_transition_pending_value = 0;
+};
+
 struct ScriptFieldEncounterTriggerInput {
     std::uint16_t scene_id = 0;
     std::uint16_t frame_counter = 0; // FFDF88 cadence value; host mapping [H]
@@ -1483,6 +1498,9 @@ struct ScriptActorBehaviorContext {
     // measured target facts from the native geometry query. Lua chooses the
     // behavior; the host does not infer a target from screen proximity.
     bool dynamic_world_encounter_actor = false;
+    // Default-list profiles may opt into typed Lua patrol movement without
+    // being promoted to dynamic encounter records.
+    bool source_profile_patrol_actor = false;
     // ROM world-activity script lists may create non-encounter actors in the
     // same runtime pool. Keep that provenance explicit for Lua profile rules.
     bool world_activity_script_actor = false;
@@ -1755,6 +1773,9 @@ public:
         std::uint8_t floor_index);
     std::optional<FieldMapEventPolicyDecision> resolve_field_collision_event(
         const FieldMapCollisionEventInput& input);
+    std::optional<ScriptFieldSafeDecision> resolve_field_safe_action(
+        std::uint16_t scene_id, bool projected_terrain_event_published,
+        std::uint8_t fuchi_safe_context);
     std::optional<ScriptFieldEncounterOutcome> resolve_field_encounter(
         std::uint16_t scene_id, std::uint8_t first_roll,
         std::uint8_t second_roll);

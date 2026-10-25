@@ -228,17 +228,20 @@ function ActorAI.heartbeat(context)
     local action = "hold"
     local audio_event = reaction_audio_event
     local target_heading_audio_event
-    if profile.controls_movement then
-        -- ROM 0xACAE observes the held A bit and only dispatches a player
-        -- action after the source +0xDC delay gate expires. The host supplies
-        -- those typed source facts; this Lua heartbeat owns the input policy.
-        state.combat_action_requested =
-            context.phase == "behavior" and
-            context.combat_action_available == true and
-            context.combat_confirm_held == true and
-            context.combat_action_ready == true and
-            context.combat_input_blocked ~= true
-        if not profile.dynamic_encounter_only then
+    if profile.controls_movement or profile.dynamic_encounter_only or
+       profile.source_profile_patrol then
+        if profile.controls_movement then
+            -- ROM 0xACAE observes the held A bit and only dispatches a player
+            -- action after the source +0xDC delay gate expires. The host
+            -- supplies those typed facts; Lua owns the input policy.
+            state.combat_action_requested =
+                context.phase == "behavior" and
+                context.combat_action_available == true and
+                context.combat_confirm_held == true and
+                context.combat_action_ready == true and
+                context.combat_input_blocked ~= true
+        end
+        if profile.controls_movement and not profile.dynamic_encounter_only then
             local cast_audio = R.begin_player_spell_cast(state, context)
             if cast_audio ~= nil then
                 audio_event = cast_audio
@@ -252,10 +255,11 @@ function ActorAI.heartbeat(context)
         end
         if context.phase == "render" then
             state.movement_step = nil
-            if not profile.dynamic_encounter_only then
+            if not profile.dynamic_encounter_only and
+               not profile.source_profile_patrol then
                 state.movement_heading = nil
             end
-            if profile.dynamic_encounter_only then
+            if profile.dynamic_encounter_only or profile.source_profile_patrol then
                 if state.animation_id == "action" then
                     if not R.advance_dynamic_actor_action_animation(state) then
                         return nil
@@ -290,15 +294,11 @@ function ActorAI.heartbeat(context)
             end
         else
             state.movement_step = nil
-            if profile.dynamic_encounter_only then
+            if profile.dynamic_encounter_only or profile.source_profile_patrol then
                 if not state.transition_complete then
-                    -- ROM 0x1E25A spawns the encounter record live: posture
-                    -- +0x4D=4, +0x9E.6 hostile, then 0x1DBAA (combat on).
-                    -- No death/"entry" list is selected at spawn; C0B2 is
-                    -- read only by 0xB330 (callers 0xAA4C zero meter,
-                    -- 0xB002..0xB0F4 hit path, 0xE4BA). The seeded delay is
-                    -- the +0xB6 think timer that 0x13904 counts down while
-                    -- the actor idles (it stays hittable meanwhile).
+                    -- Source-profile list actors and dynamic encounters wait
+                    -- on the seeded +0xB6 behavior delay before 0x13904
+                    -- starts their patrol or target policy.
                     state.transition_started = true
                     if state.entry_delay == 0 then
                         state.transition_complete = true

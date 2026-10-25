@@ -76,6 +76,102 @@ using field_scene_detail::kSceneProfileEntityPositionWord;
 using field_scene_detail::kFieldModalReturnTransitionFrames;
 using field_scene_detail::magic_action_record_from_runner;
 
+void FieldSceneRuntime::provide_source_profile_patrol_movement_services(
+    scripting::ScriptActorBehaviorContext& context,
+    DefaultFieldActorPresentation& actor) {
+    static constexpr std::array<std::uint16_t, 8> kMovementPoseBases{{
+        0x00U, 0x04U, 0x08U, 0x0CU, 0x10U, 0x14U, 0x18U, 0x1CU,
+    }};
+
+    context.movement_allowed = true;
+    context.movement_services_available = true;
+    context.source_profile_patrol_actor = true;
+    context.movement_state = scripting::ScriptMovementStepState{
+        actor.movement_state.position_x,
+        actor.movement_state.position_y,
+        actor.movement_state.heading,
+        actor.movement_state.animation_heading,
+        actor.movement_state.collision_context,
+        actor.movement_state.movement_substate,
+        actor.movement_state.route_status,
+        actor.source_behavior_flags,
+        actor.movement_state.movement_flags,
+        actor.movement_state.collision_flags,
+        actor.movement_state.event_flags,
+        actor.movement_state.collision_extent,
+        actor.movement_terrain_collision_code};
+    for (std::size_t index = 0U;
+         index < field_movement_direction_offsets_.size(); ++index) {
+        context.movement_offsets[index] = scripting::ScriptMovementOffset{
+            field_movement_direction_offsets_[index].x,
+            field_movement_direction_offsets_[index].y};
+    }
+    context.movement_idle_selectors = kMovementPoseBases;
+    context.movement_entity_flags = actor.source_record_flags;
+    context.movement_collision_mode =
+        field_movement_transition_state_.world_mode;
+    context.measure_destination = [&actor](
+        const std::uint16_t target_x, const std::uint16_t target_y)
+        -> std::optional<scripting::ScriptActorDestinationMeasurement> {
+        const auto measurement = measure_entity_target_heading_and_distance(
+            actor.world_position.x, actor.world_position.y,
+            target_x, target_y);
+        const auto route_cost = std::min<std::uint32_t>(
+            compute_record_diagonal_step_cost(
+                actor.world_position.x, actor.world_position.y,
+                target_x, target_y),
+            std::numeric_limits<std::uint16_t>::max());
+        return scripting::ScriptActorDestinationMeasurement{
+            measurement.heading,
+            static_cast<std::uint16_t>(std::min<std::uint32_t>(
+                measurement.distance,
+                std::numeric_limits<std::uint16_t>::max())),
+            static_cast<std::uint16_t>(route_cost)};
+    };
+    context.movement_collision = [this, &actor](
+        const std::uint16_t x, const std::uint16_t y) {
+        const auto collision_code = evaluate_field_collision(
+            x, y, actor.movement_collision_record,
+            actor.movement_sample_state, actor.source_record_flags, false,
+            &actor.movement_terrain_collision_code);
+        return scripting::ScriptMovementCollisionResult{
+            collision_code, actor.movement_terrain_collision_code};
+    };
+    context.movement_route_lookup = [this, &actor](
+        const std::uint16_t route_key) {
+        if ((route_key & 0x03U) != 0U ||
+            route_key / 4U >= field_movement_routes_.size()) {
+            source_boundary("field.actor.movement.route_key_out_of_range");
+            throw std::runtime_error(
+                "Lua requested an actor route outside the source table");
+        }
+        const auto route_index = static_cast<std::size_t>(route_key / 4U);
+        const auto& route_source = field_movement_route_sources_[route_index];
+        const auto sample_value = [&actor](const std::uint8_t index) {
+            if (index >= actor.movement_sample_state.size()) {
+                throw std::runtime_error(
+                    "actor route sample is outside its local collision state");
+            }
+            return static_cast<std::int8_t>(
+                actor.movement_sample_state[index]);
+        };
+        const auto& route = field_movement_routes_[route_index];
+        return scripting::ScriptMovementRouteFacts{
+            sample_value(route_source.primary_sample_index),
+            sample_value(route_source.secondary_sample_index),
+            route.primary_fallback_slot,
+            route.secondary_fallback_slot};
+    };
+    context.movement_collision_recovery = [&actor](
+        const std::uint16_t, const std::uint16_t,
+        const std::int16_t collision_code, const std::uint8_t) {
+        // Default-list patrols use the actor route fallback; map-event
+        // recovery remains owned by the controlled runner movement path.
+        return scripting::ScriptMovementCollisionRecoveryResult{
+            collision_code < 0, actor.source_behavior_flags};
+    };
+}
+
 #ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::open_command_overview_for_dump() {
     if (!ready_) {

@@ -254,6 +254,30 @@ int main() {
                    MovementModeTransitionContinuation::projected_terrain_event &&
                last_continuation ==
                    MovementModeTransitionContinuation::projected_terrain_event);
+
+        // ROM 0x20C90 still runs after 0x16760 marks terrain when FFE178 is
+        // clear, because the following Fuchi safe handler has its own
+        // FFE187 gate. The Lua continuation uses this flag to suppress only
+        // the Renraku reward.
+        record = make_record();
+        state = make_state(0x001AU);
+        callbacks.dispatch_field_map_event = [](
+            const FieldMapCollisionEventInput& input)
+            -> std::optional<FieldMapEventPolicyDecision> {
+            return make_script_decision(
+                input, FieldMapEventAction::mark_projected_terrain,
+                std::nullopt, std::nullopt, false, false);
+        };
+        const auto gate_closed = advance_entity_movement_and_mode_transition(
+            record, 0x200U, 0x400U, state, callbacks);
+        assert(gate_closed.kind ==
+                   EntityMovementModeTransitionResultKind::
+                       projected_terrain_marked &&
+               !state.projected_terrain_event_published &&
+               gate_closed.continuation ==
+                   MovementModeTransitionContinuation::projected_terrain_event &&
+               last_continuation ==
+                   MovementModeTransitionContinuation::projected_terrain_event);
     }
 
     {

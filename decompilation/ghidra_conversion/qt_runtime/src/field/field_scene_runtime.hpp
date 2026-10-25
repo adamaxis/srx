@@ -303,6 +303,7 @@ public:
     bool bootstrap_for_scene_dump(
         const integration::StartupIntegrationState& startup_state,
         std::uint16_t scene_reference);
+    bool reenter_field_scene_for_dump(std::uint16_t scene_reference);
     void advance_frame();
     // Combat integration may submit the source-ordered SAT pieces for the
     // next opt-in VDP-mirror frame. The mirror is the only owner of this list.
@@ -1651,6 +1652,9 @@ private:
         const ConversionAssetCatalog& catalog);
     void initialize_default_field_actors(std::uint16_t scene_reference);
     void advance_default_field_actors(bool source_target_list_service);
+    void provide_source_profile_patrol_movement_services(
+        scripting::ScriptActorBehaviorContext& context,
+        DefaultFieldActorPresentation& actor);
     void resolve_default_actor_proximity(
         DefaultFieldActorPresentation& actor);
     void publish_pending_world_activity_script_actors(
@@ -1914,6 +1918,7 @@ private:
         scripting::ScriptCombatantFacts combatant{};
         std::optional<std::uint8_t> effect_slot;
         bool temporary_world_encounter = false;
+        bool source_profile_patrol_actor = false;
         // ROM-selected scene script actors share the dynamic actor behavior
         // package, but their lifetime is tied to the selected scene script,
         // not to a random encounter sequence.
@@ -2333,6 +2338,11 @@ private:
     // It is separate from the actor-transition countdown and remains unknown
     // when restored from a save that predates this field.
     std::optional<std::uint8_t> field_strike_team_counter_ = std::nullopt;
+    // FFE187 arms the Fuchi cyber-heart safe; FFE191 defers its alarm
+    // transition to the next source world-effect refresh. Both are transient.
+    std::optional<std::uint8_t> field_fuchi_safe_context_ = std::uint8_t{0U};
+    std::optional<std::uint8_t> field_alarm_transition_pending_ =
+        std::uint8_t{0U};
     std::optional<std::uint8_t> notebook_referral_flags_ = 0U;
     std::optional<std::uint16_t> notebook_shadowrunner_flags_ = 0U;
     QImage pocket_secretary_background_;

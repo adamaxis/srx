@@ -455,7 +455,7 @@ bool verify_dialogue_graph_outcomes(
 
     scripts.set_location_context(
         "building", "penumbra_site_02_fuchi", "penumbra.fuchi",
-        "fuchi_offices_narrator");
+        "fuchi_offices_narrator", {}, 3U);
     scripts.set_field_mode_context(ScriptFieldModeContext{0U, 2U, 0});
     scripts.set_story_state({
         {"story_flag_bit_25", true},
@@ -463,6 +463,17 @@ bool verify_dialogue_graph_outcomes(
     });
     task = scripts.start_task(
         "fuchi_offices", "present_cyberheart_entry");
+    if (!expect(task.status == ScriptTaskStep::Status::
+                                   awaiting_native_operation &&
+                    task.operation.has_value() &&
+                    task.operation->type ==
+                        ScriptNativeOperation::Type::service_call &&
+                    task.operation->service_id ==
+                        "story.byte_set_ffe187_255",
+                "Fuchi entry did not arm FFE187 before its source page")) {
+        return false;
+    }
+    task = scripts.complete_native_service_result("applied");
     if (!expect(task.status == ScriptTaskStep::Status::
                                    awaiting_native_operation &&
                     task.operation.has_value() &&
@@ -597,6 +608,50 @@ int main() {
                     std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
                         "dialogue" / "script-text.json"),
                 "gameplay Lua package did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    scripts.set_story_state({
+        {"story_flag_bit_12", false},
+        {"story_flag_bit_14", false},
+        {"story_flag_bit_16", true},
+        {"story_flag_bit_25", true},
+    });
+    const auto renraku_safe =
+        scripts.resolve_field_safe_action(0x28U, true, 0U);
+    const auto renraku_safe_state = scripts.story_state();
+    if (!expect(renraku_safe.has_value() &&
+                    renraku_safe->action ==
+                        ScriptFieldSafeAction::renraku_map_overlay &&
+                    renraku_safe->raise_alarm &&
+                    renraku_safe->reset_strike_team_counter &&
+                    renraku_safe->queue_alarm_transition &&
+                    renraku_safe->strike_team_counter_value == 0U &&
+                    renraku_safe->alarm_transition_pending_value == 1U &&
+                    renraku_safe_state.at("story_flag_bit_12"),
+                "0x540D6 Lua policy did not apply its gated one-shot reward")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    const auto fuchi_safe_unarmed =
+        scripts.resolve_field_safe_action(0x28U, false, 0U);
+    const auto fuchi_safe =
+        scripts.resolve_field_safe_action(0x28U, false, 0xFFU);
+    const auto fuchi_safe_state = scripts.story_state();
+    const auto fuchi_safe_repeat =
+        scripts.resolve_field_safe_action(0x28U, false, 0xFFU);
+    if (!expect(fuchi_safe_unarmed.has_value() &&
+                    fuchi_safe_unarmed->action ==
+                        ScriptFieldSafeAction::none &&
+                    fuchi_safe.has_value() &&
+                    fuchi_safe->action ==
+                        ScriptFieldSafeAction::fuchi_prototype_cyberheart &&
+                    !fuchi_safe->raise_alarm &&
+                    fuchi_safe_state.at("story_flag_bit_14") &&
+                    fuchi_safe_repeat.has_value() &&
+                    fuchi_safe_repeat->action ==
+                        ScriptFieldSafeAction::none,
+                "0x541B2 Lua policy did not enforce its arm and one-shot gates")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

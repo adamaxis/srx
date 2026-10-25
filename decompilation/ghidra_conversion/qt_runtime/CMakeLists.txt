@@ -1235,6 +1235,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_stoker_collision_c
                  --field-stoker-collision-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-stoker-collision-qa")
 
+# Re-enter Scene 2 after the opening warmup, then check the profile-list
+# pedestrian spawns, movement, and rendered actual.bmp checkpoint.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_scene2_pedestrians_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-scene2-pedestrians-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-scene2-pedestrians-qa")
+
 # Follow ordinary New Game movement into the west wall of Stoker's motel,
 # hold against the source collision cells, move diagonally along the frontage,
 # and retreat. Whole-screen checkpoints and a per-frame coordinate log keep

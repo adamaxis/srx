@@ -627,6 +627,22 @@ bool FieldSceneRuntime::bootstrap_for_scene_dump(
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::reenter_field_scene_for_dump(
+    const std::uint16_t scene_reference) {
+    if (!ready_ || !field_entity_.active ||
+        scene_reference != state_.field_scene_buffers.scene_reference) {
+        return false;
+    }
+    // Supplying the live runner position selects the same forced scene-entry
+    // path used by an accepted destination spawn, including the default-list
+    // actor population pass.
+    return prepare_runtime_field_scene(scene_reference,
+                                       field_entity_.world_position);
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 void FieldSceneRuntime::set_field_vdp_mirror_enabled_for_qa(
     const bool enabled) {
     field_vdp_mirror_qa_override_ = true;

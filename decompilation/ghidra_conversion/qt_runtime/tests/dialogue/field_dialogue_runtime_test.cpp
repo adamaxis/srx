@@ -112,6 +112,7 @@ int main() {
     }
 
     std::string_view boundary;
+    std::size_t fuchi_safe_arm_calls = 0U;
     std::uint8_t arrival_roll = 79U;
     std::uint8_t observed_arrival_bound = 0U;
     std::size_t arrival_roll_count = 0U;
@@ -221,22 +222,38 @@ int main() {
         {"story_flag_bit_25", true},
         {"story_flag_bit_14", false},
     });
+    runtime.set_native_script_service_callback(
+        [&fuchi_safe_arm_calls](const std::string_view service_id)
+            -> std::optional<std::string> {
+            if (service_id == "story.byte_set_ffe187_255") {
+                ++fuchi_safe_arm_calls;
+                return "applied";
+            }
+            return std::nullopt;
+        });
     gameplay_scripts.set_location_context(
         "building", "penumbra_site_02_fuchi", "penumbra.fuchi",
-        "fuchi_offices_narrator");
+        "fuchi_offices_narrator", {}, 3U);
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{0U, 2U, 0});
-    if (!expect(runtime.open_gameplay_task(
-                    "fuchi_offices", "present_cyberheart_entry")) ||
-        !expect(runtime.advance_controller_events(0x4000U) ==
+    const bool fuchi_opened = runtime.open_gameplay_task(
+        "fuchi_offices", "present_cyberheart_entry");
+    const auto fuchi_advance = fuchi_opened
+        ? runtime.advance_controller_events(0x4000U)
+        : FieldDialogueAdvanceResult::waiting_for_controller;
+    if (!expect(fuchi_opened) ||
+        !expect(fuchi_advance ==
                 FieldDialogueAdvanceResult::typed_outcome_requested)) {
+        std::cerr << "Fuchi panel boundary: "
+                  << runtime.panel().source_boundary_reason << '\n';
         std::cerr << "Fuchi graph did not complete as resume_source_route\n";
         return 132;
     }
     const auto fuchi_outcome = runtime.take_gameplay_task_outcome();
     if (!expect(fuchi_outcome.has_value() &&
                 std::holds_alternative<
-                    scripting::ResumeSourceRouteOutcome>(*fuchi_outcome))) {
+                    scripting::ResumeSourceRouteOutcome>(*fuchi_outcome) &&
+                fuchi_safe_arm_calls == 1U)) {
         std::cerr << "Fuchi graph lost its typed outcome at the presenter\n";
         return 133;
     }

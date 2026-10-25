@@ -308,6 +308,10 @@
         "entry": {
           "continuation_key": "shared.more",
           "title_key": "penumbra.fuchi.page.entry"
+        },
+        "safe_found": {
+          "continuation_key": "shared.more",
+          "title_key": "penumbra.fuchi.page.followup"
         }
       },
       "name": "Narration",

@@ -65,6 +65,14 @@ E.FieldAlarm = {
     LIST_ADDRESS_MAX = 0xFFFFFFFF, -- source longword bound [C]
     ACTOR_FLAGS_MAX = 0xFF, -- +0x9E byte bound [C]
 } -- 0x1DFC4 cadence and unsigned random gate [C]
+E.FieldSafe = {
+    PROJECTED_EVENT = 0x1A, -- 0xB7B8 routes event 0x1A through 0x16760/0x20C90 [C]
+    RENRAKU_SCENE = 0x28, -- 0x540D6 safe handler checks FFFBF8 [C]
+    FUCHI_ENTRY_SCENE = 0x03, -- 0x54152 arms FFE187 from scene 3/event 2 [C]
+    FUCHI_ENTRY_EVENT = 0x02,
+    FUCHI_SAFE_CONTEXT_VALUE = 0xFF, -- 0x5418C writes FFE187 [C]
+    ALARM_TRANSITION_PENDING_VALUE = 0x01, -- 0x54134 writes FFE191 [C]
+}
 E.FieldEncounter = {
     FRAME_MASK = 0x03FF, -- raw 0x03FF: FFDF88 low-word cadence mask at 0x1E1AE [C]
     FRAME_VALUE = 10, -- raw 10: matching cadence value at 0x1E1B2 [C]
@@ -167,9 +175,11 @@ E.FIRST_NON_WEAPON = E.ItemId.FRAG_GRENADE
 E.Pickup = { CLIPS_FLAG = 0xC000, NUYEN_FLAG = 0x8000, GARGOYLE_HORN = 0x64, HOUND_PELT = 0x65 }  -- 0x133A6 [C]
 -- Group-item bits in FFFC22; the Pocket Secretary rows identify these items [C].
 E.GroupItemBit = {
+    PROTOTYPE_CYBERHEART = 0, -- 0x541B2 sets FFFC22 bit 0 [C]
     INDIAN_LANDS_VISA = 1, -- FFFC22 bit 1, pocket_secretary row indian_lands_visa [C]
     RUN_OBJECTIVE_ACTIVE = 9, -- FFFC22 bit 9, cleared by 0x1EF2C/0x1F000/0xC6EE [C]
     ORK_ARMBAND = 14,      -- FFFC22 bit 14; taxi checks leader FF018F bit 5 [C]
+    RENRAKU_MAP_OVERLAY = 8, -- 0x540D6 sets FFFC22 bit 8 [C]
 }
 
 -- Spell types: spell record = item 0x33 + type; held weapon_code = type + 1 [C]
@@ -363,6 +373,8 @@ E.LinkReturn = { SERVICE = 1, INTERIOR = 2 }  -- 0x9B8 same-map d6 path / 0xA68 
 E.StoryByte = {
     HEAT = 0xFFFBFA,        -- Lone Star heat level 0..8 [C]
     STRIKE_TEAM = 0xFFFBFB, -- Strike Team escalation stage 0..8, ROM 0x1F1E0 [C]
+    FUCHI_SAFE_CONTEXT = 0xFFE187, -- Fuchi entry service 0x54152 arms the cyber-heart safe [C]
+    ALARM_TRANSITION_PENDING = 0xFFE191, -- 0x54134 defers the alarm transition to 0x2940 [C]
 }
 E.LinkFacing = { PRESERVE_ENTRY = 0, FACE_AWAY = 1 }  -- per-link exit facing policy (port): FACE_AWAY = entry heading ^ 0x8000, the party faces out of the door
 E.Direction = { UP = 0, RIGHT = 2, DOWN = 4, LEFT = 6 }                                -- 0x148CA index [C]

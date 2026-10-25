@@ -27,6 +27,26 @@
           "outcome": { "type": "resume_source_route" }
         }
       }
+    },
+    "fuchi_offices.cyberheart_safe_found": {
+      "entryNode": "safe_found",
+      "speakerId": "fuchi_offices_narrator",
+      "textProfile": "penumbra.fuchi",
+      "provenance": {
+        "romAddresses": ["0x20C90", "0x541B2", "0x11B7FC", "0x122090"],
+        "scope": "fuchi_safe_reward_page"
+      },
+      "nodes": {
+        "safe_found": {
+          "type": "page",
+          "eventId": "safe_found",
+          "next": "complete"
+        },
+        "complete": {
+          "type": "terminal",
+          "outcome": { "type": "completed" }
+        }
+      }
     }
   }
 }
