@@ -871,6 +871,63 @@ struct ScriptFieldEncounterTriggerInput {
     std::uint16_t probability_threshold = 0;
 };
 
+struct ScriptFieldAlarmRegion {
+    std::uint16_t x_min = 0U;
+    std::uint16_t x_max = 0U;
+    std::uint16_t y_min = 0U;
+    std::uint16_t y_max = 0U;
+};
+
+struct ScriptFieldAlarmActorFlags {
+    std::string actor_id;
+    std::uint8_t flags_9e = 0U;
+};
+
+struct ScriptFieldAlarmProfile {
+    std::vector<ScriptFieldAlarmRegion> regions;
+    std::optional<std::uint32_t> reinforcement_list_address;
+};
+
+struct ScriptFieldAlarmInput {
+    std::uint16_t scene_id = 0U;
+    std::uint16_t frame_counter = 0U;
+    std::uint16_t scene_mode = 0U;
+    std::uint16_t player_tile_x = 0U;
+    std::uint16_t player_tile_y = 0U;
+    bool disabled = false;
+    bool alarm = false;
+    std::int16_t timer = 0;
+    std::optional<std::uint16_t> rng;
+    bool direct_raise = false;
+    bool clear_alarm = false;
+    bool disable_alarm = false;
+    bool reset = false;
+    std::vector<ScriptFieldAlarmRegion> regions;
+    std::vector<ScriptFieldAlarmActorFlags> actors;
+    std::optional<std::uint32_t> reinforcement_list_address;
+};
+
+enum class ScriptFieldAlarmFlagAction : std::uint8_t {
+    none,
+    clear_spotted,
+    promote_reinforcement,
+};
+
+struct ScriptFieldAlarmResult {
+    bool alarm = false;
+    bool disabled = false;
+    std::int16_t timer = 0;
+    bool sample_rng = false;
+    bool schedule_timeout = false;
+    std::optional<std::uint16_t> sound_start;
+    std::optional<std::uint16_t> sound_stop;
+    ScriptFieldAlarmFlagAction flag_action = ScriptFieldAlarmFlagAction::none;
+    bool spawn_reinforcements = false;
+    std::optional<std::uint32_t> reinforcement_list_address;
+    std::optional<std::uint8_t> reinforcement_flag;
+    std::vector<ScriptFieldAlarmActorFlags> actors;
+};
+
 // Source-derived fields consumed by the ROM close-target reaction path
 // (0x55C76). Scripts receive named combat facts, never a byte-addressed
 // Genesis record.
@@ -1599,6 +1656,10 @@ public:
     std::optional<ScriptFieldEncounterTriggerAction>
     evaluate_field_encounter_trigger(
         const ScriptFieldEncounterTriggerInput& input);
+    std::optional<ScriptFieldAlarmProfile> field_alarm_profile(
+        std::uint16_t scene_id);
+    std::optional<ScriptFieldAlarmResult> evaluate_field_alarm(
+        const ScriptFieldAlarmInput& input);
     std::optional<std::vector<FieldMapEventRule>> map_event_rules();
     void set_story_state(const StoryFacts& facts);
     void set_story_fact_accessors(StoryFactReader read,

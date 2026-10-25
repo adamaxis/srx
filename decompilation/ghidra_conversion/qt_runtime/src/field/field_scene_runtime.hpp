@@ -363,6 +363,18 @@ public:
     std::size_t defeat_mako_actor_list_for_qa() noexcept;
     bool open_command_overview_for_dump();
 #ifdef SHADOWRUN_QT_QA_DRIVER
+    bool field_alarm_active_for_dump() const noexcept {
+        return field_matrix_field_state_.alarm.value_or(false);
+    }
+    void set_field_alarm_disabled_for_dump(bool disabled) noexcept {
+        field_matrix_field_state_.security_off = disabled;
+    }
+    std::int16_t field_alarm_timer_for_dump() const noexcept {
+        return field_alarm_timer_;
+    }
+    void set_field_alarm_timer_for_dump(std::int16_t timer) noexcept {
+        field_alarm_timer_ = timer;
+    }
     bool dispatch_dialogue_service_for_dump(
         std::string_view service_id, std::string_view return_policy);
     bool open_hospital_menu_for_dump(std::string_view function);
@@ -1515,6 +1527,13 @@ private:
     bool apply_scripted_field_entity_target_selection(
         const std::optional<std::string>& selected_actor_id);
     void trigger_field_world_effect_sequence();
+    void advance_field_alarm(bool direct_raise = false,
+                             bool clear_alarm = false,
+                             bool disable_alarm = false,
+                             bool reset_alarm = false);
+    void apply_field_alarm_result(
+        const scripting::ScriptFieldAlarmResult& result,
+        std::uint16_t scene_reference);
     bool process_pending_story_world_effect_sequence();
     std::int16_t select_field_world_effect_sequence();
     void spawn_field_world_effect_sequence();
@@ -2030,6 +2049,8 @@ private:
     // docs/24 R1: aliases the single ROM RNG word FFF9F8 shared with title/menus/Matrix (random_conversion.hpp).
     std::uint16_t& field_random_seed_ = source_random_seed();
     std::uint16_t field_world_frame_counter_ = 0U;
+    // ROM FFE11E and FFE170 are transient field alarm state [C].
+    std::int16_t field_alarm_timer_ = 0;
     std::uint32_t field_world_encounter_sequence_ = 0U;
     std::optional<SelectedInventoryItem>
         command_overview_selected_inventory_item_;

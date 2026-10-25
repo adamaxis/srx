@@ -352,6 +352,8 @@ records.startup.joshua.archetypes	records/startup/joshua-archetypes.bin	state	0	
 records.startup.recruited.runners	records/startup/recruited-runner-records.bin	state	0	0
 records.startup.save.roster.header	records/startup/save-roster-header.bin	state	0	0
 audio.manifest	audio/audio_manifest.tsv	state	0	0
+field.alarm.profiles	field/field-alarm-profiles.tsv	state	0	0
+field.alarm.regions	field/field-alarm-regions.tsv	state	0	0
 menu.field.service.routes	menu/field/service-routes.tsv	text	0	0
 title.background	title/background.bmp	image	0	0
 title.circuit.background.0	title/circuit-background-0.bmp	image	0	0

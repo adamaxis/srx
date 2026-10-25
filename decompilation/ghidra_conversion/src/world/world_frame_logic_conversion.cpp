@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/world/world_frame_logic_conversion.hpp"
+#include "enums.hpp"
 
 namespace shadowrun::ghidra_conversion {
 
@@ -62,7 +63,10 @@ void advance_world_frame_logic(WorldFrameLogicState& state,
     }
 
     call_once(callbacks.clear_inactive_entity_effects);
-    if (state.world_mode == 2U) {
+    // ROM 0x1DE7C gates the terrain batch and alarm countdown on FFDF40 == 2;
+    // world_mode remains FFDDC4, the scene ID used by the cleanup branch. [C]
+    if (state.field_mode ==
+        static_cast<std::uint16_t>(srx::SceneMode::BUILDING)) {
         call_once(callbacks.process_terrain_work_batch);
         call_once(callbacks.advance_world_effect_trigger);
     }

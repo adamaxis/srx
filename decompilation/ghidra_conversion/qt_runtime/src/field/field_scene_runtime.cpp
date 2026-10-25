@@ -1000,6 +1000,11 @@ FieldSceneRuntime::FieldSceneRuntime(
     hospital_random_grid_cells_.fill(-1);
     field_dialogue_.set_script_runtime(&game_scripts_);
     field_interaction_.set_script_runtime(&game_scripts_);
+    field_interaction_.set_security_alarm_callbacks(
+        [this] { advance_field_alarm(true); },
+        [this](const bool disable_alarm) {
+            advance_field_alarm(false, true, disable_alarm);
+        });
     field_dialogue_.set_room_payment_callback([this]()
         -> std::optional<StokerMotelRoomPaymentOutcome> {
         if (!field_funds_.has_value()) {
@@ -6283,6 +6288,150 @@ bool FieldSceneRuntime::process_pending_story_world_effect_sequence() {
     return false;
 }
 
+void FieldSceneRuntime::advance_field_alarm(const bool direct_raise,
+                                           const bool clear_alarm,
+                                           const bool disable_alarm,
+                                           const bool reset_alarm) {
+    const auto scene_reference =
+        state_.field_scene_buffers.scene_reference;
+    auto profile = game_scripts_.field_alarm_profile(scene_reference);
+    if (!profile.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.alarm.profile_unresolved");
+        return;
+    }
+
+    scripting::ScriptFieldAlarmInput input{};
+    input.scene_id = scene_reference;
+    input.frame_counter = field_world_frame_counter_;
+    input.scene_mode = field_movement_transition_state_.world_mode;
+    input.player_tile_x = static_cast<std::uint16_t>(
+        field_entity_.world_position.x >> static_cast<unsigned>(
+            srx::FieldAlarm::TILE_SHIFT));
+    input.player_tile_y = static_cast<std::uint16_t>(
+        field_entity_.world_position.y >> static_cast<unsigned>(
+            srx::FieldAlarm::TILE_SHIFT));
+    input.disabled = field_matrix_field_state_.security_off.value_or(false);
+    input.alarm = field_matrix_field_state_.alarm.value_or(false);
+    input.timer = field_alarm_timer_;
+    input.direct_raise = direct_raise;
+    input.clear_alarm = clear_alarm;
+    input.disable_alarm = disable_alarm;
+    input.reset = reset_alarm;
+    input.regions = std::move(profile->regions);
+    input.reinforcement_list_address =
+        profile->reinforcement_list_address;
+    for (const auto& actor : field_default_actors_) {
+        if (!actor.active || actor.scene_reference != scene_reference ||
+            !actor.source_record_slot.has_value()) {
+            continue;
+        }
+        const auto slot = static_cast<std::uint16_t>(
+            *actor.source_record_slot);
+        if (slot < static_cast<std::uint16_t>(FieldWorldActorSlot::slot_3) ||
+            slot > static_cast<std::uint16_t>(FieldWorldActorSlot::slot_9)) {
+            continue;
+        }
+        input.actors.push_back(scripting::ScriptFieldAlarmActorFlags{
+            actor.actor_instance_id, actor.source_spawn_state_flags});
+    }
+
+    auto result = game_scripts_.evaluate_field_alarm(input);
+    if (!result.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.alarm.script_tick_failed");
+        return;
+    }
+    if (result->sample_rng) {
+        // ROM 0x1DFC4 calls 0xD44 only on its frame gate; this preserves the
+        // source PRNG stream when any earlier gate rejects the alarm check. [C]
+        input.rng = advance_source_random_seed(field_random_seed_);
+        result = game_scripts_.evaluate_field_alarm(input);
+        if (!result.has_value() || result->sample_rng) {
+            failure_ = game_scripts_.failure().empty()
+                ? "field alarm requested more than one random word"
+                : game_scripts_.failure();
+            source_boundary("field.alarm.script_rng_failed");
+            return;
+        }
+    }
+    apply_field_alarm_result(*result, scene_reference);
+}
+
+void FieldSceneRuntime::apply_field_alarm_result(
+    const scripting::ScriptFieldAlarmResult& result,
+    const std::uint16_t scene_reference) {
+    field_matrix_field_state_.alarm = result.alarm;
+    field_matrix_field_state_.security_off = result.disabled;
+    field_alarm_timer_ = result.timer;
+
+    for (const auto& source : result.actors) {
+        const auto actor = std::find_if(
+            field_default_actors_.begin(), field_default_actors_.end(),
+            [scene_reference, &source](const auto& candidate) {
+                return candidate.active &&
+                    candidate.scene_reference == scene_reference &&
+                    candidate.source_record_slot.has_value() &&
+                    candidate.actor_instance_id == source.actor_id;
+            });
+        if (actor != field_default_actors_.end()) {
+            // ROM +0x9E is carried as the typed actor spawn-state flags. [C]
+            actor->source_spawn_state_flags = source.flags_9e;
+        }
+    }
+    if (result.sound_start.has_value() && source_audio_event_callback_) {
+        source_audio_event_callback_(*result.sound_start);
+    }
+    if (result.sound_stop.has_value() && source_audio_stop_callback_) {
+        source_audio_stop_callback_(*result.sound_stop);
+    }
+    if (result.schedule_timeout) {
+        if (schedule_world_activity_timeout(
+                field_world_activity_timeout_state_)) {
+            world_frame_logic_state_.world_active = static_cast<std::uint16_t>(
+                field_world_activity_timeout_state_.timeout_marker);
+            world_frame_logic_state_.cleanup_countdown =
+                static_cast<std::int16_t>(
+                    field_world_activity_timeout_state_.timeout_frames);
+            source_boundary("field.alarm.scene14_timeout_scheduled");
+        } else {
+            source_boundary("field.alarm.scene14_timeout_gated");
+        }
+    }
+    if (!result.spawn_reinforcements) {
+        return;
+    }
+    if (!result.reinforcement_list_address.has_value() ||
+        !result.reinforcement_flag.has_value()) {
+        source_boundary("field.alarm.reinforcement_data_unresolved");
+        return;
+    }
+    if (!pending_world_activity_script_actors_.empty() ||
+        pending_world_activity_script_actor_scene_.has_value() ||
+        field_pending_actor_list_transition_group_.has_value() ||
+        field_mako_actor_transitions_remaining_.has_value()) {
+        source_boundary("field.alarm.reinforcement_list_conflict");
+        return;
+    }
+    auto actors = game_scripts_.world_activity_actors_for_source_list(
+        scene_reference, *result.reinforcement_list_address);
+    if (!actors.has_value() || actors->empty()) {
+        failure_ = game_scripts_.failure().empty()
+            ? "alarm reinforcement list has no extracted actors"
+            : game_scripts_.failure();
+        source_boundary("field.alarm.reinforcement_list_unresolved");
+        return;
+    }
+    for (auto& actor : *actors) {
+        actor.source_spawn_state_flags = static_cast<std::uint8_t>(
+            actor.source_spawn_state_flags | *result.reinforcement_flag);
+    }
+    pending_world_activity_script_actor_scene_ = scene_reference;
+    pending_world_activity_script_actors_ = std::move(*actors);
+    publish_pending_world_activity_script_actors(scene_reference);
+    source_boundary("field.alarm.reinforcements_published");
+}
+
 void FieldSceneRuntime::trigger_field_world_effect_sequence() {
     if (process_pending_story_world_effect_sequence()) {
         return;
@@ -8466,6 +8615,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             world_frame_logic_state_.region_or_mode = 10;
         }
         const auto scene_state_before = world_frame_logic_state_.scene_state;
+        world_frame_logic_state_.field_mode =
+            field_movement_transition_state_.world_mode;
         const auto transition_marker_before =
             world_frame_logic_state_.transition_marker;
         const auto region_or_mode_before =
@@ -8616,7 +8767,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         source_boundary("field.world_logic.process_terrain_work_batch");
     };
     world_frame_logic_callbacks_.advance_world_effect_trigger = [this] {
-        source_boundary("field.world_logic.advance_world_effect_trigger");
+        advance_field_alarm();
     };
     world_frame_logic_callbacks_.trigger_world_effect_sequence = [this] {
         trigger_field_world_effect_sequence();
@@ -9192,7 +9343,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
                 continue;
             }
             world.actors.push_back(scripting::ScriptMatrixFieldActorState{
-                actor.actor_instance_id, actor.source_interaction_flags});
+                actor.actor_instance_id, actor.source_spawn_state_flags});
         }
         return world;
     };
@@ -9236,7 +9387,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
                         candidate.actor_instance_id == source.actor_id;
                 });
             if (actor != field_default_actors_.end()) {
-                actor->source_interaction_flags = source.flags_9e;
+                actor->source_spawn_state_flags = source.flags_9e;
             }
         }
     };
@@ -12158,6 +12309,9 @@ bool FieldSceneRuntime::bootstrap(
     field_funds_.reset();
     field_walk_fast_enabled_ = false;
     field_matrix_field_state_ = scripting::ScriptMatrixFieldState{};
+    field_matrix_field_state_.alarm = false;
+    field_alarm_timer_ = 0;
+    field_matrix_field_state_.security_off = false;
     // Startup 0x007F6 calls 0x53290; field mode also calls it when 0x17490
     // detects a system change. A fresh bootstrap starts a new RAM bank, and
     // this transient memory is not included in the host's durable save record.
@@ -13788,7 +13942,13 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
         // header owns a legacy TerrainWorkEntry name that is unrelated to
         // this runtime's source-backed field scene state.
         const auto cell = projected_terrain_cell();
-        return cell.has_value() && mark_field_terrain_cell(*cell);
+        if (!cell.has_value() || !mark_field_terrain_cell(*cell)) {
+            return false;
+        }
+        // ROM 0x16760 clears FFE16F and FFE170 after a projected cell is
+        // marked successfully; it does not run alarm-off side effects. [C]
+        advance_field_alarm(false, false, false, true);
+        return true;
     };
     transition_callbacks.project_entity_world_interaction = [this] {
         return project_field_world_interaction();

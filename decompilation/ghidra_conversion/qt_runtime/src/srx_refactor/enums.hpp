@@ -22,7 +22,6 @@ enum class ActionDelayMode : std::int64_t {
     NORMAL = 0x0,
     HALF = 0x1,
     DOUBLE = 0x2,
-    OTHER_NONZERO_TEST = 0x3,
 };
 enum class ActorField : std::int64_t {
     X = 0x0,
@@ -114,7 +113,7 @@ enum class ActorStatusEx : std::int64_t {
     UNSEEN = 0x80,
 };
 enum class AiTuning : std::int64_t {
-    THINK_RETRY = -0x1,
+    THINK_RETRY = -1,
     FOLLOW_COLLISION_CLEAR_MAX = 0x0,
     FOLLOW_FIRST_LEADER_SLOT = 0x0,
     FOLLOW_FIRST_SLOT = 0x0,
@@ -224,9 +223,6 @@ enum class DelayCapability : std::int64_t {
     SECOND_BIT = 0xD,
     THIRD_BIT = 0xE,
 };
-enum class DelayInput : std::int64_t {
-    BYTE_MAX = 0xFF,
-};
 enum class Direction : std::int64_t {
     UP = 0x0,
     RIGHT = 0x2,
@@ -250,6 +246,23 @@ enum class EventFn : std::int64_t {
     GUARD_SPOTS_YOU = 0x20FEC,
 };
 inline constexpr std::int64_t FIRST_NON_WEAPON = 0xD;
+enum class FieldAlarm : std::int64_t {
+    TIMER_MIN = -32768,
+    TILE_SHIFT = 0x4,
+    FRAME_VALUE = 0xD,
+    EFFECT_ACTOR_LIST_POINTER_OFFSET = 0x10,
+    FIRST_LIST_SCENE = 0x15,
+    LAST_LIST_SCENE = 0x2B,
+    FRAME_MASK = 0x3F,
+    PROFILE_EFFECT_POINTER_OFFSET = 0x58,
+    ACTOR_FLAGS_MAX = 0xFF,
+    PROFILE_TABLE_ADDRESS = 0x3232,
+    TIMER_MAX = 0x7FFF,
+    RANDOM_REJECT_FROM = 0x8000,
+    WORD_MAX = 0xFFFF,
+    SCENE_21_REINFORCEMENT_LIST = 0x1D7460,
+    LIST_ADDRESS_MAX = 0xFFFFFFFF,
+};
 enum class GhoulBounty : std::int64_t {
     MAX_DEFEATS = 0x14,
 };
@@ -326,7 +339,7 @@ enum class MatrixDeckMode : std::int64_t {
     ATTACK = 0xFF,
 };
 enum class MatrixModeResult : std::int64_t {
-    ATTACK = -0x1,
+    ATTACK = -1,
     BALANCED = 0x0,
     DEFENSE = 0x1,
 };

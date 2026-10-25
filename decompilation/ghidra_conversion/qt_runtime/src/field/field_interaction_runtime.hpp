@@ -36,6 +36,9 @@ enum class FieldInteractionAdvanceResult : std::uint8_t {
 // typed interaction state; the shared presenter only paints its resolved view.
 class FieldInteractionRuntime final {
 public:
+    using SecurityAlarmRaiseCallback = std::function<void()>;
+    using SecurityAlarmClearCallback = std::function<void(bool)>;
+
     explicit FieldInteractionRuntime(
         std::function<void(std::string_view)> source_boundary,
         std::function<void(std::uint16_t)> source_audio_event,
@@ -44,6 +47,8 @@ public:
 
     bool load_assets(const ConversionAssetCatalog& assets);
     void set_script_runtime(scripting::GameScriptRuntime* runtime) noexcept;
+    void set_security_alarm_callbacks(SecurityAlarmRaiseCallback raise,
+                                      SecurityAlarmClearCallback clear);
     bool open(MovementModeTransitionContinuation continuation,
               std::uint16_t scene_id, std::uint16_t world_mode,
               bool interaction_suppressed,
@@ -100,7 +105,7 @@ private:
                         const std::array<bool, 3>& active_slots,
                         std::uint8_t item_code) const noexcept;
     void begin_security_alert();
-    void finish_security_alert();
+    void finish_security_alert(bool disable_alarm = false);
     std::string_view resolve_text(std::uint32_t key) const;
     void add_text(std::string_view text);
     void add_option(ModeTextPromptTextRole role, std::uint32_t key);
@@ -108,6 +113,8 @@ private:
     std::function<void(std::string_view)> source_boundary_callback_;
     std::function<void(std::uint16_t)> source_audio_event_callback_;
     std::function<void(std::uint16_t)> source_audio_stop_callback_;
+    SecurityAlarmRaiseCallback security_alarm_raise_callback_;
+    SecurityAlarmClearCallback security_alarm_clear_callback_;
     scripting::GameScriptRuntime* script_runtime_ = nullptr;
     scripting::ScriptStringMap text_keys_;
     std::optional<scripting::ScriptMenuDefinition> maglock_intro_menu_;

@@ -287,8 +287,14 @@ function(add_shadowrun_qt_qa_case test_name)
         # Headless rule: QA never shows a window or takes focus. Windows
         # builds deploy platforms/qoffscreen.dll beside the QA executable
         # (windeployqt block below); Linux/macOS use the Qt install's plugin.
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1")
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
 endfunction()
+
+# Scene 21's ROM rectangles exercise the real field-tick alarm bridge [C].
+# The test writes an actual.bmp checkpoint as a headless QA artifact [H].
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_alarm_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-alarm-qa "${CMAKE_CURRENT_BINARY_DIR}/field-alarm-qa")
 
 # One end-to-end startup/field QA walk. The executable writes its visual
 # checkpoints outside the asset tree so this remains a verification artifact,

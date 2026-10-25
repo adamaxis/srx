@@ -266,6 +266,84 @@ int run_field_terrain_mark_qa(qt_runtime::FieldSceneRuntime& field_scene,
     return 0;
 }
 
+// Scene 21 has extracted 0x1E030 alarm rectangles and a 0x1E0DC actor list.
+// Exercise the live field-frame seam with deterministic source facts [C].
+int run_field_alarm_qa(
+    qt_runtime::FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::filesystem::path& asset_root,
+    const std::vector<std::uint16_t>& audio_events,
+    const std::vector<std::uint16_t>& audio_stops) {
+    std::filesystem::create_directories(output);
+    const auto scene_id = static_cast<std::uint16_t>(
+        srx::FieldAlarm::FIRST_LIST_SCENE);
+    if (field_scene.field_scene_reference_for_dump() != scene_id) {
+        std::cerr << "field alarm QA: expected extracted scene 21 rectangles\n";
+        return 3;
+    }
+    const auto alarm_sound = static_cast<std::uint16_t>(srx::SoundId::ALARM);
+    const auto frame_due = static_cast<std::uint16_t>(
+        srx::FieldAlarm::FRAME_VALUE);
+    const auto field_building = static_cast<std::uint16_t>(
+        srx::SceneMode::BUILDING);
+    const auto tile_shift = static_cast<unsigned>(srx::FieldAlarm::TILE_SHIFT);
+    const auto actors_before =
+        field_scene.world_activity_script_actor_count_for_dump();
+    field_scene.set_field_interaction_mode_for_dump(field_building);
+    // Tile 33,385 lies inside the extracted Scene 21 rectangle beginning at
+    // tile 32,384 [H probe inside the 0x1D7498 ROM rectangle, C].
+    field_scene.set_field_entity_world_position_for_dump(
+        static_cast<std::uint16_t>(33U << tile_shift),
+        static_cast<std::uint16_t>(385U << tile_shift));
+    // Seed zero is a deterministic [H] probe that passes the source cutoff [C].
+    field_scene.set_source_random_seed_for_dump(0U);
+    field_scene.set_field_world_frame_counter_for_dump(frame_due);
+    field_scene.advance_frame();
+
+    const QImage alarm_image = render_qa_field(field_scene);
+    const bool actual_saved = save_qa_image(output, "actual.bmp", alarm_image);
+    const auto alarm_start_count = static_cast<std::size_t>(std::count(
+        audio_events.begin(), audio_events.end(), alarm_sound));
+    const auto spawned_after =
+        field_scene.world_activity_script_actor_count_for_dump();
+    if (!field_scene.field_alarm_active_for_dump() ||
+        field_scene.field_alarm_timer_for_dump() !=
+            static_cast<std::int16_t>(srx::AiTuning::ALARM_FRAMES) ||
+        alarm_start_count == 0U || spawned_after <= actors_before ||
+        alarm_image.isNull() ||
+        alarm_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !field_hud_chrome_survives(alarm_image, asset_root) || !actual_saved) {
+        std::cerr << "field alarm QA: ROM scene rectangle did not raise, sound, "
+                     "spawn, and dump; alarm="
+                  << field_scene.field_alarm_active_for_dump()
+                  << " timer=" << field_scene.field_alarm_timer_for_dump()
+                  << " actors=" << actors_before << "->" << spawned_after
+                  << " sound_starts=" << alarm_start_count
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    // Inject zero [H]; the next active tick reaches the source negative clear [C].
+    field_scene.set_field_alarm_timer_for_dump(0);
+    field_scene.set_field_world_frame_counter_for_dump(
+        static_cast<std::uint16_t>(frame_due + 1U));
+    field_scene.advance_frame();
+    const auto alarm_stop_count = static_cast<std::size_t>(std::count(
+        audio_stops.begin(), audio_stops.end(), alarm_sound));
+    if (field_scene.field_alarm_active_for_dump() || alarm_stop_count == 0U) {
+        std::cerr << "field alarm QA: negative countdown did not use shared clear; "
+                     "alarm="
+                  << field_scene.field_alarm_active_for_dump()
+                  << " sound_stops=" << alarm_stop_count << '\n';
+        return 3;
+    }
+    std::cout << "field_alarm_qa=passed scene=21 rectangles=4 actors="
+              << spawned_after - actors_before
+              << " countdown_clear=1 actual="
+              << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
 // World-effect map writes (FSR apply_world_effect_layer_writes) repaint the
 // changed cell the same way as R3: the image cell must become an exact copy
 // of a donor cell with the new (FF2700, FF4700) pair, for a write into either
@@ -3377,6 +3455,9 @@ int run_field_scene26_maglock_descriptor_route_qa(
                   << ", probes=" << static_cast<unsigned>(
                          movement.negative_probe_count)
                   << ", panel=" << field_scene.field_interaction_open()
+                  << ", alarm=" << field_scene.field_alarm_active_for_dump()
+                  << ", activity_actors="
+                  << field_scene.world_activity_script_actor_count_for_dump()
                   << ")\n";
         return 3;
     }
@@ -4518,6 +4599,9 @@ int run_field_scene26_event1_terminal_qa(
     };
 
     const auto physical_route_output = output / "scene26-physical-route";
+    // Hold the unrelated alarm service off for this route-only fixture [H].
+    // The Scene 21 integration QA exercises alarm raising and clearing [C].
+    field_scene.set_field_alarm_disabled_for_dump(true);
     if (run_field_scene26_maglock_descriptor_route_qa(
             field_scene, asset_root, physical_route_output,
             field_audio_events, source_boundaries) != 0) {
@@ -27561,6 +27645,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_gang_contract_target_entry_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
+        std::optional<std::filesystem::path> field_alarm_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
         bool field_audio_qa = false;
         std::optional<std::filesystem::path> field_terrain_mark_qa_path;
@@ -27867,6 +27952,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_transition_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-alarm-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_alarm_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-terrain-mark-qa" &&
@@ -29762,7 +29853,11 @@ int main(int argc, char** argv) {
                 field_scene.set_field_world_frame_counter_for_dump(0x0200U);
             }
             const auto bootstrapped =
-                (field_wylie_gala_inn_qa_path.has_value() ||
+                field_alarm_qa_path.has_value()
+                    ? field_scene.bootstrap_for_scene_dump(
+                          smoke_state, static_cast<std::uint16_t>(
+                              srx::FieldAlarm::FIRST_LIST_SCENE))
+                    : ((field_wylie_gala_inn_qa_path.has_value() ||
                  field_penumbra_mako_qa_path.has_value() ||
                  field_penumbra_reputation_rejection_qa_path.has_value() ||
                  field_penumbra_doorman_later_qa_path.has_value() ||
@@ -29780,7 +29875,7 @@ int main(int argc, char** argv) {
                            field_sinsearach_gate_paid_physical_entry_qa_path
                                .has_value()
                        ? field_scene.bootstrap_for_scene_dump(smoke_state, 9U)
-                       : field_scene.bootstrap(smoke_state));
+                       : field_scene.bootstrap(smoke_state)));
             if (!bootstrapped) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
@@ -33133,6 +33228,11 @@ int main(int argc, char** argv) {
                 return run_field_world_effect_repaint_qa(
                     field_scene, *field_world_effect_repaint_qa_path);
             }
+            if (field_alarm_qa_path.has_value()) {
+                return run_field_alarm_qa(
+                    field_scene, *field_alarm_qa_path, asset_root,
+                    field_audio_events, field_audio_stops);
+            }
             if (field_terrain_mark_qa_path.has_value()) {
                 return run_field_terrain_mark_qa(
                     field_scene, *field_terrain_mark_qa_path);
@@ -36410,6 +36510,10 @@ int main(int argc, char** argv) {
                     const auto runner_action_path =
                         field_hospital_menu_dump_path->parent_path() /
                         "runner-action-return.bmp";
+                    if (runner_action_path.has_parent_path()) {
+                        std::filesystem::create_directories(
+                            runner_action_path.parent_path());
+                    }
                     if (!runner_action_scene.save(QString::fromStdWString(
                             runner_action_path.wstring()))) {
                         std::cerr << "hospital menu dump: could not write runner-action-return.bmp\n";

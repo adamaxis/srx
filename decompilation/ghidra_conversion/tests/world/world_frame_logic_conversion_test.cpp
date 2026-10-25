@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/world/world_frame_logic_conversion.hpp"
+#include "enums.hpp"
 
 #include <vector>
 
@@ -13,7 +14,9 @@ int main() {
     state.resource_countdown = 2U;
     state.world_active = 1U;
     state.event_lock = 1U;
-    state.world_mode = 2U;
+    // These distinct synthetic fields [H] exercise the ROM scene/mode split [C].
+    state.world_mode = static_cast<std::uint16_t>(srx::SceneId::ALARM_COMBAT);
+    state.field_mode = static_cast<std::uint16_t>(srx::SceneMode::BUILDING);
     state.current_target_present = true;
     state.current_target_active = true;
     state.current_entity_special = true;

@@ -6164,6 +6164,10 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_optional_state_row(
         "records.startup.save.roster.header",
         "records/startup/save-roster-header.bin");
+    emit_optional_state_row(
+        "field.alarm.profiles", "field/field-alarm-profiles.tsv");
+    emit_optional_state_row(
+        "field.alarm.regions", "field/field-alarm-regions.tsv");
     const auto emit_generated_resource_row = [&output, &aliases, &root](
                                                 const char* alias,
                                                 const char* relative,
@@ -8037,7 +8041,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::int8_t pending_world_effect_gate = -1;
         WorldActivityActorTemplateFacts template_facts;
     };
-    const std::array<WorldActivityActorList, 14> kWorldActivityActorLists{{
+    // Named source lists above are extracted as ROM evidence [C]. The
+    // building alarm response lists are taken from each scene's effect
+    // profile below and enter the same typed actor-list asset [C].
+    std::vector<WorldActivityActorList> kWorldActivityActorLists{
         {0x0AU, 0, 0x17018U, "scene_10_event_6_script",
          "0x167AE: FFFBF9=6 and neither runner marker is 3"},
         {0x0AU, 1, 0x17034U, "scene_10_default_script",
@@ -8066,7 +8073,39 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
          "0x43B6 pending-list continuation for pointer 0x1E5C4"},
         {0x2FU, -1, 0x1E628U, "pending_list_1e628",
          "0x43B6 pending-list continuation for pointer 0x1E628"},
-    }};
+    };
+    constexpr auto kFieldSceneProfilePointerTable = static_cast<std::size_t>(
+        srx::FieldAlarm::PROFILE_TABLE_ADDRESS);
+    constexpr auto kSceneProfileAlarmEffectPointer = static_cast<std::size_t>(
+        srx::FieldAlarm::PROFILE_EFFECT_POINTER_OFFSET);
+    constexpr auto kAlarmEffectActorListPointer = static_cast<std::size_t>(
+        srx::FieldAlarm::EFFECT_ACTOR_LIST_POINTER_OFFSET);
+    constexpr auto kFirstAlarmFieldScene = static_cast<std::uint16_t>(
+        srx::FieldAlarm::FIRST_LIST_SCENE);
+    constexpr auto kLastAlarmFieldScene = static_cast<std::uint16_t>(
+        srx::FieldAlarm::LAST_LIST_SCENE);
+    for (std::uint16_t scene_id = kFirstAlarmFieldScene;
+         scene_id <= kLastAlarmFieldScene; ++scene_id) {
+        const auto profile_offset = read_big_endian_long(
+            rom, kFieldSceneProfilePointerTable +
+                     static_cast<std::size_t>(scene_id) * sizeof(std::uint32_t));
+        const auto effect_profile = read_big_endian_long(
+            rom, profile_offset + kSceneProfileAlarmEffectPointer);
+        if (effect_profile == 0U) {
+            throw std::runtime_error(
+                "alarm field scene is missing its effect profile");
+        }
+        const auto actor_list = read_big_endian_long(
+            rom, effect_profile + kAlarmEffectActorListPointer);
+        if (actor_list == 0U) {
+            throw std::runtime_error(
+                "alarm field scene is missing its reinforcement list");
+        }
+        kWorldActivityActorLists.push_back(WorldActivityActorList{
+            scene_id, -1, actor_list,
+            "field_alarm_scene_" + std::to_string(scene_id),
+            "0x1E0DC scene alarm reinforcement list [C]"});
+    }
     const auto read_world_activity_actor_template_facts = [&rom](
         const std::size_t template_offset) {
         WorldActivityActorTemplateFacts facts{};

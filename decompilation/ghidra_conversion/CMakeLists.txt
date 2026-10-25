@@ -62,7 +62,8 @@ add_library(shadowrun_gameplay_script_runtime STATIC
     src/scripting/cyberdeck_menu_bindings.cpp
     src/scripting/world_content_tsv_loader.cpp)
 target_include_directories(shadowrun_gameplay_script_runtime PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/qt_runtime/src/srx_refactor")
 target_link_libraries(shadowrun_gameplay_script_runtime
     PUBLIC shadowrun_ghidra_conversion_modules shadowrun_lua_5_4_9)
 

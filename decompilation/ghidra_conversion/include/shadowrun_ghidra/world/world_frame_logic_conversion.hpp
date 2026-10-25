@@ -13,7 +13,8 @@ struct WorldFrameLogicState {
     std::uint16_t resource_countdown = 0;  // FFE11C
     std::uint16_t world_active = 0;        // FFDF84
     std::uint8_t event_lock = 0;           // FFE16F
-    std::uint16_t world_mode = 0;          // FFDDC4
+    std::uint16_t world_mode = 0;          // FFDDC4 scene ID [C].
+    std::uint16_t field_mode = 0;          // FFDF40 field mode [C].
     std::int16_t cleanup_countdown = 0;    // FFDF86
     bool current_target_present = false;
     bool current_target_active = false;

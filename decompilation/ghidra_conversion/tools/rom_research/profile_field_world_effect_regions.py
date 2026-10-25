@@ -15,16 +15,17 @@ from pathlib import Path
 import sys
 
 
-SCENE_TABLE = 0x3232
-SCENE_COUNT = 56
-FIRST_SCENE = 20
-LAST_SCENE = 43
-PROFILE_COPY_BYTES = 0x60
-PROFILE_EFFECT_POINTER_OFFSET = 0x58
-EFFECT_REGION_POINTER_OFFSET = 0x0C
-EFFECT_ACTOR_LIST_POINTER_OFFSET = 0x10
-REGION_RECORD_BYTES = 8
-ACTOR_RECORD_BYTES = 8
+# Profile traversal and record layout below are ROM facts [C].
+SCENE_TABLE = 0x3232  # source profile pointer table [C]
+SCENE_COUNT = 56  # scene pointer table row count [C]
+FIRST_SCENE = 20  # first field scene with the extended profile [C]
+LAST_SCENE = 43  # final scene in the building alarm profile range [C]
+PROFILE_COPY_BYTES = 0x60  # profile bytes copied by field loading [C]
+PROFILE_EFFECT_POINTER_OFFSET = 0x58  # profile effect pointer field [C]
+EFFECT_REGION_POINTER_OFFSET = 0x0C  # alarm rectangle-list pointer [C]
+EFFECT_ACTOR_LIST_POINTER_OFFSET = 0x10  # reinforcement-list pointer [C]
+REGION_RECORD_BYTES = 8  # four 16-bit rectangle bounds [C]
+ACTOR_RECORD_BYTES = 8  # template and position pointers [C]
 
 
 def be16(data: bytes, offset: int) -> int:
@@ -123,6 +124,8 @@ def main() -> int:
     profile_rows: list[list[str]] = []
     region_rows: list[list[str]] = []
     actor_list_rows: list[list[str]] = []
+    runtime_profile_rows: list[list[str]] = []
+    runtime_region_rows: list[list[str]] = []
     region_total = 0
     actor_total = 0
     scene_profiles_with_regions = 0
@@ -255,6 +258,13 @@ def main() -> int:
                     "exclusive", "inclusive", "exclusive", "inclusive",
                 ]
             )
+            if FIRST_SCENE <= scene <= LAST_SCENE:
+                runtime_region_rows.append(
+                    [
+                        str(scene), address(record), str(x_min), str(x_max),
+                        str(y_min), str(y_max),
+                    ]
+                )
 
         for (
             index,
@@ -276,6 +286,15 @@ def main() -> int:
                     address(template), str(bool(tagged_template & 0x80000000)).lower(),
                     actor_name, entity_kind, sprite_stem, address(position_pointer),
                     str(world_x), str(world_y), str(world_x >> 4), str(world_y >> 4),
+                ]
+            )
+
+        if FIRST_SCENE <= scene <= LAST_SCENE:
+            runtime_profile_rows.append(
+                [
+                    str(scene), address(effect_profile),
+                    address(region_pointer), address(actor_list_pointer),
+                    str(len(regions)),
                 ]
             )
 
@@ -317,6 +336,22 @@ def main() -> int:
         actor_list_rows,
     )
 
+    # The active runtime consumes these normalized rows as typed Lua facts.
+    # ROM addresses remain provenance; runtime code never follows them.
+    write_tsv(
+        args.assets / "field/field-alarm-profiles.tsv",
+        [
+            "scene_id", "effect_profile_address", "region_list_address",
+            "reinforcement_list_address", "region_count",
+        ],
+        runtime_profile_rows,
+    )
+    write_tsv(
+        args.assets / "field/field-alarm-regions.tsv",
+        ["scene_id", "record_address", "x_min", "x_max", "y_min", "y_max"],
+        runtime_region_rows,
+    )
+
     print(f"Profiled scene IDs {FIRST_SCENE}-{LAST_SCENE} from the US ROM.")
     print(
         f"Found {scene_profiles_with_regions} profiles with coordinate regions "
@@ -326,6 +361,11 @@ def main() -> int:
     print(f"Wrote {profile_path}")
     print(f"Wrote {region_path}")
     print(f"Wrote {actor_path}")
+    print(
+        f"Wrote {len(runtime_profile_rows)} runtime alarm profiles and "
+        f"{len(runtime_region_rows)} runtime alarm rectangles under "
+        f"{args.assets / 'field'}"
+    )
     return 0
 
 

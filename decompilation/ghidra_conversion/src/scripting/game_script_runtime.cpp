@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "shadowrun_ghidra/scripting/cyberdeck_menu_bindings.hpp"
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
+#include "enums.hpp"
 #include "world_content_tsv_loader.hpp"
 
 extern "C" {
@@ -7031,6 +7032,315 @@ GameScriptRuntime::evaluate_field_encounter_trigger(
     }
     if (!result.has_value()) {
         return fail("field_encounters.trigger_attempt returned unknown action");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return result;
+}
+
+std::optional<ScriptFieldAlarmProfile>
+GameScriptRuntime::field_alarm_profile(const std::uint16_t scene_id) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for field alarm profiles";
+        return std::nullopt;
+    }
+    if (scene_id > static_cast<std::uint16_t>(srx::SceneId::FINAL)) {
+        impl_->failure = "field alarm profile scene is outside the ROM table";
+        return std::nullopt;
+    }
+
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptFieldAlarmProfile> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("world_content_data")) {
+        return fail("world-content TSV data module is missing");
+    }
+    const auto content_table = lua_absindex(state, -1);
+    lua_getfield(state, content_table, "field_alarm_profiles");
+    if (!lua_istable(state, -1)) {
+        return fail("world_content_data.field_alarm_profiles is missing");
+    }
+    lua_rawgeti(state, -1, static_cast<lua_Integer>(scene_id));
+    if (lua_isnil(state, -1)) {
+        lua_settop(state, stack_base);
+        impl_->failure.clear();
+        return ScriptFieldAlarmProfile{};
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("field alarm profile row is not a table");
+    }
+    const auto profile_table = lua_absindex(state, -1);
+    ScriptFieldAlarmProfile profile;
+    std::optional<std::uint32_t> list_address;
+    if (!read_optional_field_u32(
+            state, profile_table, "reinforcement_list_address",
+            static_cast<std::uint32_t>(srx::FieldAlarm::LIST_ADDRESS_MAX),
+            list_address)) {
+        return fail("field alarm profile has an invalid reinforcement list");
+    }
+    profile.reinforcement_list_address = list_address;
+
+    lua_getfield(state, content_table, "field_alarm_regions");
+    if (!lua_istable(state, -1)) {
+        return fail("world_content_data.field_alarm_regions is missing");
+    }
+    lua_rawgeti(state, -1, static_cast<lua_Integer>(scene_id));
+    if (!lua_istable(state, -1)) {
+        return fail("field alarm region rows are missing or invalid");
+    }
+    const auto regions_table = lua_absindex(state, -1);
+    const auto region_count = lua_rawlen(state, regions_table);
+    if (region_count > 256U) {
+        return fail("field alarm profile exceeds the region limit");
+    }
+    profile.regions.reserve(region_count);
+    for (std::size_t index = 0U; index < region_count; ++index) {
+        lua_rawgeti(state, regions_table,
+                    static_cast<lua_Integer>(index + 1U));
+        if (!lua_istable(state, -1)) {
+            return fail("field alarm region row is not a table");
+        }
+        const auto region_table = lua_absindex(state, -1);
+        std::uint32_t x_min = 0U;
+        std::uint32_t x_max = 0U;
+        std::uint32_t y_min = 0U;
+        std::uint32_t y_max = 0U;
+        const auto coordinate_max = static_cast<std::uint32_t>(
+            srx::FieldAlarm::WORD_MAX);
+        if (!read_field_integer(state, region_table, "x_min",
+                                coordinate_max, x_min) ||
+            !read_field_integer(state, region_table, "x_max",
+                                coordinate_max, x_max) ||
+            !read_field_integer(state, region_table, "y_min",
+                                coordinate_max, y_min) ||
+            !read_field_integer(state, region_table, "y_max",
+                                coordinate_max, y_max)) {
+            return fail("field alarm region has invalid coordinates");
+        }
+        profile.regions.push_back(ScriptFieldAlarmRegion{
+            static_cast<std::uint16_t>(x_min),
+            static_cast<std::uint16_t>(x_max),
+            static_cast<std::uint16_t>(y_min),
+            static_cast<std::uint16_t>(y_max)});
+        lua_pop(state, 1);
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return profile;
+}
+
+std::optional<ScriptFieldAlarmResult>
+GameScriptRuntime::evaluate_field_alarm(const ScriptFieldAlarmInput& input) {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for field alarm policy";
+        return std::nullopt;
+    }
+    if (input.scene_id >
+            static_cast<std::uint16_t>(srx::SceneId::FINAL) ||
+        input.regions.size() > 256U ||
+        input.actors.size() > 16U) {
+        impl_->failure = "field alarm input exceeds its source bounds";
+        return std::nullopt;
+    }
+
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptFieldAlarmResult> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("field_alarm")) {
+        return fail("field_alarm.lua module is missing");
+    }
+    lua_getfield(state, -1, "tick");
+    if (!lua_isfunction(state, -1)) {
+        return fail("field_alarm.tick is missing");
+    }
+    lua_remove(state, -2);
+    lua_createtable(state, 0, 15);
+    const auto input_table = lua_absindex(state, -1);
+    const auto set_integer = [state, input_table](const char* name,
+                                                   const lua_Integer value) {
+        lua_pushinteger(state, value);
+        lua_setfield(state, input_table, name);
+    };
+    const auto set_boolean = [state, input_table](const char* name,
+                                                   const bool value) {
+        lua_pushboolean(state, value);
+        lua_setfield(state, input_table, name);
+    };
+    set_integer("scene_id", input.scene_id);
+    set_integer("frame_counter", input.frame_counter);
+    set_integer("scene_mode", input.scene_mode);
+    set_integer("player_tile_x", input.player_tile_x);
+    set_integer("player_tile_y", input.player_tile_y);
+    set_boolean("disabled", input.disabled);
+    set_boolean("alarm", input.alarm);
+    set_integer("timer", input.timer);
+    set_boolean("direct_raise", input.direct_raise);
+    set_boolean("clear_alarm", input.clear_alarm);
+    set_boolean("disable_alarm", input.disable_alarm);
+    set_boolean("reset", input.reset);
+    if (input.rng.has_value()) {
+        set_integer("rng", *input.rng);
+    } else {
+        lua_pushnil(state);
+        lua_setfield(state, input_table, "rng");
+    }
+    if (input.reinforcement_list_address.has_value()) {
+        set_integer("reinforcement_list_address",
+                    *input.reinforcement_list_address);
+    } else {
+        lua_pushnil(state);
+        lua_setfield(state, input_table, "reinforcement_list_address");
+    }
+    lua_createtable(state, static_cast<int>(input.regions.size()), 0);
+    for (std::size_t index = 0U; index < input.regions.size(); ++index) {
+        const auto& region = input.regions[index];
+        lua_createtable(state, 0, 4);
+        const auto region_table = lua_absindex(state, -1);
+        lua_pushinteger(state, region.x_min);
+        lua_setfield(state, region_table, "x_min");
+        lua_pushinteger(state, region.x_max);
+        lua_setfield(state, region_table, "x_max");
+        lua_pushinteger(state, region.y_min);
+        lua_setfield(state, region_table, "y_min");
+        lua_pushinteger(state, region.y_max);
+        lua_setfield(state, region_table, "y_max");
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(state, input_table, "rects");
+    lua_createtable(state, static_cast<int>(input.actors.size()), 0);
+    for (std::size_t index = 0U; index < input.actors.size(); ++index) {
+        const auto& actor = input.actors[index];
+        lua_createtable(state, 0, 2);
+        const auto actor_table = lua_absindex(state, -1);
+        lua_pushlstring(state, actor.actor_id.data(), actor.actor_id.size());
+        lua_setfield(state, actor_table, "actor_id");
+        lua_pushinteger(state, actor.flags_9e);
+        lua_setfield(state, actor_table, "flags9e");
+        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+    }
+    lua_setfield(state, input_table, "actors");
+
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("field_alarm.tick failed");
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("field_alarm.tick returned a non-table result");
+    }
+    const auto result_table = lua_absindex(state, -1);
+    ScriptFieldAlarmResult result;
+    if (!read_field_boolean(state, result_table, "alarm", result.alarm) ||
+        !read_field_boolean(state, result_table, "disabled", result.disabled)) {
+        return fail("field_alarm.tick omitted alarm state");
+    }
+    int timer = 0;
+    if (!read_field_signed_integer(
+            state, result_table, "timer",
+            static_cast<int>(srx::FieldAlarm::TIMER_MIN),
+            static_cast<int>(srx::FieldAlarm::TIMER_MAX), timer)) {
+        return fail("field_alarm.tick returned an invalid timer");
+    }
+    result.timer = static_cast<std::int16_t>(timer);
+    const auto read_optional_boolean = [state, result_table](
+        const char* field, bool& value) {
+        lua_getfield(state, result_table, field);
+        if (lua_isnil(state, -1)) {
+            lua_pop(state, 1);
+            return true;
+        }
+        const bool valid = lua_isboolean(state, -1) != 0;
+        if (valid) {
+            value = lua_toboolean(state, -1) != 0;
+        }
+        lua_pop(state, 1);
+        return valid;
+    };
+    if (!read_optional_boolean("sample_rng", result.sample_rng) ||
+        !read_optional_boolean("schedule_timeout", result.schedule_timeout) ||
+        !read_optional_boolean("spawn_reinforcements",
+                               result.spawn_reinforcements)) {
+        return fail("field_alarm.tick returned an invalid action flag");
+    }
+    std::optional<std::uint8_t> sound_id;
+    if (!read_optional_field_integer(state, result_table, "sound_start",
+                                    static_cast<std::uint32_t>(
+                                        srx::SoundId::ALARM), sound_id)) {
+        return fail("field_alarm.tick returned an invalid start sound");
+    }
+    if (sound_id.has_value()) {
+        result.sound_start = *sound_id;
+    }
+    if (!read_optional_field_integer(state, result_table, "sound_stop",
+                                    static_cast<std::uint32_t>(
+                                        srx::SoundId::ALARM), sound_id)) {
+        return fail("field_alarm.tick returned an invalid stop sound");
+    }
+    if (sound_id.has_value()) {
+        result.sound_stop = *sound_id;
+    }
+    std::string flag_action;
+    if (!read_optional_field_string(state, result_table, "clear_flags",
+                                    flag_action)) {
+        return fail("field_alarm.tick returned an invalid flag action");
+    }
+    if (flag_action == "clear_spotted") {
+        result.flag_action = ScriptFieldAlarmFlagAction::clear_spotted;
+    } else if (flag_action == "promote_reinforcement") {
+        result.flag_action =
+            ScriptFieldAlarmFlagAction::promote_reinforcement;
+    } else if (!flag_action.empty()) {
+        return fail("field_alarm.tick returned an unknown flag action");
+    }
+    if (!read_optional_field_u32(
+            state, result_table, "reinforcement_list_address",
+            static_cast<std::uint32_t>(srx::FieldAlarm::LIST_ADDRESS_MAX),
+            result.reinforcement_list_address)) {
+        return fail("field_alarm.tick returned an invalid actor list");
+    }
+    std::optional<std::uint8_t> reinforcement_flag;
+    if (!read_optional_field_integer(
+            state, result_table, "reinforcement_flag",
+            static_cast<std::uint32_t>(srx::FieldAlarm::ACTOR_FLAGS_MAX),
+            reinforcement_flag)) {
+        return fail("field_alarm.tick returned an invalid actor flag");
+    }
+    result.reinforcement_flag = reinforcement_flag;
+
+    lua_getfield(state, result_table, "actors");
+    if (!lua_istable(state, -1) || lua_rawlen(state, -1) != input.actors.size()) {
+        return fail("field_alarm.tick returned a mismatched actor list");
+    }
+    const auto actors_table = lua_absindex(state, -1);
+    result.actors.reserve(input.actors.size());
+    for (std::size_t index = 0U; index < input.actors.size(); ++index) {
+        lua_rawgeti(state, actors_table,
+                    static_cast<lua_Integer>(index + 1U));
+        if (!lua_istable(state, -1)) {
+            return fail("field_alarm.tick returned an invalid actor row");
+        }
+        const auto actor_table = lua_absindex(state, -1);
+        std::string actor_id;
+        std::uint32_t flags = 0U;
+        if (!read_field_string(state, actor_table, "actor_id", actor_id) ||
+            !read_field_integer(
+                state, actor_table, "flags9e",
+                static_cast<std::uint32_t>(srx::FieldAlarm::ACTOR_FLAGS_MAX),
+                flags) || actor_id != input.actors[index].actor_id) {
+            return fail("field_alarm.tick returned invalid actor flags");
+        }
+        result.actors.push_back(ScriptFieldAlarmActorFlags{
+            std::move(actor_id), static_cast<std::uint8_t>(flags)});
+        lua_pop(state, 1);
     }
     lua_settop(state, stack_base);
     impl_->failure.clear();
