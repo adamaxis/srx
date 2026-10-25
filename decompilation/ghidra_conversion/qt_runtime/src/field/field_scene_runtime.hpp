@@ -1143,8 +1143,8 @@ public:
         notebook_referral_flags_ = static_cast<std::uint8_t>(flags & 0x1FU);
         return true;
     }
-    // QA may combine a restored positional checkpoint with the known New Game
-    // FFFC27 seed. Production save restoration still leaves this state unknown.
+    // QA can explicitly seed FFFC27 to exercise referral-gated Notebook rows.
+    // Production New Game and save restoration keep their own source state.
     void seed_notebook_referral_flags_for_qa(std::uint8_t flags) noexcept {
         notebook_referral_flags_ = flags;
     }
@@ -1164,9 +1164,8 @@ public:
         notebook_contacts_flags_ = flags;
         return true;
     }
-    // QA may combine a restored positional checkpoint with a known fresh-run
-    // contact seed from ROM startup 0x59C48. Production save restoration must
-    // continue to leave unknown contact state unresolved.
+    // QA can explicitly seed FFFC2C to exercise Contacts gates and Vid-Phone
+    // records. Production New Game and save restoration keep their own state.
     void seed_notebook_contact_flags_for_qa(std::uint32_t flags) noexcept {
         notebook_contacts_flags_ = flags;
     }
@@ -2153,9 +2152,10 @@ private:
     bool notebook_tip_flags_resolved_ = true;
     // FFFC2C's low 13 bits gate the Contacts page, while its next 13 bits
     // record Vid-Phone calls. FFFC27 and FFFC2A gate Mr. Johnsons and
-    // Shadowrunners. Fresh New Game seeds Contacts to 0x1C7F at 0x59C48;
-    // a loaded save restores the full FFFC2C longword when available.
-    std::optional<std::uint32_t> notebook_contacts_flags_ = 0x1C7FU;
+    // Shadowrunners. Fresh New Game leaves Contacts clear: 0x59C48 is the
+    // debug-menu Contacts effect (table 0x1D90C0, entry 6), not New Game
+    // setup. A loaded save restores FFFC2C when available.
+    std::optional<std::uint32_t> notebook_contacts_flags_ = 0U;
     // FFFBFA is the numeric Lone Star heat level (0..8), read by encounters
     // and cleared by the Vid-Phone record deletion service. Older host saves
     // do not contain it, so restored sessions keep the source value unknown.

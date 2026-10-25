@@ -1457,8 +1457,8 @@ int main() {
         }
         return false;
     };
-    // The Vid-Phone contact starts clear here so command 0x50's FFFC2C write
-    // can be asserted; fresh New Game seeds contact bit 1 at 0x59C48.
+    // Keep Vid-Phone contact 1 clear so command 0x50's FFFC2C write can be
+    // asserted.
     gameplay_scripts.set_story_state({
         {"mr_johnsons_flag_bit_1", true},
         {"mr_johnsons_flag_bit_2", false},

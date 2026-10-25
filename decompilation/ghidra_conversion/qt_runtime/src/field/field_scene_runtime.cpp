@@ -9167,7 +9167,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
             debug_menu_unlocked_ ? 5U : 4U;
     };
     bindings.game.set_contact_flags = [this](const std::uint32_t flags) {
-        // ROM 0x59C48 replaces the entire FFFC2C long with its fixed seed.
+        // ROM 0x59C48 is debug-menu Contacts handler table entry 6 at
+        // 0x1D90C0; it replaces the entire FFFC2C long with the debug seed.
         notebook_contacts_flags_ = flags;
     };
     bindings.game.set_walk_fast = [this] {
@@ -12285,8 +12286,8 @@ bool FieldSceneRuntime::bootstrap(
     dismiss_runner_random_grid_effect_ = RandomGridEffectState{};
     dismiss_runner_effect_frames_ = 0U;
     dismiss_runner_random_grid_cells_.fill(-1);
-    // The 0x59C48 New Game path begins without the FF018F deck-present bit.
-    // The loaded-save contract does not yet expose this global, so keep that
+    // A fresh New Game begins without the FF018F deck-present bit. The
+    // loaded-save contract does not yet expose this global, so keep that
     // branch explicit instead of treating an unknown saved bit as clear.
     cyberdeck_available_ = restored_field_state == nullptr
                                ? std::optional<bool>{false}
@@ -12304,10 +12305,11 @@ bool FieldSceneRuntime::bootstrap(
     // ROM startup 0x084E seeds FFFC30 bit 0 for a fresh New Game.
     notebook_tip_flags_ = {{1U, 0U, 0U}};
     notebook_tip_flags_resolved_ = restored_field_state == nullptr;
-    // 0x82A clears FFFC2C/27/2A; New Game setup later calls 0x59C48 to seed
-    // the Contacts gate to 0x1C7F. No loaded-save adapter restores these.
+    // Startup routine 0x82A clears FFFC2C/27/2A. The only ROM reference to
+    // 0x59C48 is debug-menu handler table entry 6 (Contacts) at 0x1D90C0;
+    // New Game does not call it, so fresh Contacts flags remain clear.
     notebook_contacts_flags_ = restored_field_state == nullptr
-                                   ? std::optional<std::uint32_t>{0x1C7FU}
+                                   ? std::optional<std::uint32_t>{0U}
                                    : std::nullopt;
     notebook_referral_flags_ = restored_field_state == nullptr
                                    ? std::optional<std::uint8_t>{0U}
@@ -12430,7 +12432,7 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_behavior_flags_ = 0U;
     field_exit_alternate_result_ = 0;
     field_exit_world_flags_ = 0U;
-    // New Game seeds FFFC30 bit 0 at ROM 0x59C48.
+    // Startup routine 0x084E seeds FFFC30 bit 0 for a fresh New Game.
     field_mode_flags_ = 1U;
     field_mode_flags_resolved_ = restored_field_state == nullptr;
     field_mode_effect_flags_ = 0U;

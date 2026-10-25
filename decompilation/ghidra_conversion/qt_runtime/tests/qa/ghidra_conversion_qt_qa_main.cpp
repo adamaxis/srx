@@ -26185,9 +26185,8 @@ int run_field_vid_phone_physical_entry_qa(
         rectangles[kTerminalRecord].top != 0x0060U ||
         rectangles[kTerminalRecord].bottom != 0x007FU ||
         rectangles[kTerminalRecord].value != 0x00DFU) {
-        std::cerr << "Vid-Phone physical-entry QA: scene-0 checkpoint, ROM "
-                     "event-31 rectangle, or New Game contact flags do not "
-                     "match; scene="
+        std::cerr << "Vid-Phone physical-entry QA: scene-0 checkpoint or ROM "
+                     "event-31 rectangle do not match; scene="
                   << static_cast<unsigned>(
                          field_scene.field_scene_reference_for_dump())
                   << " position=" << std::hex << initial.x << ',' << initial.y
@@ -26211,7 +26210,7 @@ int run_field_vid_phone_physical_entry_qa(
     field_scene.seed_notebook_contact_flags_for_qa(0x1C7FU);
     if (field_scene.notebook_contact_flags_for_dump() !=
         std::optional<std::uint32_t>{0x1C7FU}) {
-        std::cerr << "Vid-Phone physical-entry QA: ROM New Game contact "
+        std::cerr << "Vid-Phone physical-entry QA: explicit Contacts QA "
                      "fixture did not seed\n";
         return 3;
     }
@@ -36385,6 +36384,17 @@ int main(int argc, char** argv) {
                 const bool followup_result = debt_followup_result ||
                                              referral_followup_result ||
                                              debt_payment_insufficient_result;
+                if (followup_result) {
+                    // New Game starts with no Contacts row. This follow-up
+                    // QA explicitly enables one contact so the independent
+                    // Contacts and referral gates remain covered together.
+                    constexpr auto kContactsRowQaSeed =
+                        std::uint32_t{1U}
+                        << static_cast<std::uint32_t>(
+                               srx::VidPhoneContact::CAPT_QUINTON_JAYMES);
+                    field_scene.seed_notebook_contact_flags_for_qa(
+                        kContactsRowQaSeed);
+                }
                 const bool room_payment_result = room_paid_result ||
                                                  room_insufficient_result;
                 const auto prompt = arrival_result || room_payment_result
@@ -42403,9 +42413,61 @@ int main(int argc, char** argv) {
                                  "page 6\n";
                     return 3;
                 }
-                // Fixture only: force the ROM's known ten Contacts bits and
-                // all ten Shadowrunners bits so both source list branches and
-                // continuation pages are exercised in this repeatable dump.
+                const auto fresh_contact_flags =
+                    field_scene.notebook_contact_flags_for_dump();
+                if (!fresh_contact_flags.has_value() ||
+                    *fresh_contact_flags != 0U) {
+                    std::cerr << "field secretary dump: fresh New Game "
+                                 "Contacts flags are not clear\n";
+                    return 3;
+                }
+                field_audio_events.clear();
+                tap_qa_controller_button(field_scene, 0x40U);
+                if (!field_scene.pocket_secretary_open()) {
+                    std::cerr << "field secretary dump: fresh New Game "
+                                 "Pocket Secretary did not open\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+                const auto fresh_notebook_scene =
+                    render_qa_field(field_scene);
+                const auto fresh_notebook_path =
+                    *field_secretary_dump_path /
+                    "new-game-notebook-no-contacts.bmp";
+                std::filesystem::create_directories(
+                    *field_secretary_dump_path);
+                if (!field_scene.pocket_secretary_notebook_open() ||
+                    field_scene.pocket_secretary_notebook_option_count() !=
+                        2U ||
+                    !image_has_green_ink(fresh_notebook_scene, 88, 56,
+                                         160, 8) ||
+                    !image_has_green_ink(fresh_notebook_scene, 88, 72,
+                                         160, 8) ||
+                    image_has_green_ink(fresh_notebook_scene, 88, 88,
+                                       160, 8) ||
+                    !fresh_notebook_scene.save(QString::fromStdWString(
+                        fresh_notebook_path.wstring()))) {
+                    std::cerr << "field secretary dump: fresh New Game "
+                                 "Notebook should show Current Run and Tips "
+                                 "& Clues without a Contacts row\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x10U);
+                if (!field_scene.pocket_secretary_open() ||
+                    field_scene.pocket_secretary_notebook_open()) {
+                    std::cerr << "field secretary dump: fresh Notebook did "
+                                 "not return to Pocket Secretary\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x80U);
+                if (field_scene.pocket_secretary_open()) {
+                    std::cerr << "field secretary dump: fresh Pocket "
+                                 "Secretary did not close cleanly\n";
+                    return 3;
+                }
+                // Fixture only: explicitly install the Contacts debug-option
+                // mask and all ten Shadowrunners bits so both source list
+                // branches and continuation pages are exercised below.
                 if (!field_scene.set_notebook_contact_flags_for_dump(0x1C7FU) ||
                     !field_scene.set_notebook_shadowrunner_flags_for_dump(
                         0x03FFU)) {
