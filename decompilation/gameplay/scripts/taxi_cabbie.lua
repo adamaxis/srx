@@ -19,15 +19,18 @@ function M.fare_offer_text(region)
 end
 
 local function accepted_ride(region)
-    -- 0x208FE consumes the Salish visa after accepting a trip [C].
+    -- 0x208FE clears the pending selector and writes the destination byte to
+    -- FFFBF8; its Salish branch also consumes the visa [C].
+    game.field.mode = region
     if region == Taxi.Region.SALISH_SHIDHE then
         game.state[VISA_FACT] = false
     end
     return "taxi_ride_accepted"
 end
 
-function M.run(destination_region, current_region)
+function M.run(destination_region)
     local destination = Taxi.regions[destination_region]
+    local current_region = game.field.mode
     if destination == nil or type(current_region) ~= "number" then
         return "taxi_cabbie_context_unresolved"
     end
@@ -42,6 +45,8 @@ function M.run(destination_region, current_region)
         game.ui.say("traffic_blocked", SPEAKER, PROFILE)
         return nil
     end
+    -- ROM 0x20714 compares the destination lookup byte with FFFBF8 [C].
+    -- FFDDC4 is the separate word scene checked by the travel selector.
     if destination_region == current_region then
         game.ui.say("already_there", SPEAKER, PROFILE)
         return nil
@@ -92,11 +97,10 @@ function M.run(destination_region, current_region)
     return accepted_ride(destination_region)
 end
 
-function M.present(destination_region, current_region)
+function M.present(destination_region)
     destination_region = destination_region or
         game.field.taxi_destination_region
-    current_region = current_region or game.location.scene_id
-    return M.run(destination_region, current_region)
+    return M.run(destination_region)
 end
 
 return M

@@ -85,7 +85,7 @@ struct FieldSceneSourceMetadata {
 struct FieldSceneBuffers {
     bool initialized = false;
     std::uint8_t scene_mode = 0; // selected profile: 0 normal, 1 alternate
-    std::uint8_t field_resource_mode = 0; // ROM FFFBF8: low byte of scene id
+    std::uint8_t field_resource_mode = 0; // ROM FFFBF8: field context byte
     std::uint16_t scene_reference = 0; // ROM FFDDC4 / 0x03032 input
     std::array<std::uint16_t, 48> profile{};
     std::int32_t camera_x = 0;

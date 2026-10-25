@@ -408,6 +408,9 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
         return std::nullopt;
     }
     QJsonObject scene;
+    // FFFBF8 is not a separate saved field: 0x59372 stages a 0x800-byte
+    // SRAM block at FFF1E8, outside FFFBF8; scene entry rebuilds FFFBF8 from
+    // FFDDC4 at 0x2F78/0x308A [C]. Persist the word scene reference here.
     scene.insert(QStringLiteral("reference"),
                  state_.field_scene_buffers.scene_reference);
     scene.insert(QStringLiteral("mode"),

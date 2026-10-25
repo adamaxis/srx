@@ -1594,6 +1594,10 @@ public:
                               std::optional<std::uint8_t> scene_id =
                                   std::nullopt);
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
+    // FFFBF8 is writable by selected Lua field commands such as the taxi
+    // destination handoff at ROM 0x208FE; the field host reads it back before
+    // applying the ROM 0x136B6 scene-change gate.
+    std::uint8_t field_mode_context_value() const noexcept;
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
     // ROM 0x5D29C checks the six live records at FF0500..FF0A00 on effect

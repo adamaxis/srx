@@ -13545,10 +13545,20 @@ void FieldSceneRuntime::advance_frame() {
                 field_taxi_cabbie_destination_.reset();
                 if (task_result ==
                     std::optional<std::string>{"taxi_ride_accepted"}) {
-                    if (destination ==
+                    // ROM 0x208FE writes the accepted region to FFFBF8. The
+                    // field buffer/coordinator share that byte as
+                    // field_resource_mode; keep their mirrors current before
+                    // applying selector 0x136B6's FFFBF8 vs FFDDC4 check [C].
+                    const auto accepted_field_mode =
+                        game_scripts_.field_mode_context_value();
+                    state_.field_scene_buffers.field_resource_mode =
+                        accepted_field_mode;
+                    state_.field_resource_mode = accepted_field_mode;
+                    field_runtime_state_.field_mode = accepted_field_mode;
+                    if (state_.field_scene_buffers.field_resource_mode ==
                         state_.field_scene_buffers.scene_reference) {
                         source_boundary(
-                            "field.taxi.accepted_current_region_ignored");
+                            "field.taxi.accepted_current_scene_no_travel");
                     } else {
                         field_taxi_pending_destination_ = destination;
                         if (field_elevator_scene_transition_.begin_fade_out()) {
@@ -13701,7 +13711,7 @@ void FieldSceneRuntime::advance_frame() {
         } else if (result ==
                    FieldDialogueAdvanceResult::taxi_selector_requested) {
             const auto current_region =
-                state_.field_scene_buffers.scene_reference;
+                state_.field_scene_buffers.field_resource_mode;
             if (current_region > 6U) {
                 source_boundary("field.taxi.current_region_unresolved");
             } else {

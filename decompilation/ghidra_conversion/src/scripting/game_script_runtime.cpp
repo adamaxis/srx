@@ -3406,7 +3406,20 @@ struct GameScriptRuntime::Impl {
     }
 
     static int field_context_newindex(lua_State* lua) {
-        return luaL_error(lua, "game.field is native read-only context");
+        auto* self = from_upvalue(lua);
+        std::string field;
+        if (self == nullptr || lua_type(lua, 2) != LUA_TSTRING ||
+            !read_string(lua, 2, field) || field != "mode") {
+            return luaL_error(lua, "game.field context is read-only");
+        }
+        std::uint32_t mode = 0U;
+        if (!read_integer(lua, 3, 0xFFU, mode)) {
+            return luaL_error(lua, "game.field.mode must be a byte");
+        }
+        // FFFBF8 is a mutable source context byte. ROM 0x208FE writes the
+        // selected taxi region here before 0x136B6 decides whether to travel.
+        self->field_mode_context.mode = static_cast<std::uint8_t>(mode);
+        return 0;
     }
 
     static int movement_collision(lua_State* lua) {
@@ -4290,7 +4303,8 @@ struct GameScriptRuntime::Impl {
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, field_context_index, 1);
         lua_setfield(state, -2, "__index");
-        lua_pushcfunction(state, field_context_newindex);
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, field_context_newindex, 1);
         lua_setfield(state, -2, "__newindex");
         lua_setmetatable(state, -2);
         lua_setfield(state, -2, "field");
@@ -7883,6 +7897,10 @@ void GameScriptRuntime::set_location_context(
 void GameScriptRuntime::set_field_mode_context(
     const ScriptFieldModeContext context) noexcept {
     impl_->field_mode_context = context;
+}
+
+std::uint8_t GameScriptRuntime::field_mode_context_value() const noexcept {
+    return impl_->field_mode_context.mode;
 }
 
 void GameScriptRuntime::set_actor_heartbeat_observer(
