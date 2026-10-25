@@ -19590,6 +19590,32 @@ int run_field_boris_greenhouse_dialogue_qa(
     // format stores the Scene-2 map in its field mode 1.
     saved_scene.insert(QStringLiteral("mode"), 1);
     normalized_paid_snapshot.insert(QStringLiteral("scene"), saved_scene);
+
+    field_scene.set_field_interaction_mode_for_dump(0U);
+    const auto zero_mode_snapshot =
+        field_scene.capture_game_save_snapshot_for_dump(&snapshot_error);
+    if (!zero_mode_snapshot.has_value() ||
+        zero_mode_snapshot->value(QStringLiteral("scene")).toObject()
+                .value(QStringLiteral("mode")).toInt(-1) != 0 ||
+        !field_scene.restore_game_save_snapshot_for_dump(
+            *zero_mode_snapshot, &snapshot_error)) {
+        std::cerr << "Boris Greenhouse QA: mode-zero save did not restore: "
+                  << snapshot_error.toStdString() << '\n';
+        return 3;
+    }
+    const auto restored_zero_mode =
+        field_scene.capture_game_save_snapshot_for_dump(&snapshot_error);
+    if (!restored_zero_mode.has_value() ||
+        field_scene.field_interaction_mode_for_dump() != 0U ||
+        restored_zero_mode->value(QStringLiteral("scene")).toObject()
+                .value(QStringLiteral("mode")).toInt(-1) != 0 ||
+        !field_scene.restore_game_save_snapshot_for_dump(
+            normalized_paid_snapshot, &snapshot_error)) {
+        std::cerr << "Boris Greenhouse QA: mode-zero save did not round-trip: "
+                  << snapshot_error.toStdString() << '\n';
+        return 3;
+    }
+
     auto unpaid_snapshot = normalized_paid_snapshot;
     auto unpaid_story = unpaid_snapshot.value(QStringLiteral("story")).toObject();
     unpaid_story.insert(QStringLiteral("dialogue_flags"), 0);

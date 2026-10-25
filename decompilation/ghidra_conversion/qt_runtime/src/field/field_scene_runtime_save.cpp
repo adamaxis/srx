@@ -667,7 +667,7 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
                            static_cast<std::int64_t>(kFieldSceneProfileCount - 1U),
                            numeric, error)) return false;
     restored.scene = static_cast<std::uint16_t>(numeric);
-    if (!read_save_integer(scene, "mode", 1, 3, numeric, error)) return false;
+    if (!read_save_integer(scene, "mode", 0, 3, numeric, error)) return false;
     restored.mode = static_cast<std::uint16_t>(numeric);
     if (!read_save_integer(scene, "player_x", 0, 0xFFFF, numeric, error)) return false;
     restored.player.x = static_cast<std::uint16_t>(numeric);
@@ -684,7 +684,11 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     if (!read_save_integer(scene, "target_heading", 0, 0xFFFF, numeric, error)) return false;
     restored.target_heading = static_cast<std::uint16_t>(numeric);
     const auto expected_mode = select_scene_interaction_mode(restored.scene);
-    if (!expected_mode.has_value() || *expected_mode != restored.mode) {
+    // ROM 0x594E0 clears FFDF40 while restoring the FFDDC4 scene reference;
+    // 0x028C2 re-enters the scene without selecting a mode. 0x167AE selects
+    // one only on a later mode-entry transition, so zero is valid here.
+    if (!expected_mode.has_value() ||
+        (restored.mode != 0U && *expected_mode != restored.mode)) {
         return fail(QStringLiteral("The save has an invalid map interaction mode."));
     }
 
