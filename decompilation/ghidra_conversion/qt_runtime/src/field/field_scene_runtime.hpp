@@ -2211,6 +2211,7 @@ private:
     bool command_overview_inventory_selector_suppressed_ = false;
     bool command_overview_inventory_detail_pending_ = false;
     bool command_overview_inventory_cursor_hidden_ = false;
+    bool command_overview_inventory_picture_partial_ = false;
     std::optional<int> command_overview_inventory_ammo_count_;
     bool command_overview_discard_confirmation_active_ = false;
     std::array<QImage, kFieldHudSlotCount> field_hud_faces_{};

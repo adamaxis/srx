@@ -493,6 +493,8 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> row;
     std::optional<bool> root_inventory_detail_pending;
     std::optional<bool> root_inventory_cursor_hidden;
+    // Picture upload still in flight: only rows y>=57 are visible.
+    std::optional<bool> root_inventory_picture_partial;
     std::optional<int> root_inventory_ammo_count;
     std::optional<int> top_column;
     std::optional<int> top_row;

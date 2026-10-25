@@ -149,6 +149,7 @@ local function finish_move(st, old_page, old_row, ctx)
     if previous and selected then
         st.inventory_item_hold_frames =
             ITEM_PICTURE_HOLD_FRAMES[selected.code] or 7
+        st.inventory_item_hold_total = st.inventory_item_hold_frames
         st.inventory_detail_pending = true
         st.inventory_cursor_hidden_frames = 0
         st.inventory_cursor_hidden = true
@@ -156,6 +157,7 @@ local function finish_move(st, old_page, old_row, ctx)
     else
         st.inventory_item_hold_frames = 0
         st.inventory_detail_pending = false
+        st.inventory_picture_partial = false
         -- [C emulator] On entry, the inventory art and MOVE cue appear on the
         -- input frame; only the yellow slot cursor waits one frame.
         st.inventory_cursor_hidden_frames =
@@ -172,19 +174,31 @@ function M.input(st, events, ctx)
     if st.inventory_item_hold_frames > 0 then
         st.inventory_item_hold_frames = st.inventory_item_hold_frames - 1
         if st.inventory_item_hold_frames == 0 then
-            -- [C emulator e6 + zsnd] MOVE is requested on 8747/8788/8827, but the
-            -- panel is complete only one frame later (8748/8789/8828; 8747 and
-            -- 8827 show a partial upload). Keep the panel blank for that frame [H partial].
+            -- [C emulator e6 + zsnd] MOVE is requested on 8747/8788/8827;
+            -- the ring and posture bar appear on that frame. On the
+            -- seven-frame holds (8747 Armor Clothing, 8827 Fetish) the text
+            -- and bars appear too and only picture rows y>=56 are uploaded.
+            -- On 8788 (Model 101T, eight frames) the panel is still blank.
+            -- The rest lands one frame later.
             ctx.sound(S.MOVE)
+            st.inventory_cursor_hidden = false
+            if (st.inventory_item_hold_total or 7) < 8 then
+                st.inventory_detail_pending = false
+                st.inventory_picture_partial = true
+                update_inventory_ammo_count(st, ctx)
+            end
+            ctx.redraw(M.REFRESH)
             st.inventory_detail_reveal_frames = 1
         end
         return
     end
     if (st.inventory_detail_reveal_frames or 0) > 0 then
         st.inventory_detail_reveal_frames = 0
-        st.inventory_detail_pending = false
-        st.inventory_cursor_hidden = false
-        update_inventory_ammo_count(st, ctx)
+        st.inventory_picture_partial = false
+        if st.inventory_detail_pending then
+            st.inventory_detail_pending = false
+            update_inventory_ammo_count(st, ctx)
+        end
         ctx.redraw(M.REFRESH)
         return
     end

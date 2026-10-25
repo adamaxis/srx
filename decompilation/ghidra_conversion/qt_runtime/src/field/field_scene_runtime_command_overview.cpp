@@ -426,6 +426,8 @@ void FieldSceneRuntime::synchronize_command_overview_inventory_from_route(
         route_state.root_inventory_detail_pending.value_or(false);
     command_overview_inventory_cursor_hidden_ =
         route_state.root_inventory_cursor_hidden.value_or(false);
+    command_overview_inventory_picture_partial_ =
+        route_state.root_inventory_picture_partial.value_or(false);
     command_overview_inventory_ammo_count_ =
         route_state.root_inventory_ammo_count;
 
