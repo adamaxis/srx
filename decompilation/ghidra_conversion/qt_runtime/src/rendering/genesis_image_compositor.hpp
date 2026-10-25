@@ -1,11 +1,16 @@
 #pragma once
 
+#include <QColor>
 #include <QImage>
 
 #include <cstdint>
 #include <string_view>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
+
+// Expand one Genesis CRAM word to its host RGB color. Reused by renderers that
+// consume indexed 4bpp patterns rather than already-colored source images.
+QColor genesis_cram_word_to_color(std::uint16_t color_word);
 
 // Replace each visible pixel with one expanded 12-bit Genesis CRAM color.
 // This is used only while an intro palette bank has all fifteen nonzero

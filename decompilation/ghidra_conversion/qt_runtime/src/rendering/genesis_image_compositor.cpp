@@ -23,23 +23,30 @@ void clear_black_pixel(QImage& image, const int x, const int y) {
 
 } // namespace
 
+QColor genesis_cram_word_to_color(const std::uint16_t color_word) {
+    const auto expand_component = [](const std::uint16_t component) {
+        return static_cast<int>((component << 5U) | (component << 2U) |
+                                (component >> 1U));
+    };
+    // Genesis CRAM words are RRR0 GGG0 BBB0: red is bits 1..3, green 5..7,
+    // and blue 9..11. The field palette upload at 0x1406 and the shared
+    // 48-word copy at 0x566C2 establish these values as the field CRAM source
+    // [C: VDP CRAM format; ROM 0x1406/0x566C2].
+    return QColor(
+        expand_component(static_cast<std::uint16_t>((color_word >> 1U) & 7U)),
+        expand_component(static_cast<std::uint16_t>((color_word >> 5U) & 7U)),
+        expand_component(static_cast<std::uint16_t>((color_word >> 9U) & 7U)));
+}
+
 QImage recolor_genesis_image_to_cram_word(const QImage& image,
                                           const std::uint16_t color_word) {
     if (image.isNull()) {
         return image;
     }
 
-    const auto expand_component = [](const std::uint16_t component) {
-        return static_cast<int>((component << 5U) | (component << 2U) |
-                                (component >> 1U));
-    };
-    // Genesis CRAM words store red, green, and blue in bits 9..11, 5..7,
-    // and 1..3 respectively. Their three-bit channels expand exactly to the
-    // same 0..255 values used by the offline graphics importer.
-    const QColor color(
-        expand_component(static_cast<std::uint16_t>((color_word >> 9U) & 7U)),
-        expand_component(static_cast<std::uint16_t>((color_word >> 5U) & 7U)),
-        expand_component(static_cast<std::uint16_t>((color_word >> 1U) & 7U)));
+    // Their three-bit channels expand exactly to the same 0..255 values
+    // used by the offline graphics importer.
+    const auto color = genesis_cram_word_to_color(color_word);
     auto recolored = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
     for (int y = 0; y < recolored.height(); ++y) {
         for (int x = 0; x < recolored.width(); ++x) {
