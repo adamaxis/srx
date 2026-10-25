@@ -21664,21 +21664,55 @@ void FieldSceneRuntime::paint_command_overview_magic(
             : nullptr;
     const auto* table = field_magic_spell_table(
         active_runner_record().magic_table_index);
-    if (table != nullptr) {
+    const auto draw_spell_slot = [this, &painter, lua_view](
+                                     const std::size_t index,
+                                     const int spell_code) {
+        if (spell_code < 0 ||
+            static_cast<std::size_t>(spell_code) >=
+                command_overview_magic_spell_icons_.size()) {
+            return;
+        }
+        const auto column = index % 7U;
+        const auto row = index / 7U;
+        const auto x = lua_view != nullptr
+                           ? lua_view->spell_grid_x +
+                                 static_cast<int>(column) *
+                                     lua_view->spell_grid_column_step
+                           : 32 + static_cast<int>(column * 32U);
+        const auto y = lua_view != nullptr
+                           ? lua_view->spell_grid_y +
+                                 static_cast<int>(row) *
+                                     lua_view->spell_grid_row_step
+                           : 168 + static_cast<int>(row * 24U);
+        const auto& icon = command_overview_magic_spell_icons_[
+            static_cast<std::size_t>(spell_code)];
+        if (lua_view != nullptr) {
+            painter.save();
+            // The ROM redraws the 16-pixel-high cell borders over glyph spill;
+            // e6 9060/9265/9400 show no third icon row below y=183 [C emulator].
+            painter.setClipRect(
+                QRect(x, y, lua_view->spell_grid_icon_width,
+                      lua_view->spell_grid_icon_height),
+                Qt::IntersectClip);
+            painter.drawImage(x, y, icon);
+            painter.restore();
+        } else {
+            painter.drawImage(x, y, icon);
+        }
+    };
+    if (lua_view != nullptr) {
+        for (std::size_t index = 0U;
+             index < lua_view->spell_codes.size(); ++index) {
+            draw_spell_slot(index, lua_view->spell_codes[index]);
+        }
+    } else if (table != nullptr) {
         for (std::size_t index = 0;
              index < table->entry_count &&
              index < kMagicSpellTableEntryCapacity;
              ++index) {
-            const auto spell_code = table->entries[index].spell_code;
-            if (spell_code >= command_overview_magic_spell_icons_.size()) {
-                continue;
-            }
-            const auto column = index % 7U;
-            const auto row = index / 7U;
-            painter.drawImage(
-                32 + static_cast<int>(column * 32U),
-                168 + static_cast<int>(row * 24U),
-                command_overview_magic_spell_icons_[spell_code]);
+            draw_spell_slot(
+                index,
+                static_cast<int>(table->entries[index].spell_code));
         }
     }
 
@@ -21696,13 +21730,23 @@ void FieldSceneRuntime::paint_command_overview_magic(
     if (spell_code < field_menu_text_.magic_spell_names.size()) {
         // ROM 0x10276 sends the selected D4EA0 glyph triplet to C194, which
         // is the 24x24 cell beside the spell title. The menu row below uses
-        // the same named glyph assets at its separate list destinations.
+        // the same named glyph assets at its separate list destinations. The
+        // Lua layout uses the e6 title origin: its first visible glyph is at
+        // x=128 in frames 9060/9265/9400, while the old paint origin put it at
+        // x=112 [C emulator].
         if (spell_code < command_overview_magic_spell_icons_.size()) {
+            const auto title_icon_x =
+                lua_view != nullptr ? lua_view->title_icon_x : 80;
+            const auto title_icon_y =
+                lua_view != nullptr ? lua_view->title_icon_y : 24;
             painter.drawImage(
-                80, 24, command_overview_magic_spell_icons_[spell_code]);
+                title_icon_x, title_icon_y,
+                command_overview_magic_spell_icons_[spell_code]);
         }
         draw_field_menu_font_text(
-            painter, 112, 32,
+            painter,
+            lua_view != nullptr ? lua_view->title_text_x : 128,
+            lua_view != nullptr ? lua_view->title_text_y : 32,
             field_menu_text_.magic_spell_names[spell_code],
             magic_menu_font_);
         if (magic_force_selection_open() ||
@@ -21909,13 +21953,49 @@ void FieldSceneRuntime::paint_command_overview_magic(
         }
     }
 
+    const auto posture_value =
+        lua_view != nullptr ? lua_view->posture : runner.posture;
     const auto posture = std::min<std::size_t>(
-        runner.posture, command_overview_magic_posture_bars_.size() - 1U);
-    painter.drawImage(160, 136,
-                      command_overview_magic_posture_bars_[posture]);
+        static_cast<std::size_t>(posture_value),
+        command_overview_magic_posture_bars_.size() - 1U);
+    auto posture_bar = command_overview_magic_posture_bars_[posture].copy();
+    QRect marker_pixels;
+    for (int y = 0; y < posture_bar.height(); ++y) {
+        for (int x = 0; x < posture_bar.width(); ++x) {
+            const auto color = posture_bar.pixelColor(x, y);
+            if (color.alpha() > 0 && color.red() > 0 &&
+                color.red() == color.green() &&
+                color.green() == color.blue()) {
+                marker_pixels |= QRect(x, y, 1, 1);
+            }
+        }
+    }
+    if (!marker_pixels.isNull()) {
+        const auto halo = marker_pixels.adjusted(-1, -1, 1, 1);
+        // ROM 0x107CE selects the C8600 posture row. e6 9060/9265/9400 show
+        // the gray marker without the asset's pale one-pixel halo [C].
+        for (int y = halo.top(); y <= halo.bottom(); ++y) {
+            for (int x = halo.left(); x <= halo.right(); ++x) {
+                const auto on_halo =
+                    x == halo.left() || x == halo.right() ||
+                    y == halo.top() || y == halo.bottom();
+                if (on_halo && x >= 0 && y >= 0 &&
+                    x < posture_bar.width() && y < posture_bar.height()) {
+                    posture_bar.setPixelColor(x, y, QColor(0, 0, 0, 0));
+                }
+            }
+        }
+    }
+    painter.drawImage(
+        lua_view != nullptr ? lua_view->posture_bar_x : 160,
+        lua_view != nullptr ? lua_view->posture_bar_y : 136,
+        posture_bar);
     if (posture < field_menu_text_.status_names.size()) {
         draw_field_menu_font_text(
-            painter, 160, 144, field_menu_text_.status_names[posture],
+            painter,
+            lua_view != nullptr ? lua_view->posture_text_x : 160,
+            lua_view != nullptr ? lua_view->posture_text_y : 144,
+            field_menu_text_.status_names[posture],
             magic_menu_font_);
     }
 
@@ -21958,8 +22038,12 @@ void FieldSceneRuntime::paint_command_overview_magic(
         magic_cursor_phase() %
         command_overview_magic_cursor_frames_.size());
     painter.drawImage(
-        static_cast<int>(selection.column) * 32,
-        static_cast<int>(selection.row) * 24,
+        lua_view != nullptr
+            ? lua_view->cursor_offset_x
+            : static_cast<int>(selection.column) * 32,
+        lua_view != nullptr
+            ? lua_view->cursor_offset_y
+            : static_cast<int>(selection.row) * 24,
         command_overview_magic_cursor_frames_[phase]);
 }
 

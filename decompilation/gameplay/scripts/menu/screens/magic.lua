@@ -6,11 +6,39 @@ local P, R, T = E.Pad, E.MenuRegion, E.MenuTransition
 local Posture = require("menu.screens.posture")
 local Rules = require("menu.rules.magic")
 
+-- ROM 0xFBA6 lays out the icon cells in a seven-column grid; 0xFDFE applies
+-- the selected-cell offsets to the cursor sprite. ROM 0x10276 sends the spell
+-- name to C21C; e6 9060/9265/9400 show its first visible glyph at x=128, while
+-- port 9253/9458/9593 start at x=112 [C emulator].
+-- The lower grid exposes only the first 16 icon pixels: 0xFDFE redraws its
+-- slot borders through 0xFDAE after the 0xFBA6 glyph writes; e6 9060/9265/
+-- 9400 show no third icon row below y=183 [C].
+local LAYOUT = {
+    title_icon_x = 80, title_icon_y = 24,
+    title_text_x = 128, title_text_y = 32,
+    spell_grid_x = 32, spell_grid_y = 168,
+    spell_grid_column_step = 32, spell_grid_row_step = 24,
+    spell_grid_icon_width = 24, spell_grid_icon_height = 16,
+    cursor_offset_x = 0, cursor_offset_y = 0,
+    posture_bar_x = 160, posture_bar_y = 136,
+    posture_text_x = 160, posture_text_y = 144,
+}
+
+-- ROM 0xFBA6 resets the overlay phase. e6 has the A edge at 8940 and first
+-- shows cursor RAM DA/DB=5/1 at 8952 [C emulator]. This ten-heartbeat hold
+-- models the CPU-bound entry interval [H], not a ROM wait, and aligns the
+-- measured phases at e6 9060/9265/9400 with port 9253/9458/9593 [C emulator].
+local CURSOR_STARTUP_HEARTBEATS = 10
+
 local function active_record(ctx)
     return ctx.game.party()[ctx.game.active_slot()]
 end
 
 local function next_cursor(st)
+    if (st.cursor_startup_heartbeats or 0) > 0 then
+        st.cursor_startup_heartbeats = st.cursor_startup_heartbeats - 1
+        return
+    end
     if st.cursor_timer == 0 then
         st.cursor_timer = 6
         st.cursor_phase = (st.cursor_phase + 1) % 4
@@ -19,12 +47,36 @@ local function next_cursor(st)
     end
 end
 
+local function publish_layout(values, st, table_)
+    values.title_icon_x, values.title_icon_y =
+        LAYOUT.title_icon_x, LAYOUT.title_icon_y
+    values.title_text_x, values.title_text_y =
+        LAYOUT.title_text_x, LAYOUT.title_text_y
+    values.spell_grid_x, values.spell_grid_y =
+        LAYOUT.spell_grid_x, LAYOUT.spell_grid_y
+    values.spell_grid_column_step = LAYOUT.spell_grid_column_step
+    values.spell_grid_row_step = LAYOUT.spell_grid_row_step
+    values.spell_grid_icon_width = LAYOUT.spell_grid_icon_width
+    values.spell_grid_icon_height = LAYOUT.spell_grid_icon_height
+    values.cursor_offset_x = st.sel.column * LAYOUT.spell_grid_column_step
+    values.cursor_offset_y = st.sel.row * LAYOUT.spell_grid_row_step
+    values.posture_bar_x, values.posture_bar_y =
+        LAYOUT.posture_bar_x, LAYOUT.posture_bar_y
+    values.posture_text_x, values.posture_text_y =
+        LAYOUT.posture_text_x, LAYOUT.posture_text_y
+    values.spell_codes = {}
+    for index = 1, math.min(table_.entry_count, 14) do
+        values.spell_codes[index] = table_.entries[index].code
+    end
+    values.cursor_phase = st.cursor_phase
+end
+
 local function publish_view(st, ctx, entry, force)
     local record = active_record(ctx)
     local values = Rules.presentation(
         record, ctx.game.party(), ctx.game.slot_active_set(), st.table,
         entry, st.sel.row, st.sel.column, force)
-    values.cursor_phase = st.cursor_phase
+    publish_layout(values, st, st.table)
     st.magic_view = values
 end
 
@@ -77,6 +129,7 @@ function M.new()
         sel = { row = 0, column = 0 },
         cursor_timer = 0,
         cursor_phase = 0,
+        cursor_startup_heartbeats = 0,
     }
 end
 
@@ -107,6 +160,7 @@ function M.enter(st, ctx)
     st.last_entry = st.table.entry_count - 1
     st.cursor_timer = 0
     st.cursor_phase = 0
+    st.cursor_startup_heartbeats = CURSOR_STARTUP_HEARTBEATS
     ctx.host.blank(E.DisplayBlank.OFF)
     ctx.redraw(R.FULL)
     -- 12 black frames, display back on at line 149 (emulator 8820..8832) [C emulator]
@@ -133,6 +187,7 @@ function M.input(st, events, ctx)
         moved = true
     end
     if moved then
+        st.cursor_startup_heartbeats = 0
         st.cursor_timer = 0
         local entry = M.selected(st.table, st.sel)
         if entry then st.force = M.initial_force(active_record(ctx), entry) end
@@ -206,7 +261,8 @@ local function force_view(st, ctx)
         record, party, ctx.game.slot_active_set(), st.table, st.entry,
         st.row, st.column, st.force)
     values.table_entry_index = st.table_entry_index
-    values.cursor_phase = st.cursor_phase
+    publish_layout(values, { sel = { row = st.row, column = st.column },
+                              cursor_phase = st.cursor_phase }, st.table)
     st.magic_view = values
 end
 

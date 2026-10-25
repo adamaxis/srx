@@ -40149,8 +40149,19 @@ int main(int argc, char** argv) {
                     const auto icon = direct_asset(
                         "menu/field/magic-spell-icon-" +
                         std::to_string(code) + ".bmp");
+                    // e6 9060/9265/9400 show no third icon row below y=183;
+                    // ROM 0xFDAE redraws the slot borders after the glyphs [C].
+                    auto visible_icon = icon.convertToFormat(
+                        QImage::Format_ARGB32);
+                    for (int y = 16; y < visible_icon.height(); ++y) {
+                        for (int x = 0; x < visible_icon.width(); ++x) {
+                            auto color = visible_icon.pixelColor(x, y);
+                            color.setAlpha(0);
+                            visible_icon.setPixelColor(x, y, color);
+                        }
+                    }
                     if (!visible_asset_pixels_match(
-                            moved_scene, icon,
+                            moved_scene, visible_icon,
                             32 + static_cast<int>((index % 7U) * 32U),
                             168 + static_cast<int>((index / 7U) * 24U))) {
                         unselected_spell_icons_match = false;
@@ -40282,8 +40293,42 @@ int main(int argc, char** argv) {
                 const auto posture_bar = direct_asset(
                     "menu/field/magic-posture-bar-" +
                     std::to_string(posture) + ".bmp");
+                // e6 9060/9265/9400 show only the gray 3x6 posture marker,
+                // without the pale one-pixel asset halo [C emulator].
+                auto posture_bar_expected = posture_bar.convertToFormat(
+                    QImage::Format_ARGB32);
+                QRect posture_marker_pixels;
+                for (int y = 0; y < posture_bar_expected.height(); ++y) {
+                    for (int x = 0; x < posture_bar_expected.width(); ++x) {
+                        const auto color = posture_bar_expected.pixelColor(x, y);
+                        if (color.alpha() > 0 && color.red() > 0 &&
+                            color.red() == color.green() &&
+                            color.green() == color.blue()) {
+                            posture_marker_pixels |= QRect(x, y, 1, 1);
+                        }
+                    }
+                }
+                const auto posture_marker_halo =
+                    posture_marker_pixels.adjusted(-1, -1, 1, 1);
+                for (int y = posture_marker_halo.top();
+                     y <= posture_marker_halo.bottom(); ++y) {
+                    for (int x = posture_marker_halo.left();
+                         x <= posture_marker_halo.right(); ++x) {
+                        const auto on_halo =
+                            x == posture_marker_halo.left() ||
+                            x == posture_marker_halo.right() ||
+                            y == posture_marker_halo.top() ||
+                            y == posture_marker_halo.bottom();
+                        if (on_halo && x >= 0 && y >= 0 &&
+                            x < posture_bar_expected.width() &&
+                            y < posture_bar_expected.height()) {
+                            posture_bar_expected.setPixelColor(
+                                x, y, QColor(0, 0, 0, 0));
+                        }
+                    }
+                }
                 const auto posture_bar_matches = visible_asset_pixels_match(
-                    moved_scene, posture_bar, 160, 136);
+                    moved_scene, posture_bar_expected, 160, 136);
                 const auto selected_spell_icon = direct_asset(
                     "menu/field/magic-spell-icon-" +
                     std::to_string(moved_spell->spell_code) + ".bmp");

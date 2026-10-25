@@ -2898,6 +2898,44 @@ struct GameScriptRuntime::Impl {
                             .value_or(0);
                     view.spell_code =
                         read_optional(view_index, "spell_code").value_or(-1);
+                    view.title_icon_x =
+                        read_optional(view_index, "title_icon_x").value_or(80);
+                    view.title_icon_y =
+                        read_optional(view_index, "title_icon_y").value_or(24);
+                    view.title_text_x =
+                        read_optional(view_index, "title_text_x").value_or(128);
+                    view.title_text_y =
+                        read_optional(view_index, "title_text_y").value_or(32);
+                    view.spell_grid_x =
+                        read_optional(view_index, "spell_grid_x").value_or(32);
+                    view.spell_grid_y =
+                        read_optional(view_index, "spell_grid_y").value_or(168);
+                    view.spell_grid_column_step =
+                        read_optional(view_index, "spell_grid_column_step")
+                            .value_or(32);
+                    view.spell_grid_row_step =
+                        read_optional(view_index, "spell_grid_row_step")
+                            .value_or(24);
+                    view.spell_grid_icon_width =
+                        read_optional(view_index, "spell_grid_icon_width")
+                            .value_or(24);
+                    view.spell_grid_icon_height =
+                        read_optional(view_index, "spell_grid_icon_height")
+                            .value_or(16);
+                    view.cursor_offset_x =
+                        read_optional(view_index, "cursor_offset_x").value_or(0);
+                    view.cursor_offset_y =
+                        read_optional(view_index, "cursor_offset_y").value_or(0);
+                    view.posture_bar_x =
+                        read_optional(view_index, "posture_bar_x").value_or(160);
+                    view.posture_bar_y =
+                        read_optional(view_index, "posture_bar_y").value_or(136);
+                    view.posture_text_x =
+                        read_optional(view_index, "posture_text_x").value_or(160);
+                    view.posture_text_y =
+                        read_optional(view_index, "posture_text_y").value_or(144);
+                    view.spell_codes = read_integer_array(
+                        view_index, "spell_codes", 14U, 0, 13);
                     view.force =
                         read_optional(view_index, "force").value_or(1);
                     view.maximum_force =
