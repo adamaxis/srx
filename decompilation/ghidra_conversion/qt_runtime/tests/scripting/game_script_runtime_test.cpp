@@ -5981,6 +5981,9 @@ int main() {
         posture_band_actor.entity_kind = 8U;
         posture_band_actor.source_record_flags = 0x2DU;
         posture_band_actor.source_actor_posture = posture;
+        // This case exercises the linked-target combat route; FFDF84 is the
+        // source combat gate that keeps the patrol selector out of the case [C].
+        posture_band_actor.world_activity_active = true;
         posture_band_actor.entry_animation_frame_count = 2U;
         posture_band_actor.walk_animation_frame_count = 4U;
         configure_encounter_movement(posture_band_actor, target_distance);

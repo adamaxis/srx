@@ -1301,6 +1301,16 @@ struct ScriptActorBehaviorContext {
     // same runtime pool. Keep that provenance explicit for Lua profile rules.
     bool world_activity_script_actor = false;
     std::optional<std::uint8_t> source_record_slot;
+    // ROM actor +0x3E: 0x44BC copies FFDD40 for scene actors and 0x42CC
+    // initializes runner records to 0..2 [C]. Kept separate from the host's
+    // candidate identity field because Lua consumes it as a behavior input.
+    std::optional<std::uint8_t> source_actor_slot;
+    // Source list identity selects the extracted +0xE0 waypoint data [C].
+    std::optional<std::uint32_t> source_actor_list_offset;
+    std::optional<std::uint16_t> source_actor_source_order;
+    // Live actor +0/+4 position, which seeds +0x96/+0x98 at spawn [C].
+    std::optional<std::uint16_t> source_world_x;
+    std::optional<std::uint16_t> source_world_y;
     std::uint8_t source_record_flags = 0;
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t source_behavior_flags = 0;

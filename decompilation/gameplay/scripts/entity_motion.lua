@@ -2,6 +2,7 @@
 -- This data is presented to Lua so the behavior layer can select its own
 -- heading and derive the corresponding fixed-point step.
 local EntityMotion = {}
+local AiTuning = require("enums").AiTuning
 
 local heading_wave = {
     0x0000, 0x0647, 0x0c8b, 0x12c7, 0x18f8, 0x1f19, 0x2527, 0x2b1e,
@@ -42,6 +43,31 @@ function EntityMotion.heading_offsets(heading)
     return {
         horizontal = scale_sample(heading_wave[index + 1]),
         vertical = scale_sample(heading_wave[((index + 96) & 0x7f) + 1]),
+    }
+end
+
+function EntityMotion.offset_at_radius(heading, radius)
+    -- ROM 0x15DCC uses the same 128 signed samples at 0x15E56. Its first
+    -- product reads the preceding 0x40-byte quarter-wave table at 0x15E16;
+    -- after 0x14540 swaps d2/d3, horizontal is sample[n] and vertical is
+    -- sample[n-0x20]. MULS; double; SWAP yields floor(product / 0x8000) [C].
+    if type(heading) ~= "number" or heading % 1 ~= 0 or
+       heading < 0 or heading > AiTuning.WORD_MAX or
+       type(radius) ~= "number" or radius % 1 ~= 0 or radius < 0 or
+       radius > AiTuning.WORD_MAX then
+        return nil
+    end
+    local sample_index = (heading >> AiTuning.FOLLOW_SAMPLE_SHIFT) &
+                         AiTuning.FOLLOW_SAMPLE_MASK
+    local horizontal_sample = signed_word(heading_wave[sample_index + 1])
+    local vertical_sample = signed_word(heading_wave[
+        ((sample_index - AiTuning.FOLLOW_QUARTER_WAVE_SAMPLES) &
+         AiTuning.FOLLOW_SAMPLE_MASK) + 1])
+    return {
+        horizontal = math.floor(
+            horizontal_sample * radius / AiTuning.FOLLOW_VECTOR_SCALE),
+        vertical = math.floor(
+            vertical_sample * radius / AiTuning.FOLLOW_VECTOR_SCALE),
     }
 end
 

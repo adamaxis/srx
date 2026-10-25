@@ -20,10 +20,10 @@ E.ActorPool = { STRIDE = 0x100, PARTY = 3, OTHERS = 7, PROJECTILES = 6 }   -- FF
 E.ActorRaceOrState = { GHOUL_BOUNTY_TARGET = 0x42 }
 E.GhoulBounty = { MAX_DEFEATS = 20 } -- FFFBF0 is capped at twenty (0x559BC) [C]
 
-E.ActorStatus   = { ACTIVE = 0x01, THINK = 0x02, AI_RUNNER = 0x08, DOWN = 0x10, GROUP_LEADER = 0x20, DEAD = 0x40 }  -- +0x10 [C]
+E.ActorStatus   = { NONE = 0, ACTIVE = 0x01, THINK = 0x02, AI_RUNNER = 0x08, DOWN = 0x10, GROUP_LEADER = 0x20, DEAD = 0x40 }  -- +0x10 [C]
 E.ActorStatusEx = { PROJECTILE = 0x01, BREATH_OUT = 0x40, UNSEEN = 0x80 }                                        -- +0x11 [C]
 -- +0x9E role/AI flags (doc 20 §2); REINFORCEMENT is set by the alarm spawner 0x1E0B8 [C]
-E.ActorFlag = { SPOTTED = 0x01, REINFORCEMENT = 0x02, DESPAWN_OFFSCREEN = 0x04, QUEST = 0x08,
+E.ActorFlag = { NONE = 0, SPOTTED = 0x01, REINFORCEMENT = 0x02, DESPAWN_OFFSCREEN = 0x04, QUEST = 0x08,
                 RUNNER = 0x10, PEDESTRIAN = 0x20, HOSTILE = 0x40 }
 E.BehaviorFlag = { ROUTE_CLEAR = 0x01, PATH = 0x02, RESTART_STEER = 0x04, WALL_FOLLOW = 0x08, IN_BAND = 0x10, ROUTE_TRANSITION = 0x20, FLEEING = 0x40, ESCORT = 0x80 } -- +0xB0 [C]; ROUTE_CLEAR/ROUTE_TRANSITION [H] repo route_flags usage
 E.SteerFlag = { TARGET_RIGHT = 0x01, TARGET_BELOW = 0x02, OVERSHOOT_X = 0x04, OVERSHOOT_Y = 0x08 }  -- +0xB1 [C]
@@ -131,6 +131,21 @@ E.EventFn = { GUARD_SPOTS_YOU = 0x20FEC }                                       
 E.AiTuning = {   -- [C] unless marked
     THINK_FRAMES = 0x14, THINK_RETRY = -1, -- 0x13904 + FFE175 retry remains negative [C]
     ANIM_BUSY = 0x3C, ARRIVE_DIST = 0x1E0, FLANK_RADIUS = 0xE0, FLANK_ANGLE = 0x6000,
+    PATROL_WAYPOINT_STRIDE = 0x4, -- 0x142F4 advances +0xE4 by one XY pair [C]
+    FOLLOW_RADIUS_INITIAL = 0x20, -- 0x14512 first writes this radius [C]
+    FOLLOW_RADIUS = 0xE0, -- 0x14516 overwrites the prior radius [C]
+    FOLLOW_ANGLE_STEP = 0x6000, -- 0x14532 / 0x1452A [C]
+    FOLLOW_SAMPLE_SHIFT = 9, -- 0x15DCC indexes the wave by heading >> 9 [C]
+    FOLLOW_SAMPLE_MASK = 0x7F, -- 0x15E56 contains 128 signed samples [C]
+    FOLLOW_QUARTER_WAVE_SAMPLES = 0x20, -- 0x15E16 is 32 samples earlier [C]
+    FOLLOW_VECTOR_SCALE = 0x8000, -- 0x15DCC product is doubled then SWAPed [C]
+    FOLLOW_FIRST_SLOT = 0, -- 0x1451E checks actor +0x3E == zero [C]
+    FOLLOW_SECOND_SLOT = 1, -- 0x14522 checks actor +0x3E == one [C]
+    FOLLOW_FIRST_SCENE_ACTOR_SLOT = 3, -- 0x1A342 starts d0 at 3; 0x44BC copies it [C]
+    FOLLOW_FIRST_LEADER_SLOT = 0, -- 0x14534 tests leader +0x3E [C]
+    FOLLOW_COLLISION_CLEAR_MAX = 0, -- 0x1455A/0x14580 accept nonpositive results [C]
+    PATROL_INITIAL_CURSOR = 0, -- 0x142FE clears +0xE4 at the list terminator [C]
+    WORD_MAX = 0xFFFF, -- 0x1450E heading and coordinate inputs are 16-bit words [C]
     FLEE_OFFSET = 0x2580, FLEE_CAMERA_BIAS = 0xA00, ENGAGE_DIST = 0x500, WATCH_DIST = 0x640,
     THON_PERIOD = 8, HURT_BELOW = 4, CAST_MIN_STUN = 5, SPELL_GATE_MAX = 2, APPROACH_TICKS = 6,
     QUARTER_TURN = 0x4000, NO_TARGET = 0x12345678, STEER_NONE = 0x1000, ALARM_FRAMES = 0x960,

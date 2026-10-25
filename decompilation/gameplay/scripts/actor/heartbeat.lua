@@ -309,8 +309,8 @@ function ActorAI.heartbeat(context)
                     else
                         -- 0x13904 refreshes target/routing every 21 actor
                         -- service passes; +0x3A continues movement each pass.
-                        -- Patrol/follow names currently fall through to the
-                        -- existing target path until typed route data exists [H].
+                        -- Lua's typed patrol/follow destination remains active
+                        -- here while the source continuation advances it [C].
                         requested_movement_heading(context, profile, state)
                         local target = retained_linked_target(context, state)
                         if context.action_kind == ActionKind.spell then

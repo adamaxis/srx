@@ -119,7 +119,8 @@ local INTENDED = {
 -- Fields added by actor/think.lua (0x13904 gate outputs). Stripped before comparing so the
 -- rest of the result/state must still match the pre-split reference exactly.
 local THINK_FIELDS = { "world_activity_requested", "field_event_request", "source_spawn_state_flags",
-  "ai_think_path", "ai_think_gap", "ai_deactivate_requested" }
+  "ai_think_path", "ai_think_gap", "ai_deactivate_requested",
+  "ai_route_target_x", "ai_route_target_y", "ai_waypoint_index" }
 local function strip_think(v, seen)
   if type(v) ~= "table" then return v end
   seen = seen or {}; if seen[v] then return v end; seen[v] = true

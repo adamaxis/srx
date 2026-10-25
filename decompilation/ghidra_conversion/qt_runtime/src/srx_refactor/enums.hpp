@@ -58,6 +58,7 @@ enum class ActorField : std::int64_t {
     WP_INDEX = 0xE4,
 };
 enum class ActorFlag : std::int64_t {
+    NONE = 0x0,
     SPOTTED = 0x1,
     REINFORCEMENT = 0x2,
     DESPAWN_OFFSCREEN = 0x4,
@@ -76,6 +77,7 @@ enum class ActorRaceOrState : std::int64_t {
     GHOUL_BOUNTY_TARGET = 0x42,
 };
 enum class ActorStatus : std::int64_t {
+    NONE = 0x0,
     ACTIVE = 0x1,
     THINK = 0x2,
     AI_RUNNER = 0x8,
@@ -90,17 +92,29 @@ enum class ActorStatusEx : std::int64_t {
 };
 enum class AiTuning : std::int64_t {
     THINK_RETRY = -1,
+    FOLLOW_COLLISION_CLEAR_MAX = 0x0,
+    FOLLOW_FIRST_LEADER_SLOT = 0x0,
+    FOLLOW_FIRST_SLOT = 0x0,
+    PATROL_INITIAL_CURSOR = 0x0,
+    FOLLOW_SECOND_SLOT = 0x1,
     SPELL_GATE_MAX = 0x2,
+    FOLLOW_FIRST_SCENE_ACTOR_SLOT = 0x3,
     HURT_BELOW = 0x4,
+    PATROL_WAYPOINT_STRIDE = 0x4,
     CAST_MIN_STUN = 0x5,
     PATH_TRIES = 0x5,
     APPROACH_TICKS = 0x6,
     THON_PERIOD = 0x8,
+    FOLLOW_SAMPLE_SHIFT = 0x9,
     THINK_FRAMES = 0x14,
+    FOLLOW_QUARTER_WAVE_SAMPLES = 0x20,
+    FOLLOW_RADIUS_INITIAL = 0x20,
     RELOAD_ROUNDS = 0x26,
     ENDING_HOLD_ROUNDS = 0x28,
     ANIM_BUSY = 0x3C,
+    FOLLOW_SAMPLE_MASK = 0x7F,
     FLANK_RADIUS = 0xE0,
+    FOLLOW_RADIUS = 0xE0,
     ARRIVE_DIST = 0x1E0,
     ENGAGE_DIST = 0x500,
     WATCH_DIST = 0x640,
@@ -111,6 +125,9 @@ enum class AiTuning : std::int64_t {
     FLEE_OFFSET = 0x2580,
     QUARTER_TURN = 0x4000,
     FLANK_ANGLE = 0x6000,
+    FOLLOW_ANGLE_STEP = 0x6000,
+    FOLLOW_VECTOR_SCALE = 0x8000,
+    WORD_MAX = 0xFFFF,
     NO_TARGET = 0x12345678,
 };
 enum class Archetype : std::int64_t {

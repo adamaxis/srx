@@ -4552,10 +4552,46 @@ void FieldSceneRuntime::advance_default_field_actors() {
         context.combat_meter_service_blocked =
             field_movement_transition_state_.world_mode == 3U;
         if (actor.source_record_slot.has_value()) {
+            const auto source_slot = static_cast<std::uint8_t>(
+                *actor.source_record_slot);
             context.source_record_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
+            if (source_slot >= FieldPartyRosterRuntime::kSlotCount) {
+                // ROM 0x1A342 returns pool slots 3..9 in d0; 0x44BC copies
+                // that exact value from FFDD40 to actor +0x3E [C].
+                context.source_actor_slot = source_slot;
+            }
+            if (actor.list_offset != 0U) {
+                context.source_actor_list_offset = actor.list_offset;
+                context.source_actor_source_order = actor.source_order;
+            }
+            context.source_world_x = actor.world_position.x;
+            context.source_world_y = actor.world_position.y;
             context.source_record_flags = actor.source_record_flags;
+            context.source_interaction_flags =
+                actor.source_interaction_flags;
+            context.source_behavior_flags = actor.source_behavior_flags;
+            context.source_spawn_state_flags =
+                actor.source_spawn_state_flags;
             context.source_physical_meter = actor.physical_meter;
+            context.source_actor_posture = actor.combatant.posture;
+            context.source_animation_selector =
+                actor.source_animation_selector;
+            context.source_alarm_active = field_matrix_field_state_.alarm;
+            context.source_scene_mode =
+                field_movement_transition_state_.world_mode;
+            context.controlled_runner_slot = static_cast<std::uint8_t>(
+                field_party_roster_.active_slot());
+            context.world_activity_active =
+                world_frame_logic_state_.world_active != 0U;
+            context.world_scene_state = world_frame_logic_state_.scene_state;
+            context.movement_scene_id = current_scene;
+            context.source_projection_active = caster_projection_active(
+                actor.world_position.x, actor.world_position.y,
+                static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_x),
+                static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_y));
         }
         if (dynamic_world_actor) {
             context.combatant = actor.combatant;
@@ -4925,7 +4961,10 @@ void FieldSceneRuntime::advance_default_field_actors() {
                         target_x, target_y),
                     std::numeric_limits<std::uint16_t>::max());
                 return scripting::ScriptActorDestinationMeasurement{
-                    measurement.heading, measurement.distance,
+                    measurement.heading,
+                    static_cast<std::uint16_t>(std::min<std::uint32_t>(
+                        measurement.distance,
+                        std::numeric_limits<std::uint16_t>::max())),
                     static_cast<std::uint16_t>(route_cost)};
             };
 
@@ -5024,6 +5063,94 @@ void FieldSceneRuntime::advance_default_field_actors() {
                             collision_code < 0,
                             actor.source_behavior_flags};
                     };
+            }
+        }
+
+        if (actor.source_record_slot.has_value()) {
+            const auto active_runner_slot = static_cast<std::uint8_t>(
+                field_party_roster_.active_slot());
+            const bool has_controlled_runner = std::any_of(
+                context.ai_target_candidates.begin(),
+                context.ai_target_candidates.end(),
+                [active_runner_slot](const auto& candidate) {
+                    return !candidate.world_activity_actor &&
+                           candidate.source_record_slot.has_value() &&
+                           *candidate.source_record_slot ==
+                               active_runner_slot;
+                });
+            if (!has_controlled_runner &&
+                field_party_roster_.slot_active(active_runner_slot)) {
+                // 0x1450E reads the active runner through FFFC04 [C]. Supply
+                // its typed record if this actor's candidate pool omitted it.
+                auto runner_position = state_.field_scene_buffers
+                                           .source_metadata
+                                           .initial_field_records[
+                                               active_runner_slot];
+                if (active_runner_slot == field_party_roster_.active_slot() &&
+                    field_entity_.active) {
+                    runner_position = field_entity_.world_position;
+                }
+                const auto relative =
+                    measure_entity_target_heading_and_distance(
+                        actor.world_position.x, actor.world_position.y,
+                        runner_position.x, runner_position.y);
+                const auto& runner = field_party_roster_.records()[
+                    active_runner_slot];
+                scripting::ScriptActorTargetCandidate candidate{};
+                candidate.id = "party.runner." +
+                    std::to_string(active_runner_slot);
+                candidate.world_x = runner_position.x;
+                candidate.world_y = runner_position.y;
+                candidate.heading = relative.heading;
+                candidate.distance = static_cast<std::uint16_t>(
+                    std::min<std::uint32_t>(relative.distance, 0xFFFFU));
+                candidate.interaction_flags = static_cast<std::uint8_t>(
+                    runner.flags & 0x00FFU);
+                candidate.world_activity_actor = false;
+                candidate.source_record_slot = active_runner_slot;
+                if (field_entity_.active) {
+                    candidate.source_record_heading =
+                        field_movement_state_.heading;
+                }
+                context.ai_target_candidates.push_back(
+                    std::move(candidate));
+            }
+
+            if (!context.measure_destination) {
+                context.measure_destination = [
+                    &actor](const std::uint16_t target_x,
+                            const std::uint16_t target_y)
+                    -> std::optional<scripting::
+                        ScriptActorDestinationMeasurement> {
+                    const auto measurement =
+                        measure_entity_target_heading_and_distance(
+                            actor.world_position.x, actor.world_position.y,
+                            target_x, target_y);
+                    const auto route_cost = std::min<std::uint32_t>(
+                        compute_record_diagonal_step_cost(
+                            actor.world_position.x, actor.world_position.y,
+                            target_x, target_y),
+                        std::numeric_limits<std::uint16_t>::max());
+                    return scripting::ScriptActorDestinationMeasurement{
+                        measurement.heading,
+                        static_cast<std::uint16_t>(std::min<std::uint32_t>(
+                            measurement.distance,
+                            std::numeric_limits<std::uint16_t>::max())),
+                        static_cast<std::uint16_t>(route_cost)};
+                };
+            }
+            if (!context.movement_collision) {
+                context.movement_collision = [this, &actor](
+                    const std::uint16_t x, const std::uint16_t y) {
+                    const auto collision_code = evaluate_field_collision(
+                        x, y, actor.movement_collision_record,
+                        actor.movement_sample_state,
+                        actor.source_record_flags, false,
+                        &actor.movement_terrain_collision_code);
+                    return scripting::ScriptMovementCollisionResult{
+                        collision_code,
+                        actor.movement_terrain_collision_code};
+                };
             }
         }
 

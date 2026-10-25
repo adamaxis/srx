@@ -8051,6 +8051,36 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "source_record_slot");
+    if (context.source_actor_slot.has_value()) {
+        lua_pushinteger(state, *context.source_actor_slot);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_actor_slot");
+    if (context.source_actor_list_offset.has_value()) {
+        lua_pushinteger(state, *context.source_actor_list_offset);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_actor_list_offset");
+    if (context.source_actor_source_order.has_value()) {
+        lua_pushinteger(state, *context.source_actor_source_order);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_actor_source_order");
+    if (context.source_world_x.has_value()) {
+        lua_pushinteger(state, *context.source_world_x);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_world_x");
+    if (context.source_world_y.has_value()) {
+        lua_pushinteger(state, *context.source_world_y);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_world_y");
     lua_pushinteger(state, context.source_record_flags);
     lua_setfield(state, -2, "source_record_flags");
     if (context.source_physical_meter.has_value()) {
@@ -9616,7 +9646,8 @@ GameScriptRuntime::actor_heartbeat(
         std::uint32_t heading = 0U;
         const bool movement_actor =
             context.profile_id == "field_runner_k03_none00" ||
-            context.dynamic_world_encounter_actor;
+            context.dynamic_world_encounter_actor ||
+            context.source_actor_slot.has_value();
         if (!read_integer(state, -1, 0xFFFFU, heading) ||
             !movement_actor) {
             return fail(
@@ -9679,7 +9710,8 @@ GameScriptRuntime::actor_heartbeat(
         // state without being rejected as a fresh movement request.
         if (!read_integer(state, -1, 0xFFFFU, heading) || !movement_actor ||
             (context.phase == ScriptActorHeartbeatPhase::behavior &&
-             !context.movement_allowed)) {
+             !context.movement_allowed &&
+             !context.source_actor_slot.has_value())) {
             return fail(
                 "actor_ai.heartbeat returned an invalid movement intent");
         }
@@ -9694,10 +9726,11 @@ GameScriptRuntime::actor_heartbeat(
             "actor_ai.heartbeat returned an invalid movement route distance");
     }
     if (movement_route_distance.has_value()) {
-        if (!context.dynamic_world_encounter_actor ||
+        if ((!context.dynamic_world_encounter_actor &&
+             !context.source_actor_slot.has_value()) ||
             !decision.movement_heading.has_value()) {
             return fail(
-                "actor_ai.heartbeat returned route distance without a dynamic route");
+                "actor_ai.heartbeat returned route distance without a source actor route");
         }
         decision.movement_route_distance = static_cast<std::uint16_t>(
             *movement_route_distance);

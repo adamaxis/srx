@@ -281,10 +281,147 @@ check((s.source_spawn_state_flags & E.ActorFlag.SPOTTED) == 0,
       "0x13FC6 rejects a facing difference at the quarter-turn boundary")
 
 check(R.think_gate(state(), context({ source_projection_active = false })) ==
-      "patrol", "0x142AE is returned as patrol while waypoint service is absent")
+      "patrol", "0x142AE selects the patrol branch [C]")
 check(R.think_gate(state({ source_behavior_flags = E.BehaviorFlag.ESCORT }),
       context({ source_behavior_flags = E.BehaviorFlag.ESCORT })) ==
-      "follow_leader", "0x1450E formation follow is named while slot support is absent")
+      "follow_leader", "0x1450E formation follow is selected by escort [C]")
+
+local WaypointLists = require("data.actor_waypoint_lists")
+local patrol_list_offset, patrol_route
+for list_offset, records in pairs(WaypointLists) do
+    local candidate = records[0]
+    if candidate ~= nil and candidate.initial.x == 1536 and
+       candidate.initial.y == 4096 and candidate.points ~= nil and
+       #candidate.points == 8 and candidate.points[1].x == 15616 and
+       candidate.points[1].y == 4096 then
+        patrol_list_offset, patrol_route = list_offset, candidate
+        break
+    end
+end
+check(patrol_route ~= nil,
+      "generated spawn data contains the hand-traced 0x679F0 patrol route [C]")
+if patrol_route ~= nil then
+    local route_context = context({
+        source_actor_list_offset = patrol_list_offset,
+        source_actor_source_order = 0,
+        source_actor_slot = 0,
+        source_world_x = patrol_route.initial.x,
+        source_world_y = patrol_route.initial.y,
+    })
+    route_context.measure_destination = function()
+        return { heading = 0, distance = 0, step_cost = 0 }
+    end
+    s = state()
+    check(R.apply_think_path(s, route_context, "patrol") and
+          s.ai_route_target_x == 15616 and s.ai_route_target_y == 4096 and
+          s.ai_waypoint_index == E.AiTuning.PATROL_WAYPOINT_STRIDE,
+          "0x142F4 advances +0xE4 and selects the first patrol pair [C]")
+
+    route_context.source_world_x = patrol_route.points[1].x
+    route_context.source_world_y = patrol_route.points[1].y
+    s.ai_route_target_x = patrol_route.points[1].x
+    s.ai_route_target_y = patrol_route.points[1].y
+    check(R.apply_think_path(s, route_context, "patrol") and
+          s.ai_route_target_x == 15616 and s.ai_route_target_y == 8704 and
+          s.ai_waypoint_index == E.AiTuning.PATROL_WAYPOINT_STRIDE * 2,
+          "0x142F4 advances to the next ROM waypoint pair [C]")
+
+    local last_point = patrol_route.points[#patrol_route.points]
+    route_context.source_world_x = last_point.x
+    route_context.source_world_y = last_point.y
+    s.ai_route_target_x, s.ai_route_target_y = last_point.x, last_point.y
+    s.ai_waypoint_index = #patrol_route.points *
+                          E.AiTuning.PATROL_WAYPOINT_STRIDE
+    check(R.apply_think_path(s, route_context, "patrol") and
+          s.ai_route_target_x == patrol_route.initial.x and
+          s.ai_route_target_y == patrol_route.initial.y and
+          s.ai_waypoint_index == 0,
+          "0x142F6 clears +0xE4 and wraps to the spawn pair [C]")
+end
+
+local collision = game.movement.collision
+game.movement.collision = function() return 0, 0 end
+local function formation_case(actor_slot, leader_slot, leader_heading,
+                              expected_x, expected_y, description)
+    local route_x, route_y
+    local formation_context = context({
+        controlled_runner_slot = leader_slot,
+        source_actor_slot = actor_slot,
+        ai_target_candidates = {
+            { id = "party.runner." .. leader_slot,
+              source_record_slot = leader_slot,
+              world_activity_actor = false,
+              world_x = 8192, world_y = 9216,
+              source_record_heading = leader_heading,
+              heading = 0, distance = 0, interaction_flags = 0 },
+        },
+    })
+    formation_context.measure_destination = function(x, y)
+        route_x, route_y = x, y
+        return {
+            heading = 0,
+            distance = E.AiTuning.ARRIVE_DIST + 1,
+            step_cost = E.AiTuning.ARRIVE_DIST + 1,
+        }
+    end
+    local follower = state()
+    local handled = R.apply_think_path(
+        follower, formation_context, "follow_leader")
+    check(handled and follower.ai_route_target_x == expected_x and
+          follower.ai_route_target_y == expected_y and
+          route_x == expected_x and route_y == expected_y and
+          follower.movement_active == true,
+          description)
+end
+
+formation_case(E.AiTuning.FOLLOW_FIRST_SLOT,
+    E.AiTuning.FOLLOW_FIRST_LEADER_SLOT, 0, 8033, 9374,
+    "0x1451E slot 0 subtracts 0x6000 from heading 0 and uses radius 0xE0 [C]")
+formation_case(E.AiTuning.FOLLOW_SECOND_SLOT,
+    E.AiTuning.FOLLOW_FIRST_LEADER_SLOT, 0, 8033, 9374,
+    "0x14532 slot 1 subtracts when the leader slot is 0 [C]")
+formation_case(E.AiTuning.FOLLOW_SECOND_SLOT,
+    E.AiTuning.FOLLOW_SECOND_SLOT, 0, 8350, 9374,
+    "0x1452A slot 1 adds 0x6000 when the leader slot is nonzero [C]")
+formation_case(E.AiTuning.FOLLOW_FIRST_SCENE_ACTOR_SLOT,
+    E.AiTuning.FOLLOW_SECOND_SLOT, 0, 8350, 9374,
+    "0x1452A adds 0x6000 for scene actor +0x3E=3 [C]")
+formation_case(E.AiTuning.FOLLOW_FIRST_SLOT,
+    E.AiTuning.FOLLOW_FIRST_LEADER_SLOT, E.AiTuning.QUARTER_TURN, 8033, 9057,
+    "0x1451E rotates a 0x4000 leader heading to the ROM offset [C]")
+
+local collision_calls = 0
+game.movement.collision = function()
+    collision_calls = collision_calls + 1
+    return collision_calls == 1 and E.Collision.BLOCKED or 0, 0
+end
+local reverse_x, reverse_y
+local blocked_context = context({
+    controlled_runner_slot = E.AiTuning.FOLLOW_FIRST_LEADER_SLOT,
+    source_actor_slot = E.AiTuning.FOLLOW_FIRST_SLOT,
+    ai_target_candidates = {
+        { id = "party.runner." .. E.AiTuning.FOLLOW_FIRST_LEADER_SLOT,
+          source_record_slot = E.AiTuning.FOLLOW_FIRST_LEADER_SLOT,
+          world_activity_actor = false,
+          world_x = 8192, world_y = 9216,
+          source_record_heading = 0, heading = 0, distance = 0,
+          interaction_flags = 0 },
+    },
+})
+blocked_context.measure_destination = function(x, y)
+    reverse_x, reverse_y = x, y
+    return {
+        heading = 0,
+        distance = E.AiTuning.ARRIVE_DIST + 1,
+        step_cost = E.AiTuning.ARRIVE_DIST + 1,
+    }
+end
+s = state()
+R.apply_think_path(s, blocked_context, "follow_leader")
+check(collision_calls == 2 and reverse_x == 8351 and reverse_y == 9058 and
+      s.ai_route_target_x == reverse_x and s.ai_route_target_y == reverse_y,
+      "0x14564 negates a blocked formation offset and probes the reverse [C]")
+game.movement.collision = collision
 
 print(string.format("ai_think tests: %d/%d passed", pass, total))
 if pass ~= total then os.exit(1) end
