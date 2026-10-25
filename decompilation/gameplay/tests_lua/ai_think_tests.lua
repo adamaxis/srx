@@ -54,11 +54,16 @@ local function state(overrides)
     return s
 end
 
+local function think_path(actor, facts)
+    R.think(actor, facts)
+    return actor.ai_think_path
+end
+
 local s, c = state(), context({ source_actor_posture = E.Posture.NEUTRAL })
 local due_count = 0
 local first_path
 for pass_index = 1, E.AiTuning.THINK_FRAMES + 1 do
-    local path = R.advance_think(s, c)
+    local path = think_path(s, c)
     if path ~= "wait" then
         due_count = due_count + 1
         first_path = path
@@ -66,31 +71,31 @@ for pass_index = 1, E.AiTuning.THINK_FRAMES + 1 do
 end
 check(due_count == 1 and first_path == "patrol",
       "0x13904 runs the first thought, then counts 20 intervening passes")
-local second_path = R.advance_think(s, c)
+local second_path = think_path(s, c)
 check(second_path == "patrol" and
       s.behavior_timer == E.AiTuning.THINK_FRAMES,
       "0x1391A reloads the named think period after a due pass")
 
 s, c = state(), context({ source_think_suppressed = true })
-check(R.advance_think(s, c) == "skip" and
+check(think_path(s, c) == "skip" and
       s.behavior_timer == E.AiTuning.THINK_RETRY,
       "0x1390E suppression keeps the timer negative for next-pass retry")
 c.source_think_suppressed = false
-check(R.advance_think(s, c) == "patrol" and
+check(think_path(s, c) == "patrol" and
       s.behavior_timer == E.AiTuning.THINK_FRAMES,
       "FFE175 clear retries immediately and refreshes +0xB6")
 
 local first_actor, second_actor = state(), state()
 local token_context = context({ source_think_suppressed = false })
-local first_actor_path = R.advance_think(first_actor, token_context)
+local first_actor_path = think_path(first_actor, token_context)
 token_context.source_think_suppressed = first_actor.think_token_claimed
-local second_actor_path = R.advance_think(second_actor, token_context)
+local second_actor_path = think_path(second_actor, token_context)
 check(first_actor_path == "patrol" and first_actor.think_token_claimed and
       second_actor_path == "skip" and second_actor.behavior_timer ==
           E.AiTuning.THINK_RETRY and not second_actor.think_token_claimed,
       "FFE175 lets the first due slot claim the frame and leaves the second at -1")
 token_context.source_think_suppressed = false
-check(R.advance_think(second_actor, token_context) == "patrol" and
+check(think_path(second_actor, token_context) == "patrol" and
       second_actor.think_token_claimed,
       "the suppressed actor retries and claims the token on the next field frame")
 
@@ -113,7 +118,6 @@ for _ = 1, E.AiTuning.THON_PERIOD do
     local path = R.think_gate(thon_state, thon_context)
     if path == "thon_idle" then
         thon_skips = thon_skips + 1
-        R.apply_think_path(thon_state, thon_context, path)
     end
     thon_context.source_thon_period_counter =
         thon_state.source_thon_period_counter
@@ -204,17 +208,17 @@ check(hostile_path == "combat" and s.world_activity_requested,
 check(R.think_gate(state(), context({ world_activity_active = true })) ==
       "combat", "0x139CE active FFDF84 takes the existing combat path")
 
-local hold_path = R.think_gate(state(), context({ source_projection_active = false,
+local hold_context = context({ source_projection_active = false,
     world_activity_active = true, world_scene_state = E.EndingState.FINAL_FIGHT,
-    source_action_ammo = E.AiTuning.ENDING_HOLD_ROUNDS }))
+    source_action_ammo = E.AiTuning.ENDING_HOLD_ROUNDS })
 s = state({ source_animation_selector = E.AiTuning.ANIM_BUSY })
-check(hold_path == "hold" and R.apply_think_path(s, c, hold_path) and
+check(R.think(s, hold_context) and s.ai_think_path == "hold" and
       s.animation_id == "idle" and not s.movement_active,
       "0x13E40 idle pose sets the held idle continuation")
 s = state({ source_animation_selector = E.AiTuning.ANIM_BUSY + 1,
             movement_active = true, animation_id = "action" })
-R.apply_think_path(s, c, "hold")
-check(s.animation_id == "action" and s.movement_active,
+check(R.think(s, hold_context) and s.animation_id == "action" and
+      s.movement_active,
       "0x13E40 leaves a busy pose and its current movement alone")
 
 s = state()
@@ -228,15 +232,15 @@ c.measure_destination = function(x, y)
     measured_x, measured_y = x, y
     return { heading = 0x2000, distance = 0x500, step_cost = 0x300 }
 end
-local flee_path = R.think_gate(s, c)
-R.apply_think_path(s, c, flee_path)
-check(flee_path == "flee" and measured_x == 0x3F80 and
+local flee_handled = R.think(s, c)
+check(flee_handled and s.ai_think_path == "flee" and measured_x == 0x3F80 and
       measured_y == 0x4480 and
       (s.source_behavior_flags & E.BehaviorFlag.FLEEING) ~= 0,
       "0x13E9E stores camera-biased flee coordinates once and 0x145A2 routes")
 local stored_x = s.flee_target_x
 c.source_camera_x = 0x3000
-R.apply_think_path(s, c, "flee")
+s.behavior_timer = 0
+R.think(s, c)
 check(s.flee_target_x == stored_x,
       "0x13E9E does not replace an existing flee destination")
 
@@ -275,16 +279,16 @@ check(R.think_gate(state(), context({ source_actor_posture = E.Posture.MEDIUM_OF
       } })) == "patrol",
       "0x13F52 watch distance at WATCH_DIST returns to patrol")
 s = state()
-local watch_path = R.think_gate(s, context({
+local watch_context = context({
     source_actor_posture = E.Posture.MEDIUM_OFFENSE,
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, distance = E.AiTuning.WATCH_DIST - 1,
           heading = 0x2000, interaction_flags = 0 },
     },
-}))
-R.apply_think_path(s, c, watch_path)
-check(watch_path == "watch" and s.movement_current_heading == 0x2000,
+})
+check(R.think(s, watch_context) and s.ai_think_path == "watch" and
+      s.movement_current_heading == 0x2000,
       "0x13F68 watch branch faces FFFC04")
 
 local function guard_case(overrides, actor_overrides, line_clear)
@@ -392,27 +396,29 @@ if patrol_route ~= nil then
         return { heading = 0, distance = 0, step_cost = 0 }
     end
     s = state()
-    check(R.apply_think_path(s, route_context, "patrol") and
+    check(R.think(s, route_context) and
           s.ai_route_target_x == 15616 and s.ai_route_target_y == 4096 and
           s.ai_waypoint_index == E.AiTuning.PATROL_WAYPOINT_STRIDE,
           "0x142F4 advances +0xE4 and selects the first patrol pair [C]")
 
+    s.behavior_timer = 0
     route_context.source_world_x = patrol_route.points[1].x
     route_context.source_world_y = patrol_route.points[1].y
     s.ai_route_target_x = patrol_route.points[1].x
     s.ai_route_target_y = patrol_route.points[1].y
-    check(R.apply_think_path(s, route_context, "patrol") and
+    check(R.think(s, route_context) and
           s.ai_route_target_x == 15616 and s.ai_route_target_y == 8704 and
           s.ai_waypoint_index == E.AiTuning.PATROL_WAYPOINT_STRIDE * 2,
           "0x142F4 advances to the next ROM waypoint pair [C]")
 
+    s.behavior_timer = 0
     local last_point = patrol_route.points[#patrol_route.points]
     route_context.source_world_x = last_point.x
     route_context.source_world_y = last_point.y
     s.ai_route_target_x, s.ai_route_target_y = last_point.x, last_point.y
     s.ai_waypoint_index = #patrol_route.points *
                           E.AiTuning.PATROL_WAYPOINT_STRIDE
-    check(R.apply_think_path(s, route_context, "patrol") and
+    check(R.think(s, route_context) and
           s.ai_route_target_x == patrol_route.initial.x and
           s.ai_route_target_y == patrol_route.initial.y and
           s.ai_waypoint_index == 0,
@@ -427,6 +433,7 @@ local function formation_case(actor_slot, leader_slot, leader_heading,
     local formation_context = context({
         controlled_runner_slot = leader_slot,
         source_actor_slot = actor_slot,
+        source_behavior_flags = E.BehaviorFlag.ESCORT,
         ai_target_candidates = {
             { id = "party.runner." .. leader_slot,
               source_record_slot = leader_slot,
@@ -445,8 +452,7 @@ local function formation_case(actor_slot, leader_slot, leader_heading,
         }
     end
     local follower = state()
-    local handled = R.apply_think_path(
-        follower, formation_context, "follow_leader")
+    local handled = R.think(follower, formation_context)
     check(handled and follower.ai_route_target_x == expected_x and
           follower.ai_route_target_y == expected_y and
           route_x == expected_x and route_y == expected_y and
@@ -479,6 +485,7 @@ local reverse_x, reverse_y
 local blocked_context = context({
     controlled_runner_slot = E.AiTuning.FOLLOW_FIRST_LEADER_SLOT,
     source_actor_slot = E.AiTuning.FOLLOW_FIRST_SLOT,
+    source_behavior_flags = E.BehaviorFlag.ESCORT,
     ai_target_candidates = {
         { id = "party.runner." .. E.AiTuning.FOLLOW_FIRST_LEADER_SLOT,
           source_record_slot = E.AiTuning.FOLLOW_FIRST_LEADER_SLOT,
@@ -497,7 +504,7 @@ blocked_context.measure_destination = function(x, y)
     }
 end
 s = state()
-R.apply_think_path(s, blocked_context, "follow_leader")
+R.think(s, blocked_context)
 check(collision_calls == 2 and reverse_x == 8351 and reverse_y == 9058 and
       s.ai_route_target_x == reverse_x and s.ai_route_target_y == reverse_y,
       "0x14564 negates a blocked formation offset and probes the reverse [C]")

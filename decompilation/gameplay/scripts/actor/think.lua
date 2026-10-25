@@ -215,7 +215,7 @@ local function think_gate(state, context)
     return "watch"
 end
 
-local function advance_think(state, context)
+local function select_think_path(state, context)
     state.world_activity_requested = false
     state.field_event_request = nil
     state.ai_deactivate_requested = false
@@ -566,7 +566,7 @@ local function preserve_offscreen_action_dispatch(state, context)
     end
 end
 
-local function apply_path(state, context, path)
+local function apply_think_result(state, context, path)
     if path == "wait" or path == "skip" then
         if state.ai_deactivate_requested then
             state.movement_active = false
@@ -604,7 +604,11 @@ local function apply_path(state, context, path)
     return false
 end
 
+local function think(state, context)
+    local path = select_think_path(state, context)
+    return apply_think_result(state, context, path)
+end
+
 R.think_gate = think_gate
-R.advance_think = advance_think
-R.apply_think_path = apply_path
+R.think = think
 return R
