@@ -2,7 +2,7 @@
 local ROOT = os.getenv("SHADOWRUN_ROOT") or "."
 local H = dofile(ROOT .. "/decompilation/gameplay/tests_lua/harness.lua")
 _G.game = H.make_game({})
-require("actor.init")
+local ActorAI = require("actor.init")
 local R = require("actor.registry")
 local E = require("enums")
 local pass, total = 0, 0
@@ -587,6 +587,118 @@ R.think(s, blocked_context)
 check(collision_calls == 2 and reverse_x == 8351 and reverse_y == 9058 and
       s.ai_route_target_x == reverse_x and s.ai_route_target_y == reverse_y,
       "0x14564 negates a blocked formation offset and probes the reverse [C]")
+game.movement.collision = collision
+
+-- ROM 0xB574 and 0xB6BA-0xB6DE truncate dynamic-enemy walk headings for
+-- movement and C062 selection even when +0x10.THINK is clear. The player
+-- BABC selector remains on its existing rounded path.
+local walk_selector_offsets = {}
+for direction = 0, 7 do
+    walk_selector_offsets[direction + 1] =
+        direction * E.ActorAnimation.DIRECTION_SELECTOR_STEP
+end
+
+local function movement_fixture(dynamic_actor)
+    return {
+        dynamic_world_encounter_actor = dynamic_actor,
+        entity_kind = dynamic_actor and E.SpriteType.CORP_GUARD
+            or E.SpriteType.FIELD_RUNNER,
+        source_record_flags = E.ActorStatus.ACTIVE & ~E.ActorStatus.THINK,
+        source_spawn_state_flags = dynamic_actor and E.ActorFlag.HOSTILE
+            or E.ActorFlag.NONE,
+        source_behavior_flags = 0,
+        source_projection_active = true,
+        world_activity_active = false,
+        movement_entity_flags = E.ActorStatus.ACTIVE & ~E.ActorStatus.THINK,
+        movement_services_available = true,
+        movement_idle_selectors = walk_selector_offsets,
+        movement_offsets = {
+            { 0, -1 }, { 1, -1 }, { 1, 0 }, { 1, 1 },
+            { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 },
+        },
+        movement_state = {
+            event_flags = 0,
+            collision_flags = 0,
+            movement_flags = 0,
+            position_x = 0x4000,
+            position_y = 0x4000,
+            route_flags = 0,
+            route_status = 0,
+        },
+    }
+end
+
+local function movement_heading_case(heading, expected_direction,
+                                     dynamic_actor, description)
+    local movement_context = movement_fixture(dynamic_actor)
+    local actor_state = {
+        movement_heading = heading,
+        movement_current_heading = heading,
+    }
+    local step = R.advance_entity_movement(movement_context, actor_state)
+    local expected_selector = E.ActorPose.WALK +
+        E.ActorAnimation.DIRECTION_SELECTOR_STEP * expected_direction
+    check(step ~= nil and step.outcome == "accepted" and
+          actor_state.direction == expected_direction and
+          step.direction_animation == expected_selector and
+          R.movement_direction_from_heading(movement_context, heading) ==
+              expected_direction,
+          description)
+end
+
+game.movement.collision = function() return 0, 0 end
+movement_heading_case(0xF000, 7, true,
+    "enemy B574/C062 truncates 0xF000 with THINK clear to direction 7 / selector 0x3C [C]")
+movement_heading_case(0x1000, 0, true,
+    "enemy B574/C062 truncates 0x1000 with THINK clear to direction 0 / selector 0x20 [C]")
+movement_heading_case(0xF000, 0, false,
+    "non-dynamic controller heading keeps the rounded BABC direction [C]")
+
+local heartbeat_actor_id = "playtest13_dynamic_hellhound"
+local heartbeat_target = {
+    id = "party.runner.0",
+    world_activity_actor = false,
+    projected_y_nonzero = true,
+    service_flags = E.ActorStatus.ACTIVE,
+    interaction_flags = 0,
+    heading = 0xF000,
+    distance = E.AiTuning.HELL_HOUND_PURSUIT_RANGE,
+}
+local heartbeat_context = movement_fixture(true)
+heartbeat_context.actor_id = heartbeat_actor_id
+heartbeat_context.profile_id = "hell_hound_k0c_none00"
+heartbeat_context.entity_kind = E.SpriteType.HELL_HOUND
+heartbeat_context.action_kind = "none"
+heartbeat_context.action_code = E.ItemId.NONE
+heartbeat_context.phase = "behavior"
+heartbeat_context.spawn = true
+heartbeat_context.initial_heading = 0xF000
+heartbeat_context.entry_delay = 0
+heartbeat_context.entry_animation_frame_count = 1
+heartbeat_context.movement_allowed = true
+heartbeat_context.source_actor_posture = E.Posture.NEUTRAL
+heartbeat_context.ai_target_candidates = { heartbeat_target }
+heartbeat_context.ai_random_bound = function() return 0 end
+check(ActorAI.heartbeat(heartbeat_context) ~= nil,
+      "dynamic enemy heartbeat accepts its source movement profile")
+local heartbeat_state = game.actors[heartbeat_actor_id]
+heartbeat_state.transition_complete = true
+heartbeat_state.behavior_timer = 1
+heartbeat_state.linked_target_id = heartbeat_target.id
+heartbeat_state.movement_active = true
+heartbeat_state.movement_heading = 0xF000
+heartbeat_state.movement_current_heading = 0xF000
+heartbeat_context.spawn = false
+local source_think = R.think
+R.think = function() return false end
+local heartbeat_result = ActorAI.heartbeat(heartbeat_context)
+R.think = source_think
+check(heartbeat_result ~= nil and heartbeat_result.direction == 7 and
+      heartbeat_state.movement_step ~= nil and
+      heartbeat_state.movement_step.direction_animation ==
+          E.ActorPose.WALK + E.ActorAnimation.DIRECTION_SELECTOR_STEP * 7,
+      "dynamic enemy heartbeat preserves truncated direction 7 / C062 selector 0x3C [C]")
+
 game.movement.collision = collision
 
 print(string.format("ai_think tests: %d/%d passed", pass, total))

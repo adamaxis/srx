@@ -451,7 +451,8 @@ function ActorAI.heartbeat(context)
                             R.advance_entity_movement(context, state))
                         if state.movement_step ~= nil and
                            state.movement_step.state ~= nil then
-                            state.direction = R.direction_from_heading(
+                            state.direction = R.movement_direction_from_heading(
+                                context,
                                 state.movement_step.state.animation_heading)
                         end
                     end

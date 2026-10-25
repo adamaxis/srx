@@ -6,6 +6,7 @@ local I = require("lib.int68k")
 local u8, u16, s16 = I.u8, I.u16, I.s16
 local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local ActorPose = E.ActorPose
 local BehaviorFlag = R.BehaviorFlag   -- from actor/tables.lua
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
 local ActorFlag = R.ActorFlag   -- from actor/tables.lua
@@ -413,11 +414,19 @@ local function walk_direction_from_heading(heading)
 end
 
 local function movement_octant_selector(context)
-    -- 0xACAE installs 0xB574 when +0x10 bit 1 (THINK) is set.
-    if (movement_record_flags(context) & ActorStatus.THINK) ~= 0 then
+    -- Enemy B574 movement and the B6BA-B6DE C062 walk selector truncate the
+    -- heading regardless of +0x10 bit 1 (THINK). The controller/player BABC
+    -- path keeps its existing flag-gated selector when the actor is not
+    -- dynamic.
+    if context.dynamic_world_encounter_actor == true or
+       (movement_record_flags(context) & ActorStatus.THINK) ~= 0 then
         return walk_direction_from_heading
     end
     return R.direction_from_heading
+end
+
+local function movement_direction_from_heading(context, heading)
+    return movement_octant_selector(context)(heading)
 end
 
 local function creature_movement_offsets(context, state)
@@ -614,8 +623,8 @@ local function advance_entity_movement(context, state)
         movement_state.collision_extent = -12
     end
 
-    local movement_octant = movement_octant_selector(context)
-    local initial_direction = movement_octant(movement_state.heading)
+    local octant_for_heading = movement_octant_selector(context)
+    local initial_direction = octant_for_heading(movement_state.heading)
     local initial_slot = initial_direction * 2
     movement_state.collision_context = movement_context_word(
         movement_offsets, initial_direction)
@@ -630,8 +639,8 @@ local function advance_entity_movement(context, state)
         return {
             outcome = "accepted",
             state = movement_state,
-            direction_animation = 0x20 + context.movement_idle_selectors[
-                initial_direction + 1],
+            direction_animation = ActorPose.WALK +
+                context.movement_idle_selectors[initial_direction + 1],
         }
     end
 
@@ -655,12 +664,14 @@ local function advance_entity_movement(context, state)
             movement_state.movement_substate = 0x1000
             commit_movement_candidate(movement_state, initial)
             state.animation_id = "walk"
-            state.direction = R.direction_from_heading(movement_state.heading)
+            local fallback_direction = octant_for_heading(
+                movement_state.heading)
+            state.direction = fallback_direction
             return {
                 outcome = "accepted",
                 state = movement_state,
-                direction_animation = 0x20 + context.movement_idle_selectors[
-                    R.direction_from_heading(movement_state.heading) + 1],
+                direction_animation = ActorPose.WALK +
+                    context.movement_idle_selectors[fallback_direction + 1],
             }
         end
     end
@@ -687,12 +698,14 @@ local function advance_entity_movement(context, state)
             movement_state.collision_flags = movement_state.collision_flags & 0xfe
             commit_movement_candidate(movement_state, fallback)
             state.animation_id = "walk"
-            state.direction = R.direction_from_heading(movement_state.heading)
+            local fallback_direction = octant_for_heading(
+                movement_state.heading)
+            state.direction = fallback_direction
             return {
                 outcome = "accepted",
                 state = movement_state,
-                direction_animation = 0x20 + context.movement_idle_selectors[
-                    R.direction_from_heading(movement_state.heading) + 1],
+                direction_animation = ActorPose.WALK +
+                    context.movement_idle_selectors[fallback_direction + 1],
             }
         end
         local reset = reset_blocked_movement(
@@ -726,12 +739,14 @@ local function advance_entity_movement(context, state)
     movement_state.movement_flags = movement_state.movement_flags | 0x04
     commit_movement_candidate(movement_state, selected)
     state.animation_id = "walk"
-    state.direction = R.direction_from_heading(movement_state.animation_heading)
+    local selected_direction = octant_for_heading(
+        movement_state.animation_heading)
+    state.direction = selected_direction
     return {
         outcome = "accepted",
         state = movement_state,
-        direction_animation = 0x20 + context.movement_idle_selectors[
-            R.direction_from_heading(movement_state.animation_heading) + 1],
+        direction_animation = ActorPose.WALK +
+            context.movement_idle_selectors[selected_direction + 1],
     }
 end
 
@@ -760,6 +775,7 @@ R.movement_collision_code = movement_collision_code
 R.movement_record_flags = movement_record_flags
 R.walk_direction_from_heading = walk_direction_from_heading
 R.movement_octant_selector = movement_octant_selector
+R.movement_direction_from_heading = movement_direction_from_heading
 R.creature_movement_offsets = creature_movement_offsets
 R.movement_context_word = movement_context_word
 R.probe_movement = probe_movement
