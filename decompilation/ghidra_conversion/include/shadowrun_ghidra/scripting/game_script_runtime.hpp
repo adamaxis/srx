@@ -1264,6 +1264,16 @@ struct ScriptActorMovementStep {
     std::uint16_t direction_animation = 0;
 };
 
+struct ScriptActorTargetListRebuildFacts {
+    std::uint16_t frame_counter = 0U; // FFDF88, typed field-frame fact [C]
+    std::uint16_t display_service_word = 0U; // FFDFE8 [C]
+};
+
+struct ScriptActorTargetListRebuildDecision {
+    bool rebuild_world = false;
+    bool rebuild_runner = false;
+};
+
 struct ScriptActorTargetCandidate {
     std::string id;
     std::uint16_t world_x = 0;
@@ -1682,6 +1692,9 @@ public:
         ScriptPlayerDelayPurpose purpose);
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
+    std::optional<ScriptActorTargetListRebuildDecision>
+    should_rebuild_actor_target_lists(
+        const ScriptActorTargetListRebuildFacts& facts);
     // ROM 0x5D29C checks the six live records at FF0500..FF0A00 on effect
     // frame 3. These addresses map to typed host slots 4..9 because FF0400
     // is slot 3. The array is in record order; an empty ID denotes an unused

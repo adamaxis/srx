@@ -599,6 +599,36 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
+    const auto world_list_schedule =
+        scripts.should_rebuild_actor_target_lists(
+            ScriptActorTargetListRebuildFacts{
+                static_cast<std::uint16_t>(
+                    srx::AiTuning::WORLD_TARGET_LIST_PHASE),
+                false});
+    const auto runner_list_schedule =
+        scripts.should_rebuild_actor_target_lists(
+            ScriptActorTargetListRebuildFacts{
+                static_cast<std::uint16_t>(
+                    srx::AiTuning::RUNNER_TARGET_LIST_PHASE),
+                false});
+    const auto encounter_list_schedule =
+        scripts.should_rebuild_actor_target_lists(
+            ScriptActorTargetListRebuildFacts{
+                0U,
+                static_cast<std::uint16_t>(srx::AiTuning::WORD_MAX)});
+    if (!expect(world_list_schedule.has_value() &&
+                    world_list_schedule->rebuild_world &&
+                    !world_list_schedule->rebuild_runner &&
+                    runner_list_schedule.has_value() &&
+                    !runner_list_schedule->rebuild_world &&
+                    runner_list_schedule->rebuild_runner &&
+                    encounter_list_schedule.has_value() &&
+                    encounter_list_schedule->rebuild_world &&
+                    encounter_list_schedule->rebuild_runner,
+                "Lua target-list rebuild cadence did not cross the C++ bridge")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
     const auto player_attack_delay = scripts.player_weapon_action_delay(
         0U, 0U, 0U,
         static_cast<std::uint8_t>(srx::ItemId::WARHAWK),

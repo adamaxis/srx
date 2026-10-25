@@ -60,6 +60,27 @@ local function think_path(actor, facts)
     return actor.ai_think_path
 end
 
+local world_due, runner_due = R.should_rebuild_target_lists(
+    E.AiTuning.WORLD_TARGET_LIST_PHASE, 0)
+check(world_due and not runner_due,
+      "0x13874 rebuilds the world list on the 0x0B frame phase")
+world_due, runner_due = R.should_rebuild_target_lists(
+    E.AiTuning.RUNNER_TARGET_LIST_PHASE, 0)
+check(not world_due and runner_due,
+      "0x13874 rebuilds the runner list on the 0x0F frame phase")
+world_due, runner_due = R.should_rebuild_target_lists(
+    E.AiTuning.WORLD_TARGET_LIST_PHASE + E.AiTuning.TARGET_LIST_PHASE_MASK + 1,
+    0)
+check(world_due and not runner_due,
+      "0x13874 phase mask repeats every 64 field frames")
+world_due, runner_due = R.should_rebuild_target_lists(
+    0, 1)
+check(world_due and runner_due,
+      "FFDFE8 nonzero rebuilds both target lists")
+check(R.should_rebuild_target_lists(-1, false) == nil and
+      R.should_rebuild_target_lists(0, -1) == nil,
+      "target-list rebuild facts reject invalid typed inputs")
+
 local s, c = state(), context({ source_actor_posture = E.Posture.NEUTRAL })
 local due_count = 0
 local first_path

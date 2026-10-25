@@ -8230,6 +8230,46 @@ void GameScriptRuntime::set_actor_heartbeat_observer(
     impl_->actor_heartbeat_observer = std::move(observer);
 }
 
+std::optional<ScriptActorTargetListRebuildDecision>
+GameScriptRuntime::should_rebuild_actor_target_lists(
+    const ScriptActorTargetListRebuildFacts& facts) {
+    auto* const state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "gameplay Lua actor targeting state is unavailable";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptActorTargetListRebuildDecision> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("actor_ai")) {
+        return fail("gameplay Lua actor AI module is missing");
+    }
+    lua_getfield(state, -1, "should_rebuild_target_lists");
+    if (!lua_isfunction(state, -1)) {
+        return fail("actor_ai.should_rebuild_target_lists must be a Lua function");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, facts.frame_counter);
+    lua_pushinteger(state, facts.display_service_word);
+    if (lua_pcall(state, 2, 2, 0) != LUA_OK) {
+        return fail("actor_ai.should_rebuild_target_lists: " +
+                    stack_error(state));
+    }
+    if (!lua_isboolean(state, -2) || !lua_isboolean(state, -1)) {
+        return fail(
+            "actor_ai.should_rebuild_target_lists returned invalid decisions");
+    }
+    const ScriptActorTargetListRebuildDecision decision{
+        lua_toboolean(state, -2) != 0,
+        lua_toboolean(state, -1) != 0};
+    lua_settop(state, stack_base);
+    return decision;
+}
+
 std::optional<ScriptActorBehaviorDecision>
 GameScriptRuntime::actor_heartbeat(
     const ScriptActorBehaviorContext& context) {

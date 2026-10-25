@@ -27,6 +27,10 @@ local ActionKind = R.ActionKind   -- from actor/tables.lua
 local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
 local walk_pose_selectors = R.walk_pose_selectors   -- from actor/tables.lua
 
+function ActorAI.should_rebuild_target_lists(frame_counter, encounter_flag)
+    return R.should_rebuild_target_lists(frame_counter, encounter_flag)
+end
+
 function ActorAI.heartbeat(context)
     if type(context) ~= "table" then
         return nil

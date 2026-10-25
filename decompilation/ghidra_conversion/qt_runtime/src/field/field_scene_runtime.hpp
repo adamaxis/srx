@@ -1515,7 +1515,7 @@ private:
     bool load_dynamic_world_actor_artwork(
         const ConversionAssetCatalog& catalog);
     void initialize_default_field_actors(std::uint16_t scene_reference);
-    void advance_default_field_actors();
+    void advance_default_field_actors(bool source_target_list_service);
     void resolve_default_actor_proximity(
         DefaultFieldActorPresentation& actor);
     void publish_pending_world_activity_script_actors(
@@ -2174,6 +2174,11 @@ private:
     std::vector<std::array<SpellEffectArtwork, 5>>
         field_spell_effect_images_by_scene_;
     std::vector<DefaultFieldActorPresentation> field_default_actors_;
+    // The ROM lists hold record pointers and refresh on separate FFDF88
+    // phases. Cache source record identity only; actor facts are read live.
+    std::vector<std::uint8_t> runner_target_candidate_slots_;
+    std::vector<std::uint8_t> world_target_candidate_slots_;
+    bool target_candidate_lists_seeded_ = false;
     std::array<bool, 18> field_world_effect_slots_occupied_{};
     std::array<std::string, 18> field_spell_effect_slot_target_ids_{};
     EntityServiceTargetOwner field_entity_target_owner_{};

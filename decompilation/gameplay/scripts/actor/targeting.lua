@@ -18,6 +18,24 @@ local ActorProfileCatalog = require("data.actor_profiles")
 local source_close_range_threshold = R.source_close_range_threshold   -- from actor/tables.lua
 local target_motion_reacquire_updates = R.target_motion_reacquire_updates   -- from actor/tables.lua
 
+-- ROM 0x13874 selects the two pointer-list refreshes from FFDFE8 and
+-- FFDF88. Return world-list and runner-list decisions in that order [C].
+function R.should_rebuild_target_lists(frame_counter, display_service_word)
+    if type(frame_counter) ~= "number" or frame_counter % 1 ~= 0 or
+       frame_counter < 0 or frame_counter > AiTuning.WORD_MAX or
+       type(display_service_word) ~= "number" or
+       display_service_word % 1 ~= 0 or display_service_word < 0 or
+       display_service_word > AiTuning.WORD_MAX then
+        return nil
+    end
+    if display_service_word ~= 0 then
+        return true, true
+    end
+    local phase = frame_counter & AiTuning.TARGET_LIST_PHASE_MASK
+    return phase == AiTuning.WORLD_TARGET_LIST_PHASE,
+           phase == AiTuning.RUNNER_TARGET_LIST_PHASE
+end
+
 local function direction_from_heading(heading)
     -- ROM 0xB36A rotates the heading three bits, rounds signed values upward,
     -- then masks to one of the eight C0B2 directional animation lists.

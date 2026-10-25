@@ -4322,7 +4322,8 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
     }
 }
 
-void FieldSceneRuntime::advance_default_field_actors() {
+void FieldSceneRuntime::advance_default_field_actors(
+    const bool source_target_list_service) {
     const auto current_scene = state_.field_scene_buffers.scene_reference;
     publish_pending_world_activity_script_actors(current_scene);
     std::vector<DefaultFieldActorPresentation*> ordered_actors;
@@ -4344,6 +4345,106 @@ void FieldSceneRuntime::advance_default_field_actors() {
             return static_cast<std::size_t>(*left->source_record_slot) <
                    static_cast<std::size_t>(*right->source_record_slot);
         });
+
+    scripting::ScriptActorTargetListRebuildDecision target_list_decision{};
+    if (source_target_list_service) {
+        scripting::ScriptActorTargetListRebuildFacts target_list_facts{};
+        target_list_facts.frame_counter = field_world_frame_counter_;
+        // FFDFE8 is the port's typed display_service_word. A nonzero value
+        // forces both source lists through 0x13874 [C].
+        target_list_facts.display_service_word =
+            field_runtime_state_.display_service_word;
+        const auto decision =
+            game_scripts_.should_rebuild_actor_target_lists(
+                target_list_facts);
+        if (!decision.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.actor.target_list_rebuild_failed");
+            return;
+        }
+        target_list_decision = *decision;
+        // [H] The ROM lists are RAM pointer lists that earlier field frames
+        // already filled before any encounter; a port session bootstrapped
+        // straight into a scene has no earlier frames, so seed both once.
+        if (!target_candidate_lists_seeded_) {
+            target_list_decision.rebuild_runner = true;
+            target_list_decision.rebuild_world = true;
+            target_candidate_lists_seeded_ = true;
+        }
+    }
+    const auto has_projected_y = [this](const SceneRunnerPosition& position) {
+        EntityProjectionState projection{};
+        projection.world_x = position.x;
+        projection.world_y = position.y;
+        project_entity_screen_position_standard(
+            projection,
+            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
+            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y));
+        // The ROM list builders require projected +0x0C != 0 [C]; the
+        // conversion's typed projection supplies that fact [H].
+        return projection.screen_y != 0U;
+    };
+    const auto active_status = static_cast<std::uint8_t>(
+        srx::ActorStatus::ACTIVE);
+    const auto rejected_status = static_cast<std::uint8_t>(
+        srx::ActorStatus::DEAD) |
+        static_cast<std::uint8_t>(srx::ActorStatus::DOWN);
+    if (target_list_decision.rebuild_runner) {
+        runner_target_candidate_slots_.clear();
+        for (std::size_t slot = 0U;
+             slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
+            if (!field_party_roster_.slot_active(slot)) {
+                continue;
+            }
+            auto position = state_.field_scene_buffers.source_metadata
+                                .initial_field_records[slot];
+            if (slot == field_party_roster_.active_slot() &&
+                field_entity_.active) {
+                position = field_entity_.world_position;
+            }
+            const auto flags = field_party_roster_.records()[slot].flags;
+            const auto service_flags = static_cast<std::uint8_t>(flags >> 8U);
+            if ((service_flags & active_status) != 0U &&
+                (service_flags & rejected_status) == 0U &&
+                has_projected_y(position)) {
+                runner_target_candidate_slots_.push_back(
+                    static_cast<std::uint8_t>(slot));
+            }
+        }
+    }
+    if (target_list_decision.rebuild_world) {
+        world_target_candidate_slots_.clear();
+        const auto excluded_role_flags = static_cast<std::uint8_t>(
+            srx::ActorFlag::PEDESTRIAN) |
+            static_cast<std::uint8_t>(srx::ActorFlag::QUEST);
+        const auto excluded_behavior_flags = static_cast<std::uint8_t>(
+            srx::BehaviorFlag::ESCORT);
+        const auto first_world_slot = static_cast<std::uint8_t>(
+            srx::ActorPool::PARTY);
+        const auto last_world_slot = static_cast<std::uint8_t>(
+            first_world_slot +
+            static_cast<std::uint8_t>(srx::ActorPool::OTHERS) - 1U);
+        for (const auto* target_record : ordered_actors) {
+            const auto& target = *target_record;
+            if (!target.source_record_slot.has_value()) {
+                continue;
+            }
+            const auto source_slot = static_cast<std::uint8_t>(
+                *target.source_record_slot);
+            if (source_slot < first_world_slot ||
+                source_slot > last_world_slot ||
+                (target.source_record_flags & active_status) == 0U ||
+                (target.source_record_flags & rejected_status) != 0U ||
+                (target.source_behavior_flags &
+                 excluded_behavior_flags) != 0U ||
+                (target.source_spawn_state_flags & excluded_role_flags) != 0U ||
+                !has_projected_y(target.world_position)) {
+                continue;
+            }
+            world_target_candidate_slots_.push_back(source_slot);
+        }
+    }
+
     // 0x0A8EA services the FF0400..FF0A00 record pool in slot order [C].
     for (auto* actor_record : ordered_actors) {
         auto& actor = *actor_record;
@@ -4562,15 +4663,11 @@ void FieldSceneRuntime::advance_default_field_actors() {
                         std::move(candidate));
                 };
 
-            // ROM 0x14492 chooses the three runner records unless the acting
-            // record has +0x10 bit 3 set. Runner coordinates come from the
-            // scene/save's typed field positions; the active runner follows
-            // the live field entity as it moves.
-            for (std::size_t slot = 0U;
-                 slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
-                if (!field_party_roster_.slot_active(slot)) {
-                    continue;
-                }
+            // ROM 0x14492 chooses the cached three-record runner list unless
+            // the acting record has +0x10 bit 3 set. The cache stores record
+            // identity only; coordinates and facts are sampled live here [C].
+            for (const auto source_slot : runner_target_candidate_slots_) {
+                const auto slot = static_cast<std::size_t>(source_slot);
                 auto position = state_.field_scene_buffers.source_metadata
                                     .initial_field_records[slot];
                 if (slot == field_party_roster_.active_slot() &&
@@ -4595,19 +4692,21 @@ void FieldSceneRuntime::advance_default_field_actors() {
             }
 
             // The other source target pool is the seven world-actor records
-            // beginning at FF0400. These are live encounter/field actors, not
-            // scenery rows; Lua applies the source record eligibility gates.
-            for (const auto* target_record : ordered_actors) {
-                const auto& target = *target_record;
-                const auto source_slot = target.source_record_slot.has_value()
-                    ? static_cast<std::uint8_t>(
-                          *target.source_record_slot)
-                    : 0U;
-                if (!target.active || target.scene_reference != current_scene ||
-                    !target.source_record_slot.has_value() ||
-                    source_slot < 3U || source_slot > 9U) {
+            // beginning at FF0400. Its slots are cached as pointer identity;
+            // every think resolves the current record and its live position.
+            for (const auto source_slot : world_target_candidate_slots_) {
+                const auto target_record = std::find_if(
+                    field_default_actors_.begin(), field_default_actors_.end(),
+                    [source_slot, current_scene](const auto& target) {
+                        return target.scene_reference == current_scene &&
+                            target.source_record_slot.has_value() &&
+                            static_cast<std::uint8_t>(
+                                *target.source_record_slot) == source_slot;
+                    });
+                if (target_record == field_default_actors_.end()) {
                     continue;
                 }
+                const auto& target = *target_record;
                 append_target_candidate(
                     target.actor_instance_id, target.world_position,
                     target.source_record_flags,
@@ -7582,7 +7681,9 @@ void FieldSceneRuntime::configure_callbacks() {
     callbacks_.entity_behavior_frames.dispatch_entity_action_candidates =
         [this] {
             source_boundary("field.entities.dispatch_action_candidates");
-            advance_default_field_actors();
+            // ROM 0x08C0 warmup runs 0x0A8EA but does not call the 0x13874
+            // target-list coordinator. Preserve the already cached identities.
+            advance_default_field_actors(false);
         };
     callbacks_.entity_behavior_frames.noop_entity_action_hook =
         [](EntityBehaviorFrameRecord& record) { return record.action_result; };
@@ -8525,7 +8626,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         advance_player_weapon_action_gate();
         advance_field_weapon_projectiles();
         advance_field_movement();
-        advance_default_field_actors();
+        advance_default_field_actors(true);
     };
     field_runtime_callbacks_.update_field_camera = [this] {
         update_source_field_camera();
