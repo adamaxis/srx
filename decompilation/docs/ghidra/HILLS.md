@@ -1234,3 +1234,15 @@ prompt. I inspected that 320x224 capture at native resolution. The hill stays
 partial because no independent Genesis encounter frame has been found. See the
 [gate choice audit](visual-audits/sinsearach-gate-choice-permutation-audit-2026-10-23.md)
 and [story-page source audit](cinematic-story-pages-source-audit.md).
+
+Party wipe now follows the source `0xC64C` run-failure gates and one-page
+messages for bodyguard, package delivery/recovery, and employee recruitment
+before the shared `0xC716` recovery. Lua selects DocWagon scene 0 at
+`(0x6200, 0x2D00)` when FFFC1E bit 0 is set, otherwise Little Chiba scene 2 at
+`(0x6680, 0x2300)`; a focused Qt CTest checks both routes and writes
+`qt_runtime/field-party-wipe-qa/{docwagon,actual}.bmp`. The timer at FFE166 is
+not restored by `0x594E0`; whether the save writer copies it remains [H]. The
+hill stays partial because `0x1DED8` scans world-actor high-effect slots and
+the full `0x391A` runner-resource refresh remains outside the player-side
+runtime path. No independent Genesis wipe frame has been claimed. See the
+[party-wipe recovery audit](party-wipe-recovery.md).

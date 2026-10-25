@@ -666,8 +666,13 @@ bool FieldSceneRuntime::open_field_location_dialogue(
                     runner.auxiliary[2] +
                     run_return->runner_progress_delta);
             }
-            field_exit_world_flags_ &= ~field_flag_mask(
-                FieldWorldFactFlag::run_objective_active);
+            if (group_item_flags_.has_value()) {
+                *group_item_flags_ &= ~group_item_flag_mask(
+                    GroupItemFlag::run_objective_active);
+            } else {
+                source_boundary(
+                    "field.run.objective_group_item_flag_unresolved");
+            }
             refresh_field_hud_runner_slot();
             source_boundary("field.run.johnson_return_completed");
         }

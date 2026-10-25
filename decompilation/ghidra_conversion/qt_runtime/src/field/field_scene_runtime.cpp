@@ -1797,8 +1797,13 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             if (run_event->action ==
                 scripting::ScriptRunFieldEventAction::objective_advanced) {
                 field_exit_alternate_result_ = -1;
-                field_exit_world_flags_ |= field_flag_mask(
-                    FieldWorldFactFlag::run_objective_active);
+                if (group_item_flags_.has_value()) {
+                    *group_item_flags_ |= group_item_flag_mask(
+                        GroupItemFlag::run_objective_active);
+                } else {
+                    source_boundary(
+                        "field.run.objective_group_item_flag_unresolved");
+                }
                 source_boundary("field.run.package_collected");
             } else if (run_event->action ==
                        scripting::ScriptRunFieldEventAction::entry_dialogue) {
@@ -1845,8 +1850,13 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 // 0x1F00A adds the negotiated amount and +0x8D progress to
                 // each of the three runner records.
                 field_exit_alternate_result_ = 1;
-                field_exit_world_flags_ &= ~field_flag_mask(
-                    FieldWorldFactFlag::run_objective_active);
+                if (group_item_flags_.has_value()) {
+                    *group_item_flags_ &= ~group_item_flag_mask(
+                        GroupItemFlag::run_objective_active);
+                } else {
+                    source_boundary(
+                        "field.run.objective_group_item_flag_unresolved");
+                }
                 *field_funds_ += run_event->reward_nuyen;
                 for (auto& runner : field_party_roster_.records()) {
                     runner.auxiliary[2] = static_cast<std::uint8_t>(
@@ -2519,7 +2529,8 @@ bool FieldSceneRuntime::open_field_elevator_selector(
 
 bool FieldSceneRuntime::transition_to_field_destination(
     const std::uint16_t scene_reference,
-    const FieldDestinationTransitionRoute route) {
+    const FieldDestinationTransitionRoute route,
+    const std::optional<SceneRunnerPosition> requested_spawn) {
     const auto source_prefix =
         route == FieldDestinationTransitionRoute::dialogue_scene_entry
             ? "field.dialogue.scene_entry."
@@ -2531,7 +2542,7 @@ bool FieldSceneRuntime::transition_to_field_destination(
     if (!field_session_source_assets_ ||
         scene_reference >=
             field_session_source_assets_->field_scene_resources.size() ||
-        !prepare_runtime_field_scene(scene_reference)) {
+        !prepare_runtime_field_scene(scene_reference, requested_spawn)) {
         source_boundary(std::string(source_prefix) +
                         "destination_prepare_unresolved");
         return false;
@@ -2540,8 +2551,8 @@ bool FieldSceneRuntime::transition_to_field_destination(
     // ROM 0x16A8E reloads the destination field profile through 0x03074/0x03084.
     // The first profile record is the arrival point for both cab travel and
     // elevator floor changes; coordinates from another map are map-local.
-    const auto arrival =
-        state_.field_scene_buffers.source_metadata.initial_field_records[0U];
+    const auto arrival = requested_spawn.value_or(
+        state_.field_scene_buffers.source_metadata.initial_field_records[0U]);
     field_entity_.world_position = arrival;
     field_entity_.projection = EntityProjectionState{};
     field_entity_.visible = false;
@@ -2758,13 +2769,18 @@ void FieldSceneRuntime::advance_field_elevator_scene_transition() {
                               : taxi_route
                                     ? field_taxi_pending_destination_
                                     : field_elevator_pending_destination_;
+        const auto requested_spawn = dialogue_scene_route
+            ? field_dialogue_scene_pending_spawn_
+            : std::optional<SceneRunnerPosition>{};
         if (!destination.has_value() ||
-            !transition_to_field_destination(*destination, route)) {
+            !transition_to_field_destination(*destination, route,
+                                             requested_spawn)) {
             field_elevator_scene_transition_.cancel();
             field_elevator_pending_destination_.reset();
             field_taxi_pending_destination_.reset();
             field_phone_pending_destination_.reset();
             field_dialogue_scene_pending_destination_.reset();
+            field_dialogue_scene_pending_spawn_.reset();
             field_taxi_transition_active_ = false;
             field_phone_transition_active_ = false;
             field_dialogue_scene_transition_active_ = false;
@@ -2778,6 +2794,7 @@ void FieldSceneRuntime::advance_field_elevator_scene_transition() {
             field_taxi_pending_destination_.reset();
         } else if (dialogue_scene_route) {
             field_dialogue_scene_pending_destination_.reset();
+            field_dialogue_scene_pending_spawn_.reset();
         } else {
             field_elevator_selector_.close();
             field_elevator_floor_group_.reset();
@@ -9950,6 +9967,9 @@ bool FieldSceneRuntime::bootstrap(
     field_phone_pending_destination_.reset();
     field_dialogue_scene_transition_active_ = false;
     field_dialogue_scene_pending_destination_.reset();
+    field_dialogue_scene_pending_spawn_.reset();
+    field_party_wipe_dialogue_stage_ =
+        FieldPartyWipeDialogueStage::inactive;
     field_party_roster_.clear();
     field_menu_text_ = FieldMenuTextCatalog{};
     command_overview_resource_variant_ = ResourceVariantState{};
@@ -11399,8 +11419,64 @@ FieldSceneRuntime::heartbeat_field_player(
 }
 
 void FieldSceneRuntime::resolve_field_party_wipe() {
-    // ROM 0xC64C/0xC716: the run-failure branches (FFFBED) and the
-    // DocWagon scene move (0x2A32 -> 0x136DE) are not ported [H].
+    // ROM 0xC64C clears the scene/effect handoff state before dispatching
+    // FFFBED. Keep these writes on the host's typed fields [C].
+    field_mode_exit_transition_state_.effect_transition_marker = 0U;
+    field_mode_exit_transition_state_.effect_animation_marker = 0U;
+    field_mode_exit_transition_state_.mode_prompt_pending = 0U;
+    field_runtime_state_.scene_runtime_state = 0U;
+    world_frame_logic_state_.scene_state = 0U;
+    field_pending_world_effect_ = false;
+    world_activity_request_state_.clear_82 = 0U; // FFE182 [C]
+
+    // 0x0A72 carries the typed FFFC1C bit-7 scene-reset state into Lua [C].
+    const auto run_failure = game_scripts_.call_integers(
+        "party_down", "prepare_run_failure_flat",
+        {field_runtime_state_.world_activity_scene_reset_bit ? 1 : 0});
+    if (!run_failure.has_value() || run_failure->size() != 4U) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.party_wipe.run_failure_script_failed");
+        return;
+    }
+    if ((*run_failure)[1] != 0) {
+        // 0x1DED8 walks high-effect bits in records FF0400..FF0A00 [C]. These
+        // source actor records are outside the player-side runtime changes.
+        source_boundary("field.party_wipe.high_effect_clear_boundary");
+    }
+    if ((*run_failure)[2] != 0) {
+        // Only type 5 reaches 0xC684's FFE183 clear. That mode-five marker is
+        // not used by player-side gameplay [C].
+        world_activity_request_state_.request_flag = 0U;
+        field_mode_exit_transition_state_.mode_five_effect_marker = 0U;
+        source_boundary("field.party_wipe.world_activity_request_cleared");
+    }
+    if ((*run_failure)[3] == 2) {
+        source_boundary("field.party_wipe.group_item_flags_unresolved");
+    }
+    if ((*run_failure)[0] !=
+        static_cast<std::int64_t>(
+            std::numeric_limits<std::uint8_t>::max())) {
+        // 0x1E68C clears FFFC1C after the Lua registry drops its active offer.
+        field_runtime_state_.world_activity_scene_reset_bit = false;
+        game_scripts_.set_location_context("field_map", "party_wipe",
+                                           "field.world_event",
+                                           "field_narrator");
+        field_party_wipe_dialogue_stage_ =
+            FieldPartyWipeDialogueStage::run_failure;
+        if (!field_dialogue_.open_gameplay_task(
+                "party_down", "present_run_failure")) {
+            field_party_wipe_dialogue_stage_ =
+                FieldPartyWipeDialogueStage::inactive;
+            source_boundary("field.party_wipe.run_failure_text_open_failed");
+            complete_field_party_wipe();
+        }
+        return;
+    }
+    complete_field_party_wipe();
+}
+
+void FieldSceneRuntime::complete_field_party_wipe() {
+    // 0xC716 performs the common recovery after the optional run-failure page [C].
     auto& records = field_party_roster_.records();
     const auto status = [this, &records](const std::size_t index) {
         const auto flags =
@@ -11418,11 +11494,15 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
          status(0U), records[0].delay_meter, records[0].behavior_meter,
          status(1U), records[1].delay_meter, records[1].behavior_meter,
          status(2U), records[2].delay_meter, records[2].behavior_meter});
-    if (!wipe.has_value() || wipe->size() != 7U) {
+    if (!wipe.has_value() || wipe->size() != 9U) {
         failure_ = game_scripts_.failure();
         source_boundary("field.party_wipe.lua_failed");
         return;
     }
+    // ROM 0xC716 clears FF024C and FF034C before 0xC802 dismisses the hired
+    // records. Those +0x4C values are each typed delay meters [C].
+    records[1U].delay_meter = static_cast<std::uint8_t>((*wipe)[7U]);
+    records[2U].delay_meter = static_cast<std::uint8_t>((*wipe)[8U]);
     for (std::size_t index = 2U; index >= 1U; --index) {
         if ((*wipe)[2U + index] != 0 &&
             field_party_roster_.deactivate_party_member(index)) {
@@ -11439,12 +11519,56 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
         field_funds_ = static_cast<std::uint32_t>((*wipe)[5]);
     }
     refresh_field_hud_runner_slot();
+    // 0x38FA updates the three player records [C]; the native animation service
+    // owns that per-frame work. 0x391A also rebuilds field runner resources;
+    // this port's player-side wipe path currently selects slot zero and
+    // refreshes its HUD, while a separate 391A-only resource pass is unmodeled
+    // [H].
     source_boundary((*wipe)[6] != 0 ? "field.party_wipe.docwagon"
                                     : "field.party_wipe.little_chiba");
     game_scripts_.set_location_context("field_map", "party_wipe",
                                        "field.world_event", "field_narrator");
+    field_party_wipe_dialogue_stage_ = FieldPartyWipeDialogueStage::wake;
     if (!field_dialogue_.open_gameplay_task("party_down", "present_wake")) {
+        field_party_wipe_dialogue_stage_ =
+            FieldPartyWipeDialogueStage::inactive;
         source_boundary("field.party_wipe.wake_text_open_failed");
+    }
+}
+
+void FieldSceneRuntime::start_field_party_wake_transition() {
+    const auto destination = game_scripts_.call_integers(
+        "party_down", "take_pending_wake_destination_flat", {});
+    if (!destination.has_value() || destination->size() != 3U ||
+        (*destination)[0] < 0 || (*destination)[0] > 0xFFFF ||
+        (*destination)[1] < 0 || (*destination)[1] > 0xFFFF ||
+        (*destination)[2] < 0 || (*destination)[2] > 0xFFFF) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.party_wipe.destination_script_failed");
+        return;
+    }
+    const auto scene = static_cast<std::uint16_t>((*destination)[0]);
+    // 0x2A32/0x2A44 clear these transition/effect markers after starting the
+    // fade and before 0x136DE installs the selected FFFBF8 scene [C].
+    field_runtime_state_.pending_field_scene_handler = false; // FFE12E
+    field_runtime_state_.world_activity_transition_marker = 0U; // FFE18F
+    field_world_effect_active_ = false; // FFE180
+    field_pending_world_effect_ = false; // FFE182
+    world_activity_request_state_ = WorldActivityRoutineRequestState{};
+    field_mode_exit_transition_state_.effect_animation_marker = 0U; // FFE182
+    field_mode_exit_transition_state_.mode_five_effect_marker = 0U; // FFE183
+    world_frame_logic_state_.world_active = 0U; // FFDF84
+    field_dialogue_scene_pending_destination_ = scene;
+    field_dialogue_scene_pending_spawn_ = SceneRunnerPosition{
+        static_cast<std::uint16_t>((*destination)[1]),
+        static_cast<std::uint16_t>((*destination)[2])};
+    if (field_elevator_scene_transition_.begin_fade_out()) {
+        field_dialogue_scene_transition_active_ = true;
+        source_boundary("field.party_wipe.destination_fade_out_started");
+    } else {
+        field_dialogue_scene_pending_destination_.reset();
+        field_dialogue_scene_pending_spawn_.reset();
+        source_boundary("field.party_wipe.destination_transition_busy");
     }
 }
 
@@ -13537,6 +13661,19 @@ void FieldSceneRuntime::advance_frame() {
         } else if (result == FieldDialogueAdvanceResult::returned_to_field) {
             hospital_service_session_active_ = false;
             source_boundary("field.dialogue.returned_to_field");
+            if (field_party_wipe_dialogue_stage_ !=
+                FieldPartyWipeDialogueStage::inactive) {
+                (void)field_dialogue_.take_gameplay_task_result();
+                const auto stage = field_party_wipe_dialogue_stage_;
+                field_party_wipe_dialogue_stage_ =
+                    FieldPartyWipeDialogueStage::inactive;
+                if (stage == FieldPartyWipeDialogueStage::run_failure) {
+                    complete_field_party_wipe();
+                } else {
+                    start_field_party_wake_transition();
+                }
+                return;
+            }
             bool taxi_departure_started = false;
             if (field_taxi_cabbie_destination_.has_value()) {
                 const auto destination = *field_taxi_cabbie_destination_;

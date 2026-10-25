@@ -86,7 +86,8 @@ constexpr std::array<std::array<int, 2>, 12> kHospitalRandomGridOrigins{{
 } // namespace
 
 bool FieldSceneRuntime::prepare_runtime_field_scene(
-    const std::uint16_t scene_reference) {
+    const std::uint16_t scene_reference,
+    const std::optional<SceneRunnerPosition> requested_spawn) {
     if (!field_session_source_assets_ || !field_asset_catalog_ ||
         scene_reference >= kFieldSceneProfileCount) {
         return false;
@@ -101,7 +102,10 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         field_pending_mode_transition_scene_ ==
             std::optional<std::uint16_t>{scene_reference} &&
         field_pending_mode_transition_spawn_.has_value();
-    if (apply_mode_transition_spawn) {
+    if (requested_spawn.has_value()) {
+        input->pending_position_available = true;
+        input->pending_position = *requested_spawn;
+    } else if (apply_mode_transition_spawn) {
         input->pending_position_available = true;
         input->pending_position = *field_pending_mode_transition_spawn_;
     }
@@ -127,8 +131,10 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     const bool same_scene = state_.field_scene_buffers.initialized &&
                             state_.field_scene_buffers.scene_reference ==
                                 scene_reference;
+    const bool force_scene_entry = requested_spawn.has_value();
     const bool preserve_scene_entry_position =
-        same_scene && !field_world_activity_scene_entry_pending_;
+        same_scene && !field_world_activity_scene_entry_pending_ &&
+        !force_scene_entry;
     const auto prior_world_mode = field_movement_transition_state_.world_mode;
     const auto prior_camera_x = state_.field_scene_buffers.camera_x;
     const auto prior_camera_y = state_.field_scene_buffers.camera_y;
@@ -171,10 +177,11 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     field_map_priority_overlay_ =
         std::move(next_field_map_priority_overlay);
     reset_field_map_cell_words();
-    if (!same_scene || field_world_activity_scene_entry_pending_) {
+    if (!same_scene || field_world_activity_scene_entry_pending_ ||
+        force_scene_entry) {
         initialize_default_field_actors(scene_reference);
     }
-    if (!same_scene) {
+    if (!same_scene || force_scene_entry) {
         field_weapon_projectiles_.clear();
         field_weapon_slots_occupied_.fill(false);
         // 0x167AE may arm FFDF84/FFDF86 while selecting a new field scene.
@@ -186,7 +193,8 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
                 WorldActivityTimeoutState{};
         }
     }
-    if (!same_scene && field_palette_fade_steps_ != 0U) {
+    if ((!same_scene || force_scene_entry) &&
+        field_palette_fade_steps_ != 0U) {
         // The source scene-buffer load replaces the palette after the
         // field-transition fade. The Qt fade is a presentation overlay, so
         // release it only after the new scene assets are committed; otherwise
@@ -207,7 +215,7 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     // return so 0xBC36 keeps refreshing collision probes when the source had
     // FFDF40 clear. A genuinely new scene still selects its source mode.
     field_movement_transition_state_.world_mode =
-        same_scene ? prior_world_mode : *interaction_mode;
+        same_scene && !force_scene_entry ? prior_world_mode : *interaction_mode;
     field_movement_transition_state_.field_origin_x =
         static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
     world_frame_logic_state_.world_mode = scene_reference;
@@ -218,7 +226,7 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         field_runtime_state_.display_dirty_flags | 0x0EU);
     state_.display_dirty_flags = static_cast<std::uint8_t>(
         state_.display_dirty_flags | 0x0EU);
-    if (!same_scene) {
+    if (!same_scene || force_scene_entry) {
         // A scene change goes through 0x2822/0x2830 (FFE172 = FFFF); a
         // same-scene 0x2BD2 redraw does not restart the song [C]. The song
         // starts on the next field tick (0x2900).

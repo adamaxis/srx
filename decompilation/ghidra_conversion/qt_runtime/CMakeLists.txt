@@ -503,6 +503,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_world_activity_qa
                  --field-world-activity-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-world-activity-qa")
 
+# Party wipe runs the 0xC64C failure modal before the wake passage, then follows
+# the 0x136DE scene route to the ROM's DocWagon or Little Chiba arrival record [C].
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_party_wipe_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-party-wipe-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-party-wipe-qa")
+
 # Seed the traced 0x2CE0 inputs, then exercise the normal Qt coordinator,
 # Scene-47 preparation, ROM spawn override, and Lua-selected actor list.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_mode_13_entry_qa

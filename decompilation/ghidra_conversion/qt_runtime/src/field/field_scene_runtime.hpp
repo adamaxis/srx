@@ -101,7 +101,6 @@ constexpr std::size_t field_scene_profile_word_index(
 
 enum class FieldWorldFactFlag : std::uint8_t {
     errascoe_question_available = 1,
-    run_objective_active = 9,
     redmond_vigore_search_complete = 22,
     redmond_vigore_lead_available = 26,
 };
@@ -129,6 +128,7 @@ enum class FieldRenderEffectFlag : std::uint8_t {
 
 enum class GroupItemFlag : std::uint8_t {
     landmark_map = 7,
+    run_objective_active = 9, // FFFC22 bit 9, ROM 0x1EF2C/0x1F000 [C]
 };
 
 struct FieldTargetMarkerDebugState {
@@ -362,6 +362,10 @@ public:
 #ifdef SHADOWRUN_QT_QA_DRIVER
     bool dispatch_dialogue_service_for_dump(
         std::string_view service_id, std::string_view return_policy);
+    // Start the source FFE166 party-wipe countdown for focused transition QA.
+    void arm_party_wipe_countdown_for_dump() noexcept {
+        field_party_wipe_countdown_ = 0x3CU; // 0xABB6 [C]
+    }
     bool open_hospital_menu_for_dump(std::string_view function);
     bool open_ordinary_field_terminal_for_dump(
         std::uint32_t contact_flags, std::uint32_t funds);
@@ -1418,6 +1422,11 @@ private:
         vid_phone,
         dialogue_scene_entry,
     };
+    enum class FieldPartyWipeDialogueStage : std::uint8_t {
+        inactive,
+        run_failure,
+        wake,
+    };
 
     // A route actor list queued by Lua (route_actor_lists.lua data): when
     // the party enters consume_scene, the source_scene activity list
@@ -1443,6 +1452,8 @@ private:
     heartbeat_field_player(scripting::ScriptActorHeartbeatPhase phase);
     void advance_player_weapon_action_gate();
     void resolve_field_party_wipe();
+    void complete_field_party_wipe();
+    void start_field_party_wake_transition();
     void advance_field_movement();
     void advance_field_actor_animation();
     void advance_default_field_actor_animations();
@@ -1479,7 +1490,9 @@ private:
         const std::vector<FieldMapEventActivation>& activations);
     void handle_game_script_task_step(
         const scripting::ScriptTaskStep& step);
-    bool prepare_runtime_field_scene(std::uint16_t scene_reference);
+    bool prepare_runtime_field_scene(
+        std::uint16_t scene_reference,
+        std::optional<SceneRunnerPosition> requested_spawn = std::nullopt);
     void dispatch_field_map_scene_entry(std::uint16_t scene_id);
     std::optional<std::size_t> projected_terrain_cell() const;
     bool mark_field_terrain_cell(std::size_t cell);
@@ -1610,7 +1623,8 @@ private:
     void paint_hospital_menu(QPainter& painter) const;
     bool transition_to_field_destination(
         std::uint16_t scene_reference,
-        FieldDestinationTransitionRoute route);
+        FieldDestinationTransitionRoute route,
+        std::optional<SceneRunnerPosition> requested_spawn = std::nullopt);
     HotelMenuEvent process_hotel_menu_events(std::uint16_t events);
     AttributesSkillsRuntimeEvent process_hotel_karma_screen_events(
         std::uint16_t events);
@@ -2196,7 +2210,10 @@ private:
     std::array<std::array<int, 2>, 8> field_entity_down_origin_x_{};
     std::array<std::array<int, 2>, 8> field_entity_down_origin_y_{};
     // FFE166: 0xABB6 arms 0x3C frames when the whole party is down; 0x1DDC6
-    // counts it down and 0xC64C resolves the wipe at zero.
+    // counts it down and 0xC64C resolves the wipe at zero. Save restore at
+    // 0x594E0 copies FFF5BE..FFF805 (end-exclusive FFF806) and does not restore
+    // FFE166, so this timer is transient across ROM loads [C]; whether the
+    // writer copies it is [H].
     std::uint8_t field_party_wipe_countdown_ = 0;
     std::array<DefaultActorArtwork, 2> field_default_actor_artwork_{};
     std::unordered_map<std::string, DefaultActorArtwork>
@@ -2302,6 +2319,9 @@ private:
     bool field_dialogue_scene_transition_active_ = false;
     std::optional<std::uint16_t>
         field_dialogue_scene_pending_destination_;
+    std::optional<SceneRunnerPosition> field_dialogue_scene_pending_spawn_;
+    FieldPartyWipeDialogueStage field_party_wipe_dialogue_stage_ =
+        FieldPartyWipeDialogueStage::inactive;
     std::optional<std::uint16_t> field_mode_entry_destination_scene_;
     std::optional<std::uint16_t> field_pending_mode_transition_scene_;
     std::optional<SceneRunnerPosition> field_pending_mode_transition_spawn_;

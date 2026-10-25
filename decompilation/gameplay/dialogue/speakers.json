@@ -270,6 +270,18 @@
           "continuation_key": "",
           "title_key": "party_wipe.little_chiba"
         },
+        "party_wipe_bodyguard_failure": {
+          "continuation_key": "",
+          "title_key": "party_wipe.run_failure.bodyguard"
+        },
+        "party_wipe_employee_recruitment_failure": {
+          "continuation_key": "",
+          "title_key": "party_wipe.run_failure.employee_recruitment"
+        },
+        "party_wipe_package_failure": {
+          "continuation_key": "",
+          "title_key": "party_wipe.run_failure.package"
+        },
         "phone_no_contacts": {
           "continuation_key": "",
           "title_key": "field.main_menu.vid_phone.no_contacts"

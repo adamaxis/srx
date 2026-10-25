@@ -54,6 +54,7 @@ E.Pickup = { CLIPS_FLAG = 0xC000, NUYEN_FLAG = 0x8000, GARGOYLE_HORN = 0x64, HOU
 -- Group-item bits in FFFC22; the Pocket Secretary rows identify these items [C].
 E.GroupItemBit = {
     INDIAN_LANDS_VISA = 1, -- FFFC22 bit 1, pocket_secretary row indian_lands_visa [C]
+    RUN_OBJECTIVE_ACTIVE = 9, -- FFFC22 bit 9, cleared by 0x1EF2C/0x1F000/0xC6EE [C]
     ORK_ARMBAND = 14,      -- FFFC22 bit 14; taxi checks leader FF018F bit 5 [C]
 }
 
@@ -171,6 +172,29 @@ E.RunType = {
     GHOUL_BOUNTY = 0, BODYGUARD_ESCORT = 1, PACKAGE_DELIVERY = 2,
     GANG_CONTRACT = 3, PACKAGE_RECOVERY = 4,
     EMPLOYEE_RECRUITMENT = 5, MATRIX_OBJECTIVE = 6,
+    NONE = 0xFF, -- FFFBEC = 0xFFFF denotes no active run [C]
+}
+-- FFFC1C's active-run and type-5 party-wipe guard bits [C].
+E.RunContextFlag = {
+    ACTIVE = 1 << 0, -- 0xC66C/0xC6BC/0xC6DC/0xC70C [C]
+    EMPLOYEE_FAILURE_GUARD = 1 << 7, -- 0xC678 tests; 0x0A72 sets from FFE18F [C]
+}
+E.PartyWipeDestination = {
+    LITTLE_CHIBA = 0, -- 0xC7EC -> 0x2A44, scene 2 [C]
+    DOCWAGON = 1, -- 0xC7E0 -> 0x2A32, scene 0 [C]
+    NONE = 0xFF, -- no pending wake destination [H host sentinel]
+}
+-- 0x2AEA/0x2B24 arrival records, consumed by 0x2B78 and aligned with
+-- ANDI.W #0xFF80 before the scene loader publishes FFFBF8 [C].
+E.PartyWipeArrival = {
+    [E.PartyWipeDestination.DOCWAGON] = {
+        scene = 0, x = 0x6200, y = 0x2D00,
+        -- 0x2AEA raw (0x6260,0x2D40), aligned by 0x2B90 [C]
+    },
+    [E.PartyWipeDestination.LITTLE_CHIBA] = {
+        scene = 2, x = 0x6680, y = 0x2300,
+        -- 0x2B24 raw (0x66F0,0x2310), aligned by 0x2B90 [C]
+    },
 }
 -- Source initializer IDs in F3DC6. Several source variants share one
 -- canonical run handler and differ only in how their route is selected [C].

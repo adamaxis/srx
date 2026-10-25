@@ -630,6 +630,95 @@ int run_field_world_activity_qa(
     return 0;
 }
 
+int run_field_party_wipe_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "field party-wipe QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(output, error);
+    if (error) {
+        std::cerr << "field party-wipe QA: cannot clear old captures: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    field_scene.set_source_random_seed_for_dump(0x4000U);
+    field_scene.set_field_world_frame_counter_for_dump(0x0200U);
+
+    const auto exercise_wipe = [&field_scene, &output](
+                                   const bool motel_bill_paid,
+                                   const std::uint16_t expected_scene,
+                                   const std::uint16_t expected_x,
+                                   const std::uint16_t expected_y,
+                                   const std::filesystem::path& image_name) {
+        if (!field_scene.set_story_flag_for_dump(0U, motel_bill_paid)) {
+            return false;
+        }
+        field_scene.arm_party_wipe_countdown_for_dump();
+        for (std::uint8_t frame = 0U; frame < 0x3CU; ++frame) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+        if (!field_scene.dialogue_open()) {
+            return false;
+        }
+        for (std::uint8_t page = 0U;
+             page < 12U && field_scene.dialogue_open(); ++page) {
+            tap_qa_controller_button(field_scene, 0x40U);
+        }
+        for (std::uint8_t frame = 0U;
+             frame < 120U &&
+             field_scene.elevator_scene_transition_phase_for_dump() !=
+                 ElevatorSceneTransitionPhase::idle;
+             ++frame) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+        const auto arrival = field_scene.field_entity_world_position();
+        const auto image = render_qa_field(field_scene);
+        return !field_scene.dialogue_open() &&
+               field_scene.elevator_scene_transition_phase_for_dump() ==
+                   ElevatorSceneTransitionPhase::idle &&
+               field_scene.field_scene_reference_for_dump() == expected_scene &&
+               arrival.x == expected_x && arrival.y == expected_y &&
+               save_qa_image(output, image_name, image);
+    };
+
+    if (!exercise_wipe(true, 0U, 0x6200U, 0x2D00U, "docwagon.bmp")) {
+        std::cerr << "field party-wipe QA: paid-bill wipe did not arrive at "
+                     "DocWagon scene 0 position 0x6200,0x2D00; scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " position=" << field_scene.field_entity_world_position().x
+                  << ',' << field_scene.field_entity_world_position().y
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " phase=" << static_cast<unsigned>(
+                         field_scene.elevator_scene_transition_phase_for_dump())
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    if (!exercise_wipe(false, 2U, 0x6680U, 0x2300U, "actual.bmp")) {
+        std::cerr << "field party-wipe QA: unpaid-bill wipe did not arrive at "
+                     "Little Chiba scene 2 position 0x6680,0x2300; scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " position=" << field_scene.field_entity_world_position().x
+                  << ',' << field_scene.field_entity_world_position().y
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " phase=" << static_cast<unsigned>(
+                         field_scene.elevator_scene_transition_phase_for_dump())
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    std::cout << "field_party_wipe_qa=passed "
+                 "docwagon=scene0@0x6200,0x2D00 "
+                 "little_chiba=scene2@0x6680,0x2300 actual.bmp="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_random_encounter_spawn_qa(
     FieldSceneRuntime& field_scene,
     const StartupIntegrationState& startup_state,
@@ -27563,6 +27652,7 @@ int main(int argc, char** argv) {
             field_gang_contract_target_entry_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
+        std::optional<std::filesystem::path> field_party_wipe_qa_path;
         bool field_audio_qa = false;
         std::optional<std::filesystem::path> field_terrain_mark_qa_path;
         std::optional<std::filesystem::path>
@@ -27893,6 +27983,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_world_activity_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-party-wipe-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_party_wipe_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -33177,6 +33273,10 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_world_activity_qa_path, field_audio_events,
                     field_audio_stops);
+            }
+            if (field_party_wipe_qa_path.has_value()) {
+                return run_field_party_wipe_qa(
+                    field_scene, *field_party_wipe_qa_path);
             }
             if (field_hound_close_effect_qa_path.has_value()) {
                 return run_field_hound_close_effect_qa(
