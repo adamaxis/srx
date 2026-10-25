@@ -1610,6 +1610,7 @@ private:
                               std::string_view text,
                               HotelMenuPaletteLine palette_line) const;
     void refresh_command_overview_combat_bars();
+    EquipmentCombatInput command_overview_combat_input() const;
     void refresh_command_overview_item_detail();
     void refresh_field_hud_runner_slot();
     void initialize_field_party_roster(

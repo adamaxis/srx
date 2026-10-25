@@ -21068,6 +21068,11 @@ void FieldSceneRuntime::refresh_command_overview_combat_bars() {
         return;
     }
 
+    const auto input = command_overview_combat_input();
+    command_overview_combat_bars_ = compute_equipment_combat_bars(input);
+}
+
+EquipmentCombatInput FieldSceneRuntime::command_overview_combat_input() const {
     const auto& record = active_runner_record();
     EquipmentCombatInput input{};
     input.attributes = record.attributes;
@@ -21111,7 +21116,7 @@ void FieldSceneRuntime::refresh_command_overview_combat_bars() {
     }
     input.item_catalog = &us_item_catalog();
     input.selector_table = &us_special_item_modifier_selector_table();
-    command_overview_combat_bars_ = compute_equipment_combat_bars(input);
+    return input;
 }
 
 void FieldSceneRuntime::refresh_command_overview_item_detail() {
@@ -23823,6 +23828,30 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 draw_command_overview_text(
                     painter, armor_category_x, 72, selected_text.category);
                 draw_item_detail_rows(item_code, slot, true);
+                // ROM 0x11592 ends every non-empty cell with 0x11ABE ->
+                // 0x12CEE in the lower source mode (FFF0D0 = column < 2):
+                // e6 shows Atk/Def for the pistol (8700, 8789) and clears
+                // both rows for Armor (8740) and the Fetish (8820) [C].
+                auto bar_input = command_overview_combat_input();
+                bar_input.source_mode = static_cast<std::uint8_t>(
+                    view.source_state.primary_page);
+                bar_input.selected_inventory_slot =
+                    static_cast<std::uint8_t>(slot);
+                const auto bars = compute_equipment_combat_bars(bar_input);
+                if (bars.attack_written &&
+                    bars.attack_bar < command_overview_attack_bars_.size()) {
+                    draw_command_overview_text(
+                        painter, 112, 104, field_menu_text_.attack_label);
+                    painter.drawImage(
+                        144, 104, command_overview_attack_bars_[bars.attack_bar]);
+                }
+                if (bars.defense_written &&
+                    bars.defense_bar < command_overview_defense_bars_.size()) {
+                    draw_command_overview_text(
+                        painter, 112, 112, field_menu_text_.defense_label);
+                    painter.drawImage(
+                        144, 112, command_overview_defense_bars_[bars.defense_bar]);
+                }
                 // ROM 0x12A8C sends selected armor to 0x11352. It previews
                 // the selected D4D50 row in the lower armor summary at
                 // C820/C922/C92C/C9AC, then restores the equipped record.
