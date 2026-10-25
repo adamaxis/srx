@@ -23,31 +23,6 @@ void clear_black_pixel(QImage& image, const int x, const int y) {
 
 } // namespace
 
-QImage scale_genesis_image_rgb(const QImage& image,
-                               const std::uint16_t weight,
-                               const std::uint16_t maximum) {
-    if (maximum == 0U || weight >= maximum) {
-        return image;
-    }
-    auto faded = image;
-    for (int y = 0; y < faded.height(); ++y) {
-        for (int x = 0; x < faded.width(); ++x) {
-            auto pixel = faded.pixelColor(x, y);
-            pixel.setRed(static_cast<int>(
-                static_cast<std::uint32_t>(pixel.red()) * weight /
-                maximum));
-            pixel.setGreen(static_cast<int>(
-                static_cast<std::uint32_t>(pixel.green()) * weight /
-                maximum));
-            pixel.setBlue(static_cast<int>(
-                static_cast<std::uint32_t>(pixel.blue()) * weight /
-                maximum));
-            faded.setPixelColor(x, y, pixel);
-        }
-    }
-    return faded;
-}
-
 QImage recolor_genesis_image_to_cram_word(const QImage& image,
                                           const std::uint16_t color_word) {
     if (image.isNull()) {

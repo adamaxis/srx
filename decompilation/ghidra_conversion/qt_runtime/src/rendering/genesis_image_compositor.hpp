@@ -7,12 +7,6 @@
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
-// Apply a Genesis palette fade to an extracted image without changing its
-// color-zero alpha mask. The source CRAM helpers move 3-bit components in
-// steps; the presentation boundary carries the equivalent bounded weight.
-QImage scale_genesis_image_rgb(const QImage& image, std::uint16_t weight,
-                               std::uint16_t maximum = 256U);
-
 // Replace each visible pixel with one expanded 12-bit Genesis CRAM color.
 // This is used only while an intro palette bank has all fifteen nonzero
 // entries set to the same color; source color-zero transparency is retained.

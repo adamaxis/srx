@@ -620,9 +620,10 @@ bool FieldSceneRuntime::resume_field_mode_entry_route() {
 }
 
 void FieldSceneRuntime::begin_field_modal_return_transition() {
-    // ROM 0x2BD2 refreshes the field immediately after the modal callback.
-    // The native presentation adds a deliberate 60-frame fade-in so that
-    // this handoff is visible and the button used to dismiss the panel is consumed.
+    // ROM 0x2BD2 begins with a 17-pass 0x131C fade-out before its field
+    // refresh; each palette pass waits two VBlanks through 0x1342 [C]. This
+    // additional native 60-frame fade-in and input guard are host presentation
+    // choices, not timing copied from that path [H].
     field_modal_return_transition_frames_remaining_ =
         kFieldModalReturnTransitionFrames;
     field_palette_fade_steps_ = 9U;

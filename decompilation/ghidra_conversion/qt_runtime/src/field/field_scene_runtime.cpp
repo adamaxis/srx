@@ -15553,13 +15553,6 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                                        routed_menu)) {
                     return;
                 }
-                if (routed_menu.top_matrix_transition_fade_step.has_value()) {
-                    const auto fade_step = std::clamp(
-                        *routed_menu.top_matrix_transition_fade_step, 0, 5);
-                    painter.fillRect(
-                        painter.viewport(),
-                        QColor(0, 0, 0, fade_step * 51));
-                }
                 return;
             }
 
@@ -16970,10 +16963,12 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
             break;
         case ElevatorSceneTransitionPhase::idle:
             if (field_palette_fade_steps_ != 0U) {
-                // 0x16396 uses 0x1088 for the interaction fade. The modal
-                // return counter runs in the opposite direction; preserve
-                // its existing host duration while applying one CRAM level
-                // per source palette step and saturating after seven levels.
+                // 0xB7B8 initializes FFDF3C to 0x10. run_game_loop at 0x75E
+                // calls 0x16396 once per field pass, with the next 0xBD2
+                // VBlank wait between passes: 17 source VBlanks total. Its
+                // nine even-count updates call 0x1088 once, and each CRAM
+                // component saturates by pass 7 [C]. The additional 60-frame
+                // modal-return fade/input guard is host-only [H].
                 const auto completed_steps =
                     field_modal_return_transition_frames_remaining_ != 0U
                         ? static_cast<std::uint8_t>(
@@ -16986,6 +16981,25 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
                 transition_active = true;
             }
             break;
+        }
+
+        if (!transition_active && field_matrix_route_active_) {
+            const auto matrix_route = game_scripts_.menu_route_snapshot();
+            const bool matrix_logout_is_fading =
+                !matrix_route.top_matrix_logout_visual.has_value() ||
+                matrix_route.top_matrix_logout_visual->phase ==
+                    scripting::ScriptMatrixLogoutVisualPhase::FADE;
+            if (matrix_logout_is_fading &&
+                matrix_route.top_matrix_transition_fade_step.has_value()) {
+                // ROM 0x18776 runs five 0x1088 palette passes. Each pass waits
+                // two VBlanks at 0xBD2 before stepping CRAM; the Lua counter
+                // exposes that exact 0..5 progression. 0x26A00's following
+                // cross/dot art is drawn from its own palette and stays out
+                // of this fade [C].
+                palette_passes = static_cast<std::uint8_t>(std::clamp(
+                    *matrix_route.top_matrix_transition_fade_step, 0, 5));
+                transition_active = true;
+            }
         }
 
         scene_painter.end();

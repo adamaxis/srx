@@ -569,9 +569,6 @@ public:
     elevator_scene_transition_vblanks_for_dump() const noexcept {
         return field_elevator_scene_transition_.vblanks_in_palette_step();
     }
-    std::uint8_t elevator_scene_transition_fade_alpha_for_dump() const noexcept {
-        return field_elevator_scene_transition_.black_overlay_alpha();
-    }
     std::uint8_t field_entity_behavior_flags_for_dump() const noexcept {
         return field_entity_behavior_flags_;
     }

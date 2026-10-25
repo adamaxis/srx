@@ -13499,7 +13499,7 @@ int run_field_elevator_physical_entry_qa(
                 "\tselected_floor\tfeedback\tfeedback_frames_remaining"
                 "\tanimation\tanimation_frame\taudio_event_count"
                 "\ttransition_phase\ttransition_palette_step"
-                "\ttransition_vblanks_in_step\ttransition_alpha\timage\n";
+                "\ttransition_vblanks_in_step\timage\n";
 
     std::error_code timeline_directory_error;
     std::filesystem::create_directories(selector_output / "timeline",
@@ -13522,7 +13522,7 @@ int run_field_elevator_physical_entry_qa(
            "\tfeedback\tfeedback_frames_remaining\tanimation"
            "\tanimation_frame\taudio_event_count\ttransition_phase"
            "\ttransition_palette_step\ttransition_vblanks_in_step"
-           "\ttransition_alpha\tinput\timage\n";
+           "\tinput\timage\n";
     bool timeline_capture_ok = true;
     std::uint32_t timeline_frame_count = 0U;
     auto timeline_input = std::string("neutral");
@@ -13568,8 +13568,6 @@ int run_field_elevator_physical_entry_qa(
                                                  .elevator_scene_transition_palette_step_for_dump())
             << '\t' << static_cast<unsigned>(field_scene
                                                  .elevator_scene_transition_vblanks_for_dump())
-            << '\t' << static_cast<unsigned>(field_scene
-                                                 .elevator_scene_transition_fade_alpha_for_dump())
             << '\t' << timeline_input << '\t' << name << '\n';
         ++timeline_frame_count;
     };
@@ -13611,8 +13609,6 @@ int run_field_elevator_physical_entry_qa(
                                                       .elevator_scene_transition_palette_step_for_dump())
                  << '\t' << static_cast<unsigned>(field_scene
                                                       .elevator_scene_transition_vblanks_for_dump())
-                 << '\t' << static_cast<unsigned>(field_scene
-                                                      .elevator_scene_transition_fade_alpha_for_dump())
                  << '\t' << name << '\n';
         manifest.flush();
         return image;
@@ -13954,6 +13950,8 @@ int run_field_elevator_physical_entry_qa(
                      "source-timed destination fade\n";
         return 3;
     }
+    // ROM 0x131C and 0x12F6 perform 17 passes at two VBlanks per pass. The
+    // transition state is a CRAM pass counter; it has no alpha progress value.
     for (std::uint8_t palette_step = 1U;
          palette_step <= kElevatorSceneTransitionPaletteStepCount;
          ++palette_step) {
@@ -13968,15 +13966,13 @@ int run_field_elevator_physical_entry_qa(
                   field_scene.elevator_scene_transition_phase_for_dump() ==
                       ElevatorSceneTransitionPhase::fading_from_black &&
                   field_scene.elevator_scene_transition_palette_step_for_dump() ==
-                      0U &&
-                  field_scene.elevator_scene_transition_fade_alpha_for_dump() ==
-                      255U
+                      0U
             : field_scene.field_scene_reference_for_dump() == 26U &&
                   field_scene.elevator_scene_transition_phase_for_dump() ==
                       ElevatorSceneTransitionPhase::fading_to_black &&
                   field_scene.elevator_scene_transition_palette_step_for_dump() ==
                       palette_step &&
-                  field_scene.elevator_scene_transition_fade_alpha_for_dump() !=
+                  field_scene.elevator_scene_transition_palette_step_for_dump() !=
                       0U;
         if (!transition_state_matches) {
             std::cerr << "Elevator physical-entry QA: fade-out palette pass "
@@ -13997,7 +13993,7 @@ int run_field_elevator_physical_entry_qa(
         field_scene.elevator_selector_open_for_dump() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
             ElevatorSceneTransitionPhase::fading_from_black ||
-        field_scene.elevator_scene_transition_fade_alpha_for_dump() != 255U) {
+        field_scene.elevator_scene_transition_palette_step_for_dump() != 0U) {
         std::cerr << "Elevator physical-entry QA: scene handoff did not replace "
                      "the selector at full black\n";
         return 3;
@@ -14008,13 +14004,16 @@ int run_field_elevator_physical_entry_qa(
         tick_frame(); // first source VBlank in the palette step wait
         if (palette_step == 9U) {
             const auto midpoint = save("destination-fade-in-midpoint");
+            // 0x12F6 performs 17 passes, but 0x10D6 saturates each CRAM
+            // channel at its destination by pass 7. Pass 9 has no linear
+            // alpha midpoint; verify the source pass and keep its dump [C].
+            // 0x1342 waits two VBlanks per pass, so after the first VBlank of
+            // pass 9 only eight passes have completed.
             if (midpoint.isNull() ||
-                field_scene.elevator_scene_transition_fade_alpha_for_dump() <
-                    100U ||
-                field_scene.elevator_scene_transition_fade_alpha_for_dump() >
-                    155U) {
+                field_scene.elevator_scene_transition_palette_step_for_dump() !=
+                    palette_step - 1U) {
                 std::cerr << "Elevator physical-entry QA: destination fade "
-                             "midpoint is outside the expected palette range\n";
+                             "did not reach source palette pass 9\n";
                 return 3;
             }
         }
@@ -14037,12 +14036,16 @@ int run_field_elevator_physical_entry_qa(
         field_scene.state().field_scene_buffers.source_metadata
             .initial_field_records[0U];
     const auto destination = save("scene28-entry");
+    // The source transition retains its final 17th CRAM pass in the native
+    // counter after returning to idle; the former alpha diagnostic reset to
+    // zero and did not describe palette state [C: 0x131C / 0x12F6].
     if (destination.isNull() ||
         field_scene.field_scene_reference_for_dump() != 28U ||
         field_scene.elevator_selector_open_for_dump() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
             ElevatorSceneTransitionPhase::idle ||
-        field_scene.elevator_scene_transition_fade_alpha_for_dump() != 0U ||
+        field_scene.elevator_scene_transition_palette_step_for_dump() !=
+            kElevatorSceneTransitionPaletteStepCount ||
         destination_position.x != destination_landing_position.x ||
         destination_position.y != destination_landing_position.y ||
         !field_scene.field_entity_visible_for_dump() ||
@@ -14312,9 +14315,6 @@ int run_field_elevator_group_route_qa(
                  << '\t'
                  << static_cast<unsigned>(field_scene
                                               .elevator_scene_transition_palette_step_for_dump())
-                 << '\t'
-                 << static_cast<unsigned>(field_scene
-                                              .elevator_scene_transition_fade_alpha_for_dump())
                  << '\t' << input_label << '\t' << name << '\n';
         ++timeline_frame_count;
         return true;
@@ -14769,8 +14769,8 @@ int run_field_elevator_group_route_qa(
             field_scene.field_scene_reference_for_dump() == destination_scene &&
             field_scene.elevator_scene_transition_phase_for_dump() ==
                 ElevatorSceneTransitionPhase::fading_from_black &&
-            field_scene.elevator_scene_transition_fade_alpha_for_dump() ==
-                255U) {
+            field_scene.elevator_scene_transition_palette_step_for_dump() ==
+                0U) {
             QImage black(kSceneWidth, kSceneHeight, QImage::Format_ARGB32);
             black.fill(Qt::black);
             if (render() != black ||
@@ -14792,7 +14792,8 @@ int run_field_elevator_group_route_qa(
         field_scene.elevator_selector_open_for_dump() || !no_modal_screen() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
             ElevatorSceneTransitionPhase::idle ||
-        field_scene.elevator_scene_transition_fade_alpha_for_dump() != 0U ||
+        field_scene.elevator_scene_transition_palette_step_for_dump() !=
+            kElevatorSceneTransitionPaletteStepCount ||
         destination_position.x != destination_landing_position.x ||
         destination_position.y != destination_landing_position.y ||
         !field_scene.field_entity_visible_for_dump() ||
@@ -14942,13 +14943,13 @@ int run_field_elevator_floor_group_roundtrip_qa(
     }
     manifest << "stage\tframe\tscene\tselector_open\tcurrent_floor"
                 "\tselected_floor\tanimation\tanimation_frame"
-                "\ttransition_phase\ttransition_step\ttransition_alpha"
+                "\ttransition_phase\ttransition_step"
                 "\taudio_event_count\timage\n";
     timeline_manifest
         << "frame\tscene\tx\ty\theading\ttarget_heading\tselector_open"
            "\tcurrent_floor\tselected_floor"
            "\tanimation\tanimation_frame\ttransition_phase"
-           "\ttransition_step\ttransition_vblanks\ttransition_alpha"
+           "\ttransition_step\ttransition_vblanks"
            "\tinput\timage\n";
 
     std::uint32_t frame = 0U;
@@ -14994,9 +14995,6 @@ int run_field_elevator_floor_group_roundtrip_qa(
             << '\t'
             << static_cast<unsigned>(field_scene
                                          .elevator_scene_transition_vblanks_for_dump())
-            << '\t'
-            << static_cast<unsigned>(field_scene
-                                         .elevator_scene_transition_fade_alpha_for_dump())
             << '\t' << timeline_input << '\t' << name << '\n';
         ++timeline_frame_count;
     };
@@ -15030,9 +15028,6 @@ int run_field_elevator_floor_group_roundtrip_qa(
                  << '\t'
                  << static_cast<unsigned>(field_scene
                                               .elevator_scene_transition_palette_step_for_dump())
-                 << '\t'
-                 << static_cast<unsigned>(field_scene
-                                              .elevator_scene_transition_fade_alpha_for_dump())
                  << '\t' << field_audio_events.size() << '\t' << name << '\n';
         manifest.flush();
         return image;
@@ -15275,15 +15270,13 @@ int run_field_elevator_floor_group_roundtrip_qa(
                           field_scene.elevator_scene_transition_phase_for_dump() ==
                               ElevatorSceneTransitionPhase::fading_from_black &&
                           field_scene.elevator_scene_transition_palette_step_for_dump() ==
-                              0U &&
-                          field_scene.elevator_scene_transition_fade_alpha_for_dump() ==
-                              255U
+                              0U
                     : field_scene.field_scene_reference_for_dump() == source_scene &&
                           field_scene.elevator_scene_transition_phase_for_dump() ==
                               ElevatorSceneTransitionPhase::fading_to_black &&
                           field_scene.elevator_scene_transition_palette_step_for_dump() ==
                               palette_step &&
-                          field_scene.elevator_scene_transition_fade_alpha_for_dump() !=
+                          field_scene.elevator_scene_transition_palette_step_for_dump() !=
                               0U;
                 if (!transition_matches ||
                     save(label + "-fade-out-step-" +
@@ -15331,8 +15324,8 @@ int run_field_elevator_floor_group_roundtrip_qa(
                 field_scene.elevator_selector_open_for_dump() ||
                 field_scene.elevator_scene_transition_phase_for_dump() !=
                     ElevatorSceneTransitionPhase::idle ||
-                field_scene.elevator_scene_transition_fade_alpha_for_dump() !=
-                    0U ||
+                field_scene.elevator_scene_transition_palette_step_for_dump() !=
+                    kElevatorSceneTransitionPaletteStepCount ||
                 destination_position.x != destination_landing_position.x ||
                 destination_position.y != destination_landing_position.y ||
                 !field_scene.field_entity_visible_for_dump() ||

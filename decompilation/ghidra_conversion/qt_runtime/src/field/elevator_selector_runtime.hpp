@@ -9,6 +9,8 @@ constexpr std::size_t kElevatorSelectorMaximumFloors = 5U;
 constexpr std::size_t kElevatorSelectorAnimationFrameCount = 17U;
 constexpr std::uint8_t kElevatorSelectorAnimationFrameDelay = 8U;
 constexpr std::uint8_t kElevatorSelectorNavigationFeedbackFrameCount = 8U;
+// ROM 0x131C / 0x12F6 loop d6 from 0x10 through zero: 17 calls to 0x1088 /
+// 0x10D6, with each call spaced by two VBlanks at 0x1342 [C].
 constexpr std::uint8_t kElevatorSceneTransitionPaletteStepCount = 17U;
 constexpr std::uint8_t kElevatorSceneTransitionPaletteStepVblanks = 2U;
 
@@ -119,7 +121,6 @@ public:
     std::uint8_t vblanks_in_palette_step() const noexcept {
         return vblanks_in_palette_step_;
     }
-    std::uint8_t black_overlay_alpha() const noexcept;
     bool is_active() const noexcept {
         return phase_ != ElevatorSceneTransitionPhase::idle;
     }
