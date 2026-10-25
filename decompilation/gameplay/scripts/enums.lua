@@ -162,6 +162,7 @@ E.EventFn = { GUARD_SPOTS_YOU = 0x20FEC }                                       
 E.AiTuning = {   -- [C] unless marked
     THINK_FRAMES = 0x14, THINK_RETRY = -1, -- 0x13904 + FFE175 retry remains negative [C]
     ANIM_BUSY = 0x3C, ARRIVE_DIST = 0x1E0, FLANK_RADIUS = 0xE0, FLANK_ANGLE = 0x6000,
+    CLOSE_STRIKE_RANGE = 0x200, -- 0x15C58 accepts an actor target below this distance [C]
     PATROL_WAYPOINT_STRIDE = 0x4, -- 0x142F4 advances +0xE4 by one XY pair [C]
     FOLLOW_RADIUS_INITIAL = 0x20, -- 0x14512 first writes this radius [C]
     FOLLOW_RADIUS = 0xE0, -- 0x14516 overwrites the prior radius [C]

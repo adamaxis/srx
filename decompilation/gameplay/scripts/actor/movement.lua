@@ -360,7 +360,7 @@ local function resolve_source_target_motion(context, state, target)
                 accepted = true
             end
         end
-    elseif distance < 0x200 then
+    elseif distance < AiTuning.CLOSE_STRIKE_RANGE then
         -- Other kinds use 0x15C58 directly. That branch writes +0x34 but
         -- leaves +0x2E to the actor's own action continuation.
         accepted = true

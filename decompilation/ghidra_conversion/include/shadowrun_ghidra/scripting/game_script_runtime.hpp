@@ -1274,7 +1274,7 @@ struct ScriptActorTargetCandidate {
     std::uint8_t interaction_flags = 0; // source entity +0x11
     std::uint8_t behavior_flags = 0; // source entity +0xB0
     std::uint8_t spawn_state_flags = 0; // source entity +0x9E
-    bool has_action = false; // source entity +0x0C != 0
+    bool projected_y_nonzero = false; // source entity +0x0C != 0 [C]
     bool world_activity_actor = false;
     // 0x13D0C routes either toward the linked record or toward a point
     // projected perpendicular to it. These are the source 0x15CA4 metrics
@@ -1483,6 +1483,7 @@ struct ScriptActorBehaviorDecision {
     std::uint8_t source_record_flags = 0;
     std::uint8_t source_behavior_flags = 0;
     std::uint8_t source_spawn_state_flags = 0;
+    // Lua asks the host to run the ROM 0x1DBAA timeout service [C].
     bool world_activity_requested = false;
     std::optional<std::uint32_t> field_event_request;
     bool think_token_claimed = false; // FFE175 was consumed in this heartbeat [C]

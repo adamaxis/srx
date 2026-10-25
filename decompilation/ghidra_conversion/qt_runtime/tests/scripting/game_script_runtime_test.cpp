@@ -3107,13 +3107,13 @@ int main() {
                                        const std::uint8_t slot,
                                        const std::string& actor_id,
                                        const bool active,
-                                       const bool has_action) {
+                                       const bool projected_y_nonzero) {
         ScriptActorTargetCandidate candidate{};
         candidate.id = actor_id;
         candidate.source_record_slot = slot;
         candidate.descriptor_class = slot;
         candidate.service_flags = active ? 0x01U : 0U;
-        candidate.has_action = has_action;
+        candidate.projected_y_nonzero = projected_y_nonzero;
         return candidate;
     };
     auto target_selection_context = actor_context(
@@ -3525,12 +3525,14 @@ int main() {
         c0a2_entry_start.has_value() &&
         c0a2_action_start.has_value() &&
         c0a2_action_start->ai_target_engaged &&
+        c0a2_action_start->world_activity_requested &&
         c0a2_action_start->audio_event == 0x004CU &&
         c0a2_action_start->target_heading_audio_event == 0x004DU &&
         c0a2_action_start->action_delay == 45 &&
         c0a2_action_start->animation_frame == 0U &&
         c0a2_alternate_spawn.has_value() &&
         c0a2_alternate_action_start.has_value() &&
+        c0a2_alternate_action_start->world_activity_requested &&
         c0a2_alternate_action_start->audio_event == 0x004CU &&
         c0a2_alternate_action_start->target_heading_audio_event == 0x004EU &&
         c0a2_action_frame_zero.has_value() &&
@@ -4061,7 +4063,7 @@ int main() {
         ScriptActorTargetCandidate candidate{};
         candidate.id = id;
         candidate.service_flags = 0x01U;
-        candidate.has_action = true;
+        candidate.projected_y_nonzero = true;
         candidate.world_activity_actor = false;
         candidate.source_record_slot = slot;
         candidate.combatant = combatant;

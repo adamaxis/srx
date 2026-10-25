@@ -102,7 +102,7 @@ end
 
 local function target_is_eligible(candidate, world_actor_pool)
     if type(candidate) ~= "table" or type(candidate.id) ~= "string" or
-       candidate.id == "" or candidate.has_action ~= true or
+       candidate.id == "" or candidate.projected_y_nonzero ~= true or
        (candidate.service_flags & ActorStatus.ACTIVE) == 0 or
        (candidate.service_flags & ActorStatus.DEAD) ~= 0 or
        (candidate.service_flags & ActorStatus.DOWN) ~= 0 then

@@ -8672,8 +8672,8 @@ GameScriptRuntime::actor_heartbeat(
             lua_setfield(state, -2, "behavior_flags");
             lua_pushinteger(state, candidate.spawn_state_flags);
             lua_setfield(state, -2, "spawn_state_flags");
-            lua_pushboolean(state, candidate.has_action);
-            lua_setfield(state, -2, "has_action");
+            lua_pushboolean(state, candidate.projected_y_nonzero);
+            lua_setfield(state, -2, "projected_y_nonzero");
             lua_pushboolean(state, candidate.world_activity_actor);
             lua_setfield(state, -2, "world_activity_actor");
             lua_pushinteger(state, candidate.direct_route_step_cost);

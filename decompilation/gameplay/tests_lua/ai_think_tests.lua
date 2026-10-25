@@ -32,6 +32,7 @@ local function context(overrides)
             { id = "party.runner.0", source_record_slot = 0,
               world_activity_actor = false, world_x = 0x2000,
               world_y = 0x2400, heading = 0x1000, distance = 0x300,
+              projected_y_nonzero = true,
               service_flags = E.ActorStatus.ACTIVE,
               interaction_flags = 0 },
         },
@@ -105,7 +106,7 @@ local thon_context = context({
     source_thon_period_counter = E.AiTuning.THON_PERIOD,
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
-          world_activity_actor = false, has_action = true,
+          world_activity_actor = false, projected_y_nonzero = true,
           service_flags = E.ActorStatus.ACTIVE, interaction_flags = 0,
           world_x = 0x2000, world_y = 0x2400,
           heading = 0x1000, distance = 0x300 },
@@ -130,6 +131,63 @@ check(thon_skips == E.AiTuning.THON_PERIOD and
       thon_state.movement_current_heading == 0x1000 and
       thon_state.source_animation_selector > E.AiTuning.ANIM_BUSY,
       "THON decrements the shared period eight times, then aims and selects C082")
+
+local offscreen_runner = {
+    id = "party.runner.1",
+    world_activity_actor = false,
+    projected_y_nonzero = false,
+    service_flags = E.ActorStatus.ACTIVE,
+}
+local visible_runner = {
+    id = "party.runner.0",
+    world_activity_actor = false,
+    projected_y_nonzero = true,
+    service_flags = E.ActorStatus.ACTIVE,
+}
+local runner_pool_context = context({
+    ai_target_candidates = { offscreen_runner, visible_runner },
+    ai_random_bound = function() return 0 end,
+})
+local retained_runner_state = state({ linked_target_id = offscreen_runner.id })
+local selected_runner = R.linked_target(runner_pool_context,
+                                        retained_runner_state)
+check(selected_runner == visible_runner and
+      retained_runner_state.linked_target_id == visible_runner.id,
+      "0x14446 drops an off-screen retained runner and selects the visible +0x0C record [C]")
+local only_offscreen_context = context({
+    ai_target_candidates = { offscreen_runner },
+    ai_random_bound = function() return 0 end,
+})
+local only_offscreen_state = state({ linked_target_id = offscreen_runner.id })
+check(R.linked_target(only_offscreen_context, only_offscreen_state) == nil and
+      only_offscreen_state.linked_target_id == nil,
+      "0x14446 does not select or retain an off-screen runner [C]")
+
+local strike_context = context({
+    entity_kind = E.SpriteType.GHOUL,
+    dynamic_world_encounter_actor = true,
+    movement_allowed = true,
+    initial_heading = 0,
+})
+local strike_state = state({
+    entity_kind = E.SpriteType.GHOUL,
+    action_delay = -1,
+    movement_current_heading = 0,
+})
+local strike_target = {
+    id = "party.runner.0",
+    heading = E.AiTuning.QUARTER_TURN,
+    distance = E.AiTuning.CLOSE_STRIKE_RANGE - 1,
+}
+local strike_in_range = R.resolve_source_target_motion(
+    strike_context, strike_state, strike_target)
+local strike_audio, strike_heading_audio = R.begin_dynamic_target_action(
+    strike_state, strike_context, strike_target)
+local strike_result = R.snapshot(strike_state, "hold", strike_audio, nil,
+                                 strike_heading_audio)
+check(strike_in_range and strike_result.world_activity_requested == true and
+      strike_state.world_activity_requested == false,
+      "0xB25E strike returns one typed request for 0x1DBAA in range [C]")
 
 local thon_unknown_state = state()
 check(R.think_gate(thon_unknown_state,

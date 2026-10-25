@@ -4491,6 +4491,8 @@ void FieldSceneRuntime::advance_default_field_actors() {
                     std::optional<scripting::ScriptCombatantFacts> combatant,
                     const std::optional<std::uint16_t>
                         source_record_heading) {
+                    // ROM 0x14446/0x1438C require projected +0x0C != 0 [C];
+                    // the host computes the typed screen-Y fact here [H].
                     EntityProjectionState projection{};
                     projection.world_x = position.x;
                     projection.world_y = position.y;
@@ -9214,6 +9216,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
                pocket_secretary_.maximum_selection > 4U;
     };
     bindings.game.in_combat = [this] {
+        // FFDF84 is the active marker [C]; the native timeout state keeps
+        // FFDF86 separately as a frame count [H].
         return world_frame_logic_state_.world_active != 0U;
     };
     bindings.game.scene_mode = [this] {
@@ -14211,7 +14215,7 @@ FieldSceneRuntime::heartbeat_field_player(
                     (source.effect_locked ? 0x40U : 0U));
                 candidate.interaction_flags = source.selected ? 0x10U : 0U;
                 candidate.behavior_flags = source.high_effect ? 0x80U : 0U;
-                candidate.has_action = source.has_action;
+                candidate.projected_y_nonzero = source.has_action;
                 const auto actor = std::find_if(
                     field_default_actors_.begin(),
                     field_default_actors_.end(),
@@ -15617,7 +15621,18 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                     runner.flags >> 8U);
                 candidate.interaction_flags = static_cast<std::uint8_t>(
                     runner.flags & 0x00FFU);
-                candidate.has_action = true;
+                EntityProjectionState projection{};
+                projection.world_x = position.x;
+                projection.world_y = position.y;
+                project_entity_screen_position_standard(
+                    projection,
+                    static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_x),
+                    static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_y));
+                // This host projection supplies the typed screen-Y fact [H];
+                // ROM 0x14446 tests projected +0x0C != 0 [C].
+                candidate.projected_y_nonzero = projection.screen_y != 0U;
                 candidate.world_activity_actor = false;
                 candidate.source_record_slot =
                     static_cast<std::uint8_t>(slot);
@@ -15645,7 +15660,18 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 candidate.behavior_flags = target.source_behavior_flags;
                 candidate.spawn_state_flags =
                     target.source_spawn_state_flags;
-                candidate.has_action = target.physical_meter != 0U;
+                EntityProjectionState projection{};
+                projection.world_x = target.world_position.x;
+                projection.world_y = target.world_position.y;
+                project_entity_screen_position_standard(
+                    projection,
+                    static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_x),
+                    static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_y));
+                // This host projection supplies the typed screen-Y fact [H];
+                // ROM 0x1438C tests projected +0x0C != 0 [C].
+                candidate.projected_y_nonzero = projection.screen_y != 0U;
                 candidate.world_activity_actor = true;
                 candidate.source_record_slot = static_cast<std::uint8_t>(
                     *target.source_record_slot);

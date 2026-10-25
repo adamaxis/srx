@@ -227,7 +227,7 @@ local function advance_world_target_selection(state, context)
                          ActorStatus.DOWN) == 0 and
                         (candidate.behavior_flags &
                          BehaviorFlag.ESCORT) == 0 and
-                        candidate.has_action == true
+                        candidate.projected_y_nonzero == true
                     if available and type(candidate.id) == "string" and
                        candidate.id ~= "" then
                         state.selected_world_actor_id = candidate.id
@@ -742,6 +742,9 @@ local function begin_dynamic_target_action(state, context, target)
     state.animation_period = Animator.PERIOD
     state.action_animation_complete = false
     state.action_delay = source_action_delay(context, state, 1)
+    -- ROM 0xB25E calls 0x1DBAA once the strike is accepted in range [C].
+    -- The typed heartbeat result lets the host set FFDF84/FFDF86 [H].
+    state.world_activity_requested = true
     -- ROM 0xB284 invokes the shared 0x55C76 reaction only after the linked
     -- heading is accepted. Lua resolves the source-derived action now and
     -- returns a one-heartbeat meter update for the host to apply.
