@@ -8477,6 +8477,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint8_t source_action_counter;
         std::string action_kind;
         std::uint8_t source_interaction_flags;
+        std::uint8_t source_spawn_state_flags = 0U;
         std::uint8_t physical_meter;
         std::uint8_t delay_primary_attribute;
         std::uint8_t delay_secondary_attribute;
@@ -8514,7 +8515,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     constexpr std::size_t kWorldActivitySequencePointerTableOffset = 0x1D7174U;
     constexpr std::size_t kWorldActivityColumns = 9U;
     constexpr std::size_t kWorldActivityGroups = 16U;
-    constexpr std::size_t kFieldSceneCount = 56U;
+    constexpr std::size_t kFieldSceneCount = static_cast<std::size_t>(
+        srx::v(srx::Scene::LAST_ID) + 1);
     std::vector<DynamicWorldActorRecord> dynamic_world_actor_records;
     for (std::size_t scene_id = 0U; scene_id < kFieldSceneCount; ++scene_id) {
         const auto context_group = rom[kFieldContextGroupTableOffset + scene_id];
@@ -8577,6 +8579,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 auto physical_meter = rom[template_offset + 0x04U];
                 auto source_interaction_flags = rom[
                     shadowrun::rom::kPostObjectEntityTemplate + 0x11U];
+                std::uint8_t source_spawn_state_flags = 0U;
+                // Dynamic encounters get their +0x9E runtime bit from the
+                // common 0x1E25A spawner. Preserve a source template value
+                // only for the alarm alternate list, whose rows are added
+                // separately below.
                 auto mental_meter = rom[template_offset + 0x43U];
                 auto cyberware_flags = read_big_endian_word(
                     rom, template_offset + 0x44U);
@@ -8755,6 +8762,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     palette_line, actor_name, profile_id, action_code,
                     action_selector, source_action_ammo,
                     source_action_counter, action_kind, source_interaction_flags,
+                    source_spawn_state_flags,
                     physical_meter, delay_primary_attribute,
                     delay_secondary_attribute, delay_capability_flags,
                     mental_meter, cyberware_flags, posture, attribute_77, attribute_78,
@@ -8784,6 +8792,153 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             if (!found_terminator) {
                 throw std::runtime_error(
                     "dynamic world actor list has no null sentinel");
+            }
+        }
+    }
+    // ROM 0x1E1DA selects the fixed two-entry alternate table at 0x1E20A
+    // when FFE16F is active. Both longwords point at template 0x1D6A1C;
+    // 0x1E216 sends this list through the map-derived candidate spawner.
+    {
+        const auto alarm_list_offset = static_cast<std::uint32_t>(
+            srx::v(srx::FieldEncounter::ALARM_SEQUENCE_LIST_ADDRESS));
+        const auto alarm_template_offset = static_cast<std::uint32_t>(
+            srx::v(srx::FieldEncounter::ALARM_ACTOR_TEMPLATE_ADDRESS));
+        std::vector<std::uint32_t> alarm_tagged_templates;
+        bool found_terminator = false;
+        for (std::uint16_t source_order = 0U; source_order < 32U;
+             ++source_order) {
+            const auto tagged_template = read_big_endian_long(
+                rom, static_cast<std::size_t>(alarm_list_offset) +
+                         static_cast<std::size_t>(source_order) * 4U);
+            if (tagged_template == 0U) {
+                found_terminator = true;
+                break;
+            }
+            if ((tagged_template & static_cast<std::uint32_t>(
+                     srx::v(srx::FieldEncounter::
+                                TEMPLATE_POINTER_ADDRESS_MASK))) !=
+                alarm_template_offset) {
+                throw std::runtime_error(
+                    "ROM alarm alternate table has an unexpected actor template");
+            }
+            alarm_tagged_templates.push_back(tagged_template);
+        }
+        if (!found_terminator || alarm_tagged_templates.size() != 2U) {
+            throw std::runtime_error(
+                "ROM alarm alternate table is not the traced two-actor list");
+        }
+
+        const auto template_offset =
+            static_cast<std::size_t>(alarm_template_offset);
+        if (template_offset > rom.size() ||
+            rom.size() - template_offset < 0x4AU) {
+            throw std::runtime_error(
+                "ROM alarm alternate actor template points outside the ROM");
+        }
+        const auto entity_kind = read_big_endian_word(rom, template_offset);
+        const auto palette_line = static_cast<std::uint8_t>(
+            (read_big_endian_word(rom, template_offset + 2U) >> 13U) &
+            0x03U);
+        const auto actor_name = read_actor_name(template_offset);
+        if (actor_name.empty()) {
+            throw std::runtime_error(
+                "ROM alarm alternate actor has no readable name");
+        }
+        const auto action_selector = rom[template_offset + 8U];
+        const auto action_code = rom[template_offset + 9U];
+        const auto action_kind = action_code == 0U
+            ? std::string("none")
+            : ((action_selector & 0x80U) != 0U
+                   ? std::string("spell")
+                   : std::string("item"));
+        const auto profile_id = make_actor_profile_id(
+            rom, template_offset, entity_kind, action_kind, action_code);
+        const auto template_facts =
+            read_world_activity_actor_template_facts(template_offset);
+        const auto sprite_stem = entity_kind == 5U
+            ? profile_id
+            : entity_kind == 7U
+                ? "actor-kind-7-palette-" + std::to_string(palette_line)
+                : entity_kind == 11U
+                    ? std::string("pedestrian")
+                    : entity_kind == 8U
+                        ? std::string("yakuza-weenr")
+                        : make_sprite_stem(actor_name);
+        const auto visual_key = std::make_pair(entity_kind, palette_line);
+        if (actor_visual_sources.find(visual_key) ==
+            actor_visual_sources.end()) {
+            actor_visual_sources.emplace(
+                visual_key,
+                DefaultActorKindSource{entity_kind, palette_line, actor_name,
+                                       sprite_stem, alarm_template_offset});
+        }
+
+        for (std::size_t scene_id = 0U; scene_id < kFieldSceneCount;
+             ++scene_id) {
+            const auto context_group =
+                rom[kFieldContextGroupTableOffset + scene_id];
+            if (context_group >= kWorldActivityGroups) {
+                throw std::runtime_error(
+                    "alarm actor scene has an invalid context group");
+            }
+            for (std::size_t source_order = 0U;
+                 source_order < alarm_tagged_templates.size(); ++source_order) {
+                DynamicWorldActorRecord actor{};
+                actor.scene_id = static_cast<std::uint16_t>(scene_id);
+                actor.context_group = context_group;
+                actor.random_sum = static_cast<std::uint8_t>(
+                    srx::v(srx::FieldEncounter::SOURCE_SEQUENCE_SENTINEL));
+                actor.source_order = static_cast<std::uint16_t>(source_order);
+                actor.pointer_cell_offset = 0U; // fixed list; no selector cell [C]
+                actor.sequence_list_offset = alarm_list_offset;
+                actor.tagged_template = alarm_tagged_templates[source_order];
+                actor.template_offset = alarm_template_offset;
+                actor.entity_kind = entity_kind;
+                actor.palette_line = palette_line;
+                actor.actor_name = actor_name;
+                actor.profile_id = profile_id;
+                actor.action_code = action_code;
+                actor.source_action_slot = action_selector;
+                actor.source_action_ammo = rom[template_offset + 6U];
+                actor.source_action_counter = rom[template_offset + 7U];
+                actor.action_kind = action_kind;
+                actor.source_interaction_flags =
+                    template_facts.source_interaction_flags;
+                actor.source_spawn_state_flags =
+                    template_facts.source_spawn_state_flags;
+                actor.physical_meter = template_facts.physical_meter;
+                actor.delay_primary_attribute =
+                    template_facts.delay_primary_attribute;
+                actor.delay_secondary_attribute =
+                    template_facts.delay_secondary_attribute;
+                actor.delay_capability_flags =
+                    template_facts.delay_capability_flags;
+                actor.mental_meter = template_facts.mental_meter;
+                actor.cyberware_flags = template_facts.cyberware_flags;
+                actor.posture = template_facts.posture;
+                actor.attribute_77 = template_facts.attribute_77;
+                actor.attribute_78 = template_facts.attribute_78;
+                actor.attribute_79 = template_facts.attribute_79;
+                actor.attribute_7b = template_facts.attribute_7b;
+                actor.attribute_7c = template_facts.attribute_7c;
+                actor.attribute_85 = template_facts.attribute_85;
+                actor.item18_base = template_facts.item18_base;
+                actor.armor_index = template_facts.armor_index;
+                actor.race_or_state = template_facts.race_or_state;
+                actor.class_code = template_facts.class_code;
+                actor.modifier_flags_df = template_facts.modifier_flags_df;
+                actor.profile_index_a0 = template_facts.profile_index_a0;
+                actor.item_codes = template_facts.item_codes;
+                actor.item_phases = template_facts.item_phases;
+                actor.action_phase_extension =
+                    template_facts.action_phase_extension;
+                actor.action_skills = template_facts.action_skills;
+                actor.auxiliary_roll_bonus =
+                    template_facts.auxiliary_roll_bonus;
+                actor.sprite_stem = sprite_stem;
+                actor.ordered_overrides = "-";
+                actor.map_derived_placement = true;
+                dynamic_world_actor_records.push_back(std::move(actor));
             }
         }
     }
@@ -8984,7 +9139,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         DynamicWorldActorRecord actor{};
         actor.scene_id = 2U;
         actor.context_group = 0U;
-        actor.random_sum = 0xFFU;
+        actor.random_sum = static_cast<std::uint8_t>(
+            srx::v(srx::FieldEncounter::SOURCE_SEQUENCE_SENTINEL));
         actor.source_order = source_order;
         actor.pointer_cell_offset = 0U;
         actor.sequence_list_offset = kBorisStrikeTeamListOffset;
@@ -9045,7 +9201,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         table << "scene\tcontext_group\trandom_sum\tselection_cell_offset"
                  "\tsequence_list_offset\tsource_order\tactor_name"
                  "\tprofile_id\taction_kind\taction_code"
-                 "\tsource_interaction_flags"
+                 "\tsource_spawn_state_flags\tsource_interaction_flags"
                  "\tentity_kind\tpalette_line\tsprite_stem"
                  "\ttagged_template\ttemplate_offset\tordered_overrides"
                  "\tplacement_rule\tphysical_meter"
@@ -9104,6 +9260,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << actor.source_order << '\t' << actor.actor_name << '\t'
                   << actor.profile_id << '\t' << actor.action_kind << '\t'
                   << static_cast<unsigned>(actor.action_code) << '\t'
+                  << static_cast<unsigned>(actor.source_spawn_state_flags)
+                  << '\t'
                   << static_cast<unsigned>(actor.source_interaction_flags)
                   << '\t'
                   << actor.entity_kind << '\t'

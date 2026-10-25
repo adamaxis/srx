@@ -852,19 +852,19 @@ enum class ScriptFieldEncounterTriggerAction : std::uint8_t {
     not_due,
     sample_probability,
     random_miss,
-    forward_active_sequence,
+    select_alarm_sequence,
     select_scene_outcome,
 };
 
 struct ScriptFieldEncounterTriggerInput {
     std::uint16_t scene_id = 0;
-    std::uint16_t frame_counter = 0;
-    bool trigger_delay_active = false;
-    bool current_entity_protected = false;
-    bool activity_lock = false;
-    bool sequence_mode = false;
-    bool world_effects_active = false;
-    bool placement_pending = false;
+    std::uint16_t frame_counter = 0; // FFDF88 cadence value; host mapping [H]
+    std::uint16_t display_service_word = 0; // FFDFE8 [C]
+    bool leader_protected = false; // FFFC04 +0x11 bit 7 [C]
+    bool field_activity_lock_active = false; // FFE18B [C]
+    bool field_alarm_active = false; // FFE16F, Lua field_alarm state [C]
+    bool combat_active = false; // FFDF84 [C]
+    std::uint8_t encounter_actor_count = 0; // FFE177 [C]
     // Absent for the first Lua call. The host draws only after Lua reports
     // sample_probability, preserving the ROM's conditional PRNG consumption.
     std::optional<std::uint16_t> probability_roll;
@@ -1053,6 +1053,7 @@ struct ScriptFieldEncounterActor {
     std::string sprite_stem;
     std::uint32_t tagged_template = 0;
     std::uint32_t template_offset = 0;
+    std::uint8_t source_spawn_state_flags = 0; // +0x9E template byte [C]
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t physical_meter = 0;
     std::uint8_t delay_primary_attribute = 0;

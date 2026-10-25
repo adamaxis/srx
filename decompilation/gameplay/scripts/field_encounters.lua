@@ -31,6 +31,7 @@ local function actor_from_row(row)
         source_action_slot = row.source_action_slot,
         source_action_ammo = row.source_action_ammo,
         source_action_counter = row.source_action_counter,
+        source_spawn_state_flags = row.source_spawn_state_flags,
         source_interaction_flags = row.source_interaction_flags,
         physical_meter = row.physical_meter,
         palette_line = row.palette_line,
@@ -128,24 +129,26 @@ end
 function Encounters.trigger_attempt(context)
     if type(context) ~= "table" or
        not integer(context.scene_id, 0, E.Scene.LAST_ID) or
-       not integer(context.frame_counter, 0, 0xffff) or
-       type(context.trigger_delay_active) ~= "boolean" or
-       type(context.current_entity_protected) ~= "boolean" or
-       type(context.activity_lock) ~= "boolean" or
-       type(context.sequence_mode) ~= "boolean" or
-       type(context.world_effects_active) ~= "boolean" or
-       type(context.placement_pending) ~= "boolean" then
+       not integer(context.frame_counter, 0, E.FieldAlarm.WORD_MAX) or
+       not integer(context.display_service_word, 0, E.FieldAlarm.WORD_MAX) or
+       type(context.leader_protected) ~= "boolean" or
+       type(context.field_activity_lock_active) ~= "boolean" or
+       type(context.field_alarm_active) ~= "boolean" or
+       type(context.combat_active) ~= "boolean" or
+       not integer(context.encounter_actor_count, 0,
+                   E.FieldAlarm.ACTOR_FLAGS_MAX) then
         return nil
     end
 
-    if context.trigger_delay_active or
-       context.current_entity_protected or
-       context.activity_lock or
-       (not context.sequence_mode and context.world_effects_active) or
-       context.placement_pending then
+    if context.display_service_word ~= 0 or
+       context.leader_protected or
+       context.field_activity_lock_active or
+       (not context.field_alarm_active and context.combat_active) or
+       context.encounter_actor_count ~= 0 then
         return "blocked"
     end
-    if (context.frame_counter & 0x03ff) ~= 10 then
+    if (context.frame_counter & E.FieldEncounter.FRAME_MASK) ~=
+       E.FieldEncounter.FRAME_VALUE then
         return "not_due"
     end
     if context.probability_roll == nil then
@@ -158,8 +161,8 @@ function Encounters.trigger_attempt(context)
     if context.probability_roll >= context.probability_threshold then
         return "random_miss"
     end
-    if context.sequence_mode then
-        return "forward_active_sequence"
+    if context.field_alarm_active then
+        return "select_alarm_sequence"
     end
     return "select_scene_outcome"
 end
@@ -286,7 +289,8 @@ end
 -- extracted table so this lookup never leaks them into resolve().
 function Encounters.resolve_source_sequence(scene_id, sequence_list_offset)
     if not integer(scene_id, 0, E.Scene.LAST_ID) or
-       not integer(sequence_list_offset, 0, 0x1fffff) then
+       not integer(sequence_list_offset, 0,
+                   E.FieldEncounter.ROM_OFFSET_MAX) then
         return nil
     end
     local data = content()
@@ -295,7 +299,7 @@ function Encounters.resolve_source_sequence(scene_id, sequence_list_offset)
     end
     local actors = ordered_actor_rows(data, function(row)
         return row.scene == scene_id and
-               row.random_sum == 0xff and
+               row.random_sum == E.FieldEncounter.SOURCE_SEQUENCE_SENTINEL and
                row.sequence_list_offset == sequence_list_offset and
                row.placement_rule ==
                    "map-derived candidates around camera-relative map anchors"
@@ -317,6 +321,13 @@ function Encounters.resolve_source_sequence(scene_id, sequence_list_offset)
         sequence_list_offset = sequence_list_offset,
         actors = actors,
     }
+end
+
+-- ROM 0x1E1DA selects the fixed alternate list at 0x1E20A while FFE16F
+-- (field_alarm_active) is set. The list's actor template pointer is 0x1D6A1C.
+function Encounters.resolve_alarm_sequence(scene_id)
+    return Encounters.resolve_source_sequence(
+        scene_id, E.FieldEncounter.ALARM_SEQUENCE_LIST_ADDRESS)
 end
 
 return Encounters

@@ -47,6 +47,15 @@ E.FieldAlarm = {
     LIST_ADDRESS_MAX = 0xFFFFFFFF, -- source longword bound [C]
     ACTOR_FLAGS_MAX = 0xFF, -- +0x9E byte bound [C]
 } -- 0x1DFC4 cadence and unsigned random gate [C]
+E.FieldEncounter = {
+    FRAME_MASK = 0x03FF, -- raw 0x03FF: FFDF88 low-word cadence mask at 0x1E1AE [C]
+    FRAME_VALUE = 10, -- raw 10: matching cadence value at 0x1E1B2 [C]
+    SOURCE_SEQUENCE_SENTINEL = 0xFF, -- raw 0xFF: direct source lists are excluded from random-sum rows [C]
+    ROM_OFFSET_MAX = 0x1FFFFF, -- raw 0x1FFFFF: maximum 21-bit ROM offset accepted by the source table [C]
+    TEMPLATE_POINTER_ADDRESS_MASK = 0x7FFFFFFF, -- raw 0x7FFFFFFF: 0x1E25A masks the actor template pointer tag [C]
+    ALARM_SEQUENCE_LIST_ADDRESS = 0x1E20A, -- raw 0x1E20A: alarm alternate list selected at 0x1E1DA [C]
+    ALARM_ACTOR_TEMPLATE_ADDRESS = 0x1D6A1C, -- raw 0x1D6A1C: both alarm-list longwords reference this actor template [C]
+} -- ROM 0x1E166 trigger gate and 0x1E20A alarm alternate list [C]
 E.FieldAlarmRomLayout = {
     PROFILE_TABLE_ADDRESS = 0x3232, -- raw 0x3232: scene profile pointer table [C; extractor only]
     PROFILE_EFFECT_POINTER_OFFSET = 0x58, -- raw 0x58: profile +0x58 [C; extractor only]

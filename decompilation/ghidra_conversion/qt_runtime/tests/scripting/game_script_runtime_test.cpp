@@ -895,37 +895,40 @@ int main() {
 
     ScriptFieldEncounterTriggerInput encounter_trigger{};
     encounter_trigger.scene_id = 2U;
-    encounter_trigger.frame_counter = 10U;
+    encounter_trigger.frame_counter = static_cast<std::uint16_t>(
+        srx::v(srx::FieldEncounter::FRAME_VALUE));
     const auto gate_requests_roll =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.frame_counter = 9U;
+    encounter_trigger.frame_counter = static_cast<std::uint16_t>(
+        srx::v(srx::FieldEncounter::FRAME_VALUE) - 1);
     const auto gate_waits_for_cadence =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.frame_counter = 10U;
-    encounter_trigger.trigger_delay_active = true;
+    encounter_trigger.frame_counter = static_cast<std::uint16_t>(
+        srx::v(srx::FieldEncounter::FRAME_VALUE));
+    encounter_trigger.display_service_word = 1U;
     const auto gate_respects_delay =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.trigger_delay_active = false;
-    encounter_trigger.current_entity_protected = true;
+    encounter_trigger.display_service_word = 0U;
+    encounter_trigger.leader_protected = true;
     const auto gate_respects_protected_actor =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.current_entity_protected = false;
-    encounter_trigger.activity_lock = true;
+    encounter_trigger.leader_protected = false;
+    encounter_trigger.field_activity_lock_active = true;
     const auto gate_respects_activity_lock =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.activity_lock = false;
-    encounter_trigger.world_effects_active = true;
-    const auto gate_respects_active_world_effect =
+    encounter_trigger.field_activity_lock_active = false;
+    encounter_trigger.combat_active = true;
+    const auto gate_respects_active_combat =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.sequence_mode = true;
-    const auto gate_still_rolls_for_active_sequence =
+    encounter_trigger.field_alarm_active = true;
+    const auto gate_alarm_allows_active_combat =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.sequence_mode = false;
-    encounter_trigger.world_effects_active = false;
-    encounter_trigger.placement_pending = true;
-    const auto gate_respects_placement_lock =
+    encounter_trigger.encounter_actor_count = 1U;
+    const auto gate_respects_encounter_actor_count =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.placement_pending = false;
+    encounter_trigger.encounter_actor_count = 0U;
+    encounter_trigger.field_alarm_active = false;
+    encounter_trigger.combat_active = false;
     encounter_trigger.probability_roll = 4U;
     encounter_trigger.probability_threshold = 5U;
     const auto gate_accepts_below_threshold =
@@ -933,9 +936,10 @@ int main() {
     encounter_trigger.probability_roll = 5U;
     const auto gate_rejects_at_threshold =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.sequence_mode = true;
+    encounter_trigger.field_alarm_active = true;
+    encounter_trigger.combat_active = true;
     encounter_trigger.probability_roll = 0U;
-    const auto gate_forwards_without_resampling_outcome =
+    const auto gate_selects_alarm_sequence =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
     if (!expect(
             gate_requests_roll ==
@@ -948,21 +952,46 @@ int main() {
                     ScriptFieldEncounterTriggerAction::blocked &&
                 gate_respects_activity_lock ==
                     ScriptFieldEncounterTriggerAction::blocked &&
-                gate_respects_active_world_effect ==
+                gate_respects_active_combat ==
                     ScriptFieldEncounterTriggerAction::blocked &&
-                gate_still_rolls_for_active_sequence ==
+                gate_alarm_allows_active_combat ==
                     ScriptFieldEncounterTriggerAction::sample_probability &&
-                gate_respects_placement_lock ==
+                gate_respects_encounter_actor_count ==
                     ScriptFieldEncounterTriggerAction::blocked &&
                 gate_accepts_below_threshold ==
                     ScriptFieldEncounterTriggerAction::select_scene_outcome &&
                 gate_rejects_at_threshold ==
                     ScriptFieldEncounterTriggerAction::random_miss &&
-                gate_forwards_without_resampling_outcome ==
-                    ScriptFieldEncounterTriggerAction::forward_active_sequence,
+                gate_selects_alarm_sequence ==
+                    ScriptFieldEncounterTriggerAction::select_alarm_sequence,
             "Lua ROM encounter gates did not preserve eligibility and random thresholds")) {
         std::cerr << scripts.failure() << '\n';
         return 2;
+    }
+
+    const auto alarm_alternate_sequence = scripts.resolve_field_actor_sequence(
+        2U, static_cast<std::uint32_t>(
+                srx::v(srx::FieldEncounter::ALARM_SEQUENCE_LIST_ADDRESS)));
+    if (!expect(
+            alarm_alternate_sequence.has_value() &&
+                alarm_alternate_sequence->kind ==
+                    ScriptFieldEncounterOutcomeKind::
+                        dynamic_world_effect_sequence &&
+                alarm_alternate_sequence->placement_policy ==
+                    ScriptFieldEncounterPlacementPolicy::
+                        map_derived_candidates &&
+                alarm_alternate_sequence->actors.size() == 2U &&
+                alarm_alternate_sequence->actors[0].template_offset ==
+                    static_cast<std::uint32_t>(srx::v(
+                        srx::FieldEncounter::ALARM_ACTOR_TEMPLATE_ADDRESS)) &&
+                alarm_alternate_sequence->actors[1].template_offset ==
+                    static_cast<std::uint32_t>(srx::v(
+                        srx::FieldEncounter::ALARM_ACTOR_TEMPLATE_ADDRESS)) &&
+                alarm_alternate_sequence->actors[0].source_spawn_state_flags ==
+                    alarm_alternate_sequence->actors[1].source_spawn_state_flags,
+            "Lua did not resolve the two source actors from ROM alarm list 0x1E20A")) {
+        std::cerr << scripts.failure() << '\n';
+        return 3;
     }
 
     const auto run_ids =
@@ -4924,6 +4953,8 @@ int main() {
          CatalogDecision::unarmed},
         {"guard1_k05_item03", 5U, ScriptActorActionKind::item, 3U,
          CatalogDecision::item_gated},
+        {"corp_guard_k05_item06", 5U, ScriptActorActionKind::item, 6U,
+         CatalogDecision::item_gated},
         {"lone13_k05_item0a", 5U, ScriptActorActionKind::item, 10U,
          CatalogDecision::item_gated},
         {"ghoul1_k07_none00", 7U, ScriptActorActionKind::none, 0U,
@@ -4989,7 +5020,7 @@ int main() {
         }
         unsigned entity_kind = 0U;
         unsigned action_code = 0U;
-        if (!parse_unsigned(columns[11], entity_kind) ||
+        if (!parse_unsigned(columns[12], entity_kind) ||
             !parse_unsigned(columns[9], action_code)) {
             catalog_file_ok = false;
             break;
@@ -5030,7 +5061,7 @@ int main() {
     };
     bool catalog_ids_match =
         catalog_file_ok && catalog_seen.size() == catalog_profile_count &&
-        catalog_profile_count == 22U;
+        catalog_profile_count == 23U;
     if (catalog_ids_match) {
         for (const auto& seen : catalog_seen) {
             const auto* row = catalog_row_for(seen.profile_id);

@@ -6652,6 +6652,7 @@ GameScriptRuntime::resolve_field_encounter_impl(
             std::uint32_t source_action_slot = 0U;
             std::uint32_t source_action_ammo = 0U;
             std::uint32_t source_action_counter = 0U;
+            std::uint32_t source_spawn_state_flags = 0U;
             std::uint32_t source_interaction_flags = 0U;
             std::uint32_t physical_meter = 0U;
             std::uint32_t palette_line = 0U;
@@ -6692,6 +6693,9 @@ GameScriptRuntime::resolve_field_encounter_impl(
                 read_field_integer(state, actor_index,
                                    "source_action_counter", 255U,
                                    source_action_counter) &&
+                read_field_integer(state, actor_index,
+                                   "source_spawn_state_flags", 255U,
+                                   source_spawn_state_flags) &&
                 read_field_integer(state, actor_index,
                                    "source_interaction_flags", 255U,
                                    source_interaction_flags) &&
@@ -6873,6 +6877,8 @@ GameScriptRuntime::resolve_field_encounter_impl(
                 static_cast<std::uint8_t>(source_action_ammo);
             actor.source_action_counter =
                 static_cast<std::uint8_t>(source_action_counter);
+            actor.source_spawn_state_flags =
+                static_cast<std::uint8_t>(source_spawn_state_flags);
             actor.source_interaction_flags =
                 static_cast<std::uint8_t>(source_interaction_flags);
             actor.physical_meter =
@@ -6992,12 +6998,13 @@ GameScriptRuntime::evaluate_field_encounter_trigger(
     };
     set_integer("scene_id", input.scene_id);
     set_integer("frame_counter", input.frame_counter);
-    set_boolean("trigger_delay_active", input.trigger_delay_active);
-    set_boolean("current_entity_protected", input.current_entity_protected);
-    set_boolean("activity_lock", input.activity_lock);
-    set_boolean("sequence_mode", input.sequence_mode);
-    set_boolean("world_effects_active", input.world_effects_active);
-    set_boolean("placement_pending", input.placement_pending);
+    set_integer("display_service_word", input.display_service_word);
+    set_boolean("leader_protected", input.leader_protected);
+    set_boolean("field_activity_lock_active",
+                input.field_activity_lock_active);
+    set_boolean("field_alarm_active", input.field_alarm_active);
+    set_boolean("combat_active", input.combat_active);
+    set_integer("encounter_actor_count", input.encounter_actor_count);
     if (input.probability_roll.has_value()) {
         set_integer("probability_roll", *input.probability_roll);
     } else {
@@ -7025,8 +7032,8 @@ GameScriptRuntime::evaluate_field_encounter_trigger(
         result = ScriptFieldEncounterTriggerAction::sample_probability;
     } else if (action == "random_miss") {
         result = ScriptFieldEncounterTriggerAction::random_miss;
-    } else if (action == "forward_active_sequence") {
-        result = ScriptFieldEncounterTriggerAction::forward_active_sequence;
+    } else if (action == "select_alarm_sequence") {
+        result = ScriptFieldEncounterTriggerAction::select_alarm_sequence;
     } else if (action == "select_scene_outcome") {
         result = ScriptFieldEncounterTriggerAction::select_scene_outcome;
     }

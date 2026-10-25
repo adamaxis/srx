@@ -289,6 +289,15 @@ enum class FieldAlarmRomLayout : std::int64_t {
     PROFILE_TABLE_ADDRESS = 0x3232,
     SCENE_21_REINFORCEMENT_LIST = 0x1D7460,
 };
+enum class FieldEncounter : std::int64_t {
+    FRAME_VALUE = 0xA,
+    SOURCE_SEQUENCE_SENTINEL = 0xFF,
+    FRAME_MASK = 0x3FF,
+    ALARM_SEQUENCE_LIST_ADDRESS = 0x1E20A,
+    ALARM_ACTOR_TEMPLATE_ADDRESS = 0x1D6A1C,
+    ROM_OFFSET_MAX = 0x1FFFFF,
+    TEMPLATE_POINTER_ADDRESS_MASK = 0x7FFFFFFF,
+};
 enum class GhoulBounty : std::int64_t {
     MAX_DEFEATS = 0x14,
 };

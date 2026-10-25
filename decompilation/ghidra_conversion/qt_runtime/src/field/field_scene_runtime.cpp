@@ -3449,7 +3449,8 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
     if (!std::getline(input, line) ||
         line != "scene\tcontext_group\trandom_sum\tselection_cell_offset"
                 "\tsequence_list_offset\tsource_order\tactor_name\tprofile_id"
-                "\taction_kind\taction_code\tsource_interaction_flags"
+                "\taction_kind\taction_code\tsource_spawn_state_flags"
+                "\tsource_interaction_flags"
                 "\tentity_kind\tpalette_line"
                 "\tsprite_stem\ttagged_template\ttemplate_offset"
                 "\tordered_overrides\tplacement_rule\tphysical_meter"
@@ -3502,23 +3503,25 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 75U) {
+            if (fields.size() != 76U) {
                 failure_ = "dynamic world-activity actor row is malformed";
                 return false;
             }
-            const auto kind = static_cast<std::uint16_t>(std::stoul(fields[11]));
-            const auto physical_meter = std::stoul(fields[18]);
-            const auto delay_primary_attribute = std::stoul(fields[19]);
-            const auto delay_secondary_attribute = std::stoul(fields[20]);
-            const auto delay_capability_flags = std::stoul(fields[21]);
-            const auto source_action_slot = std::stoul(fields[68]);
-            const auto source_action_ammo = std::stoul(fields[69]);
-            const auto source_action_counter = std::stoul(fields[70]);
-            const auto run_target_area = std::stoul(fields[71]);
-            const auto run_target_event = std::stoul(fields[72]);
-            const auto run_target_x = std::stoul(fields[73]);
-            const auto run_target_y = std::stoul(fields[74]);
-            if (kind < 4U || kind > 14U || fields[13].empty() ||
+            const auto source_spawn_state_flags = std::stoul(fields[10]);
+            const auto kind = static_cast<std::uint16_t>(std::stoul(fields[12]));
+            const auto physical_meter = std::stoul(fields[19]);
+            const auto delay_primary_attribute = std::stoul(fields[20]);
+            const auto delay_secondary_attribute = std::stoul(fields[21]);
+            const auto delay_capability_flags = std::stoul(fields[22]);
+            const auto source_action_slot = std::stoul(fields[69]);
+            const auto source_action_ammo = std::stoul(fields[70]);
+            const auto source_action_counter = std::stoul(fields[71]);
+            const auto run_target_area = std::stoul(fields[72]);
+            const auto run_target_event = std::stoul(fields[73]);
+            const auto run_target_x = std::stoul(fields[74]);
+            const auto run_target_y = std::stoul(fields[75]);
+            if (source_spawn_state_flags > 0xFFU || kind < 4U ||
+                kind > 14U || fields[14].empty() ||
                 physical_meter > 0xFFU ||
                 delay_primary_attribute > 0xFFU ||
                 delay_secondary_attribute > 0xFFU ||
@@ -3534,7 +3537,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 return false;
             }
             const auto [position, inserted] =
-                actor_kinds.emplace(fields[13], kind);
+                actor_kinds.emplace(fields[14], kind);
             if (!inserted && position->second != kind) {
                 failure_ = "dynamic actor sprite stem maps to multiple kinds";
                 return false;
@@ -5209,15 +5212,15 @@ void FieldSceneRuntime::advance_default_field_actors(
             // +0x10 bit 3 is clear. The random-encounter timeout counter below
             // is a separate host path; Club list results keep their own count.
             if (actor.temporary_world_encounter &&
-                field_world_activity_timeout_state_.scene_36_gate != 0U) {
-                --field_world_activity_timeout_state_.scene_36_gate;
+                field_world_activity_timeout_state_.encounter_actor_count != 0U) {
+                --field_world_activity_timeout_state_.encounter_actor_count;
             }
             if (actor.temporary_world_encounter) {
                 source_boundary(
                     "field.random_encounter.actor_transition_completed");
             }
             if (actor.temporary_world_encounter &&
-                field_world_activity_timeout_state_.scene_36_gate == 0U) {
+                field_world_activity_timeout_state_.encounter_actor_count == 0U) {
                 reset_field_entity_service_records();
                 source_boundary(
                     "field.random_encounter.sequence_transitions_complete");
@@ -6196,13 +6199,18 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.source_action_slot = source_actor.source_action_slot;
         actor.source_action_ammo = source_actor.source_action_ammo;
         actor.source_action_counter = source_actor.source_action_counter;
-        actor.source_spawn_state_flags = actor_flag_mask(
-            ActorSpawnStateFlag::world_activity_member);
         actor.combatant = source_actor.combatant;
         actor.combatant.record_type = actor_slot;
         actor.combatant.source_flags = actor.source_record_flags;
         actor.combatant.interaction_flags =
             actor.source_interaction_flags;
+        // ROM 0x1E25A writes +0x4D=4 after template construction.
+        actor.combatant.posture = static_cast<std::uint8_t>(
+            srx::v(srx::Posture::FULL_OFFENSE));
+        // ROM 0x1E25A sets +0x9E bit 6, preserving template/list flags.
+        actor.source_spawn_state_flags = static_cast<std::uint8_t>(
+            source_actor.source_spawn_state_flags |
+            static_cast<std::uint8_t>(srx::v(srx::ActorFlag::HOSTILE)));
         actor.effect_slot = static_cast<std::uint8_t>(
             std::distance(field_world_effect_slots_occupied_.begin(),
                           effect_slot));
@@ -6298,9 +6306,9 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.transition_complete = decision->transition_complete;
 
         field_world_effect_slots_occupied_[actor.effect_slot.value()] = true;
-        field_world_activity_timeout_state_.scene_36_gate =
+        field_world_activity_timeout_state_.encounter_actor_count =
             static_cast<std::uint8_t>(
-                field_world_activity_timeout_state_.scene_36_gate + 1U);
+                field_world_activity_timeout_state_.encounter_actor_count + 1U);
         field_default_actors_.push_back(std::move(actor));
         (void)schedule_world_activity_timeout(
             field_world_activity_timeout_state_);
@@ -6540,15 +6548,21 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
     scripting::ScriptFieldEncounterTriggerInput trigger{};
     trigger.scene_id = state_.field_scene_buffers.scene_reference;
     trigger.frame_counter = field_world_frame_counter_;
-    trigger.trigger_delay_active = state_.display_service_word != 0U;
-    trigger.current_entity_protected =
-        (field_movement_behavior_record_.record_flags & 0x80U) != 0U;
-    trigger.activity_lock = field_runtime_state_.field_activity_lock;
-    trigger.sequence_mode = world_frame_logic_state_.event_lock != 0U;
-    trigger.world_effects_active =
-        field_world_activity_timeout_state_.timeout_marker != 0;
-    trigger.placement_pending =
-        field_world_activity_timeout_state_.scene_36_gate != 0U;
+    trigger.display_service_word =
+        field_runtime_state_.display_service_word; // FFDFE8 [C]
+    const auto leader_status_ex = static_cast<std::uint8_t>(
+        active_runner_record().flags & 0x00FFU); // FFFC04 +0x11 (low byte) [C]
+    trigger.leader_protected =
+        (leader_status_ex & static_cast<std::uint8_t>(
+             srx::v(srx::ActorStatusEx::UNSEEN))) != 0U; // bit 7 [C]
+    trigger.field_activity_lock_active =
+        field_runtime_state_.field_activity_lock; // FFE18B [C]
+    trigger.field_alarm_active =
+        field_matrix_field_state_.alarm.value_or(false); // FFE16F [C]
+    trigger.combat_active =
+        world_frame_logic_state_.world_active != 0U; // FFDF84 [C]
+    trigger.encounter_actor_count =
+        field_world_activity_timeout_state_.encounter_actor_count; // FFE177 [C]
 
     auto action = game_scripts_.evaluate_field_encounter_trigger(trigger);
     if (!action.has_value()) {
@@ -6578,9 +6592,27 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
     case scripting::ScriptFieldEncounterTriggerAction::not_due:
     case scripting::ScriptFieldEncounterTriggerAction::random_miss:
         return;
-    case scripting::ScriptFieldEncounterTriggerAction::forward_active_sequence:
-        source_boundary("field.random_encounter.forward_existing_sequence");
+    case scripting::ScriptFieldEncounterTriggerAction::select_alarm_sequence: {
+        auto outcome = game_scripts_.resolve_field_actor_sequence(
+            trigger.scene_id,
+            static_cast<std::uint32_t>(
+                srx::v(srx::FieldEncounter::ALARM_SEQUENCE_LIST_ADDRESS)));
+        if (!outcome.has_value() ||
+            outcome->kind != scripting::
+                ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence ||
+            outcome->placement_policy != scripting::
+                ScriptFieldEncounterPlacementPolicy::map_derived_candidates) {
+            failure_ = game_scripts_.failure().empty()
+                ? "ROM alarm alternate actor list is unavailable"
+                : game_scripts_.failure();
+            source_boundary("field.random_encounter.alarm_list_unresolved");
+            return;
+        }
+        pending_field_encounter_outcome_ = std::move(*outcome);
+        source_boundary("field.random_encounter.alarm_sequence_resolved");
+        spawn_field_world_effect_sequence();
         return;
+    }
     case scripting::ScriptFieldEncounterTriggerAction::select_scene_outcome:
         (void)select_field_world_effect_sequence();
         if (!pending_field_encounter_outcome_.has_value()) {
