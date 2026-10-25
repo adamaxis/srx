@@ -400,8 +400,19 @@ int run_field_vdp_mirror_qa(
     qt_runtime::FieldSceneRuntime default_scene(
         [](const std::string_view) {});
     if (!default_scene.bootstrap_for_scene_dump(startup_state, 2U) ||
-        default_scene.field_vdp_model_for_dump() != nullptr) {
+        default_scene.field_vdp_model_for_dump() != nullptr ||
+        default_scene.field_vdp_frame_latch_for_dump() != nullptr ||
+        default_scene.field_vdp_sprite_limit_state_for_dump() != nullptr) {
         std::cerr << "field VDP mirror QA: mirror was not off by default\n";
+        return 3;
+    }
+    default_scene.stage_field_sat_pieces(
+        std::vector<qt_runtime::VdpSpritePiece>(
+            21U, qt_runtime::VdpSpritePiece{0, 10, 8, 1}));
+    default_scene.advance_frame();
+    if (default_scene.field_vdp_frame_latch_for_dump() != nullptr ||
+        default_scene.field_vdp_sprite_limit_state_for_dump() != nullptr) {
+        std::cerr << "field VDP mirror QA: disabled mirror allocated frame state\n";
         return 3;
     }
     std::cout << "field_vdp_mirror_default=off\n";
@@ -498,6 +509,101 @@ int run_field_vdp_mirror_qa(
             if (mismatches != 0U) {
                 return 3;
             }
+
+            // Move the camera during one host tick. ROM 0x0BD2 is the main-
+            // loop VBlank wait; the mirror should keep the prior displayed
+            // viewport through the tick, then publish its staged scroll at
+            // the next tick's 0x1872-equivalent latch.
+            const auto* latch = field_scene.field_vdp_frame_latch_for_dump();
+            if (latch == nullptr) {
+                std::cerr << "field VDP mirror QA: enabled latch missing\n";
+                return 3;
+            }
+            const auto before_move =
+                field_scene.field_vdp_viewport_origin_for_dump();
+            const auto& field_map = field_scene.field_map_for_dump();
+            const auto max_view_x = std::max(
+                0, field_map.width() - qt_runtime::VdpModel::kDisplayWidth);
+            const auto max_view_y = std::max(
+                0, field_map.height() - qt_runtime::VdpModel::kDisplayHeight);
+            const auto moved_x = max_view_x > 0
+                ? (before_move.first < max_view_x
+                       ? std::min(before_move.first + 16, max_view_x)
+                       : std::max(0, before_move.first - 16))
+                : before_move.first;
+            const auto moved_y = max_view_y > 0
+                ? (before_move.second < max_view_y
+                       ? std::min(before_move.second + 16, max_view_y)
+                       : std::max(0, before_move.second - 16))
+                : before_move.second;
+            const auto use_x = moved_x != before_move.first;
+            if (!use_x && moved_y == before_move.second) {
+                std::cerr << "field VDP mirror QA: scene 2 has no camera span\n";
+                return 3;
+            }
+            const auto camera_x = static_cast<std::uint16_t>(
+                (use_x ? moved_x : before_move.first) << 4U);
+            const auto camera_y = static_cast<std::uint16_t>(
+                (use_x ? before_move.second : moved_y) << 4U);
+            field_scene.set_field_camera_world_position_for_dump(
+                camera_x, camera_y);
+            field_scene.advance_frame();
+            const auto* pending = latch->pending_frame();
+            if (pending == nullptr) {
+                std::cerr << "field VDP mirror QA: tick did not stage scroll\n";
+                return 3;
+            }
+            const auto previous_tick_scroll = pending->scroll;
+            const auto expected_x = std::clamp<int>(
+                previous_tick_scroll.plane_a_horizontal, 0, max_view_x);
+            const auto expected_y = std::clamp<int>(
+                previous_tick_scroll.plane_a_vertical, 0, max_view_y);
+            const auto after_camera_tick =
+                field_scene.field_vdp_viewport_origin_for_dump();
+            if (after_camera_tick != before_move ||
+                (expected_x == before_move.first &&
+                 expected_y == before_move.second)) {
+                std::cerr << "field VDP mirror QA: viewport did not lag the "
+                             "new camera scroll by one tick\n";
+                return 3;
+            }
+            field_scene.advance_frame();
+            const auto after_next_latch =
+                field_scene.field_vdp_viewport_origin_for_dump();
+            const auto* displayed_latch =
+                field_scene.field_vdp_frame_latch_for_dump();
+            if (after_next_latch != std::pair<int, int>{expected_x,
+                                                        expected_y} ||
+                displayed_latch == nullptr ||
+                displayed_latch->displayed_frame().scroll.plane_a_horizontal !=
+                    previous_tick_scroll.plane_a_horizontal ||
+                displayed_latch->displayed_frame().scroll.plane_a_vertical !=
+                    previous_tick_scroll.plane_a_vertical) {
+                std::cerr << "field VDP mirror QA: displayed viewport did not "
+                             "match the previous tick at VBlank\n";
+                return 3;
+            }
+            std::cout << "field_vdp_mirror_latch=passed previous_tick="
+                      << expected_x << ',' << expected_y << '\n';
+
+            std::vector<qt_runtime::VdpSpritePiece> sat_pieces(
+                21U, qt_runtime::VdpSpritePiece{0, 10, 8, 1});
+            field_scene.stage_field_sat_pieces(std::move(sat_pieces));
+            field_scene.advance_frame(); // source frame stages the SAT
+            field_scene.advance_frame(); // next VBlank applies H40 limits
+            const auto* limits =
+                field_scene.field_vdp_sprite_limit_state_for_dump();
+            if (limits == nullptr || limits->pieces.size() != 21U ||
+                limits->pieces_dropped_by_total_limit != 0U ||
+                limits->scanlines_at_sprite_limit != 1U ||
+                limits->pieces[19U].visible_scanlines !=
+                    std::vector<int>{10} ||
+                !limits->pieces[20U].visible_scanlines.empty()) {
+                std::cerr << "field VDP mirror QA: 21st SAT piece was not "
+                             "dropped by the one-line limit\n";
+                return 3;
+            }
+            std::cout << "field_vdp_mirror_sat=passed visible=20 dropped=1\n";
         }
 
         const auto image_path = output /

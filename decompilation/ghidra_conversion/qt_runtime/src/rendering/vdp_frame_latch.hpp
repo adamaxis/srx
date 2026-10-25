@@ -31,6 +31,9 @@ public:
     const VdpSatScrollFrame& displayed_frame() const noexcept {
         return displayed_frame_;
     }
+    const VdpSatScrollFrame* pending_frame() const noexcept {
+        return pending_frame_ ? &*pending_frame_ : nullptr;
+    }
     bool has_pending_frame() const noexcept {
         return pending_frame_.has_value();
     }

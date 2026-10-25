@@ -280,6 +280,9 @@ public:
         const integration::StartupIntegrationState& startup_state,
         std::uint16_t scene_reference);
     void advance_frame();
+    // Combat integration may submit the source-ordered SAT pieces for the
+    // next opt-in VDP-mirror frame. The mirror is the only owner of this list.
+    void stage_field_sat_pieces(std::vector<VdpSpritePiece> pieces);
     void set_controller_nibble(std::uint8_t dpad_nibble) noexcept;
     // Host audio entry points beyond play_sfx/stop_sfx (constructor
     // callbacks): play_music 0x530EA, op 0x20 attenuation 0x5315E, and the
@@ -646,6 +649,15 @@ public:
     void set_field_vdp_mirror_enabled_for_qa(bool enabled);
     const VdpModel* field_vdp_model_for_dump() const noexcept {
         return field_vdp_mirror_ ? &field_vdp_mirror_->model() : nullptr;
+    }
+    const VdpFrameLatch* field_vdp_frame_latch_for_dump() const noexcept {
+        return field_vdp_mirror_ ? &field_vdp_mirror_->frame_latch() : nullptr;
+    }
+    const FieldVdpSpriteLimitState*
+    field_vdp_sprite_limit_state_for_dump() const noexcept {
+        return field_vdp_mirror_
+            ? &field_vdp_mirror_->sprite_limit_state()
+            : nullptr;
     }
     std::pair<int, int> field_vdp_viewport_origin_for_dump() const noexcept {
         if (!field_vdp_mirror_) {
@@ -1571,6 +1583,7 @@ private:
     void reset_field_map_cell_words();
     bool repaint_field_map_cell(std::size_t cell);
     void rebuild_field_vdp_mirror();
+    void stage_field_vdp_frame();
     std::size_t apply_world_effect_layer_writes(
         bool layer_b_target, const std::vector<MapWordWrite>& writes);
     void paint_field_console_background(QPainter& painter) const;

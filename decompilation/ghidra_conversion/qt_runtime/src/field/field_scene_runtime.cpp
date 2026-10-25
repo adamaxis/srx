@@ -11026,6 +11026,15 @@ void FieldSceneRuntime::advance_frame() {
     if (!ready_) {
         return;
     }
+    // ROM 0x0BD2 is the main-loop VBlank wait and 0x1872 services the
+    // displayed-frame transfers after it. Latch the prior tick's staged
+    // scroll/SAT here, before this tick's field logic [C]. The host tick
+    // boundary standing in for that wait is a scheduling match [H].
+    if (field_vdp_mirror_ &&
+        field_vdp_mirror_->frame_latch().has_pending_frame() &&
+        !field_vdp_mirror_->latch_vblank()) {
+        source_boundary("field.vdp_mirror.vblank_stream_failed");
+    }
     service_scene_music_latch();
     if (command_overview_return_transition_active_) {
         advance_command_overview_return_transition();
@@ -12558,6 +12567,9 @@ void FieldSceneRuntime::advance_frame() {
     if (result == integration::FieldRuntimeFrameResult::callback_unresolved) {
         source_boundary("field.runtime.callback_unresolved");
     }
+    // The completed 60 Hz host tick has built its next displayed scroll state;
+    // the next advance_frame call publishes it at the VBlank-equivalent.
+    stage_field_vdp_frame();
 }
 
 void FieldSceneRuntime::paint_field_scene_entities(

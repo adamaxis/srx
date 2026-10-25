@@ -647,6 +647,25 @@ void FieldSceneRuntime::rebuild_field_vdp_mirror() {
     field_vdp_mirror_ = std::move(next_mirror);
 }
 
+void FieldSceneRuntime::stage_field_sat_pieces(
+    std::vector<VdpSpritePiece> pieces) {
+    if (field_vdp_mirror_) {
+        field_vdp_mirror_->stage_sat_pieces(std::move(pieces));
+    }
+}
+
+void FieldSceneRuntime::stage_field_vdp_frame() {
+    if (!field_vdp_mirror_) {
+        return;
+    }
+    field_vdp_mirror_->stage_frame(
+        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
+        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y),
+        static_cast<std::int16_t>(
+            field_camera_follow_.vertical_bias_b -
+            field_camera_follow_.vertical_bias_a));
+}
+
 bool FieldSceneRuntime::repaint_field_map_cell(const std::size_t cell) {
     constexpr int kCellPixels = 32;
     if (field_map_cell_columns_ == 0U || cell >= field_map_cell_words_.size()) {
@@ -815,15 +834,6 @@ void FieldSceneRuntime::update_source_field_camera() {
             column_edge, {[this](const FieldTileColumnEdgeRequest&) {
                 source_boundary("field.camera.column_edge");
             }});
-    }
-    if (field_vdp_mirror_ &&
-        !field_vdp_mirror_->update_camera(
-            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
-            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y),
-            static_cast<std::int16_t>(
-                field_camera_follow_.vertical_bias_b -
-                field_camera_follow_.vertical_bias_a))) {
-        source_boundary("field.vdp_mirror.camera_stream_failed");
     }
 }
 

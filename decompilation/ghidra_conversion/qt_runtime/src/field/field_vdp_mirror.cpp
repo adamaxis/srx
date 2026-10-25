@@ -350,6 +350,91 @@ bool FieldVdpMirror::update_camera(
     return stream_viewport();
 }
 
+void FieldVdpMirror::stage_sat_pieces(
+    std::vector<VdpSpritePiece> pieces) {
+    pending_sat_pieces_ = std::move(pieces);
+}
+
+void FieldVdpMirror::stage_frame(
+    const std::uint16_t camera_x_fixed,
+    const std::uint16_t camera_y_fixed,
+    const std::int16_t plane_b_vertical_offset) {
+    const auto horizontal = static_cast<std::int16_t>(camera_x_fixed >> 4U);
+    const auto vertical = static_cast<std::int16_t>(camera_y_fixed >> 4U);
+    VdpSatScrollFrame frame;
+    frame.sat_ordered_pieces = std::move(pending_sat_pieces_);
+    pending_sat_pieces_.clear();
+    // Field Plane B currently follows Plane A horizontally; FFDD0E's field
+    // offset is the camera-follow bias difference, captured as zero [C].
+    frame.scroll = {horizontal, vertical, horizontal,
+                    static_cast<std::int16_t>(vertical +
+                                              plane_b_vertical_offset)};
+    frame_latch_.stage_for_vblank(std::move(frame));
+}
+
+bool FieldVdpMirror::latch_vblank() {
+    if (!frame_latch_.latch_vblank()) {
+        return false;
+    }
+
+    const auto& frame = frame_latch_.displayed_frame();
+    sprite_limit_state_.pieces =
+        apply_vdp_sprite_limits(frame.sat_ordered_pieces);
+    sprite_limit_state_.pieces_dropped_by_total_limit = 0U;
+    std::array<int, VdpModel::kDisplayHeight> sprites_per_scanline{};
+    std::array<int, VdpModel::kDisplayHeight> pixels_per_scanline{};
+    for (std::size_t index = 0U;
+         index < sprite_limit_state_.pieces.size(); ++index) {
+        const auto& visibility = sprite_limit_state_.pieces[index];
+        if (!visibility.within_total_limit) {
+            ++sprite_limit_state_.pieces_dropped_by_total_limit;
+            continue;
+        }
+        const auto& piece = frame.sat_ordered_pieces[index];
+        const auto left = static_cast<std::int64_t>(piece.x);
+        const auto right = left + static_cast<std::int64_t>(piece.width);
+        const auto visible_left = std::clamp<std::int64_t>(
+            left, 0, kVdpH40DisplayWidth);
+        const auto visible_right = std::clamp<std::int64_t>(
+            right, 0, kVdpH40DisplayWidth);
+        const auto visible_width = static_cast<int>(
+            std::max<std::int64_t>(0, visible_right - visible_left));
+        for (const auto scanline : visibility.visible_scanlines) {
+            const auto line = static_cast<std::size_t>(scanline);
+            ++sprites_per_scanline[line];
+            pixels_per_scanline[line] += visible_width;
+        }
+    }
+    sprite_limit_state_.scanlines_at_sprite_limit = 0U;
+    sprite_limit_state_.scanlines_at_pixel_limit = 0U;
+    for (std::size_t line = 0U; line < sprites_per_scanline.size(); ++line) {
+        if (sprites_per_scanline[line] >= kVdpH40SpriteScanlineLimit) {
+            ++sprite_limit_state_.scanlines_at_sprite_limit;
+        }
+        if (pixels_per_scanline[line] >= kVdpH40SpritePixelScanlineLimit) {
+            ++sprite_limit_state_.scanlines_at_pixel_limit;
+        }
+    }
+    return update_displayed_scroll(frame.scroll);
+}
+
+bool FieldVdpMirror::update_displayed_scroll(const VdpScrollState& scroll) {
+    if (width_tiles_ == 0U || height_tiles_ == 0U) {
+        return false;
+    }
+    const auto map_width = static_cast<int>(width_tiles_ * 8U);
+    const auto map_height = static_cast<int>(height_tiles_ * 8U);
+    viewport_x_ = std::min(
+        std::max(0, static_cast<int>(scroll.plane_a_horizontal)),
+        std::max(0, map_width - VdpModel::kDisplayWidth));
+    viewport_y_ = std::min(
+        std::max(0, static_cast<int>(scroll.plane_a_vertical)),
+        std::max(0, map_height - VdpModel::kDisplayHeight));
+    plane_b_vertical_offset_ = static_cast<std::int16_t>(
+        scroll.plane_b_vertical - scroll.plane_a_vertical);
+    return stream_viewport();
+}
+
 bool FieldVdpMirror::stream_viewport() {
     if (plane_a_words_.empty() || plane_b_words_.empty() ||
         width_tiles_ == 0U || height_tiles_ == 0U) {

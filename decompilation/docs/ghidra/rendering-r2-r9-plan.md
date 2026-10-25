@@ -1,8 +1,8 @@
 # Rendering R2/R9 plan: 3 name tables + VdpModel
 
 Source: /workspace/shadowrun/docs/21_rendering_entity_model.md §2 (R2, R9) and §3.
-Status: R1, R2 runtime mirror, R3, R4, R9 base scroll input, and R10 are implemented.
-R5/R6/R7 follow-ons are tracked separately; R8/R11 are [H] and out of scope.
+Status: R1, R2 runtime mirror, R3, R4, R6 latch, R7 H40 SAT limits, R9 base scroll input, and R10 are implemented.
+R6/R7 are wired into the opt-in field mirror; the SAT feed from paint is pending combat integration. R8/R11 are [H] and out of scope.
 
 ## Status
 - **Done — R2 live mirror, default off:** `FieldSceneRuntime` recognizes
@@ -23,14 +23,29 @@ R5/R6/R7 follow-ons are tracked separately; R8/R11 are [H] and out of scope.
   camera plus the tracked Plane-B-minus-Plane-A vertical bias for Plane B.
   `0x1AB0` copies FFE00A to FFDD0E (0x1AA8 clears FFE00A first) [C]; `0x3CF2..0x3CFE` advance FFDD0A and FFDD0E by the same
   field-camera step [C]. `FieldCameraFollowState` tracks the A/B step biases,
-  whose difference is zero because the current field path has no separate
-  FFDD0E write [H]. The independent increment at `0x26E2` is outside the field
+  whose difference is zero in the 23 captured field save states [C, emulator].
+  The independent increment at `0x26E2` is outside the field
   path [C]. A scene-specific offset capture is still needed before claiming
   which field scenes visibly use a nonzero offset.
+- **Done — R6 frame latch in the opt-in mirror:** each completed `advance_frame`
+  tick stages its field camera scroll and pending SAT pieces. The next tick
+  latches them before field logic and streams the mirror from that displayed
+  scroll. ROM `0x0BD2` is the main-loop VBlank wait; `0x1872` services the
+  display-frame transfers after the wait, including SAT then H/V scroll [C].
+  Mapping the host `advance_frame` boundary to that source wait is the runtime
+  scheduling hypothesis [H]. Disabled mirror runs allocate no latch.
+- **Done — R7 H40 limits in the opt-in mirror:** each latched SAT list runs
+  through `apply_vdp_sprite_limits`, retaining per-piece visible scanlines,
+  pieces rejected by the 80-entry cap, and scanline counts that reached the
+  20-sprite and 320-visible-pixel limits [C: H40 VDP]. The
+  `stage_field_sat_pieces` entry point is wired; after combat integration,
+  `paint_field_scene_entities` should call it with the source-ordered SAT list
+  before its reverse draw loop. The current field sprite list is local to that
+  paint function, so no real SAT pieces are collected yet.
 - **Left:** do not swap `paint_field_scene` to `VdpModel::compose` until the
   combat merge; that function remains combat-owned. Add an R9 offset capture
-  after an independent field-path FFDD0E write is traced, and continue the
-  R5/R6/R7 work tracked in its own plan.
+  after an independent field-path FFDD0E write is traced. R5 fade writes and
+  paint integration of real SAT pieces remain pending.
 Hook points below are given by function name, because FSR line numbers move with the thinning work.
 
 ## Problem
@@ -70,9 +85,11 @@ Hook points below are given by function name, because FSR line numbers move with
    - Where: `paint_field_scene` -> `paint_field_map_composition(painter, field_map_, field_map_priority_overlay_, ...)`.
    - Change: replace the call with `vdp_model_.compose(...)`, passing the low/high sprite callbacks.
    - **paint_field_scene is owned by the combat branch.** Land this one-line swap only after that branch merges, or as a separately reviewed patch.
-5. **Fades (R5) and latch (R6)**
-   - Where: VdpModel's CRAM.
-   - Change: once CRAM lives in VdpModel, the 0x1088/0x10D6 saturating fades become CRAM writes, and the VBlank latch (R6) becomes "apply pending SAT/scroll/CRAM at the start of compose".
+5. **Fades (R5); latch (R6) wired to the opt-in mirror**
+   - Where: VdpModel's CRAM and `FieldVdpMirror::latch_vblank`.
+   - Change: 0x1088/0x10D6 saturating fades still need CRAM writes. The R6
+     latch applies pending SAT/scroll before field logic on the next host tick;
+     it does not change composition or painting.
 
 ## Order of work
 1. VdpModel with unit tests: name-table word decode and the priority compose order. **Done.**
