@@ -2838,6 +2838,110 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
+    // Corpse slide at map edges: a dead actor near a profile edge must keep
+    // a constant offset from the map while the camera clamps at the edge and
+    // then unclamps as the runner walks away. Sprites and the plane both use
+    // FFDDxx camera >> 4, so the corpse's map-aligned crop must not change.
+    // Live actors are projected from the same camera every frame.
+    const auto edge_slide = [&](const bool right_edge, std::string& detail) {
+        const auto& profile = field_scene.state().field_scene_buffers.profile;
+        if (profile.size() < 6U) {
+            detail = "profile";
+            return false;
+        }
+        field_scene.set_default_actor_physical_meter_for_dump(0U, 0U);
+        for (int i = 0; i < 90; ++i) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+        const int edge_px = right_edge ? (profile[4] >> 4U) + 272 : (profile[2] >> 4U);
+        const int corpse_px = right_edge ? edge_px - 40 : edge_px + 40;
+        const int runner_px = right_edge ? edge_px - 272 + 150 : edge_px + 80;
+        const auto ry = field_scene.field_entity_world_position().y;
+        field_scene.set_field_entity_world_position_for_dump(
+            static_cast<std::uint16_t>(runner_px << 4), ry);
+        field_scene.set_default_actor_world_position_for_dump(
+            0U, static_cast<std::uint16_t>(corpse_px << 4),
+            static_cast<std::uint16_t>(ry + 0x100U));
+        field_scene.set_default_actor_world_position_for_dump(
+            1U, static_cast<std::uint16_t>((right_edge ? runner_px - 48 : runner_px + 48) << 4),
+            static_cast<std::uint16_t>(ry - 0x200U));
+        const auto edge_cam = right_edge ? profile[4] : profile[2];
+        field_scene.set_field_camera_world_position_for_dump(
+            edge_cam, field_scene.state().field_scene_buffers.camera_y);
+        for (int i = 0; i < 240; ++i) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+        QImage reference;
+        int clamped = 0;
+        int unclamped = 0;
+        int worst = 0;
+        for (int frame = 0; frame < 90; ++frame) {
+            const auto& b = field_scene.state().field_scene_buffers;
+            const auto actors = field_scene.active_default_actor_positions_for_dump();
+            if (actors.empty() || (actors.front().x >> 4U) != corpse_px) {
+                detail = "corpse moved frame=" + std::to_string(frame);
+                return false;
+            }
+            for (const auto& actor : actors) {
+                EntityProjectionState pr{};
+                pr.world_x = actor.x;
+                pr.world_y = actor.y;
+                project_entity_screen_position_standard(
+                    pr, static_cast<std::uint16_t>(b.camera_x),
+                    static_cast<std::uint16_t>(b.camera_y));
+                const int offset =
+                    (static_cast<int>(pr.screen_x) - 0x80 -
+                     (static_cast<int>(actor.x >> 4U) -
+                      static_cast<int>(b.camera_x >> 4U))) &
+                    0xFFFF;
+                if (offset < 0 || offset > 1) {
+                    detail = "actor projection offset=" + std::to_string(offset);
+                    return false;
+                }
+            }
+            (b.camera_x == edge_cam ? clamped : unclamped) += 1;
+            const auto image = render_qa_field(field_scene);
+            const int sx0 = corpse_px - static_cast<int>(b.camera_x >> 4U) - 16;
+            const int sy0 = ((ry + 0x100U) >> 4U) - static_cast<int>(b.camera_y >> 4U) - 40;
+            const auto crop = image.copy(sx0, sy0, 32, 48);
+            if (reference.isNull()) {
+                if (sx0 < 0 || sx0 + 32 > 272) {
+                    detail = "corpse not on screen sx=" + std::to_string(sx0);
+                    return false;
+                }
+                reference = crop;
+            }
+            int diff = 0;
+            for (int y = 0; y < 48; ++y) {
+                for (int x = 0; x < 32; ++x) {
+                    if (sx0 + x >= 0 && sx0 + x < 272 &&
+                        crop.pixel(x, y) != reference.pixel(x, y)) {
+                        ++diff;
+                    }
+                }
+            }
+            worst = std::max(worst, diff);
+            field_scene.set_controller_port_byte(right_edge ? 0x04U : 0x08U);
+            field_scene.advance_frame();
+        }
+        detail = std::string(right_edge ? "right" : "left") + " clamped=" +
+                 std::to_string(clamped) + " unclamped=" + std::to_string(unclamped) +
+                 " worst_diff=" + std::to_string(worst);
+        return clamped > 0 && unclamped > 0 && worst <= 16;
+    };
+    for (const bool right_edge : {false, true}) {
+        std::string detail;
+        const bool ok = edge_slide(right_edge, detail);
+        std::cout << "edge_corpse_slide " << detail << '\n';
+        if (!ok) {
+            std::cerr << "field random-encounter QA: corpse slid against the map at the "
+                      << detail << '\n';
+            return 3;
+        }
+    }
+
     std::cout << "field_random_encounter_spawn_qa=passed scene=2 selector=1+2 actors=2 active="
               << actors_after << " long_trace_active=" << actors_after_1200
               << " visible=" << visible_before << ','
