@@ -1141,6 +1141,24 @@ struct ScriptActorProjectileAnimation {
     bool finite = false;
 };
 
+// Player strike child presentation data: ROM 0x7330 supplies five finite
+// sprite-list frames at the 0x600E cadence [C]. Lua owns the mutable counters;
+// C++ only passes the source facts and draws the returned frame.
+struct ScriptActorHitSparkAnimation {
+    std::uint16_t selector = 4U;
+    std::uint8_t frame_count = 5U;
+    std::uint8_t frame = 0U;
+    std::int16_t accumulator = 0;
+    std::int16_t increment = 0x0400;
+    std::int16_t period = 0x1000;
+};
+
+struct ScriptActorHitSparkSpawnRequest {
+    std::string target_id;
+    std::uint16_t world_x = 0U;
+    std::uint16_t world_y = 0U;
+};
+
 // Projectile behavior state is supplied by the native field scene, while
 // Lua owns the source update decisions. The callbacks below only sample the
 // host world and return the collision routine's source result.
@@ -1292,6 +1310,7 @@ struct ScriptActorBehaviorContext {
     std::optional<std::uint8_t> animation_direction_override;
     std::optional<std::int16_t> animation_accumulator_override;
     std::optional<ScriptActorProjectileAnimation> projectile_animation;
+    std::optional<ScriptActorHitSparkAnimation> hit_spark_animation;
     std::optional<ScriptActorProjectileMovement> projectile_movement;
     // The first primary-record behavior pass resolves ROM 0x55640 once;
     // subsequent movement and the cloned secondary record retain its result.
@@ -1462,6 +1481,9 @@ struct ScriptActorBehaviorDecision {
     std::optional<ScriptActorMovementStep> movement_step;
     std::optional<ScriptActorProjectileMovementDecision>
         projectile_movement;
+    std::optional<ScriptActorHitSparkSpawnRequest>
+        hit_spark_spawn_request;
+    bool hit_spark_retired = false;
     std::optional<std::int16_t> animation_increment;
     std::int16_t animation_accumulator = 0;
     std::optional<ScriptCombatMeterUpdate> combat_meter_update;

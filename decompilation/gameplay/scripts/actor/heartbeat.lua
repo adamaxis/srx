@@ -40,6 +40,7 @@ local function finish_player_hurt_reaction(...) return R.finish_player_hurt_reac
 local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
 local function initial_state(...) return R.initial_state(...) end   -- from actor/targeting.lua
 local function projectile_heartbeat(...) return R.projectile_heartbeat(...) end   -- from actor/movement.lua
+local function hit_spark_heartbeat(...) return R.hit_spark_heartbeat(...) end   -- from actor/anim.lua
 local function requested_movement_heading(...) return R.requested_movement_heading(...) end   -- from actor/movement.lua
 local function resolve_source_target_motion(...) return R.resolve_source_target_motion(...) end   -- from actor/movement.lua
 local function retained_linked_target(...) return R.retained_linked_target(...) end   -- from actor/targeting.lua
@@ -81,6 +82,9 @@ function ActorAI.heartbeat(context)
         advance_spell_effect(state, context)
         if profile.projectile_animation then
             return projectile_heartbeat(state, context)
+        end
+        if profile.hit_spark_animation then
+            return hit_spark_heartbeat(state, context)
         end
         if profile.controls_movement and not profile.dynamic_encounter_only then
             state.combat_action_requested =
@@ -141,6 +145,9 @@ function ActorAI.heartbeat(context)
     advance_world_target_selection(state, context)
     if profile.projectile_animation then
         return projectile_heartbeat(state, context)
+    end
+    if profile.hit_spark_animation then
+        return hit_spark_heartbeat(state, context)
     end
     advance_target_marker(state, context)
     advance_target_motion_effect(state, context)

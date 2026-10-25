@@ -8447,6 +8447,25 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "projectile_animation");
+    if (context.hit_spark_animation.has_value()) {
+        const auto& animation = *context.hit_spark_animation;
+        lua_createtable(state, 0, 6);
+        lua_pushinteger(state, animation.selector);
+        lua_setfield(state, -2, "selector");
+        lua_pushinteger(state, animation.frame_count);
+        lua_setfield(state, -2, "frame_count");
+        lua_pushinteger(state, animation.frame);
+        lua_setfield(state, -2, "frame");
+        lua_pushinteger(state, animation.accumulator);
+        lua_setfield(state, -2, "accumulator");
+        lua_pushinteger(state, animation.increment);
+        lua_setfield(state, -2, "increment");
+        lua_pushinteger(state, animation.period);
+        lua_setfield(state, -2, "period");
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "hit_spark_animation");
     if (context.projectile_movement.has_value()) {
         const auto& movement = *context.projectile_movement;
         lua_createtable(state, 0, 16);
@@ -8652,6 +8671,15 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat returned an invalid animation frame");
     }
     decision.animation_frame = static_cast<std::uint8_t>(returned_action_code);
+    lua_getfield(state, decision_table, "hit_spark_retired");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        if (!lua_isboolean(state, -1)) {
+            lua_pop(state, 1);
+            return fail("actor_ai.heartbeat returned an invalid hit-spark retirement state");
+        }
+        decision.hit_spark_retired = lua_toboolean(state, -1) != 0;
+    }
+    lua_pop(state, 1);
     lua_getfield(state, decision_table, "target_marker_visible");
     if (!lua_isboolean(state, -1)) {
         return fail("actor_ai.heartbeat returned an invalid target-marker visibility");
@@ -9452,9 +9480,11 @@ GameScriptRuntime::actor_heartbeat(
     lua_pop(state, 1);
     lua_getfield(state, decision_table, "animation_selector");
     if (lua_type(state, -1) != LUA_TNIL) {
-        const auto maximum_selector = context.projectile_animation.has_value()
-                                          ? 0xFFFF
-                                          : 0x07FF;
+        const auto maximum_selector =
+            context.projectile_animation.has_value() ||
+                    context.hit_spark_animation.has_value()
+                ? 0xFFFF
+                : 0x07FF;
         if (!lua_isinteger(state, -1) || lua_tointeger(state, -1) < 0 ||
             lua_tointeger(state, -1) > maximum_selector) {
             return fail(
@@ -9513,6 +9543,7 @@ GameScriptRuntime::actor_heartbeat(
          decision.animation_id == "runner_down" ||
          decision.animation_id == "runner_hurt" ||
          decision.animation_id == "projectile" ||
+         decision.animation_id == "hit_spark" ||
          decision.animation_id == "hurt" ||
          decision.animation_id == "down" ||
          decision.animation_id == "spell" ||
@@ -10121,6 +10152,29 @@ GameScriptRuntime::actor_heartbeat(
         }
         decision.source_action_dispatch = std::move(source_action_dispatch);
     }
+    lua_getfield(state, decision_table, "hit_spark_spawn_request");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        if (!lua_istable(state, -1)) {
+            return fail("actor_ai.heartbeat returned an invalid hit-spark spawn request");
+        }
+        const auto request_table = lua_absindex(state, -1);
+        ScriptActorHitSparkSpawnRequest request{};
+        std::uint32_t world_x = 0U;
+        std::uint32_t world_y = 0U;
+        if (!read_field_string(state, request_table, "target_id",
+                               request.target_id) ||
+            !valid_identifier(request.target_id) ||
+            !read_field_integer(state, request_table, "world_x", 0xFFFFU,
+                                world_x) ||
+            !read_field_integer(state, request_table, "world_y", 0xFFFFU,
+                                world_y)) {
+            return fail("actor_ai.heartbeat returned incomplete hit-spark target facts");
+        }
+        request.world_x = static_cast<std::uint16_t>(world_x);
+        request.world_y = static_cast<std::uint16_t>(world_y);
+        decision.hit_spark_spawn_request = std::move(request);
+    }
+    lua_pop(state, 1);
     const auto spell_pose_selector = [](const std::uint16_t selector) {
         // ROM words at 0xC082: 0x80, 0x84, ... 0x9C.
         return selector >= 0x0080U && selector <= 0x009CU &&
@@ -10248,6 +10302,56 @@ GameScriptRuntime::actor_heartbeat(
           *decision.audio_event != 0x0055U) ||
          (decision.combat_meter_update.has_value() && !player_melee_hit))) {
         return fail("actor_ai.heartbeat returned an invalid player strike");
+    }
+    const bool hit_spark_expected = player_melee_hit &&
+        decision.combat_meter_update.has_value() &&
+        decision.combat_meter_update->changed;
+    if (hit_spark_expected != decision.hit_spark_spawn_request.has_value()) {
+        return fail("actor_ai.heartbeat returned a hit-spark request inconsistent with the changed player strike");
+    }
+    if (decision.hit_spark_spawn_request.has_value()) {
+        const auto& request = *decision.hit_spark_spawn_request;
+        const auto target = std::find_if(
+            context.ai_target_candidates.begin(),
+            context.ai_target_candidates.end(),
+            [&request](const auto& candidate) {
+                return candidate.id == request.target_id &&
+                       candidate.world_x == request.world_x &&
+                       candidate.world_y == request.world_y;
+            });
+        if (!player_melee_hit || !decision.combat_meter_update.has_value() ||
+            !decision.combat_meter_update->changed ||
+            decision.combat_meter_update->target_id != request.target_id ||
+            target == context.ai_target_candidates.end()) {
+            return fail("actor_ai.heartbeat requested a hit spark outside the resolved player strike target");
+        }
+    }
+    const bool hit_spark_actor = context.profile_id == "field_hit_spark";
+    if (decision.hit_spark_retired &&
+        (!hit_spark_actor ||
+         context.phase != ScriptActorHeartbeatPhase::behavior)) {
+        return fail("actor_ai.heartbeat retired a hit spark outside its behavior pass");
+    }
+    if (hit_spark_actor) {
+        if (!context.hit_spark_animation.has_value()) {
+            return fail("actor_ai.heartbeat hit-spark actor omitted its finite animation facts");
+        }
+        const bool source_selector_finished =
+            (context.hit_spark_animation->selector & 0x8000U) != 0U;
+        if (context.phase == ScriptActorHeartbeatPhase::render &&
+            (decision.animation_id != "hit_spark" ||
+             decision.animation_frame >= context.hit_spark_animation->frame_count ||
+             !decision.animation_selector.has_value() ||
+             !decision.animation_increment.has_value())) {
+            return fail("actor_ai.heartbeat returned an invalid hit-spark frame");
+        }
+        if (context.phase == ScriptActorHeartbeatPhase::behavior &&
+            decision.hit_spark_retired != source_selector_finished) {
+            return fail("actor_ai.heartbeat retirement did not follow the finished hit-spark selector");
+        }
+    } else if (decision.animation_id == "hit_spark" ||
+               context.hit_spark_animation.has_value()) {
+        return fail("actor_ai.heartbeat used hit-spark state outside its source profile");
     }
     if (((begins_entry != decision.audio_event.has_value()) &&
          !projectile_behavior && !begins_dynamic_target_action &&

@@ -183,6 +183,7 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     }
     if (!same_scene || force_scene_entry) {
         field_weapon_projectiles_.clear();
+        field_hit_sparks_.clear();
         field_weapon_slots_occupied_.fill(false);
         // 0x167AE may arm FFDF84/FFDF86 while selecting a new field scene.
         // Its later 0x2BD2 re-entry prepares that scene again, but the timeout
@@ -338,6 +339,7 @@ void FieldSceneRuntime::snapshot_world_activity_source_scene() {
     // occupancy before the resource scene is prepared. Gun projectiles use
     // those typed host slots in this field presenter.
     field_weapon_projectiles_.clear();
+    field_hit_sparks_.clear();
     field_weapon_slots_occupied_.fill(false);
     source_boundary("field.world_activity.source_scene_snapshotted");
 }

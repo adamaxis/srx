@@ -245,7 +245,7 @@ std::uint8_t find_first_available_entity_slot(
 // 0xB14C and 0xB2A8 plant this child after a reaction changes the
 // defender's action bytes. 0xAC4E is the continuation: a negative
 // animation selector clears the slot. The selector itself is advanced by
-// the animation service, which is not part of this record.
+// the animation service, which is not part of this record [C].
 enum class AuxiliaryChildContinuation {
     retire_when_selector_negative,
 };
@@ -258,6 +258,7 @@ struct ReactionAuxiliaryChild {
     std::int16_t animation_selector = 4;
     std::uint16_t world_x = 0;
     std::uint16_t world_y = 0;
+    std::uint16_t palette_attributes = 0x2000U; // +0x2C: palette line 1
     std::uint16_t heading = 0x2000;
     AuxiliaryChildContinuation continuation =
         AuxiliaryChildContinuation::retire_when_selector_negative;

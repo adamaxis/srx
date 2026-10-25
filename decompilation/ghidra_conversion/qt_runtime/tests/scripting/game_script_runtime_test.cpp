@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_route_primitives_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
@@ -5787,6 +5788,116 @@ int main() {
             "Lua player strike did not follow the 0xB1DC range gate")) {
         std::cerr << scripts.failure() << '\n';
         return 107;
+    }
+
+    // ROM 0xB29E requests the child only when 0x55C76 changes a defender
+    // meter. Exercise that Lua decision through the C++ binding, allocate its
+    // typed FF0B00 child, then follow all five 0x7330 frames and AC4E retirement [C].
+    auto changed_player_strike = player_strike;
+    changed_player_strike.combatant = attacker_facts;
+    auto& changed_strike_target =
+        changed_player_strike.ai_target_candidates.front();
+    changed_strike_target.id = "party.runner.0";
+    changed_strike_target.source_record_slot = 0U;
+    changed_strike_target.world_activity_actor = false;
+    changed_strike_target.combatant = target_facts;
+    changed_player_strike.ai_random_bound =
+        [roll = 0U](const std::uint16_t bound) mutable
+            -> std::optional<std::uint16_t> {
+        if (bound != 6U) {
+            return std::nullopt;
+        }
+        return roll++ % 2U == 0U ? 5U : 0U;
+    };
+    const auto changed_strike_decision =
+        scripts.actor_heartbeat(changed_player_strike);
+    if (!expect(
+            changed_strike_decision.has_value() &&
+                changed_strike_decision->combat_meter_update.has_value() &&
+                changed_strike_decision->combat_meter_update->changed &&
+                changed_strike_decision->hit_spark_spawn_request.has_value() &&
+                changed_strike_decision->hit_spark_spawn_request->target_id ==
+                    changed_strike_decision->combat_meter_update->target_id,
+            "a changed player-strike meter did not request its hit spark")) {
+        std::cerr << scripts.failure() << '\n';
+        return 111;
+    }
+    std::array<AuxiliaryEntitySlot, 6> hit_spark_slots{};
+    auto hit_spark = spawn_reaction_auxiliary_child(
+        hit_spark_slots,
+        changed_strike_decision->hit_spark_spawn_request->world_x,
+        changed_strike_decision->hit_spark_spawn_request->world_y);
+    if (!expect(
+            hit_spark.has_value() && hit_spark->active &&
+                hit_spark->slot == 9U && hit_spark->entity_kind == 1U &&
+                hit_spark->animation_selector == 4 &&
+                hit_spark->palette_attributes == 0x2000U &&
+                hit_spark->world_x ==
+                    changed_strike_decision->hit_spark_spawn_request->world_x &&
+                hit_spark->world_y == static_cast<std::uint16_t>(
+                    changed_strike_decision->hit_spark_spawn_request->world_y +
+                    0x0010U),
+            "the player hit did not allocate the ROM child record")) {
+        std::cerr << scripts.failure() << '\n';
+        return 112;
+    }
+    auto spark_context = actor_context(
+        "field_hit_spark", "field_hit_spark_slot_9", 1U,
+        ScriptActorActionKind::none, 0U, 0U, true);
+    spark_context.initial_heading = 0x2000U;
+    spark_context.phase = ScriptActorHeartbeatPhase::render;
+    spark_context.hit_spark_animation = ScriptActorHitSparkAnimation{
+        4U, 5U, 0U, 0, 0x0400, 0x1000};
+    std::array<std::size_t, 5> hit_spark_frame_passes{};
+    std::optional<ScriptActorBehaviorDecision> hit_spark_last_frame;
+    for (std::size_t pass = 0U; pass < 20U; ++pass) {
+        hit_spark_last_frame = scripts.actor_heartbeat(spark_context);
+        if (!hit_spark_last_frame.has_value() ||
+            hit_spark_last_frame->animation_id != "hit_spark" ||
+            hit_spark_last_frame->animation_frame >=
+                hit_spark_frame_passes.size() ||
+            !hit_spark_last_frame->animation_selector.has_value() ||
+            !hit_spark_last_frame->animation_increment.has_value()) {
+            std::cerr << scripts.failure() << '\n';
+            return 113;
+        }
+        ++hit_spark_frame_passes[hit_spark_last_frame->animation_frame];
+        spark_context.spawn = false;
+        auto& animation = *spark_context.hit_spark_animation;
+        animation.selector = *hit_spark_last_frame->animation_selector;
+        animation.frame = hit_spark_last_frame->animation_frame;
+        animation.accumulator = hit_spark_last_frame->animation_accumulator;
+        animation.increment = *hit_spark_last_frame->animation_increment;
+    }
+    const std::array<std::size_t, 5> expected_hit_spark_frame_passes{
+        3U, 4U, 4U, 4U, 5U};
+    if (!expect(
+            hit_spark_frame_passes == expected_hit_spark_frame_passes &&
+                hit_spark_last_frame.has_value() &&
+                hit_spark_last_frame->animation_frame == 4U &&
+                hit_spark_last_frame->animation_selector ==
+                    std::optional<std::uint16_t>{0x8004U},
+            "the hit spark did not follow its five ROM frames and 20-pass life")) {
+        std::cerr << scripts.failure() << '\n';
+        return 114;
+    }
+    spark_context.phase = ScriptActorHeartbeatPhase::behavior;
+    const auto hit_spark_retire_decision = scripts.actor_heartbeat(spark_context);
+    if (hit_spark_retire_decision.has_value() &&
+        hit_spark_retire_decision->animation_selector.has_value()) {
+        hit_spark->animation_selector = static_cast<std::int16_t>(
+            *hit_spark_retire_decision->animation_selector);
+    }
+    const bool hit_spark_retired = hit_spark.has_value() &&
+        hit_spark_retire_decision.has_value() &&
+        hit_spark_retire_decision->hit_spark_retired &&
+        retire_auxiliary_child(
+            hit_spark_slots[static_cast<std::size_t>(hit_spark->slot - 9U)],
+            *hit_spark);
+    if (!expect(hit_spark_retired && !hit_spark_slots[0].active,
+                "0xAC4E did not clear the finished hit-spark child")) {
+        std::cerr << scripts.failure() << '\n';
+        return 115;
     }
 
     auto projectile_context = actor_context(

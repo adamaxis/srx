@@ -13,6 +13,7 @@ local pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_s
 local spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot
 local BehaviorFlag = R.BehaviorFlag   -- from actor/tables.lua
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
+local HitSpark = E.HitSpark
 local function direction_from_heading(...) return R.direction_from_heading(...) end   -- from actor/targeting.lua
 local item_action_pose_selectors = R.item_action_pose_selectors   -- from actor/tables.lua
 local spell_pose_selectors = R.spell_pose_selectors   -- from actor/anim.lua
@@ -606,7 +607,9 @@ end
 -- 0x55C76 reaction. Returns swing audio and the optional heading audio.
 -- [C] the target's 0xAFF2 hit pose is the incoming_hit reaction that
 -- combat.commit_combatant_meters raises for world actors.
--- [H] the 0x15A8C spark child (0xAC4E, kind 1 art) is not spawned.
+-- 0xB29E..0xB2EA installs the kind-1 child through 0x15A8C only when the
+-- shared reaction changes a meter; this player-side decision returns that
+-- spawn fact without changing enemy incoming_hit handling [C].
 function R.begin_player_melee(state, context)
     if context.phase ~= "behavior" or
        context.player_melee_available ~= true or
@@ -630,7 +633,7 @@ function R.begin_player_melee(state, context)
        type(flags) ~= "number" or
        (flags & ActorStatus.ACTIVE) == 0 or
        (flags & ActorStatus.DEAD) ~= 0 or
-       (target.distance & 0xffff) >= 0x200 then
+       (target.distance & 0xffff) >= HitSpark.RANGE_LIMIT then
         state.source_action_dispatch = "player_melee"
         return swing
     end
@@ -640,6 +643,17 @@ function R.begin_player_melee(state, context)
         combat.resolve_reaction(context, target) or nil
     state.source_action_dispatch = "player_melee_hit"
     state.combat_meter_update = update
+    if update ~= nil and update.changed == true and
+       type(target.world_x) == "number" and
+       type(target.world_y) == "number" then
+        -- ROM 0xB29E compares defender +0x4C/+0x9C after 0x55C76 and only
+        -- allocates the 0x15A8C kind-1 child when either meter changed [C].
+        state.hit_spark_spawn_request = {
+            target_id = target.id,
+            world_x = target.world_x,
+            world_y = target.world_y,
+        }
+    end
     local heading_event = context.target_heading_audio_alternate
         and SoundId.TARGET_HEADING_ALT or SoundId.TARGET_HEADING
     return swing, heading_event

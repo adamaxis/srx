@@ -337,6 +337,17 @@ constexpr std::array<FieldSpellEffectProfile, 5> kFieldSpellEffectProfiles{{
 constexpr std::size_t kFieldSpellEffectPhaseCapacity = 16U;
 constexpr std::string_view kFieldWeaponProjectileAliasPrefix =
     "field.weapons.projectile.";
+// ROM 0xB1DC selects kind 1/selector 4 for the player hit child; assets are
+// imported from its 0x7330 sprite lists and the shared 0xE44D8 object bank [C].
+constexpr std::string_view kFieldHitSparkAliasPrefix =
+    "field.entities.effects.hit.spark.frame.";
+constexpr std::uint16_t kFieldHitSparkKind = 1U;
+constexpr std::uint16_t kFieldHitSparkSelector = 4U;
+constexpr std::uint16_t kFieldHitSparkPalette = 0x2000U;
+constexpr std::uint16_t kFieldHitSparkFrameCount = 5U;
+constexpr std::int16_t kFieldHitSparkFrameIncrement = 0x0400;
+constexpr std::int16_t kFieldHitSparkFramePeriod = 0x1000;
+constexpr std::uint16_t kFieldHitSparkTargetYOffset = 0x0010U;
 constexpr std::string_view kElevatorAnimationAliasPrefix =
     "menu.field.elevator.selector.background.frame.";
 constexpr std::string_view kElevatorCurrentFloorAliasPrefix =
@@ -2614,6 +2625,7 @@ bool FieldSceneRuntime::transition_to_field_destination(
     world_activity_request_start_state_ = WorldActivityStartState{};
     world_activity_return_snapshot_.reset();
     field_weapon_projectiles_.clear();
+    field_hit_sparks_.clear();
     field_weapon_slots_occupied_.fill(false);
     last_field_weapon_spawn_result_ = EntitySpawnCycleResult{};
     field_camera_alignment_ready_ = false;
@@ -6124,6 +6136,25 @@ bool FieldSceneRuntime::load_field_weapon_spawn_assets(
     return true;
 }
 
+bool FieldSceneRuntime::load_field_hit_spark_assets(
+    const ConversionAssetCatalog& catalog) {
+    for (std::size_t frame = 0U; frame < field_hit_spark_images_.size();
+         ++frame) {
+        QImage image;
+        int origin_x = 0;
+        int origin_y = 0;
+        const auto alias = std::string(kFieldHitSparkAliasPrefix) +
+                           std::to_string(frame);
+        if (!load_sprite_image(catalog, alias, image, origin_x, origin_y)) {
+            return false;
+        }
+        field_hit_spark_images_[frame] = std::move(image);
+        field_hit_spark_origin_x_[frame] = origin_x;
+        field_hit_spark_origin_y_[frame] = origin_y;
+    }
+    return true;
+}
+
 #ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint16_t>
 FieldSceneRuntime::field_weapon_projectile_selector_for_dump() const noexcept {
@@ -7172,6 +7203,7 @@ void FieldSceneRuntime::configure_callbacks() {
         [this] {
             source_boundary("field.entities.dispatch_action_candidates");
             advance_default_field_actors();
+            advance_field_hit_spark_behaviors();
         };
     callbacks_.entity_behavior_frames.noop_entity_action_hook =
         [](EntityBehaviorFrameRecord& record) { return record.action_result; };
@@ -7264,6 +7296,7 @@ void FieldSceneRuntime::configure_callbacks() {
         world_frame_logic_state_.scene_state =
             field_runtime_state_.scene_runtime_state;
         advance_default_field_actor_animations();
+        advance_field_hit_spark_animations();
         advance_field_weapon_projectile_animations();
         advance_tarislar_tomb_outro();
     };
@@ -8125,6 +8158,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         advance_field_weapon_projectiles();
         advance_field_movement();
         advance_default_field_actors();
+        advance_field_hit_spark_behaviors();
     };
     field_runtime_callbacks_.update_field_camera = [this] {
         update_source_field_camera();
@@ -9364,6 +9398,7 @@ bool FieldSceneRuntime::bootstrap(
     world_activity_request_start_state_ = WorldActivityStartState{};
     world_activity_return_snapshot_.reset();
     field_weapon_projectiles_.clear();
+    field_hit_sparks_.clear();
     field_weapon_slots_occupied_.fill(false);
     last_field_weapon_spawn_result_ = EntitySpawnCycleResult{};
     field_security_floor_index_.reset();
@@ -10104,6 +10139,8 @@ bool FieldSceneRuntime::bootstrap(
         !load_field_hud_overlays(startup_state.asset_catalog.catalog) ||
         !load_command_overview_assets(startup_state.asset_catalog.catalog) ||
         !load_field_weapon_spawn_assets(
+            startup_state.asset_catalog.catalog) ||
+        !load_field_hit_spark_assets(
             startup_state.asset_catalog.catalog) ||
         !load_field_elevator_selector_assets(
             startup_state.asset_catalog.catalog) ||
@@ -11922,10 +11959,57 @@ void FieldSceneRuntime::service_player_melee(
                                           "field.combat.player_melee")) {
         return;
     }
+    if (decision.hit_spark_spawn_request.has_value()) {
+        spawn_field_hit_spark(*decision.hit_spark_spawn_request);
+    }
     refresh_field_hud_runner_slot();
     source_boundary(*decision.source_action_dispatch == "player_melee_hit"
         ? "field.combat.player_melee.hit"
         : "field.combat.player_melee.swing");
+}
+
+void FieldSceneRuntime::spawn_field_hit_spark(
+    const scripting::ScriptActorHitSparkSpawnRequest& request) {
+    // ROM 0x15A8C scans the same six FF0B00 child slots used by weapon
+    // records. Mirror those occupancy facts into the typed source helper;
+    // 0xB2B2..0xB2EA then install kind 1, selector 4, palette 1 and AC4E [C].
+    std::array<AuxiliaryEntitySlot, 6> source_slots{};
+    for (std::size_t index = 0U; index < source_slots.size(); ++index) {
+        source_slots[index].active = field_weapon_slots_occupied_[index];
+    }
+    auto child = spawn_reaction_auxiliary_child(
+        source_slots, request.world_x, request.world_y);
+    if (!child.has_value()) {
+        source_boundary("field.combat.player_hit_spark.pool_full");
+        return;
+    }
+    if (child->slot < 9U || child->slot > 14U) {
+        source_boundary("field.combat.player_hit_spark.slot_invalid");
+        return;
+    }
+    const auto slot_index = static_cast<std::size_t>(child->slot - 9U);
+    field_weapon_slots_occupied_[slot_index] = true;
+    child->entity_kind = kFieldHitSparkKind;
+    child->animation_selector =
+        static_cast<std::int16_t>(kFieldHitSparkSelector);
+    child->palette_attributes = kFieldHitSparkPalette;
+    child->heading = kFieldHitSparkPalette;
+    const auto expected_y = static_cast<std::uint16_t>(
+        request.world_y + kFieldHitSparkTargetYOffset);
+    if (child->world_y != expected_y) {
+        field_weapon_slots_occupied_[slot_index] = false;
+        source_boundary("field.combat.player_hit_spark.position_invalid");
+        return;
+    }
+
+    FieldHitSparkPresentation spark{};
+    spark.child = *child;
+    spark.actor_instance_id =
+        "field_hit_spark_slot_" + std::to_string(child->slot);
+    spark.animation.increment = kFieldHitSparkFrameIncrement;
+    spark.animation.period = kFieldHitSparkFramePeriod;
+    field_hit_sparks_.push_back(std::move(spark));
+    source_boundary("field.combat.player_hit_spark.spawned");
 }
 
 bool FieldSceneRuntime::probe_action_line_clear(
@@ -13286,6 +13370,117 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         }
         actor.transition_started = decision->transition_started;
         actor.transition_complete = decision->transition_complete;
+    }
+}
+
+void FieldSceneRuntime::advance_field_hit_spark_behaviors() {
+    const auto release_slot = [this](FieldHitSparkPresentation& spark) {
+        if (spark.child.slot >= 9U && spark.child.slot <= 14U) {
+            field_weapon_slots_occupied_[
+                static_cast<std::size_t>(spark.child.slot - 9U)] = false;
+        }
+        spark.child.active = false;
+    };
+    for (auto& spark : field_hit_sparks_) {
+        if (!spark.child.active) {
+            continue;
+        }
+        scripting::ScriptActorBehaviorContext context{};
+        context.profile_id = "field_hit_spark";
+        context.entity_kind = spark.child.entity_kind;
+        context.action_kind = scripting::ScriptActorActionKind::none;
+        context.action_code = 0U;
+        context.instance_id = spark.actor_instance_id;
+        context.initial_heading = spark.child.heading;
+        context.spawn = !spark.script_initialized;
+        context.phase = scripting::ScriptActorHeartbeatPhase::behavior;
+        context.hit_spark_animation = scripting::ScriptActorHitSparkAnimation{
+            static_cast<std::uint16_t>(spark.child.animation_selector),
+            static_cast<std::uint8_t>(kFieldHitSparkFrameCount),
+            static_cast<std::uint8_t>(spark.animation.frame),
+            spark.animation.accumulator,
+            spark.animation.increment,
+            spark.animation.period};
+        const auto decision = game_scripts_.actor_heartbeat(context);
+        if (!decision.has_value() ||
+            decision->animation_id != "hit_spark" ||
+            !decision->animation_selector.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary(
+                "field.combat.player_hit_spark.lua_behavior_failed");
+            release_slot(spark);
+            continue;
+        }
+        spark.script_initialized = true;
+        spark.child.animation_selector = static_cast<std::int16_t>(
+            *decision->animation_selector);
+        if (!decision->hit_spark_retired) {
+            continue;
+        }
+
+        AuxiliaryEntitySlot slot{};
+        slot.active = true;
+        if (retire_auxiliary_child(slot, spark.child)) {
+            field_weapon_slots_occupied_[
+                static_cast<std::size_t>(spark.child.slot - 9U)] = false;
+            source_boundary("field.combat.player_hit_spark.retired");
+        } else {
+            source_boundary(
+                "field.combat.player_hit_spark.retirement_selector_invalid");
+        }
+    }
+}
+
+void FieldSceneRuntime::advance_field_hit_spark_animations() {
+    const auto release_slot = [this](FieldHitSparkPresentation& spark) {
+        if (spark.child.slot >= 9U && spark.child.slot <= 14U) {
+            field_weapon_slots_occupied_[
+                static_cast<std::size_t>(spark.child.slot - 9U)] = false;
+        }
+        spark.child.active = false;
+    };
+    for (auto& spark : field_hit_sparks_) {
+        if (!spark.child.active) {
+            continue;
+        }
+        scripting::ScriptActorBehaviorContext context{};
+        context.profile_id = "field_hit_spark";
+        context.entity_kind = spark.child.entity_kind;
+        context.action_kind = scripting::ScriptActorActionKind::none;
+        context.action_code = 0U;
+        context.instance_id = spark.actor_instance_id;
+        context.initial_heading = spark.child.heading;
+        context.spawn = !spark.script_initialized;
+        context.phase = scripting::ScriptActorHeartbeatPhase::render;
+        context.hit_spark_animation = scripting::ScriptActorHitSparkAnimation{
+            static_cast<std::uint16_t>(spark.child.animation_selector),
+            static_cast<std::uint8_t>(kFieldHitSparkFrameCount),
+            static_cast<std::uint8_t>(spark.animation.frame),
+            spark.animation.accumulator,
+            spark.animation.increment,
+            spark.animation.period};
+        const auto previous_frame = spark.animation.frame;
+        const auto previous_selector = spark.child.animation_selector;
+        const auto decision = game_scripts_.actor_heartbeat(context);
+        if (!decision.has_value() ||
+            decision->animation_id != "hit_spark" ||
+            !decision->animation_selector.has_value() ||
+            !decision->animation_increment.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary(
+                "field.combat.player_hit_spark.lua_animation_failed");
+            release_slot(spark);
+            continue;
+        }
+        spark.script_initialized = true;
+        spark.child.animation_selector = static_cast<std::int16_t>(
+            *decision->animation_selector);
+        spark.animation.frame = decision->animation_frame;
+        spark.animation.accumulator = decision->animation_accumulator;
+        spark.animation.increment = *decision->animation_increment;
+        spark.animation.redraw_requested =
+            previous_frame != spark.animation.frame ||
+            previous_selector != spark.child.animation_selector;
     }
 }
 
@@ -15279,6 +15474,31 @@ void FieldSceneRuntime::paint_field_scene_entities(
                             spawn.primary_active, spawn.primary_slot);
         append_spawn_record(spawn.source_record, spawn.animation.frame,
                             spawn.secondary_active, spawn.secondary_slot);
+    }
+
+    for (const auto& spark : field_hit_sparks_) {
+        if (!spark.child.active ||
+            spark.animation.frame >= field_hit_spark_images_.size()) {
+            continue;
+        }
+        EntityProjectionState projection{};
+        projection.world_x = spark.child.world_x;
+        projection.world_y = spark.child.world_y;
+        if (!project_entity_screen_position_standard(
+                 projection, camera_x, camera_y)
+                 .visible) {
+            continue;
+        }
+        const auto frame = static_cast<std::size_t>(spark.animation.frame);
+        const auto& image = field_hit_spark_images_[frame];
+        sprites.push_back(SceneSprite{
+            static_cast<std::int16_t>(spark.child.world_y),
+            spark.child.slot,
+            static_cast<int>(projection.screen_x) -
+                kGenesisSpriteOrigin + field_hit_spark_origin_x_[frame],
+            static_cast<int>(projection.screen_y) -
+                kGenesisSpriteOrigin + field_hit_spark_origin_y_[frame],
+            &image});
     }
 
     // ROM 0x5B1E stably sorts by descending effective depth, then 0x4658
