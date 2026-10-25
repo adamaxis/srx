@@ -16,8 +16,20 @@
         "returnAnchor": "collision_probe_lead",
         "returnFacing": "face_away_from_entry"
       },
+      "tasks": {
+        "fieldExitPrompt": {
+          "module": "council_island_hospital",
+          "function": "present_field_exit_prompt"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "downtown_site_12_seattle_general_hospital",
+        "textProfile": "council_island_hospital",
+        "speakerId": "council_island_hospital_narrator"
+      },
       "provenance": {
-        "evidence": "ROM scene 0 record 52 at 0X0D57E6; event-table row 0 at 0xD54B2 selects numeric resource activity scene 21. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+        "evidence": "ROM scene 0 collision record 52 at 0x0D57E6 publishes event 0; event-table row 0 at 0x0D54B2 is 0x15. ROM handler 0x1F830 matches scene/event 0/0 at 0x1F83C and runs the Seattle General Hospital same-map service path, which can open Hospital Options at 0xC928; the event-table Scene 21 byte is diagnostic and is not entered. The source prompt text is at 0x11199C. ROM 0xBC36/0xBD34 records the collision-probe lead for a return; 0x2F32 restores the source scene."
       }
     }
   ]

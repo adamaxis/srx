@@ -1633,6 +1633,9 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
         {"field.mode.little_chiba.description", 0x11739EU},
         {"field.mode.little_chiba.package_handoff", 0x1176BBU},
         {"field.mode.little_chiba.package_payment", 0x117718U},
+        // Scene-0/event-0 Seattle General Hospital default entry page selected
+        // by ROM 0x1F830 / 0x1F83C (text root 0x0B).
+        {"seattle_general_hospital.entry.default", 0x11199CU},
         // Scene-4/event-4 Council Island Hospital entry. The descriptor at
         // 0x110ECA selects the default copy and its two choices; alternate
         // results select the single-page roots at 0x110EE2/0x110EEA.
