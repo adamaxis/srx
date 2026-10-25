@@ -389,6 +389,17 @@ public:
     void arm_party_wipe_countdown_for_dump() noexcept {
         field_party_wipe_countdown_ = 0x3CU; // 0xABB6 [C]
     }
+    void set_world_effect_player_spawn_pending_for_dump(
+        const bool pending) noexcept {
+        field_world_effect_player_spawn_pending_ = pending; // 0x1DED8 FFFC3C [C]
+    }
+    bool world_effect_player_spawn_pending_for_dump() const noexcept {
+        return field_world_effect_player_spawn_pending_;
+    }
+    const EffectFadeMarkerState& field_effect_fade_marker_for_dump()
+        const noexcept {
+        return field_effect_fade_marker_;
+    }
     bool open_hospital_menu_for_dump(std::string_view function);
     bool open_ordinary_field_terminal_for_dump(
         std::uint32_t contact_flags, std::uint32_t funds);
@@ -2282,6 +2293,8 @@ private:
     // FFE166, so this timer is transient across ROM loads [C]; whether the
     // writer copies it is [H].
     std::uint8_t field_party_wipe_countdown_ = 0;
+    bool field_world_effect_player_spawn_pending_ = false; // 0x1DED8 FFFC3C [C]
+    EffectFadeMarkerState field_effect_fade_marker_{}; // FFDFDA/FFDFDC [C]
     std::array<DefaultActorArtwork, 2> field_default_actor_artwork_{};
     std::unordered_map<std::string, DefaultActorArtwork>
         field_dynamic_actor_artwork_;

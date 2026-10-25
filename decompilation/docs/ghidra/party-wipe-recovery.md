@@ -2,10 +2,11 @@
 
 Status: partial. The ROM control flow, run-failure text, recovery values, and
 the two destination arrival records are traced. Lua owns the active-run failure
-decision and wake destination. The C++ field host presents the staged
-dialogues and runs the existing scene fade with the selected arrival point.
-The player-side CTest checks both destination branches. The source's broad
-high-effect cleanup and the rest of the 0x391A resource refresh remain open.
+decision, post-wipe runner selection, and wake destination. The C++ field host
+applies typed party/field writes, refreshes the player HUD state, presents the
+staged dialogues, and runs the existing scene fade. The seven-record world
+actor cleanup and the world-actor part of 0x391A remain for the combat branch
+[C].
 
 ## Entry and failure branch
 
@@ -24,10 +25,11 @@ of FFFBED with status in FFFC1C [C]:
 | `4` package recovery | FFFC1C bit 0 set | Branch to the type-2 path at `0xC6E8`. |
 | Other types, no active bit, or type 5 with bit 7 set | — | Continue directly to the common recovery at `0xC716`. |
 
-`0x1DED8` clears FFFC3C and scans seven world-actor records from FF0400
+`0x1DED8` clears FFFC3C, then scans seven world-actor records from FF0400
 through FF0A00, stride 0x100, calling `0x1E514` for records whose +0xB0 byte
-has bit 7 set [C]. That sweep reaches non-party actor slots; the current
-player-side port records a boundary instead of editing enemy/world-actor code.
+has bit 7 set [C]. The run-failure result requests the field-side FFFC3C clear;
+C++ applies it to its typed player-spawn marker. The record scan and its
+`0x1E514` actor mutations remain an explicit combat-branch boundary [C].
 `0x0A72` clears nonzero FFE18F and sets FFFC1C bit 7; `0x1EEF0` also checks
 that bit, and `0xC678` uses it as the type-5 wipe guard [C]. FFFC1C bit 7 has
 other source writers, including the type-0 Ghoul Bounty ready gate at
@@ -48,11 +50,22 @@ in `gameplay/dialogue/speakers.json`.
 After the optional failure page, `0xC716` clears FF024C and FF034C, calls
 `0xC802`, revives the leader, clears DEAD/DOWN, sets ACTIVE, and floors the
 leader's physical and mental meters at 6 and 8. It deducts one eighth of the
-wallet, capped at 5000 nuyen. The player-side model now also zeros the two
-hired-runner +0x4C delay meters [C]. The existing field host selects slot zero
-and refreshes its HUD. Its animation service covers the three player records
-per frame; a separate native equivalent for all of `0x391A`'s resource refresh
-is still unmodeled [H].
+wallet, capped at 5000 nuyen. The player-side model also zeros the two
+hired-runner +0x4C delay meters [C].
+
+The wipe then calls `0x38FA` and the full `0x391A` route before selecting the
+wake destination [C]. Lua now performs the `0x391A` type-2-wrap runner scan,
+selection-marker updates, and FFF09D suppression gate from typed player-record
+facts. C++ applies the selected slot and marker writes, initializes the typed
+FFDFDA/FFDFDC fade marker through `0x1E540` when selection changes, requests
+event `0x25`, and rebuilds all three HUD slot states [C]. Refreshing the host
+player projection, using named HUD/field assets in place of the source
+`0x33AA` uploads and `0x3548` tile-panel drawing, and keeping animation on the
+existing host heartbeat are host substitutions [H].
+
+The next `0x391A` call, `0x1DC4C`, scans and updates world-actor records. That
+call remains a combat-branch boundary [C]. Independent Genesis evidence for
+the post-wipe recruited-runner presentation remains open [H].
 
 The wake choice reads FFFC1E bit 0. The paid motel branch at `0x2A32` uses node
 `0xC25A0`, destination ID 0, and continuation record `0x2AEA`; the other branch

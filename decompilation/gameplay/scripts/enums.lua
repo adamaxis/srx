@@ -331,6 +331,11 @@ E.PartyWipeDestination = {
     DOCWAGON = 1, -- 0xC7E0 -> 0x2A32, scene 0 [C]
     NONE = 0xFF, -- no pending wake destination [H host sentinel]
 }
+E.PartyWipeRunnerRefresh = {
+    FIRST_SLOT = 0, -- 0x397A wraps the active pointer to FF0100 [C]
+    SLOT_COUNT = 3, -- 0x391A walks the three player records [C]
+    TERMINAL_RECORD_TYPE = 2, -- 0x3964 wraps after the type-2 record [C]
+}
 -- 0x2AEA/0x2B24 arrival records, consumed by 0x2B78 and aligned with
 -- ANDI.W #0xFF80 before the scene loader publishes FFFBF8 [C].
 E.PartyWipeArrival = {
@@ -401,7 +406,13 @@ E.MenuMask = { LEAD = 1, REVEAL = 2 }   -- port host phases for staged partial f
 E.WindowPlane = { SIDEBAR = 0x9191, OFF = 0x9100 } -- VDP reg 0x11 [C]
 
 -- Runner record view used by menu rules (C++ proxies these onto FF0100+0x100*slot) [C offsets: srx runner_record_access]
-E.RunnerStatus = { ACTIVE = 0x01, REMAINDER = 0x02, DOWN = 0x10, DEAD = 0x40 }   -- +0x10; REMAINDER name [H] (clips 0x12062 usage)
+E.RunnerStatus = {
+    ACTIVE = 0x01,
+    SELECTION_MARKER = 0x02, -- live +0x10 bit 1, cleared/set by 0x3974/0x39A8 [C]
+    REMAINDER = 0x02, -- name [H] (clips 0x12062 usage)
+    DOWN = 0x10,
+    DEAD = 0x40,
+} -- live record +0x10 status byte [C]
 E.RunnerField = { STATUS = 0x10, STATE_FN = 0x3A, PHYSICAL = 0x4C, POSTURE = 0x4D, ROUNDS = 0x4E, CLIPS = 0x4F,
                   WEAPON_SLOT = 0x56, WEAPON_CODE = 0x57, INVENTORY = 0x66, ITEM_PHASE = 0x6E, ARMOR = 0x76,
                   ATTRIBUTES = 0x77, MAGIC = 0x7F, SKILLS_A = 0x80, SKILLS_B = 0x87, KARMA = 0x8D, SPECIES = 0x9A,

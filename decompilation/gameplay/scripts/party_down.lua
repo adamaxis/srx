@@ -25,6 +25,7 @@ local RUN_FAILURE_PRESENTATION = {
         event_id = "party_wipe_bodyguard_failure",
         text_key = "party_wipe.run_failure.bodyguard",
         clear_high_effects = true,
+        clear_player_spawn_request = true,
     }, -- 0xF359E -> 0xF354B [C]
     [E.RunType.PACKAGE_DELIVERY] = {
         event_id = "party_wipe_package_failure",
@@ -40,6 +41,7 @@ local RUN_FAILURE_PRESENTATION = {
         event_id = "party_wipe_employee_recruitment_failure",
         text_key = "party_wipe.run_failure.employee_recruitment",
         clear_high_effects = true,
+        clear_player_spawn_request = true,
         clear_world_activity_request = true,
     }, -- 0xF3D5C -> 0xF3CD3 [C]
 }
@@ -103,6 +105,60 @@ function PartyDown.resolve_wipe_flat(nuyen, story_bit0, f0, p0, m0, f1, _p1,
     return { leader, physical, mental, dismiss1, dismiss2, funds, wake, 0, 0 }
 end
 
+-- ROM 0x391A walks forward from FFFC04, wrapping after a type-2 record. The
+-- host supplies typed player-slot facts; C++ applies the returned selection
+-- marker, active slot, HUD state, and field projection [C].
+-- 0x39AE requires ACTIVE; 0x39B6 honors FFF09D, then 0x39C0/0x39C8 skip
+-- records with DEAD or DOWN set. The selected runner's 0x1E540 marker reset
+-- and the following world-actor call stay in the host/combat boundary [C].
+function PartyDown.refresh_runner_after_wipe_flat(
+    current_slot, suppression_override, type0, flags0, type1, flags1,
+    type2, flags2)
+    local refresh = E.PartyWipeRunnerRefresh
+    local selected_flag = E.RunnerStatus.SELECTION_MARKER
+    local active_flag = E.RunnerStatus.ACTIVE
+    local suppressed_flags = E.RunnerStatus.DEAD | E.RunnerStatus.DOWN
+    local flags = { [0] = byte(flags0), byte(flags1), byte(flags2) }
+    local types = { [0] = byte(type0), byte(type1), byte(type2) }
+    local previous = math.tointeger(current_slot or refresh.FIRST_SLOT)
+    assert(previous and previous >= refresh.FIRST_SLOT and
+           previous < refresh.SLOT_COUNT,
+           "party_down: active runner slot out of range")
+
+    local cursor = previous
+    local selected = previous
+    local override = suppression_override == true or
+        math.tointeger(suppression_override or 0) ~= 0
+    for _ = 1, refresh.SLOT_COUNT do
+        flags[cursor] = flags[cursor] & ~selected_flag
+        if types[cursor] == refresh.TERMINAL_RECORD_TYPE then
+            cursor = refresh.FIRST_SLOT
+        else
+            cursor = cursor + 1
+        end
+        assert(cursor < refresh.SLOT_COUNT,
+               "party_down: roster has no type-2 terminal record")
+
+        flags[cursor] = flags[cursor] | selected_flag
+        local candidate_flags = flags[cursor]
+        local eligible = candidate_flags & active_flag ~= 0 and
+            (override or candidate_flags & suppressed_flags == 0)
+        if eligible then
+            selected = cursor
+            break
+        end
+    end
+
+    return {
+        selected,
+        flags[refresh.FIRST_SLOT],
+        flags[refresh.FIRST_SLOT + 1],
+        flags[refresh.FIRST_SLOT + 2],
+        selected ~= previous and 1 or 0,
+        E.MenuSound.MOVE,
+    }
+end
+
 -- FFFBED selects the source run handler. FFFC1C bit 0 must be set; only the
 -- employee-recruitment branch also rejects bit 7. 0x1E68C clears FFFBEC and
 -- FFFC1C after selecting these one-page messages [C].
@@ -121,6 +177,8 @@ function PartyDown.run_failure_flat(run_type, run_flags)
         event_id = presentation.event_id,
         text_key = presentation.text_key,
         clear_high_effects = presentation.clear_high_effects == true,
+        clear_player_spawn_request =
+            presentation.clear_player_spawn_request == true,
         clear_run_objective = presentation.clear_run_objective == true,
         clear_world_activity_request =
             presentation.clear_world_activity_request == true,
@@ -130,7 +188,11 @@ end
 -- Query and mutate the existing Lua run registry before the failure page,
 -- matching 0xC64C's order before 0xC716. The single FFFC22 bit is changed only
 -- when the host has restored that source word; nil remains explicitly unknown.
-function PartyDown.prepare_run_failure_flat(world_activity_scene_reset)
+function PartyDown.prepare_run_failure_flat(world_activity_scene_reset,
+                                             player_spawn_request_pending)
+    local had_player_spawn_request =
+        player_spawn_request_pending == true or
+        math.tointeger(player_spawn_request_pending or 0) ~= 0
     local registry = game.runs.registry
     local run_state = registry.party_wipe_failure_state(
         world_activity_scene_reset)
@@ -138,7 +200,8 @@ function PartyDown.prepare_run_failure_flat(world_activity_scene_reset)
         run_state.run_type, run_state.flags)
     if failure == nil then
         pending_run_failure_event = nil
-        return { E.RunType.NONE, 0, 0, 0 }
+        return { E.RunType.NONE, 0, 0, 0, 0,
+                 had_player_spawn_request and 1 or 0 }
     end
 
     registry.clear_active_offer_after_party_wipe()
@@ -159,6 +222,8 @@ function PartyDown.prepare_run_failure_flat(world_activity_scene_reset)
         failure.clear_high_effects and 1 or 0,
         failure.clear_world_activity_request and 1 or 0,
         objective_flag_status,
+        failure.clear_player_spawn_request and 1 or 0,
+        had_player_spawn_request and 1 or 0,
     }
 end
 
