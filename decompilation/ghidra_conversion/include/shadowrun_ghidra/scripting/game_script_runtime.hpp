@@ -918,11 +918,22 @@ struct ScriptCombatMeterUpdate {
     bool changed = false;
 };
 
+enum class ScriptActorSpellFieldEffectKind : std::uint8_t {
+    none,          // 0x00 / return at 0x1584C [C]
+    field_barrier, // 0x01 / 0x15830 -> 0x49A2 [C]
+};
+
 struct ScriptActorSpellActionResolution {
     std::uint8_t action_code = 0;
     std::string target_id;
+    // Untargeted 0xAE6E calls carry the caster's source slot/type here and an
+    // empty target id [C]; the stale 68k A1 value is not a stable target [H].
+    bool untargeted = false;
+    // For untargeted casts these fields identify the caster record [C].
     std::uint8_t target_record_slot = 0;
     std::uint16_t target_record_type = 0;
+    ScriptActorSpellFieldEffectKind field_effect_kind =
+        ScriptActorSpellFieldEffectKind::none;
     std::uint8_t action_result = 0;
     bool roll_attempted = false;
     std::optional<std::uint8_t> initial_trial_count;

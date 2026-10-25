@@ -5551,8 +5551,9 @@ int main() {
         return 17;
     }
 
-    // ROM 0xAD86/0xAE6E: a field player holding a spell casts through the
-    // shared 0x1033E resolution; no target or a blocked line suppresses it.
+    // ROM 0xAD86/0xAE6E: a no-link +0xA2 still enters 0x1033E at 0xAEB4;
+    // only a linked target runs the line probe. The old no-target expectation
+    // was wrong because 0xAE7E branches directly to 0xAEB4 [C].
     auto player_cast = player_movement;
     player_cast.combat_input_blocked = false;
     player_cast.combat_action_ready = true;
@@ -5582,6 +5583,25 @@ int main() {
         return 108;
     }
     const auto player_cast_no_target = scripts.actor_heartbeat(player_cast);
+    auto player_barrier_cast = player_cast;
+    player_barrier_cast.instance_id = "field_player_barrier_test";
+    player_barrier_cast.player_spell_available = false;
+    player_barrier_cast.spawn = true;
+    const auto player_barrier_warmup =
+        scripts.actor_heartbeat(player_barrier_cast);
+    player_barrier_cast.spawn = false;
+    player_barrier_cast.player_spell_available = true;
+    player_barrier_cast.player_spell_code = 7U;
+    player_barrier_cast.ai_random_bound =
+        [roll = 0U](const std::uint16_t bound) mutable
+            -> std::optional<std::uint16_t> {
+            if (bound != 6U) {
+                return std::nullopt;
+            }
+            return roll++ % 2U == 0U ? 5U : 0U;
+        };
+    const auto player_barrier_no_target =
+        scripts.actor_heartbeat(player_barrier_cast);
     ScriptActorTargetCandidate cast_target{};
     cast_target.id = "field_actor_slot_3";
     cast_target.world_x = 0x0040U;
@@ -5601,8 +5621,33 @@ int main() {
     if (!expect(
             player_cast_no_target.has_value() &&
                 player_cast_no_target->source_action_dispatch ==
-                    std::optional<std::string>{"player_spell_no_target"} &&
-                !player_cast_no_target->spell_action_resolution.has_value() &&
+                    std::optional<std::string>{"player_spell"} &&
+                player_cast_no_target->spell_action_resolution.has_value() &&
+                player_cast_no_target->spell_action_resolution->untargeted &&
+                player_cast_no_target->spell_action_resolution->roll_attempted &&
+                player_cast_no_target->spell_action_resolution->difficulty ==
+                    std::optional<std::uint8_t>{6U} &&
+                player_cast_no_target->spell_action_resolution->target_record_slot ==
+                    0U &&
+                player_cast_no_target->spell_action_resolution->target_record_type ==
+                    7U &&
+                player_cast_no_target->spell_action_resolution->target_id.empty() &&
+                !player_cast_no_target->spell_action_resolution->effect_started &&
+                player_barrier_warmup.has_value() &&
+                player_barrier_no_target.has_value() &&
+                player_barrier_no_target->spell_action_resolution.has_value() &&
+                player_barrier_no_target->spell_action_resolution->untargeted &&
+                player_barrier_no_target->spell_action_resolution->action_result >
+                    0U &&
+                player_barrier_no_target->spell_action_resolution->difficulty ==
+                    std::optional<std::uint8_t>{6U} &&
+                player_barrier_no_target->spell_action_resolution->field_effect_kind ==
+                    ScriptActorSpellFieldEffectKind::field_barrier &&
+                player_barrier_no_target->spell_action_resolution->effect_started &&
+                player_barrier_no_target->spell_action_resolution->spell_effect_slot ==
+                    std::optional<std::uint8_t>{0U} &&
+                player_barrier_no_target->audio_event ==
+                    std::optional<std::uint16_t>{0x003BU} &&
                 player_cast_blocked.has_value() &&
                 player_cast_blocked->source_action_dispatch ==
                     std::optional<std::string>{"player_spell_blocked"} &&
@@ -5615,7 +5660,7 @@ int main() {
                     1U &&
                 player_cast_resolved->spell_action_resolution->target_id ==
                     "field_actor_slot_3",
-            "Lua player spell cast did not follow the 0xAE6E target/line gates")) {
+            "Lua player spell did not resolve the no-link roll/0x49A2 barrier split")) {
         std::cerr << scripts.failure() << '\n';
         return 106;
     }

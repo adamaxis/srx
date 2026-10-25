@@ -2,6 +2,7 @@
 -- The native spell table filters this catalog for the active runner.
 local Magic = {}
 local SourceSpellRecords = require("data.spells").by_type
+local E = require("enums")
 
 local spell_ids = {
     "flame_dart",
@@ -81,6 +82,13 @@ local actor_effect_profile_by_code = {
              palette_line = 3 },
 }
 
+-- 0x15830 branches to 0x49A2 for these two action codes before it reads
+-- +0xA2. All other action codes return when that link is zero [C].
+local untargeted_effect_kind_by_code = {
+    [E.SpellActionCode.SUPER_BARRIER] = E.SpellEffectKind.FIELD_BARRIER,
+    [E.SpellActionCode.BARRIER] = E.SpellEffectKind.FIELD_BARRIER,
+}
+
 local function text_keys(ids, prefix)
     local keys = {}
     for index, id in ipairs(ids) do
@@ -130,8 +138,18 @@ function Magic.spell_action_definition(code)
         action_modifier_selector = source_record.totem_category,
         source_record = source_record,
         audio_event = action_effect_audio_event_by_code[code] or 0,
+        untargeted_effect_kind = untargeted_effect_kind_by_code[code] or
+            E.SpellEffectKind.NONE,
         actor_effect = effect_profile,
     }
+end
+
+function Magic.untargeted_effect_kind(code)
+    if type(code) ~= "number" or code % 1 ~= 0 or
+       code < 1 or code > #spell_action_by_code then
+        return nil
+    end
+    return untargeted_effect_kind_by_code[code] or E.SpellEffectKind.NONE
 end
 
 function Magic.actor_effect_profile(code)

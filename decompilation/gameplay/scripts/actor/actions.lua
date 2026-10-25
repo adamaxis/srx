@@ -496,15 +496,20 @@ function R.queue_spell_effect(state, context, target, resolution)
 end
 
 -- ROM 0xACAE -> 0xAD86: a negative +0x56 sends held A to 0xAE6E. With a
--- B-selected +0xA2 target other than the caster, 0xAE6E aims +0x2E through
--- 0x15D3C and runs the 0x14D8E line probe; carry set clears FFF0DD and the
--- 0xAF7C pose runs without a cast. Otherwise it jumps to 0x1033E, the same
--- spell action NPCs reach from 0x13FFE. Returns the 0x4946 audio event.
--- ROM 0xAE6E returns at once while FFE186 == 3 (FFF0DD cleared). Every
--- path then falls back to 0xAD94: FFF0DD set -> 0xAFAE, clear -> 0xAF7C;
--- both reload the delay (0xABFC mode 0) and set +0x16 = C082[dir(+0x2E)].
--- [H] 0xAE6E also jumps to 0x1033E with no +0xA2 link, reading a stale a1
--- as the defender; that untargeted roll is not ported (pose only).
+-- linked +0xA2, 0xAE6E aims +0x2E and runs the 0x14D8E line probe. With no
+-- link it skips the probe but still jumps to 0x1033E. That resolver's
+-- 0x55740 reads +0x9B/+0x11 through A1, which 0xAE6E did not load. In the
+-- player actor loop 0xA8EA, 0xAAA6 loads the prior record's +0x3A callback
+-- into A1 and 0xAAB0 executes it after that record's action; the callback
+-- can change A1 [C]. The first record also inherits A1 from the outer caller
+-- [C].
+-- The no-link 0x1033E path leaves A1 untouched through 0x55740, so its
+-- defender reads are state-dependent and not a stable target [H]. We retain
+-- the known attacker-side modifiers and omit those undefined stale bytes.
+-- The deterministic no-link dispatch at 0x15830 is still modeled: only
+-- action codes 7/14 reach the directional field barrier at 0x49A2 [C].
+-- Every path returns through 0xAD94 to 0xAFAE/0xAF7C, both of which reload
+-- delay mode 0 and set +0x16 = C082[dir(+0x2E)] [C].
 function R.begin_player_spell_cast(state, context)
     if context.phase ~= "behavior" or
        context.player_spell_available ~= true or
@@ -520,8 +525,55 @@ function R.begin_player_spell_cast(state, context)
     local target = type(context.ai_target_candidates) == "table" and
         context.ai_target_candidates[1] or nil
     if type(target) ~= "table" then
-        state.source_action_dispatch = "player_spell_no_target"
-        return nil
+        local combat = game.modules.combat
+        if type(combat) ~= "table" or
+           type(combat.resolve_untargeted_spell_action) ~= "function" then
+            return nil
+        end
+        local cast_context = setmetatable(
+            {action_code = context.player_spell_code},
+            {__index = context})
+        local replaces_field_barrier =
+            context.player_spell_code == E.SpellActionCode.SUPER_BARRIER or
+            context.player_spell_code == E.SpellActionCode.BARRIER
+        -- 0x49A2 resets the previous field barrier before reserving its new
+        -- shared effect slot. Present that Lua-owned slot as free to the roll [C].
+        local old_field_effect = state.player_field_spell_effect
+        if replaces_field_barrier and
+           type(old_field_effect) == "table" and
+           type(context.world_effect_slot_occupancy) == "table" then
+            local occupancy = {}
+            for slot = 1, 18 do
+                occupancy[slot] = context.world_effect_slot_occupancy[slot]
+            end
+            if type(old_field_effect.effect_slot) == "number" then
+                occupancy[old_field_effect.effect_slot + 1] = false
+            end
+            cast_context.world_effect_slot_occupancy = occupancy
+        end
+        local resolution = combat.resolve_untargeted_spell_action(
+            cast_context)
+        if resolution == nil then
+            return nil
+        end
+        state.source_action_dispatch = "player_spell"
+        state.spell_action_resolution = resolution
+        state.action_result = resolution.action_result
+        state.combat_action_requested = false
+        state.combatant = resolution.combatant
+        if resolution.field_effect_kind == E.SpellEffectKind.FIELD_BARRIER then
+            state.player_field_spell_effect = nil
+            if resolution.effect_started and
+               type(resolution.spell_effect_slot) == "number" then
+                state.player_field_spell_effect = {
+                    action_code = resolution.action_code,
+                    effect_slot = resolution.spell_effect_slot,
+                    remaining = resolution.action_result *
+                        E.SpellTuning.FIELD_BARRIER_TICKS_PER_SUCCESS,
+                }
+            end
+        end
+        return resolution.audio_event
     end
     if not action_line_clear(context, target) then
         state.source_action_dispatch = "player_spell_blocked"
@@ -671,6 +723,21 @@ local function advance_spell_effect(state, context)
     state.spell_effect_action_code = 0
     state.spell_effect_completed = false
     transfer_pending_spell_effect(state, context)
+    local field_effect = state.player_field_spell_effect
+    if type(field_effect) == "table" and context.phase == "render" then
+        -- ROM 0x49F2 stores action_result * 0x190 in the field effect timer;
+        -- 0x4ADC decrements that timer on the effect service pass [C]. The host
+        -- owns the allocated shared slot; Lua owns this source clock.
+        field_effect.remaining = field_effect.remaining - 1
+        if field_effect.remaining <= 0 then
+            state.spell_effect_action_code = field_effect.action_code
+            state.spell_effect_phase = 1
+            state.spell_effect_slot_released = field_effect.effect_slot
+            state.spell_effect_completed = true
+            state.player_field_spell_effect = nil
+            return
+        end
+    end
     if context.phase ~= "render" or
        type(state.spell_effect_pending) ~= "table" then
         return

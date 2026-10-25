@@ -318,6 +318,8 @@ constexpr std::uint16_t kRunnerFlagsDown = 0x1000U;
 constexpr std::uint8_t kFieldPlayerPoseFirearm = 0U;
 constexpr std::uint8_t kFieldPlayerPoseStrike = 1U;
 constexpr std::uint8_t kFieldPlayerPoseCast = 2U;
+constexpr std::string_view kFieldPlayerBarrierEffectOwner =
+    "field_player_barrier";
 struct FieldSpellEffectProfile {
     std::uint8_t action_code;
     std::string_view asset_id;
@@ -11225,6 +11227,22 @@ FieldSceneRuntime::heartbeat_field_player(
                 actor_context.ai_target_candidates.push_back(
                     std::move(candidate));
             }
+            // The no-link 0x49A2 branch clears its current barrier before it
+            // requests a replacement. Expose that slot as free only when
+            // Lua has no linked target [C].
+            if (actor_context.player_spell_available &&
+                actor_context.ai_target_candidates.empty() &&
+                (actor_context.player_spell_code == 0x07U ||
+                 actor_context.player_spell_code == 0x0EU)) {
+                for (std::size_t slot = 0U;
+                     slot < field_spell_effect_slot_target_ids_.size(); ++slot) {
+                    if (field_spell_effect_slot_target_ids_[slot] ==
+                        kFieldPlayerBarrierEffectOwner) {
+                        actor_context.world_effect_slot_occupancy[slot] =
+                            false;
+                    }
+                }
+            }
             actor_context.action_line_clear = [this, &runner](
                 const std::uint16_t target_x,
                 const std::uint16_t target_y) {
@@ -11734,12 +11752,31 @@ void FieldSceneRuntime::service_player_spell_cast(
     auto& runner = active_runner_record();
     if (decision.spell_action_resolution.has_value()) {
         const auto& resolution = *decision.spell_action_resolution;
+        const bool field_barrier = resolution.field_effect_kind ==
+            scripting::ScriptActorSpellFieldEffectKind::field_barrier;
+        // ROM 0x49A2 resets an existing barrier before attempting a new
+        // shared effect record. Clear the host-owned record even if the new
+        // 0x1582A allocation later finds the pool full [C].
+        if (field_barrier) {
+            for (std::size_t slot = 0U;
+                 slot < field_spell_effect_slot_target_ids_.size(); ++slot) {
+                if (field_spell_effect_slot_target_ids_[slot] ==
+                    kFieldPlayerBarrierEffectOwner) {
+                    field_world_effect_slots_occupied_[slot] = false;
+                    field_spell_effect_slot_target_ids_[slot].clear();
+                }
+            }
+        }
         if (resolution.effect_started &&
             resolution.spell_effect_slot.has_value()) {
             const auto slot = *resolution.spell_effect_slot;
+            const auto owner_id = field_barrier
+                ? kFieldPlayerBarrierEffectOwner
+                : std::string_view{resolution.target_id};
             if (slot >= field_world_effect_slots_occupied_.size() ||
                 field_world_effect_slots_occupied_[slot] ||
-                resolution.target_id.empty() ||
+                owner_id.empty() ||
+                (resolution.untargeted && !field_barrier) ||
                 !field_spell_effect_slot_target_ids_[slot].empty()) {
                 failure_ = "Lua selected an occupied spell effect record";
                 source_boundary(
@@ -11747,8 +11784,14 @@ void FieldSceneRuntime::service_player_spell_cast(
                 return;
             }
             field_world_effect_slots_occupied_[slot] = true;
-            field_spell_effect_slot_target_ids_[slot] = resolution.target_id;
+            field_spell_effect_slot_target_ids_[slot] =
+                std::string(owner_id);
             source_boundary("field.combat.player_spell.effect_slot_reserved");
+        }
+        if (resolution.roll_attempted) {
+            // 0x103B2 publishes the caster's threshold result at +0x9F [C].
+            runner.action_result = static_cast<std::int8_t>(
+                resolution.action_result);
         }
         // 0x1033E writes the caster's +0x9C meter and 0x10660 fetish cells.
         runner.behavior_meter = resolution.mental_meter;
@@ -12874,7 +12917,9 @@ void FieldSceneRuntime::advance_field_actor_animation() {
                     (field_spell_effect_slot_target_ids_[slot] !=
                          "field_player_runner" &&
                      field_spell_effect_slot_target_ids_[slot] !=
-                         active_party_target_id)) {
+                         active_party_target_id &&
+                     field_spell_effect_slot_target_ids_[slot] !=
+                         kFieldPlayerBarrierEffectOwner)) {
                     failure_ = "Lua released an unowned runner spell effect record";
                     source_boundary(
                         "field.player.spell.effect_slot_release_invalid");

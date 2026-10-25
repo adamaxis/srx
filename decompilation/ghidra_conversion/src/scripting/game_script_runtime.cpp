@@ -139,6 +139,14 @@ bool read_field_string(lua_State* state, const int table_index,
     return valid;
 }
 
+bool read_field_string_allow_empty(lua_State* state, const int table_index,
+                                   const char* field, std::string& value) {
+    lua_getfield(state, table_index, field);
+    const bool valid = read_string_allow_empty(state, -1, value);
+    lua_pop(state, 1);
+    return valid;
+}
+
 bool read_field_text(lua_State* state, const int table_index,
                      const char* field, std::string& value,
                      const std::size_t maximum_length =
@@ -8715,7 +8723,7 @@ GameScriptRuntime::actor_heartbeat(
         static_cast<std::uint8_t>(spell_effect_phase_value);
     std::uint32_t spell_effect_action_code = 0U;
     if (!read_field_integer(state, decision_table,
-                            "spell_effect_action_code", 13U,
+                            "spell_effect_action_code", 14U,
                             spell_effect_action_code)) {
         return fail("actor_ai.heartbeat returned an invalid spell effect action code");
     }
@@ -8774,6 +8782,11 @@ GameScriptRuntime::actor_heartbeat(
             return std::uint8_t{9U};
         case 12U:
             return std::uint8_t{16U};
+        // ROM 0x49A2 uses a timed field record, one terminal render phase,
+        // and no actor-target animation phases for either barrier code [C].
+        case 7U:
+        case 14U:
+            return std::uint8_t{1U};
         default:
             return std::uint8_t{0U};
         }
@@ -8967,11 +8980,17 @@ GameScriptRuntime::actor_heartbeat(
         const auto resolution_table = lua_absindex(state, -1);
         ScriptActorSpellActionResolution resolution{};
         std::uint32_t resolution_value = 0U;
+        std::uint32_t field_effect_kind_value = 0U;
         int signed_resolution_value = 0;
         if (!read_field_integer(state, resolution_table, "action_code",
                                 0xFFU, resolution_value) ||
-            !read_field_string(state, resolution_table, "target_id",
-                               resolution.target_id) ||
+            !read_field_string_allow_empty(state, resolution_table,
+                                           "target_id", resolution.target_id) ||
+            !read_field_boolean(state, resolution_table, "untargeted",
+                                resolution.untargeted) ||
+            !read_field_integer(state, resolution_table,
+                                "field_effect_kind", 1U,
+                                field_effect_kind_value) ||
             !read_field_integer(state, resolution_table,
                                 "source_record_slot", 0xFFU,
                                 resolution_value)) {
@@ -8980,6 +8999,9 @@ GameScriptRuntime::actor_heartbeat(
         }
         resolution.target_record_slot =
             static_cast<std::uint8_t>(resolution_value);
+        resolution.field_effect_kind =
+            static_cast<ScriptActorSpellFieldEffectKind>(
+                field_effect_kind_value);
         std::uint32_t action_code = 0U;
         if (!read_field_integer(state, resolution_table, "action_code",
                                 0xFFU, action_code) ||
@@ -9197,6 +9219,25 @@ GameScriptRuntime::actor_heartbeat(
               resolution.target_record_slot < 3U) ||
              (resolution.target_record_type >= 3U &&
               resolution.target_record_slot >= 3U));
+        const bool untargeted_player_cast =
+            resolution.untargeted && resolution.target_id.empty() &&
+            context.player_spell_available &&
+            !context.dynamic_world_encounter_actor &&
+            context.phase == ScriptActorHeartbeatPhase::behavior &&
+            context.source_record_slot.has_value() &&
+            *context.source_record_slot == resolution.target_record_slot &&
+            context.combatant.has_value() &&
+            context.combatant->record_type ==
+                resolution.target_record_type;
+        const bool field_barrier = resolution.field_effect_kind ==
+            ScriptActorSpellFieldEffectKind::field_barrier;
+        const bool field_effect_kind_valid =
+            resolution.field_effect_kind ==
+                ScriptActorSpellFieldEffectKind::none ||
+            (field_barrier && untargeted_player_cast &&
+             (resolution.action_code == 7U ||
+              resolution.action_code == 14U) &&
+             resolution.effect_requested);
         // The field player's cast code is offered separately; its profile
         // action code stays "none" for movement and weapon services.
         const auto caster_action_code =
@@ -9205,8 +9246,12 @@ GameScriptRuntime::actor_heartbeat(
                 ? context.player_spell_code
                 : context.action_code;
         if (!known_outcome || action_code != caster_action_code ||
-            !context.combatant.has_value() || !linked_target ||
+            !context.combatant.has_value() ||
+            (!linked_target && !untargeted_player_cast) ||
             resolution.action_code != caster_action_code ||
+            (resolution.untargeted && !untargeted_player_cast) ||
+            (!resolution.untargeted && field_barrier) ||
+            !field_effect_kind_valid ||
             resolution.effect_requested != effect_outcome ||
             (resolution.effect_started &&
              (!resolution.effect_requested ||
@@ -10075,10 +10120,17 @@ GameScriptRuntime::actor_heartbeat(
     bool spell_action_audio_matches = false;
     if (decision.spell_action_resolution.has_value()) {
         const auto& resolution = *decision.spell_action_resolution;
-        const auto expected_audio =
+        const auto table_audio =
             resolution.action_code < kSpellActionAudioEvents.size()
                 ? kSpellActionAudioEvents[resolution.action_code]
                 : 0U;
+        // ROM 0x49A2 emits event 0x3B only after 0x1582A allocates the
+        // directional field-barrier record; a full pool stays silent [C].
+        const auto expected_audio =
+            resolution.field_effect_kind ==
+                    ScriptActorSpellFieldEffectKind::field_barrier
+                ? (resolution.effect_started ? 0x003BU : 0U)
+                : table_audio;
         spell_action_audio_matches =
             (!resolution.effect_started && !decision.audio_event.has_value()) ||
             (resolution.effect_started &&

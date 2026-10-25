@@ -63,6 +63,31 @@ E.SpellType = { FLAME_DART = 0, FLAME_BOLT = 1, HELLBLAST = 2, INVISIBILITY = 3,
                 SUPER_BARRIER = 6, MANA_ZAP = 7, MANA_BLAST = 8, MANA_STORM = 9, ROCKSKIN = 10,
                 HEAL_WOUNDS = 11, CONFUSION = 12, BARRIER = 13 }
 E.SPELL_ITEM_BASE = 0x33
+-- Live action codes in +0x57 use the one-based D4EA0 row index. 0x15830
+-- sends codes 7 and 14 to the field-barrier branch at 0x49A2 [C].
+E.SpellActionCode = {
+    FLAME_DART = 1,       -- +0x57=0x01 / D4EA0 row 0 [C]
+    FLAME_BOLT = 2,       -- +0x57=0x02 / D4EA0 row 1 [C]
+    HELLBLAST = 3,        -- +0x57=0x03 / D4EA0 row 2 [C]
+    INVISIBILITY = 4,     -- +0x57=0x04 / D4EA0 row 3 [C]
+    SLEEP = 5,            -- +0x57=0x05 / D4EA0 row 4 [C]
+    STINK = 6,            -- +0x57=0x06 / 0x1588C [C]
+    SUPER_BARRIER = 7,    -- +0x57=0x07 / 0x15830 [C]
+    MANA_ZAP = 8,         -- +0x57=0x08 / D4EA0 row 7 [C]
+    MANA_BLAST = 9,       -- +0x57=0x09 / D4EA0 row 8 [C]
+    MANA_STORM = 10,      -- +0x57=0x0A / D4EA0 row 9 [C]
+    ROCKSKIN = 11,        -- +0x57=0x0B / D4EA0 row 10 [C]
+    HEAL_WOUNDS = 12,     -- +0x57=0x0C / D4EA0 row 11 [C]
+    CONFUSION = 13,       -- +0x57=0x0D / 0x1589C [C]
+    BARRIER = 14,         -- +0x57=0x0E / 0x15830 [C]
+}
+E.SpellEffectKind = {
+    NONE = 0,              -- 0x00 / 0x1584C returns when +0xA2 is zero [C]
+    FIELD_BARRIER = 1,     -- 0x01 / 0x15830 -> 0x49A2 [C]
+}
+E.SpellTuning = {
+    FIELD_BARRIER_TICKS_PER_SUCCESS = 0x0190, -- 0x49F2 / 0x4ADC [C]
+}
 -- Item kinds (repo items.lua kind names, verified against record 0xD4540 contents; doc 08) [C]
 E.ItemKind = { FIREARM = 1, GRENADE = 2, MEDICAL_KIT = 3, STIM_PATCH = 4, TRAUMA_PATCH = 5, FETISH = 6, PASSKEY = 7,
                ELECTRONIC_KIT = 8, SMART_GOGGLES = 9, ENCHANTED_DAGGER = 10, POWER_FOCUS = 11, SPELL_FOCUS = 12,
@@ -105,7 +130,7 @@ E.SoundId = {   -- played through 0x530DE (doc 10) [C]
     SPELL_EFFECT_31 = 0x31, SPELL_EFFECT_32 = 0x32, SPELL_EFFECT_33 = 0x33,  -- spell table 0x4946 [C]
     SPELL_EFFECT_34 = 0x34, SPELL_EFFECT_35 = 0x35, SPELL_EFFECT_37 = 0x37,
     SPELL_EFFECT_38 = 0x38, SPELL_EFFECT_39 = 0x39, SPELL_EFFECT_3A = 0x3A,
-    FIELD_3B = 0x3B,                 -- 0x4AA4 [C site, role unknown]
+    FIELD_3B = 0x3B,                 -- 0x49A2 -> 0x4AA4 field barrier [C]
     UNUSED_3D = 0x3D, UNUSED_3E = 0x3E, UNUSED_50 = 0x50,                   -- no caller found (doc 10 §5 re-scan) [H]
     MELEE_SWING = 0x4C, MELEE_SWING_ALT = 0x55,   -- 0xB1DC: 0x4C, or 0x55 when actor +0x0E == 0x0C [C mechanism]
     DECK_JINGLE = 0x5B,              -- 0x1763A deck-screen jingle; stopped at 0x1764C [C]
