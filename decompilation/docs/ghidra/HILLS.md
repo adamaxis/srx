@@ -6,6 +6,13 @@ composites do not count. Apply the question-by-question evidence process in
 [`visual-verification-checklist.md`](visual-verification-checklist.md) to each
 screen change.
 
+### Field entity edge culling
+
+At ROM `0x4618`, each active entity is projected by `0x5A62`; `0x5A98`–`0x5AB4`
+culls on the projected anchor. The accepted window is x `0x70..0x1AD`, y
+`0x63..0x179`, or screen x `-16..301`, y `-29..249` on the 320×224 field.
+Enemies vanishing outside this anchor window is ROM behavior.
+
 CyberInfo Run Info now keeps the ROM's signed `FFF0E3` branches in Lua and
 places active node/function/action text at `$C328`, `$C334`, `$C4AC`, and
 `$C630`; the no-run and complete messages use `$C42C` and `$C42E`. Debug and
