@@ -1,11 +1,14 @@
 # Field barrier (Barrier / Super Barrier): presentation and collision notes
 
-Status: notes only. The port already handles the cast, the slot reservation
-(`kFieldPlayerBarrierEffectOwner`) and the Lua lifetime clock (actions.lua,
-`E.SpellEffectKind.FIELD_BARRIER`, `FIELD_BARRIER_TICKS_PER_SUCCESS`). Missing:
-the five floor cells written into FF1700, the five-segment sprite, and the
-restore on expiry or scene change. Everything below was checked with m68dis on
-rom.bin [C], unless marked [H].
+Status: the player-side collision overlay is implemented. Lua now places the
+five FF1700 cells from the caster position, heading, and action code; the typed
+field runtime overlays those bytes during collision probes and clears them on
+recast, expiry, scene load, and field reset. The existing cast, slot reservation
+(`kFieldPlayerBarrierEffectOwner`) and Lua lifetime clock
+(`E.SpellEffectKind.FIELD_BARRIER`, `FIELD_BARRIER_TICKS_PER_SUCCESS`) remain
+the behavior owner. The five-segment sprite is still open because it needs the
+combat-owned `paint_field_scene` path. Everything below was checked with
+m68dis on rom.bin [C], unless marked [H].
 
 ## Record and dispatch
 - [C] 0x15830: spell codes 7 (Super Barrier) and 14 (Barrier) jump to 0x49A2.
@@ -73,12 +76,15 @@ rom.bin [C], unless marked [H].
   - 0x16AB8 (scene load, after FFDDC4 is set from the scene table)
 
 ## Port plan (for whoever implements; player-side)
-1. Lua: a pure function giving octant, centre, the five cell indices and the
-   cell code (0x7E/0x7F) from caster X/Y/heading/action code. Add the tables
-   0x4AAC/0x4BB0/0x4C0C as `E.FieldBarrier.*` with their addresses.
-2. C++: a per-scene `std::array<std::optional<uint8_t>,5>` overlay applied in the
-   `terrain_collision_map` lookup lambda (field_scene_runtime.cpp ~9128).
-   Restore it on expiry, on recast, and on scene load (0x16AB8 parity).
-3. Sprite: 5 SceneSprites with 2-of-5 flicker and a 4-frame loop. Extract frames
-   0x5802..0x5838 first. This touches the sprite list in paint_field_scene, so
-   it waits until after the combat integration.
+1. **Implemented:** `field_barrier.lua` computes octant, centre, five cell
+   indices, and 0x7E/0x7F code from the source tables registered in
+   `E.FieldBarrier` [C].
+2. **Implemented:** `FieldSceneRuntime` owns a five-cell per-scene collision
+   overlay. The terrain collision sampler consults it, and recast, expiry,
+   scene load, travel reset, and full field reset clear it. The original map
+   bytes remain in the imported scene data; this has the same collision result
+   as the ROM's save/overwrite/restore [C]. Out-of-map overlay entries are
+   ignored as a host safety guard [H].
+3. **Open:** five-segment sprite placement, two-of-five flicker, and the
+   four-frame loop still need the extracted 0x5802..0x5838 frames. This touches
+   the combat-owned `paint_field_scene` path and remains deferred.

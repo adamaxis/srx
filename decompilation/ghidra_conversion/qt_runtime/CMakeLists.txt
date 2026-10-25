@@ -566,6 +566,12 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_spell_effect_qa
                  --field-spell-effect-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-spell-effect-qa")
 
+# Cast both source Barrier action codes with the normal Lua player-action path,
+# then verify the five-cell collision overlay, recast, expiry, and scene reset.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_barrier_collision_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-barrier-collision-qa)
+
 # Start one cell south of the ROM's Jump House trigger, walk into record 85
 # using normal movement, dismiss its Lua-owned entry narration with A, verify
 # the retained scene-13 route, then walk south into its null-table event-0

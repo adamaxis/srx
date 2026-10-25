@@ -3174,6 +3174,296 @@ int run_field_spell_effect_qa(
     return 0;
 }
 
+int run_field_barrier_collision_qa(
+    FieldSceneRuntime& field_scene,
+    const StartupIntegrationState& startup_state) {
+    constexpr std::uint16_t kScene = 1U;
+    if (!field_scene.bootstrap_for_scene_dump(startup_state, kScene) ||
+        field_scene.field_scene_reference_for_dump() != kScene ||
+        !field_scene.field_entity_visible_for_dump()) {
+        std::cerr << "Field barrier collision QA: Scene 1 bootstrap failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    const auto& map = field_scene.state().field_scene_buffers.source_metadata
+                          .terrain_collision_map;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto row_cells = static_cast<std::size_t>(
+        srx::v(srx::Grid::ROW_CELLS));
+    const auto cell_shift = static_cast<unsigned>(
+        srx::v(srx::Grid::CELL_SHIFT));
+    const auto cell_width = std::size_t{1U} << cell_shift;
+    const auto cell_center = static_cast<std::size_t>(
+        srx::v(srx::Grid::CELL_CENTER));
+    const auto row_count = map.size() / row_cells;
+
+    struct BarrierCenter {
+        std::uint16_t cell_index = 0U;
+        std::uint16_t world_x = 0U;
+        std::uint16_t world_y = 0U;
+    };
+    const std::array<int, kFieldBarrierCollisionCellCount> horizontal_offsets{{
+        0, 1, -1, 2, -2}};
+    const std::array<int, kFieldBarrierCollisionCellCount> vertical_offsets{{
+        0, -static_cast<int>(row_cells), static_cast<int>(row_cells),
+        -2 * static_cast<int>(row_cells), 2 * static_cast<int>(row_cells)}};
+    const auto find_center = [&](
+        const std::array<int, kFieldBarrierCollisionCellCount>& offsets,
+        const std::vector<std::uint16_t>& avoid)
+        -> std::optional<BarrierCenter> {
+        for (std::size_t row = 2U; row + 2U < row_count; ++row) {
+            for (std::size_t column = 2U; column + 2U < row_cells;
+                 ++column) {
+                const auto index = row * row_cells + column;
+                if (index >= map.size() || map[index] != 0U ||
+                    index > std::numeric_limits<std::uint16_t>::max()) {
+                    continue;
+                }
+                const auto source_x = column * cell_width + cell_center;
+                const auto source_y = row * cell_width + cell_center;
+                const auto normalized_x = source_x >> 4U;
+                const auto normalized_y = source_y >> 4U;
+                if (normalized_x < metadata.terrain_x_inclusive_lower ||
+                    normalized_x >= metadata.terrain_x_exclusive_upper ||
+                    normalized_y < metadata.terrain_y_inclusive_lower ||
+                    normalized_y >= metadata.terrain_y_exclusive_upper) {
+                    continue;
+                }
+                bool cells_available = true;
+                for (const auto offset : offsets) {
+                    const auto cell = static_cast<std::int64_t>(index) +
+                                      offset;
+                    cells_available = cells_available && cell >= 0 &&
+                        cell < static_cast<std::int64_t>(map.size()) &&
+                        std::find(avoid.cbegin(), avoid.cend(),
+                                  static_cast<std::uint16_t>(cell)) ==
+                            avoid.cend();
+                }
+                if (!cells_available) {
+                    continue;
+                }
+                return BarrierCenter{
+                    static_cast<std::uint16_t>(index),
+                    static_cast<std::uint16_t>(source_x),
+                    static_cast<std::uint16_t>(source_y)};
+            }
+        }
+        return std::nullopt;
+    };
+
+    const auto north_center = find_center(horizontal_offsets, {});
+    if (!north_center.has_value()) {
+        std::cerr << "Field barrier collision QA: Scene 1 has no clear, "
+                     "in-bounds horizontal barrier centre\n";
+        return 3;
+    }
+    std::array<std::uint16_t, kFieldBarrierCollisionCellCount> old_cells{};
+    for (std::size_t index = 0U; index < old_cells.size(); ++index) {
+        old_cells[index] = static_cast<std::uint16_t>(
+            static_cast<std::int64_t>(north_center->cell_index) +
+            horizontal_offsets[index]);
+    }
+    const std::vector<std::uint16_t> avoid_old_cells(old_cells.begin(),
+                                                     old_cells.end());
+    const auto east_center = find_center(vertical_offsets, avoid_old_cells);
+    if (!east_center.has_value()) {
+        std::cerr << "Field barrier collision QA: Scene 1 has no second clear, "
+                     "in-bounds vertical barrier centre\n";
+        return 3;
+    }
+
+    const auto cast_barrier = [&](const std::uint8_t action_code,
+                                  const BarrierCenter& center,
+                                  const std::uint16_t heading) {
+        auto& runner = field_scene.active_runner_record();
+        // 0xAD86 uses negative +0x56 and codes 7/14 for the spell cast; the
+        // one-trial typed runner setup plus seed FFF9F8=FFFF produces one
+        // success in this headless QA [C].
+        runner.flags = 0x0300U;
+        runner.equipped_inventory_slot = -1;
+        runner.equipped_item_code = action_code;
+        runner.animation_action_gate = -1;
+        runner.delay_meter = 10U;
+        runner.behavior_meter = 10U;
+        runner.posture = 0U;
+        runner.skills[0U] = 0U;
+        runner.auxiliary[0U] = 0U;
+        runner.magic_force = 1U;
+        runner.cyberware_flags = 0U;
+        runner.action_profile_modifier_flags = 0U;
+        runner.inventory_item_codes.fill(0U);
+        runner.inventory_phase_bytes.fill(0U);
+        field_scene.set_active_party_slot_for_dump(
+            field_scene.field_active_party_slot_for_dump());
+        field_scene.set_field_entity_world_position_for_dump(
+            center.world_x,
+            // 0x4AAC north points 0x480 units upward. This caster offset
+            // leaves the selected snapped centre in the requested map cell [C].
+            static_cast<std::uint16_t>(center.world_y + 0x0480U));
+        field_scene.set_field_entity_heading_for_dump(heading);
+        field_scene.set_source_random_seed_for_dump(0xFFFFU);
+        field_scene.set_controller_port_byte(0x40U); // focused-window A input
+        field_scene.advance_frame();
+        const bool started =
+            field_scene.field_barrier_collision_overlay_active_for_dump();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        return started;
+    };
+
+    const auto verify_cells = [&](
+        const BarrierCenter& center,
+        const std::array<int, kFieldBarrierCollisionCellCount>& offsets,
+        const std::uint8_t expected_code) {
+        if (!field_scene.field_barrier_collision_overlay_active_for_dump()) {
+            return false;
+        }
+        const auto& cells =
+            field_scene.field_barrier_collision_overlay_cells_for_dump();
+        for (std::size_t index = 0U; index < cells.size(); ++index) {
+            const auto expected_index = static_cast<std::uint16_t>(
+                static_cast<std::int64_t>(center.cell_index) + offsets[index]);
+            if (cells[index].cell_index != expected_index ||
+                cells[index].code != expected_code) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    const auto probe_cell_center = [&](const std::uint16_t index) {
+        const auto column = static_cast<std::size_t>(index) % row_cells;
+        const auto row = static_cast<std::size_t>(index) / row_cells;
+        const auto x = static_cast<std::uint16_t>(
+            column * cell_width + cell_center);
+        const auto y = static_cast<std::uint16_t>(
+            row * cell_width + cell_center);
+        return field_scene.probe_field_collision_for_dump(x, y);
+    };
+
+    const auto super_barrier_code = static_cast<std::uint8_t>(
+        srx::v(srx::FieldBarrier::CELL_CODE_SUPER_BARRIER));
+    const auto barrier_code = static_cast<std::uint8_t>(
+        srx::v(srx::FieldBarrier::CELL_CODE_BARRIER));
+    const auto blocked_code = static_cast<std::int16_t>(
+        srx::v(srx::Collision::BLOCKED));
+
+    // 0x4AAC N's +0x480 source distance centres this overlay on the selected
+    // map cell; the UI A cast reaches the live slot reservation and Lua math [C].
+    if (!cast_barrier(
+            static_cast<std::uint8_t>(
+                srx::v(srx::SpellActionCode::SUPER_BARRIER)),
+            *north_center,
+            static_cast<std::uint16_t>(srx::v(srx::Heading::UP))) ||
+        !verify_cells(*north_center, horizontal_offsets, super_barrier_code) ||
+        probe_cell_center(north_center->cell_index) != blocked_code) {
+        std::cerr << "Field barrier collision QA: Super Barrier cast did not "
+                     "install five 0x7F cells and block the centre probe; "
+                     "failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    for (const auto old_cell : old_cells) {
+        if (old_cell == east_center->cell_index) {
+            std::cerr << "Field barrier collision QA: chosen recast centre "
+                         "overlaps the old centre\n";
+            return 3;
+        }
+    }
+    const auto old_overlay = old_cells;
+    // E cast position subtracts the ROM 0x4AAC east offset before snapping;
+    // code 14 must remain a spell action and select 0x7E [C].
+    auto& runner = field_scene.active_runner_record();
+    runner.equipped_item_code = static_cast<std::uint8_t>(
+        srx::v(srx::SpellActionCode::BARRIER));
+    runner.animation_action_gate = -1;
+    const auto east_caster = BarrierCenter{
+        east_center->cell_index,
+        static_cast<std::uint16_t>(east_center->world_x - 0x0480U),
+        east_center->world_y};
+    runner.flags = 0x0300U;
+    runner.equipped_inventory_slot = -1;
+    runner.delay_meter = 10U;
+    runner.behavior_meter = 10U;
+    runner.posture = 0U;
+    runner.skills[0U] = 0U;
+    runner.auxiliary[0U] = 0U;
+    runner.magic_force = 1U;
+    runner.cyberware_flags = 0U;
+    runner.action_profile_modifier_flags = 0U;
+    runner.inventory_item_codes.fill(0U);
+    runner.inventory_phase_bytes.fill(0U);
+    field_scene.set_active_party_slot_for_dump(
+        field_scene.field_active_party_slot_for_dump());
+    field_scene.set_field_entity_world_position_for_dump(
+        east_caster.world_x, east_caster.world_y);
+    field_scene.set_field_entity_heading_for_dump(
+        static_cast<std::uint16_t>(srx::v(srx::Heading::RIGHT)));
+    field_scene.set_source_random_seed_for_dump(0xFFFFU);
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    const bool barrier_recast_started =
+        field_scene.field_barrier_collision_overlay_active_for_dump();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    const auto& recast_cells =
+        field_scene.field_barrier_collision_overlay_cells_for_dump();
+    const bool old_cells_gone = std::none_of(
+        old_overlay.cbegin(), old_overlay.cend(),
+        [&recast_cells](const auto old_cell) {
+            return std::any_of(
+                recast_cells.cbegin(), recast_cells.cend(),
+                [old_cell](const auto& current) {
+                    return current.cell_index == old_cell;
+                });
+        });
+    if (!barrier_recast_started ||
+        !verify_cells(*east_center, vertical_offsets, barrier_code) ||
+        !old_cells_gone ||
+        probe_cell_center(east_center->cell_index) != blocked_code ||
+        probe_cell_center(north_center->cell_index) != 0) {
+        std::cerr << "Field barrier collision QA: Barrier recast did not "
+                     "replace the old overlay with five 0x7E cells; failure="
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    std::size_t expiry_frames = 0U;
+    for (; expiry_frames < 500U &&
+           field_scene.field_barrier_collision_overlay_active_for_dump();
+         ++expiry_frames) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    if (field_scene.field_barrier_collision_overlay_active_for_dump() ||
+        probe_cell_center(east_center->cell_index) != 0) {
+        std::cerr << "Field barrier collision QA: Lua expiry did not restore "
+                     "the original clear map byte; frames=" << expiry_frames
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    if (!cast_barrier(
+            static_cast<std::uint8_t>(
+                srx::v(srx::SpellActionCode::SUPER_BARRIER)),
+            *north_center,
+            static_cast<std::uint16_t>(srx::v(srx::Heading::UP))) ||
+        !field_scene.bootstrap_for_scene_dump(startup_state, 2U) ||
+        field_scene.field_barrier_collision_overlay_active_for_dump()) {
+        std::cerr << "Field barrier collision QA: scene reload retained the "
+                     "collision overlay; failure=" << field_scene.failure()
+                  << '\n';
+        return 3;
+    }
+
+    std::cout << "field_barrier_collision_qa=passed scene=1 casts=SuperBarrier,Barrier "
+                 "cells=5 expiry_frames=" << expiry_frames
+              << " recast=cleared-old-cells scene_reload=cleared\n";
+    return 0;
+}
+
 int run_field_scene26_event1_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -27818,6 +28108,7 @@ int main(int argc, char** argv) {
         bool field_smoke_move_right = false;
         bool field_command_reopen_smoke = false;
         bool field_cyberware_empty_qa = false;
+        bool field_barrier_collision_qa = false;
         bool intro_to_field_smoke = false;
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::filesystem::path> field_movement_qa_path;
@@ -28208,6 +28499,11 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_spell_effect_qa_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                "--field-barrier-collision-qa") {
+                field_smoke = true;
+                field_barrier_collision_qa = true;
             }
             if (std::string(argv[index]) ==
                     "--field-redmond-vigore-search-qa" &&
@@ -33483,6 +33779,10 @@ int main(int argc, char** argv) {
                 return run_field_spell_effect_qa(
                     field_scene, smoke_state, asset_root,
                     *field_spell_effect_qa_path);
+            }
+            if (field_barrier_collision_qa) {
+                return run_field_barrier_collision_qa(
+                    field_scene, smoke_state);
             }
             if (field_random_encounter_spawn_qa_path.has_value()) {
                 return run_field_random_encounter_spawn_qa(
