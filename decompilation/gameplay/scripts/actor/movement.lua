@@ -42,13 +42,14 @@ local function projectile_movement_snapshot(context, state)
        source.linked_action_timer < -128 or
        source.linked_action_timer > 127 or
        type(source.heading) ~= "number" or source.heading < 0 or
-       source.heading > 0xffff or
+       source.heading > AiTuning.WORD_MAX or
        type(source.saved_position_x) ~= "number" or
-       source.saved_position_x < 0 or source.saved_position_x > 0xffff or
+       source.saved_position_x < 0 or source.saved_position_x > AiTuning.WORD_MAX or
        type(source.saved_position_y) ~= "number" or
-       source.saved_position_y < 0 or source.saved_position_y > 0xffff or
+       source.saved_position_y < 0 or source.saved_position_y > AiTuning.WORD_MAX or
        type(source.animation_selector) ~= "number" or
-       source.animation_selector < 0 or source.animation_selector > 0xffff then
+       source.animation_selector < 0 or
+       source.animation_selector > AiTuning.WORD_MAX then
         return nil
     end
 
@@ -107,10 +108,10 @@ local function projectile_movement_snapshot(context, state)
                     (result.linked_action_timer ~= 0 and -0x0400 or 0x0800))
                 result.world_x = signed_word_from_long(
                     (result.saved_position_x << fixed_integer_shift) |
-                    (result.world_x & 0xffff))
+                    (result.world_x & AiTuning.WORD_MAX))
                 result.world_y = signed_word_from_long(
                     (result.saved_position_y << fixed_integer_shift) |
-                    (result.world_y & 0xffff))
+                    (result.world_y & AiTuning.WORD_MAX))
                 local entity_motion = game.modules.entity_motion
                 local offsets = type(entity_motion) == "table" and
                     type(entity_motion.heading_offsets) == "function" and
@@ -207,10 +208,10 @@ local function projectile_movement_snapshot(context, state)
                 -- preserving the projectile record's fractional words.
                 result.world_x = signed_word_from_long(
                     (source_x << fixed_integer_shift) |
-                    (probe_x & 0xffff))
+                    (probe_x & AiTuning.WORD_MAX))
                 result.world_y = signed_word_from_long(
                     (source_y << fixed_integer_shift) |
-                    (probe_y & 0xffff))
+                    (probe_y & AiTuning.WORD_MAX))
                 result.outcome =
                     projectile.outcome.hit_resolution_pending
                 result.hit_target_id = hit_target_id
@@ -307,7 +308,8 @@ local function requested_movement_heading(context, profile, state)
     end
     local heading = context.controller_heading_table[
         context.controller_nibble + 1]
-    if type(heading) ~= "number" or heading < 0 or heading >= 0xffff then
+    if type(heading) ~= "number" or heading < 0 or
+       heading >= AiTuning.WORD_MAX then
         return nil
     end
     return heading
@@ -321,8 +323,8 @@ local function resolve_source_target_motion(context, state, target)
         return false
     end
 
-    local heading = target.heading & 0xffff
-    local distance = target.distance & 0xffff
+    local heading = target.heading & AiTuning.WORD_MAX
+    local distance = target.distance & AiTuning.WORD_MAX
     local accepted = false
 
     if context.entity_kind == SpriteType.HELL_HOUND then
@@ -330,7 +332,7 @@ local function resolve_source_target_motion(context, state, target)
         -- heading; negative +0xDC first needs a free effect slot and then
         -- replaces both +0x2E and +0x34. From 0x300 through 0x5FF both
         -- headings change immediately. At 0x600 the actor keeps pursuing.
-        if distance < 0x300 then
+        if distance < AiTuning.HELL_HOUND_CLOSE_RANGE then
             if state.action_delay < 0 then
                 accepted = R.request_target_motion_effect(
                     state, context, heading)
@@ -340,7 +342,7 @@ local function resolve_source_target_motion(context, state, target)
             else
                 accepted = true
             end
-        elseif distance < 0x600 then
+        elseif distance < AiTuning.HELL_HOUND_PURSUIT_RANGE then
             state.movement_current_heading = heading
             accepted = true
         end
@@ -524,7 +526,7 @@ local function movement_context_word(offsets, direction)
     local word_index = 2 + direction
     local pair = math.floor(word_index / 2) + 1
     local component = (word_index % 2) + 1
-    return offsets[pair][component] & 0xffff
+    return offsets[pair][component] & AiTuning.WORD_MAX
 end
 
 local function probe_movement(context, movement_state, direction_slot,

@@ -23,6 +23,11 @@ enum class ActionDelayMode : std::int64_t {
     HALF = 0x1,
     DOUBLE = 0x2,
 };
+enum class ActorAnimation : std::int64_t {
+    DIRECTION_SELECTOR_STEP = 0x4,
+    FRAME_INCREMENT = 0x200,
+    FRAME_PERIOD = 0x1000,
+};
 enum class ActorField : std::int64_t {
     X = 0x0,
     Y = 0x4,
@@ -145,7 +150,9 @@ enum class AiTuning : std::int64_t {
     FOLLOW_RADIUS = 0xE0,
     ARRIVE_DIST = 0x1E0,
     CLOSE_STRIKE_RANGE = 0x200,
+    HELL_HOUND_CLOSE_RANGE = 0x300,
     ENGAGE_DIST = 0x500,
+    HELL_HOUND_PURSUIT_RANGE = 0x600,
     WATCH_DIST = 0x640,
     ANIM_TIMER_MASK = 0x7FF,
     ALARM_FRAMES = 0x960,
@@ -312,6 +319,22 @@ enum class FieldEncounter : std::int64_t {
     ROM_OFFSET_MAX = 0x1FFFFF,
     TEMPLATE_POINTER_ADDRESS_MASK = 0x7FFFFFFF,
 };
+enum class FieldReturnTransitionPhase : std::int64_t {
+    NONE = 0x0,
+    MENU_FADE_OUT = 0x1,
+    BLACK_HOLD = 0x2,
+    FIELD_FADE_IN = 0x3,
+    COMPLETE = 0x4,
+};
+enum class FieldReturnTransitionTiming : std::int64_t {
+    MENU_UNCHANGED_THROUGH = 0x2,
+    FADE_OUT_FIRST_FRAME = 0x3,
+    PALETTE_STEPS = 0x7,
+    FADE_OUT_LAST_FRAME = 0xF,
+    BLACK_HOLD_LAST_FRAME = 0x63,
+    FADE_IN_FIRST_FRAME = 0x64,
+    FIELD_LIVE_FRAME = 0x70,
+};
 enum class GhoulBounty : std::int64_t {
     MAX_DEFEATS = 0x14,
 };
@@ -321,11 +344,23 @@ enum class Grid : std::int64_t {
     CELL_CENTER = 0x100,
     PATH_END = 0xFFFF,
 };
+enum class GroupItemBit : std::int64_t {
+    INDIAN_LANDS_VISA = 0x1,
+    RUN_OBJECTIVE_ACTIVE = 0x9,
+    ORK_ARMBAND = 0xE,
+};
 enum class Heading : std::int64_t {
     UP = 0x0,
     RIGHT = 0x4000,
     DOWN = 0x8000,
     LEFT = 0xC000,
+};
+enum class HitSpark : std::int64_t {
+    SELECTOR = 0x4,
+    TARGET_Y_OFFSET = 0x10,
+    RANGE_LIMIT = 0x200,
+    PALETTE_ATTRIBUTES = 0x2000,
+    FINISHED_SELECTOR_BIT = 0x8000,
 };
 enum class InventoryGrid : std::int64_t {
     COLUMNS = 0x2,
@@ -369,11 +404,34 @@ enum class ItemId : std::int64_t {
     MAGLOCK_PASSKEY = 0x14,
     ELECTRONIC_KIT = 0x15,
     SMART_GOGGLES = 0x16,
+    ENCHANTED_DAGGER = 0x17,
     POWER_FOCUS = 0x18,
+    FLAME_DART_FOCUS = 0x19,
+    FLAME_BOLT_FOCUS = 0x1A,
+    HELLBLAST_FOCUS = 0x1B,
+    INVISIBILITY_FOCUS = 0x1C,
+    SLEEP_FOCUS = 0x1D,
+    STINK_FOCUS = 0x1E,
+    SUPER_BARRIER_FOCUS = 0x1F,
+    MANA_ZAP_FOCUS = 0x20,
+    MANA_BLAST_FOCUS = 0x21,
+    MANA_STORM_FOCUS = 0x22,
+    ROCKSKIN_FOCUS = 0x23,
+    HEAL_WOUNDS_FOCUS = 0x24,
+    CONFUSION_FOCUS = 0x25,
+    BARRIER_FOCUS = 0x26,
+    PROTECTION_TALISMAN = 0x27,
     COMBAT_SENSE_SPELL_LOCK = 0x28,
     RAT_TOTEM = 0x29,
     GATOR_TOTEM = 0x2A,
     BEAR_TOTEM = 0x2B,
+    ARMOR_VEST = 0x2C,
+    ARMOR_CLOTHING = 0x2D,
+    ARMOR_JACKET = 0x2E,
+    VEST_WITH_PLATES = 0x2F,
+    LINED_DUSTER = 0x30,
+    LIGHT_COMBAT_ARMOR = 0x31,
+    HEAVY_COMBAT_ARMOR = 0x32,
 };
 enum class ItemKind : std::int64_t {
     FIREARM = 0x1,
@@ -611,6 +669,12 @@ enum class Pad : std::int64_t {
     START = 0x8000,
     EDGES = 0xFF00,
 };
+// PartyWipeArrival: index-keyed table, see enums.lua
+enum class PartyWipeDestination : std::int64_t {
+    LITTLE_CHIBA = 0x0,
+    DOCWAGON = 0x1,
+    NONE = 0xFF,
+};
 enum class PartyWipeRunnerRefresh : std::int64_t {
     FIRST_SLOT = 0x0,
     TERMINAL_RECORD_TYPE = 0x2,
@@ -621,6 +685,15 @@ enum class Pickup : std::int64_t {
     HOUND_PELT = 0x65,
     NUYEN_FLAG = 0x8000,
     CLIPS_FLAG = 0xC000,
+};
+enum class PlayerHurt : std::int64_t {
+    FRAME_COUNT = 0x2,
+    SELECTOR_STEP = 0x4,
+    SOUND_DELAY = 0x8,
+    RENDER_PASSES = 0xB,
+    SELECTOR_BASE = 0x60,
+    FRAME_INCREMENT = 0x300,
+    FRAME_PERIOD = 0x1000,
 };
 enum class PocketOption : std::int64_t {
     NOTEBOOK = 0x0,
@@ -636,6 +709,10 @@ enum class Posture : std::int64_t {
     NEUTRAL = 0x2,
     MEDIUM_OFFENSE = 0x3,
     FULL_OFFENSE = 0x4,
+};
+enum class RunContextFlag : std::int64_t {
+    ACTIVE = 0x1,
+    EMPLOYEE_FAILURE_GUARD = 0x80,
 };
 enum class RunOfferContext : std::int64_t {
     JUMP_HOUSE = 0x0,
@@ -667,6 +744,7 @@ enum class RunType : std::int64_t {
     PACKAGE_RECOVERY = 0x4,
     EMPLOYEE_RECRUITMENT = 0x5,
     MATRIX_OBJECTIVE = 0x6,
+    NONE = 0xFF,
 };
 enum class RunnerField : std::int64_t {
     STATUS = 0x10,
@@ -834,6 +912,13 @@ enum class SpellActionCode : std::int64_t {
     CONFUSION = 0xD,
     BARRIER = 0xE,
 };
+enum class SpellEffectKind : std::int64_t {
+    NONE = 0x0,
+    FIELD_BARRIER = 0x1,
+};
+enum class SpellTuning : std::int64_t {
+    FIELD_BARRIER_TICKS_PER_SUCCESS = 0x190,
+};
 enum class SpellType : std::int64_t {
     FLAME_DART = 0x0,
     FLAME_BOLT = 0x1,
@@ -851,6 +936,7 @@ enum class SpellType : std::int64_t {
     BARRIER = 0xD,
 };
 enum class SpriteType : std::int64_t {
+    HIT_SPARK = 0x1,
     FIELD_RUNNER = 0x3,
     CORP_GUARD = 0x5,
     GHOUL = 0x7,

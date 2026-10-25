@@ -9,6 +9,8 @@ local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local PlayerHurt = E.PlayerHurt
 local HitSpark = E.HitSpark
+local ActorAnimation = E.ActorAnimation
+local ActorPose = E.ActorPose
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
 local SpriteType = R.SpriteType   -- from actor/tables.lua
 local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
@@ -540,10 +542,12 @@ local function advance_player_animation(state, context)
             state.animation_accumulator = 0
         end
         state.animation_id = "strike"
-        state.animation_selector = 0xC0 + state.direction * 4
-        local accumulated = state.animation_accumulator + 0x0200
-        if accumulated >= 0x1000 then
-            accumulated = accumulated - 0x1000
+        state.animation_selector = ActorPose.ACTION +
+            state.direction * ActorAnimation.DIRECTION_SELECTOR_STEP
+        local accumulated = state.animation_accumulator +
+            ActorAnimation.FRAME_INCREMENT
+        if accumulated >= ActorAnimation.FRAME_PERIOD then
+            accumulated = accumulated - ActorAnimation.FRAME_PERIOD
             if state.animation_frame < 1 then
                 state.animation_frame = state.animation_frame + 1
             end
@@ -560,10 +564,12 @@ local function advance_player_animation(state, context)
             state.animation_accumulator = 0
         end
         state.animation_id = "runner_down"
-        state.animation_selector = 0xE8 + state.direction * 4
-        local accumulated = state.animation_accumulator + 0x0200
-        if accumulated >= 0x1000 then
-            accumulated = accumulated - 0x1000
+        state.animation_selector = ActorPose.DEATH +
+            state.direction * ActorAnimation.DIRECTION_SELECTOR_STEP
+        local accumulated = state.animation_accumulator +
+            ActorAnimation.FRAME_INCREMENT
+        if accumulated >= ActorAnimation.FRAME_PERIOD then
+            accumulated = accumulated - ActorAnimation.FRAME_PERIOD
             if state.animation_frame < 7 then
                 state.animation_frame = state.animation_frame + 1
             end

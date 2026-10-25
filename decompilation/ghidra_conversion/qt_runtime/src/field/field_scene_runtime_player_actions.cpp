@@ -893,11 +893,11 @@ void FieldSceneRuntime::spawn_field_hit_spark(
     auto child = spawn_reaction_auxiliary_child(
         source_slots, request.world_x, request.world_y);
     if (!child.has_value()) {
-        source_boundary("field.combat.player_hit_spark.pool_full");
+        source_boundary("field.combat.hit_spark.pool_full");
         return;
     }
     if (child->slot < 9U || child->slot > 14U) {
-        source_boundary("field.combat.player_hit_spark.slot_invalid");
+        source_boundary("field.combat.hit_spark.slot_invalid");
         return;
     }
     const auto slot_index = static_cast<std::size_t>(child->slot - 9U);
@@ -911,7 +911,7 @@ void FieldSceneRuntime::spawn_field_hit_spark(
         request.world_y + kFieldHitSparkTargetYOffset);
     if (child->world_y != expected_y) {
         field_weapon_slots_occupied_[slot_index] = false;
-        source_boundary("field.combat.player_hit_spark.position_invalid");
+        source_boundary("field.combat.hit_spark.position_invalid");
         return;
     }
 
@@ -922,7 +922,7 @@ void FieldSceneRuntime::spawn_field_hit_spark(
     spark.animation.increment = kFieldHitSparkFrameIncrement;
     spark.animation.period = kFieldHitSparkFramePeriod;
     field_hit_sparks_.push_back(std::move(spark));
-    source_boundary("field.combat.player_hit_spark.spawned");
+    source_boundary("field.combat.hit_spark.spawned");
 }
 
 
@@ -1281,7 +1281,7 @@ void FieldSceneRuntime::advance_field_hit_spark_behaviors() {
             !decision->animation_selector.has_value()) {
             failure_ = game_scripts_.failure();
             source_boundary(
-                "field.combat.player_hit_spark.lua_behavior_failed");
+                "field.combat.hit_spark.lua_behavior_failed");
             release_slot(spark);
             continue;
         }
@@ -1297,10 +1297,10 @@ void FieldSceneRuntime::advance_field_hit_spark_behaviors() {
         if (retire_auxiliary_child(slot, spark.child)) {
             field_weapon_slots_occupied_[
                 static_cast<std::size_t>(spark.child.slot - 9U)] = false;
-            source_boundary("field.combat.player_hit_spark.retired");
+            source_boundary("field.combat.hit_spark.retired");
         } else {
             source_boundary(
-                "field.combat.player_hit_spark.retirement_selector_invalid");
+                "field.combat.hit_spark.retirement_selector_invalid");
         }
     }
 }
@@ -1343,7 +1343,7 @@ void FieldSceneRuntime::advance_field_hit_spark_animations() {
             !decision->animation_increment.has_value()) {
             failure_ = game_scripts_.failure();
             source_boundary(
-                "field.combat.player_hit_spark.lua_animation_failed");
+                "field.combat.hit_spark.lua_animation_failed");
             release_slot(spark);
             continue;
         }

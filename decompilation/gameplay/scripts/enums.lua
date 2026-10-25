@@ -43,6 +43,11 @@ E.PlayerHurt = {
     RENDER_PASSES = 11,         -- 0x5FDC/0x600E completes the two-frame list [C]
     SOUND_DELAY = 8,            -- 0xAFF2 stores +0xCE; 0xB07E counts it down [C]
 }
+E.ActorAnimation = {
+    DIRECTION_SELECTOR_STEP = 0x04, -- C072/C0A2/C0B2 direction tables advance by one word [C]
+    FRAME_INCREMENT = 0x0200, -- 0x5FDC advances C0A2/C0B2 +0x1A by 0x0200 [C]
+    FRAME_PERIOD = 0x1000, -- C0A2/C0B2 +0x1C period consumed by 0x5FDC/0x600E [C]
+} -- ROM 0xB1DC strike and 0xB330 runner-down selectors [C]
 
 E.Posture   = { FULL_DEFENSE = 0, MEDIUM_DEFENSE = 1, NEUTRAL = 2, MEDIUM_OFFENSE = 3, FULL_OFFENSE = 4 }  -- +0x4D, names 0xD1A05 [C]
 E.SceneMode = { NONE = 0, STREET = 1, BUILDING = 2, CAVE = 3 }  -- FFDF40: 1 scenes <0x15, 2 0x15-0x2B, 3 0x2C-0x37 [C]
@@ -277,6 +282,8 @@ E.AiTuning = {   -- [C] unless marked
     FOLLOW_FIRST_SCENE_ACTOR_SLOT = 3, -- 0x1A342 starts d0 at 3; 0x44BC copies it [C]
     FOLLOW_FIRST_LEADER_SLOT = 0, -- 0x14534 tests leader +0x3E [C]
     FOLLOW_COLLISION_CLEAR_MAX = 0, -- 0x1455A/0x14580 accept nonpositive results [C]
+    HELL_HOUND_CLOSE_RANGE = 0x0300, -- 0x14D04 close range action branch [C]
+    HELL_HOUND_PURSUIT_RANGE = 0x0600, -- 0x14D04 pursuit branch ends at 0x0600 [C]
     PATROL_INITIAL_CURSOR = 0, -- 0x142FE clears +0xE4 at the list terminator [C]
     WORD_MAX = 0xFFFF, -- 0x1450E heading and coordinate inputs are 16-bit words [C]
     FLEE_OFFSET = 0x2580, FLEE_CAMERA_BIAS = 0xA00, ENGAGE_DIST = 0x500, WATCH_DIST = 0x640,
