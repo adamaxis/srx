@@ -10198,12 +10198,16 @@ GameScriptRuntime::actor_heartbeat(
     const bool dynamic_creature_action =
         context.dynamic_world_encounter_actor &&
         decision.animation_id == "action";
+    // ROM 0xAFF2 -> 0xB330 / 0xA93A service every live world record in
+    // slots 3..9, including the static default-actor list (playtest #9).
+    const bool world_combat_record =
+        context.dynamic_world_encounter_actor ||
+        (context.combatant.has_value() &&
+         context.combatant->record_type >= 3U);
     const bool dynamic_creature_hurt =
-        context.dynamic_world_encounter_actor &&
-        decision.animation_id == "hurt";
+        world_combat_record && decision.animation_id == "hurt";
     const bool dynamic_creature_down =
-        context.dynamic_world_encounter_actor &&
-        decision.animation_id == "down";
+        world_combat_record && decision.animation_id == "down";
     const bool dynamic_item_action =
         context.dynamic_world_encounter_actor &&
         context.action_kind == ScriptActorActionKind::item &&
@@ -10907,7 +10911,9 @@ GameScriptRuntime::actor_heartbeat(
     const bool dynamic_actor_behavior_audio =
         decision.audio_event.has_value() &&
         context.phase == ScriptActorHeartbeatPhase::behavior &&
-        context.dynamic_world_encounter_actor;
+        (context.dynamic_world_encounter_actor ||
+         (context.combatant.has_value() &&
+          context.combatant->record_type >= 3U));
     const bool spell_action_audio =
         (spell_pose && decision.spell_action_resolution.has_value() &&
          spell_action_audio_matches) ||

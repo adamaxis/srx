@@ -3139,6 +3139,53 @@ int main() {
         "target_marker_stun_0", "hell_hound_k0c_none00", 12U,
         ScriptActorActionKind::none, 0U, 10U, 2U, true);
 
+    const auto static_default_marker_style =
+        [&scripts, &actor_context](const std::string_view actor_id,
+                                   const std::string_view profile_id,
+                                   const std::uint16_t entity_kind,
+                                   const ScriptActorActionKind action_kind,
+                                   const std::uint8_t action_code,
+                                   const std::uint8_t slot,
+                                   const std::uint8_t physical_meter)
+            -> std::optional<ScriptActorBehaviorDecision> {
+        auto context = actor_context(profile_id, actor_id, entity_kind,
+                                     action_kind, action_code, 0U, true);
+        const auto active = static_cast<std::uint8_t>(
+            srx::ActorStatus::ACTIVE);
+        context.source_record_slot = slot;
+        context.source_record_flags = active;
+        context.source_physical_meter = physical_meter;
+        ScriptCombatantFacts facts{};
+        facts.record_type = slot;
+        facts.source_flags = active;
+        facts.physical_meter = physical_meter;
+        facts.mental_meter = 10U;
+        context.combatant = facts;
+        if (!scripts.actor_heartbeat(context).has_value()) {
+            return std::nullopt;
+        }
+        context.spawn = false;
+        context.phase = ScriptActorHeartbeatPhase::render;
+        context.target_selection_latched = true;
+        return scripts.actor_heartbeat(context);
+    };
+    // ROM 0x44BC publishes default actors with a live +0x4C meter. ROM
+    // 0x5C7E uses that meter for the target marker: >=9 is top tier, <3 red.
+    const auto static_guard_marker_healthy = static_default_marker_style(
+        "target_marker_default_guard_healthy", "corp_guard_k05_item06", 5U,
+        ScriptActorActionKind::item, 6U, 3U, 10U);
+    const auto static_pedestrian_marker_low = static_default_marker_style(
+        "target_marker_default_pedestrian_low", "pedestrian_k0b_none00",
+        11U, ScriptActorActionKind::none, 0U, 4U, 2U);
+    if (!expect(static_guard_marker_healthy.has_value() &&
+                    static_guard_marker_healthy->target_marker_style == 3U &&
+                    static_pedestrian_marker_low.has_value() &&
+                    static_pedestrian_marker_low->target_marker_style == 0U,
+                "static_default_actor_target_marker_tiers: ROM 0x5C7E meter 10 is top tier and meter below 3 is red")) {
+        std::cerr << scripts.failure() << '\n';
+        return 19;
+    }
+
     auto target_marker_animation_context = actor_context(
         "marker_animation_k06_none00", "target_marker_animation", 6U,
         ScriptActorActionKind::none, 0U, 0U, true);
@@ -6541,6 +6588,192 @@ int main() {
                 source_weapon_hit_step->combat_meter_update->mental_meter ==
                     8U,
             "Lua firearm path did not seed the projectile and apply the source Warhawk hit to its live target")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+
+    const auto make_static_default_combatant =
+        [&victim_facts](const std::string_view profile_id,
+                        const std::uint8_t slot,
+                        const std::uint8_t physical_meter) {
+        auto facts = victim_facts;
+        facts.record_type = slot;
+        facts.source_flags = static_cast<std::uint8_t>(
+            srx::ActorStatus::ACTIVE);
+        facts.physical_meter = physical_meter;
+        facts.mental_meter = 10U;
+        facts.posture = 2U;
+        if (profile_id == "corp_guard_k05_item06") {
+            // ROM template facts in default-actors.tsv: +0x77/+0x78 and
+            // +0x7B/+0x7C are 5/4 and 3/3 for this guard.
+            facts.command_attribute_77 = 5U;
+            facts.command_attribute_78 = 4U;
+            facts.command_attribute_7b = 3U;
+            facts.command_attribute_7c = 3U;
+            facts.class_code = 2U;
+        } else if (profile_id == "pedestrian_k0b_none00") {
+            // ROM template facts in default-actors.tsv: 2/1 and 2/2.
+            facts.command_attribute_77 = 2U;
+            facts.command_attribute_78 = 1U;
+            facts.command_attribute_7b = 2U;
+            facts.command_attribute_7c = 2U;
+            facts.class_code = 19U;
+        }
+        return facts;
+    };
+    const auto make_static_default_actor_context =
+        [&actor_context, &make_static_default_combatant](
+            const std::string_view actor_id,
+            const std::string_view profile_id,
+            const std::uint16_t entity_kind,
+            const ScriptActorActionKind action_kind,
+            const std::uint8_t action_code,
+            const std::uint8_t slot,
+            const std::uint8_t physical_meter,
+            const bool pedestrian) {
+        auto context = actor_context(profile_id, actor_id, entity_kind,
+                                     action_kind, action_code, 0U, true);
+        const auto active = static_cast<std::uint8_t>(
+            srx::ActorStatus::ACTIVE);
+        context.source_record_slot = slot;
+        context.source_record_flags = active;
+        context.source_physical_meter = physical_meter;
+        context.combatant = make_static_default_combatant(
+            profile_id, slot, physical_meter);
+        if (pedestrian) {
+            context.source_spawn_state_flags = static_cast<std::uint8_t>(
+                srx::ActorFlag::PEDESTRIAN);
+        }
+        return context;
+    };
+
+    // ROM 0x44BC copies template +0x04 to live +0x4C and publishes the
+    // allocated record slot at +0x3E. Keep the non-dynamic default-list
+    // identities in world slots 3 and 4 through projectile resolution.
+    auto static_guard_context = make_static_default_actor_context(
+        "static_default_corp_guard_slot_3", "corp_guard_k05_item06", 5U,
+        ScriptActorActionKind::item, 6U, 3U, 10U, false);
+    const auto static_guard_spawn =
+        scripts.actor_heartbeat(static_guard_context);
+    auto static_guard_projectile = source_weapon_hit_context;
+    static_guard_projectile.instance_id =
+        "field_weapon_slot_static_default_guard_hit";
+    static_guard_projectile.projectile_combat_targets = {
+        ScriptProjectileCombatTarget{
+            "static_default_corp_guard_slot_3", 3U,
+            *static_guard_context.combatant}};
+    static_guard_projectile.projectile_collision_search =
+        [](const std::uint16_t, const std::uint16_t,
+           const std::uint8_t) {
+            return ScriptProjectileCollisionSearchResult{
+                true, true, 45U, 77U,
+                std::string{"static_default_corp_guard_slot_3"}};
+        };
+    const auto static_guard_hit =
+        scripts.actor_heartbeat(static_guard_projectile);
+
+    auto static_pedestrian_context = make_static_default_actor_context(
+        "static_default_pedestrian_slot_4", "pedestrian_k0b_none00", 11U,
+        ScriptActorActionKind::none, 0U, 4U, 1U, true);
+    const auto static_pedestrian_spawn =
+        scripts.actor_heartbeat(static_pedestrian_context);
+    auto static_pedestrian_projectile = source_weapon_hit_context;
+    static_pedestrian_projectile.instance_id =
+        "field_weapon_slot_static_default_pedestrian_lethal";
+    static_pedestrian_projectile.projectile_combat_targets = {
+        ScriptProjectileCombatTarget{
+            "static_default_pedestrian_slot_4", 4U,
+            *static_pedestrian_context.combatant}};
+    static_pedestrian_projectile.projectile_collision_search =
+        [](const std::uint16_t, const std::uint16_t,
+           const std::uint8_t) {
+            return ScriptProjectileCollisionSearchResult{
+                true, true, 45U, 77U,
+                std::string{"static_default_pedestrian_slot_4"}};
+        };
+    const auto static_pedestrian_hit =
+        scripts.actor_heartbeat(static_pedestrian_projectile);
+    auto pedestrian_hit_facts = *static_pedestrian_context.combatant;
+    if (static_pedestrian_hit.has_value() &&
+        static_pedestrian_hit->combat_meter_update.has_value()) {
+        const auto& update = *static_pedestrian_hit->combat_meter_update;
+        pedestrian_hit_facts.physical_meter = update.physical_meter;
+        pedestrian_hit_facts.mental_meter = update.mental_meter;
+        if (update.source_record_flags_updated) {
+            pedestrian_hit_facts.source_flags = update.source_record_flags;
+            static_pedestrian_context.source_record_flags =
+                update.source_record_flags;
+        }
+    }
+    static_pedestrian_context.combatant = pedestrian_hit_facts;
+    static_pedestrian_context.source_physical_meter =
+        pedestrian_hit_facts.physical_meter;
+    static_pedestrian_context.spawn = false;
+    static_pedestrian_context.phase =
+        ScriptActorHeartbeatPhase::behavior;
+    const auto static_pedestrian_down =
+        scripts.actor_heartbeat(static_pedestrian_context);
+    if (static_pedestrian_down.has_value()) {
+        static_pedestrian_context.source_record_flags =
+            static_pedestrian_down->source_record_flags;
+        pedestrian_hit_facts.source_flags =
+            static_pedestrian_down->source_record_flags;
+        static_pedestrian_context.combatant = pedestrian_hit_facts;
+    }
+    static_pedestrian_context.phase = ScriptActorHeartbeatPhase::render;
+    std::optional<ScriptActorBehaviorDecision> static_pedestrian_death_frame;
+    for (std::size_t frame = 0U; frame < 128U; ++frame) {
+        static_pedestrian_death_frame =
+            scripts.actor_heartbeat(static_pedestrian_context);
+    }
+    static_pedestrian_context.phase =
+        ScriptActorHeartbeatPhase::behavior;
+    const auto static_pedestrian_dead =
+        scripts.actor_heartbeat(static_pedestrian_context);
+    const auto active_status = static_cast<std::uint8_t>(
+        srx::ActorStatus::ACTIVE);
+    const auto down_status = static_cast<std::uint8_t>(
+        srx::ActorStatus::DOWN);
+    const auto dead_status = static_cast<std::uint8_t>(
+        srx::ActorStatus::DEAD);
+    if (!expect(static_guard_spawn.has_value() &&
+                    static_guard_hit.has_value() &&
+                    static_guard_hit->combat_meter_update.has_value() &&
+                    static_guard_hit->combat_meter_update->target_id ==
+                        "static_default_corp_guard_slot_3" &&
+                    static_guard_hit->combat_meter_update->source_record_slot ==
+                        3U &&
+                    static_guard_hit->combat_meter_update->record_type == 3U &&
+                    static_guard_hit->combat_meter_update->changed &&
+                    static_guard_hit->combat_meter_update->physical_meter <
+                        10U,
+                "static_default_corp_guard_projectile_hit: ROM 0x44BC/0xAFF2 preserve slot 3 and update its physical meter")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
+    if (!expect(static_pedestrian_spawn.has_value() &&
+                    static_pedestrian_hit.has_value() &&
+                    static_pedestrian_hit->combat_meter_update.has_value() &&
+                    static_pedestrian_hit->combat_meter_update->target_id ==
+                        "static_default_pedestrian_slot_4" &&
+                    static_pedestrian_hit->combat_meter_update->source_record_slot ==
+                        4U &&
+                    static_pedestrian_hit->combat_meter_update->record_type ==
+                        4U &&
+                    static_pedestrian_hit->combat_meter_update->changed &&
+                    static_pedestrian_hit->combat_meter_update->physical_meter ==
+                        0U &&
+                    static_pedestrian_down.has_value() &&
+                    static_pedestrian_down->animation_id == "down" &&
+                    (static_pedestrian_down->source_record_flags &
+                     down_status) != 0U &&
+                    static_pedestrian_death_frame.has_value() &&
+                    static_pedestrian_dead.has_value() &&
+                    (static_pedestrian_dead->source_record_flags &
+                     dead_status) != 0U &&
+                    (static_pedestrian_dead->source_record_flags &
+                     active_status) != 0U,
+                "static_default_pedestrian_lethal_projectile_down_dead: ROM 0xAFF2/0xB330/0xA93E retains slot 4 through DOWN and DEAD")) {
         std::cerr << scripts.failure() << '\n';
         return 24;
     }

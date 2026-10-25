@@ -8283,6 +8283,27 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint32_t position_offset;
         std::size_t list_offset;
         std::string overrides;
+        std::uint8_t source_spawn_state_flags = 0U;
+        std::uint8_t source_interaction_flags = 0U;
+        std::uint8_t combat_mental_meter = 0U;
+        std::uint16_t combat_cyberware_flags = 0U;
+        std::uint8_t combat_posture = 0U;
+        std::uint8_t combat_attribute_77 = 0U;
+        std::uint8_t combat_attribute_78 = 0U;
+        std::uint8_t combat_attribute_79 = 0U;
+        std::uint8_t combat_attribute_7b = 0U;
+        std::uint8_t combat_attribute_7c = 0U;
+        std::uint8_t combat_attribute_85 = 0U;
+        std::uint8_t combat_item18_base = 0U;
+        std::uint8_t combat_armor_index = 0U;
+        std::int8_t combat_race_or_state = 0;
+        std::uint8_t combat_class_code = 0U;
+        std::uint8_t combat_modifier_flags_df = 0U;
+        std::array<std::uint8_t, 8> combat_item_codes{};
+        std::array<std::uint8_t, 8> combat_item_phases{};
+        std::array<std::uint8_t, 10> combat_action_phase_extension{};
+        std::array<std::uint8_t, 4> combat_action_skills{};
+        std::uint8_t combat_auxiliary_roll_bonus = 0U;
     };
     std::vector<DefaultActorSceneList> default_actor_lists;
     default_actor_lists.reserve(shadowrun::rom::kFieldModeCount);
@@ -8378,6 +8399,49 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         return slug + "_k" + format_byte(entity_kind) + "_" +
                std::string(action_kind) + format_byte(action_code);
     };
+    const auto read_default_actor_combat_facts = [&rom](
+        const std::size_t template_offset, DefaultActorRecord& record) {
+        // ROM 0x44BC copies these compact-template values into the live actor
+        // combat record. Keep the extraction offline; the host consumes this
+        // named data without reading ROM addresses at runtime.
+        record.source_interaction_flags = rom[
+            shadowrun::rom::kPostObjectEntityTemplate + 0x11U];
+        record.combat_mental_meter = rom[template_offset + 0x43U];
+        record.combat_cyberware_flags = read_big_endian_word(
+            rom, template_offset + 0x44U);
+        record.combat_posture = rom[template_offset + 0x05U];
+        record.combat_attribute_77 = rom[template_offset + 0x29U];
+        record.combat_attribute_78 = rom[template_offset + 0x2AU];
+        record.combat_attribute_79 = rom[template_offset + 0x2BU];
+        record.combat_attribute_7b = rom[template_offset + 0x2DU];
+        record.combat_attribute_7c = rom[template_offset + 0x2EU];
+        record.combat_attribute_85 = rom[template_offset + 0x37U];
+        record.combat_item18_base = rom[template_offset + 0x32U];
+        record.combat_armor_index = rom[template_offset + 0x28U];
+        record.combat_race_or_state = static_cast<std::int8_t>(
+            rom[template_offset + 0x41U]);
+        record.combat_class_code = rom[template_offset + 0x42U];
+        record.combat_modifier_flags_df = rom[
+            shadowrun::rom::kPostObjectEntityTemplate + 0xDFU];
+        for (std::size_t index = 0U;
+             index < record.combat_item_codes.size(); ++index) {
+            record.combat_item_codes[index] =
+                rom[template_offset + 0x18U + index];
+            record.combat_item_phases[index] =
+                rom[template_offset + 0x20U + index];
+        }
+        for (std::size_t index = 0U;
+             index < record.combat_action_phase_extension.size(); ++index) {
+            record.combat_action_phase_extension[index] =
+                rom[template_offset + 0x28U + index];
+        }
+        for (std::size_t index = 0U;
+             index < record.combat_action_skills.size(); ++index) {
+            record.combat_action_skills[index] =
+                rom[template_offset + 0x33U + index];
+        }
+        record.combat_auxiliary_roll_bonus = rom[template_offset + 0x49U];
+    };
     std::vector<DefaultActorRecord> default_actor_records;
     for (auto& source_list : default_actor_lists) {
         auto cursor = source_list.list_offset;
@@ -8446,6 +8510,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 source_list.list_offset,
                 "-",
             };
+            read_default_actor_combat_facts(template_offset, record);
             ++type_counts[actor_name];
 
             auto next_record = cursor + 8U;
@@ -8477,6 +8542,67 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                             (record.initial_heading & 0xFF00U) | byte_value);
                     } else if (byte_offset == 0x4CU) {
                         record.physical_meter = byte_value;
+                    } else if (byte_offset == 0x11U) {
+                        record.source_interaction_flags = byte_value;
+                    } else if (byte_offset == 0x4DU) {
+                        record.combat_posture = byte_value;
+                    } else if (byte_offset >= 0x66U &&
+                               byte_offset <= 0x6DU) {
+                        record.combat_item_codes[byte_offset - 0x66U] =
+                            byte_value;
+                    } else if (byte_offset >= 0x6EU &&
+                               byte_offset <= 0x75U) {
+                        record.combat_item_phases[byte_offset - 0x6EU] =
+                            byte_value;
+                    } else if (byte_offset >= 0x76U &&
+                               byte_offset <= 0x7FU) {
+                        const auto index = byte_offset - 0x76U;
+                        record.combat_action_phase_extension[index] =
+                            byte_value;
+                        if (index == 0U) {
+                            record.combat_armor_index = byte_value;
+                        } else if (index == 1U) {
+                            record.combat_attribute_77 = byte_value;
+                        } else if (index == 2U) {
+                            record.combat_attribute_78 = byte_value;
+                        } else if (index == 3U) {
+                            record.combat_attribute_79 = byte_value;
+                        } else if (index == 5U) {
+                            record.combat_attribute_7b = byte_value;
+                        } else if (index == 6U) {
+                            record.combat_attribute_7c = byte_value;
+                        }
+                    } else if (byte_offset == 0x80U) {
+                        record.combat_item18_base = byte_value;
+                    } else if (byte_offset >= 0x81U &&
+                               byte_offset <= 0x84U) {
+                        record.combat_action_skills[byte_offset - 0x81U] =
+                            byte_value;
+                    } else if (byte_offset == 0x85U) {
+                        record.combat_attribute_85 = byte_value;
+                    } else if (byte_offset == 0x90U) {
+                        record.combat_cyberware_flags =
+                            static_cast<std::uint16_t>(
+                                (static_cast<std::uint16_t>(byte_value) << 8U) |
+                                (record.combat_cyberware_flags & 0x00FFU));
+                    } else if (byte_offset == 0x91U) {
+                        record.combat_cyberware_flags =
+                            static_cast<std::uint16_t>(
+                                (record.combat_cyberware_flags & 0xFF00U) |
+                                byte_value);
+                    } else if (byte_offset == 0x9AU) {
+                        record.combat_race_or_state =
+                            static_cast<std::int8_t>(byte_value);
+                    } else if (byte_offset == 0x9BU) {
+                        record.combat_class_code = byte_value;
+                    } else if (byte_offset == 0x9CU) {
+                        record.combat_mental_meter = byte_value;
+                    } else if (byte_offset == 0x9DU) {
+                        record.combat_auxiliary_roll_bonus = byte_value;
+                    } else if (byte_offset == 0x9EU) {
+                        record.source_spawn_state_flags = byte_value;
+                    } else if (byte_offset == 0xDFU) {
+                        record.combat_modifier_flags_df = byte_value;
                     }
                     first_override = false;
                     pair_offset += 2U;
@@ -8519,7 +8645,30 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                        "\taction_kind\tinitial_action_code"
                        "\tworld_x\tworld_y"
                        "\tinitial_heading\tpalette_line\ttemplate_offset\tposition_offset"
-                       "\tlist_offset\tordered_overrides\tphysical_meter\n";
+                       "\tlist_offset\tordered_overrides\tphysical_meter"
+                       "\tsource_spawn_state_flags\tsource_interaction_flags"
+                       "\tcombat_mental_meter\tcombat_cyberware_flags"
+                       "\tcombat_posture\tcombat_attribute_77"
+                       "\tcombat_attribute_78\tcombat_attribute_79"
+                       "\tcombat_attribute_7b\tcombat_attribute_7c"
+                       "\tcombat_attribute_85\tcombat_item18_base"
+                       "\tcombat_armor_index\tcombat_race_or_state"
+                       "\tcombat_class_code\tcombat_modifier_flags_df";
+        for (std::size_t index = 0U; index < 8U; ++index) {
+            actor_table << "\tcombat_item_code_" << index;
+        }
+        for (std::size_t index = 0U; index < 8U; ++index) {
+            actor_table << "\tcombat_item_phase_" << index;
+        }
+        for (std::size_t index = 0U; index < 10U; ++index) {
+            actor_table << "\tcombat_action_phase_" << std::hex
+                        << std::nouppercase << (0x76U + index) << std::dec;
+        }
+        for (std::size_t index = 0U; index < 4U; ++index) {
+            actor_table << "\tcombat_action_skill_" << std::hex
+                        << std::nouppercase << (0x81U + index) << std::dec;
+        }
+        actor_table << "\tcombat_auxiliary_roll_bonus\n";
         for (const auto& actor : default_actor_records) {
             actor_table << actor.scene_id << '\t' << actor.source_order << '\t'
                         << actor.entity_kind << '\t' << actor.profile_id
@@ -8535,7 +8684,51 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                         << format_offset(static_cast<std::uint32_t>(
                                actor.list_offset))
                         << '\t' << actor.overrides << '\t'
-                        << static_cast<unsigned>(actor.physical_meter) << '\n';
+                        << static_cast<unsigned>(actor.physical_meter) << '\t'
+                        << static_cast<unsigned>(
+                               actor.source_spawn_state_flags) << '\t'
+                        << static_cast<unsigned>(
+                               actor.source_interaction_flags) << '\t'
+                        << static_cast<unsigned>(
+                               actor.combat_mental_meter) << '\t'
+                        << actor.combat_cyberware_flags << '\t'
+                        << static_cast<unsigned>(actor.combat_posture) << '\t'
+                        << static_cast<unsigned>(actor.combat_attribute_77)
+                        << '\t'
+                        << static_cast<unsigned>(actor.combat_attribute_78)
+                        << '\t'
+                        << static_cast<unsigned>(actor.combat_attribute_79)
+                        << '\t'
+                        << static_cast<unsigned>(actor.combat_attribute_7b)
+                        << '\t'
+                        << static_cast<unsigned>(actor.combat_attribute_7c)
+                        << '\t'
+                        << static_cast<unsigned>(actor.combat_attribute_85)
+                        << '\t'
+                        << static_cast<unsigned>(actor.combat_item18_base)
+                        << '\t'
+                        << static_cast<unsigned>(actor.combat_armor_index)
+                        << '\t'
+                        << static_cast<int>(actor.combat_race_or_state)
+                        << '\t'
+                        << static_cast<unsigned>(actor.combat_class_code)
+                        << '\t'
+                        << static_cast<unsigned>(
+                               actor.combat_modifier_flags_df);
+            for (const auto value : actor.combat_item_codes) {
+                actor_table << '\t' << static_cast<unsigned>(value);
+            }
+            for (const auto value : actor.combat_item_phases) {
+                actor_table << '\t' << static_cast<unsigned>(value);
+            }
+            for (const auto value : actor.combat_action_phase_extension) {
+                actor_table << '\t' << static_cast<unsigned>(value);
+            }
+            for (const auto value : actor.combat_action_skills) {
+                actor_table << '\t' << static_cast<unsigned>(value);
+            }
+            actor_table << '\t' << static_cast<unsigned>(
+                actor.combat_auxiliary_roll_bonus) << '\n';
         }
         if (!actor_table) {
             throw std::runtime_error(

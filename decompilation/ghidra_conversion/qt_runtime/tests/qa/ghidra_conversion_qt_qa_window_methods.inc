@@ -1700,6 +1700,33 @@
             !save_frame("actor-before-flash.bmp", before_flash)) {
             return fail("the pre-hit actor state was not saved cleanly");
         }
+        // The right actor plate shares line 1 with the separately submitted
+        // head, but ROM 0x5A2D0 does not install its white hit palette until
+        // persistent stage 4. Before that event, keep enough of the named
+        // sprite's original pixels visible to catch a stuck/early white fill.
+        const QColor white(255, 255, 255);
+        const auto pre_hit_body_x = map_record->origin_x +
+                                    state_.opening_intro.stage2.x_offset;
+        const auto pre_hit_body_y = map_record->origin_y -
+                                    state_.opening_intro.stage2.y_offset;
+        std::size_t normal_body_pixels = 0U;
+        for (int y = 0; y < map_image->second.height(); ++y) {
+            for (int x = 0; x < map_image->second.width(); ++x) {
+                if (map_image->second.pixelColor(x, y).alpha() == 0) {
+                    continue;
+                }
+                const auto screen_x = pre_hit_body_x + x;
+                const auto screen_y = pre_hit_body_y + y;
+                if (screen_x >= 0 && screen_x < before_flash.width() &&
+                    screen_y >= 0 && screen_y < before_flash.height() &&
+                    before_flash.pixelColor(screen_x, screen_y) != white) {
+                    ++normal_body_pixels;
+                }
+            }
+        }
+        if (normal_body_pixels < 500U) {
+            return fail("the pre-hit orc plate rendered as a white silhouette");
+        }
 
         frames = 0U;
         while (state_.phase == StartupIntegrationPhase::opening_intro &&
@@ -1730,7 +1757,6 @@
         if (!save_frame("actor-hit-flash.bmp", hit_flash)) {
             return fail("could not save the full-screen hit-flash frame");
         }
-        const QColor white(255, 255, 255);
         const auto hit_group = opening_intro_sprite_group(
             state_.opening_intro.persistent.current_sprite_descriptor);
         if (hit_group.family != OpeningIntroSpriteFamily::ambush_actor) {
@@ -1938,6 +1964,7 @@
         }
         std::cout << "opening_ambush_flash_qa=passed head_pixels="
                   << white_head_pixels << '/' << head_opaque_pixels
+                  << " pre_hit_actor_nonwhite_pixels=" << normal_body_pixels
                   << " body_white_pixels=" << white_body_pixels
                   << " effect_frames=" << effect_frames.size() << " actual="
                   << (output_directory / "actual.bmp").string() << '\n';

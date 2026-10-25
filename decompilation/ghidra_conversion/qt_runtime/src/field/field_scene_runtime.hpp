@@ -1906,6 +1906,9 @@ private:
         std::uint16_t source_animation_selector = 0;
         std::optional<scripting::ScriptActorItemSpawnResult>
             source_item_spawn_result;
+        // The static list is rebuilt from its ROM template on scene entry;
+        // combatant holds the live, damageable copy for this visit.
+        scripting::ScriptCombatantFacts initial_combatant{};
         scripting::ScriptCombatantFacts combatant{};
         std::optional<std::uint8_t> effect_slot;
         bool temporary_world_encounter = false;

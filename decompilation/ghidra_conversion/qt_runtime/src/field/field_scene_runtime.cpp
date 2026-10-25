@@ -1759,7 +1759,31 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
         "\tsprite_stem\taction_kind\tinitial_action_code"
         "\tworld_x\tworld_y\tinitial_heading\tpalette_line"
         "\ttemplate_offset\tposition_offset\tlist_offset"
-        "\tordered_overrides\tphysical_meter";
+        "\tordered_overrides\tphysical_meter"
+        "\tsource_spawn_state_flags\tsource_interaction_flags"
+        "\tcombat_mental_meter\tcombat_cyberware_flags"
+        "\tcombat_posture\tcombat_attribute_77"
+        "\tcombat_attribute_78\tcombat_attribute_79"
+        "\tcombat_attribute_7b\tcombat_attribute_7c"
+        "\tcombat_attribute_85\tcombat_item18_base"
+        "\tcombat_armor_index\tcombat_race_or_state"
+        "\tcombat_class_code\tcombat_modifier_flags_df"
+        "\tcombat_item_code_0\tcombat_item_code_1"
+        "\tcombat_item_code_2\tcombat_item_code_3"
+        "\tcombat_item_code_4\tcombat_item_code_5"
+        "\tcombat_item_code_6\tcombat_item_code_7"
+        "\tcombat_item_phase_0\tcombat_item_phase_1"
+        "\tcombat_item_phase_2\tcombat_item_phase_3"
+        "\tcombat_item_phase_4\tcombat_item_phase_5"
+        "\tcombat_item_phase_6\tcombat_item_phase_7"
+        "\tcombat_action_phase_76\tcombat_action_phase_77"
+        "\tcombat_action_phase_78\tcombat_action_phase_79"
+        "\tcombat_action_phase_7a\tcombat_action_phase_7b"
+        "\tcombat_action_phase_7c\tcombat_action_phase_7d"
+        "\tcombat_action_phase_7e\tcombat_action_phase_7f"
+        "\tcombat_action_skill_81\tcombat_action_skill_82"
+        "\tcombat_action_skill_83\tcombat_action_skill_84"
+        "\tcombat_auxiliary_roll_bonus";
     const auto* table = catalog.find(kActorTableAlias);
     if (table == nullptr || table->kind != "state") {
         failure_ = "missing extracted default field actor table";
@@ -1810,7 +1834,7 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 17U) {
+            if (fields.size() != 64U) {
                 failure_ = "default field actor table row is malformed";
                 return false;
             }
@@ -1880,6 +1904,79 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             }
             actor.physical_meter =
                 static_cast<std::uint8_t>(physical_meter);
+            const auto parse_byte_field = [&parse_number, &fields](
+                                              const std::size_t index) {
+                const auto value = parse_number(fields[index], 10);
+                if (value > 0xFFU) {
+                    throw std::out_of_range(
+                        "default actor combat byte exceeds eight bits");
+                }
+                return static_cast<std::uint8_t>(value);
+            };
+            const auto parse_word_field = [&parse_number, &fields](
+                                              const std::size_t index) {
+                const auto value = parse_number(fields[index], 10);
+                if (value > 0xFFFFU) {
+                    throw std::out_of_range(
+                        "default actor combat word exceeds sixteen bits");
+                }
+                return static_cast<std::uint16_t>(value);
+            };
+            const auto parse_signed_byte_field = [&fields](
+                                                     const std::size_t index) {
+                std::size_t consumed = 0U;
+                const auto value = std::stoi(fields[index], &consumed, 10);
+                if (consumed != fields[index].size() || value < -128 ||
+                    value > 127) {
+                    throw std::out_of_range(
+                        "default actor combat signed byte is invalid");
+                }
+                return static_cast<std::int8_t>(value);
+            };
+            actor.source_spawn_state_flags = parse_byte_field(17U);
+            actor.source_interaction_flags = parse_byte_field(18U);
+            actor.combatant.interaction_flags =
+                actor.source_interaction_flags;
+            actor.combatant.mental_meter = parse_byte_field(19U);
+            actor.combatant.cyberware_flags = parse_word_field(20U);
+            actor.combatant.posture = parse_byte_field(21U);
+            actor.combatant.command_attribute_77 = parse_byte_field(22U);
+            actor.combatant.command_attribute_78 = parse_byte_field(23U);
+            actor.combatant.command_attribute_79 = parse_byte_field(24U);
+            actor.combatant.command_attribute_7b = parse_byte_field(25U);
+            actor.combatant.command_attribute_7c = parse_byte_field(26U);
+            actor.combatant.command_attribute_85 = parse_byte_field(27U);
+            actor.combatant.item18_base = parse_byte_field(28U);
+            actor.combatant.armor_index = parse_byte_field(29U);
+            actor.combatant.race_or_state = parse_signed_byte_field(30U);
+            actor.combatant.class_code = parse_byte_field(31U);
+            actor.combatant.action_profile_modifier_flags =
+                parse_byte_field(32U);
+            for (std::size_t index = 0U;
+                 index < actor.combatant.item_codes.size(); ++index) {
+                actor.combatant.item_codes[index] =
+                    parse_byte_field(33U + index);
+                actor.combatant.item_phases[index] =
+                    parse_byte_field(41U + index);
+            }
+            for (std::size_t index = 0U;
+                 index < actor.combatant.action_phase_extension.size();
+                 ++index) {
+                actor.combatant.action_phase_extension[index] =
+                    parse_byte_field(49U + index);
+            }
+            for (std::size_t index = 0U;
+                 index < actor.combatant.action_skills.size(); ++index) {
+                actor.combatant.action_skills[index] =
+                    parse_byte_field(59U + index);
+            }
+            actor.combatant.auxiliary_roll_bonus =
+                parse_byte_field(63U);
+            actor.combatant.linked_action_profile_index = 0xFFFFU;
+            actor.combatant.equipped_action_code =
+                actor.initial_action_code;
+            actor.combatant.physical_meter = actor.physical_meter;
+            actor.initial_combatant = actor.combatant;
             if ((actor.entity_kind == 5U && actor.palette_line != 2U) ||
                 (actor.entity_kind == 11U && actor.palette_line != 3U) ||
                 (actor.entity_kind != 5U && actor.entity_kind != 11U)) {
@@ -2649,10 +2746,19 @@ void FieldSceneRuntime::initialize_default_field_actors(
              actor.world_activity_script_actor)) {
             continue;
         }
+        if (!actor.temporary_world_encounter &&
+            !actor.world_activity_script_actor) {
+            actor.combatant = actor.initial_combatant;
+            actor.physical_meter = actor.combatant.physical_meter;
+        }
         actor.active = false;
         actor.source_record_slot.reset();
         actor.target_selected = false;
-        actor.source_interaction_flags = 0U;
+        actor.source_interaction_flags =
+            actor.temporary_world_encounter ||
+                    actor.world_activity_script_actor
+                ? 0U
+                : actor.combatant.interaction_flags;
         actor.ai_target_valid = false;
         actor.ai_target_id.clear();
         actor.ai_target_heading = 0U;
@@ -2799,21 +2905,36 @@ void FieldSceneRuntime::initialize_default_field_actors(
             actor_flag_mask(ActorServiceFlag::active) |
             actor_flag_mask(ActorServiceFlag::unresolved_service_bit_2));
         actor.source_behavior_flags = 0U;
+        actor.combatant.record_type = static_cast<std::uint16_t>(
+            *actor.source_record_slot);
+        actor.combatant.source_flags = actor.source_record_flags;
+        actor.combatant.interaction_flags = actor.source_interaction_flags;
+        actor.combatant.physical_meter = actor.physical_meter;
+        actor.combatant.equipped_action_code = actor.initial_action_code;
         actor.initial_behavior_delay = static_cast<std::uint8_t>(
             advance_source_random_seed(field_random_seed_) & 0x000FU);
-        const auto decision = game_scripts_.actor_heartbeat(
-            scripting::ScriptActorBehaviorContext{
-                actor.script_profile_id,
-                actor.entity_kind,
-                actor.action_kind,
-                actor.initial_action_code,
-                actor.initial_behavior_delay,
-                false,
-                false,
-                actor.actor_instance_id,
-                actor.initial_heading,
-                true,
-            });
+        scripting::ScriptActorBehaviorContext context{
+            actor.script_profile_id,
+            actor.entity_kind,
+            actor.action_kind,
+            actor.initial_action_code,
+            actor.initial_behavior_delay,
+            false,
+            false,
+            actor.actor_instance_id,
+            actor.initial_heading,
+            true,
+        };
+        context.combatant = actor.combatant;
+        context.source_actor_posture = actor.combatant.posture;
+        context.source_record_slot = static_cast<std::uint8_t>(
+            *actor.source_record_slot);
+        context.source_record_flags = actor.source_record_flags;
+        context.source_interaction_flags = actor.source_interaction_flags;
+        context.source_spawn_state_flags = actor.source_spawn_state_flags;
+        context.source_physical_meter = actor.physical_meter;
+        context.source_animation_selector = actor.source_animation_selector;
+        const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();
             source_boundary("field.actor.lua_package_failed");
@@ -3250,6 +3371,8 @@ void FieldSceneRuntime::advance_default_field_actors(
             script_action_attribute_selectors();
         context.combat_meter_service_blocked =
             field_movement_transition_state_.world_mode == 3U;
+        context.combatant = actor.combatant;
+        context.source_actor_posture = actor.combatant.posture;
         if (actor.source_record_slot.has_value()) {
             const auto source_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
@@ -3291,10 +3414,6 @@ void FieldSceneRuntime::advance_default_field_actors(
                     state_.field_scene_buffers.camera_x),
                 static_cast<std::uint16_t>(
                     state_.field_scene_buffers.camera_y));
-        }
-        if (dynamic_world_actor) {
-            context.combatant = actor.combatant;
-            context.source_actor_posture = actor.combatant.posture;
         }
         if (dynamic_world_actor) {
             context.dynamic_world_encounter_actor = true;
@@ -3800,14 +3919,24 @@ void FieldSceneRuntime::advance_default_field_actors(
                 : "field.actor.spell.action_resolved");
         }
         const auto previous_record_flags = actor.source_record_flags;
-        if (dynamic_world_actor) {
+        const bool world_combat_record =
+            actor.source_record_slot.has_value() &&
+            static_cast<std::uint8_t>(*actor.source_record_slot) >=
+                static_cast<std::uint8_t>(FieldWorldActorSlot::slot_3) &&
+            static_cast<std::uint8_t>(*actor.source_record_slot) <=
+                static_cast<std::uint8_t>(FieldWorldActorSlot::slot_9) &&
+            actor.combatant.record_type == static_cast<std::uint16_t>(
+                *actor.source_record_slot);
+        if (world_combat_record) {
             actor.source_record_flags = decision->source_record_flags;
-            actor.source_behavior_flags = decision->source_behavior_flags;
-            actor.source_spawn_state_flags =
-                decision->source_spawn_state_flags;
             actor.source_animation_selector =
                 decision->source_animation_selector;
             actor.combatant.source_flags = actor.source_record_flags;
+        }
+        if (dynamic_world_actor) {
+            actor.source_behavior_flags = decision->source_behavior_flags;
+            actor.source_spawn_state_flags =
+                decision->source_spawn_state_flags;
         }
         if (dynamic_world_actor && decision->world_activity_requested) {
             // 0x1DBAA's FFDF84/FFDF86 effect uses the existing timeout model [C].
@@ -10792,17 +10921,19 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             context.source_record_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
         }
+        context.combatant = actor.combatant;
+        context.source_actor_posture = actor.combatant.posture;
+        context.source_record_flags = actor.source_record_flags;
+        context.source_interaction_flags = actor.source_interaction_flags;
+        context.source_behavior_flags = actor.source_behavior_flags;
+        context.source_animation_selector = actor.source_animation_selector;
+        context.source_spawn_state_flags = actor.source_spawn_state_flags;
+        context.source_physical_meter = actor.physical_meter;
         if (actor.temporary_world_encounter ||
             actor.world_activity_script_actor) {
             context.dynamic_world_encounter_actor = true;
             context.world_activity_script_actor =
                 actor.world_activity_script_actor;
-            context.combatant = actor.combatant;
-            context.source_actor_posture = actor.combatant.posture;
-            context.source_record_flags = actor.source_record_flags;
-            context.source_interaction_flags =
-                actor.source_interaction_flags;
-            context.source_behavior_flags = actor.source_behavior_flags;
             context.source_animation_selector =
                 actor.source_animation_selector;
             context.source_item_spawn_result =
@@ -10950,14 +11081,24 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
-        if (actor.temporary_world_encounter ||
-            actor.world_activity_script_actor) {
+        const bool world_combat_record =
+            actor.source_record_slot.has_value() &&
+            static_cast<std::uint8_t>(*actor.source_record_slot) >=
+                static_cast<std::uint8_t>(FieldWorldActorSlot::slot_3) &&
+            static_cast<std::uint8_t>(*actor.source_record_slot) <=
+                static_cast<std::uint8_t>(FieldWorldActorSlot::slot_9) &&
+            actor.combatant.record_type == static_cast<std::uint16_t>(
+                *actor.source_record_slot);
+        if (world_combat_record) {
             actor.source_record_flags = decision->source_record_flags;
-            actor.source_behavior_flags = decision->source_behavior_flags;
             actor.source_animation_selector =
                 decision->source_animation_selector;
-            actor.source_item_spawn_result.reset();
             actor.combatant.source_flags = actor.source_record_flags;
+        }
+        if (actor.temporary_world_encounter ||
+            actor.world_activity_script_actor) {
+            actor.source_behavior_flags = decision->source_behavior_flags;
+            actor.source_item_spawn_result.reset();
         }
         if (decision->spell_effect_resolution.has_value()) {
             if (decision->combat_meter_update.has_value() &&

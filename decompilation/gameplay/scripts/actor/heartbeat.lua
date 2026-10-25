@@ -7,6 +7,7 @@ local u8, u16, s16 = I.u8, I.u16, I.s16
 local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local ActorStatus = E.ActorStatus
+local ActorPool = E.ActorPool
 local ActorFlag, SpriteType = E.ActorFlag, E.SpriteType
 
 -- ROM 0x1E514: bclr #7,+0xB0 (escort; when it was set the ROM also clears FFFC3C,
@@ -154,7 +155,13 @@ function ActorAI.heartbeat(context)
             R.finish_player_hurt_reaction(state, context)
         end
     end
-    if context.dynamic_world_encounter_actor then
+    -- ROM 0xAFF2 -> 0xB330 and 0xA93A..0xAA4C service every live world
+    -- record in slots 3..9, including the default actor list. Dynamic
+    -- encounter membership is not the combat-record boundary.
+    if context.dynamic_world_encounter_actor or
+       (type(context.combatant) == "table" and
+        type(context.combatant.record_type) == "number" and
+        context.combatant.record_type >= ActorPool.PARTY) then
         local reaction_started = false
         if context.phase == "behavior" and state.incoming_hit ~= nil then
             reaction_audio_event =
