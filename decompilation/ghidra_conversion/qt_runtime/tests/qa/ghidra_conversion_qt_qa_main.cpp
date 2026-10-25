@@ -44438,7 +44438,10 @@ int main(int argc, char** argv) {
                 if (!field_scene.pocket_secretary_dismiss_runner_open() ||
                     field_scene.dismiss_runner_selection() != 0U ||
                     field_scene.dismiss_runner_option_count() != 3U ||
-                    !field_audio_events.empty()) {
+                    // [C ROM 0xC4C0 bra 0xC4FA; emulator zsnd e5] Dismiss
+                    // entry sends one MOVE (0x25) request.
+                    field_audio_events.size() != 1U ||
+                    field_audio_events.front() != 0x25U) {
                     std::cerr << "field secretary dump: Dismiss Runner "
                                  "entry state or source audio event is wrong "
                               << "open="

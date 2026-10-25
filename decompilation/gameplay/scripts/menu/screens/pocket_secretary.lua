@@ -399,7 +399,7 @@ function CurrentRun.input(st, events, ctx)
     if events & P.EDGES ~= 0 then return { transition = T.POP } end
 end
 
--- Dismiss Runner 0xC448: rows = Abort + candidates (slots 1..2 active); Up/Down 0x25; A/B/C 0x24 [srx FSR sounds H]
+-- Dismiss Runner 0xC448: rows = Abort + candidates (slots 1..2 active); ROM 0xC4C0 branches to 0xC4FA and plays MOVE on open [C ROM].
 local Dismiss = { window = E.WindowPlane.SIDEBAR }
 function Dismiss.new()
     return {
@@ -408,6 +408,7 @@ function Dismiss.new()
     }
 end
 function Dismiss.enter(st, ctx)
+    ctx.sound(E.MenuSound.MOVE)
     -- C448 replaces the inner panel but shares the parent's E660 lower bezel.
     st.grid_effect_frames = Grid.frames
     st.candidates = {}

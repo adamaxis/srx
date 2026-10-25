@@ -191,7 +191,13 @@ r7:frame(P.B); r7:frame(P.START); check(top(r7) == S.POCKET_SECRETARY, "Tips B, 
 r7:frame(P.DOWN); r7:frame(P.DOWN); r7:frame(P.A); check(top(r7) == S.MESSAGE and st(r7).message == MM.NO_CYBERDECK, "no deck")
 r7:frame(P.A); r7:frame(P.START); check(top(r7) == S.COMMAND and r7:is_open(), "PS start -> command rebuild")
 local r8, l8 = mk({ party = { [0] = runner(), [1] = runner() } }); r8:frame(P.A); for _ = 1, 3 do r8:frame(P.DOWN) end
-r8:frame(P.A); check(top(r8) == S.DISMISS_RUNNER, "dismiss open"); r8:frame(P.DOWN); r8:frame(P.A)
+local dismiss_sound_start = #l8.sounds
+r8:frame(P.A)
+check(top(r8) == S.DISMISS_RUNNER and
+      #l8.sounds == dismiss_sound_start + 1 and
+      l8.sounds[#l8.sounds] == E.MenuSound.MOVE,
+      "Dismiss Runner open plays the ROM 0x25 move cue [C ROM 0xC4C0 -> 0xC4FA]")
+r8:frame(P.DOWN); r8:frame(P.A)
 check(l8.dismissed == 1 and top(r8) == S.POCKET_SECRETARY, "dismiss runner 1")
 end)
 -- [C] C2C8 resets the Pocket Secretary row on a child return and C2AA rebuilds.
