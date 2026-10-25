@@ -403,7 +403,7 @@ int main() {
     bindings.host.set_screen = [](std::uint16_t) {};
     bindings.host.menu_closed =
         [&closed_count, &completed_matrix_logout_count](
-            const bool matrix_logout_transition_complete) {
+            const bool matrix_logout_transition_complete, const bool) {
             ++closed_count;
             if (matrix_logout_transition_complete) {
                 ++completed_matrix_logout_count;

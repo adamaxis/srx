@@ -36,7 +36,10 @@ local function mk(o)
         set_window = function(w) log.windows[#log.windows + 1] = w end,
         mask = function(phase, frame, x, y, w, h) log.masks = log.masks or {}; log.masks[#log.masks + 1] = { phase, frame, x, y, w, h } end,
         set_screen = function() end,
-        menu_closed = function() log.closed = true end,
+        menu_closed = function(_, field_return_transition)
+            log.closed = true
+            log.field_return_transition = field_return_transition
+        end,
         legacy_open = function(s) log.legacy[#log.legacy + 1] = s end,
         legacy_advance = function(s, ev) if ev & P.START ~= 0 then return false, o.legacy_exit end; return true end,
     }
@@ -114,6 +117,43 @@ r2:frame(P.DOWN); check(r2:top().screen == S.COMMAND, "down closes")
 r2:frame(P.UP | P.HELD_RIGHT); check(r2:top().screen == S.COMMAND, "held blocks posture")
 -- posture Start exits the whole menu (FFF0B1) -- FSR only closed the dialog (design fix D4)
 local r3, l3 = mk(); r3:frame(P.UP); r3:frame(P.START); check(not r3:is_open() and l3.closed, "posture start exits")
+do
+    local close, close_log = mk()
+    close:frame(P.START)
+    local state = close:field_return_transition_snapshot()
+    check(not close:is_open() and close_log.field_return_transition and state and
+          state.active and state.elapsed_frames == 0 and
+          state.phase == E.FieldReturnTransitionPhase.MENU_FADE_OUT,
+          "command Start begins the field-return palette transition")
+    for frame = 1, E.FieldReturnTransitionTiming.FIELD_LIVE_FRAME do
+        close:frame(frame == 50 and P.START or 0)
+        state = close:field_return_transition_snapshot()
+        if frame == 2 then
+            check(state.phase == E.FieldReturnTransitionPhase.MENU_FADE_OUT and
+                  state.palette_step == 0,
+                  "menu stays unchanged through P+2")
+        elseif frame == 15 then
+            check(state.phase == E.FieldReturnTransitionPhase.MENU_FADE_OUT and
+                  state.palette_step == E.FieldReturnTransitionTiming.PALETTE_STEPS,
+                  "menu fade reaches black at P+15")
+        elseif frame == 50 then
+            check(not close:is_open() and state.active and
+                  state.phase == E.FieldReturnTransitionPhase.BLACK_HOLD,
+                  "Start during black hold is ignored")
+        elseif frame == 99 then
+            check(state.phase == E.FieldReturnTransitionPhase.BLACK_HOLD,
+                  "black hold lasts through P+99")
+        elseif frame == 100 then
+            check(state.phase == E.FieldReturnTransitionPhase.FIELD_FADE_IN and
+                  state.palette_step == 1,
+                  "field fade-in begins at P+100")
+        elseif frame == E.FieldReturnTransitionTiming.FIELD_LIVE_FRAME then
+            check(not state.active and
+                  state.phase == E.FieldReturnTransitionPhase.COMPLETE,
+                  "field is live at P+112")
+        end
+    end
+end
 -- C: reselect, page 6, never opens posture
 local r4, _, g4 = mk(); r4:frame(P.LEFT); r4:frame(P.C)
 check(st(r4).page == 6 and r4:top().screen == S.COMMAND and g4.reselects == 1, "C path")

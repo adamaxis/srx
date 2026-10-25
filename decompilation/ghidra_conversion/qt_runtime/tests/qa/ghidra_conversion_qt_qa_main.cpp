@@ -389,6 +389,152 @@ int run_field_world_effect_repaint_qa(
 // Field audio rules (doc 26 phases 1/3): scene-init music from profile
 // +0x40 through audio.lua, the Start-menu duck 0xB62 (op 0x20 level 8) and
 // its 0xB7A restore, and music on a resource-scene change.
+bool finish_command_overview_field_return_for_qa(
+    FieldSceneRuntime& field_scene) {
+    // ROM 0xB62 -> 0x10D30 returns through 0x2BD2/0x131C. Emulator routes e3
+    // and e4 agree: menu through P+2, black P+15..P+99, field live at P+112.
+    for (std::uint16_t frame = 0U; frame < 113U; ++frame) {
+        const auto route = field_scene.field_menu_route_snapshot_for_dump();
+        if (!route.field_return_transition_active) {
+            return route.field_return_transition_phase ==
+                   shadowrun::ghidra_conversion::scripting::
+                       ScriptFieldReturnTransitionPhase::complete;
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    return !field_scene.field_menu_route_snapshot_for_dump()
+                .field_return_transition_active;
+}
+
+int run_field_command_overview_close_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output_directory) {
+    using Phase = shadowrun::ghidra_conversion::scripting::
+        ScriptFieldReturnTransitionPhase;
+    std::filesystem::create_directories(output_directory);
+    const auto save = [&output_directory](const std::filesystem::path& name,
+                                          const QImage& image) {
+        return save_qa_image(output_directory, name, image);
+    };
+    const auto same_image = [](const QImage& first, const QImage& second) {
+        return !image_region_differs(first, second, 0, 0,
+                                     kSceneWidth, kSceneHeight);
+    };
+    const auto is_black = [&same_image](const QImage& image) {
+        QImage black(kSceneWidth, kSceneHeight, QImage::Format_RGB32);
+        black.fill(Qt::black);
+        return same_image(image, black);
+    };
+    const auto field_before = render_qa_field(field_scene);
+    if (field_before.isNull() ||
+        !field_scene.open_command_overview_for_dump()) {
+        std::cerr << "command overview close QA: could not open the root menu\n";
+        return 3;
+    }
+    const auto menu_before_close = render_qa_field(field_scene);
+    if (menu_before_close.isNull() ||
+        !save("menu-before-close.bmp", menu_before_close)) {
+        std::cerr << "command overview close QA: could not save the menu frame\n";
+        return 3;
+    }
+
+    constexpr auto start_port = static_cast<std::uint8_t>(
+        static_cast<std::uint16_t>(srx::Pad::START) >> 8U);
+    field_scene.set_controller_port_byte(start_port);
+    field_scene.advance_frame(); // P: Start exits the command overview.
+    if (field_scene.command_overview_open()) {
+        std::cerr << "command overview close QA: Start left the root menu open\n";
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame(); // P+1
+    field_scene.advance_frame(); // P+2
+    auto route = field_scene.field_menu_route_snapshot_for_dump();
+    const auto menu_at_p2 = render_qa_field(field_scene);
+    if (!route.field_return_transition_active ||
+        route.field_return_transition_elapsed_frames != 2U ||
+        route.field_return_transition_phase != Phase::menu_fade_out ||
+        route.field_return_transition_palette_step != 0U ||
+        !same_image(menu_at_p2, menu_before_close) ||
+        !save("menu-at-P+2.bmp", menu_at_p2)) {
+        std::cerr << "command overview close QA: the menu changed before P+3\n";
+        return 3;
+    }
+
+    QImage field_at_p112;
+    for (std::uint16_t frame = 3U; frame <= 112U; ++frame) {
+        field_scene.set_controller_port_byte(frame == 50U ? start_port : 0U);
+        field_scene.advance_frame();
+        route = field_scene.field_menu_route_snapshot_for_dump();
+        const auto image = render_qa_field(field_scene);
+        if (route.field_return_transition_elapsed_frames != frame) {
+            std::cerr << "command overview close QA: Lua close clock diverged at P+"
+                      << frame << '\n';
+            return 3;
+        }
+        if (frame <= 15U) {
+            const auto expected_step = static_cast<std::uint8_t>(
+                (frame - 1U) / 2U);
+            if (route.field_return_transition_phase != Phase::menu_fade_out ||
+                route.field_return_transition_palette_step != expected_step) {
+                std::cerr << "command overview close QA: menu CRAM fade step diverged at P+"
+                          << frame << '\n';
+                return 3;
+            }
+        }
+        if (frame >= 15U && frame <= 99U && !is_black(image)) {
+            std::cerr << "command overview close QA: expected black at P+"
+                      << frame << '\n';
+            return 3;
+        }
+        if (frame == 15U && !save("black-at-P+15.bmp", image)) {
+            return 3;
+        }
+        if (frame == 50U &&
+            (field_scene.command_overview_open() ||
+             !route.field_return_transition_active ||
+             route.field_return_transition_phase != Phase::black_hold)) {
+            std::cerr << "command overview close QA: Start during black hold was not ignored\n";
+            return 3;
+        }
+        if (frame == 99U && !save("black-at-P+99.bmp", image)) {
+            return 3;
+        }
+        if (frame >= 100U && frame < 112U) {
+            const auto expected_step = static_cast<std::uint8_t>(
+                (frame - 98U) / 2U);
+            if (route.field_return_transition_phase != Phase::field_fade_in ||
+                route.field_return_transition_palette_step != expected_step ||
+                is_black(image)) {
+                std::cerr << "command overview close QA: field fade-in diverged at P+"
+                          << frame << '\n';
+                return 3;
+            }
+            if (frame == 100U) {
+                if (!save("field-fade-in-P+100.bmp", image)) {
+                    return 3;
+                }
+            }
+        }
+        if (frame == 112U) {
+            field_at_p112 = image;
+            if (route.field_return_transition_active ||
+                route.field_return_transition_phase != Phase::complete ||
+                !same_image(field_at_p112, field_before) ||
+                !save("actual.bmp", field_at_p112)) {
+                std::cerr << "command overview close QA: field was not fully live at P+112\n";
+                return 3;
+            }
+        }
+    }
+    field_scene.set_controller_port_byte(0U);
+    std::cout << "field_command_overview_close_qa=passed frames=112"
+              << " menu=P+2 black=P+15..P+99 field=P+112"
+              << " ignored_start_during_black=1\n";
+    return 0;
+}
+
 int run_field_audio_qa(FieldSceneRuntime& field_scene) {
     const auto print = [](const auto& values) {
         std::ostringstream text;
@@ -436,6 +582,10 @@ int run_field_audio_qa(FieldSceneRuntime& field_scene) {
         field_scene.field_attenuation_requests() != restored) {
         std::cerr << "field audio QA: after Start exit attenuation ="
                   << print(field_scene.field_attenuation_requests()) << "\n";
+        return 1;
+    }
+    if (!finish_command_overview_field_return_for_qa(field_scene)) {
+        std::cerr << "field audio QA: field-return transition did not finish\n";
         return 1;
     }
     if (field_scene.field_music_requests() != boot_music) {
@@ -27650,6 +27800,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_secretary_dump_path;
         std::optional<std::filesystem::path> field_posture_dump_path;
         std::optional<std::filesystem::path>
+            field_command_overview_close_qa_path;
+        std::optional<std::filesystem::path>
             field_profile_combat_bar_permutation_qa_path;
         bool field_spell_action_bars_qa = false;
         std::optional<std::filesystem::path> field_action_dump_path;
@@ -28621,6 +28773,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_posture_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-command-overview-close-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_command_overview_close_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -33054,6 +33213,10 @@ int main(int argc, char** argv) {
                 return run_field_terrain_mark_qa(
                     field_scene, *field_terrain_mark_qa_path);
             }
+            if (field_command_overview_close_qa_path.has_value()) {
+                return run_field_command_overview_close_qa(
+                    field_scene, *field_command_overview_close_qa_path);
+            }
             if (field_audio_qa) {
                 return run_field_audio_qa(field_scene);
             }
@@ -35401,6 +35564,11 @@ int main(int argc, char** argv) {
                     std::cerr << "field player action dump: could not save the Start return frames\n";
                     return 3;
                 }
+                if (!finish_command_overview_field_return_for_qa(
+                        field_scene)) {
+                    std::cerr << "field player action dump: command return did not reach P+112\n";
+                    return 3;
+                }
                 const auto weapon_two_field_return = render_scene();
                 if (field_scene.command_overview_open() ||
                     field_scene.dialogue_open() ||
@@ -36214,6 +36382,11 @@ int main(int argc, char** argv) {
                 }
                 field_scene.set_controller_port_byte(0U);
                 field_scene.advance_frame();
+                if (!finish_command_overview_field_return_for_qa(
+                        field_scene)) {
+                    std::cerr << "field command reopen smoke: return transition did not finish\n";
+                    return 3;
+                }
                 if (!field_scene.open_command_overview_for_dump()) {
                     std::cerr << "field command reopen smoke: second open failed\n";
                     return 3;
@@ -38537,6 +38710,11 @@ int main(int argc, char** argv) {
                 mark_route("command-overview-after-checkout",
                            "Start; 27 black frames");
                 press_button(0x80U);
+                if (!finish_command_overview_field_return_for_qa(
+                        field_scene)) {
+                    std::cerr << "field Hotel QA: command return did not reach P+112\n";
+                    return 3;
+                }
                 const auto checkout_start_return = capture(
                     output / "checkout-start-return" / "actual.bmp");
                 QImage checkout_start_field_only(
@@ -41704,6 +41882,11 @@ int main(int argc, char** argv) {
                 }
                 field_scene.set_controller_port_byte(0U);
                 field_scene.advance_frame();
+                if (!finish_command_overview_field_return_for_qa(
+                        field_scene)) {
+                    std::cerr << "field command dump: return transition did not reach P+112\n";
+                    return 3;
+                }
                 const auto returned_field_scene = capture_field_scene();
                 if (returned_field_scene != field_before_command) {
                     std::cerr << "field command dump: 0x2BD2 return did not "
@@ -44940,6 +45123,10 @@ int main(int argc, char** argv) {
                 const auto press = [&field_scene](
                                        const std::uint8_t port_byte) {
                     tap_qa_controller_button(field_scene, port_byte);
+                    if (!field_scene.command_overview_open()) {
+                        (void)finish_command_overview_field_return_for_qa(
+                            field_scene);
+                    }
                 };
                 std::size_t saved_frames = 0U;
                 std::size_t equipped_profile_frames = 0U;
@@ -46803,6 +46990,10 @@ int main(int argc, char** argv) {
                 const auto press = [&field_scene](
                                        const std::uint8_t port_byte) {
                     tap_qa_controller_button(field_scene, port_byte);
+                    if (!field_scene.command_overview_open()) {
+                        (void)finish_command_overview_field_return_for_qa(
+                            field_scene);
+                    }
                 };
                 // ROM 0xD03C/0xD046: focus CRAM 0x02C2, base grid 0x0060
                 // [C emulator e2 8844].
@@ -47690,6 +47881,11 @@ int main(int argc, char** argv) {
 
                 field_audio_events.clear();
                 press(0x80U); // ROM FFF0B1 makes Start exit the whole menu.
+                if (!finish_command_overview_field_return_for_qa(
+                        field_scene)) {
+                    return posture_failure(
+                        "Start return did not finish the emulator P+112 field fade");
+                }
                 const auto field_after_menu = capture();
                 if (field_scene.posture_dialog_open() ||
                     field_scene.command_overview_open() ||

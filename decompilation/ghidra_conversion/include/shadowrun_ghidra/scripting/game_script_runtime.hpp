@@ -108,12 +108,20 @@ struct ScriptMenuRouteHost {
         mask;
     std::function<void(std::uint16_t)> set_window;
     std::function<void(std::uint16_t)> set_screen;
-    std::function<void(bool)> menu_closed;
+    std::function<void(bool, bool)> menu_closed;
     std::function<void(std::uint16_t, const ScriptMenuRouteArgs&)>
         legacy_open;
     std::function<std::pair<bool, bool>(std::uint16_t, std::uint16_t)>
         legacy_advance;
     std::function<void(ScriptNotebookBoundary)> notebook_boundary;
+};
+
+enum class ScriptFieldReturnTransitionPhase : std::uint8_t {
+    none = 0U,
+    menu_fade_out = 1U,
+    black_hold = 2U,
+    field_fade_in = 3U,
+    complete = 4U,
 };
 
 struct ScriptMenuPartyMember {
@@ -458,6 +466,11 @@ struct ScriptNotebookCurrentRunView {
 
 struct ScriptMenuRouteSnapshot {
     bool open = false;
+    bool field_return_transition_active = false;
+    std::uint16_t field_return_transition_elapsed_frames = 0U;
+    std::uint8_t field_return_transition_palette_step = 0U;
+    ScriptFieldReturnTransitionPhase field_return_transition_phase =
+        ScriptFieldReturnTransitionPhase::none;
     std::uint16_t top_screen = 0U;
     std::string top_title;
     std::string top_text;

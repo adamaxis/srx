@@ -1644,6 +1644,9 @@ private:
         std::uint16_t controller_events);
     void configure_field_menu_route();
     void advance_field_menu_route();
+    void synchronize_command_overview_return_transition(
+        const scripting::ScriptMenuRouteSnapshot& route_state);
+    void advance_command_overview_return_transition();
     bool save_game_slot(int slot);
     bool load_game_slot(int slot);
     int game_save_slot_status(int slot) const;
@@ -1921,6 +1924,7 @@ private:
     std::vector<std::vector<QRect>> menu_reveal_masks_;
     mutable QImage menu_last_frame_;
     mutable bool menu_last_frame_is_field_ = false;
+    QImage command_overview_return_image_;
     bool menu_window_sidebar_ = false;
     std::uint16_t menu_blank_reveal_line_ = 0U;
     std::vector<std::uint16_t> menu_blank_deferred_sounds_;
@@ -2296,6 +2300,12 @@ private:
     std::optional<std::uint8_t> field_active_story_trigger_;
     std::uint8_t field_palette_fade_steps_ = 0U;
     std::uint8_t field_modal_return_transition_frames_remaining_ = 0U;
+    bool command_overview_return_transition_active_ = false;
+    std::uint16_t command_overview_return_transition_elapsed_frames_ = 0U;
+    std::uint8_t command_overview_return_palette_step_ = 0U;
+    scripting::ScriptFieldReturnTransitionPhase
+        command_overview_return_transition_phase_ =
+            scripting::ScriptFieldReturnTransitionPhase::none;
     // Source return point captured from the ROM-generated 0xBC36 position
     // triplet (FFDF44..4F) and camera snapshot (FFDF50/52).
     struct FieldDoorReturnPoint {

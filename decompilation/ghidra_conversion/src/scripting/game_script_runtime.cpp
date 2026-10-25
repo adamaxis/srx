@@ -1119,7 +1119,8 @@ struct GameScriptRuntime::Impl {
         case MenuBinding::menu_closed:
             if (self->menu_route_bindings.host.menu_closed) {
                 self->menu_route_bindings.host.menu_closed(
-                    lua_toboolean(lua, 1) != 0);
+                    lua_toboolean(lua, 1) != 0,
+                    lua_toboolean(lua, 2) != 0);
             }
             return 0;
         case MenuBinding::legacy_open: {
@@ -1868,6 +1869,62 @@ struct GameScriptRuntime::Impl {
         }
         menu_route_state.open = lua_toboolean(state, -1) != 0;
         lua_pop(state, 1);
+        lua_getfield(state, route_index, "field_return_transition_snapshot");
+        if (lua_isfunction(state, -1)) {
+            lua_pushvalue(state, route_index);
+            if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+                failure = "menu route field return transition query failed: " +
+                          stack_error(state);
+                lua_settop(state, base);
+                return false;
+            }
+            if (lua_istable(state, -1)) {
+                const auto transition_index = lua_absindex(state, -1);
+                lua_getfield(state, transition_index, "active");
+                menu_route_state.field_return_transition_active =
+                    lua_toboolean(state, -1) != 0;
+                lua_pop(state, 1);
+                auto* lua_context = state;
+                const auto read_transition_integer =
+                    [lua_context, transition_index](const char* field)
+                    -> std::optional<lua_Integer> {
+                    lua_getfield(lua_context, transition_index, field);
+                    int is_integer = 0;
+                    const auto value =
+                        lua_tointegerx(lua_context, -1, &is_integer);
+                    lua_pop(lua_context, 1);
+                    return is_integer ? std::optional<lua_Integer>(value)
+                                      : std::nullopt;
+                };
+                const auto elapsed =
+                    read_transition_integer("elapsed_frames");
+                if (elapsed.has_value() && *elapsed >= 0 &&
+                    *elapsed <= static_cast<lua_Integer>(
+                                    std::numeric_limits<std::uint16_t>::max())) {
+                    menu_route_state.field_return_transition_elapsed_frames =
+                        static_cast<std::uint16_t>(*elapsed);
+                }
+                const auto palette_step =
+                    read_transition_integer("palette_step");
+                if (palette_step.has_value() && *palette_step >= 0 &&
+                    *palette_step <= static_cast<lua_Integer>(
+                                         std::numeric_limits<std::uint8_t>::max())) {
+                    menu_route_state.field_return_transition_palette_step =
+                        static_cast<std::uint8_t>(*palette_step);
+                }
+                const auto phase = read_transition_integer("phase");
+                if (phase.has_value() && *phase >= static_cast<lua_Integer>(
+                                             ScriptFieldReturnTransitionPhase::none) &&
+                    *phase <= static_cast<lua_Integer>(
+                                  ScriptFieldReturnTransitionPhase::complete)) {
+                    menu_route_state.field_return_transition_phase =
+                        static_cast<ScriptFieldReturnTransitionPhase>(*phase);
+                }
+            }
+            lua_pop(state, 1);
+        } else {
+            lua_pop(state, 1);
+        }
         if (!menu_route_state.open) {
             lua_settop(state, base);
             return true;
@@ -10995,7 +11052,8 @@ bool GameScriptRuntime::open_menu_route(
 void GameScriptRuntime::advance_menu_route(const std::uint16_t events) {
     auto* state = impl_->state;
     if (state == nullptr || impl_->menu_route_reference == LUA_NOREF ||
-        !impl_->menu_route_state.open) {
+        (!impl_->menu_route_state.open &&
+         !impl_->menu_route_state.field_return_transition_active)) {
         return;
     }
     impl_->failure.clear();

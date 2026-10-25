@@ -206,6 +206,18 @@ E.MenuRegion = { ITEM_PICTURE = 0x0001, ITEM_HEADER = 0x0002, RATING = 0x0004, D
                  COMMAND_LABEL = 0x0200, INVENTORY_CURSOR = 0x0400, POSTURE_LABEL = 0x0800, SIDEBAR_SLOT = 0x1000,
                  MESSAGE = 0x2000, SUBMENU = 0x4000, FULL = 0x8000 }
 E.MenuTransition = { NONE = 0, PUSH = 1, POP = 2, REPLACE = 3, REBUILD = 4, EXIT = 5 }
+E.FieldReturnTransitionPhase = {
+    NONE = 0, MENU_FADE_OUT = 1, BLACK_HOLD = 2, FIELD_FADE_IN = 3, COMPLETE = 4,
+}
+E.FieldReturnTransitionTiming = {
+    MENU_UNCHANGED_THROUGH = 2,
+    FADE_OUT_FIRST_FRAME = 3,
+    FADE_OUT_LAST_FRAME = 15,
+    BLACK_HOLD_LAST_FRAME = 99,
+    FADE_IN_FIRST_FRAME = 100,
+    FIELD_LIVE_FRAME = 112,
+    PALETTE_STEPS = 7,
+}
 E.DisplayBlank = { OFF = 0x8134, ON = 0x8174 }   -- VDP reg 1 writes around a build [C]
 E.MenuMask = { LEAD = 1, REVEAL = 2 }   -- port host phases for staged partial frames (not ROM values)
 E.WindowPlane = { SIDEBAR = 0x9191, OFF = 0x9100 } -- VDP reg 0x11 [C]

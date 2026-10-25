@@ -5,6 +5,8 @@
 -- (FSR 10498-10960); see MIGRATION.md D1.
 local E = require("enums")
 local T = E.MenuTransition
+local S = E.MenuScreen
+local FieldReturn = require("menu.rules.field_return_transition")
 
 local Route = {}
 Route.__index = Route
@@ -14,7 +16,10 @@ function Route.register(id, module) registry[id] = module end
 
 -- host: C++ presenter/input binding (menu_binding.hpp). game: rule-side game services.
 function Route.new(host, game)
-    local r = setmetatable({ host = host, game = game, stack = {}, frame_no = 0 }, Route)
+    local r = setmetatable({
+        host = host, game = game, stack = {}, frame_no = 0,
+        field_return_transition = nil,
+    }, Route)
     r.ctx = {
         host = host, game = game,
         sound = function(id) host.play_sound(id) end,
@@ -83,16 +88,28 @@ function Route:apply(entry, res)
         self.stack = {}
         push(self, screen, res.args)
     elseif t == T.EXIT then        -- leave the whole menu tree (Start, FFF0B1, FFF0CD)
+        local result = res.result or {}
+        local root = self:root()
+        local field_return_transition = root ~= nil and
+            root.screen == S.COMMAND and entry.screen == S.COMMAND and
+            result.matrix_logout_transition_complete ~= true
         self.stack = {}
         apply_presentation(self)
-        local result = res.result or {}
+        if field_return_transition then
+            self.field_return_transition = FieldReturn.new()
+        end
         self.host.menu_closed(
-            result.matrix_logout_transition_complete == true)
+            result.matrix_logout_transition_complete == true,
+            field_return_transition)
     end
 end
 
 function Route:open(screen, args)
     assert(#self.stack == 0, "menu already open")   -- FSR open_command_overview guard (FSR 5390)
+    assert(not (self.field_return_transition and
+                self.field_return_transition.active),
+           "field return transition is still active")
+    self.field_return_transition = nil
     push(self, screen, args)
 end
 
@@ -101,16 +118,33 @@ end
 function Route:close()
     if #self.stack == 0 then return end
     self.stack = {}
+    self.field_return_transition = nil
     apply_presentation(self)
-    self.host.menu_closed(false)
+    self.host.menu_closed(false, false)
 end
 
 function Route:frame(events)
     self.frame_no = self.frame_no + 1
+    if self.field_return_transition and
+       self.field_return_transition.active then
+        FieldReturn.advance(self.field_return_transition)
+        return
+    end
     local top = self:top()
     if not top then return end
     local m = registry[top.screen]
     self:apply(top, m.input(top.state, events, self.ctx))
+end
+
+function Route:field_return_transition_snapshot()
+    local state = self.field_return_transition
+    if not state then return nil end
+    return {
+        active = state.active,
+        elapsed_frames = state.elapsed_frames,
+        phase = state.phase,
+        palette_step = state.palette_step,
+    }
 end
 
 function Route:screens()   -- for tests / debug overlay

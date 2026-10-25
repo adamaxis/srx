@@ -8850,7 +8850,34 @@ void FieldSceneRuntime::configure_field_menu_route() {
             screen == static_cast<std::uint16_t>(srx::MenuScreen::POSTURE);
     };
     bindings.host.menu_closed = [this](
-                                    const bool matrix_logout_transition_complete) {
+                                    const bool matrix_logout_transition_complete,
+                                    const bool field_return_transition) {
+        if (field_return_transition) {
+            QImage menu_frame(320, 224,
+                              QImage::Format_ARGB32_Premultiplied);
+            menu_frame.fill(Qt::black);
+            QPainter menu_painter(&menu_frame);
+            paint(menu_painter);
+            menu_painter.end();
+            command_overview_return_image_ = std::move(menu_frame);
+            command_overview_return_transition_active_ = true;
+            command_overview_return_transition_elapsed_frames_ = 0U;
+            command_overview_return_palette_step_ = 0U;
+            command_overview_return_transition_phase_ =
+                scripting::ScriptFieldReturnTransitionPhase::menu_fade_out;
+            field_modal_return_transition_frames_remaining_ = 0U;
+            field_palette_fade_steps_ = 0U;
+            field_modal_return_blocked_inputs_ =
+                static_cast<std::uint8_t>(
+                    field_controller_sample_state_.held);
+            field_controller_sample_state_.events =
+                static_cast<std::uint16_t>(
+                    static_cast<std::uint8_t>(
+                        field_controller_sample_state_.held));
+            field_controller_latch_state_ = ControllerLatchState{};
+            field_entity_animation_.redraw_requested = true;
+            source_boundary("field.command_overview.return_fade_started");
+        }
         matrix_field_return_transition_pending_ =
             matrix_return_to_field_on_close_ &&
             !matrix_logout_transition_complete;
@@ -9374,6 +9401,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
 void FieldSceneRuntime::advance_field_menu_route() {
     game_scripts_.advance_menu_route(field_controller_sample_state_.events);
     const auto route_state = game_scripts_.menu_route_snapshot();
+    synchronize_command_overview_return_transition(route_state);
     synchronize_command_overview_clips_from_route(route_state);
     synchronize_command_overview_inventory_from_route(route_state);
     synchronize_command_overview_magic_from_route(route_state);
@@ -9445,6 +9473,63 @@ void FieldSceneRuntime::advance_field_menu_route() {
         dismiss_runner_effect_frames_ = static_cast<std::uint32_t>(
             std::max(0, *route_state.top_grid_effect_frames));
     }
+}
+
+void FieldSceneRuntime::synchronize_command_overview_return_transition(
+    const scripting::ScriptMenuRouteSnapshot& route_state) {
+    if (route_state.field_return_transition_phase ==
+        scripting::ScriptFieldReturnTransitionPhase::none) {
+        return;
+    }
+
+    const auto was_active = command_overview_return_transition_active_;
+    command_overview_return_transition_active_ =
+        route_state.field_return_transition_active;
+    command_overview_return_transition_elapsed_frames_ =
+        route_state.field_return_transition_elapsed_frames;
+    command_overview_return_palette_step_ =
+        route_state.field_return_transition_palette_step;
+    command_overview_return_transition_phase_ =
+        route_state.field_return_transition_phase;
+
+    if (command_overview_return_transition_phase_ ==
+        scripting::ScriptFieldReturnTransitionPhase::field_fade_in) {
+        field_palette_fade_steps_ =
+            command_overview_return_palette_step_;
+    } else {
+        field_palette_fade_steps_ = 0U;
+    }
+    if (!command_overview_return_transition_active_ &&
+        command_overview_return_transition_phase_ ==
+            scripting::ScriptFieldReturnTransitionPhase::complete) {
+        field_palette_fade_steps_ = 0U;
+        command_overview_return_image_ = QImage{};
+        field_entity_animation_.redraw_requested = true;
+        if (was_active) {
+            source_boundary("field.command_overview.return_fade_completed");
+        }
+    }
+}
+
+void FieldSceneRuntime::advance_command_overview_return_transition() {
+    field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(
+        field_modal_return_blocked_inputs_ & field_controller_port_byte_);
+    ::shadowrun::ghidra_conversion::sample_controller_input(
+        field_controller_sample_state_, field_controller_port_byte_);
+    field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(
+        field_modal_return_blocked_inputs_ |
+        static_cast<std::uint8_t>(field_controller_sample_state_.held));
+    field_controller_sample_state_.events = static_cast<std::uint16_t>(
+        static_cast<std::uint8_t>(field_controller_sample_state_.held));
+    field_controller_latch_state_ = ControllerLatchState{};
+
+    game_scripts_.advance_menu_route(0U);
+    if (!game_scripts_.failure().empty()) {
+        failure_ = game_scripts_.failure();
+        return;
+    }
+    synchronize_command_overview_return_transition(
+        game_scripts_.menu_route_snapshot());
 }
 
 int FieldSceneRuntime::game_save_slot_status(const int slot) const {
@@ -16735,6 +16820,10 @@ void FieldSceneRuntime::advance_frame() {
         return;
     }
     service_scene_music_latch();
+    if (command_overview_return_transition_active_) {
+        advance_command_overview_return_transition();
+        return;
+    }
     if (tarislar_credits_title_return_.is_presenting()) {
         const auto update = tarislar_credits_title_return_.advance();
         if (update.completed) {
@@ -23968,6 +24057,23 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         return;
     }
 
+    if (command_overview_return_transition_active_ &&
+        command_overview_return_transition_phase_ ==
+            scripting::ScriptFieldReturnTransitionPhase::menu_fade_out) {
+        target_painter.drawImage(
+            0, 0,
+            transition_genesis_cram_image(
+                command_overview_return_image_,
+                command_overview_return_palette_step_, true));
+        return;
+    }
+    if (command_overview_return_transition_active_ &&
+        command_overview_return_transition_phase_ ==
+            scripting::ScriptFieldReturnTransitionPhase::black_hold) {
+        target_painter.fillRect(0, 0, 320, 224, Qt::black);
+        return;
+    }
+
     QImage scene(320, 224, QImage::Format_ARGB32_Premultiplied);
     scene.fill(Qt::black);
     QPainter scene_painter(&scene);
@@ -23977,7 +24083,13 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
         std::uint8_t palette_passes = 0U;
         bool toward_black = true;
         bool transition_active = false;
-        if (tarislar_credits_title_return_.is_presenting()) {
+        if (command_overview_return_transition_active_ &&
+            command_overview_return_transition_phase_ ==
+                scripting::ScriptFieldReturnTransitionPhase::field_fade_in) {
+            palette_passes = command_overview_return_palette_step_;
+            toward_black = false;
+            transition_active = true;
+        } else if (tarislar_credits_title_return_.is_presenting()) {
             palette_passes =
                 tarislar_credits_title_return_.palette_passes_to_black();
             transition_active = palette_passes != 0U;
