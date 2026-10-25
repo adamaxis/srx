@@ -272,6 +272,18 @@ public:
                         return false;
                     }
                     return true;
+                },
+                [this](QString* error) {
+                    return field_scene_runtime_
+                        .capture_game_save_snapshot_for_dump(error);
+                },
+                [this](const QJsonObject& snapshot, QString* error) {
+                    const auto restored = field_scene_runtime_
+                        .restore_game_save_snapshot_for_dump(snapshot, error);
+                    if (restored) {
+                        update();
+                    }
+                    return restored;
                 });
         }
         if (debug_event_queue_enabled_ || input_log_.recording()) {

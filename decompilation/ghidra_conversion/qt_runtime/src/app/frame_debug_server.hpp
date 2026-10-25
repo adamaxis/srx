@@ -4,11 +4,14 @@
 
 #include <QByteArray>
 #include <QCoreApplication>
+#include <QDateTime>
+#include <QFile>
 #include <QHostAddress>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
+#include <QSaveFile>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QString>
@@ -54,25 +57,36 @@ public:
     using PhaseProvider = std::function<QString()>;
     using KeyQueue = std::function<void(int, bool)>;
     using ImageDumper = std::function<bool(const QString&, QString*)>;
+    using SnapshotProvider =
+        std::function<std::optional<QJsonObject>(QString*)>;
+    using SnapshotRestorer =
+        std::function<bool(const QJsonObject&, QString*)>;
 
     FrameDebugServer(const std::uint16_t port, debug::FrameStepper& stepper,
                      StateProvider state, FrameProvider frame,
                      PhaseProvider phase, KeyQueue queue_key,
-                     EventProvider events = {}, ImageDumper dump_image = {})
+                     EventProvider events = {}, ImageDumper dump_image = {},
+                     SnapshotProvider snapshot_provider = {},
+                     SnapshotRestorer snapshot_restorer = {},
+                     const bool listen_for_connections = true)
         : stepper_(stepper),
           state_(std::move(state)),
           frame_(std::move(frame)),
           phase_(std::move(phase)),
           queue_key_(std::move(queue_key)),
           events_(std::move(events)),
-          dump_image_(std::move(dump_image)) {
-        if (!server_.listen(QHostAddress::LocalHost, port)) {
-            throw std::runtime_error(
-                "could not listen for local debugger: " +
-                server_.errorString().toStdString());
+          dump_image_(std::move(dump_image)),
+          snapshot_provider_(std::move(snapshot_provider)),
+          snapshot_restorer_(std::move(snapshot_restorer)) {
+        if (listen_for_connections) {
+            if (!server_.listen(QHostAddress::LocalHost, port)) {
+                throw std::runtime_error(
+                    "could not listen for local debugger: " +
+                    server_.errorString().toStdString());
+            }
+            QObject::connect(&server_, &QTcpServer::newConnection, &server_,
+                             [this] { accept_connections(); });
         }
-        QObject::connect(&server_, &QTcpServer::newConnection, &server_,
-                         [this] { accept_connections(); });
     }
 
     ~FrameDebugServer() {
@@ -641,11 +655,118 @@ public:
             result.insert(QStringLiteral("path"), path);
             return encode(result);
         }
+        if (command == QStringLiteral("snapshot")) {
+            const auto action = request.value(QStringLiteral("action"))
+                                    .toString();
+            const auto path = request.value(QStringLiteral("path")).toString();
+            if (path.isEmpty()) {
+                return encode_error(QStringLiteral(
+                    "snapshot requires a path"));
+            }
+            if (action == QStringLiteral("save")) {
+                if (!snapshot_provider_) {
+                    return encode_error(QStringLiteral(
+                        "snapshot save is unavailable"));
+                }
+                QString error;
+                const auto snapshot = snapshot_provider_(&error);
+                if (!snapshot.has_value()) {
+                    return encode_error(error.isEmpty()
+                                            ? QStringLiteral(
+                                                  "could not capture the current game snapshot")
+                                            : error);
+                }
+
+                // Match GameSaveStore's JSON envelope [H]. The callback still
+                // supplies and restores the typed application snapshot.
+                QJsonObject envelope;
+                envelope.insert(QStringLiteral("format"),
+                                QStringLiteral("shadowrun-qt-game-save"));
+                envelope.insert(QStringLiteral("schema_version"), 2);
+                envelope.insert(
+                    QStringLiteral("saved_at_utc"),
+                    QDateTime::currentDateTimeUtc().toString(
+                        Qt::ISODateWithMs));
+                envelope.insert(QStringLiteral("snapshot"), *snapshot);
+                const auto bytes = QJsonDocument(envelope).toJson(
+                    QJsonDocument::Compact);
+                if (bytes.size() > kMaximumSnapshotBytes) {
+                    return encode_error(QStringLiteral(
+                        "the game snapshot is too large"));
+                }
+                QSaveFile file(path);
+                if (!file.open(QIODevice::WriteOnly)) {
+                    return encode_error(file.errorString());
+                }
+                if (file.write(bytes) != bytes.size() || !file.commit()) {
+                    return encode_error(file.errorString());
+                }
+                QJsonObject result;
+                result.insert(QStringLiteral("ok"), true);
+                result.insert(QStringLiteral("action"), action);
+                result.insert(QStringLiteral("path"), path);
+                result.insert(QStringLiteral("frame"),
+                              static_cast<double>(frame_ ? frame_() : 0U));
+                return encode(result);
+            }
+            if (action == QStringLiteral("load")) {
+                if (!snapshot_restorer_) {
+                    return encode_error(QStringLiteral(
+                        "snapshot load is unavailable"));
+                }
+                QFile file(path);
+                if (!file.open(QIODevice::ReadOnly)) {
+                    return encode_error(file.errorString());
+                }
+                if (file.size() <= 0 || file.size() > kMaximumSnapshotBytes) {
+                    return encode_error(QStringLiteral(
+                        "the game snapshot has an invalid size"));
+                }
+                QJsonParseError parse_error;
+                const auto document = QJsonDocument::fromJson(
+                    file.readAll(), &parse_error);
+                if (parse_error.error != QJsonParseError::NoError ||
+                    !document.isObject()) {
+                    return encode_error(parse_error.error ==
+                                                QJsonParseError::NoError
+                                            ? QStringLiteral(
+                                                  "the game snapshot must be a JSON object")
+                                            : parse_error.errorString());
+                }
+                const auto envelope = document.object();
+                if (envelope.value(QStringLiteral("format")).toString() !=
+                        QStringLiteral("shadowrun-qt-game-save") ||
+                    envelope.value(QStringLiteral("schema_version")).toInt(-1) !=
+                        2 ||
+                    !envelope.value(QStringLiteral("snapshot")).isObject()) {
+                    return encode_error(QStringLiteral(
+                        "the file is not a supported game snapshot"));
+                }
+                QString error;
+                if (!snapshot_restorer_(
+                        envelope.value(QStringLiteral("snapshot")).toObject(),
+                        &error)) {
+                    return encode_error(error.isEmpty()
+                                            ? QStringLiteral(
+                                                  "could not restore the game snapshot")
+                                            : error);
+                }
+                QJsonObject result;
+                result.insert(QStringLiteral("ok"), true);
+                result.insert(QStringLiteral("action"), action);
+                result.insert(QStringLiteral("path"), path);
+                result.insert(QStringLiteral("frame"),
+                              static_cast<double>(frame_ ? frame_() : 0U));
+                return encode(result);
+            }
+            return encode_error(QStringLiteral(
+                "snapshot action must be 'save' or 'load'"));
+        }
         if (command == QStringLiteral("help")) {
             QJsonObject result;
             result.insert(QStringLiteral("ok"), true);
             result.insert(QStringLiteral("commands"),
-                          QStringLiteral("status pause resume step key press inspect hash dump events diverge break(frame|watch|event|rng|scene) delete list help quit"));
+                          QStringLiteral("status pause resume step key press inspect hash dump snapshot save|load events diverge break(frame|watch|event|rng|scene) delete list help quit"));
             return encode(result);
         }
         return encode_error(QStringLiteral("unknown command"));
@@ -947,6 +1068,7 @@ private:
     }
 
     static constexpr qsizetype kMaximumRequestBytes = 65536;
+    static constexpr qint64 kMaximumSnapshotBytes = 8LL * 1024LL * 1024LL;
     debug::FrameStepper& stepper_;
     StateProvider state_;
     FrameProvider frame_;
@@ -954,6 +1076,8 @@ private:
     KeyQueue queue_key_;
     EventProvider events_;
     ImageDumper dump_image_;
+    SnapshotProvider snapshot_provider_;
+    SnapshotRestorer snapshot_restorer_;
     QTcpServer server_;
     std::map<QTcpSocket*, QByteArray> buffers_;
     std::vector<FrameBreakpoint> breakpoints_;

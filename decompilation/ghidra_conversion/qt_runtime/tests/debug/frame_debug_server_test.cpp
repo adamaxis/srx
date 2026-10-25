@@ -3,11 +3,13 @@
 #include <QCoreApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QTemporaryDir>
 #include <QTcpSocket>
 
 #include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <thread>
 #include <utility>
@@ -52,12 +54,18 @@ bool write_recording(
 
 int main(int argc, char** argv) {
     QCoreApplication application(argc, argv);
+    const bool listen_for_connections =
+        !qEnvironmentVariableIsSet("SRX_TEST_NO_LOCAL_SOCKET");
     shadowrun::ghidra_conversion::debug::FrameStepper stepper(true);
     int queued_key = 0;
     bool queued_pressed = false;
     std::uint64_t current_frame = 88U;
     QStringList frame_events;
     QString dumped_path;
+    QTemporaryDir snapshot_directory;
+    QJsonObject snapshot_data;
+    snapshot_data.insert(QStringLiteral("kind"), QStringLiteral("test"));
+    QJsonObject restored_snapshot;
     QJsonObject state;
     state.insert(QStringLiteral("app.phase"), QStringLiteral("field_ready"));
     state.insert(QStringLiteral("app.paused"), true);
@@ -88,8 +96,23 @@ int main(int argc, char** argv) {
             }
             dumped_path = path;
             return true;
-        });
-    if (server.port() == 0U) {
+        },
+        [&snapshot_data](QString* error)
+            -> std::optional<QJsonObject> {
+            if (error != nullptr) {
+                error->clear();
+            }
+            return snapshot_data;
+        },
+        [&restored_snapshot](const QJsonObject& snapshot, QString* error) {
+            restored_snapshot = snapshot;
+            if (error != nullptr) {
+                error->clear();
+            }
+            return true;
+        },
+        listen_for_connections);
+    if (listen_for_connections && server.port() == 0U) {
         std::cerr << "debug server did not bind an ephemeral localhost port\n";
         return 1;
     }
@@ -125,6 +148,32 @@ int main(int argc, char** argv) {
         result.value(QStringLiteral("error")).toString() !=
             QStringLiteral("simulated image write failure")) {
         std::cerr << "dump command did not report image write failures\n";
+        return 1;
+    }
+    if (!snapshot_directory.isValid()) {
+        std::cerr << "could not create a temporary snapshot-test directory\n";
+        return 1;
+    }
+    const auto snapshot_path = snapshot_directory.filePath(
+        QStringLiteral("debug-snapshot.json"));
+    QJsonObject snapshot_request;
+    snapshot_request.insert(QStringLiteral("cmd"), QStringLiteral("snapshot"));
+    snapshot_request.insert(QStringLiteral("action"), QStringLiteral("save"));
+    snapshot_request.insert(QStringLiteral("path"), snapshot_path);
+    result = response(server.handle_line(
+        QJsonDocument(snapshot_request).toJson(QJsonDocument::Compact)));
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        result.value(QStringLiteral("frame")).toInt() != 88) {
+        std::cerr << "snapshot save did not write the current typed snapshot\n";
+        return 1;
+    }
+    snapshot_request.insert(QStringLiteral("action"), QStringLiteral("load"));
+    result = response(server.handle_line(
+        QJsonDocument(snapshot_request).toJson(QJsonDocument::Compact)));
+    if (!result.value(QStringLiteral("ok")).toBool() ||
+        restored_snapshot.value(QStringLiteral("kind")).toString() !=
+            QStringLiteral("test")) {
+        std::cerr << "snapshot load did not restore the typed snapshot\n";
         return 1;
     }
 
@@ -458,6 +507,10 @@ int main(int argc, char** argv) {
             QStringLiteral("ok")).toBool()) {
         std::cerr << "invalid JSON request was accepted\n";
         return 1;
+    }
+
+    if (!listen_for_connections) {
+        return 0;
     }
 
     QTcpSocket client;
