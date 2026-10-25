@@ -1,10 +1,12 @@
 #pragma once
 
-// Live output: pushes each mixed game frame into a QAudioSink. The game
-// frame clock stays authoritative; when the device buffer is full the frame
-// is dropped rather than blocking the game thread.
+// Live output: pushes each mixed game frame into a QAudioSink through a
+// bounded PcmQueue. The game frame clock stays authoritative; short device
+// writes are carried over in order, and only an over-full backlog (about
+// eight game frames) discards its oldest samples.
 
 #include "audio_mixer.hpp"
+#include "pcm_queue.hpp"
 
 #include <memory>
 
@@ -25,6 +27,7 @@ private:
     std::unique_ptr<QAudioSink> sink_;
     QIODevice* device_ = nullptr;
     std::uint64_t dropped_ = 0U;
+    PcmQueue queue_{kAudioSamplesPerFrame * 4U * 8U};
 };
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime

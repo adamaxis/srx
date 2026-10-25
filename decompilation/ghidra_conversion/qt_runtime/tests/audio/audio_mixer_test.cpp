@@ -1,4 +1,8 @@
 // Headless unit tests for the frame-locked audio core (doc 26 phases 2-3).
+#include "pcm_queue.hpp"
+
+#include <algorithm>
+#include <vector>
 #include "audio_mixer.hpp"
 #include "audio_resources.hpp"
 #include "gems_commands.hpp"
@@ -312,6 +316,37 @@ int main() {
             check(std::string(riff, 4) == "RIFF", "WAV RIFF header");
         }
         std::filesystem::remove(path);
+    }
+
+    // Playtest #35: host PCM queue keeps short writes in order, never
+    // duplicates, and only drops the oldest whole frames past its cap.
+    {
+        using shadowrun::ghidra_conversion::qt_runtime::PcmQueue;
+        PcmQueue queue(64U, 4U);
+        std::vector<char> out;
+        char in[40];
+        for (int i = 0; i < 40; ++i) in[i] = static_cast<char>(i);
+        queue.push(in, 40U);
+        // Device accepts only 6 bytes per call, 10 bytes this frame.
+        auto accept6 = [&](const char* d, std::size_t n) {
+            const auto k = std::min<std::size_t>(n, 6U);
+            out.insert(out.end(), d, d + k);
+            return static_cast<long long>(k);
+        };
+        check(queue.flush(10U, accept6) == 6U, "PCM queue stops on a short write");
+        check(queue.pending_bytes() == 34U, "PCM queue keeps the unwritten remainder");
+        queue.flush(1000U, [&](const char* d, std::size_t n) {
+            out.insert(out.end(), d, d + n);
+            return static_cast<long long>(n);
+        });
+        bool ordered = out.size() == 40U;
+        for (std::size_t i = 0; ordered && i < out.size(); ++i) ordered = out[i] == static_cast<char>(i);
+        check(ordered, "PCM queue delivers every sample once, in order");
+        queue.push(in, 40U);
+        queue.push(in, 40U);
+        check(queue.pending_bytes() == 64U && queue.dropped_bytes() == 16U,
+              "PCM queue drops only the oldest whole frames past its cap");
+        check(queue.flush(0U, accept6) == 0U, "PCM queue writes nothing with no device space");
     }
 
     if (failures != 0) {

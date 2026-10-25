@@ -36,12 +36,19 @@ void QtAudioSink::submit(const std::int16_t* stereo, const std::size_t frames) {
     if (device_ == nullptr) {
         return;
     }
-    const auto bytes = static_cast<qint64>(frames * 4U);
-    if (sink_->bytesFree() < bytes) {
-        dropped_ += frames;
+    // Queue first, then hand the device as much as it will take; keep any
+    // short-write remainder in order for the next game frame (playtest #35).
+    const auto before = queue_.dropped_bytes();
+    queue_.push(reinterpret_cast<const char*>(stereo), frames * 4U);
+    dropped_ += (queue_.dropped_bytes() - before) / 4U;
+    const auto free_bytes = sink_->bytesFree();
+    if (free_bytes <= 0) {
         return;
     }
-    device_->write(reinterpret_cast<const char*>(stereo), bytes);
+    queue_.flush(static_cast<std::size_t>(free_bytes),
+                 [this](const char* data, std::size_t n) {
+                     return device_->write(data, static_cast<qint64>(n));
+                 });
 }
 
 } // namespace shadowrun::ghidra_conversion::qt_runtime
