@@ -1133,6 +1133,46 @@ int run_field_world_activity_qa(
         return 3;
     }
 
+    // ROM 0x169E6/0x2B78 now enters scene 26 at 0x1D9916 (camera y 0x2E00,
+    // runner y 0x3300); the 0x3A1C follow (center +0x700, heading lookahead
+    // 0x3C0) then chases the camera up for ~70 frames. Wait for that chase
+    // to settle before capturing the pre-prompt reference so the exact
+    // return comparison below measures only terminal-UI residue.
+    auto prompt_reference_camera = std::pair{
+        field_scene.state().field_scene_buffers.camera_x,
+        field_scene.state().field_scene_buffers.camera_y};
+    std::uint8_t prompt_reference_stable_frames = 0U;
+    // The chase can idle a frame between steps, so require 16 still frames.
+    for (std::uint8_t frame = 0U;
+         frame < 160U && prompt_reference_stable_frames < 16U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        const auto camera = std::pair{
+            field_scene.state().field_scene_buffers.camera_x,
+            field_scene.state().field_scene_buffers.camera_y};
+        if (camera == prompt_reference_camera) {
+            ++prompt_reference_stable_frames;
+        } else {
+            prompt_reference_camera = camera;
+            prompt_reference_stable_frames = 0U;
+        }
+    }
+    if (prompt_reference_stable_frames < 16U) {
+        std::cerr << "field world-activity QA: camera did not settle before "
+                     "the terminal prompt\n";
+        return 3;
+    }
+    // ROM 0x2BD2 is the same-scene refresh after the terminal modal closes:
+    // 0x2BE2/0x2BEA `andi.w #-0x80` FFDDC6/FFDDC8 (and 0x2BF2/0x2BFA reset
+    // the FFDF36/FFDF38 edge cache). 0x3C36 only holds the follow step on
+    // FFE100/FFE102/FFDFE8, none of which the terminal leaves set, so the
+    // settled 0x29A0 camera legitimately returns at 0x2980. Apply the same
+    // 0x80 alignment to the reference so the exact comparison below still
+    // measures only terminal-UI residue.
+    field_scene.set_field_camera_world_position_for_dump(
+        static_cast<std::uint16_t>(prompt_reference_camera.first & 0xFF80),
+        static_cast<std::uint16_t>(prompt_reference_camera.second & 0xFF80));
+
     // The coordinator's pending handler reads the selected FFE12C value from
     // runtime state rather than taking the floor as a QA argument.
     if (!field_scene.dispatch_selected_security_terminal_for_dump()) {
@@ -4338,6 +4378,9 @@ int run_field_scene26_maglock_descriptor_route_qa(
     const auto& rectangles = metadata.terrain_collision_rectangles;
     const auto spawn = field_scene.field_entity_world_position();
     if (field_scene.field_scene_reference_for_dump() != kScene ||
+        // Static scene-26 descriptor (no FFE114 handoff; camera at
+        // 0x1D97EC): the lift approach. Callers arriving by the ordinary event-1 route place the
+        // runner here first; that route's 0x1D9916 entry is checked there.
         spawn.x != 0x0A00U || spawn.y != 0x0500U ||
         field_scene.field_interaction_mode_for_dump() != 2U ||
         rectangles.size() <= 117U || rectangles[117U].left != 0x0100U ||
@@ -5681,8 +5724,8 @@ int run_field_scene26_event1_terminal_qa(
         activity.scene_id != 26U ||
         activity.resource_random_index_bound != 3U ||
         activity.selected_resource_random_index != *selected_floor ||
-        field_scene.field_entity_world_position().x != 0x0A00U ||
-        field_scene.field_entity_world_position().y != 0x0500U) {
+        field_scene.field_entity_world_position().x != 0x4C00U ||
+        field_scene.field_entity_world_position().y != 0x3300U) {
         std::cerr << "Scene-26 event-1 terminal QA: ordinary entry did not "
                      "preserve the selected resource-floor state\n";
         return 3;
@@ -5847,6 +5890,14 @@ int run_field_scene26_event1_terminal_qa(
     // Hold the unrelated alarm service off for this route-only fixture [H].
     // The Scene 21 integration QA exercises alarm raising and clearing [C].
     field_scene.set_field_alarm_disabled_for_dump(true);
+    // The ordinary event-1 entry consumed 0x1D9916 (runner 0x4C00,0x3300,
+    // checked above), the bottom entrance. The physical maglock subroute is
+    // defined from the static scene-26 descriptor's lift approach (camera
+    // 0x0200,0x0000 at 0x1D97EC; runner 0x0A00,0x0500 from its initial
+    // field records, as restored by the standalone QA); start it there [H].
+    field_scene.set_field_entity_world_position_for_dump(0x0A00U, 0x0500U);
+    field_scene.set_field_camera_world_position_for_dump(0x0200U, 0x0000U);
+    field_scene.set_field_entity_heading_for_dump(0x0000U);
     if (run_field_scene26_maglock_descriptor_route_qa(
             field_scene, asset_root, physical_route_output,
             field_audio_events, source_boundaries) != 0) {
@@ -11562,8 +11613,10 @@ int run_scene26_table_collision_qa(
 
     const auto& metadata = field_scene.state().field_scene_buffers.source_metadata;
     if (field_scene.field_scene_reference_for_dump() != 26U ||
-        field_scene.field_entity_world_position().x != 0x0A00U ||
-        field_scene.field_entity_world_position().y != 0x0500U ||
+        // 0x1D97EC's static profile holds 0x0A00/0x0500; ordinary resource
+        // entry selects 0x1D9916 at 0x169E6, which 0x2B78 applies instead.
+        field_scene.field_entity_world_position().x != 0x4C00U ||
+        field_scene.field_entity_world_position().y != 0x3300U ||
         metadata.terrain_collision_rectangles.size() <= kTableRecordIndex) {
         std::cerr << "Scene-26 table collision QA: event-1 route did not leave "
                      "the runner at the ROM scene-26 spawn\n";
@@ -11586,6 +11639,10 @@ int run_scene26_table_collision_qa(
 
     // Seed the runner into the clear lane north of record 70. This keeps the
     // contact and actor visible together in the full-screen route capture.
+    // The ordinary entry above consumed 0x1D9916 (camera 0x4400,0x2E00).
+    // This probe is defined against the static descriptor camera at
+    // 0x1D97EC (0x0200,0x0000); restore it with the approach position [H].
+    field_scene.set_field_camera_world_position_for_dump(0x0200U, 0x0000U);
     field_scene.set_field_entity_world_position_for_dump(0x0800U, 0x0C00U);
 
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
@@ -14985,6 +15042,24 @@ int run_field_elevator_physical_entry_qa(
     const auto activity_boundary_count_before = static_cast<std::size_t>(
         std::count(source_boundaries.begin(), source_boundaries.end(),
                    "field.world.activity.started"));
+    // ROM 0x169E6/0x2B78: the ordinary scene-2 event-1 entry consumes the
+    // FFE114 placement at 0x1D9916 (runner 0x4C00,0x3300), the bottom
+    // entrance (playtest #5).
+    const auto ordinary_entry_spawn = field_scene.field_entity_world_position();
+    if (ordinary_entry_spawn.x != 0x4C00U ||
+        ordinary_entry_spawn.y != 0x3300U) {
+        std::cerr << "Elevator physical-entry QA: scene-26 ordinary entry did "
+                     "not consume the ROM resource placement (position="
+                  << ordinary_entry_spawn.x << ',' << ordinary_entry_spawn.y
+                  << ")\n";
+        return 3;
+    }
+    // Exercise the physical event-29 trigger from the static descriptor's
+    // lift approach (camera 0x0200,0x0000 at 0x1D97EC; runner 0x0A00,0x0500)
+    // with ordinary Up input [H].
+    field_scene.set_field_entity_world_position_for_dump(0x0A00U, 0x0500U);
+    field_scene.set_field_camera_world_position_for_dump(0x0200U, 0x0000U);
+    field_scene.set_field_entity_heading_for_dump(0x0000U);
     std::uint16_t trigger_ticks = 0U;
     while (trigger_ticks < 120U &&
            !field_scene.elevator_selector_open_for_dump() &&
@@ -23593,6 +23668,11 @@ struct FieldGatedBuildingEntryQaSpec {
     std::uint16_t activity_exit_rectangle_bottom = 0U;
     std::uint16_t activity_exit_collision_code = 0U;
     bool verify_resource_matrix_entry = false;
+    std::uint16_t expected_entry_camera_x = 0U;
+    std::uint16_t expected_entry_camera_y = 0U;
+    std::uint16_t expected_entry_joshua_x = 0U;
+    std::uint16_t expected_entry_joshua_y = 0U;
+    bool verify_resource_entry_placement = false;
 };
 
 struct ResourceSceneMatrixEntryQaSpec {
@@ -23910,6 +23990,19 @@ int run_field_gated_building_entry_qa(
     const auto destination_scene = field_scene.field_scene_reference_for_dump();
     const auto destination_mode = field_scene.field_runtime_state_for_dump()
                                      .field_mode;
+    const auto entry_position = field_scene.field_entity_world_position();
+    const auto entry_camera_x = static_cast<std::uint16_t>(
+        field_scene.state().field_scene_buffers.camera_x);
+    const auto entry_camera_y = static_cast<std::uint16_t>(
+        field_scene.state().field_scene_buffers.camera_y);
+    // ROM 0x2B78 consumes the aligned resource profile; the next field-frame
+    // camera follow at 0x3A1C can step the live camera before this QA samples it.
+    const bool entry_placement_matches =
+        !route.verify_resource_entry_placement ||
+        (entry_camera_x == route.expected_entry_camera_x &&
+         entry_camera_y == route.expected_entry_camera_y &&
+         entry_position.x == route.expected_entry_joshua_x &&
+         entry_position.y == route.expected_entry_joshua_y);
     const auto transition_finished =
         finish_field_modal_return_transition(field_scene);
     const auto& activity = field_scene.world_activity_state_for_dump();
@@ -23920,7 +24013,8 @@ int run_field_gated_building_entry_qa(
         activity.selected_resource_random_index !=
             route.expected_resource_index ||
         activity.resource_marker_ordinal != route.expected_marker_ordinal ||
-        !transition_finished || !activity_frame_saved ||
+        !transition_finished || !entry_placement_matches ||
+        !activity_frame_saved ||
         std::count(source_boundaries.begin(), source_boundaries.end(),
                    std::string("field.entry.area_event_scene_entered")) != 1) {
         std::cerr << route.location_name
@@ -23933,6 +24027,9 @@ int run_field_gated_building_entry_qa(
                   << activity.selected_resource_random_index
                   << ", marker="
                   << static_cast<unsigned>(activity.resource_marker_ordinal)
+                  << ", camera=" << entry_camera_x << ',' << entry_camera_y
+                  << ", Joshua=" << entry_position.x << ','
+                  << entry_position.y
                   << ", transition_finished=" << transition_finished
                   << ")\n";
         return 3;
@@ -35142,7 +35239,8 @@ int main(int argc, char** argv) {
                         "Finding out what Renraku knows about this whole mess",
                         "dialogue.portraits.renraku.offices.entry", 5U, 0U,
                         121U, 0x3B00U, 0x3E00U,
-                        0x03A0U, 0x03BFU, 0x0400U, 0x041FU, 0x0080U});
+                        0x03A0U, 0x03BFU, 0x0400U, 0x041FU, 0x0080U,
+                        false, 0x3200U, 0x35E0U, 0x3B00U, 0x3A00U, true});
             }
             if (field_fuchi_offices_qa_path.has_value()) {
                 return run_field_gated_building_entry_qa(
@@ -35158,7 +35256,8 @@ int main(int argc, char** argv) {
                         "Now to find that cyber-heart",
                         "dialogue.portraits.fuchi.offices.entry", 2U, 3U,
                         102U, 0x4500U, 0x4A00U,
-                        0x0440U, 0x045FU, 0x04C0U, 0x04DFU, 0x0080U});
+                        0x0440U, 0x045FU, 0x04C0U, 0x04DFU, 0x0080U,
+                        false, 0x3C00U, 0x40E0U, 0x4600U, 0x4600U, true});
             }
             if (field_fuchi_matrix_entry_qa_path.has_value()) {
                 return run_field_gated_building_entry_qa(
@@ -35176,7 +35275,7 @@ int main(int argc, char** argv) {
                         "dialogue.portraits.fuchi.offices.entry", 2U, 3U,
                         102U, 0x4500U, 0x4A00U,
                         0x0440U, 0x045FU, 0x04C0U, 0x04DFU, 0x0080U,
-                        true});
+                        true, 0x3C00U, 0x40E0U, 0x4600U, 0x4600U, true});
             }
             if (field_penumbra_lone_star_qa_path.has_value()) {
                 return run_field_penumbra_lone_star_entry_qa(

@@ -30,15 +30,17 @@ Release artifacts are under
 Debug artifacts use the matching `decompilation/ghidra_conversion/build/conversion/qt/debug/` path. Both runs
 produce 23 BMPs with matching SHA-256 hashes.
 
-## Descriptor-spawn route QA
+## Static-profile checkpoint QA
 
-The route starts at scene 26's descriptor spawn `(0x0A00, 0x0500)` in
-world mode 2. Four ordinary Right updates enter the paired event-`0x1D`
-elevator trigger. Start returns to the current floor; six Down updates clear
-the elevator lane, 13 Right updates pass its machinery, and 116 Down updates
-follow the open corridor before Right reaches collision record 117's A2 lock.
-This is scene-26 map behavior, separate from the Stoker Motel interaction in
-scene 2.
+This isolated route restores Scene 26 at the static-profile checkpoint
+`(0x0A00, 0x0500)` in world mode 2. That position is in the ROM static profile
+at `0x1D97EC` and is used when no one-shot `FFE114` placement is pending; it is
+not the ordinary Scene-2 event-1 entry position. Four ordinary Right updates
+enter the paired event-`0x1D` elevator trigger. Start returns to the current
+floor; six Down updates clear the elevator lane, 13 Right updates pass its
+machinery, and 116 Down updates follow the open corridor before Right reaches
+collision record 117's A2 lock. This is scene-26 map behavior, separate from
+the Stoker Motel interaction in scene 2.
 
 Record 117 at ROM `0x1D9E00` has bounds `x=0x100..0x11F`,
 `y=0x160..0x17F`, and value `0xA2`. The `0xB952..0xB994` route requires two

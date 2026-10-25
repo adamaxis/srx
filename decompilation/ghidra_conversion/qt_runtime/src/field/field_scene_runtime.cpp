@@ -6022,6 +6022,14 @@ void FieldSceneRuntime::configure_callbacks() {
             state_.field_scene_buffers.camera_x = profile.camera_x;
             state_.field_scene_buffers.camera_y = profile.camera_y;
             publish_runner_positions(profile.runner_positions);
+            state_.field_scene_entry.camera_transition_x =
+                profile.camera_transition_x;
+            state_.field_scene_entry.camera_transition_y =
+                profile.camera_transition_y;
+            field_camera_alignment_ready_ = false;
+            // FFE114 is a one-shot source handoff. 0x2B78 clears it before
+            // applying the camera and three runner positions.
+            field_pending_scene_profile_.reset();
             return;
         }
 
@@ -6232,6 +6240,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
 
             std::optional<std::uint16_t> selected_scene;
             std::optional<WorldActivityMode> routed_destination_mode;
+            std::optional<ResourceSceneEntryPlacement>
+                routed_resource_entry_placement;
             auto entry_resource_override =
                 FieldLocationResourceEntryOverride::none;
             if (active_field_script_route_.has_value() &&
@@ -6246,6 +6256,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     active_field_script_route_->area_event_destination_mode;
                 entry_resource_override =
                     active_field_script_route_->entry_resource_override;
+                routed_resource_entry_placement = active_field_script_route_
+                    ->resource_scene_entry_placement;
             }
 
             const auto run_target_actor_group =
@@ -6384,6 +6396,11 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             activity_callbacks.snapshot_scene_state = [this] {
                 snapshot_world_activity_source_scene();
             };
+            const bool ordinary_resource_entry_profile_applies =
+                routed_resource_entry_placement.has_value() &&
+                selected_scene.has_value() &&
+                preparation_scene == *selected_scene &&
+                *selected_scene >= 0x15U && *selected_scene < 0x2CU;
             activity_callbacks.prepare_field_scene_buffers =
                 [this, &prepared, preparation_scene] {
                     prepared = prepare_runtime_field_scene(preparation_scene);
@@ -6457,6 +6474,24 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 field_security_floor_index_ = static_cast<std::uint8_t>(
                     world_activity_routine_state_
                         .selected_resource_random_index);
+                if (ordinary_resource_entry_profile_applies &&
+                    world_activity_routine_state_.scene_id == *selected_scene) {
+                    const auto& placement =
+                        *routed_resource_entry_placement;
+                    field_pending_scene_profile_ =
+                        std::array<std::uint16_t, 8U>{
+                            placement.camera_x, placement.camera_y,
+                            placement.runner_positions[0U].x,
+                            placement.runner_positions[0U].y,
+                            placement.runner_positions[1U].x,
+                            placement.runner_positions[1U].y,
+                            placement.runner_positions[2U].x,
+                            placement.runner_positions[2U].y};
+                    // 0x169E6 publishes FFE114 after the scene buffers are
+                    // prepared; the following 0x2F32/0x2B78 handoff consumes
+                    // it. The field-scene transition consumes this pending
+                    // profile after it has prepared the selected scene.
+                }
             }
             if (!prepared) {
                 source_boundary("field.world_activity.scene_prepare_unresolved");

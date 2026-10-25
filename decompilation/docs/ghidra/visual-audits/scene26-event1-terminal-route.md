@@ -18,9 +18,14 @@ movement publishes event 1; row 1 of the active scene-2 event table at
 `0x167AE` prepares the resource map and its floor selection. In this fresh
 route the extracted resource bound is 3 and the selected floor index is 0.
 
-The same runtime instance enters scene 26 at `(0x0A00, 0x0500)`. Ordinary
-controller input traverses its event-29 elevator selector, both event-2
-maglocks, and the collision-defined corridor to records 124/125 at
+The same runtime instance enters scene 26 at the resource-entry placement:
+camera `(0x4400, 0x2E00)`, Joshua `(0x4C00, 0x3300)`, and the other two runner
+records at `(0x4C00, 0x3500)` and `(0x4C00, 0x3700)`. ROM `0x169E6` publishes
+the resource descriptor's placement pointer and `0x2B78` consumes it. The
+static profile at `0x1D97EC` also contains `(0x0A00, 0x0500)`, but that is the
+zero-`FFE114` fallback, not this ordinary event-1 entry. Ordinary controller
+input traverses its event-29 elevator selector, both event-2 maglocks, and the
+collision-defined corridor to records 124/125 at
 `0x1D9E46`. Their D8 value produces event `0x18`, two negative collision
 probes, and the `0x20EC2` Security Terminal continuation. Passkey item
 `0x14`/quality 2 is added to the live Joshua record as a test fixture so the

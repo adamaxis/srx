@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 #include "shadowrun_ghidra/scripting/dialogue_outcome.hpp"
 #include "shadowrun_ghidra/world/world_activity_mode.hpp"
 
@@ -15,6 +16,8 @@ enum class FieldSceneId : std::uint8_t {
     jump_house = 13,
     wanderer = 14,
     scene_20 = 20,
+    first_resource_activity = 21,
+    last_resource_activity = 43,
 };
 
 constexpr std::uint8_t field_scene_id_value(
@@ -173,6 +176,8 @@ struct FieldScriptRoute {
     // Optional entity-authored dialogue that must run before the selected
     // area-event destination is prepared. Lua owns the content and gates;
     // the host retains the typed area destination while the task is open.
+    std::optional<ResourceSceneEntryPlacement>
+        resource_scene_entry_placement;
     std::string entry_dialogue_module;
     std::string entry_dialogue_function;
     std::string entry_location_type;

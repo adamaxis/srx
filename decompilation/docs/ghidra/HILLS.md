@@ -829,7 +829,7 @@ scene audit](visual-audits/motel-doorway-scene-entry.md).
 
 The Security Terminal floor-result hill above remains separate: that QA still
 injects a resolved activity event after collision. Physical event `0x18` now
-has partial scene-26 coverage from the descriptor spawn: ROM records 124/125
+has partial scene-26 coverage from a restored static-profile checkpoint: ROM records 124/125
 at `0x1D9E46` contain adjacent `0xD8` rectangles; ordinary input follows the
 collision map around the `0x7E` wall, passes the two-negative-sample gate, and
 opens the typed `building_security_terminal` prompt. That route seeds a

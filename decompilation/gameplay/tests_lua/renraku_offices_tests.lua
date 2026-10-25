@@ -2,6 +2,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
 local Building = require("building")
+local E = require("enums")
 
 local condition_definitions = {}
 local function equal(fact, value)
@@ -119,6 +120,11 @@ local context = {
 
 local route = Building.resolve_field_location_route(context)
 assert(route.kind == "area_event" and route.area_event_target == 35)
+assert(route.area_event_target == E.Scene.RESOURCE_ACTIVITY_35 and
+       route.resource_scene_entry_placement.camera_x == 0x3200 and
+       route.resource_scene_entry_placement.camera_y == 0x3600 and
+       route.resource_scene_entry_placement.runner_positions[1].x == 0x3B00 and
+       route.resource_scene_entry_placement.runner_positions[1].y == 0x3A00)
 assert(route.entry_dialogue_module == "renraku_offices" and
        route.entry_dialogue_function == "present_map_overlay_entry" and
        route.entry_continue_result_id == "enter_scene_35")

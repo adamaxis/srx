@@ -44,6 +44,14 @@ struct SceneRunnerPosition {
     std::uint16_t y = 0;
 };
 
+// ROM 0x169E6 selects this eight-word profile for an ordinary resource-scene
+// entry; 0x2B78 consumes camera x/y followed by the three runner positions.
+struct ResourceSceneEntryPlacement {
+    std::uint16_t camera_x = 0;
+    std::uint16_t camera_y = 0;
+    std::array<SceneRunnerPosition, 3> runner_positions{};
+};
+
 constexpr std::size_t kFieldSceneRuntimeStateWordCount = 49;
 
 struct FieldSceneRuntimeInput {

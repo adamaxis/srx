@@ -22,10 +22,25 @@ Scene 2's event table begins at ROM `0x172CDC`; row 1 selects scene `0x1A`.
 The normal-input contact reaches `0xB7B8`, publishes event 1 after the
 negative collision probes, and continues through the world-activity selector
 and resource-scene preparation. Scene 26 is loaded in resource-activity mode
-with random bound 3, a selected index within that bound, 133 collision
-rectangles, and the descriptor spawn `(0x0A00, 0x0500)`. Its imported
-metadata has no map event table. The captured route holds the destination
-stable for 30 further field updates.
+with random bound 3, a selected index within that bound, and 133 collision
+rectangles. The route does not use Scene 26's static profile positions as its
+entry placement. The scene profile table at ROM `0x3232` points Scene 26 to
+`0x1D97EC`, whose static runner positions include three `(0x0A00, 0x0500)`
+values. But `0x167AE` dispatches this destination through the resource branch
+at `0x16950`; `0x169E6` publishes the resource descriptor's `+4` placement
+pointer to `FFE114`. The pointed words at `0x1D9916` are camera
+`(0x4400, 0x2E00)` and runner positions `(0x4C00, 0x3300)`,
+`(0x4C00, 0x3500)`, `(0x4C00, 0x3700)`. Scene-profile selection at
+`0x2B78` clears that one-shot pointer and applies those words; only when
+`FFE114` is zero does `0x2B3E` copy the static `FFDE08..FFDE12` positions.
+The route holds the destination stable for 30 further field updates.
+
+The relevant ROM bytes are independently present in
+`decompilation/input/shadowrun_genesis_us.bin`: event-table row 1 at
+`0x172CDD` is `1A`; `0x1D982E` contains the static `0A00 0500` triplet; and
+`0x1D9916` contains `44 00 2E 00 4C 00 33 00 4C 00 35 00 4C 00 37 00`.
+The code path and the one-shot/static split are visible at
+`disassembly.s:13542-13651` and `disassembly.s:1691-1720`.
 
 The geometry is a strong crosswalk to Redmond map marker 8, Little Chiba's
 Chop Shop. ROM contract-location data independently names Redmond area-2

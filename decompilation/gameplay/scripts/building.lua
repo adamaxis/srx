@@ -5,6 +5,8 @@
 local Building = {}
 local E = require("enums")
 local World = require("world_content")
+local resource_scene_entry_placements =
+    require("data.resource_scene_entry_placements")
 local ConditionEvaluator = require("condition_evaluator")
 local condition_evaluator = ConditionEvaluator.new(
     ConditionEvaluator.FactProvider.new())
@@ -51,6 +53,26 @@ local function classify_area_event_destination(scene_id)
         return destination_mode.scripted_activity
     end
     return destination_mode.halted
+end
+
+local function attach_resource_scene_entry_placement(route)
+    if route.kind ~= route_kind.area_event or
+       route.area_event_destination_mode ~= destination_mode.resource_activity or
+       route.event_code == "event_29" then
+        return route
+    end
+
+    local scene_id = route.area_event_target
+    if type(scene_id) ~= "number" or
+       scene_id < E.Scene.RESOURCE_ACTIVITY_FIRST or
+       scene_id > E.Scene.RESOURCE_ACTIVITY_LAST then
+        return route
+    end
+    local placement = resource_scene_entry_placements[scene_id]
+    assert(placement ~= nil,
+        "resource scene entry placement is missing for scene " .. scene_id)
+    route.resource_scene_entry_placement = placement
+    return route
 end
 
 local function no_route(event_code)
@@ -404,7 +426,8 @@ function Building.resolve_field_location_route(context)
                 return_facing = return_policy.return_facing,
             }, link, context)
             if is_boundary then return route end
-            return add_location_script_tasks(route, link)
+            return attach_resource_scene_entry_placement(
+                add_location_script_tasks(route, link))
         elseif link.route_kind == route_kind.area_event and
                link.script == route_script.map_event_table and
                link.source_route_policy ~= nil then
@@ -455,7 +478,8 @@ function Building.resolve_field_location_route(context)
                 return_facing = return_policy.return_facing,
             }, link, context)
             if is_boundary then return route end
-            return add_location_script_tasks(route, link)
+            return attach_resource_scene_entry_placement(
+                add_location_script_tasks(route, link))
         elseif (link.route_kind == route_kind.area_event or
                 link.route_kind == route_kind.area_event_override) and
                link.script == route_script.map_event_table and
@@ -483,7 +507,8 @@ function Building.resolve_field_location_route(context)
                 return_facing = return_policy.return_facing,
             }, link, context)
             if is_boundary then return route end
-            return add_location_script_tasks(route, link)
+            return attach_resource_scene_entry_placement(
+                add_location_script_tasks(route, link))
         elseif link.route_kind == route_kind.source_activity_return and
                link.script == route_script.source_activity_return then
             -- Scene 13/14 have null event-table pointers. Their event-0 exit
@@ -532,14 +557,14 @@ function Building.resolve_field_location_route(context)
         return no_route(context.event_code)
     end
 
-    return {
+    return attach_resource_scene_entry_placement({
         kind = route_kind.area_event,
         script = route_script.map_event_table,
         event_code = context.event_code,
         area_event_target = target_scene,
         area_event_destination_mode =
             classify_area_event_destination(target_scene),
-    }
+    })
 end
 
 -- Location text, speaker properties, and conditional building content are

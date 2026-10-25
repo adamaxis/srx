@@ -2,6 +2,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
 local Building = require("building")
+local E = require("enums")
 
 local condition_definitions = {}
 local function equal(fact, value)
@@ -128,6 +129,11 @@ local context = {
 
 local route = Building.resolve_field_location_route(context)
 assert(route.kind == "area_event" and route.area_event_target == 21)
+assert(route.resource_scene_entry_placement.camera_x == 0x3C00 and
+       route.resource_scene_entry_placement.camera_y == 0x4100 and
+       route.resource_scene_entry_placement.runner_positions[1].x == 0x4600 and
+       route.resource_scene_entry_placement.runner_positions[1].y == 0x4600)
+assert(route.area_event_target == E.Scene.RESOURCE_ACTIVITY_21)
 assert(route.entry_dialogue_module == "fuchi_offices" and
        route.entry_dialogue_function == "present_cyberheart_entry" and
        route.entry_continue_outcome_type == "resume_source_route")
@@ -147,6 +153,8 @@ game.state.story_flag_bit_14 = true
 local completed_route = Building.resolve_field_location_route(context)
 assert(completed_route.kind == "area_event" and
        completed_route.area_event_target == 21 and
+       completed_route.resource_scene_entry_placement.runner_positions[1].x ==
+           0x4600 and
        completed_route.entry_dialogue_module == nil)
 local repeat_outcome = FuchiOffices.present_cyberheart_entry()
 assert(repeat_outcome.type == "source_boundary" and

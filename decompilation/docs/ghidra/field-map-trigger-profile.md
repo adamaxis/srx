@@ -352,18 +352,25 @@ The ROM evidence establishes a two-step numeric route, but does not assign
 either scene a place-name. In scene 2, record 93 at `0x17314C` publishes
 collision `0x00C1`/event 1. Event-table row 1 at `0x172CDD` contains `0x1A`,
 which `0x167AE` classifies as resource-activity scene 26. The normal route QA
-loads scene 26 at its descriptor spawn `(0x0A00,0x0500)`.
+loads scene 26 using the one-shot placement pointer published from the resource
+descriptor at `0x169E6`: camera `(0x4400,0x2E00)` and Joshua at
+`(0x4C00,0x3300)`. The words `(0x0A00,0x0500)` are present in Scene 26's
+static profile at `0x1D97EC`; they apply on the `0x2B3E` path when `FFE114` is
+zero, not on this ordinary resource entry. `0x2B78` clears `FFE114` and
+applies its camera/runner words. See the [scene-2 event-1 route trace](visual-audits/scene2-event1-scene26-route.md)
+for the exact ROM bytes and dispatcher path.
 
 Scene 26's elevator selector is a separate movement trigger: records 102 and
 103 at `0x1D9D6A` and `0x1D9D74` combine into event-29 bounds
 `x=0x0080..0x00BF`, `y=0x0020..0x003F`. ROM `0xB7B8` requires its movement and
 collision gates before dispatching event 29 to `0x58D94`; `building.lua` only
 returns `open_elevator_selector` for that event when the extracted scene group
-exists. The scene-26 spawn is outside these bounds, so scene entry alone does
-not contact this trigger. The current Qt route-entry test holds scene 26 for
-30 field updates without opening the selector. Separate elevator QA starts
-from a QA-restored scene-26 state and physically approaches the event-29
-rectangle; it does not join the normal scene-2 route to that trigger.
+exists. The normal resource-entry spawn is outside these bounds, so scene
+entry alone does not contact this trigger. The current Qt route-entry test
+holds scene 26 for 30 field updates without opening the selector. Separate
+elevator QA first checks the normal `(0x4C00,0x3300)` entry, then restores the
+static-profile lift approach `(0x0A00,0x0500)` to isolate the event-29 movement
+subpath; it does not claim to walk from the normal scene-2 route to the lift.
 
 Therefore the source does not support an elevator opening automatically as
 part of the scene-2-to-26 entry. It also does not identify scene 2 or scene 26

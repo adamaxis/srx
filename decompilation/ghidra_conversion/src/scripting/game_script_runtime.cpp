@@ -5364,12 +5364,81 @@ GameScriptRuntime::resolve_field_location_route(
             return true;
         };
 
+    const auto read_resource_scene_entry_placement =
+        [state, result_index](
+            std::optional<ResourceSceneEntryPlacement>& placement) {
+            lua_getfield(state, result_index,
+                         "resource_scene_entry_placement");
+            if (lua_isnil(state, -1)) {
+                lua_pop(state, 1);
+                placement.reset();
+                return true;
+            }
+            if (!lua_istable(state, -1)) {
+                lua_pop(state, 1);
+                return false;
+            }
+            const auto placement_index = lua_absindex(state, -1);
+            const auto read_word = [state](const int table_index,
+                                           const char* field,
+                                           std::uint16_t& value) {
+                lua_getfield(state, table_index, field);
+                std::uint32_t parsed = 0U;
+                const bool valid = read_integer(state, -1, 0xFFFFU, parsed);
+                lua_pop(state, 1);
+                if (valid) {
+                    value = static_cast<std::uint16_t>(parsed);
+                }
+                return valid;
+            };
+            ResourceSceneEntryPlacement parsed{};
+            bool valid = read_word(placement_index, "camera_x",
+                                   parsed.camera_x) &&
+                         read_word(placement_index, "camera_y",
+                                   parsed.camera_y);
+            lua_getfield(state, placement_index, "runner_positions");
+            if (!lua_istable(state, -1) || lua_rawlen(state, -1) != 3U) {
+                valid = false;
+            } else {
+                const auto positions_index = lua_absindex(state, -1);
+                for (std::size_t slot = 0U;
+                     slot < parsed.runner_positions.size(); ++slot) {
+                    lua_rawgeti(state, positions_index,
+                                static_cast<lua_Integer>(slot + 1U));
+                    if (!lua_istable(state, -1)) {
+                        valid = false;
+                        lua_pop(state, 1);
+                        continue;
+                    }
+                    const auto position_index = lua_absindex(state, -1);
+                    valid = read_word(position_index, "x",
+                                      parsed.runner_positions[slot].x) && valid;
+                    valid = read_word(position_index, "y",
+                                      parsed.runner_positions[slot].y) && valid;
+                    lua_pop(state, 1);
+                }
+            }
+            lua_pop(state, 1);
+            lua_pop(state, 1);
+            if (valid) {
+                placement = parsed;
+            }
+            return valid;
+        };
+
+    std::optional<ResourceSceneEntryPlacement> resource_scene_entry_placement;
+    if (!read_resource_scene_entry_placement(resource_scene_entry_placement)) {
+        return fail(
+            "building.lua route has an invalid resource-scene entry placement");
+    }
+
     FieldScriptRoute route{};
     route.event_code = field_collision_event_value(event_code);
     route.area_event_target = target_scene;
     route.area_event_destination_mode = destination_mode;
     route.return_anchor = return_anchor;
     route.return_facing = return_facing;
+    route.resource_scene_entry_placement = resource_scene_entry_placement;
     std::string resource_override_name;
     std::string entry_continue_outcome_type_name;
     if (!read_optional_string("entry_dialogue_module",
@@ -5509,6 +5578,18 @@ GameScriptRuntime::resolve_field_location_route(
           !route.entry_continue_outcome_type.has_value()))) {
         return fail(
             "resource entry override needs an accepted resource-activity dialogue");
+    }
+
+    if (route.resource_scene_entry_placement.has_value() &&
+        (route.kind != FieldScriptRouteKind::area_event ||
+         !target_scene.has_value() || !destination_mode.has_value() ||
+         *destination_mode != WorldActivityMode::resource_activity ||
+         *target_scene < field_scene_id_value(
+                             FieldSceneId::first_resource_activity) ||
+         *target_scene > field_scene_id_value(
+                             FieldSceneId::last_resource_activity))) {
+        return fail(
+            "resource-scene entry placement is outside an ordinary resource route");
     }
 
     if ((route.indexed_title_service.has_value() &&

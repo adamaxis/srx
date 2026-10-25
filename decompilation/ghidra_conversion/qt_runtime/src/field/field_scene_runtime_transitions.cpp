@@ -467,6 +467,8 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
         state_.field_scene_entry.camera_transition_x);
     transition.camera_transition_y = static_cast<std::uint16_t>(
         state_.field_scene_entry.camera_transition_y);
+    const bool one_shot_scene_profile_pending =
+        field_pending_scene_profile_.has_value();
 
     const auto& collision_map =
         state_.field_scene_buffers.source_metadata.terrain_collision_map;
@@ -515,6 +517,20 @@ void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
 
     ::shadowrun::ghidra_conversion::advance_field_scene_transition(
         transition, event_counters, scene_callbacks);
+    if (one_shot_scene_profile_pending &&
+        !field_pending_scene_profile_.has_value()) {
+        // ROM 0x2B78 replaces the camera and clears its aligned-edge cache.
+        // Keep the conversion's local transition record in sync with the
+        // one-shot callback before its final state publication below.
+        transition.camera_x = static_cast<std::uint16_t>(
+            state_.field_scene_buffers.camera_x);
+        transition.camera_y = static_cast<std::uint16_t>(
+            state_.field_scene_buffers.camera_y);
+        transition.camera_transition_x = static_cast<std::uint16_t>(
+            state_.field_scene_entry.camera_transition_x);
+        transition.camera_transition_y = static_cast<std::uint16_t>(
+            state_.field_scene_entry.camera_transition_y);
+    }
     field_world_activity_scene_entry_pending_ = false;
 
     auto& updated_collision_map =
