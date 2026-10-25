@@ -778,6 +778,7 @@ local function advance_spell_effect(state, context)
     state.spell_effect_phase = 0
     state.spell_effect_action_code = 0
     state.spell_effect_completed = false
+    state.field_barrier_remaining = nil
     transfer_pending_spell_effect(state, context)
     local field_effect = state.player_field_spell_effect
     if type(field_effect) == "table" and context.phase == "render" then
@@ -793,6 +794,7 @@ local function advance_spell_effect(state, context)
             state.player_field_spell_effect = nil
             return
         end
+        state.field_barrier_remaining = field_effect.remaining
     end
     if context.phase ~= "render" or
        type(state.spell_effect_pending) ~= "table" then

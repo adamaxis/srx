@@ -9152,3 +9152,7 @@ field.entities.actors.thon_k0f_spell01.spell.dir.6.frame.0	field/entities/actors
 field.entities.actors.thon_k0f_spell01.spell.dir.7.frame.0	field/entities/actors/thon_k0f_spell01-spell-dir-7-frame-0.bmp	image	-52	-58
 field.entities.actors.thon_k0f_spell01.spell.death.e0.frame.0	field/entities/actors/thon_k0f_spell01-spell-death-e0-frame-0.bmp	image	-24	-55
 field.entities.actors.thon_k0f_spell01.spell.death.e4.frame.0	field/entities/actors/thon_k0f_spell01-spell-death-e4-frame-0.bmp	image	-24	-55
+field.entities.effects.barrier.frame.0	field/entities/effects/barrier-frame-0.png	image	-16	-16
+field.entities.effects.barrier.frame.1	field/entities/effects/barrier-frame-1.png	image	-16	-16
+field.entities.effects.barrier.frame.2	field/entities/effects/barrier-frame-2.png	image	-16	-16
+field.entities.effects.barrier.frame.3	field/entities/effects/barrier-frame-3.png	image	-16	-16

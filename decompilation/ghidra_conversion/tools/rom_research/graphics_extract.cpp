@@ -5898,6 +5898,168 @@ ExtractedSpriteListFrame decode_field_entity_sprite_list(
     return {std::move(image), min_x, min_y};
 }
 
+void update_field_barrier_resource_rows(
+    const std::filesystem::path& root,
+    const std::vector<std::string>& barrier_rows) {
+    constexpr std::string_view kHeader =
+        "alias\tpath\tkind\torigin_x\torigin_y";
+    constexpr std::string_view kAliasPrefix =
+        "field.entities.effects.barrier.frame.";
+    if (barrier_rows.size() != 4U) {
+        throw std::runtime_error("field barrier import requires four frames");
+    }
+    const auto manifest_path =
+        root / std::string(shadowrun::resources::kManifestFile);
+    std::ifstream prior(manifest_path, std::ios::binary);
+    if (!prior) {
+        throw std::runtime_error("cannot read existing resource manifest");
+    }
+    std::string header;
+    std::getline(prior, header);
+    if (header != kHeader) {
+        throw std::runtime_error("existing resource manifest has an unsupported header");
+    }
+    std::vector<std::string> rows;
+    std::string row;
+    while (std::getline(prior, row)) {
+        if (!row.empty() &&
+            row.compare(0U, kAliasPrefix.size(), kAliasPrefix) != 0) {
+            rows.push_back(std::move(row));
+        }
+    }
+    rows.insert(rows.end(), barrier_rows.begin(), barrier_rows.end());
+    std::ofstream output(manifest_path, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error("cannot update field barrier resource rows");
+    }
+    output << kHeader << '\n';
+    for (const auto& manifest_row : rows) {
+        output << manifest_row << '\n';
+    }
+    if (!output) {
+        throw std::runtime_error("cannot finish field barrier resource rows");
+    }
+}
+
+void extract_field_barrier_assets(
+    const std::vector<std::uint8_t>& rom,
+    const std::filesystem::path& root) {
+    constexpr std::size_t kAnimationFrameTable = 0x4ACCU;
+    constexpr std::size_t kVramSize = 0x10000U;
+    constexpr std::size_t kCommonFieldPaletteTail = 0x18AC56U;
+    constexpr std::uint16_t kPaletteAttributes = 0x2000U;
+    constexpr std::string_view kAssetPrefix =
+        "field/entities/effects/barrier-frame-";
+    constexpr std::string_view kCatalogHeader =
+        "asset\tkind\tx\ty\twidth\theight\tsource\tstatus";
+    constexpr std::string_view kProvenance =
+        "0x4ACC/0x5802..0x5838 lists and per-list DMA headers [C]; "
+        "pattern source/length read from each list header; palette line 1";
+
+    const auto resources =
+        shadowrun::graphics::read_genesis_field_mode_resources(rom, 0U);
+    auto palette = shadowrun::graphics::read_genesis_palette_set(
+        rom, resources.palette_offset);
+    if (kCommonFieldPaletteTail > rom.size() ||
+        48U * 2U > rom.size() - kCommonFieldPaletteTail) {
+        throw std::runtime_error("shared field palette tail is truncated");
+    }
+    for (std::size_t index = 16U; index < palette.size(); ++index) {
+        palette[index] = shadowrun::graphics::decode_genesis_cram_word(
+            read_big_endian_word(
+                rom, kCommonFieldPaletteTail + (index - 16U) * 2U),
+            index % 16U == 0U);
+    }
+
+    const auto catalog_path = root / "catalog.tsv";
+    std::ifstream catalog_source(catalog_path, std::ios::binary);
+    if (!catalog_source) {
+        throw std::runtime_error("cannot read existing asset catalog");
+    }
+    std::string catalog_header;
+    std::getline(catalog_source, catalog_header);
+    if (catalog_header != kCatalogHeader) {
+        throw std::runtime_error("existing asset catalog has an unsupported header");
+    }
+    constexpr std::string_view kCatalogPrefix =
+        "field/entities/effects/barrier-frame-";
+    std::vector<std::string> catalog_rows;
+    std::string row;
+    while (std::getline(catalog_source, row)) {
+        if (!row.empty() &&
+            row.compare(0U, kCatalogPrefix.size(), kCatalogPrefix) != 0) {
+            catalog_rows.push_back(std::move(row));
+        }
+    }
+
+    const auto temporary_rows_path = root / ".barrier-catalog-rows.tsv";
+    std::ofstream temporary_rows(temporary_rows_path,
+                                 std::ios::binary | std::ios::trunc);
+    if (!temporary_rows) {
+        throw std::runtime_error("cannot create temporary barrier catalog rows");
+    }
+    std::size_t written = 0U;
+    std::size_t missing = 0U;
+    std::size_t blank = 0U;
+    std::vector<std::string> resource_rows;
+    for (std::size_t frame = 0U; frame < 4U; ++frame) {
+        const auto list = static_cast<std::size_t>(read_big_endian_long(
+            rom, kAnimationFrameTable + frame * 4U));
+        const auto pattern_source = static_cast<std::size_t>(
+            read_big_endian_long(rom, list + 2U));
+        const auto pattern_bytes = static_cast<std::size_t>(
+            read_big_endian_word(rom, list + 6U));
+        if (pattern_source > rom.size() ||
+            pattern_bytes > rom.size() - pattern_source ||
+            pattern_bytes == 0U || pattern_bytes > kVramSize) {
+            throw std::runtime_error("field barrier DMA pattern range is invalid");
+        }
+        std::vector<std::uint8_t> vram(kVramSize, 0U);
+        std::copy_n(rom.begin() + static_cast<std::ptrdiff_t>(pattern_source),
+                    pattern_bytes, vram.begin());
+        const auto decoded = decode_field_entity_sprite_list(
+            rom, vram, list + 8U, palette, kPaletteAttributes);
+        const auto asset_path = std::string(kAssetPrefix) +
+                                std::to_string(frame) + ".png";
+        const auto alias = "field.entities.effects.barrier.frame." +
+                           std::to_string(frame);
+        write_catalog_asset(
+            root, asset_path, decoded.image, "sprite",
+            std::string(kProvenance), true, temporary_rows, written,
+            missing, blank, decoded.origin_x, decoded.origin_y);
+        resource_rows.push_back(
+            alias + '\t' + asset_path + "\timage\t" +
+            std::to_string(decoded.origin_x) + '\t' +
+            std::to_string(decoded.origin_y));
+    }
+    temporary_rows.close();
+    if (!temporary_rows || written != 4U || missing != 0U || blank != 0U) {
+        throw std::runtime_error("field barrier extraction did not produce four visible frames");
+    }
+    std::ifstream generated_rows(temporary_rows_path, std::ios::binary);
+    while (std::getline(generated_rows, row)) {
+        if (!row.empty()) {
+            catalog_rows.push_back(std::move(row));
+        }
+    }
+    generated_rows.close();
+    std::error_code remove_error;
+    std::filesystem::remove(temporary_rows_path, remove_error);
+    std::ofstream catalog_output(catalog_path,
+                                 std::ios::binary | std::ios::trunc);
+    if (!catalog_output) {
+        throw std::runtime_error("cannot update asset catalog with barrier frames");
+    }
+    catalog_output << kCatalogHeader << '\n';
+    for (const auto& catalog_row : catalog_rows) {
+        catalog_output << catalog_row << '\n';
+    }
+    if (!catalog_output) {
+        throw std::runtime_error("cannot finish barrier asset catalog update");
+    }
+    update_field_barrier_resource_rows(root, resource_rows);
+}
+
 void update_hit_spark_resource_manifest(
     const std::filesystem::path& root,
     const std::vector<std::string>& hit_spark_rows) {
@@ -10676,6 +10838,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     shadowrun::graphics::write_native_asset_state(
         (root / "native" / "state.bin").string(), assets);
     write_runtime_resource_manifest(root);
+    extract_field_barrier_assets(rom, root);
     std::cout << "all graphics assets written to " << root << "\n"
               << "extracted=" << written << " blank=" << blank
               << " missing=" << missing << "\n";
@@ -11594,6 +11757,20 @@ int main(int argc, char** argv) {
             std::cout << "five player hit-spark frames extracted from "
                       << "0x7330 using field object patterns at 0xE44D8; "
                       << "catalog and direct-resource rows updated\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 &&
+        std::string(argv[3]) == "--field-barrier-assets") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const std::filesystem::path root(argv[2]);
+            extract_field_barrier_assets(rom, root);
+            std::cout << "four field barrier frames extracted from 0x4ACC "
+                         "lists; catalog and direct-resource rows updated\n";
             return 0;
         } catch (const std::exception& error) {
             std::cerr << "error: " << error.what() << "\n";
@@ -13356,6 +13533,8 @@ int main(int argc, char** argv) {
                      "--all-assets\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
                       "--field-player-hit-spark-assets\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
+                      "--field-barrier-assets\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
                      "--matrix-cyberdeck-selectors\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "

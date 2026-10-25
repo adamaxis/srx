@@ -9391,6 +9391,21 @@ GameScriptRuntime::actor_heartbeat(
         decision.spell_effect_slot_released =
             static_cast<std::uint8_t>(*released_spell_slot);
     }
+    std::optional<std::uint32_t> field_barrier_remaining;
+    if (!read_optional_field_u32(state, decision_table,
+                                 "field_barrier_remaining", 0xFFFFU,
+                                 field_barrier_remaining)) {
+        return fail("actor_ai.heartbeat returned an invalid field barrier lifetime");
+    }
+    if (field_barrier_remaining.has_value()) {
+        if (context.phase != ScriptActorHeartbeatPhase::render ||
+            context.instance_id != "field_player_runner" ||
+            *field_barrier_remaining == 0U) {
+            return fail("actor_ai.heartbeat returned field barrier lifetime outside its render pass");
+        }
+        decision.field_barrier_remaining = static_cast<std::uint16_t>(
+            *field_barrier_remaining);
+    }
     if (!read_field_boolean(state, decision_table, "spell_effect_completed",
                             decision.spell_effect_completed)) {
         return fail("actor_ai.heartbeat returned an invalid spell effect completion state");

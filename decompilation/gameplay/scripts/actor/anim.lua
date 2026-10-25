@@ -85,6 +85,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
         spell_effect_visible = state.spell_effect_visible,
         spell_effect_phase = state.spell_effect_phase,
         spell_effect_action_code = state.spell_effect_action_code,
+        field_barrier_remaining = state.field_barrier_remaining,
         target_motion_effect_visible =
             state.target_motion_effect_visible,
         target_motion_effect_direction =

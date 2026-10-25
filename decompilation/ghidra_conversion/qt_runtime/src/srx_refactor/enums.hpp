@@ -225,6 +225,13 @@ enum class CombatPhase : std::int64_t {
 enum class CombatTargetClass : std::int64_t {
     DIFFICULTY_PLUS_TWO = 0x16,
 };
+enum class CombatTuning : std::int64_t {
+    DEFAULT_ACTION_VALUE = 0x2,
+    DEFAULT_ACTION_DIFFICULTY = 0x4,
+    DEFAULT_ACTION_CONTINUATION_DIFFICULTY = 0x6,
+    DEFAULT_ACTION_TRIAL_COUNT = 0x6,
+    ACTION_VALUE_MAX = 0xA,
+};
 enum class CyberBit : std::int64_t {
     DATAJACK = 0x0,
     CYBEREYES = 0x1,
@@ -303,10 +310,17 @@ enum class FieldAlarmRomLayout : std::int64_t {
     SCENE_21_REINFORCEMENT_LIST = 0x1D7460,
 };
 enum class FieldBarrier : std::int64_t {
+    SPRITE_PRIORITY_LOW = 0x0,
+    SPRITE_PALETTE_LINE = 0x1,
+    SPRITE_PLAN_SEGMENT_COUNT = 0x2,
+    SPRITE_FRAME_MASK = 0x3,
+    SPRITE_FRAME_COUNT = 0x4,
     CELL_COUNT = 0x5,
+    SPRITE_SEGMENT_COUNT = 0x5,
     OCTANT_MASK = 0x7,
     SUPER_MAX_ACTION_CODE = 0x9,
     HEADING_OCTANT_SHIFT = 0xD,
+    WORLD_UNITS_PER_PIXEL = 0x10,
     CELL_CODE_BARRIER = 0x7E,
     CELL_CODE_SUPER_BARRIER = 0x7F,
 };

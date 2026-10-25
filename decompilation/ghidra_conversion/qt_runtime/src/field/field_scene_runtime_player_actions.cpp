@@ -769,6 +769,11 @@ void FieldSceneRuntime::service_player_spell_cast(
                         "field.combat.player_spell.barrier_placement_unresolved");
                 } else {
                     set_field_barrier_collision_overlay(cells);
+                    field_barrier_presentation_origin_ =
+                        FieldBarrierPresentationOrigin{
+                            static_cast<std::uint16_t>(placement->at(1U)),
+                            static_cast<std::uint16_t>(placement->at(2U)),
+                            static_cast<std::uint8_t>(placement->at(0U))};
                     source_boundary(
                         "field.combat.player_spell.barrier_collision_started");
                 }
@@ -1189,6 +1194,76 @@ void FieldSceneRuntime::advance_field_actor_animation() {
             field_entity_.spell_effect_action_code =
                 decision->spell_effect_action_code;
             field_entity_.spell_effect_phase = decision->spell_effect_phase;
+            field_barrier_sprite_plan_.reset();
+            if (decision->field_barrier_remaining.has_value()) {
+                if (!field_barrier_presentation_origin_.has_value()) {
+                    failure_ = "Lua field barrier lifetime has no host projection origin";
+                    source_boundary(
+                        "field.player.barrier_projection_origin_missing");
+                } else {
+                    const auto& origin = *field_barrier_presentation_origin_;
+                    const auto requested_plan = game_scripts_.call_integers(
+                        "field_barrier", "sprite_plan",
+                        {origin.center_x, origin.center_y, origin.octant,
+                         *decision->field_barrier_remaining});
+                    const auto expected_size = std::size_t{12U};
+                    const auto valid = requested_plan.has_value() &&
+                        requested_plan->size() == expected_size &&
+                        requested_plan->at(0U) == origin.center_x &&
+                        requested_plan->at(1U) == origin.center_y &&
+                        requested_plan->at(2U) >= 0 &&
+                        requested_plan->at(2U) < static_cast<std::int64_t>(
+                            kFieldBarrierSpriteFrameCount) &&
+                        requested_plan->at(3U) == srx::v(
+                            srx::FieldBarrier::SPRITE_PLAN_SEGMENT_COUNT) &&
+                        requested_plan->at(4U) ==
+                            srx::v(srx::FieldBarrier::SPRITE_PALETTE_LINE) &&
+                        requested_plan->at(5U) ==
+                            srx::v(srx::FieldBarrier::SPRITE_PRIORITY_LOW) &&
+                        requested_plan->at(6U) >= 0 &&
+                        requested_plan->at(6U) < static_cast<std::int64_t>(
+                            srx::v(srx::FieldBarrier::SPRITE_SEGMENT_COUNT)) &&
+                        requested_plan->at(7U) >= -64 &&
+                        requested_plan->at(7U) <= 64 &&
+                        requested_plan->at(8U) >= -64 &&
+                        requested_plan->at(8U) <= 64 &&
+                        requested_plan->at(9U) >= 0 &&
+                        requested_plan->at(9U) < static_cast<std::int64_t>(
+                            srx::v(srx::FieldBarrier::SPRITE_SEGMENT_COUNT)) &&
+                        requested_plan->at(10U) >= -64 &&
+                        requested_plan->at(10U) <= 64 &&
+                        requested_plan->at(11U) >= -64 &&
+                        requested_plan->at(11U) <= 64;
+                    if (!valid) {
+                        failure_ = game_scripts_.failure().empty()
+                            ? "Lua returned an invalid field barrier sprite plan"
+                            : game_scripts_.failure();
+                        source_boundary(
+                            "field.player.barrier_sprite_plan_invalid");
+                    } else {
+                        field_barrier_sprite_plan_ = FieldBarrierSpritePlan{
+                            origin.center_x,
+                            origin.center_y,
+                            static_cast<std::uint8_t>(
+                                requested_plan->at(2U)),
+                            static_cast<std::uint8_t>(
+                                requested_plan->at(4U)),
+                            requested_plan->at(5U) == 0,
+                            {{{static_cast<std::uint8_t>(
+                                   requested_plan->at(6U)),
+                               static_cast<std::int16_t>(
+                                   requested_plan->at(7U)),
+                               static_cast<std::int16_t>(
+                                   requested_plan->at(8U))},
+                              {static_cast<std::uint8_t>(
+                                   requested_plan->at(9U)),
+                               static_cast<std::int16_t>(
+                                   requested_plan->at(10U)),
+                               static_cast<std::int16_t>(
+                                   requested_plan->at(11U))}}}};
+                    }
+                }
+            }
             if (decision->spell_effect_resolution.has_value()) {
                 if (decision->combat_meter_update.has_value() &&
                     !apply_script_combat_meter_update(

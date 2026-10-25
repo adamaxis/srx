@@ -313,6 +313,23 @@ E.FieldBarrier = {
     CELL_CODE_SUPER_BARRIER = 0x7F, -- 0x4A7E [C]
     SUPER_MAX_ACTION_CODE = 9, -- 0x4A74 compares +0x57 <= 9 [C]
     CELL_COUNT = 5, -- 0x4A54 loads four then DBRA writes five cells [C]
+    SPRITE_FRAME_COUNT = 4, -- 0x4ACC selects four directional bitmap frames [C]
+    SPRITE_SEGMENT_COUNT = 5, -- 0x4B20..0x4B5A walks five offsets [C]
+    SPRITE_PLAN_SEGMENT_COUNT = 2, -- 0x4B2E..0x4B4C emits two [C]
+    SPRITE_FRAME_MASK = 3, -- 0x4AF2 selects remaining lifetime & 3 [C]
+    SPRITE_PALETTE_LINE = 1, -- 0x4B08 uses attribute word 0x2000 [C]
+    SPRITE_PRIORITY_LOW = 0, -- 0x4B08 leaves the priority bit clear [C]
+    WORLD_UNITS_PER_PIXEL = 16, -- 0x5A56 arithmetic shift by four [C]
+    SPRITE_PIXEL_OFFSETS = { -- pointers at 0x4C0C [C], pixels
+        [0] = { { 0, 0 }, { 32, 0 }, { -32, 0 }, { 64, 0 }, { -64, 0 } },
+        [1] = { { 0, 0 }, { -32, 0 }, { -64, 0 }, { 0, 32 }, { 0, 64 } },
+        [2] = { { 0, 0 }, { 0, -32 }, { 0, 32 }, { 0, -64 }, { 0, 64 } },
+        [3] = { { 0, 0 }, { -32, 0 }, { -64, 0 }, { 0, -32 }, { 0, -64 } },
+        [4] = { { 0, 0 }, { 32, 0 }, { -32, 0 }, { 64, 0 }, { -64, 0 } },
+        [5] = { { 0, 0 }, { 32, 0 }, { 64, 0 }, { 0, -32 }, { 0, -64 } },
+        [6] = { { 0, 0 }, { 0, -32 }, { 0, 32 }, { 0, -64 }, { 0, 64 } },
+        [7] = { { 0, 0 }, { 32, 0 }, { 64, 0 }, { 0, 32 }, { 0, 64 } },
+    },
     CENTER_OFFSETS = { -- table at 0x4AAC [C]
         [0] = { 0, -1152 }, -- N, 0x4AAC [C]
         [1] = { 814, -814 }, -- NE, 0x4AAC [C]

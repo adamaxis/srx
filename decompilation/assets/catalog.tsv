@@ -8270,3 +8270,7 @@ field/entities/effects/hit-spark-frame-1.bmp	sprite	-8	-7	11	12	0xB1DC/0x15A8C/0
 field/entities/effects/hit-spark-frame-2.bmp	sprite	-8	-7	15	16	0xB1DC/0x15A8C/0x15118/0x600E/0x62AC/0x634C/0x7330 kind=1 selector=4 [C]; 0xE44D8 object patterns -> VRAM 0xB000 via 0x1406/0x0F5C; palette line 1 from 0x566C2	extracted
 field/entities/effects/hit-spark-frame-3.bmp	sprite	-8	-7	16	16	0xB1DC/0x15A8C/0x15118/0x600E/0x62AC/0x634C/0x7330 kind=1 selector=4 [C]; 0xE44D8 object patterns -> VRAM 0xB000 via 0x1406/0x0F5C; palette line 1 from 0x566C2	extracted
 field/entities/effects/hit-spark-frame-4.bmp	sprite	-8	-7	16	16	0xB1DC/0x15A8C/0x15118/0x600E/0x62AC/0x634C/0x7330 kind=1 selector=4 [C]; 0xE44D8 object patterns -> VRAM 0xB000 via 0x1406/0x0F5C; palette line 1 from 0x566C2	extracted
+field/entities/effects/barrier-frame-0.png	sprite	-16	-16	32	32	0x4ACC/0x5802..0x5838 lists; DMA source/length at list+2/+6; palette line 1 [C]	extracted
+field/entities/effects/barrier-frame-1.png	sprite	-16	-16	32	32	0x4ACC/0x5802..0x5838 lists; DMA source/length at list+2/+6; palette line 1 [C]	extracted
+field/entities/effects/barrier-frame-2.png	sprite	-16	-16	32	32	0x4ACC/0x5802..0x5838 lists; DMA source/length at list+2/+6; palette line 1 [C]	extracted
+field/entities/effects/barrier-frame-3.png	sprite	-16	-16	32	32	0x4ACC/0x5802..0x5838 lists; DMA source/length at list+2/+6; palette line 1 [C]	extracted

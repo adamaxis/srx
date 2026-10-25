@@ -8932,6 +8932,18 @@ bool FieldSceneRuntime::bootstrap(
         source_boundary("field.bootstrap.direct_assets_missing");
         return false;
     }
+    for (std::size_t frame = 0U;
+         frame < field_barrier_images_.size(); ++frame) {
+        const auto alias = "field.entities.effects.barrier.frame." +
+                           std::to_string(frame);
+        if (!load_sprite_image(startup_state.asset_catalog.catalog, alias,
+                               field_barrier_images_[frame],
+                               field_barrier_origin_x_[frame],
+                               field_barrier_origin_y_[frame])) {
+            source_boundary("field.bootstrap.barrier_assets_missing");
+            return false;
+        }
+    }
     if (field_map_priority_overlay_.size() != field_map_.size()) {
         failure_ = "field map priority overlay dimensions do not match map";
         source_boundary("field.bootstrap.field_map_priority_overlay_mismatch");
@@ -9415,6 +9427,8 @@ void FieldSceneRuntime::set_field_barrier_collision_overlay(
 void FieldSceneRuntime::clear_field_barrier_collision_overlay() noexcept {
     field_barrier_collision_overlay_active_ = false;
     field_barrier_collision_overlay_cells_ = {};
+    field_barrier_sprite_plan_.reset();
+    field_barrier_presentation_origin_.reset();
 }
 
 std::uint8_t FieldSceneRuntime::terrain_collision_map_byte(
@@ -12589,6 +12603,46 @@ void FieldSceneRuntime::paint_field_scene_entities(
         state_.field_scene_buffers.camera_y);
     const auto current_scene =
         state_.field_scene_buffers.scene_reference;
+
+    if (field_barrier_collision_overlay_active_ &&
+        field_barrier_sprite_plan_.has_value() &&
+        field_barrier_sprite_plan_->frame_index <
+            field_barrier_images_.size()) {
+        const auto& plan = *field_barrier_sprite_plan_;
+        const auto& image = field_barrier_images_[plan.frame_index];
+        if (!image.isNull()) {
+            constexpr auto world_units_per_pixel = static_cast<std::int32_t>(
+                srx::v(srx::FieldBarrier::WORLD_UNITS_PER_PIXEL));
+            for (std::size_t index = 0U; index < plan.segments.size();
+                 ++index) {
+                const auto& segment = plan.segments[index];
+                EntityProjectionState projection{};
+                projection.world_x = static_cast<std::uint16_t>(
+                    static_cast<std::int32_t>(plan.center_x) +
+                    static_cast<std::int32_t>(segment.pixel_offset_x) *
+                        world_units_per_pixel);
+                projection.world_y = static_cast<std::uint16_t>(
+                    static_cast<std::int32_t>(plan.center_y) +
+                    static_cast<std::int32_t>(segment.pixel_offset_y) *
+                        world_units_per_pixel);
+                if (!project_entity_screen_position_standard(
+                         projection, camera_x, camera_y)
+                         .visible) {
+                    continue;
+                }
+                sprites.push_back(SceneSprite{
+                    std::numeric_limits<std::int16_t>::min(),
+                    static_cast<std::uint16_t>(index),
+                    static_cast<int>(projection.screen_x) -
+                        kGenesisSpriteOrigin +
+                        field_barrier_origin_x_[plan.frame_index],
+                    static_cast<int>(projection.screen_y) -
+                        kGenesisSpriteOrigin +
+                        field_barrier_origin_y_[plan.frame_index],
+                    &image});
+            }
+        }
+    }
 
     if (field_entity_.active && field_entity_.visible) {
         const auto direction = static_cast<std::size_t>(

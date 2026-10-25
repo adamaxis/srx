@@ -46,4 +46,33 @@ function FieldBarrier.place_flat(caster_x, caster_y, heading_word, action_code)
     }
 end
 
+-- ROM 0x4ADC decrements +0x0E before 0x4AF2 chooses its art frame and
+-- 0x4B2E rotates two of the five 0x4C0C pixel offsets [C]. The returned
+-- integer row is a presentation request; the host only projects and draws it.
+function FieldBarrier.sprite_plan(center_x, center_y, octant, remaining_lifetime)
+    local offsets = E.FieldBarrier.SPRITE_PIXEL_OFFSETS[octant]
+    if offsets == nil then
+        return nil
+    end
+    local frame = remaining_lifetime & E.FieldBarrier.SPRITE_FRAME_MASK
+    local first = remaining_lifetime % E.FieldBarrier.SPRITE_SEGMENT_COUNT
+    local second = (first + 1) % E.FieldBarrier.SPRITE_SEGMENT_COUNT
+    local first_offset = offsets[first + 1]
+    local second_offset = offsets[second + 1]
+    return {
+        center_x,
+        center_y,
+        frame,
+        E.FieldBarrier.SPRITE_PLAN_SEGMENT_COUNT,
+        E.FieldBarrier.SPRITE_PALETTE_LINE,
+        E.FieldBarrier.SPRITE_PRIORITY_LOW,
+        first,
+        first_offset[1],
+        first_offset[2],
+        second,
+        second_offset[1],
+        second_offset[2],
+    }
+end
+
 return FieldBarrier

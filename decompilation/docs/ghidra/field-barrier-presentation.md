@@ -6,8 +6,7 @@ field runtime overlays those bytes during collision probes and clears them on
 recast, expiry, scene load, and field reset. The existing cast, slot reservation
 (`kFieldPlayerBarrierEffectOwner`) and Lua lifetime clock
 (`E.SpellEffectKind.FIELD_BARRIER`, `FIELD_BARRIER_TICKS_PER_SUCCESS`) remain
-the behavior owner. The five-segment sprite is still open because it needs the
-combat-owned `paint_field_scene` path. Everything below was checked with
+the behavior owner. The five-segment sprite is implemented (Port plan step 3). Everything below was checked with
 m68dis on rom.bin [C], unless marked [H].
 
 ## Record and dispatch
@@ -85,6 +84,12 @@ m68dis on rom.bin [C], unless marked [H].
    bytes remain in the imported scene data; this has the same collision result
    as the ROM's save/overwrite/restore [C]. Out-of-map overlay entries are
    ignored as a host safety guard [H].
-3. **Open:** five-segment sprite placement, two-of-five flicker, and the
-   four-frame loop still need the extracted 0x5802..0x5838 frames. This touches
-   the combat-owned `paint_field_scene` path and remains deferred.
+3. **Implemented:** `field_barrier.lua::sprite_plan` returns the 0x4ADC
+   presentation row: frame `remaining & 3`, segments k and (k+1) mod 5 with
+   k = `remaining % 5`, the 0x4C0C pixel offsets per octant, palette line 1 and
+   low priority [C]. The host only projects and draws the four frames that
+   `graphics_extract --field-barrier-assets` extracts from 0x5802..0x5838.
+   `shadowrun_ghidra_conversion_qt_field_barrier_sprite_qa` checks 8 frames of
+   rotation and frame ticks, and writes `contact-sheet.bmp`. [H] The sheet has
+   not been compared with the emulator yet, because there is no barrier
+   savestate.

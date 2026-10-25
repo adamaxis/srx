@@ -156,6 +156,30 @@ struct FieldBarrierCollisionCell {
     std::uint8_t code = 0U;
 };
 
+struct FieldBarrierSpriteSegment {
+    std::uint8_t source_index = 0U;
+    std::int16_t pixel_offset_x = 0;
+    std::int16_t pixel_offset_y = 0;
+};
+
+struct FieldBarrierSpritePlan {
+    std::uint16_t center_x = 0U;
+    std::uint16_t center_y = 0U;
+    std::uint8_t frame_index = 0U;
+    std::uint8_t palette_line = 0U;
+    bool low_priority = true;
+    std::array<FieldBarrierSpriteSegment, 2U> segments{};
+};
+
+struct FieldBarrierPresentationOrigin {
+    std::uint16_t center_x = 0U;
+    std::uint16_t center_y = 0U;
+    std::uint8_t octant = 0U;
+};
+
+inline constexpr std::size_t kFieldBarrierSpriteFrameCount =
+    static_cast<std::size_t>(srx::v(srx::FieldBarrier::SPRITE_FRAME_COUNT));
+
 inline constexpr std::size_t kFieldBarrierCollisionCellCount =
     static_cast<std::size_t>(srx::v(srx::FieldBarrier::CELL_COUNT));
 
@@ -1376,6 +1400,10 @@ public:
     field_barrier_collision_overlay_cells_for_dump() const noexcept {
         return field_barrier_collision_overlay_cells_;
     }
+    const std::optional<FieldBarrierSpritePlan>&
+    field_barrier_sprite_plan_for_dump() const noexcept {
+        return field_barrier_sprite_plan_;
+    }
     std::uint8_t controller_nibble_for_dump() const noexcept {
         return field_controller_nibble_;
     }
@@ -2361,6 +2389,15 @@ private:
     std::array<FieldBarrierCollisionCell,
                kFieldBarrierCollisionCellCount>
         field_barrier_collision_overlay_cells_{};
+    std::optional<FieldBarrierSpritePlan> field_barrier_sprite_plan_;
+    std::optional<FieldBarrierPresentationOrigin>
+        field_barrier_presentation_origin_;
+    std::array<QImage, kFieldBarrierSpriteFrameCount>
+        field_barrier_images_{};
+    std::array<int, kFieldBarrierSpriteFrameCount>
+        field_barrier_origin_x_{};
+    std::array<int, kFieldBarrierSpriteFrameCount>
+        field_barrier_origin_y_{};
     EntityServiceTargetOwner field_entity_target_owner_{};
     std::vector<EntityServiceTargetRecord> field_entity_target_records_{16U};
     std::optional<scripting::ScriptFieldEncounterOutcome>

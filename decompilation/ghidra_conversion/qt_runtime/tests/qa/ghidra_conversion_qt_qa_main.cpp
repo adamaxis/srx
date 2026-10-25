@@ -3984,6 +3984,160 @@ int run_field_barrier_collision_qa(
     return 0;
 }
 
+int run_field_barrier_sprite_qa(
+    FieldSceneRuntime& field_scene,
+    const StartupIntegrationState& startup_state,
+    const std::filesystem::path& output) {
+    constexpr std::uint16_t kScene = 1U;
+    if (!field_scene.bootstrap_for_scene_dump(startup_state, kScene) ||
+        field_scene.field_scene_reference_for_dump() != kScene ||
+        !field_scene.field_entity_visible_for_dump()) {
+        std::cerr << "Field barrier sprite QA: Scene 1 bootstrap failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    const auto& map = field_scene.state().field_scene_buffers.source_metadata
+                          .terrain_collision_map;
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    const auto row_cells = static_cast<std::size_t>(
+        srx::v(srx::Grid::ROW_CELLS));
+    const auto cell_shift = static_cast<unsigned>(
+        srx::v(srx::Grid::CELL_SHIFT));
+    const auto cell_width = std::size_t{1U} << cell_shift;
+    const auto cell_center = static_cast<std::size_t>(
+        srx::v(srx::Grid::CELL_CENTER));
+    const auto row_count = map.size() / row_cells;
+    std::optional<std::array<std::uint16_t, 2U>> center;
+    for (std::size_t row = 4U; row + 4U < row_count && !center; ++row) {
+        for (std::size_t column = 4U; column + 4U < row_cells; ++column) {
+            const auto index = row * row_cells + column;
+            if (index >= map.size() || map[index] != 0U) {
+                continue;
+            }
+            const auto world_x = column * cell_width + cell_center;
+            const auto world_y = row * cell_width + cell_center;
+            if (world_x / srx::v(srx::FieldBarrier::WORLD_UNITS_PER_PIXEL) <
+                    metadata.terrain_x_inclusive_lower ||
+                world_x / srx::v(srx::FieldBarrier::WORLD_UNITS_PER_PIXEL) >=
+                    metadata.terrain_x_exclusive_upper ||
+                world_y / srx::v(srx::FieldBarrier::WORLD_UNITS_PER_PIXEL) <
+                    metadata.terrain_y_inclusive_lower ||
+                world_y / srx::v(srx::FieldBarrier::WORLD_UNITS_PER_PIXEL) >=
+                    metadata.terrain_y_exclusive_upper) {
+                continue;
+            }
+            center = std::array<std::uint16_t, 2U>{
+                static_cast<std::uint16_t>(world_x),
+                static_cast<std::uint16_t>(world_y)};
+            break;
+        }
+    }
+    if (!center.has_value()) {
+        std::cerr << "Field barrier sprite QA: no in-bounds clear centre\n";
+        return 3;
+    }
+
+    auto& runner = field_scene.active_runner_record();
+    runner.flags = 0x0300U;
+    runner.equipped_inventory_slot = -1;
+    runner.equipped_item_code = static_cast<std::uint8_t>(
+        srx::v(srx::SpellActionCode::SUPER_BARRIER));
+    runner.animation_action_gate = -1;
+    runner.delay_meter = 10U;
+    runner.behavior_meter = 10U;
+    runner.posture = 0U;
+    runner.skills[0U] = 0U;
+    runner.auxiliary[0U] = 0U;
+    runner.magic_force = 1U;
+    runner.cyberware_flags = 0U;
+    runner.action_profile_modifier_flags = 0U;
+    runner.inventory_item_codes.fill(0U);
+    runner.inventory_phase_bytes.fill(0U);
+    field_scene.set_active_party_slot_for_dump(
+        field_scene.field_active_party_slot_for_dump());
+    field_scene.set_field_entity_world_position_for_dump(
+        center->at(0U), static_cast<std::uint16_t>(center->at(1U) + 0x0480U));
+    field_scene.set_field_entity_heading_for_dump(
+        static_cast<std::uint16_t>(srx::v(srx::Heading::UP)));
+    field_scene.set_source_random_seed_for_dump(0xFFFFU);
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    if (!field_scene.field_barrier_collision_overlay_active_for_dump()) {
+        std::cerr << "Field barrier sprite QA: cast did not arm: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    std::filesystem::create_directories(output);
+    QImage contact(kSceneWidth * 4, kSceneHeight * 2, QImage::Format_RGB32);
+    contact.fill(Qt::black);
+    QPainter contact_painter(&contact);
+    std::optional<FieldBarrierSpritePlan> previous;
+    for (std::size_t frame = 0U; frame < 8U; ++frame) {
+        const auto& plan = field_scene.field_barrier_sprite_plan_for_dump();
+        if (!plan.has_value() ||
+            plan->segments.size() !=
+                srx::v(srx::FieldBarrier::SPRITE_PLAN_SEGMENT_COUNT) ||
+            plan->palette_line != srx::v(
+                srx::FieldBarrier::SPRITE_PALETTE_LINE) ||
+            !plan->low_priority) {
+            std::cerr << "Field barrier sprite QA: frame " << frame
+                      << " did not stage two low-priority palette-1 sprites"
+                      << " plan=" << plan.has_value() << " segments="
+                      << (plan.has_value() ? plan->segments.size() : 0U)
+                      << " failure=" << field_scene.failure() << '\n';
+            return 3;
+        }
+        if (previous.has_value()) {
+            const auto expected_first = static_cast<std::uint8_t>(
+                (previous->segments[0].source_index +
+                 srx::v(srx::FieldBarrier::SPRITE_SEGMENT_COUNT) - 1U) %
+                srx::v(srx::FieldBarrier::SPRITE_SEGMENT_COUNT));
+            const auto expected_frame = static_cast<std::uint8_t>(
+                (previous->frame_index +
+                 srx::v(srx::FieldBarrier::SPRITE_FRAME_COUNT) - 1U) %
+                srx::v(srx::FieldBarrier::SPRITE_FRAME_COUNT));
+            if (plan->segments[0].source_index != expected_first ||
+                plan->segments[1].source_index !=
+                    (expected_first + 1U) % srx::v(
+                        srx::FieldBarrier::SPRITE_SEGMENT_COUNT) ||
+                plan->frame_index != expected_frame) {
+                std::cerr << "Field barrier sprite QA: frame " << frame
+                          << " did not rotate/tick from the Lua source clock\n";
+                return 3;
+            }
+        }
+        previous = plan;
+        const auto image = render_qa_field(field_scene, true);
+        if (!save_qa_image(output,
+                           "frame-" + std::to_string(frame) + ".bmp",
+                           image)) {
+            std::cerr << "Field barrier sprite QA: frame BMP write failed\n";
+            return 3;
+        }
+        const auto column = static_cast<int>(frame % 4U);
+        const auto row = static_cast<int>(frame / 4U);
+        contact_painter.drawImage(column * kSceneWidth, row * kSceneHeight,
+                                  image);
+        if (frame + 1U < 8U) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+    }
+    contact_painter.end();
+    if (!save_qa_image(output, "contact-sheet.bmp", contact)) {
+        std::cerr << "Field barrier sprite QA: contact sheet write failed\n";
+        return 3;
+    }
+    std::cout << "field_barrier_sprite_qa=passed frames=8 segments=2 "
+                 "rotation=5 contact-sheet="
+              << (output / "contact-sheet.bmp").string() << '\n';
+    return 0;
+}
+
 int run_field_scene26_event1_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -28694,6 +28848,7 @@ int main(int argc, char** argv) {
         bool field_command_reopen_smoke = false;
         bool field_cyberware_empty_qa = false;
         bool field_barrier_collision_qa = false;
+        std::optional<std::filesystem::path> field_barrier_sprite_qa_path;
         bool intro_to_field_smoke = false;
         std::optional<std::filesystem::path> field_dump_path;
         std::optional<std::filesystem::path> field_movement_qa_path;
@@ -29100,6 +29255,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_spell_effect_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-barrier-sprite-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_barrier_sprite_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -34405,6 +34566,10 @@ int main(int argc, char** argv) {
                 return run_field_spell_effect_qa(
                     field_scene, smoke_state, asset_root,
                     *field_spell_effect_qa_path);
+            }
+            if (field_barrier_sprite_qa_path.has_value()) {
+                return run_field_barrier_sprite_qa(
+                    field_scene, smoke_state, *field_barrier_sprite_qa_path);
             }
             if (field_barrier_collision_qa) {
                 return run_field_barrier_collision_qa(

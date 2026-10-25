@@ -608,6 +608,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_barrier_collision_
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-barrier-collision-qa)
 
+# Draw the 0x4ADC barrier sprite: four-frame loop, two of five segments per
+# frame rotating with the lifetime; writes an eight-frame contact sheet.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_barrier_sprite_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-barrier-sprite-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-barrier-sprite-qa")
+
 # Start one cell south of the ROM's Jump House trigger, walk into record 85
 # using normal movement, dismiss its Lua-owned entry narration with A, verify
 # the retained scene-13 route, then walk south into its null-table event-0

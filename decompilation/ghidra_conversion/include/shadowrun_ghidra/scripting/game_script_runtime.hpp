@@ -1637,6 +1637,7 @@ struct ScriptActorBehaviorDecision {
     std::uint8_t spell_effect_action_code = 0;
     bool spell_effect_completed = false;
     std::optional<std::uint8_t> spell_effect_slot_released;
+    std::optional<std::uint16_t> field_barrier_remaining;
     bool target_marker_visible = false;
     bool target_marker_animating = false;
     std::uint8_t target_marker_style = 0;

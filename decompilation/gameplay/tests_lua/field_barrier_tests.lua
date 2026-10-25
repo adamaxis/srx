@@ -86,5 +86,45 @@ check(wrapped[2] == 0x0100 and wrapped[3] == 0xFB00 and
       wrapped[4] == 8000,
       "0x4A18 applies u16 wrap before centre snapping")
 
+local sprite_state = {
+    center_x = E.Grid.CELL_CENTER,
+    center_y = E.Grid.CELL_CENTER,
+}
+local function check_sprite_plan(octant, remaining, label)
+    sprite_state.octant = octant
+    sprite_state.remaining = remaining
+    local plan = B.sprite_plan(
+        sprite_state.center_x, sprite_state.center_y,
+        sprite_state.octant, sprite_state.remaining)
+    local first = remaining % E.FieldBarrier.SPRITE_SEGMENT_COUNT
+    local second = (first + 1) % E.FieldBarrier.SPRITE_SEGMENT_COUNT
+    local first_offset = E.FieldBarrier.SPRITE_PIXEL_OFFSETS[octant][first + 1]
+    local second_offset = E.FieldBarrier.SPRITE_PIXEL_OFFSETS[octant][second + 1]
+    check(plan ~= nil and #plan == 12 and
+          plan[1] == sprite_state.center_x and
+          plan[2] == sprite_state.center_y and
+          plan[3] == (remaining & E.FieldBarrier.SPRITE_FRAME_MASK) and
+          plan[4] == E.FieldBarrier.SPRITE_PLAN_SEGMENT_COUNT and
+          plan[5] == E.FieldBarrier.SPRITE_PALETTE_LINE and
+          plan[6] == E.FieldBarrier.SPRITE_PRIORITY_LOW and
+          plan[7] == first and plan[8] == first_offset[1] and
+          plan[9] == first_offset[2] and plan[10] == second and
+          plan[11] == second_offset[1] and plan[12] == second_offset[2],
+          label)
+end
+
+for lifetime = 0, E.FieldBarrier.SPRITE_SEGMENT_COUNT - 1 do
+    check_sprite_plan(0, lifetime,
+        string.format("north sprite offsets rotate at lifetime %d", lifetime))
+end
+for lifetime = 0, E.FieldBarrier.SPRITE_FRAME_COUNT - 1 do
+    check_sprite_plan(1, lifetime,
+        string.format("NE sprite frame %d follows lifetime low bits", lifetime))
+end
+for octant = 0, E.FieldBarrier.OCTANT_MASK do
+    check_sprite_plan(octant, 3,
+        string.format("octant %d sprite offsets match 0x4C0C", octant))
+end
+
 print(string.format("field_barrier: %d/%d", pass, total))
 os.exit(pass == total and 0 or 1)
