@@ -66,6 +66,7 @@
 #include "elevator_selector_runtime.hpp"
 #include "tarislar_credits_title_return_runtime.hpp"
 #include "field_menu_text_catalog.hpp"
+#include "field_vdp_mirror.hpp"
 #include "game_save_snapshot.hpp"
 #include "game_save_store.hpp"
 #include "shop_menu_runtime.hpp"
@@ -598,6 +599,22 @@ public:
         return mark_field_terrain_cell(cell);
     }
     const QImage& field_map_for_dump() const noexcept { return field_map_; }
+    const QImage& field_map_priority_overlay_for_dump() const noexcept {
+        return field_map_priority_overlay_;
+    }
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    void set_field_vdp_mirror_enabled_for_qa(bool enabled);
+    const VdpModel* field_vdp_model_for_dump() const noexcept {
+        return field_vdp_mirror_ ? &field_vdp_mirror_->model() : nullptr;
+    }
+    std::pair<int, int> field_vdp_viewport_origin_for_dump() const noexcept {
+        if (!field_vdp_mirror_) {
+            return {};
+        }
+        const auto viewport = field_vdp_mirror_->viewport_rect();
+        return {viewport.x(), viewport.y()};
+    }
+#endif
     std::pair<std::uint16_t, std::uint16_t> field_map_cell_words_for_dump(
         const std::size_t cell) const {
         return cell < field_map_cell_words_.size()
@@ -1498,6 +1515,7 @@ private:
     bool mark_field_terrain_cell(std::size_t cell);
     void reset_field_map_cell_words();
     bool repaint_field_map_cell(std::size_t cell);
+    void rebuild_field_vdp_mirror();
     std::size_t apply_world_effect_layer_writes(
         bool layer_b_target, const std::vector<MapWordWrite>& writes);
     void paint_field_console_background(QPainter& painter) const;
@@ -2002,6 +2020,9 @@ private:
     std::size_t field_joshua_archetype_selection_ = 0U;
     QImage field_map_;
     QImage field_map_priority_overlay_;
+    bool field_vdp_mirror_enabled_ = false;
+    bool field_vdp_mirror_qa_override_ = false;
+    std::unique_ptr<FieldVdpMirror> field_vdp_mirror_;
     // The extracted map image is a pure function of the (FF2700, FF4700)
     // word pair of each 32x32 cell (checked on every extracted scene). Keep
     // the pair each image cell currently shows, so a changed FF2700 word can

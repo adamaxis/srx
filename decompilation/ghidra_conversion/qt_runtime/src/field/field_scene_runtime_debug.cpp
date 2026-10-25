@@ -627,6 +627,20 @@ bool FieldSceneRuntime::bootstrap_for_scene_dump(
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+void FieldSceneRuntime::set_field_vdp_mirror_enabled_for_qa(
+    const bool enabled) {
+    field_vdp_mirror_qa_override_ = true;
+    field_vdp_mirror_enabled_ = enabled;
+    if (!enabled) {
+        field_vdp_mirror_.reset();
+    } else if (ready_) {
+        rebuild_field_vdp_mirror();
+    }
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 void FieldSceneRuntime::begin_projected_field_transition_for_dump() noexcept {
     if (!ready_) {
         return;

@@ -58,6 +58,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <cstdlib>
 #include <fstream>
 #include <cstdint>
 #include <filesystem>
@@ -7666,6 +7667,12 @@ void FieldSceneRuntime::advance_field_menu_route() {
 
 bool FieldSceneRuntime::bootstrap(
     const integration::StartupIntegrationState& startup_state) {
+    if (!field_vdp_mirror_qa_override_) {
+        const auto* mirror_flag = std::getenv("SRX_VDP_MODEL");
+        field_vdp_mirror_enabled_ =
+            mirror_flag != nullptr && std::string_view(mirror_flag) == "1";
+    }
+    field_vdp_mirror_.reset();
     ready_ = false;
     title_return_requested_ = false;
     failure_.clear();
