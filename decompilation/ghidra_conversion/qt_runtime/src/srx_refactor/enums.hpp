@@ -496,6 +496,11 @@ enum class Pad : std::int64_t {
     START = 0x8000,
     EDGES = 0xFF00,
 };
+enum class PartyWipeRunnerRefresh : std::int64_t {
+    FIRST_SLOT = 0x0,
+    TERMINAL_RECORD_TYPE = 0x2,
+    SLOT_COUNT = 0x3,
+};
 enum class Pickup : std::int64_t {
     GARGOYLE_HORN = 0x64,
     HOUND_PELT = 0x65,
@@ -574,6 +579,7 @@ enum class RunnerField : std::int64_t {
 enum class RunnerStatus : std::int64_t {
     ACTIVE = 0x1,
     REMAINDER = 0x2,
+    SELECTION_MARKER = 0x2,
     DOWN = 0x10,
     DEAD = 0x40,
 };

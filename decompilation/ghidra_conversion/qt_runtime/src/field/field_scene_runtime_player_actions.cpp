@@ -292,16 +292,12 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
     // 0x0A72 carries the typed FFFC1C bit-7 scene-reset state into Lua [C].
     const auto run_failure = game_scripts_.call_integers(
         "party_down", "prepare_run_failure_flat",
-        {field_runtime_state_.world_activity_scene_reset_bit ? 1 : 0});
-    if (!run_failure.has_value() || run_failure->size() != 4U) {
+        {field_runtime_state_.world_activity_scene_reset_bit ? 1 : 0,
+         field_world_effect_player_spawn_pending_ ? 1 : 0});
+    if (!run_failure.has_value() || run_failure->size() != 6U) {
         failure_ = game_scripts_.failure();
         source_boundary("field.party_wipe.run_failure_script_failed");
         return;
-    }
-    if ((*run_failure)[1] != 0) {
-        // 0x1DED8 walks high-effect bits in records FF0400..FF0A00 [C]. These
-        // source actor records are outside the player-side runtime changes.
-        source_boundary("field.party_wipe.high_effect_clear_boundary");
     }
     if ((*run_failure)[2] != 0) {
         // Only type 5 reaches 0xC684's FFE183 clear. That mode-five marker is
@@ -309,6 +305,16 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
         world_activity_request_state_.request_flag = 0U;
         field_mode_exit_transition_state_.mode_five_effect_marker = 0U;
         source_boundary("field.party_wipe.world_activity_request_cleared");
+    }
+    if ((*run_failure)[4] != 0) {
+        field_world_effect_player_spawn_pending_ = false; // FFFC3C [C]
+        source_boundary("field.party_wipe.player_spawn_request_cleared");
+    }
+    if ((*run_failure)[1] != 0) {
+        // 0x1DED8 clears FFFC3C before its seven FF0400..FF0A00 world-actor
+        // records. Apply the typed player/field write; leave that record sweep
+        // to the combat branch [C].
+        source_boundary("field.party_wipe.world_actor_sweep_boundary");
     }
     if ((*run_failure)[3] == 2) {
         source_boundary("field.party_wipe.group_item_flags_unresolved");
@@ -339,6 +345,7 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
 void FieldSceneRuntime::complete_field_party_wipe() {
     // 0xC716 performs the common recovery after the optional run-failure page [C].
     auto& records = field_party_roster_.records();
+    const auto previous_slot = field_party_roster_.active_slot();
     const auto status = [this, &records](const std::size_t index) {
         const auto flags =
             static_cast<std::int64_t>(records[index].flags >> 8U);
@@ -375,16 +382,97 @@ void FieldSceneRuntime::complete_field_party_wipe() {
         (static_cast<std::uint16_t>((*wipe)[0] & 0xff) << 8U));
     records[0].delay_meter = static_cast<std::uint8_t>((*wipe)[1]);
     records[0].behavior_meter = static_cast<std::uint8_t>((*wipe)[2]);
-    field_party_roster_.set_active_slot(0U);
     if (field_funds_.has_value()) {
         field_funds_ = static_cast<std::uint32_t>((*wipe)[5]);
     }
+
+    // 0x391A does a normal roster walk after 0xC716 revives the leader. Lua
+    // receives typed slot/type/flag facts and returns the selected runner and
+    // transient +0x10 bit-1 markers; the host applies those writes [C].
+    const auto selection_flags = [this, &records](const std::size_t slot) {
+        auto flags = static_cast<std::uint8_t>(records[slot].flags >> 8U);
+        if (!field_party_roster_.slot_active(slot)) {
+            flags = static_cast<std::uint8_t>(
+                flags & ~static_cast<std::uint8_t>(0x01U));
+        }
+        return flags;
+    };
+    const auto selection = game_scripts_.call_integers(
+        "party_down", "refresh_runner_after_wipe_flat",
+        {static_cast<std::int64_t>(previous_slot),
+         field_entity_selection_state_.suppression_override ? 1 : 0,
+         field_entity_selection_state_.records[0].record_type,
+         selection_flags(0U),
+         field_entity_selection_state_.records[1].record_type,
+         selection_flags(1U),
+         field_entity_selection_state_.records[2].record_type,
+         selection_flags(2U)});
+    if (!selection.has_value() || selection->size() != 6U ||
+        (*selection)[0] < 0 ||
+        (*selection)[0] >= static_cast<std::int64_t>(records.size()) ||
+        !field_party_roster_.slot_active(
+            static_cast<std::size_t>((*selection)[0])) ||
+        (*selection)[5] < 0 || (*selection)[5] > 0xFFFF) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.party_wipe.runner_refresh_script_failed");
+        return;
+    }
+    if (source_audio_event_callback_) {
+        // 0x391A begins by requesting event 0x25 through 0x530DE [C].
+        source_audio_event_callback_(static_cast<std::uint16_t>((*selection)[5]));
+    }
+    if ((*selection)[4] != 0) {
+        // 0x39E0 calls 0x1E540 when the selected record changes [C].
+        initialize_effect_fade_marker(field_effect_fade_marker_);
+        source_boundary("field.party_wipe.runner_change_fade_marker_reset");
+    }
+    const auto selected_slot = static_cast<std::size_t>((*selection)[0]);
+    const auto selected_marker = static_cast<std::uint8_t>(
+        srx::RunnerStatus::SELECTION_MARKER);
+    for (std::size_t slot = 0; slot < records.size(); ++slot) {
+        auto& record = records[slot];
+        const auto returned_flags = static_cast<std::uint8_t>(
+            (*selection)[slot + 1U] & 0xFF);
+        auto record_flags = static_cast<std::uint8_t>(record.flags >> 8U);
+        if (field_party_roster_.slot_active(slot)) {
+            record_flags = returned_flags;
+        } else {
+            // Membership is a separate typed host fact. Preserve its live
+            // record status while applying the source selection-marker clear.
+            record_flags = static_cast<std::uint8_t>(
+                (record_flags & ~selected_marker) |
+                (returned_flags & selected_marker));
+        }
+        record.flags = static_cast<std::uint16_t>(
+            (record.flags & 0x00FFU) |
+            (static_cast<std::uint16_t>(record_flags) << 8U));
+        if (slot < field_entity_selection_state_.records.size()) {
+            field_entity_selection_state_.records[slot].flags =
+                selection_flags(slot);
+        }
+    }
+    field_party_roster_.set_active_slot(selected_slot);
+    field_entity_selection_state_.active_index = selected_slot;
+    field_entity_behavior_flags_ = static_cast<std::uint8_t>(
+        active_runner_record().flags >> 8U);
+    field_movement_behavior_record_.behavior_flags =
+        field_entity_behavior_flags_;
+    // The source calls 0x33AA twice and 0x3548 for the three HUD panels [C].
+    // This host redraws the typed player projection and uses named assets in
+    // place of the source uploads [H].
+    field_entity_.projection.sprite_offset_y =
+        active_runner_record().projection_word_08;
+    field_entity_animation_.redraw_requested = true;
     refresh_field_hud_runner_slot();
-    // 0x38FA updates the three player records [C]; the native animation service
-    // owns that per-frame work. 0x391A also rebuilds field runner resources;
-    // this port's player-side wipe path currently selects slot zero and
-    // refreshes its HUD, while a separate 391A-only resource pass is unmodeled
-    // [H].
+    source_boundary((*selection)[4] != 0
+                        ? "field.party_wipe.active_runner_changed"
+                        : "field.party_wipe.active_runner_retained");
+    // The following source call, 0x1DC4C, scans and edits world-actor records;
+    // it is deliberately left for the combat branch [C].
+    source_boundary("field.party_wipe.world_actor_refresh_boundary");
+    source_boundary("field.party_wipe.player_hud_and_projection_refreshed");
+    // The source calls 0x38FA for the three player records [C]. The existing
+    // host animation heartbeat owns that work [H].
     source_boundary((*wipe)[6] != 0 ? "field.party_wipe.docwagon"
                                     : "field.party_wipe.little_chiba");
     game_scripts_.set_location_context("field_map", "party_wipe",
