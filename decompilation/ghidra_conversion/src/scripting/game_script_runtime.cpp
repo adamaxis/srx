@@ -7995,6 +7995,9 @@ GameScriptRuntime::actor_heartbeat(
     case ScriptActorAnimationMode::runner_down:
         animation_mode = "runner_down";
         break;
+    case ScriptActorAnimationMode::runner_hurt:
+        animation_mode = "runner_hurt";
+        break;
     default:
         return fail("gameplay Lua actor animation mode is invalid");
     }
@@ -9508,6 +9511,7 @@ GameScriptRuntime::actor_heartbeat(
          decision.animation_id == "strike" ||
          decision.animation_id == "cast" ||
          decision.animation_id == "runner_down" ||
+         decision.animation_id == "runner_hurt" ||
          decision.animation_id == "projectile" ||
          decision.animation_id == "hurt" ||
          decision.animation_id == "down" ||
@@ -9544,7 +9548,8 @@ GameScriptRuntime::actor_heartbeat(
          decision.animation_id == "attack" ||
          decision.animation_id == "strike" ||
          decision.animation_id == "cast" ||
-         decision.animation_id == "runner_down") &&
+         decision.animation_id == "runner_down" ||
+         decision.animation_id == "runner_hurt") &&
         context.profile_id != "field_runner_k03_none00" &&
         !dynamic_creature_walk) {
         return fail("actor_ai.heartbeat returned an unsupported actor animation");
@@ -9552,6 +9557,14 @@ GameScriptRuntime::actor_heartbeat(
     if (decision.animation_id == "runner_down" &&
         decision.animation_frame > 7U) {
         return fail("actor_ai.heartbeat returned an unsupported C0B2 down frame");
+    }
+    if (decision.animation_id == "runner_hurt" &&
+        (decision.animation_frame > 1U ||
+         !decision.animation_selector.has_value() ||
+         *decision.animation_selector != static_cast<std::uint16_t>(
+             0x0060U + decision.direction * 0x0004U))) {
+        return fail(
+            "actor_ai.heartbeat returned an unsupported C072 hurt pose");
     }
     if (decision.animation_id == "strike" && decision.animation_frame > 1U) {
         return fail("actor_ai.heartbeat returned an unsupported C0A2 strike frame");

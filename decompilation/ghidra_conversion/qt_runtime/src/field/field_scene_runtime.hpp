@@ -2209,6 +2209,10 @@ private:
     std::array<std::array<QImage, 2>, 8> field_entity_down_images_{};
     std::array<std::array<int, 2>, 8> field_entity_down_origin_x_{};
     std::array<std::array<int, 2>, 8> field_entity_down_origin_y_{};
+    // ROM 0xAFF2 C072 party runner hurt list: two finite frames per direction.
+    std::array<std::array<QImage, 2>, 8> field_entity_hurt_images_{};
+    std::array<std::array<int, 2>, 8> field_entity_hurt_origin_x_{};
+    std::array<std::array<int, 2>, 8> field_entity_hurt_origin_y_{};
     // FFE166: 0xABB6 arms 0x3C frames when the whole party is down; 0x1DDC6
     // counts it down and 0xC64C resolves the wipe at zero. Save restore at
     // 0x594E0 copies FFF5BE..FFF805 (end-exclusive FFF806) and does not restore

@@ -3,6 +3,7 @@
 -- 0x55C76 trial sequence and returns the resulting meter snapshot.
 local Combat = {}
 local E = require("enums")
+local ActorPool = E.ActorPool
 local SpellActionCode = E.SpellActionCode
 local SpellEffectKind = E.SpellEffectKind
 local SpellTuning = E.SpellTuning
@@ -380,6 +381,34 @@ local function copy_combatant(record)
     return copy
 end
 
+local function publish_player_hurt_event(target, defender, physical_meter,
+                                         mental_meter)
+    if defender.record_type >= ActorPool.PARTY then
+        return
+    end
+    local slot = target.source_record_slot
+    if type(slot) ~= "number" then
+        slot = defender.record_type
+    end
+    if slot % 1 ~= 0 or slot < 0 or slot >= ActorPool.PARTY then
+        return
+    end
+    local pending = game.player_hurt_pending_by_slot
+    if type(pending) ~= "table" then
+        pending = {}
+        game.player_hurt_pending_by_slot = pending
+    end
+    if physical_meter == 0 then
+        -- 0xAFF2 takes the zero-meter record through the C0B2 down path.
+        pending[slot] = nil
+    elseif physical_meter < defender.physical_meter or
+           mental_meter < defender.mental_meter then
+        -- Party records are the player side of this event. World actors keep
+        -- using their existing incoming_hit event below.
+        pending[slot] = true
+    end
+end
+
 local function commit_combatant_meters(target, defender, physical_meter,
                                       mental_meter, source_flags)
     if type(source_flags) == "number" then
@@ -408,6 +437,8 @@ local function commit_combatant_meters(target, defender, physical_meter,
             mental_meter = mental_meter,
         }
     end
+    publish_player_hurt_event(
+        target, defender, physical_meter, mental_meter)
     return true
 end
 

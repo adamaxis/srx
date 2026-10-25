@@ -313,6 +313,8 @@ constexpr std::string_view kFieldEntityCastAliasPrefix =
     "field.entities.spell.";
 constexpr std::string_view kFieldEntityDownAliasPrefix =
     "field.entities.down.";
+constexpr std::string_view kFieldEntityHurtAliasPrefix =
+    "field.entities.hurt.";
 // Source +0x10 bit4 (E.RunnerStatus.DOWN 0x10) in the high byte of flags.
 constexpr std::uint16_t kRunnerFlagsDown = 0x1000U;
 constexpr std::uint8_t kFieldPlayerPoseFirearm = 0U;
@@ -10227,6 +10229,22 @@ bool FieldSceneRuntime::bootstrap(
                 down = flipped_image(down, Qt::Horizontal);
             }
         }
+        for (std::size_t frame = 0U; frame < 2U; ++frame) {
+            const auto hurt_alias =
+                std::string(kFieldEntityHurtAliasPrefix) +
+                std::to_string(direction) + "." + std::to_string(frame);
+            auto& hurt = field_entity_hurt_images_[direction][frame];
+            if (!load_sprite_image(
+                    startup_state.asset_catalog.catalog, hurt_alias, hurt,
+                    field_entity_hurt_origin_x_[direction][frame],
+                    field_entity_hurt_origin_y_[direction][frame])) {
+                source_boundary("field.bootstrap.entity_assets_missing");
+                return false;
+            }
+            if (horizontal_flip) {
+                hurt = flipped_image(hurt, Qt::Horizontal);
+            }
+        }
         // The ordinary movement poses come from the C062 positive-marker
         // list, extracted as separate host files. C0B2 is a different finite
         // behavior-transition sequence. Direction 5..7 descriptor records
@@ -11263,6 +11281,8 @@ FieldSceneRuntime::heartbeat_field_player(
     if (phase == scripting::ScriptActorHeartbeatPhase::render) {
         const bool runner_down =
             (active_runner_record().flags & kRunnerFlagsDown) != 0U;
+        const bool runner_hurt =
+            field_entity_animation_id_ == "runner_hurt";
         actor_context.animation_mode = runner_down
             ? scripting::ScriptActorAnimationMode::runner_down
             : field_entity_attack_pose_active_
@@ -11273,9 +11293,12 @@ FieldSceneRuntime::heartbeat_field_player(
                          : scripting::ScriptActorAnimationMode::attack)
             : field_entity_walking_
                   ? scripting::ScriptActorAnimationMode::walking
-                  : scripting::ScriptActorAnimationMode::idle;
-        if (runner_down) {
-            // ROM 0xB35C: C0B2 direction = round(+0x2E / 0x2000) & 7.
+                  : runner_hurt
+                        ? scripting::ScriptActorAnimationMode::runner_hurt
+                        : scripting::ScriptActorAnimationMode::idle;
+        if (runner_down || runner_hurt) {
+            // ROM 0xAFF2/0xB35C: rotate +0x2E left three bits, round signed
+            // values upward, then mask to the selected C072/C0B2 direction.
             actor_context.animation_direction_override =
                 static_cast<std::uint8_t>(
                     ((field_movement_state_.heading + 0x1000U) >> 13U) & 7U);
@@ -11427,6 +11450,21 @@ FieldSceneRuntime::heartbeat_field_player(
                     actor_decision->selected_world_actor_id)) {
                 return std::nullopt;
             }
+        }
+        if (phase == scripting::ScriptActorHeartbeatPhase::behavior &&
+            field_entity_animation_id_ == "runner_hurt" &&
+            actor_decision->animation_id != "runner_hurt") {
+            // ROM 0x600E marks the finite C072 list complete; on the next
+            // 0xA8EA service, a living party record reaches 0xACAE and its
+            // idle path selects 0xB45C/C052. 0xB07E does not restore the
+            // pose: it keeps its cue countdown and calls 0xB48C/0xE7C8 only
+            // for the collision-state refresh.
+            field_entity_animation_id_ = actor_decision->animation_id;
+            if (actor_decision->animation_selector.has_value()) {
+                field_entity_animation_selector_ =
+                    *actor_decision->animation_selector;
+            }
+            field_entity_animation_.redraw_requested = true;
         }
         if (phase == scripting::ScriptActorHeartbeatPhase::render &&
             actor_context.animation_accumulator_override.has_value()) {
@@ -14954,9 +14992,12 @@ void FieldSceneRuntime::paint_field_scene_entities(
         const auto strike_pose = field_entity_animation_id_ == "strike";
         const auto cast_pose = field_entity_animation_id_ == "cast";
         const auto down_pose = field_entity_animation_id_ == "runner_down";
+        const auto hurt_pose = field_entity_animation_id_ == "runner_hurt";
         const auto strike_frame = static_cast<std::size_t>(
             field_entity_animation_.frame & 1U);
         const auto down_frame = static_cast<std::size_t>(
+            field_entity_animation_.frame == 0U ? 0U : 1U);
+        const auto hurt_frame = static_cast<std::size_t>(
             field_entity_animation_.frame == 0U ? 0U : 1U);
         const auto movement_frames =
             field_entity_walk_images_[direction].size();
@@ -14966,6 +15007,8 @@ void FieldSceneRuntime::paint_field_scene_entities(
                   movement_frames;
         const auto& image = down_pose
             ? field_entity_down_images_[direction][down_frame]
+            : hurt_pose
+            ? field_entity_hurt_images_[direction][hurt_frame]
             : strike_pose
             ? field_entity_strike_images_[direction][strike_frame]
             : cast_pose ? field_entity_cast_images_[direction]
@@ -14975,6 +15018,8 @@ void FieldSceneRuntime::paint_field_scene_entities(
                       : field_entity_idle_images_[direction];
         const auto origin_x = down_pose
             ? field_entity_down_origin_x_[direction][down_frame]
+            : hurt_pose
+            ? field_entity_hurt_origin_x_[direction][hurt_frame]
             : strike_pose
             ? field_entity_strike_origin_x_[direction][strike_frame]
             : cast_pose ? field_entity_cast_origin_x_[direction]
@@ -14984,6 +15029,8 @@ void FieldSceneRuntime::paint_field_scene_entities(
                       : field_entity_idle_origin_x_[direction];
         const auto origin_y = down_pose
             ? field_entity_down_origin_y_[direction][down_frame]
+            : hurt_pose
+            ? field_entity_hurt_origin_y_[direction][hurt_frame]
             : strike_pose
             ? field_entity_strike_origin_y_[direction][strike_frame]
             : cast_pose ? field_entity_cast_origin_y_[direction]

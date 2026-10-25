@@ -29,12 +29,14 @@ local function approach_heading(...) return R.approach_heading(...) end   -- fro
 local function begin_dynamic_item_action(...) return R.begin_dynamic_item_action(...) end   -- from actor/actions.lua
 local function begin_dynamic_target_action(...) return R.begin_dynamic_target_action(...) end   -- from actor/actions.lua
 local function begin_received_hit_reaction(...) return R.begin_received_hit_reaction(...) end   -- from actor/anim.lua
+local function begin_player_hurt_reaction(...) return R.begin_player_hurt_reaction(...) end   -- from actor/anim.lua
 local function begin_spell_cast(...) return R.begin_spell_cast(...) end   -- from actor/actions.lua
 local function classify_item_dispatch(...) return R.classify_item_dispatch(...) end   -- from actor/actions.lua
 local function classify_spell_dispatch(...) return R.classify_spell_dispatch(...) end   -- from actor/actions.lua
 local function direction_from_heading(...) return R.direction_from_heading(...) end   -- from actor/targeting.lua
 local function finish_entity_movement(...) return R.finish_entity_movement(...) end   -- from actor/movement.lua
 local function first_wounded_party_runner(...) return R.first_wounded_party_runner(...) end   -- from actor/actions.lua
+local function finish_player_hurt_reaction(...) return R.finish_player_hurt_reaction(...) end   -- from actor/anim.lua
 local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
 local function initial_state(...) return R.initial_state(...) end   -- from actor/targeting.lua
 local function projectile_heartbeat(...) return R.projectile_heartbeat(...) end   -- from actor/movement.lua
@@ -145,6 +147,21 @@ function ActorAI.heartbeat(context)
     advance_spell_effect(state, context)
 
     local reaction_audio_event
+    local player_hurt_started = false
+    if context.actor_id == "field_player_runner" and
+       context.phase == "behavior" then
+        player_hurt_started = begin_player_hurt_reaction(state, context)
+        if not player_hurt_started and state.player_hurt_sound_active then
+            reaction_audio_event =
+                advance_received_hit_reaction(state, context)
+            if state.hurt_behavior_timer == 0 then
+                state.player_hurt_sound_active = false
+            end
+        end
+        if not player_hurt_started then
+            finish_player_hurt_reaction(state, context)
+        end
+    end
     if context.dynamic_world_encounter_actor then
         local reaction_started = false
         if context.phase == "behavior" and state.incoming_hit ~= nil then

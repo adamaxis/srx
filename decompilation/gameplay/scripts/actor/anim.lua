@@ -6,6 +6,7 @@ local I = require("lib.int68k")
 local u8, u16, s16 = I.u8, I.u16, I.s16
 local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local PlayerHurt = E.PlayerHurt
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
 local SpriteType = R.SpriteType   -- from actor/tables.lua
 local function direction_from_heading(...) return R.direction_from_heading(...) end   -- from actor/targeting.lua
@@ -265,6 +266,59 @@ local function advance_received_hit_reaction(state, context)
     return audio_event
 end
 
+local function begin_player_hurt_reaction(state, context)
+    if context.actor_id ~= "field_player_runner" or
+       context.phase ~= "behavior" or
+       type(context.source_record_slot) ~= "number" or
+       context.source_record_slot % 1 ~= 0 or
+       context.source_record_slot < 0 or
+       context.source_record_slot >= E.ActorPool.PARTY then
+        return false
+    end
+    local pending = game.player_hurt_pending_by_slot
+    if type(pending) ~= "table" or
+       pending[context.source_record_slot] ~= true then
+        return false
+    end
+    pending[context.source_record_slot] = nil
+    state.player_hurt_pose_active = true
+    state.player_hurt_animation_complete_pending = nil
+    state.player_hurt_selector_reset_after_render = nil
+    state.player_hurt_sound_active = true
+    state.animation_id = "runner_hurt"
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    state.animation_selector = PlayerHurt.SELECTOR_BASE +
+        state.direction * PlayerHurt.SELECTOR_STEP
+    state.hurt_behavior_timer = PlayerHurt.SOUND_DELAY
+    state.hurt_audio_event = SoundId.DAC_SAMPLE_40
+    state.hurt_audio_emitted = false
+    return true
+end
+
+local function finish_player_hurt_reaction(state, context)
+    if context.actor_id ~= "field_player_runner" or
+       context.phase ~= "behavior" or
+       state.player_hurt_animation_complete_pending ~= true then
+        return false
+    end
+    state.player_hurt_animation_complete_pending = nil
+    state.player_hurt_pose_active = nil
+    if state.animation_id == "runner_hurt" then
+        -- ROM 0x600E completes the kind-3 C072 0x8002 list after its second
+        -- 0x0300/0x1000 step. On the next 0xA8EA pass, the living party
+        -- record re-enters 0xACAE; its no-direction path installs 0xB45C,
+        -- which selects the matching C052 idle pose. 0xB07E only keeps the
+        -- independent eight-service cue; its 0xB48C call is collision work.
+        state.animation_id = "idle"
+        state.animation_selector = idle_pose_selectors[state.direction + 1]
+        state.animation_frame = 0
+        state.animation_accumulator = 0
+        state.player_hurt_selector_reset_after_render = true
+    end
+    return true
+end
+
 local function advance_dynamic_actor_walk_animation(state, context)
     local frame_count = context.walk_animation_frame_count
     if type(frame_count) ~= "number" or frame_count == 0 then
@@ -401,6 +455,12 @@ local spell_pose_selectors = {
 }
 
 local function advance_player_animation(state, context)
+    if state.player_hurt_selector_reset_after_render then
+        -- The behavior pass above published C052 to the host. Do not carry
+        -- that finite-reset selector into a later C062 movement decision.
+        state.animation_selector = nil
+        state.player_hurt_selector_reset_after_render = nil
+    end
     if type(context.animation_accumulator_override) == "number" then
         state.animation_accumulator =
             context.animation_accumulator_override
@@ -409,6 +469,39 @@ local function advance_player_animation(state, context)
         state.direction = context.animation_direction_override & 0x7
     else
         state.direction = direction_from_heading(context.initial_heading)
+    end
+
+    local runner_hurt = context.animation_mode == "runner_hurt" or
+        (state.player_hurt_pose_active and
+         context.animation_mode == "idle")
+    if runner_hurt then
+        if state.animation_id ~= "runner_hurt" then
+            state.animation_frame = 0
+            state.animation_accumulator = 0
+        end
+        state.player_hurt_pose_active = true
+        state.animation_id = "runner_hurt"
+        state.animation_selector = PlayerHurt.SELECTOR_BASE +
+            state.direction * PlayerHurt.SELECTOR_STEP
+        local accumulated = state.animation_accumulator +
+            PlayerHurt.FRAME_INCREMENT
+        if accumulated >= PlayerHurt.FRAME_PERIOD then
+            accumulated = accumulated - PlayerHurt.FRAME_PERIOD
+            if state.animation_frame + 1 < PlayerHurt.FRAME_COUNT then
+                state.animation_frame = state.animation_frame + 1
+            else
+                -- The 11th render pass reaches +0x1E=2; 0x600E marks the
+                -- C072 selector complete but still displays its last frame.
+                state.player_hurt_animation_complete_pending = true
+            end
+        end
+        state.animation_accumulator = accumulated
+        return
+    end
+    if state.player_hurt_pose_active then
+        state.player_hurt_pose_active = nil
+        state.player_hurt_animation_complete_pending = nil
+        state.animation_selector = nil
     end
 
     if context.animation_mode == "attack" then
@@ -493,6 +586,8 @@ R.advance_entry_animation = advance_entry_animation
 R.advance_finite_actor_animation = advance_finite_actor_animation
 R.begin_received_hit_reaction = begin_received_hit_reaction
 R.advance_received_hit_reaction = advance_received_hit_reaction
+R.begin_player_hurt_reaction = begin_player_hurt_reaction
+R.finish_player_hurt_reaction = finish_player_hurt_reaction
 R.advance_dynamic_actor_walk_animation = advance_dynamic_actor_walk_animation
 R.advance_dynamic_actor_action_animation = advance_dynamic_actor_action_animation
 R.advance_dynamic_actor_item_action_animation = advance_dynamic_actor_item_action_animation

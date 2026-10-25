@@ -28,6 +28,16 @@ E.ActorFlag = { SPOTTED = 0x01, REINFORCEMENT = 0x02, DESPAWN_OFFSCREEN = 0x04, 
 E.BehaviorFlag = { ROUTE_CLEAR = 0x01, PATH = 0x02, RESTART_STEER = 0x04, WALL_FOLLOW = 0x08, IN_BAND = 0x10, ROUTE_TRANSITION = 0x20, FLEEING = 0x40, ESCORT = 0x80 } -- +0xB0 [C]; ROUTE_CLEAR/ROUTE_TRANSITION [H] repo route_flags usage
 E.SteerFlag = { TARGET_RIGHT = 0x01, TARGET_BELOW = 0x02, OVERSHOOT_X = 0x04, OVERSHOOT_Y = 0x08 }  -- +0xB1 [C]
 E.CyberBit = { DATAJACK = 0, CYBEREYES = 1, HAND_RAZORS = 2, SPURS = 3, SMARTLINK = 4 }             -- +0x90 bit numbers (doc 04) [C]
+-- Player hurt animation selected by 0xAFF2 from the directional C072 table.
+E.PlayerHurt = {
+    SELECTOR_BASE = 0x60,       -- C072 direction 0 selector [C]
+    SELECTOR_STEP = 0x04,       -- C072 advances one word per direction [C]
+    FRAME_COUNT = 2,            -- each kind-3 C072 list has header 0x8002 [C]
+    FRAME_INCREMENT = 0x0300,   -- kind-3 C072 list increment [C]
+    FRAME_PERIOD = 0x1000,      -- +0x1C initialized at 0x15132 [C]
+    RENDER_PASSES = 11,         -- 0x5FDC/0x600E completes the two-frame list [C]
+    SOUND_DELAY = 8,            -- 0xAFF2 stores +0xCE; 0xB07E counts it down [C]
+}
 
 E.Posture   = { FULL_DEFENSE = 0, MEDIUM_DEFENSE = 1, NEUTRAL = 2, MEDIUM_OFFENSE = 3, FULL_OFFENSE = 4 }  -- +0x4D, names 0xD1A05 [C]
 E.SceneMode = { NONE = 0, STREET = 1, BUILDING = 2, CAVE = 3 }  -- FFDF40: 1 scenes <0x15, 2 0x15-0x2B, 3 0x2C-0x37 [C]
@@ -114,7 +124,9 @@ E.SoundId = {   -- played through 0x530DE (doc 10) [C]
     -- YM DAC sample effects (Timer A paced, 0x02B9 wait); silent until the
     -- offline extractor modelled the YM timers. Callers not traced yet [H].
     DAC_SAMPLE_19 = 0x19, DAC_SAMPLE_1B = 0x1B, DAC_SAMPLE_2C = 0x2C, DAC_SAMPLE_2D = 0x2D,
-    DAC_SAMPLE_2E = 0x2E, DAC_SAMPLE_2F = 0x2F, DAC_SAMPLE_40 = 0x40, DAC_SAMPLE_41 = 0x41,
+    DAC_SAMPLE_2E = 0x2E, DAC_SAMPLE_2F = 0x2F,
+    DAC_SAMPLE_40 = 0x40, -- 0xB03E kind 3 player C072 hurt cue [C]
+    DAC_SAMPLE_41 = 0x41,
     DAC_SAMPLE_42 = 0x42, DAC_SAMPLE_43 = 0x43, DAC_SAMPLE_44 = 0x44, DAC_SAMPLE_45 = 0x45,
     DAC_SAMPLE_46 = 0x46, DAC_SAMPLE_47 = 0x47, DAC_SAMPLE_48 = 0x48, DAC_SAMPLE_49 = 0x49,
     DAC_SAMPLE_4F = 0x4F, DAC_SAMPLE_56 = 0x56, DAC_SAMPLE_57 = 0x57, DAC_SAMPLE_58 = 0x58,

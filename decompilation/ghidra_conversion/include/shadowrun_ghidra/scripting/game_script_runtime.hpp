@@ -1082,6 +1082,7 @@ enum class ScriptActorAnimationMode : std::uint8_t {
     strike, // ROM 0xB1DC C0A2 unarmed strike list
     cast,   // ROM 0xAF7C/0xAFAE C082 spell pose
     runner_down, // ROM 0xB330 C0B2 party runner down list
+    runner_hurt, // ROM 0xAFF2 C072 party runner hurt list
 };
 
 struct ScriptMovementOffset {

@@ -5719,6 +5719,35 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 108;
     }
+    // ROM 0xAFF2 selects C072[dir], whose kind-3 list has two frames and
+    // advances +0x0300 against the 0x1000 +0x1C period before holding frame 1.
+    player_strike_render.animation_mode = ScriptActorAnimationMode::runner_hurt;
+    std::optional<ScriptActorBehaviorDecision> hurt_first;
+    std::optional<ScriptActorBehaviorDecision> hurt_second;
+    std::optional<ScriptActorBehaviorDecision> hurt_held;
+    for (std::size_t pass = 0U; pass < 24U; ++pass) {
+        const auto pose = scripts.actor_heartbeat(player_strike_render);
+        if (pass == 0U) {
+            hurt_first = pose;
+        }
+        if (pass == 5U) {
+            hurt_second = pose;
+        }
+        hurt_held = pose;
+    }
+    if (!expect(
+            hurt_first.has_value() &&
+                hurt_first->animation_id == "runner_hurt" &&
+                hurt_first->animation_frame == 0U &&
+                hurt_first->animation_selector ==
+                    std::optional<std::uint16_t>{0x0068U} &&
+                hurt_second.has_value() &&
+                hurt_second->animation_frame == 1U &&
+                hurt_held.has_value() && hurt_held->animation_frame == 1U,
+            "Lua runner_hurt did not follow the two-frame 0xAFF2 C072 list")) {
+        std::cerr << scripts.failure() << '\n';
+        return 109;
+    }
     if (!expect(
             player_strike_dead.has_value() &&
                 player_strike_dead->source_action_dispatch ==
