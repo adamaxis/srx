@@ -2,6 +2,7 @@
 #include <cstdio>
 #include "ghidra_conversion_qt_window.hpp"
 #include "enums.hpp"
+#include "field_map_composition.hpp"
 #include "genesis_image_compositor.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/random_conversion.hpp"
@@ -21,6 +22,8 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <limits>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -343,6 +346,164 @@ int run_field_alarm_qa(
               << spawned_after - actors_before
               << " countdown_clear=1 actual="
               << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
+std::size_t vdp_mirror_mismatch_count(
+    const qt_runtime::FieldSceneRuntime& field_scene, QImage& actual) {
+    const auto* model = field_scene.field_vdp_model_for_dump();
+    if (model == nullptr) {
+        return std::numeric_limits<std::size_t>::max();
+    }
+    model->compose(actual);
+    const auto [viewport_x, viewport_y] =
+        field_scene.field_vdp_viewport_origin_for_dump();
+    QImage expected(qt_runtime::VdpModel::kDisplayWidth,
+                    qt_runtime::VdpModel::kDisplayHeight,
+                    QImage::Format_ARGB32_Premultiplied);
+    expected.fill(Qt::black);
+    {
+        QPainter painter(&expected);
+        paint_field_map_composition(
+            painter, field_scene.field_map_for_dump(),
+            field_scene.field_map_priority_overlay_for_dump(),
+            QRect(viewport_x, viewport_y, expected.width(), expected.height()),
+            {});
+    }
+    if (actual.size() != expected.size()) {
+        return std::numeric_limits<std::size_t>::max();
+    }
+    std::size_t mismatches = 0U;
+    for (int y = 0; y < expected.height(); ++y) {
+        for (int x = 0; x < expected.width(); ++x) {
+            if (actual.pixel(x, y) != expected.pixel(x, y)) {
+                ++mismatches;
+            }
+        }
+    }
+    return mismatches;
+}
+
+int run_field_vdp_mirror_qa(
+    const shadowrun::ghidra_conversion::integration::StartupIntegrationState&
+        startup_state,
+    qt_runtime::FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    using shadowrun::ghidra_conversion::MapWordWrite;
+    constexpr int kCellPixels = 32;
+    std::filesystem::create_directories(output);
+    qt_runtime::FieldSceneRuntime default_scene(
+        [](const std::string_view) {});
+    if (!default_scene.bootstrap_for_scene_dump(startup_state, 2U) ||
+        default_scene.field_vdp_model_for_dump() != nullptr) {
+        std::cerr << "field VDP mirror QA: mirror was not off by default\n";
+        return 3;
+    }
+    std::cout << "field_vdp_mirror_default=off\n";
+    field_scene.set_field_vdp_mirror_enabled_for_qa(true);
+
+    for (const std::uint16_t scene_id : {2U, 26U}) {
+        if (!field_scene.bootstrap_for_scene_dump(startup_state, scene_id)) {
+            std::cerr << "field VDP mirror QA: scene " << scene_id
+                      << " did not bootstrap: " << field_scene.failure()
+                      << '\n';
+            return 3;
+        }
+        QImage actual;
+        auto mismatches = vdp_mirror_mismatch_count(field_scene, actual);
+        if (mismatches != 0U) {
+            std::cerr << "field VDP mirror QA: scene " << scene_id
+                      << " initial mismatches=" << mismatches << '\n';
+            return 3;
+        }
+        std::cout << "field_vdp_mirror_scene=" << scene_id
+                  << " initial_mismatches=" << mismatches << '\n';
+
+        if (scene_id == 2U) {
+            const auto columns = field_scene.field_map_columns_for_dump();
+            const auto& layer_a = field_scene.field_layer_a_for_dump();
+            const auto& layer_b = field_scene.field_layer_b_for_dump();
+            const auto [viewport_x, viewport_y] =
+                field_scene.field_vdp_viewport_origin_for_dump();
+            const QRect viewport(viewport_x, viewport_y,
+                                 qt_runtime::VdpModel::kDisplayWidth,
+                                 qt_runtime::VdpModel::kDisplayHeight);
+            const auto& map = field_scene.field_map_for_dump();
+            const auto cells = columns *
+                static_cast<std::size_t>(map.height() / kCellPixels);
+            const auto cell_rect = [columns](const std::size_t index) {
+                return QRect(static_cast<int>(index % columns) * kCellPixels,
+                             static_cast<int>(index / columns) * kCellPixels,
+                             kCellPixels, kCellPixels);
+            };
+            std::optional<std::size_t> target;
+            std::optional<std::size_t> donor;
+            bool layer_b_target = false;
+            for (const bool try_layer_b : {false, true}) {
+                for (std::size_t candidate = 0U;
+                     candidate < cells && !target; ++candidate) {
+                    if (!viewport.intersects(cell_rect(candidate))) {
+                        continue;
+                    }
+                    for (std::size_t source = 0U; source < cells; ++source) {
+                        const bool same_other_layer = try_layer_b
+                            ? layer_a[candidate] == layer_a[source]
+                            : layer_b[candidate] == layer_b[source];
+                        const bool changed_layer = try_layer_b
+                            ? layer_b[candidate] != layer_b[source]
+                            : layer_a[candidate] != layer_a[source];
+                        if (source != candidate && same_other_layer &&
+                            changed_layer &&
+                            map.copy(cell_rect(candidate)) !=
+                                map.copy(cell_rect(source))) {
+                            target = candidate;
+                            donor = source;
+                            layer_b_target = try_layer_b;
+                            break;
+                        }
+                    }
+                }
+                if (target.has_value()) {
+                    break;
+                }
+            }
+            if (!target.has_value() || !donor.has_value()) {
+                std::cerr << "field VDP mirror QA: no visible runtime-write "
+                             "donor in scene 2\n";
+                return 3;
+            }
+            const auto written_word = layer_b_target ? layer_b[*donor]
+                                                     : layer_a[*donor];
+            const auto repainted =
+                field_scene.apply_world_effect_layer_writes_for_dump(
+                    layer_b_target,
+                    {MapWordWrite{static_cast<std::int32_t>(*target * 2U),
+                                  written_word}});
+            if (repainted != 1U) {
+                std::cerr << "field VDP mirror QA: runtime cell write did not "
+                             "repaint scene 2 target=" << *target
+                          << " donor=" << *donor << '\n';
+                return 3;
+            }
+            mismatches = vdp_mirror_mismatch_count(field_scene, actual);
+            std::cout << "field_vdp_mirror_runtime_write="
+                      << (layer_b_target ? "plane_b" : "plane_a")
+                      << " target=" << *target << " donor=" << *donor
+                      << " mismatches=" << mismatches << '\n';
+            if (mismatches != 0U) {
+                return 3;
+            }
+        }
+
+        const auto image_path = output /
+            (std::string("scene-") + std::to_string(scene_id) + "-actual.bmp");
+        if (!actual.save(QString::fromStdString(image_path.string()))) {
+            std::cerr << "field VDP mirror QA: could not save "
+                      << image_path << '\n';
+            return 3;
+        }
+    }
+    std::cout << "field_vdp_mirror_qa=passed scenes=2,26\n";
     return 0;
 }
 
@@ -27859,6 +28020,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_world_effect_repaint_qa_path;
         std::optional<std::filesystem::path>
+            field_vdp_mirror_qa_path;
+        std::optional<std::filesystem::path>
             field_random_encounter_spawn_qa_path;
         std::optional<std::filesystem::path>
             field_npc_item_action_qa_path;
@@ -28180,6 +28343,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_world_effect_repaint_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-vdp-mirror-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_vdp_mirror_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-audio-qa") {
@@ -30017,6 +30186,10 @@ int main(int argc, char** argv) {
                 [&field_audio_stops](const std::uint16_t resource) {
                     field_audio_stops.push_back(resource);
                 });
+            if (field_vdp_mirror_qa_path.has_value()) {
+                return run_field_vdp_mirror_qa(
+                    smoke_state, field_scene, *field_vdp_mirror_qa_path);
+            }
             if (field_gang_contract_target_entry_qa_path.has_value()) {
                 return run_gang_contract_target_entry_qa(
                     smoke_state, asset_root,

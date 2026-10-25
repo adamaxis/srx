@@ -50,6 +50,7 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_scene_runtime_travel.cpp
     src/field/field_scene_runtime_shop_paint.cpp
     src/field/field_scene_runtime_world_effects.cpp
+    src/field/field_vdp_mirror.cpp
     src/field/field_map_composition.cpp
     src/field/matrix_map_presenter.cpp
     src/field/elevator_selector_runtime.cpp
@@ -530,6 +531,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_world_effect_repai
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-world-effect-repaint-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-world-effect-repaint-qa")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_vdp_mirror_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-vdp-mirror-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-vdp-mirror-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_vdp_mirror_qa
+    PROPERTIES ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;SRX_VDP_MODEL=0")
 # Field audio rules: scene-init music (profile +0x40 via audio.lua), the
 # Start-menu op-0x20 duck and its restore, music on a scene change.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_audio_qa

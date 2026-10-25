@@ -20,7 +20,9 @@ struct FieldCameraFollowState {
     std::uint16_t maximum_y = 0;
     std::uint16_t aligned_x = 0;
     std::uint16_t aligned_y = 0;
-    // FFDD08/FFDD0C and FFDD0A/FFDD0E. The horizontal pair is negated.
+    // Per-plane scroll-step biases for FFDD08/FFDD0C and FFDD0A/FFDD0E.
+    // ROM 0x3C8E..0x3CFE advances each pair together; horizontal deltas are
+    // negated while vertical deltas are positive [C].
     std::int16_t horizontal_bias_a = 0;
     std::int16_t horizontal_bias_b = 0;
     std::int16_t vertical_bias_a = 0;
