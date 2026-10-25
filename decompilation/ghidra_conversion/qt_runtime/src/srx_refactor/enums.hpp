@@ -96,6 +96,9 @@ enum class ActorPose : std::int64_t {
     DEATH = 0xE8,
 };
 enum class ActorRaceOrState : std::int64_t {
+    CONDITION_BONUS_EXEMPT_02 = 0x2,
+    CONDITION_BONUS_EXEMPT_04 = 0x4,
+    SPELL_SPECIAL_TARGET = 0x17,
     GHOUL_BOUNTY_TARGET = 0x42,
 };
 enum class ActorStatus : std::int64_t {
@@ -113,7 +116,7 @@ enum class ActorStatusEx : std::int64_t {
     UNSEEN = 0x80,
 };
 enum class AiTuning : std::int64_t {
-    THINK_RETRY = -1,
+    THINK_RETRY = -0x1,
     FOLLOW_COLLISION_CLEAR_MAX = 0x0,
     FOLLOW_FIRST_LEADER_SLOT = 0x0,
     FOLLOW_FIRST_SLOT = 0x0,
@@ -128,16 +131,20 @@ enum class AiTuning : std::int64_t {
     APPROACH_TICKS = 0x6,
     THON_PERIOD = 0x8,
     FOLLOW_SAMPLE_SHIFT = 0x9,
+    WORLD_TARGET_LIST_PHASE = 0xB,
+    RUNNER_TARGET_LIST_PHASE = 0xF,
     THINK_FRAMES = 0x14,
     FOLLOW_QUARTER_WAVE_SAMPLES = 0x20,
     FOLLOW_RADIUS_INITIAL = 0x20,
     RELOAD_ROUNDS = 0x26,
     ENDING_HOLD_ROUNDS = 0x28,
     ANIM_BUSY = 0x3C,
+    TARGET_LIST_PHASE_MASK = 0x3F,
     FOLLOW_SAMPLE_MASK = 0x7F,
     FLANK_RADIUS = 0xE0,
     FOLLOW_RADIUS = 0xE0,
     ARRIVE_DIST = 0x1E0,
+    CLOSE_STRIKE_RANGE = 0x200,
     ENGAGE_DIST = 0x500,
     WATCH_DIST = 0x640,
     ANIM_TIMER_MASK = 0x7FF,
@@ -194,11 +201,22 @@ enum class Collision : std::int64_t {
     LOW_BITS = 0x1F,
     BLOCKED = 0x7F,
 };
+enum class CombatActionProfileFlag : std::int64_t {
+    PRIMARY = 0x1,
+    SECONDARY = 0x2,
+};
+enum class CombatInteractionFlag : std::int64_t {
+    DEFENSE_DIFFICULTY_REDUCTION = 0x20,
+    NO_COVERAGE_DIFFICULTY_BONUS = 0x80,
+};
 enum class CombatPhase : std::int64_t {
     NONE = 0x0,
     ATTACK_ANIM = 0x1,
     APPROACH = 0x2,
     HOLD = 0x3,
+};
+enum class CombatTargetClass : std::int64_t {
+    DIFFICULTY_PLUS_TWO = 0x16,
 };
 enum class CyberBit : std::int64_t {
     DATAJACK = 0x0,
@@ -206,6 +224,12 @@ enum class CyberBit : std::int64_t {
     HAND_RAZORS = 0x2,
     SPURS = 0x3,
     SMARTLINK = 0x4,
+};
+enum class CyberwareMask : std::int64_t {
+    CYBEREYES = 0x2,
+    HAND_RAZORS = 0x4,
+    SPURS = 0x8,
+    SMARTLINK = 0x10,
 };
 enum class DebugOption : std::int64_t {
     NUYEN = 0x0,
@@ -247,21 +271,23 @@ enum class EventFn : std::int64_t {
 };
 inline constexpr std::int64_t FIRST_NON_WEAPON = 0xD;
 enum class FieldAlarm : std::int64_t {
-    TIMER_MIN = -32768,
+    TIMER_MIN = -0x8000,
     TILE_SHIFT = 0x4,
     FRAME_VALUE = 0xD,
-    EFFECT_ACTOR_LIST_POINTER_OFFSET = 0x10,
-    FIRST_LIST_SCENE = 0x15,
-    LAST_LIST_SCENE = 0x2B,
     FRAME_MASK = 0x3F,
-    PROFILE_EFFECT_POINTER_OFFSET = 0x58,
     ACTOR_FLAGS_MAX = 0xFF,
-    PROFILE_TABLE_ADDRESS = 0x3232,
     TIMER_MAX = 0x7FFF,
     RANDOM_REJECT_FROM = 0x8000,
     WORD_MAX = 0xFFFF,
-    SCENE_21_REINFORCEMENT_LIST = 0x1D7460,
     LIST_ADDRESS_MAX = 0xFFFFFFFF,
+};
+enum class FieldAlarmRomLayout : std::int64_t {
+    EFFECT_ACTOR_LIST_POINTER_OFFSET = 0x10,
+    FIRST_LIST_SCENE = 0x15,
+    LAST_LIST_SCENE = 0x2B,
+    PROFILE_EFFECT_POINTER_OFFSET = 0x58,
+    PROFILE_TABLE_ADDRESS = 0x3232,
+    SCENE_21_REINFORCEMENT_LIST = 0x1D7460,
 };
 enum class GhoulBounty : std::int64_t {
     MAX_DEFEATS = 0x14,
@@ -314,6 +340,11 @@ enum class ItemId : std::int64_t {
     MAGLOCK_PASSKEY = 0x14,
     ELECTRONIC_KIT = 0x15,
     SMART_GOGGLES = 0x16,
+    POWER_FOCUS = 0x18,
+    COMBAT_SENSE_SPELL_LOCK = 0x28,
+    RAT_TOTEM = 0x29,
+    GATOR_TOTEM = 0x2A,
+    BEAR_TOTEM = 0x2B,
 };
 enum class ItemKind : std::int64_t {
     FIREARM = 0x1,
@@ -339,7 +370,7 @@ enum class MatrixDeckMode : std::int64_t {
     ATTACK = 0xFF,
 };
 enum class MatrixModeResult : std::int64_t {
-    ATTACK = -1,
+    ATTACK = -0x1,
     BALANCED = 0x0,
     DEFENSE = 0x1,
 };
@@ -611,6 +642,9 @@ enum class SaveLoadOption : std::int64_t {
     SAVE = 0x0,
     LOAD = 0x1,
 };
+enum class Scene : std::int64_t {
+    LAST_ID = 0x37,
+};
 enum class SceneId : std::int64_t {
     ALARM_COMBAT = 0x14,
     FINAL = 0x37,
@@ -802,6 +836,12 @@ enum class VidPhoneContact : std::int64_t {
     MAX = 0xA,
     CHILLICUT = 0xB,
     PROFESSOR_JEFFERSON = 0xC,
+};
+enum class WeaponActionPhaseFlag : std::int64_t {
+    CYBERWARE_DIFFICULTY_BONUS = 0x1,
+    ACTION_DIFFICULTY_MINUS_ONE = 0x8,
+    ACTION_DIFFICULTY_MINUS_TWO = 0x10,
+    ACTION_DIFFICULTY_MINUS_THREE = 0x20,
 };
 enum class WeaponClass : std::int64_t {
     LIGHT_PISTOL = 0x0,

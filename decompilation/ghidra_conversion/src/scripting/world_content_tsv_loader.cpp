@@ -1,4 +1,5 @@
 #include "world_content_tsv_loader.hpp"
+#include "enums.hpp"
 
 #include <algorithm>
 #include <array>
@@ -306,7 +307,7 @@ bool push_scene_indexed_rows(
         lua_Integer scene_id = 0;
         if (!row_integer(document, document.rows[row_index], "scene_id",
                          scene_id, source_path, row_index + 2U, failure) ||
-            scene_id < 0 || scene_id > 55) {
+            scene_id < 0 || scene_id > srx::v(srx::Scene::LAST_ID)) {
             if (failure.empty()) {
                 failure = source_path.string() + ": row " +
                     std::to_string(row_index + 2U) +

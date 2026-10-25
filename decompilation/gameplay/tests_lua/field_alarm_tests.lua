@@ -13,7 +13,7 @@ end
 
 local function facts(overrides)
     local value = {
-        scene_id = E.FieldAlarm.FIRST_LIST_SCENE,
+        scene_id = E.FieldAlarmRomLayout.FIRST_LIST_SCENE,
         frame_counter = E.FieldAlarm.FRAME_VALUE,
         scene_mode = E.SceneMode.BUILDING,
         player_tile_x = 33,
@@ -32,7 +32,7 @@ local function facts(overrides)
             { flags9e = E.ActorFlag.SPOTTED },
         },
         reinforcement_list_address =
-            E.FieldAlarm.SCENE_21_REINFORCEMENT_LIST,
+            E.FieldAlarmRomLayout.SCENE_21_REINFORCEMENT_LIST,
     }
     for key, item in pairs(overrides or {}) do value[key] = item end
     return value

@@ -278,7 +278,7 @@ int run_field_alarm_qa(
     const std::vector<std::uint16_t>& audio_stops) {
     std::filesystem::create_directories(output);
     const auto scene_id = static_cast<std::uint16_t>(
-        srx::FieldAlarm::FIRST_LIST_SCENE);
+        srx::FieldAlarmRomLayout::FIRST_LIST_SCENE);
     if (field_scene.field_scene_reference_for_dump() != scene_id) {
         std::cerr << "field alarm QA: expected extracted scene 21 rectangles\n";
         return 3;
@@ -29888,7 +29888,7 @@ int main(int argc, char** argv) {
                 field_alarm_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(
                           smoke_state, static_cast<std::uint16_t>(
-                              srx::FieldAlarm::FIRST_LIST_SCENE))
+                              srx::FieldAlarmRomLayout::FIRST_LIST_SCENE))
                     : ((field_wylie_gala_inn_qa_path.has_value() ||
                  field_penumbra_mako_qa_path.has_value() ||
                  field_penumbra_reputation_rejection_qa_path.has_value() ||

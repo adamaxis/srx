@@ -8075,15 +8075,15 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
          "0x43B6 pending-list continuation for pointer 0x1E628"},
     };
     constexpr auto kFieldSceneProfilePointerTable = static_cast<std::size_t>(
-        srx::FieldAlarm::PROFILE_TABLE_ADDRESS);
+        srx::FieldAlarmRomLayout::PROFILE_TABLE_ADDRESS);
     constexpr auto kSceneProfileAlarmEffectPointer = static_cast<std::size_t>(
-        srx::FieldAlarm::PROFILE_EFFECT_POINTER_OFFSET);
+        srx::FieldAlarmRomLayout::PROFILE_EFFECT_POINTER_OFFSET);
     constexpr auto kAlarmEffectActorListPointer = static_cast<std::size_t>(
-        srx::FieldAlarm::EFFECT_ACTOR_LIST_POINTER_OFFSET);
+        srx::FieldAlarmRomLayout::EFFECT_ACTOR_LIST_POINTER_OFFSET);
     constexpr auto kFirstAlarmFieldScene = static_cast<std::uint16_t>(
-        srx::FieldAlarm::FIRST_LIST_SCENE);
+        srx::FieldAlarmRomLayout::FIRST_LIST_SCENE);
     constexpr auto kLastAlarmFieldScene = static_cast<std::uint16_t>(
-        srx::FieldAlarm::LAST_LIST_SCENE);
+        srx::FieldAlarmRomLayout::LAST_LIST_SCENE);
     for (std::uint16_t scene_id = kFirstAlarmFieldScene;
          scene_id <= kLastAlarmFieldScene; ++scene_id) {
         const auto profile_offset = read_big_endian_long(

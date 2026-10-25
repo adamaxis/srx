@@ -2,6 +2,7 @@
 -- C++ supplies the source PRNG draws and consumes the selected typed result;
 -- event policy and encounter content remain in Lua.
 local Encounters = {}
+local E = require("enums")
 
 local function integer(value, minimum, maximum)
     return type(value) == "number" and value % 1 == 0 and
@@ -126,7 +127,7 @@ end
 -- for one, so blocked/not-due field passes do not consume random state.
 function Encounters.trigger_attempt(context)
     if type(context) ~= "table" or
-       not integer(context.scene_id, 0, 55) or
+       not integer(context.scene_id, 0, E.Scene.LAST_ID) or
        not integer(context.frame_counter, 0, 0xffff) or
        type(context.trigger_delay_active) ~= "boolean" or
        type(context.current_entity_protected) ~= "boolean" or
@@ -164,7 +165,7 @@ function Encounters.trigger_attempt(context)
 end
 
 function Encounters.resolve(scene_id, first_roll, second_roll)
-    if not integer(scene_id, 0, 55) or
+    if not integer(scene_id, 0, E.Scene.LAST_ID) or
        not integer(first_roll, 0, 4) or
        not integer(second_roll, 0, 4) then
         return nil
@@ -250,7 +251,8 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
 end
 
 function Encounters.resolve_run_target_actor_group(area_id, event_id)
-    if not integer(area_id, 0, 55) or not integer(event_id, 0, 255) then
+    if not integer(area_id, 0, E.Scene.LAST_ID) or
+       not integer(event_id, 0, 255) then
         return nil
     end
     local data = content()
@@ -283,7 +285,7 @@ end
 -- ordinary field random selector. Its actor rows use random_sum 0xFF in the
 -- extracted table so this lookup never leaks them into resolve().
 function Encounters.resolve_source_sequence(scene_id, sequence_list_offset)
-    if not integer(scene_id, 0, 55) or
+    if not integer(scene_id, 0, E.Scene.LAST_ID) or
        not integer(sequence_list_offset, 0, 0x1fffff) then
         return nil
     end
