@@ -1315,8 +1315,11 @@ struct ScriptActorBehaviorContext {
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t source_behavior_flags = 0;
     std::uint8_t source_spawn_state_flags = 0;
-    // FFE175 has no recovered producer in the host; nil means unknown [H].
+    // One field-frame token suppresses later due actor thoughts [C].
     std::optional<bool> source_think_suppressed;
+    // FFE188 is shared by THON records. Its initial value has no explicit
+    // ROM initializer in the recovered trace, so nil preserves that boundary [H].
+    std::optional<std::uint8_t> source_thon_period_counter;
     // FFE16F / FFDF40 actor-think inputs. Alarm remains optional until the
     // field security fact is known; scene mode and camera/profile bounds are
     // populated from the live field state [C].
@@ -1327,8 +1330,6 @@ struct ScriptActorBehaviorContext {
     std::optional<std::uint16_t> source_camera_y;
     std::optional<std::uint16_t> source_camera_limit_x;
     std::optional<std::uint16_t> source_camera_limit_y;
-    // The FF13AE facing reference has no recovered producer in this host [H].
-    std::optional<std::uint16_t> guard_facing_reference;
     std::uint8_t source_action_slot = 0;
     std::uint8_t source_action_ammo = 0;
     std::uint8_t source_action_counter = 0;
@@ -1437,6 +1438,9 @@ struct ScriptActorBehaviorDecision {
     std::uint8_t source_spawn_state_flags = 0;
     bool world_activity_requested = false;
     std::optional<std::uint32_t> field_event_request;
+    bool think_token_claimed = false; // FFE175 was consumed in this heartbeat [C]
+    // Lua returns the shared FFE188 byte after the THON period path [C].
+    std::optional<std::uint8_t> source_thon_period_counter;
     std::uint16_t source_animation_selector = 0;
     std::optional<std::uint16_t> animation_selector;
     bool combat_action_requested = false;

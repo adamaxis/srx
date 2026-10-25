@@ -32,6 +32,7 @@ local function context(overrides)
             { id = "party.runner.0", source_record_slot = 0,
               world_activity_actor = false, world_x = 0x2000,
               world_y = 0x2400, heading = 0x1000, distance = 0x300,
+              service_flags = E.ActorStatus.ACTIVE,
               interaction_flags = 0 },
         },
     }
@@ -79,12 +80,74 @@ check(R.advance_think(s, c) == "patrol" and
       s.behavior_timer == E.AiTuning.THINK_FRAMES,
       "FFE175 clear retries immediately and refreshes +0xB6")
 
+local first_actor, second_actor = state(), state()
+local token_context = context({ source_think_suppressed = false })
+local first_actor_path = R.advance_think(first_actor, token_context)
+token_context.source_think_suppressed = first_actor.think_token_claimed
+local second_actor_path = R.advance_think(second_actor, token_context)
+check(first_actor_path == "patrol" and first_actor.think_token_claimed and
+      second_actor_path == "skip" and second_actor.behavior_timer ==
+          E.AiTuning.THINK_RETRY and not second_actor.think_token_claimed,
+      "FFE175 lets the first due slot claim the frame and leaves the second at -1")
+token_context.source_think_suppressed = false
+check(R.advance_think(second_actor, token_context) == "patrol" and
+      second_actor.think_token_claimed,
+      "the suppressed actor retries and claims the token on the next field frame")
+
 local thon_state = state()
-local thon_path = R.think_gate(thon_state,
-    context({ entity_kind = E.SpriteType.THON }))
-check(thon_path == "combat" and
-      thon_state.ai_think_gap == "thon_period_path_unported",
-      "0x13920 identifies the THON transfer and leaves its special body explicit")
+local thon_context = context({
+    entity_kind = E.SpriteType.THON,
+    source_thon_period_counter = E.AiTuning.THON_PERIOD,
+    ai_target_candidates = {
+        { id = "party.runner.0", source_record_slot = 0,
+          world_activity_actor = false, has_action = true,
+          service_flags = E.ActorStatus.ACTIVE, interaction_flags = 0,
+          world_x = 0x2000, world_y = 0x2400,
+          heading = 0x1000, distance = 0x300 },
+    },
+    ai_random_bound = function() return 0 end,
+    action_line_clear = function() return true end,
+})
+local thon_skips = 0
+for _ = 1, E.AiTuning.THON_PERIOD do
+    local path = R.think_gate(thon_state, thon_context)
+    if path == "thon_idle" then
+        thon_skips = thon_skips + 1
+        R.apply_think_path(thon_state, thon_context, path)
+    end
+    thon_context.source_thon_period_counter =
+        thon_state.source_thon_period_counter
+end
+local thon_fire_path = R.think_gate(thon_state, thon_context)
+check(thon_skips == E.AiTuning.THON_PERIOD and
+      thon_fire_path == "thon_action" and
+      thon_state.source_thon_period_counter == E.AiTuning.THON_PERIOD and
+      thon_state.ai_target_id == "party.runner.0" and
+      thon_state.movement_current_heading == 0x1000 and
+      thon_state.source_animation_selector > E.AiTuning.ANIM_BUSY,
+      "THON decrements the shared period eight times, then aims and selects C082")
+
+local thon_unknown_state = state()
+check(R.think_gate(thon_unknown_state,
+      context({ entity_kind = E.SpriteType.THON })) == "thon_unresolved" and
+      thon_unknown_state.ai_think_gap ==
+          "thon_global_period_initial_value_unresolved",
+      "THON preserves the missing FFE188 initializer as an explicit gap")
+
+local thon_busy_state = state({
+    source_animation_selector = E.AiTuning.ANIM_BUSY + 1,
+})
+local thon_los_calls = 0
+thon_context.source_animation_selector = E.AiTuning.ANIM_BUSY + 1
+thon_context.source_thon_period_counter = E.AiTuning.THON_PERIOD
+thon_context.action_line_clear = function()
+    thon_los_calls = thon_los_calls + 1
+    return true
+end
+check(R.think_gate(thon_busy_state, thon_context) == "thon_busy" and
+      thon_busy_state.source_thon_period_counter == nil and
+      thon_los_calls == 0,
+      "THON with +0x16 above 0x3C leaves the period and action path untouched")
 
 local escort_path = R.think_gate(state({
     source_behavior_flags = E.BehaviorFlag.ESCORT,
@@ -230,12 +293,12 @@ local function guard_case(overrides, actor_overrides, line_clear)
         source_actor_posture = E.Posture.NEUTRAL,
         source_alarm_active = false,
         source_scene_mode = E.SceneMode.BUILDING,
-        guard_facing_reference = 0x1000,
         action_line_clear = function() return line_clear ~= false end,
         ai_target_candidates = {
             { id = "party.runner.0", source_record_slot = 0,
               world_activity_actor = false, world_x = 0x2000,
               world_y = 0x2400, distance = 0x300, heading = 0x1000,
+              service_flags = E.ActorStatus.ACTIVE,
               interaction_flags = 0 },
         },
     })
@@ -271,14 +334,31 @@ s, c = guard_case({ source_alarm_active = true })
 check(s.world_activity_requested and
       (s.source_spawn_state_flags & E.ActorFlag.SPOTTED) == 0,
       "0x13F80 FFE16F branch requests 0x1DBAA before spotting")
-s, c = guard_case({ guard_facing_reference = false })
-check((s.source_spawn_state_flags & E.ActorFlag.SPOTTED) == 0 and
-      s.ai_think_gap == "guard_facing_reference_unresolved",
-      "0x13FB4 keeps the missing FF13AE producer explicit")
-s, c = guard_case({ guard_facing_reference = 0x1000 },
-                  { movement_current_heading = 0x5000 })
+s, c = guard_case({ ai_target_candidates = {
+    { id = "party.runner.0", source_record_slot = 0,
+      world_activity_actor = false, world_x = 0x2000, world_y = 0x2400,
+      distance = 0x300, heading = 0x7000,
+      service_flags = 0, interaction_flags = 0 },
+} })
+check((s.source_spawn_state_flags & E.ActorFlag.SPOTTED) ~= 0 and
+      s.ai_think_gap == nil,
+      "0x14D8E keeps the guard heading in FF13AE when leader ACTIVE is clear")
+s, c = guard_case({ ai_target_candidates = {
+    { id = "party.runner.0", source_record_slot = 0,
+      world_activity_actor = false, world_x = 0x2000, world_y = 0x2400,
+      distance = 0x300, heading = 0x1000,
+      service_flags = E.ActorStatus.ACTIVE, interaction_flags = 0 },
+} }, { movement_current_heading = 0x5000 })
 check((s.source_spawn_state_flags & E.ActorFlag.SPOTTED) == 0,
       "0x13FC6 rejects a facing difference at the quarter-turn boundary")
+s, c = guard_case({ ai_target_candidates = {
+    { id = "party.runner.0", source_record_slot = 0,
+      world_activity_actor = false, world_x = 0x2000, world_y = 0x2400,
+      distance = 0x300, heading = 32769,
+      service_flags = E.ActorStatus.ACTIVE, interaction_flags = 0 },
+} }, { movement_current_heading = 32767 })
+check((s.source_spawn_state_flags & E.ActorFlag.SPOTTED) ~= 0,
+      "0x13FB4 wraps the signed heading delta across 0x8000")
 
 check(R.think_gate(state(), context({ source_projection_active = false })) ==
       "patrol", "0x142AE selects the patrol branch [C]")

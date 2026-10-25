@@ -4,7 +4,7 @@ local E = require("enums")
 local I = require("lib.int68k")
 local EntityMotion = require("entity_motion")
 local WaypointLists = require("data.actor_waypoint_lists")
-local u8, u16, s16 = I.u8, I.u16, I.s16
+local u8, u16, s8, s16 = I.u8, I.u16, I.s8, I.s16
 local AiTuning, ActorFlag, ActorStatus, ActorStatusEx, BehaviorFlag, SceneMode =
     E.AiTuning, E.ActorFlag, E.ActorStatus, E.ActorStatusEx,
     E.BehaviorFlag, E.SceneMode
@@ -32,6 +32,51 @@ local function request_world_activity(state)
     state.world_activity_requested = true
 end
 
+local function thon_period_path(state, context)
+    -- ROM 0x13A4C gates on +0x16 before decrementing shared FFE188 [C].
+    local selector = s16(u16(context.source_animation_selector or
+                              state.source_animation_selector or 0))
+    if selector > AiTuning.ANIM_BUSY then
+        return "thon_busy"
+    end
+
+    local period = context.source_thon_period_counter
+    if type(period) ~= "number" then
+        -- FFE188 has no explicit clear or initializer in the ROM trace.
+        state.ai_think_gap = "thon_global_period_initial_value_unresolved"
+        return "thon_unresolved"
+    end
+
+    local decremented = u8(period - 1)
+    state.source_thon_period_counter = decremented
+    if s8(decremented) >= 0 then
+        return "thon_idle"
+    end
+
+    -- 0x13A66 reloads before 0x14492 picks from FFDFC8 and 0xAE6E aims [C].
+    state.source_thon_period_counter = AiTuning.THON_PERIOD
+    local target = R.linked_target(context, state)
+    if type(target) ~= "table" or type(target.heading) ~= "number" then
+        state.ai_think_gap = "thon_target_link_unavailable"
+        return "thon_unresolved"
+    end
+    if type(target.world_x) ~= "number" or type(target.world_y) ~= "number" or
+       type(context.action_line_clear) ~= "function" then
+        state.ai_think_gap = "thon_line_of_sight_unavailable"
+        return "thon_unresolved"
+    end
+    local line_clear = context.action_line_clear(target.world_x, target.world_y)
+    if type(line_clear) ~= "boolean" then
+        state.ai_think_gap = "thon_line_of_sight_unavailable"
+        return "thon_unresolved"
+    end
+    if not R.begin_thon_action(state, target, line_clear) then
+        state.ai_think_gap = "thon_directional_pose_unavailable"
+        return "thon_unresolved"
+    end
+    return "thon_action"
+end
+
 local function guard_spots_you(state, context, leader)
     if context.world_activity_active == true then
         return
@@ -51,21 +96,29 @@ local function guard_spots_you(state, context, leader)
     if context.action_line_clear(leader.world_x, leader.world_y) ~= true then
         return
     end
-    -- FF13AE has no recovered producer in the current host. The ROM-facing
-    -- reference and the actor's +0x2E heading are injectable facts [H].
-    if type(context.guard_facing_reference) ~= "number" or
-       type(state.movement_current_heading) ~= "number" then
-        state.ai_think_gap = "guard_facing_reference_unresolved"
+    if type(state.movement_current_heading) ~= "number" then
+        state.ai_think_gap = "guard_heading_unavailable"
+        return
+    end
+    -- 0x15D3C measures guard-to-leader heading; 0x14D8E stores it in FF13AE
+    -- when the leader is ACTIVE, otherwise FF13AE keeps the guard's +0x2E [C].
+    local facing_reference = has(leader.service_flags or 0,
+                                 ActorStatus.ACTIVE)
+        and leader.heading or state.movement_current_heading
+    if type(facing_reference) ~= "number" then
+        state.ai_think_gap = "leader_heading_unavailable"
         return
     end
     local facing_delta = s16(u16(
-        state.movement_current_heading - context.guard_facing_reference))
+        state.movement_current_heading - facing_reference))
+    -- 0x13FB4 rejects an absolute signed-word delta at or above 0x4000 [C].
     if math.abs(facing_delta) >= AiTuning.QUARTER_TURN then
         return
     end
 
     if context.source_scene_mode == SceneMode.BUILDING and
        not has(leader.interaction_flags or 0, ActorStatusEx.UNSEEN) then
+        -- 0x13FCC queues the security message only for a visible leader [C].
         state.field_event_request = E.EventFn.GUARD_SPOTS_YOU
     end
     -- 0x13FF6 sets +0x9E.b0 after the optional building event [C].
@@ -79,11 +132,8 @@ local function think_gate(state, context)
     local record_flags = context.source_record_flags or 0
     local world_active = context.world_activity_active == true
 
-    -- 0x13920's kind-0xF transfer is retained in the existing generic actor
-    -- action path, but its 0x13A4C global-period behavior remains unresolved [H].
     if context.entity_kind == E.SpriteType.THON then
-        state.ai_think_gap = "thon_period_path_unported"
-        return "combat"
+        return thon_period_path(state, context)
     end
     -- 0x1392A -> 0x14508 -> 0x1450E uses the controlled runner's record [C].
     if has(behavior_flags, BehaviorFlag.ESCORT) then
@@ -170,6 +220,8 @@ local function advance_think(state, context)
     state.field_event_request = nil
     state.ai_deactivate_requested = false
     state.ai_think_gap = nil
+    state.think_token_claimed = false
+    state.source_thon_period_counter = nil
     if state.behavior_timer > 0 then
         state.behavior_timer = state.behavior_timer - 1
         state.ai_think_path = "wait"
@@ -181,7 +233,9 @@ local function advance_think(state, context)
         state.ai_think_path = "skip"
         return "skip"
     end
+    -- 0x138B8 claims FFE175 before the 0x13904 think gate [C].
     state.behavior_timer = AiTuning.THINK_FRAMES
+    state.think_token_claimed = true
     state.ai_think_path = think_gate(state, context)
     return state.ai_think_path
 end
@@ -517,6 +571,14 @@ local function apply_path(state, context, path)
         if state.ai_deactivate_requested then
             state.movement_active = false
         end
+        return true
+    elseif path == "thon_busy" or path == "thon_unresolved" then
+        return true
+    elseif path == "thon_idle" then
+        -- The 0xB45C idle/stand continuation is represented by set_idle [C].
+        set_idle(state)
+        return true
+    elseif path == "thon_action" then
         return true
     elseif path == "flee" then
         apply_flee(state, context)

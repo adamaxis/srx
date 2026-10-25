@@ -2779,6 +2779,8 @@ bool FieldSceneRuntime::transition_to_field_destination(
     world_frame_logic_state_.world_mode = scene_reference;
     field_world_activity_scene_entry_pending_ = false;
     field_world_activity_state_ = WorldActivityState{};
+    field_think_token_claimed_ = false;
+    // FFE188 is not cleared on a scene change; only boot clears it [C].
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     field_world_activity_timeout_state_.scene_id = scene_reference;
     world_activity_routine_state_ = WorldActivityRoutineState{};
@@ -4521,10 +4523,28 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
 void FieldSceneRuntime::advance_default_field_actors() {
     const auto current_scene = state_.field_scene_buffers.scene_reference;
     publish_pending_world_activity_script_actors(current_scene);
+    std::vector<DefaultFieldActorPresentation*> ordered_actors;
+    ordered_actors.reserve(field_default_actors_.size());
     for (auto& actor : field_default_actors_) {
-        if (!actor.active || actor.scene_reference != current_scene) {
-            continue;
+        if (actor.active && actor.scene_reference == current_scene) {
+            ordered_actors.push_back(&actor);
         }
+    }
+    std::stable_sort(
+        ordered_actors.begin(), ordered_actors.end(),
+        [](const auto* left, const auto* right) {
+            if (!left->source_record_slot.has_value()) {
+                return false;
+            }
+            if (!right->source_record_slot.has_value()) {
+                return true;
+            }
+            return static_cast<std::size_t>(*left->source_record_slot) <
+                   static_cast<std::size_t>(*right->source_record_slot);
+        });
+    // 0x0A8EA services the FF0400..FF0A00 record pool in slot order [C].
+    for (auto* actor_record : ordered_actors) {
+        auto& actor = *actor_record;
         const bool dynamic_world_actor = actor.temporary_world_encounter ||
                                          actor.world_activity_script_actor;
         scripting::ScriptActorBehaviorContext context{
@@ -4541,6 +4561,8 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 : actor.initial_heading,
             false,
         };
+        context.source_think_suppressed = field_think_token_claimed_;
+        context.source_thon_period_counter = field_thon_period_counter_;
         context.walk_fast_enabled = field_walk_fast_enabled_;
         context.target_selection_latched = actor.target_selected;
         context.target_marker_reads_stun_meter =
@@ -4795,7 +4817,8 @@ void FieldSceneRuntime::advance_default_field_actors() {
             // The other source target pool is the seven world-actor records
             // beginning at FF0400. These are live encounter/field actors, not
             // scenery rows; Lua applies the source record eligibility gates.
-            for (const auto& target : field_default_actors_) {
+            for (const auto* target_record : ordered_actors) {
+                const auto& target = *target_record;
                 const auto source_slot = target.source_record_slot.has_value()
                     ? static_cast<std::uint8_t>(
                           *target.source_record_slot)
@@ -5161,6 +5184,13 @@ void FieldSceneRuntime::advance_default_field_actors() {
             actor.active = false;
             continue;
         }
+        if (decision->think_token_claimed) {
+            field_think_token_claimed_ = true;
+        }
+        if (decision->source_thon_period_counter.has_value()) {
+            field_thon_period_counter_ =
+                decision->source_thon_period_counter;
+        }
         if (dynamic_world_actor) {
             actor.source_item_spawn_result.reset();
         }
@@ -5234,9 +5264,29 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 source_boundary("field.actor.think_world_activity_request_gated");
             }
         }
-        if (dynamic_world_actor && decision->field_event_request.has_value()) {
-            // 0x1E2E0 event scheduling has no typed field-event queue yet [H].
-            source_boundary("field.actor.think_field_event_request_unresolved");
+        if (decision->field_event_request.has_value()) {
+            const auto event = static_cast<srx::EventFn>(
+                *decision->field_event_request);
+            if (event == srx::EventFn::GUARD_SPOTS_YOU) {
+                const auto continuation =
+                    MovementModeTransitionContinuation::
+                        guard_spotted_field_event;
+                if (begin_world_activity_if_idle(
+                        field_world_activity_state_,
+                        static_cast<std::uint16_t>(continuation))) {
+                    world_frame_logic_state_.resource_countdown =
+                        field_world_activity_state_.timeout;
+                    record_field_activity_start(continuation);
+                    source_boundary(
+                        "field.actor.guard_spotted_event_scheduled");
+                } else {
+                    source_boundary(
+                        "field.actor.guard_spotted_event_gated");
+                }
+            } else {
+                source_boundary(
+                    "field.actor.think_field_event_request_unresolved");
+            }
         }
         if (decision->target_motion_effect_slot_request.has_value()) {
             const auto slot = *decision->target_motion_effect_slot_request;
@@ -8337,6 +8387,14 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 return integration::PendingFieldSceneHandlerResult::resumed_field;
             }
         }
+        if (continuation == MovementModeTransitionContinuation::
+                                guard_spotted_field_event) {
+            // 0x20FEC points at the 0x121238/0x122030 field-message program.
+            // The current gameplay message runner cannot decode that record [H].
+            source_boundary(
+                "field.activity.guard_spotted_message_0x121238_0x122030_unresolved");
+            return integration::PendingFieldSceneHandlerResult::unresolved;
+        }
         if (continuation ==
             MovementModeTransitionContinuation::scene_37_antechamber_entry) {
             if (state_.field_scene_buffers.scene_reference != 55U) {
@@ -8544,6 +8602,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         return field_controller_sample_state_.events;
     };
     field_runtime_callbacks_.service_entity_behavior_frames = [this] {
+        // ROM 0x29F6 clears FFE175 before 0x13874 services the actor slots [C].
+        field_think_token_claimed_ = false;
         advance_player_weapon_action_gate();
         advance_field_weapon_projectiles();
         advance_field_movement();
@@ -12519,6 +12579,10 @@ bool FieldSceneRuntime::bootstrap(
     field_mako_actor_transitions_remaining_.reset();
     field_pending_actor_list_callback_.reset();
     field_world_activity_state_ = WorldActivityState{};
+    field_think_token_claimed_ = false;
+    // Boot clears FF0000-FFFF7F (0xC3A) or FF0000-FFF1E7 (0xC58), so
+    // FFE188 starts at zero [C].
+    field_thon_period_counter_ = 0U;
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     world_activity_routine_state_ = WorldActivityRoutineState{};
     world_activity_request_state_ = WorldActivityRoutineRequestState{};
@@ -13696,7 +13760,9 @@ void FieldSceneRuntime::record_field_activity_start(
         continuation == MovementModeTransitionContinuation::
                            scene_55_tomb_credits_callback ||
         continuation == MovementModeTransitionContinuation::
-                           mode_table_world_activity) {
+                           mode_table_world_activity ||
+        continuation == MovementModeTransitionContinuation::
+                           guard_spotted_field_event) {
         field_runtime_state_.pending_field_scene_handler = true;
     }
     // ROM 0x1E2E0/0x1E2EC stores the typed continuation in the activity

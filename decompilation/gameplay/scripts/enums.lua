@@ -147,7 +147,8 @@ E.AiTuning = {   -- [C] unless marked
     PATROL_INITIAL_CURSOR = 0, -- 0x142FE clears +0xE4 at the list terminator [C]
     WORD_MAX = 0xFFFF, -- 0x1450E heading and coordinate inputs are 16-bit words [C]
     FLEE_OFFSET = 0x2580, FLEE_CAMERA_BIAS = 0xA00, ENGAGE_DIST = 0x500, WATCH_DIST = 0x640,
-    THON_PERIOD = 8, HURT_BELOW = 4, CAST_MIN_STUN = 5, SPELL_GATE_MAX = 2, APPROACH_TICKS = 6,
+    THON_PERIOD = 8, -- FFE188 reload at 0x13A66 [C]; boot RAM clear 0xC3A/0xC58 zeroes it [C]
+    HURT_BELOW = 4, CAST_MIN_STUN = 5, SPELL_GATE_MAX = 2, APPROACH_TICKS = 6,
     QUARTER_TURN = 0x4000, NO_TARGET = 0x12345678, STEER_NONE = 0x1000, ALARM_FRAMES = 0x960,
     RELOAD_ROUNDS = 0x26, PATH_TRIES = 5, ANIM_TIMER_MASK = 0x7FF,
     ENDING_HOLD_ROUNDS = 0x28,   -- +0x4E tests at 0x13D20 and 0x139AA [C value, H meaning]

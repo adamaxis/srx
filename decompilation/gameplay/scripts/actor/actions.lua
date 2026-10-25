@@ -370,6 +370,45 @@ local function classify_item_dispatch(state, context, target)
     return "item_gated"
 end
 
+local function select_c082_directional_pose(state, heading)
+    if type(heading) ~= "number" then
+        return nil
+    end
+    local direction = direction_from_heading(u16(heading))
+    local selector = spell_pose_selectors[direction + 1]
+    if type(selector) ~= "number" then
+        return nil
+    end
+    state.direction = direction
+    state.animation_id = "spell"
+    state.animation_selector = selector
+    state.source_animation_selector = selector
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    return direction
+end
+
+local function begin_thon_action(state, target, line_clear)
+    if type(target) ~= "table" or
+       type(target.heading) ~= "number" then
+        return false
+    end
+    local direction = select_c082_directional_pose(state, target.heading)
+    if direction == nil then
+        return false
+    end
+
+    -- ROM 0xAE6E aims +0x2E at the linked record; both 0xAF7C and 0xAFAE
+    -- select the same directional +0x16 entry from the C082 list [C].
+    state.movement_current_heading = u16(target.heading)
+    state.ai_target_id = target.id
+    state.ai_target_heading = u16(target.heading)
+    state.ai_target_distance = target.distance
+    state.ai_target_engaged = line_clear == true
+    state.action_animation_complete = false
+    return true
+end
+
 local function begin_dynamic_item_action(state, context, target)
     local heading = type(target) == "table" and
         target.source_record_heading or nil
@@ -749,6 +788,7 @@ R.action_line_clear = action_line_clear
 R.first_wounded_party_runner = first_wounded_party_runner
 R.classify_spell_dispatch = classify_spell_dispatch
 R.classify_item_dispatch = classify_item_dispatch
+R.begin_thon_action = begin_thon_action
 R.begin_dynamic_item_action = begin_dynamic_item_action
 R.begin_spell_cast = begin_spell_cast
 R.actor_matches_pending_spell_target = actor_matches_pending_spell_target

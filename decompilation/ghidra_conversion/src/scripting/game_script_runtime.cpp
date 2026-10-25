@@ -8126,6 +8126,12 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "source_think_suppressed");
+    if (context.source_thon_period_counter.has_value()) {
+        lua_pushinteger(state, *context.source_thon_period_counter);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_thon_period_counter");
     if (context.source_alarm_active.has_value()) {
         lua_pushboolean(state, *context.source_alarm_active ? 1 : 0);
     } else {
@@ -8148,8 +8154,6 @@ GameScriptRuntime::actor_heartbeat(
                                 context.source_camera_limit_x);
     push_optional_actor_integer("source_camera_limit_y",
                                 context.source_camera_limit_y);
-    push_optional_actor_integer("guard_facing_reference",
-                                context.guard_facing_reference);
     if (context.controlled_runner_slot.has_value()) {
         lua_pushinteger(state, *context.controlled_runner_slot);
     } else {
@@ -8715,6 +8719,16 @@ GameScriptRuntime::actor_heartbeat(
             std::numeric_limits<std::uint32_t>::max(),
             decision.field_event_request)) {
         return fail("actor_ai.heartbeat returned an invalid field event request");
+    }
+    if (!read_field_boolean(state, decision_table, "think_token_claimed",
+                            decision.think_token_claimed)) {
+        return fail("actor_ai.heartbeat returned an invalid think-token result");
+    }
+    if (!read_optional_field_integer(
+            state, decision_table, "source_thon_period_counter",
+            std::numeric_limits<std::uint8_t>::max(),
+            decision.source_thon_period_counter)) {
+        return fail("actor_ai.heartbeat returned an invalid THON period counter");
     }
     if (!read_field_integer(state, decision_table,
                             "source_animation_selector", 0xFFFFU,

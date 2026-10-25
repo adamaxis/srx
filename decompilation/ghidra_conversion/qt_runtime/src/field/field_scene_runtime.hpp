@@ -2311,6 +2311,9 @@ private:
     WorldActivityStartState world_activity_request_start_state_{};
     std::optional<WorldActivityReturnSnapshot>
         world_activity_return_snapshot_;
+    bool field_think_token_claimed_ = false; // FFE175, one claim per frame [C]
+    // FFE188: boot RAM clear (0xC3A/0xC58) leaves it 0; bootstrap seeds 0 [C].
+    std::optional<std::uint8_t> field_thon_period_counter_;
     MovementModeTransitionContinuation field_activity_continuation_ =
         MovementModeTransitionContinuation::none;
     // FFE12C selects a floor label on the successful Security Terminal file
