@@ -4703,12 +4703,8 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
                 static_cast<std::uint16_t>(x >> 4U),
                 static_cast<std::uint16_t>(y >> 4U), false,
                 [this](const std::uint16_t tile_index) {
-                    const auto& map = state_.field_scene_buffers
-                                          .source_metadata
-                                          .terrain_collision_map;
-                    return tile_index < map.size()
-                        ? map[tile_index]
-                        : static_cast<std::uint8_t>(0x7FU);
+                    // ROM 0x1E302 candidate probes use the FF1700 barrier view.
+                    return terrain_collision_map_byte(tile_index);
                 });
             return sample.selected_value;
         };
