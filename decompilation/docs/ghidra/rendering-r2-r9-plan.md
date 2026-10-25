@@ -1,7 +1,36 @@
-# Rendering R2/R9 plan: 3 name tables + VdpModel (design note, not implemented)
+# Rendering R2/R9 plan: 3 name tables + VdpModel
 
 Source: /workspace/shadowrun/docs/21_rendering_entity_model.md §2 (R2, R9) and §3.
-Status: R1, R3, R4, R10 done; R5/R6/R7 follow-ons tracked separately; R8/R11 are [H] and out of scope.
+Status: R1, R2 runtime mirror, R3, R4, R9 base scroll input, and R10 are implemented.
+R5/R6/R7 follow-ons are tracked separately; R8/R11 are [H] and out of scope.
+
+## Status
+- **Done — R2 live mirror, default off:** `FieldSceneRuntime` recognizes
+  `SRX_VDP_MODEL=1` or a QA override. With the flag enabled, field bootstrap
+  and scene-buffer rebuilds load extracted Plane-A/Plane-B images into a
+  `VdpModel` and stream the camera window through `PlaneStreamer`. The mirror
+  derives indexed patterns and CRAM colors from those RGB images; priority is
+  inferred from the extracted overlay [H]. The normal path retains the
+  flattened images and allocates no mirror.
+- **Done — runtime cell writes:** terrain marks and world-effect map writes
+  refresh the mirror using `PlaneStreamer::write_metatile` alongside the
+  existing flattened cell repaint. A headless CTest boots scenes 2 and 26,
+  exercises a live scene-2 cell write, and reports pixel mismatch counts for
+  `VdpModel::compose` against the current flattened-map composition. It is an
+  internal synchronization check using the same extracted scene assets; it is
+  not an independent visual-correctness claim.
+- **Done — R9 base scroll:** the mirror uses the camera for Plane A and the
+  camera plus the tracked Plane-B-minus-Plane-A vertical bias for Plane B.
+  `0x1AB0` copies FFE00A to FFDD0E (0x1AA8 clears FFE00A first) [C]; `0x3CF2..0x3CFE` advance FFDD0A and FFDD0E by the same
+  field-camera step [C]. `FieldCameraFollowState` tracks the A/B step biases,
+  whose difference is zero because the current field path has no separate
+  FFDD0E write [H]. The independent increment at `0x26E2` is outside the field
+  path [C]. A scene-specific offset capture is still needed before claiming
+  which field scenes visibly use a nonzero offset.
+- **Left:** do not swap `paint_field_scene` to `VdpModel::compose` until the
+  combat merge; that function remains combat-owned. Add an R9 offset capture
+  after an independent field-path FFDD0E write is traced, and continue the
+  R5/R6/R7 work tracked in its own plan.
 Hook points below are given by function name, because FSR line numbers move with the thinning work.
 
 ## Problem
@@ -27,16 +56,16 @@ Hook points below are given by function name, because FSR line numbers move with
     The streamer should call these functions rather than re-derive them.
 
 ## Concrete hook points (current code)
-1. **Asset load**
+1. **Asset load — done**
    - Where: `FieldSceneRuntime::bootstrap` (loads `field_map_` / `field_map_priority_overlay_` by alias) and
      `transition_to_field_destination` (field_scene_runtime_transitions.cpp, `.priority.overlay` alias).
-   - Change: add loading of the scene's metatile/name-table source and tile patterns into VdpModel. Keep both images as a fallback behind a flag until parity.
-2. **Runtime tile writes**
+   - Change: the opt-in mirror loads the scene's extracted primary/secondary plane images and streams them through `PlaneStreamer`; the flattened images remain the field renderer's input.
+2. **Runtime tile writes — done**
    - Where: the door, terrain-mark and metatile write paths that today only toggle state. Find them by ROM 0x406A..0x41A2.
-   - Change: call `PlaneStreamer::write_metatile`.
-3. **Scroll**
+   - Change: `repaint_field_map_cell` writes both mirrored plane cells with `PlaneStreamer::write_metatile`; map reset rebuilds the mirror from the current scene assets.
+3. **Scroll — base path done; nonzero R9 capture pending**
    - Where: the camera_x/camera_y source used by `paint_field_scene`.
-   - Change: feed plane A scroll from it, and plane B scroll from camera plus the FFDD0E offset (R9).
+   - Change: feed plane A from the camera and plane B from the camera plus the tracked B-minus-A vertical bias. The current field path keeps the biases equal.
 4. **Compose**
    - Where: `paint_field_scene` -> `paint_field_map_composition(painter, field_map_, field_map_priority_overlay_, ...)`.
    - Change: replace the call with `vdp_model_.compose(...)`, passing the low/high sprite callbacks.
@@ -46,8 +75,8 @@ Hook points below are given by function name, because FSR line numbers move with
    - Change: once CRAM lives in VdpModel, the 0x1088/0x10D6 saturating fades become CRAM writes, and the VBlank latch (R6) becomes "apply pending SAT/scroll/CRAM at the start of compose".
 
 ## Order of work
-1. VdpModel with unit tests: name-table word decode and the priority compose order.
-2. A static-scene parity test against the current flattened images. Every scene must match pixel-exactly before the swap.
-3. PlaneStreamer, wired to runtime tile writes, with a test against a door-open scene dump.
-4. The plane B offset (R9), plus a capture comparison for a scene that uses FFDD0E.
-5. The compose swap in paint_field_scene (after the combat merge).
+1. VdpModel with unit tests: name-table word decode and the priority compose order. **Done.**
+2. Static-scene parity against the current flattened images for field modes 0, 2, and 26. **Done as a mirror/parity check only.**
+3. PlaneStreamer runtime metatile writes and headless field-scene QA. **Done.**
+4. Capture a field scene where the B-minus-A vertical offset is nonzero. **Pending; no independent field FFDD0E write is currently modeled.**
+5. Compose swap in `paint_field_scene`. **Pending combat merge.**
