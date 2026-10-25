@@ -38,6 +38,32 @@ check(cap[6] == 95000, "penalty capped at 5000")
 check(cap[2] == 9 and cap[3] == 10, "meters above floor kept")
 check(cap[7] == P.WAKE.DOCWAGON, "bit0 set calls DocWagon")
 
+-- 0x391A repeats the source runner walk after the wipe recovery [C]. C++
+-- passes the effective player-record flags, with dismissed slots inactive.
+local refresh_from_second = P.refresh_runner_after_wipe_flat(
+    2, false, 0, E.RunnerStatus.ACTIVE,
+    1, E.RunnerStatus.DEAD, 2, 0)
+check(refresh_from_second[1] == 0 and
+      refresh_from_second[2] & E.RunnerStatus.SELECTION_MARKER ~= 0 and
+      refresh_from_second[3] & E.RunnerStatus.SELECTION_MARKER == 0 and
+      refresh_from_second[4] & E.RunnerStatus.SELECTION_MARKER == 0,
+      "0x391A wraps from the type-2 record to the revived leader")
+check(refresh_from_second[5] == 1 and
+      refresh_from_second[6] == E.MenuSound.MOVE,
+      "0x391A reports the changed active runner and event 0x25")
+local refresh_leader_only = P.refresh_runner_after_wipe_flat(
+    0, false, 0, E.RunnerStatus.ACTIVE,
+    1, E.RunnerStatus.DEAD, 2, E.RunnerStatus.DOWN)
+check(refresh_leader_only[1] == 0 and refresh_leader_only[5] == 0 and
+      refresh_leader_only[2] & E.RunnerStatus.SELECTION_MARKER ~= 0,
+      "0x391A retains the only eligible runner after a complete scan")
+local refresh_override = P.refresh_runner_after_wipe_flat(
+    0, true, 0, E.RunnerStatus.ACTIVE,
+    1, E.RunnerStatus.ACTIVE | E.RunnerStatus.DEAD,
+    2, E.RunnerStatus.DOWN)
+check(refresh_override[1] == 1,
+      "0x391A FFF09D override accepts an active suppressed runner")
+
 -- 0xC64C's FFFBED/FFFC1C run-failure gates [C].
 local employee_failure = P.run_failure_flat(
     E.RunType.EMPLOYEE_RECRUITMENT, E.RunContextFlag.ACTIVE)
@@ -45,6 +71,7 @@ check(employee_failure ~= nil and
       employee_failure.event_id ==
           "party_wipe_employee_recruitment_failure" and
       employee_failure.clear_high_effects and
+      employee_failure.clear_player_spawn_request and
       employee_failure.clear_world_activity_request,
       "type 5 active run shows extraction failure at 0xF3D5C")
 check(P.run_failure_flat(
@@ -58,22 +85,42 @@ local bodyguard_failure = P.run_failure_flat(
 check(bodyguard_failure ~= nil and
       bodyguard_failure.event_id == "party_wipe_bodyguard_failure" and
       bodyguard_failure.clear_high_effects and
+      bodyguard_failure.clear_player_spawn_request and
       not bodyguard_failure.clear_world_activity_request,
       "type 1 active run shows bodyguard failure at 0xF359E")
+
+-- The C++ field host passes its typed FFFC3C mirror. 0x1DED8 clears that
+-- longword whenever selected, including when it was already clear [C].
+local prior_game = rawget(_G, "game")
+_G.game = { runs = { registry = RunRegistry }, state = {} }
+RunRegistry.active_offer = { source_run_type = E.RunType.BODYGUARD_ESCORT }
+local sweep_pending = P.prepare_run_failure_flat(false, true)
+check(sweep_pending[2] == 1 and sweep_pending[5] == 1 and
+      sweep_pending[6] == 1,
+      "0x1DED8 requests FFFC3C clear after receiving a pending marker")
+RunRegistry.active_offer = { source_run_type = E.RunType.BODYGUARD_ESCORT }
+local sweep_clear = P.prepare_run_failure_flat(false, false)
+check(sweep_clear[2] == 1 and sweep_clear[5] == 1 and
+      sweep_clear[6] == 0,
+      "0x1DED8 still requests FFFC3C clear when the marker is already clear")
+_G.game = prior_game
 
 local delivery_failure = P.run_failure_flat(
     E.RunType.PACKAGE_DELIVERY, E.RunContextFlag.ACTIVE)
 check(delivery_failure ~= nil and
       delivery_failure.event_id == "party_wipe_package_failure" and
       delivery_failure.clear_run_objective and
-      not delivery_failure.clear_high_effects,
+      not delivery_failure.clear_high_effects and
+      not delivery_failure.clear_player_spawn_request and
+      delivery_failure.run_type == E.RunType.PACKAGE_DELIVERY,
       "type 2 active run shows package failure and clears FFFC22 bit 9")
 
 local recovery_failure = P.run_failure_flat(
     E.RunType.PACKAGE_RECOVERY, E.RunContextFlag.ACTIVE)
 check(recovery_failure ~= nil and
       recovery_failure.event_id == "party_wipe_package_failure" and
-      recovery_failure.clear_run_objective,
+      recovery_failure.clear_run_objective and
+      not recovery_failure.clear_player_spawn_request,
       "type 4 active run takes the shared type 2 failure path")
 
 check(P.run_failure_flat(E.RunType.BODYGUARD_ESCORT, 0) == nil,
