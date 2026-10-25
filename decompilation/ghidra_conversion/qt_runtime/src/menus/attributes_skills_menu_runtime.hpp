@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <utility>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
@@ -58,6 +59,10 @@ public:
     void refresh(const RunnerRecordFields& active_record);
     void synchronize_cursor(int column, int row,
                             const RunnerRecordFields& active_record);
+    // Upgrade rule source (0xD82A). Unset keeps the converted C++ rule.
+    using UpgradeRule = std::function<AttributeSkillUpgradePreview(
+        const RunnerRecordFields&, AttributeSkillCursor)>;
+    void set_upgrade_rule(UpgradeRule rule) { upgrade_rule_ = std::move(rule); }
 
     AttributesSkillsRuntimeEvent advance(
         std::uint16_t controller_events, RunnerRecordFields& active_record,
@@ -72,6 +77,7 @@ private:
     bool upgrade_prompt_open_ = false;
     std::uint8_t upgrade_prompt_selection_ = 0U;
     AttributesSkillsMenuMessage message_ = AttributesSkillsMenuMessage::none;
+    UpgradeRule upgrade_rule_{};
 };
 
 template <AttributesSkillsMenuMode Mode>
@@ -110,6 +116,9 @@ public:
     }
     void refresh(const RunnerRecordFields& active_record) {
         controller_.refresh(active_record);
+    }
+    void set_upgrade_rule(AttributesSkillsMenuController::UpgradeRule rule) {
+        controller_.set_upgrade_rule(std::move(rule));
     }
     void synchronize_cursor(int column, int row,
                             const RunnerRecordFields& active_record) {

@@ -94,6 +94,7 @@ local function source_profile(context)
        (profile.dynamic_encounter_only and
         (context.source_record_flags & 0x01) == 0) or
        (not profile.projectile_animation and
+        not profile.hit_spark_animation and
         context.entity_kind ~= profile.entity_kind) or
        context.action_kind ~= profile.action_kind or
        context.action_code ~= profile.action_code then
@@ -401,6 +402,25 @@ local function initial_state(context, profile)
         state.attack_seed_resolved =
             not context.projectile_attack_seed_pending
         state.combat_meter_update = nil
+    end
+    if profile.hit_spark_animation then
+        local animation = context.hit_spark_animation
+        if type(animation) ~= "table" or
+           type(animation.selector) ~= "number" or
+           type(animation.frame_count) ~= "number" or
+           type(animation.frame) ~= "number" or
+           type(animation.accumulator) ~= "number" or
+           type(animation.period) ~= "number" then
+            return nil
+        end
+        state.animation_id = "hit_spark"
+        state.animation_selector = animation.selector
+        state.animation_frame = animation.frame
+        state.animation_accumulator = animation.accumulator
+        state.animation_increment = E.HitSpark.FRAME_INCREMENT
+        state.animation_period = animation.period
+        state.animation_frame_count = animation.frame_count
+        state.hit_spark_retired = false
     end
     return state
 end

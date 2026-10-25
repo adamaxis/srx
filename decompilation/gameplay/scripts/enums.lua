@@ -28,6 +28,16 @@ E.ActorFlag = { SPOTTED = 0x01, REINFORCEMENT = 0x02, DESPAWN_OFFSCREEN = 0x04, 
 E.BehaviorFlag = { ROUTE_CLEAR = 0x01, PATH = 0x02, RESTART_STEER = 0x04, WALL_FOLLOW = 0x08, IN_BAND = 0x10, ROUTE_TRANSITION = 0x20, FLEEING = 0x40, ESCORT = 0x80 } -- +0xB0 [C]; ROUTE_CLEAR/ROUTE_TRANSITION [H] repo route_flags usage
 E.SteerFlag = { TARGET_RIGHT = 0x01, TARGET_BELOW = 0x02, OVERSHOOT_X = 0x04, OVERSHOOT_Y = 0x08 }  -- +0xB1 [C]
 E.CyberBit = { DATAJACK = 0, CYBEREYES = 1, HAND_RAZORS = 2, SPURS = 3, SMARTLINK = 4 }             -- +0x90 bit numbers (doc 04) [C]
+-- Player hurt animation selected by 0xAFF2 from the directional C072 table.
+E.PlayerHurt = {
+    SELECTOR_BASE = 0x60,       -- C072 direction 0 selector [C]
+    SELECTOR_STEP = 0x04,       -- C072 advances one word per direction [C]
+    FRAME_COUNT = 2,            -- each kind-3 C072 list has header 0x8002 [C]
+    FRAME_INCREMENT = 0x0300,   -- kind-3 C072 list increment [C]
+    FRAME_PERIOD = 0x1000,      -- +0x1C initialized at 0x15132 [C]
+    RENDER_PASSES = 11,         -- 0x5FDC/0x600E completes the two-frame list [C]
+    SOUND_DELAY = 8,            -- 0xAFF2 stores +0xCE; 0xB07E counts it down [C]
+}
 
 E.Posture   = { FULL_DEFENSE = 0, MEDIUM_DEFENSE = 1, NEUTRAL = 2, MEDIUM_OFFENSE = 3, FULL_OFFENSE = 4 }  -- +0x4D, names 0xD1A05 [C]
 E.SceneMode = { NONE = 0, STREET = 1, BUILDING = 2, CAVE = 3 }  -- FFDF40: 1 scenes <0x15, 2 0x15-0x2B, 3 0x2C-0x37 [C]
@@ -36,6 +46,18 @@ E.CombatPhase = { NONE = 0, ATTACK_ANIM = 1, APPROACH = 2, HOLD = 3 }           
 E.EndingState = { NONE = 0, FINAL_FIGHT = 3 }                                        -- FFE186 [C]
 E.SpriteType  = { FIELD_RUNNER = 3, CORP_GUARD = 5, GHOUL = 7, PEDESTRIAN = 11, HELL_HOUND = 12, GARGOYLE = 13,
                   WENDIGO = 14, THON = 15 }   -- +0x0E [C: 7,12,13,15 from our trace; 3,5,11,14 names from pre-module actor_ai.lua:40-46]
+E.SpriteType.HIT_SPARK = 0x01 -- child +0x0E at 0xB2C2 [C]
+E.HitSpark = {
+    SELECTOR = 0x0004, -- child +0x16 at 0xB2BC [C]
+    PALETTE_ATTRIBUTES = 0x2000, -- child +0x2C at 0xB2E4 [C]
+    TARGET_Y_OFFSET = 0x0010, -- target Y adjustment at 0xB2DC [C]
+    RANGE_LIMIT = 0x0200, -- linked strike range gate at 0x15C58 [C]
+    FRAME_COUNT = 0x0005, -- finite list marker at 0x7330 [C]
+    FRAME_INCREMENT = 0x0400, -- finite list timing word at 0x7332 [C]
+    FRAME_PERIOD = 0x1000, -- +0x1C default initialized at 0x15118 [C]
+    FINISHED_SELECTOR_BIT = 0x8000, -- finite selector bit set by 0x600E [C]
+    WORD_MODULUS = 0x10000, -- 16-bit accumulator wrap at 0x5FDC [C]
+}
 
 -- Item codes (= +0x57 for weapons, = inventory byte); records 0xD4540 + 0x30*(code-1) (doc 08) [C]
 E.ItemId = {
@@ -51,12 +73,43 @@ E.WeaponSlot  = { NONE = 0x7F }                                                 
 E.FIRST_NON_WEAPON = E.ItemId.FRAG_GRENADE
 
 E.Pickup = { CLIPS_FLAG = 0xC000, NUYEN_FLAG = 0x8000, GARGOYLE_HORN = 0x64, HOUND_PELT = 0x65 }  -- 0x133A6 [C]
+-- Group-item bits in FFFC22; the Pocket Secretary rows identify these items [C].
+E.GroupItemBit = {
+    INDIAN_LANDS_VISA = 1, -- FFFC22 bit 1, pocket_secretary row indian_lands_visa [C]
+    RUN_OBJECTIVE_ACTIVE = 9, -- FFFC22 bit 9, cleared by 0x1EF2C/0x1F000/0xC6EE [C]
+    ORK_ARMBAND = 14,      -- FFFC22 bit 14; taxi checks leader FF018F bit 5 [C]
+}
 
 -- Spell types: spell record = item 0x33 + type; held weapon_code = type + 1 [C]
 E.SpellType = { FLAME_DART = 0, FLAME_BOLT = 1, HELLBLAST = 2, INVISIBILITY = 3, SLEEP = 4, STINK = 5,
                 SUPER_BARRIER = 6, MANA_ZAP = 7, MANA_BLAST = 8, MANA_STORM = 9, ROCKSKIN = 10,
                 HEAL_WOUNDS = 11, CONFUSION = 12, BARRIER = 13 }
 E.SPELL_ITEM_BASE = 0x33
+-- Live action codes in +0x57 use the one-based D4EA0 row index. 0x15830
+-- sends codes 7 and 14 to the field-barrier branch at 0x49A2 [C].
+E.SpellActionCode = {
+    FLAME_DART = 1,       -- +0x57=0x01 / D4EA0 row 0 [C]
+    FLAME_BOLT = 2,       -- +0x57=0x02 / D4EA0 row 1 [C]
+    HELLBLAST = 3,        -- +0x57=0x03 / D4EA0 row 2 [C]
+    INVISIBILITY = 4,     -- +0x57=0x04 / D4EA0 row 3 [C]
+    SLEEP = 5,            -- +0x57=0x05 / D4EA0 row 4 [C]
+    STINK = 6,            -- +0x57=0x06 / 0x1588C [C]
+    SUPER_BARRIER = 7,    -- +0x57=0x07 / 0x15830 [C]
+    MANA_ZAP = 8,         -- +0x57=0x08 / D4EA0 row 7 [C]
+    MANA_BLAST = 9,       -- +0x57=0x09 / D4EA0 row 8 [C]
+    MANA_STORM = 10,      -- +0x57=0x0A / D4EA0 row 9 [C]
+    ROCKSKIN = 11,        -- +0x57=0x0B / D4EA0 row 10 [C]
+    HEAL_WOUNDS = 12,     -- +0x57=0x0C / D4EA0 row 11 [C]
+    CONFUSION = 13,       -- +0x57=0x0D / 0x1589C [C]
+    BARRIER = 14,         -- +0x57=0x0E / 0x15830 [C]
+}
+E.SpellEffectKind = {
+    NONE = 0,              -- 0x00 / 0x1584C returns when +0xA2 is zero [C]
+    FIELD_BARRIER = 1,     -- 0x01 / 0x15830 -> 0x49A2 [C]
+}
+E.SpellTuning = {
+    FIELD_BARRIER_TICKS_PER_SUCCESS = 0x0190, -- 0x49F2 / 0x4ADC [C]
+}
 -- Item kinds (repo items.lua kind names, verified against record 0xD4540 contents; doc 08) [C]
 E.ItemKind = { FIREARM = 1, GRENADE = 2, MEDICAL_KIT = 3, STIM_PATCH = 4, TRAUMA_PATCH = 5, FETISH = 6, PASSKEY = 7,
                ELECTRONIC_KIT = 8, SMART_GOGGLES = 9, ENCHANTED_DAGGER = 10, POWER_FOCUS = 11, SPELL_FOCUS = 12,
@@ -83,7 +136,9 @@ E.SoundId = {   -- played through 0x530DE (doc 10) [C]
     -- YM DAC sample effects (Timer A paced, 0x02B9 wait); silent until the
     -- offline extractor modelled the YM timers. Callers not traced yet [H].
     DAC_SAMPLE_19 = 0x19, DAC_SAMPLE_1B = 0x1B, DAC_SAMPLE_2C = 0x2C, DAC_SAMPLE_2D = 0x2D,
-    DAC_SAMPLE_2E = 0x2E, DAC_SAMPLE_2F = 0x2F, DAC_SAMPLE_40 = 0x40, DAC_SAMPLE_41 = 0x41,
+    DAC_SAMPLE_2E = 0x2E, DAC_SAMPLE_2F = 0x2F,
+    DAC_SAMPLE_40 = 0x40, -- 0xB03E kind 3 player C072 hurt cue [C]
+    DAC_SAMPLE_41 = 0x41,
     DAC_SAMPLE_42 = 0x42, DAC_SAMPLE_43 = 0x43, DAC_SAMPLE_44 = 0x44, DAC_SAMPLE_45 = 0x45,
     DAC_SAMPLE_46 = 0x46, DAC_SAMPLE_47 = 0x47, DAC_SAMPLE_48 = 0x48, DAC_SAMPLE_49 = 0x49,
     DAC_SAMPLE_4F = 0x4F, DAC_SAMPLE_56 = 0x56, DAC_SAMPLE_57 = 0x57, DAC_SAMPLE_58 = 0x58,
@@ -99,7 +154,7 @@ E.SoundId = {   -- played through 0x530DE (doc 10) [C]
     SPELL_EFFECT_31 = 0x31, SPELL_EFFECT_32 = 0x32, SPELL_EFFECT_33 = 0x33,  -- spell table 0x4946 [C]
     SPELL_EFFECT_34 = 0x34, SPELL_EFFECT_35 = 0x35, SPELL_EFFECT_37 = 0x37,
     SPELL_EFFECT_38 = 0x38, SPELL_EFFECT_39 = 0x39, SPELL_EFFECT_3A = 0x3A,
-    FIELD_3B = 0x3B,                 -- 0x4AA4 [C site, role unknown]
+    FIELD_3B = 0x3B,                 -- 0x49A2 -> 0x4AA4 field barrier [C]
     UNUSED_3D = 0x3D, UNUSED_3E = 0x3E, UNUSED_50 = 0x50,                   -- no caller found (doc 10 §5 re-scan) [H]
     MELEE_SWING = 0x4C, MELEE_SWING_ALT = 0x55,   -- 0xB1DC: 0x4C, or 0x55 when actor +0x0E == 0x0C [C mechanism]
     DECK_JINGLE = 0x5B,              -- 0x1763A deck-screen jingle; stopped at 0x1764C [C]
@@ -139,6 +194,17 @@ E.AiTuning = {   -- [C] unless marked
 E.Collision = { BLOCKED = 0x7F, LOW_BITS = 0x1F, IMPASSABLE_FROM = 0x18 }   -- repo movement_collision_code [H names, C values]
 E.EntryDelayMax = { STATIC = 15, DYNAMIC_ENCOUNTER = 0x28 }                   -- repo heartbeat guard [H names]
 E.Grid = { ROW_CELLS = 0x40, CELL_SHIFT = 9, CELL_CENTER = 0x100, PATH_END = 0xFFFF }   -- FF1700 [C]
+E.Heading = { UP = 0x0000, RIGHT = 0x4000, DOWN = 0x8000, LEFT = 0xC000 }      -- +0x2E/+0x34 words (emulator run5) [C]
+E.LinkCode = { LINK = 0x80, ROW_SHIFT = 5, ROW_MASK = 0x03, EVENT_MASK = 0x1F }  -- collision record code byte: 0xB7B8 bit 7, 0xBC52 rol.b #3 [C]
+E.DoorRow = { UP = 0, RIGHT = 1, DOWN = 2, LEFT = 3 }   -- code bits 6:5 = side the party is put back on, 0xBD34 rows [C]
+E.ServiceKind = { NONE = 0, HOTEL = 1, HOSPITAL = 2, SHOP = 3 }  -- 0x1F65A / 0x1F830 / 0x1FA78 handler chains (doc 18 section 3) [C]
+E.LinkReturn = { SERVICE = 1, INTERIOR = 2 }  -- 0x9B8 same-map d6 path / 0xA68 FFDF42 -> 0x2F32 interior exit [C]
+-- Numeric story bytes the host exposes as story.byte_get_/byte_set_<hex>.
+E.StoryByte = {
+    HEAT = 0xFFFBFA,        -- Lone Star heat level 0..8 [C]
+    STRIKE_TEAM = 0xFFFBFB, -- Strike Team escalation stage 0..8, ROM 0x1F1E0 [C]
+}
+E.LinkFacing = { PRESERVE_ENTRY = 0, FACE_AWAY = 1 }  -- per-link exit facing policy (port): FACE_AWAY = entry heading ^ 0x8000, the party faces out of the door
 E.Direction = { UP = 0, RIGHT = 2, DOWN = 4, LEFT = 6 }                                -- 0x148CA index [C]
 E.DirectionStep = { [0] = -0x40, [2] = 1, [4] = 0x40, [6] = -1 }                      -- 0x148CA values [C]
 
@@ -155,6 +221,29 @@ E.RunType = {
     GHOUL_BOUNTY = 0, BODYGUARD_ESCORT = 1, PACKAGE_DELIVERY = 2,
     GANG_CONTRACT = 3, PACKAGE_RECOVERY = 4,
     EMPLOYEE_RECRUITMENT = 5, MATRIX_OBJECTIVE = 6,
+    NONE = 0xFF, -- FFFBEC = 0xFFFF denotes no active run [C]
+}
+-- FFFC1C's active-run and type-5 party-wipe guard bits [C].
+E.RunContextFlag = {
+    ACTIVE = 1 << 0, -- 0xC66C/0xC6BC/0xC6DC/0xC70C [C]
+    EMPLOYEE_FAILURE_GUARD = 1 << 7, -- 0xC678 tests; 0x0A72 sets from FFE18F [C]
+}
+E.PartyWipeDestination = {
+    LITTLE_CHIBA = 0, -- 0xC7EC -> 0x2A44, scene 2 [C]
+    DOCWAGON = 1, -- 0xC7E0 -> 0x2A32, scene 0 [C]
+    NONE = 0xFF, -- no pending wake destination [H host sentinel]
+}
+-- 0x2AEA/0x2B24 arrival records, consumed by 0x2B78 and aligned with
+-- ANDI.W #0xFF80 before the scene loader publishes FFFBF8 [C].
+E.PartyWipeArrival = {
+    [E.PartyWipeDestination.DOCWAGON] = {
+        scene = 0, x = 0x6200, y = 0x2D00,
+        -- 0x2AEA raw (0x6260,0x2D40), aligned by 0x2B90 [C]
+    },
+    [E.PartyWipeDestination.LITTLE_CHIBA] = {
+        scene = 2, x = 0x6680, y = 0x2300,
+        -- 0x2B24 raw (0x66F0,0x2310), aligned by 0x2B90 [C]
+    },
 }
 -- Source initializer IDs in F3DC6. Several source variants share one
 -- canonical run handler and differ only in how their route is selected [C].
@@ -206,6 +295,8 @@ E.RunnerField = { STATUS = 0x10, STATE_FN = 0x3A, PHYSICAL = 0x4C, POSTURE = 0x4
                   WEAPON_SLOT = 0x56, WEAPON_CODE = 0x57, INVENTORY = 0x66, ITEM_PHASE = 0x6E, ARMOR = 0x76,
                   ATTRIBUTES = 0x77, MAGIC = 0x7F, SKILLS_A = 0x80, SKILLS_B = 0x87, KARMA = 0x8D, SPECIES = 0x9A,
                   ARCHETYPE = 0x9B, STUN = 0x9C, FORCE = 0x9D, SPELL_TABLE = 0xA0 }
+E.KarmaUpgrade = { AVAILABLE = 0, INVALID = 1, NOT_UPGRADEABLE = 2, UNKNOWN_SPECIES = 3,
+                  CLASS_RESTRICTED = 4, AT_LIMIT = 5 }   -- 0xD82A preview outcome (D9DE = error path) [C]
 E.Archetype = { CASTER_LIMIT = 2 }        -- +0x9B < 2 = magic user (0xFBA6 path, Sorcery gate) [C]
 E.Skill = { SORCERY = 0, FIREARMS = 1, PISTOLS = 2, SMGS = 3, SHOTGUNS = 4, BIOTECH = 8 }   -- index into skills[] [C 0x12C74; BIOTECH srx]
 E.ItemAction = { EQUIP_OR_USE = 2, DISCARD = 3, TRADE = 4, CANCEL = 5 }   -- FFF0D0 reused as selector 0x11780 [C]

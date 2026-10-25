@@ -194,23 +194,4 @@ ElevatorSceneTransitionUpdate ElevatorSceneTransitionRuntime::advance()
     return update;
 }
 
-std::uint8_t
-ElevatorSceneTransitionRuntime::black_overlay_alpha() const noexcept {
-    switch (phase_) {
-    case ElevatorSceneTransitionPhase::fading_to_black:
-        return static_cast<std::uint8_t>(
-            (static_cast<unsigned>(palette_step_) * 255U) /
-            kElevatorSceneTransitionPaletteStepCount);
-    case ElevatorSceneTransitionPhase::destination_handoff:
-        return 255U;
-    case ElevatorSceneTransitionPhase::fading_from_black:
-        return static_cast<std::uint8_t>(
-            255U - (static_cast<unsigned>(palette_step_) * 255U) /
-                      kElevatorSceneTransitionPaletteStepCount);
-    case ElevatorSceneTransitionPhase::idle:
-        return 0U;
-    }
-    return 0U;
-}
-
 } // namespace shadowrun::ghidra_conversion::qt_runtime

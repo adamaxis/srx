@@ -5,33 +5,9 @@ local Dialogue = require("dialogue")
 local DialogueGraph = require("dialogue_graph")
 local MatrixPasscodes = require("data.matrix_passcodes")
 
--- ROM 0x0DBF8 seeds FFF118 (Matrix node) and FFFBBC (system) from the active
--- resource scene before presenting its Cyberspace / Exit Main Menu.
-local resource_scene_matrix_targets = {
-    [21] = { system_id = 0x16, node_id = 0x0D },
-    [22] = { system_id = 0x16, node_id = 0x0D },
-    [23] = { system_id = 0x16, node_id = 0x06 },
-    [24] = { system_id = 0x16, node_id = 0x08 },
-    [25] = { system_id = 0x16, node_id = 0x0F },
-    [26] = { system_id = 0x18, node_id = 0x16 },
-    [27] = { system_id = 0x18, node_id = 0x03 },
-    [28] = { system_id = 0x18, node_id = 0x09 },
-    [29] = { system_id = 0x18, node_id = 0x1A },
-    [30] = { system_id = 0x14, node_id = 0x07 },
-    [31] = { system_id = 0x14, node_id = 0x02 },
-    [32] = { system_id = 0x14, node_id = 0x09 },
-    [33] = { system_id = 0x14, node_id = 0x18 },
-    [34] = { system_id = 0x14, node_id = 0x0E },
-    [35] = { system_id = 0x15, node_id = 0x03 },
-    [36] = { system_id = 0x15, node_id = 0x04 },
-    [37] = { system_id = 0x15, node_id = 0x08 },
-    [38] = { system_id = 0x15, node_id = 0x13 },
-    [39] = { system_id = 0x15, node_id = 0x14 },
-    [40] = { system_id = 0x15, node_id = 0x12 },
-    [41] = { system_id = 0x17, node_id = 0x15 },
-    [42] = { system_id = 0x17, node_id = 0x09 },
-    [43] = { system_id = 0x17, node_id = 0x0B },
-}
+-- ROM 0x0DBF8 resource-scene Matrix targets (FFF118 node, FFFBBC system).
+local resource_scene_matrix_targets =
+    require("data.resource_scene_matrix_targets")
 
 -- Resolve legacy service functions and JSON-graph action providers while this
 -- module is initialized. The contact catalog supplies graph scope or the
@@ -110,6 +86,14 @@ local function say_phone_contact(contact, event_id)
     game.ui.say(event_id, contact.speaker_id, "field.vid_phone")
 end
 
+-- Typed boundary outcome; the host shows the reason and returns to the field.
+local function unconverted_phone_services()
+    return {
+        type = "source_boundary",
+        reason = "This contact's service transactions are not converted yet",
+    }
+end
+
 local function phone_call_finished()
     -- ROM 0xE4C8 returns from the Vid-Phone routine after one contact call.
     -- The ordinary terminal then redraws its four-option menu.
@@ -119,7 +103,7 @@ end
 local function run_contact_graph(contact)
     local action_provider = phone_service_graph_actions[contact.id]
     if type(action_provider) ~= "function" then
-        return "phone_services_not_converted"
+        return unconverted_phone_services()
     end
     local outcome = DialogueGraph.run(
         contact.service_graph_id, action_provider(contact))
@@ -140,7 +124,7 @@ local function call_contact_services(contact)
     end
     local handler = phone_service_handlers[contact.id]
     if type(handler) ~= "function" then
-        return "phone_services_not_converted"
+        return unconverted_phone_services()
     end
     return handler()
 end
@@ -387,7 +371,10 @@ function FieldActivities.resource_scene_main_menu()
             local target = resource_scene_matrix_targets[
                 game.location.scene_id]
             if target == nil then
-                return "resource_matrix_target_unresolved"
+                return {
+                    type = "source_boundary",
+                    reason = "The ROM Matrix target for this resource scene is not mapped",
+                }
             end
             local access_ready, unresolved = cyberspace_access_ready()
             if unresolved ~= nil then return unresolved end

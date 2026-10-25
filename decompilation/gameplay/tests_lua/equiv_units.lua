@@ -139,6 +139,14 @@ for _, name in ipairs(targets) do
     end
     _G.game = gameA; local ra = table.pack(pcall(fa, table.unpack(argsA, 1, 5)))
     _G.game = gameB; local rb = table.pack(pcall(fb, table.unpack(argsB, 1, 5)))
+    if name == "begin_player_melee" then
+      -- ROM 0xB29E..0xB2EA adds this player-only child request after a changed
+      -- 0x55C76 meter result. The frozen bfa3908 helper predates that source
+      -- fact; player_hit_spark_tests.lua asserts the new field directly. Keep
+      -- the differential comparison for every preexisting state field.
+      sA.hit_spark_spawn_request = nil
+      sB.hit_spark_spawn_request = nil
+    end
     local function sig(r, s, c, g, log, x)
       return table.concat({ tostring(r[1]), r[1] and ser({ table.unpack(r, 2, r.n) }) or H.norm_err(r[2]), ser(s), ser(c), ser(g.actors), ser(x), table.concat(log, ";") }, "|")
     end

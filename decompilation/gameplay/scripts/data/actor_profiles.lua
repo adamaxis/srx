@@ -26,6 +26,7 @@ local M = { ActorProfile = ActorProfile, ENTRY_SOUND_BY_SPRITE = ENTRY_SOUND_BY_
     ["gargoyle_k0d_none00"] = ActorProfile{ id = "gargoyle_k0d_none00", package_id = "creature.gargoyle.source_target_motion", sprite_type = SpriteType.GARGOYLE, action_kind = "none", action_code = ItemId.NONE, weapon = nil, entry_sound = 0x5A, controls_movement = true, projectile = false, dynamic_encounter_only = true },
     ["wendigo_k0e_none00"] = ActorProfile{ id = "wendigo_k0e_none00", package_id = "creature.wendigo.source_target_motion", sprite_type = SpriteType.WENDIGO, action_kind = "none", action_code = ItemId.NONE, weapon = nil, entry_sound = 0x5A, controls_movement = true, projectile = false, dynamic_encounter_only = true },
     ["weapon_projectile"] = ActorProfile{ id = "weapon_projectile", package_id = "combat.weapon_projectile", sprite_type = nil, action_kind = "none", action_code = ItemId.NONE, weapon = nil, entry_sound = nil, controls_movement = false, projectile = true, dynamic_encounter_only = false },
+    ["field_hit_spark"] = ActorProfile{ id = "field_hit_spark", package_id = "combat.player_hit_spark", sprite_type = SpriteType.HIT_SPARK, action_kind = "none", action_code = ItemId.NONE, weapon = nil, entry_sound = nil, controls_movement = false, projectile = false, dynamic_encounter_only = false },
 } }
 -- Dynamic encounter profiles are synthesised from "<name>_kXX_<kind>YY" ids (repo dynamic_encounter_profile).
 function M.dynamic(sprite_type, action_kind, action_code)

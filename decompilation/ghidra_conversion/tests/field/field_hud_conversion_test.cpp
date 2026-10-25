@@ -181,7 +181,8 @@ int main() {
                 magic_low_palette[3].palette_variant == 0U)) {
         return 43;
     }
-    joshua[0].equipped_item_code = 14U;
+    // 689142c2: D4EA0 spell sprites cover codes 1..14.
+    joshua[0].equipped_item_code = 15U;
     const auto unsupported_magic = compose_field_hud_overlays(joshua);
     if (!expect(unsupported_magic[3].kind ==
                 FieldHudOverlayKind::unarmed_item)) {

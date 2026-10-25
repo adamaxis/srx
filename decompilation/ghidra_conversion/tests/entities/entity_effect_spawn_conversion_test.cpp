@@ -43,9 +43,10 @@ int main() {
     const auto& no_target_record = *no_target.record;
     if (!expect(no_target_record.entity_slot == 7U &&
                 no_target_record.world_x == 0x1000U &&
-                no_target_record.world_y == 0x2050U &&
+                // ROM 0x15A4C[0] = (0, -0xB0), 0x15A6C[0] = (0x40, -0x100).
+                no_target_record.world_y == 0x1F50U &&
                 no_target_record.directional_probe_x == 0x1040U &&
-                no_target_record.directional_probe_y == 0x2000U &&
+                no_target_record.directional_probe_y == 0x1F00U &&
                 no_target_record.heading == 0x0000U &&
                 no_target_record.movement_scale == 0x2000U &&
                 no_target_record.animation_resource == 0U &&
@@ -100,14 +101,15 @@ int main() {
         return 4;
     }
     const auto& linked_record = *linked.record;
+    // 0x15DB0 basis (630a4e97): +x is heading 0x4000.
     if (!expect(linked_record.source_marker == 0x77U &&
-                linked_record.heading == 0x8000U &&
+                linked_record.heading == 0x4000U &&
                 linked_record.effect_distance_steps == 0x20U &&
                 linked_record.movement_offset == -0x200 &&
-                linked_record.heading_offset_x == 0 &&
-                linked_record.heading_offset_y == 0x3FFF &&
+                linked_record.heading_offset_x == 0x3FFF &&
+                linked_record.heading_offset_y == 0 &&
                 linked_record.world_x == 0x1000U &&
-                linked_record.world_y == 0x2050U)) {
+                linked_record.world_y == 0x1F50U)) {
         return 5;
     }
 

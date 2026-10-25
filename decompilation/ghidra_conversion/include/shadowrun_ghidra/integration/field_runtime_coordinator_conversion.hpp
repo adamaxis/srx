@@ -49,7 +49,7 @@ struct FieldRuntimeCoordinatorState {
     bool pending_field_scene_handler = false; // FFE104
     bool joshua_archetype_selection_pending = false; // FFE108
     std::uint16_t scene_id = 0; // FFDDC4
-    std::uint8_t field_mode = 0; // FFFBF8, active scene resource mode
+    std::uint8_t field_mode = 0; // FFFBF8, current field context byte
     std::uint8_t mode_event_code = 0; // FFFBF9, mode-transition table column
     std::int16_t transition_context = 0; // FFFC10, mode-transition table row
     std::uint32_t world_activity_flags = 0; // FFFC1E

@@ -72,8 +72,9 @@ int main() {
         return 3;
     }
 
+    // ROM D4540 row 43 (Bear Totem) +0x26/+0x27 = 00 02.
     if (catalog[42].has_detail_art || catalog[42].base_cost != 0U ||
-        catalog[42].detail_selector != 2U ||
+        catalog[42].detail_selector != 0U ||
         !catalog[43].has_detail_art ||
         catalog.back().item_code != 50U || catalog.back().base_cost != 0x4E20U ||
         catalog.back().detail_selector != 6U) {
@@ -85,7 +86,7 @@ int main() {
     // item 43 +0x26/+0x27 are each independently source-backed.
     if (catalog[40].source_action_modifier_word(0) != 0x0002U ||
         catalog[41].source_action_modifier_word(1) != 0x0002U ||
-        catalog[42].source_action_modifier_word(2) != 0x0202U ||
+        catalog[42].source_action_modifier_word(2) != 0x0002U ||
         catalog[42].source_action_parameter_tail != 0x02U) {
         return 6;
     }

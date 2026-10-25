@@ -1,11 +1,13 @@
--- Scene 4/event 4 uses the shared field-mode prompt service, not a separate
--- hospital interior. ROM 0x1FA02 selects one of three text roots from the
--- alternate-result byte. The default root offers Hospital Options or leave.
+-- Same-map hospital service (ROM 0x1F830 -> 0x1F246 -> 0xC928), shared by
+-- every site in data.hospital_sites (Council Island Hospital 4/4, Little
+-- Chiba's 2/1). Each site's handler selects one of three text roots from the
+-- alternate-result byte; the default root offers Hospital Options or leave.
+-- No site loads a hospital interior.
+local Sites = require("data.hospital_sites")
 local Hospital = {}
 
-local LOCATION_ID = "council_island_hospital"
-local NARRATOR = "council_island_hospital_narrator"
-local TEXT_PROFILE = "council_island_hospital"
+-- The active site's narrator/profile; set by assert_hospital_field_context.
+local NARRATOR, TEXT_PROFILE
 
 local function run_cursor_menu(menu_id, choices, initial_selection,
                                inline_prompt, ignore_cancel)
@@ -138,15 +140,18 @@ local function medical_attention_choices(runner)
 end
 
 local function assert_hospital_field_context()
-    assert(game.location.type == "building" and
-           game.location.id == LOCATION_ID,
-        "Council Island Hospital prompt ran outside its linked building")
-    assert(game.field.mode == 4 and game.field.event_code == 4,
-        "Council Island Hospital prompt requires ROM field mode/event 4/4")
+    local site = game.location.type == "building" and
+        Sites[game.location.id] or nil
+    assert(site ~= nil, "hospital prompt ran outside a linked hospital site")
+    assert(game.field.mode == site.mode and
+           game.field.event_code == site.event,
+        "hospital prompt requires its site's ROM field mode/event")
+    NARRATOR, TEXT_PROFILE = site.narrator, site.text_profile
+    return site
 end
 
 function Hospital.present_field_exit_prompt()
-    assert_hospital_field_context()
+    local site = assert_hospital_field_context()
 
     local alternate = game.field.alternate_result
     if alternate < 0 then
@@ -159,7 +164,7 @@ function Hospital.present_field_exit_prompt()
 
     local choice = game.ui.prompt_text_key(
         "hospital_service_offer",
-        "council_island_hospital.entry.default",
+        site.entry_text,
         { "services", "leave" })
     if choice == "services" then
         return "hospital-options"

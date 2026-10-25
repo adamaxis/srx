@@ -69,7 +69,8 @@ function M.input(st, events, ctx)
     if events & P.START == 0 and events & CONFIRM == 0 then return end
 
     local region = Taxi.cursor_to_region[st.row + 1]
-    if ctx.game.request_taxi_destination(region) then
+    -- ROM 0x20714 runs the cabbie dialogue before 0x136B6 can travel [C].
+    if ctx.game.begin_taxi_cabbie(region) then
         return { transition = T.EXIT }
     end
 end

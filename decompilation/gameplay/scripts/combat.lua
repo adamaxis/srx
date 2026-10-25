@@ -2,6 +2,12 @@
 -- typed actor records and bounded ROM random draws; this module owns the
 -- 0x55C76 trial sequence and returns the resulting meter snapshot.
 local Combat = {}
+local E = require("enums")
+local ActorPool = E.ActorPool
+local SpellActionCode = E.SpellActionCode
+local SpellEffectKind = E.SpellEffectKind
+local SpellTuning = E.SpellTuning
+local SoundId = E.SoundId
 
 local function signed_byte(value)
     value = value & 0xff
@@ -165,6 +171,18 @@ local function condition_modifier(difficulty, attacker, target)
         return difficulty
     end
     return difficulty + 4
+end
+
+local function unlinked_spell_condition_modifier(difficulty, attacker)
+    -- 0x55740 reads target +0x9B and +0x11 through A1 [C]. On the player's
+    -- +0xA2==0 path, A1 is left by the outer caller or a previous actor
+    -- callback (see 0xA8EA/0xAAA6), so those bytes are not a stable defender
+    -- profile. Keep the attacker-side cyberware reduction and do not invent
+    -- a self target [H].
+    if (attacker.cyberware_flags & 0x0002) ~= 0 then
+        return difficulty - 1
+    end
+    return difficulty
 end
 
 local function add_wound_difficulty_penalty(difficulty, physical_meter,
@@ -363,6 +381,34 @@ local function copy_combatant(record)
     return copy
 end
 
+local function publish_player_hurt_event(target, defender, physical_meter,
+                                         mental_meter)
+    if defender.record_type >= ActorPool.PARTY then
+        return
+    end
+    local slot = target.source_record_slot
+    if type(slot) ~= "number" then
+        slot = defender.record_type
+    end
+    if slot % 1 ~= 0 or slot < 0 or slot >= ActorPool.PARTY then
+        return
+    end
+    local pending = game.player_hurt_pending_by_slot
+    if type(pending) ~= "table" then
+        pending = {}
+        game.player_hurt_pending_by_slot = pending
+    end
+    if physical_meter == 0 then
+        -- 0xAFF2 takes the zero-meter record through the C0B2 down path.
+        pending[slot] = nil
+    elseif physical_meter < defender.physical_meter or
+           mental_meter < defender.mental_meter then
+        -- Party records are the player side of this event. World actors keep
+        -- using their existing incoming_hit event below.
+        pending[slot] = true
+    end
+end
+
 local function commit_combatant_meters(target, defender, physical_meter,
                                       mental_meter, source_flags)
     if type(source_flags) == "number" then
@@ -391,6 +437,8 @@ local function commit_combatant_meters(target, defender, physical_meter,
             mental_meter = mental_meter,
         }
     end
+    publish_player_hurt_event(
+        target, defender, physical_meter, mental_meter)
     return true
 end
 
@@ -419,14 +467,19 @@ local function consume_fetish_residual(record, residual)
     return "fetish_exhausted", changed
 end
 
-function Combat.resolve_spell_action(context, target)
-    if type(context) ~= "table" or type(target) ~= "table" or
+local function resolve_spell_action(context, target, allow_untargeted)
+    local untargeted = target == nil
+    if type(context) ~= "table" or
+       (untargeted and not allow_untargeted) or
        type(context.combatant) ~= "table" or
-       type(target.combatant) ~= "table" or
+       (not untargeted and
+        (type(target) ~= "table" or
+         type(target.combatant) ~= "table" or
+         type(target.id) ~= "string" or
+         type(target.source_record_slot) ~= "number")) or
+       (untargeted and type(context.source_record_slot) ~= "number") or
        type(context.ai_random_bound) ~= "function" or
-       type(context.action_code) ~= "number" or
-       type(target.id) ~= "string" or
-       type(target.source_record_slot) ~= "number" then
+       type(context.action_code) ~= "number" then
         return nil
     end
     local magic = game.modules.magic
@@ -438,12 +491,15 @@ function Combat.resolve_spell_action(context, target)
     end
 
     local attacker = copy_combatant(context.combatant)
-    local defender = copy_combatant(target.combatant)
+    local defender = not untargeted and copy_combatant(target.combatant) or nil
     local result = {
         action_code = context.action_code,
-        target_id = target.id,
-        source_record_slot = target.source_record_slot,
-        record_type = defender.record_type,
+        target_id = not untargeted and target.id or "",
+        source_record_slot = not untargeted and target.source_record_slot or
+            context.source_record_slot,
+        record_type = defender and defender.record_type or attacker.record_type,
+        untargeted = untargeted,
+        field_effect_kind = SpellEffectKind.NONE,
         action_result = 0,
         roll_attempted = false,
         outcome = "roll_failed",
@@ -496,7 +552,9 @@ function Combat.resolve_spell_action(context, target)
     initial_trials = initial_trials & 0xff
     result.initial_trial_count = initial_trials
 
-    local difficulty = condition_modifier(4, attacker, defender)
+    local difficulty = untargeted
+        and unlinked_spell_condition_modifier(4, attacker)
+        or condition_modifier(4, attacker, defender)
     difficulty = dynamic_status_modifier(
         difficulty, attacker, defender, context)
     if difficulty == nil then
@@ -522,24 +580,44 @@ function Combat.resolve_spell_action(context, target)
         return result
     end
 
-    -- 0x103D8 dispatches the target effect before resolving the residual.
+    -- 0x103D8 dispatches the effect before resolving the caster residual [C].
     result.outcome = "effect_dispatched"
     result.effect_requested = true
-    -- ROM 0x1582A reserves one of the eighteen shared effect records. A full
-    -- pool still leaves the successful action result and 0x10660 caster path,
-    -- but it creates no target effect and emits no 0x4946 cue.
-    for slot = 0, 17 do
-        if context.world_effect_slot_occupancy == nil or
-           context.world_effect_slot_occupancy[slot + 1] ~= true then
-            result.spell_effect_slot = slot
-            result.effect_started = true
-            break
+    if untargeted then
+        -- ROM 0x15830 returns at 0x1584C for a zero +0xA2 link, except action
+        -- codes 7 and 14, which enter 0x49A2 and create the directional
+        -- five-cell field barrier [C]. This is not a self-targeted actor effect.
+        result.field_effect_kind = spell.untargeted_effect_kind or
+            SpellEffectKind.NONE
+        if result.field_effect_kind == SpellEffectKind.FIELD_BARRIER then
+            for slot = 0, 17 do
+                if context.world_effect_slot_occupancy == nil or
+                   context.world_effect_slot_occupancy[slot + 1] ~= true then
+                    result.spell_effect_slot = slot
+                    result.effect_started = true
+                    result.audio_event = SoundId.FIELD_3B
+                    break
+                end
+            end
+        end
+    else
+        -- ROM 0x1582A reserves a target effect only when a target record is
+        -- linked. A full pool still preserves the roll and caster drain.
+        for slot = 0, 17 do
+            if context.world_effect_slot_occupancy == nil or
+               context.world_effect_slot_occupancy[slot + 1] ~= true then
+                result.spell_effect_slot = slot
+                result.effect_started = true
+                break
+            end
+        end
+        if result.effect_started and spell.audio_event ~= 0 then
+            result.audio_event = spell.audio_event
         end
     end
-    if result.effect_started and spell.audio_event ~= 0 then
-        result.audio_event = spell.audio_event
-    end
-    if context.action_code == 6 or context.action_code == 13 then
+    if not untargeted and
+       (context.action_code == SpellActionCode.STINK or
+        context.action_code == SpellActionCode.CONFUSION) then
         result.special_result_published = true
         result.special_result_successes = successes
         result.special_result_bonus = attacker.force or
@@ -582,6 +660,14 @@ function Combat.resolve_spell_action(context, target)
     end
     result.combatant = attacker
     return result
+end
+
+function Combat.resolve_spell_action(context, target)
+    return resolve_spell_action(context, target, false)
+end
+
+function Combat.resolve_untargeted_spell_action(context)
+    return resolve_spell_action(context, nil, true)
 end
 
 function Combat.resolve_spell_impact(context, pending, target)

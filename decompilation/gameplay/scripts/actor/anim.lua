@@ -6,6 +6,8 @@ local I = require("lib.int68k")
 local u8, u16, s16 = I.u8, I.u16, I.s16
 local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local PlayerHurt = E.PlayerHurt
+local HitSpark = E.HitSpark
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
 local SpriteType = R.SpriteType   -- from actor/tables.lua
 local function direction_from_heading(...) return R.direction_from_heading(...) end   -- from actor/targeting.lua
@@ -25,7 +27,11 @@ local function snapshot(state, action, audio_event, projectile_movement,
     end
     local combat_meter_update = state.combat_meter_update
     state.combat_meter_update = nil
-    return {
+    local strike_heading = state.strike_heading
+    state.strike_heading = nil
+    local hit_spark_spawn_request = state.hit_spark_spawn_request
+    state.hit_spark_spawn_request = nil
+    local result = {
         actor_id = state.actor_id,
         profile_id = state.profile_id,
         package_id = state.package_id,
@@ -45,6 +51,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
         combat_action_requested = state.combat_action_requested,
         audio_event = audio_event,
         target_heading_audio_event = target_heading_audio_event,
+        strike_heading = strike_heading,
         weapon_item_id = state.weapon_item_id,
         animation_increment = state.animation_increment,
         movement_heading = state.movement_heading,
@@ -83,7 +90,12 @@ local function snapshot(state, action, audio_event, projectile_movement,
         source_action_dispatch = state.source_action_dispatch,
         movement_step = state.movement_step,
         projectile_movement = projectile_movement,
+        hit_spark_spawn_request = hit_spark_spawn_request,
     }
+    if state.profile_id == "field_hit_spark" then
+        result.hit_spark_retired = state.hit_spark_retired == true
+    end
+    return result
 end
 
 local function advance_projectile_animation(state, context)
@@ -132,6 +144,65 @@ local function advance_projectile_animation(state, context)
     state.animation_increment = weapon_projectile_descriptor_increment
     state.animation_id = "projectile"
     return true
+end
+
+local function advance_hit_spark_animation(state, context)
+    local animation = context.hit_spark_animation
+    if context.phase ~= "render" or type(animation) ~= "table" or
+       type(animation.selector) ~= "number" or
+       type(animation.frame_count) ~= "number" or
+       animation.frame_count ~= HitSpark.FRAME_COUNT or
+       type(animation.period) ~= "number" or
+       animation.period ~= HitSpark.FRAME_PERIOD then
+        return false
+    end
+
+    -- 0x15118 initializes +0x1C to 0x1000; the kind-1 list at 0x7330 sets
+    -- +0x18 to 0x0400. 0x5FDC advances +0x1E, then 0x600E marks the
+    -- selector negative after the fifth list entry [C].
+    state.animation_selector = animation.selector
+    state.animation_period = animation.period
+    state.animation_frame_count = animation.frame_count
+    local accumulated_word =
+        u16(state.animation_accumulator + HitSpark.FRAME_INCREMENT)
+    local accumulated_signed = accumulated_word
+    if accumulated_word >= HitSpark.FINISHED_SELECTOR_BIT then
+        accumulated_signed = accumulated_word - HitSpark.WORD_MODULUS
+    end
+    if state.animation_period <= accumulated_signed then
+        state.animation_frame = u16(state.animation_frame + 1)
+        state.animation_accumulator =
+            u16(accumulated_word - state.animation_period)
+        if state.animation_accumulator >= HitSpark.FINISHED_SELECTOR_BIT then
+            state.animation_accumulator = state.animation_accumulator -
+                HitSpark.WORD_MODULUS
+        end
+    else
+        state.animation_accumulator = accumulated_signed
+    end
+    if state.animation_frame_count <= state.animation_frame then
+        state.animation_selector = state.animation_selector |
+            HitSpark.FINISHED_SELECTOR_BIT
+        state.animation_frame = state.animation_frame_count - 1
+    end
+    state.animation_increment = HitSpark.FRAME_INCREMENT
+    state.animation_id = "hit_spark"
+    return true
+end
+
+local function hit_spark_heartbeat(state, context)
+    if context.phase == "render" then
+        if not advance_hit_spark_animation(state, context) then
+            return nil
+        end
+    elseif context.phase == "behavior" then
+        -- ROM 0xAC4E clears +0x10 bit 0 after 0x600E marks +0x16 negative [C].
+        state.hit_spark_retired =
+            (state.animation_selector & HitSpark.FINISHED_SELECTOR_BIT) ~= 0
+    else
+        return nil
+    end
+    return snapshot(state, "hold", nil)
 end
 
 local function advance_entry_animation(state)
@@ -260,6 +331,59 @@ local function advance_received_hit_reaction(state, context)
         end
     end
     return audio_event
+end
+
+local function begin_player_hurt_reaction(state, context)
+    if context.actor_id ~= "field_player_runner" or
+       context.phase ~= "behavior" or
+       type(context.source_record_slot) ~= "number" or
+       context.source_record_slot % 1 ~= 0 or
+       context.source_record_slot < 0 or
+       context.source_record_slot >= E.ActorPool.PARTY then
+        return false
+    end
+    local pending = game.player_hurt_pending_by_slot
+    if type(pending) ~= "table" or
+       pending[context.source_record_slot] ~= true then
+        return false
+    end
+    pending[context.source_record_slot] = nil
+    state.player_hurt_pose_active = true
+    state.player_hurt_animation_complete_pending = nil
+    state.player_hurt_selector_reset_after_render = nil
+    state.player_hurt_sound_active = true
+    state.animation_id = "runner_hurt"
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    state.animation_selector = PlayerHurt.SELECTOR_BASE +
+        state.direction * PlayerHurt.SELECTOR_STEP
+    state.hurt_behavior_timer = PlayerHurt.SOUND_DELAY
+    state.hurt_audio_event = SoundId.DAC_SAMPLE_40
+    state.hurt_audio_emitted = false
+    return true
+end
+
+local function finish_player_hurt_reaction(state, context)
+    if context.actor_id ~= "field_player_runner" or
+       context.phase ~= "behavior" or
+       state.player_hurt_animation_complete_pending ~= true then
+        return false
+    end
+    state.player_hurt_animation_complete_pending = nil
+    state.player_hurt_pose_active = nil
+    if state.animation_id == "runner_hurt" then
+        -- ROM 0x600E completes the kind-3 C072 0x8002 list after its second
+        -- 0x0300/0x1000 step. On the next 0xA8EA pass, the living party
+        -- record re-enters 0xACAE; its no-direction path installs 0xB45C,
+        -- which selects the matching C052 idle pose. 0xB07E only keeps the
+        -- independent eight-service cue; its 0xB48C call is collision work.
+        state.animation_id = "idle"
+        state.animation_selector = idle_pose_selectors[state.direction + 1]
+        state.animation_frame = 0
+        state.animation_accumulator = 0
+        state.player_hurt_selector_reset_after_render = true
+    end
+    return true
 end
 
 local function advance_dynamic_actor_walk_animation(state, context)
@@ -398,6 +522,12 @@ local spell_pose_selectors = {
 }
 
 local function advance_player_animation(state, context)
+    if state.player_hurt_selector_reset_after_render then
+        -- The behavior pass above published C052 to the host. Do not carry
+        -- that finite-reset selector into a later C062 movement decision.
+        state.animation_selector = nil
+        state.player_hurt_selector_reset_after_render = nil
+    end
     if type(context.animation_accumulator_override) == "number" then
         state.animation_accumulator =
             context.animation_accumulator_override
@@ -408,9 +538,89 @@ local function advance_player_animation(state, context)
         state.direction = direction_from_heading(context.initial_heading)
     end
 
+    local runner_hurt = context.animation_mode == "runner_hurt" or
+        (state.player_hurt_pose_active and
+         context.animation_mode == "idle")
+    if runner_hurt then
+        if state.animation_id ~= "runner_hurt" then
+            state.animation_frame = 0
+            state.animation_accumulator = 0
+        end
+        state.player_hurt_pose_active = true
+        state.animation_id = "runner_hurt"
+        state.animation_selector = PlayerHurt.SELECTOR_BASE +
+            state.direction * PlayerHurt.SELECTOR_STEP
+        local accumulated = state.animation_accumulator +
+            PlayerHurt.FRAME_INCREMENT
+        if accumulated >= PlayerHurt.FRAME_PERIOD then
+            accumulated = accumulated - PlayerHurt.FRAME_PERIOD
+            if state.animation_frame + 1 < PlayerHurt.FRAME_COUNT then
+                state.animation_frame = state.animation_frame + 1
+            else
+                -- The 11th render pass reaches +0x1E=2; 0x600E marks the
+                -- C072 selector complete but still displays its last frame.
+                state.player_hurt_animation_complete_pending = true
+            end
+        end
+        state.animation_accumulator = accumulated
+        return
+    end
+    if state.player_hurt_pose_active then
+        state.player_hurt_pose_active = nil
+        state.player_hurt_animation_complete_pending = nil
+        state.animation_selector = nil
+    end
+
     if context.animation_mode == "attack" then
         state.animation_id = "attack"
         state.animation_selector = nil
+        state.animation_frame = 0
+        state.animation_accumulator = 0
+        return
+    end
+    if context.animation_mode == "strike" then
+        -- ROM 0xB1DC selects C0A2[dir] (0xC0..0xDC). Its finite 0x8002 list
+        -- holds two frames advanced by +0x200 per 0x5FDC pass, then holds.
+        if state.animation_id ~= "strike" then
+            state.animation_frame = 0
+            state.animation_accumulator = 0
+        end
+        state.animation_id = "strike"
+        state.animation_selector = 0xC0 + state.direction * 4
+        local accumulated = state.animation_accumulator + 0x0200
+        if accumulated >= 0x1000 then
+            accumulated = accumulated - 0x1000
+            if state.animation_frame < 1 then
+                state.animation_frame = state.animation_frame + 1
+            end
+        end
+        state.animation_accumulator = accumulated
+        return
+    end
+    if context.animation_mode == "runner_down" then
+        -- ROM 0xB330 selects C0B2[dir] (0xE8..0x104). Its finite 0x8008
+        -- list advances +0x200 per pass and holds on entry 7; entries 1..7
+        -- share one descriptor.
+        if state.animation_id ~= "runner_down" then
+            state.animation_frame = 0
+            state.animation_accumulator = 0
+        end
+        state.animation_id = "runner_down"
+        state.animation_selector = 0xE8 + state.direction * 4
+        local accumulated = state.animation_accumulator + 0x0200
+        if accumulated >= 0x1000 then
+            accumulated = accumulated - 0x1000
+            if state.animation_frame < 7 then
+                state.animation_frame = state.animation_frame + 1
+            end
+        end
+        state.animation_accumulator = accumulated
+        return
+    end
+    if context.animation_mode == "cast" then
+        -- ROM 0xAF7C/0xAFAE select C082[dir] (0x80..0x9C), one frame.
+        state.animation_id = "cast"
+        state.animation_selector = 0x80 + state.direction * 4
         state.animation_frame = 0
         state.animation_accumulator = 0
         return
@@ -439,10 +649,14 @@ end
 -- register this module's definitions
 R.snapshot = snapshot
 R.advance_projectile_animation = advance_projectile_animation
+R.advance_hit_spark_animation = advance_hit_spark_animation
+R.hit_spark_heartbeat = hit_spark_heartbeat
 R.advance_entry_animation = advance_entry_animation
 R.advance_finite_actor_animation = advance_finite_actor_animation
 R.begin_received_hit_reaction = begin_received_hit_reaction
 R.advance_received_hit_reaction = advance_received_hit_reaction
+R.begin_player_hurt_reaction = begin_player_hurt_reaction
+R.finish_player_hurt_reaction = finish_player_hurt_reaction
 R.advance_dynamic_actor_walk_animation = advance_dynamic_actor_walk_animation
 R.advance_dynamic_actor_action_animation = advance_dynamic_actor_action_animation
 R.advance_dynamic_actor_item_action_animation = advance_dynamic_actor_item_action_animation

@@ -139,6 +139,14 @@ bool read_field_string(lua_State* state, const int table_index,
     return valid;
 }
 
+bool read_field_string_allow_empty(lua_State* state, const int table_index,
+                                   const char* field, std::string& value) {
+    lua_getfield(state, table_index, field);
+    const bool valid = read_string_allow_empty(state, -1, value);
+    lua_pop(state, 1);
+    return valid;
+}
+
 bool read_field_text(lua_State* state, const int table_index,
                      const char* field, std::string& value,
                      const std::size_t maximum_length =
@@ -999,7 +1007,7 @@ struct GameScriptRuntime::Impl {
         consume_debug_unlock,
         nuyen,
         set_nuyen,
-        request_taxi_destination,
+        begin_taxi_cabbie,
         set_contact_flags,
         set_walk_fast,
         install_test_deck,
@@ -1675,10 +1683,10 @@ struct GameScriptRuntime::Impl {
                         std::max(integer_argument(1), 0)));
             }
             return 0;
-        case MenuBinding::request_taxi_destination: {
+        case MenuBinding::begin_taxi_cabbie: {
             const bool accepted =
-                self->menu_route_bindings.game.request_taxi_destination &&
-                self->menu_route_bindings.game.request_taxi_destination(
+                self->menu_route_bindings.game.begin_taxi_cabbie &&
+                self->menu_route_bindings.game.begin_taxi_cabbie(
                     integer_argument(1));
             lua_pushboolean(lua, accepted ? 1 : 0);
             return 1;
@@ -1796,8 +1804,8 @@ struct GameScriptRuntime::Impl {
         add_menu_binding(state, table_index, "nuyen", MenuBinding::nuyen);
         add_menu_binding(state, table_index, "set_nuyen",
                          MenuBinding::set_nuyen);
-        add_menu_binding(state, table_index, "request_taxi_destination",
-                         MenuBinding::request_taxi_destination);
+        add_menu_binding(state, table_index, "begin_taxi_cabbie",
+                         MenuBinding::begin_taxi_cabbie);
         add_menu_binding(state, table_index, "consume_debug_unlock",
                          MenuBinding::consume_debug_unlock);
         add_menu_binding(state, table_index, "set_contact_flags",
@@ -3391,6 +3399,14 @@ struct GameScriptRuntime::Impl {
             } else {
                 lua_pushnil(lua);
             }
+        } else if (field == "taxi_destination_region") {
+            if (self->field_mode_context.taxi_destination_region.has_value()) {
+                lua_pushinteger(
+                    lua,
+                    *self->field_mode_context.taxi_destination_region);
+            } else {
+                lua_pushnil(lua);
+            }
         } else {
             lua_pushnil(lua);
         }
@@ -3398,7 +3414,20 @@ struct GameScriptRuntime::Impl {
     }
 
     static int field_context_newindex(lua_State* lua) {
-        return luaL_error(lua, "game.field is native read-only context");
+        auto* self = from_upvalue(lua);
+        std::string field;
+        if (self == nullptr || lua_type(lua, 2) != LUA_TSTRING ||
+            !read_string(lua, 2, field) || field != "mode") {
+            return luaL_error(lua, "game.field context is read-only");
+        }
+        std::uint32_t mode = 0U;
+        if (!read_integer(lua, 3, 0xFFU, mode)) {
+            return luaL_error(lua, "game.field.mode must be a byte");
+        }
+        // FFFBF8 is a mutable source context byte. ROM 0x208FE writes the
+        // selected taxi region here before 0x136B6 decides whether to travel.
+        self->field_mode_context.mode = static_cast<std::uint8_t>(mode);
+        return 0;
     }
 
     static int movement_collision(lua_State* lua) {
@@ -4282,7 +4311,8 @@ struct GameScriptRuntime::Impl {
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, field_context_index, 1);
         lua_setfield(state, -2, "__index");
-        lua_pushcfunction(state, field_context_newindex);
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, field_context_newindex, 1);
         lua_setfield(state, -2, "__newindex");
         lua_setmetatable(state, -2);
         lua_setfield(state, -2, "field");
@@ -7877,6 +7907,10 @@ void GameScriptRuntime::set_field_mode_context(
     impl_->field_mode_context = context;
 }
 
+std::uint8_t GameScriptRuntime::field_mode_context_value() const noexcept {
+    return impl_->field_mode_context.mode;
+}
+
 void GameScriptRuntime::set_actor_heartbeat_observer(
     ScriptActorHeartbeatObserver observer) {
     impl_->actor_heartbeat_observer = std::move(observer);
@@ -7952,6 +7986,18 @@ GameScriptRuntime::actor_heartbeat(
     case ScriptActorAnimationMode::attack:
         animation_mode = "attack";
         break;
+    case ScriptActorAnimationMode::strike:
+        animation_mode = "strike";
+        break;
+    case ScriptActorAnimationMode::cast:
+        animation_mode = "cast";
+        break;
+    case ScriptActorAnimationMode::runner_down:
+        animation_mode = "runner_down";
+        break;
+    case ScriptActorAnimationMode::runner_hurt:
+        animation_mode = "runner_hurt";
+        break;
     default:
         return fail("gameplay Lua actor animation mode is invalid");
     }
@@ -7989,6 +8035,12 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "combat_action_ready");
     lua_pushboolean(state, context.combat_action_available);
     lua_setfield(state, -2, "combat_action_available");
+    lua_pushboolean(state, context.player_spell_available);
+    lua_setfield(state, -2, "player_spell_available");
+    lua_pushinteger(state, context.player_spell_code);
+    lua_setfield(state, -2, "player_spell_code");
+    lua_pushboolean(state, context.player_melee_available);
+    lua_setfield(state, -2, "player_melee_available");
     lua_pushboolean(state, context.combat_input_blocked);
     lua_setfield(state, -2, "combat_input_blocked");
     lua_pushinteger(state, context.controller_nibble);
@@ -8395,6 +8447,25 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "projectile_animation");
+    if (context.hit_spark_animation.has_value()) {
+        const auto& animation = *context.hit_spark_animation;
+        lua_createtable(state, 0, 6);
+        lua_pushinteger(state, animation.selector);
+        lua_setfield(state, -2, "selector");
+        lua_pushinteger(state, animation.frame_count);
+        lua_setfield(state, -2, "frame_count");
+        lua_pushinteger(state, animation.frame);
+        lua_setfield(state, -2, "frame");
+        lua_pushinteger(state, animation.accumulator);
+        lua_setfield(state, -2, "accumulator");
+        lua_pushinteger(state, animation.increment);
+        lua_setfield(state, -2, "increment");
+        lua_pushinteger(state, animation.period);
+        lua_setfield(state, -2, "period");
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "hit_spark_animation");
     if (context.projectile_movement.has_value()) {
         const auto& movement = *context.projectile_movement;
         lua_createtable(state, 0, 16);
@@ -8600,6 +8671,15 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat returned an invalid animation frame");
     }
     decision.animation_frame = static_cast<std::uint8_t>(returned_action_code);
+    lua_getfield(state, decision_table, "hit_spark_retired");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        if (!lua_isboolean(state, -1)) {
+            lua_pop(state, 1);
+            return fail("actor_ai.heartbeat returned an invalid hit-spark retirement state");
+        }
+        decision.hit_spark_retired = lua_toboolean(state, -1) != 0;
+    }
+    lua_pop(state, 1);
     lua_getfield(state, decision_table, "target_marker_visible");
     if (!lua_isboolean(state, -1)) {
         return fail("actor_ai.heartbeat returned an invalid target-marker visibility");
@@ -8674,7 +8754,7 @@ GameScriptRuntime::actor_heartbeat(
         static_cast<std::uint8_t>(spell_effect_phase_value);
     std::uint32_t spell_effect_action_code = 0U;
     if (!read_field_integer(state, decision_table,
-                            "spell_effect_action_code", 13U,
+                            "spell_effect_action_code", 14U,
                             spell_effect_action_code)) {
         return fail("actor_ai.heartbeat returned an invalid spell effect action code");
     }
@@ -8733,6 +8813,11 @@ GameScriptRuntime::actor_heartbeat(
             return std::uint8_t{9U};
         case 12U:
             return std::uint8_t{16U};
+        // ROM 0x49A2 uses a timed field record, one terminal render phase,
+        // and no actor-target animation phases for either barrier code [C].
+        case 7U:
+        case 14U:
+            return std::uint8_t{1U};
         default:
             return std::uint8_t{0U};
         }
@@ -8895,7 +8980,8 @@ GameScriptRuntime::actor_heartbeat(
                 target_combatant = &*target->combatant;
                 target_is_world_actor = target->world_activity_actor;
                 target_linked =
-                    context.dynamic_world_encounter_actor &&
+                    (context.dynamic_world_encounter_actor ||
+                     context.player_melee_available) &&
                     context.phase == ScriptActorHeartbeatPhase::behavior &&
                     (update.record_type < 3U) != target_is_world_actor &&
                     ((update.record_type < 3U &&
@@ -8925,11 +9011,17 @@ GameScriptRuntime::actor_heartbeat(
         const auto resolution_table = lua_absindex(state, -1);
         ScriptActorSpellActionResolution resolution{};
         std::uint32_t resolution_value = 0U;
+        std::uint32_t field_effect_kind_value = 0U;
         int signed_resolution_value = 0;
         if (!read_field_integer(state, resolution_table, "action_code",
                                 0xFFU, resolution_value) ||
-            !read_field_string(state, resolution_table, "target_id",
-                               resolution.target_id) ||
+            !read_field_string_allow_empty(state, resolution_table,
+                                           "target_id", resolution.target_id) ||
+            !read_field_boolean(state, resolution_table, "untargeted",
+                                resolution.untargeted) ||
+            !read_field_integer(state, resolution_table,
+                                "field_effect_kind", 1U,
+                                field_effect_kind_value) ||
             !read_field_integer(state, resolution_table,
                                 "source_record_slot", 0xFFU,
                                 resolution_value)) {
@@ -8938,6 +9030,9 @@ GameScriptRuntime::actor_heartbeat(
         }
         resolution.target_record_slot =
             static_cast<std::uint8_t>(resolution_value);
+        resolution.field_effect_kind =
+            static_cast<ScriptActorSpellFieldEffectKind>(
+                field_effect_kind_value);
         std::uint32_t action_code = 0U;
         if (!read_field_integer(state, resolution_table, "action_code",
                                 0xFFU, action_code) ||
@@ -9146,7 +9241,8 @@ GameScriptRuntime::actor_heartbeat(
             });
         const bool linked_target =
             target != context.ai_target_candidates.end() &&
-            context.dynamic_world_encounter_actor &&
+            (context.dynamic_world_encounter_actor ||
+             context.player_spell_available) &&
             context.phase == ScriptActorHeartbeatPhase::behavior &&
             target->world_activity_actor !=
                 (resolution.target_record_type < 3U) &&
@@ -9154,9 +9250,39 @@ GameScriptRuntime::actor_heartbeat(
               resolution.target_record_slot < 3U) ||
              (resolution.target_record_type >= 3U &&
               resolution.target_record_slot >= 3U));
-        if (!known_outcome || action_code != context.action_code ||
-            !context.combatant.has_value() || !linked_target ||
-            resolution.action_code != context.action_code ||
+        const bool untargeted_player_cast =
+            resolution.untargeted && resolution.target_id.empty() &&
+            context.player_spell_available &&
+            !context.dynamic_world_encounter_actor &&
+            context.phase == ScriptActorHeartbeatPhase::behavior &&
+            context.source_record_slot.has_value() &&
+            *context.source_record_slot == resolution.target_record_slot &&
+            context.combatant.has_value() &&
+            context.combatant->record_type ==
+                resolution.target_record_type;
+        const bool field_barrier = resolution.field_effect_kind ==
+            ScriptActorSpellFieldEffectKind::field_barrier;
+        const bool field_effect_kind_valid =
+            resolution.field_effect_kind ==
+                ScriptActorSpellFieldEffectKind::none ||
+            (field_barrier && untargeted_player_cast &&
+             (resolution.action_code == 7U ||
+              resolution.action_code == 14U) &&
+             resolution.effect_requested);
+        // The field player's cast code is offered separately; its profile
+        // action code stays "none" for movement and weapon services.
+        const auto caster_action_code =
+            context.player_spell_available &&
+                    !context.dynamic_world_encounter_actor
+                ? context.player_spell_code
+                : context.action_code;
+        if (!known_outcome || action_code != caster_action_code ||
+            !context.combatant.has_value() ||
+            (!linked_target && !untargeted_player_cast) ||
+            resolution.action_code != caster_action_code ||
+            (resolution.untargeted && !untargeted_player_cast) ||
+            (!resolution.untargeted && field_barrier) ||
+            !field_effect_kind_valid ||
             resolution.effect_requested != effect_outcome ||
             (resolution.effect_started &&
              (!resolution.effect_requested ||
@@ -9354,9 +9480,11 @@ GameScriptRuntime::actor_heartbeat(
     lua_pop(state, 1);
     lua_getfield(state, decision_table, "animation_selector");
     if (lua_type(state, -1) != LUA_TNIL) {
-        const auto maximum_selector = context.projectile_animation.has_value()
-                                          ? 0xFFFF
-                                          : 0x07FF;
+        const auto maximum_selector =
+            context.projectile_animation.has_value() ||
+                    context.hit_spark_animation.has_value()
+                ? 0xFFFF
+                : 0x07FF;
         if (!lua_isinteger(state, -1) || lua_tointeger(state, -1) < 0 ||
             lua_tointeger(state, -1) > maximum_selector) {
             return fail(
@@ -9410,7 +9538,12 @@ GameScriptRuntime::actor_heartbeat(
          decision.animation_id == "walk" ||
          decision.animation_id == "action" ||
          decision.animation_id == "attack" ||
+         decision.animation_id == "strike" ||
+         decision.animation_id == "cast" ||
+         decision.animation_id == "runner_down" ||
+         decision.animation_id == "runner_hurt" ||
          decision.animation_id == "projectile" ||
+         decision.animation_id == "hit_spark" ||
          decision.animation_id == "hurt" ||
          decision.animation_id == "down" ||
          decision.animation_id == "spell" ||
@@ -9443,10 +9576,29 @@ GameScriptRuntime::actor_heartbeat(
         context.action_kind == ScriptActorActionKind::item &&
         decision.animation_id == "weapon";
     if ((decision.animation_id == "walk" ||
-         decision.animation_id == "attack") &&
+         decision.animation_id == "attack" ||
+         decision.animation_id == "strike" ||
+         decision.animation_id == "cast" ||
+         decision.animation_id == "runner_down" ||
+         decision.animation_id == "runner_hurt") &&
         context.profile_id != "field_runner_k03_none00" &&
         !dynamic_creature_walk) {
         return fail("actor_ai.heartbeat returned an unsupported actor animation");
+    }
+    if (decision.animation_id == "runner_down" &&
+        decision.animation_frame > 7U) {
+        return fail("actor_ai.heartbeat returned an unsupported C0B2 down frame");
+    }
+    if (decision.animation_id == "runner_hurt" &&
+        (decision.animation_frame > 1U ||
+         !decision.animation_selector.has_value() ||
+         *decision.animation_selector != static_cast<std::uint16_t>(
+             0x0060U + decision.direction * 0x0004U))) {
+        return fail(
+            "actor_ai.heartbeat returned an unsupported C072 hurt pose");
+    }
+    if (decision.animation_id == "strike" && decision.animation_frame > 1U) {
+        return fail("actor_ai.heartbeat returned an unsupported C0A2 strike frame");
     }
     if (decision.animation_id == "action" &&
         (!dynamic_creature_action ||
@@ -9493,13 +9645,28 @@ GameScriptRuntime::actor_heartbeat(
         std::uint32_t event = 0U;
         if (!read_integer(state, -1, 0xFFFFU, event) ||
             (event != 0x004DU && event != 0x004EU) ||
-            !context.dynamic_world_encounter_actor ||
-            decision.animation_id != "action") {
+            (!(context.player_melee_available &&
+               !context.dynamic_world_encounter_actor &&
+               context.phase == ScriptActorHeartbeatPhase::behavior) &&
+             (!context.dynamic_world_encounter_actor ||
+              decision.animation_id != "action"))) {
             return fail(
                 "actor_ai.heartbeat returned an invalid target-heading audio event");
         }
         decision.target_heading_audio_event =
             static_cast<std::uint16_t>(event);
+    }
+    lua_pop(state, 1);
+    lua_getfield(state, decision_table, "strike_heading");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        std::uint32_t heading = 0U;
+        if (!read_integer(state, -1, 0xFFFFU, heading) ||
+            !context.player_melee_available ||
+            context.dynamic_world_encounter_actor ||
+            context.phase != ScriptActorHeartbeatPhase::behavior) {
+            return fail("actor_ai.heartbeat returned an invalid strike heading");
+        }
+        decision.strike_heading = static_cast<std::uint16_t>(heading);
     }
     lua_pop(state, 1);
     lua_getfield(state, decision_table, "weapon_item_id");
@@ -9918,7 +10085,22 @@ GameScriptRuntime::actor_heartbeat(
             (shared_label && (spell_context || item_context)) ||
             (spell_label && spell_context) ||
             (item_label && item_context);
-        if (!label_matches ||
+        const bool player_spell_label =
+            source_action_dispatch == "player_spell" ||
+            source_action_dispatch == "player_spell_blocked" ||
+            source_action_dispatch == "player_spell_no_target" ||
+            source_action_dispatch == "player_spell_suppressed";
+        const bool player_melee_label =
+            source_action_dispatch == "player_melee" ||
+            source_action_dispatch == "player_melee_hit";
+        const bool player_label_matches =
+            ((player_spell_label && context.player_spell_available) ||
+             (player_melee_label && context.player_melee_available)) &&
+            !context.dynamic_world_encounter_actor &&
+            context.phase == ScriptActorHeartbeatPhase::behavior;
+        if (player_label_matches) {
+            // Field-player 0xAE6E dispatch; validated below.
+        } else if (!label_matches ||
             !context.dynamic_world_encounter_actor ||
             context.phase != ScriptActorHeartbeatPhase::behavior) {
             return fail("actor_ai.heartbeat returned an invalid action dispatch");
@@ -9970,6 +10152,29 @@ GameScriptRuntime::actor_heartbeat(
         }
         decision.source_action_dispatch = std::move(source_action_dispatch);
     }
+    lua_getfield(state, decision_table, "hit_spark_spawn_request");
+    if (lua_type(state, -1) != LUA_TNIL) {
+        if (!lua_istable(state, -1)) {
+            return fail("actor_ai.heartbeat returned an invalid hit-spark spawn request");
+        }
+        const auto request_table = lua_absindex(state, -1);
+        ScriptActorHitSparkSpawnRequest request{};
+        std::uint32_t world_x = 0U;
+        std::uint32_t world_y = 0U;
+        if (!read_field_string(state, request_table, "target_id",
+                               request.target_id) ||
+            !valid_identifier(request.target_id) ||
+            !read_field_integer(state, request_table, "world_x", 0xFFFFU,
+                                world_x) ||
+            !read_field_integer(state, request_table, "world_y", 0xFFFFU,
+                                world_y)) {
+            return fail("actor_ai.heartbeat returned incomplete hit-spark target facts");
+        }
+        request.world_x = static_cast<std::uint16_t>(world_x);
+        request.world_y = static_cast<std::uint16_t>(world_y);
+        decision.hit_spark_spawn_request = std::move(request);
+    }
+    lua_pop(state, 1);
     const auto spell_pose_selector = [](const std::uint16_t selector) {
         // ROM words at 0xC082: 0x80, 0x84, ... 0x9C.
         return selector >= 0x0080U && selector <= 0x009CU &&
@@ -9982,10 +10187,17 @@ GameScriptRuntime::actor_heartbeat(
     bool spell_action_audio_matches = false;
     if (decision.spell_action_resolution.has_value()) {
         const auto& resolution = *decision.spell_action_resolution;
-        const auto expected_audio =
+        const auto table_audio =
             resolution.action_code < kSpellActionAudioEvents.size()
                 ? kSpellActionAudioEvents[resolution.action_code]
                 : 0U;
+        // ROM 0x49A2 emits event 0x3B only after 0x1582A allocates the
+        // directional field-barrier record; a full pool stays silent [C].
+        const auto expected_audio =
+            resolution.field_effect_kind ==
+                    ScriptActorSpellFieldEffectKind::field_barrier
+                ? (resolution.effect_started ? 0x003BU : 0U)
+                : table_audio;
         spell_action_audio_matches =
             (!resolution.effect_started && !decision.audio_event.has_value()) ||
             (resolution.effect_started &&
@@ -10015,7 +10227,15 @@ GameScriptRuntime::actor_heartbeat(
         (!spell_pose || decision.action_delay < 0x0F)) {
         return fail("actor_ai.heartbeat returned an unsupported spell dispatch");
     }
-    if (decision.spell_action_resolution.has_value() &&
+    const bool player_spell_cast =
+        context.player_spell_available &&
+        !context.dynamic_world_encounter_actor &&
+        context.phase == ScriptActorHeartbeatPhase::behavior &&
+        decision.source_action_dispatch.has_value() &&
+        *decision.source_action_dispatch == "player_spell" &&
+        decision.spell_action_resolution.has_value() &&
+        spell_action_audio_matches && !spell_pose;
+    if (decision.spell_action_resolution.has_value() && !player_spell_cast &&
         (!spell_pose || !decision.source_action_dispatch.has_value() ||
          *decision.source_action_dispatch != "spell" ||
          !spell_action_audio_matches)) {
@@ -10062,12 +10282,82 @@ GameScriptRuntime::actor_heartbeat(
          (context.down_audio_event.has_value() &&
           *decision.audio_event == *context.down_audio_event));
     const bool spell_action_audio =
-        spell_pose && decision.spell_action_resolution.has_value() &&
-        spell_action_audio_matches;
+        (spell_pose && decision.spell_action_resolution.has_value() &&
+         spell_action_audio_matches) ||
+        player_spell_cast;
+    // ROM 0xB1DC: the player strike always requests 0x4C/0x55; only an
+    // in-range strike adds the 0x4D/0x4E heading cue.
+    const bool player_melee_dispatch =
+        context.player_melee_available &&
+        !context.dynamic_world_encounter_actor &&
+        context.phase == ScriptActorHeartbeatPhase::behavior &&
+        decision.source_action_dispatch.has_value() &&
+        (*decision.source_action_dispatch == "player_melee" ||
+         *decision.source_action_dispatch == "player_melee_hit");
+    const bool player_melee_hit = player_melee_dispatch &&
+        *decision.source_action_dispatch == "player_melee_hit";
+    if (player_melee_dispatch &&
+        (!decision.audio_event.has_value() ||
+         (*decision.audio_event != 0x004CU &&
+          *decision.audio_event != 0x0055U) ||
+         (decision.combat_meter_update.has_value() && !player_melee_hit))) {
+        return fail("actor_ai.heartbeat returned an invalid player strike");
+    }
+    const bool hit_spark_expected = player_melee_hit &&
+        decision.combat_meter_update.has_value() &&
+        decision.combat_meter_update->changed;
+    if (hit_spark_expected != decision.hit_spark_spawn_request.has_value()) {
+        return fail("actor_ai.heartbeat returned a hit-spark request inconsistent with the changed player strike");
+    }
+    if (decision.hit_spark_spawn_request.has_value()) {
+        const auto& request = *decision.hit_spark_spawn_request;
+        const auto target = std::find_if(
+            context.ai_target_candidates.begin(),
+            context.ai_target_candidates.end(),
+            [&request](const auto& candidate) {
+                return candidate.id == request.target_id &&
+                       candidate.world_x == request.world_x &&
+                       candidate.world_y == request.world_y;
+            });
+        if (!player_melee_hit || !decision.combat_meter_update.has_value() ||
+            !decision.combat_meter_update->changed ||
+            decision.combat_meter_update->target_id != request.target_id ||
+            target == context.ai_target_candidates.end()) {
+            return fail("actor_ai.heartbeat requested a hit spark outside the resolved player strike target");
+        }
+    }
+    const bool hit_spark_actor = context.profile_id == "field_hit_spark";
+    if (decision.hit_spark_retired &&
+        (!hit_spark_actor ||
+         context.phase != ScriptActorHeartbeatPhase::behavior)) {
+        return fail("actor_ai.heartbeat retired a hit spark outside its behavior pass");
+    }
+    if (hit_spark_actor) {
+        if (!context.hit_spark_animation.has_value()) {
+            return fail("actor_ai.heartbeat hit-spark actor omitted its finite animation facts");
+        }
+        const bool source_selector_finished =
+            (context.hit_spark_animation->selector & 0x8000U) != 0U;
+        if (context.phase == ScriptActorHeartbeatPhase::render &&
+            (decision.animation_id != "hit_spark" ||
+             decision.animation_frame >= context.hit_spark_animation->frame_count ||
+             !decision.animation_selector.has_value() ||
+             !decision.animation_increment.has_value())) {
+            return fail("actor_ai.heartbeat returned an invalid hit-spark frame");
+        }
+        if (context.phase == ScriptActorHeartbeatPhase::behavior &&
+            decision.hit_spark_retired != source_selector_finished) {
+            return fail("actor_ai.heartbeat retirement did not follow the finished hit-spark selector");
+        }
+    } else if (decision.animation_id == "hit_spark" ||
+               context.hit_spark_animation.has_value()) {
+        return fail("actor_ai.heartbeat used hit-spark state outside its source profile");
+    }
     if (((begins_entry != decision.audio_event.has_value()) &&
          !projectile_behavior && !begins_dynamic_target_action &&
-         !dynamic_hit_reaction_audio && !spell_action_audio) ||
-        (begins_dynamic_target_action !=
+         !dynamic_hit_reaction_audio && !spell_action_audio &&
+         !player_melee_dispatch) ||
+        ((begins_dynamic_target_action || player_melee_hit) !=
          decision.target_heading_audio_event.has_value()) ||
         (decision.animation_id == "action" &&
          decision.audio_event.has_value() &&
@@ -10272,6 +10562,63 @@ std::optional<std::string> GameScriptRuntime::call_string(
         return std::nullopt;
     }
     lua_pop(state, 1);
+    impl_->failure.clear();
+    return result;
+}
+
+std::optional<std::vector<std::int64_t>> GameScriptRuntime::call_integers(
+    const std::string_view module, const std::string_view function,
+    const std::vector<std::int64_t>& arguments) {
+    constexpr std::size_t kMaximumIntegers = 64U;
+    auto* state = impl_->state;
+    if (!valid_identifier(function) || arguments.size() > kMaximumIntegers) {
+        impl_->failure = "invalid gameplay script integer call";
+        return std::nullopt;
+    }
+    if (!impl_->push_module(module)) {
+        impl_->failure = "gameplay script module is missing: " +
+                         std::string(module);
+        return std::nullopt;
+    }
+    lua_getfield(state, -1, std::string(function).c_str());
+    if (!lua_isfunction(state, -1)) {
+        lua_pop(state, 2);
+        impl_->failure = "script callback is missing: " +
+                         std::string(module) + "." + std::string(function);
+        return std::nullopt;
+    }
+    lua_remove(state, -2);
+    for (const auto value : arguments) {
+        lua_pushinteger(state, static_cast<lua_Integer>(value));
+    }
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, static_cast<int>(arguments.size()), 1, 0) != LUA_OK) {
+        impl_->failure = std::string(module) + "." + std::string(function) +
+                         ": " + stack_error(state);
+        lua_pop(state, 1);
+        return std::nullopt;
+    }
+    std::vector<std::int64_t> result;
+    bool valid = lua_istable(state, -1);
+    if (valid) {
+        const auto count = static_cast<std::size_t>(lua_rawlen(state, -1));
+        valid = count <= kMaximumIntegers;
+        for (std::size_t index = 1U; valid && index <= count; ++index) {
+            lua_rawgeti(state, -1, static_cast<lua_Integer>(index));
+            valid = lua_isinteger(state, -1) != 0;
+            if (valid) {
+                result.push_back(static_cast<std::int64_t>(
+                    lua_tointeger(state, -1)));
+            }
+            lua_pop(state, 1);
+        }
+    }
+    lua_pop(state, 1);
+    if (!valid) {
+        impl_->failure = std::string(module) + "." + std::string(function) +
+                         " must return an integer array";
+        return std::nullopt;
+    }
     impl_->failure.clear();
     return result;
 }
@@ -10482,8 +10829,15 @@ void GameScriptRuntime::cancel_task() noexcept {
 
 std::optional<ScriptStringMap> GameScriptRuntime::string_map(
     const std::string_view module, const std::string_view function) {
+    return string_map(module, function, std::nullopt);
+}
+
+std::optional<ScriptStringMap> GameScriptRuntime::string_map(
+    const std::string_view module, const std::string_view function,
+    const std::optional<std::string_view> argument) {
     auto* state = impl_->state;
-    if (state == nullptr || !valid_identifier(function)) {
+    if (state == nullptr || !valid_identifier(function) ||
+        (argument.has_value() && !valid_identifier(*argument))) {
         impl_->failure = "invalid gameplay script string-map callback";
         return std::nullopt;
     }
@@ -10500,8 +10854,13 @@ std::optional<ScriptStringMap> GameScriptRuntime::string_map(
         return std::nullopt;
     }
     lua_remove(state, -2);
+    int argument_count = 0;
+    if (argument.has_value()) {
+        lua_pushlstring(state, argument->data(), argument->size());
+        argument_count = 1;
+    }
     ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state, 0, 1, 0) != LUA_OK) {
+    if (lua_pcall(state, argument_count, 1, 0) != LUA_OK) {
         impl_->failure = std::string(module) + "." + std::string(function) +
                          ": " + stack_error(state);
         lua_pop(state, 1);

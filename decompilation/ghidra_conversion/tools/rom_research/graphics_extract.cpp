@@ -5897,6 +5897,213 @@ ExtractedSpriteListFrame decode_field_entity_sprite_list(
     return {std::move(image), min_x, min_y};
 }
 
+void update_hit_spark_resource_manifest(
+    const std::filesystem::path& root,
+    const std::vector<std::string>& hit_spark_rows) {
+    constexpr std::string_view kHeader =
+        "alias\tpath\tkind\torigin_x\torigin_y";
+    constexpr std::string_view kAliasPrefix =
+        "field.entities.effects.hit.spark.frame.";
+    if (hit_spark_rows.size() != 5U) {
+        throw std::runtime_error(
+            "player hit-spark resource import requires five direct rows");
+    }
+
+    const auto manifest_path =
+        root / std::string(shadowrun::resources::kManifestFile);
+    std::ifstream prior(manifest_path, std::ios::binary);
+    if (!prior) {
+        throw std::runtime_error(
+            "cannot read existing resource manifest for hit-spark import");
+    }
+    std::string header;
+    std::getline(prior, header);
+    if (header != kHeader) {
+        throw std::runtime_error(
+            "existing resource manifest has an unsupported header");
+    }
+    std::vector<std::string> rows;
+    std::string row;
+    while (std::getline(prior, row)) {
+        if (row.empty() ||
+            row.compare(0U, kAliasPrefix.size(), kAliasPrefix) == 0) {
+            continue;
+        }
+        rows.push_back(std::move(row));
+    }
+
+    // Append only the new direct-image rows; preserve all preexisting state,
+    // text, audio, and image rows in their current order.
+    rows.insert(rows.end(), hit_spark_rows.begin(), hit_spark_rows.end());
+
+    std::ofstream output(manifest_path,
+                         std::ios::binary | std::ios::trunc);
+    if (!output) {
+        throw std::runtime_error(
+            "cannot update direct resource manifest with hit-spark rows");
+    }
+    output << kHeader << '\n';
+    for (const auto& manifest_row : rows) {
+        output << manifest_row << '\n';
+    }
+    if (!output) {
+        throw std::runtime_error(
+            "cannot finish direct hit-spark resource manifest update");
+    }
+}
+
+void extract_field_player_hit_spark_assets(
+    const std::vector<std::uint8_t>& rom,
+    const std::filesystem::path& root) {
+    constexpr std::uint16_t kEntityKind = 1U;
+    constexpr std::uint16_t kSelector = 4U;
+    constexpr std::uint16_t kPaletteAttributes = 0x2000U;
+    constexpr std::uint16_t kFrameMarker = 0x8005U;
+    constexpr std::uint16_t kFrameIncrement = 0x0400U;
+    constexpr std::size_t kStatePointerTable = 0x62ACU;
+    constexpr std::size_t kObjectVramSize = 0x10000U;
+    constexpr std::size_t kObjectVramStart = 0xB000U;
+    constexpr std::size_t kObjectPatternSource = 0xE44D8U;
+    constexpr std::size_t kObjectPatternBytes = 0x0D00U;
+    constexpr std::size_t kCommonFieldPaletteTail = 0x18AC56U;
+    constexpr std::string_view kAssetPrefix =
+        "field/entities/effects/hit-spark-frame-";
+    constexpr std::string_view kCatalogHeader =
+        "asset\tkind\tx\ty\twidth\theight\tsource\tstatus";
+    constexpr std::string_view kProvenance =
+        "0xB1DC/0x15A8C/0x15118/0x600E/0x62AC/0x634C/0x7330 "
+        "kind=1 selector=4 [C]; "
+        "0xE44D8 object patterns -> VRAM 0xB000 via 0x1406/0x0F5C; "
+        "palette line 1 from 0x566C2";
+
+    const auto first_pointer = static_cast<std::size_t>(
+        read_big_endian_long(
+            rom, kStatePointerTable +
+                    static_cast<std::size_t>(kEntityKind) * 4U));
+    const auto state_list = static_cast<std::size_t>(
+        read_big_endian_long(rom, first_pointer + kSelector));
+    if (read_big_endian_word(rom, state_list) != kFrameMarker ||
+        read_big_endian_word(rom, state_list + 2U) != kFrameIncrement) {
+        throw std::runtime_error(
+            "player hit-spark kind-1 selector-4 source list changed");
+    }
+
+    const auto resources =
+        shadowrun::graphics::read_genesis_field_mode_resources(rom, 0U);
+    if (resources.object_pattern_data_offset != kObjectPatternSource ||
+        resources.object_pattern_vram_offset != kObjectVramStart ||
+        resources.object_pattern_byte_count != kObjectPatternBytes ||
+        kObjectPatternSource > rom.size() ||
+        kObjectPatternBytes > rom.size() - kObjectPatternSource) {
+        throw std::runtime_error(
+            "shared field object-pattern source no longer matches the hit spark");
+    }
+    std::vector<std::uint8_t> object_vram(kObjectVramSize, 0U);
+    std::copy_n(
+        rom.begin() + static_cast<std::ptrdiff_t>(kObjectPatternSource),
+        kObjectPatternBytes,
+        object_vram.begin() + static_cast<std::ptrdiff_t>(kObjectVramStart));
+
+    // 0x566C2 replaces CRAM lines 1..3 from the shared field palette tail [C].
+    // The child writes 0x2000 to +0x2C, selecting palette line 1 [C].
+    auto palette = shadowrun::graphics::read_genesis_palette_set(
+        rom, resources.palette_offset);
+    if (kCommonFieldPaletteTail > rom.size() ||
+        48U * 2U > rom.size() - kCommonFieldPaletteTail) {
+        throw std::runtime_error("shared field palette tail is truncated");
+    }
+    for (std::size_t index = 16U; index < palette.size(); ++index) {
+        palette[index] = shadowrun::graphics::decode_genesis_cram_word(
+            read_big_endian_word(
+                rom, kCommonFieldPaletteTail + (index - 16U) * 2U),
+            index % 16U == 0U);
+    }
+
+    const auto catalog_path = root / "catalog.tsv";
+    std::ifstream catalog_source(catalog_path, std::ios::binary);
+    if (!catalog_source) {
+        throw std::runtime_error(
+            "cannot read existing catalog for hit-spark asset import");
+    }
+    std::string catalog_header;
+    std::getline(catalog_source, catalog_header);
+    if (catalog_header != kCatalogHeader) {
+        throw std::runtime_error(
+            "existing asset catalog has an unsupported header");
+    }
+    std::vector<std::string> catalog_rows;
+    std::string row;
+    while (std::getline(catalog_source, row)) {
+        if (row.empty() ||
+            row.compare(0U, kAssetPrefix.size(), kAssetPrefix) == 0) {
+            continue;
+        }
+        catalog_rows.push_back(std::move(row));
+    }
+
+    const auto temporary_rows_path = root / ".hit-spark-catalog-rows.tsv";
+    std::ofstream temporary_rows(temporary_rows_path,
+                                 std::ios::binary | std::ios::trunc);
+    if (!temporary_rows) {
+        throw std::runtime_error(
+            "cannot create temporary hit-spark catalog rows");
+    }
+    std::size_t written = 0U;
+    std::size_t missing = 0U;
+    std::size_t blank = 0U;
+    std::vector<std::string> hit_spark_resource_rows;
+    for (std::size_t frame = 0U; frame < 5U; ++frame) {
+        const auto list = static_cast<std::size_t>(read_big_endian_long(
+            rom, state_list + 4U + frame * 4U));
+        const auto decoded = decode_field_entity_sprite_list(
+            rom, object_vram, list, palette, kPaletteAttributes);
+        const auto asset_path = std::string(kAssetPrefix) +
+                                std::to_string(frame) + ".bmp";
+        const auto alias = "field.entities.effects.hit.spark.frame." +
+                           std::to_string(frame);
+        const auto origin_x = decoded.origin_x;
+        const auto origin_y = decoded.origin_y;
+        write_catalog_asset(
+            root, asset_path,
+            decoded.image, "sprite", std::string(kProvenance), true,
+            temporary_rows, written, missing, blank,
+            origin_x, origin_y);
+        hit_spark_resource_rows.push_back(
+            alias + '\t' + asset_path + "\timage\t" +
+            std::to_string(origin_x) + '\t' + std::to_string(origin_y));
+    }
+    temporary_rows.close();
+    if (!temporary_rows || written != 5U || missing != 0U || blank != 0U) {
+        throw std::runtime_error(
+            "player hit-spark extraction did not produce five visible frames");
+    }
+
+    std::ifstream generated_rows(temporary_rows_path, std::ios::binary);
+    while (std::getline(generated_rows, row)) {
+        if (!row.empty()) {
+            catalog_rows.push_back(std::move(row));
+        }
+    }
+    generated_rows.close();
+    std::error_code remove_error;
+    std::filesystem::remove(temporary_rows_path, remove_error);
+    std::ofstream catalog_output(catalog_path,
+                                 std::ios::binary | std::ios::trunc);
+    if (!catalog_output) {
+        throw std::runtime_error(
+            "cannot update catalog with hit-spark assets");
+    }
+    catalog_output << kCatalogHeader << '\n';
+    for (const auto& catalog_row : catalog_rows) {
+        catalog_output << catalog_row << '\n';
+    }
+    if (!catalog_output) {
+        throw std::runtime_error(
+            "cannot finish the hit-spark asset catalog update");
+    }
+    update_hit_spark_resource_manifest(root, hit_spark_resource_rows);
+}
+
 void append_title_boot_catalog(const std::filesystem::path& root,
                                std::ofstream& manifest) {
     std::ifstream source(root / "manifest.tsv", std::ios::binary);
@@ -6012,6 +6219,249 @@ void write_asset_readme(const std::filesystem::path& root) {
                "as one sixteen-word direct record. The `0xBBF6` aligned-route "
                "table is kept as four six-byte semantic records after its "
                "FFEF10..13 sample pointers are resolved offline.\n";
+}
+
+// Story-page illustrations shown by the 0x5D1F6 cinematic pages. Each ROM
+// profile (0x1FE690 Sinsearach, 0x1FE6C2 Spirit Eyes) names the shared VDP
+// setup 0x1FE638, a 64-colour CRAM set, one 0x1530 pattern stream uploaded to
+// VRAM $3020 and one 0x1728 layout. This mirrors the offline importer
+// extract_cinematic_story_art.py so --all-assets regenerates both pages and
+// their resources.tsv aliases instead of dropping them.
+struct StoryPageProfile {
+    const char* relative_name;
+    const char* alias;
+    std::size_t profile_offset;
+};
+
+constexpr std::array<StoryPageProfile, 2U> kStoryPageProfiles{{
+    {"cinematics/salish-sinsearach-frosty-harlequin.bmp",
+     "cinematic.salish.sinsearach.frosty_harlequin_exposition.art",
+     0x1FE690U},
+    {"cinematics/salish-spirit-eyes-ritual.bmp",
+     "cinematic.salish.spirit_eyes.ritual_of_binding.art", 0x1FE6C2U},
+}};
+
+std::vector<std::uint8_t> decode_story_page_1530_stream(
+    const std::vector<std::uint8_t>& rom, const std::size_t source_offset,
+    std::uint16_t& counter_out) {
+    const auto counter = read_big_endian_word(rom, source_offset);
+    auto cursor = source_offset + 2U;
+    auto remaining = counter;
+    std::array<std::uint8_t, 0x800U> ring{};
+    std::size_t ring_index = 0U;
+    std::uint8_t control = 0U;
+    int control_bits_remaining = 1;
+    std::vector<std::uint8_t> output;
+    const auto read_byte = [&]() {
+        if (cursor >= rom.size()) {
+            throw std::runtime_error("story-page 0x1530 stream is truncated");
+        }
+        return rom[cursor++];
+    };
+    const auto emit = [&](const std::uint8_t value) {
+        ring[ring_index] = value;
+        ring_index = (ring_index + 1U) & 0x07FFU;
+        output.push_back(value);
+        remaining = static_cast<std::uint16_t>(remaining - 1U);
+    };
+    for (;;) {
+        if (--control_bits_remaining == 0) {
+            control = read_byte();
+            control_bits_remaining = 8;
+        }
+        const bool compressed = (control & 0x80U) != 0U;
+        control = static_cast<std::uint8_t>(control << 1U);
+        if (!compressed) {
+            emit(read_byte());
+        } else {
+            const auto descriptor = read_byte();
+            if ((descriptor & 0x80U) == 0U) {
+                const auto count = (descriptor & 0x7FU) + 3U;
+                const auto value = read_byte();
+                for (unsigned i = 0U; i < count; ++i) emit(value);
+            } else {
+                const auto offset_low = read_byte();
+                const auto distance =
+                    ((static_cast<std::size_t>(offset_low) << 3U) |
+                     ((descriptor >> 4U) & 0x07U)) & 0x07FFU;
+                const auto count = (descriptor & 0x0FU) + 3U;
+                auto source_index = (ring_index - distance) & 0x07FFU;
+                for (unsigned i = 0U; i < count; ++i) {
+                    emit(ring[source_index]);
+                    source_index = (source_index + 1U) & 0x07FFU;
+                }
+            }
+        }
+        if (remaining == 0xFFFFU) {
+            if (output.size() != static_cast<std::size_t>(counter) + 1U) {
+                throw std::runtime_error(
+                    "story-page 0x1530 stream size mismatch");
+            }
+            counter_out = counter;
+            return output;
+        }
+        if (output.size() > static_cast<std::size_t>(counter) + 64U) {
+            throw std::runtime_error(
+                "story-page 0x1530 stream exceeded its counter");
+        }
+    }
+}
+
+shadowrun::graphics::RgbaImage extract_story_page_image(
+    const std::vector<std::uint8_t>& rom, const std::size_t offset) {
+    constexpr std::size_t kWidth = 320U;
+    constexpr std::size_t kHeight = 224U;
+    const auto vdp_setup = read_big_endian_long(rom, offset);
+    const auto palette_offset = read_big_endian_long(rom, offset + 4U);
+    const auto pattern_pointer = read_big_endian_long(rom, offset + 0x10U);
+    const auto pattern_target =
+        read_big_endian_long(rom, offset + 0x14U) & 0xFFFFU;
+    const auto pattern_auxiliary =
+        read_big_endian_long(rom, offset + 0x18U) & 0xFFFFU;
+    const auto pattern_terminator = read_big_endian_long(rom, offset + 0x1CU);
+    const auto layout_pointer = read_big_endian_long(rom, offset + 0x20U);
+    const auto layout_destination =
+        read_big_endian_long(rom, offset + 0x24U) & 0xFFFFU;
+    const std::size_t width = read_big_endian_word(rom, offset + 0x28U) + 1U;
+    const std::size_t height = read_big_endian_word(rom, offset + 0x2AU) + 1U;
+    const auto layout_attribute = read_big_endian_word(rom, offset + 0x2CU);
+    const auto layout_terminator = read_big_endian_long(rom, offset + 0x2EU);
+    bool mode_words_clear = true;
+    for (std::size_t index = 0U; index < 4U; ++index) {
+        mode_words_clear = mode_words_clear &&
+            read_big_endian_word(rom, offset + 8U + index * 2U) == 0U;
+    }
+    if (vdp_setup != 0x1FE638U || !mode_words_clear ||
+        (pattern_pointer & 1U) == 0U || (layout_pointer & 1U) == 0U ||
+        pattern_target != 0x3020U || pattern_auxiliary != 0U ||
+        pattern_terminator != 0U || layout_terminator != 0U || width > 40U ||
+        height > 28U || layout_attribute != 0U) {
+        throw std::runtime_error("story-page profile layout changed");
+    }
+
+    std::uint16_t counter = 0U;
+    const auto patterns =
+        decode_story_page_1530_stream(rom, pattern_pointer & ~1U, counter);
+    std::vector<std::uint8_t> vram(0x10000U, 0U);
+    if (pattern_target + patterns.size() > vram.size()) {
+        throw std::runtime_error("story-page pattern upload exceeds VRAM");
+    }
+    // 0x1530's paired-byte VDP write order.
+    std::uint16_t data_word = 0U;
+    std::uint16_t remaining = counter;
+    std::size_t word_index = 0U;
+    for (const auto value : patterns) {
+        data_word = static_cast<std::uint16_t>((data_word & 0xFF00U) | value);
+        if ((remaining & 1U) != 0U) {
+            data_word = static_cast<std::uint16_t>(data_word << 8U);
+        } else {
+            const auto destination = pattern_target + word_index * 2U;
+            vram[destination] = static_cast<std::uint8_t>(data_word >> 8U);
+            vram[destination + 1U] = static_cast<std::uint8_t>(data_word);
+            ++word_index;
+        }
+        remaining = static_cast<std::uint16_t>(remaining - 1U);
+    }
+
+    // 0x1728 row layout.
+    auto cursor = static_cast<std::size_t>(layout_pointer & ~1U);
+    const auto tile_base = read_big_endian_word(rom, cursor);
+    cursor += 2U;
+    const auto target_count = width * height;
+    std::vector<std::uint16_t> cells;
+    const auto read_delta = [&](const bool word_sized) -> std::uint16_t {
+        if (word_sized) {
+            const auto value = read_big_endian_word(rom, cursor);
+            cursor += 2U;
+            return value;
+        }
+        if (cursor >= rom.size()) {
+            throw std::runtime_error("story-page 0x1728 layout is truncated");
+        }
+        return rom[cursor++];
+    };
+    while (cells.size() < target_count) {
+        if (cursor >= rom.size()) {
+            throw std::runtime_error("story-page 0x1728 layout is truncated");
+        }
+        const auto descriptor = rom[cursor++];
+        if (descriptor == 0U) break;
+        const bool word_sized = (descriptor & 0x20U) != 0U;
+        const std::size_t encoded_count = descriptor & 0x1FU;
+        if (descriptor > 0xC0U) {
+            for (std::size_t i = 0U; i < std::max<std::size_t>(1U, encoded_count);
+                 ++i) {
+                cells.push_back(static_cast<std::uint16_t>(
+                    tile_base + read_delta(word_sized) + layout_attribute));
+                if (cells.size() == target_count) break;
+            }
+            continue;
+        }
+        // ROM 0x1728 selects -1 through 0x40, 0 through 0x80, then +1.
+        const int step = descriptor <= 0x40U ? -1 : descriptor <= 0x80U ? 0 : 1;
+        auto tile_word = static_cast<std::uint16_t>(
+            tile_base + read_delta(word_sized) + layout_attribute);
+        for (std::size_t i = 0U; i < encoded_count + 1U; ++i) {
+            cells.push_back(tile_word);
+            if (cells.size() == target_count) break;
+            tile_word = static_cast<std::uint16_t>(tile_word + step);
+        }
+    }
+    cells.resize(target_count, layout_attribute);
+    const auto first_tile = pattern_target / 32U;
+    const auto tile_limit = first_tile + patterns.size() / 32U;
+    for (const auto word : cells) {
+        const auto tile = static_cast<std::size_t>(word & 0x07FFU);
+        if (tile < first_tile || tile >= tile_limit) {
+            throw std::runtime_error(
+                "story-page layout references tiles outside its upload");
+        }
+    }
+
+    const auto expand = [](const unsigned value) {
+        return static_cast<std::uint8_t>((value << 5U) | (value << 2U) |
+                                         (value >> 1U));
+    };
+    std::array<shadowrun::native::Rgba8, 64U> palette{};
+    for (std::size_t index = 0U; index < palette.size(); ++index) {
+        const auto value = read_big_endian_word(rom, palette_offset + index * 2U);
+        palette[index] = shadowrun::native::Rgba8{
+            expand((value >> 1U) & 0x07U), expand((value >> 5U) & 0x07U),
+            expand((value >> 9U) & 0x07U), 0xFFU};
+    }
+
+    shadowrun::graphics::RgbaImage image{
+        static_cast<std::uint16_t>(kWidth), static_cast<std::uint16_t>(kHeight),
+        std::vector<shadowrun::native::Rgba8>(
+            kWidth * kHeight, shadowrun::native::Rgba8{0U, 0U, 0U, 0xFFU})};
+    const auto plane_word = (layout_destination & 0x3FFFU) / 2U;
+    const auto origin_x = (plane_word % 64U) * 8U;
+    const auto origin_y = (plane_word / 64U) * 8U;
+    for (std::size_t cell = 0U; cell < cells.size(); ++cell) {
+        const auto word = cells[cell];
+        const auto tile_offset = static_cast<std::size_t>(word & 0x07FFU) * 32U;
+        const bool flip_x = (word & 0x0800U) != 0U;
+        const bool flip_y = (word & 0x1000U) != 0U;
+        const auto palette_base = ((word >> 13U) & 0x03U) * 16U;
+        const auto cell_x = origin_x + (cell % width) * 8U;
+        const auto cell_y = origin_y + (cell / width) * 8U;
+        for (std::size_t y = 0U; y < 8U; ++y) {
+            for (std::size_t x = 0U; x < 8U; ++x) {
+                const auto source_x = flip_x ? 7U - x : x;
+                const auto source_y = flip_y ? 7U - y : y;
+                const auto packed =
+                    vram[tile_offset + source_y * 4U + source_x / 2U];
+                const auto color_index =
+                    (source_x % 2U) == 0U ? (packed >> 4U) : (packed & 0x0FU);
+                const auto screen_x = cell_x + x;
+                const auto screen_y = cell_y + y;
+                if (screen_x >= kWidth || screen_y >= kHeight) continue;
+                image.pixels[screen_y * kWidth + screen_x] =
+                    palette[palette_base + color_index];
+            }
+        }
+    }
+    return image;
 }
 
 void write_runtime_resource_manifest(const std::filesystem::path& root) {
@@ -6221,7 +6671,13 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         if (relative.find("-gray-") != std::string::npos) {
             continue;
         }
-        const auto alias = shadowrun::resources::alias_for_path(relative);
+        auto alias = shadowrun::resources::alias_for_path(relative);
+        for (const auto& story_page : kStoryPageProfiles) {
+            if (relative == story_page.relative_name) {
+                // Lua cinematic pages name these by their story role.
+                alias = story_page.alias;
+            }
+        }
         if (!aliases.insert(alias).second) {
             throw std::runtime_error("duplicate generated resource alias: " +
                                      alias);
@@ -6306,6 +6762,21 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                       notebook_tips.end());
     write_dialogue_text_catalog(rom, root, assets, field_text);
     write_tarislar_tomb_credits_asset(rom, root);
+    for (const auto& story_page : kStoryPageProfiles) {
+        std::ostringstream provenance;
+        provenance << std::hex << std::uppercase << "profile 0x"
+                   << story_page.profile_offset << "; palette 0x"
+                   << read_big_endian_long(rom, story_page.profile_offset + 4U)
+                   << "; patterns 0x"
+                   << read_big_endian_long(rom, story_page.profile_offset + 0x10U)
+                   << "; layout 0x"
+                   << read_big_endian_long(rom, story_page.profile_offset + 0x20U);
+        write_catalog_asset(
+            root, story_page.relative_name,
+            extract_story_page_image(rom, story_page.profile_offset),
+            "background", provenance.str(), false, manifest, written, missing,
+            blank);
+    }
     const auto tomb_prelude_backgrounds =
         extract_scene55_background_images(rom);
     write_catalog_asset(
@@ -9505,6 +9976,30 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                         std::to_string(kind_source.palette_line),
                     true, manifest, written, missing, blank,
                     frame.origin_x, frame.origin_y);
+                if (kind_source.entity_kind == 3U &&
+                    kind_source.palette_line == 3U &&
+                    kind_source.sprite_stem == "actor-kind-3-palette-3") {
+                    // The field runner uses the same kind-3/palette-3 ROM
+                    // state lists as this actor profile. Publish named player
+                    // aliases from the exact C072 descriptor, retaining its
+                    // ROM-derived sprite origin for resources.tsv.
+                    write_catalog_asset(
+                        root, "field/entities/hurt-" +
+                                  std::to_string(direction) + "-" +
+                                  std::to_string(frame_index) + ".bmp",
+                        frame.image, "sprite",
+                        "0xAFF2/0xC072/0x5FDC/0x600E player kind=3 "
+                        "descriptor=" +
+                            format_offset(static_cast<std::uint32_t>(
+                                frame.descriptor_offset)) +
+                            " selector=" + format_offset(hurt_selector) +
+                            " frame=" + std::to_string(frame_index) +
+                            " increment=" +
+                            std::to_string(hurt_increment) +
+                            " palette-line=3",
+                        true, manifest, written, missing, blank,
+                        frame.origin_x, frame.origin_y);
+                }
             }
 
             const auto entry_selector = read_big_endian_word(
@@ -10834,6 +11329,21 @@ int main(int argc, char** argv) {
             std::cout << "four Cyberdeck selector assets written to "
                       << argv[2]
                       << " using live ROM palette line 1 at 0xE2EBA\n";
+            return 0;
+        } catch (const std::exception& error) {
+            std::cerr << "error: " << error.what() << "\n";
+            return 1;
+        }
+    }
+    if (argc == 4 &&
+        std::string(argv[3]) == "--field-player-hit-spark-assets") {
+        try {
+            const auto rom = read_file(argv[1]);
+            const std::filesystem::path root(argv[2]);
+            extract_field_player_hit_spark_assets(rom, root);
+            std::cout << "five player hit-spark frames extracted from "
+                      << "0x7330 using field object patterns at 0xE44D8; "
+                      << "catalog and direct-resource rows updated\n";
             return 0;
         } catch (const std::exception& error) {
             std::cerr << "error: " << error.what() << "\n";
@@ -12594,6 +13104,8 @@ int main(int argc, char** argv) {
                      "--title-boot-assets\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
                      "--all-assets\n";
+        std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
+                      "--field-player-hit-spark-assets\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <asset-dir> "
                      "--matrix-cyberdeck-selectors\n";
         std::cerr << "       shadowrun_graphics_extract <rom.bin> <out-dir> "

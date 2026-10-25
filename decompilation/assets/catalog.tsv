@@ -4226,6 +4226,62 @@ field/entities/attack-4.bmp	sprite	0	0	22	32	0xB39A/0xC042/0x600E	extracted
 field/entities/attack-5.bmp	sprite	0	3	16	29	0xB39A/0xC042/0x600E	extracted
 field/entities/attack-6.bmp	sprite	0	2	31	29	0xB39A/0xC042/0x600E	extracted
 field/entities/attack-7.bmp	sprite	0	2	29	30	0xB39A/0xC042/0x600E	extracted
+field/entities/strike-0-0.bmp	sprite	0	0	26	29	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-0-1.bmp	sprite	0	0	24	16	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-1-0.bmp	sprite	0	0	20	30	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-1-1.bmp	sprite	0	0	31	32	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-2-0.bmp	sprite	0	0	19	30	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-2-1.bmp	sprite	0	0	31	24	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-3-0.bmp	sprite	0	0	24	28	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-3-1.bmp	sprite	0	0	32	29	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-4-0.bmp	sprite	0	0	24	29	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-4-1.bmp	sprite	0	0	22	31	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-5-0.bmp	sprite	0	0	24	28	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-5-1.bmp	sprite	0	0	32	29	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-6-0.bmp	sprite	0	0	19	30	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-6-1.bmp	sprite	0	0	31	24	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-7-0.bmp	sprite	0	0	20	30	0xB39A/0xC0A2/0x600E	extracted
+field/entities/strike-7-1.bmp	sprite	0	0	31	32	0xB39A/0xC0A2/0x600E	extracted
+field/entities/spell-0.bmp	sprite	0	0	24	32	0xB39A/0xC082/0x600E	extracted
+field/entities/spell-1.bmp	sprite	0	0	27	32	0xB39A/0xC082/0x600E	extracted
+field/entities/spell-2.bmp	sprite	0	0	29	29	0xB39A/0xC082/0x600E	extracted
+field/entities/spell-3.bmp	sprite	0	0	24	32	0xB39A/0xC082/0x600E	extracted
+field/entities/spell-4.bmp	sprite	0	0	27	30	0xB39A/0xC082/0x600E	extracted
+field/entities/spell-5.bmp	sprite	0	0	24	32	0xB39A/0xC082/0x600E	extracted
+field/entities/spell-6.bmp	sprite	0	0	29	29	0xB39A/0xC082/0x600E	extracted
+field/entities/spell-7.bmp	sprite	0	0	27	32	0xB39A/0xC082/0x600E	extracted
+field/entities/down-0-0.bmp	sprite	0	0	30	32	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-0-1.bmp	sprite	0	0	32	29	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-1-0.bmp	sprite	0	0	30	32	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-1-1.bmp	sprite	0	0	32	29	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-2-0.bmp	sprite	0	0	30	32	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-2-1.bmp	sprite	0	0	32	29	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-3-0.bmp	sprite	0	0	29	30	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-3-1.bmp	sprite	0	0	32	32	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-4-0.bmp	sprite	0	0	29	30	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-4-1.bmp	sprite	0	0	32	32	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-5-0.bmp	sprite	0	0	29	30	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-5-1.bmp	sprite	0	0	32	32	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-6-0.bmp	sprite	0	0	30	32	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-6-1.bmp	sprite	0	0	32	29	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-7-0.bmp	sprite	0	0	30	32	0xB330/0xC0B2/0x600E	extracted
+field/entities/down-7-1.bmp	sprite	0	0	32	29	0xB330/0xC0B2/0x600E	extracted
+field/entities/hurt-0-0.bmp	sprite	-10	-20	21	27	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA30E selector=0x60 frame=0 increment=768 palette-line=3	extracted
+field/entities/hurt-0-1.bmp	sprite	-10	-22	22	29	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA320 selector=0x60 frame=1 increment=768 palette-line=3	extracted
+field/entities/hurt-1-0.bmp	sprite	-10	-23	23	29	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA332 selector=0x64 frame=0 increment=768 palette-line=3	extracted
+field/entities/hurt-1-1.bmp	sprite	-11	-28	22	32	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA344 selector=0x64 frame=1 increment=768 palette-line=3	extracted
+field/entities/hurt-2-0.bmp	sprite	-9	-24	16	30	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA356 selector=0x68 frame=0 increment=768 palette-line=3	extracted
+field/entities/hurt-2-1.bmp	sprite	-10	-25	19	31	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA368 selector=0x68 frame=1 increment=768 palette-line=3	extracted
+field/entities/hurt-3-0.bmp	sprite	-11	-24	19	31	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA37A selector=0x6C frame=0 increment=768 palette-line=3	extracted
+field/entities/hurt-3-1.bmp	sprite	-13	-23	21	30	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA38C selector=0x6C frame=1 increment=768 palette-line=3	extracted
+field/entities/hurt-4-0.bmp	sprite	-12	-26	24	30	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA39E selector=0x70 frame=0 increment=768 palette-line=3	extracted
+field/entities/hurt-4-1.bmp	sprite	-11	-27	24	30	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA3B0 selector=0x70 frame=1 increment=768 palette-line=3	extracted
+field/entities/hurt-5-0.bmp	sprite	-13	-24	19	31	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA40A selector=0x74 frame=0 increment=768 palette-line=3	extracted
+field/entities/hurt-5-1.bmp	sprite	-11	-23	21	30	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA41C selector=0x74 frame=1 increment=768 palette-line=3	extracted
+field/entities/hurt-6-0.bmp	sprite	-7	-24	16	30	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA3E6 selector=0x78 frame=0 increment=768 palette-line=3	extracted
+field/entities/hurt-6-1.bmp	sprite	-14	-25	19	31	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA3F8 selector=0x78 frame=1 increment=768 palette-line=3	extracted
+field/entities/hurt-7-0.bmp	sprite	-14	-23	23	29	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA3C2 selector=0x7C frame=0 increment=768 palette-line=3	extracted
+field/entities/hurt-7-1.bmp	sprite	-13	-28	22	32	0xAFF2/0xC072/0x5FDC/0x600E player kind=3 descriptor=0xA3D4 selector=0x7C frame=1 increment=768 palette-line=3	extracted
 field/weapons/projectile-0-0.bmp	sprite	-1	-5	4	6	0x1514E/0x62EC/0x62FC/0x630C/0x600E/0x622C	extracted
 field/weapons/projectile-0-1.bmp	sprite	-5	-20	10	21	0x1514E/0x62EC/0x62FC/0x630C/0x600E/0x622C	extracted
 field/weapons/projectile-0-2.bmp	sprite	-1	-5	4	6	0x1514E/0x62EC/0x62FC/0x630C/0x600E/0x622C	extracted
@@ -8202,3 +8258,8 @@ field/entities/effects/spell/heal-wounds/scene-55-phase-12.bmp	sprite	-16	-27	32
 field/entities/effects/spell/heal-wounds/scene-55-phase-13.bmp	sprite	-16	-27	32	32	ROM 0x490A action=12 handler=0x56DE phase=13 descriptor=0x57F0 pattern=0x82992 bytes=512; palette line=3 scene=55	extracted
 field/entities/effects/spell/heal-wounds/scene-55-phase-14.bmp	sprite	-11	-20	22	20	ROM 0x490A action=12 handler=0x56DE phase=14 descriptor=0x57A8 pattern=0x82872 bytes=288; palette line=3 scene=55	extracted
 field/entities/effects/spell/heal-wounds/scene-55-phase-15.bmp	sprite	-4	-15	9	7	ROM 0x490A action=12 handler=0x56DE phase=15 descriptor=0x5796 pattern=0x82832 bytes=64; palette line=3 scene=55	extracted
+field/entities/effects/hit-spark-frame-0.bmp	sprite	-3	-1	7	5	0xB1DC/0x15A8C/0x15118/0x600E/0x62AC/0x634C/0x7330 kind=1 selector=4 [C]; 0xE44D8 object patterns -> VRAM 0xB000 via 0x1406/0x0F5C; palette line 1 from 0x566C2	extracted
+field/entities/effects/hit-spark-frame-1.bmp	sprite	-8	-7	11	12	0xB1DC/0x15A8C/0x15118/0x600E/0x62AC/0x634C/0x7330 kind=1 selector=4 [C]; 0xE44D8 object patterns -> VRAM 0xB000 via 0x1406/0x0F5C; palette line 1 from 0x566C2	extracted
+field/entities/effects/hit-spark-frame-2.bmp	sprite	-8	-7	15	16	0xB1DC/0x15A8C/0x15118/0x600E/0x62AC/0x634C/0x7330 kind=1 selector=4 [C]; 0xE44D8 object patterns -> VRAM 0xB000 via 0x1406/0x0F5C; palette line 1 from 0x566C2	extracted
+field/entities/effects/hit-spark-frame-3.bmp	sprite	-8	-7	16	16	0xB1DC/0x15A8C/0x15118/0x600E/0x62AC/0x634C/0x7330 kind=1 selector=4 [C]; 0xE44D8 object patterns -> VRAM 0xB000 via 0x1406/0x0F5C; palette line 1 from 0x566C2	extracted
+field/entities/effects/hit-spark-frame-4.bmp	sprite	-8	-7	16	16	0xB1DC/0x15A8C/0x15118/0x600E/0x62AC/0x634C/0x7330 kind=1 selector=4 [C]; 0xE44D8 object patterns -> VRAM 0xB000 via 0x1406/0x0F5C; palette line 1 from 0x566C2	extracted

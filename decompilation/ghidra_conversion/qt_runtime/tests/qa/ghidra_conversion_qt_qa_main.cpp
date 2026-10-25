@@ -630,6 +630,95 @@ int run_field_world_activity_qa(
     return 0;
 }
 
+int run_field_party_wipe_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "field party-wipe QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(output, error);
+    if (error) {
+        std::cerr << "field party-wipe QA: cannot clear old captures: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    field_scene.set_source_random_seed_for_dump(0x4000U);
+    field_scene.set_field_world_frame_counter_for_dump(0x0200U);
+
+    const auto exercise_wipe = [&field_scene, &output](
+                                   const bool motel_bill_paid,
+                                   const std::uint16_t expected_scene,
+                                   const std::uint16_t expected_x,
+                                   const std::uint16_t expected_y,
+                                   const std::filesystem::path& image_name) {
+        if (!field_scene.set_story_flag_for_dump(0U, motel_bill_paid)) {
+            return false;
+        }
+        field_scene.arm_party_wipe_countdown_for_dump();
+        for (std::uint8_t frame = 0U; frame < 0x3CU; ++frame) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+        if (!field_scene.dialogue_open()) {
+            return false;
+        }
+        for (std::uint8_t page = 0U;
+             page < 12U && field_scene.dialogue_open(); ++page) {
+            tap_qa_controller_button(field_scene, 0x40U);
+        }
+        for (std::uint8_t frame = 0U;
+             frame < 120U &&
+             field_scene.elevator_scene_transition_phase_for_dump() !=
+                 ElevatorSceneTransitionPhase::idle;
+             ++frame) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+        const auto arrival = field_scene.field_entity_world_position();
+        const auto image = render_qa_field(field_scene);
+        return !field_scene.dialogue_open() &&
+               field_scene.elevator_scene_transition_phase_for_dump() ==
+                   ElevatorSceneTransitionPhase::idle &&
+               field_scene.field_scene_reference_for_dump() == expected_scene &&
+               arrival.x == expected_x && arrival.y == expected_y &&
+               save_qa_image(output, image_name, image);
+    };
+
+    if (!exercise_wipe(true, 0U, 0x6200U, 0x2D00U, "docwagon.bmp")) {
+        std::cerr << "field party-wipe QA: paid-bill wipe did not arrive at "
+                     "DocWagon scene 0 position 0x6200,0x2D00; scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " position=" << field_scene.field_entity_world_position().x
+                  << ',' << field_scene.field_entity_world_position().y
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " phase=" << static_cast<unsigned>(
+                         field_scene.elevator_scene_transition_phase_for_dump())
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    if (!exercise_wipe(false, 2U, 0x6680U, 0x2300U, "actual.bmp")) {
+        std::cerr << "field party-wipe QA: unpaid-bill wipe did not arrive at "
+                     "Little Chiba scene 2 position 0x6680,0x2300; scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " position=" << field_scene.field_entity_world_position().x
+                  << ',' << field_scene.field_entity_world_position().y
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " phase=" << static_cast<unsigned>(
+                         field_scene.elevator_scene_transition_phase_for_dump())
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    std::cout << "field_party_wipe_qa=passed "
+                 "docwagon=scene0@0x6200,0x2D00 "
+                 "little_chiba=scene2@0x6680,0x2300 actual.bmp="
+              << output.string() << '\n';
+    return 0;
+}
+
 int run_field_random_encounter_spawn_qa(
     FieldSceneRuntime& field_scene,
     const StartupIntegrationState& startup_state,
@@ -2901,7 +2990,8 @@ int run_field_scene26_event1_physical_entry_qa(
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries,
-    std::string_view johnson_run_target = {});
+    std::string_view johnson_run_target = {},
+    bool continue_after_run_entry = false);
 
 int run_scene26_table_collision_qa(
     FieldSceneRuntime& field_scene,
@@ -4275,7 +4365,7 @@ int run_field_scene26_event1_terminal_qa(
     const auto entry_output = output / "scene2-event1-entry";
     if (run_field_scene26_event1_physical_entry_qa(
             field_scene, asset_root, entry_output, field_audio_events,
-            source_boundaries) != 0) {
+            source_boundaries, "employee_recruitment", true) != 0) {
         return 3;
     }
     auto selected_floor = field_scene.security_floor_index_for_dump();
@@ -4632,7 +4722,7 @@ int run_field_scene26_event31_matrix_entry_qa(
     const auto entry_output = output / "scene2-resource-entry";
     if (run_field_scene26_event1_physical_entry_qa(
             field_scene, asset_root, entry_output, field_audio_events,
-            source_boundaries) != 0 ||
+            source_boundaries, "employee_recruitment", true) != 0 ||
         field_scene.field_scene_reference_for_dump() != 26U ||
         !field_scene.seed_cyberspace_access_for_dump() ||
         !field_scene.seed_cyberdeck_reference_frame_for_dump()) {
@@ -9177,7 +9267,8 @@ int run_field_scene26_event1_physical_entry_qa(
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries,
-    const std::string_view johnson_run_target) {
+    const std::string_view johnson_run_target,
+    const bool continue_after_run_entry) {
     // The real runtime seeds from its own startup entropy. Pin the source PRNG
     // only for this screenshot route so Debug and Release capture the same
     // resource variant.
@@ -9457,6 +9548,156 @@ int run_field_scene26_event1_physical_entry_qa(
     constexpr std::uint16_t kScene26FloorVariantSeed = 0U;
     field_scene.set_source_random_seed_for_dump(kScene26FloorVariantSeed);
 
+    if (johnson_run_target.empty()) {
+        // Without a type-4/5 run targeting 2/1, ROM 0x1F830 handles the
+        // door on the same map: text root 8, the shared 0x1F246 prompt and
+        // Hospital Options 0xC928. Event-table scene 26 is never loaded [C].
+        const auto count_boundary = [&source_boundaries](
+                                        const std::string_view name) {
+            return std::count(source_boundaries.begin(),
+                              source_boundaries.end(), std::string(name));
+        };
+        const auto entry_heading = field_scene.field_entity_heading_for_dump();
+        for (std::uint16_t settle = 0U;
+             settle < 180U && !field_scene.dialogue_open() &&
+             field_scene.field_scene_reference_for_dump() == 2U;
+             ++settle) {
+            step(0U);
+        }
+        const auto panel_contains = [&field_scene](
+                                        const std::string_view needle) {
+            const auto& panel = field_scene.dialogue_panel();
+            for (std::size_t index = 0U; index < panel.text_segment_count;
+                 ++index) {
+                if (panel.text_segments[index].find(needle) !=
+                    std::string_view::npos) {
+                    return true;
+                }
+            }
+            return false;
+        };
+        const auto& entry = field_scene.dialogue_panel();
+        const bool entry_ok = field_scene.dialogue_open() &&
+            panel_contains("Little Chiba's Chop Shop") &&
+            entry.option_count == 2U &&
+            entry.options[0U].source_label.find("need of your services") !=
+                std::string_view::npos &&
+            entry.options[1U].source_label.find("Neg on that") !=
+                std::string_view::npos;
+        if (!entry_ok || field_scene.field_scene_reference_for_dump() != 2U ||
+            field_scene.field_transition_pending_for_dump() ||
+            count_boundary("field.location.exit_prompt_opened") != 1 ||
+            count_boundary("field.door.return_point_saved") != 1 ||
+            !save("little-chiba-entry")) {
+            std::cerr << "Little Chiba hospital QA: record 93 did not open "
+                         "the same-map 0x1F246 prompt (dialogue="
+                      << field_scene.dialogue_open() << ", scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", options="
+                      << static_cast<unsigned>(entry.option_count) << ")\n";
+            return 3;
+        }
+        write_state("little-chiba-entry");
+        const auto probe = field_scene.field_collision_probe_state_for_dump();
+        tap_qa_controller_button(field_scene, 0x40U); // A: services
+        const auto& options = field_scene.dialogue_panel();
+        if (!field_scene.dialogue_open() ||
+            !field_scene.field_dialogue_uses_hospital_layout_for_dump() ||
+            options.option_count != 3U ||
+            options.text_segments[0U] != " Hospital Options" ||
+            options.options[0U].source_label != "Medical Attn." ||
+            options.options[1U].source_label != "Cyberware" ||
+            options.options[2U].source_label != "Exit" ||
+            field_scene.field_scene_reference_for_dump() != 2U ||
+            !save("little-chiba-hospital-options")) {
+            std::cerr << "Little Chiba hospital QA: services did not open "
+                         "Hospital Options (0xC928) in scene 2\n";
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x02U); // Down: Cyberware
+        tap_qa_controller_button(field_scene, 0x02U); // Down: Exit
+        tap_qa_controller_button(field_scene, 0x40U); // A: Yes/No (No)
+        tap_qa_controller_button(field_scene, 0x01U); // Up: Yes
+        tap_qa_controller_button(field_scene, 0x40U); // A: leave
+        std::uint32_t return_frames = 0U;
+        while (field_scene.field_door_return_active() &&
+               return_frames < 400U) {
+            field_scene.advance_frame();
+            ++return_frames;
+        }
+        const auto returned = field_scene.field_entity_world_position();
+        // [C emu] Exit -> Yes: contact + row DOWN, heading 0x8000 (outward).
+        const auto expected_heading =
+            static_cast<std::uint16_t>(entry_heading ^ 0x8000U);
+        if (field_scene.dialogue_open() || !probe.initialized ||
+            field_scene.field_door_return_active() ||
+            field_scene.field_scene_reference_for_dump() != 2U ||
+            returned.x != probe.points[0U].x ||
+            returned.y != probe.points[0U].y ||
+            field_scene.field_entity_heading_for_dump() != expected_heading ||
+            expected_heading != 0x8000U ||
+            count_boundary("field.door.return_completed") != 1 ||
+            !save("actual")) {
+            std::cerr << "Little Chiba hospital QA: leave did not restore "
+                         "the lead point facing outward (scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << ", pos=" << returned.x << ',' << returned.y
+                      << ", expected=" << probe.points[0U].x << ','
+                      << probe.points[0U].y << ", heading=0x" << std::hex
+                      << field_scene.field_entity_heading_for_dump()
+                      << std::dec << ")\n";
+            return 3;
+        }
+        // Re-enter and answer "Neg on that, chum.": the prompt's own close
+        // is the same 0x9B8 + 0x2FA4 service return, without a reload.
+        for (std::uint16_t walk = 0U;
+             walk < 240U && !field_scene.dialogue_open(); ++walk) {
+            step(0x01U); // Up into the doorway
+        }
+        // Release Up and let the prompt finish its page before answering.
+        for (std::uint8_t settle = 0U; settle < 60U; ++settle) {
+            step(0U);
+        }
+        const auto second_probe =
+            field_scene.field_collision_probe_state_for_dump();
+        for (std::uint16_t settle = 0U;
+             settle < 300U && field_scene.dialogue_open() &&
+             !field_scene.dialogue_panel().source_complete;
+             ++settle) {
+            step(0U);
+        }
+        // 0x1F3C4 answers by button: A = first row, B = second row.
+        tap_qa_controller_button(field_scene, 0x10U); // B: Neg on that
+        const unsigned decline_selection = 1U;
+        for (std::uint8_t settle = 0U; settle < 90U; ++settle) {
+            step(0U);
+        }
+        const auto declined = field_scene.field_entity_world_position();
+        if (field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != 2U ||
+            count_boundary("field.door.service_close_return") != 1 ||
+            declined.x != second_probe.points[0U].x ||
+            declined.y != second_probe.points[0U].y ||
+            field_scene.field_entity_heading_for_dump() != 0x8000U ||
+            !save("little-chiba-declined")) {
+            std::cerr << "Little Chiba hospital QA: declining the prompt did "
+                         "not apply the service return (selection="
+                      << decline_selection << ", closes="
+                      << count_boundary("field.door.service_close_return")
+                      << ", pos=" << declined.x << ',' << declined.y
+                      << ", expected=" << second_probe.points[0U].x << ','
+                      << second_probe.points[0U].y << ", heading=0x"
+                      << std::hex
+                      << field_scene.field_entity_heading_for_dump()
+                      << std::dec << ")\n";
+            return 3;
+        }
+        std::cout << "field_little_chiba_hospital=passed scene=2 "
+                     "return=" << returned.x << ',' << returned.y
+                  << " heading=0x8000 artifacts=" << output.string() << '\n';
+        return 0;
+    }
+
     const auto contact_frame = frame;
     for (const auto checkpoint :
          std::array<std::uint32_t, 3>{8U, 16U, 17U}) {
@@ -9577,90 +9818,21 @@ int run_field_scene26_event1_physical_entry_qa(
             return 3;
         }
         write_state("johnson-run-scene26");
-        if (!save("actual")) {
-            return 3;
+        if (!continue_after_run_entry) {
+            if (!save("actual")) {
+                return 3;
+            }
+            std::cout << "field_scene26_johnson_run_entry=passed "
+                         "run_id=" << johnson_run_target
+                      << " target=scene2-event1 destination=scene26 "
+                         "dialogue-before-transition=yes artifacts="
+                      << output.string() << '\n';
+            return 0;
         }
-        std::cout << "field_scene26_johnson_run_entry=passed "
-                     "run_id=" << johnson_run_target
-                  << " target=scene2-event1 destination=scene26 "
-                     "dialogue-before-transition=yes artifacts="
-                  << output.string() << '\n';
-        return 0;
     }
 
-    for (std::uint16_t settle = 0U;
-         settle < 180U &&
-         field_scene.field_scene_reference_for_dump() == 2U &&
-         !field_scene.field_mode_text_open_for_dump();
-         ++settle) {
-        step(0U);
-    }
-    const auto& entry_panel =
-        field_scene.field_mode_text_panel_for_dump();
-    const bool little_chiba_entry_text =
-        entry_panel.open &&
-        entry_panel.portrait_alias ==
-            "field.mode.entry.little.chiba.sprite" &&
-        entry_panel.text_segment_count >= 3U &&
-        entry_panel.text_segments[0].find("Little Chiba's Chop Shop") !=
-            std::string_view::npos &&
-        entry_panel.text_segments[2].find("install powerful cyberware") !=
-            std::string_view::npos &&
-        entry_panel.option_count == 0U;
-    if (field_scene.field_scene_reference_for_dump() != 2U ||
-        !field_scene.field_mode_text_open_for_dump() ||
-        !little_chiba_entry_text ||
-        field_scene.field_mode_text_frames_remaining_for_dump() != 30U ||
-        !save("little-chiba-entry")) {
-        std::cerr << "Scene-26 event-1 entry QA: source-selected Little Chiba "
-                     "mode text did not replace the whole field screen "
-                     "before the destination route (scene="
-                  << field_scene.field_scene_reference_for_dump()
-                  << ", mode_text="
-                  << field_scene.field_mode_text_open_for_dump()
-                  << ", frames="
-                  << field_scene.field_mode_text_frames_remaining_for_dump()
-                  << ", portrait=" << entry_panel.portrait_alias << ")\n";
-        for (std::size_t segment = 0U;
-             segment < entry_panel.text_segment_count; ++segment) {
-            std::cerr << "  text[" << segment << "]: "
-                      << entry_panel.text_segments[segment] << '\n';
-        }
-        return 3;
-    }
-    write_state("little-chiba-entry");
-
-    const auto mode_text_audio_count = field_audio_events.size();
-    field_scene.set_controller_port_byte(0x40U); // early A is ignored
-    field_scene.advance_frame();
-    ++frame;
-    field_scene.set_controller_port_byte(0U);
-    for (std::uint8_t delay = 0U; delay < 29U; ++delay) {
-        field_scene.advance_frame();
-        ++frame;
-    }
-    if (!field_scene.field_mode_text_open_for_dump() ||
-        field_scene.field_mode_text_frames_remaining_for_dump() != 0U ||
-        field_audio_events.size() != mode_text_audio_count ||
-        !save("little-chiba-entry-delay-30")) {
-        std::cerr << "Scene-26 event-1 entry QA: early input dismissed the "
-                     "30-frame source prompt or unexpected audio played\n";
-        return 3;
-    }
-    field_scene.set_controller_port_byte(0x40U); // fresh A after delay
-    field_scene.advance_frame();
-    ++frame;
-    field_scene.set_controller_port_byte(0U);
-    for (std::uint16_t settle = 0U;
-         settle < 180U &&
-         (field_scene.field_scene_reference_for_dump() == 2U ||
-          field_scene.field_transition_pending_for_dump() ||
-          field_scene.field_interaction_transition_active_for_dump() ||
-          field_scene.field_modal_return_transition_frames_for_dump() != 0U);
-         ++settle) {
-        field_scene.advance_frame();
-        ++frame;
-    }
+    // Scene 26 is reached only through the run stage above (0x1EEDC);
+    // continue with the destination resource-activity checks.
     const auto& destination_metadata =
         field_scene.state().field_scene_buffers.source_metadata;
     const auto& activity = field_scene.world_activity_state_for_dump();
@@ -9729,9 +9901,10 @@ int run_field_scene26_event1_physical_entry_qa(
         return 3;
     }
 
+    // The run passage replaces the old area-event mode-text page.
     const auto entry_page_opened = std::find(
         source_boundaries.begin(), source_boundaries.end(),
-        "field.mode_text.area_event_entry_opened");
+        "field.run.entry_dialogue_opened");
     const auto resumed_route = std::find(
         source_boundaries.begin(), source_boundaries.end(),
         "field.entry.area_event_scene_entered");
@@ -13299,7 +13472,7 @@ int run_field_elevator_physical_entry_qa(
     const auto route_output = output / "scene2-event1-route";
     if (run_field_scene26_event1_physical_entry_qa(
             field_scene, asset_root, route_output, field_audio_events,
-            source_boundaries) != 0) {
+            source_boundaries, "employee_recruitment", true) != 0) {
         return 3;
     }
 
@@ -13326,7 +13499,7 @@ int run_field_elevator_physical_entry_qa(
                 "\tselected_floor\tfeedback\tfeedback_frames_remaining"
                 "\tanimation\tanimation_frame\taudio_event_count"
                 "\ttransition_phase\ttransition_palette_step"
-                "\ttransition_vblanks_in_step\ttransition_alpha\timage\n";
+                "\ttransition_vblanks_in_step\timage\n";
 
     std::error_code timeline_directory_error;
     std::filesystem::create_directories(selector_output / "timeline",
@@ -13349,7 +13522,7 @@ int run_field_elevator_physical_entry_qa(
            "\tfeedback\tfeedback_frames_remaining\tanimation"
            "\tanimation_frame\taudio_event_count\ttransition_phase"
            "\ttransition_palette_step\ttransition_vblanks_in_step"
-           "\ttransition_alpha\tinput\timage\n";
+           "\tinput\timage\n";
     bool timeline_capture_ok = true;
     std::uint32_t timeline_frame_count = 0U;
     auto timeline_input = std::string("neutral");
@@ -13395,8 +13568,6 @@ int run_field_elevator_physical_entry_qa(
                                                  .elevator_scene_transition_palette_step_for_dump())
             << '\t' << static_cast<unsigned>(field_scene
                                                  .elevator_scene_transition_vblanks_for_dump())
-            << '\t' << static_cast<unsigned>(field_scene
-                                                 .elevator_scene_transition_fade_alpha_for_dump())
             << '\t' << timeline_input << '\t' << name << '\n';
         ++timeline_frame_count;
     };
@@ -13438,8 +13609,6 @@ int run_field_elevator_physical_entry_qa(
                                                       .elevator_scene_transition_palette_step_for_dump())
                  << '\t' << static_cast<unsigned>(field_scene
                                                       .elevator_scene_transition_vblanks_for_dump())
-                 << '\t' << static_cast<unsigned>(field_scene
-                                                      .elevator_scene_transition_fade_alpha_for_dump())
                  << '\t' << name << '\n';
         manifest.flush();
         return image;
@@ -13781,6 +13950,8 @@ int run_field_elevator_physical_entry_qa(
                      "source-timed destination fade\n";
         return 3;
     }
+    // ROM 0x131C and 0x12F6 perform 17 passes at two VBlanks per pass. The
+    // transition state is a CRAM pass counter; it has no alpha progress value.
     for (std::uint8_t palette_step = 1U;
          palette_step <= kElevatorSceneTransitionPaletteStepCount;
          ++palette_step) {
@@ -13795,15 +13966,13 @@ int run_field_elevator_physical_entry_qa(
                   field_scene.elevator_scene_transition_phase_for_dump() ==
                       ElevatorSceneTransitionPhase::fading_from_black &&
                   field_scene.elevator_scene_transition_palette_step_for_dump() ==
-                      0U &&
-                  field_scene.elevator_scene_transition_fade_alpha_for_dump() ==
-                      255U
+                      0U
             : field_scene.field_scene_reference_for_dump() == 26U &&
                   field_scene.elevator_scene_transition_phase_for_dump() ==
                       ElevatorSceneTransitionPhase::fading_to_black &&
                   field_scene.elevator_scene_transition_palette_step_for_dump() ==
                       palette_step &&
-                  field_scene.elevator_scene_transition_fade_alpha_for_dump() !=
+                  field_scene.elevator_scene_transition_palette_step_for_dump() !=
                       0U;
         if (!transition_state_matches) {
             std::cerr << "Elevator physical-entry QA: fade-out palette pass "
@@ -13824,7 +13993,7 @@ int run_field_elevator_physical_entry_qa(
         field_scene.elevator_selector_open_for_dump() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
             ElevatorSceneTransitionPhase::fading_from_black ||
-        field_scene.elevator_scene_transition_fade_alpha_for_dump() != 255U) {
+        field_scene.elevator_scene_transition_palette_step_for_dump() != 0U) {
         std::cerr << "Elevator physical-entry QA: scene handoff did not replace "
                      "the selector at full black\n";
         return 3;
@@ -13835,13 +14004,16 @@ int run_field_elevator_physical_entry_qa(
         tick_frame(); // first source VBlank in the palette step wait
         if (palette_step == 9U) {
             const auto midpoint = save("destination-fade-in-midpoint");
+            // 0x12F6 performs 17 passes, but 0x10D6 saturates each CRAM
+            // channel at its destination by pass 7. Pass 9 has no linear
+            // alpha midpoint; verify the source pass and keep its dump [C].
+            // 0x1342 waits two VBlanks per pass, so after the first VBlank of
+            // pass 9 only eight passes have completed.
             if (midpoint.isNull() ||
-                field_scene.elevator_scene_transition_fade_alpha_for_dump() <
-                    100U ||
-                field_scene.elevator_scene_transition_fade_alpha_for_dump() >
-                    155U) {
+                field_scene.elevator_scene_transition_palette_step_for_dump() !=
+                    palette_step - 1U) {
                 std::cerr << "Elevator physical-entry QA: destination fade "
-                             "midpoint is outside the expected palette range\n";
+                             "did not reach source palette pass 9\n";
                 return 3;
             }
         }
@@ -13864,12 +14036,16 @@ int run_field_elevator_physical_entry_qa(
         field_scene.state().field_scene_buffers.source_metadata
             .initial_field_records[0U];
     const auto destination = save("scene28-entry");
+    // The source transition retains its final 17th CRAM pass in the native
+    // counter after returning to idle; the former alpha diagnostic reset to
+    // zero and did not describe palette state [C: 0x131C / 0x12F6].
     if (destination.isNull() ||
         field_scene.field_scene_reference_for_dump() != 28U ||
         field_scene.elevator_selector_open_for_dump() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
             ElevatorSceneTransitionPhase::idle ||
-        field_scene.elevator_scene_transition_fade_alpha_for_dump() != 0U ||
+        field_scene.elevator_scene_transition_palette_step_for_dump() !=
+            kElevatorSceneTransitionPaletteStepCount ||
         destination_position.x != destination_landing_position.x ||
         destination_position.y != destination_landing_position.y ||
         !field_scene.field_entity_visible_for_dump() ||
@@ -14139,9 +14315,6 @@ int run_field_elevator_group_route_qa(
                  << '\t'
                  << static_cast<unsigned>(field_scene
                                               .elevator_scene_transition_palette_step_for_dump())
-                 << '\t'
-                 << static_cast<unsigned>(field_scene
-                                              .elevator_scene_transition_fade_alpha_for_dump())
                  << '\t' << input_label << '\t' << name << '\n';
         ++timeline_frame_count;
         return true;
@@ -14596,8 +14769,8 @@ int run_field_elevator_group_route_qa(
             field_scene.field_scene_reference_for_dump() == destination_scene &&
             field_scene.elevator_scene_transition_phase_for_dump() ==
                 ElevatorSceneTransitionPhase::fading_from_black &&
-            field_scene.elevator_scene_transition_fade_alpha_for_dump() ==
-                255U) {
+            field_scene.elevator_scene_transition_palette_step_for_dump() ==
+                0U) {
             QImage black(kSceneWidth, kSceneHeight, QImage::Format_ARGB32);
             black.fill(Qt::black);
             if (render() != black ||
@@ -14619,7 +14792,8 @@ int run_field_elevator_group_route_qa(
         field_scene.elevator_selector_open_for_dump() || !no_modal_screen() ||
         field_scene.elevator_scene_transition_phase_for_dump() !=
             ElevatorSceneTransitionPhase::idle ||
-        field_scene.elevator_scene_transition_fade_alpha_for_dump() != 0U ||
+        field_scene.elevator_scene_transition_palette_step_for_dump() !=
+            kElevatorSceneTransitionPaletteStepCount ||
         destination_position.x != destination_landing_position.x ||
         destination_position.y != destination_landing_position.y ||
         !field_scene.field_entity_visible_for_dump() ||
@@ -14769,13 +14943,13 @@ int run_field_elevator_floor_group_roundtrip_qa(
     }
     manifest << "stage\tframe\tscene\tselector_open\tcurrent_floor"
                 "\tselected_floor\tanimation\tanimation_frame"
-                "\ttransition_phase\ttransition_step\ttransition_alpha"
+                "\ttransition_phase\ttransition_step"
                 "\taudio_event_count\timage\n";
     timeline_manifest
         << "frame\tscene\tx\ty\theading\ttarget_heading\tselector_open"
            "\tcurrent_floor\tselected_floor"
            "\tanimation\tanimation_frame\ttransition_phase"
-           "\ttransition_step\ttransition_vblanks\ttransition_alpha"
+           "\ttransition_step\ttransition_vblanks"
            "\tinput\timage\n";
 
     std::uint32_t frame = 0U;
@@ -14821,9 +14995,6 @@ int run_field_elevator_floor_group_roundtrip_qa(
             << '\t'
             << static_cast<unsigned>(field_scene
                                          .elevator_scene_transition_vblanks_for_dump())
-            << '\t'
-            << static_cast<unsigned>(field_scene
-                                         .elevator_scene_transition_fade_alpha_for_dump())
             << '\t' << timeline_input << '\t' << name << '\n';
         ++timeline_frame_count;
     };
@@ -14857,9 +15028,6 @@ int run_field_elevator_floor_group_roundtrip_qa(
                  << '\t'
                  << static_cast<unsigned>(field_scene
                                               .elevator_scene_transition_palette_step_for_dump())
-                 << '\t'
-                 << static_cast<unsigned>(field_scene
-                                              .elevator_scene_transition_fade_alpha_for_dump())
                  << '\t' << field_audio_events.size() << '\t' << name << '\n';
         manifest.flush();
         return image;
@@ -15102,15 +15270,13 @@ int run_field_elevator_floor_group_roundtrip_qa(
                           field_scene.elevator_scene_transition_phase_for_dump() ==
                               ElevatorSceneTransitionPhase::fading_from_black &&
                           field_scene.elevator_scene_transition_palette_step_for_dump() ==
-                              0U &&
-                          field_scene.elevator_scene_transition_fade_alpha_for_dump() ==
-                              255U
+                              0U
                     : field_scene.field_scene_reference_for_dump() == source_scene &&
                           field_scene.elevator_scene_transition_phase_for_dump() ==
                               ElevatorSceneTransitionPhase::fading_to_black &&
                           field_scene.elevator_scene_transition_palette_step_for_dump() ==
                               palette_step &&
-                          field_scene.elevator_scene_transition_fade_alpha_for_dump() !=
+                          field_scene.elevator_scene_transition_palette_step_for_dump() !=
                               0U;
                 if (!transition_matches ||
                     save(label + "-fade-out-step-" +
@@ -15158,8 +15324,8 @@ int run_field_elevator_floor_group_roundtrip_qa(
                 field_scene.elevator_selector_open_for_dump() ||
                 field_scene.elevator_scene_transition_phase_for_dump() !=
                     ElevatorSceneTransitionPhase::idle ||
-                field_scene.elevator_scene_transition_fade_alpha_for_dump() !=
-                    0U ||
+                field_scene.elevator_scene_transition_palette_step_for_dump() !=
+                    kElevatorSceneTransitionPaletteStepCount ||
                 destination_position.x != destination_landing_position.x ||
                 destination_position.y != destination_landing_position.y ||
                 !field_scene.field_entity_visible_for_dump() ||
@@ -24904,6 +25070,9 @@ int run_field_mode_13_entry_qa(
     const auto selected = std::find(
         source_boundaries.begin(), source_boundaries.end(),
         "field.mode_transition.destination_selected");
+    const auto lua_graph = std::find(
+        source_boundaries.begin(), source_boundaries.end(),
+        "field.mode_transition.lua_room_graph_selected");
     const auto queued = std::find(
         source_boundaries.begin(), source_boundaries.end(),
         "field.world_activity.pending_actor_list_queued");
@@ -24917,6 +25086,7 @@ int run_field_mode_13_entry_qa(
                 .world_activity_countdown == 0U ||
         runner.x != 0x5E80U || runner.y != 0x1300U || !actors_match ||
         selected == source_boundaries.end() || queued == source_boundaries.end() ||
+        lua_graph == source_boundaries.end() ||
         entry_image.size() != QSize(kSceneWidth, kSceneHeight) ||
         !entry_image.save(QString::fromStdWString(entry_image_path.wstring()))) {
         std::cerr << "Mode-13 entry QA: ROM-selected Scene 47 route failed "
@@ -27475,6 +27645,7 @@ int main(int argc, char** argv) {
             field_gang_contract_target_entry_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
+        std::optional<std::filesystem::path> field_party_wipe_qa_path;
         bool field_audio_qa = false;
         std::optional<std::filesystem::path> field_terrain_mark_qa_path;
         std::optional<std::filesystem::path>
@@ -27590,6 +27761,8 @@ int main(int argc, char** argv) {
             field_scene20_electronics_trials_qa_path;
         std::optional<std::filesystem::path>
             field_scene26_event1_entry_qa_path;
+        std::optional<std::filesystem::path>
+            field_little_chiba_hospital_qa_path;
         std::optional<std::filesystem::path>
             field_scene26_johnson_run_entry_qa_path;
         std::optional<std::filesystem::path>
@@ -27803,6 +27976,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_world_activity_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-party-wipe-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_party_wipe_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -28196,6 +28375,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
             field_scene20_electronics_trials_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-little-chiba-hospital-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_little_chiba_hospital_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -29760,6 +29946,10 @@ int main(int argc, char** argv) {
             if (field_matrix_traversal_entry_qa_path.has_value()) {
                 const auto output = *field_matrix_traversal_entry_qa_path;
                 std::filesystem::create_directories(output);
+                // The longplay reference frames under "video analysis/" are an
+                // untracked local capture. Without them every runtime check still
+                // runs, and the exit is 77 (ctest skip) instead of a failure.
+                bool longplay_reference_missing = false;
                 std::error_code clear_error;
                 clear_qa_bitmap_artifacts(output, clear_error);
                 if (clear_error) {
@@ -30161,13 +30351,18 @@ int main(int argc, char** argv) {
                             "section_21_source_4620-4920" /
                             ("frame_00" +
                              std::to_string(anchor.source_frame) + ".png");
+                        const bool reference_present =
+                            std::filesystem::exists(reference_path);
+                        longplay_reference_missing =
+                            longplay_reference_missing || !reference_present;
                         const QImage reference(
                             QString::fromStdString(reference_path.string()));
                         const auto overlap = green_model_overlap(
                             image, reference, QRect(110, 45, 100, 67));
-                        if (reference.size() !=
-                                QSize(kSceneWidth, kSceneHeight) ||
-                            overlap < 0.80) {
+                        if (reference_present &&
+                            (reference.size() !=
+                                 QSize(kSceneWidth, kSceneHeight) ||
+                             overlap < 0.80)) {
                             std::cerr << "Matrix traversal entry QA: model "
                                          "shape at source frame "
                                       << anchor.source_frame
@@ -30553,6 +30748,10 @@ int main(int argc, char** argv) {
                     "video analysis" /
                     "long_gameplay_video_rest_ffmpeg_30fps_320x224" /
                     "section_15_source_2820-3120" / "frame_004440.png";
+                const bool model0_reference_present =
+                    std::filesystem::exists(model0_reference_path);
+                longplay_reference_missing =
+                    longplay_reference_missing || !model0_reference_present;
                 const QImage model0_reference(
                     QString::fromStdString(
                         model0_reference_path.string()));
@@ -30579,12 +30778,13 @@ int main(int argc, char** argv) {
                     route.top_matrix_traversal_view->model_canvas_width != 110 ||
                     route.top_matrix_traversal_view->model_canvas_height != 62 ||
                     !complete_frame(model0_image) ||
-                    model0_reference.size() !=
-                        QSize(kSceneWidth, kSceneHeight) ||
                     model0_host_bounds.isNull() ||
-                    model0_reference_bounds.isNull() ||
-                    model0_host_bounds != model0_reference_bounds ||
-                    model0_mask_overlap < 0.80) {
+                    (model0_reference_present &&
+                     (model0_reference.size() !=
+                          QSize(kSceneWidth, kSceneHeight) ||
+                      model0_reference_bounds.isNull() ||
+                      model0_host_bounds != model0_reference_bounds ||
+                      model0_mask_overlap < 0.80))) {
                     std::cerr << "Matrix model-0 QA: Green-4 System Access "
                                  "route or full-frame reference capture is "
                                  "invalid; host bounds="
@@ -30962,6 +31162,11 @@ int main(int argc, char** argv) {
                           << "degrade_action=verified "
                           << "transition_art=verified "
                           << "world_effect_gate_negative=verified\n";
+                if (longplay_reference_missing) {
+                    std::cout << "SKIP: longplay reference frames absent; "
+                                 "runtime checks passed\n";
+                    return 77;
+                }
                 return 0;
             }
             if (field_matrix_cyber_info_qa_path.has_value()) {
@@ -32614,7 +32819,9 @@ int main(int argc, char** argv) {
                     has_boundary("field.vid_phone.passage.payment_accepted") &&
                     has_boundary("field.vid_phone.passage_fade_out_started") &&
                     has_boundary("field.vid_phone.destination_loaded") &&
-                    has_boundary("field.vid_phone.destination_fade_finished");
+                    has_boundary("field.vid_phone.destination_fade_finished") &&
+                    has_boundary("field.vid_phone.entry_room_seeded") &&
+                    field_scene.field_transition_context_for_dump() == 0U;
                 if (field_scene.field_scene_reference_for_dump() != 6U ||
                     field_scene.elevator_scene_transition_phase_for_dump() !=
                         ElevatorSceneTransitionPhase::idle ||
@@ -32896,7 +33103,8 @@ int main(int argc, char** argv) {
                     has_boundary("field.vid_phone.passage.payment_accepted") &&
                     has_boundary("field.vid_phone.passage_fade_out_started") &&
                     has_boundary("field.vid_phone.destination_loaded") &&
-                    has_boundary("field.vid_phone.destination_fade_finished");
+                    has_boundary("field.vid_phone.destination_fade_finished") &&
+                    field_scene.field_transition_context_for_dump() == 3U;
                 if (field_scene.field_scene_reference_for_dump() != 9U ||
                     field_scene.elevator_scene_transition_phase_for_dump() !=
                         ElevatorSceneTransitionPhase::idle ||
@@ -33058,6 +33266,10 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_world_activity_qa_path, field_audio_events,
                     field_audio_stops);
+            }
+            if (field_party_wipe_qa_path.has_value()) {
+                return run_field_party_wipe_qa(
+                    field_scene, *field_party_wipe_qa_path);
             }
             if (field_hound_close_effect_qa_path.has_value()) {
                 return run_field_hound_close_effect_qa(
@@ -33528,12 +33740,19 @@ int main(int argc, char** argv) {
                     field_audio_events, field_source_boundaries,
                     "employee_recruitment");
             }
+            if (field_little_chiba_hospital_qa_path.has_value()) {
+                return run_field_scene26_event1_physical_entry_qa(
+                    field_scene, asset_root,
+                    *field_little_chiba_hospital_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
             if (field_scene26_event1_entry_qa_path.has_value()) {
                 const auto entry_result =
                     run_field_scene26_event1_physical_entry_qa(
                     field_scene, asset_root,
                     *field_scene26_event1_entry_qa_path,
-                    field_audio_events, field_source_boundaries);
+                    field_audio_events, field_source_boundaries,
+                    "employee_recruitment", true);
                 if (entry_result != 0) {
                     return entry_result;
                 }
@@ -36323,6 +36542,10 @@ int main(int argc, char** argv) {
                     const auto runner_action_path =
                         field_hospital_menu_dump_path->parent_path() /
                         "runner-action-return.bmp";
+                    // A clean build tree has no output directory yet; the
+                    // final dump below creates it too late for this image.
+                    std::filesystem::create_directories(
+                        runner_action_path.parent_path());
                     if (!runner_action_scene.save(QString::fromStdWString(
                             runner_action_path.wstring()))) {
                         std::cerr << "hospital menu dump: could not write runner-action-return.bmp\n";
@@ -36394,6 +36617,16 @@ int main(int argc, char** argv) {
                 if (followup_result) {
                     prompt_opened = field_scene.open_stoker_dialogue_for_dump(
                         StokerMotelPromptId::manager_greeting_with_package);
+                    // ROM root 0xF4AFC (indexed trigger 0, 0x53AB6) starts
+                    // with the sign page (text 0x1167EB) and links to the
+                    // three-choice manager record 0xF4B10. A continues the
+                    // sign page before C selects the package/debt branch.
+                    if (prompt_opened) {
+                        prompt_opened =
+                            field_scene.advance_stoker_dialogue_for_dump(
+                                0x4000U) ==
+                            FieldDialogueAdvanceResult::prompt_advanced;
+                    }
                     if (prompt_opened) {
                         prompt_opened =
                             field_scene.advance_stoker_dialogue_for_dump(
@@ -36500,8 +36733,34 @@ int main(int argc, char** argv) {
 
                 if (referral_followup_result ||
                     debt_payment_insufficient_result) {
-                    if (field_scene.advance_stoker_dialogue_for_dump(0x4000U) !=
+                    // The JSON graph ends at a typed continue_in_place
+                    // terminal; the field coordinator dispatches it the same
+                    // way the live route does before returning to the map.
+                    const auto final_advance =
+                        field_scene.advance_stoker_dialogue_for_dump(0x4000U);
+                    bool returned_to_map =
+                        final_advance ==
                             FieldDialogueAdvanceResult::returned_to_field ||
+                        (final_advance ==
+                             FieldDialogueAdvanceResult::typed_outcome_requested &&
+                         field_scene.dispatch_dialogue_outcome_for_dump() &&
+                         !field_scene.dialogue_open());
+                    // continue_in_place starts the ordinary modal-return
+                    // fade; the field menu cannot open until it finishes.
+                    for (std::size_t frame = 0U;
+                         returned_to_map && frame < 120U &&
+                         field_scene
+                                 .field_modal_return_transition_frames_for_dump() !=
+                             0U;
+                         ++frame) {
+                        field_scene.advance_frame();
+                    }
+                    returned_to_map =
+                        returned_to_map &&
+                        field_scene
+                                .field_modal_return_transition_frames_for_dump() ==
+                            0U;
+                    if (!returned_to_map ||
                         !field_scene.open_command_overview_for_dump() ||
                         !field_scene.seek_command_overview_page(6U)) {
                         std::cerr << "field dialogue dump: could not return to the field Notebook route\n";
@@ -41289,6 +41548,13 @@ int main(int argc, char** argv) {
                                  "start in the expected Redmond scene\n";
                     return 3;
                 }
+                if (!field_scene.set_story_flag_for_dump(0U, true)) {
+                    std::cerr << "field taxi dump: could not seed the source "
+                                 "taxi availability story flag\n";
+                    return 3;
+                }
+                field_scene.set_group_item_flags_for_dump(0U);
+                field_scene.set_field_funds_for_dump(100U);
                 const auto field_before_taxi = capture_field_scene();
                 if (!field_scene.open_taxi_selector_for_dump(
                         kRedmondRegion)) {
@@ -41466,19 +41732,30 @@ int main(int argc, char** argv) {
                 }
                 field_scene.set_controller_port_byte(0x80U);
                 field_scene.advance_frame();
-                if (field_scene.command_overview_open() ||
+                if (!field_scene.dialogue_open()) {
+                    std::cerr << "field taxi dump: confirming the current "
+                                 "region did not show the cabbie response\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Dismiss.
+                if (field_scene.dialogue_open() ||
+                    !finish_field_modal_return_transition(field_scene) ||
+                    field_scene.command_overview_open() ||
+                    field_scene.field_scene_reference_for_dump() !=
+                        kRedmondRegion ||
+                    field_scene.field_funds_for_dump() !=
+                        std::optional<std::uint32_t>{100U} ||
                     capture_field_scene() != field_before_taxi) {
-                    std::cerr << "field taxi dump: cancel left a stale screen "
-                                 "or failed to return to the field\n";
+                    std::cerr << "field taxi dump: already-there dialogue "
+                                 "failed to return without a fare or trip\n";
                     return 3;
                 }
                 field_scene.set_controller_port_byte(0U);
 
                 // Re-enter the selector, choose Downtown through its ROM
-                // cursor order, and confirm. This exercises the live Lua
-                // request callback and the field-scene fade/load route rather
-                // than treating a valid selector screenshot as proof of
-                // travel.
+                // cursor order, accept both cabbie prompts, and dismiss the
+                // ride page. This exercises the field dialogue task before
+                // the destination fade/load route.
                 if (!field_scene.open_taxi_selector_for_dump(
                         kRedmondRegion)) {
                     std::cerr << "field taxi dump: selector did not reopen "
@@ -41496,7 +41773,31 @@ int main(int argc, char** argv) {
                 for (int frame = 0; frame < 12; ++frame) {
                     field_scene.advance_frame();
                 }
-                tap_qa_controller_button(field_scene, 0x40U); // A: travel.
+                tap_qa_controller_button(field_scene, 0x40U); // A: cabbie call.
+                if (!field_scene.dialogue_open()) {
+                    std::cerr << "field taxi dump: selector confirmation did "
+                                 "not open cabbie dialogue\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Yes: ride.
+                if (!field_scene.dialogue_open()) {
+                    std::cerr << "field taxi dump: Yes did not open the fare "
+                                 "offer\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Sure thing.
+                if (!field_scene.dialogue_open()) {
+                    std::cerr << "field taxi dump: fare acceptance did not "
+                                 "show the cabbie's ride page\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Hop in.
+                const auto taxi_funds = field_scene.field_funds_for_dump();
+                if (!taxi_funds.has_value() || *taxi_funds != 80U) {
+                    std::cerr << "field taxi dump: accepted cab fare did not "
+                                 "deduct 20 nuyen\n";
+                    return 3;
+                }
                 for (int frame = 0;
                      frame < 120U &&
                      field_scene.field_scene_reference_for_dump() != 0U;

@@ -112,15 +112,35 @@ returns source slot 9 through 14 for the first inactive record, or 15 when
 all six are active. The host stores that occupancy as
 `AuxiliaryEntitySlot.active`. Callers do not pass a flags byte.
 `0xB14C` and `0xB2A8` use the scan after a reaction changes the defender's
-`+0x4C` or `+0x9C`. The child is kind 1, animation selector 4, heading
-`0x2000`, and sits on the defender with Y increased by `0x10`. Its
-continuation is `0xAC4E`, which clears the slot only when that selector is
-negative. `spawn_reaction_auxiliary_child` and `retire_auxiliary_child` are
-that pair. The live field hit does not call them yet. Lua's meter result
-does not report those two action bytes, and spawning a child on every meter
-change would invent one. A zero-meter actor also does not leave its slot:
-`0xB330` reserves it and `0xB38A` holds it in place. Workbench QA covers the
-slot scan, the child record, and the title-intro caller of the same scan.
+`+0x4C` or `+0x9C`; this work connects only the player-side `0xB2A8` caller,
+leaving the enemy-side `0xB14C` branch untouched. The child is kind 1, animation selector 4, heading
+`0x2000`, and sits on the defender with Y increased by `0x10`. In the player
+path, `0xB284` calls `0x55C76`, `0xB28E..0xB29A` compares the defender's
+`+0x4C` and `+0x9C`, and `0xB29E..0xB2EA` allocates the child only when either
+meter changed. It writes slot `+0x3E`, dirty `+0x11.0`, selector `+0x16=4`,
+kind `+0x0E=1`, continuation `+0x3A=0xAC4E`, active `+0x10.0`, target X,
+target Y `+0x10`, and palette attributes `+0x2C=0x2000`.
+
+Kind 1 selector 4 resolves through `0x62AC -> 0x634C -> 0x7330`. The list
+marker is `0x8005`, its timing word is `0x0400`, and its five pointers select
+sentinel-terminated sprite lists at `0x9374..0x939C`. The entries use tile
+IDs `0x5CF..0x5DF`; field setup copies the shared `0xE44D8` object patterns to
+VRAM `0xB000` through `0x1406/0x0F5C`. The generic record initializer `0x15118`
+zeros the child timing accumulator and sets `+0x1C=0x1000`; `0x600E` takes
+`+0x18=0x0400` from this list. `0x5FDC` advances the child, `0x600E` marks
+the selector negative after the fifth list, and the next `0xAC4E` behavior
+pass clears `+0x10.0`. The five frames occupy 20 render passes before that
+behavior pass retires the record. The direct BMPs and catalog rows are an
+offline extraction; Lua owns the timing, and the field renderer draws its
+returned frame. These address-derived facts are confirmed [C].
+
+The player action now consumes the Lua `0x55C76` meter result and requests a
+spark only when `changed` is true. It does not alter enemy `incoming_hit` or
+death handling. `spawn_reaction_auxiliary_child` and
+`retire_auxiliary_child` retain the typed slot/continuation model; focused C++
+and Lua QA covers the player decision, five frame cadence, and retirement.
+A zero-meter actor still follows the separate `0xB330` reservation path and
+`0xB38A` hold behavior.
 
 ## AI cadence, targeting, action data, and movement
 
@@ -386,10 +406,12 @@ When the stopped record sees the preceding render pass's finite-list bit,
 `0x14F86` decrements signed byte `+0x41`; a negative result clears the active
 bit, while a nonnegative result begins linked action setup and derives new
 heading offsets. Lua owns the countdown and retirement choice; the linked
-record resolver is not connected. The secondary `0xAC4E` path only waits for
-its finite-list marker and then clears its active bit. Lua owns that retirement
-decision too. The active scene currently supplies no live collision candidates,
-so no NPC hit or damage behavior is fabricated.
+record resolver is not connected. Both the secondary projectile and the player
+hit-spark child use `0xAC4E` as a finite-list continuation. The hit spark's
+selector becomes negative at `0x600E` after its fifth frame, then the next
+behavior pass clears its active bit. Lua owns that timing and retirement
+decision. The active scene currently supplies no live collision candidates on
+this projectile route, so no NPC projectile-hit or damage behavior is fabricated.
 
 The native port should retain that distinction in its scheduler: Lua receives
 one behavior heartbeat per source field-service pass and one render heartbeat

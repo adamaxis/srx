@@ -123,11 +123,13 @@ int main() {
         return 15;
     }
     ElevatorSceneTransitionRuntime transition;
-    if (transition.is_active() || transition.black_overlay_alpha() != 0U ||
+    if (transition.is_active() || transition.palette_step() != 0U ||
         !transition.begin_fade_out() || !transition.is_active() ||
         transition.begin_fade_in()) {
         return 16;
     }
+    // ROM 0x131C / 0x12F6 loops 17 times and 0x1342 waits two VBlanks
+    // before each 0x1088 / 0x10D6 CRAM pass [C].
     for (std::uint8_t pass = 1U;
          pass <= kElevatorSceneTransitionPaletteStepCount; ++pass) {
         auto fade_update = transition.advance();
@@ -136,14 +138,10 @@ int main() {
             return 17;
         }
         fade_update = transition.advance();
-        const auto expected_alpha = static_cast<std::uint8_t>(
-            (static_cast<unsigned>(pass) * 255U) /
-            kElevatorSceneTransitionPaletteStepCount);
         if (!fade_update.palette_step_changed ||
             fade_update.destination_load_requested !=
                 (pass == kElevatorSceneTransitionPaletteStepCount) ||
-            fade_update.completed || transition.palette_step() != pass ||
-            transition.black_overlay_alpha() != expected_alpha) {
+            fade_update.completed || transition.palette_step() != pass) {
             return 18;
         }
     }
@@ -159,18 +157,16 @@ int main() {
             return 20;
         }
         fade_update = transition.advance();
-        const auto expected_alpha = static_cast<std::uint8_t>(
-            255U - (static_cast<unsigned>(pass) * 255U) /
-                       kElevatorSceneTransitionPaletteStepCount);
         if (!fade_update.palette_step_changed ||
             fade_update.destination_load_requested ||
             fade_update.completed !=
                 (pass == kElevatorSceneTransitionPaletteStepCount) ||
-            transition.black_overlay_alpha() != expected_alpha) {
+            transition.palette_step() != pass) {
             return 21;
         }
     }
-    if (transition.is_active() || transition.black_overlay_alpha() != 0U ||
+    if (transition.is_active() ||
+        transition.palette_step() != kElevatorSceneTransitionPaletteStepCount ||
         transition.begin_fade_in()) {
         return 22;
     }

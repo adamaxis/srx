@@ -128,6 +128,17 @@ int main() {
         return 12;
     }
 
+    // 0xD920 limits on the selected skill's own value: untrained Shotguns
+    // with Firearms 12 still offers 13 for ceil(19.5) = 20 Karma.
+    RunnerRecordFields edge{};
+    edge.skills[1] = 12U;
+    const auto edge_preview = preview_attribute_skill_upgrade(edge, {0U, 8U});
+    if (!expect(edge_preview.status == AttributeSkillUpgradeStatus::available &&
+                edge_preview.next_value == 13U &&
+                edge_preview.karma_cost == 20U)) {
+        return 40;
+    }
+
     RunnerRecordFields render_record{};
     render_record.species_index = 0U;
     render_record.attributes[0] = 3U;

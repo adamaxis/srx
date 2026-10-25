@@ -5,6 +5,7 @@ extern "C" {
 }
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -40,6 +41,19 @@ int load_test_module(lua_State* state) {
     lua_pushvalue(state, -2);
     lua_setfield(state, -2, name.c_str());
     lua_pop(state, 1);
+    return 1;
+}
+
+// Returns gameplay/<relative> file contents (dialogue JSON content).
+int read_gameplay_file(lua_State* state) {
+    const std::string relative(luaL_checkstring(state, 1));
+    std::ifstream file(g_script_root / ".." / relative, std::ios::binary);
+    if (!file) {
+        return luaL_error(state, "missing gameplay file %s", relative.c_str());
+    }
+    const std::string source((std::istreambuf_iterator<char>(file)),
+                             std::istreambuf_iterator<char>());
+    lua_pushlstring(state, source.data(), source.size());
     return 1;
 }
 
@@ -1447,7 +1461,7 @@ local run_probe = {
 }
 local committed_world
 game = {
-    runs = { registry = Registry, matrix_objective_probe = run_probe },
+    runs = { registry = Registry, matrix_objective = run_probe },
     matrix_world_state = function()
         return { run = { state = 9 }, field = {}, actors = {} }
     end,
@@ -1455,12 +1469,21 @@ game = {
         committed_world = world
     end,
 }
+-- 9d69a571 validates saved offers against the joined ROM offer row; use the
+-- Big Rhino MATRIX_SIMPLE row (progress 2, base 425, scale 1).
 Registry.active_offer = {
-    id = "matrix_objective_probe",
+    id = "matrix_objective",
     category = "matrix",
     objective = "retrieve_matrix_data",
     completion_condition = "source_matrix_objective_satisfied",
-    runner_progress_delta = 1,
+    runner_progress_delta = 2,
+    context = E.RunOfferContext.BIG_RHINO,
+    source_offer_context = E.RunOfferContext.BIG_RHINO,
+    source_initializer = E.RunOfferInitializer.MATRIX_SIMPLE,
+    payment = {
+        base_amount = 425, negotiated_amount = 425, negotiation_skill = 0,
+        negotiation_bound = 1, negotiation_roll = 0,
+    },
     source_run_type = E.RunType.MATRIX_OBJECTIVE,
     matrix_run_state = {
         state = -1, objective = 5, value = 0, size = 30,
@@ -1493,6 +1516,22 @@ eq(invalid_runs, false,
 -- All five ROM offer contexts contain eight records at F3EBC. The typed Lua
 -- table retains initializer, progress, payment, and negotiation fields.
 local OfferData = require("data.johnson_run_offers")
+-- dialogue.lua asserts the authored JSON catalogs in game.content.
+do
+    local Json = require("json")
+    local function load(path)
+        return assert(Json.decode(__matrix_read_gameplay_file(
+            "dialogue/" .. path .. ".json")))
+    end
+    game.content = {
+        speakers = load("speakers"), menus = load("menus"),
+        contacts = load("contacts"), conditions = load("conditions"),
+        cinematics = load("cinematics"),
+        conversations = {
+            vid_phone_services = load("conversations/vid_phone_services"),
+        },
+    }
+end
 local Dialogue = require("dialogue")
 local expected_context_rows = {
     [0] = {
@@ -1860,6 +1899,8 @@ int main() {
     lua_pop(state, 1);
     luaL_requiref(state, LUA_TABLIBNAME, luaopen_table, 1);
     lua_pop(state, 1);
+    lua_pushcfunction(state, read_gameplay_file);
+    lua_setglobal(state, "__matrix_read_gameplay_file");
     lua_newtable(state);
     lua_setglobal(state, "__matrix_test_modules");
     lua_pushcfunction(state, load_test_module);

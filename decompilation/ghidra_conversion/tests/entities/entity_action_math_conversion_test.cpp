@@ -214,7 +214,8 @@ int main() {
     const auto source_item43 = apply_action_item_phase_modifiers(
         5U, source_bound_special, 0x1AU, 11U, source_item_catalog,
         source_selectors);
-    if (!expect(source_item43.value == 0x0207U &&
+    // ROM D4540 row 43 +0x26 word is 0x0002: 5 + 2.
+    if (!expect(source_item43.value == 7U &&
                 source_item43.special_item_applied &&
                 !source_item43.source_data_missing)) {
         return 30;

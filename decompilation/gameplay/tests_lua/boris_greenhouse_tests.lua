@@ -398,24 +398,42 @@ assert(outcome.type == "continue_in_place" and state.funds == 500 and
        state.seen_pages[3].choice_ids[2] == "david" and
        state.seen_pages[3].choice_ids[3] == "later")
 
+-- Fake host for story_state.advance_strike_team (ROM 0x1F1E0) in scene 2:
+-- FFFBFB read/write plus the Boris Strike Team follow-up list queue.
+local function strike_team_host(strike_value)
+    local host = { sets = 0, queued = 0 }
+    host.call = function(domain, operation)
+        local id = tostring(domain) .. "." .. tostring(operation)
+        if id == "field.scene_reference" then
+            return "scene_2"
+        elseif id == "story.world_effect_idle" then
+            return "idle"
+        elseif id == "story.byte_get_fffbfb" then
+            return strike_value and ("value_" .. strike_value) or nil
+        elseif strike_value and
+               id == "story.byte_set_fffbfb_" .. (strike_value + 1) then
+            host.sets = host.sets + 1
+            return "applied"
+        elseif id == "story.queue_world_effect_2_1d6fd0_2_boris_strike_team" then
+            host.queued = host.queued + 1
+            return "queued"
+        end
+        error("unexpected Boris service: " .. id)
+    end
+    return host
+end
+
 state = new_game({ "more", "information", "david", "brother" }, {
     field_dialogue_flag_bit_2 = true,
     story_flag_bit_1 = true,
     story_flag_bit_3 = false,
 }, 1000)
-local unavailable_strike_team_calls = 0
-state.services.call = function(domain, operation)
-    assert(domain == "field" and
-           operation == "advance_strike_team_counter",
-           "unexpected Boris service: " .. tostring(domain) .. "." ..
-               tostring(operation))
-    unavailable_strike_team_calls = unavailable_strike_team_calls + 1
-    return "service_unavailable"
-end
+local unavailable_host = strike_team_host(nil)
+state.services.call = unavailable_host.call
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "source_boundary" and
        outcome.reason:find("saved Strike Team counter", 1, true) ~= nil and
-       unavailable_strike_team_calls == 1 and
+       unavailable_host.sets == 0 and
        state.state.field_mode_flag_bit_6 == false and
        state.state.field_mode_flag_bit_7 == false and
        state.state.field_mode_flag_bit_20 == true and
@@ -430,17 +448,11 @@ state = new_game({ "more", "information", "david", "brother", "more" }, {
     story_flag_bit_1 = true,
     story_flag_bit_3 = false,
 }, 1000)
-local strike_team_calls = 0
-state.services.call = function(domain, operation)
-    assert(domain == "field" and
-           operation == "advance_strike_team_counter",
-           "unexpected Boris service: " .. tostring(domain) .. "." ..
-               tostring(operation))
-    strike_team_calls = strike_team_calls + 1
-    return "applied"
-end
+local strike_host = strike_team_host(3)
+state.services.call = strike_host.call
 outcome = Boris.present_indexed_title_service()
-assert(outcome.type == "continue_in_place" and strike_team_calls == 1 and
+assert(outcome.type == "continue_in_place" and strike_host.sets == 1 and
+       strike_host.queued == 1 and
        state.state.field_mode_flag_bit_6 == false and
        state.state.field_mode_flag_bit_7 == false and
        state.state.field_mode_flag_bit_20 == true and

@@ -2040,14 +2040,10 @@ private:
             group.family == OpeningIntroSpriteFamily::background_patch ||
             group.family == OpeningIntroSpriteFamily::wilderness_overlay ||
             group.family == OpeningIntroSpriteFamily::wilderness_final_overlay) {
-            const auto palette_fade_weight = [&]() -> std::uint16_t {
-                if (group.family ==
-                        OpeningIntroSpriteFamily::wilderness_map_center ||
-                    group.family == OpeningIntroSpriteFamily::background_patch) {
-                    return opening_entity_palette_fade_weight(0U);
-                }
-                return 255U;
-            }();
+            const bool uses_entity_palette_line =
+                group.family ==
+                    OpeningIntroSpriteFamily::wilderness_map_center ||
+                group.family == OpeningIntroSpriteFamily::background_patch;
             for (const auto& record : state_.asset_catalog.catalog.records) {
                 if (record.alias.rfind(prefix, 0) != 0) {
                     continue;
@@ -2066,11 +2062,8 @@ private:
                         // body disappear without the source white hit flash.
                         layer = recolor_genesis_image_to_cram_word(
                             image->second,
-                            opening_entity_palette_flash_color_word(1U));
-                    } else if ((group.family ==
-                                    OpeningIntroSpriteFamily::wilderness_map_center ||
-                                group.family ==
-                                    OpeningIntroSpriteFamily::background_patch) &&
+                            opening_entity_palette_color_word(1U));
+                    } else if (uses_entity_palette_line &&
                                opening_entity_palette_flash_active(0U)) {
                         // ROM 0x5A124/0x5A16E run the same uniform white hit
                         // and nine-frame fade on palette line 0 for the
@@ -2079,10 +2072,16 @@ private:
                         // actor block at $03B8.
                         layer = recolor_genesis_image_to_cram_word(
                             image->second,
-                            opening_entity_palette_flash_color_word(0U));
-                    } else if (palette_fade_weight != 255U) {
-                        layer = scale_genesis_image_rgb(
-                            image->second, palette_fade_weight);
+                            opening_entity_palette_color_word(0U));
+                    } else if (uses_entity_palette_line) {
+                        // ROM 0x5B2C2 fills all 15 visible entries on entity
+                        // palette line 0 with one CRAM word. 0x5B2E2 steps
+                        // each channel, called every nine frames at 0x5A16E.
+                        // Render that word directly instead of applying the
+                        // former linear RGB weight [C].
+                        layer = recolor_genesis_image_to_cram_word(
+                            image->second,
+                            opening_entity_palette_color_word(0U));
                     }
                     painter.drawImage(record.origin_x, record.origin_y,
                                       layer);
@@ -2127,25 +2126,12 @@ private:
                 opening_entity_palette_flash_active(1U)) {
                 const auto head = recolor_genesis_image_to_cram_word(
                     image->second,
-                    opening_entity_palette_flash_color_word(1U));
+                    opening_entity_palette_color_word(1U));
                 painter.drawImage(point.x, point.y, head);
             } else {
                 painter.drawImage(point.x, point.y, image->second);
             }
         }
-    }
-
-    std::uint16_t opening_entity_palette_fade_weight(
-        const std::size_t entity_index) const {
-        if (entity_index >= state_.opening_intro.entity_colors.words.size()) {
-            return 255U;
-        }
-        const auto word = state_.opening_intro.entity_colors.words[entity_index][0];
-        const auto red = static_cast<std::uint16_t>((word >> 9U) & 0x07U);
-        const auto green = static_cast<std::uint16_t>((word >> 5U) & 0x07U);
-        const auto blue = static_cast<std::uint16_t>((word >> 1U) & 0x07U);
-        const auto level = std::min({red, green, blue});
-        return static_cast<std::uint16_t>(level * 255U / 7U);
     }
 
     bool opening_entity_palette_flash_active(
@@ -2172,7 +2158,7 @@ private:
         return false;
     }
 
-    std::uint16_t opening_entity_palette_flash_color_word(
+    std::uint16_t opening_entity_palette_color_word(
         const std::size_t entity_index) const {
         if (entity_index >= state_.opening_intro.entity_colors.words.size()) {
             return 0U;
@@ -2185,7 +2171,7 @@ private:
     }
 
     std::uint16_t opening_ambush_palette_flash_color_word() const {
-        return opening_entity_palette_flash_color_word(1U);
+        return opening_entity_palette_color_word(1U);
     }
 
     void draw_opening_text(

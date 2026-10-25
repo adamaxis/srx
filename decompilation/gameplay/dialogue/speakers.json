@@ -179,6 +179,29 @@
       "portrait_alias": "none",
       "text_profile": "council_island_hospital"
     },
+    "little_chiba_narrator": {
+      "events": {
+        "medical_attention_insufficient_funds": {
+          "continuation_key": "",
+          "title_key": "hospital.medical.insufficient_funds"
+        },
+        "medical_attention_not_needed": {
+          "continuation_key": "",
+          "title_key": "hospital.medical.not_needed"
+        },
+        "package_handoff": {
+          "continuation_key": "",
+          "title_key": "field.mode.little_chiba.package_handoff"
+        },
+        "package_payment": {
+          "continuation_key": "",
+          "title_key": "field.mode.little_chiba.package_payment"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "little_chiba"
+    },
     "council_medicine_lodge_narrator": {
       "events": {
         "farewell": {
@@ -234,6 +257,30 @@
         "cyberspace_no_mpcp": {
           "continuation_key": "",
           "title_key": "field.cyberspace.no_mpcp"
+        },
+        "party_wipe_docwagon": {
+          "continuation_key": "",
+          "title_key": "party_wipe.docwagon"
+        },
+        "party_wipe_docwagon_dropoff": {
+          "continuation_key": "",
+          "title_key": "party_wipe.docwagon_dropoff"
+        },
+        "party_wipe_little_chiba": {
+          "continuation_key": "",
+          "title_key": "party_wipe.little_chiba"
+        },
+        "party_wipe_bodyguard_failure": {
+          "continuation_key": "",
+          "title_key": "party_wipe.run_failure.bodyguard"
+        },
+        "party_wipe_employee_recruitment_failure": {
+          "continuation_key": "",
+          "title_key": "party_wipe.run_failure.employee_recruitment"
+        },
+        "party_wipe_package_failure": {
+          "continuation_key": "",
+          "title_key": "party_wipe.run_failure.package"
         },
         "phone_no_contacts": {
           "continuation_key": "",
@@ -1276,6 +1323,41 @@
       "name": "Narration",
       "portrait_alias": "none",
       "text_profile": "wanderer.vigore_jarl"
+    },
+    "taxi_cabbie": {
+      "events": {
+        "already_there": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.already_there"
+        },
+        "free_ride_armband": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.free_ride_armband"
+        },
+        "hop_in": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.hop_in"
+        },
+        "insufficient_funds_free_ride": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.insufficient_funds_free_ride"
+        },
+        "ride_offer": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.ride_offer"
+        },
+        "traffic_blocked": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.traffic_blocked"
+        },
+        "visa_required": {
+          "continuation_key": "",
+          "title_key": "field.taxi.cabbie.visa_required"
+        }
+      },
+      "name": "Taxi Cabbie",
+      "portrait_alias": "none",
+      "text_profile": "field.taxi"
     },
     "wylie_gala_inn_narrator": {
       "events": {

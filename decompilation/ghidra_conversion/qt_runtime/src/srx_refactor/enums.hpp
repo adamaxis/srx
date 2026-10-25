@@ -188,6 +188,12 @@ enum class DisplayBlank : std::int64_t {
     OFF = 0x8134,
     ON = 0x8174,
 };
+enum class DoorRow : std::int64_t {
+    UP = 0x0,
+    RIGHT = 0x1,
+    DOWN = 0x2,
+    LEFT = 0x3,
+};
 enum class EndingState : std::int64_t {
     NONE = 0x0,
     FINAL_FIGHT = 0x3,
@@ -208,6 +214,12 @@ enum class Grid : std::int64_t {
     ROW_CELLS = 0x40,
     CELL_CENTER = 0x100,
     PATH_END = 0xFFFF,
+};
+enum class Heading : std::int64_t {
+    UP = 0x0,
+    RIGHT = 0x4000,
+    DOWN = 0x8000,
+    LEFT = 0xC000,
 };
 enum class InventoryGrid : std::int64_t {
     COLUMNS = 0x2,
@@ -269,6 +281,28 @@ enum class ItemKind : std::int64_t {
     SPELL_LOCK = 0xE,
     TOTEM = 0xF,
     ARMOR = 0x10,
+};
+enum class KarmaUpgrade : std::int64_t {
+    AVAILABLE = 0x0,
+    INVALID = 0x1,
+    NOT_UPGRADEABLE = 0x2,
+    UNKNOWN_SPECIES = 0x3,
+    CLASS_RESTRICTED = 0x4,
+    AT_LIMIT = 0x5,
+};
+enum class LinkCode : std::int64_t {
+    ROW_MASK = 0x3,
+    ROW_SHIFT = 0x5,
+    EVENT_MASK = 0x1F,
+    LINK = 0x80,
+};
+enum class LinkFacing : std::int64_t {
+    PRESERVE_ENTRY = 0x0,
+    FACE_AWAY = 0x1,
+};
+enum class LinkReturn : std::int64_t {
+    SERVICE = 0x1,
+    INTERIOR = 0x2,
 };
 enum class MatrixDeckMode : std::int64_t {
     BALANCED = 0x0,
@@ -558,6 +592,12 @@ enum class SceneMode : std::int64_t {
     BUILDING = 0x2,
     CAVE = 0x3,
 };
+enum class ServiceKind : std::int64_t {
+    NONE = 0x0,
+    HOTEL = 0x1,
+    HOSPITAL = 0x2,
+    SHOP = 0x3,
+};
 enum class Shop : std::int64_t {
     WEAPONS_WORLD = 0x0,
     ARES_WEAPON_EMPORIUM = 0x1,
@@ -586,6 +626,8 @@ enum class SoundId : std::int64_t {
     FIELD_EFFECT_16 = 0x16,
     MATRIX_NODE_17 = 0x17,
     MATRIX_18 = 0x18,
+    DAC_SAMPLE_19 = 0x19,
+    DAC_SAMPLE_1B = 0x1B,
     SHOT_LIGHT_PISTOL = 0x1C,
     SHOT_SHOTGUN = 0x1D,
     SHOT_SMG_OR_THROWN = 0x1E,
@@ -601,6 +643,10 @@ enum class SoundId : std::int64_t {
     MENU_COMMAND_29 = 0x29,
     MATRIX_PROGRAM_2A = 0x2A,
     MATRIX_PROGRAM_2B = 0x2B,
+    DAC_SAMPLE_2C = 0x2C,
+    DAC_SAMPLE_2D = 0x2D,
+    DAC_SAMPLE_2E = 0x2E,
+    DAC_SAMPLE_2F = 0x2F,
     ALARM = 0x30,
     SPELL_EFFECT_31 = 0x31,
     SPELL_EFFECT_32 = 0x32,
@@ -617,17 +663,33 @@ enum class SoundId : std::int64_t {
     UNUSED_3D = 0x3D,
     UNUSED_3E = 0x3E,
     SHOT_SILENCED = 0x3F,
+    DAC_SAMPLE_40 = 0x40,
+    DAC_SAMPLE_41 = 0x41,
+    DAC_SAMPLE_42 = 0x42,
+    DAC_SAMPLE_43 = 0x43,
+    DAC_SAMPLE_44 = 0x44,
+    DAC_SAMPLE_45 = 0x45,
+    DAC_SAMPLE_46 = 0x46,
+    DAC_SAMPLE_47 = 0x47,
+    DAC_SAMPLE_48 = 0x48,
+    DAC_SAMPLE_49 = 0x49,
     SHOT_SILENCED_SMG_OR_THROWN = 0x4A,
     RELOAD_OR_EMPTY = 0x4B,
     MELEE_SWING = 0x4C,
     TARGET_HEADING = 0x4D,
     TARGET_HEADING_ALT = 0x4E,
+    DAC_SAMPLE_4F = 0x4F,
     UNUSED_50 = 0x50,
     SHOT_HEAVY_PISTOL = 0x51,
     MATRIX_ACTIVE_ALERT = 0x52,
     MATRIX_PASSIVE_ALERT = 0x53,
     MATRIX_NO_ALERT = 0x54,
     MELEE_SWING_ALT = 0x55,
+    DAC_SAMPLE_56 = 0x56,
+    DAC_SAMPLE_57 = 0x57,
+    DAC_SAMPLE_58 = 0x58,
+    DAC_SAMPLE_59 = 0x59,
+    DAC_SAMPLE_5A = 0x5A,
     DECK_JINGLE = 0x5B,
     SEGA_LOGO_SHOCK = 0x5C,
     SHADOWRUN_LOGO_REVEAL = 0x5D,
@@ -668,6 +730,10 @@ enum class SteerFlag : std::int64_t {
     TARGET_BELOW = 0x2,
     OVERSHOOT_X = 0x4,
     OVERSHOOT_Y = 0x8,
+};
+enum class StoryByte : std::int64_t {
+    HEAT = 0xFFFBFA,
+    STRIKE_TEAM = 0xFFFBFB,
 };
 enum class StoryFlag : std::int64_t {
     MOTEL_BILL_PAID = 0x0,

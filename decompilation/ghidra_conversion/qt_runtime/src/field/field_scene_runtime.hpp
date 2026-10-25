@@ -16,6 +16,7 @@
 #include "shadowrun_ghidra/field/field_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/field/field_movement_input_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_route_primitives_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_service_target_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_transition_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_projection_conversion.hpp"
@@ -101,7 +102,6 @@ constexpr std::size_t field_scene_profile_word_index(
 
 enum class FieldWorldFactFlag : std::uint8_t {
     errascoe_question_available = 1,
-    run_objective_active = 9,
     redmond_vigore_search_complete = 22,
     redmond_vigore_lead_available = 26,
 };
@@ -129,6 +129,7 @@ enum class FieldRenderEffectFlag : std::uint8_t {
 
 enum class GroupItemFlag : std::uint8_t {
     landmark_map = 7,
+    run_objective_active = 9, // FFFC22 bit 9, ROM 0x1EF2C/0x1F000 [C]
 };
 
 struct FieldTargetMarkerDebugState {
@@ -362,6 +363,10 @@ public:
 #ifdef SHADOWRUN_QT_QA_DRIVER
     bool dispatch_dialogue_service_for_dump(
         std::string_view service_id, std::string_view return_policy);
+    // Start the source FFE166 party-wipe countdown for focused transition QA.
+    void arm_party_wipe_countdown_for_dump() noexcept {
+        field_party_wipe_countdown_ = 0x3CU; // 0xABB6 [C]
+    }
     bool open_hospital_menu_for_dump(std::string_view function);
     bool open_ordinary_field_terminal_for_dump(
         std::uint32_t contact_flags, std::uint32_t funds);
@@ -564,9 +569,6 @@ public:
     elevator_scene_transition_vblanks_for_dump() const noexcept {
         return field_elevator_scene_transition_.vblanks_in_palette_step();
     }
-    std::uint8_t elevator_scene_transition_fade_alpha_for_dump() const noexcept {
-        return field_elevator_scene_transition_.black_overlay_alpha();
-    }
     std::uint8_t field_entity_behavior_flags_for_dump() const noexcept {
         return field_entity_behavior_flags_;
     }
@@ -660,6 +662,9 @@ public:
         field_exit_world_flags_ = world_activity_flags;
         state_.field_scene_buffers.scene_mode = 1U;
         field_runtime_state_.field_transition_requested = true;
+    }
+    std::uint16_t field_transition_context_for_dump() const noexcept {
+        return field_movement_transition_state_.field_transition_context;
     }
     std::uint8_t field_activity_selection_for_dump() const noexcept {
         return field_movement_transition_state_.activity_selection;
@@ -1415,9 +1420,23 @@ private:
         vid_phone,
         dialogue_scene_entry,
     };
+    enum class FieldPartyWipeDialogueStage : std::uint8_t {
+        inactive,
+        run_failure,
+        wake,
+    };
 
-    enum class FieldRoutePendingActorList : std::uint8_t {
-        club_penumbra_mako,
+    // A route actor list queued by Lua (route_actor_lists.lua data): when
+    // the party enters consume_scene, the source_scene activity list
+    // pending_list_<list> is published and `transitions` actor behavior
+    // transitions are counted down before route_actor_lists.complete_<name>
+    // runs. E.g. club_penumbra_mako: scene 17, scene 47 list 0x1E628, 4.
+    struct FieldRoutePendingActorList {
+        std::uint16_t consume_scene = 0U;
+        std::uint16_t source_scene = 0U;
+        std::uint32_t list = 0U;
+        std::uint8_t transitions = 0U;
+        std::string name;
     };
 
     struct DefaultFieldActorPresentation;
@@ -1430,10 +1449,15 @@ private:
     std::optional<scripting::ScriptActorBehaviorDecision>
     heartbeat_field_player(scripting::ScriptActorHeartbeatPhase phase);
     void advance_player_weapon_action_gate();
+    void resolve_field_party_wipe();
+    void complete_field_party_wipe();
+    void start_field_party_wake_transition();
     void advance_field_movement();
     void advance_field_actor_animation();
     void advance_default_field_actor_animations();
     void advance_tarislar_tomb_outro();
+    void advance_field_hit_spark_behaviors();
+    void advance_field_hit_spark_animations();
     void advance_field_weapon_projectile_animations();
     void advance_field_weapon_projectiles();
     bool apply_script_combat_meter_update(
@@ -1466,7 +1490,9 @@ private:
         const std::vector<FieldMapEventActivation>& activations);
     void handle_game_script_task_step(
         const scripting::ScriptTaskStep& step);
-    bool prepare_runtime_field_scene(std::uint16_t scene_reference);
+    bool prepare_runtime_field_scene(
+        std::uint16_t scene_reference,
+        std::optional<SceneRunnerPosition> requested_spawn = std::nullopt);
     void dispatch_field_map_scene_entry(std::uint16_t scene_id);
     std::optional<std::size_t> projected_terrain_cell() const;
     bool mark_field_terrain_cell(std::size_t cell);
@@ -1495,6 +1521,8 @@ private:
                     QImage& destination);
     bool load_field_weapon_spawn_assets(
         const ConversionAssetCatalog& catalog);
+    bool load_field_hit_spark_assets(
+        const ConversionAssetCatalog& catalog);
     bool load_field_default_actor_assets(
         const ConversionAssetCatalog& catalog);
     bool load_dynamic_world_actor_artwork(
@@ -1517,6 +1545,16 @@ private:
     void spawn_field_world_effect_sequence();
     void reset_field_entity_service_records();
     void refresh_world_entity_service_targets();
+    bool probe_action_line_clear(const SpawnEntityParentState& parent,
+                                 std::optional<std::size_t> protected_source_slot,
+                                 std::uint16_t target_x,
+                                 std::uint16_t target_y);
+    void service_player_spell_cast(
+        const scripting::ScriptActorBehaviorDecision& decision);
+    void service_player_melee(
+        const scripting::ScriptActorBehaviorDecision& decision);
+    void spawn_field_hit_spark(
+        const scripting::ScriptActorHitSparkSpawnRequest& request);
     DefaultActorSpriteView default_actor_sprite_view(
         const DefaultFieldActorPresentation& actor) const;
     const QImage* runner_preview_panel_for_record(
@@ -1589,7 +1627,8 @@ private:
     void paint_hospital_menu(QPainter& painter) const;
     bool transition_to_field_destination(
         std::uint16_t scene_reference,
-        FieldDestinationTransitionRoute route);
+        FieldDestinationTransitionRoute route,
+        std::optional<SceneRunnerPosition> requested_spawn = std::nullopt);
     HotelMenuEvent process_hotel_menu_events(std::uint16_t events);
     AttributesSkillsRuntimeEvent process_hotel_karma_screen_events(
         std::uint16_t events);
@@ -1693,6 +1732,13 @@ private:
         std::optional<std::uint16_t> secondary_slot;
     };
 
+    struct FieldHitSparkPresentation {
+        ReactionAuxiliaryChild child{};
+        std::string actor_instance_id;
+        EntityAnimationState animation{};
+        bool script_initialized = false;
+    };
+
     struct DefaultFieldActorPresentation {
         bool active = false;
         std::uint16_t scene_reference = 0;
@@ -1736,8 +1782,8 @@ private:
         // package, but their lifetime is tied to the selected scene script,
         // not to a random encounter sequence.
         bool world_activity_script_actor = false;
-        std::optional<FieldRoutePendingActorList>
-            actor_list_completion_group;
+        // Name of the route actor list whose transition this actor owes.
+        std::optional<std::string> actor_list_completion_group;
         bool target_selected = false;
         bool target_marker_visible = false;
         bool target_marker_animating = false;
@@ -1857,6 +1903,7 @@ private:
         bool player_animation_reset_pending = false;
         bool player_walking = false;
         bool player_attack_pose = false;
+        std::uint8_t player_attack_pose_kind = 0U;
         std::uint8_t player_attack_direction = 0U;
         std::uint16_t target_heading = 0U;
         FieldLocationReturnAnchor return_anchor =
@@ -2162,6 +2209,27 @@ private:
     std::array<QImage, 8> field_entity_attack_images_{};
     std::array<int, 8> field_entity_attack_origin_x_{};
     std::array<int, 8> field_entity_attack_origin_y_{};
+    // ROM C0A2 unarmed strike (two frames) and C082 spell pose (one frame).
+    std::array<std::array<QImage, 2>, 8> field_entity_strike_images_{};
+    std::array<std::array<int, 2>, 8> field_entity_strike_origin_x_{};
+    std::array<std::array<int, 2>, 8> field_entity_strike_origin_y_{};
+    std::array<QImage, 8> field_entity_cast_images_{};
+    std::array<int, 8> field_entity_cast_origin_x_{};
+    std::array<int, 8> field_entity_cast_origin_y_{};
+    // ROM 0xB330 C0B2 runner-down list: entry 0 then a held entry 1.
+    std::array<std::array<QImage, 2>, 8> field_entity_down_images_{};
+    std::array<std::array<int, 2>, 8> field_entity_down_origin_x_{};
+    std::array<std::array<int, 2>, 8> field_entity_down_origin_y_{};
+    // ROM 0xAFF2 C072 party runner hurt list: two finite frames per direction.
+    std::array<std::array<QImage, 2>, 8> field_entity_hurt_images_{};
+    std::array<std::array<int, 2>, 8> field_entity_hurt_origin_x_{};
+    std::array<std::array<int, 2>, 8> field_entity_hurt_origin_y_{};
+    // FFE166: 0xABB6 arms 0x3C frames when the whole party is down; 0x1DDC6
+    // counts it down and 0xC64C resolves the wipe at zero. Save restore at
+    // 0x594E0 copies FFF5BE..FFF805 (end-exclusive FFF806) and does not restore
+    // FFE166, so this timer is transient across ROM loads [C]; whether the
+    // writer copies it is [H].
+    std::uint8_t field_party_wipe_countdown_ = 0;
     std::array<DefaultActorArtwork, 2> field_default_actor_artwork_{};
     std::unordered_map<std::string, DefaultActorArtwork>
         field_dynamic_actor_artwork_;
@@ -2178,8 +2246,15 @@ private:
     std::vector<EntityServiceTargetRecord> field_entity_target_records_{16U};
     std::optional<scripting::ScriptFieldEncounterOutcome>
         pending_field_encounter_outcome_;
-    std::optional<std::uint32_t>
-        field_pending_story_world_effect_sequence_list_;
+    // Story world-effect actor list queued by Lua (story_state.lua data),
+    // e.g. Boris's Strike Team list 0x1D6FD0 in scene 2 (ROM 0x1F1E0).
+    struct PendingStoryWorldEffect {
+        std::uint16_t scene = 0U;
+        std::uint32_t list = 0U;
+        std::uint8_t actor_count = 0U;
+        std::string name;
+    };
+    std::optional<PendingStoryWorldEffect> field_pending_story_world_effect_;
     std::optional<std::uint16_t>
         pending_world_activity_script_actor_scene_;
     std::vector<scripting::ScriptWorldActivityActor>
@@ -2189,8 +2264,12 @@ private:
     std::array<std::vector<int>, 16> field_weapon_projectile_origin_y_{};
     std::vector<FieldWeaponProjectilePresentation>
         field_weapon_projectiles_;
-    // ROM 0x15A8C scans the six combat slots 9..14. These slots are separate
-    // from the ten auxiliary world-map entries in field_entity_table_.
+    std::array<QImage, 5> field_hit_spark_images_{};
+    std::array<int, 5> field_hit_spark_origin_x_{};
+    std::array<int, 5> field_hit_spark_origin_y_{};
+    std::vector<FieldHitSparkPresentation> field_hit_sparks_;
+    // ROM 0x15A8C scans the six shared child slots 9..14 used by projectile
+    // records and hit sparks. These are separate from field_entity_table_.
     std::array<bool, 6> field_weapon_slots_occupied_{};
     EntitySpawnCycleResult last_field_weapon_spawn_result_{};
     // Ordinary accepted movement uses four looping poses from 0xC062. C0B2's
@@ -2204,11 +2283,13 @@ private:
     bool field_player_animation_reset_pending_ = false;
     bool field_entity_walking_ = false;
     bool field_entity_attack_pose_active_ = false;
+    // Which list the active +0x16 pose came from: 0 firearm C042,
+    // 1 unarmed strike C0A2, 2 spell C082.
+    std::uint8_t field_entity_attack_pose_kind_ = 0U;
     std::uint8_t field_entity_attack_direction_ = 0U;
     bool field_combat_input_suppressed_until_release_ = false;
     std::array<MovementOffset, integration::kFieldMovementDirectionCount>
         field_movement_direction_offsets_{};
-    CollisionProbeOffsetBank field_collision_probe_offset_banks_{};
     std::array<std::uint16_t,
                integration::kFieldControllerHeadingTableCount>
         field_controller_heading_table_{};
@@ -2251,11 +2332,15 @@ private:
     bool matrix_field_return_transition_pending_ = false;
     bool field_taxi_transition_active_ = false;
     std::optional<std::uint16_t> field_taxi_pending_destination_;
+    std::optional<std::uint16_t> field_taxi_cabbie_destination_;
     bool field_phone_transition_active_ = false;
     std::optional<std::uint16_t> field_phone_pending_destination_;
     bool field_dialogue_scene_transition_active_ = false;
     std::optional<std::uint16_t>
         field_dialogue_scene_pending_destination_;
+    std::optional<SceneRunnerPosition> field_dialogue_scene_pending_spawn_;
+    FieldPartyWipeDialogueStage field_party_wipe_dialogue_stage_ =
+        FieldPartyWipeDialogueStage::inactive;
     std::optional<std::uint16_t> field_mode_entry_destination_scene_;
     std::optional<std::uint16_t> field_pending_mode_transition_scene_;
     std::optional<SceneRunnerPosition> field_pending_mode_transition_spawn_;
@@ -2266,9 +2351,10 @@ private:
     std::optional<FieldRoutePendingActorList>
         field_pending_actor_list_transition_group_;
     std::optional<std::uint8_t>
-        field_mako_actor_transitions_remaining_;
-    std::optional<FieldRoutePendingActorList>
-        field_pending_actor_list_callback_;
+        field_route_actor_transitions_remaining_;
+    // Route actor list whose transitions are being counted down.
+    std::string field_active_route_actor_list_;
+    std::optional<std::string> field_pending_actor_list_callback_;
     std::int8_t field_indexed_title_service_result_ = 0;
     // FFDD64: 0x53A78 stores the index of the trigger service it dispatches.
     // 0x2196C sets that bit of FFFC1E (field_exit_world_flags_). Lua reads
@@ -2281,6 +2367,8 @@ private:
     struct FieldDoorReturnPoint {
         bool valid = false;
         SceneRunnerPosition lead{};
+        // FFDF44..4E: lead, runner 2, runner 3.
+        std::array<SceneRunnerPosition, 3> party{};
         std::uint16_t heading = 0U;
         std::uint16_t camera_x = 0U;
         std::uint16_t camera_y = 0U;
@@ -2296,7 +2384,12 @@ private:
     std::uint32_t checkout_camera_settle_start_frame_ = 0U;
     mutable QImage field_door_return_modal_frame_;
     void save_field_door_return_point();
+    void record_field_door_contact(
+        const std::array<std::uint8_t, 3>& probe_bytes);
+    std::uint16_t field_door_exit_heading(std::uint16_t entry_heading);
     void begin_field_door_return();
+    void place_party_at_field_door_return_point();
+    bool apply_field_service_close_return();
     bool advance_field_door_return();
     std::uint8_t field_door_return_palette_level() const noexcept;
     std::uint8_t field_modal_return_blocked_inputs_ = 0U;

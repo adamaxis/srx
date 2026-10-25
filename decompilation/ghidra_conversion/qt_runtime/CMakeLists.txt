@@ -20,6 +20,15 @@ set(SHADOWRUN_GHIDRA_AUDIO_CORE_SOURCES
 
 set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_scene_runtime.cpp
+    src/field/field_scene_runtime_save.cpp
+    src/field/field_scene_runtime_command_overview.cpp
+    src/field/field_scene_runtime_transitions.cpp
+    src/field/field_scene_runtime_services.cpp
+    src/field/field_scene_runtime_player_actions.cpp
+    src/field/field_scene_runtime_debug.cpp
+    src/field/field_scene_runtime_travel.cpp
+    src/field/field_scene_runtime_shop_paint.cpp
+    src/field/field_scene_runtime_world_effects.cpp
     src/field/field_map_composition.cpp
     src/field/matrix_map_presenter.cpp
     src/field/elevator_selector_runtime.cpp
@@ -31,6 +40,10 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/field/field_menu_text_catalog.cpp
     src/field/field_command_overview_bridge.cpp
     src/rendering/genesis_image_compositor.cpp
+    src/rendering/vdp_sprite_limits.cpp
+    src/rendering/vdp_frame_latch.cpp
+    src/rendering/vdp_model.cpp
+    src/rendering/plane_streamer.cpp
     src/rendering/numeric_visual_renderer.cpp
     src/dialogue/dialogue_panel.cpp
     src/dialogue/dialogue_panel_presenter.cpp
@@ -233,6 +246,10 @@ target_compile_definitions(shadowrun_gameplay_script_menu_route_test PRIVATE
     SHADOWRUN_MATRIX_MAP_QT_TEST=1)
 add_test(NAME shadowrun_ghidra_gameplay_script_menu_route
          COMMAND shadowrun_gameplay_script_menu_route_test)
+# Exit 77 means every render check passed but the untracked longplay
+# reference frame ("video analysis/...") is not present on this machine.
+set_tests_properties(shadowrun_ghidra_gameplay_script_menu_route PROPERTIES
+    SKIP_RETURN_CODE 77)
 
 add_executable(shadowrun_world_content_tsv_loader_test
     tests/scripting/world_content_tsv_loader_test.cpp)
@@ -494,6 +511,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_world_activity_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-world-activity-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-world-activity-qa")
+
+# Party wipe runs the 0xC64C failure modal before the wake passage, then follows
+# the 0x136DE scene route to the ROM's DocWagon or Little Chiba arrival record [C].
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_party_wipe_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-party-wipe-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-party-wipe-qa")
 
 # Seed the traced 0x2CE0 inputs, then exercise the normal Qt coordinator,
 # Scene-47 preparation, ROM spawn override, and Lua-selected actor list.
@@ -901,9 +925,17 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene20_c0_exit_qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene20-c0-exit-qa")
 
 # Normal Right then Up+Right input from New Game contacts scene-2 collision
-# record 93 (C1/event 1). Its map event-table row 1 selects resource scene
-# 0x1A; this captures the source fade and complete destination scene after the
-# typed world-activity resource selection and scene re-entry.
+# record 93 (C1/event 1). Without a run, ROM 0x1F830 opens Little Chiba's
+# prompt and Hospital Options on the same map; Exit -> Yes returns the lead
+# outward (heading 0x8000).
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_little_chiba_hospital_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-little-chiba-hospital-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-little-chiba-hospital-qa")
+
+# The same contact during a type-5 run targeting 2/1 resumes event-table row 1
+# (resource scene 0x1A); this captures the complete destination scene after
+# the typed world-activity resource selection and scene re-entry.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-scene26-event1-entry-qa
@@ -1224,6 +1256,8 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_matrix_traversal_e
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-matrix-traversal-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-matrix-traversal-entry-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_matrix_traversal_entry_qa
+    PROPERTIES SKIP_RETURN_CODE 77)
 
 # The runner summary uses the equipped item's Lua-backed name/category before
 # its ROM-indexed damage and power rows. Keep that shared menu panel covered by
@@ -1743,6 +1777,62 @@ target_link_libraries(shadowrun_ghidra_genesis_image_compositor_test
     PRIVATE Qt6::Gui)
 add_test(NAME shadowrun_ghidra_genesis_image_compositor
          COMMAND shadowrun_ghidra_genesis_image_compositor_test)
+
+add_executable(shadowrun_ghidra_vdp_rendering_helpers_test
+    tests/rendering/vdp_rendering_helpers_test.cpp
+    src/rendering/vdp_sprite_limits.cpp
+    src/rendering/vdp_frame_latch.cpp
+)
+target_include_directories(shadowrun_ghidra_vdp_rendering_helpers_test
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
+set_target_properties(shadowrun_ghidra_vdp_rendering_helpers_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+add_test(NAME shadowrun_ghidra_vdp_rendering_helpers
+         COMMAND shadowrun_ghidra_vdp_rendering_helpers_test)
+
+add_executable(shadowrun_ghidra_vdp_model_test
+    tests/rendering/vdp_model_test.cpp
+    src/rendering/vdp_model.cpp
+    src/rendering/genesis_image_compositor.cpp
+)
+target_include_directories(shadowrun_ghidra_vdp_model_test
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
+set_target_properties(shadowrun_ghidra_vdp_model_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_link_libraries(shadowrun_ghidra_vdp_model_test PRIVATE Qt6::Gui)
+add_test(NAME shadowrun_ghidra_vdp_model
+         COMMAND shadowrun_ghidra_vdp_model_test)
+set_tests_properties(shadowrun_ghidra_vdp_model PROPERTIES
+    ENVIRONMENT "SRX_HEADLESS=1;QT_QPA_PLATFORM=offscreen;SDL_AUDIODRIVER=dummy")
+
+add_executable(shadowrun_ghidra_plane_streaming_parity_test
+    tests/rendering/plane_streaming_parity_test.cpp
+    src/field/field_map_composition.cpp
+    src/rendering/genesis_image_compositor.cpp
+    src/rendering/vdp_model.cpp
+    src/rendering/plane_streamer.cpp
+)
+target_include_directories(shadowrun_ghidra_plane_streaming_parity_test
+    PRIVATE
+        ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS}
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+set_target_properties(shadowrun_ghidra_plane_streaming_parity_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_compile_definitions(shadowrun_ghidra_plane_streaming_parity_test PRIVATE
+    SHADOWRUN_FIELD_MAP_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    SHADOWRUN_US_ROM_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin")
+target_link_libraries(shadowrun_ghidra_plane_streaming_parity_test
+    PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Gui)
+add_test(NAME shadowrun_ghidra_plane_streaming_parity
+         COMMAND shadowrun_ghidra_plane_streaming_parity_test)
+set_tests_properties(shadowrun_ghidra_plane_streaming_parity PROPERTIES
+    ENVIRONMENT "SRX_HEADLESS=1;QT_QPA_PLATFORM=offscreen;SDL_AUDIODRIVER=dummy")
 
 add_executable(shadowrun_ghidra_bmp_alpha_load_test
     tests/rendering/bmp_alpha_load_test.cpp

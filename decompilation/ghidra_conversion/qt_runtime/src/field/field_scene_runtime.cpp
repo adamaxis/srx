@@ -1,4 +1,5 @@
 #include "field_scene_runtime.hpp"
+#include "field_scene_runtime_internal.hpp"
 
 #include "enums.hpp"
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
@@ -63,278 +64,57 @@
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <cstdio>
 #include <string>
 #include <string_view>
 #include <utility>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
+
+using field_scene_detail::kInitialFieldSceneReference;
+using field_scene_detail::kSceneProfileEntityPositionWord;
+using field_scene_detail::kFieldModalReturnTransitionFrames;
+using field_scene_detail::magic_action_record_from_runner;
+using field_scene_detail::kFieldHudAlias;
+using field_scene_detail::kFieldHudFaceAliasPrefix;
+using field_scene_detail::kFieldHudItemAliasPrefix;
+using field_scene_detail::kFieldHudUnarmedItemAliasPrefix;
+using field_scene_detail::kFieldHudPartyFaceAliasPrefix;
+using field_scene_detail::kFieldHudPartyItemAliasPrefix;
+using field_scene_detail::kFieldHudPartyUnarmedItemAliasPrefix;
+using field_scene_detail::kFieldHudMagicItemAliasPrefix;
+using field_scene_detail::kFieldHudDelayMeterAliasPrefix;
+using field_scene_detail::kFieldHudBehaviorMeterPrimaryAliasPrefix;
+using field_scene_detail::kFieldHudBehaviorMeterCompanionAliasPrefix;
+using field_scene_detail::kFieldHudAmmoCounterAliasPrefix;
+using field_scene_detail::kFieldEntityIdleAliasPrefix;
+using field_scene_detail::kRunnerFlagsDown;
+using field_scene_detail::kFieldPlayerPoseFirearm;
+using field_scene_detail::kFieldPlayerPoseStrike;
+using field_scene_detail::kFieldPlayerPoseCast;
+using field_scene_detail::kFieldPlayerBarrierEffectOwner;
+using field_scene_detail::kFieldSpellEffectProfiles;
+using field_scene_detail::kFieldSpellEffectPhaseCapacity;
+using field_scene_detail::kFieldWeaponProjectileAliasPrefix;
+using field_scene_detail::kFieldHitSparkAliasPrefix;
+using field_scene_detail::kFieldHitSparkKind;
+using field_scene_detail::kFieldHitSparkSelector;
+using field_scene_detail::kFieldHitSparkPalette;
+using field_scene_detail::kFieldHitSparkFrameCount;
+using field_scene_detail::kFieldHitSparkFrameIncrement;
+using field_scene_detail::kFieldHitSparkFramePeriod;
+using field_scene_detail::kFieldHitSparkTargetYOffset;
+using field_scene_detail::kElevatorAnimationAliasPrefix;
+using field_scene_detail::kElevatorCurrentFloorAliasPrefix;
+using field_scene_detail::kElevatorSelectedFloorAliasPrefix;
+using field_scene_detail::kElevatorFeedbackAliasPrefix;
+using field_scene_detail::kElevatorFeedbackAssetNames;
+using field_scene_detail::kGenesisSpriteOrigin;
+using field_scene_detail::kFieldSpellProgressionRecordCapacity;
+using field_scene_detail::field_shop_cost_context;
+using field_scene_detail::draw_command_overview_number;
+using field_scene_detail::make_field_shop_progression_input;
 namespace {
-
-constexpr std::array<std::array<int, 2>, 12> kHospitalRandomGridOrigins{{
-    {{40, 200}}, {{72, 200}}, {{184, 200}}, {{216, 200}},
-    {{40, 208}}, {{72, 208}}, {{184, 208}}, {{216, 208}},
-    {{56, 200}}, {{200, 200}}, {{56, 208}}, {{200, 208}},
-}};
-
-bool read_save_integer(const QJsonObject& object, const char* key,
-                       const std::int64_t minimum,
-                       const std::int64_t maximum,
-                       std::int64_t& output, QString* const error) {
-    const auto value = object.value(QLatin1String(key));
-    if (!value.isDouble()) {
-        if (error != nullptr) {
-            *error = QStringLiteral("Save field '%1' is missing or invalid.")
-                         .arg(QLatin1String(key));
-        }
-        return false;
-    }
-    const auto number = value.toDouble(std::numeric_limits<double>::quiet_NaN());
-    if (!std::isfinite(number) || std::trunc(number) != number ||
-        number < static_cast<double>(minimum) ||
-        number > static_cast<double>(maximum)) {
-        if (error != nullptr) {
-            *error = QStringLiteral("Save field '%1' is outside its valid range.")
-                         .arg(QLatin1String(key));
-        }
-        return false;
-    }
-    output = static_cast<std::int64_t>(number);
-    return true;
-}
-
-bool read_save_boolean(const QJsonObject& object, const char* key,
-                       bool& output, QString* const error) {
-    const auto value = object.value(QLatin1String(key));
-    if (!value.isBool()) {
-        if (error != nullptr) {
-            *error = QStringLiteral("Save field '%1' is missing or invalid.")
-                         .arg(QLatin1String(key));
-        }
-        return false;
-    }
-    output = value.toBool();
-    return true;
-}
-
-template <std::size_t Count>
-bool read_save_byte_array(const QJsonObject& object, const char* key,
-                          std::array<std::uint8_t, Count>& output,
-                          QString* const error) {
-    const auto value = object.value(QLatin1String(key));
-    if (!value.isArray() ||
-        static_cast<std::size_t>(value.toArray().size()) != Count) {
-        if (error != nullptr) {
-            *error = QStringLiteral("Save field '%1' has the wrong shape.")
-                         .arg(QLatin1String(key));
-        }
-        return false;
-    }
-    const auto values = value.toArray();
-    for (std::size_t index = 0; index < Count; ++index) {
-        const auto entry = values.at(static_cast<qsizetype>(index));
-        const auto number = entry.toDouble(-1.0);
-        if (!entry.isDouble() || !std::isfinite(number) ||
-            std::trunc(number) != number || number < 0.0 || number > 255.0) {
-            if (error != nullptr) {
-                *error = QStringLiteral("Save field '%1' has an invalid byte.")
-                             .arg(QLatin1String(key));
-            }
-            return false;
-        }
-        output[index] = static_cast<std::uint8_t>(number);
-    }
-    return true;
-}
-
-template <typename Value>
-void insert_optional_save_number(QJsonObject& object, const char* key,
-                                 const std::optional<Value>& value) {
-    object.insert(QLatin1String(key),
-                  value.has_value()
-                      ? QJsonValue(static_cast<double>(*value))
-                      : QJsonValue(QJsonValue::Null));
-}
-
-template <typename Value>
-bool read_optional_save_number(const QJsonObject& object, const char* key,
-                               std::optional<Value>& output,
-                               QString* const error) {
-    const auto value = object.value(QLatin1String(key));
-    if (value.isNull()) {
-        output.reset();
-        return true;
-    }
-    std::int64_t parsed = 0;
-    if (!read_save_integer(object, key,
-                           static_cast<std::int64_t>(
-                               std::numeric_limits<Value>::lowest()),
-                           static_cast<std::int64_t>(
-                               std::numeric_limits<Value>::max()),
-                           parsed, error)) {
-        return false;
-    }
-    output = static_cast<Value>(parsed);
-    return true;
-}
-
-template <typename Value, std::size_t Count>
-void insert_optional_save_array(
-    QJsonObject& object, const char* key,
-    const std::optional<std::array<Value, Count>>& values) {
-    if (!values.has_value()) {
-        object.insert(QLatin1String(key), QJsonValue(QJsonValue::Null));
-        return;
-    }
-    QJsonArray array;
-    for (const auto value : *values) array.append(static_cast<int>(value));
-    object.insert(QLatin1String(key), array);
-}
-
-template <typename Value, std::size_t Count>
-bool read_optional_save_array(
-    const QJsonObject& object, const char* key,
-    std::optional<std::array<Value, Count>>& output,
-    QString* const error) {
-    const auto value = object.value(QLatin1String(key));
-    if (value.isNull()) {
-        output.reset();
-        return true;
-    }
-    if (!value.isArray() ||
-        static_cast<std::size_t>(value.toArray().size()) != Count) {
-        if (error != nullptr) {
-            *error = QStringLiteral("Save field '%1' has the wrong array shape.")
-                         .arg(QLatin1String(key));
-        }
-        return false;
-    }
-    const auto array = value.toArray();
-    std::array<Value, Count> parsed{};
-    for (std::size_t index = 0; index < Count; ++index) {
-        const auto entry = array.at(static_cast<qsizetype>(index));
-        const auto number = entry.toDouble(
-            std::numeric_limits<double>::quiet_NaN());
-        if (!entry.isDouble() || !std::isfinite(number) ||
-            std::trunc(number) != number ||
-            number < static_cast<double>(std::numeric_limits<Value>::lowest()) ||
-            number > static_cast<double>(std::numeric_limits<Value>::max())) {
-            if (error != nullptr) {
-                *error = QStringLiteral("Save field '%1' has an invalid array value.")
-                             .arg(QLatin1String(key));
-            }
-            return false;
-        }
-        parsed[index] = static_cast<Value>(number);
-    }
-    output = parsed;
-    return true;
-}
-
-QJsonObject cyberdeck_record_to_json(const CyberdeckRecord& record) {
-    QJsonObject object;
-    insert_optional_save_number(object, "mpcp", record.mpcp);
-    insert_optional_save_number(object, "hardening", record.hardening);
-    insert_optional_save_number(object, "memory_megapulses",
-                                record.memory_megapulses);
-    insert_optional_save_number(object, "storage_megapulses",
-                                record.storage_megapulses);
-    insert_optional_save_number(object, "load_io_speed", record.load_io_speed);
-    insert_optional_save_number(object, "response", record.response);
-    insert_optional_save_array(object, "persona", record.persona);
-    insert_optional_save_number(object, "persona_condition",
-                                record.persona_condition);
-    insert_optional_save_number(object, "model_index", record.model_index);
-    insert_optional_save_array(object, "program_ratings",
-                               record.program_ratings);
-    insert_optional_save_array(object, "active_programs",
-                               record.active_programs);
-    if (!record.data_files.has_value()) {
-        object.insert(QStringLiteral("data_files"),
-                      QJsonValue(QJsonValue::Null));
-    } else {
-        QJsonArray files;
-        for (const auto& file : *record.data_files) {
-            QJsonObject entry;
-            entry.insert(QStringLiteral("id"), static_cast<int>(file.id));
-            entry.insert(QStringLiteral("size"), static_cast<int>(file.size));
-            entry.insert(QStringLiteral("value"), static_cast<int>(file.value));
-            files.append(entry);
-        }
-        object.insert(QStringLiteral("data_files"), files);
-    }
-    return object;
-}
-
-bool cyberdeck_record_from_json(const QJsonObject& object,
-                                CyberdeckRecord& record,
-                                QString* const error) {
-    CyberdeckRecord parsed;
-    if (!read_optional_save_number(object, "mpcp", parsed.mpcp, error) ||
-        !read_optional_save_number(object, "hardening", parsed.hardening, error) ||
-        !read_optional_save_number(object, "memory_megapulses",
-                                   parsed.memory_megapulses, error) ||
-        !read_optional_save_number(object, "storage_megapulses",
-                                   parsed.storage_megapulses, error) ||
-        !read_optional_save_number(object, "load_io_speed",
-                                   parsed.load_io_speed, error) ||
-        !read_optional_save_number(object, "response", parsed.response, error) ||
-        !read_optional_save_array(object, "persona", parsed.persona, error) ||
-        !read_optional_save_number(object, "persona_condition",
-                                   parsed.persona_condition, error) ||
-        !read_optional_save_number(object, "model_index", parsed.model_index, error) ||
-        !read_optional_save_array(object, "program_ratings",
-                                  parsed.program_ratings, error) ||
-        !read_optional_save_array(object, "active_programs",
-                                  parsed.active_programs, error)) {
-        return false;
-    }
-    const auto files_value = object.value(QStringLiteral("data_files"));
-    if (files_value.isNull()) {
-        parsed.data_files.reset();
-    } else if (files_value.isArray() && files_value.toArray().size() == 5) {
-        std::array<CyberdeckDataFile, 5> files{};
-        const auto file_array = files_value.toArray();
-        for (std::size_t index = 0; index < files.size(); ++index) {
-            const auto file_object =
-                file_array.at(static_cast<qsizetype>(index)).toObject();
-            std::int64_t id = 0;
-            std::int64_t size = 0;
-            if (!read_save_integer(file_object, "id", -128, 127, id, error) ||
-                !read_save_integer(file_object, "size", 0, 0xFFFF, size,
-                                   error)) {
-                return false;
-            }
-            std::int64_t value = 0;
-            if (file_object.contains(QStringLiteral("value")) &&
-                !read_save_integer(file_object, "value", -128, 127, value,
-                                   error)) {
-                return false;
-            }
-            files[index] = {static_cast<std::int8_t>(id),
-                            static_cast<std::uint16_t>(size),
-                            static_cast<std::int8_t>(value)};
-        }
-        parsed.data_files = files;
-    } else {
-        if (error != nullptr) {
-            *error = QStringLiteral("The saved cyberdeck data-file list is invalid.");
-        }
-        return false;
-    }
-    record = std::move(parsed);
-    return true;
-}
-
-std::optional<GameSaveSlot> game_save_slot_from_index(const int slot) {
-    if (slot == 0) return GameSaveSlot::one;
-    if (slot == 1) return GameSaveSlot::two;
-    return std::nullopt;
-}
-
-// The game loop seeds FFDDC4 with scene 2 before 0x03084. Loaded saves replace
-// that scene reference with the saved row; both paths use the same typed scene
-// resource selection below.
-constexpr std::uint16_t kInitialFieldSceneReference = 2U;
 
 // Qt 6.9 added QImage::flipped(Qt::Orientations); 6.8 (Debian/Ubuntu packages)
 // only has mirrored(bool, bool). Same pixels either way.
@@ -406,7 +186,6 @@ bool caster_projection_active(const std::uint16_t world_x,
     project_entity_screen_position_standard(projection, camera_x, camera_y);
     return projection.screen_y != 0U;
 }
-constexpr std::uint8_t kFieldModalReturnTransitionFrames = 60U;
 constexpr std::array<FieldWorldActorSlot, 7> kFieldWorldActorSlots{{
     FieldWorldActorSlot::slot_3,
     FieldWorldActorSlot::slot_4,
@@ -541,58 +320,18 @@ std::array<std::int8_t, 2> script_action_attribute_selectors() {
             source_rows[12U].attribute_selector};
 }
 
-constexpr std::string_view kFieldHudAlias = "field.hud.background";
-constexpr std::string_view kFieldHudFaceAliasPrefix = "field.hud.face.";
-constexpr std::string_view kFieldHudItemAliasPrefix = "field.hud.item.";
-constexpr std::string_view kFieldHudUnarmedItemAliasPrefix =
-    "field.hud.unarmed.item.";
-constexpr std::string_view kFieldHudPartyFaceAliasPrefix =
-    "field.hud.party.face.";
-constexpr std::string_view kFieldHudPartyItemAliasPrefix =
-    "field.hud.party.item.";
-constexpr std::string_view kFieldHudPartyUnarmedItemAliasPrefix =
-    "field.hud.party.unarmed.item.";
-constexpr std::string_view kFieldHudMagicItemAliasPrefix =
-    "field.hud.magic.item.";
-constexpr std::string_view kFieldHudDelayMeterAliasPrefix =
-    "field.hud.delay.meter.";
-constexpr std::string_view kFieldHudBehaviorMeterPrimaryAliasPrefix =
-    "field.hud.behavior.meter.primary.";
-constexpr std::string_view kFieldHudBehaviorMeterCompanionAliasPrefix =
-    "field.hud.behavior.meter.companion.";
-constexpr std::string_view kFieldHudAmmoCounterAliasPrefix =
-    "field.hud.ammo.counter.";
-constexpr std::string_view kFieldEntityIdleAliasPrefix = "field.entities.idle.";
 constexpr std::string_view kFieldEntityWalkAliasPrefix =
     "field.entities.movement.";
 constexpr std::string_view kFieldEntityAttackAliasPrefix =
     "field.entities.attack.";
-struct FieldSpellEffectProfile {
-    std::uint8_t action_code;
-    std::string_view asset_id;
-    std::uint8_t phase_count;
-};
-constexpr std::array<FieldSpellEffectProfile, 5> kFieldSpellEffectProfiles{{
-    {1U, "flame-dart", 4U},
-    {2U, "flame-bolt", 6U},
-    {5U, "sleep", 9U},
-    {9U, "mana-blast", 6U},
-    {12U, "heal-wounds", 16U},
-}};
-constexpr std::size_t kFieldSpellEffectPhaseCapacity = 16U;
-constexpr std::string_view kFieldWeaponProjectileAliasPrefix =
-    "field.weapons.projectile.";
-constexpr std::string_view kElevatorAnimationAliasPrefix =
-    "menu.field.elevator.selector.background.frame.";
-constexpr std::string_view kElevatorCurrentFloorAliasPrefix =
-    "menu.field.elevator.selector.current.floor.";
-constexpr std::string_view kElevatorSelectedFloorAliasPrefix =
-    "menu.field.elevator.selector.selected.floor.";
-constexpr std::string_view kElevatorFeedbackAliasPrefix =
-    "menu.field.elevator.selector.feedback.";
-constexpr std::array<std::string_view, 4> kElevatorFeedbackAssetNames{{
-    "previous.active", "previous.rest", "next.active", "next.rest"}};
-constexpr int kGenesisSpriteOrigin = 0x80;
+constexpr std::string_view kFieldEntityStrikeAliasPrefix =
+    "field.entities.strike.";
+constexpr std::string_view kFieldEntityCastAliasPrefix =
+    "field.entities.spell.";
+constexpr std::string_view kFieldEntityDownAliasPrefix =
+    "field.entities.down.";
+constexpr std::string_view kFieldEntityHurtAliasPrefix =
+    "field.entities.hurt.";
 constexpr std::string_view kCommandOverviewBackgroundAlias =
     "menu.field.background";
 constexpr std::string_view kCommandOverviewInventoryBoxesAlias =
@@ -683,17 +422,8 @@ std::string centered_command_text(const std::string_view label,
 std::string centered_command_footer(const std::string_view label) {
     return centered_command_text(label, 17U);
 }
-// FFDE08 is profile word 33. The 48-word block starts at FFDDC6.
-constexpr std::size_t kSceneProfileEntityPositionWord = 33U;
 
-FieldActionCostContext field_shop_cost_context(
-    const std::uint8_t menu_mode, const RunnerRecordFields& runner,
-    const std::uint8_t runner_feature_flags) {
-    // Preserve the source mode, active runner's +0x8C statistic, feature
-    // flags, and ROM action-cost table selector for each field shop.
-    return FieldActionCostContext{
-        menu_mode, runner_feature_flags, runner.skills[11], 2U};
-}
+
 
 std::optional<std::uint16_t> source_delay_mode(
     const std::string_view scale) {
@@ -709,14 +439,7 @@ std::optional<std::uint16_t> source_delay_mode(
     return std::nullopt;
 }
 
-void draw_command_overview_number(
-    QPainter& painter, const QImage& font, const int x, const int y,
-    const std::uint32_t value,
-    const NumericVisualAlignment alignment = NumericVisualAlignment::left,
-    const bool group_thousands = false) {
-    draw_numeric_visual(painter, font, x, y, value, alignment,
-                        group_thousands, QColor(0, 255, 0));
-}
+
 
 FieldActionPurchaseState make_purchase_state(
     const RunnerRecordFields& runner, const std::uint32_t funds) {
@@ -750,68 +473,10 @@ void apply_purchase_state(const FieldActionPurchaseState& state,
     runner.ammo_clips = state.runner.special_action_count;
 }
 
-constexpr std::size_t kFieldSpellProgressionRecordCapacity = 8U;
 
-struct FieldShopProgressionInput {
-    FieldActionProgressionTables tables{};
-    FieldActionProgressionPurchaseState state{};
-};
 
-std::optional<FieldShopProgressionInput> make_field_shop_progression_input(
-    const ShopMenuController& menu, const RunnerRecordFields& runner,
-    const std::uint32_t funds, const MagicSpellTable& spell_table,
-    const std::uint8_t runner_feature_flags) {
-    const auto menu_mode = menu.menu_mode();
-    if (menu.menu_result() != 0 ||
-        menu.selected_group() != ShopActionGroup::magic_spells ||
-        menu_mode < 3U || menu_mode > 5U ||
-        spell_table.entry_count > kFieldSpellProgressionRecordCapacity) {
-        return std::nullopt;
-    }
 
-    FieldShopProgressionInput result;
-    const auto mode_index = static_cast<std::size_t>(menu_mode - 3U);
-    const auto offer_count = menu.progression_offer_count(
-        ShopActionGroup::magic_spells);
-    if (offer_count >
-        result.tables.saved_selection_zero_by_menu_mode[mode_index].size()) {
-        return std::nullopt;
-    }
-    for (std::size_t index = 0U; index < offer_count; ++index) {
-        const auto offer = menu.progression_offer(
-            ShopActionGroup::magic_spells, index);
-        if (!offer.has_value()) {
-            return std::nullopt;
-        }
-        result.tables.saved_selection_zero_by_menu_mode[mode_index][index] = {
-            offer->action_code, offer->source_metadata, offer->base_cost};
-    }
 
-    result.state.menu_mode = menu_mode;
-    result.state.saved_selection = 0;
-    result.state.primary_cursor = static_cast<std::int8_t>(
-        menu.selected_cursor());
-    result.state.runner_archetype_status = static_cast<std::int8_t>(
-        runner.archetype_index);
-    // Source +0x7F is the active runner's spell progression ceiling.
-    result.state.runner_progression_limit =
-        static_cast<std::int8_t>(runner.auxiliary[0]);
-    result.state.funds = funds;
-    result.state.cost_context =
-        field_shop_cost_context(menu_mode, runner, runner_feature_flags);
-    result.state.ledger.source_record_count_word =
-        spell_table.entry_count == 0U
-            ? 0U
-            : static_cast<std::uint16_t>(spell_table.entry_count - 1U);
-    result.state.ledger.records.resize(
-        kFieldSpellProgressionRecordCapacity);
-    for (std::size_t index = 0U; index < spell_table.entry_count; ++index) {
-        result.state.ledger.records[index] = {
-            spell_table.entries[index].spell_code,
-            spell_table.entries[index].force_limit};
-    }
-    return result;
-}
 
 std::optional<MagicSpellTable> spell_table_from_field_progression(
     const FieldActionProgressionPurchaseState& state) {
@@ -948,23 +613,7 @@ std::array<std::uint8_t, 4> field_sample_state_from_result(
         static_cast<std::uint8_t>(packed_state)};
 }
 
-EntityActionRecord magic_action_record_from_runner(
-    const RunnerRecordFields& runner) {
-    // 0x1047E / 0x106DA use this subset of the source record for Magical
-    // Defense: active byte +0x10 (the high byte of the exposed big-endian
-    // flags word), class +0x9B, item-0x18 skill +0x80, +0x77/+0x7C defense
-    // attributes, and possession/phase rows +0x66..75.
-    EntityActionRecord result{};
-    result.flags_10 = static_cast<std::uint8_t>(runner.flags >> 8U);
-    result.class_code = runner.archetype_index;
-    result.item18_base = runner.skills[0];
-    result.posture = runner.posture;
-    result.attribute_77 = runner.attributes[0];
-    result.attribute_7c = runner.attributes[5];
-    result.item_codes = runner.inventory_item_codes;
-    result.item_phases = runner.inventory_phase_bytes;
-    return result;
-}
+
 
 } // namespace
 
@@ -1134,73 +783,167 @@ FieldSceneRuntime::FieldSceneRuntime(
                 // ROM 0xC9EA routes Hospital Options B through the same
                 // 0x391A active-runner action used by the field controller.
                 if (source_audio_event_callback_) {
-                    source_audio_event_callback_(0x25U);
+                    source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
                 }
                 handle_field_mode_action_event();
                 return "applied";
             }
-            if (service_id == "party.award_karma_2") {
-                if (!field_party_roster_.available()) {
+            constexpr std::string_view kAwardKarmaPrefix =
+                "party.award_karma_";
+            if (service_id.rfind(kAwardKarmaPrefix, 0U) == 0U) {
+                const auto amount_text =
+                    service_id.substr(kAwardKarmaPrefix.size());
+                std::uint32_t amount = 0U;
+                const auto parsed = std::from_chars(
+                    amount_text.data(),
+                    amount_text.data() + amount_text.size(), amount);
+                if (amount_text.empty() || parsed.ec != std::errc{} ||
+                    parsed.ptr != amount_text.data() + amount_text.size() ||
+                    amount > 0xFFU || !field_party_roster_.available()) {
                     return std::nullopt;
                 }
                 for (auto& runner : field_party_roster_.records()) {
                     runner.auxiliary[2U] = static_cast<std::uint8_t>(
-                        runner.auxiliary[2U] + 2U);
+                        runner.auxiliary[2U] + amount);
                 }
                 return "applied";
             }
-            if (service_id == "field.mako_result_state_available") {
-                return field_heat_level_.has_value() &&
-                               field_strike_team_counter_.has_value() &&
-                               notebook_tip_flags_resolved_ &&
-                               field_mode_flags_resolved_ &&
-                               field_party_roster_.available()
-                           ? std::optional<std::string>{"available"}
-                           : std::nullopt;
+            if (service_id == "field.scene_reference") {
+                return "scene_" + std::to_string(
+                    state_.field_scene_buffers.scene_reference);
             }
-            if (service_id == "field.add_heat_2_capped_8") {
-                if (!field_heat_level_.has_value()) {
+            // Generic story bytes. Lua names them by ROM address
+            // (E.StoryByte); unknown addresses or unrestored values are nil.
+            const auto story_byte = [this](const std::string_view hex)
+                -> std::optional<std::uint8_t>* {
+                std::uint32_t address = 0U;
+                const auto parsed = std::from_chars(
+                    hex.data(), hex.data() + hex.size(), address, 16);
+                if (hex.empty() || parsed.ec != std::errc{} ||
+                    parsed.ptr != hex.data() + hex.size()) {
+                    return nullptr;
+                }
+                switch (address) {
+                case 0xFFFBFAU: return &field_heat_level_;
+                case 0xFFFBFBU: return &field_strike_team_counter_;
+                default: return nullptr;
+                }
+            };
+            constexpr std::string_view kStoryByteGetPrefix =
+                "story.byte_get_";
+            if (service_id.rfind(kStoryByteGetPrefix, 0U) == 0U) {
+                auto* value =
+                    story_byte(service_id.substr(kStoryByteGetPrefix.size()));
+                if (value == nullptr || !value->has_value()) {
                     return std::nullopt;
                 }
-                field_heat_level_ = static_cast<std::uint8_t>(
-                    std::min<unsigned int>(
-                        8U, static_cast<unsigned int>(*field_heat_level_) +
-                                2U));
+                return "value_" + std::to_string(**value);
+            }
+            constexpr std::string_view kStoryByteSetPrefix =
+                "story.byte_set_";
+            if (service_id.rfind(kStoryByteSetPrefix, 0U) == 0U) {
+                const auto args = service_id.substr(kStoryByteSetPrefix.size());
+                const auto split = args.find('_');
+                if (split == std::string_view::npos) {
+                    return std::nullopt;
+                }
+                auto* target = story_byte(args.substr(0U, split));
+                const auto value_text = args.substr(split + 1U);
+                unsigned value = 0U;
+                const auto parsed = std::from_chars(
+                    value_text.data(), value_text.data() + value_text.size(),
+                    value);
+                if (target == nullptr || value_text.empty() ||
+                    parsed.ec != std::errc{} ||
+                    parsed.ptr != value_text.data() + value_text.size() ||
+                    value > 0xFFU) {
+                    return std::nullopt;
+                }
+                *target = static_cast<std::uint8_t>(value);
                 return "applied";
             }
-            if (service_id == "field.advance_strike_team_counter") {
-                if (!field_strike_team_counter_.has_value()) {
-                    return std::nullopt;
-                }
-                if (state_.field_scene_buffers.scene_reference == 2U &&
-                    (field_pending_story_world_effect_sequence_list_.has_value() ||
-                     pending_field_encounter_outcome_.has_value())) {
-                    return std::nullopt;
-                }
-                field_strike_team_counter_ = static_cast<std::uint8_t>(
-                    std::min<unsigned int>(
-                        8U, static_cast<unsigned int>(
-                                *field_strike_team_counter_) + 1U));
-                if (state_.field_scene_buffers.scene_reference == 2U) {
-                    field_pending_story_world_effect_sequence_list_ =
-                        0x1D6FD0U;
-                    this->source_boundary(
-                        "field.world_activity.boris_strike_team_list_queued");
-                }
-                return "applied";
+            if (service_id == "story.world_effect_idle") {
+                return field_pending_story_world_effect_.has_value() ||
+                               pending_field_encounter_outcome_.has_value()
+                           ? "busy"
+                           : "idle";
             }
-            if (service_id == "field.queue_mako_actor_list") {
+            // story.queue_world_effect_<scene>_<list hex>_<actors>_<name>
+            constexpr std::string_view kQueueWorldEffectPrefix =
+                "story.queue_world_effect_";
+            if (service_id.rfind(kQueueWorldEffectPrefix, 0U) == 0U) {
+                auto rest = service_id.substr(kQueueWorldEffectPrefix.size());
+                std::array<std::uint32_t, 3U> numbers{};
+                for (std::size_t index = 0U; index < numbers.size(); ++index) {
+                    const auto split = rest.find('_');
+                    if (split == std::string_view::npos) {
+                        return std::nullopt;
+                    }
+                    const auto text = rest.substr(0U, split);
+                    const auto parsed = std::from_chars(
+                        text.data(), text.data() + text.size(), numbers[index],
+                        index == 1U ? 16 : 10);
+                    if (text.empty() || parsed.ec != std::errc{} ||
+                        parsed.ptr != text.data() + text.size()) {
+                        return std::nullopt;
+                    }
+                    rest = rest.substr(split + 1U);
+                }
+                if (rest.empty() || numbers[2] == 0U || numbers[2] > 0xFFU ||
+                    numbers[0] != state_.field_scene_buffers.scene_reference ||
+                    field_pending_story_world_effect_.has_value() ||
+                    pending_field_encounter_outcome_.has_value()) {
+                    return std::nullopt;
+                }
+                field_pending_story_world_effect_ = PendingStoryWorldEffect{
+                    static_cast<std::uint16_t>(numbers[0]), numbers[1],
+                    static_cast<std::uint8_t>(numbers[2]), std::string(rest)};
+                this->source_boundary(
+                    "field.world_activity." + std::string(rest) +
+                    "_list_queued");
+                return "queued";
+            }
+            // field.queue_route_actor_list_<consume scene>_<source scene>_
+            //     <list hex>_<transitions>_<name>
+            constexpr std::string_view kQueueRouteActorListPrefix =
+                "field.queue_route_actor_list_";
+            if (service_id.rfind(kQueueRouteActorListPrefix, 0U) == 0U) {
                 if (field_pending_route_actor_list_.has_value() ||
                     field_pending_actor_list_transition_group_.has_value() ||
-                    field_mako_actor_transitions_remaining_.has_value() ||
+                    field_route_actor_transitions_remaining_.has_value() ||
                     field_pending_actor_list_callback_.has_value() ||
                     !pending_world_activity_script_actors_.empty()) {
                     return std::nullopt;
                 }
-                field_pending_route_actor_list_ =
-                    FieldRoutePendingActorList::club_penumbra_mako;
-                this->source_boundary(
-                    "field.world_activity.club_penumbra_mako_list_queued");
+                auto rest =
+                    service_id.substr(kQueueRouteActorListPrefix.size());
+                std::array<std::uint32_t, 4U> numbers{};
+                for (std::size_t index = 0U; index < numbers.size(); ++index) {
+                    const auto split = rest.find('_');
+                    if (split == std::string_view::npos) {
+                        return std::nullopt;
+                    }
+                    const auto text = rest.substr(0U, split);
+                    const auto parsed = std::from_chars(
+                        text.data(), text.data() + text.size(), numbers[index],
+                        index == 2U ? 16 : 10);
+                    if (text.empty() || parsed.ec != std::errc{} ||
+                        parsed.ptr != text.data() + text.size()) {
+                        return std::nullopt;
+                    }
+                    rest = rest.substr(split + 1U);
+                }
+                if (rest.empty() || numbers[0] > 0xFFFFU ||
+                    numbers[1] > 0xFFFFU || numbers[3] == 0U ||
+                    numbers[3] > 0xFFU) {
+                    return std::nullopt;
+                }
+                field_pending_route_actor_list_ = FieldRoutePendingActorList{
+                    static_cast<std::uint16_t>(numbers[0]),
+                    static_cast<std::uint16_t>(numbers[1]), numbers[2],
+                    static_cast<std::uint8_t>(numbers[3]), std::string(rest)};
+                this->source_boundary("field.world_activity." +
+                                      std::string(rest) + "_list_queued");
                 return "queued";
             }
             constexpr std::string_view kRunnerTripletPrefix =
@@ -1374,26 +1117,7 @@ FieldSceneRuntime::FieldSceneRuntime(
                                  std::string(*script_result)}
                            : std::nullopt;
             }
-            std::uint32_t finder_fee = 0U;
-            if (service_id == "johnson.purchase_decker_contact" ||
-                service_id == "johnson.purchase_quinton_contact") {
-                finder_fee = 1000U;
-            } else if (service_id ==
-                       "johnson.purchase_alesandro_contact") {
-                // ROM command 0x50 at 0x221BA charges 1,500 nuyen for
-                // Mortimer Reed's Alesandro Hobbs contact.
-                finder_fee = 1500U;
-            } else {
-                return std::nullopt;
-            }
-            if (!field_funds_.has_value()) {
-                return std::nullopt;
-            }
-            if (*field_funds_ < finder_fee) {
-                return "insufficient";
-            }
-            *field_funds_ -= finder_fee;
-            return "purchased";
+            return std::nullopt;
         });
     configure_callbacks();
 }
@@ -1410,515 +1134,13 @@ void FieldSceneRuntime::set_actor_heartbeat_observer(
     game_scripts_.set_actor_heartbeat_observer(std::move(observer));
 }
 
-QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
-    QJsonObject fields;
-    const auto scene = state_.field_scene_buffers.scene_reference;
-    fields.insert(QStringLiteral("field.scene"), scene);
-    fields.insert(QStringLiteral("field.mode"),
-                  field_movement_transition_state_.world_mode);
-    fields.insert(QStringLiteral("field.player.x"),
-                  field_entity_.world_position.x);
-    fields.insert(QStringLiteral("field.player.y"),
-                  field_entity_.world_position.y);
-    fields.insert(QStringLiteral("field.player.heading"),
-                  field_movement_state_.heading);
-    fields.insert(QStringLiteral("field.player.direction"),
-                  field_entity_.direction);
-    fields.insert(QStringLiteral("field.player.target_heading"),
-                  field_target_heading_);
-    fields.insert(QStringLiteral("field.route.active"),
-                  active_field_script_route_.has_value());
-    if (active_field_script_route_.has_value()) {
-        const auto& route = *active_field_script_route_;
-        const auto route_kind_name = [](const FieldScriptRouteKind kind) {
-            switch (kind) {
-            case FieldScriptRouteKind::dialogue:
-                return QStringLiteral("dialogue");
-            case FieldScriptRouteKind::field_service:
-                return QStringLiteral("field_service");
-            case FieldScriptRouteKind::area_event:
-                return QStringLiteral("area_event");
-            case FieldScriptRouteKind::source_activity_return:
-                return QStringLiteral("source_activity_return");
-            case FieldScriptRouteKind::source_boundary:
-                return QStringLiteral("source_boundary");
-            case FieldScriptRouteKind::no_route:
-                return QStringLiteral("no_route");
-            }
-            return QStringLiteral("unknown");
-        };
-        const auto script_name = [](const FieldScriptId script) {
-            switch (script) {
-            case FieldScriptId::lua_dialogue:
-                return QStringLiteral("lua_dialogue");
-            case FieldScriptId::lua_field_service:
-                return QStringLiteral("lua_field_service");
-            case FieldScriptId::host_field_service:
-                return QStringLiteral("host_field_service");
-            case FieldScriptId::area_event_table:
-                return QStringLiteral("area_event_table");
-            case FieldScriptId::source_activity_return:
-                return QStringLiteral("source_activity_return");
-            case FieldScriptId::source_boundary:
-                return QStringLiteral("source_boundary");
-            case FieldScriptId::none:
-                return QStringLiteral("none");
-            }
-            return QStringLiteral("unknown");
-        };
-        const auto destination_mode_name = [](
-            const std::optional<WorldActivityMode> mode) {
-            if (!mode.has_value()) {
-                return QStringLiteral("none");
-            }
-            switch (*mode) {
-            case WorldActivityMode::field:
-                return QStringLiteral("field");
-            case WorldActivityMode::resource_activity:
-                return QStringLiteral("resource_activity");
-            case WorldActivityMode::scripted_activity:
-                return QStringLiteral("scripted_activity");
-            case WorldActivityMode::halted:
-                return QStringLiteral("halted");
-            }
-            return QStringLiteral("unknown");
-        };
-        fields.insert(QStringLiteral("field.route.kind"),
-                      route_kind_name(route.kind));
-        fields.insert(QStringLiteral("field.route.script"),
-                      script_name(route.script));
-        fields.insert(QStringLiteral("field.route.event_code"),
-                      route.event_code);
-        fields.insert(QStringLiteral("field.route.target_scene"),
-                      route.area_event_target.has_value()
-                          ? QJsonValue(*route.area_event_target)
-                          : QJsonValue(QJsonValue::Null));
-        fields.insert(QStringLiteral("field.route.destination_mode"),
-                      destination_mode_name(
-                          route.area_event_destination_mode));
-        fields.insert(QStringLiteral("field.route.return_anchor"),
-                      route.return_anchor ==
-                              FieldLocationReturnAnchor::collision_probe_lead
-                          ? QStringLiteral("collision_probe_lead")
-                          : QStringLiteral("none"));
-        fields.insert(QStringLiteral("field.route.return_facing"),
-                      route.return_facing ==
-                              FieldLocationReturnFacing::face_away_from_entry
-                          ? QStringLiteral("face_away_from_entry")
-                          : QStringLiteral("preserve_entry_heading"));
-        fields.insert(QStringLiteral("field.route.entry_dialogue"),
-                      !route.entry_dialogue_module.empty());
-        fields.insert(QStringLiteral("field.route.entry_module"),
-                      QString::fromStdString(route.entry_dialogue_module));
-        fields.insert(QStringLiteral("field.route.entry_function"),
-                      QString::fromStdString(route.entry_dialogue_function));
-        fields.insert(QStringLiteral("field.route.preparation"),
-                      route.route_preparation.has_value());
-        fields.insert(QStringLiteral("field.route.preparation_module"),
-                      route.route_preparation.has_value()
-                          ? QString::fromStdString(
-                                route.route_preparation->module)
-                          : QString());
-        fields.insert(QStringLiteral("field.route.preparation_function"),
-                      route.route_preparation.has_value()
-                          ? QString::fromStdString(
-                                route.route_preparation->function)
-                          : QString());
-    } else {
-        fields.insert(QStringLiteral("field.route.kind"),
-                      QStringLiteral("none"));
-        fields.insert(QStringLiteral("field.route.script"),
-                      QStringLiteral("none"));
-        fields.insert(QStringLiteral("field.route.event_code"), 255);
-        fields.insert(QStringLiteral("field.route.target_scene"),
-                      QJsonValue(QJsonValue::Null));
-        fields.insert(QStringLiteral("field.route.destination_mode"),
-                      QStringLiteral("none"));
-        fields.insert(QStringLiteral("field.route.return_anchor"),
-                      QStringLiteral("none"));
-        fields.insert(QStringLiteral("field.route.return_facing"),
-                      QStringLiteral("preserve_entry_heading"));
-        fields.insert(QStringLiteral("field.route.entry_dialogue"), false);
-        fields.insert(QStringLiteral("field.route.entry_module"),
-                      QString());
-        fields.insert(QStringLiteral("field.route.entry_function"),
-                      QString());
-    }
-    fields.insert(QStringLiteral("field.camera.x"),
-                  state_.field_scene_buffers.camera_x);
-    fields.insert(QStringLiteral("field.camera.y"),
-                  state_.field_scene_buffers.camera_y);
-    fields.insert(QStringLiteral("field.world.frame"),
-                  field_world_frame_counter_);
-    fields.insert(QStringLiteral("field.world.pending_effect"),
-                  field_pending_world_effect_);
-    fields.insert(QStringLiteral("field.world.active_effect"),
-                  field_world_effect_active_);
-    fields.insert(QStringLiteral("field.world.encounter_sequence"),
-                  static_cast<double>(field_world_encounter_sequence_));
-    fields.insert(QStringLiteral("field.world.random_seed"),
-                  field_random_seed_);
-    // The frame debugger exposes these typed host gates so a replay can show
-    // why a field frame is waiting. They are diagnostics, not a second game
-    // state representation and not ROM RAM reads.
-    fields.insert(QStringLiteral("field.debug.runtime_ready"), ready_);
-    fields.insert(QStringLiteral("field.debug.field_activity_lock"),
-                  field_runtime_state_.field_activity_lock);
-    fields.insert(QStringLiteral("field.debug.world_activity_countdown"),
-                  field_runtime_state_.world_activity_countdown);
-    fields.insert(
-        QStringLiteral("field.debug.mako_actor_transitions_remaining"),
-        field_mako_actor_transitions_remaining_.has_value()
-            ? QJsonValue(static_cast<int>(
-                  *field_mako_actor_transitions_remaining_))
-            : QJsonValue(-1));
-    fields.insert(QStringLiteral("field.debug.actor_list_callback_pending"),
-                  field_pending_actor_list_callback_.has_value());
-    fields.insert(QStringLiteral("field.debug.heat_level"),
-                  field_heat_level_.has_value()
-                      ? QJsonValue(*field_heat_level_)
-                      : QJsonValue(-1));
-    fields.insert(QStringLiteral("field.debug.notebook_tip_flags_resolved"),
-                  notebook_tip_flags_resolved_);
-    fields.insert(QStringLiteral("field.debug.mode_flags_resolved"),
-                  field_mode_flags_resolved_);
-    fields.insert(QStringLiteral("field.debug.party_roster_available"),
-                  field_party_roster_.available());
-    fields.insert(QStringLiteral("field.debug.mako_result_state_available"),
-                  field_heat_level_.has_value() &&
-                      field_strike_team_counter_.has_value() &&
-                      notebook_tip_flags_resolved_ &&
-                      field_mode_flags_resolved_ &&
-                      field_party_roster_.available());
-    fields.insert(QStringLiteral("field.debug.strike_team_counter"),
-                  field_strike_team_counter_.has_value()
-                      ? QJsonValue(*field_strike_team_counter_)
-                      : QJsonValue(-1));
-    fields.insert(QStringLiteral("field.debug.display_service_word"),
-                  field_runtime_state_.display_service_word);
-    fields.insert(QStringLiteral("field.debug.pending_scene_handler"),
-                  field_runtime_state_.pending_field_scene_handler);
-    fields.insert(QStringLiteral("field.debug.scene_transition_requested"),
-                  field_runtime_state_.field_transition_requested);
-    fields.insert(QStringLiteral("field.debug.opening_auto_walk"),
-                  field_opening_auto_walk_.active);
-    fields.insert(QStringLiteral("field.debug.interaction_transition"),
-                  field_movement_transition_state_.interaction_transition_pending);
-    fields.insert(QStringLiteral("field.debug.interaction_transition_timer"),
-                  field_movement_transition_state_.interaction_transition_timer);
-    fields.insert(QStringLiteral("field.debug.controller_port"),
-                  field_controller_port_byte_);
-    fields.insert(QStringLiteral("field.debug.controller_held"),
-                  field_controller_sample_state_.held);
-    fields.insert(QStringLiteral("field.debug.controller_events"),
-                  field_controller_sample_state_.events);
-    fields.insert(QStringLiteral("field.ui.command_overview"),
-                  command_overview_.open());
-    fields.insert(QStringLiteral("field.ui.dialogue"),
-                  field_dialogue_.open());
-    fields.insert(QStringLiteral("field.ui.interaction"),
-                  field_interaction_.open());
-    fields.insert(QStringLiteral("field.ui.hotel"), hotel_menu_.open());
-    fields.insert(QStringLiteral("field.ui.hotel_karma"),
-                  hotel_karma_skills_.is_open());
-    fields.insert(QStringLiteral("field.ui.debug_menu_unlocked"),
-                  debug_menu_unlocked_);
 
-    std::size_t actor_count = 0U;
-    for (const auto& actor : field_default_actors_) {
-        if (!actor.active || actor.scene_reference != scene) {
-            continue;
-        }
-        ++actor_count;
-        const auto actor_id = actor.actor_instance_id.empty()
-                                  ? std::to_string(actor.source_order)
-                                  : actor.actor_instance_id;
-        const auto prefix =
-            QStringLiteral("actor.%1.").arg(QString::fromStdString(actor_id));
-        fields.insert(prefix + QStringLiteral("profile"),
-                      QString::fromStdString(actor.script_profile_id));
-        fields.insert(prefix + QStringLiteral("kind"), actor.entity_kind);
-        fields.insert(prefix + QStringLiteral("source_order"),
-                      actor.source_order);
-        fields.insert(prefix + QStringLiteral("record_slot"),
-                      actor.source_record_slot.has_value()
-                          ? QJsonValue(static_cast<int>(
-                                *actor.source_record_slot))
-                          : QJsonValue(QJsonValue::Null));
-        fields.insert(prefix + QStringLiteral("entity_flags"),
-                      actor.source_record_flags); // source +0x10
-        fields.insert(prefix + QStringLiteral("collision_flags"),
-                      actor.source_interaction_flags); // source +0x11
-        fields.insert(prefix + QStringLiteral("special_flags"),
-                      actor.source_spawn_state_flags); // source +0x9E
-        fields.insert(prefix + QStringLiteral("activity_flags"),
-                      actor.source_behavior_flags); // source +0xB0
-        fields.insert(prefix + QStringLiteral("world_activity_script_actor"),
-                      actor.world_activity_script_actor);
-        fields.insert(prefix + QStringLiteral("x"), actor.world_position.x);
-        fields.insert(prefix + QStringLiteral("y"), actor.world_position.y);
-        fields.insert(prefix + QStringLiteral("action"),
-                      static_cast<int>(actor.action_kind));
-        fields.insert(prefix + QStringLiteral("animation"),
-                      QString::fromStdString(actor.animation_id));
-        fields.insert(prefix + QStringLiteral("animation_direction"),
-                      actor.animation_direction);
-        fields.insert(prefix + QStringLiteral("animation_frame"),
-                      actor.animation_frame);
-        fields.insert(prefix + QStringLiteral("physical_meter"),
-                      actor.physical_meter);
-        fields.insert(prefix + QStringLiteral("target_valid"),
-                      actor.ai_target_valid);
-        fields.insert(prefix + QStringLiteral("target_id"),
-                      QString::fromStdString(actor.ai_target_id));
-        fields.insert(prefix + QStringLiteral("target_heading"),
-                      actor.ai_target_heading);
-        fields.insert(prefix + QStringLiteral("target_distance"),
-                      actor.ai_target_distance);
-        fields.insert(prefix + QStringLiteral("ai_package"),
-                      QString::fromStdString(actor.ai_package_id));
-        fields.insert(prefix + QStringLiteral("transition_complete"),
-                      actor.transition_complete);
-        if (actor.ai_weapon_item_id.has_value()) {
-            fields.insert(prefix + QStringLiteral("weapon_item"),
-                          *actor.ai_weapon_item_id);
-        }
-    }
-    fields.insert(QStringLiteral("field.actor_count"),
-                  static_cast<double>(actor_count));
 
-    fields.insert(QStringLiteral("party.active_slot"),
-                  static_cast<int>(field_party_roster_.active_slot()));
-    for (std::size_t slot = 0; slot < FieldPartyRosterRuntime::kSlotCount;
-         ++slot) {
-        const auto prefix =
-            QStringLiteral("party.runner.%1.").arg(static_cast<qulonglong>(slot));
-        fields.insert(prefix + QStringLiteral("active"),
-                      field_party_roster_.slot_active(slot));
-        const auto& name = field_party_roster_.name(slot);
-        fields.insert(prefix + QStringLiteral("name"),
-                      QString::fromUtf8(name.data(),
-                                        static_cast<qsizetype>(name.size())));
-    }
 
-    const auto route = game_scripts_.menu_route_snapshot();
-    fields.insert(QStringLiteral("menu.route.open"), route.open);
-    fields.insert(QStringLiteral("menu.route.screen"), route.top_screen);
-    fields.insert(QStringLiteral("menu.route.title"),
-                  QString::fromStdString(route.top_title));
-    fields.insert(QStringLiteral("menu.route.text"),
-                  QString::fromStdString(route.top_text));
-    fields.insert(QStringLiteral("menu.route.matrix.phase"),
-                  QString::fromStdString(route.top_matrix_phase));
-    fields.insert(QStringLiteral("menu.route.matrix.pending_action"),
-                  QString::fromStdString(route.top_matrix_pending_action));
-    if (route.top_matrix_world_effect_gate_negative.has_value()) {
-        fields.insert(
-            QStringLiteral("menu.route.matrix.world_effect_gate_negative"),
-            *route.top_matrix_world_effect_gate_negative);
-    }
-    fields.insert(QStringLiteral("menu.route.matrix.traversal.present"),
-                  route.top_matrix_traversal_view.has_value());
-    if (route.top_matrix_traversal_view.has_value()) {
-        const auto& traversal = *route.top_matrix_traversal_view;
-        fields.insert(
-            QStringLiteral("menu.route.matrix.traversal.world_effect_mode"),
-                      traversal.world_effect_mode);
-        fields.insert(
-            QStringLiteral("menu.route.matrix.traversal.world_effect_phase"),
-                      traversal.world_effect_phase);
-        fields.insert(
-            QStringLiteral("menu.route.matrix.traversal.entry_phase"),
-                      traversal.world_entry_phase);
-        fields.insert(
-            QStringLiteral("menu.route.matrix.traversal.setup_vblanks"),
-                      traversal.world_entry_setup_vblanks);
-        fields.insert(
-            QStringLiteral("menu.route.matrix.traversal.sequence_vblanks"),
-                      traversal.world_entry_sequence_vblanks);
-        fields.insert(
-            QStringLiteral("menu.route.matrix.traversal.sequence_duration"),
-                      traversal.world_entry_sequence_duration);
-        fields.insert(
-            QStringLiteral("menu.route.matrix.traversal.published_frame"),
-                      traversal.world_entry_published_frame);
-    }
-    const auto insert_route_optional = [&fields](
-        const QString& key, const std::optional<int> value) {
-        if (value.has_value()) {
-            fields.insert(key, *value);
-        }
-    };
-    insert_route_optional(QStringLiteral("menu.debug.route.program_index"),
-                          route.top_program_index);
-    insert_route_optional(QStringLiteral("menu.debug.route.program_slot"),
-                          route.top_program_slot);
-    insert_route_optional(QStringLiteral("menu.debug.route.program_choice"),
-                          route.top_program_choice);
-    if (route.top_enter_callback_present.has_value()) {
-        fields.insert(QStringLiteral("menu.debug.route.enter_callback_present"),
-                      *route.top_enter_callback_present);
-    }
-    if (route.top_enter_called.has_value()) {
-        fields.insert(QStringLiteral("menu.debug.route.enter_called"),
-                      *route.top_enter_called);
-    }
-    insert_route_optional(QStringLiteral("menu.debug.route.enter_transition"),
-                          route.top_enter_transition);
-    fields.insert(QStringLiteral("menu.debug.route.lua_failure"),
-                  QString::fromStdString(game_scripts_.failure()));
-    const auto insert_optional = [&fields](const QString& key,
-                                           const std::optional<int> value) {
-        if (value.has_value()) {
-            fields.insert(key, *value);
-        }
-    };
-    insert_optional(QStringLiteral("menu.route.page"), route.page);
-    insert_optional(QStringLiteral("menu.route.row"), route.row);
-    insert_optional(QStringLiteral("menu.route.selection"),
-                    route.top_selection);
-    for (std::size_t index = 0; index < route.top_option_labels.size();
-         ++index) {
-        fields.insert(
-            QStringLiteral("menu.route.option.%1")
-                .arg(static_cast<qulonglong>(index)),
-            QString::fromStdString(route.top_option_labels[index]));
-    }
-    for (const auto& [name, value] : game_scripts_.story_state()) {
-        fields.insert(QStringLiteral("flag.%1").arg(QString::fromStdString(name)),
-                      value);
-    }
-    return fields;
-}
 
-void FieldSceneRuntime::initialize_field_entity_selection_state() {
-    // ROM 0x42B0 publishes the three field-record types in slot order. Seed
-    // their selection flags from the same typed records used by the field HUD
-    // so the C-button selection action and combat gate share authoritative
-    // runner state.
-    field_entity_selection_state_ = RunnerSwitchState{};
-    const auto& records = field_party_roster_.records();
-    field_entity_selection_state_.records.reserve(records.size());
-    for (std::size_t slot = 0; slot < records.size(); ++slot) {
-        auto selection_flags = static_cast<std::uint8_t>(
-            records[slot].flags >> 8U);
-        if (!field_party_roster_.slot_active(slot)) {
-            selection_flags = static_cast<std::uint8_t>(
-                selection_flags & ~0x01U);
-        }
-        field_entity_selection_state_.records.push_back(
-            RunnerSwitchRecord{static_cast<std::uint16_t>(slot),
-                               selection_flags});
-    }
-    field_entity_selection_state_.active_index =
-        field_party_roster_.active_slot();
-    field_movement_behavior_record_.behavior_flags =
-        field_entity_behavior_flags_;
-    field_runner_refresh_state_ = FieldRunnerRefreshState{};
-    field_mode_exit_transition_state_ = FieldModeExitTransitionState{};
-    field_mode_exit_transition_state_.action_counter = field_action_counter_;
-}
 
-void FieldSceneRuntime::refresh_field_runner_state_and_assets() {
-    const auto result =
-        ::shadowrun::ghidra_conversion::refresh_field_runner_state_and_assets(
-            field_runner_refresh_state_, 0U,
-            {[this] {
-                 source_boundary("field.runners.serialize_population");
-             },
-             [this](const FieldRunnerSlot slot) {
-                 source_boundary(slot == FieldRunnerSlot::primary
-                                     ? "field.runners.clear_primary_effect"
-                                     : "field.runners.clear_secondary_effect");
-             },
-             [this](const FieldRunnerSlot) {
-                 handle_field_mode_action_event();
-             },
-             [this] { source_boundary("field.resources.upload_asset_setup"); },
-             [this] {
-                 source_boundary("field.resources.run_animation_triplet");
-             }});
-    if (result.processed[0] || result.processed[1]) {
-        source_boundary("field.runners.refresh_processed");
-    }
-}
 
-void FieldSceneRuntime::handle_field_mode_action_event() {
-    field_entity_selection_state_.active_index =
-        field_party_roster_.active_slot();
-    const auto& runner_records = field_party_roster_.records();
-    for (std::size_t slot = 0;
-         slot < field_entity_selection_state_.records.size() &&
-         slot < runner_records.size();
-         ++slot) {
-        auto selection_flags = static_cast<std::uint8_t>(
-            runner_records[slot].flags >> 8U);
-        if (!field_party_roster_.slot_active(slot)) {
-            selection_flags = static_cast<std::uint8_t>(
-                selection_flags & ~0x01U);
-        }
-        field_entity_selection_state_.records[slot].flags = selection_flags;
-    }
-    const auto decision = advance_runner_switch(field_entity_selection_state_);
-    const auto selected_slot = field_entity_selection_state_.active_index;
-    if (selected_slot < runner_records.size() &&
-        field_party_roster_.slot_active(selected_slot)) {
-        field_party_roster_.set_active_slot(selected_slot);
-    }
-    auto& mutable_runner_records = field_party_roster_.records();
-    for (std::size_t slot = 0;
-         slot < field_entity_selection_state_.records.size() &&
-         slot < mutable_runner_records.size();
-         ++slot) {
-        if (!field_party_roster_.slot_active(slot)) {
-            continue;
-        }
-        auto& runner = mutable_runner_records[slot];
-        runner.flags = static_cast<std::uint16_t>(
-            (runner.flags & 0x00FFU) |
-            (static_cast<std::uint16_t>(field_entity_selection_state_
-                                            .records[slot]
-                                            .flags)
-             << 8U));
-    }
-    if (field_entity_selection_state_.active_index <
-        field_entity_selection_state_.records.size()) {
-        field_entity_behavior_flags_ = static_cast<std::uint8_t>(
-            field_entity_selection_state_
-                .records[field_entity_selection_state_.active_index]
-                .flags);
-    }
-    field_movement_behavior_record_.behavior_flags =
-        field_entity_behavior_flags_;
-    field_entity_.projection.sprite_offset_y =
-        active_runner_record().projection_word_08;
-    refresh_field_hud_runner_slot();
-    source_boundary("field.entities.handle_mode_action_event");
-    if (decision.result == RunnerSwitchResult::switched) {
-        source_boundary("field.entities.active_runner_changed");
-    }
-}
 
-void FieldSceneRuntime::run_field_mode_exit_transition() {
-    ::shadowrun::ghidra_conversion::finalize_field_mode_exit_transition(
-        field_mode_exit_transition_state_,
-        {[this](const ExitEffectSlotGroup) {
-             source_boundary("field.effects.clear_high_slots");
-         },
-         [this] { source_boundary("field.world.reset_effect_globals"); },
-         [this](const FieldModeExitServicePhase phase) {
-             source_boundary(phase == FieldModeExitServicePhase::
-                                         mode_specific_cleanup
-                                     ? "field.mode_exit.service_cleanup"
-                                     : "field.mode_exit.service_refresh");
-         },
-         [this] { refresh_field_runner_state_and_assets(); },
-         [this] { source_boundary("field.resources.run_animation_triplet"); },
-         [this] { handle_field_mode_action_event(); },
-         [this] { source_boundary("field.mode_exit.initialize_profile_a"); },
-         [this] { source_boundary("field.mode_exit.initialize_profile_b"); }});
-    field_action_counter_ = field_mode_exit_transition_state_.action_counter;
-}
 
 bool FieldSceneRuntime::run_field_exit_orchestrator(
     integration::FieldRuntimeCoordinatorState& runtime_state) {
@@ -1989,8 +1211,13 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
             if (run_event->action ==
                 scripting::ScriptRunFieldEventAction::objective_advanced) {
                 field_exit_alternate_result_ = -1;
-                field_exit_world_flags_ |= field_flag_mask(
-                    FieldWorldFactFlag::run_objective_active);
+                if (group_item_flags_.has_value()) {
+                    *group_item_flags_ |= group_item_flag_mask(
+                        GroupItemFlag::run_objective_active);
+                } else {
+                    source_boundary(
+                        "field.run.objective_group_item_flag_unresolved");
+                }
                 source_boundary("field.run.package_collected");
             } else if (run_event->action ==
                        scripting::ScriptRunFieldEventAction::entry_dialogue) {
@@ -2037,8 +1264,13 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 // 0x1F00A adds the negotiated amount and +0x8D progress to
                 // each of the three runner records.
                 field_exit_alternate_result_ = 1;
-                field_exit_world_flags_ &= ~field_flag_mask(
-                    FieldWorldFactFlag::run_objective_active);
+                if (group_item_flags_.has_value()) {
+                    *group_item_flags_ &= ~group_item_flag_mask(
+                        GroupItemFlag::run_objective_active);
+                } else {
+                    source_boundary(
+                        "field.run.objective_group_item_flag_unresolved");
+                }
                 *field_funds_ += run_event->reward_nuyen;
                 for (auto& runner : field_party_roster_.records()) {
                     runner.auxiliary[2] = static_cast<std::uint8_t>(
@@ -2280,7 +1512,12 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 }
                 // The ROM's 0x1F65A selector sets D6=-1 after this modal
                 // prompt. The linked scene-table byte is retained as source
-                // evidence; the Inn prompt itself never loads scene 53.
+                // evidence; the Inn prompt itself never loads scene 53, and
+                // Little Chiba's never loads scene 26 (0x1F830). Closing the
+                // prompt is the same-map service return, not a route resume.
+                field_mode_entry_transition_pending_ = false;
+                field_mode_entry_destination_scene_.reset();
+                field_mode_entry_run_target_actor_group_.reset();
                 field_palette_fade_steps_ = 0U;
                 source_boundary("field.location.exit_prompt_opened");
                 state.caller_exit_status = -1;
@@ -2480,526 +1717,7 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
     return orchestrator_state.caller_exit_status != 0;
 }
 
-bool FieldSceneRuntime::project_field_world_interaction() {
-    const auto& profile = state_.field_scene_buffers.profile;
-    WorldMapEffectInput input{};
-    input.world_mode = field_movement_transition_state_.world_mode;
-    input.scene_id = field_movement_transition_state_.scene_id;
-    input.entity_flags = field_movement_behavior_record_.projected_field_code;
-    input.action_requested =
-        field_movement_transition_state_.mode_event_code != 0U;
-    input.map_marker_index = field_collision_marker_index_;
-    input.row_stride = profile.size() > 18U ? profile[18U] : 0;
-    input.map_value_a = kSceneFourteenMapWordA;
-    input.map_value_b = kSceneFourteenMapWordB;
-    // FFDD16 is profile word 40. The 48-word block starts at FFDDC6.
-    input.auxiliary_world_y = profile.size() > 40U ? profile[40U] : 0U;
-    const auto rotated_slot =
-        field_movement_behavior_record_.action_heading_source;
-    input.auxiliary_world_y_delta = static_cast<std::int16_t>(
-        static_cast<std::uint16_t>(rotated_slot << 2U) |
-        static_cast<std::uint16_t>(rotated_slot >> 14U));
-    input.coordinate = CoordinateProjectionInput{
-        field_entity_.world_position.x, field_entity_.world_position.y,
-        field_movement_state_.heading};
-    input.auxiliary_entity_slot_available =
-        entity_table_has_free_slot(field_entity_table_occupancy_);
 
-    const auto effect = apply_world_map_effect(input);
-    if (effect.map_marker_cleared) {
-        auto& collision_map =
-            state_.field_scene_buffers.source_metadata.terrain_collision_map;
-        if (field_collision_marker_index_ < collision_map.size()) {
-            collision_map[field_collision_marker_index_] = 0U;
-        } else {
-            source_boundary("field.world.interaction_marker_out_of_range");
-        }
-    }
-    if (effect.special_resource_selected) {
-        field_pending_scene_profile_ = kSceneFourInteractionProfile;
-    }
-    if (effect.world_effect_x_dirty) {
-        field_camera_follow_.layer_x_dirty = true;
-        viewport_state_.normal_render_pending = 1U;
-    }
-    if (effect.world_effect_y_dirty) {
-        field_camera_follow_.layer_y_dirty = true;
-        viewport_state_.alternate_render_pending = 1U;
-    }
-    if (effect.world_effect_x_dirty || effect.world_effect_y_dirty) {
-        apply_world_effect_layer_writes(effect.world_effect_y_dirty,
-                                        effect.map_writes);
-    }
-    if (effect.auxiliary_entity.has_value()) {
-        for (std::size_t index = 0; index < field_entity_table_occupancy_.size();
-             ++index) {
-            if (field_entity_table_occupancy_[index] != 0U) {
-                continue;
-            }
-            // ROM writes -1 into the free slot's leading word.
-            field_entity_table_occupancy_[index] = 0xFFFFU;
-            field_entity_table_[index] = *effect.auxiliary_entity;
-            break;
-        }
-    }
-    return world_map_effect_sets_carry(input);
-}
-
-bool FieldSceneRuntime::load_image(
-    const ConversionAssetCatalog& catalog,
-    const std::string_view alias,
-    QImage& destination) {
-    const auto* record = catalog.find(std::string(alias));
-    if (record == nullptr) {
-        failure_ = "missing direct field asset alias: " + std::string(alias);
-        return false;
-    }
-    destination = QImage(QString::fromStdWString(
-        record->absolute_path.wstring()));
-    if (destination.isNull()) {
-        failure_ = "cannot load direct field asset alias: " +
-                   std::string(alias);
-        return false;
-    }
-    destination = destination.convertToFormat(
-        QImage::Format_ARGB32_Premultiplied);
-    return true;
-}
-
-bool FieldSceneRuntime::load_field_elevator_selector_assets(
-    const ConversionAssetCatalog& catalog) {
-    for (std::size_t frame = 0U;
-         frame < field_elevator_selector_backgrounds_.size(); ++frame) {
-        const auto alias = std::string(kElevatorAnimationAliasPrefix) +
-                           std::to_string(frame);
-        if (!load_image(catalog, alias,
-                        field_elevator_selector_backgrounds_[frame]) ||
-            field_elevator_selector_backgrounds_[frame].size() !=
-                QSize(320, 224)) {
-            source_boundary("field.elevator.animation_asset_missing");
-            return false;
-        }
-    }
-    for (std::size_t floor = 0U;
-         floor < kElevatorSelectorMaximumFloors; ++floor) {
-        const auto current_alias =
-            std::string(kElevatorCurrentFloorAliasPrefix) +
-            std::to_string(floor);
-        const auto selected_alias =
-            std::string(kElevatorSelectedFloorAliasPrefix) +
-            std::to_string(floor);
-        if (!load_image(
-                catalog, current_alias,
-                field_elevator_selector_current_floor_layers_[floor]) ||
-            !load_image(
-                catalog, selected_alias,
-                field_elevator_selector_selected_floor_layers_[floor]) ||
-            field_elevator_selector_current_floor_layers_[floor].size() !=
-                QSize(320, 224) ||
-            field_elevator_selector_selected_floor_layers_[floor].size() !=
-                QSize(320, 224)) {
-            source_boundary("field.elevator.floor_label_asset_missing");
-            return false;
-        }
-    }
-    for (std::size_t index = 0U;
-         index < field_elevator_selector_feedback_layers_.size(); ++index) {
-        const auto alias = std::string(kElevatorFeedbackAliasPrefix) +
-                           std::string(kElevatorFeedbackAssetNames[index]);
-        if (!load_image(catalog, alias,
-                        field_elevator_selector_feedback_layers_[index]) ||
-            field_elevator_selector_feedback_layers_[index].size() !=
-                QSize(320, 224)) {
-            source_boundary("field.elevator.navigation_feedback_asset_missing");
-            return false;
-        }
-    }
-    return true;
-}
-
-bool FieldSceneRuntime::load_field_taxi_selector_assets(
-    const ConversionAssetCatalog& catalog) {
-    if (!load_image(catalog, "intro.cab.map", field_taxi_map_) ||
-        field_taxi_map_.size() != QSize(208, 136)) {
-        source_boundary("field.taxi.map_asset_missing");
-        return false;
-    }
-
-    constexpr std::array<std::string_view, 8> kCursorTileNames{{
-        "top.left", "top.middle", "top.right", "left", "right",
-        "bottom.left", "bottom.middle", "bottom.right"}};
-    for (std::size_t index = 0U; index < kCursorTileNames.size(); ++index) {
-        const auto alias = std::string("intro.cab.cursor.") +
-                           std::string(kCursorTileNames[index]);
-        if (!load_image(catalog, alias, field_taxi_cursor_tiles_[index]) ||
-            field_taxi_cursor_tiles_[index].size() != QSize(8, 8)) {
-            source_boundary("field.taxi.cursor_asset_missing");
-            return false;
-        }
-    }
-    return true;
-}
-
-bool FieldSceneRuntime::open_field_elevator_selector(
-    const FieldCollisionEventCode event_code) {
-    if (!field_session_source_assets_ || field_elevator_selector_.is_open()) {
-        return false;
-    }
-    const auto scene_reference =
-        state_.field_scene_buffers.scene_reference;
-    std::vector<std::vector<std::uint16_t>> source_elevator_groups;
-    source_elevator_groups.reserve(
-        field_session_source_assets_->field_elevator_scene_groups.size());
-    for (const auto& source_group :
-         field_session_source_assets_->field_elevator_scene_groups) {
-        if (source_group.count > source_group.scene_ids.size()) {
-            source_boundary("field.elevator.source_group_invalid");
-            return false;
-        }
-        auto& group = source_elevator_groups.emplace_back();
-        group.insert(group.end(), source_group.scene_ids.begin(),
-                     source_group.scene_ids.begin() +
-                         static_cast<std::ptrdiff_t>(source_group.count));
-    }
-
-    const auto entry_decision = game_scripts_.resolve_field_location_entry(
-        scene_reference, event_code, source_elevator_groups);
-    if (!entry_decision.has_value()) {
-        failure_ = game_scripts_.failure();
-        source_boundary("field.elevator.entry_script_failed");
-        return false;
-    }
-    if (entry_decision->action !=
-            scripting::ScriptLocationEntryAction::open_elevator_selector ||
-        entry_decision->elevator_group.scene_ids.size() < 2U ||
-        entry_decision->elevator_group.scene_ids.size() >
-            kElevatorSelectorMaximumFloors) {
-        failure_ = "Lua declined elevator selector entry for scene " +
-                   std::to_string(scene_reference) + " and event code " +
-                   std::to_string(field_collision_event_value(event_code));
-        source_boundary("field.elevator.entry_script_no_selector");
-        return false;
-    }
-
-    field_elevator_floor_group_ = entry_decision->elevator_group;
-    const auto floor_count = static_cast<std::uint8_t>(
-        field_elevator_floor_group_->scene_ids.size());
-    if (!field_elevator_selector_.open(
-            floor_count, field_elevator_floor_group_->entry_floor)) {
-        field_elevator_floor_group_.reset();
-        return false;
-    }
-    field_elevator_script_destination_ =
-        game_scripts_.resolve_elevator_destination(
-            *field_elevator_floor_group_,
-            field_elevator_selector_.selected_floor());
-    if (!field_elevator_script_destination_.has_value()) {
-        failure_ = game_scripts_.failure();
-        field_elevator_selector_.close();
-        field_elevator_floor_group_.reset();
-        source_boundary("field.elevator.destination_script_failed");
-        return false;
-    }
-    source_boundary("field.elevator.selector.opened");
-    return true;
-}
-
-bool FieldSceneRuntime::transition_to_field_destination(
-    const std::uint16_t scene_reference,
-    const FieldDestinationTransitionRoute route) {
-    const auto source_prefix =
-        route == FieldDestinationTransitionRoute::dialogue_scene_entry
-            ? "field.dialogue.scene_entry."
-            : route == FieldDestinationTransitionRoute::taxi
-                  ? "field.taxi."
-                  : route == FieldDestinationTransitionRoute::vid_phone
-                        ? "field.vid_phone."
-                        : "field.elevator.";
-    if (!field_session_source_assets_ ||
-        scene_reference >=
-            field_session_source_assets_->field_scene_resources.size() ||
-        !prepare_runtime_field_scene(scene_reference)) {
-        source_boundary(std::string(source_prefix) +
-                        "destination_prepare_unresolved");
-        return false;
-    }
-
-    // ROM 0x16A8E reloads the destination field profile through 0x03074/0x03084.
-    // The first profile record is the arrival point for both cab travel and
-    // elevator floor changes; coordinates from another map are map-local.
-    const auto arrival =
-        state_.field_scene_buffers.source_metadata.initial_field_records[0U];
-    field_entity_.world_position = arrival;
-    field_entity_.projection = EntityProjectionState{};
-    field_entity_.visible = false;
-    field_entity_.direction = 0U;
-    field_movement_state_.position_x = arrival.x;
-    field_movement_state_.position_y = arrival.y;
-    field_movement_state_.heading = 0U;
-    field_movement_state_.movement_substate = 0U;
-    field_target_heading_ = 0U;
-    field_entity_walking_ = false;
-    field_entity_attack_pose_active_ = false;
-    field_entity_animation_ = EntityAnimationState{};
-    field_entity_animation_.increment = kFieldWalkAnimationIncrement;
-    field_entity_animation_.period = kFieldEntityAnimationPeriod;
-    field_entity_animation_id_ = "idle";
-    field_player_actor_script_initialized_ = false;
-    field_player_animation_reset_pending_ = false;
-    field_entity_animation_selector_ = 0U;
-    field_movement_behavior_record_.current_heading = 0U;
-    field_movement_behavior_record_.target_heading = 0U;
-    field_movement_transition_state_.terrain_collision_code = 0U;
-    field_movement_transition_state_.mode_event_code = 0U;
-    field_movement_transition_state_.activity_sequence_active = false;
-    field_movement_transition_state_.terrain_event_suppressed = false;
-    field_movement_transition_state_.scene_id = scene_reference;
-    field_movement_transition_state_.field_origin_x =
-        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
-    field_movement_transition_state_.activity_source_word = 0U;
-    field_runtime_state_.scene_id = scene_reference;
-    field_runtime_state_.field_mode =
-        state_.field_scene_buffers.field_resource_mode;
-    field_runtime_state_.field_scene_gate = 0U;
-    field_runtime_state_.field_transition_requested = false;
-    field_runtime_state_.pending_field_scene_handler = false;
-    field_runtime_state_.field_activity_lock = false;
-    field_runtime_state_.world_activity_countdown = 0U;
-    world_frame_logic_state_.world_mode = scene_reference;
-    field_world_activity_scene_entry_pending_ = false;
-    field_world_activity_state_ = WorldActivityState{};
-    field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
-    field_world_activity_timeout_state_.scene_id = scene_reference;
-    world_activity_routine_state_ = WorldActivityRoutineState{};
-    world_activity_request_state_ = WorldActivityRoutineRequestState{};
-    world_activity_request_start_state_ = WorldActivityStartState{};
-    world_activity_return_snapshot_.reset();
-    field_weapon_projectiles_.clear();
-    field_weapon_slots_occupied_.fill(false);
-    last_field_weapon_spawn_result_ = EntitySpawnCycleResult{};
-    field_camera_alignment_ready_ = false;
-    field_palette_fade_steps_ = 0U;
-    field_runtime_state_.display_service_word = 0U;
-    state_.display_service_word = 0U;
-    // ROM 0x08C0, before 0x12F6: a new field mode runs 31 camera and entity
-    // projection passes with FFDFE8 clear, then fades in. The fade at 0x12F6
-    // only waits on 0x1342. Scene 9's profile spawn (0x0D80, 0x1100) projects
-    // to pixel y 232 under camera (0x0A00, 0x0280), so those passes have to
-    // finish while the destination is still black.
-    const auto restore_interaction_lock =
-        field_movement_transition_state_.world_interaction_lock;
-    const bool mode_entry_route =
-        route == FieldDestinationTransitionRoute::vid_phone ||
-        route == FieldDestinationTransitionRoute::dialogue_scene_entry;
-    if (mode_entry_route) {
-        field_movement_transition_state_.world_interaction_lock = false;
-        field_camera_follow_.layer_x_dirty = false;
-        field_camera_follow_.layer_y_dirty = false;
-    }
-    constexpr int kModeEntryCameraPasses = 31;
-    const int camera_passes =
-        mode_entry_route ? kModeEntryCameraPasses : 1;
-    for (int pass = 0; pass < camera_passes; ++pass) {
-        update_source_field_camera();
-        update_entity_render_pass(state_.render_entities,
-                                  callbacks_.entity_render_pass);
-    }
-    if (mode_entry_route) {
-        field_movement_transition_state_.world_interaction_lock =
-            restore_interaction_lock;
-    }
-    dispatch_field_map_scene_entry(scene_reference);
-    source_boundary(std::string(source_prefix) + "destination_loaded");
-    return true;
-}
-
-void FieldSceneRuntime::advance_field_elevator_selector() {
-    field_controller_latch_state_.events =
-        field_controller_sample_state_.events;
-    field_controller_latch_state_.extra_events = 0U;
-    (void)::shadowrun::ghidra_conversion::latch_controller_events(
-        field_controller_latch_state_);
-    ::shadowrun::ghidra_conversion::sample_controller_input(
-        field_controller_sample_state_, field_controller_port_byte_);
-    const auto update = field_elevator_selector_.advance(
-        field_controller_sample_state_.events);
-    if (update.selection_moved) {
-        if (!field_elevator_floor_group_.has_value()) {
-            source_boundary("field.elevator.floor_group_missing");
-            return;
-        }
-        field_elevator_script_destination_ =
-            game_scripts_.resolve_elevator_destination(
-                *field_elevator_floor_group_,
-                field_elevator_selector_.selected_floor());
-        if (!field_elevator_script_destination_.has_value()) {
-            failure_ = game_scripts_.failure();
-            source_boundary("field.elevator.destination_script_failed");
-            return;
-        }
-        source_boundary("field.elevator.selector.selection_moved");
-    }
-    if (update.navigation_feedback_started) {
-        source_boundary("field.elevator.selector.navigation_feedback_started");
-    }
-    if (update.navigation_feedback_finished) {
-        source_boundary("field.elevator.selector.navigation_feedback_finished");
-    }
-    if (update.sound_effect_requested) {
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
-        }
-        source_boundary("field.elevator.selector.source_sound_25");
-    }
-    if (update.animation_started) {
-        source_boundary("field.elevator.animation.started");
-    } else if (update.animation_frame_changed) {
-        source_boundary("field.elevator.animation.frame_changed");
-    } else if (update.animation_finished) {
-        source_boundary("field.elevator.animation.finished");
-    }
-    if (!update.confirmed) {
-        return;
-    }
-
-    const auto current_scene = state_.field_scene_buffers.scene_reference;
-    source_boundary("field.elevator.selector.confirmed");
-    if (field_elevator_selector_.destination_changed()) {
-        if (!field_elevator_floor_group_.has_value()) {
-            source_boundary("field.elevator.floor_group_missing");
-            return;
-        }
-        const auto destination = game_scripts_.resolve_elevator_destination(
-            *field_elevator_floor_group_,
-            field_elevator_selector_.current_floor());
-        if (!destination.has_value()) {
-            failure_ = game_scripts_.failure();
-            source_boundary("field.elevator.destination_script_failed");
-            return;
-        }
-        field_elevator_script_destination_ = destination;
-        if (*destination == current_scene) {
-            field_elevator_selector_.close();
-            field_elevator_floor_group_.reset();
-            field_runtime_state_.display_service_word = 0U;
-            state_.display_service_word = 0U;
-            source_boundary("field.elevator.selector.returned_to_current_scene");
-            return;
-        }
-        field_elevator_pending_destination_ = destination;
-        if (field_elevator_scene_transition_.begin_fade_out()) {
-            source_boundary("field.elevator.destination_fade_out_started");
-        } else {
-            field_elevator_pending_destination_.reset();
-            source_boundary("field.elevator.destination_transition_busy");
-        }
-        return;
-    }
-    field_elevator_selector_.close();
-    field_elevator_floor_group_.reset();
-    field_runtime_state_.display_service_word = 0U;
-    state_.display_service_word = 0U;
-    source_boundary("field.elevator.selector.returned_to_current_scene");
-}
-
-void FieldSceneRuntime::advance_field_elevator_scene_transition() {
-    const auto update = field_elevator_scene_transition_.advance();
-    const bool dialogue_scene_route =
-        field_dialogue_scene_transition_active_;
-    const bool phone_route = field_phone_transition_active_;
-    const bool taxi_route = field_taxi_transition_active_;
-    const auto route = dialogue_scene_route
-                           ? FieldDestinationTransitionRoute::
-                                 dialogue_scene_entry
-                           : phone_route
-                                 ? FieldDestinationTransitionRoute::vid_phone
-                                 : taxi_route
-                                       ? FieldDestinationTransitionRoute::taxi
-                                       : FieldDestinationTransitionRoute::
-                                             elevator;
-    const auto source_prefix =
-        dialogue_scene_route
-            ? "field.dialogue.scene_entry."
-            : phone_route ? "field.vid_phone."
-                          : taxi_route ? "field.taxi." : "field.elevator.";
-    if (update.palette_step_changed) {
-        source_boundary(std::string(source_prefix) +
-                        "destination_fade.palette_step");
-    }
-    if (update.destination_load_requested) {
-        const auto destination =
-            dialogue_scene_route
-                ? field_dialogue_scene_pending_destination_
-                : phone_route ? field_phone_pending_destination_
-                              : taxi_route
-                                    ? field_taxi_pending_destination_
-                                    : field_elevator_pending_destination_;
-        if (!destination.has_value() ||
-            !transition_to_field_destination(*destination, route)) {
-            field_elevator_scene_transition_.cancel();
-            field_elevator_pending_destination_.reset();
-            field_taxi_pending_destination_.reset();
-            field_phone_pending_destination_.reset();
-            field_dialogue_scene_pending_destination_.reset();
-            field_taxi_transition_active_ = false;
-            field_phone_transition_active_ = false;
-            field_dialogue_scene_transition_active_ = false;
-            source_boundary(std::string(source_prefix) +
-                            "destination_transition_reopened");
-            return;
-        }
-        if (phone_route) {
-            field_phone_pending_destination_.reset();
-        } else if (taxi_route) {
-            field_taxi_pending_destination_.reset();
-        } else if (dialogue_scene_route) {
-            field_dialogue_scene_pending_destination_.reset();
-        } else {
-            field_elevator_selector_.close();
-            field_elevator_floor_group_.reset();
-            field_elevator_pending_destination_.reset();
-        }
-        if (!field_elevator_scene_transition_.begin_fade_in()) {
-            field_elevator_scene_transition_.cancel();
-            field_taxi_transition_active_ = false;
-            field_phone_transition_active_ = false;
-            field_dialogue_scene_transition_active_ = false;
-            source_boundary(std::string(source_prefix) +
-                            "destination_fade_in_unresolved");
-            return;
-        }
-        source_boundary(std::string(source_prefix) +
-                        "destination_fade_in_started");
-    } else if (update.completed) {
-        source_boundary(std::string(source_prefix) +
-                        "destination_fade_finished");
-        field_taxi_transition_active_ = false;
-        field_phone_transition_active_ = false;
-        field_dialogue_scene_transition_active_ = false;
-    }
-}
-
-bool FieldSceneRuntime::load_sprite_image(
-    const ConversionAssetCatalog& catalog,
-    const std::string_view alias,
-    QImage& destination,
-    int& origin_x,
-    int& origin_y) {
-    const auto* record = catalog.find(std::string(alias));
-    if (record == nullptr) {
-        failure_ = "missing direct field sprite alias: " + std::string(alias);
-        return false;
-    }
-    if (!load_image(catalog, alias, destination)) {
-        return false;
-    }
-    origin_x = record->origin_x;
-    origin_y = record->origin_y;
-    // The extraction bakes color-zero as alpha 0 and loads it through the
-    // V4 BMP alpha mask. Re-deriving transparency from black pixels here
-    // would punch holes in the sprites' black outlines.
-    return true;
-}
 
 bool FieldSceneRuntime::load_field_default_actor_assets(
     const ConversionAssetCatalog& catalog) {
@@ -4061,6 +2779,17 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.ai_weapon_item_id.reset();
     }
 
+    // ROM 0x43B6 drains the FFE182-selected list once per scene entry. The
+    // repeated destination-entry pass (world-activity entry marker) keeps the
+    // records that drain already published, and FFE182 stays armed until the
+    // actor-pair gate consumes it, so that pass must not select the list a
+    // second time and publish a duplicate actor.
+    const bool preserved_scene_script_actors = std::any_of(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference](const DefaultFieldActorPresentation& actor) {
+            return actor.active && actor.scene_reference == scene_reference &&
+                   actor.world_activity_script_actor;
+        });
     const auto queue_pending_actor_list =
         [this, scene_reference](
             std::optional<std::vector<scripting::ScriptWorldActivityActor>>
@@ -4082,34 +2811,35 @@ void FieldSceneRuntime::initialize_default_field_actors(
         }
     };
     if (field_pending_route_actor_list_.has_value() &&
-        scene_reference == 17U) {
+        scene_reference == field_pending_route_actor_list_->consume_scene) {
         const auto pending_route_list = *field_pending_route_actor_list_;
         field_pending_route_actor_list_.reset();
-        const auto list_id =
-            pending_route_list ==
-                    FieldRoutePendingActorList::club_penumbra_mako
-                ? std::string_view{"pending_list_1e628"}
-                : std::string_view{};
-        // The extractor records this reusable source list in Scene 47's
-        // activity table. The ROM's 0x43B6 consumer drains FFE120 without a
-        // scene check; the Club finalizer enters Scene 17 before that pass.
-        auto actors = list_id.empty()
-            ? std::optional<
-                  std::vector<scripting::ScriptWorldActivityActor>>{}
-            : game_scripts_.world_activity_actors_for_list_id(
-                  47U, list_id);
-        const bool has_source_four_actor_list =
-            actors.has_value() && actors->size() == 4U;
+        char list_id[32]{};
+        std::snprintf(list_id, sizeof(list_id), "pending_list_%05x",
+                      static_cast<unsigned>(pending_route_list.list));
+        // The extractor records the reusable source list in the source
+        // scene's activity table (Mako: Scene 47). The ROM's 0x43B6 consumer
+        // drains FFE120 without a scene check; the Club finalizer enters
+        // Scene 17 before that pass.
+        auto actors = game_scripts_.world_activity_actors_for_list_id(
+            pending_route_list.source_scene, list_id);
+        const bool has_source_actor_list =
+            actors.has_value() &&
+            actors->size() == pending_route_list.transitions;
         queue_pending_actor_list(
             std::move(actors),
-            "field.world_activity.club_penumbra_mako_list_unresolved");
-        if (has_source_four_actor_list &&
+            "field.world_activity." + pending_route_list.name +
+                "_list_unresolved");
+        if (has_source_actor_list &&
             pending_world_activity_script_actor_scene_ == scene_reference &&
-            pending_world_activity_script_actors_.size() == 4U) {
+            pending_world_activity_script_actors_.size() ==
+                pending_route_list.transitions) {
             field_pending_actor_list_transition_group_ = pending_route_list;
-            // ROM 0x43B6 seeds FFE177 with the four actor behavior
-            // transitions still outstanding for list 0x1E628.
-            field_mako_actor_transitions_remaining_ = 4U;
+            field_active_route_actor_list_ = pending_route_list.name;
+            // ROM 0x43B6 seeds FFE177 with the actor behavior transitions
+            // still outstanding for the list (four for 0x1E628).
+            field_route_actor_transitions_remaining_ =
+                pending_route_list.transitions;
         }
     } else if (field_pending_mode_transition_actor_list_.has_value()) {
         const auto list_id = field_mode_pending_actor_list_id(
@@ -4122,7 +2852,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
         field_pending_mode_transition_actor_list_.reset();
         queue_pending_actor_list(std::move(actors),
                                  "field.mode_transition.actor_list_unresolved");
-    } else {
+    } else if (!preserved_scene_script_actors) {
         const auto selected_pending_list =
             game_scripts_.pending_world_activity_actor_list_for_scene(
                 scene_reference, field_world_effect_active_,
@@ -4140,8 +2870,20 @@ void FieldSceneRuntime::initialize_default_field_actors(
                 "field.world_activity.pending_list_unresolved");
         }
     }
+    // Records kept from this scene's earlier destination-entry drain still
+    // occupy their live slots ahead of the default list.
+    const auto preserved_transient_actor_count = static_cast<std::size_t>(
+        std::count_if(
+            field_default_actors_.begin(), field_default_actors_.end(),
+            [scene_reference](const DefaultFieldActorPresentation& actor) {
+                return actor.active &&
+                       actor.scene_reference == scene_reference &&
+                       (actor.temporary_world_encounter ||
+                        actor.world_activity_script_actor);
+            }));
     const auto pending_actor_slot_count =
-        pending_world_activity_script_actors_.size();
+        pending_world_activity_script_actors_.size() +
+        preserved_transient_actor_count;
     // 0x43B6 drains the selected list before the default list. Publish now so
     // its actor takes the lowest live record and advances the shared PRNG
     // before defaults initialize their delay bytes.
@@ -4336,8 +3078,12 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             source_actor.source_interaction_flags;
         actor.source_spawn_state_flags =
             source_actor.source_spawn_state_flags;
-        actor.actor_list_completion_group =
-            field_pending_actor_list_transition_group_;
+        if (field_pending_actor_list_transition_group_.has_value()) {
+            actor.actor_list_completion_group =
+                field_pending_actor_list_transition_group_->name;
+        } else {
+            actor.actor_list_completion_group.reset();
+        }
         actor.source_action_slot = source_actor.source_action_slot;
         actor.source_action_ammo = source_actor.source_action_ammo;
         actor.source_action_counter = source_actor.source_action_counter;
@@ -4485,16 +3231,17 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
     pending_world_activity_script_actors_.clear();
     pending_world_activity_script_actor_scene_.reset();
     if (field_pending_actor_list_transition_group_.has_value()) {
-        if (expected_actor_count != 4U || published != expected_actor_count) {
+        const auto& group = *field_pending_actor_list_transition_group_;
+        if (expected_actor_count != group.transitions ||
+            published != expected_actor_count) {
             for (auto& actor : field_default_actors_) {
-                if (actor.actor_list_completion_group ==
-                    field_pending_actor_list_transition_group_) {
+                if (actor.actor_list_completion_group == group.name) {
                     actor.actor_list_completion_group.reset();
                 }
             }
-            field_mako_actor_transitions_remaining_.reset();
-            source_boundary(
-                "field.world_activity.club_penumbra_mako_actor_list_incomplete");
+            field_route_actor_transitions_remaining_.reset();
+            source_boundary("field.world_activity." + group.name +
+                            "_actor_list_incomplete");
         }
         field_pending_actor_list_transition_group_.reset();
     }
@@ -4762,13 +3509,12 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 return static_cast<std::uint16_t>(choice);
             };
 
-            context.action_line_clear = [this, &actor, current_scene](
+            context.action_line_clear = [this, &actor](
                 const std::uint16_t target_x,
                 const std::uint16_t target_y) {
                 // ROM 0x13FFE calls 0x14D8E before it enters the spell or
                 // item branch. Keep the script's target policy in Lua and
                 // provide the source terrain and linked-record queries here.
-                EntityAnimationSpawnProbeState probe_state{};
                 const SpawnEntityParentState parent{
                     actor.world_position.x,
                     actor.world_position.y,
@@ -4777,106 +3523,14 @@ void FieldSceneRuntime::advance_default_field_actors() {
                     actor.source_interaction_flags,
                     actor.source_behavior_flags,
                     actor.source_spawn_state_flags};
-                std::optional<SpawnEntityLinkedState> linked_target{
-                    SpawnEntityLinkedState{target_x, target_y, 0x01U, false}};
-                EntityAnimationSpawnProbeRequest request{};
-                request.parent = parent;
-                request.linked_target = linked_target;
-                request.protected_source_candidate =
+                return probe_action_line_clear(
+                    parent,
                     actor.source_record_slot.has_value()
                         ? std::optional<std::size_t>{
                               static_cast<std::size_t>(
                                   *actor.source_record_slot)}
-                        : std::nullopt;
-
-                EntityCollisionRecord probe_collision_record{};
-                std::array<std::uint8_t, 4> probe_sample_state{};
-                std::vector<CollisionCandidate> collision_candidates(10U);
-                for (std::size_t slot = 0U;
-                     slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
-                    if (!field_party_roster_.slot_active(slot)) {
-                        continue;
-                    }
-                    auto position = state_.field_scene_buffers
-                                        .source_metadata
-                                        .initial_field_records[slot];
-                    if (slot == field_party_roster_.active_slot() &&
-                        field_entity_.active) {
-                        position = field_entity_.world_position;
-                    }
-                    const auto& runner = field_party_roster_.records()[slot];
-                    auto& candidate = collision_candidates[slot];
-                    candidate.world_x = position.x;
-                    candidate.world_y = position.y;
-                    candidate.flags = static_cast<std::uint8_t>(
-                        runner.flags >> 8U);
-                    candidate.interaction_flags =
-                        static_cast<std::uint8_t>(runner.flags & 0x00FFU);
-                    candidate.collision_enabled = runner.delay_meter != 0U;
-                }
-                for (const auto& target : field_default_actors_) {
-                    if (!target.active ||
-                        target.scene_reference != current_scene ||
-                        !target.source_record_slot.has_value()) {
-                        continue;
-                    }
-                    const auto slot = static_cast<std::size_t>(
-                        *target.source_record_slot);
-                    if (slot >= collision_candidates.size()) {
-                        continue;
-                    }
-                    auto& candidate = collision_candidates[slot];
-                    candidate.world_x = target.world_position.x;
-                    candidate.world_y = target.world_position.y;
-                    candidate.flags = target.source_record_flags;
-                    candidate.interaction_flags =
-                        target.source_interaction_flags;
-                    candidate.behavior_flags = target.source_behavior_flags;
-                    candidate.collision_enabled =
-                        target.physical_meter != 0U;
-                }
-
-                const auto probe_result = probe_entity_spawn_collision_window(
-                    probe_state,
-                    request,
-                    EntityAnimationSpawnProbeCallbacks{
-                        [this, &probe_state,
-                         &probe_collision_record, &probe_sample_state](
-                            const std::int32_t fixed_x,
-                            const std::int32_t fixed_y) {
-                            // 0x14F26 supplies 16.16 values. The field
-                            // collision service takes the source 16.4 word;
-                            // retaining the high word preserves world units.
-                            const auto collision_coordinate = [](
-                                const std::int32_t value) {
-                                return static_cast<std::uint16_t>(
-                                    static_cast<std::uint32_t>(value) >> 16U);
-                            };
-                            bool terrain_boundary_active = false;
-                            bool outside_bounds = false;
-                            const auto collision_code =
-                                evaluate_field_collision(
-                                    collision_coordinate(fixed_x),
-                                    collision_coordinate(fixed_y),
-                                    probe_collision_record,
-                                    probe_sample_state,
-                                    probe_state.scratch_record
-                                        .behavior_defaults.flags,
-                                    false,
-                                    nullptr,
-                                    &terrain_boundary_active,
-                                    &outside_bounds);
-                            return EntityTerrainProbeSample{
-                                static_cast<std::uint16_t>(collision_code),
-                                terrain_boundary_active, outside_bounds};
-                        },
-                        [&collision_candidates](
-                            const EntityCollisionSearchContext& collision) {
-                            return find_colliding_entity(
-                                collision, collision_candidates);
-                        }});
-                return !probe_result.boundary_unresolved &&
-                    !probe_result.source_carry;
+                        : std::nullopt,
+                    target_x, target_y);
             };
 
             const bool has_candidate_in_source_pool = std::any_of(
@@ -5088,21 +3742,24 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 source_boundary(
                     "field.random_encounter.sequence_transitions_complete");
             }
-            if (actor.actor_list_completion_group ==
-                    FieldRoutePendingActorList::club_penumbra_mako &&
-                field_mako_actor_transitions_remaining_.has_value() &&
-                *field_mako_actor_transitions_remaining_ != 0U) {
+            if (actor.actor_list_completion_group.has_value() &&
+                *actor.actor_list_completion_group ==
+                    field_active_route_actor_list_ &&
+                field_route_actor_transitions_remaining_.has_value() &&
+                *field_route_actor_transitions_remaining_ != 0U) {
                 actor.actor_list_completion_group.reset();
-                --*field_mako_actor_transitions_remaining_;
-                source_boundary(
-                    "field.world_activity.club_penumbra_mako_actor_transition_completed");
-                if (*field_mako_actor_transitions_remaining_ == 0U) {
-                    field_mako_actor_transitions_remaining_.reset();
+                --*field_route_actor_transitions_remaining_;
+                source_boundary("field.world_activity." +
+                                field_active_route_actor_list_ +
+                                "_actor_transition_completed");
+                if (*field_route_actor_transitions_remaining_ == 0U) {
+                    field_route_actor_transitions_remaining_.reset();
                     reset_field_entity_service_records();
                     field_pending_actor_list_callback_ =
-                        FieldRoutePendingActorList::club_penumbra_mako;
-                    source_boundary(
-                        "field.world_activity.club_penumbra_mako_callback_dispatch_pending");
+                        field_active_route_actor_list_;
+                    source_boundary("field.world_activity." +
+                                    field_active_route_actor_list_ +
+                                    "_callback_dispatch_pending");
                 }
             }
         }
@@ -5205,17 +3862,18 @@ void FieldSceneRuntime::advance_default_field_actors() {
         }
         resolve_default_actor_proximity(actor);
     }
-    if (field_pending_actor_list_callback_ ==
-            FieldRoutePendingActorList::club_penumbra_mako &&
+    if (field_pending_actor_list_callback_.has_value() &&
         !field_dialogue_.open()) {
+        const auto name = std::move(*field_pending_actor_list_callback_);
         field_pending_actor_list_callback_.reset();
-        if (field_dialogue_.open_gameplay_task(
-                "club_penumbra", "present_mako_activity_result")) {
-            source_boundary(
-                "field.world_activity.club_penumbra_mako_callback_dispatched");
+        // route_actor_lists.lua maps complete_<name> to the list's callback.
+        if (field_dialogue_.open_gameplay_task("route_actor_lists",
+                                               "complete_" + name)) {
+            source_boundary("field.world_activity." + name +
+                            "_callback_dispatched");
         } else {
-            source_boundary(
-                "field.world_activity.club_penumbra_mako_callback_dialogue_open_failed");
+            source_boundary("field.world_activity." + name +
+                            "_callback_dialogue_open_failed");
         }
     }
 }
@@ -5768,31 +4426,7 @@ bool FieldSceneRuntime::apply_scripted_field_entity_target_selection(
     return true;
 }
 
-std::int16_t FieldSceneRuntime::select_field_world_effect_sequence() {
-    const auto first = sample_source_random_bound(field_random_seed_, 5U);
-    const auto second = sample_source_random_bound(field_random_seed_, 5U);
-    if (first < 0 || first > 4 || second < 0 || second > 4) {
-        pending_field_encounter_outcome_.reset();
-        failure_ = "ROM field encounter selector produced an invalid bounded draw";
-        source_boundary("field.random_encounter.invalid_selector_draw");
-        return 1;
-    }
-    auto outcome = game_scripts_.resolve_field_encounter(
-        state_.field_scene_buffers.scene_reference,
-        static_cast<std::uint8_t>(first),
-        static_cast<std::uint8_t>(second));
-    if (!outcome.has_value()) {
-        pending_field_encounter_outcome_.reset();
-        failure_ = game_scripts_.failure();
-        source_boundary("field.random_encounter.selector_row_unresolved");
-        return 1;
-    }
-    pending_field_encounter_outcome_ = std::move(*outcome);
-    return pending_field_encounter_outcome_->kind ==
-                   scripting::ScriptFieldEncounterOutcomeKind::dialogue_event
-               ? 1
-               : 0;
-}
+
 
 void FieldSceneRuntime::spawn_field_world_effect_sequence() {
     if (!pending_field_encounter_outcome_.has_value() ||
@@ -6197,385 +4831,66 @@ void FieldSceneRuntime::reset_field_entity_service_records() {
 }
 
 bool FieldSceneRuntime::process_pending_story_world_effect_sequence() {
-    if (field_pending_story_world_effect_sequence_list_.has_value()) {
-        const auto sequence_list_offset =
-            *field_pending_story_world_effect_sequence_list_;
-        field_pending_story_world_effect_sequence_list_.reset();
-        const auto scene_id = state_.field_scene_buffers.scene_reference;
-        if (scene_id != 2U || sequence_list_offset != 0x1D6FD0U) {
-            source_boundary(
-                "field.world_activity.story_sequence_context_unresolved");
-            return true;
-        }
-        auto outcome = game_scripts_.resolve_field_actor_sequence(
-            scene_id, sequence_list_offset);
-        if (!outcome.has_value() ||
-            outcome->kind != scripting::
-                ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence ||
-            outcome->placement_policy != scripting::
-                ScriptFieldEncounterPlacementPolicy::map_derived_candidates ||
-            outcome->actors.size() != 2U ||
-            std::any_of(outcome->actors.begin(), outcome->actors.end(),
-                        [sequence_list_offset](const auto& actor) {
-                            return actor.sequence_list_offset !=
-                                   sequence_list_offset;
-                        })) {
-            failure_ = game_scripts_.failure().empty()
-                ? "Boris story sequence did not resolve its two map-placed actors"
-                : game_scripts_.failure();
-            source_boundary(
-                "field.world_activity.boris_strike_team_list_unresolved");
-            return true;
-        }
-        pending_field_encounter_outcome_ = std::move(*outcome);
-        source_boundary(
-            "field.world_activity.boris_strike_team_sequence_resolved");
-        spawn_field_world_effect_sequence();
-        return true;
-    }
-    return false;
-}
-
-void FieldSceneRuntime::trigger_field_world_effect_sequence() {
-    if (process_pending_story_world_effect_sequence()) {
-        return;
-    }
-    scripting::ScriptFieldEncounterTriggerInput trigger{};
-    trigger.scene_id = state_.field_scene_buffers.scene_reference;
-    trigger.frame_counter = field_world_frame_counter_;
-    trigger.trigger_delay_active = state_.display_service_word != 0U;
-    trigger.current_entity_protected =
-        (field_movement_behavior_record_.record_flags & 0x80U) != 0U;
-    trigger.activity_lock = field_runtime_state_.field_activity_lock;
-    trigger.sequence_mode = world_frame_logic_state_.event_lock != 0U;
-    trigger.world_effects_active =
-        field_world_activity_timeout_state_.timeout_marker != 0;
-    trigger.placement_pending =
-        field_world_activity_timeout_state_.scene_36_gate != 0U;
-
-    auto action = game_scripts_.evaluate_field_encounter_trigger(trigger);
-    if (!action.has_value()) {
-        failure_ = game_scripts_.failure();
-        source_boundary("field.random_encounter.script_gate_failed");
-        return;
-    }
-    if (*action !=
-        scripting::ScriptFieldEncounterTriggerAction::sample_probability) {
-        return;
-    }
-
-    // 0x1E166 advances the source PRNG only after its state and 0x3FF cadence
-    // gates pass. Lua requests this draw, then owns the probability decision.
-    trigger.probability_roll = advance_source_random_seed(field_random_seed_);
-    trigger.probability_threshold = state_.field_scene_buffers.profile[
-        field_scene_profile_word_index(
-            FieldSceneProfileWord::random_event_probability_threshold)];
-    action = game_scripts_.evaluate_field_encounter_trigger(trigger);
-    if (!action.has_value()) {
-        failure_ = game_scripts_.failure();
-        source_boundary("field.random_encounter.script_chance_failed");
-        return;
-    }
-    switch (*action) {
-    case scripting::ScriptFieldEncounterTriggerAction::blocked:
-    case scripting::ScriptFieldEncounterTriggerAction::not_due:
-    case scripting::ScriptFieldEncounterTriggerAction::random_miss:
-        return;
-    case scripting::ScriptFieldEncounterTriggerAction::forward_active_sequence:
-        source_boundary("field.random_encounter.forward_existing_sequence");
-        return;
-    case scripting::ScriptFieldEncounterTriggerAction::select_scene_outcome:
-        (void)select_field_world_effect_sequence();
-        if (!pending_field_encounter_outcome_.has_value()) {
-            return;
-        }
-        if (pending_field_encounter_outcome_->kind ==
-            scripting::ScriptFieldEncounterOutcomeKind::dialogue_event) {
-            failure_ = "ROM random-event dialogue handler is selected but not connected";
-            source_boundary(
-                "field.random_encounter.dialogue_handler_unimplemented");
-            return;
-        }
-        spawn_field_world_effect_sequence();
-        return;
-    case scripting::ScriptFieldEncounterTriggerAction::sample_probability:
-        failure_ = "Lua field encounter gate requested a second probability draw";
-        source_boundary("field.random_encounter.repeated_probability_request");
-        return;
-    }
-}
-
-bool FieldSceneRuntime::load_field_weapon_spawn_assets(
-    const ConversionAssetCatalog& catalog) {
-    for (std::size_t animation = 0;
-         animation < field_weapon_projectile_images_.size(); ++animation) {
-        auto& images = field_weapon_projectile_images_[animation];
-        auto& origin_x = field_weapon_projectile_origin_x_[animation];
-        auto& origin_y = field_weapon_projectile_origin_y_[animation];
-        images.clear();
-        origin_x.clear();
-        origin_y.clear();
-
-        const auto selector = animation * 4U;
-        const auto expected_frames = animation < 8U ? 3U : 11U;
-        for (std::size_t frame = 0; frame < expected_frames; ++frame) {
-            const auto alias =
-                std::string(kFieldWeaponProjectileAliasPrefix) +
-                std::to_string(selector) + "." + std::to_string(frame);
-            QImage image;
-            int source_origin_x = 0;
-            int source_origin_y = 0;
-            if (!load_sprite_image(catalog, alias, image,
-                                   source_origin_x, source_origin_y)) {
-                return false;
-            }
-            images.push_back(std::move(image));
-            origin_x.push_back(source_origin_x);
-            origin_y.push_back(source_origin_y);
-        }
-    }
-    return true;
-}
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint16_t>
-FieldSceneRuntime::field_weapon_projectile_selector_for_dump() const noexcept {
-    for (const auto& spawn : field_weapon_projectiles_) {
-        if (spawn.secondary_active) {
-            return static_cast<std::uint16_t>(
-                spawn.source_record.animation_resource & 0x7FFFU);
-        }
-    }
-    return std::nullopt;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<bool>
-FieldSceneRuntime::field_weapon_projectile_list_finished_for_dump() const noexcept {
-    for (const auto& spawn : field_weapon_projectiles_) {
-        if (spawn.secondary_active) {
-            return (spawn.source_record.animation_resource & 0x8000U) != 0U;
-        }
-    }
-    return std::nullopt;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint16_t>
-FieldSceneRuntime::field_weapon_projectile_frame_for_dump() const noexcept {
-    for (const auto& spawn : field_weapon_projectiles_) {
-        if (spawn.secondary_active) {
-            return spawn.animation.frame;
-        }
-    }
-    return std::nullopt;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::size_t FieldSceneRuntime::field_weapon_primary_count_for_dump() const
-    noexcept {
-    std::size_t count = 0U;
-    for (const auto& spawn : field_weapon_projectiles_) {
-        count += spawn.primary_active ? 1U : 0U;
-    }
-    return count;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<SceneRunnerPosition>
-FieldSceneRuntime::field_weapon_primary_position_for_dump() const noexcept {
-    for (const auto& spawn : field_weapon_projectiles_) {
-        if (spawn.primary_active) {
-            return SceneRunnerPosition{spawn.primary_record.position_x,
-                                       spawn.primary_record.position_y};
-        }
-    }
-    return std::nullopt;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<SceneRunnerPosition>
-FieldSceneRuntime::field_weapon_primary_spawn_position_for_dump() const
-    noexcept {
-    for (const auto& spawn : field_weapon_projectiles_) {
-        if (spawn.primary_active) {
-            return spawn.primary_spawn_position;
-        }
-    }
-    return std::nullopt;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint16_t>
-FieldSceneRuntime::field_weapon_primary_heading_for_dump() const noexcept {
-    for (auto spawn = field_weapon_projectiles_.rbegin();
-         spawn != field_weapon_projectiles_.rend(); ++spawn) {
-        if (spawn->primary_active) {
-            return spawn->primary_record.heading;
-        }
-    }
-    return std::nullopt;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<EntityHeadingOffsets>
-FieldSceneRuntime::field_weapon_primary_heading_offsets_for_dump() const
-    noexcept {
-    for (const auto& spawn : field_weapon_projectiles_) {
-        if (spawn.primary_active) {
-            return EntityHeadingOffsets{
-                spawn.primary_record.heading_offset_x,
-                spawn.primary_record.heading_offset_y};
-        }
-    }
-    return std::nullopt;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint8_t>
-FieldSceneRuntime::field_weapon_primary_retry_count_for_dump() const noexcept {
-    for (const auto& spawn : field_weapon_projectiles_) {
-        if (spawn.primary_active) {
-            return spawn.primary_record.field_0x89;
-        }
-    }
-    return std::nullopt;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-bool FieldSceneRuntime::load_field_hud_overlays(
-    const ConversionAssetCatalog& catalog) {
-    int origin_x = 0;
-    int origin_y = 0;
-    const auto load_slot = [this, &catalog, &origin_x, &origin_y](
-                               const std::string_view prefix,
-                               std::array<QImage, kFieldHudSlotCount>&
-                                   images) {
-        for (std::size_t slot = 0; slot < images.size(); ++slot) {
-            const auto alias = std::string(prefix) + std::to_string(slot);
-            if (!load_sprite_image(catalog, alias, images[slot], origin_x,
-                                   origin_y)) {
-                return false;
-            }
-        }
-        return true;
-    };
-    if (!load_slot(kFieldHudFaceAliasPrefix, field_hud_faces_) ||
-        !load_slot(kFieldHudItemAliasPrefix, field_hud_items_) ||
-        !load_slot(kFieldHudUnarmedItemAliasPrefix,
-                   field_hud_unarmed_items_)) {
+    if (!field_pending_story_world_effect_.has_value()) {
         return false;
     }
-    for (std::size_t family = 0; family < field_hud_party_faces_.size();
-         ++family) {
-        for (std::size_t palette = 0;
-             palette < field_hud_party_faces_[family].size(); ++palette) {
-            const auto alias = std::string(kFieldHudPartyFaceAliasPrefix) +
-                               std::to_string(family) + ".palette." +
-                               std::to_string(palette);
-            if (!load_sprite_image(catalog, alias,
-                                   field_hud_party_faces_[family][palette],
-                                   origin_x, origin_y)) {
-                return false;
-            }
-        }
+    const auto effect = std::move(*field_pending_story_world_effect_);
+    field_pending_story_world_effect_.reset();
+    const auto scene_id = state_.field_scene_buffers.scene_reference;
+    if (scene_id != effect.scene) {
+        source_boundary(
+            "field.world_activity.story_sequence_context_unresolved");
+        return true;
     }
-    for (std::size_t item = 0; item < field_hud_party_items_.size(); ++item) {
-        for (std::size_t palette = 0;
-             palette < field_hud_party_items_[item].size(); ++palette) {
-            const auto alias = std::string(kFieldHudPartyItemAliasPrefix) +
-                               std::to_string(item + 1U) + ".palette." +
-                               std::to_string(palette);
-            if (!load_sprite_image(catalog, alias,
-                                   field_hud_party_items_[item][palette],
-                                   origin_x, origin_y)) {
-                return false;
-            }
-        }
+    const auto sequence_list_offset = effect.list;
+    auto outcome = game_scripts_.resolve_field_actor_sequence(
+        scene_id, sequence_list_offset);
+    if (!outcome.has_value() ||
+        outcome->kind != scripting::
+            ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence ||
+        outcome->placement_policy != scripting::
+            ScriptFieldEncounterPlacementPolicy::map_derived_candidates ||
+        outcome->actors.size() != effect.actor_count ||
+        std::any_of(outcome->actors.begin(), outcome->actors.end(),
+                    [sequence_list_offset](const auto& actor) {
+                        return actor.sequence_list_offset !=
+                               sequence_list_offset;
+                    })) {
+        failure_ = game_scripts_.failure().empty()
+            ? "Story world-effect list " + effect.name +
+                  " did not resolve its " +
+                  std::to_string(effect.actor_count) + " map-placed actors"
+            : game_scripts_.failure();
+        source_boundary(
+            "field.world_activity." + effect.name + "_list_unresolved");
+        return true;
     }
-    for (std::size_t item = 0;
-         item < field_hud_party_unarmed_items_.size(); ++item) {
-        for (std::size_t palette = 0;
-             palette < field_hud_party_unarmed_items_[item].size(); ++palette) {
-            const auto alias =
-                std::string(kFieldHudPartyUnarmedItemAliasPrefix) +
-                std::to_string(item) + ".palette." +
-                std::to_string(palette);
-            if (!load_sprite_image(
-                    catalog, alias,
-                    field_hud_party_unarmed_items_[item][palette],
-                    origin_x, origin_y)) {
-                return false;
-            }
-        }
-    }
-    for (std::size_t spell = 0; spell < field_hud_magic_items_.size();
-         ++spell) {
-        for (std::size_t palette = 0;
-             palette < field_hud_magic_items_[spell].size(); ++palette) {
-            const auto alias = std::string(kFieldHudMagicItemAliasPrefix) +
-                               std::to_string(spell) + ".palette." +
-                               std::to_string(palette);
-            if (!load_sprite_image(catalog, alias,
-                                   field_hud_magic_items_[spell][palette],
-                                   origin_x, origin_y)) {
-                return false;
-            }
-        }
-    }
-    for (std::size_t meter = 0; meter < kFieldHudMeterLevelCount; ++meter) {
-        const auto delay_alias =
-            std::string(kFieldHudDelayMeterAliasPrefix) +
-            std::to_string(meter);
-        const auto primary_alias =
-            std::string(kFieldHudBehaviorMeterPrimaryAliasPrefix) +
-            std::to_string(meter);
-        const auto companion_alias =
-            std::string(kFieldHudBehaviorMeterCompanionAliasPrefix) +
-            std::to_string(meter);
-        if (!load_sprite_image(catalog, delay_alias,
-                               field_hud_delay_meter_counters_[meter],
-                               origin_x, origin_y) ||
-            !load_sprite_image(
-                catalog, primary_alias,
-                field_hud_behavior_meter_counters_[meter], origin_x,
-                origin_y) ||
-            !load_sprite_image(
-                catalog, companion_alias,
-                field_hud_behavior_meter_counters_[
-                    kFieldHudMeterLevelCount + meter],
-                origin_x, origin_y)) {
-            return false;
-        }
-    }
-    for (std::size_t ammo = 0; ammo < field_hud_ammo_counters_.size();
-         ++ammo) {
-        const auto alias = std::string(kFieldHudAmmoCounterAliasPrefix) +
-                           std::to_string(ammo);
-        if (!load_sprite_image(catalog, alias, field_hud_ammo_counters_[ammo],
-                               origin_x, origin_y)) {
-            return false;
-        }
-    }
+    pending_field_encounter_outcome_ = std::move(*outcome);
+    source_boundary(
+        "field.world_activity." + effect.name + "_sequence_resolved");
+    spawn_field_world_effect_sequence();
     return true;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 bool FieldSceneRuntime::load_command_overview_assets(
     const ConversionAssetCatalog& catalog) {
@@ -7385,6 +5700,7 @@ void FieldSceneRuntime::configure_callbacks() {
         [this] {
             source_boundary("field.entities.dispatch_action_candidates");
             advance_default_field_actors();
+            advance_field_hit_spark_behaviors();
         };
     callbacks_.entity_behavior_frames.noop_entity_action_hook =
         [](EntityBehaviorFrameRecord& record) { return record.action_result; };
@@ -7477,6 +5793,7 @@ void FieldSceneRuntime::configure_callbacks() {
         world_frame_logic_state_.scene_state =
             field_runtime_state_.scene_runtime_state;
         advance_default_field_actor_animations();
+        advance_field_hit_spark_animations();
         advance_field_weapon_projectile_animations();
         advance_tarislar_tomb_outro();
     };
@@ -7949,11 +6266,27 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.advance_field_mode_transition =
         [this](integration::FieldRuntimeCoordinatorState& runtime) {
+            // Lua world_links owns the 0x2CE0 room graph (sole source); the
+            // converted routine keeps only the mode 0x13 activity gate.
+            const auto lua_exit = game_scripts_.call_integers(
+                "world_links", "cave_exit_flat",
+                {static_cast<std::int64_t>(runtime.transition_context),
+                 static_cast<std::int64_t>(runtime.mode_event_code)});
+            std::optional<FieldModeTransitionExit> exit;
+            if (lua_exit.has_value() && lua_exit->size() == 4U &&
+                (*lua_exit)[0] >= 0) {
+                exit = FieldModeTransitionExit{
+                    static_cast<std::int16_t>((*lua_exit)[0]),
+                    static_cast<std::uint16_t>((*lua_exit)[1]),
+                    static_cast<std::uint16_t>((*lua_exit)[2]),
+                    static_cast<std::uint16_t>((*lua_exit)[3])};
+            }
             const auto plan = advance_field_mode_transition(
                 FieldModeTransitionInput{
                     runtime.mode_event_code,
                     runtime.transition_context,
-                    runtime.world_activity_flags},
+                    runtime.world_activity_flags,
+                    exit},
                 FieldModeTransitionCallbacks{
                     [this] {
                         const auto continuation =
@@ -7982,6 +6315,9 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                         source_boundary(
                             "field.mode_transition.schedule_timeout");
                     }});
+            if (!exit.has_value()) {
+                source_boundary("field.mode_transition.lua_room_graph_missing");
+            }
             if (!plan.resolved || !plan.spawn_position_available ||
                 !field_session_source_assets_ ||
                 plan.scene_id >=
@@ -7998,6 +6334,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 source_boundary("field.mode_transition.actor_list_missing");
                 return false;
             }
+            source_boundary("field.mode_transition.lua_room_graph_selected");
             runtime.transition_context = plan.next_mode_index;
             runtime.scene_id = plan.scene_id;
             field_movement_transition_state_.field_transition_context =
@@ -8318,6 +6655,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         advance_field_weapon_projectiles();
         advance_field_movement();
         advance_default_field_actors();
+        advance_field_hit_spark_behaviors();
     };
     field_runtime_callbacks_.update_field_camera = [this] {
         update_source_field_camera();
@@ -8456,7 +6794,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         if (source_audio_event_callback_) {
             // ROM 0x391A requests event 0x25 on the field C-button runner
             // selection path.
-            source_audio_event_callback_(0x25U);
+            source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
         }
         handle_field_mode_action_event();
     };
@@ -8569,32 +6907,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     };
 }
 
-void FieldSceneRuntime::install_test_deck() {
-    // ROM 0x59B7E sets FF018F bit 0, FFFC28, and these FFFBBE fields.
-    cyberdeck_available_ = true;
-    if (field_runner_feature_flags_.has_value()) {
-        *field_runner_feature_flags_ |= 0x01U;
-    }
-    field_matrix_passcode_flags_ = 0x0FFEU;
 
-    auto deck = field_matrix_deck_record_.value_or(CyberdeckRecord{});
-    deck.mpcp = 6U;
-    deck.hardening = 1U;
-    // ROM 0x59B7E writes FFFBBE+2=0x00C8, +4=0x03E8, +6=0x32,
-    // +7=1, and +0x0D=0xFF. It then writes rating 4 to each of the twelve
-    // program bytes at +0x0E..+0x19.
-    deck.memory_megapulses = 0x00C8U;
-    deck.storage_megapulses = 1000U;
-    deck.load_io_speed = 0x32U;
-    deck.response = 1U;
-    deck.model_index = static_cast<std::int8_t>(-1);
-    std::array<std::uint8_t, 12> program_ratings{};
-    program_ratings.fill(4U);
-    deck.program_ratings = program_ratings;
-    // The ROM routine leaves persona, loaded programs, slot animation state,
-    // and stored files untouched. Preserve those existing typed fields.
-    field_matrix_deck_record_ = std::move(deck);
-}
 
 void FieldSceneRuntime::configure_field_menu_route() {
     scripting::ScriptMenuRouteBindings bindings;
@@ -9025,17 +7338,21 @@ void FieldSceneRuntime::configure_field_menu_route() {
         field_funds_ = amount;
     };
     bindings.game.nuyen = [this] { return field_funds_; };
-    bindings.game.request_taxi_destination = [this](const int destination) {
+    bindings.game.begin_taxi_cabbie = [this](const int destination) {
         if (!field_taxi_route_active_ || destination < 0 || destination > 6 ||
             field_taxi_pending_destination_.has_value() ||
+            field_taxi_cabbie_destination_.has_value() ||
+            field_dialogue_.open() ||
             !field_session_source_assets_ ||
             static_cast<std::size_t>(destination) >=
                 field_session_source_assets_->field_scene_resources.size()) {
             return false;
         }
-        field_taxi_pending_destination_ =
+        // ROM 0x20714 opens the cabbie dialogue here; 0x136B6 travels only
+        // after that dialogue accepts and clears FFF0E0 [C].
+        field_taxi_cabbie_destination_ =
             static_cast<std::uint16_t>(destination);
-        source_boundary("field.taxi.destination_requested");
+        source_boundary("field.taxi.cabbie_requested");
         return true;
     };
     bindings.game.consume_debug_unlock = [this] {
@@ -9321,2771 +7638,30 @@ void FieldSceneRuntime::advance_field_menu_route() {
         dismiss_runner_effect_frames_ = static_cast<std::uint32_t>(
             std::max(0, *route_state.top_grid_effect_frames));
     }
-}
-
-int FieldSceneRuntime::game_save_slot_status(const int slot) const {
-    const auto selected = game_save_slot_from_index(slot);
-    return selected.has_value()
-               ? static_cast<int>(game_save_store_.status(*selected))
-               : static_cast<int>(GameSaveStatus::corrupt);
-}
-
-bool FieldSceneRuntime::save_game_slot(const int slot) {
-    const auto selected = game_save_slot_from_index(slot);
-    if (!selected.has_value() || !ready_ ||
-        !state_.field_scene_buffers.initialized ||
-        !field_entity_.active || world_frame_logic_state_.world_active != 0U) {
-        source_boundary("field.save_load.save_rejected");
-        return false;
-    }
-    QString error;
-    const auto snapshot = capture_game_save_snapshot(&error);
-    if (!snapshot.has_value()) {
-        failure_ = error.toStdString();
-        source_boundary("field.save_load.snapshot_failed");
-        return false;
-    }
-    if (!game_save_store_.save(*selected, *snapshot, &error)) {
-        failure_ = error.toStdString();
-        source_boundary("field.save_load.write_failed");
-        return false;
-    }
-    failure_.clear();
-    source_boundary("field.save_load.state_saved");
-    return true;
-}
-
-bool FieldSceneRuntime::load_game_slot(const int slot) {
-    const auto selected = game_save_slot_from_index(slot);
-    if (!selected.has_value() || !ready_ ||
-        world_frame_logic_state_.world_active != 0U) {
-        source_boundary("field.save_load.load_rejected");
-        return false;
-    }
-    const auto loaded = game_save_store_.load(*selected);
-    if (loaded.status != GameSaveStatus::available) {
-        source_boundary("field.save_load.slot_unavailable");
-        return false;
-    }
-    QString error;
-    if (!restore_game_save_snapshot(loaded.snapshot, &error)) {
-        failure_ = error.toStdString();
-        source_boundary("field.save_load.restore_failed");
-        return false;
-    }
-    failure_.clear();
-    source_boundary("field.save_load.state_restored");
-    return true;
-}
-
-std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
-    QString* const error) {
-    const auto run_registry = game_scripts_.save_run_registry_state();
-    if (!run_registry.has_value()) {
-        if (error != nullptr) {
-            *error = QString::fromStdString(game_scripts_.failure());
-        }
-        return std::nullopt;
-    }
-    QJsonValue run_registry_json;
-    if (!script_persistent_value_to_json(*run_registry, run_registry_json,
-                                         error) ||
-        !run_registry_json.isObject()) {
-        if (error != nullptr && error->isEmpty()) {
-            *error = QStringLiteral("The Lua run registry returned invalid save data.");
-        }
-        return std::nullopt;
-    }
-    QJsonObject scene;
-    scene.insert(QStringLiteral("reference"),
-                 state_.field_scene_buffers.scene_reference);
-    scene.insert(QStringLiteral("mode"),
-                 field_movement_transition_state_.world_mode);
-    scene.insert(QStringLiteral("player_x"), field_entity_.world_position.x);
-    scene.insert(QStringLiteral("player_y"), field_entity_.world_position.y);
-    scene.insert(QStringLiteral("heading"), field_movement_state_.heading);
-    scene.insert(QStringLiteral("direction"), field_entity_.direction);
-    scene.insert(QStringLiteral("camera_x"),
-                 state_.field_scene_buffers.camera_x);
-    scene.insert(QStringLiteral("camera_y"),
-                 state_.field_scene_buffers.camera_y);
-    scene.insert(QStringLiteral("target_heading"), field_target_heading_);
-
-    QJsonArray members;
-    for (std::size_t slot = 0; slot < FieldPartyRosterRuntime::kSlotCount;
-         ++slot) {
-        QJsonObject member;
-        member.insert(QStringLiteral("active"),
-                      field_party_roster_.slot_active(slot));
-        const auto& name = field_party_roster_.name(slot);
-        member.insert(
-            QStringLiteral("name"),
-            QString::fromUtf8(name.data(), static_cast<qsizetype>(name.size())));
-        member.insert(QStringLiteral("portrait_family"),
-                      field_party_roster_.portrait_asset_family(slot));
-        member.insert(QStringLiteral("record"),
-                      runner_record_to_json(
-                          field_party_roster_.records()[slot]));
-        members.append(member);
-    }
-    QJsonArray spell_tables;
-    for (const auto& override_table : field_magic_spell_table_overrides_) {
-        if (!override_table.has_value()) {
-            spell_tables.append(QJsonValue(QJsonValue::Null));
-            continue;
-        }
-        QJsonObject table;
-        table.insert(QStringLiteral("entry_count"),
-                     override_table->entry_count);
-        QJsonArray entries;
-        for (std::size_t index = 0; index < override_table->entry_count;
-             ++index) {
-            QJsonObject entry;
-            entry.insert(QStringLiteral("code"),
-                         override_table->entries[index].spell_code);
-            entry.insert(QStringLiteral("force_limit"),
-                         override_table->entries[index].force_limit);
-            entries.append(entry);
-        }
-        table.insert(QStringLiteral("entries"), entries);
-        spell_tables.append(table);
-    }
-    QJsonObject party;
-    party.insert(QStringLiteral("active_slot"),
-                 static_cast<int>(field_party_roster_.active_slot()));
-    party.insert(QStringLiteral("primary_compact_marker"),
-                 field_party_roster_.primary_compact_marker());
-    party.insert(QStringLiteral("secondary_compact_marker"),
-                 field_party_roster_.secondary_compact_marker());
-    party.insert(QStringLiteral("members"), members);
-
-    QJsonObject story;
-    story.insert(QStringLiteral("exit_world_flags"),
-                 static_cast<double>(field_exit_world_flags_));
-    story.insert(QStringLiteral("mode_flags"),
-                 field_mode_flags_resolved_
-                     ? QJsonValue(static_cast<double>(field_mode_flags_))
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("mode_effect_flags"),
-                 static_cast<double>(field_mode_effect_flags_));
-    story.insert(QStringLiteral("auxiliary_flags"),
-                 static_cast<double>(field_auxiliary_flags_));
-    story.insert(QStringLiteral("render_effect_flags"),
-                 static_cast<double>(field_render_effect_flags_));
-    story.insert(QStringLiteral("dialogue_register"),
-                 field_dialogue_register_.has_value()
-                     ? QJsonValue(*field_dialogue_register_)
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("dialogue_flags"),
-                 field_dialogue_flags_.has_value()
-                     ? QJsonValue(*field_dialogue_flags_)
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("map_event_flags"),
-                 static_cast<double>(field_map_event_state_flags_));
-    story.insert(QStringLiteral("group_item_flags"),
-                 group_item_flags_.has_value()
-                     ? QJsonValue(static_cast<double>(*group_item_flags_))
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("cyberdeck_available"),
-                 cyberdeck_available_.has_value()
-                     ? QJsonValue(*cyberdeck_available_)
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("matrix_passcode_flags"),
-                 field_matrix_passcode_flags_.has_value()
-                     ? QJsonValue(*field_matrix_passcode_flags_)
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("matrix_field_state"),
-                 matrix_field_state_to_json(field_matrix_field_state_));
-    story.insert(QStringLiteral("karma_counter"),
-                 field_matrix_karma_counter_.has_value()
-                     ? QJsonValue(*field_matrix_karma_counter_)
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("passive_ic_counter"),
-                 field_matrix_passive_ic_counter_.has_value()
-                     ? QJsonValue(*field_matrix_passive_ic_counter_)
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("cyberdeck_record"),
-                 field_matrix_deck_record_.has_value()
-                     ? QJsonValue(cyberdeck_record_to_json(
-                           *field_matrix_deck_record_))
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("runner_feature_flags"),
-                 field_runner_feature_flags_.has_value()
-                     ? QJsonValue(*field_runner_feature_flags_)
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("heat_level"),
-                 field_heat_level_.has_value()
-                     ? QJsonValue(*field_heat_level_)
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("strike_team_counter"),
-                 field_strike_team_counter_.has_value()
-                     ? QJsonValue(*field_strike_team_counter_)
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("walk_fast"), field_walk_fast_enabled_);
-    story.insert(QStringLiteral("notebook_current_run_available"),
-                 notebook_current_run_available_);
-    story.insert(QStringLiteral("notebook_tips_resolved"),
-                 notebook_tip_flags_resolved_);
-    QJsonArray tip_flags;
-    for (const auto value : notebook_tip_flags_) {
-        tip_flags.append(static_cast<double>(value));
-    }
-    story.insert(QStringLiteral("notebook_tip_flags"), tip_flags);
-    story.insert(QStringLiteral("notebook_contacts_flags"),
-                 notebook_contacts_flags_.has_value()
-                     ? QJsonValue(static_cast<double>(*notebook_contacts_flags_))
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("notebook_referral_flags"),
-                 notebook_referral_flags_.has_value()
-                     ? QJsonValue(*notebook_referral_flags_)
-                     : QJsonValue(QJsonValue::Null));
-    story.insert(QStringLiteral("notebook_shadowrunner_flags"),
-                 notebook_shadowrunner_flags_.has_value()
-                     ? QJsonValue(*notebook_shadowrunner_flags_)
-                     : QJsonValue(QJsonValue::Null));
-    if (field_entity_action_phase_roll_counters_.has_value()) {
-        QJsonArray counters;
-        for (const auto value : *field_entity_action_phase_roll_counters_) {
-            counters.append(value);
-        }
-        story.insert(QStringLiteral("action_phase_roll_counters"), counters);
-    } else {
-        story.insert(QStringLiteral("action_phase_roll_counters"),
-                     QJsonValue(QJsonValue::Null));
-    }
-    story.insert(QStringLiteral("world_frame_counter"),
-                 field_world_frame_counter_);
-    story.insert(QStringLiteral("world_encounter_sequence"),
-                 static_cast<double>(field_world_encounter_sequence_));
-    story.insert(QStringLiteral("source_random_seed"), field_random_seed_);
-
-    QJsonObject script_facts;
-    for (const auto& [name, value] : game_scripts_.story_state()) {
-        script_facts.insert(
-            QString::fromUtf8(name.data(), static_cast<qsizetype>(name.size())),
-            value);
-    }
-
-    QJsonObject snapshot;
-    snapshot.insert(QStringLiteral("kind"), QStringLiteral("field_session"));
-    snapshot.insert(QStringLiteral("scene"), scene);
-    snapshot.insert(QStringLiteral("party"), party);
-    snapshot.insert(QStringLiteral("spell_tables"), spell_tables);
-    snapshot.insert(QStringLiteral("funds_available"),
-                    field_funds_.has_value());
-    snapshot.insert(QStringLiteral("funds"),
-                    static_cast<double>(field_funds_.value_or(0U)));
-    snapshot.insert(QStringLiteral("story"), story);
-    snapshot.insert(QStringLiteral("script_facts"), script_facts);
-    snapshot.insert(QStringLiteral("run_registry"), run_registry_json);
-    if (error != nullptr) error->clear();
-    return snapshot;
-}
-
-bool FieldSceneRuntime::restore_game_save_snapshot(
-    const QJsonObject& snapshot, QString* const error) {
-    struct RestoredState {
-        std::uint16_t scene = 0U;
-        std::uint16_t mode = 0U;
-        SceneRunnerPosition player{};
-        std::uint16_t heading = 0U;
-        std::uint8_t direction = 0U;
-        std::uint16_t camera_x = 0U;
-        std::uint16_t camera_y = 0U;
-        std::uint16_t target_heading = 0U;
-        std::array<RunnerRecordFields, FieldPartyRosterRuntime::kSlotCount>
-            records{};
-        std::array<std::optional<MagicSpellTable>, kUsMagicSpellTableCount>
-            spell_table_overrides{};
-        std::array<std::string, FieldPartyRosterRuntime::kSlotCount> names{};
-        std::array<bool, FieldPartyRosterRuntime::kSlotCount> active{};
-        std::array<std::uint8_t, FieldPartyRosterRuntime::kSlotCount>
-            portrait_families{};
-        std::uint8_t primary_compact_marker = 0xFFU;
-        std::uint8_t secondary_compact_marker = 0xFFU;
-        std::size_t active_slot = 0U;
-        bool funds_available = false;
-        std::uint32_t funds = 0U;
-        std::uint32_t exit_world_flags = 0U;
-        std::optional<std::uint32_t> mode_flags;
-        std::uint32_t mode_effect_flags = 0U;
-        std::uint32_t auxiliary_flags = 0U;
-        std::uint32_t render_effect_flags = 0U;
-        std::optional<std::uint8_t> dialogue_register;
-        std::optional<std::uint8_t> dialogue_flags;
-        std::uint32_t map_event_flags = 0U;
-        std::optional<std::uint32_t> group_item_flags;
-        std::optional<bool> cyberdeck_available;
-        std::optional<CyberdeckRecord> cyberdeck_record;
-        std::optional<std::uint16_t> matrix_passcode_flags;
-        scripting::ScriptMatrixFieldState matrix_field_state;
-        std::optional<std::int8_t> karma_counter;
-        std::optional<std::int8_t> passive_ic_counter;
-        std::optional<std::uint8_t> runner_feature_flags;
-        bool walk_fast = false;
-        bool current_run_available = false;
-        bool tips_resolved = false;
-        std::array<std::uint32_t, 3> tip_flags{};
-        std::optional<std::uint32_t> contacts_flags;
-        std::optional<std::uint8_t> referral_flags;
-        std::optional<std::uint16_t> shadowrunner_flags;
-        std::optional<std::uint8_t> heat_level;
-        std::optional<std::uint8_t> strike_team_counter;
-        std::optional<std::array<std::uint8_t, 3>> action_phase_roll_counters;
-        std::uint16_t world_frame_counter = 0U;
-        std::uint32_t world_encounter_sequence = 0U;
-        std::uint16_t source_random_seed = 0U;
-        scripting::StoryFacts script_facts;
-    } restored;
-
-    const auto fail = [error](const QString& message) {
-        if (error != nullptr) *error = message;
-        return false;
-    };
-    if (snapshot.value(QStringLiteral("kind")).toString() !=
-        QStringLiteral("field_session")) {
-        return fail(QStringLiteral("The save does not contain a field session."));
-    }
-
-    const auto scene = snapshot.value(QStringLiteral("scene")).toObject();
-    std::int64_t numeric = 0;
-    if (!read_save_integer(scene, "reference", 0,
-                           static_cast<std::int64_t>(kFieldSceneProfileCount - 1U),
-                           numeric, error)) return false;
-    restored.scene = static_cast<std::uint16_t>(numeric);
-    if (!read_save_integer(scene, "mode", 1, 3, numeric, error)) return false;
-    restored.mode = static_cast<std::uint16_t>(numeric);
-    if (!read_save_integer(scene, "player_x", 0, 0xFFFF, numeric, error)) return false;
-    restored.player.x = static_cast<std::uint16_t>(numeric);
-    if (!read_save_integer(scene, "player_y", 0, 0xFFFF, numeric, error)) return false;
-    restored.player.y = static_cast<std::uint16_t>(numeric);
-    if (!read_save_integer(scene, "heading", 0, 0xFFFF, numeric, error)) return false;
-    restored.heading = static_cast<std::uint16_t>(numeric);
-    if (!read_save_integer(scene, "direction", 0, 7, numeric, error)) return false;
-    restored.direction = static_cast<std::uint8_t>(numeric);
-    if (!read_save_integer(scene, "camera_x", 0, 0xFFFF, numeric, error)) return false;
-    restored.camera_x = static_cast<std::uint16_t>(numeric);
-    if (!read_save_integer(scene, "camera_y", 0, 0xFFFF, numeric, error)) return false;
-    restored.camera_y = static_cast<std::uint16_t>(numeric);
-    if (!read_save_integer(scene, "target_heading", 0, 0xFFFF, numeric, error)) return false;
-    restored.target_heading = static_cast<std::uint16_t>(numeric);
-    const auto expected_mode = select_scene_interaction_mode(restored.scene);
-    if (!expected_mode.has_value() || *expected_mode != restored.mode) {
-        return fail(QStringLiteral("The save has an invalid map interaction mode."));
-    }
-
-    const auto party = snapshot.value(QStringLiteral("party")).toObject();
-    if (!read_save_integer(party, "active_slot", 0,
-                           static_cast<std::int64_t>(
-                               FieldPartyRosterRuntime::kSlotCount - 1U),
-                           numeric, error)) return false;
-    restored.active_slot = static_cast<std::size_t>(numeric);
-    // Early local snapshots did not retain the ROM's compact party markers.
-    // Keep their absence explicit as the source sentinel rather than deriving
-    // an index from the currently displayed field slots.
-    if (party.contains(QStringLiteral("primary_compact_marker"))) {
-        if (!read_save_integer(party, "primary_compact_marker", 0, 0xFF,
-                               numeric, error)) return false;
-        restored.primary_compact_marker = static_cast<std::uint8_t>(numeric);
-    }
-    if (party.contains(QStringLiteral("secondary_compact_marker"))) {
-        if (!read_save_integer(party, "secondary_compact_marker", 0, 0xFF,
-                               numeric, error)) return false;
-        restored.secondary_compact_marker =
-            static_cast<std::uint8_t>(numeric);
-    }
-    const auto members_value = party.value(QStringLiteral("members"));
-    if (!members_value.isArray() ||
-        members_value.toArray().size() !=
-            static_cast<qsizetype>(FieldPartyRosterRuntime::kSlotCount)) {
-        return fail(QStringLiteral("The save has an invalid party roster."));
-    }
-    const auto members = members_value.toArray();
-    for (std::size_t slot = 0; slot < members.size(); ++slot) {
-        const auto member = members.at(static_cast<qsizetype>(slot)).toObject();
-        if (!read_save_boolean(member, "active", restored.active[slot], error)) {
-            return false;
-        }
-        const auto name = member.value(QStringLiteral("name"));
-        if (!name.isString() || name.toString().size() > 64) {
-            return fail(QStringLiteral("The save has an invalid runner name."));
-        }
-        restored.names[slot] = name.toString().toStdString();
-        if (!read_save_integer(member, "portrait_family", 0, 0xFF,
-                               numeric, error)) return false;
-        restored.portrait_families[slot] = static_cast<std::uint8_t>(numeric);
-        const auto record = member.value(QStringLiteral("record"));
-        if (!record.isObject() ||
-            !runner_record_from_json(record.toObject(), restored.records[slot],
-                                     error)) {
-            return false;
-        }
-    }
-    if (!restored.active[0] || !restored.active[restored.active_slot]) {
-        return fail(QStringLiteral("The save does not have an active party leader."));
-    }
-    const auto spell_tables_value = snapshot.value(QStringLiteral("spell_tables"));
-    if (!spell_tables_value.isUndefined()) {
-        if (!spell_tables_value.isArray() ||
-            spell_tables_value.toArray().size() !=
-                static_cast<qsizetype>(kUsMagicSpellTableCount)) {
-            return fail(QStringLiteral("The save has invalid spell-table state."));
-        }
-        const auto spell_tables = spell_tables_value.toArray();
-        for (std::size_t table_index = 0;
-             table_index < kUsMagicSpellTableCount; ++table_index) {
-            const auto value = spell_tables.at(static_cast<qsizetype>(table_index));
-            if (value.isNull()) {
-                continue;
-            }
-            if (!value.isObject()) {
-                return fail(QStringLiteral("The save has invalid spell-table state."));
-            }
-            const auto table_object = value.toObject();
-            if (!read_save_integer(table_object, "entry_count", 0,
-                                   static_cast<std::int64_t>(
-                                       kMagicSpellTableEntryCapacity),
-                                   numeric, error)) {
-                return false;
-            }
-            MagicSpellTable table{};
-            table.entry_count = static_cast<std::uint8_t>(numeric);
-            const auto entries_value = table_object.value(QStringLiteral("entries"));
-            if (!entries_value.isArray() ||
-                entries_value.toArray().size() !=
-                    static_cast<qsizetype>(table.entry_count)) {
-                return fail(QStringLiteral("The save has invalid spell-table entries."));
-            }
-            const auto entries = entries_value.toArray();
-            for (std::size_t entry_index = 0;
-                 entry_index < table.entry_count; ++entry_index) {
-                const auto entry_value = entries.at(
-                    static_cast<qsizetype>(entry_index));
-                if (!entry_value.isObject()) {
-                    return fail(QStringLiteral("The save has an invalid spell-table entry."));
-                }
-                const auto entry_object = entry_value.toObject();
-                if (!read_save_integer(entry_object, "code", 0,
-                                       static_cast<std::int64_t>(
-                                           kUsMagicSpellCount - 1U),
-                                       numeric, error)) {
-                    return false;
-                }
-                table.entries[entry_index].spell_code =
-                    static_cast<std::uint8_t>(numeric);
-                if (!read_save_integer(entry_object, "force_limit", 0,
-                                       0xFF, numeric, error)) {
-                    return false;
-                }
-                table.entries[entry_index].force_limit =
-                    static_cast<std::uint8_t>(numeric);
-            }
-            restored.spell_table_overrides[table_index] = table;
-        }
-    }
-    if (!read_save_boolean(snapshot, "funds_available",
-                           restored.funds_available, error)) return false;
-    if (!read_save_integer(snapshot, "funds", 0, 0xFFFFFFFFLL,
-                           numeric, error)) return false;
-    restored.funds = static_cast<std::uint32_t>(numeric);
-
-    const auto story = snapshot.value(QStringLiteral("story")).toObject();
-    if (!read_save_integer(story, "exit_world_flags", 0, 0xFFFFFFFFLL,
-                           numeric, error)) return false;
-    restored.exit_world_flags = static_cast<std::uint32_t>(numeric);
-    if (!read_save_integer(story, "mode_effect_flags", 0, 0xFFFFFFFFLL,
-                           numeric, error)) return false;
-    restored.mode_effect_flags = static_cast<std::uint32_t>(numeric);
-    // Older local snapshots predate the typed FFFC40 fact word.
-    if (story.contains(QStringLiteral("auxiliary_flags"))) {
-        if (!read_save_integer(story, "auxiliary_flags", 0, 0xFFFFFFFFLL,
-                               numeric, error)) return false;
-        restored.auxiliary_flags = static_cast<std::uint32_t>(numeric);
-    }
-    if (!read_save_integer(story, "render_effect_flags", 0, 0xFFFFFFFFLL,
-                           numeric, error)) return false;
-    restored.render_effect_flags = static_cast<std::uint32_t>(numeric);
-    if (!read_save_integer(story, "map_event_flags", 0, 0xFFFFFFFFLL,
-                           numeric, error)) return false;
-    restored.map_event_flags = static_cast<std::uint32_t>(numeric);
-
-    const auto read_optional_unsigned =
-        [&story, &fail](const char* key, const std::int64_t maximum,
-                        auto& output) {
-            const auto value = story.value(QLatin1String(key));
-            if (value.isUndefined() || value.isNull()) {
-                output.reset();
-                return true;
-            }
-            if (!value.isDouble()) {
-                return fail(QStringLiteral("Save field '%1' is invalid.")
-                                .arg(QLatin1String(key)));
-            }
-            const auto parsed = value.toDouble(-1.0);
-            if (!std::isfinite(parsed) || std::trunc(parsed) != parsed ||
-                parsed < 0.0 || parsed > static_cast<double>(maximum)) {
-                return fail(QStringLiteral("Save field '%1' is out of range.")
-                                .arg(QLatin1String(key)));
-            }
-            output = static_cast<std::decay_t<decltype(output.value())>>(parsed);
-            return true;
-        };
-    if (!matrix_field_state_from_json(
-            story.value(QStringLiteral("matrix_field_state")),
-            restored.matrix_field_state, error) ||
-        !read_optional_unsigned("dialogue_register", 0xFF,
-                                restored.dialogue_register) ||
-        !read_optional_unsigned("dialogue_flags", 0xFF,
-                                restored.dialogue_flags) ||
-        !read_optional_unsigned("mode_flags", 0xFFFFFFFFLL,
-                                restored.mode_flags) ||
-        !read_optional_unsigned("group_item_flags", 0xFFFFFFFFLL,
-                                restored.group_item_flags) ||
-        !read_optional_unsigned("matrix_passcode_flags", 0xFFFF,
-                                restored.matrix_passcode_flags) ||
-        !read_optional_unsigned("runner_feature_flags", 0xFF,
-                                restored.runner_feature_flags) ||
-        !read_optional_unsigned("notebook_contacts_flags", 0xFFFFFFFFLL,
-                                restored.contacts_flags) ||
-        !read_optional_unsigned("notebook_referral_flags", 0xFF,
-                                restored.referral_flags) ||
-        !read_optional_unsigned("notebook_shadowrunner_flags", 0xFFFF,
-                                restored.shadowrunner_flags) ||
-        !read_optional_unsigned("heat_level", 8,
-                                restored.heat_level) ||
-        !read_optional_unsigned("strike_team_counter", 8,
-                                restored.strike_team_counter)) {
-        return false;
-    }
-    const auto karma_counter = story.value(QStringLiteral("karma_counter"));
-    if (karma_counter.isUndefined() || karma_counter.isNull()) {
-        restored.karma_counter.reset();
-    } else {
-        if (!read_save_integer(story, "karma_counter", -128, 127,
-                               numeric, error)) {
-            return false;
-        }
-        restored.karma_counter = static_cast<std::int8_t>(numeric);
-    }
-    const auto passive_ic_counter =
-        story.value(QStringLiteral("passive_ic_counter"));
-    if (passive_ic_counter.isUndefined() || passive_ic_counter.isNull()) {
-        restored.passive_ic_counter.reset();
-    } else {
-        if (!read_save_integer(story, "passive_ic_counter", -128, 127,
-                               numeric, error)) {
-            return false;
-        }
-        restored.passive_ic_counter = static_cast<std::int8_t>(numeric);
-    }
-    const auto cyberdeck = story.value(QStringLiteral("cyberdeck_available"));
-    if (cyberdeck.isNull()) {
-        restored.cyberdeck_available.reset();
-    } else if (cyberdeck.isBool()) {
-        restored.cyberdeck_available = cyberdeck.toBool();
-    } else {
-        return fail(QStringLiteral("The save has an invalid cyberdeck state."));
-    }
-    const auto cyberdeck_record =
-        story.value(QStringLiteral("cyberdeck_record"));
-    if (cyberdeck_record.isNull()) {
-        restored.cyberdeck_record.reset();
-    } else if (cyberdeck_record.isObject()) {
-        CyberdeckRecord record;
-        if (!cyberdeck_record_from_json(cyberdeck_record.toObject(), record,
-                                        error)) {
-            return false;
-        }
-        restored.cyberdeck_record = std::move(record);
-    } else {
-        return fail(QStringLiteral("The save has an invalid cyberdeck record."));
-    }
-    if (!read_save_boolean(story, "walk_fast", restored.walk_fast, error) ||
-        !read_save_boolean(story, "notebook_current_run_available",
-                           restored.current_run_available, error) ||
-        !read_save_boolean(story, "notebook_tips_resolved",
-                           restored.tips_resolved, error)) {
-        return false;
-    }
-    const auto tip_flags = story.value(QStringLiteral("notebook_tip_flags"));
-    if (!tip_flags.isArray() || tip_flags.toArray().size() != 3) {
-        return fail(QStringLiteral("The save has invalid Notebook tip state."));
-    }
-    for (std::size_t index = 0; index < restored.tip_flags.size(); ++index) {
-        const auto value = tip_flags.toArray().at(static_cast<qsizetype>(index));
-        const auto parsed = value.toDouble(-1.0);
-        if (!value.isDouble() || !std::isfinite(parsed) ||
-            std::trunc(parsed) != parsed || parsed < 0.0 ||
-            parsed > 0xFFFFFFFFU) {
-            return fail(QStringLiteral("The save has invalid Notebook tip state."));
-        }
-        restored.tip_flags[index] = static_cast<std::uint32_t>(parsed);
-    }
-    const auto phase_counters =
-        story.value(QStringLiteral("action_phase_roll_counters"));
-    if (phase_counters.isNull()) {
-        restored.action_phase_roll_counters.reset();
-    } else {
-        QJsonObject wrapper;
-        wrapper.insert(QStringLiteral("values"), phase_counters);
-        std::array<std::uint8_t, 3> values{};
-        if (!read_save_byte_array(wrapper, "values", values, error)) return false;
-        restored.action_phase_roll_counters = values;
-    }
-    if (!read_save_integer(story, "world_frame_counter", 0, 0xFFFF,
-                           numeric, error)) return false;
-    restored.world_frame_counter = static_cast<std::uint16_t>(numeric);
-    if (!read_save_integer(story, "world_encounter_sequence", 0,
-                           0xFFFFFFFFLL, numeric, error)) return false;
-    restored.world_encounter_sequence = static_cast<std::uint32_t>(numeric);
-    if (!read_save_integer(story, "source_random_seed", 0, 0xFFFF,
-                           numeric, error)) return false;
-    restored.source_random_seed = static_cast<std::uint16_t>(numeric);
-
-    const auto script_facts_value = snapshot.value(QStringLiteral("script_facts"));
-    if (!script_facts_value.isObject()) {
-        return fail(QStringLiteral("The save has invalid script story facts."));
-    }
-    const auto script_facts = script_facts_value.toObject();
-    if (script_facts.size() > 4096) {
-        return fail(QStringLiteral("The save contains too many story facts."));
-    }
-    for (auto iterator = script_facts.begin(); iterator != script_facts.end();
-         ++iterator) {
-        if (!iterator.value().isBool()) {
-            return fail(QStringLiteral("The save contains an invalid story fact."));
-        }
-        restored.script_facts.emplace(iterator.key().toStdString(),
-                                       iterator.value().toBool());
-    }
-
-    scripting::ScriptPersistentValue run_registry_state;
-    if (!script_persistent_value_from_json(
-            snapshot.value(QStringLiteral("run_registry")),
-            run_registry_state, error) ||
-        !std::holds_alternative<scripting::ScriptPersistentValue::Object>(
-            run_registry_state.value)) {
-        if (error != nullptr && error->isEmpty()) {
-            *error = QStringLiteral("The save has invalid Lua run state.");
-        }
-        return false;
-    }
-    if (!game_scripts_.validate_run_registry_state(run_registry_state)) {
-        return fail(QString::fromStdString(game_scripts_.failure()));
-    }
-
-    if (!prepare_runtime_field_scene(restored.scene)) {
-        return fail(QString::fromStdString(
-            failure_.empty() ? "The saved map resources are unavailable."
-                             : failure_));
-    }
-    if (!game_scripts_.restore_run_registry_state(run_registry_state)) {
-        return fail(QString::fromStdString(game_scripts_.failure()));
-    }
-    if (!field_party_roster_.restore_saved_party(
-            restored.records, restored.names, restored.active,
-            restored.portrait_families, restored.primary_compact_marker,
-            restored.secondary_compact_marker, restored.active_slot)) {
-        return fail(QStringLiteral("The saved party roster is invalid."));
-    }
-    field_magic_spell_table_overrides_ = restored.spell_table_overrides;
-    field_funds_ = restored.funds_available
-                       ? std::optional<std::uint32_t>(restored.funds)
-                       : std::nullopt;
-    field_exit_world_flags_ = restored.exit_world_flags;
-    field_mode_flags_resolved_ = restored.mode_flags.has_value();
-    field_mode_flags_ = restored.mode_flags.value_or(1U);
-    field_mode_effect_flags_ = restored.mode_effect_flags;
-    field_auxiliary_flags_ = restored.auxiliary_flags;
-    field_render_effect_flags_ = restored.render_effect_flags;
-    field_dialogue_register_ = restored.dialogue_register;
-    field_dialogue_flags_ = restored.dialogue_flags;
-    field_map_event_state_flags_ = restored.map_event_flags;
-    group_item_flags_ = restored.group_item_flags;
-    cyberdeck_available_ = restored.cyberdeck_available;
-    field_matrix_deck_record_ = restored.cyberdeck_record;
-    field_matrix_passcode_flags_ = restored.matrix_passcode_flags;
-    field_matrix_field_state_ = restored.matrix_field_state;
-    field_matrix_karma_counter_ = restored.karma_counter;
-    field_matrix_passive_ic_counter_ = restored.passive_ic_counter;
-    field_runner_feature_flags_ = restored.runner_feature_flags;
-    field_walk_fast_enabled_ = restored.walk_fast;
-    notebook_current_run_available_ = restored.current_run_available;
-    notebook_tip_flags_resolved_ = restored.tips_resolved;
-    notebook_tip_flags_ = restored.tip_flags;
-    notebook_contacts_flags_ = restored.contacts_flags;
-    notebook_referral_flags_ = restored.referral_flags;
-    notebook_shadowrunner_flags_ = restored.shadowrunner_flags;
-    field_heat_level_ = restored.heat_level;
-    field_strike_team_counter_ = restored.strike_team_counter;
-    field_entity_action_phase_roll_counters_ =
-        restored.action_phase_roll_counters;
-    field_world_frame_counter_ = restored.world_frame_counter;
-    field_world_encounter_sequence_ = restored.world_encounter_sequence;
-    field_random_seed_ = restored.source_random_seed;
-    game_scripts_.set_story_state(restored.script_facts);
-
-    field_entity_.active = true;
-    field_entity_.world_position = restored.player;
-    field_entity_.direction = restored.direction;
-    field_movement_state_.position_x = restored.player.x;
-    field_movement_state_.position_y = restored.player.y;
-    field_movement_state_.heading = restored.heading;
-    field_movement_state_.animation_heading = restored.heading;
-    field_target_heading_ = restored.target_heading;
-    state_.field_scene_buffers.camera_x = restored.camera_x;
-    state_.field_scene_buffers.camera_y = restored.camera_y;
-    state_.field_scene_buffers.profile[kSceneProfileEntityPositionWord] =
-        restored.player.x;
-    state_.field_scene_buffers.profile[kSceneProfileEntityPositionWord + 1U] =
-        restored.player.y;
-    state_.field_scene_buffers.source_metadata.initial_field_records[0] =
-        restored.player;
-    state_.field_scene_entry.camera_x = restored.camera_x;
-    state_.field_scene_entry.camera_y = restored.camera_y;
-    field_camera_follow_.camera_x = restored.camera_x;
-    field_camera_follow_.camera_y = restored.camera_y;
-    field_camera_follow_.aligned_x = restored.camera_x;
-    field_camera_follow_.aligned_y = restored.camera_y;
-    field_camera_follow_.horizontal_step = 0;
-    field_camera_follow_.vertical_step = 0;
-    field_movement_transition_state_.scene_id = restored.scene;
-    field_movement_transition_state_.world_mode = restored.mode;
-    field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
-    field_world_activity_timeout_state_.scene_id = restored.scene;
-    world_frame_logic_state_.world_mode = restored.scene;
-    world_frame_logic_state_.world_active = 0U;
-    world_frame_logic_state_.cleanup_countdown = 0;
-    field_entity_selection_state_.active_index = restored.active_slot;
-    field_entity_behavior_flags_ = static_cast<std::uint8_t>(
-        active_runner_record().flags >> 8U);
-    field_movement_behavior_record_.behavior_flags =
-        field_entity_behavior_flags_;
-    field_entity_walking_ = false;
-    field_entity_attack_pose_active_ = false;
-    field_player_animation_reset_pending_ = true;
-    field_entity_animation_id_ = "idle";
-    field_entity_animation_ = EntityAnimationState{};
-    refresh_field_hud_runner_slot();
-    refresh_command_overview_combat_bars();
-    refresh_command_overview_item_detail();
-    state_.display_dirty_flags = static_cast<std::uint8_t>(
-        state_.display_dirty_flags | 0x0EU);
-    field_runtime_state_.display_dirty_flags = static_cast<std::uint8_t>(
-        field_runtime_state_.display_dirty_flags | 0x0EU);
-    if (error != nullptr) error->clear();
-    return true;
-}
-
-void FieldSceneRuntime::synchronize_command_overview_magic_from_route(
-    const scripting::ScriptMenuRouteSnapshot& route_state) {
-    menu_route_magic_view_.reset();
-    menu_route_magic_physical_defense_ = MagicDefenseStripView{};
-    menu_route_magic_mana_defense_ = MagicDefenseStripView{};
-    if (!route_state.open) {
-        command_overview_magic_state_ = CommandOverviewMagicState::inactive;
-        command_overview_magic_selected_spell_.reset();
-        return;
-    }
-
-    switch (static_cast<srx::MenuScreen>(route_state.top_screen)) {
-    case srx::MenuScreen::MAGIC:
-        command_overview_magic_state_ = CommandOverviewMagicState::spell_panel;
-        break;
-    case srx::MenuScreen::MAGICAL_DEFENSE:
-        command_overview_magic_state_ =
-            CommandOverviewMagicState::magical_defense_wait;
-        break;
-    case srx::MenuScreen::MAGIC_FORCE:
-        command_overview_magic_state_ =
-            CommandOverviewMagicState::spell_force_selection;
-        break;
-    case srx::MenuScreen::MAGIC_POSTURE:
-        command_overview_magic_state_ =
-            CommandOverviewMagicState::spell_posture_selection;
-        break;
-    default:
-        command_overview_magic_state_ = CommandOverviewMagicState::inactive;
-        command_overview_magic_selected_spell_.reset();
-        return;
-    }
-
-    if (!route_state.magic_view.has_value() ||
-        !route_state.magic_view->present) {
-        command_overview_magic_state_ = CommandOverviewMagicState::inactive;
-        source_boundary("field.command_overview.magic.lua_view_missing");
-        return;
-    }
-    const auto& view = *route_state.magic_view;
-    menu_route_magic_view_ = view;
-    command_overview_magic_loop_.selection = {
-        static_cast<std::uint8_t>(std::clamp(view.column, 0, 0xFF)),
-        static_cast<std::uint8_t>(std::clamp(view.row, 0, 0xFF))};
-    command_overview_magic_force_.current_force =
-        static_cast<std::uint16_t>(std::clamp(view.force, 0, 0xFFFF));
-    command_overview_magic_force_.maximum_force =
-        static_cast<std::uint16_t>(std::clamp(view.maximum_force, 0, 0xFFFF));
-    command_overview_magic_cursor_phase_ =
-        static_cast<std::uint8_t>(std::clamp(view.cursor_phase, 0, 0xFF));
-    menu_route_magic_physical_defense_ = {
-        static_cast<std::uint16_t>(std::clamp(
-            view.physical_defense_value, 0, 0xFFFF)),
-        static_cast<std::uint8_t>(std::clamp(
-            view.physical_defense_row, 0, 0xFF))};
-    menu_route_magic_mana_defense_ = {
-        static_cast<std::uint16_t>(std::clamp(
-            view.mana_defense_value, 0, 0xFFFF)),
-        static_cast<std::uint8_t>(std::clamp(
-            view.mana_defense_row, 0, 0xFF))};
-    command_overview_magic_physical_defense_ =
-        menu_route_magic_physical_defense_;
-    command_overview_magic_mana_defense_ = menu_route_magic_mana_defense_;
-
-    if (view.spell_code < 0 || view.spell_code > 0xFF) {
-        command_overview_magic_selected_spell_.reset();
-        return;
-    }
-    const auto* spell = find_us_magic_spell(
-        static_cast<std::uint8_t>(view.spell_code));
-    if (spell == nullptr) {
-        command_overview_magic_selected_spell_.reset();
-        source_boundary("field.command_overview.magic.lua_spell_missing");
-        return;
-    }
-    command_overview_magic_selected_spell_ = MagicSpellSelection{
-        static_cast<std::uint16_t>(std::clamp(
-            view.table_entry_index, 0, 0xFFFF)),
-        static_cast<std::uint8_t>(view.spell_code),
-        static_cast<std::uint8_t>(std::clamp(view.maximum_force, 0, 0xFF)),
-        spell->availability_byte,
-        spell->availability_byte >= 0
-            ? MagicSpellAvailability::available
-            : MagicSpellAvailability::unavailable};
-}
-
-void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
-    const scripting::ScriptMenuRouteSnapshot& route_state) {
-    const auto screen = static_cast<srx::MenuScreen>(route_state.top_screen);
-    const bool is_message = screen == srx::MenuScreen::MESSAGE;
-    const auto message = route_state.top_message.value_or(0);
-    const bool no_current_run =
-        is_message && message == static_cast<int>(srx::MenuMessage::NO_CURRENT_RUN);
-    const bool johnson_detail =
-        is_message && message ==
-                          static_cast<int>(srx::MenuMessage::MR_JOHNSON_DETAIL);
-    const bool contacts_detail =
-        is_message && message == static_cast<int>(
-                                      srx::MenuMessage::NOTEBOOK_CONTACT_DETAIL);
-    const bool shadowrunners_detail =
-        is_message && message == static_cast<int>(
-                                      srx::MenuMessage::
-                                          NOTEBOOK_SHADOWRUNNER_DETAIL);
-    const bool contacts_page =
-        screen == srx::MenuScreen::NOTEBOOK_CONTACTS;
-    const bool shadowrunners_page =
-        screen == srx::MenuScreen::NOTEBOOK_SHADOWRUNNERS;
-    const bool current_run_page =
-        screen == srx::MenuScreen::NOTEBOOK_CURRENT_RUN;
-    auto& notebook = pocket_secretary_.notebook;
-    if (screen != srx::MenuScreen::NOTEBOOK &&
-        screen != srx::MenuScreen::NOTEBOOK_TIPS &&
-        screen != srx::MenuScreen::MR_JOHNSONS && !no_current_run &&
-        !current_run_page &&
-        !johnson_detail && !contacts_page && !shadowrunners_page &&
-        !contacts_detail && !shadowrunners_detail) {
-        notebook = NotebookMenuState{};
-        return;
-    }
-
-    notebook.open = true;
-    notebook.no_current_run_wait = no_current_run;
-    notebook.current_run.open = current_run_page;
-    if (current_run_page &&
-        route_state.top_notebook_current_run.has_value()) {
-        const auto& source_view =
-            *route_state.top_notebook_current_run;
-        auto& current_run = notebook.current_run;
-        current_run.source_initializer = source_view.source_initializer;
-        current_run.context = source_view.context;
-        current_run.run_type = source_view.run_type;
-        current_run.payment_amount = source_view.payment_amount;
-        current_run.johnson_label = source_view.johnson_label;
-        current_run.johnson_name = source_view.johnson_name;
-        current_run.run_type_label = source_view.run_type_label;
-        current_run.run_type_name = source_view.run_type_name;
-        current_run.payment_label = source_view.payment_label;
-        current_run.currency_symbol = source_view.currency_symbol;
-        current_run.body_lines = source_view.body_lines;
-    } else if (!current_run_page) {
-        notebook.current_run = NotebookMenuState::CurrentRunState{};
-    }
-    notebook.tips.open = screen == srx::MenuScreen::NOTEBOOK_TIPS;
-    notebook.mr_johnsons.open = screen == srx::MenuScreen::MR_JOHNSONS ||
-                                johnson_detail;
-    notebook.mr_johnsons.detail_wait = johnson_detail;
-    notebook.contacts.open = contacts_page || contacts_detail;
-    notebook.contacts.detail_wait = contacts_detail;
-    notebook.shadowrunners.open = shadowrunners_page || shadowrunners_detail;
-    notebook.shadowrunners.detail_wait = shadowrunners_detail;
-
-    if (screen == srx::MenuScreen::NOTEBOOK) {
-        notebook.option_count = static_cast<std::uint8_t>(
-            std::min<std::size_t>(route_state.top_visible_option_ids.size(),
-                                  notebook.visible_options.size()));
-        for (std::size_t index = 0; index < notebook.option_count; ++index) {
-            notebook.visible_options[index] =
-                static_cast<NotebookMenuOption>(
-                    route_state.top_visible_option_ids[index]);
-        }
-        notebook.selection = static_cast<std::uint8_t>(
-            std::clamp(route_state.top_row.value_or(0), 0,
-                       std::max(0, static_cast<int>(notebook.option_count) - 1)));
-    }
-
-    if (notebook.tips.open) {
-        auto& tips = notebook.tips;
-        tips.visible_count = static_cast<std::uint8_t>(
-            std::min<std::size_t>(route_state.top_visible_source_ids.size(),
-                                  tips.visible_source_indices.size()));
-        for (std::size_t index = 0; index < tips.visible_count; ++index) {
-            tips.visible_source_indices[index] = static_cast<std::uint8_t>(
-                route_state.top_visible_source_ids[index]);
-        }
-        tips.selection = static_cast<std::uint8_t>(
-            std::clamp(route_state.top_page.value_or(0), 0,
-                       std::max(0, static_cast<int>(tips.visible_count) - 1)));
-    } else {
-        notebook.tips.open = false;
-    }
-
-    if (notebook.mr_johnsons.open) {
-        auto& page = notebook.mr_johnsons;
-        page.visible_count = static_cast<std::uint8_t>(
-            std::min<std::size_t>(route_state.top_visible_source_ids.size(),
-                                  page.visible_source_indices.size()));
-        for (std::size_t index = 0; index < page.visible_count; ++index) {
-            page.visible_source_indices[index] = static_cast<std::uint8_t>(
-                route_state.top_visible_source_ids[index]);
-        }
-        const auto selected_row = johnson_detail
-                                      ? route_state.top_detail_row.value_or(0)
-                                      : route_state.top_row.value_or(0);
-        page.selection = static_cast<std::uint8_t>(
-            std::clamp(selected_row, 0,
-                       std::max(0, static_cast<int>(page.visible_count) - 1)));
-    }
-    const auto synchronize_record_page =
-        [&route_state](NotebookMenuState::RecordPageState& page,
-                       const bool detail_wait) {
-            if (!page.open) return;
-            page.visible_count = static_cast<std::uint8_t>(
-                std::min<std::size_t>(route_state.top_visible_source_ids.size(),
-                                      page.visible_source_indices.size()));
-            for (std::size_t index = 0; index < page.visible_count; ++index) {
-                page.visible_source_indices[index] =
-                    static_cast<std::uint8_t>(
-                        route_state.top_visible_source_ids[index]);
-            }
-            const auto selected_row = detail_wait
-                                          ? route_state.top_detail_row.value_or(0)
-                                          : route_state.top_row.value_or(0);
-            page.selection = static_cast<std::uint8_t>(std::clamp(
-                selected_row, 0,
-                std::max(0, static_cast<int>(page.visible_count) - 1)));
-        };
-    synchronize_record_page(notebook.contacts, contacts_detail);
-    synchronize_record_page(notebook.shadowrunners, shadowrunners_detail);
-}
-
-void FieldSceneRuntime::synchronize_command_overview_clips_from_route(
-    const scripting::ScriptMenuRouteSnapshot& route_state) {
-    constexpr int kClipsPage = static_cast<int>(srx::MenuPage::CLIPS);
-    constexpr std::uint16_t kClips =
-        static_cast<std::uint16_t>(srx::MenuScreen::CLIPS);
-    constexpr std::uint16_t kReloadConfirm =
-        static_cast<std::uint16_t>(srx::MenuScreen::RELOAD_CONFIRM);
-    constexpr std::uint16_t kClipTrade =
-        static_cast<std::uint16_t>(srx::MenuScreen::CLIP_TRADE);
-    constexpr std::uint16_t kMessage =
-        static_cast<std::uint16_t>(srx::MenuScreen::MESSAGE);
-    const bool clips_route =
-        route_state.open && route_state.page == kClipsPage &&
-        (route_state.top_screen == kClips ||
-         route_state.top_screen == kReloadConfirm ||
-         route_state.top_screen == kClipTrade ||
-         route_state.top_screen == kMessage);
-    if (!clips_route) {
-        if (command_overview_clips_.is_open()) {
-            command_overview_clips_.close();
-        }
-        return;
-    }
-
-    if (!command_overview_clips_.is_open()) {
-        command_overview_clips_.open();
-    }
-    auto message = ClipsMenuMessage::none;
-    if (route_state.top_screen == kMessage &&
-        route_state.top_message.has_value()) {
-        using srx::MenuMessage;
-        switch (static_cast<MenuMessage>(*route_state.top_message)) {
-        case MenuMessage::OUT_OF_AMMO:
-            message = ClipsMenuMessage::out_of_ammo; break;
-        case MenuMessage::ITEM_NO_CLIPS:
-            message = ClipsMenuMessage::item_does_not_use_clips; break;
-        case MenuMessage::NO_PARTY:
-            message = ClipsMenuMessage::no_party_members; break;
-        case MenuMessage::RELOADED:
-            message = ClipsMenuMessage::reload_success; break;
-        case MenuMessage::EXCHANGE_COMPLETE:
-            message = ClipsMenuMessage::exchange_complete; break;
-        case MenuMessage::FUNCTION_ABORTED:
-            message = ClipsMenuMessage::function_aborted; break;
-        default: break;
-        }
-    }
-    const auto u8_or = [](const std::optional<int>& value,
-                          const std::uint8_t fallback) {
-        return static_cast<std::uint8_t>(
-            value.has_value() ? std::clamp(*value, 0, 0xFF) : fallback);
-    };
-    const bool reload_confirmation = route_state.top_screen == kReloadConfirm;
-    const bool trade = route_state.top_screen == kClipTrade;
-    command_overview_clips_.synchronize_route_presentation(
-        u8_or(route_state.top_selection,
-              command_overview_clips_.selection()),
-        reload_confirmation,
-        reload_confirmation && route_state.top_yes.value_or(false), trade,
-        u8_or(route_state.top_command, 2U),
-        u8_or(route_state.top_quantity, active_runner_record().ammo_clips),
-        route_state.top_recipient.has_value() && *route_state.top_recipient >= 0
-            ? static_cast<std::size_t>(*route_state.top_recipient)
-            : 0U,
-        message);
-}
-
-void FieldSceneRuntime::synchronize_command_overview_inventory_from_route(
-    const scripting::ScriptMenuRouteSnapshot& route_state) {
-    const auto action = static_cast<std::uint16_t>(
-        srx::MenuScreen::ITEM_ACTION);
-    const auto discard = static_cast<std::uint16_t>(
-        srx::MenuScreen::DISCARD_CONFIRM);
-    const auto trade = static_cast<std::uint16_t>(
-        srx::MenuScreen::INVENTORY_TRADE);
-    const auto first_aid = static_cast<std::uint16_t>(
-        srx::MenuScreen::FIRST_AID);
-    const auto message = static_cast<std::uint16_t>(
-        srx::MenuScreen::MESSAGE);
-    const bool inventory_page = route_state.page.has_value() &&
-                                *route_state.page >= 0 &&
-                                *route_state.page < 2;
-    const bool item_message = route_state.top_screen == message &&
-                              route_state.top_item_slot.has_value();
-    const bool inventory_screen = route_state.top_screen == action ||
-                                  route_state.top_screen == discard ||
-                                  route_state.top_screen == trade ||
-                                  route_state.top_screen == first_aid ||
-                                  item_message;
-    const bool routed = route_state.open && inventory_page &&
-                        inventory_screen;
-    const bool was_routed = command_overview_inventory_lua_route_active_;
-    command_overview_inventory_lua_route_active_ = routed;
-    if (!routed) {
-        if (was_routed) {
-            const bool source_wait_clears_selector =
-                command_overview_first_aid_state_ !=
-                    CommandOverviewFirstAidState::inactive ||
-                command_overview_automatic_use_state_ !=
-                    CommandOverviewAutomaticUseState::inactive;
-            command_overview_inventory_action_ = InventoryActionMenuState{};
-            command_overview_selected_inventory_item_.reset();
-            command_overview_inventory_action_active_ = false;
-            command_overview_discard_confirmation_active_ = false;
-            command_overview_discard_confirmation_ = MenuConfirmationState{};
-            command_overview_inventory_trade_ = InventoryTradeState{};
-            command_overview_first_aid_state_ =
-                CommandOverviewFirstAidState::inactive;
-            command_overview_first_aid_targets_ = FirstAidTargetList{};
-            command_overview_first_aid_cursor_ = 0U;
-            command_overview_first_aid_message_ = FirstAidMessage::none;
-            command_overview_automatic_use_state_ =
-                CommandOverviewAutomaticUseState::inactive;
-            command_overview_action_message_ =
-                CommandOverviewActionMessage::none;
-            // The First Aid and utility wait tails return through 0x11928,
-            // which clears the yellow selector. Ordinary equipment, discard,
-            // Trade, and no-recipient returns keep the inventory cursor state.
-            if (source_wait_clears_selector) {
-                command_overview_inventory_selector_suppressed_ = true;
-            }
-        }
-        return;
-    }
-
-    command_overview_action_message_ = CommandOverviewActionMessage::none;
-    command_overview_first_aid_state_ =
-        CommandOverviewFirstAidState::inactive;
-    command_overview_first_aid_targets_ = FirstAidTargetList{};
-    command_overview_first_aid_cursor_ = 0U;
-    command_overview_first_aid_message_ = FirstAidMessage::none;
-    command_overview_automatic_use_state_ =
-        CommandOverviewAutomaticUseState::inactive;
-    command_overview_discard_confirmation_active_ = false;
-    command_overview_inventory_trade_ = InventoryTradeState{};
-
-    if (route_state.top_item_slot.has_value() &&
-        route_state.top_item_code.has_value() &&
-        *route_state.top_item_slot >= 0 &&
-        *route_state.top_item_slot < 8 &&
-        *route_state.top_item_code > 0 &&
-        *route_state.top_item_code <= 0xFF) {
-        command_overview_selected_inventory_item_ = SelectedInventoryItem{
-            static_cast<std::size_t>(*route_state.top_item_slot),
-            static_cast<std::uint8_t>(*route_state.top_item_code),
-            static_cast<std::uint8_t>(std::clamp(
-                route_state.top_item_phase.value_or(0), 0, 0xFF))};
-    } else {
-        command_overview_selected_inventory_item_.reset();
-    }
-
-    if (route_state.top_screen == action ||
-        route_state.top_screen == discard) {
-        command_overview_inventory_action_active_ = true;
-        command_overview_inventory_action_.open = true;
-        command_overview_inventory_action_.column = static_cast<std::uint8_t>(
-            std::clamp(route_state.top_column.value_or(0), 0, 1));
-        command_overview_inventory_action_.row = static_cast<std::uint8_t>(
-            std::clamp(route_state.top_row.value_or(0), 0, 3));
-        command_overview_inventory_action_.action_selector =
-            static_cast<std::uint8_t>(std::clamp(
-                route_state.top_selection.value_or(2), 2, 5));
-    } else {
-        command_overview_inventory_action_active_ = false;
-    }
-
-    if (route_state.top_screen == discard) {
-        command_overview_discard_confirmation_active_ = true;
-        command_overview_discard_confirmation_.selected_option =
-            route_state.top_yes.value_or(false) ? 0U : 1U;
-    }
-    if (route_state.top_screen == trade) {
-        auto& state = command_overview_inventory_trade_;
-        state.open = true;
-        if (command_overview_selected_inventory_item_.has_value()) {
-            state.selected_item = *command_overview_selected_inventory_item_;
-        }
-        state.source_slot = static_cast<std::size_t>(std::clamp(
-            route_state.top_source.value_or(
-                static_cast<int>(field_party_roster_.active_slot())),
-            0, static_cast<int>(FieldPartyRosterRuntime::kSlotCount - 1U)));
-        state.recipient_slot = static_cast<std::size_t>(std::clamp(
-            route_state.top_recipient.value_or(0), 0,
-            static_cast<int>(FieldPartyRosterRuntime::kSlotCount - 1U)));
-        state.recipient_inventory_slot = static_cast<std::size_t>(
-            std::clamp(route_state.top_destination_slot.value_or(0), 0, 7));
-        state.recipient_inventory_full =
-            route_state.top_recipient_full.value_or(false);
-        state.yes_selected = route_state.top_yes.value_or(false);
-    }
-    if (route_state.top_screen == first_aid) {
-        command_overview_first_aid_state_ =
-            CommandOverviewFirstAidState::target_selection;
-        auto& targets = command_overview_first_aid_targets_;
-        for (const auto slot : route_state.top_targets) {
-            if (slot < 0 ||
-                slot >= static_cast<int>(FieldPartyRosterRuntime::kSlotCount) ||
-                targets.active_count >= targets.active_record_indices.size()) {
-                continue;
-            }
-            targets.active_record_indices[targets.active_count++] =
-                static_cast<std::size_t>(slot);
-        }
-        command_overview_first_aid_cursor_ = static_cast<std::size_t>(
-            std::clamp(route_state.top_row.value_or(0), 0,
-                       static_cast<int>(targets.cancel_row())));
-    }
-    if (route_state.top_screen == message &&
-        route_state.top_message.has_value()) {
-        switch (*route_state.top_message) {
-        case 6:
-            command_overview_action_message_ =
-                CommandOverviewActionMessage::cannot_discard;
-            break;
-        case 7:
-            command_overview_action_message_ =
-                CommandOverviewActionMessage::cannot_trade;
-            break;
-        case 8:
-            command_overview_automatic_use_state_ =
-                CommandOverviewAutomaticUseState::result_wait;
-            break;
-        case 9:
-        case 10:
-        case 11: {
-            command_overview_first_aid_state_ =
-                CommandOverviewFirstAidState::result_wait;
-            command_overview_first_aid_message_ =
-                *route_state.top_message == 9
-                    ? FirstAidMessage::medkit_used
-                    : (*route_state.top_message == 10
-                           ? FirstAidMessage::slap_patch_used
-                           : FirstAidMessage::target_not_injured);
-            for (const auto slot : route_state.top_targets) {
-                if (slot < 0 ||
-                    slot >= static_cast<int>(
-                               FieldPartyRosterRuntime::kSlotCount) ||
-                    command_overview_first_aid_targets_.active_count >=
-                        command_overview_first_aid_targets_
-                            .active_record_indices.size()) {
-                    continue;
-                }
-                command_overview_first_aid_targets_
-                    .active_record_indices[
-                        command_overview_first_aid_targets_.active_count++] =
-                    static_cast<std::size_t>(slot);
-            }
-            if (route_state.top_target.has_value()) {
-                const auto target = std::find(
-                    route_state.top_targets.begin(),
-                    route_state.top_targets.end(), *route_state.top_target);
-                if (target != route_state.top_targets.end()) {
-                    command_overview_first_aid_cursor_ =
-                        static_cast<std::size_t>(std::distance(
-                            route_state.top_targets.begin(), target));
-                }
-            }
-            break;
-        }
-        default:
-            break;
-        }
-    }
-}
-
-void FieldSceneRuntime::start_command_menu_legacy_screen(
-    const std::uint16_t screen,
-    const scripting::ScriptMenuRouteArgs& args) {
-    auto page = static_cast<int>(
-        command_overview_.view().source_state.primary_page);
-    auto row = static_cast<int>(
-        command_overview_.view().source_state.secondary_page);
-    if (args.page.has_value()) {
-        page = *args.page;
-    }
-    if (args.column.has_value()) {
-        page = *args.column;
-    }
-    if (args.row.has_value()) {
-        row = *args.row;
-    }
-    if (page >= 0 && page < 7 && row >= 0 && row < 4) {
-        command_overview_.sync_script_selection(
-            static_cast<std::uint8_t>(page), static_cast<std::uint8_t>(row));
-    }
-
-    if (screen == static_cast<std::uint16_t>(srx::MenuScreen::ITEM_ACTION)) {
-        begin_command_overview_inventory_action();
-    } else if (screen == static_cast<std::uint16_t>(srx::MenuScreen::CLIPS)) {
-        begin_command_overview_clips();
-    } else if (screen == static_cast<std::uint16_t>(
-                            srx::MenuScreen::ATTRIBUTES_SKILLS)) {
-        begin_command_overview_attributes_skills();
-    } else if (screen == static_cast<std::uint16_t>(
-                            srx::MenuScreen::CYBERWARE)) {
-        begin_command_overview_cyberware();
-    } else if (screen == static_cast<std::uint16_t>(srx::MenuScreen::MAGIC)) {
-        begin_command_overview_magic();
-    } else if (screen == static_cast<std::uint16_t>(
-                            srx::MenuScreen::POCKET_SECRETARY)) {
-        begin_pocket_secretary();
-    } else if (screen == static_cast<std::uint16_t>(
-                            srx::MenuScreen::NOTEBOOK)) {
-        const auto event_gates = notebook_event_gates();
-        if (event_gates.has_value()) {
-            begin_pocket_secretary_notebook(
-                pocket_secretary_, notebook_current_run_available_,
-                *event_gates);
+    if (!route_state.open && field_taxi_cabbie_destination_.has_value() &&
+        !field_dialogue_.open()) {
+        const auto destination = *field_taxi_cabbie_destination_;
+        const auto current_region = static_cast<std::uint8_t>(
+            state_.field_scene_buffers.scene_reference);
+        game_scripts_.set_location_context(
+            "activity", "taxi_cabbie", "field.taxi", "taxi_cabbie",
+            "cabbie", current_region);
+        scripting::ScriptFieldModeContext context{
+            state_.field_scene_buffers.field_resource_mode,
+            field_movement_transition_state_.mode_event_code,
+            field_exit_alternate_result_,
+            state_.field_scene_buffers.scene_mode,
+            field_movement_transition_state_.field_transition_context};
+        context.taxi_destination_region =
+            static_cast<std::uint8_t>(destination);
+        game_scripts_.set_field_mode_context(std::move(context));
+        if (!field_dialogue_.open_gameplay_task("taxi_cabbie", "present")) {
+            field_taxi_cabbie_destination_.reset();
+            source_boundary("field.taxi.cabbie_dialogue_open_failed");
         } else {
-            source_boundary(
-                "field.pocket_secretary.notebook.event_flags_unresolved");
-        }
-    } else if (screen == static_cast<std::uint16_t>(
-                            srx::MenuScreen::GROUP_ITEMS)) {
-        if (group_item_flags_.has_value()) {
-            begin_pocket_secretary_group_items(
-                pocket_secretary_, *group_item_flags_);
-        } else {
-            source_boundary(
-                "field.pocket_secretary.group_items_flags_unresolved");
-        }
-    } else if (screen == static_cast<std::uint16_t>(
-                            srx::MenuScreen::CYBERDECK)) {
-        if (cyberdeck_available_.has_value() &&
-            !*cyberdeck_available_) {
-            begin_pocket_secretary_cyberdeck_unavailable(
-                pocket_secretary_);
-        } else if (cyberdeck_available_.has_value()) {
-            source_boundary("field.pocket_secretary.matrix_path_pending");
-        } else {
-            source_boundary(
-                "field.pocket_secretary.cyberdeck_flag_unresolved");
-        }
-    } else if (screen == static_cast<std::uint16_t>(
-                            srx::MenuScreen::DISMISS_RUNNER)) {
-        begin_pocket_secretary_dismiss_runner();
-    } else if (screen == static_cast<std::uint16_t>(
-                            srx::MenuScreen::SAVE_LOAD)) {
-        source_boundary("field.pocket_secretary.save_load_pending");
-    } else if (screen == static_cast<std::uint16_t>(
-                            srx::MenuScreen::DEBUG_MENU)) {
-        source_boundary("field.pocket_secretary.debug_menu_route_missing");
-    } else {
-        source_boundary("field.command_overview.lua_legacy_route_unmapped");
-    }
-}
-
-bool FieldSceneRuntime::command_menu_legacy_screen_active(
-    const std::uint16_t screen) const {
-    if (screen == static_cast<std::uint16_t>(srx::MenuScreen::ITEM_ACTION)) {
-        return command_overview_inventory_action_active_ ||
-               command_overview_discard_confirmation_active_ ||
-               command_overview_inventory_trade_.open ||
-               command_overview_action_message_ !=
-                   CommandOverviewActionMessage::none ||
-               command_overview_first_aid_state_ !=
-                   CommandOverviewFirstAidState::inactive ||
-               command_overview_automatic_use_state_ !=
-                   CommandOverviewAutomaticUseState::inactive;
-    }
-    if (screen == static_cast<std::uint16_t>(srx::MenuScreen::CLIPS)) {
-        return command_overview_clips_.is_open();
-    }
-    if (screen == static_cast<std::uint16_t>(
-                      srx::MenuScreen::ATTRIBUTES_SKILLS)) {
-        return command_overview_attributes_skills_.is_open();
-    }
-    if (screen == static_cast<std::uint16_t>(srx::MenuScreen::CYBERWARE)) {
-        return command_overview_cyberware_active_;
-    }
-    if (screen == static_cast<std::uint16_t>(srx::MenuScreen::MAGIC)) {
-        return command_overview_magic_state_ !=
-               CommandOverviewMagicState::inactive;
-    }
-    if (screen == static_cast<std::uint16_t>(
-                      srx::MenuScreen::POCKET_SECRETARY)) {
-        return pocket_secretary_.open || dismiss_runner_.open;
-    }
-    if (screen == static_cast<std::uint16_t>(srx::MenuScreen::NOTEBOOK)) {
-        return pocket_secretary_.notebook.open;
-    }
-    if (screen == static_cast<std::uint16_t>(
-                      srx::MenuScreen::NOTEBOOK_CONTACTS)) {
-        return pocket_secretary_.notebook.contacts.open;
-    }
-    if (screen == static_cast<std::uint16_t>(
-                      srx::MenuScreen::NOTEBOOK_SHADOWRUNNERS)) {
-        return pocket_secretary_.notebook.shadowrunners.open;
-    }
-    if (screen == static_cast<std::uint16_t>(
-                      srx::MenuScreen::GROUP_ITEMS)) {
-        return pocket_secretary_.group_items_wait;
-    }
-    if (screen == static_cast<std::uint16_t>(
-                      srx::MenuScreen::CYBERDECK)) {
-        return pocket_secretary_.cyberdeck_unavailable_wait;
-    }
-    if (screen == static_cast<std::uint16_t>(
-                      srx::MenuScreen::DISMISS_RUNNER)) {
-        return dismiss_runner_.open;
-    }
-    return false;
-}
-
-void FieldSceneRuntime::open_command_overview(
-    const std::uint16_t root_screen,
-    scripting::ScriptMenuRouteStartArguments start_arguments) {
-    if (!ready_ || command_overview_.open()) {
-        return;
-    }
-
-    command_overview_inventory_action_ = InventoryActionMenuState{};
-    command_overview_selected_inventory_item_.reset();
-    command_overview_inventory_lua_route_active_ = false;
-    command_overview_first_aid_state_ =
-        CommandOverviewFirstAidState::inactive;
-    command_overview_first_aid_targets_ = FirstAidTargetList{};
-    command_overview_first_aid_cursor_ = 0U;
-    command_overview_first_aid_message_ = FirstAidMessage::none;
-    command_overview_automatic_use_state_ =
-        CommandOverviewAutomaticUseState::inactive;
-    command_overview_inventory_selector_suppressed_ = false;
-    command_overview_discard_confirmation_ = MenuConfirmationState{};
-    command_overview_inventory_trade_ = InventoryTradeState{};
-    command_overview_action_message_ = CommandOverviewActionMessage::none;
-    command_overview_inventory_action_active_ = false;
-    command_overview_discard_confirmation_active_ = false;
-    command_overview_clips_.close();
-    command_overview_cyberware_active_ = false;
-    command_overview_cyberware_ = CyberwareMenuModel{};
-
-    const auto command_asset_available = [this](const std::string_view alias) {
-        if (alias == "menu.field.command_overview.background") {
-            // The converted source preparation names the tile block; the
-            // native host presents its already extracted full command shell.
-            return !command_overview_background_.isNull();
-        }
-        if (alias == "menu.field.cursor") {
-            return !command_overview_cursor_.isNull();
-        }
-        return false;
-    };
-    const CommandOverviewInput input{
-        static_cast<std::uint8_t>(active_runner_record().flags & 0xFFU),
-        static_cast<std::int8_t>(active_runner_record().archetype_index)};
-    const CommandOverviewPreparationInput preparation_input{};
-    const CommandOverviewHudPanelInput hud_panel_input{
-        active_runner_record().record_type,
-        active_runner_record().command_overview_panel_parameter};
-    command_overview_.begin(
-        input, preparation_input, hud_panel_input,
-        {[this](const std::string_view boundary) { source_boundary(boundary); },
-         command_asset_available,
-         [this] { return active_runner_record().equipped_item_code; },
-         [](const CommandOverviewPreparationResult&) {},
-         [](const CommandOverviewHudPanelPlan&) {},
-         [](const CommandOverviewActionRefreshResult&) {}});
-    if (root_screen == static_cast<std::uint16_t>(
-                           srx::MenuScreen::CYBERWARE)) {
-        // A direct CYBERWARE root has no parent COMMAND route to supply its
-        // owning page. Seed the typed parent view from the ROM page identity
-        // before the wait screen's legacy presenter is opened.
-        command_overview_.sync_script_selection(4U, 0U);
-    }
-    field_matrix_route_active_ =
-        root_screen == static_cast<std::uint16_t>(
-                           srx::MenuScreen::MATRIX_ENTRY) ||
-        root_screen == static_cast<std::uint16_t>(
-                           srx::MenuScreen::MATRIX_SEARCH);
-    field_taxi_route_active_ =
-        root_screen == static_cast<std::uint16_t>(
-                           srx::MenuScreen::TAXI_SELECTOR);
-    matrix_return_to_field_on_close_ =
-        field_matrix_route_active_ && start_arguments.return_to_field;
-    matrix_field_return_transition_pending_ = false;
-    menu_route_active_ = game_scripts_.open_menu_route(
-        root_screen, std::move(start_arguments));
-    if (!menu_route_active_) {
-        field_matrix_route_active_ = false;
-        field_taxi_route_active_ = false;
-        matrix_return_to_field_on_close_ = false;
-        source_boundary("field.command_overview.lua_route_unavailable");
-        menu_route_screen_ = 0U;
-    } else {
-        const auto route_state = game_scripts_.menu_route_snapshot();
-        menu_route_screen_ = route_state.top_screen;
-        posture_dialog_active_ =
-            menu_route_screen_ ==
-            static_cast<std::uint16_t>(srx::MenuScreen::POSTURE);
-        if (route_state.page.has_value() && route_state.row.has_value()) {
-            command_overview_.sync_script_selection(
-                static_cast<std::uint8_t>(*route_state.page),
-                static_cast<std::uint8_t>(*route_state.row));
-        }
-        synchronize_command_overview_clips_from_route(route_state);
-        synchronize_command_overview_inventory_from_route(route_state);
-        synchronize_command_overview_magic_from_route(route_state);
-        synchronize_pocket_secretary_notebook_from_route(route_state);
-    }
-    refresh_command_overview_combat_bars();
-    refresh_command_overview_item_detail();
-}
-
-FieldHudSlotState FieldSceneRuntime::field_hud_slot_state(
-    const std::size_t index) const {
-    if (index >= field_party_roster_.records().size()) {
-        return {};
-    }
-    const auto& record = field_party_roster_.records()[index];
-    FieldHudSlotState slot{};
-    slot.flags_byte = static_cast<std::uint8_t>(record.flags >> 8U);
-    slot.equipped_inventory_slot = record.equipped_inventory_slot;
-    slot.equipped_item_code = record.equipped_item_code;
-    slot.class_code = record.archetype_index;
-    FieldHudAmmoMeterState ammo_meter{};
-    ammo_meter.slot_word = record.record_type;
-    ammo_meter.flags_byte = slot.flags_byte;
-    ammo_meter.equipped_inventory_slot = record.equipped_inventory_slot;
-    ammo_meter.source_type = record.equipped_item_code;
-    ammo_meter.ammo = record.ammo_rounds;
-    ammo_meter.clip_counts = record.inventory_phase_bytes;
-    ammo_meter.clip_aux = record.inventory_item_codes;
-    // The displayed counter is the 0x36FC D2 result, not always the live
-    // +0x4E value. In particular, an unequipped record keeps its ammo
-    // percentage in +0x4E while the ROM draws the zero counter beside the
-    // unarmed/cyberware icon.
-    slot.ammo_display_value =
-        advance_field_hud_ammo_meter(ammo_meter, 0).displayed;
-    slot.delay_meter = static_cast<std::int8_t>(record.delay_meter);
-    slot.behavior_meter = static_cast<std::int8_t>(record.behavior_meter);
-    slot.primary_runner = index == field_party_roster_.active_slot();
-    slot.asset_family_index =
-        field_party_roster_.portrait_asset_family(index);
-    slot.portrait_palette_word = record.command_overview_panel_parameter;
-    if ((record.cyberware_flags & 0x0008U) != 0U) {
-        slot.unarmed_item_variant = 2U;
-    } else if ((record.cyberware_flags & 0x0004U) != 0U) {
-        slot.unarmed_item_variant = 1U;
-    }
-    return slot;
-}
-
-const QImage* FieldSceneRuntime::runner_preview_panel_for_record(
-    const RunnerRecordFields& record) const {
-    constexpr std::uint16_t kPaletteLineMask = 0x6000U;
-    if ((record.command_overview_panel_parameter &
-         static_cast<std::uint16_t>(~kPaletteLineMask)) != 0U ||
-        record.hud_portrait_table_pointer == 0U) {
-        return nullptr;
-    }
-    const auto palette_line = static_cast<std::size_t>(
-        (record.command_overview_panel_parameter & kPaletteLineMask) >> 13U);
-    const auto alias =
-        "menu.field.runner.preview.table." +
-        std::to_string(record.hud_portrait_table_pointer) + ".offset." +
-        std::to_string(record.hud_portrait_table_offset) + ".palette." +
-        std::to_string(palette_line);
-    const auto preview = runner_preview_panels_.find(alias);
-    return preview == runner_preview_panels_.end() ? nullptr
-                                                   : &preview->second;
-}
-
-void FieldSceneRuntime::refresh_field_hud_runner_slot() {
-    auto& records = field_party_roster_.records();
-    for (std::size_t slot = 0; slot < field_hud_slots_.size(); ++slot) {
-        auto& record = records[slot];
-        // ROM 0x39F2 refreshes the three field panels, then 0x38FA calls
-        // 0x36FC for each record with D1=0. That call clamps an active
-        // clip-using item's +0x4E count to its +0x24 capacity before the
-        // resulting HUD frame is presented.
-        FieldHudAmmoMeterState ammo{};
-        ammo.slot_word = record.record_type;
-        ammo.flags_byte = static_cast<std::uint8_t>(record.flags >> 8U);
-        ammo.equipped_inventory_slot = record.equipped_inventory_slot;
-        ammo.source_type = record.equipped_item_code;
-        ammo.ammo = record.ammo_rounds;
-        ammo.clip_counts = record.inventory_phase_bytes;
-        ammo.clip_aux = record.inventory_item_codes;
-        const auto ammo_plan = advance_field_hud_ammo_meter(ammo, 0);
-        record.ammo_rounds = ammo.ammo;
-        record.equipped_inventory_slot = ammo.equipped_inventory_slot;
-        record.equipped_item_code = ammo.source_type;
-        record.inventory_phase_bytes = ammo.clip_counts;
-        record.inventory_item_codes = ammo.clip_aux;
-        if (ammo_plan.reload_assets) {
-            source_boundary("field.hud.ammo_refresh.cleared_depleted_item");
-        }
-        field_hud_slots_[slot] = field_hud_slot_state(slot);
-    }
-}
-
-void FieldSceneRuntime::initialize_field_party_roster(
-    const integration::StartupIntegrationState& startup_state) {
-    const auto source = field_party_roster_.initialize(startup_state);
-    if (source == FieldPartyRosterRuntime::Source::unavailable) {
-        source_boundary("field.bootstrap.party_records_missing");
-    } else if (source == FieldPartyRosterRuntime::Source::restored_save) {
-        source_boundary("field.bootstrap.party_records.restored_save");
-    } else {
-        source_boundary("field.bootstrap.party_records.new_game");
-    }
-}
-
-void FieldSceneRuntime::begin_command_overview_inventory_action() {
-    const auto& view = command_overview_.view();
-    if (view.source_state.primary_page >= 2U) {
-        source_boundary("field.command_overview.inventory_action.invalid_route");
-        return;
-    }
-
-    command_overview_inventory_action_ = InventoryActionMenuState{};
-    command_overview_inventory_action_.column =
-        view.source_state.primary_page;
-    command_overview_inventory_action_.row =
-        view.source_state.secondary_page;
-    const auto result = advance_inventory_action_loop(
-        active_runner_record(), command_overview_inventory_action_,
-        InventoryActionInput{false, false, true, false, false});
-    if (result.event == InventoryActionEvent::opened && result.item.has_value()) {
-        command_overview_selected_inventory_item_ = result.item;
-        command_overview_inventory_action_active_ = true;
-        source_boundary("field.command_overview.inventory_action.opened");
-        return;
-    }
-    if (result.event == InventoryActionEvent::empty_cell) {
-        source_boundary("field.command_overview.inventory_action.empty_cell");
-    } else {
-        source_boundary("field.command_overview.inventory_action.not_opened");
-    }
-    command_overview_inventory_action_active_ = false;
-    command_overview_selected_inventory_item_.reset();
-}
-
-void FieldSceneRuntime::begin_pocket_secretary() {
-    if (!command_overview_.open()) {
-        return;
-    }
-    // ROM 0xC2A6 normally uses FFF101 to choose four or five labeled rows.
-    // The temporary test override exposes its sixth, unlabeled debug row.
-    initialize_pocket_secretary_menu(
-        pocket_secretary_, debug_menu_unlocked_,
-        {[this] { source_boundary("field.pocket_secretary.transfer_menu_assets"); },
-         [this] { source_boundary("field.pocket_secretary.render_menu_grid"); },
-         [this] { source_boundary("field.pocket_secretary.render_menu_text"); },
-         [this] { source_boundary("field.pocket_secretary.render_menu_numbers"); },
-         {}, {}});
-    dismiss_runner_ = DismissRunnerMenuState{};
-    dismiss_runner_random_grid_effect_ = RandomGridEffectState{};
-    dismiss_runner_effect_frames_ = 0U;
-    dismiss_runner_random_grid_cells_.fill(-1);
-    field_matrix_route_active_ = false;
-    matrix_return_to_field_on_close_ = false;
-    matrix_field_return_transition_pending_ = false;
-    source_boundary("field.pocket_secretary.opened");
-}
-
-bool FieldSceneRuntime::set_notebook_tip_unlocked(
-    const std::size_t source_index, const bool unlocked) noexcept {
-    if (!notebook_tip_flags_resolved_ || source_index >= 96U) {
-        return false;
-    }
-    const auto group = source_index / 32U;
-    const auto mask = std::uint32_t{1} << (source_index % 32U);
-    if (unlocked) {
-        notebook_tip_flags_[group] |= mask;
-    } else {
-        notebook_tip_flags_[group] &= ~mask;
-    }
-    return true;
-}
-
-void FieldSceneRuntime::begin_pocket_secretary_dismiss_runner() {
-    if (!pocket_secretary_.open || pocket_secretary_.selection != 3U) {
-        source_boundary(
-            "field.pocket_secretary.dismiss_runner.invalid_route");
-        return;
-    }
-
-    std::array<std::uint8_t, 2> candidates{};
-    std::size_t count = 0U;
-    const auto& records = field_party_roster_.records();
-    for (std::size_t slot = 1U;
-         slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
-        const auto active_record =
-            (records[slot].flags & 0x0100U) != 0U;
-        if (field_party_roster_.slot_active(slot) && active_record) {
-            candidates[count++] = static_cast<std::uint8_t>(slot);
+            source_boundary("field.taxi.cabbie_dialogue_opened");
         }
     }
-    begin_dismiss_runner_menu(dismiss_runner_, candidates, count);
-    // Dismiss Runner redraws only the inner panel. E660's lower-bezel cells
-    // remain installed until the Pocket Secretary panel is rebuilt.
-    source_boundary("field.pocket_secretary.dismiss_runner.opened");
-}
-
-void FieldSceneRuntime::advance_pocket_secretary_dismiss_runner_effect() {
-    advance_random_grid_effect(
-        dismiss_runner_random_grid_effect_,
-        {[this](const std::uint16_t bound) {
-             return sample_source_random_bound(field_random_seed_, bound);
-         },
-         [this](const RandomGridEffectPlan& plan) {
-             const auto branch_zero =
-                 plan.primary_source ==
-                 RandomGridPrimarySource::branch_zero_table;
-             const auto location = branch_zero
-                 ? static_cast<std::size_t>(plan.primary_entry_index)
-                 : 8U + static_cast<std::size_t>(plan.primary_entry_index);
-             const auto pattern = plan.variant_source ==
-                     RandomGridVariantSource::fixed_three_variant_resources
-                 ? static_cast<std::size_t>(plan.variant_entry_index)
-                 : 3U + static_cast<std::size_t>(plan.variant_entry_index);
-             if (location < dismiss_runner_random_grid_cells_.size() &&
-                 pattern < dismiss_runner_random_grid_patterns_.size()) {
-                 // 0x1232 writes into the installed shared frame. Keep
-                 // previously changed cells until that panel is rebuilt,
-                 // matching the source name table's persistence between
-                 // VBlanks.
-                 dismiss_runner_random_grid_cells_[location] =
-                     static_cast<std::int8_t>(pattern);
-             }
-         }});
-    ++dismiss_runner_effect_frames_;
-}
-
-void FieldSceneRuntime::finish_pocket_secretary_dismiss_runner(
-    const std::size_t slot) {
-    source_boundary(
-        "field.pocket_secretary.dismiss_runner.serialize_population");
-    if (!field_party_roster_.deactivate_party_member(slot)) {
-        source_boundary(
-            "field.pocket_secretary.dismiss_runner.invalid_party_marker");
-        return;
-    }
-    source_boundary("field.pocket_secretary.dismiss_runner.party_marker_cleared");
-
-    const auto previous_active_slot = field_party_roster_.active_slot();
-    if (slot == previous_active_slot) {
-        RunnerSwitchState switch_state{};
-        switch_state.records.reserve(FieldPartyRosterRuntime::kSlotCount);
-        const auto& records = field_party_roster_.records();
-        for (std::size_t index = 0U;
-             index < FieldPartyRosterRuntime::kSlotCount; ++index) {
-            auto flags = static_cast<std::uint8_t>(records[index].flags >> 8U);
-            if (!field_party_roster_.slot_active(index)) {
-                flags = static_cast<std::uint8_t>(flags & ~0x01U);
-            }
-            switch_state.records.push_back(RunnerSwitchRecord{
-                static_cast<std::uint16_t>(index), flags});
-        }
-        switch_state.active_index = previous_active_slot;
-        switch_state.suppression_override =
-            field_entity_selection_state_.suppression_override;
-        const auto decision = advance_runner_switch(switch_state);
-        if (decision.result == RunnerSwitchResult::switched) {
-            field_party_roster_.set_active_slot(decision.selected_index);
-            field_entity_selection_state_ = std::move(switch_state);
-            field_entity_behavior_flags_ = static_cast<std::uint8_t>(
-                field_entity_selection_state_
-                    .records[field_entity_selection_state_.active_index]
-                    .flags);
-            field_movement_behavior_record_.behavior_flags =
-                field_entity_behavior_flags_;
-            field_entity_.projection.sprite_offset_y =
-                active_runner_record().projection_word_08;
-            source_boundary(
-                "field.pocket_secretary.dismiss_runner.active_runner_switched");
-        } else {
-            source_boundary(
-                "field.pocket_secretary.dismiss_runner.no_replacement_runner");
-        }
-    }
-
-    refresh_field_hud_runner_slot();
-    refresh_command_overview_combat_bars();
-    refresh_command_overview_item_detail();
-    source_boundary(
-        "field.pocket_secretary.dismiss_runner.effect_asset_refresh_pending");
-    source_boundary("field.pocket_secretary.dismiss_runner.dismissed");
-}
-
-void FieldSceneRuntime::begin_command_overview_clips() {
-    if (!command_overview_.open() ||
-        command_overview_.view().source_state.primary_page != 2U) {
-        source_boundary("field.command_overview.clips.invalid_route");
-        return;
-    }
-    // Entering this top-level child replaces the shared command button row.
-    // Drop any stale inventory-action presentation so it cannot be layered
-    // over Clips if a prior menu route left that state behind.
-    command_overview_inventory_action_ = InventoryActionMenuState{};
-    command_overview_selected_inventory_item_.reset();
-    command_overview_inventory_action_active_ = false;
-    command_overview_discard_confirmation_ = MenuConfirmationState{};
-    command_overview_discard_confirmation_active_ = false;
-    command_overview_inventory_trade_ = InventoryTradeState{};
-    command_overview_action_message_ = CommandOverviewActionMessage::none;
-    command_overview_clips_.open();
-    source_boundary("field.command_overview.clips.opened");
-}
-
-void FieldSceneRuntime::begin_command_overview_cyberware() {
-    if (!command_overview_.open() ||
-        command_overview_.view().source_state.primary_page != 4U) {
-        source_boundary("field.command_overview.cyberware.invalid_route");
-        return;
-    }
-    // ROM 0x11950 reads the active record's +0x90 word. A zero word selects
-    // NONE; otherwise visible bits are emitted from 0 through 14, compacted
-    // into successive rows. Bit 15 alone is nonzero but names no row.
-    command_overview_cyberware_ = build_cyberware_menu(
-        active_runner_record().cyberware_flags);
-    command_overview_cyberware_active_ = true;
-    source_boundary("field.command_overview.cyberware.opened");
-}
-
-void FieldSceneRuntime::begin_command_overview_magic() {
-    if (!command_overview_.open() ||
-        command_overview_.view().source_state.primary_page != 5U) {
-        source_boundary("field.command_overview.magic.invalid_route");
-        return;
-    }
-
-    const auto path = select_magic_menu_path(active_runner_record());
-    if (path == MagicMenuPath::spell_panel) {
-        const auto* table = field_magic_spell_table(
-            active_runner_record().magic_table_index);
-        if (table == nullptr || table->entry_count == 0U) {
-            source_boundary(
-                "field.command_overview.magic.spell_table_unavailable");
-            return;
-        }
-        // FBA6 clears both source cursor coordinates on each entry; a second
-        // visit starts at the first spell instead of leaking the last cursor.
-        command_overview_magic_loop_ = MagicMenuLoopState{};
-        command_overview_magic_loop_.first_entry_count =
-            static_cast<std::uint16_t>(table->entry_count - 1U);
-        command_overview_magic_selected_spell_ = select_magic_spell(
-            *table, command_overview_magic_loop_.selection,
-            us_magic_spell_catalog());
-        if (!command_overview_magic_selected_spell_.has_value()) {
-            source_boundary(
-                "field.command_overview.magic.initial_spell_unavailable");
-            return;
-        }
-        command_overview_magic_force_ = MagicForceState{};
-        prepare_magic_menu_grid_and_select_force(
-            command_overview_magic_force_,
-            *command_overview_magic_selected_spell_, active_runner_record());
-        command_overview_magic_cursor_phase_ = 0U;
-        command_overview_magic_cursor_timer_ = 0U;
-        command_overview_magic_state_ = CommandOverviewMagicState::spell_panel;
-        source_boundary("field.command_overview.magic.spell_panel.opened");
-        return;
-    }
-
-    std::array<EntityActionRecord, FieldPartyRosterRuntime::kSlotCount>
-        ready_entities{};
-    const auto& records = field_party_roster_.records();
-    for (std::size_t index = 0; index < ready_entities.size(); ++index) {
-        ready_entities[index] = magic_action_record_from_runner(records[index]);
-    }
-    const auto actor = magic_action_record_from_runner(active_runner_record());
-    const auto physical =
-        prepare_magic_fallback_defense_strip(ready_entities, actor, false);
-    const auto mana =
-        prepare_magic_fallback_defense_strip(ready_entities, actor, true);
-    // The source conversion plan retains addresses for auditing. The Qt
-    // runtime keeps only native values and named asset rows for presentation.
-    command_overview_magic_physical_defense_ = {
-        physical.value, static_cast<std::uint8_t>(physical.row)};
-    command_overview_magic_mana_defense_ = {
-        mana.value, static_cast<std::uint8_t>(mana.row)};
-    command_overview_magic_state_ =
-        CommandOverviewMagicState::magical_defense_wait;
-    source_boundary("field.command_overview.magic.magical_defense.opened");
-}
-
-void FieldSceneRuntime::begin_command_overview_attributes_skills() {
-    if (!command_overview_.open() ||
-        command_overview_.view().source_state.primary_page != 3U) {
-        source_boundary(
-            "field.command_overview.attributes_skills.invalid_route");
-        return;
-    }
-    command_overview_attributes_skills_.open(active_runner_record());
-    source_boundary(
-        "field.command_overview.attributes_skills.opened");
-}
-
-void FieldSceneRuntime::begin_command_overview_magic_spell_action() {
-    if (command_overview_magic_state_ !=
-            CommandOverviewMagicState::spell_panel ||
-        !command_overview_magic_selected_spell_.has_value()) {
-        source_boundary("field.command_overview.magic.action.invalid_route");
-        return;
-    }
-    const auto* spell = find_us_magic_spell(
-        command_overview_magic_selected_spell_->spell_code);
-    if (spell == nullptr) {
-        source_boundary("field.command_overview.magic.action.spell_missing");
-        return;
-    }
-
-    MagicActionDetailCallbacks detail_callbacks{};
-    detail_callbacks.prepare_menu_grid_then_service = [this] {
-        source_boundary("field.command_overview.magic.details.grid_prepared");
-    };
-    detail_callbacks.render_action_text = [this](const auto region) {
-        switch (region) {
-        case MagicActionTextRegion::set_force_and_posture_heading:
-            source_boundary(
-                "field.command_overview.magic.details.heading_rendered");
-            break;
-        case MagicActionTextRegion::success_label:
-            source_boundary(
-                "field.command_overview.magic.details.success_label_rendered");
-            break;
-        case MagicActionTextRegion::force_label:
-            source_boundary(
-                "field.command_overview.magic.details.force_label_rendered");
-            break;
-        }
-    };
-    detail_callbacks.adjust_runner_posture = [this] {
-        (void)adjust_runner_posture(active_runner_record(), 0);
-        source_boundary("field.command_overview.magic.details.posture_refreshed");
-    };
-    detail_callbacks.render_spell_availability = [this](const auto& selected) {
-        MagicSpellAvailabilityCallbacks availability_callbacks{};
-        availability_callbacks.write_repeated_grid = [this] {
-            source_boundary(
-                "field.command_overview.magic.availability.cleared");
-        };
-        availability_callbacks.render_spell_text = [this](const auto&) {
-            source_boundary(
-                "field.command_overview.magic.availability.label_rendered");
-        };
-        availability_callbacks.write_grid = [this] {
-            source_boundary(
-                "field.command_overview.magic.availability.bar_rendered");
-        };
-        render_magic_spell_availability(selected, availability_callbacks);
-    };
-    detail_callbacks.build_grouped_decimal_glyphs = [this] {
-        source_boundary(
-            "field.command_overview.magic.details.force_value_prepared");
-    };
-    prepare_magic_action_details(*spell, detail_callbacks);
-
-    auto& runner = active_runner_record();
-    if (runner.equipped_inventory_slot >= 0 &&
-        runner.equipped_item_code != 0U) {
-        // ROM 0xFF74 copies FFF096 into the active item's +0x4E after the
-        // auxiliary marker service and before installing the selected spell.
-        EntityAuxiliaryState active_item_auxiliary{runner.ammo_rounds};
-        clear_entity_auxiliary_marker(active_item_auxiliary);
-        runner.ammo_rounds = active_item_auxiliary.marker;
-        runner.ammo_rounds = static_cast<std::uint8_t>(
-            command_overview_magic_force_.current_force);
-        source_boundary(
-            "field.command_overview.magic.action.save_active_force");
-    }
-    runner.equipped_item_code = static_cast<std::uint8_t>(
-        static_cast<unsigned>(spell->spell_code) + 1U);
-    command_overview_magic_state_ =
-        CommandOverviewMagicState::spell_force_selection;
-    source_boundary("field.command_overview.magic.force.opened");
-}
-
-void FieldSceneRuntime::finish_command_overview_magic_spell_action() {
-    if (!magic_force_selection_open() && !magic_posture_selection_open()) {
-        source_boundary("field.command_overview.magic.action.finish.invalid");
-        return;
-    }
-    auto& runner = active_runner_record();
-    runner.equipped_inventory_slot = -1;
-    runner.magic_force = static_cast<std::uint8_t>(
-        command_overview_magic_force_.current_force);
-    refresh_field_hud_runner_slot();
-    refresh_command_overview_combat_bars();
-    command_overview_magic_state_ = CommandOverviewMagicState::spell_panel;
-    source_boundary("field.command_overview.magic.spell_equipped");
-}
-
-void FieldSceneRuntime::advance_command_overview_magic(
-    const std::uint16_t controller_events) {
-    if (command_overview_magic_cursor_timer_ == 0U) {
-        command_overview_magic_cursor_timer_ = 6U;
-        command_overview_magic_cursor_phase_ = static_cast<std::uint8_t>(
-            (command_overview_magic_cursor_phase_ + 1U) %
-            command_overview_magic_cursor_frames_.size());
-    } else {
-        --command_overview_magic_cursor_timer_;
-    }
-
-    const auto* table = field_magic_spell_table(
-        active_runner_record().magic_table_index);
-    if (table == nullptr) {
-        source_boundary("field.command_overview.magic.spell_table_unavailable");
-        return;
-    }
-
-    if (magic_force_selection_open()) {
-        MagicForceSelection selection{
-            static_cast<std::uint8_t>(
-                std::min<std::uint16_t>(
-                    command_overview_magic_force_.current_force, 0xFFU))};
-        const auto force_result = apply_magic_force_input(
-            selection, controller_events,
-            static_cast<std::uint8_t>(std::min<std::uint16_t>(
-                command_overview_magic_force_.maximum_force, 0xFFU)));
-        if (force_result == MagicForceLoopResult::adjusted) {
-            const auto delta = (controller_events & 0x0800U) != 0U ? 1 : -1;
-            adjust_magic_force(active_runner_record(),
-                               command_overview_magic_force_,
-                               static_cast<std::int16_t>(delta));
-            source_boundary(
-                delta > 0
-                    ? "field.command_overview.magic.force.raised"
-                    : "field.command_overview.magic.force.lowered");
-            return;
-        }
-        if (force_result == MagicForceLoopResult::finished) {
-            source_boundary(
-                "field.command_overview.magic.force.final_display_refreshed");
-            if ((controller_events & (0x2000U | 0x1000U | 0x4000U)) != 0U) {
-                finish_command_overview_magic_spell_action();
-            } else if ((controller_events & 0x0200U) != 0U) {
-                (void)adjust_runner_posture(active_runner_record(), 0);
-                command_overview_magic_state_ =
-                    CommandOverviewMagicState::spell_posture_selection;
-                source_boundary(
-                    "field.command_overview.magic.posture.opened");
-            }
-        }
-        return;
-    }
-
-    if (magic_posture_selection_open()) {
-        const auto posture_result = apply_runner_posture_input(
-            active_runner_record(), controller_events);
-        if (posture_result == RunnerPostureLoopResult::adjusted) {
-            refresh_command_overview_combat_bars();
-            source_boundary(
-                "field.command_overview.magic.posture.adjusted");
-            return;
-        }
-        if (posture_result == RunnerPostureLoopResult::finished) {
-            source_boundary(
-                "field.command_overview.magic.posture.final_display_refreshed");
-            if ((controller_events & (0x2000U | 0x1000U | 0x4000U)) != 0U) {
-                finish_command_overview_magic_spell_action();
-            } else {
-                command_overview_magic_state_ =
-                    CommandOverviewMagicState::spell_force_selection;
-                source_boundary(
-                    "field.command_overview.magic.force.reopened");
-            }
-        }
-        return;
-    }
-
-    const auto refresh_selection = [this, table] {
-        command_overview_magic_selected_spell_ = select_magic_spell(
-            *table, command_overview_magic_loop_.selection,
-            us_magic_spell_catalog());
-        if (!command_overview_magic_selected_spell_.has_value()) {
-            source_boundary(
-                "field.command_overview.magic.spell_entry_unavailable");
-            return;
-        }
-        prepare_magic_menu_grid_and_select_force(
-            command_overview_magic_force_,
-            *command_overview_magic_selected_spell_, active_runner_record());
-        source_boundary("field.command_overview.magic.spell_selection_changed");
-    };
-    if ((controller_events & 0x0400U) != 0U) {
-        command_overview_magic_loop_.selection = move_magic_selection_column(
-            command_overview_magic_loop_.selection, -1,
-            command_overview_magic_loop_.first_entry_count);
-        refresh_selection();
-        command_overview_magic_cursor_timer_ = 0U;
-        return;
-    }
-    if ((controller_events & 0x0800U) != 0U) {
-        command_overview_magic_loop_.selection = move_magic_selection_column(
-            command_overview_magic_loop_.selection, 1,
-            command_overview_magic_loop_.first_entry_count);
-        refresh_selection();
-        command_overview_magic_cursor_timer_ = 0U;
-        return;
-    }
-    if ((controller_events & 0x0100U) != 0U) {
-        command_overview_magic_loop_.selection = move_magic_selection_row(
-            command_overview_magic_loop_.selection, -1,
-            command_overview_magic_loop_.first_entry_count);
-        refresh_selection();
-        command_overview_magic_cursor_timer_ = 0U;
-        return;
-    }
-    if ((controller_events & 0x0200U) != 0U) {
-        command_overview_magic_loop_.selection = move_magic_selection_row(
-            command_overview_magic_loop_.selection, 1,
-            command_overview_magic_loop_.first_entry_count);
-        refresh_selection();
-        command_overview_magic_cursor_timer_ = 0U;
-        return;
-    }
-    if ((controller_events & (0x2000U | 0x1000U | 0x4000U)) != 0U) {
-        begin_command_overview_magic_spell_action();
-        return;
-    }
-    if ((controller_events & 0x8000U) != 0U) {
-        command_overview_magic_state_ = CommandOverviewMagicState::inactive;
-        command_overview_magic_selected_spell_.reset();
-        source_boundary("field.command_overview.magic.spell_panel.returned");
-    }
-}
-
-void FieldSceneRuntime::advance_command_overview_clips(
-    const std::uint16_t controller_events) {
-    const auto capacity = weapon_magazine_capacity_for_item(
-        active_runner_record().equipped_item_code).value_or(0U);
-    const auto event = command_overview_clips_.advance(
-        controller_events, field_party_roster_.records(),
-        field_party_roster_.active_slot(), capacity);
-    switch (event) {
-    case ClipsMenuEvent::selection_moved:
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
-        }
-        source_boundary("field.command_overview.clips.selector_moved");
-        break;
-    case ClipsMenuEvent::confirmation_opened:
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
-        }
-        source_boundary(
-            "field.command_overview.clips.reload_confirmation_opened");
-        break;
-    case ClipsMenuEvent::confirmation_toggled:
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
-        }
-        source_boundary(
-            command_overview_clips_.reload_confirmation_yes()
-                ? "field.command_overview.clips.reload_confirmation_yes"
-                : "field.command_overview.clips.reload_confirmation_no");
-        break;
-    case ClipsMenuEvent::reloaded:
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
-        }
-        refresh_field_hud_runner_slot();
-        refresh_command_overview_combat_bars();
-        source_boundary("field.command_overview.clips.reloaded");
-        break;
-    case ClipsMenuEvent::trade_opened:
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
-        }
-        source_boundary("field.command_overview.clips.trade.opened");
-        if (command_overview_clips_.trade_recipient_record() >=
-                FieldPartyRosterRuntime::kSlotCount ||
-            field_party_roster_
-                .name(command_overview_clips_.trade_recipient_record())
-                .empty()) {
-            source_boundary(
-                "field.command_overview.clips.trade.recipient_name_missing");
-        }
-        break;
-    case ClipsMenuEvent::trade_selection_moved:
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
-        }
-        source_boundary(
-            "field.command_overview.clips.trade.selector_moved");
-        break;
-    case ClipsMenuEvent::trade_quantity_changed:
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
-        }
-        source_boundary(
-            "field.command_overview.clips.trade.quantity_changed");
-        break;
-    case ClipsMenuEvent::trade_recipient_changed:
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
-        }
-        source_boundary(
-            "field.command_overview.clips.trade.recipient_changed");
-        break;
-    case ClipsMenuEvent::trade_transferred:
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
-        }
-        refresh_field_hud_runner_slot();
-        refresh_command_overview_combat_bars();
-        source_boundary(
-            "field.command_overview.clips.trade.transferred");
-        break;
-    case ClipsMenuEvent::trade_closed:
-        if (source_audio_event_callback_ &&
-            (controller_events & 0x7000U) != 0U) {
-            source_audio_event_callback_(0x24U);
-        }
-        source_boundary("field.command_overview.clips.trade.closed");
-        break;
-    case ClipsMenuEvent::distributed:
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
-        }
-        refresh_field_hud_runner_slot();
-        refresh_command_overview_combat_bars();
-        source_boundary("field.command_overview.clips.distributed");
-        break;
-    case ClipsMenuEvent::message_shown:
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
-        }
-        switch (command_overview_clips_.message()) {
-        case ClipsMenuMessage::out_of_ammo:
-            source_boundary("field.command_overview.clips.out_of_ammo");
-            break;
-        case ClipsMenuMessage::item_does_not_use_clips:
-            source_boundary(
-                "field.command_overview.clips.item_does_not_use_clips");
-            break;
-        case ClipsMenuMessage::no_party_members:
-            source_boundary("field.command_overview.clips.no_party_members");
-            break;
-        case ClipsMenuMessage::reload_success:
-        case ClipsMenuMessage::exchange_complete:
-        case ClipsMenuMessage::none:
-            source_boundary("field.command_overview.clips.message_shown");
-            break;
-        }
-        break;
-    case ClipsMenuEvent::message_acknowledged:
-        source_boundary("field.command_overview.clips.message_acknowledged");
-        break;
-    case ClipsMenuEvent::closed:
-        if (source_audio_event_callback_ &&
-            (controller_events & 0x7000U) != 0U) {
-            source_audio_event_callback_(0x24U);
-        }
-        // `closed` also describes leaving the nested reload prompt. The
-        // runtime remains on the parent Clips screen unless the top-level
-        // selector itself was cancelled.
-        if (!command_overview_clips_.is_open()) {
-            source_boundary("field.command_overview.clips.returned");
-        } else {
-            source_boundary(
-                "field.command_overview.clips.reload_confirmation_closed");
-        }
-        break;
-    case ClipsMenuEvent::no_change:
-        break;
-    }
-    refresh_field_hud_runner_slot();
-    refresh_command_overview_combat_bars();
-}
-
-void FieldSceneRuntime::dispatch_command_overview_inventory_action(
-    const InventoryActionResult& result) {
-    if (!result.item.has_value() || !result.choice.has_value()) {
-        source_boundary("field.command_overview.inventory_action.missing_dispatch");
-        command_overview_inventory_action_active_ = false;
-        command_overview_selected_inventory_item_.reset();
-        return;
-    }
-
-    command_overview_selected_inventory_item_ = result.item;
-    const auto source_choice = static_cast<std::uint8_t>(*result.choice);
-    if (source_choice < 2U) {
-        source_boundary(
-            "field.command_overview.inventory_action.choice_unresolved");
-        command_overview_inventory_action_active_ = false;
-        command_overview_selected_inventory_item_.reset();
-        return;
-    }
-    const auto choice_index = static_cast<std::size_t>(source_choice - 2U);
-    if (choice_index >=
-        field_menu_text_.inventory_action_choice_ids.size()) {
-        source_boundary(
-            "field.command_overview.inventory_action.choice_unresolved");
-        command_overview_inventory_action_active_ = false;
-        command_overview_selected_inventory_item_.reset();
-        return;
-    }
-    const auto& choice_id =
-        field_menu_text_.inventory_action_choice_ids[choice_index];
-    if (choice_id == "equip_or_use") {
-        const auto branch = result.branch.value_or(
-            classify_selected_item(result.item->item_code, true));
-        if (branch == SelectedItemBranch::weapon_or_gear ||
-            branch == SelectedItemBranch::armor) {
-            const auto item_factor = [this](const std::uint8_t item_code) {
-                return weapon_magazine_capacity_for_item(item_code)
-                    .value_or(0U);
-            };
-            const auto mutation = toggle_selected_equipment(
-                active_runner_record(), *result.item,
-                item_factor(active_runner_record().equipped_item_code),
-                item_factor(result.item->item_code));
-            if (mutation == EquipmentMutation::invalid_selection ||
-                mutation == EquipmentMutation::rejected_item_action) {
-                source_boundary(
-                    "field.command_overview.inventory_action.equipment_rejected");
-            } else {
-                source_boundary(
-                    "field.command_overview.inventory_action.equipment_mutated");
-                refresh_field_hud_runner_slot();
-                refresh_command_overview_combat_bars();
-                refresh_command_overview_item_detail();
-            }
-        } else if (branch == SelectedItemBranch::first_aid) {
-            begin_command_overview_first_aid();
-            // First Aid spans multiple controller frames, so its target and
-            // result states retain the selected slot until the nested menu
-            // returns. Other one-shot item actions clear it below.
-            command_overview_inventory_action_active_ = false;
-            return;
-        } else if (branch == SelectedItemBranch::automatic_use) {
-            command_overview_automatic_use_state_ =
-                CommandOverviewAutomaticUseState::result_wait;
-            command_overview_inventory_action_active_ = false;
-            source_boundary(
-                "field.command_overview.inventory_action.automatic_use_opened");
-            return;
-        }
-        command_overview_inventory_action_active_ = false;
-        command_overview_selected_inventory_item_.reset();
-        return;
-    }
-
-    if (choice_id == "discard") {
-        if (!can_discard_selected_item(*result.item)) {
-            command_overview_action_message_ =
-                CommandOverviewActionMessage::cannot_discard;
-            command_overview_inventory_action_active_ = false;
-            source_boundary(
-                "field.command_overview.inventory_action.discard_rejected");
-            return;
-        }
-        // ROM 0x12634 enters the source two-choice prompt before 0x1275C
-        // clears possession. The converted MenuConfirmationState is retained
-        // as typed host state; this is advanced one source frame at a time in
-        // the Qt loop instead of blocking the event loop.
-        command_overview_discard_confirmation_ = MenuConfirmationState{};
-        command_overview_discard_confirmation_active_ = true;
-        command_overview_inventory_action_active_ = true;
-        source_boundary(
-            "field.command_overview.inventory_action.discard_confirmation_opened");
-        return;
-    }
-
-    if (choice_id == "trade") {
-        if (!can_trade_selected_item(result.item->item_code)) {
-            command_overview_action_message_ =
-                CommandOverviewActionMessage::cannot_trade;
-            command_overview_inventory_action_active_ = false;
-            source_boundary(
-                "field.command_overview.inventory_action.trade_rejected");
-            return;
-        }
-
-        std::array<bool, kInventoryTradePartySlotCount> active_slots{};
-        for (std::size_t slot = 0; slot < active_slots.size(); ++slot) {
-            active_slots[slot] = field_party_roster_.slot_active(slot);
-        }
-        const auto trade = begin_inventory_trade(
-            field_party_roster_.records(), active_slots,
-            field_party_roster_.active_slot(), *result.item,
-            command_overview_inventory_trade_);
-        command_overview_inventory_action_active_ = false;
-        if (trade.event == InventoryTradeEvent::no_recipient) {
-            command_overview_selected_inventory_item_.reset();
-            source_boundary(
-                "field.command_overview.inventory_action.trade_no_recipient");
-            return;
-        }
-        if (trade.event != InventoryTradeEvent::recipient_opened) {
-            command_overview_selected_inventory_item_.reset();
-            source_boundary(
-                "field.command_overview.inventory_action.trade_open_failed");
-            return;
-        }
-        source_boundary(
-            trade.recipient_inventory_full
-                ? "field.command_overview.inventory_action.trade_recipient_full"
-                : "field.command_overview.inventory_action.trade_recipient_opened");
-        return;
-    }
-
-    if (choice_id != "cancel") {
-        source_boundary(
-            "field.command_overview.inventory_action.choice_unresolved");
-    }
-    command_overview_inventory_action_active_ = false;
-    command_overview_selected_inventory_item_.reset();
-}
-
-void FieldSceneRuntime::advance_command_overview_discard_confirmation(
-    const std::uint16_t controller_events) {
-    if ((controller_events & 0x0C00U) != 0U) {
-        // ROM 0x12704 calls the shared Yes/No writer for either horizontal
-        // edge; the source toggles its binary choice rather than assigning a
-        // direction-specific value. The prompt starts on No.
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
-        }
-        command_overview_discard_confirmation_.selected_option =
-            command_overview_discard_confirmation_.selected_option == 0U ? 1U
-                                                                          : 0U;
-        source_boundary(
-            command_overview_discard_confirmation_.selected_option == 0U
-                ? "field.command_overview.discard_confirmation.select_yes"
-                : "field.command_overview.discard_confirmation.select_no");
-        return;
-    }
-    // 0x126F8/0x12750 confirm on A or C. B and Start are ignored in this
-    // source loop; neither is a cancel shortcut here.
-    if ((controller_events & 0x5000U) == 0U) {
-        return;
-    }
-    if (source_audio_event_callback_) {
-        source_audio_event_callback_(0x24U);
-    }
-
-    const auto selected = command_overview_selected_inventory_item_;
-    command_overview_discard_confirmation_active_ = false;
-    command_overview_inventory_action_active_ = false;
-    command_overview_selected_inventory_item_.reset();
-    if (!selected.has_value()) {
-        source_boundary(
-            "field.command_overview.discard_confirmation.missing_selection");
-        return;
-    }
-    const auto choice_index = static_cast<std::size_t>(
-        command_overview_discard_confirmation_.selected_option);
-    if (choice_index >= field_menu_text_.confirmation_choice_ids.size()) {
-        source_boundary(
-            "field.command_overview.discard_confirmation.choice_unresolved");
-        return;
-    }
-    const auto& choice_id =
-        field_menu_text_.confirmation_choice_ids[choice_index];
-    if (choice_id == "yes") {
-        const auto mutation = discard_selected_item(
-            active_runner_record(), *selected);
-        if (mutation == EquipmentMutation::discarded) {
-            refresh_field_hud_runner_slot();
-            refresh_command_overview_combat_bars();
-            refresh_command_overview_item_detail();
-            source_boundary(
-                "field.command_overview.inventory_action.discarded");
-        } else {
-            source_boundary(
-                "field.command_overview.inventory_action.discard_failed");
-        }
-    } else if (choice_id == "no") {
-        source_boundary(
-            "field.command_overview.discard_confirmation.selected_no");
-    } else {
-        source_boundary(
-            "field.command_overview.discard_confirmation.choice_unresolved");
-    }
-}
-
-void FieldSceneRuntime::advance_command_overview_inventory_trade(
-    const std::uint16_t controller_events) {
-    if (!command_overview_inventory_trade_.open) {
-        return;
-    }
-    const auto left = (controller_events & 0x0400U) != 0U;
-    const auto right = (controller_events & 0x0800U) != 0U;
-    // ROM 0x129A6..0x129FC routes A, B, and C through the same confirm path.
-    const auto confirm = (controller_events & 0x7000U) != 0U;
-    if (left || right) {
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
-        }
-    } else if (confirm && source_audio_event_callback_) {
-        source_audio_event_callback_(0x24U);
-    }
-
-    std::array<bool, kInventoryTradePartySlotCount> active_slots{};
-    for (std::size_t slot = 0; slot < active_slots.size(); ++slot) {
-        active_slots[slot] = field_party_roster_.slot_active(slot);
-    }
-    const auto result = advance_inventory_trade(
-        field_party_roster_.records(), active_slots,
-        command_overview_inventory_trade_,
-        InventoryTradeInput{left, right, confirm});
-    switch (result.event) {
-    case InventoryTradeEvent::no_change:
-        break;
-    case InventoryTradeEvent::choice_moved:
-        source_boundary(
-            result.yes_selected
-                ? "field.command_overview.inventory_action.trade_select_yes"
-                : "field.command_overview.inventory_action.trade_select_no");
-        break;
-    case InventoryTradeEvent::recipient_advanced:
-        source_boundary(
-            "field.command_overview.inventory_action.trade_recipient_advanced");
-        break;
-    case InventoryTradeEvent::full_recipient_advanced:
-        source_boundary(
-            "field.command_overview.inventory_action.trade_full_recipient_advanced");
-        break;
-    case InventoryTradeEvent::no_recipient:
-    case InventoryTradeEvent::recipient_opened:
-        source_boundary(
-            "field.command_overview.inventory_action.trade_invalid_transition");
-        break;
-    case InventoryTradeEvent::finished:
-        command_overview_selected_inventory_item_.reset();
-        command_overview_inventory_action_active_ = false;
-        source_boundary(
-            "field.command_overview.inventory_action.trade_finished");
-        break;
-    case InventoryTradeEvent::transferred:
-        command_overview_selected_inventory_item_.reset();
-        command_overview_inventory_action_active_ = false;
-        refresh_field_hud_runner_slot();
-        refresh_command_overview_combat_bars();
-        refresh_command_overview_item_detail();
-        source_boundary(
-            "field.command_overview.inventory_action.trade_transferred");
-        break;
-    case InventoryTradeEvent::transfer_failed:
-        command_overview_selected_inventory_item_.reset();
-        command_overview_inventory_action_active_ = false;
-        source_boundary(
-            "field.command_overview.inventory_action.trade_transfer_failed");
-        break;
-    }
-}
-
-void FieldSceneRuntime::advance_command_overview_inventory_action(
-    const std::uint16_t controller_events) {
-    if (command_overview_discard_confirmation_active_) {
-        advance_command_overview_discard_confirmation(controller_events);
-        return;
-    }
-    if (command_overview_action_message_ !=
-        CommandOverviewActionMessage::none) {
-        if ((controller_events & 0xFF00U) != 0U) {
-            command_overview_action_message_ =
-                CommandOverviewActionMessage::none;
-            command_overview_inventory_action_active_ = false;
-            command_overview_selected_inventory_item_.reset();
-            source_boundary(
-                "field.command_overview.inventory_action.message_acknowledged");
-        }
-        return;
-    }
-    if (!command_overview_inventory_action_active_) {
-        return;
-    }
-
-    const InventoryActionInput input{
-        (controller_events & 0x0400U) != 0U,
-        (controller_events & 0x0800U) != 0U,
-        (controller_events & 0x4000U) != 0U,
-        (controller_events & 0x1000U) != 0U,
-        (controller_events & 0x8000U) != 0U};
-    const auto result = advance_inventory_action_loop(
-        active_runner_record(), command_overview_inventory_action_, input);
-    switch (result.event) {
-    case InventoryActionEvent::action_moved:
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
-        }
-        source_boundary(
-            "field.command_overview.inventory_action.selector_moved");
-        break;
-    case InventoryActionEvent::closed:
-        command_overview_inventory_action_active_ = false;
-        command_overview_selected_inventory_item_.reset();
-        source_boundary("field.command_overview.inventory_action.returned");
-        break;
-    case InventoryActionEvent::empty_cell:
-        command_overview_inventory_action_active_ = false;
-        command_overview_selected_inventory_item_.reset();
-        source_boundary(
-            "field.command_overview.inventory_action.empty_cell_after_open");
-        break;
-    case InventoryActionEvent::dispatched:
-        // 0x11C3C requests the command-confirm sound before entering the
-        // selected equip/discard/trade/cancel handler.
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x24U);
-        }
-        dispatch_command_overview_inventory_action(result);
-        break;
-    case InventoryActionEvent::opened:
-    case InventoryActionEvent::no_change:
-        break;
-    }
-}
-
-void FieldSceneRuntime::begin_command_overview_first_aid() {
-    if (!command_overview_selected_inventory_item_.has_value()) {
-        source_boundary("field.command_overview.first_aid.missing_item");
-        return;
-    }
-
-    std::array<std::uint8_t, FieldPartyRosterRuntime::kSlotCount> flags{};
-    const auto& records = field_party_roster_.records();
-    for (std::size_t index = 0; index < records.size(); ++index) {
-        // The ROM tests bit zero in the first byte at +0x10. The typed word
-        // is big-endian, so that byte is its high byte.
-        flags[index] = static_cast<std::uint8_t>(records[index].flags >> 8U);
-    }
-    command_overview_first_aid_targets_ = build_first_aid_target_list(flags);
-    command_overview_first_aid_cursor_ = 0U;
-    command_overview_first_aid_message_ = FirstAidMessage::none;
-    command_overview_first_aid_state_ =
-        CommandOverviewFirstAidState::target_selection;
-    command_overview_inventory_action_active_ = false;
-    command_overview_discard_confirmation_active_ = false;
-    source_boundary("field.command_overview.first_aid.targets_opened");
-}
-
-void FieldSceneRuntime::finish_command_overview_first_aid() {
-    command_overview_first_aid_state_ =
-        CommandOverviewFirstAidState::inactive;
-    command_overview_first_aid_targets_ = FirstAidTargetList{};
-    command_overview_first_aid_cursor_ = 0U;
-    command_overview_first_aid_message_ = FirstAidMessage::none;
-    command_overview_inventory_action_active_ = false;
-    command_overview_discard_confirmation_active_ = false;
-    command_overview_selected_inventory_item_.reset();
-    // 0x11928 redraws the inventory row after the nested action; the
-    // reference keeps the selected item's detail but clears its gold cursor.
-    command_overview_inventory_selector_suppressed_ = true;
-}
-
-void FieldSceneRuntime::finish_command_overview_automatic_use() {
-    command_overview_automatic_use_state_ =
-        CommandOverviewAutomaticUseState::inactive;
-    command_overview_inventory_action_active_ = false;
-    command_overview_selected_inventory_item_.reset();
-    // After the 0x0D94 acknowledgement the source redraws the inventory row
-    // through 0x11928, which clears the yellow item selector.
-    command_overview_inventory_selector_suppressed_ = true;
-}
-
-void FieldSceneRuntime::advance_command_overview_automatic_use(
-    const std::uint16_t controller_events) {
-    if (command_overview_automatic_use_state_ !=
-        CommandOverviewAutomaticUseState::result_wait) {
-        return;
-    }
-    // 0x121DA tail-calls 0x0D94. That shared wait accepts a newly pressed
-    // controller event, so held buttons and released frames leave the
-    // acknowledgement screen in place.
-    if ((controller_events & 0xFF00U) != 0U) {
-        finish_command_overview_automatic_use();
-        source_boundary(
-            "field.command_overview.inventory_action.automatic_use_acknowledged");
-    }
-}
-
-void FieldSceneRuntime::advance_command_overview_first_aid(
-    const std::uint16_t controller_events) {
-    if (command_overview_first_aid_state_ ==
-        CommandOverviewFirstAidState::inactive) {
-        return;
-    }
-
-    if (command_overview_first_aid_state_ ==
-        CommandOverviewFirstAidState::result_wait) {
-        // ROM 0x0D94 waits for a newly pressed high-byte event. A held
-        // confirm button must not dismiss the result on the following frame.
-        if ((controller_events & 0xFF00U) != 0U) {
-            finish_command_overview_first_aid();
-            source_boundary(
-                "field.command_overview.first_aid.result_acknowledged");
-        }
-        return;
-    }
-
-    if ((controller_events & 0x0100U) != 0U ||
-        (controller_events & 0x0200U) != 0U) {
-        const auto delta = (controller_events & 0x0100U) != 0U
-                               ? std::int8_t{-1}
-                               : std::int8_t{1};
-        command_overview_first_aid_cursor_ =
-            advance_first_aid_target_cursor(
-                command_overview_first_aid_cursor_,
-                command_overview_first_aid_targets_.active_count, delta);
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
-        }
-        source_boundary("field.command_overview.first_aid.target_moved");
-        return;
-    }
-
-    // ROM 0x12402 tests only input bit 14 (A). B/C are sampled by the shared
-    // controller service but do not confirm a First Aid target.
-    if ((controller_events & 0x4000U) == 0U) {
-        return;
-    }
-    if (source_audio_event_callback_) {
-        source_audio_event_callback_(0x24U);
-    }
-    if (command_overview_first_aid_cursor_ ==
-        command_overview_first_aid_targets_.cancel_row()) {
-        finish_command_overview_first_aid();
-        source_boundary("field.command_overview.first_aid.cancelled");
-        return;
-    }
-    if (!command_overview_selected_inventory_item_.has_value() ||
-        command_overview_first_aid_cursor_ >=
-            command_overview_first_aid_targets_.active_count) {
-        source_boundary("field.command_overview.first_aid.target_missing");
-        finish_command_overview_first_aid();
-        return;
-    }
-
-    const auto target_index = command_overview_first_aid_targets_
-                                  .active_record_indices[
-                                      command_overview_first_aid_cursor_];
-    if (target_index >= field_party_roster_.records().size()) {
-        source_boundary("field.command_overview.first_aid.target_out_of_range");
-        finish_command_overview_first_aid();
-        return;
-    }
-
-    auto& target_record = field_party_roster_.records()[target_index];
-    const auto item = *command_overview_selected_inventory_item_;
-    if (item.slot >= active_runner_record().inventory_item_codes.size()) {
-        source_boundary("field.command_overview.first_aid.item_slot_invalid");
-        finish_command_overview_first_aid();
-        return;
-    }
-
-    FirstAidTargetState target{
-        target_record.delay_meter,
-        target_record.behavior_meter,
-        target_record.attributes[0],
-        static_cast<std::uint8_t>(target_record.flags >> 8U),
-        target_record.first_aid_continuation};
-    const FirstAidUserState user{active_runner_record().skills[8]};
-    const auto roll_service = [this](const std::uint8_t roll_count,
-                                     const std::uint8_t difficulty) {
-        return count_thresholded_random_rolls(
-            roll_count, static_cast<std::int16_t>(difficulty),
-            [this](const std::uint16_t bound) {
-                return sample_source_random_bound(field_random_seed_, bound);
-            });
-    };
-
-    auto& item_code = active_runner_record().inventory_item_codes[item.slot];
-    auto& item_phase = active_runner_record().inventory_phase_bytes[item.slot];
-    const auto resolution = use_first_aid_item(
-        item_code, item_phase, user, target, roll_service);
-    if (resolution.result == FirstAidItemResult::used) {
-        target_record.delay_meter = target.physical_meter;
-        target_record.behavior_meter = target.mental_meter;
-        target_record.flags = static_cast<std::uint16_t>(
-            (target_record.flags & 0x00FFU) |
-            (static_cast<std::uint16_t>(target.flags) << 8U));
-        target_record.first_aid_continuation = target.continuation;
-        command_overview_first_aid_message_ = resolution.message;
-        if (target_index == 0U) {
-            refresh_field_hud_runner_slot();
-        }
-        refresh_command_overview_combat_bars();
-        refresh_command_overview_item_detail();
-        source_boundary("field.command_overview.first_aid.item_used");
-    } else if (resolution.result == FirstAidItemResult::target_not_injured) {
-        command_overview_first_aid_message_ = resolution.message;
-        source_boundary("field.command_overview.first_aid.target_not_injured");
-    } else {
-        source_boundary("field.command_overview.first_aid.item_unavailable");
-        finish_command_overview_first_aid();
-        return;
-    }
-
-    command_overview_selected_inventory_item_->item_code = item_code;
-    command_overview_selected_inventory_item_->phase = item_phase;
-    command_overview_first_aid_state_ =
-        CommandOverviewFirstAidState::result_wait;
 }
 
 bool FieldSceneRuntime::bootstrap(
@@ -12218,8 +7794,6 @@ bool FieldSceneRuntime::bootstrap(
         return false;
     }
     field_movement_direction_offsets_ = assets.field_movement_direction_offsets;
-    field_collision_probe_offset_banks_ =
-        assets.field_collision_probe_offset_banks;
     field_controller_heading_table_ = assets.field_controller_heading_table;
     field_movement_route_sources_ = assets.field_movement_routes;
     for (std::size_t index = 0; index < field_movement_routes_.size();
@@ -12283,11 +7857,12 @@ bool FieldSceneRuntime::bootstrap(
     field_pending_mode_transition_scene_.reset();
     field_pending_mode_transition_spawn_.reset();
     field_pending_mode_transition_actor_list_.reset();
-    field_pending_story_world_effect_sequence_list_.reset();
+    field_pending_story_world_effect_.reset();
     field_pending_route_actor_list_.reset();
     field_pending_actor_list_transition_group_.reset();
-    field_mako_actor_transitions_remaining_.reset();
+    field_route_actor_transitions_remaining_.reset();
     field_pending_actor_list_callback_.reset();
+    field_active_route_actor_list_.clear();
     field_world_activity_state_ = WorldActivityState{};
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     world_activity_routine_state_ = WorldActivityRoutineState{};
@@ -12295,6 +7870,7 @@ bool FieldSceneRuntime::bootstrap(
     world_activity_request_start_state_ = WorldActivityStartState{};
     world_activity_return_snapshot_.reset();
     field_weapon_projectiles_.clear();
+    field_hit_sparks_.clear();
     field_weapon_slots_occupied_.fill(false);
     last_field_weapon_spawn_result_ = EntitySpawnCycleResult{};
     field_security_floor_index_.reset();
@@ -12897,10 +8473,14 @@ bool FieldSceneRuntime::bootstrap(
     field_taxi_route_active_ = false;
     field_taxi_transition_active_ = false;
     field_taxi_pending_destination_.reset();
+    field_taxi_cabbie_destination_.reset();
     field_phone_transition_active_ = false;
     field_phone_pending_destination_.reset();
     field_dialogue_scene_transition_active_ = false;
     field_dialogue_scene_pending_destination_.reset();
+    field_dialogue_scene_pending_spawn_.reset();
+    field_party_wipe_dialogue_stage_ =
+        FieldPartyWipeDialogueStage::inactive;
     field_party_roster_.clear();
     field_menu_text_ = FieldMenuTextCatalog{};
     command_overview_resource_variant_ = ResourceVariantState{};
@@ -13032,6 +8612,8 @@ bool FieldSceneRuntime::bootstrap(
         !load_command_overview_assets(startup_state.asset_catalog.catalog) ||
         !load_field_weapon_spawn_assets(
             startup_state.asset_catalog.catalog) ||
+        !load_field_hit_spark_assets(
+            startup_state.asset_catalog.catalog) ||
         !load_field_elevator_selector_assets(
             startup_state.asset_catalog.catalog) ||
         !load_field_taxi_selector_assets(
@@ -13109,6 +8691,68 @@ bool FieldSceneRuntime::bootstrap(
         if (horizontal_flip) {
             field_entity_attack_images_[direction] =
                 flipped_image(field_entity_attack_images_[direction], Qt::Horizontal);
+        }
+        for (std::size_t frame = 0U; frame < 2U; ++frame) {
+            const auto strike_alias =
+                std::string(kFieldEntityStrikeAliasPrefix) +
+                std::to_string(direction) + "." + std::to_string(frame);
+            auto& strike = field_entity_strike_images_[direction][frame];
+            if (!load_sprite_image(
+                    startup_state.asset_catalog.catalog, strike_alias, strike,
+                    field_entity_strike_origin_x_[direction][frame],
+                    field_entity_strike_origin_y_[direction][frame])) {
+                source_boundary("field.bootstrap.entity_assets_missing");
+                return false;
+            }
+            if (horizontal_flip) {
+                strike = flipped_image(strike, Qt::Horizontal);
+            }
+        }
+        const auto cast_alias = std::string(kFieldEntityCastAliasPrefix) +
+                                std::to_string(direction);
+        if (!load_sprite_image(
+                startup_state.asset_catalog.catalog, cast_alias,
+                field_entity_cast_images_[direction],
+                field_entity_cast_origin_x_[direction],
+                field_entity_cast_origin_y_[direction])) {
+            source_boundary("field.bootstrap.entity_assets_missing");
+            return false;
+        }
+        if (horizontal_flip) {
+            field_entity_cast_images_[direction] =
+                flipped_image(field_entity_cast_images_[direction], Qt::Horizontal);
+        }
+        for (std::size_t frame = 0U; frame < 2U; ++frame) {
+            const auto down_alias =
+                std::string(kFieldEntityDownAliasPrefix) +
+                std::to_string(direction) + "." + std::to_string(frame);
+            auto& down = field_entity_down_images_[direction][frame];
+            if (!load_sprite_image(
+                    startup_state.asset_catalog.catalog, down_alias, down,
+                    field_entity_down_origin_x_[direction][frame],
+                    field_entity_down_origin_y_[direction][frame])) {
+                source_boundary("field.bootstrap.entity_assets_missing");
+                return false;
+            }
+            if (horizontal_flip) {
+                down = flipped_image(down, Qt::Horizontal);
+            }
+        }
+        for (std::size_t frame = 0U; frame < 2U; ++frame) {
+            const auto hurt_alias =
+                std::string(kFieldEntityHurtAliasPrefix) +
+                std::to_string(direction) + "." + std::to_string(frame);
+            auto& hurt = field_entity_hurt_images_[direction][frame];
+            if (!load_sprite_image(
+                    startup_state.asset_catalog.catalog, hurt_alias, hurt,
+                    field_entity_hurt_origin_x_[direction][frame],
+                    field_entity_hurt_origin_y_[direction][frame])) {
+                source_boundary("field.bootstrap.entity_assets_missing");
+                return false;
+            }
+            if (horizontal_flip) {
+                hurt = flipped_image(hurt, Qt::Horizontal);
+            }
         }
         // The ordinary movement poses come from the C062 positive-marker
         // list, extracted as separate host files. C0B2 is a different finite
@@ -13242,18 +8886,6 @@ bool FieldSceneRuntime::bootstrap(
     return true;
 }
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::bootstrap_for_scene_dump(
-    const integration::StartupIntegrationState& startup_state,
-    const std::uint16_t scene_reference) {
-    if (scene_reference >= kFieldSceneProfileCount) {
-        failure_ = "scene dump requested an out-of-range field scene";
-        return false;
-    }
-    field_scene_reference_override_for_dump_ = scene_reference;
-    return bootstrap(startup_state);
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
 void FieldSceneRuntime::set_controller_nibble(
@@ -13268,45 +8900,9 @@ void FieldSceneRuntime::set_controller_port_byte(
     field_controller_nibble_ = static_cast<std::uint8_t>(port_byte & 0x0FU);
 }
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-void FieldSceneRuntime::begin_projected_field_transition_for_dump() noexcept {
-    if (!ready_) {
-        return;
-    }
-    // This is the typed output state published by the successful 0x1651E
-    // projection in 0xB7B8. The QA route starts here so the recurring frame
-    // loop, rather than a test-only timer, owns the following 17 VBlank steps.
-    field_movement_transition_state_.interaction_transition_pending = true;
-    field_movement_transition_state_.interaction_transition_timer = 0x10U;
-    field_movement_transition_state_.world_interaction_lock = true;
-    field_runtime_state_.display_service_word = 0xFFFFU;
-    state_.display_service_word = 0xFFFFU;
-    field_palette_fade_steps_ = 0U;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-std::optional<std::size_t> FieldSceneRuntime::projected_terrain_cell() const {
-    const auto& profile = state_.field_scene_buffers.profile;
-    const auto row_stride_bytes = profile[18U];
-    if (row_stride_bytes == 0U) {
-        return std::nullopt;
-    }
-    const auto offset = project_entity_y_axis(
-        CoordinateProjectionInput{field_entity_.world_position.x,
-                                   field_entity_.world_position.y,
-                                   field_movement_state_.heading},
-        row_stride_bytes);
-    const auto byte_offset = offset + static_cast<std::int32_t>(row_stride_bytes);
-    if (byte_offset < 0 || (byte_offset & 1) != 0) {
-        return std::nullopt;
-    }
-    const auto word_index = static_cast<std::size_t>(byte_offset / 2);
-    if (word_index >= state_.field_scene_buffers.layer_a.size()) {
-        return std::nullopt;
-    }
-    return word_index;
-}
+
 
 bool FieldSceneRuntime::mark_field_terrain_cell(const std::size_t cell) {
     // ROM 0x16760: when the FF2700 word is not already 0x000B, increment
@@ -13327,122 +8923,11 @@ bool FieldSceneRuntime::mark_field_terrain_cell(const std::size_t cell) {
     return true;
 }
 
-std::size_t FieldSceneRuntime::apply_world_effect_layer_writes(
-    const bool layer_b_target, const std::vector<MapWordWrite>& writes) {
-    // World-effect writes land in FF4700 when the effect marks the Y layer
-    // dirty, otherwise in FF2700 (caller sets FFE100/FFE102). The Qt map is
-    // pre-rendered, so each changed cell is repainted from a donor cell that
-    // already shows the new (FF2700, FF4700) pair, exactly as R3 does for
-    // the 0x16760 terrain mark.
-    auto& layer = layer_b_target ? state_.field_scene_buffers.layer_b
-                                 : state_.field_scene_buffers.layer_a;
-    std::size_t repainted = 0U;
-    for (const auto& write : writes) {
-        if (write.offset < 0 || (write.offset & 1) != 0) {
-            source_boundary("field.world.layer_write_misaligned");
-            continue;
-        }
-        const auto word_index = static_cast<std::size_t>(write.offset / 2);
-        if (word_index >= layer.size()) {
-            source_boundary("field.world.layer_write_out_of_range");
-            continue;
-        }
-        layer[word_index] = write.value;
-        if (word_index >= field_map_cell_words_.size()) {
-            continue;   // outside the pre-rendered image (or no geometry)
-        }
-        const std::pair<std::uint16_t, std::uint16_t> shown =
-            field_map_cell_words_[word_index];
-        if (shown.first == state_.field_scene_buffers.layer_a[word_index] &&
-            shown.second == state_.field_scene_buffers.layer_b[word_index]) {
-            continue;   // the image already shows this pair
-        }
-        if (repaint_field_map_cell(word_index)) {
-            ++repainted;
-        } else {
-            source_boundary("field.world.map_write_without_donor");
-        }
-    }
-    return repainted;
-}
 
-void FieldSceneRuntime::reset_field_map_cell_words() {
-    constexpr int kCellPixels = 32;
-    field_map_cell_words_.clear();
-    field_map_cell_columns_ = 0U;
-    const auto& layer_a = state_.field_scene_buffers.layer_a;
-    const auto& layer_b = state_.field_scene_buffers.layer_b;
-    if (field_map_.isNull() || field_map_.width() % kCellPixels != 0 ||
-        field_map_.height() % kCellPixels != 0) {
-        return;
-    }
-    const auto columns =
-        static_cast<std::size_t>(field_map_.width() / kCellPixels);
-    const auto cells =
-        columns * static_cast<std::size_t>(field_map_.height() / kCellPixels);
-    const auto& profile = state_.field_scene_buffers.profile;
-    const auto row_stride_bytes = profile.size() > 18U ? profile[18U] : 0U;
-    if (cells > layer_a.size() || cells > layer_b.size() ||
-        (row_stride_bytes != 0U && row_stride_bytes != columns * 2U)) {
-        source_boundary("field.terrain.map_cell_geometry_mismatch");
-        return;
-    }
-    field_map_cell_columns_ = columns;
-    field_map_cell_words_.reserve(cells);
-    for (std::size_t index = 0U; index < cells; ++index) {
-        field_map_cell_words_.emplace_back(layer_a[index], layer_b[index]);
-    }
-}
 
-bool FieldSceneRuntime::repaint_field_map_cell(const std::size_t cell) {
-    constexpr int kCellPixels = 32;
-    if (field_map_cell_columns_ == 0U || cell >= field_map_cell_words_.size()) {
-        return false;
-    }
-    // Both words are read live: 0x16760 changes FF2700 and world effects can
-    // change either layer.
-    const std::pair<std::uint16_t, std::uint16_t> wanted{
-        state_.field_scene_buffers.layer_a[cell],
-        state_.field_scene_buffers.layer_b[cell]};
-    std::optional<std::size_t> donor;
-    for (std::size_t index = 0U; index < field_map_cell_words_.size();
-         ++index) {
-        if (index != cell && field_map_cell_words_[index] == wanted) {
-            donor = index;
-            break;
-        }
-    }
-    if (!donor.has_value()) {
-        return false;
-    }
-    const auto cell_rect = [this](const std::size_t index) {
-        return QRect(
-            static_cast<int>(index % field_map_cell_columns_) * kCellPixels,
-            static_cast<int>(index / field_map_cell_columns_) * kCellPixels,
-            kCellPixels, kCellPixels);
-    };
-    const auto source = cell_rect(*donor);
-    const auto target = cell_rect(cell);
-    for (QImage* image : {&field_map_, &field_map_priority_overlay_}) {
-        if (image->isNull()) {
-            continue;
-        }
-        if (image->format() == QImage::Format_Indexed8 ||
-            image->format() == QImage::Format_Mono ||
-            image->format() == QImage::Format_MonoLSB) {
-            // QPainter cannot target palette images; keep the pixels.
-            *image = image->convertToFormat(image->hasAlphaChannel()
-                                                ? QImage::Format_ARGB32
-                                                : QImage::Format_RGB32);
-        }
-        const auto block = image->copy(source);
-        QPainter painter(image);
-        painter.setCompositionMode(QPainter::CompositionMode_Source);
-        painter.drawImage(target.topLeft(), block);
-    }
-    field_map_cell_words_[cell] = wanted;
-    return true;
-}
+
+
+
 
 void FieldSceneRuntime::record_field_activity_start(
     const MovementModeTransitionContinuation continuation) {
@@ -13475,170 +8960,12 @@ void FieldSceneRuntime::record_field_activity_start(
     source_boundary("field.world.activity.started");
 }
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::dispatch_field_interaction_through_coordinator_for_dump(
-    const FieldInteractionPrompt prompt,
-    const std::uint8_t interaction_selection,
-    const bool interaction_suppressed,
-    const std::optional<std::uint8_t> security_floor_index) {
-    if (!ready_ || field_interaction_.open()) {
-        return false;
-    }
-    MovementModeTransitionContinuation continuation =
-        MovementModeTransitionContinuation::none;
-    switch (prompt) {
-    case FieldInteractionPrompt::electromagnetic_lock_door:
-        continuation =
-            MovementModeTransitionContinuation::maglock_door_interaction;
-        break;
-    case FieldInteractionPrompt::building_security_terminal:
-        continuation =
-            MovementModeTransitionContinuation::building_security_terminal;
-        break;
-    case FieldInteractionPrompt::electromagnetic_lock_resolution:
-        return false;
-    }
-    field_movement_transition_state_.activity_selection =
-        interaction_selection;
-    field_movement_transition_state_.terrain_event_suppressed =
-        interaction_suppressed;
-    field_security_floor_index_ = security_floor_index;
-
-    // Inject the typed continuation at the point after collision/event
-    // resolution. Use the production activity scheduler, pending-handler bit,
-    // and field coordinator to enter the same modal route as gameplay.
-    if (!begin_world_activity_if_idle(
-            field_world_activity_state_,
-            static_cast<std::uint16_t>(continuation))) {
-        return false;
-    }
-    world_frame_logic_state_.resource_countdown =
-        field_world_activity_state_.timeout;
-    record_field_activity_start(continuation);
-    advance_frame();
-    return field_interaction_.open();
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::initialize_world_activity_for_dump(
-    const std::uint8_t mode_event_code,
-    const std::uint16_t random_seed) {
-    if (!ready_ || !field_session_source_assets_ || !field_asset_catalog_) {
-        return false;
-    }
-
-    // This route injects the already-resolved FFFBF9 byte at the 0x167AE
-    // dispatcher. The normal movement/collision input that publishes it is
-    // deliberately outside this deterministic scene-selection check.
-    field_movement_transition_state_.mode_event_code = mode_event_code;
-    field_random_seed_ = random_seed;
-    field_runtime_state_.scene_id =
-        state_.field_scene_buffers.scene_reference;
-    field_runtime_state_.field_mode =
-        state_.field_scene_buffers.field_resource_mode;
-    field_runtime_state_.scene_runtime_state = 0U;
-    field_runtime_state_.field_scene_gate = 0U;
-    field_runtime_state_.field_transition_requested = false;
-    field_runtime_state_.scene_refresh_marker = 0;
-
-    // 0x167AE consumes FFFBF9 as an active-map table index. This focused QA
-    // injects that byte directly, outside the collision-driven building
-    // interaction branch, so resolve the same active-map table through Lua.
-    const auto& event_metadata = state_.field_scene_buffers.source_metadata;
-    const auto event_route = game_scripts_.resolve_field_location_route(
-        FieldScriptRouteContext{
-            static_cast<std::uint8_t>(field_runtime_state_.scene_id),
-            field_exit_mode_value(FieldExitMode::world_activity_table),
-            field_collision_event_code_from_id(mode_event_code),
-            event_metadata.event_table_available,
-            event_metadata.event_mode_table});
-    if (!event_route.has_value() ||
-        event_route->kind != FieldScriptRouteKind::area_event ||
-        event_route->area_event_destination_mode !=
-            WorldActivityMode::resource_activity ||
-        !event_route->area_event_target.has_value()) {
-        if (event_route.has_value()) {
-            failure_ =
-                "injected world-activity event did not resolve to a "
-                "resource area (scene=" +
-                std::to_string(field_runtime_state_.scene_id) + ", mode=" +
-                std::to_string(field_runtime_state_.field_mode) +
-                ", event=" + std::to_string(mode_event_code) +
-                ", route-kind=" +
-                std::to_string(static_cast<int>(event_route->kind)) +
-                ", target=" +
-                (event_route->area_event_target.has_value()
-                     ? std::to_string(*event_route->area_event_target)
-                     : "none") +
-                ")";
-        } else {
-            failure_ = game_scripts_.failure();
-        }
-        source_boundary("field.world_activity.qa_route_unresolved");
-        return false;
-    }
-    active_field_script_route_ = *event_route;
-
-    field_runtime_callbacks_.initialize_world_activity_mode(
-        field_runtime_state_);
-    if (field_runtime_state_.field_transition_requested ||
-        world_activity_routine_state_.mode !=
-            WorldActivityMode::resource_activity ||
-        !field_security_floor_index_.has_value()) {
-        return false;
-    }
-
-    // 0x0A54 supplies the nonzero marker consumed by 0x2BD2's scene/profile
-    // re-entry branch. Exercise that normal preparation path after the
-    // dispatcher has selected and prepared the typed resource scene.
-    field_runtime_state_.scene_refresh_marker = -1;
-    advance_field_scene_transition_after_modal();
-    return state_.field_scene_buffers.scene_reference ==
-               world_activity_routine_state_.scene_id &&
-           field_security_floor_index_.value() <
-               world_activity_routine_state_.resource_random_index_bound;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::return_from_world_activity_for_dump() {
-    if (!ready_ || !world_activity_return_snapshot_.has_value()) {
-        return false;
-    }
-    const auto source_scene =
-        world_activity_return_snapshot_->scene_buffers.scene_reference;
-    field_runtime_state_.field_transition_requested = true;
-    advance_frame();
-    return !world_activity_return_snapshot_.has_value() &&
-           !field_runtime_state_.field_transition_requested &&
-           state_.field_scene_buffers.initialized &&
-           state_.field_scene_buffers.scene_reference == source_scene;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::dispatch_selected_security_terminal_for_dump() {
-    if (!ready_ || !field_security_floor_index_.has_value() ||
-        world_activity_routine_state_.mode !=
-            WorldActivityMode::resource_activity ||
-        field_interaction_.open()) {
-        return false;
-    }
-    field_activity_continuation_ =
-        MovementModeTransitionContinuation::building_security_terminal;
-    field_runtime_state_.pending_field_scene_handler = true;
-    field_runtime_state_.field_activity_lock = false;
-    field_runtime_state_.world_activity_countdown = 0U;
-    field_runtime_state_.display_service_word = 0U;
-    advance_frame();
-    return field_interaction_.open() &&
-           field_interaction_.panel().option_count == 2U;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
 bool FieldSceneRuntime::recover_blocked_field_movement(
@@ -13665,13 +8992,11 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
         const std::array<std::uint8_t, 3> probe_bytes{
             field_terrain_sample_state_[0], field_terrain_sample_state_[1],
             field_terrain_sample_state_[2]};
-        build_collision_probe_points(
-            field_collision_probe_state_,
-            field_movement_transition_state_.world_mode != 0U,
-            field_entity_.world_position.x, field_entity_.world_position.y,
-            probe_bytes, field_collision_probe_offset_banks_,
-            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
-            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y));
+        // ROM 0xB834 -> 0xBC36 at every door contact. Lua world_links picks
+        // the door row from the probe codes and, in the outdoor field,
+        // returns the FFDF44..4E party points and FFDF50/52 camera. The
+        // host only mirrors that RAM record; it has no copy of the math.
+        record_field_door_contact(probe_bytes);
         return MovementProjectionPreparation{
             field_collision_probe_state_.selected_offset_bank};
     };
@@ -14039,14 +9364,137 @@ FieldSceneRuntime::heartbeat_field_player(
         actor_context.combat_action_available = weapon_action_available;
         actor_context.combat_input_blocked =
             field_combat_input_suppressed_until_release_;
+        // ROM 0xAD86: negative +0x56 selects the 0xAE6E spell branch. The
+        // B-selected record is the +0xA2 link it aims at.
+        actor_context.player_spell_available =
+            (runner.flags & 0x0300U) == 0x0300U &&
+            classify_field_combat_action(runner.equipped_inventory_slot,
+                                         runner.equipped_item_code) ==
+                FieldCombatActionKind::magic_spell;
+        // ROM 0xAD86 -> 0xB1DC: non-negative +0x56 and +0x57 == 0.
+        actor_context.player_melee_available =
+            (runner.flags & 0x0300U) == 0x0300U &&
+            runner.equipped_inventory_slot >= 0 &&
+            runner.equipped_item_code == 0U;
+        actor_context.target_heading_audio_alternate =
+            (field_random_seed_ & 0x8000U) != 0U;
+        if (actor_context.player_spell_available ||
+            actor_context.player_melee_available) {
+            actor_context.player_spell_code = runner.equipped_item_code;
+            actor_context.action_profile_modifiers =
+                script_action_profile_modifiers(
+                    state_.action_selection_profiles);
+            actor_context.action_attribute_selectors =
+                script_action_attribute_selectors();
+            actor_context.world_effect_slot_occupancy =
+                field_world_effect_slots_occupied_;
+            const auto selected = field_entity_target_owner_.selected_target;
+            const auto target = !selected.has_value()
+                ? field_default_actors_.end()
+                : std::find_if(
+                      field_default_actors_.begin(),
+                      field_default_actors_.end(),
+                      [this, &selected](const auto& actor) {
+                          return actor.active &&
+                              actor.scene_reference ==
+                                  state_.field_scene_buffers
+                                      .scene_reference &&
+                              actor.source_record_slot.has_value() &&
+                              static_cast<std::size_t>(
+                                  *actor.source_record_slot) == *selected;
+                      });
+            const auto target_slot = target == field_default_actors_.end()
+                ? std::size_t{0U}
+                : static_cast<std::size_t>(*target->source_record_slot);
+            if (target != field_default_actors_.end() && target_slot >= 3U &&
+                target_slot <= 0xFFU) {
+                scripting::ScriptActorTargetCandidate candidate{};
+                candidate.id = target->actor_instance_id;
+                candidate.world_x = target->world_position.x;
+                candidate.world_y = target->world_position.y;
+                // ROM 0x15D3C self->link bearing (strike/spell aim) and
+                // 0x15C58 distance via 0x14D58; +0x2E kept separately.
+                const auto link = measure_entity_target_heading_and_distance(
+                    field_entity_.world_position.x,
+                    field_entity_.world_position.y,
+                    target->world_position.x, target->world_position.y);
+                candidate.heading = static_cast<std::uint16_t>(link.heading);
+                candidate.distance = static_cast<std::uint16_t>(link.distance);
+                candidate.source_record_heading =
+                    target->movement_state.heading;
+                // ROM 0x15C58 tests the record's real +0x10 bits 0 and 6.
+                candidate.service_flags = target->source_record_flags;
+                candidate.interaction_flags =
+                    target->source_interaction_flags;
+                candidate.behavior_flags = target->source_behavior_flags;
+                candidate.spawn_state_flags =
+                    target->source_spawn_state_flags;
+                // Slots 3..9 are world records, never party lanes.
+                candidate.world_activity_actor = true;
+                candidate.source_record_slot =
+                    static_cast<std::uint8_t>(target_slot);
+                candidate.combatant = target->combatant;
+                actor_context.ai_target_candidates.push_back(
+                    std::move(candidate));
+            }
+            // The no-link 0x49A2 branch clears its current barrier before it
+            // requests a replacement. Expose that slot as free only when
+            // Lua has no linked target [C].
+            if (actor_context.player_spell_available &&
+                actor_context.ai_target_candidates.empty() &&
+                (actor_context.player_spell_code == 0x07U ||
+                 actor_context.player_spell_code == 0x0EU)) {
+                for (std::size_t slot = 0U;
+                     slot < field_spell_effect_slot_target_ids_.size(); ++slot) {
+                    if (field_spell_effect_slot_target_ids_[slot] ==
+                        kFieldPlayerBarrierEffectOwner) {
+                        actor_context.world_effect_slot_occupancy[slot] =
+                            false;
+                    }
+                }
+            }
+            actor_context.action_line_clear = [this, &runner](
+                const std::uint16_t target_x,
+                const std::uint16_t target_y) {
+                const SpawnEntityParentState parent{
+                    field_entity_.world_position.x,
+                    field_entity_.world_position.y,
+                    field_movement_state_.heading,
+                    static_cast<std::uint8_t>(runner.flags >> 8U),
+                    static_cast<std::uint8_t>(runner.flags & 0x00FFU),
+                    0U,
+                    0U};
+                return probe_action_line_clear(
+                    parent, field_party_roster_.active_slot(), target_x,
+                    target_y);
+            };
+        }
     }
     if (phase == scripting::ScriptActorHeartbeatPhase::render) {
-        actor_context.animation_mode = field_entity_attack_pose_active_
-            ? scripting::ScriptActorAnimationMode::attack
+        const bool runner_down =
+            (active_runner_record().flags & kRunnerFlagsDown) != 0U;
+        const bool runner_hurt =
+            field_entity_animation_id_ == "runner_hurt";
+        actor_context.animation_mode = runner_down
+            ? scripting::ScriptActorAnimationMode::runner_down
+            : field_entity_attack_pose_active_
+            ? (field_entity_attack_pose_kind_ == kFieldPlayerPoseStrike
+                   ? scripting::ScriptActorAnimationMode::strike
+                   : field_entity_attack_pose_kind_ == kFieldPlayerPoseCast
+                         ? scripting::ScriptActorAnimationMode::cast
+                         : scripting::ScriptActorAnimationMode::attack)
             : field_entity_walking_
                   ? scripting::ScriptActorAnimationMode::walking
-                  : scripting::ScriptActorAnimationMode::idle;
-        if (field_entity_attack_pose_active_) {
+                  : runner_hurt
+                        ? scripting::ScriptActorAnimationMode::runner_hurt
+                        : scripting::ScriptActorAnimationMode::idle;
+        if (runner_down || runner_hurt) {
+            // ROM 0xAFF2/0xB35C: rotate +0x2E left three bits, round signed
+            // values upward, then mask to the selected C072/C0B2 direction.
+            actor_context.animation_direction_override =
+                static_cast<std::uint8_t>(
+                    ((field_movement_state_.heading + 0x1000U) >> 13U) & 7U);
+        } else if (field_entity_attack_pose_active_) {
             actor_context.animation_direction_override =
                 field_entity_attack_direction_;
         } else if (field_entity_animation_selector_ <= 0x001CU &&
@@ -14195,147 +9643,27 @@ FieldSceneRuntime::heartbeat_field_player(
                 return std::nullopt;
             }
         }
+        if (phase == scripting::ScriptActorHeartbeatPhase::behavior &&
+            field_entity_animation_id_ == "runner_hurt" &&
+            actor_decision->animation_id != "runner_hurt") {
+            // ROM 0x600E marks the finite C072 list complete; on the next
+            // 0xA8EA service, a living party record reaches 0xACAE and its
+            // idle path selects 0xB45C/C052. 0xB07E does not restore the
+            // pose: it keeps its cue countdown and calls 0xB48C/0xE7C8 only
+            // for the collision-state refresh.
+            field_entity_animation_id_ = actor_decision->animation_id;
+            if (actor_decision->animation_selector.has_value()) {
+                field_entity_animation_selector_ =
+                    *actor_decision->animation_selector;
+            }
+            field_entity_animation_.redraw_requested = true;
+        }
         if (phase == scripting::ScriptActorHeartbeatPhase::render &&
             actor_context.animation_accumulator_override.has_value()) {
             field_player_animation_reset_pending_ = false;
         }
     }
     return actor_decision;
-}
-
-void FieldSceneRuntime::advance_field_movement() {
-    if (!field_entity_.active) {
-        return;
-    }
-    if (field_terrain_probe_trace_enabled_) {
-        field_terrain_probe_trace_.clear();
-    }
-
-    const bool movement_transition_paused =
-        field_opening_auto_walk_.active &&
-        field_movement_transition_state_.interaction_transition_pending;
-    const auto actor_decision = heartbeat_field_player(
-        scripting::ScriptActorHeartbeatPhase::behavior);
-    if (!actor_decision.has_value()) {
-        failure_ = game_scripts_.failure();
-        source_boundary("field.player.lua_heartbeat_failed");
-        return;
-    }
-
-    service_player_weapon_action(
-        actor_decision->combat_action_requested);
-
-    if (!ready_) {
-        // The source keeps the walking pose only while a direction is held.
-        // When the controller goes idle, the heading animation returns to
-        // the directional idle list instead of looping the walk cycle while
-        // the runner stands still.
-        if (!field_entity_attack_pose_active_) {
-            field_entity_walking_ = false;
-        }
-        return;
-    }
-
-    if (movement_transition_paused) {
-        // Keep the startup marker alive through the fade, as the ROM does,
-        // while the projected doorway event owns the field transition.
-        if (!field_entity_attack_pose_active_) {
-            field_entity_walking_ = false;
-        }
-        return;
-    }
-
-    if (!field_opening_auto_walk_.active && field_controller_nibble_ == 0U) {
-        if (!field_entity_attack_pose_active_) {
-            field_entity_walking_ = false;
-        }
-        return;
-    }
-
-    if (!actor_decision->movement_heading.has_value()) {
-        return;
-    }
-
-    if (!actor_decision->movement_current_heading.has_value()) {
-        failure_ = "Lua player heartbeat omitted its current heading";
-        source_boundary("field.player.lua_heading_missing");
-        return;
-    }
-    if (!actor_decision->movement_step.has_value()) {
-        failure_ = "Lua player heartbeat omitted its collision-resolved step";
-        source_boundary("field.player.lua_movement_step_missing");
-        return;
-    }
-
-    field_target_heading_ = *actor_decision->movement_heading;
-    const auto previous_x = field_movement_state_.position_x;
-    const auto previous_y = field_movement_state_.position_y;
-    const auto& movement_step = *actor_decision->movement_step;
-    const auto& script_state = movement_step.state;
-    field_movement_state_.position_x = script_state.position_x;
-    field_movement_state_.position_y = script_state.position_y;
-    field_movement_state_.heading = script_state.heading;
-    field_movement_state_.animation_heading = script_state.animation_heading;
-    field_movement_state_.collision_context = script_state.collision_context;
-    field_movement_state_.movement_substate = script_state.movement_substate;
-    field_movement_state_.route_status = script_state.route_status;
-    field_movement_state_.movement_flags = script_state.movement_flags;
-    field_movement_state_.collision_flags = script_state.collision_flags;
-    field_movement_state_.event_flags = script_state.event_flags;
-    field_movement_state_.collision_extent = script_state.collision_extent;
-    field_movement_transition_state_.terrain_collision_code =
-        script_state.terrain_collision_code;
-    field_movement_behavior_record_.route_flags = script_state.route_flags;
-
-    if (movement_step.direction_animation !=
-        field_entity_animation_selector_) {
-        field_entity_animation_.redraw_requested = true;
-    }
-    field_entity_animation_selector_ = movement_step.direction_animation;
-
-    if (movement_step.outcome ==
-        scripting::ScriptActorMovementStep::Outcome::reset) {
-        field_player_animation_reset_pending_ = true;
-        field_entity_animation_.redraw_requested = true;
-        field_entity_attack_pose_active_ = false;
-        field_entity_walking_ = false;
-        source_boundary("field.movement.reset_blocked_step");
-    }
-
-    field_entity_.world_position.x = field_movement_state_.position_x;
-    field_entity_.world_position.y = field_movement_state_.position_y;
-    field_entity_.direction = actor_decision->direction;
-    if (previous_x != field_movement_state_.position_x ||
-        previous_y != field_movement_state_.position_y) {
-        source_boundary("field.movement.accepted_step");
-        field_entity_attack_pose_active_ = false;
-        field_entity_walking_ = true;
-    } else {
-        field_entity_walking_ = false;
-    }
-}
-
-void FieldSceneRuntime::advance_player_weapon_action_gate() {
-    if (!ready_ || !field_entity_.active) {
-        return;
-    }
-
-    auto& runner = active_runner_record();
-    advance_active_entity_animation_action_gate(runner);
-    if (runner.animation_action_gate >= 0 ||
-        !field_entity_attack_pose_active_) {
-        return;
-    }
-
-    field_entity_attack_pose_active_ = false;
-    if (!field_entity_walking_) {
-        field_entity_animation_selector_ = static_cast<std::uint16_t>(
-            field_entity_attack_direction_ * 4U);
-        field_entity_animation_.frame = 0U;
-        field_entity_animation_.accumulator = 0;
-        field_entity_animation_.redraw_requested = true;
-    }
-    source_boundary("field.combat.player_attack_pose_expired");
 }
 
 void FieldSceneRuntime::service_player_weapon_action(
@@ -14672,6 +10000,7 @@ void FieldSceneRuntime::service_player_weapon_action(
     field_entity_.direction = direction;
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = true;
+    field_entity_attack_pose_kind_ = kFieldPlayerPoseFirearm;
     source_boundary("field.combat.player_weapon_spawned");
 }
 
@@ -15080,228 +10409,7 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
     }
 }
 
-bool FieldSceneRuntime::apply_script_combat_meter_update(
-    const scripting::ScriptCombatMeterUpdate& update,
-    const std::string_view boundary_prefix) {
-    const auto report = [this, boundary_prefix](const std::string_view suffix) {
-        std::string boundary(boundary_prefix);
-        boundary.push_back('.');
-        boundary.append(suffix);
-        source_boundary(boundary);
-    };
-    if (!update.changed) {
-        return true;
-    }
-    if (update.record_type < FieldPartyRosterRuntime::kSlotCount) {
-        const auto slot = static_cast<std::size_t>(
-            update.source_record_slot);
-        if (slot >= FieldPartyRosterRuntime::kSlotCount ||
-            !field_party_roster_.slot_active(slot)) {
-            report("party_target_invalid");
-            return false;
-        }
-        auto& target = field_party_roster_.records()[slot];
-        if (target.record_type != update.record_type) {
-            report("party_target_type_mismatch");
-            return false;
-        }
-        target.delay_meter = update.physical_meter;
-        target.behavior_meter = update.mental_meter;
-        if (update.source_record_flags_updated) {
-            target.flags = static_cast<std::uint16_t>(
-                (target.flags & 0x00ffU) |
-                (static_cast<std::uint16_t>(
-                     update.source_record_flags) << 8U));
-        }
-        if (slot == field_party_roster_.active_slot()) {
-            refresh_field_hud_runner_slot();
-        }
-        report(update.physical ? "party_physical_meter_changed"
-                               : "party_mental_meter_changed");
-        return true;
-    }
 
-    if (update.source_record_slot <
-            static_cast<std::uint8_t>(FieldWorldActorSlot::slot_3) ||
-        update.source_record_slot >
-            static_cast<std::uint8_t>(FieldWorldActorSlot::slot_9)) {
-        report("world_target_slot_invalid");
-        return false;
-    }
-    const auto target = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [this, &update](const auto& actor) {
-            return actor.active && actor.scene_reference ==
-                       state_.field_scene_buffers.scene_reference &&
-                   actor.source_record_slot.has_value() &&
-                   static_cast<std::uint8_t>(*actor.source_record_slot) ==
-                       update.source_record_slot &&
-                   actor.actor_instance_id == update.target_id &&
-                   actor.combatant.record_type == update.record_type;
-        });
-    if (target == field_default_actors_.end()) {
-        report("world_target_missing");
-        return false;
-    }
-
-    const bool physically_defeated = update.physical &&
-        target->combatant.physical_meter != 0U &&
-        update.physical_meter == 0U;
-    const scripting::ScriptActorDefeatFacts defeat_facts{
-        target->combatant.race_or_state};
-
-    target->combatant.physical_meter = update.physical_meter;
-    target->combatant.mental_meter = update.mental_meter;
-    if (update.source_record_flags_updated) {
-        target->source_record_flags = update.source_record_flags;
-        target->combatant.source_flags = update.source_record_flags;
-    }
-    // This meter gates the live actor collision record. Keep the update on
-    // that record as well as in the Lua-owned combat facts so later movement,
-    // collision, and drawing passes see one current actor state.
-    target->physical_meter = update.physical_meter;
-    if (physically_defeated) {
-        const auto decision =
-            game_scripts_.resolve_active_run_actor_defeat(defeat_facts);
-        if (!decision.has_value()) {
-            failure_ = game_scripts_.failure();
-            report("run_actor_defeat_failed");
-            return false;
-        }
-        if (decision->action ==
-            scripting::ScriptRunActorDefeatAction::objective_advanced) {
-            report("run_actor_objective_advanced");
-        }
-    }
-    report(update.physical ? "world_physical_meter_changed"
-                           : "world_mental_meter_changed");
-    return true;
-}
-
-void FieldSceneRuntime::advance_field_actor_animation() {
-    if (field_entity_.active) {
-        const auto previous_frame = field_entity_animation_.frame;
-        const auto previous_animation = field_entity_animation_id_;
-        const auto decision = heartbeat_field_player(
-            scripting::ScriptActorHeartbeatPhase::render);
-        if (!decision.has_value()) {
-            failure_ = game_scripts_.failure();
-            source_boundary("field.player.lua_animation_failed");
-        } else {
-            field_entity_.direction = decision->direction;
-            field_entity_animation_.frame = decision->animation_frame;
-            field_entity_animation_.accumulator =
-                decision->animation_accumulator;
-            field_entity_animation_id_ = decision->animation_id;
-            field_entity_.spell_effect_visible =
-                decision->spell_effect_visible;
-            field_entity_.spell_effect_action_code =
-                decision->spell_effect_action_code;
-            field_entity_.spell_effect_phase = decision->spell_effect_phase;
-            if (decision->spell_effect_resolution.has_value()) {
-                if (decision->combat_meter_update.has_value() &&
-                    !apply_script_combat_meter_update(
-                        *decision->combat_meter_update,
-                        "field.player.spell.effect")) {
-                    failure_ =
-                        "Lua spell effect targeted an unavailable runner record";
-                    source_boundary(
-                        "field.player.spell.effect_apply_failed");
-                } else {
-                    source_boundary("field.player.spell.effect_resolved");
-                }
-            }
-            if (decision->spell_effect_slot_released.has_value()) {
-                const auto slot = *decision->spell_effect_slot_released;
-                const auto active_party_target_id =
-                    "party.runner." + std::to_string(
-                        field_party_roster_.active_slot());
-                if (slot >= field_world_effect_slots_occupied_.size() ||
-                    !field_world_effect_slots_occupied_[slot] ||
-                    (field_spell_effect_slot_target_ids_[slot] !=
-                         "field_player_runner" &&
-                     field_spell_effect_slot_target_ids_[slot] !=
-                         active_party_target_id)) {
-                    failure_ = "Lua released an unowned runner spell effect record";
-                    source_boundary(
-                        "field.player.spell.effect_slot_release_invalid");
-                } else {
-                    field_world_effect_slots_occupied_[slot] = false;
-                    field_spell_effect_slot_target_ids_[slot].clear();
-                    source_boundary(
-                        "field.player.spell.effect_slot_released");
-                }
-            }
-            const auto selector_changed =
-                decision->animation_selector.has_value() &&
-                *decision->animation_selector !=
-                    field_entity_animation_selector_;
-            if (decision->animation_selector.has_value()) {
-                field_entity_animation_selector_ =
-                    *decision->animation_selector;
-            }
-            field_entity_animation_.redraw_requested =
-                selector_changed ||
-                previous_frame != field_entity_animation_.frame ||
-                previous_animation != field_entity_animation_id_;
-        }
-    }
-}
-
-void FieldSceneRuntime::advance_tarislar_tomb_outro() {
-    const auto scene_id = state_.field_scene_buffers.scene_reference;
-    std::array<std::string, 6> actor_ids{};
-    if (scene_id == 55U) {
-        for (const auto& actor : field_default_actors_) {
-            if (!actor.active || actor.scene_reference != scene_id ||
-                !actor.source_record_slot.has_value()) {
-                continue;
-            }
-            const auto slot = static_cast<std::uint8_t>(
-                *actor.source_record_slot);
-            if (slot < 4U || slot > 9U) {
-                continue;
-            }
-            auto& actor_id = actor_ids[static_cast<std::size_t>(slot - 4U)];
-            if (!actor_id.empty()) {
-                source_boundary(
-                    "field.scene55.tomb_outro_duplicate_actor_slot");
-                return;
-            }
-            actor_id = actor.actor_instance_id;
-        }
-    }
-
-    const auto step = game_scripts_.advance_tarislar_tomb_outro(
-        scene_id, world_frame_logic_state_.scene_state, actor_ids, false);
-    if (!step.has_value()) {
-        failure_ = game_scripts_.failure();
-        source_boundary("field.scene55.tomb_outro_lua_failed");
-        return;
-    }
-    if (*step == scripting::ScriptTarislarTombOutroStep::unresolved) {
-        source_boundary("field.scene55.tomb_outro_actor_state_unresolved");
-        return;
-    }
-    if (*step != scripting::ScriptTarislarTombOutroStep::completion_ready ||
-        field_activity_continuation_ ==
-            MovementModeTransitionContinuation::
-                scene_55_tomb_credits_callback) {
-        return;
-    }
-
-    const auto continuation =
-        MovementModeTransitionContinuation::scene_55_tomb_credits_callback;
-    if (!begin_world_activity_if_idle(
-            field_world_activity_state_,
-            static_cast<std::uint16_t>(continuation))) {
-        return;
-    }
-    world_frame_logic_state_.resource_countdown =
-        field_world_activity_state_.timeout;
-    record_field_activity_start(continuation);
-    source_boundary("field.scene55.tomb_outro_callback_queued");
-}
 
 void FieldSceneRuntime::advance_default_field_actor_animations() {
     const auto current_scene = state_.field_scene_buffers.scene_reference;
@@ -15553,169 +10661,7 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
     }
 }
 
-void FieldSceneRuntime::advance_field_weapon_projectile_animations() {
-    const auto release_slot = [this](
-                                   std::optional<std::uint16_t>& slot) {
-        if (slot.has_value() && *slot >= 9U && *slot <= 14U) {
-            field_weapon_slots_occupied_[
-                static_cast<std::size_t>(*slot - 9U)] = false;
-        }
-        slot.reset();
-    };
-    const auto advance_record = [this, &release_slot](
-                                    SpawnEntityRecordState& record,
-                                    EntityAnimationState& animation,
-                                    bool& active,
-                                    bool& script_initialized,
-                                    std::optional<std::uint16_t>& slot) {
-        if (!active) {
-            return;
-        }
-        const auto disable_record = [&] {
-            record.flags = static_cast<std::uint8_t>(
-                record.flags & static_cast<std::uint8_t>(~0x01U));
-            active = false;
-            release_slot(slot);
-        };
-        if (!slot.has_value()) {
-            source_boundary("field.combat.weapon_projectile_slot_missing");
-            disable_record();
-            return;
-        }
 
-        const auto selector = static_cast<std::uint16_t>(
-            record.animation_resource & 0x7FFFU);
-        const auto animation_index =
-            static_cast<std::size_t>(selector / 4U);
-        if ((selector & 0x0003U) != 0U ||
-            animation_index >= field_weapon_projectile_images_.size()) {
-            source_boundary(
-                "field.combat.weapon_projectile_selector_invalid");
-            disable_record();
-            return;
-        }
-        const auto frame_count =
-            field_weapon_projectile_images_[animation_index].size();
-        if (frame_count == 0U || frame_count > 16U) {
-            source_boundary("field.combat.weapon_projectile_frames_invalid");
-            disable_record();
-            return;
-        }
-
-        const auto instance_id = "field_weapon_slot_" +
-                                 std::to_string(*slot);
-        scripting::ScriptActorBehaviorContext context{};
-        context.profile_id = "weapon_projectile";
-        context.entity_kind = record.behavior_defaults.animation_state;
-        context.action_kind = scripting::ScriptActorActionKind::none;
-        context.action_code = 0U;
-        context.instance_id = instance_id;
-        context.initial_heading = record.heading;
-        context.spawn = !script_initialized;
-        context.phase = scripting::ScriptActorHeartbeatPhase::render;
-        context.projectile_animation =
-            scripting::ScriptActorProjectileAnimation{
-                record.animation_resource,
-                static_cast<std::uint16_t>(frame_count),
-                animation.frame,
-                animation.accumulator,
-                animation.increment,
-                animation.period,
-                true};
-        const auto previous_frame = animation.frame;
-        const auto previous_selector = record.animation_resource;
-        const auto decision = game_scripts_.actor_heartbeat(context);
-        if (!decision.has_value() ||
-            !decision->animation_selector.has_value() ||
-            !decision->animation_increment.has_value()) {
-            failure_ = game_scripts_.failure();
-            source_boundary("field.combat.weapon_projectile_lua_animation_failed");
-            disable_record();
-            return;
-        }
-
-        script_initialized = true;
-        record.animation_resource = *decision->animation_selector;
-        animation.frame = decision->animation_frame;
-        animation.accumulator = decision->animation_accumulator;
-        animation.increment = *decision->animation_increment;
-        animation.redraw_requested =
-            previous_frame != animation.frame ||
-            previous_selector != record.animation_resource;
-    };
-
-    for (auto& spawn : field_weapon_projectiles_) {
-        advance_record(spawn.primary_record, spawn.primary_animation,
-                       spawn.primary_active,
-                       spawn.primary_animation_script_initialized,
-                       spawn.primary_slot);
-        advance_record(spawn.source_record, spawn.animation,
-                       spawn.secondary_active,
-                       spawn.secondary_animation_script_initialized,
-                       spawn.secondary_slot);
-    }
-}
-
-void FieldSceneRuntime::update_source_field_camera() {
-    const auto& profile = state_.field_scene_buffers.profile;
-    if (profile.size() < 6U) {
-        source_boundary("field.camera.bounds_missing");
-        return;
-    }
-    const auto camera_x = static_cast<std::uint16_t>(
-        state_.field_scene_buffers.camera_x);
-    const auto camera_y = static_cast<std::uint16_t>(
-        state_.field_scene_buffers.camera_y);
-    if (!field_camera_alignment_ready_) {
-        field_camera_follow_.aligned_x =
-            static_cast<std::uint16_t>(camera_x & 0xFF80U);
-        field_camera_follow_.aligned_y =
-            static_cast<std::uint16_t>(camera_y & 0xFF80U);
-        field_camera_alignment_ready_ = true;
-    }
-    field_camera_follow_.camera_x = camera_x;
-    field_camera_follow_.camera_y = camera_y;
-    field_camera_follow_.minimum_x = profile[2];
-    field_camera_follow_.minimum_y = profile[3];
-    field_camera_follow_.maximum_x = profile[4];
-    field_camera_follow_.maximum_y = profile[5];
-    field_camera_follow_.interaction_locked =
-        field_movement_transition_state_.world_interaction_lock;
-    field_camera_follow_ = follow_field_camera(
-        field_camera_follow_, field_entity_.world_position.x,
-        field_entity_.world_position.y, field_movement_state_.heading, false);
-    state_.field_scene_buffers.camera_x = field_camera_follow_.camera_x;
-    state_.field_scene_buffers.camera_y = field_camera_follow_.camera_y;
-    const auto row_stride = profile.size() > 18U ? profile[18U] : 0U;
-    if (field_camera_follow_.horizontal_edge) {
-        FieldTileRowEdgeState row_edge{};
-        row_edge.horizontal_direction = field_camera_follow_.horizontal_step;
-        row_edge.camera_x = field_camera_follow_.camera_x;
-        row_edge.camera_x_limit = static_cast<std::int16_t>(
-            field_camera_follow_.maximum_x);
-        row_edge.camera_y = field_camera_follow_.camera_y;
-        row_edge.field_y = field_camera_follow_.camera_y;
-        row_edge.row_stride_bytes = row_stride;
-        render_field_tile_row_edge(
-            row_edge, {[this](const FieldTileRowEdgeRequest&) {
-                source_boundary("field.camera.row_edge");
-            }});
-    }
-    if (field_camera_follow_.vertical_edge) {
-        FieldTileColumnEdgeState column_edge{};
-        column_edge.vertical_direction = field_camera_follow_.vertical_step;
-        column_edge.field_y = field_camera_follow_.camera_y;
-        column_edge.field_y_limit = static_cast<std::int16_t>(
-            field_camera_follow_.maximum_y >> 4U);
-        column_edge.camera_x = field_camera_follow_.camera_x;
-        column_edge.camera_y = field_camera_follow_.camera_y;
-        column_edge.row_stride_bytes = row_stride;
-        render_field_tile_column_edge(
-            column_edge, {[this](const FieldTileColumnEdgeRequest&) {
-                source_boundary("field.camera.column_edge");
-            }});
-    }
-}
 
 void FieldSceneRuntime::service_pending_field_viewports() {
     // ROM 0x1872 runs from the VBlank entry and services FFE100/FFE102 after
@@ -15730,877 +10676,6 @@ void FieldSceneRuntime::service_pending_field_viewports() {
         callbacks_.field_viewports.render_alternate_viewport) {
         callbacks_.field_viewports.render_alternate_viewport();
     }
-}
-
-bool FieldSceneRuntime::prepare_runtime_field_scene(
-    const std::uint16_t scene_reference) {
-    if (!field_session_source_assets_ || !field_asset_catalog_ ||
-        scene_reference >= kFieldSceneProfileCount) {
-        return false;
-    }
-
-    auto input = integration::make_field_scene_input(
-        *field_session_source_assets_, scene_reference);
-    if (!input.has_value()) {
-        return false;
-    }
-    const bool apply_mode_transition_spawn =
-        field_pending_mode_transition_scene_ ==
-            std::optional<std::uint16_t>{scene_reference} &&
-        field_pending_mode_transition_spawn_.has_value();
-    if (apply_mode_transition_spawn) {
-        input->pending_position_available = true;
-        input->pending_position = *field_pending_mode_transition_spawn_;
-    }
-    const auto alias =
-        std::string("field.maps.mode.") + std::to_string(scene_reference);
-    const auto priority_overlay_alias = alias + ".priority.overlay";
-    QImage next_field_map;
-    QImage next_field_map_priority_overlay;
-    if (!load_image(*field_asset_catalog_, alias, next_field_map) ||
-        !load_image(*field_asset_catalog_, priority_overlay_alias,
-                    next_field_map_priority_overlay) ||
-        next_field_map_priority_overlay.size() != next_field_map.size()) {
-        if (failure_.empty()) {
-            failure_ = "field map priority overlay dimensions do not match map";
-        }
-        return false;
-    }
-
-    // The world-activity routine prepares its destination scene before the
-    // outer scene-entry pass completes. That pass sets the pending marker and
-    // may ask for one more buffer refresh of the already prepared destination.
-    // Keep this activity's just-published actor records during that refresh.
-    const bool same_scene = state_.field_scene_buffers.initialized &&
-                            state_.field_scene_buffers.scene_reference ==
-                                scene_reference;
-    const bool preserve_scene_entry_position =
-        same_scene && !field_world_activity_scene_entry_pending_;
-    const auto prior_world_mode = field_movement_transition_state_.world_mode;
-    const auto prior_camera_x = state_.field_scene_buffers.camera_x;
-    const auto prior_camera_y = state_.field_scene_buffers.camera_y;
-    const auto prior_runner_position = field_entity_.world_position;
-    auto next_buffers = state_.field_scene_buffers;
-    next_buffers.initialized = false;
-    if (!prepare_field_scene_buffers(next_buffers, *input, {})) {
-        return false;
-    }
-
-    if (preserve_scene_entry_position) {
-        // A 0x2BD2 same-scene refresh redraws the active scene without
-        // resetting the controlled runner to its original entry position.
-        // The immediately repeated load after a world-activity selector is
-        // different: it is still the destination entry pass, and must retain
-        // the new scene's profile placements rather than the caller's map
-        // coordinates. The world-activity entry marker distinguishes those
-        // two cases while allowing already-published actor records to remain
-        // in place.
-        next_buffers.camera_x = prior_camera_x;
-        next_buffers.camera_y = prior_camera_y;
-        if (field_entity_.active) {
-            next_buffers.profile[kSceneProfileEntityPositionWord] =
-                prior_runner_position.x;
-            next_buffers.profile[kSceneProfileEntityPositionWord + 1U] =
-                prior_runner_position.y;
-            next_buffers.source_metadata.initial_field_records[0] =
-                prior_runner_position;
-        }
-    }
-
-    const auto interaction_mode =
-        select_scene_interaction_mode(scene_reference);
-    if (!interaction_mode.has_value()) {
-        return false;
-    }
-
-    state_.field_scene_buffers = std::move(next_buffers);
-    field_map_ = std::move(next_field_map);
-    field_map_priority_overlay_ =
-        std::move(next_field_map_priority_overlay);
-    reset_field_map_cell_words();
-    if (!same_scene || field_world_activity_scene_entry_pending_) {
-        initialize_default_field_actors(scene_reference);
-    }
-    if (!same_scene) {
-        field_weapon_projectiles_.clear();
-        field_weapon_slots_occupied_.fill(false);
-        // 0x167AE may arm FFDF84/FFDF86 while selecting a new field scene.
-        // Its later 0x2BD2 re-entry prepares that scene again, but the timeout
-        // words survive in the ROM. The pending-scene marker distinguishes
-        // that final presentation pass from a fresh unrelated scene load.
-        if (!field_world_activity_scene_entry_pending_) {
-            field_world_activity_timeout_state_ =
-                WorldActivityTimeoutState{};
-        }
-    }
-    if (!same_scene && field_palette_fade_steps_ != 0U) {
-        // The source scene-buffer load replaces the palette after the
-        // field-transition fade. The Qt fade is a presentation overlay, so
-        // release it only after the new scene assets are committed; otherwise
-        // the replacement scene remains hidden behind the old scene's black
-        // transition layer.
-        field_palette_fade_steps_ = 0U;
-        source_boundary("field.scene.transition.clear_old_fade_overlay");
-    }
-    state_.field_resource_mode =
-        state_.field_scene_buffers.field_resource_mode;
-    field_runtime_state_.scene_id = scene_reference;
-    field_runtime_state_.field_mode =
-        state_.field_scene_buffers.field_resource_mode;
-    field_movement_transition_state_.scene_id = scene_reference;
-    field_world_activity_timeout_state_.scene_id = scene_reference;
-    // ROM 0x2BD2 performs a same-scene redraw in place; its visible code does
-    // not replace FFDF40. Preserve the active field mode across that modal
-    // return so 0xBC36 keeps refreshing collision probes when the source had
-    // FFDF40 clear. A genuinely new scene still selects its source mode.
-    field_movement_transition_state_.world_mode =
-        same_scene ? prior_world_mode : *interaction_mode;
-    field_movement_transition_state_.field_origin_x =
-        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
-    world_frame_logic_state_.world_mode = scene_reference;
-    field_terrain_sample_state_ = {};
-    field_collision_marker_index_ = 0U;
-    field_camera_alignment_ready_ = false;
-    field_runtime_state_.display_dirty_flags = static_cast<std::uint8_t>(
-        field_runtime_state_.display_dirty_flags | 0x0EU);
-    state_.display_dirty_flags = static_cast<std::uint8_t>(
-        state_.display_dirty_flags | 0x0EU);
-    if (!same_scene) {
-        // A scene change goes through 0x2822/0x2830 (FFE172 = FFFF); a
-        // same-scene 0x2BD2 redraw does not restart the song [C]. The song
-        // starts on the next field tick (0x2900).
-        scene_music_latch_ = true;
-    }
-    if (apply_mode_transition_spawn) {
-        field_pending_mode_transition_spawn_.reset();
-    }
-    source_boundary("field.world_activity.scene_prepared");
-    return true;
-}
-
-void FieldSceneRuntime::snapshot_world_activity_source_scene() {
-    WorldActivityReturnSnapshot snapshot{};
-    snapshot.scene_buffers = state_.field_scene_buffers;
-    snapshot.scene_entry = state_.field_scene_entry;
-    snapshot.controlled_actor = field_entity_;
-    snapshot.movement = field_movement_state_;
-    snapshot.movement_transition = field_movement_transition_state_;
-    snapshot.camera_follow = field_camera_follow_;
-    snapshot.default_actors = field_default_actors_;
-    snapshot.render_entities = state_.render_entities;
-    snapshot.activity_state = field_world_activity_state_;
-    snapshot.activity_timeout = field_world_activity_timeout_state_;
-    snapshot.world_effect_slots_occupied =
-        field_world_effect_slots_occupied_;
-    snapshot.spell_effect_slot_target_ids =
-        field_spell_effect_slot_target_ids_;
-    snapshot.entity_target_owner = field_entity_target_owner_;
-    snapshot.entity_target_records = field_entity_target_records_;
-    snapshot.player_animation = field_entity_animation_;
-    snapshot.player_animation_selector = field_entity_animation_selector_;
-    snapshot.player_animation_id = field_entity_animation_id_;
-    snapshot.player_animation_reset_pending =
-        field_player_animation_reset_pending_;
-    snapshot.player_walking = field_entity_walking_;
-    snapshot.player_attack_pose = field_entity_attack_pose_active_;
-    snapshot.player_attack_direction = field_entity_attack_direction_;
-    snapshot.target_heading = field_target_heading_;
-    snapshot.return_anchor = pending_field_return_anchor_;
-    snapshot.return_facing = pending_field_return_facing_;
-
-    if (snapshot.return_anchor ==
-        FieldLocationReturnAnchor::collision_probe_lead) {
-        if (!field_collision_probe_state_.initialized) {
-            source_boundary("field.world_activity.return_probe_missing");
-            snapshot.return_anchor = FieldLocationReturnAnchor::none;
-        } else {
-            // ROM 0xBC36 writes the selected offset-bank lead point to
-            // FFDF44; 0x2F32/0x2FA4 copy that anchor into the runner records
-            // when the source field map is rebuilt.
-            const auto& anchor = field_collision_probe_state_.points[0U];
-            snapshot.controlled_actor.world_position =
-                SceneRunnerPosition{anchor.x, anchor.y};
-            snapshot.controlled_actor.projection.world_x = anchor.x;
-            snapshot.controlled_actor.projection.world_y = anchor.y;
-            snapshot.movement.position_x = anchor.x;
-            snapshot.movement.position_y = anchor.y;
-            snapshot.scene_buffers.camera_x =
-                field_collision_probe_state_.camera_x;
-            snapshot.scene_buffers.camera_y =
-                field_collision_probe_state_.camera_y;
-            snapshot.camera_follow.camera_x =
-                field_collision_probe_state_.camera_x;
-            snapshot.camera_follow.camera_y =
-                field_collision_probe_state_.camera_y;
-            snapshot.camera_follow.aligned_x =
-                static_cast<std::uint16_t>(
-                    field_collision_probe_state_.camera_x & 0xFF80U);
-            snapshot.camera_follow.aligned_y =
-                static_cast<std::uint16_t>(
-                    field_collision_probe_state_.camera_y & 0xFF80U);
-
-            if (snapshot.return_facing ==
-                FieldLocationReturnFacing::face_away_from_entry) {
-                const auto return_heading = static_cast<std::uint16_t>(
-                    snapshot.movement.heading ^ 0x8000U);
-                snapshot.movement.heading = return_heading;
-                snapshot.movement.animation_heading = return_heading;
-                snapshot.target_heading = return_heading;
-                snapshot.controlled_actor.direction =
-                    static_cast<std::uint8_t>(
-                        ((return_heading >> 14U) & 3U) * 2U);
-                snapshot.player_walking = false;
-                snapshot.player_attack_pose = false;
-                snapshot.player_animation_reset_pending = true;
-            }
-        }
-    }
-    world_activity_return_snapshot_ = std::move(snapshot);
-    pending_field_return_anchor_ = FieldLocationReturnAnchor::none;
-    pending_field_return_facing_ =
-        FieldLocationReturnFacing::preserve_entry_heading;
-
-    // ROM 0x16E30 retires pending entity effects and clears effect-slot
-    // occupancy before the resource scene is prepared. Gun projectiles use
-    // those typed host slots in this field presenter.
-    field_weapon_projectiles_.clear();
-    field_weapon_slots_occupied_.fill(false);
-    source_boundary("field.world_activity.source_scene_snapshotted");
-}
-
-bool FieldSceneRuntime::restore_world_activity_source_scene(
-    integration::FieldRuntimeCoordinatorState& runtime_state) {
-    if (!world_activity_return_snapshot_.has_value()) {
-        source_boundary("field.world_activity.return_snapshot_missing");
-        return false;
-    }
-
-    const auto& snapshot = *world_activity_return_snapshot_;
-    const auto source_scene = snapshot.scene_buffers.scene_reference;
-    if (!snapshot.scene_buffers.initialized ||
-        source_scene >= kFieldSceneProfileCount) {
-        source_boundary("field.world_activity.return_snapshot_invalid");
-        return false;
-    }
-
-    // Restore the source scene before the common scene-entry path runs. That
-    // lets prepare_runtime_field_scene recognize this as a same-scene rebuild
-    // and retain its camera and runner position while replacing the complete
-    // resource-scene image.
-    state_.field_scene_buffers = snapshot.scene_buffers;
-    state_.field_scene_entry = snapshot.scene_entry;
-    state_.field_resource_mode = snapshot.scene_buffers.field_resource_mode;
-    state_.render_entities = snapshot.render_entities;
-    field_entity_ = snapshot.controlled_actor;
-    field_movement_state_ = snapshot.movement;
-    field_movement_transition_state_ = snapshot.movement_transition;
-    field_camera_follow_ = snapshot.camera_follow;
-    field_default_actors_ = snapshot.default_actors;
-    field_world_activity_state_ = snapshot.activity_state;
-    field_world_activity_timeout_state_ = snapshot.activity_timeout;
-    field_world_effect_slots_occupied_ =
-        snapshot.world_effect_slots_occupied;
-    field_spell_effect_slot_target_ids_ =
-        snapshot.spell_effect_slot_target_ids;
-    field_entity_target_owner_ = snapshot.entity_target_owner;
-    field_entity_target_records_ = snapshot.entity_target_records;
-    field_entity_animation_ = snapshot.player_animation;
-    field_entity_animation_selector_ = snapshot.player_animation_selector;
-    field_entity_animation_id_ = snapshot.player_animation_id;
-    field_player_animation_reset_pending_ =
-        snapshot.player_animation_reset_pending;
-    field_entity_walking_ = snapshot.player_walking;
-    field_entity_attack_pose_active_ = snapshot.player_attack_pose;
-    field_entity_attack_direction_ = snapshot.player_attack_direction;
-    field_target_heading_ = snapshot.target_heading;
-
-    field_world_activity_scene_entry_pending_ = false;
-    field_security_floor_index_.reset();
-    field_world_activity_timeout_state_.scene_id = source_scene;
-    field_movement_transition_state_.scene_id = source_scene;
-    field_movement_transition_state_.world_interaction_lock = false;
-    field_movement_transition_state_.interaction_transition_pending = false;
-    field_movement_transition_state_.interaction_transition_timer = 0;
-    field_palette_fade_steps_ = 0U;
-    field_runtime_state_.scene_id = source_scene;
-    field_runtime_state_.field_mode =
-        snapshot.scene_buffers.field_resource_mode;
-    field_runtime_state_.field_scene_gate = 0U;
-    field_runtime_state_.field_transition_requested = false;
-    field_runtime_state_.pending_field_scene_handler = false;
-    field_runtime_state_.world_activity_countdown = 0U;
-    field_runtime_state_.scene_refresh_marker = -1;
-    runtime_state.scene_id = source_scene;
-    runtime_state.field_mode = snapshot.scene_buffers.field_resource_mode;
-    runtime_state.field_scene_gate = 0U;
-    runtime_state.field_transition_requested = false;
-    runtime_state.pending_field_scene_handler = false;
-    runtime_state.world_activity_countdown = 0U;
-    world_frame_logic_state_.world_mode = source_scene;
-
-    advance_field_scene_transition_after_modal();
-    if (!state_.field_scene_buffers.initialized ||
-        state_.field_scene_buffers.scene_reference != source_scene) {
-        source_boundary("field.world_activity.return_scene_prepare_failed");
-        return false;
-    }
-
-    field_runtime_state_.field_transition_requested = false;
-    runtime_state.field_transition_requested = false;
-    source_boundary("field.world_activity.source_scene_restored");
-    world_activity_return_snapshot_.reset();
-    return true;
-}
-
-void FieldSceneRuntime::advance_field_scene_transition_after_modal() {
-    // The modal Qt loop is non-blocking. Keep the 0x2BD2 transition pending
-    // while the page owns the screen; once it closes, run the ROM-selected
-    // same-scene refresh or nonzero scene/profile re-entry in source order.
-
-    FieldSceneTransitionState transition{};
-    transition.field_transition_marker = static_cast<std::uint16_t>(
-        field_runtime_state_.scene_refresh_marker);
-    transition.scene_refresh_marker =
-        state_.field_scene_entry.scene_refresh_marker;
-    transition.pending_scene_marker =
-        state_.field_scene_entry.pending_scene_marker;
-    transition.camera_x = static_cast<std::uint16_t>(
-        state_.field_scene_buffers.camera_x);
-    transition.camera_y = static_cast<std::uint16_t>(
-        state_.field_scene_buffers.camera_y);
-    transition.camera_transition_x = static_cast<std::uint16_t>(
-        state_.field_scene_entry.camera_transition_x);
-    transition.camera_transition_y = static_cast<std::uint16_t>(
-        state_.field_scene_entry.camera_transition_y);
-
-    const auto& collision_map =
-        state_.field_scene_buffers.source_metadata.terrain_collision_map;
-    std::vector<std::uint8_t> event_counters(collision_map.begin(),
-                                             collision_map.end());
-    FieldSceneEntryCallbacks scene_callbacks{};
-    scene_callbacks.step_palette_transition =
-        callbacks_.advance_title_palette_fade;
-    scene_callbacks.run_world_frame_services =
-        callbacks_.run_world_frame_services;
-    scene_callbacks.guard_world_effect_player_spawn =
-        callbacks_.guard_world_effect_player_spawn;
-    scene_callbacks.prepare_field_viewports = [this] {
-        prepare_field_viewports(
-            FieldViewportPreparationState{state_.field_resource_mode},
-            callbacks_.field_viewports);
-    };
-    scene_callbacks.prepare_field_scene_buffers = [this] {
-        const auto destination_scene =
-            field_pending_mode_transition_scene_.value_or(
-                state_.field_scene_buffers.scene_reference);
-        if (!prepare_runtime_field_scene(
-                destination_scene)) {
-            source_boundary("field.scene.transition.scene_prepare_unresolved");
-        } else if (field_pending_mode_transition_scene_ ==
-                   std::optional<std::uint16_t>{destination_scene}) {
-            field_pending_mode_transition_scene_.reset();
-        }
-    };
-    scene_callbacks.apply_scene_profile_selection =
-        callbacks_.apply_scene_profile_selection;
-    scene_callbacks.record_pending_event = [this](
-                                               const std::uint16_t index) {
-        source_boundary("field.scene.transition.pending_event_recorded");
-        (void)index;
-    };
-    if (transition.field_transition_marker == 0U) {
-        transition.pending_event_index =
-            field_movement_transition_state_.activity_source_word;
-        transition.event_state_negative =
-            static_cast<std::int8_t>(
-                field_movement_transition_state_.activity_selection) < 0;
-    }
-    scene_callbacks.upload_scene_profile_block =
-        callbacks_.upload_scene_profile_block;
-
-    ::shadowrun::ghidra_conversion::advance_field_scene_transition(
-        transition, event_counters, scene_callbacks);
-    field_world_activity_scene_entry_pending_ = false;
-
-    auto& updated_collision_map =
-        state_.field_scene_buffers.source_metadata.terrain_collision_map;
-    std::copy(event_counters.begin(), event_counters.end(),
-              updated_collision_map.begin());
-    if (transition.field_transition_marker == 0U &&
-        transition.pending_event_index == 0U) {
-        field_movement_transition_state_.activity_source_word = 0U;
-    }
-
-    state_.field_scene_entry.field_transition_marker =
-        transition.field_transition_marker;
-    state_.field_scene_entry.scene_refresh_marker =
-        transition.scene_refresh_marker;
-    state_.field_scene_entry.pending_scene_marker =
-        transition.pending_scene_marker;
-    state_.field_scene_entry.camera_x = transition.camera_x;
-    state_.field_scene_entry.camera_y = transition.camera_y;
-    state_.field_scene_entry.camera_transition_x = static_cast<std::int16_t>(
-        transition.camera_transition_x);
-    state_.field_scene_entry.camera_transition_y = static_cast<std::int16_t>(
-        transition.camera_transition_y);
-    state_.field_scene_buffers.camera_x = transition.camera_x;
-    state_.field_scene_buffers.camera_y = transition.camera_y;
-    field_runtime_state_.scene_refresh_marker = static_cast<std::int16_t>(
-        transition.field_transition_marker);
-    field_runtime_state_.display_dirty_flags = static_cast<std::uint8_t>(
-        field_runtime_state_.display_dirty_flags | 0x0EU);
-    state_.display_dirty_flags = static_cast<std::uint8_t>(
-        state_.display_dirty_flags | 0x0EU);
-    // ROM 0x08C4 clears FFDFE8 after the scene buffers and profile are
-    // rebuilt. The previous projected interaction owns this display gate
-    // through the fade, but the replacement field must release it before a
-    // later interaction handler can dispatch.
-    field_runtime_state_.display_service_word = 0U;
-    state_.display_service_word = 0U;
-    source_boundary("field.scene.transition.display_service_released");
-    field_camera_alignment_ready_ = false;
-    update_source_field_camera();
-    update_entity_render_pass(state_.render_entities,
-                              callbacks_.entity_render_pass);
-    dispatch_field_map_scene_entry(
-        state_.field_scene_buffers.scene_reference);
-    source_boundary("field.scene.transition.same_scene_reentered");
-}
-
-bool FieldSceneRuntime::resume_field_mode_entry_route() {
-    if (!field_mode_entry_transition_pending_ ||
-        !field_mode_entry_destination_scene_.has_value()) {
-        return false;
-    }
-    field_mode_entry_transition_pending_ = false;
-    const auto expected_scene = *field_mode_entry_destination_scene_;
-    field_mode_entry_destination_scene_.reset();
-
-    if (!active_field_script_route_.has_value() ||
-        active_field_script_route_->kind != FieldScriptRouteKind::area_event ||
-        active_field_script_route_->area_event_target !=
-            std::optional<std::uint8_t>{
-                static_cast<std::uint8_t>(expected_scene)}) {
-        field_mode_entry_run_target_actor_group_.reset();
-        source_boundary("field.entry.area_event_route_lost");
-        return false;
-    }
-
-    const bool run_target_actor_group_pending =
-        field_mode_entry_run_target_actor_group_.has_value();
-    const auto expected_activity_scene = run_target_actor_group_pending
-        ? static_cast<std::uint16_t>(
-              field_mode_entry_run_target_actor_group_->activity_scene_id)
-        : expected_scene;
-    if (run_target_actor_group_pending &&
-        (field_mode_entry_run_target_actor_group_->activity_scene_id != 15U ||
-         field_mode_entry_run_target_actor_group_->actor_group_area !=
-             state_.field_scene_buffers.scene_reference ||
-         field_mode_entry_run_target_actor_group_->actor_group_event !=
-             active_field_script_route_->event_code)) {
-        field_mode_entry_run_target_actor_group_.reset();
-        source_boundary("field.entry.run_target_actor_group_route_mismatch");
-        return false;
-    }
-
-    const auto initialize =
-        field_runtime_callbacks_.initialize_world_activity_mode;
-    if (!initialize) {
-        field_mode_entry_run_target_actor_group_.reset();
-        source_boundary("field.entry.area_event_route_resume_unavailable");
-        return false;
-    }
-
-    field_runtime_state_.scene_id =
-        state_.field_scene_buffers.scene_reference;
-    field_runtime_state_.field_mode =
-        state_.field_scene_buffers.field_resource_mode;
-    field_runtime_state_.scene_runtime_state = 0U;
-    field_runtime_state_.field_scene_gate = 0U;
-    field_runtime_state_.field_transition_requested = false;
-    initialize(field_runtime_state_);
-    field_mode_entry_run_target_actor_group_.reset();
-
-    if (field_runtime_state_.field_transition_requested ||
-        field_runtime_state_.scene_id != expected_activity_scene) {
-        source_boundary("field.entry.area_event_scene_prepare_failed");
-        return false;
-    }
-
-    field_runtime_state_.scene_refresh_marker = -1;
-    field_movement_transition_state_.scene_id = static_cast<std::uint8_t>(
-        field_runtime_state_.scene_id);
-    world_frame_logic_state_.world_mode =
-        static_cast<std::uint8_t>(field_runtime_state_.scene_id);
-    advance_field_scene_transition_after_modal();
-    if (state_.field_scene_buffers.scene_reference !=
-        expected_activity_scene) {
-        source_boundary("field.entry.area_event_scene_reentry_failed");
-        return false;
-    }
-    source_boundary("field.entry.area_event_scene_entered");
-    return true;
-}
-
-void FieldSceneRuntime::begin_field_modal_return_transition() {
-    // ROM 0x2BD2 refreshes the field immediately after the modal callback.
-    // The native presentation adds a deliberate 60-frame fade-in so that
-    // this handoff is visible and the button used to dismiss the panel is consumed.
-    field_modal_return_transition_frames_remaining_ =
-        kFieldModalReturnTransitionFrames;
-    field_palette_fade_steps_ = 9U;
-    suppress_field_modal_close_input();
-    field_entity_animation_.redraw_requested = true;
-    source_boundary("field.modal_return.transition_started");
-}
-
-void FieldSceneRuntime::suppress_field_modal_close_input() {
-    field_modal_return_blocked_inputs_ = static_cast<std::uint8_t>(
-        (field_controller_sample_state_.held & 0x00FFU) | 0x0040U);
-    field_combat_input_suppressed_until_release_ =
-        (field_modal_return_blocked_inputs_ & 0x40U) != 0U;
-    // The A edge that dismissed the modal belongs to that modal. Keep the
-    // held snapshot so a still-held key cannot become a fresh edge when the
-    // field loop resumes, but discard its queued high-byte press edge.
-    field_controller_sample_state_.events =
-        static_cast<std::uint16_t>(field_controller_sample_state_.held &
-                                   0x00FFU);
-    field_controller_latch_state_ = ControllerLatchState{};
-}
-
-void FieldSceneRuntime::dispatch_field_map_scene_entry(
-    const std::uint16_t scene_id) {
-    field_map_event_system_.begin_scene_visit(scene_id);
-    handle_field_map_event_activations(
-        field_map_event_system_.dispatch_scene_entry(
-            FieldMapEventTriggerContext{
-                scene_id,
-                field_entity_.world_position.x,
-                field_entity_.world_position.y,
-                field_map_event_state_flags_,
-                field_entity_.active}));
-}
-
-void FieldSceneRuntime::handle_field_map_event_activations(
-    const std::vector<FieldMapEventActivation>& activations) {
-    for (const auto& activation : activations) {
-        switch (activation.action) {
-        case FieldMapEventScriptAction::run_lua_handler:
-            handle_game_script_task_step(
-                game_scripts_.start_task("field_events", activation.handler));
-            break;
-        case FieldMapEventScriptAction::dispatch_native_script:
-            source_boundary("field.map_event.native_script_handler_unresolved");
-            break;
-        }
-    }
-}
-
-void FieldSceneRuntime::handle_game_script_task_step(
-    const scripting::ScriptTaskStep& step) {
-    using ScriptTaskStatus = scripting::ScriptTaskStep::Status;
-    if (step.status == ScriptTaskStatus::failed) {
-        failure_ = game_scripts_.failure();
-        source_boundary("field.map_event.lua_handler_failed");
-        return;
-    }
-    if (step.status == ScriptTaskStatus::completed) {
-        source_boundary("field.map_event.lua_handler_completed");
-        return;
-    }
-    if (!step.operation.has_value()) {
-        failure_ = "Lua gameplay task yielded without a typed operation";
-        source_boundary("field.map_event.lua_handler_failed");
-        return;
-    }
-
-    const auto& operation = *step.operation;
-    if (operation.type !=
-            scripting::ScriptNativeOperation::Type::actor_walk_heading ||
-        operation.actor_id != "player" || operation.heading > 7U ||
-        field_opening_auto_walk_.active) {
-        failure_ = "Lua requested an unsupported native actor operation";
-        source_boundary("field.map_event.lua_operation_unresolved");
-        return;
-    }
-
-    field_opening_auto_walk_.active = true;
-    field_opening_auto_walk_.target_heading = operation.heading;
-    source_boundary("field.map_event.new_game_opening_walk_started");
-}
-
-void FieldSceneRuntime::save_field_door_return_point() {
-    // ROM 0xBC36 has already expanded the selected 0xBD34 bank around the
-    // contact position. Those three positions, rather than an inferred
-    // heading-to-distance rule, are the source return placement.
-    if (pending_field_return_anchor_ !=
-            FieldLocationReturnAnchor::collision_probe_lead ||
-        !field_collision_probe_state_.initialized) {
-        field_door_return_point_ = FieldDoorReturnPoint{};
-        source_boundary("field.door.return_policy_or_source_position_missing");
-        return;
-    }
-    const auto heading = field_movement_state_.heading;
-    field_door_return_point_.valid = true;
-    field_door_return_point_.lead = SceneRunnerPosition{
-        field_collision_probe_state_.points[0].x,
-        field_collision_probe_state_.points[0].y};
-    // The entity-owned link chooses whether to retain its entry heading or
-    // resume facing away from the doorway.
-    field_door_return_point_.heading =
-        pending_field_return_facing_ ==
-                FieldLocationReturnFacing::face_away_from_entry
-            ? static_cast<std::uint16_t>(heading ^ 0x8000U)
-            : heading;
-    field_door_return_point_.camera_x =
-        field_collision_probe_state_.camera_x;
-    field_door_return_point_.camera_y =
-        field_collision_probe_state_.camera_y;
-    source_boundary("field.door.return_point_saved");
-}
-
-void FieldSceneRuntime::begin_field_door_return() {
-    if (!field_door_return_point_.valid) {
-        source_boundary("field.door.return_point_missing");
-        return;
-    }
-    // 0xDB20 -> d6=-1 -> 0x2F32: the party is placed at the return point
-    // on the confirm frame [C: emulator run5 8440].
-    const auto& point = field_door_return_point_;
-    field_entity_.world_position = point.lead;
-    field_entity_.projection.world_x = point.lead.x;
-    field_entity_.projection.world_y = point.lead.y;
-    field_movement_state_.position_x = point.lead.x;
-    field_movement_state_.position_y = point.lead.y;
-    field_movement_state_.heading = point.heading;
-    field_movement_state_.animation_heading = point.heading;
-    field_target_heading_ = point.heading;
-    field_movement_behavior_record_.current_heading = point.heading;
-    field_movement_behavior_record_.target_heading = point.heading;
-    // The Lua runner keeps its own heading after spawn; respawn it so the
-    // restored facing is the one it turns from.
-    field_player_actor_script_initialized_ = false;
-    field_entity_.direction =
-        static_cast<std::uint8_t>(((point.heading >> 14U) & 3U) * 2U);
-    // 0x2BD2 aligns the saved camera to 128 units before the reload.
-    state_.field_scene_buffers.camera_x = point.camera_x & 0xFF80U;
-    state_.field_scene_buffers.camera_y = point.camera_y & 0xFF80U;
-    field_camera_alignment_ready_ = false;
-    field_door_return_point_.valid = false;
-    field_door_return_active_ = true;
-    field_door_return_frame_ = 0U;
-    // Keep the last checkout page paint: 0x131C fades that page, not the
-    // field behind it.
-    source_boundary("field.door.return_started");
-}
-
-bool FieldSceneRuntime::begin_hospital_menu_task(
-    const std::string_view function) {
-    if (!hospital_service_session_active_) {
-        hospital_random_grid_effect_ = RandomGridEffectState{};
-        hospital_random_grid_cells_.fill(-1);
-        hospital_service_session_active_ = true;
-    }
-    field_palette_fade_steps_ = 0U;
-    if (!field_dialogue_.open_gameplay_task("council_island_hospital",
-                                            function)) {
-        hospital_service_session_active_ = false;
-        failure_ = "Council Island Hospital Lua menu task could not open";
-        source_boundary("field.hospital.lua_menu_task_failed");
-        return false;
-    }
-    source_boundary("field.hospital.lua_menu_task_opened");
-    return true;
-}
-
-void FieldSceneRuntime::advance_hospital_grid_effect() {
-    if (!field_dialogue_.uses_hospital_menu_layout()) {
-        return;
-    }
-    advance_random_grid_effect(
-        hospital_random_grid_effect_,
-        {[this](const std::uint16_t bound) {
-             const auto value =
-                 sample_source_random_bound(field_random_seed_, bound);
-             return static_cast<std::uint16_t>(value < 0 ? 0 : value);
-         },
-         [this](const RandomGridEffectPlan& plan) {
-             const auto location =
-                 plan.primary_source ==
-                         RandomGridPrimarySource::branch_zero_table
-                     ? static_cast<std::size_t>(plan.primary_entry_index)
-                     : 8U + static_cast<std::size_t>(
-                                plan.primary_entry_index);
-             const auto pattern =
-                 plan.variant_source == RandomGridVariantSource::
-                                           fixed_three_variant_resources
-                     ? static_cast<std::size_t>(plan.variant_entry_index)
-                     : 3U + static_cast<std::size_t>(
-                                plan.variant_entry_index);
-             if (location < hospital_random_grid_cells_.size() &&
-                 pattern < dismiss_runner_random_grid_patterns_.size()) {
-                 hospital_random_grid_cells_[location] =
-                     static_cast<std::int8_t>(pattern);
-             }
-         }});
-}
-
-void FieldSceneRuntime::paint_hospital_menu(QPainter& painter) const {
-    painter.fillRect(QRect(0, 0, 320, 224), Qt::black);
-    if (!pocket_secretary_background_.isNull()) {
-        painter.drawImage(0, 0, pocket_secretary_background_);
-    }
-    if (!pocket_secretary_grid_.isNull()) {
-        painter.drawImage(24, 24, pocket_secretary_grid_);
-    }
-    for (std::size_t location = 0;
-         location < hospital_random_grid_cells_.size(); ++location) {
-        const auto pattern = hospital_random_grid_cells_[location];
-        if (pattern < 0 ||
-            static_cast<std::size_t>(pattern) >=
-                dismiss_runner_random_grid_patterns_.size()) {
-            continue;
-        }
-        painter.drawImage(
-            kHospitalRandomGridOrigins[location][0],
-            kHospitalRandomGridOrigins[location][1],
-            dismiss_runner_random_grid_patterns_[
-                static_cast<std::size_t>(pattern)]);
-    }
-    painter.save();
-    painter.setClipRect(QRect(272, 0, 48, 224));
-    painter.drawImage(0, 0, field_hud_);
-    paint_field_hud_overlays(painter);
-    painter.restore();
-
-    const auto& panel = field_dialogue_.panel();
-    if (field_dialogue_.uses_hospital_medical_attention_layout()) {
-        for (std::size_t row = 0U;
-             row < panel.text_segment_count && row < 3U; ++row) {
-            const auto y = row < 2U
-                               ? 48 + static_cast<int>(row) * 8
-                               : 64;
-            const auto text = panel.text_segments[row];
-            const auto x = row < 2U
-                               ? 72
-                               : std::max(72, 232 -
-                                                   static_cast<int>(text.size()) * 8);
-            draw_hotel_menu_text(
-                painter, x, y, text,
-                HotelMenuPaletteLine::status_and_options);
-        }
-        for (std::size_t row = 0U; row < panel.option_count; ++row) {
-            const auto y = 80 + static_cast<int>(row) * 16;
-            draw_hotel_menu_text(
-                painter, 72, y, panel.options[row].source_label,
-                HotelMenuPaletteLine::status_and_options);
-            if (panel.cursor_selection && panel.selected_option == row &&
-                !hotel_options_cursor_.isNull()) {
-                painter.drawImage(72, y, hotel_options_cursor_);
-            }
-        }
-        return;
-    }
-
-    if (panel.option_count == 2U) {
-        for (std::size_t row = 0U;
-             row < panel.text_segment_count && row < 2U; ++row) {
-            draw_hotel_menu_text(
-                painter, 80, 72 + static_cast<int>(row) * 8,
-                panel.text_segments[row], HotelMenuPaletteLine::checkout);
-        }
-        for (std::size_t row = 0U; row < panel.option_count; ++row) {
-            draw_hotel_menu_text(
-                painter, 128, 96 + static_cast<int>(row) * 16,
-                panel.options[row].source_label,
-                HotelMenuPaletteLine::checkout);
-        }
-        if (panel.cursor_selection &&
-            !hotel_checkout_cursor_.isNull()) {
-            painter.drawImage(
-                104, 96 + static_cast<int>(panel.selected_option) * 16,
-                hotel_checkout_cursor_);
-        }
-        return;
-    }
-
-    if (panel.text_segment_count != 0U) {
-        draw_hotel_menu_text(painter, 72, 48, panel.text_segments[0],
-                             HotelMenuPaletteLine::status_and_options);
-    }
-    const auto* separator = game_scripts_.dialogue_text(
-        "hospital.options.separator");
-    if (separator != nullptr) {
-        draw_hotel_menu_text(painter, 72, 56, *separator,
-                             HotelMenuPaletteLine::status_and_options);
-    }
-    for (std::size_t row = 0U; row < panel.option_count; ++row) {
-        const auto y = 72 + static_cast<int>(row) * 16;
-        draw_hotel_menu_text(
-            painter, 72, y, panel.options[row].source_label,
-            HotelMenuPaletteLine::status_and_options);
-        if (panel.cursor_selection && panel.selected_option == row &&
-            !hotel_options_cursor_.isNull()) {
-            painter.drawImage(72, y, hotel_options_cursor_);
-        }
-    }
-}
-
-bool FieldSceneRuntime::advance_field_door_return() {
-    ++field_door_return_frame_;
-    // Inputs are not sampled while the scene reloads.
-    field_controller_sample_state_.events = 0U;
-    if (field_door_return_frame_ >= checkout_camera_settle_start_frame_ &&
-        field_door_return_frame_ < checkout_fade_in_start_frame_) {
-        // The reloaded scene runs its camera pass while the display is still
-        // black (emulator run5: 8576 -> 9568 over +83..+97, about 64 units a
-        // frame), then the camera stays put until walking resumes. Two follow
-        // passes per frame approximate that rate [H: the reload scroll
-        // routine itself is not traced].
-        update_source_field_camera();
-        update_source_field_camera();
-        field_entity_animation_.redraw_requested = true;
-    }
-    // The reloaded scene draws the restored party; project the runner so it
-    // is on screen when the field fades in (the render pass that normally
-    // projects it is skipped while input is held).
-    field_entity_.projection.world_x = field_entity_.world_position.x;
-    field_entity_.projection.world_y = field_entity_.world_position.y;
-    field_entity_.visible = project_entity_screen_position_standard(
-        field_entity_.projection,
-        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
-        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y))
-                                .visible;
-    if (field_door_return_frame_ >= checkout_input_resume_frame_) {
-        field_door_return_active_ = false;
-        field_door_return_modal_frame_ = QImage{};
-        field_modal_return_blocked_inputs_ = 0U;
-        // The checkout return has restored the destination scene and is about
-        // to rejoin the recurring field coordinator. Release FFDFE8 here so
-        // its 0x0AEA Start gate can accept the next edge.
-        field_runtime_state_.display_service_word = 0U;
-        state_.display_service_word = 0U;
-        source_boundary("field.door.return_display_service_released");
-        source_boundary("field.door.return_completed");
-        return false;
-    }
-    return true;
-}
-
-std::uint8_t FieldSceneRuntime::field_door_return_palette_level()
-    const noexcept {
-    const auto frame = field_door_return_frame_;
-    if (frame < checkout_fade_in_start_frame_) {
-        // 0x131C: one CRAM level per two frames from the fade start.
-        if (frame <= checkout_fade_out_start_frame_) {
-            return 0U;
-        }
-        return static_cast<std::uint8_t>(std::min<std::uint32_t>(
-            (frame - checkout_fade_out_start_frame_) / 2U, 7U));
-    }
-    // Generic fade-in (ordinary fade): four levels, one per frame.
-    const auto since = frame - checkout_fade_in_start_frame_;
-    return static_cast<std::uint8_t>(since >= 4U ? 0U : 4U - since);
 }
 
 void FieldSceneRuntime::advance_frame() {
@@ -16703,13 +10778,13 @@ void FieldSceneRuntime::advance_frame() {
         ::shadowrun::ghidra_conversion::sample_controller_input(
             field_controller_sample_state_, field_controller_port_byte_);
         if ((field_controller_sample_state_.events & 0xFF00U) != 0U) {
+            source_boundary("field.shop." + field_shop_notice_service_id_ +
+                            ".store_closed_dismissed");
             field_shop_notice_active_ = false;
             field_shop_notice_service_id_.clear();
             field_shop_notice_text_key_.clear();
             state_.display_service_word = 0U;
             field_runtime_state_.display_service_word = 0U;
-            source_boundary(
-                "field.shop.microtronics.store_closed_dismissed");
         }
         return;
     }
@@ -16729,11 +10804,28 @@ void FieldSceneRuntime::advance_frame() {
                 const auto service_id =
                     field_shop_route_pending_service_id_;
                 field_shop_route_pending_service_id_.clear();
-                if (service_id == "microtronics") {
+                // shop.lua owns the per-store menu kind, boundary tag and
+                // open gate; the host only applies them.
+                const auto host_profile = game_scripts_.string_map(
+                    "shop", "host_open_profile", service_id);
+                const auto profile_value =
+                    [&host_profile](const char* key,
+                                    std::string_view fallback) {
+                        if (!host_profile.has_value()) {
+                            return std::string(fallback);
+                        }
+                        const auto found = host_profile->find(key);
+                        return found == host_profile->end()
+                            ? std::string(fallback)
+                            : found->second;
+                    };
+                const auto menu_kind = profile_value("menu_kind", "field_store");
+                const auto shop_tag = profile_value("boundary_tag", service_id);
+                if (profile_value("gate", "open") == "runner_deck_fact") {
                     if (!field_runner_feature_flags_.has_value()) {
                         field_shop_active_definition_.reset();
-                        source_boundary(
-                            "field.shop.microtronics.deck_fact_unresolved");
+                        source_boundary("field.shop." + service_id +
+                                        ".deck_fact_unresolved");
                         return;
                     }
                     if ((*field_runner_feature_flags_ & 0x01U) == 0U) {
@@ -16747,8 +10839,8 @@ void FieldSceneRuntime::advance_frame() {
                             "field_mode", "mode_text_content");
                         if (!content.has_value()) {
                             field_shop_active_definition_.reset();
-                            source_boundary(
-                                "field.shop.microtronics.store_closed_text_unavailable");
+                            source_boundary("field.shop." + service_id +
+                                            ".store_closed_text_unavailable");
                             return;
                         }
                         const auto status = content->find("status");
@@ -16759,16 +10851,16 @@ void FieldSceneRuntime::advance_frame() {
                             game_scripts_.dialogue_text(text_key->second) ==
                                 nullptr) {
                             field_shop_active_definition_.reset();
-                            source_boundary(
-                                "field.shop.microtronics.store_closed_text_unavailable");
+                            source_boundary("field.shop." + service_id +
+                                            ".store_closed_text_unavailable");
                             return;
                         }
                         field_shop_notice_active_ = true;
                         field_shop_notice_service_id_ = service_id;
                         field_shop_notice_text_key_ = text_key->second;
                         field_shop_active_definition_.reset();
-                        source_boundary(
-                            "field.shop.microtronics.store_closed");
+                        source_boundary("field.shop." + service_id +
+                                        ".store_closed");
                         return;
                     }
                 }
@@ -16780,7 +10872,7 @@ void FieldSceneRuntime::advance_frame() {
                       field_shop_active_definition_->groups.size() == 6U) ||
                      (field_shop_active_definition_->menu_result == 0 &&
                       field_shop_active_definition_->groups.size() == 4U) ||
-                     (service_id == "wire_masters" &&
+                     (menu_kind == "wire_masters" &&
                       field_shop_active_definition_->menu_mode == 7U &&
                       field_shop_active_definition_->menu_result == 1 &&
                       field_shop_active_definition_->groups.size() == 1U &&
@@ -16793,14 +10885,11 @@ void FieldSceneRuntime::advance_frame() {
                     field_shop_active_definition_.reset();
                     return;
                 }
-                const auto shop_id = service_id == "medicine_lodge"
+                const auto shop_id = menu_kind == "medicine_lodge"
                     ? ShopId::medicine_lodge
-                    : service_id == "wire_masters"
+                    : menu_kind == "wire_masters"
                           ? ShopId::wire_masters
                           : ShopId::field_store;
-                const auto shop_tag = service_id == "ares_weapon_emporium"
-                    ? std::string_view{"ares"}
-                    : std::string_view{service_id};
                 const auto script_menu = game_scripts_.open_shop_menu(
                     service_id);
                 if (field_shop_active_definition_.has_value() &&
@@ -16865,7 +10954,60 @@ void FieldSceneRuntime::advance_frame() {
         } else if (result == FieldDialogueAdvanceResult::returned_to_field) {
             hospital_service_session_active_ = false;
             source_boundary("field.dialogue.returned_to_field");
-            if (field_mode_entry_transition_pending_) {
+            if (field_party_wipe_dialogue_stage_ !=
+                FieldPartyWipeDialogueStage::inactive) {
+                (void)field_dialogue_.take_gameplay_task_result();
+                const auto stage = field_party_wipe_dialogue_stage_;
+                field_party_wipe_dialogue_stage_ =
+                    FieldPartyWipeDialogueStage::inactive;
+                if (stage == FieldPartyWipeDialogueStage::run_failure) {
+                    complete_field_party_wipe();
+                } else {
+                    start_field_party_wake_transition();
+                }
+                return;
+            }
+            bool taxi_departure_started = false;
+            if (field_taxi_cabbie_destination_.has_value()) {
+                const auto destination = *field_taxi_cabbie_destination_;
+                const auto task_result =
+                    field_dialogue_.take_gameplay_task_result();
+                field_taxi_cabbie_destination_.reset();
+                if (task_result ==
+                    std::optional<std::string>{"taxi_ride_accepted"}) {
+                    // ROM 0x208FE writes the accepted region to FFFBF8. The
+                    // field buffer/coordinator share that byte as
+                    // field_resource_mode; keep their mirrors current before
+                    // applying selector 0x136B6's FFFBF8 vs FFDDC4 check [C].
+                    const auto accepted_field_mode =
+                        game_scripts_.field_mode_context_value();
+                    state_.field_scene_buffers.field_resource_mode =
+                        accepted_field_mode;
+                    state_.field_resource_mode = accepted_field_mode;
+                    field_runtime_state_.field_mode = accepted_field_mode;
+                    if (state_.field_scene_buffers.field_resource_mode ==
+                        state_.field_scene_buffers.scene_reference) {
+                        source_boundary(
+                            "field.taxi.accepted_current_scene_no_travel");
+                    } else {
+                        field_taxi_pending_destination_ = destination;
+                        if (field_elevator_scene_transition_.begin_fade_out()) {
+                            field_taxi_transition_active_ = true;
+                            taxi_departure_started = true;
+                            source_boundary(
+                                "field.taxi.destination_fade_out_started");
+                        } else {
+                            field_taxi_pending_destination_.reset();
+                            source_boundary(
+                                "field.taxi.destination_transition_busy");
+                        }
+                    }
+                }
+            }
+            if (taxi_departure_started) {
+                // The cabbie task has already accepted and started the taxi
+                // route; the next host frame advances its source fade.
+            } else if (field_mode_entry_transition_pending_) {
                 const auto expected_result =
                     active_field_script_route_.has_value()
                         ? active_field_script_route_->
@@ -16890,6 +11032,9 @@ void FieldSceneRuntime::advance_frame() {
                 }
                 begin_field_modal_return_transition();
             } else {
+                // Place first: the suspended same-scene re-entry below must
+                // not consume or discard the service return point.
+                (void)apply_field_service_close_return();
                 advance_field_scene_transition_after_modal();
                 begin_field_modal_return_transition();
             }
@@ -16996,7 +11141,7 @@ void FieldSceneRuntime::advance_frame() {
         } else if (result ==
                    FieldDialogueAdvanceResult::taxi_selector_requested) {
             const auto current_region =
-                state_.field_scene_buffers.scene_reference;
+                state_.field_scene_buffers.field_resource_mode;
             if (current_region > 6U) {
                 source_boundary("field.taxi.current_region_unresolved");
             } else {
@@ -17017,10 +11162,16 @@ void FieldSceneRuntime::advance_frame() {
             switch (field_shop_menu_.shop()) {
             case ShopId::field_store:
                 if (field_shop_active_definition_.has_value()) {
-                    return field_shop_active_definition_->id ==
-                                   "ares_weapon_emporium"
-                               ? std::string{"ares"}
-                               : field_shop_active_definition_->id;
+                    const auto& id = field_shop_active_definition_->id;
+                    const auto profile = game_scripts_.string_map(
+                        "shop", "host_open_profile", id);
+                    if (profile.has_value()) {
+                        const auto tag = profile->find("boundary_tag");
+                        if (tag != profile->end()) {
+                            return tag->second;
+                        }
+                    }
+                    return id;
                 }
                 return "field_store";
             case ShopId::medicine_lodge: return "medicine_lodge";
@@ -17174,14 +11325,14 @@ void FieldSceneRuntime::advance_frame() {
             if (transaction_event ==
                 ShopTransactionEvent::confirmation_moved) {
                 if (source_audio_event_callback_) {
-                    source_audio_event_callback_(0x25U);
+                    source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
                 }
                 shop_boundary("confirmation_moved");
             } else if (confirmation_was_open &&
                        !field_shop_menu_.transaction_confirmation_open() &&
                        source_audio_event_callback_) {
                 // 0x57B8C requests event 0x24 on either source exit button.
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
 
             if (transaction_event == ShopTransactionEvent::purchase_applied) {
@@ -17226,19 +11377,19 @@ void FieldSceneRuntime::advance_frame() {
         switch (menu_event) {
         case ShopMenuEvent::selection_moved:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x25U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
             }
             shop_boundary("selection_moved");
             break;
         case ShopMenuEvent::panel_changed:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x25U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
             }
             shop_boundary("panel_changed");
             break;
         case ShopMenuEvent::purchase_selected:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             if (field_shop_menu_.pending_action().has_value() &&
                 field_shop_menu_.pending_action()->offer.has_value() &&
@@ -17266,7 +11417,7 @@ void FieldSceneRuntime::advance_frame() {
             break;
         case ShopMenuEvent::sale_selected:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             if (field_funds_.has_value()) {
                 auto sale_state = make_sale_state(
@@ -17380,7 +11531,7 @@ void FieldSceneRuntime::advance_frame() {
             break;
         case ShopMenuEvent::equipment_upgrade_selected:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             service_wire_upgrade(false);
             break;
@@ -17389,7 +11540,7 @@ void FieldSceneRuntime::advance_frame() {
             break;
         case ShopMenuEvent::source_action_boundary:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             shop_boundary("action_boundary");
             {
@@ -17405,7 +11556,7 @@ void FieldSceneRuntime::advance_frame() {
             break;
         case ShopMenuEvent::active_runner_change_requested:
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             handle_field_mode_action_event();
             refresh_field_hud_runner_slot();
@@ -17416,6 +11567,7 @@ void FieldSceneRuntime::advance_frame() {
             state_.display_service_word = 0U;
             field_runtime_state_.display_service_word = 0U;
             field_shop_active_definition_.reset();
+            (void)apply_field_service_close_return();
             shop_boundary("returned_to_field");
             break;
         case ShopMenuEvent::no_change:
@@ -17607,7 +11759,7 @@ void FieldSceneRuntime::advance_frame() {
 
             if (posture_delta != 0) {
                 if (source_audio_event_callback_) {
-                    source_audio_event_callback_(0x25U);
+                    source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
                 }
                 (void)adjust_runner_posture(active_runner_record(),
                                             posture_delta);
@@ -17650,21 +11802,21 @@ void FieldSceneRuntime::advance_frame() {
                 switch (event) {
                 case DismissRunnerMenuEvent::selection_moved:
                     if (source_audio_event_callback_) {
-                        source_audio_event_callback_(0x25U);
+                        source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
                     }
                     source_boundary(
                         "field.pocket_secretary.dismiss_runner.selection_moved");
                     break;
                 case DismissRunnerMenuEvent::abort_selected:
                     if (source_audio_event_callback_) {
-                        source_audio_event_callback_(0x24U);
+                        source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
                     }
                     source_boundary(
                         "field.pocket_secretary.dismiss_runner.abort_selected");
                     break;
                 case DismissRunnerMenuEvent::runner_selected:
                     if (source_audio_event_callback_) {
-                        source_audio_event_callback_(0x24U);
+                        source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
                     }
                     if (dismiss_runner_.selection > 0U &&
                         dismiss_runner_.selection <=
@@ -17766,7 +11918,7 @@ void FieldSceneRuntime::advance_frame() {
                  },
                  [this] {
                      if (source_audio_event_callback_) {
-                         source_audio_event_callback_(0x25U);
+                         source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::MOVE));
                      }
                      handle_field_mode_action_event();
                      source_boundary("field.pocket_secretary.mode_action");
@@ -17945,7 +12097,8 @@ void FieldSceneRuntime::advance_frame() {
             if (matrix_field_return_transition_pending_) {
                 matrix_field_return_transition_pending_ = false;
                 begin_field_modal_return_transition();
-            } else if (!field_taxi_transition_active_) {
+            } else if (!field_taxi_transition_active_ &&
+                       !field_dialogue_.open()) {
                 advance_field_scene_transition_after_modal();
             }
         } else if (!menu_route_active_ &&
@@ -17954,7 +12107,7 @@ void FieldSceneRuntime::advance_frame() {
             // A/C action selected on the command overview. FBA6 itself has
             // no additional sound call in its Magical Defense fallback.
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x24U);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::MenuSound::SELECT));
             }
             if (command_overview_.view().source_state.primary_page < 2U) {
                 begin_command_overview_inventory_action();
@@ -18022,1546 +12175,6 @@ void FieldSceneRuntime::advance_frame() {
     }
 }
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::open_command_overview_for_dump() {
-    if (!ready_) {
-        return false;
-    }
-    // Exercise the same converted field-coordinator Start path used by the
-    // window rather than directly toggling the presentation state.
-    set_controller_port_byte(static_cast<std::uint8_t>(
-        field_controller_port_byte_ | 0x80U));
-    advance_frame();
-    set_controller_port_byte(static_cast<std::uint8_t>(
-        field_controller_port_byte_ & static_cast<std::uint8_t>(~0x80U)));
-    while (command_overview_start_transition_black_frame_ ||
-           command_overview_start_transition_frames_remaining_ != 0U) {
-        advance_frame();
-    }
-    return command_overview_.open();
-}
-
-bool FieldSceneRuntime::dispatch_dialogue_service_for_dump(
-    const std::string_view service_id,
-    const std::string_view return_policy) {
-    scripting::DialogueOutcome outcome = scripting::OpenServiceOutcome{
-        std::string(service_id), std::string(return_policy)};
-    return dispatch_dialogue_outcome(outcome);
-}
-
-bool FieldSceneRuntime::open_hospital_menu_for_dump(
-    const std::string_view function) {
-    if (!ready_ || (function != "present_options" &&
-                    function != "present_leave_confirmation" &&
-                    function != "present_medical_attention")) {
-        return false;
-    }
-    if (function == "present_medical_attention") {
-        auto& runner = active_runner_record();
-        runner.archetype_index = 2U;
-        runner.attributes[0] = 6U;
-        runner.attributes[5] = 6U;
-        runner.delay_meter = 3U;
-        runner.behavior_meter = 3U;
-        field_funds_ = 1000U;
-        refresh_field_hud_runner_slot();
-    }
-    field_mode_entry_transition_pending_ = false;
-    field_mode_entry_destination_scene_.reset();
-    hospital_service_session_active_ = false;
-    game_scripts_.set_location_context(
-        "building", "council_island_hospital",
-        "council_island_hospital", "council_island_hospital_narrator");
-    game_scripts_.set_field_mode_context(
-        scripting::ScriptFieldModeContext{
-            4U, 4U, 0, state_.field_scene_buffers.scene_mode,
-            field_movement_transition_state_.field_transition_context});
-    return begin_hospital_menu_task(function);
-}
-
-bool FieldSceneRuntime::open_ordinary_field_terminal_for_dump(
-    const std::uint32_t contact_flags, const std::uint32_t funds) {
-    if (!ready_ || !set_notebook_contact_flags_for_dump(contact_flags)) {
-        return false;
-    }
-    field_funds_ = funds;
-    game_scripts_.set_location_context(
-        "activity", "field_terminal", "field.main_menu");
-    return field_dialogue_.open_gameplay_task(
-        "field_activities", "ordinary_field_terminal");
-}
-
-bool FieldSceneRuntime::open_spirit_eyes_ritual_for_dump() {
-    if (!ready_ || state_.field_scene_buffers.scene_reference != 4U) {
-        return false;
-    }
-    // The field encounter that awards the scale is outside this QA route.
-    // Seed its recovered source state, then let the normal Lua task, dialogue
-    // runtime, controller, presenter, and typed return path run unchanged.
-    field_exit_world_flags_ = (1U << 5U) | (1U << 6U) |
-                              (1U << 7U) | (1U << 8U);
-    group_item_flags_ = 1U << 2U;
-    field_active_story_trigger_ = 8U;
-    field_mode_effect_flags_ = (1U << 15U) | (1U << 18U);
-    field_auxiliary_flags_ = 1U << 2U;
-    game_scripts_.set_location_context(
-        "site", "council_spirit_eyes_site", "salish.spirit_eyes",
-        "spirit_eyes");
-    game_scripts_.set_field_mode_context(scripting::ScriptFieldModeContext{
-        4U, 27U, field_exit_alternate_result_,
-        state_.field_scene_buffers.scene_mode,
-        field_movement_transition_state_.field_transition_context});
-    return field_dialogue_.open_gameplay_task(
-        "salish_spirit_eyes", "present");
-}
-
-bool FieldSceneRuntime::open_tarislar_tomb_credits_for_dump() {
-    if (!ready_) {
-        return false;
-    }
-    // This hook exercises only the recovered panel sequence. It does not
-    // synthesize Scene-55 fight completion or the title-screen return.
-    return field_dialogue_.open_gameplay_task(
-        "tarislar_tomb_credits", "present");
-}
-
-bool FieldSceneRuntime::seed_cyberspace_access_for_dump() {
-    if (!ready_) {
-        return false;
-    }
-    install_test_deck();
-    // The field script checks the active runner's source Datajack bit before
-    // opening Cyberspace. QA supplies that ROM-defined access condition.
-    active_runner_record().cyberware_flags |= 0x0001U;
-    return true;
-}
-
-bool FieldSceneRuntime::seed_cyberdeck_reference_frame_for_dump() {
-    if (!ready_ || !cyberdeck_available_) {
-        return false;
-    }
-
-    // Visual fixture from independent longplay frame 004220: Attack 3 is
-    // selected; Attack, Medic, Deception, and Analyze are available; loaded
-    // Deception + Analyze consume 2 + 3 Mp from a 15 Mp deck. Only the
-    // selected Attack rating is printed in this frame; Medic uses the
-    // smallest nonzero value because its exact rating is not visible.
-    auto deck = field_matrix_deck_record_.value_or(CyberdeckRecord{});
-    deck.memory_megapulses = 15U;
-    deck.load_io_speed = 10U;
-    std::array<std::uint8_t, 12U> ratings{};
-    ratings[0U] = 3U;
-    ratings[4U] = 1U;
-    ratings[9U] = 1U;
-    ratings[11U] = 1U;
-    deck.program_ratings = ratings;
-    deck.active_programs = std::array<std::int8_t, 5U>{
-        9, 11, -1, -1, -1};
-    field_matrix_deck_record_ = std::move(deck);
-    field_matrix_program_slots_ = {};
-    return true;
-}
-
-bool FieldSceneRuntime::seed_matrix_storage_files_for_dump() {
-    if (!ready_ || !field_matrix_deck_record_.has_value()) {
-        return false;
-    }
-
-    // Exercise all five ROM records, reverse display order, and three-digit
-    // storage values while keeping the rest of the active deck fixture intact.
-    std::array<CyberdeckDataFile, 5U> files{};
-    files[0U] = CyberdeckDataFile{0, 4U, 0};
-    files[1U] = CyberdeckDataFile{2, 9U, 0};
-    files[2U] = CyberdeckDataFile{13, 20U, 0};
-    files[3U] = CyberdeckDataFile{48, 80U, 0};
-    files[4U] = CyberdeckDataFile{69, 255U, 0};
-    field_matrix_deck_record_->data_files = files;
-    return true;
-}
-
-bool FieldSceneRuntime::seed_cyberdeck_pull_plug_reference_for_dump() {
-    if (!ready_ || !cyberdeck_available_ ||
-        !field_matrix_deck_record_.has_value()) {
-        return false;
-    }
-
-    // Independent longplay frame 005400 shows Deception and Attack in the
-    // first two active slots while the Pull Plug prompt is open.
-    field_matrix_deck_record_->active_programs =
-        std::array<std::int8_t, 5U>{9, 0, -1, -1, -1};
-    return true;
-}
-
-bool FieldSceneRuntime::open_matrix_traversal_for_dump(
-    const std::uint8_t system_id, const std::uint8_t node_id) {
-    if (!ready_ || system_id > 24U || !seed_cyberspace_access_for_dump()) {
-        return false;
-    }
-
-    // Independent Section 21 traversal fixture: Medic-1 and Analyze-2 are
-    // installed in the first two footer cells, both fully loaded and ready.
-    auto deck = field_matrix_deck_record_.value_or(CyberdeckRecord{});
-    deck.memory_megapulses = 15U;
-    deck.load_io_speed = 10U;
-    std::array<std::uint8_t, 12U> ratings{};
-    ratings[4U] = 1U;
-    ratings[11U] = 2U;
-    deck.program_ratings = ratings;
-    deck.active_programs =
-        std::array<std::int8_t, 5U>{4, 11, -1, -1, -1};
-    field_matrix_deck_record_ = std::move(deck);
-    field_matrix_program_slots_.fill(
-        scripting::ScriptCyberdeckProgramSlot{});
-
-    scripting::ScriptMenuRouteStartArguments arguments{};
-    arguments.matrix_system_id = system_id;
-    arguments.matrix_node_id = node_id;
-    arguments.matrix_node_ic_condition = 0U;
-    // The Section 21 capture is a previously explored node. ROM FFFB30 keeps
-    // its rank across the 0x181F8 direct Matrix entry, so seed rank 4 before
-    // the entry animation rather than deriving it from the test traversal.
-    arguments.matrix_node_knowledge_rank = 4U;
-    arguments.return_to_field = true;
-    open_command_overview(
-        static_cast<std::uint16_t>(srx::MenuScreen::MATRIX_ENTRY),
-        std::move(arguments));
-    return menu_route_active_ &&
-           menu_route_screen_ == static_cast<std::uint16_t>(
-                                     srx::MenuScreen::MATRIX_ENTRY);
-}
-
-bool FieldSceneRuntime::seed_matrix_degrade_action_for_dump() {
-    if (!ready_ || !field_matrix_deck_record_.has_value() ||
-        !field_matrix_route_active_ ||
-        menu_route_screen_ != static_cast<std::uint16_t>(
-                                  srx::MenuScreen::MATRIX_NODE_ACTION)) {
-        return false;
-    }
-
-    auto& deck = *field_matrix_deck_record_;
-    auto ratings = deck.program_ratings.value_or(
-        std::array<std::uint8_t, 12U>{});
-    ratings[2U] = 3U;
-    deck.program_ratings = ratings;
-    auto active = deck.active_programs.value_or(
-        std::array<std::int8_t, 5U>{{-1, -1, -1, -1, -1}});
-    active[0U] = 2;
-    deck.active_programs = active;
-    field_matrix_program_slots_[0U] =
-        scripting::ScriptCyberdeckProgramSlot{};
-    return true;
-}
-
-bool FieldSceneRuntime::seed_run_target_for_dump(
-    const std::string_view run_id, const std::uint8_t map_id,
-    const std::uint8_t event_id) {
-    if (!ready_) {
-        return false;
-    }
-
-    std::string category;
-    std::string objective;
-    std::string completion_condition;
-    if (run_id == "employee_recruitment") {
-        category = "extraction";
-        objective = "recruit_the_selected_employee";
-        completion_condition = "return_to_johnson_after_the_recruitment";
-    } else if (run_id == "package_recovery") {
-        category = "recovery";
-        objective = "recover_the_client_package";
-        completion_condition = "return_the_recovered_package_to_the_johnson";
-    } else if (run_id == "gang_contract") {
-        const bool rom_target =
-            (map_id == 1U && event_id == 9U) ||
-            (map_id == 2U && event_id == 9U) ||
-            (map_id == 3U && event_id == 4U);
-        if (!rom_target) {
-            return false;
-        }
-        category = "gang";
-        objective = "resolve_the_selected_gang_contract";
-        completion_condition =
-            "return_to_the_johnson_after_the_gang_contract";
-    } else {
-        return false;
-    }
-
-    using PersistentValue = scripting::ScriptPersistentValue;
-    const auto scalar = [](auto value) {
-        PersistentValue result{};
-        result.value = value;
-        return result;
-    };
-    const PersistentValue target{PersistentValue::Object{
-        {"area_id", scalar(std::int64_t{map_id})},
-        {"location_id", scalar(std::int64_t{event_id})},
-    }};
-    const PersistentValue route{PersistentValue::Object{
-        {"target", target},
-    }};
-    const PersistentValue active_offer{PersistentValue::Object{
-        {"id", scalar(std::string(run_id))},
-        {"category", scalar(category)},
-        {"objective", scalar(objective)},
-        {"completion_condition", scalar(completion_condition)},
-        {"runner_progress_delta", scalar(std::int64_t{0})},
-        {"route", route},
-    }};
-    const PersistentValue registry_state{PersistentValue::Object{
-        {"schema_version", scalar(std::int64_t{1})},
-        {"current_offer", scalar(std::monostate{})},
-        {"active_offer", active_offer},
-        {"last_completed_offer", scalar(std::monostate{})},
-        {"last_offer_result", scalar(std::string("accepted"))},
-    }};
-    return game_scripts_.restore_run_registry_state(registry_state);
-}
-
-bool FieldSceneRuntime::seed_current_run_for_dump(
-    const std::uint8_t source_run_type,
-    const bool matrix_max_payment) {
-    if (!ready_ || source_run_type > 6U ||
-        (matrix_max_payment && source_run_type != 6U)) {
-        return false;
-    }
-
-    using PersistentValue = scripting::ScriptPersistentValue;
-    const auto type = static_cast<std::size_t>(source_run_type);
-    // Each case is an accepted offer row from the ROM context table. The
-    // values below keep the QA seed tied to real initializer/context/payment
-    // combinations while presenting each of the seven shared detail handlers.
-    static constexpr std::array<std::uint8_t, 7> kContexts{
-        0U, 1U, 0U, 2U, 3U, 1U, 2U};
-    static constexpr std::array<std::uint8_t, 7> kInitializers{
-        0U, 1U, 2U, 3U, 9U, 5U, 6U};
-    static constexpr std::array<std::int64_t, 7> kProgressDeltas{
-        1, 1, 1, 2, 3, 2, 2};
-    static constexpr std::array<std::int64_t, 7> kBasePayments{
-        10, 200, 40, 190, 1700, 500, 425};
-    static constexpr std::array<std::int64_t, 7> kNegotiationScales{
-        3, 2, 1, 2, 4, 5, 1};
-    static constexpr std::array<std::string_view, 7> kIds{
-        "ghoul_bounty", "bodyguard_escort", "package_delivery",
-        "gang_contract", "package_recovery", "employee_recruitment",
-        "matrix_objective"};
-    static constexpr std::array<std::string_view, 7> kCategories{
-        "bounty", "escort", "courier", "gang", "recovery",
-        "extraction", "matrix"};
-    static constexpr std::array<std::string_view, 7> kObjectives{
-        "kill_ghouls_in_redmond", "escort_client_to_destination",
-        "deliver_package_to_destination", "resolve_the_selected_gang_contract",
-        "recover_the_client_package", "recruit_the_selected_employee",
-        "complete_the_selected_matrix_objective"};
-    static constexpr std::array<std::string_view, 7> kCompletionConditions{
-        "return_to_johnson_for_payment",
-        "client_reaches_destination_alive", "package_delivered_safely",
-        "return_to_the_johnson_after_the_gang_contract",
-        "return_the_recovered_package_to_the_johnson",
-        "return_to_johnson_after_the_recruitment",
-        "complete_the_source_matrix_objective"};
-
-    const auto scalar = [](auto value) {
-        PersistentValue result{};
-        result.value = value;
-        return result;
-    };
-    const auto location = [&scalar](const std::int64_t area_id,
-                                    const std::int64_t location_id) {
-        return PersistentValue{PersistentValue::Object{
-            {"area_id", scalar(area_id)},
-            {"location_id", scalar(location_id)},
-        }};
-    };
-    PersistentValue::Object route_fields;
-    if (source_run_type == 1U) {
-        route_fields.emplace("origin", location(2, 6));
-        route_fields.emplace("destination", location(5, 6));
-        route_fields.emplace("client_id", scalar(std::int64_t{7}));
-    } else if (source_run_type == 2U) {
-        // Section 03 video route: Ares Weapon Emporium to Jackal's Lantern.
-        route_fields.emplace("origin", location(2, 11));
-        route_fields.emplace("destination", location(2, 5));
-    } else if (source_run_type == 3U) {
-        route_fields.emplace("target", location(3, 4));
-    } else if (source_run_type == 4U) {
-        // First site in the source two-site package-recovery pool.
-        route_fields.emplace("target", location(1, 2));
-    } else if (source_run_type == 5U) {
-        // First site in the shared four-site employee-recruitment pool.
-        route_fields.emplace("target", location(0, 5));
-    }
-    const PersistentValue route{std::move(route_fields)};
-
-    const auto context = matrix_max_payment
-        ? std::uint8_t{4U}
-        : kContexts[type];
-    const auto source_initializer = matrix_max_payment
-        ? std::uint8_t{8U}
-        : kInitializers[type];
-    const auto progress_delta = matrix_max_payment
-        ? std::int64_t{5}
-        : kProgressDeltas[type];
-    const auto base_payment = matrix_max_payment
-        ? std::int64_t{6100}
-        : kBasePayments[type];
-    const auto negotiation_scale = matrix_max_payment
-        ? std::int64_t{10}
-        : kNegotiationScales[type];
-    const std::int64_t negotiation_skill = matrix_max_payment
-        ? 12
-        : (source_run_type == 0U ? 0 : 3);
-    const auto negotiation_bound =
-        negotiation_scale * negotiation_skill + 1;
-    const auto negotiation_roll = negotiation_bound - 1;
-    const PersistentValue payment{PersistentValue::Object{
-        {"base_amount", scalar(base_payment)},
-        {"negotiated_amount",
-         scalar(base_payment + negotiation_roll * 5)},
-        {"negotiation_skill", scalar(negotiation_skill)},
-        {"negotiation_bound", scalar(negotiation_bound)},
-        {"negotiation_roll", scalar(negotiation_roll)},
-    }};
-    PersistentValue::Object offer_fields{
-        {"id", scalar(std::string(kIds[type]))},
-        {"category", scalar(std::string(kCategories[type]))},
-        {"objective", scalar(std::string(kObjectives[type]))},
-        {"completion_condition",
-         scalar(std::string(kCompletionConditions[type]))},
-        {"runner_progress_delta", scalar(progress_delta)},
-        {"source_offer_type", scalar(static_cast<std::int64_t>(source_initializer))},
-        {"source_offer_context", scalar(static_cast<std::int64_t>(context))},
-        {"source_run_type", scalar(static_cast<std::int64_t>(source_run_type))},
-        {"context", scalar(static_cast<std::int64_t>(context))},
-        {"route", route},
-        {"payment", payment},
-    };
-    if (source_run_type == 0U) {
-        offer_fields.emplace("area_id", scalar(std::int64_t{2}));
-        offer_fields.emplace("ghoul_kill_count", scalar(std::int64_t{19}));
-    } else if (source_run_type == 3U) {
-        offer_fields.emplace("variant", scalar(std::int64_t{1}));
-    } else if (source_run_type == 5U) {
-        offer_fields.emplace("client_id", scalar(std::int64_t{0}));
-    } else if (source_run_type == 6U) {
-        // The regular case is a simple row. The optional maximum-payment case
-        // is source Matrix Expert row 7, rank 12, roll 120, displaying 6,700.
-        const auto objective_index = matrix_max_payment ? 0 : 2;
-        const auto objective_class = matrix_max_payment ? 4 : 0;
-        const auto objective_value = matrix_max_payment ? 20 : 1;
-        const auto matrix_state = matrix_max_payment ? 1 : -1;
-        const auto target_system_id = matrix_max_payment ? 7 : 0;
-        offer_fields.emplace("objective_index", scalar(objective_index));
-        offer_fields.emplace("target_system_id", scalar(target_system_id));
-        offer_fields.emplace(
-            "matrix_run_state",
-            PersistentValue{PersistentValue::Object{
-                {"state", scalar(matrix_state)},
-                {"objective", scalar(objective_class)},
-                {"value", scalar(objective_value)},
-                {"size", scalar(std::int64_t{20})},
-                {"fc28", scalar(std::int64_t{0})},
-                {"fc1c", scalar(std::int64_t{0})},
-                {"target_system_id", scalar(target_system_id)},
-            }});
-    }
-    const PersistentValue active_offer{std::move(offer_fields)};
-    const PersistentValue registry_state{PersistentValue::Object{
-        {"schema_version", scalar(std::int64_t{1})},
-        {"current_offer", scalar(std::monostate{})},
-        {"active_offer", active_offer},
-        {"last_completed_offer", scalar(std::monostate{})},
-        {"last_offer_result", scalar(std::string("accepted"))},
-    }};
-    return game_scripts_.restore_run_registry_state(registry_state);
-}
-
-bool FieldSceneRuntime::open_taxi_selector_for_dump(
-    const std::uint8_t current_region) {
-    if (!ready_ || current_region > 6U) {
-        return false;
-    }
-    scripting::ScriptMenuRouteStartArguments arguments{};
-    arguments.taxi_current_region = current_region;
-    open_command_overview(
-        static_cast<std::uint16_t>(srx::MenuScreen::TAXI_SELECTOR),
-        std::move(arguments));
-    return command_overview_.open() && field_taxi_route_active_ &&
-           menu_route_screen_ == static_cast<std::uint16_t>(
-                                    srx::MenuScreen::TAXI_SELECTOR);
-}
-
-void FieldSceneRuntime::set_inventory_action_overlay_probe_for_dump(
-    const bool active) noexcept {
-    command_overview_inventory_action_active_ = active;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::open_attributes_skills_for_dump() {
-    if (!open_command_overview_for_dump() ||
-        !seek_command_overview_page(3U)) {
-        return false;
-    }
-    // Exercise the same command-row A dispatch as the focused Qt window.
-    set_controller_port_byte(0x40U);
-    advance_frame();
-    set_controller_port_byte(0U);
-    advance_frame();
-    return command_overview_attributes_skills_.is_open();
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::open_stoker_room_payment_for_dump(
-    const std::uint32_t funds) {
-    if (!ready_) {
-        return false;
-    }
-    field_funds_ = funds;
-    if (!field_dialogue_.open_stoker_prompt_for_dump(
-            StokerMotelPromptId::room_offer)) {
-        return false;
-    }
-    return field_dialogue_.advance_controller_events(0x4000U) ==
-           FieldDialogueAdvanceResult::prompt_advanced;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-FieldDialogueAdvanceResult
-FieldSceneRuntime::advance_stoker_dialogue_for_dump(
-    const std::uint16_t event_word) {
-    const auto result = field_dialogue_.advance_controller_events(event_word);
-    if (result == FieldDialogueAdvanceResult::hotel_options_requested) {
-        begin_hotel_menu();
-    }
-    return result;
-}
-
-bool FieldSceneRuntime::dispatch_dialogue_outcome_for_dump() {
-    const auto outcome = field_dialogue_.take_gameplay_task_outcome();
-    return outcome.has_value() && dispatch_dialogue_outcome(*outcome);
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-bool FieldSceneRuntime::open_gunderson_interaction() {
-    if (!ready_ || state_.field_scene_buffers.scene_reference != 13U) {
-        return false;
-    }
-    return open_field_johnson_interaction();
-}
-
-bool FieldSceneRuntime::open_field_location_dialogue(
-    const FieldScriptRoute& route) {
-    if (route.kind == FieldScriptRouteKind::source_boundary) {
-        source_boundary(route.boundary_reason);
-        return false;
-    }
-    if (!ready_ || route.kind != FieldScriptRouteKind::dialogue ||
-        route.script != FieldScriptId::lua_dialogue ||
-        route.entry_dialogue_module.empty() ||
-        route.entry_dialogue_function.empty() ||
-        route.entry_location_type.empty() ||
-        route.entry_location_id.empty()) {
-        return false;
-    }
-
-    game_scripts_.set_location_context(
-        route.entry_location_type, route.entry_location_id,
-        route.entry_text_profile, route.entry_speaker_id,
-        route.entry_event_id);
-    game_scripts_.set_field_mode_context(scripting::ScriptFieldModeContext{
-        state_.field_scene_buffers.field_resource_mode,
-        route.event_code,
-        field_exit_alternate_result_,
-        state_.field_scene_buffers.scene_mode,
-        field_movement_transition_state_.field_transition_context});
-
-    if (route.entry_dialogue_module == "johnson") {
-        const auto context = game_scripts_.johnson_interaction_context(
-            route.entry_text_profile);
-        if (!context.has_value()) {
-            failure_ = game_scripts_.failure();
-            source_boundary("field.run.johnson_profile_unresolved");
-            return false;
-        }
-        const auto run_return =
-            game_scripts_.resolve_active_run_johnson_return(*context);
-        if (!run_return.has_value()) {
-            failure_ = game_scripts_.failure();
-            source_boundary("field.run.johnson_return_script_failed");
-            return false;
-        }
-        if (run_return->action ==
-            scripting::ScriptRunJohnsonReturnAction::completed) {
-            if (!field_funds_.has_value() ||
-                !field_party_roster_.available()) {
-                failure_ =
-                    "completed run return has no field wallet or runner roster";
-                source_boundary(
-                    "field.run.johnson_return_host_state_unresolved");
-                return false;
-            }
-            *field_funds_ += run_return->reward_nuyen;
-            for (auto& runner : field_party_roster_.records()) {
-                runner.auxiliary[2] = static_cast<std::uint8_t>(
-                    runner.auxiliary[2] +
-                    run_return->runner_progress_delta);
-            }
-            field_exit_world_flags_ &= ~field_flag_mask(
-                FieldWorldFactFlag::run_objective_active);
-            refresh_field_hud_runner_slot();
-            source_boundary("field.run.johnson_return_completed");
-        }
-    }
-
-    if (route.return_anchor != FieldLocationReturnAnchor::none) {
-        save_field_door_return_point();
-    }
-    if (!field_dialogue_.open_gameplay_task(
-            route.entry_dialogue_module,
-            route.entry_dialogue_function)) {
-        source_boundary("field.location.dialogue_task_open_failed");
-        return false;
-    }
-    field_palette_fade_steps_ = 0U;
-    source_boundary("field.location.dialogue_task_opened");
-    return true;
-}
-
-bool FieldSceneRuntime::open_field_johnson_interaction() {
-    if (!ready_) {
-        return false;
-    }
-    const auto& event_metadata =
-        state_.field_scene_buffers.source_metadata;
-    const auto route = game_scripts_.resolve_field_location_route(
-        FieldScriptRouteContext{
-            static_cast<std::uint8_t>(
-                state_.field_scene_buffers.scene_reference),
-            state_.field_scene_buffers.field_resource_mode,
-            FieldCollisionEventCode::event_30,
-            event_metadata.event_table_available,
-            event_metadata.event_mode_table,
-            field_exit_alternate_result_});
-    if (!route.has_value()) {
-        failure_ = game_scripts_.failure();
-        return false;
-    }
-    active_field_script_route_ = *route;
-    return open_field_location_dialogue(*route);
-}
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::open_gunderson_interaction_for_dump() {
-    return open_gunderson_interaction();
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-FieldInteractionAdvanceResult
-FieldSceneRuntime::advance_field_interaction(
-    const std::uint16_t event_word) {
-    std::array<bool, FieldPartyRosterRuntime::kSlotCount> active_slots{};
-    for (std::size_t slot = 0U; slot < active_slots.size(); ++slot) {
-        active_slots[slot] = field_party_roster_.slot_active(slot);
-    }
-    const auto result = field_interaction_.advance_controller_events(
-        event_word, field_party_roster_.records(), active_slots,
-        field_movement_transition_state_.activity_selection,
-        field_random_seed_);
-    if (result == FieldInteractionAdvanceResult::returned_to_field) {
-        // The source re-enters the field renderer after the prompt callback.
-        // This host redraw replaces its full 320x224 image and consumes the
-        // coordinator's display-service marker here. ROM 0x2BD2 also commits
-        // a negative interaction result to the sampled field event counter;
-        // passkey success uses FFE16E = 0xFF to advance the A2 door cell.
-        state_.display_service_word = 0U;
-        field_runtime_state_.display_service_word = 0U;
-        source_boundary("field.interaction.returned_to_field");
-        advance_field_scene_transition_after_modal();
-        begin_field_modal_return_transition();
-    }
-    refresh_field_hud_runner_slot();
-    return result;
-}
-
-void FieldSceneRuntime::begin_hotel_menu() {
-    if (!ready_) {
-        return;
-    }
-    std::array<std::string, FieldPartyRosterRuntime::kSlotCount> names{};
-    for (std::size_t slot = 0; slot < names.size(); ++slot) {
-        names[slot] = field_party_roster_.name(slot);
-    }
-    hotel_menu_.open(field_party_roster_.records(), names,
-                     field_party_roster_.active_slot());
-    refresh_field_hud_runner_slot();
-    source_boundary("field.hotel.entity_status.opened");
-}
-
-void FieldSceneRuntime::register_dialogue_outcome_handlers() {
-    const bool registered =
-        dialogue_outcome_dispatcher_.register_type_handler<
-            scripting::ContinueInPlaceOutcome>(
-            [this](const scripting::ContinueInPlaceOutcome& outcome) {
-                return handle_dialogue_continue_in_place(outcome);
-            }) &&
-        dialogue_outcome_dispatcher_.register_target_handler<
-            scripting::PlayCinematicOutcome>(
-            "salish.spirit_eyes.ritual_of_binding",
-            [this](const scripting::PlayCinematicOutcome& outcome) {
-                return handle_dialogue_play_cinematic(outcome);
-            }) &&
-        dialogue_outcome_dispatcher_.register_target_handler<
-            scripting::PlayCinematicOutcome>(
-            "salish.sinsearach.frosty_harlequin_exposition",
-            [this](const scripting::PlayCinematicOutcome& outcome) {
-                return handle_dialogue_play_cinematic(outcome);
-            }) &&
-        dialogue_outcome_dispatcher_.register_target_handler<
-            scripting::PlayCinematicOutcome>(
-            "tarislar.tomb.credits",
-            [this](const scripting::PlayCinematicOutcome& outcome) {
-                return handle_dialogue_play_cinematic(outcome);
-            }) &&
-        dialogue_outcome_dispatcher_.register_type_handler<
-            scripting::ResumeSourceRouteOutcome>(
-            [this](const scripting::ResumeSourceRouteOutcome& outcome) {
-                return handle_dialogue_resume_source_route(outcome);
-            }) &&
-        dialogue_outcome_dispatcher_.register_type_handler<
-            scripting::EnterFieldSceneOutcome>(
-            [this](const scripting::EnterFieldSceneOutcome& outcome) {
-                return handle_dialogue_enter_field_scene(outcome);
-            }) &&
-        dialogue_outcome_dispatcher_.register_target_handler<
-            scripting::ReturnToOriginOutcome>(
-            "source_entry",
-            [this](const scripting::ReturnToOriginOutcome& outcome) {
-                return handle_dialogue_return_to_source_entry(outcome);
-            }) &&
-        dialogue_outcome_dispatcher_.register_target_handler<
-            scripting::OpenServiceOutcome>(
-            "hotel.options",
-            [this](const scripting::OpenServiceOutcome& outcome) {
-                return open_hotel_dialogue_service(outcome);
-            }) &&
-        dialogue_outcome_dispatcher_.register_target_handler<
-            scripting::OpenServiceOutcome>(
-            "hospital.options",
-            [this](const scripting::OpenServiceOutcome& outcome) {
-                return open_hospital_dialogue_service(outcome);
-            });
-
-    if (!registered) {
-        source_boundary(
-            "field.dialogue.outcome_handler_registration_failed");
-    }
-}
-
-bool FieldSceneRuntime::dispatch_dialogue_outcome(
-    const scripting::DialogueOutcome& outcome) {
-    if (const auto* boundary = std::get_if<scripting::SourceBoundaryOutcome>(
-            &outcome)) {
-        source_boundary("field.dialogue.source_boundary:" + boundary->reason);
-        return field_dialogue_.present_source_boundary_for_host(
-            boundary->reason);
-    }
-
-    const auto result = dialogue_outcome_dispatcher_.dispatch(outcome);
-    if (result.handled()) {
-        return true;
-    }
-
-    const auto status =
-        result.status ==
-                scripting::DialogueOutcomeDispatcher::Status::handler_rejected
-            ? "handler_rejected"
-            : "target_not_registered";
-    const auto type_name = scripting::dialogue_outcome_type_name(
-        scripting::dialogue_outcome_type(outcome));
-    std::string reason = "field.dialogue.outcome." +
-                         std::string(status) + ":" +
-                         std::string(type_name);
-    const auto target_id = scripting::dialogue_outcome_target_id(outcome);
-    if (!target_id.empty()) {
-        reason += ":" + std::string(target_id);
-    }
-    source_boundary(reason);
-    return field_dialogue_.present_source_boundary_for_host(reason);
-}
-
-bool FieldSceneRuntime::handle_dialogue_continue_in_place(
-    const scripting::ContinueInPlaceOutcome& /* outcome */) {
-    if (!ready_) {
-        return false;
-    }
-    hospital_service_session_active_ = false;
-    field_mode_entry_transition_pending_ = false;
-    field_mode_entry_destination_scene_.reset();
-    field_mode_entry_run_target_actor_group_.reset();
-    source_boundary("field.dialogue.continued_in_place");
-    advance_field_scene_transition_after_modal();
-    begin_field_modal_return_transition();
-    return true;
-}
-
-bool FieldSceneRuntime::handle_dialogue_play_cinematic(
-    const scripting::PlayCinematicOutcome& outcome) {
-    if (!ready_ || outcome.cinematic_id.empty()) {
-        return false;
-    }
-    if (outcome.return_policy == "source_context") {
-        source_boundary("field.dialogue.cinematic.completed:" +
-                        outcome.cinematic_id);
-        return handle_dialogue_continue_in_place(
-            scripting::ContinueInPlaceOutcome{});
-    }
-    if (outcome.cinematic_id == "tarislar.tomb.credits" &&
-        outcome.return_policy == "title") {
-        if (!field_dialogue_.retain_closed_credits_page_for_title_return()) {
-            return false;
-        }
-        if (!tarislar_credits_title_return_.begin()) {
-            field_dialogue_.clear_retained_credits_page_for_title_return();
-            return false;
-        }
-        return true;
-    }
-    return false;
-}
-
-bool FieldSceneRuntime::handle_dialogue_resume_source_route(
-    const scripting::ResumeSourceRouteOutcome& /* outcome */) {
-    if (!ready_) {
-        return false;
-    }
-    const bool outcome_matches_route =
-        active_field_script_route_.has_value() &&
-        active_field_script_route_->entry_continue_outcome_type &&
-        scripting::DialogueOutcomeType::resume_source_route ==
-            *active_field_script_route_->entry_continue_outcome_type;
-    if (!field_mode_entry_transition_pending_ || !outcome_matches_route) {
-        field_mode_entry_transition_pending_ = false;
-        field_mode_entry_destination_scene_.reset();
-        field_mode_entry_run_target_actor_group_.reset();
-        source_boundary("field.entry.typed_outcome_did_not_match_route");
-        advance_field_scene_transition_after_modal();
-        begin_field_modal_return_transition();
-        return true;
-    }
-
-    source_boundary("field.entry.source_route_resumed");
-    if (!resume_field_mode_entry_route()) {
-        source_boundary("field.entry.area_event_route_resume_failed");
-    }
-    begin_field_modal_return_transition();
-    return true;
-}
-
-bool FieldSceneRuntime::handle_dialogue_enter_field_scene(
-    const scripting::EnterFieldSceneOutcome& outcome) {
-    if (!ready_) {
-        return false;
-    }
-    if (outcome.arrival_id == "salish_sinsearach_copt") {
-        if (state_.field_scene_buffers.scene_reference != 9U ||
-            outcome.scene_id != 6U ||
-            field_dialogue_scene_pending_destination_.has_value() ||
-            field_elevator_scene_transition_.is_active()) {
-            source_boundary(
-                "field.dialogue.scene_entry.typed_route_mismatch");
-            return true;
-        }
-        field_dialogue_scene_pending_destination_ = outcome.scene_id;
-        if (field_elevator_scene_transition_.begin_fade_out()) {
-            field_dialogue_scene_transition_active_ = true;
-            source_boundary(
-                "field.dialogue.scene_entry.fade_out_started");
-        } else {
-            field_dialogue_scene_pending_destination_.reset();
-            source_boundary(
-                "field.dialogue.scene_entry.transition_busy");
-        }
-        return true;
-    }
-    const bool outcome_matches_service =
-        outcome.arrival_id == "rom_default" &&
-        field_phone_pending_destination_.has_value() &&
-        outcome.scene_id == *field_phone_pending_destination_;
-    if (!outcome_matches_service) {
-        field_phone_pending_destination_.reset();
-        source_boundary("field.vid_phone.typed_scene_outcome_mismatch");
-        return true;
-    }
-    if (field_elevator_scene_transition_.begin_fade_out()) {
-        field_phone_transition_active_ = true;
-        source_boundary("field.vid_phone.passage_fade_out_started");
-    } else {
-        field_phone_pending_destination_.reset();
-        source_boundary("field.vid_phone.passage_transition_busy");
-    }
-    return true;
-}
-
-bool FieldSceneRuntime::handle_dialogue_return_to_source_entry(
-    const scripting::ReturnToOriginOutcome& outcome) {
-    if (!ready_ || outcome.return_point_id != "source_entry" ||
-        (outcome.return_policy.has_value() &&
-         *outcome.return_policy != "recorded_entry") ||
-        !field_door_return_point_.valid) {
-        return false;
-    }
-    begin_field_door_return();
-    refresh_field_hud_runner_slot();
-    return field_door_return_active_;
-}
-
-bool FieldSceneRuntime::prepare_open_dialogue_service(
-    const scripting::OpenServiceOutcome& outcome) {
-    if (!ready_ ||
-        outcome.return_policy != "origin") {
-        return false;
-    }
-    field_mode_entry_transition_pending_ = false;
-    field_mode_entry_destination_scene_.reset();
-    field_mode_entry_run_target_actor_group_.reset();
-    return true;
-}
-
-bool FieldSceneRuntime::open_hotel_dialogue_service(
-    const scripting::OpenServiceOutcome& outcome) {
-    if (!prepare_open_dialogue_service(outcome)) {
-        return false;
-    }
-    begin_hotel_menu();
-    return hotel_menu_.open();
-}
-
-bool FieldSceneRuntime::open_hospital_dialogue_service(
-    const scripting::OpenServiceOutcome& outcome) {
-    if (!prepare_open_dialogue_service(outcome)) {
-        return false;
-    }
-    hospital_service_session_active_ = false;
-    game_scripts_.set_location_context(
-        "building", "council_island_hospital",
-        "council_island_hospital", "council_island_hospital_narrator");
-    game_scripts_.set_field_mode_context(
-        scripting::ScriptFieldModeContext{
-            4U, 4U, 0, state_.field_scene_buffers.scene_mode,
-            field_movement_transition_state_.field_transition_context});
-    return begin_hospital_menu_task("present_options");
-}
-
-bool FieldSceneRuntime::load_command_overview_menu_content() {
-    const auto fail = [this](std::string message) {
-        failure_ = std::move(message);
-        source_boundary("field.bootstrap.command_overview_script_invalid");
-        return false;
-    };
-    const auto definition = game_scripts_.menu(
-        "command_overview", "root", "field.command_overview", "root");
-    if (!definition.has_value()) {
-        return fail(game_scripts_.failure().empty()
-                        ? "command overview root menu script is unavailable"
-                        : game_scripts_.failure());
-    }
-    if (definition->choices.size() != field_menu_text_.command_labels.size()) {
-        return fail(
-            "command overview Lua menu does not match the seven source rows");
-    }
-    for (std::size_t index = 0; index < definition->choices.size(); ++index) {
-        const auto& choice = definition->choices[index];
-        const auto* label = game_scripts_.dialogue_text(choice.label_key);
-        if (label == nullptr) {
-            return fail("command overview Lua choice label is missing");
-        }
-        field_menu_text_.command_labels[index] = *label;
-    }
-    source_boundary("field.command_overview.menu_content.loaded_from_lua");
-    return true;
-}
-
-bool FieldSceneRuntime::load_hotel_menu_content() {
-    using scripting::ScriptMenuDefinition;
-    constexpr std::array<std::string_view, 2> kOptionIds{{
-        "karma_screen", "check_out"}};
-    constexpr std::array<std::string_view, 2> kCheckoutIds{{
-        "checkout_yes", "checkout_no"}};
-    const auto fail = [this](std::string message) {
-        failure_ = std::move(message);
-        source_boundary("field.bootstrap.hotel_menu_script_invalid");
-        return false;
-    };
-    const auto options = game_scripts_.menu(
-        "hotel", "options", "hotel", "options");
-    if (!options.has_value()) {
-        return fail(game_scripts_.failure().empty()
-                        ? "Hotel options menu script is unavailable"
-                        : game_scripts_.failure());
-    }
-    const auto checkout = game_scripts_.menu(
-        "hotel", "checkout", "hotel", "checkout");
-    if (!checkout.has_value()) {
-        return fail(game_scripts_.failure().empty()
-                        ? "Hotel checkout menu script is unavailable"
-                        : game_scripts_.failure());
-    }
-    const auto presentation =
-        game_scripts_.string_map("hotel", "presentation");
-    if (!presentation.has_value()) {
-        return fail(game_scripts_.failure().empty()
-                        ? "Hotel presentation script is unavailable"
-                        : game_scripts_.failure());
-    }
-    const auto timing = [&presentation](const char* key)
-        -> std::optional<std::uint32_t> {
-        const auto found = presentation->find(key);
-        if (found == presentation->end()) {
-            return std::nullopt;
-        }
-        try {
-            return static_cast<std::uint32_t>(std::stoul(found->second));
-        } catch (...) {
-            return std::nullopt;
-        }
-    };
-    const auto status_text_delay = timing("status_text_delay_frames");
-    const auto options_redraw = timing("options_redraw_frames");
-    const auto karma_load = timing("karma_load_black_frames");
-    if (!status_text_delay.has_value() || !options_redraw.has_value() ||
-        !karma_load.has_value()) {
-        return fail("Hotel presentation timing is not numeric");
-    }
-    hotel_karma_load_black_frames_ = *karma_load;
-    const auto checkout_fade_out = timing("checkout_fade_out_start_frame");
-    const auto checkout_fade_in = timing("checkout_fade_in_start_frame");
-    const auto checkout_resume = timing("checkout_input_resume_frame");
-    const auto checkout_camera = timing("checkout_camera_settle_start_frame");
-    if (!checkout_fade_out.has_value() || !checkout_fade_in.has_value() ||
-        !checkout_resume.has_value() || !checkout_camera.has_value() ||
-        *checkout_camera >= *checkout_fade_in ||
-        *checkout_fade_in <= *checkout_fade_out + 14U ||
-        *checkout_resume <= *checkout_fade_in) {
-        return fail("Hotel checkout timing is not numeric or ordered");
-    }
-    checkout_fade_out_start_frame_ = *checkout_fade_out;
-    checkout_fade_in_start_frame_ = *checkout_fade_in;
-    checkout_input_resume_frame_ = *checkout_resume;
-    checkout_camera_settle_start_frame_ = *checkout_camera;
-    hotel_menu_.set_presentation_timing(*status_text_delay, *options_redraw);
-    const auto text_keys = game_scripts_.string_map("hotel", "text_keys");
-    if (!text_keys.has_value()) {
-        return fail(game_scripts_.failure().empty()
-                        ? "Hotel text-key script is unavailable"
-                        : game_scripts_.failure());
-    }
-    if (options->choices.size() != kOptionIds.size() ||
-        checkout->choices.size() != kCheckoutIds.size()) {
-        return fail("Hotel Lua menus do not match the source choice count");
-    }
-    HotelMenuContent content{};
-    const auto copy_text = [this](const std::string_view key,
-                                  std::string& destination) {
-        const auto* source = game_scripts_.dialogue_text(key);
-        if (source == nullptr) {
-            return false;
-        }
-        destination = *source;
-        return true;
-    };
-    const auto copy_named_text = [&text_keys, &copy_text](
-                                    const std::string_view name,
-                                    std::string& destination) {
-        const auto key = text_keys->find(std::string(name));
-        return key != text_keys->end() &&
-               copy_text(key->second, destination);
-    };
-    const auto* title = game_scripts_.dialogue_text(options->title_key);
-    if (title == nullptr ||
-        !copy_named_text("options_separator", content.separator)) {
-        return fail("Hotel options title or separator text is missing");
-    }
-    content.title = *title;
-    for (std::size_t index = 0; index < kOptionIds.size(); ++index) {
-        const auto& choice = options->choices[index];
-        if (choice.id != kOptionIds[index] ||
-            !copy_text(choice.label_key, content.options[index].label)) {
-            return fail("Hotel options Lua choice ID or label is invalid");
-        }
-        content.options[index].id = choice.id;
-    }
-    const auto* checkout_question =
-        game_scripts_.dialogue_text(checkout->title_key);
-    if (checkout_question == nullptr) {
-        return fail("Hotel checkout question text is missing");
-    }
-    const auto question_break = checkout_question->find('|');
-    if (question_break == std::string::npos ||
-        checkout_question->find('|', question_break + 1U) !=
-            std::string::npos) {
-        return fail("Hotel checkout question must contain two source rows");
-    }
-    content.checkout_question[0] =
-        checkout_question->substr(0U, question_break);
-    content.checkout_question[1] =
-        checkout_question->substr(question_break + 1U);
-    for (std::size_t index = 0; index < kCheckoutIds.size(); ++index) {
-        const auto& choice = checkout->choices[index];
-        if (choice.id != kCheckoutIds[index] ||
-            !copy_text(choice.label_key,
-                       content.checkout_choices[index].label)) {
-            return fail("Hotel checkout Lua choice ID or label is invalid");
-        }
-        content.checkout_choices[index].id = choice.id;
-    }
-    if (!copy_named_text("medical_attention_suffix",
-                         content.medical_attention_suffix)) {
-        return fail("Hotel medical-attention text is missing");
-    }
-    constexpr std::array<std::string_view, 3> kRecoveryTextNames{{
-        "recovery_2", "recovery_3", "recovery_4"}};
-    for (std::size_t index = 0; index < kRecoveryTextNames.size(); ++index) {
-        const auto destination_index = index + 2U;
-        if (!copy_named_text(kRecoveryTextNames[index],
-                             content.recovery_message[destination_index])) {
-            return fail("Hotel recovery text is incomplete");
-        }
-    }
-    hotel_menu_content_ = std::move(content);
-    source_boundary("field.hotel.menu_content.loaded_from_lua");
-    return true;
-}
-
-bool FieldSceneRuntime::load_pocket_secretary_menu_content() {
-    const auto fail = [this](std::string message) {
-        failure_ = std::move(message);
-        source_boundary("field.bootstrap.pocket_secretary_script_invalid");
-        return false;
-    };
-    const auto definition = game_scripts_.menu(
-        "pocket_secretary", "root", "pocket_secretary", "root");
-    if (!definition.has_value()) {
-        return fail(game_scripts_.failure().empty()
-                        ? "Pocket Secretary root menu script is unavailable"
-                        : game_scripts_.failure());
-    }
-    if (definition->choices.size() != kPocketSecretaryFieldMenuRowCount) {
-        return fail(
-            "Pocket Secretary Lua root menu has the wrong row count");
-    }
-    const auto root_text_definition = game_scripts_.menu(
-        "pocket_secretary", "root_text_entries",
-        "pocket_secretary.root.text", "catalog");
-    if (!root_text_definition.has_value() ||
-        root_text_definition->choices.size() != 1U) {
-        return fail("Pocket Secretary root separator script entry is invalid");
-    }
-    const auto notebook_definition = game_scripts_.menu(
-        "pocket_secretary", "notebook", "pocket_secretary.notebook",
-        "options");
-    if (!notebook_definition.has_value()) {
-        return fail(game_scripts_.failure().empty()
-                        ? "Pocket Secretary Notebook menu script is unavailable"
-                        : game_scripts_.failure());
-    }
-    if (notebook_definition->choices.size() != kNotebookChoiceCount) {
-        return fail(
-            "Pocket Secretary Notebook menu has the wrong row count");
-    }
-    const auto* title = game_scripts_.dialogue_text(definition->title_key);
-    const auto* separator = game_scripts_.dialogue_text(
-        root_text_definition->choices[0].label_key);
-    if (title == nullptr || separator == nullptr) {
-        return fail("Pocket Secretary root title or separator text is missing");
-    }
-    PocketSecretaryMenuContent content{};
-    content.title = *title;
-    content.separator = *separator;
-    for (std::size_t index = 0; index < definition->choices.size(); ++index) {
-        const auto& choice = definition->choices[index];
-        const auto* label = game_scripts_.dialogue_text(choice.label_key);
-        if (label == nullptr) {
-            return fail("Pocket Secretary Lua choice label is missing");
-        }
-        content.choices[index] = PocketSecretaryMenuContent::Choice{
-            choice.id, *label};
-    }
-    for (std::size_t index = 0;
-         index < notebook_definition->choices.size(); ++index) {
-        const auto& choice = notebook_definition->choices[index];
-        if (game_scripts_.dialogue_text(choice.label_key) == nullptr) {
-            return fail(
-                "Pocket Secretary Notebook choice label is missing");
-        }
-        content.notebook_choice_ids[index] = choice.id;
-    }
-    pocket_secretary_menu_content_ = std::move(content);
-    source_boundary("field.pocket_secretary.menu_content.loaded_from_lua");
-    return true;
-}
-
-bool FieldSceneRuntime::load_ares_shop_menu_content() {
-    constexpr std::array<std::string_view, 6> kGroupIds{{
-        "weapons", "armor", "other_items", "source_action_3",
-        "source_action_4", "sell"}};
-    const auto fail = [this](std::string message) {
-        failure_ = std::move(message);
-        source_boundary("field.bootstrap.ares_shop_script_invalid");
-        return false;
-    };
-    const auto service_titles = game_scripts_.menu(
-        "shop", "services", "shop.service", "catalog");
-    const auto action_headings = game_scripts_.menu(
-        "shop", "action_headings", "shop.action_heading", "catalog");
-    if (!field_shop_definition_.has_value() ||
-        !service_titles.has_value() || !action_headings.has_value() ||
-        field_shop_definition_->id != "ares_weapon_emporium" ||
-        field_shop_definition_->groups.size() != kGroupIds.size() ||
-        service_titles->choices.size() !=
-            field_menu_text_.field_service_titles.size() ||
-        action_headings->choices.size() !=
-            field_menu_text_.field_service_action_titles.size()) {
-        return fail("Ares shop Lua definition does not match its source page");
-    }
-
-    std::string_view ares_service_title_key;
-    for (std::size_t index = 0;
-         index < service_titles->choices.size(); ++index) {
-        const auto& choice = service_titles->choices[index];
-        const auto* title = game_scripts_.dialogue_text(choice.label_key);
-        if (title == nullptr) {
-            return fail("Lua shop service title text is incomplete");
-        }
-        field_menu_text_.field_service_titles[index] = *title;
-        if (choice.id == field_shop_definition_->id) {
-            ares_service_title_key = choice.label_key;
-        }
-    }
-    if (ares_service_title_key.empty() ||
-        field_shop_definition_->title_key != ares_service_title_key) {
-        return fail("Ares title is not bound to its ROM service record");
-    }
-
-    for (std::size_t index = 0; index < action_headings->choices.size();
-         ++index) {
-        const auto& choice = action_headings->choices[index];
-        const auto* title = game_scripts_.dialogue_text(choice.label_key);
-        if (title == nullptr || title->size() != 20U) {
-            return fail("Lua shop action-heading catalog is incomplete");
-        }
-        field_menu_text_.field_service_action_titles[index] = *title;
-    }
-
-    std::array<std::string_view, kGroupIds.size() * 2U>
-        ares_action_heading_keys{};
-    std::size_t ares_action_heading_count = 0U;
-    for (std::size_t group_index = 0; group_index < kGroupIds.size();
-         ++group_index) {
-        const auto& group = field_shop_definition_->groups[group_index];
-        if (group.id != kGroupIds[group_index]) {
-            return fail("Ares shop Lua categories changed source order");
-        }
-        for (const auto& title_key : group.title_keys) {
-            const auto heading = std::find_if(
-                action_headings->choices.begin(),
-                action_headings->choices.end(),
-                [&title_key](const scripting::ScriptMenuChoice& choice) {
-                    return choice.label_key == title_key;
-                });
-            if (heading == action_headings->choices.end() ||
-                std::find(ares_action_heading_keys.begin(),
-                          ares_action_heading_keys.begin() +
-                              static_cast<std::ptrdiff_t>(
-                                  ares_action_heading_count),
-                          std::string_view(title_key)) !=
-                    ares_action_heading_keys.begin() +
-                        static_cast<std::ptrdiff_t>(
-                            ares_action_heading_count)) {
-                return fail("Ares shop Lua category heading is invalid");
-            }
-            ares_action_heading_keys[ares_action_heading_count++] = title_key;
-        }
-    }
-    if (ares_action_heading_count != ares_action_heading_keys.size()) {
-        return fail(
-            "Ares shop Lua categories do not cover their heading keys");
-    }
-    const auto copy_shop_text = [this](const std::string& key,
-                                       std::string& destination) {
-        const auto* text = game_scripts_.dialogue_text(key);
-        if (text == nullptr) {
-            return false;
-        }
-        destination = *text;
-        return true;
-    };
-    const auto& keys = field_shop_definition_->text_keys;
-    if (!copy_shop_text(keys.universal_clips_title,
-                        field_menu_text_.field_service_universal_clips_title) ||
-        !copy_shop_text(keys.universal_clips_description,
-                        field_menu_text_.field_service_universal_clips_description) ||
-        !copy_shop_text(keys.transaction_prompt,
-                        field_menu_text_.shop_transaction_prompt) ||
-        !copy_shop_text(keys.no_inventory_slot,
-                        field_menu_text_.shop_no_inventory_slot) ||
-        !copy_shop_text(keys.insufficient_funds,
-                        field_menu_text_.shop_insufficient_funds) ||
-        !copy_shop_text(keys.special_action_limit,
-                        field_menu_text_.shop_special_action_limit) ||
-        !copy_shop_text(keys.protected_sale,
-                        field_menu_text_.shop_protected_sale) ||
-        !copy_shop_text(keys.sale_quote_heading,
-                        field_menu_text_.shop_sale_quote_heading) ||
-        !copy_shop_text(keys.purchase_price_heading,
-                        field_menu_text_.shop_purchase_price_heading)) {
-        return fail("Ares shop Lua transaction text is incomplete");
-    }
-    source_boundary("field.ares_shop.menu_content_loaded_from_lua");
-    return true;
-}
-
-bool FieldSceneRuntime::load_item_menu_content() {
-    const auto fail = [this](std::string message) {
-        failure_ = std::move(message);
-        source_boundary("field.bootstrap.item_script_invalid");
-        return false;
-    };
-    const auto catalog = game_scripts_.item_catalog();
-    if (!catalog.has_value() ||
-        catalog->items.size() != field_menu_text_.items.size() ||
-        catalog->detail_text_keys.size() !=
-            field_menu_text_.field_action_detail_texts.size()) {
-        return fail(game_scripts_.failure().empty()
-                        ? "Lua item catalog does not match source table sizes"
-                        : game_scripts_.failure());
-    }
-    for (std::size_t index = 0; index < catalog->items.size(); ++index) {
-        const auto& item = catalog->items[index];
-        if (item.code != index + 1U) {
-            return fail("Lua item catalog changed source item order");
-        }
-        const auto* name = game_scripts_.dialogue_text(item.name_key);
-        const auto* category = game_scripts_.dialogue_text(item.category_key);
-        if (name == nullptr || category == nullptr) {
-            return fail("Lua item name or category text is incomplete");
-        }
-        auto& presentation = field_menu_text_.items[index];
-        presentation.definition = item;
-        presentation.name = *name;
-        presentation.category = *category;
-        if (presentation.definition.weapon.has_value()) {
-            const auto& profile =
-                presentation.definition.weapon->power_profile;
-            const auto* label = game_scripts_.dialogue_text(
-                "items.display.option.power_" + profile);
-            if (label == nullptr) {
-                return fail("Lua weapon power profile has no display label");
-            }
-            presentation.definition.weapon->power_label = *label;
-        }
-    }
-    for (std::size_t index = 0; index < catalog->detail_text_keys.size();
-         ++index) {
-        const auto* detail =
-            game_scripts_.dialogue_text(catalog->detail_text_keys[index]);
-        if (detail == nullptr) {
-            return fail("Lua item detail text is incomplete");
-        }
-        field_menu_text_.field_action_detail_texts[index] = *detail;
-    }
-    for (std::size_t index = 0;
-         index < catalog->detail_label_keys.size(); ++index) {
-        const auto* label =
-            game_scripts_.dialogue_text(catalog->detail_label_keys[index]);
-        if (label == nullptr) {
-            return fail("Lua item detail labels are incomplete");
-        }
-        field_menu_text_.item_detail_labels[index] = *label;
-    }
-    source_boundary("field.item.menu_content_loaded_from_lua");
-    return true;
-}
-
-HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
-    const std::uint16_t events) {
-    const auto result = hotel_menu_.advance_controller_events(events);
-    switch (result) {
-    case HotelMenuEvent::waiting:
-        break;
-    case HotelMenuEvent::status_acknowledged:
-        source_boundary("field.hotel.entity_status.acknowledged");
-        break;
-    case HotelMenuEvent::selection_moved:
-        // The Hotel loop and E660 path do not request a sound event.
-        source_boundary("field.hotel.selection_moved");
-        break;
-    case HotelMenuEvent::checkout_opened:
-        source_boundary("field.hotel.checkout.opened");
-        break;
-    case HotelMenuEvent::stayed_at_hotel:
-        source_boundary("field.hotel.checkout.stayed");
-        break;
-    case HotelMenuEvent::checked_out:
-        {
-            scripting::DialogueOutcome outcome =
-                scripting::ReturnToOriginOutcome{"source_entry", std::nullopt};
-            (void)dispatch_dialogue_outcome(outcome);
-        }
-        refresh_field_hud_runner_slot();
-        source_boundary("field.hotel.checked_out");
-        break;
-    case HotelMenuEvent::karma_screen_opened:
-        hotel_karma_skills_.open(active_runner_record());
-        hotel_karma_load_frames_ = hotel_karma_load_black_frames_;
-        source_boundary("field.hotel.karma_screen.opened");
-        break;
-    case HotelMenuEvent::mode_action:
-        // 0xCFF4 calls the field C-button routine 0x391A, whose first act
-        // is sound event 0x25 via 0x530DE (emulator: +1 frame after C in
-        // Motel Options) [C].
-        if (source_audio_event_callback_) {
-            source_audio_event_callback_(0x25U);
-        }
-        handle_field_mode_action_event();
-        source_boundary("field.hotel.mode_action");
-        break;
-    }
-    return result;
-}
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-HotelMenuEvent FieldSceneRuntime::advance_hotel_menu_for_dump(
-    const std::uint16_t events) {
-    if (!hotel_menu_.open()) {
-        return HotelMenuEvent::waiting;
-    }
-    if (hotel_karma_skills_.is_open()) {
-        if (hotel_karma_load_frames_ > 0U) {
-            --hotel_karma_load_frames_;
-            return HotelMenuEvent::waiting;
-        }
-        (void)process_hotel_karma_screen_events(events);
-        return HotelMenuEvent::waiting;
-    }
-    hotel_menu_.advance_animation(field_random_seed_);
-    return process_hotel_menu_events(events);
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-AttributesSkillsRuntimeEvent
-FieldSceneRuntime::advance_hotel_karma_screen_for_dump(
-    const std::uint16_t events) {
-    if (!hotel_menu_.open() || !hotel_karma_skills_.is_open()) {
-        return AttributesSkillsRuntimeEvent::no_change;
-    }
-    return process_hotel_karma_screen_events(events);
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-AttributesSkillsRuntimeEvent
-FieldSceneRuntime::process_hotel_karma_screen_events(
-    const std::uint16_t events) {
-    const auto result = hotel_karma_skills_.advance(
-        events, active_runner_record(), [this] {
-            handle_field_mode_action_event();
-            refresh_field_hud_runner_slot();
-            source_boundary("field.hotel.karma_screen.runner_selected");
-        });
-    switch (result) {
-    case AttributesSkillsRuntimeEvent::no_change:
-        break;
-    case AttributesSkillsRuntimeEvent::selection_moved:
-        source_boundary("field.hotel.karma_screen.selection_moved");
-        break;
-    case AttributesSkillsRuntimeEvent::upgrade_prompt_opened:
-        source_boundary("field.hotel.karma_screen.upgrade_prompt_opened");
-        break;
-    case AttributesSkillsRuntimeEvent::upgrade_prompt_moved:
-        source_boundary("field.hotel.karma_screen.upgrade_prompt_moved");
-        break;
-    case AttributesSkillsRuntimeEvent::upgrade_applied:
-        source_boundary("field.hotel.karma_screen.upgrade_applied");
-        break;
-    case AttributesSkillsRuntimeEvent::upgrade_declined:
-        source_boundary("field.hotel.karma_screen.upgrade_declined");
-        break;
-    case AttributesSkillsRuntimeEvent::upgrade_blocked:
-        source_boundary("field.hotel.karma_screen.upgrade_blocked");
-        break;
-    case AttributesSkillsRuntimeEvent::insufficient_karma:
-        source_boundary("field.hotel.karma_screen.insufficient_karma");
-        break;
-    case AttributesSkillsRuntimeEvent::
-        active_runner_selection_requested:
-        hotel_karma_skills_.refresh(active_runner_record());
-        break;
-    case AttributesSkillsRuntimeEvent::returned_to_parent:
-        hotel_karma_skills_.close_to_parent();
-        source_boundary("field.hotel.karma_screen.returned_to_options");
-        break;
-    }
-    return result;
-}
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::begin_ares_shop_event_for_dump() {
-    return begin_field_mode_service_event_for_dump(2U, 2U, 11U, 0);
-}
-
-bool FieldSceneRuntime::begin_field_mode_service_event_for_dump(
-    const std::uint8_t scene_id, const std::uint8_t field_mode,
-    const std::uint8_t event_code,
-    const std::int8_t alternate_result) {
-    if (!ready_) {
-        return false;
-    }
-    // Inject a source-resolved event tuple into the same converted
-    // orchestrator used by field movement. This test seam does not skip Lua
-    // entity routing, the generic prompt, or the 0x1FA78 service selector.
-    field_runtime_state_.scene_id = scene_id;
-    field_runtime_state_.field_mode = field_mode;
-    field_movement_transition_state_.mode_event_code = event_code;
-    field_exit_alternate_result_ = alternate_result;
-    field_shop_route_pending_service_id_.clear();
-    field_shop_notice_active_ = false;
-    field_shop_notice_service_id_.clear();
-    field_shop_notice_text_key_.clear();
-    field_mode_text_.close();
-    (void)run_field_exit_orchestrator(field_runtime_state_);
-    return field_mode_text_.open();
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-bool FieldSceneRuntime::seek_command_overview_page(const std::uint8_t page) {
-    if (!command_overview_.open() || page > 6U) {
-        return false;
-    }
-    // The converted primary-page advance wraps the seven-page selector, so
-    // a d-pad left edge moves one page toward zero. Port byte bit 2 is the
-    // left direction in the sampled controller word (0x0400 in the expanded
-    // events consumed by the bridge).
-    const auto current = command_overview_.view().source_state.primary_page;
-    const auto steps = (current + 7U - page) % 7U;
-    for (std::uint8_t step = 0; step < steps; ++step) {
-        set_controller_port_byte(0x04U);
-        advance_frame();
-        set_controller_port_byte(0U);
-        advance_frame();
-    }
-    return command_overview_.view().source_state.primary_page == page;
-}
-
 void FieldSceneRuntime::paint_field_scene_entities(
     QPainter& painter, const QRect& clip_rect) const {
     struct SceneSprite {
@@ -19586,21 +12199,52 @@ void FieldSceneRuntime::paint_field_scene_entities(
             field_entity_idle_images_.size());
         const auto walking = field_entity_animation_id_ == "walk";
         const auto attack_pose = field_entity_animation_id_ == "attack";
+        const auto strike_pose = field_entity_animation_id_ == "strike";
+        const auto cast_pose = field_entity_animation_id_ == "cast";
+        const auto down_pose = field_entity_animation_id_ == "runner_down";
+        const auto hurt_pose = field_entity_animation_id_ == "runner_hurt";
+        const auto strike_frame = static_cast<std::size_t>(
+            field_entity_animation_.frame & 1U);
+        const auto down_frame = static_cast<std::size_t>(
+            field_entity_animation_.frame == 0U ? 0U : 1U);
+        const auto hurt_frame = static_cast<std::size_t>(
+            field_entity_animation_.frame == 0U ? 0U : 1U);
         const auto movement_frames =
             field_entity_walk_images_[direction].size();
         const auto frame = movement_frames == 0U
             ? 0U
             : static_cast<std::size_t>(field_entity_animation_.frame) %
                   movement_frames;
-        const auto& image = attack_pose
+        const auto& image = down_pose
+            ? field_entity_down_images_[direction][down_frame]
+            : hurt_pose
+            ? field_entity_hurt_images_[direction][hurt_frame]
+            : strike_pose
+            ? field_entity_strike_images_[direction][strike_frame]
+            : cast_pose ? field_entity_cast_images_[direction]
+            : attack_pose
             ? field_entity_attack_images_[direction]
             : walking ? field_entity_walk_images_[direction][frame]
                       : field_entity_idle_images_[direction];
-        const auto origin_x = attack_pose
+        const auto origin_x = down_pose
+            ? field_entity_down_origin_x_[direction][down_frame]
+            : hurt_pose
+            ? field_entity_hurt_origin_x_[direction][hurt_frame]
+            : strike_pose
+            ? field_entity_strike_origin_x_[direction][strike_frame]
+            : cast_pose ? field_entity_cast_origin_x_[direction]
+            : attack_pose
             ? field_entity_attack_origin_x_[direction]
             : walking ? field_entity_walk_origin_x_[direction][frame]
                       : field_entity_idle_origin_x_[direction];
-        const auto origin_y = attack_pose
+        const auto origin_y = down_pose
+            ? field_entity_down_origin_y_[direction][down_frame]
+            : hurt_pose
+            ? field_entity_hurt_origin_y_[direction][hurt_frame]
+            : strike_pose
+            ? field_entity_strike_origin_y_[direction][strike_frame]
+            : cast_pose ? field_entity_cast_origin_y_[direction]
+            : attack_pose
             ? field_entity_attack_origin_y_[direction]
             : walking ? field_entity_walk_origin_y_[direction][frame]
                       : field_entity_idle_origin_y_[direction];
@@ -19847,6 +12491,31 @@ void FieldSceneRuntime::paint_field_scene_entities(
                             spawn.secondary_active, spawn.secondary_slot);
     }
 
+    for (const auto& spark : field_hit_sparks_) {
+        if (!spark.child.active ||
+            spark.animation.frame >= field_hit_spark_images_.size()) {
+            continue;
+        }
+        EntityProjectionState projection{};
+        projection.world_x = spark.child.world_x;
+        projection.world_y = spark.child.world_y;
+        if (!project_entity_screen_position_standard(
+                 projection, camera_x, camera_y)
+                 .visible) {
+            continue;
+        }
+        const auto frame = static_cast<std::size_t>(spark.animation.frame);
+        const auto& image = field_hit_spark_images_[frame];
+        sprites.push_back(SceneSprite{
+            static_cast<std::int16_t>(spark.child.world_y),
+            spark.child.slot,
+            static_cast<int>(projection.screen_x) -
+                kGenesisSpriteOrigin + field_hit_spark_origin_x_[frame],
+            static_cast<int>(projection.screen_y) -
+                kGenesisSpriteOrigin + field_hit_spark_origin_y_[frame],
+            &image});
+    }
+
     // ROM 0x5B1E stably sorts by descending effective depth, then 0x4658
     // emits that order into the SAT. The Genesis VDP gives lower SAT indices
     // priority, while QPainter gives later draws priority, so paint backwards.
@@ -19939,33 +12608,7 @@ void FieldSceneRuntime::paint_field_hud_overlays(QPainter& painter) const {
     }
 }
 
-std::optional<std::uint8_t> FieldSceneRuntime::selected_shop_item_code() const {
-    if (!field_shop_menu_.offers_panel_active()) {
-        return std::nullopt;
-    }
-    std::uint8_t item_code = 0U;
-    if (field_shop_menu_.selected_group() == ShopActionGroup::sell) {
-        const auto cursor = field_shop_menu_.selected_cursor();
-        const auto& item_codes = active_runner_record().inventory_item_codes;
-        if (cursor >= item_codes.size()) {
-            return std::nullopt;
-        }
-        item_code = item_codes[cursor];
-    } else {
-        const auto offer = field_shop_menu_.offer(
-            field_shop_menu_.selected_group(),
-            field_shop_menu_.selected_cursor());
-        if (!offer.has_value() ||
-            offer->type == static_cast<std::uint8_t>('E')) {
-            return std::nullopt;
-        }
-        item_code = static_cast<std::uint8_t>(offer->type + 1U);
-    }
-    if (item_code == 0U || item_code > field_menu_text_.items.size()) {
-        return std::nullopt;
-    }
-    return item_code;
-}
+
 
 std::optional<std::uint8_t>
 FieldSceneRuntime::selected_shop_weapon_capacity() const {
@@ -20036,621 +12679,9 @@ FieldActionBaseCostLookup FieldSceneRuntime::item_resale_base_lookup() const {
     };
 }
 
-void FieldSceneRuntime::paint_field_shop(QPainter& painter) const {
-    if (field_service_background_.isNull() ||
-        !field_shop_active_definition_.has_value()) {
-        return;
-    }
-    painter.drawImage(0, 0, field_service_background_);
 
-    // The Lua service definition chooses the ROM title and category labels;
-    // this presenter places those named text records over shared service art.
-    const auto* title = game_scripts_.dialogue_text(
-        field_shop_active_definition_->title_key);
-    if (title != nullptr) {
-        draw_command_overview_text(painter, 64, 16, *title);
-    }
-    const auto group = field_shop_menu_.selected_group();
-    const auto group_index = field_shop_menu_.selected_group_index();
-    if (group_index >= field_shop_active_definition_->groups.size()) {
-        return;
-    }
-    const auto& group_definition =
-        field_shop_active_definition_->groups[group_index];
-    const bool sell_group = group_definition.id == "sell";
-    const bool progression_group =
-        !group_definition.progression_offers.empty();
-    const bool wire_upgrade_group =
-        !group_definition.equipment_upgrade_offers.empty();
-    if (!wire_upgrade_group &&
-        group_index < field_service_tab_images_.size()) {
-        painter.drawImage(64, 128, field_service_tab_images_[group_index]);
-    }
-    if (field_shop_menu_.offers_panel_active()) {
-            const bool transaction_replaces_detail =
-                !wire_upgrade_group &&
-                (field_shop_menu_.transaction_confirmation_open() ||
-                 field_shop_menu_.transaction_message() !=
-                     ShopTransactionMessage::none);
-            const auto cursor = field_shop_menu_.selected_cursor();
-            const auto selected_upgrade_offer = wire_upgrade_group
-                ? field_shop_menu_.equipment_upgrade_offer(group, cursor)
-                : std::optional<scripting::ScriptShopEquipmentUpgradeOffer>{};
-            const auto selected_offer = sell_group || progression_group
-                ? std::optional<FieldActionCostRecord>{}
-                : field_shop_menu_.offer(group, cursor);
-            const auto selected_progression_offer = progression_group
-                ? field_shop_menu_.progression_offer(group, cursor)
-                : std::optional<scripting::ScriptShopProgressionOffer>{};
-            std::uint8_t selected_item_code = 0U;
-            if (sell_group) {
-                if (cursor < active_runner_record().inventory_item_codes.size()) {
-                    selected_item_code =
-                        active_runner_record().inventory_item_codes[cursor];
-                }
-            } else if (selected_offer.has_value() &&
-                       selected_offer->type !=
-                           static_cast<std::uint8_t>('E')) {
-                selected_item_code = static_cast<std::uint8_t>(
-                    selected_offer->type + 1U);
-            }
 
-            if (wire_upgrade_group && selected_upgrade_offer.has_value()) {
-                const auto& upgrade = *selected_upgrade_offer;
-                if (upgrade.category < field_service_cyberware_icons_.size()) {
-                    painter.drawImage(
-                        80, 32,
-                        field_service_cyberware_icons_[upgrade.category]);
-                }
-                const auto* selected_name = game_scripts_.dialogue_text(
-                    upgrade.selected_name_key);
-                if (selected_name != nullptr) {
-                    draw_command_overview_text(painter, 128, 32,
-                                               *selected_name);
-                }
-                const auto* description = game_scripts_.dialogue_text(
-                    upgrade.description_key);
-                if (description != nullptr) {
-                    draw_command_overview_text(painter, 24, 56,
-                                               *description);
-                }
 
-                const auto show_upgrade_quote =
-                    !field_shop_menu_.transaction_confirmation_open() &&
-                    field_shop_menu_.transaction_message() ==
-                        ShopTransactionMessage::none;
-                if (show_upgrade_quote) {
-                    const auto* price_heading = game_scripts_.dialogue_text(
-                        field_shop_active_definition_->text_keys
-                            .purchase_price_heading);
-                    if (price_heading != nullptr) {
-                        draw_command_overview_text(painter, 80, 112,
-                                                   *price_heading);
-                    }
-                    const auto cost = apply_field_action_cost_discounts(
-                        upgrade.base_cost,
-                        field_shop_cost_context(
-                            field_shop_menu_.menu_mode(),
-                            active_runner_record(),
-                            field_runner_feature_flags_.value_or(0U)));
-                    draw_command_overview_number(
-                        painter, command_overview_font_, 176, 112, cost,
-                        NumericVisualAlignment::right, true);
-
-                    const auto& thresholds =
-                        field_shop_active_definition_
-                            ->equipment_upgrade_meter_thresholds;
-                    if (thresholds.size() == 16U) {
-                        FieldEquipmentUpgradeTable table{};
-                        std::copy(thresholds.begin(), thresholds.end(),
-                                  table.meter_thresholds.begin());
-                        const auto essence_cost =
-                            field_equipment_upgrade_display_essence_cost(
-                                table, upgrade.category,
-                                active_runner_record().cyberware_flags);
-                        const auto* essence_heading =
-                            game_scripts_.dialogue_text(
-                                field_shop_active_definition_->text_keys
-                                    .cyberware_essence_heading);
-                        const auto* essence_cost_heading =
-                            game_scripts_.dialogue_text(
-                                field_shop_active_definition_->text_keys
-                                    .cyberware_essence_cost_heading);
-                        if (essence_heading != nullptr) {
-                            draw_command_overview_text(
-                                painter, 72, 88, *essence_heading);
-                        }
-                        if (essence_cost_heading != nullptr) {
-                            draw_command_overview_text(
-                                painter, 72, 96, *essence_cost_heading);
-                        }
-                        const auto& runner = active_runner_record();
-                        draw_command_overview_number(
-                            painter, command_overview_font_, 184, 88,
-                            runner.cyberware_essence_tens());
-                        draw_command_overview_number(
-                            painter, command_overview_font_, 200, 88,
-                            runner.cyberware_essence_ones());
-                        if (essence_cost.has_value()) {
-                            draw_command_overview_number(
-                                painter, command_overview_font_, 184, 96,
-                                *essence_cost);
-                            draw_command_overview_number(
-                                painter, command_overview_font_, 200, 96,
-                                0U);
-                        }
-                    }
-                }
-            } else if (progression_group &&
-                       selected_progression_offer.has_value()) {
-                // ROM 0x57D7E uses the offer byte directly as the D4EA0 row
-                // index for its name, details, and glyph.
-                const auto spell_code = static_cast<std::size_t>(
-                    selected_progression_offer->action_code);
-                std::optional<FieldActionProgressionQuoteOutcome>
-                    progression_quote;
-                const auto* const spell_table = field_magic_spell_table(
-                    active_runner_record().magic_table_index);
-                if (!transaction_replaces_detail && spell_table != nullptr) {
-                    auto progression = make_field_shop_progression_input(
-                        field_shop_menu_, active_runner_record(),
-                        field_funds_.value_or(0U), *spell_table,
-                        field_runner_feature_flags_.value_or(0U));
-                    if (progression.has_value()) {
-                        progression_quote =
-                            prepare_field_action_progression_quote(
-                                progression->tables, progression->state);
-                    }
-                }
-
-                const bool runner_unavailable = progression_quote.has_value() &&
-                    progression_quote->result ==
-                        FieldActionProgressionQuoteResult::runner_unavailable;
-                if (!runner_unavailable &&
-                    spell_code < command_overview_magic_spell_icons_.size()) {
-                    painter.drawImage(
-                        128, 32,
-                        command_overview_magic_spell_icons_[spell_code]);
-                }
-                if (!runner_unavailable &&
-                    spell_code < field_menu_text_.magic_spell_names.size()) {
-                    draw_command_overview_text(
-                        painter, 104, 144,
-                        field_menu_text_.magic_spell_names[spell_code]);
-                }
-                if (!transaction_replaces_detail && !runner_unavailable &&
-                    spell_code <
-                        field_menu_text_.magic_spell_descriptions.size()) {
-                    draw_command_overview_text(
-                        painter, 24, 56,
-                        field_menu_text_.magic_spell_descriptions[spell_code]);
-                }
-
-                if (!transaction_replaces_detail &&
-                    progression_quote.has_value()) {
-                    const auto draw_shop_text = [this, &painter](
-                        const std::string& key, const int x, const int y) {
-                        const auto* text = game_scripts_.dialogue_text(key);
-                        if (text != nullptr) {
-                            draw_command_overview_text(painter, x, y, *text);
-                        }
-                    };
-                    switch (progression_quote->result) {
-                    case FieldActionProgressionQuoteResult::runner_unavailable:
-                        draw_shop_text(
-                            field_shop_active_definition_->text_keys
-                                .progression_training_unavailable,
-                            64, 88);
-                        break;
-                    case FieldActionProgressionQuoteResult::progression_limit:
-                        draw_shop_text(
-                            field_shop_active_definition_->text_keys
-                                .progression_maximum_level,
-                            64, 104);
-                        break;
-                    case FieldActionProgressionQuoteResult::quoted:
-                        draw_shop_text(
-                            field_shop_active_definition_->text_keys
-                                .progression_level_label,
-                            112, 64);
-                        draw_command_overview_number(
-                            painter, command_overview_font_, 160, 64,
-                            progression_quote->quote->next_progression_level);
-                        draw_shop_text(
-                            field_shop_active_definition_->text_keys
-                                .progression_cost_heading,
-                            56, 112);
-                        draw_command_overview_number(
-                            painter, command_overview_font_, 208, 112,
-                            progression_quote->quote->cost,
-                            NumericVisualAlignment::right, true);
-                        break;
-                    case FieldActionProgressionQuoteResult::invalid_offer_selection:
-                    case FieldActionProgressionQuoteResult::missing_record_slot:
-                    case FieldActionProgressionQuoteResult::offer_unavailable:
-                        break;
-                    }
-                }
-            }
-
-            if (!wire_upgrade_group && selected_offer.has_value() &&
-                selected_offer->type == static_cast<std::uint8_t>('E')) {
-                // ROM 0x586F6 uses the dedicated CE28E grid, 1AACE2
-                // description, 1AACCE title, and record quantity for the
-                // Universal Gun Clips row. These are source text/assets, not
-                // a fabricated inventory item-code mapping.
-                const auto& clips_description =
-                    field_menu_text_.field_service_universal_clips_description;
-                painter.drawImage(128, 32,
-                                  field_service_universal_clips_icon_);
-                if (!transaction_replaces_detail) {
-                    draw_command_overview_text(
-                        painter, 24, 56, clips_description);
-                }
-                draw_command_overview_text(
-                    painter, 104, 144,
-                    field_menu_text_.field_service_universal_clips_title);
-                if (!transaction_replaces_detail) {
-                    // The ROM-derived Lua description places its currency
-                    // glyph on the final line. Anchor the amount immediately
-                    // to its left so the last digit cannot overwrite it.
-                    const auto currency_marker = clips_description.rfind('$');
-                    if (currency_marker != std::string::npos) {
-                        const auto line_break =
-                            clips_description.rfind('\n', currency_marker);
-                        const auto line_begin = line_break == std::string::npos
-                            ? 0U
-                            : line_break + 1U;
-                        const auto marker_x = 24 + static_cast<int>(
-                            (currency_marker - line_begin) * 8U);
-                        const auto marker_row = static_cast<int>(
-                            std::count(clips_description.begin(),
-                                       clips_description.begin() +
-                                           static_cast<std::ptrdiff_t>(
-                                               currency_marker),
-                                       '\n'));
-                        draw_command_overview_number(
-                            painter, command_overview_font_, marker_x,
-                            56 + marker_row * 8, selected_offer->quantity,
-                            NumericVisualAlignment::right);
-                    }
-                }
-            }
-            else if (!wire_upgrade_group && selected_item_code > 0U &&
-                     selected_item_code <= field_menu_text_.items.size()) {
-                const auto item_index =
-                    static_cast<std::size_t>(selected_item_code - 1U);
-                const auto& item_name = field_menu_text_.items[item_index].name;
-                const auto& item_category =
-                    field_menu_text_.items[item_index].category;
-                const auto space = item_name.find(' ');
-                if (!item_category.empty()) {
-                    draw_command_overview_text(
-                        painter,
-                        (320 - static_cast<int>(item_name.size() * 8U)) / 2,
-                        144, item_name);
-                    draw_command_overview_text(
-                        painter,
-                        (320 - static_cast<int>(item_category.size() * 8U)) / 2,
-                        152, item_category);
-                } else if (space != std::string::npos && space > 0U &&
-                           space + 1U < item_name.size()) {
-                    const auto first_line =
-                        std::string_view(item_name).substr(0U, space);
-                    const auto second_line =
-                        std::string_view(item_name).substr(space + 1U);
-                    draw_command_overview_text(
-                        painter, (320 - static_cast<int>(first_line.size() * 8U)) / 2,
-                        144, first_line);
-                    draw_command_overview_text(
-                        painter, (320 - static_cast<int>(second_line.size() * 8U)) / 2,
-                        152, second_line);
-                } else {
-                    draw_command_overview_text(
-                        painter,
-                        (320 - static_cast<int>(item_name.size() * 8U)) / 2,
-                        144, item_name);
-                }
-                if (selected_item_code <=
-                    command_overview_item_details_.size()) {
-                    painter.drawImage(
-                        124, 32,
-                        command_overview_item_details_[item_index]);
-                }
-
-                if (!transaction_replaces_detail) {
-                    const auto weapon_capacity =
-                        selected_shop_weapon_capacity();
-                    const auto item_uses = selected_shop_item_uses();
-                    if (weapon_capacity.has_value()) {
-                        // A named Lua weapon template supplies stock capacity;
-                        // the active runner's loaded rounds stay in the HUD.
-                        draw_command_overview_text(
-                            painter, 72, 56,
-                            field_menu_text_.item_detail_labels[0]);
-                        draw_command_overview_number(
-                            painter, command_overview_font_, 104, 56,
-                            *weapon_capacity);
-                    } else if (item_uses.has_value()) {
-                        draw_command_overview_text(
-                            painter, 72, 56,
-                            field_menu_text_.item_detail_labels[1]);
-                        draw_command_overview_number(
-                            painter, command_overview_font_, 104, 56,
-                            *item_uses);
-                    }
-                    const auto detail_text = select_field_action_detail_text(
-                        static_cast<std::uint8_t>(selected_item_code - 1U));
-                    if (detail_text.has_value() &&
-                        detail_text->table_index <
-                            field_menu_text_.field_action_detail_texts.size()) {
-                        draw_command_overview_text(
-                            painter, 24, 80,
-                            field_menu_text_.field_action_detail_texts[
-                                detail_text->table_index]);
-                    }
-                }
-
-                if (!transaction_replaces_detail && !sell_group &&
-                    !progression_group &&
-                    selected_offer.has_value()) {
-                    draw_command_overview_text(
-                        painter, 80, 112,
-                        field_menu_text_.shop_purchase_price_heading);
-                    const auto amount = calculate_field_action_record_cost(
-                        *selected_offer,
-                        field_shop_cost_context(field_shop_menu_.menu_mode(),
-                                          active_runner_record(),
-                                          field_runner_feature_flags_.value_or(
-                                              0U)),
-                        item_base_cost_lookup());
-                    draw_command_overview_number(
-                        painter, command_overview_font_, 184, 112, amount,
-                        NumericVisualAlignment::right, true);
-                }
-            }
-    } else {
-        for (std::size_t row = 0; row < group_definition.title_keys.size();
-             ++row) {
-            const auto* heading = game_scripts_.dialogue_text(
-                group_definition.title_keys[row]);
-            if (heading != nullptr) {
-                draw_command_overview_text(
-                    painter, 64, 144 + static_cast<int>(row) * 8, *heading);
-            }
-        }
-    }
-
-    const auto stock_group = field_shop_menu_.offers_panel_active()
-        ? group
-        : field_shop_menu_.displayed_offer_group();
-    const auto stock_group_index =
-        field_shop_menu_.offers_panel_active()
-            ? field_shop_menu_.selected_group_index()
-            : field_shop_menu_.displayed_offer_group_index();
-    const bool stock_is_sell =
-        stock_group_index < field_shop_active_definition_->groups.size() &&
-        field_shop_active_definition_->groups[stock_group_index].id == "sell";
-    const bool stock_is_progression =
-        stock_group_index < field_shop_active_definition_->groups.size() &&
-        !field_shop_active_definition_->groups[stock_group_index]
-             .progression_offers.empty();
-    const bool stock_is_wire_upgrade =
-        stock_group_index < field_shop_active_definition_->groups.size() &&
-        !field_shop_active_definition_->groups[stock_group_index]
-             .equipment_upgrade_offers.empty();
-    const auto count = stock_is_wire_upgrade
-        ? field_shop_menu_.equipment_upgrade_offer_count(stock_group)
-        : stock_is_sell
-              ? active_runner_record().inventory_item_codes.size()
-              : stock_is_progression
-                    ? field_shop_menu_.progression_offer_count(stock_group)
-                    : field_shop_menu_.offer_count(stock_group);
-    for (std::size_t index = 0; index < count && index < 8U; ++index) {
-        if (stock_is_wire_upgrade) {
-            if (index < field_service_cyberware_icons_.size()) {
-                painter.drawImage(
-                    16 + static_cast<int>(index) * 32, 168,
-                    field_service_cyberware_icons_[index]);
-            }
-            continue;
-        }
-        if (stock_is_sell) {
-            const auto item_code =
-                active_runner_record().inventory_item_codes[index];
-            if (item_code > 0U &&
-                item_code <= command_overview_inventory_icons_.size()) {
-                painter.drawImage(
-                    16 + static_cast<int>(index) * 32, 168,
-                    command_overview_inventory_icons_[item_code - 1U][0]);
-            }
-            continue;
-        }
-        if (stock_is_progression) {
-            const auto offer =
-                field_shop_menu_.progression_offer(stock_group, index);
-            if (!offer.has_value()) {
-                continue;
-            }
-            const auto spell_code = static_cast<std::size_t>(
-                offer->action_code);
-            if (spell_code < command_overview_magic_spell_icons_.size()) {
-                painter.drawImage(
-                    16 + static_cast<int>(index) * 32, 168,
-                    command_overview_magic_spell_icons_[spell_code]);
-            }
-            continue;
-        }
-        const auto offer = field_shop_menu_.offer(stock_group, index);
-        if (!offer.has_value()) {
-            continue;
-        }
-        if (offer->type == static_cast<std::uint8_t>('E')) {
-            painter.drawImage(
-                16 + static_cast<int>(index) * 32, 168,
-                field_service_universal_clips_icon_);
-            continue;
-        }
-        const auto item_code = static_cast<std::uint8_t>(offer->type + 1U);
-        if (item_code > 0U &&
-            item_code <= command_overview_inventory_icons_.size()) {
-            painter.drawImage(
-                16 + static_cast<int>(index) * 32, 168,
-                command_overview_inventory_icons_[item_code - 1U][0]);
-        }
-    }
-
-    if (field_shop_menu_.offers_panel_active()) {
-        // The Genesis selector hugs each 24x16 item image. Draw a single
-        // warm-yellow pixel around that footprint; the surrounding 32x24
-        // cell and neighboring controls remain clear.
-        const auto cursor = field_shop_menu_.selected_cursor();
-        const auto selectable = stock_is_wire_upgrade || !sell_group ||
-            (cursor < active_runner_record().inventory_item_codes.size() &&
-             active_runner_record().inventory_item_codes[cursor] != 0U);
-        if (selectable && cursor < count && cursor < 8U) {
-            constexpr int kIconWidth = 24;
-            constexpr int kIconHeight = 16;
-            const auto x = 16 + static_cast<int>(cursor) * 32;
-            constexpr int y = 168;
-            const QColor selector_color(196, 190, 39);
-            painter.fillRect(x, y, kIconWidth, 1, selector_color);
-            painter.fillRect(x, y + kIconHeight - 1, kIconWidth, 1,
-                             selector_color);
-            painter.fillRect(x, y, 1, kIconHeight, selector_color);
-            painter.fillRect(x + kIconWidth - 1, y, 1, kIconHeight,
-                             selector_color);
-        }
-    }
-
-    paint_field_hud_overlays(painter);
-    if (field_funds_.has_value()) {
-        draw_command_overview_number(
-            painter, command_overview_font_, 144, 200, *field_funds_,
-            NumericVisualAlignment::left, true);
-        draw_command_overview_text(painter, 200, 200, "$");
-    }
-
-    if (field_shop_menu_.transaction_confirmation_open()) {
-        if (wire_upgrade_group) {
-            const auto* heading = game_scripts_.dialogue_text(
-                field_shop_active_definition_->text_keys
-                    .cyberware_purchase_heading);
-            if (heading != nullptr) {
-                draw_command_overview_text(painter, 48, 88, *heading);
-            }
-            draw_command_overview_number(
-                painter, command_overview_font_, 216, 88,
-                field_shop_menu_.transaction_amount(),
-                NumericVisualAlignment::right, true);
-        } else {
-            draw_command_overview_text(
-                painter, 24, 80, field_menu_text_.shop_transaction_prompt);
-        }
-        if (sell_group && !wire_upgrade_group) {
-            draw_command_overview_text(
-                painter, 56, 88, field_menu_text_.shop_sale_quote_heading);
-            draw_command_overview_number(
-                painter, command_overview_font_, 224, 88,
-                field_shop_menu_.transaction_amount(),
-                NumericVisualAlignment::right, true);
-        }
-        draw_command_overview_text(
-            painter, 128, 96, field_menu_text_.action_choice_yes);
-        draw_command_overview_text(
-            painter, 128, 112, field_menu_text_.action_choice_no);
-        draw_command_overview_text(
-            painter, 112,
-            field_shop_menu_.transaction_confirmation().selected_option == 0U
-                ? 96
-                : 112,
-            ">");
-    } else {
-        switch (field_shop_menu_.transaction_message()) {
-        case ShopTransactionMessage::no_inventory_slot:
-            draw_command_overview_text(
-                painter, 96, 88, field_menu_text_.shop_no_inventory_slot);
-            break;
-        case ShopTransactionMessage::insufficient_funds:
-            draw_command_overview_text(
-                painter, 56, 88, field_menu_text_.shop_insufficient_funds);
-            break;
-        case ShopTransactionMessage::special_action_limit:
-            draw_command_overview_text(
-                painter, 56, 88,
-                field_menu_text_.shop_special_action_limit);
-            break;
-        case ShopTransactionMessage::protected_sale:
-            draw_command_overview_text(
-                painter, 48, 96, field_menu_text_.shop_protected_sale);
-            break;
-        case ShopTransactionMessage::training_unavailable: {
-            const auto* message = game_scripts_.dialogue_text(
-                field_shop_active_definition_->text_keys
-                    .progression_training_unavailable);
-            if (message != nullptr) {
-                draw_command_overview_text(painter, 64, 88, *message);
-            }
-            break;
-        }
-        case ShopTransactionMessage::cyberware_already_owned: {
-            const auto* message = game_scripts_.dialogue_text(
-                field_shop_active_definition_->text_keys
-                    .cyberware_already_owned);
-            if (message != nullptr) {
-                draw_command_overview_text(painter, 64, 88, *message);
-            }
-            break;
-        }
-        case ShopTransactionMessage::cyberware_spurs_conflict: {
-            const auto* message = game_scripts_.dialogue_text(
-                field_shop_active_definition_->text_keys
-                    .cyberware_spurs_conflict);
-            if (message != nullptr) {
-                draw_command_overview_text(painter, 72, 88, *message);
-            }
-            break;
-        }
-        case ShopTransactionMessage::cyberware_insufficient_essence: {
-            const auto* message = game_scripts_.dialogue_text(
-                field_shop_active_definition_->text_keys
-                    .cyberware_insufficient_essence);
-            if (message != nullptr) {
-                draw_command_overview_text(painter, 64, 88, *message);
-            }
-            break;
-        }
-        case ShopTransactionMessage::none:
-            break;
-        }
-    }
-}
-
-void FieldSceneRuntime::paint_field_shop_notice(QPainter& painter) const {
-    if (!field_shop_notice_active_ || field_service_background_.isNull()) {
-        return;
-    }
-    painter.drawImage(0, 0, field_service_background_);
-    const auto* title = game_scripts_.dialogue_text(
-        "shop.service.option." + field_shop_notice_service_id_);
-    if (title != nullptr) {
-        draw_command_overview_text(painter, 64, 16, *title);
-    }
-    const auto* message = game_scripts_.dialogue_text(
-        field_shop_notice_text_key_);
-    if (message != nullptr) {
-        // ROM 0x56C12 writes the message at name-table word 0xC316. On the
-        // source 64-cell plane this is pixel origin (88, 48).
-        draw_command_overview_text(painter, 88, 48, *message);
-    }
-    paint_field_hud_overlays(painter);
-    if (field_funds_.has_value()) {
-        draw_command_overview_number(
-            painter, command_overview_font_, 144, 200, *field_funds_,
-            NumericVisualAlignment::left, true);
-        draw_command_overview_text(painter, 200, 200, "$");
-    }
-}
 
 void FieldSceneRuntime::draw_command_overview_text(
     QPainter& painter, const int x, const int y,
@@ -20658,211 +12689,15 @@ void FieldSceneRuntime::draw_command_overview_text(
     draw_tinted_field_text(painter, x, y, text, QColor(0, 255, 0));
 }
 
-void FieldSceneRuntime::draw_tinted_field_text(
-    QPainter& painter, const int x, const int y,
-    const std::string_view text, const QColor color) const {
-    if (command_overview_font_.isNull() || command_overview_font_.width() < 8 ||
-        command_overview_font_.height() < 8) {
-        return;
-    }
-    auto cursor = x;
-    auto cursor_y = y;
-    for (const unsigned char code : text) {
-        if (code == '\n') {
-            cursor = x;
-            cursor_y += 8;
-            continue;
-        }
-        if (code < 0x20U || code > 0x7EU) {
-            cursor += 8;
-            continue;
-        }
-        const auto glyph = static_cast<int>(code - 0x20U);
-        const auto source_x = (glyph % 16) * 8;
-        const auto source_y = (glyph / 16) * 8;
-        if (source_x + 8 > command_overview_font_.width() ||
-            source_y + 8 > command_overview_font_.height()) {
-            cursor += 8;
-            continue;
-        }
-        QImage tinted_glyph(8, 8, QImage::Format_ARGB32_Premultiplied);
-        tinted_glyph.fill(Qt::transparent);
-        for (int glyph_y = 0; glyph_y < 8; ++glyph_y) {
-            for (int glyph_x = 0; glyph_x < 8; ++glyph_x) {
-                const auto source_pixel = command_overview_font_.pixelColor(
-                    source_x + glyph_x, source_y + glyph_y);
-                const auto coverage = std::max(
-                    {source_pixel.red(), source_pixel.green(),
-                     source_pixel.blue()});
-                if (source_pixel.alpha() == 0 || coverage == 0) {
-                    continue;
-                }
-                const auto alpha = static_cast<int>(
-                    (static_cast<std::uint32_t>(source_pixel.alpha()) *
-                     static_cast<std::uint32_t>(coverage)) /
-                    255U);
-                auto tinted_color = color;
-                tinted_color.setAlpha(alpha);
-                tinted_glyph.setPixelColor(glyph_x, glyph_y,
-                                           tinted_color);
-            }
-        }
-        painter.drawImage(cursor, cursor_y, tinted_glyph);
-        cursor += 8;
-    }
-}
 
-void FieldSceneRuntime::draw_field_menu_font_text(
-    QPainter& painter, const int x, const int y,
-    const std::string_view text, const QImage& font) const {
-    if (font.isNull() || font.width() < 8 || font.height() < 8) {
-        return;
-    }
-    auto cursor = x;
-    auto cursor_y = y;
-    for (const auto character : text) {
-        if (character == '\n') {
-            cursor = x;
-            cursor_y += 8;
-            continue;
-        }
-        const auto code = static_cast<unsigned char>(character);
-        if (code < 0x20U || code > 0x7FU) {
-            cursor += 8;
-            continue;
-        }
-        const auto glyph = static_cast<int>(code - 0x20U);
-        const auto source_x = (glyph % 16) * 8;
-        const auto source_y = (glyph / 16) * 8;
-        if (source_x + 8 > font.width() || source_y + 8 > font.height()) {
-            cursor += 8;
-            continue;
-        }
-        painter.drawImage(cursor, cursor_y, font,
-                          source_x, source_y, 8, 8);
-        cursor += 8;
-    }
-}
 
-void FieldSceneRuntime::draw_hotel_menu_text(
-    QPainter& painter, const int x, const int y,
-    const std::string_view text,
-    const HotelMenuPaletteLine palette_line) const {
-    const auto& font = palette_line == HotelMenuPaletteLine::checkout
-                           ? hotel_checkout_font_
-                           : command_overview_font_;
-    if (font.isNull() || font.width() < 8 || font.height() < 8) {
-        return;
-    }
-    auto cursor = x;
-    auto cursor_y = y;
-    for (const auto character : text) {
-        if (character == '\n') {
-            cursor = x;
-            cursor_y += 8;
-            continue;
-        }
-        const auto code = static_cast<unsigned char>(character);
-        if (code < 0x20U || code > 0x7FU) {
-            cursor += 8;
-            continue;
-        }
-        const auto glyph = static_cast<int>(code - 0x20U);
-        const auto source_x = (glyph % 16) * 8;
-        const auto source_y = (glyph / 16) * 8;
-        if (source_x + 8 <= font.width() &&
-            source_y + 8 <= font.height()) {
-            // Hotel pages select the CRAM line in the source text writer.
-            // Keep the extracted RGBA colors intact for both green options
-            // text and the purple nested checkout prompt.
-            painter.drawImage(cursor, cursor_y, font, source_x, source_y, 8,
-                              8);
-        }
-        cursor += 8;
-    }
-}
 
-void FieldSceneRuntime::refresh_command_overview_combat_bars() {
-    if (!command_overview_.open()) {
-        command_overview_combat_bars_ = EquipmentCombatBarResult{};
-        return;
-    }
 
-    const auto& record = active_runner_record();
-    EquipmentCombatInput input{};
-    input.attributes = record.attributes;
-    // The source combat adapter names the sparse +0x81..+0x8C window. The
-    // live-record projection stores +0x80..+0x85 and +0x87..+0x8C as the
-    // typed skill array, with +0x86 retained in auxiliary[1].
-    input.skills = {record.skills[1],  record.skills[2], record.skills[3],
-                    record.skills[4],  record.skills[5], record.auxiliary[1],
-                    record.skills[6],  record.skills[7], record.skills[8],
-                    record.skills[9],  record.skills[10], record.skills[11]};
-    input.inventory_item_codes = record.inventory_item_codes;
-    input.inventory_phase_bytes = record.inventory_phase_bytes;
-    input.display_state = record.equipped_inventory_slot;
-    input.active_item_code = record.equipped_item_code;
-    input.posture = record.posture;
-    // The command overview's source selector is outside the eight-cell item
-    // grid. This keeps the normal higher-mode defense branch from treating a
-    // highlighted possession cell as an action lookup.
-    input.selected_inventory_slot =
-        static_cast<std::uint8_t>(record.inventory_item_codes.size());
-    input.cyberware_flags = record.cyberware_flags;
-    input.action_flags = static_cast<std::uint8_t>(record.flags & 0xFFU);
-    // ROM 0x12CEE's ordinary command-overview caller is in the higher-mode
-    // branch. It uses +0x56/+0x57 directly for the attack strip and still
-    // performs the typed defense calculation below it.
-    input.source_mode = 2U;
-    // When +0x56 is negative, 0x12D74/0x12FA4 uses the active action's
-    // Sorcery, Magic cap, and current force before applying item-focus and
-    // slot-7 totem data. Keep those values sourced from the selected live
-    // runner record so class/race presets and the action's force remain part
-    // of the displayed number.
-    input.special_item18_base = record.skills[0U]; // +0x80 Sorcery.
-    input.roll_count_cap = record.auxiliary[0U]; // +0x7F Magic cap.
-    input.auxiliary_roll_bonus = record.magic_force; // +0x9D current force.
-    if (input.display_state < 0 && input.active_item_code > 0U) {
-        const auto* spell = find_us_magic_spell(static_cast<std::uint8_t>(
-            input.active_item_code - 1U));
-        if (spell != nullptr) {
-            input.special_magic_spell = *spell;
-        }
-    }
-    input.item_catalog = &us_item_catalog();
-    input.selector_table = &us_special_item_modifier_selector_table();
-    command_overview_combat_bars_ = compute_equipment_combat_bars(input);
-}
 
-void FieldSceneRuntime::refresh_command_overview_item_detail() {
-    command_overview_item_detail_ = ItemActionDetailResult{};
-    if (!command_overview_.open() ||
-        command_overview_.view().source_state.primary_page >= 2U) {
-        return;
-    }
 
-    const auto slot =
-        command_overview_.view().source_state.secondary_page * 2U +
-        command_overview_.view().source_state.primary_page;
-    if (slot >= active_runner_record().inventory_item_codes.size()) {
-        return;
-    }
-    ItemActionDetailInput input{};
-    input.item_code = active_runner_record().inventory_item_codes[slot];
-    for (std::size_t index = 0;
-         index < active_runner_record().inventory_phase_bytes.size();
-         ++index) {
-        input.phase_bytes[index] =
-            active_runner_record().inventory_phase_bytes[index];
-    }
-    // The ninth byte in the source phase span is active record +0x76, the
-    // one-based armor ordinal. Preserve it as typed data for 0x12A8C's
-    // item-detail value selection.
-    input.phase_bytes[8] = active_runner_record().equipped_armor_index;
-    input.phase_slot = 8U;
-    command_overview_item_detail_ = render_item_action_details(
-        input, us_item_catalog(), command_overview_resource_variant_);
-}
+
+
+
 
 void FieldSceneRuntime::paint_command_overview_clips(
     QPainter& painter) const {
@@ -21306,18 +13141,6 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
                 : 184;
         painter.drawImage(184, cursor_y, hotel_checkout_cursor_);
     }
-}
-
-const MagicSpellTable* FieldSceneRuntime::field_magic_spell_table(
-    const std::uint16_t table_index) const noexcept {
-    if (table_index >= field_magic_spell_table_overrides_.size()) {
-        return nullptr;
-    }
-    const auto& override_table =
-        field_magic_spell_table_overrides_[table_index];
-    return override_table.has_value()
-               ? &*override_table
-               : find_us_magic_spell_table(table_index);
 }
 
 void FieldSceneRuntime::paint_command_overview_magic(
@@ -22284,13 +14107,6 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 if (paint_matrix_logout_transition_art(painter,
                                                        routed_menu)) {
                     return;
-                }
-                if (routed_menu.top_matrix_transition_fade_step.has_value()) {
-                    const auto fade_step = std::clamp(
-                        *routed_menu.top_matrix_transition_fade_step, 0, 5);
-                    painter.fillRect(
-                        painter.viewport(),
-                        QColor(0, 0, 0, fade_step * 51));
                 }
                 return;
             }
@@ -23702,10 +15518,12 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
             break;
         case ElevatorSceneTransitionPhase::idle:
             if (field_palette_fade_steps_ != 0U) {
-                // 0x16396 uses 0x1088 for the interaction fade. The modal
-                // return counter runs in the opposite direction; preserve
-                // its existing host duration while applying one CRAM level
-                // per source palette step and saturating after seven levels.
+                // 0xB7B8 initializes FFDF3C to 0x10. run_game_loop at 0x75E
+                // calls 0x16396 once per field pass, with the next 0xBD2
+                // VBlank wait between passes: 17 source VBlanks total. Its
+                // nine even-count updates call 0x1088 once, and each CRAM
+                // component saturates by pass 7 [C]. The additional 60-frame
+                // modal-return fade/input guard is host-only [H].
                 const auto completed_steps =
                     field_modal_return_transition_frames_remaining_ != 0U
                         ? static_cast<std::uint8_t>(
@@ -23718,6 +15536,25 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
                 transition_active = true;
             }
             break;
+        }
+
+        if (!transition_active && field_matrix_route_active_) {
+            const auto matrix_route = game_scripts_.menu_route_snapshot();
+            const bool matrix_logout_is_fading =
+                !matrix_route.top_matrix_logout_visual.has_value() ||
+                matrix_route.top_matrix_logout_visual->phase ==
+                    scripting::ScriptMatrixLogoutVisualPhase::FADE;
+            if (matrix_logout_is_fading &&
+                matrix_route.top_matrix_transition_fade_step.has_value()) {
+                // ROM 0x18776 runs five 0x1088 palette passes. Each pass waits
+                // two VBlanks at 0xBD2 before stepping CRAM; the Lua counter
+                // exposes that exact 0..5 progression. 0x26A00's following
+                // cross/dot art is drawn from its own palette and stays out
+                // of this fade [C].
+                palette_passes = static_cast<std::uint8_t>(std::clamp(
+                    *matrix_route.top_matrix_transition_fade_step, 0, 5));
+                transition_active = true;
+            }
         }
 
         scene_painter.end();
@@ -23910,28 +15747,8 @@ void FieldSceneRuntime::paint(QPainter& target_painter) const {
     apply_palette_fade();
 }
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-void FieldSceneRuntime::paint_field_scene_for_dump(
-    QPainter& painter) const {
-    painter.fillRect(0, 0, 320, 224, Qt::black);
-    if (!ready_ || field_map_.isNull()) {
-        return;
-    }
-    paint_field_scene(painter);
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::size_t FieldSceneRuntime::default_actor_count_for_dump() const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    return static_cast<std::size_t>(std::count_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference](const DefaultFieldActorPresentation& actor) {
-            return actor.active && actor.scene_reference == scene_reference;
-        }));
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
@@ -23947,637 +15764,62 @@ std::size_t FieldSceneRuntime::dynamic_world_actor_count_for_dump() const noexce
 #endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::size_t FieldSceneRuntime::world_activity_script_actor_count_for_dump()
-    const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    return static_cast<std::size_t>(std::count_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference](const DefaultFieldActorPresentation& actor) {
-            return actor.active && actor.world_activity_script_actor &&
-                   actor.scene_reference == scene_reference;
-        }));
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<SceneRunnerPosition>
-FieldSceneRuntime::world_activity_script_actor_position_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.active && candidate.world_activity_script_actor &&
-                   candidate.scene_reference == scene_reference &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-        ? std::nullopt
-        : std::optional<SceneRunnerPosition>{actor->world_position};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::string>
-FieldSceneRuntime::world_activity_script_actor_profile_for_dump(
-    const std::uint16_t source_order) const {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.active && candidate.world_activity_script_actor &&
-                   candidate.scene_reference == scene_reference &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-        ? std::nullopt
-        : std::optional<std::string>{actor->script_profile_id};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<FieldWorldActorSlot>
-FieldSceneRuntime::world_activity_script_actor_record_slot_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.active && candidate.world_activity_script_actor &&
-                   candidate.scene_reference == scene_reference &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-        ? std::nullopt
-        : actor->source_record_slot;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint8_t>
-FieldSceneRuntime::world_activity_script_actor_behavior_flags_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.active && candidate.world_activity_script_actor &&
-                   candidate.scene_reference == scene_reference &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-        ? std::nullopt
-        : std::optional<std::uint8_t>{actor->source_behavior_flags};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::vector<SceneRunnerPosition>
-FieldSceneRuntime::active_default_actor_positions_for_dump() const {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    std::vector<SceneRunnerPosition> positions;
-    for (const auto& actor : field_default_actors_) {
-        if (actor.active && actor.scene_reference == scene_reference) {
-            positions.push_back(actor.world_position);
-        }
-    }
-    return positions;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::string>
-FieldSceneRuntime::selected_default_actor_id_for_dump() const {
-    if (!field_entity_target_owner_.selected_target.has_value()) {
-        return std::nullopt;
-    }
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto selected_slot = *field_entity_target_owner_.selected_target;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, selected_slot](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.active &&
-                   candidate.scene_reference == scene_reference &&
-                   candidate.source_record_slot.has_value() &&
-                   static_cast<std::size_t>(
-                       *candidate.source_record_slot) == selected_slot;
-        });
-    if (actor == field_default_actors_.end()) {
-        return std::nullopt;
-    }
-    return actor->actor_instance_id;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<FieldTargetMarkerDebugState>
-FieldSceneRuntime::selected_default_actor_target_marker_for_dump() const noexcept {
-    if (!field_entity_target_owner_.selected_target.has_value()) {
-        return std::nullopt;
-    }
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto selected_slot = *field_entity_target_owner_.selected_target;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, selected_slot](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.active &&
-                   candidate.scene_reference == scene_reference &&
-                   candidate.source_record_slot.has_value() &&
-                   static_cast<std::size_t>(
-                       *candidate.source_record_slot) == selected_slot;
-        });
-    if (actor == field_default_actors_.end()) {
-        return std::nullopt;
-    }
-    EntityProjectionState projection{};
-    projection.world_x = actor->world_position.x;
-    projection.world_y = actor->world_position.y;
-    project_entity_screen_position_standard(
-        projection,
-        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
-        static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y));
-    return FieldTargetMarkerDebugState{
-        actor->target_marker_visible,
-        actor->target_marker_animating,
-        actor->target_marker_style,
-        actor->target_marker_radius,
-        actor->entity_kind,
-        projection.screen_x,
-        projection.screen_y};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<FieldCreatureAttackEffectDebugState>
-FieldSceneRuntime::default_actor_creature_attack_effect_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.active &&
-                   candidate.scene_reference == scene_reference &&
-                   candidate.source_order == source_order &&
-                   candidate.script_profile_id ==
-                       "hell_hound_k0c_none00";
-        });
-    if (actor == field_default_actors_.end()) {
-        return std::nullopt;
-    }
-    return FieldCreatureAttackEffectDebugState{
-        actor->target_motion_effect_visible,
-        actor->target_motion_effect_direction,
-        actor->target_motion_effect_phase,
-        actor->target_motion_effect_slot,
-        actor->action_delay};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::set_default_actor_world_position_for_dump(
-    const std::size_t active_actor_index, const std::uint16_t x,
-    const std::uint16_t y) noexcept {
-    const auto current_scene = state_.field_scene_buffers.scene_reference;
-    std::size_t active_index = 0U;
-    for (auto& actor : field_default_actors_) {
-        if (!actor.active || actor.scene_reference != current_scene) {
-            continue;
-        }
-        if (active_index == active_actor_index) {
-            actor.world_position = SceneRunnerPosition{x, y};
-            actor.movement_state.position_x = x;
-            actor.movement_state.position_y = y;
-            actor.movement_state_initialized = true;
-            return true;
-        }
-        ++active_index;
-    }
-    return false;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::set_field_spell_effect_for_dump(
-    const std::uint8_t action_code, const std::uint8_t phase,
-    const bool visible) noexcept {
-    if (!visible) {
-        field_entity_.spell_effect_visible = false;
-        field_entity_.spell_effect_action_code = 0U;
-        field_entity_.spell_effect_phase = 0U;
-        return true;
-    }
-
-    const auto profile = std::find_if(
-        kFieldSpellEffectProfiles.cbegin(), kFieldSpellEffectProfiles.cend(),
-        [action_code](const auto& candidate) {
-            return candidate.action_code == action_code;
-        });
-    if (profile == kFieldSpellEffectProfiles.cend() ||
-        phase >= profile->phase_count) {
-        return false;
-    }
-
-    field_entity_.spell_effect_visible = true;
-    field_entity_.spell_effect_action_code = action_code;
-    field_entity_.spell_effect_phase = phase;
-    return true;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-bool FieldSceneRuntime::set_selected_default_actor_world_position_for_dump(
-    const std::uint16_t x, const std::uint16_t y) noexcept {
-    if (!field_entity_target_owner_.selected_target.has_value()) {
-        return false;
-    }
-    const auto current_scene = state_.field_scene_buffers.scene_reference;
-    const auto selected_slot = *field_entity_target_owner_.selected_target;
-    for (auto& actor : field_default_actors_) {
-        if (!actor.active || actor.scene_reference != current_scene ||
-            !actor.source_record_slot.has_value() ||
-            static_cast<std::size_t>(*actor.source_record_slot) !=
-                selected_slot) {
-            continue;
-        }
-        actor.world_position = SceneRunnerPosition{x, y};
-        actor.movement_state.position_x = x;
-        actor.movement_state.position_y = y;
-        actor.movement_state_initialized = true;
-        return true;
-    }
-    return false;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::size_t FieldSceneRuntime::resolve_and_spawn_field_encounter_for_dump(
-    const std::uint8_t first_roll, const std::uint8_t second_roll,
-    const std::uint16_t random_seed) {
-    if (!ready_) {
-        failure_ = "field encounter QA requested before field bootstrap";
-        return 0U;
-    }
-    const auto scene_reference =
-        state_.field_scene_buffers.scene_reference;
-    field_random_seed_ = random_seed;
-    auto outcome = game_scripts_.resolve_field_encounter(
-        scene_reference, first_roll, second_roll);
-    if (!outcome.has_value()) {
-        failure_ = game_scripts_.failure();
-        source_boundary("field.random_encounter.qa_selector_unresolved");
-        return 0U;
-    }
-    if (outcome->kind != scripting::ScriptFieldEncounterOutcomeKind::
-                             dynamic_world_effect_sequence) {
-        failure_ = "field encounter QA selector did not resolve an actor sequence";
-        source_boundary("field.random_encounter.qa_outcome_not_actor_sequence");
-        return 0U;
-    }
-
-    const auto count_before = default_actor_count_for_dump();
-    pending_field_encounter_outcome_ = std::move(*outcome);
-    // This diagnostic entry point injects the already-resolved Lua selector
-    // rolls. The 0x1E166 chance gate and 0x59986 frame eligibility remain
-    // exercised by the live field loop, not by this focused spawn QA.
-    spawn_field_world_effect_sequence();
-    const auto count_after = default_actor_count_for_dump();
-    return count_after >= count_before ? count_after - count_before : 0U;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::size_t
-FieldSceneRuntime::default_actor_transition_started_count_for_dump() const
-    noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    return static_cast<std::size_t>(std::count_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference](const DefaultFieldActorPresentation& actor) {
-            return actor.scene_reference == scene_reference &&
-                   actor.active &&
-                   actor.transition_started;
-        }));
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::size_t
-FieldSceneRuntime::default_actor_transition_complete_count_for_dump() const
-    noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    return static_cast<std::size_t>(std::count_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference](const DefaultFieldActorPresentation& actor) {
-            return actor.scene_reference == scene_reference &&
-                   actor.active &&
-                   actor.transition_complete;
-        }));
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint8_t>
-FieldSceneRuntime::default_actor_direction_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-               ? std::nullopt
-               : std::optional<std::uint8_t>{actor->animation_direction};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint8_t>
-FieldSceneRuntime::default_actor_animation_frame_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-               ? std::nullopt
-               : std::optional<std::uint8_t>{
-                     actor->animation_frame};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::string>
-FieldSceneRuntime::default_actor_animation_id_for_dump(
-    const std::uint16_t source_order) const {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-               ? std::nullopt
-               : std::optional<std::string>{actor->animation_id};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<FieldWorldActorSlot>
-FieldSceneRuntime::default_actor_record_slot_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-               ? std::nullopt
-               : actor->source_record_slot;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::string>
-FieldSceneRuntime::default_actor_script_profile_for_dump(
-    const std::uint16_t source_order) const {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end() ||
-                   actor->script_profile_id.empty()
-               ? std::nullopt
-               : std::optional<std::string>{actor->script_profile_id};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::string>
-FieldSceneRuntime::default_actor_ai_package_for_dump(
-    const std::uint16_t source_order) const {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end() ||
-                   actor->ai_package_id.empty()
-               ? std::nullopt
-               : std::optional<std::string>{actor->ai_package_id};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::string>
-FieldSceneRuntime::default_actor_ai_target_id_for_dump(
-    const std::uint16_t source_order) const {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end() || actor->ai_target_id.empty()
-               ? std::nullopt
-               : std::optional<std::string>{actor->ai_target_id};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<bool>
-FieldSceneRuntime::default_actor_transition_complete_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-               ? std::nullopt
-               : std::optional<bool>{actor->transition_complete};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<bool>
-FieldSceneRuntime::default_actor_has_ai_target_pool_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-               ? std::nullopt
-               : std::optional<bool>{actor->ai_target_valid};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint16_t>
-FieldSceneRuntime::default_actor_ai_target_distance_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end() || actor->ai_target_id.empty()
-               ? std::nullopt
-               : std::optional<std::uint16_t>{actor->ai_target_distance};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint8_t>
-FieldSceneRuntime::default_actor_weapon_item_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-               ? std::nullopt
-               : actor->ai_weapon_item_id;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint8_t>
-FieldSceneRuntime::default_actor_source_action_ammo_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active && candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-               ? std::nullopt
-               : std::optional<std::uint8_t>{actor->source_action_ammo};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint16_t>
-FieldSceneRuntime::default_actor_source_animation_selector_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active && candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-               ? std::nullopt
-               : std::optional<std::uint16_t>{
-                     actor->source_animation_selector};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint8_t>
-FieldSceneRuntime::default_actor_physical_meter_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active &&
-                   candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-               ? std::nullopt
-               : std::optional<std::uint8_t>{actor->physical_meter};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
@@ -24604,42 +15846,6 @@ bool FieldSceneRuntime::set_default_actor_physical_meter_for_dump(
 #endif // SHADOWRUN_QT_QA_DRIVER
 
 
-#ifdef SHADOWRUN_QT_QA_DRIVER
-std::size_t FieldSceneRuntime::visible_default_actor_count_for_dump() const {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto camera_x = static_cast<std::uint16_t>(
-        state_.field_scene_buffers.camera_x);
-    const auto camera_y = static_cast<std::uint16_t>(
-        state_.field_scene_buffers.camera_y);
-    std::size_t visible = 0U;
-    for (const auto& actor : field_default_actors_) {
-        if (actor.scene_reference != scene_reference) {
-            continue;
-        }
-        const auto sprite = default_actor_sprite_view(actor);
-        if (sprite.image == nullptr || sprite.image->isNull()) {
-            continue;
-        }
-        EntityProjectionState projection{};
-        projection.world_x = actor.world_position.x;
-        projection.world_y = actor.world_position.y;
-        if (!project_entity_screen_position_standard(
-                 projection, camera_x, camera_y)
-                 .visible) {
-            continue;
-        }
-        const auto left = static_cast<int>(projection.screen_x) -
-                          kGenesisSpriteOrigin + sprite.origin_x;
-        const auto top = static_cast<int>(projection.screen_y) -
-                         kGenesisSpriteOrigin + sprite.origin_y;
-        if (left < 272 && left + sprite.image->width() > 0 && top < 224 &&
-            top + sprite.image->height() > 0) {
-            ++visible;
-        }
-    }
-    return visible;
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
 
 
 void FieldSceneRuntime::paint_field_console_background(

@@ -29,15 +29,18 @@ local function approach_heading(...) return R.approach_heading(...) end   -- fro
 local function begin_dynamic_item_action(...) return R.begin_dynamic_item_action(...) end   -- from actor/actions.lua
 local function begin_dynamic_target_action(...) return R.begin_dynamic_target_action(...) end   -- from actor/actions.lua
 local function begin_received_hit_reaction(...) return R.begin_received_hit_reaction(...) end   -- from actor/anim.lua
+local function begin_player_hurt_reaction(...) return R.begin_player_hurt_reaction(...) end   -- from actor/anim.lua
 local function begin_spell_cast(...) return R.begin_spell_cast(...) end   -- from actor/actions.lua
 local function classify_item_dispatch(...) return R.classify_item_dispatch(...) end   -- from actor/actions.lua
 local function classify_spell_dispatch(...) return R.classify_spell_dispatch(...) end   -- from actor/actions.lua
 local function direction_from_heading(...) return R.direction_from_heading(...) end   -- from actor/targeting.lua
 local function finish_entity_movement(...) return R.finish_entity_movement(...) end   -- from actor/movement.lua
 local function first_wounded_party_runner(...) return R.first_wounded_party_runner(...) end   -- from actor/actions.lua
+local function finish_player_hurt_reaction(...) return R.finish_player_hurt_reaction(...) end   -- from actor/anim.lua
 local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
 local function initial_state(...) return R.initial_state(...) end   -- from actor/targeting.lua
 local function projectile_heartbeat(...) return R.projectile_heartbeat(...) end   -- from actor/movement.lua
+local function hit_spark_heartbeat(...) return R.hit_spark_heartbeat(...) end   -- from actor/anim.lua
 local function requested_movement_heading(...) return R.requested_movement_heading(...) end   -- from actor/movement.lua
 local function resolve_source_target_motion(...) return R.resolve_source_target_motion(...) end   -- from actor/movement.lua
 local function retained_linked_target(...) return R.retained_linked_target(...) end   -- from actor/targeting.lua
@@ -80,6 +83,9 @@ function ActorAI.heartbeat(context)
         if profile.projectile_animation then
             return projectile_heartbeat(state, context)
         end
+        if profile.hit_spark_animation then
+            return hit_spark_heartbeat(state, context)
+        end
         if profile.controls_movement and not profile.dynamic_encounter_only then
             state.combat_action_requested =
                 context.phase == "behavior" and
@@ -109,6 +115,7 @@ function ActorAI.heartbeat(context)
         return nil
     end
     state.source_action_dispatch = nil
+    state.strike_heading = nil
     state.spell_action_resolution = nil
     state.source_record_flags = context.source_record_flags or
                                 state.source_record_flags
@@ -139,11 +146,29 @@ function ActorAI.heartbeat(context)
     if profile.projectile_animation then
         return projectile_heartbeat(state, context)
     end
+    if profile.hit_spark_animation then
+        return hit_spark_heartbeat(state, context)
+    end
     advance_target_marker(state, context)
     advance_target_motion_effect(state, context)
     advance_spell_effect(state, context)
 
     local reaction_audio_event
+    local player_hurt_started = false
+    if context.actor_id == "field_player_runner" and
+       context.phase == "behavior" then
+        player_hurt_started = begin_player_hurt_reaction(state, context)
+        if not player_hurt_started and state.player_hurt_sound_active then
+            reaction_audio_event =
+                advance_received_hit_reaction(state, context)
+            if state.hurt_behavior_timer == 0 then
+                state.player_hurt_sound_active = false
+            end
+        end
+        if not player_hurt_started then
+            finish_player_hurt_reaction(state, context)
+        end
+    end
     if context.dynamic_world_encounter_actor then
         local reaction_started = false
         if context.phase == "behavior" and state.incoming_hit ~= nil then
@@ -198,6 +223,18 @@ function ActorAI.heartbeat(context)
             context.combat_confirm_held == true and
             context.combat_action_ready == true and
             context.combat_input_blocked ~= true
+        if not profile.dynamic_encounter_only then
+            local cast_audio = R.begin_player_spell_cast(state, context)
+            if cast_audio ~= nil then
+                audio_event = cast_audio
+            end
+            local swing_audio, strike_heading_audio =
+                R.begin_player_melee(state, context)
+            if swing_audio ~= nil then
+                audio_event = swing_audio
+                target_heading_audio_event = strike_heading_audio
+            end
+        end
         if context.phase == "render" then
             state.movement_step = nil
             if not profile.dynamic_encounter_only then

@@ -306,6 +306,7 @@ int main() {
 #endif
 
     int failures = 0;
+    [[maybe_unused]] bool longplay_reference_missing = false;
     verify_cyberdeck_file_value_bridge(failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     verify_matrix_datastore_field_projection(failures);
@@ -429,7 +430,7 @@ int main() {
     bindings.game.set_leader_posture = [&posture](const int value) {
         posture = value;
     };
-    bindings.game.request_taxi_destination =
+    bindings.game.begin_taxi_cabbie =
         [&taxi_destination](const int destination) {
             if (destination < 0 || destination > 6) return false;
             taxi_destination = destination;
@@ -3204,8 +3205,8 @@ int main() {
           failures);
 
     // Taxi's Lua menu uses the same seven ROM destinations and cab outline
-    // records as the opening selector. The current Redmond map begins at its
-    // source cursor position, right selects Renraku, and A commits that mode.
+    // records as the opening selector. Confirm requests the cabbie dialogue;
+    // travel is dispatched only after that field task accepts the ride.
     ScriptMenuRouteStartArguments taxi_arguments{};
     taxi_arguments.taxi_current_region = 2U;
     check(runtime.open_menu_route(kTaxiSelector, taxi_arguments),
@@ -3239,10 +3240,10 @@ int main() {
     for (int frame = 0; frame < 10; ++frame) {
         runtime.advance_menu_route(0U);
     }
-    runtime.advance_menu_route(0x4000U); // A: request travel.
+    runtime.advance_menu_route(0x4000U); // A: request the cabbie dialogue.
     check(!runtime.menu_route_snapshot().open && taxi_destination == 5 &&
               closed_count == 10,
-          "taxi confirm requests the selected scene and exits the route",
+          "taxi confirm requests cabbie dialogue for the selected region",
           failures);
     check(runtime.open_menu_route(kTaxiSelector, taxi_arguments),
           "taxi selector can be reopened after a completed selection",
@@ -3250,10 +3251,10 @@ int main() {
     for (int frame = 0; frame < 10; ++frame) {
         runtime.advance_menu_route(0U);
     }
-    runtime.advance_menu_route(0x8000U); // Start: commit current mode.
+    runtime.advance_menu_route(0x8000U); // Start: request a cabbie dialogue.
     check(!runtime.menu_route_snapshot().open && taxi_destination == 2 &&
               closed_count == 11,
-          "taxi Start commits the current region through the source route",
+          "taxi Start requests the current region's cabbie dialogue",
           failures);
 
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
@@ -3439,6 +3440,15 @@ int main() {
         const auto actual_alert_saved = !best_alert_frame.isNull() &&
             best_alert_frame.save(
                 QString::fromStdString(actual_alert_path.string()));
+        // The longplay reference frames are an untracked local capture. When
+        // the file is absent the render checks above still run, and the
+        // reference comparison is reported as a ctest skip (exit 77) instead
+        // of a failure.
+        if (!std::filesystem::exists(independent_alert_path)) {
+            longplay_reference_missing = true;
+            std::cout << "SKIP: longplay reference frame absent: "
+                      << independent_alert_path << '\n';
+        } else {
         check(independent_alert.size() == QSize(320, 224),
               "Section 15 Active Alert reference is a complete 320x224 frame",
               failures);
@@ -3464,12 +3474,17 @@ int main() {
                       << best_full_frame_error << " bottom_mean_rgb_error="
                       << best_bottom_band_error << " full_frame=320x224\n";
         }
+        }
     }
 #endif
 
     if (failures != 0) {
         std::cerr << "menu route failures: " << failures << '\n';
         return 1;
+    }
+    if (longplay_reference_missing) {
+        std::cout << "menu route checks passed; longplay reference skipped\n";
+        return 77;
     }
     std::cout << "menu route checks passed\n";
     return 0;

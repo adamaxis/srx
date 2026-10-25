@@ -36,7 +36,8 @@ AttributeSkillGrid AttributesSkillsMenuController::grid(
 
 AttributeSkillUpgradePreview AttributesSkillsMenuController::preview(
     const RunnerRecordFields& record) const {
-    return preview_attribute_skill_upgrade(record, state_.cursor);
+    return upgrade_rule_ ? upgrade_rule_(record, state_.cursor)
+                         : preview_attribute_skill_upgrade(record, state_.cursor);
 }
 
 void AttributesSkillsMenuController::refresh(
@@ -111,7 +112,7 @@ AttributesSkillsRuntimeEvent AttributesSkillsMenuController::advance(
         }
 
         const auto result = apply_attribute_skill_upgrade(
-            active_record, state_.cursor, true);
+            active_record, preview(active_record), true);
         upgrade_prompt_selection_ = 0U;
         refresh_selection_state(active_record);
         if (result == AttributeSkillUpgradeResult::upgraded) {
@@ -143,7 +144,7 @@ AttributesSkillsRuntimeEvent AttributesSkillsMenuController::advance(
         return AttributesSkillsRuntimeEvent::selection_moved;
     case AttributesSkillsMenuInputEvent::upgrade_requested: {
         const auto result = apply_attribute_skill_upgrade(
-            active_record, state_.cursor, false);
+            active_record, preview(active_record), false);
         if (result == AttributeSkillUpgradeResult::confirmation_required) {
             upgrade_prompt_open_ = true;
             upgrade_prompt_selection_ = 0U;

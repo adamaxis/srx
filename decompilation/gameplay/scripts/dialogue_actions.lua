@@ -143,15 +143,14 @@ local function register_core_actions(registry)
     end)
 
     registry:register("field.queue_mako_actor_list", function()
-        local result = game.services.call(
-            "field", "queue_mako_actor_list")
+        local result = require("route_actor_lists").queue(
+            "club_penumbra_mako")
         return result == "queued" and result or "service_unavailable"
     end)
 
     -- Shared FFFBFB progression step implemented by ROM helper 0x1F1E0.
     registry:register("field.advance_strike_team_counter", function()
-        local result = game.services.call(
-            "field", "advance_strike_team_counter")
+        local result = require("story_state").advance_strike_team()
         return result == "applied" and result or "service_unavailable"
     end)
 

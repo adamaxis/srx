@@ -1,5 +1,6 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
+#include "shadowrun_ghidra/entities/entity_route_primitives_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
@@ -1706,12 +1707,12 @@ int main() {
                     julius_task.operation->type ==
                         ScriptNativeOperation::Type::service_call &&
                     julius_task.operation->service_id ==
-                        "johnson.purchase_quinton_contact",
+                        "building.charge_1000",
                 "Julius contact purchase did not request the typed host transaction")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
-    julius_task = scripts.complete_native_service_result("purchased");
+    julius_task = scripts.complete_native_service_result("paid");
     if (!expect(julius_task.operation.has_value() &&
                     julius_task.operation->menu.has_value() &&
                     julius_task.operation->menu->id == "contacts_purchased" &&
@@ -1900,12 +1901,12 @@ int main() {
                     mortimer_task.operation->type ==
                         ScriptNativeOperation::Type::service_call &&
                     mortimer_task.operation->service_id ==
-                        "johnson.purchase_alesandro_contact",
+                        "building.charge_1500",
                 "Mortimer contact did not call the typed purchase service")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
-    mortimer_task = scripts.complete_native_service_result("purchased");
+    mortimer_task = scripts.complete_native_service_result("paid");
     if (!expect(mortimer_task.operation.has_value() &&
                     mortimer_task.operation->menu.has_value() &&
                     mortimer_task.operation->menu->id == "contacts_purchased" &&
@@ -5549,6 +5550,354 @@ int main() {
             "Lua heartbeat did not own player animation, movement, and source-gated combat cadence")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
+    }
+
+    // ROM 0xAD86/0xAE6E: a no-link +0xA2 still enters 0x1033E at 0xAEB4;
+    // only a linked target runs the line probe. The old no-target expectation
+    // was wrong because 0xAE7E branches directly to 0xAEB4 [C].
+    auto player_cast = player_movement;
+    player_cast.combat_input_blocked = false;
+    player_cast.combat_action_ready = true;
+    player_cast.combat_confirm_held = true;
+    player_cast.player_spell_available = true;
+    player_cast.player_spell_code = 1U;
+    player_cast.source_record_slot = 0U;
+    player_cast.combatant = spell_caster;
+    player_cast.ai_target_candidates.clear();
+    player_cast.ai_random_bound =
+        [](const std::uint16_t bound) -> std::optional<std::uint16_t> {
+            return bound == 0U ? std::nullopt
+                               : std::optional<std::uint16_t>{0U};
+        };
+    // ROM 0xAE6E: FFE186 == 3 returns before the cast (0xAF7C pose only).
+    auto player_cast_scene3 = player_cast;
+    player_cast_scene3.world_scene_state = 3U;
+    const auto player_cast_suppressed =
+        scripts.actor_heartbeat(player_cast_scene3);
+    if (!expect(player_cast_suppressed.has_value() &&
+                    player_cast_suppressed->source_action_dispatch ==
+                        std::optional<std::string>{"player_spell_suppressed"} &&
+                    !player_cast_suppressed->spell_action_resolution
+                         .has_value(),
+                "Lua player spell ignored the 0xAE6E FFE186 gate")) {
+        std::cerr << scripts.failure() << '\n';
+        return 108;
+    }
+    const auto player_cast_no_target = scripts.actor_heartbeat(player_cast);
+    auto player_barrier_cast = player_cast;
+    player_barrier_cast.instance_id = "field_player_barrier_test";
+    player_barrier_cast.player_spell_available = false;
+    player_barrier_cast.spawn = true;
+    const auto player_barrier_warmup =
+        scripts.actor_heartbeat(player_barrier_cast);
+    player_barrier_cast.spawn = false;
+    player_barrier_cast.player_spell_available = true;
+    player_barrier_cast.player_spell_code = 7U;
+    player_barrier_cast.ai_random_bound =
+        [roll = 0U](const std::uint16_t bound) mutable
+            -> std::optional<std::uint16_t> {
+            if (bound != 6U) {
+                return std::nullopt;
+            }
+            return roll++ % 2U == 0U ? 5U : 0U;
+        };
+    const auto player_barrier_no_target =
+        scripts.actor_heartbeat(player_barrier_cast);
+    ScriptActorTargetCandidate cast_target{};
+    cast_target.id = "field_actor_slot_3";
+    cast_target.world_x = 0x0040U;
+    cast_target.world_y = 0x0040U;
+    cast_target.service_flags = 0x01U;
+    cast_target.world_activity_actor = true;
+    cast_target.source_record_slot = 3U;
+    cast_target.combatant = spell_target;
+    cast_target.combatant->record_type = 7U;
+    player_cast.ai_target_candidates.push_back(cast_target);
+    player_cast.action_line_clear =
+        [](std::uint16_t, std::uint16_t) { return false; };
+    const auto player_cast_blocked = scripts.actor_heartbeat(player_cast);
+    player_cast.action_line_clear =
+        [](std::uint16_t, std::uint16_t) { return true; };
+    const auto player_cast_resolved = scripts.actor_heartbeat(player_cast);
+    if (!expect(
+            player_cast_no_target.has_value() &&
+                player_cast_no_target->source_action_dispatch ==
+                    std::optional<std::string>{"player_spell"} &&
+                player_cast_no_target->spell_action_resolution.has_value() &&
+                player_cast_no_target->spell_action_resolution->untargeted &&
+                player_cast_no_target->spell_action_resolution->roll_attempted &&
+                player_cast_no_target->spell_action_resolution->difficulty ==
+                    std::optional<std::uint8_t>{6U} &&
+                player_cast_no_target->spell_action_resolution->target_record_slot ==
+                    0U &&
+                player_cast_no_target->spell_action_resolution->target_record_type ==
+                    7U &&
+                player_cast_no_target->spell_action_resolution->target_id.empty() &&
+                !player_cast_no_target->spell_action_resolution->effect_started &&
+                player_barrier_warmup.has_value() &&
+                player_barrier_no_target.has_value() &&
+                player_barrier_no_target->spell_action_resolution.has_value() &&
+                player_barrier_no_target->spell_action_resolution->untargeted &&
+                player_barrier_no_target->spell_action_resolution->action_result >
+                    0U &&
+                player_barrier_no_target->spell_action_resolution->difficulty ==
+                    std::optional<std::uint8_t>{6U} &&
+                player_barrier_no_target->spell_action_resolution->field_effect_kind ==
+                    ScriptActorSpellFieldEffectKind::field_barrier &&
+                player_barrier_no_target->spell_action_resolution->effect_started &&
+                player_barrier_no_target->spell_action_resolution->spell_effect_slot ==
+                    std::optional<std::uint8_t>{0U} &&
+                player_barrier_no_target->audio_event ==
+                    std::optional<std::uint16_t>{0x003BU} &&
+                player_cast_blocked.has_value() &&
+                player_cast_blocked->source_action_dispatch ==
+                    std::optional<std::string>{"player_spell_blocked"} &&
+                !player_cast_blocked->spell_action_resolution.has_value() &&
+                player_cast_resolved.has_value() &&
+                player_cast_resolved->source_action_dispatch ==
+                    std::optional<std::string>{"player_spell"} &&
+                player_cast_resolved->spell_action_resolution.has_value() &&
+                player_cast_resolved->spell_action_resolution->action_code ==
+                    1U &&
+                player_cast_resolved->spell_action_resolution->target_id ==
+                    "field_actor_slot_3",
+            "Lua player spell did not resolve the no-link roll/0x49A2 barrier split")) {
+        std::cerr << scripts.failure() << '\n';
+        return 106;
+    }
+
+    // ROM 0xAD86/0xB1DC: an empty +0x57 swings (0x4C); within 0x200 of the
+    // selected target 0x55C76 resolves and the 0x4D/0x4E cue follows.
+    auto player_strike = player_cast;
+    player_strike.player_spell_available = false;
+    player_strike.player_spell_code = 0U;
+    player_strike.player_melee_available = true;
+    player_strike.entity_kind = 0x03U;
+    player_strike.ai_target_candidates.front().distance = 0x0300U;
+    const auto player_strike_miss = scripts.actor_heartbeat(player_strike);
+    player_strike.ai_target_candidates.front().distance = 0x0100U;
+    player_strike.ai_target_candidates.front().heading = 0x4000U;
+    const auto player_strike_hit = scripts.actor_heartbeat(player_strike);
+    // ROM 0x15C58: a record with +0x10 bit 6 set is never in range.
+    player_strike.ai_target_candidates.front().service_flags = 0x41U;
+    const auto player_strike_dead = scripts.actor_heartbeat(player_strike);
+    player_strike.ai_target_candidates.front().service_flags = 0x01U;
+    auto player_strike_render = player_strike;
+    player_strike_render.phase = ScriptActorHeartbeatPhase::render;
+    player_strike_render.animation_mode = ScriptActorAnimationMode::strike;
+    player_strike_render.animation_direction_override = 2U;
+    std::optional<ScriptActorBehaviorDecision> strike_frame_zero;
+    std::optional<ScriptActorBehaviorDecision> strike_frame_one;
+    for (std::size_t pass = 0U; pass < 12U; ++pass) {
+        const auto pose = scripts.actor_heartbeat(player_strike_render);
+        if (pass == 0U) {
+            strike_frame_zero = pose;
+        }
+        strike_frame_one = pose;
+    }
+    player_strike_render.animation_mode = ScriptActorAnimationMode::cast;
+    const auto cast_pose = scripts.actor_heartbeat(player_strike_render);
+    // ROM 0xB330: C0B2 runner-down list, selector 0xE8 + dir*4, holds the
+    // last entry.
+    player_strike_render.animation_mode = ScriptActorAnimationMode::runner_down;
+    std::optional<ScriptActorBehaviorDecision> down_first;
+    std::optional<ScriptActorBehaviorDecision> down_last;
+    for (std::size_t pass = 0U; pass < 80U; ++pass) {
+        const auto pose = scripts.actor_heartbeat(player_strike_render);
+        if (pass == 0U) {
+            down_first = pose;
+        }
+        down_last = pose;
+    }
+    if (!expect(
+            down_first.has_value() &&
+                down_first->animation_id == "runner_down" &&
+                down_first->animation_frame == 0U &&
+                down_first->animation_selector ==
+                    std::optional<std::uint16_t>{0x00F0U} &&
+                down_last.has_value() && down_last->animation_frame == 7U,
+            "Lua runner_down did not follow the 0xB330 C0B2 list")) {
+        std::cerr << scripts.failure() << '\n';
+        return 108;
+    }
+    // ROM 0xAFF2 selects C072[dir], whose kind-3 list has two frames and
+    // advances +0x0300 against the 0x1000 +0x1C period before holding frame 1.
+    player_strike_render.animation_mode = ScriptActorAnimationMode::runner_hurt;
+    std::optional<ScriptActorBehaviorDecision> hurt_first;
+    std::optional<ScriptActorBehaviorDecision> hurt_second;
+    std::optional<ScriptActorBehaviorDecision> hurt_held;
+    for (std::size_t pass = 0U; pass < 24U; ++pass) {
+        const auto pose = scripts.actor_heartbeat(player_strike_render);
+        if (pass == 0U) {
+            hurt_first = pose;
+        }
+        if (pass == 5U) {
+            hurt_second = pose;
+        }
+        hurt_held = pose;
+    }
+    if (!expect(
+            hurt_first.has_value() &&
+                hurt_first->animation_id == "runner_hurt" &&
+                hurt_first->animation_frame == 0U &&
+                hurt_first->animation_selector ==
+                    std::optional<std::uint16_t>{0x0068U} &&
+                hurt_second.has_value() &&
+                hurt_second->animation_frame == 1U &&
+                hurt_held.has_value() && hurt_held->animation_frame == 1U,
+            "Lua runner_hurt did not follow the two-frame 0xAFF2 C072 list")) {
+        std::cerr << scripts.failure() << '\n';
+        return 109;
+    }
+    if (!expect(
+            player_strike_dead.has_value() &&
+                player_strike_dead->source_action_dispatch ==
+                    std::optional<std::string>{"player_melee"} &&
+                player_strike_hit.has_value() &&
+                player_strike_hit->strike_heading ==
+                    std::optional<std::uint16_t>{0x4000U} &&
+                strike_frame_zero.has_value() &&
+                strike_frame_zero->animation_id == "strike" &&
+                strike_frame_zero->animation_frame == 0U &&
+                strike_frame_zero->animation_selector ==
+                    std::optional<std::uint16_t>{0x00C8U} &&
+                !strike_frame_zero->strike_heading.has_value() &&
+                strike_frame_one.has_value() &&
+                strike_frame_one->animation_frame == 1U &&
+                cast_pose.has_value() && cast_pose->animation_id == "cast" &&
+                cast_pose->animation_selector ==
+                    std::optional<std::uint16_t>{0x0088U},
+            "Lua player strike did not follow 0x15C58 flags or the C0A2 pose")) {
+        std::cerr << scripts.failure() << '\n';
+        return 108;
+    }
+    if (!expect(
+            player_strike_miss.has_value() &&
+                player_strike_miss->source_action_dispatch ==
+                    std::optional<std::string>{"player_melee"} &&
+                player_strike_miss->audio_event ==
+                    std::optional<std::uint16_t>{0x004CU} &&
+                !player_strike_miss->target_heading_audio_event.has_value() &&
+                !player_strike_miss->combat_meter_update.has_value() &&
+                player_strike_hit.has_value() &&
+                player_strike_hit->source_action_dispatch ==
+                    std::optional<std::string>{"player_melee_hit"} &&
+                player_strike_hit->audio_event ==
+                    std::optional<std::uint16_t>{0x004CU} &&
+                player_strike_hit->target_heading_audio_event.has_value(),
+            "Lua player strike did not follow the 0xB1DC range gate")) {
+        std::cerr << scripts.failure() << '\n';
+        return 107;
+    }
+
+    // ROM 0xB29E requests the child only when 0x55C76 changes a defender
+    // meter. Exercise that Lua decision through the C++ binding, allocate its
+    // typed FF0B00 child, then follow all five 0x7330 frames and AC4E retirement [C].
+    auto changed_player_strike = player_strike;
+    changed_player_strike.combatant = attacker_facts;
+    auto& changed_strike_target =
+        changed_player_strike.ai_target_candidates.front();
+    changed_strike_target.id = "party.runner.0";
+    changed_strike_target.source_record_slot = 0U;
+    changed_strike_target.world_activity_actor = false;
+    changed_strike_target.combatant = target_facts;
+    changed_player_strike.ai_random_bound =
+        [roll = 0U](const std::uint16_t bound) mutable
+            -> std::optional<std::uint16_t> {
+        if (bound != 6U) {
+            return std::nullopt;
+        }
+        return roll++ % 2U == 0U ? 5U : 0U;
+    };
+    const auto changed_strike_decision =
+        scripts.actor_heartbeat(changed_player_strike);
+    if (!expect(
+            changed_strike_decision.has_value() &&
+                changed_strike_decision->combat_meter_update.has_value() &&
+                changed_strike_decision->combat_meter_update->changed &&
+                changed_strike_decision->hit_spark_spawn_request.has_value() &&
+                changed_strike_decision->hit_spark_spawn_request->target_id ==
+                    changed_strike_decision->combat_meter_update->target_id,
+            "a changed player-strike meter did not request its hit spark")) {
+        std::cerr << scripts.failure() << '\n';
+        return 111;
+    }
+    std::array<AuxiliaryEntitySlot, 6> hit_spark_slots{};
+    auto hit_spark = spawn_reaction_auxiliary_child(
+        hit_spark_slots,
+        changed_strike_decision->hit_spark_spawn_request->world_x,
+        changed_strike_decision->hit_spark_spawn_request->world_y);
+    if (!expect(
+            hit_spark.has_value() && hit_spark->active &&
+                hit_spark->slot == 9U && hit_spark->entity_kind == 1U &&
+                hit_spark->animation_selector == 4 &&
+                hit_spark->palette_attributes == 0x2000U &&
+                hit_spark->world_x ==
+                    changed_strike_decision->hit_spark_spawn_request->world_x &&
+                hit_spark->world_y == static_cast<std::uint16_t>(
+                    changed_strike_decision->hit_spark_spawn_request->world_y +
+                    0x0010U),
+            "the player hit did not allocate the ROM child record")) {
+        std::cerr << scripts.failure() << '\n';
+        return 112;
+    }
+    auto spark_context = actor_context(
+        "field_hit_spark", "field_hit_spark_slot_9", 1U,
+        ScriptActorActionKind::none, 0U, 0U, true);
+    spark_context.initial_heading = 0x2000U;
+    spark_context.phase = ScriptActorHeartbeatPhase::render;
+    spark_context.hit_spark_animation = ScriptActorHitSparkAnimation{
+        4U, 5U, 0U, 0, 0x0400, 0x1000};
+    std::array<std::size_t, 5> hit_spark_frame_passes{};
+    std::optional<ScriptActorBehaviorDecision> hit_spark_last_frame;
+    for (std::size_t pass = 0U; pass < 20U; ++pass) {
+        hit_spark_last_frame = scripts.actor_heartbeat(spark_context);
+        if (!hit_spark_last_frame.has_value() ||
+            hit_spark_last_frame->animation_id != "hit_spark" ||
+            hit_spark_last_frame->animation_frame >=
+                hit_spark_frame_passes.size() ||
+            !hit_spark_last_frame->animation_selector.has_value() ||
+            !hit_spark_last_frame->animation_increment.has_value()) {
+            std::cerr << scripts.failure() << '\n';
+            return 113;
+        }
+        ++hit_spark_frame_passes[hit_spark_last_frame->animation_frame];
+        spark_context.spawn = false;
+        auto& animation = *spark_context.hit_spark_animation;
+        animation.selector = *hit_spark_last_frame->animation_selector;
+        animation.frame = hit_spark_last_frame->animation_frame;
+        animation.accumulator = hit_spark_last_frame->animation_accumulator;
+        animation.increment = *hit_spark_last_frame->animation_increment;
+    }
+    const std::array<std::size_t, 5> expected_hit_spark_frame_passes{
+        3U, 4U, 4U, 4U, 5U};
+    if (!expect(
+            hit_spark_frame_passes == expected_hit_spark_frame_passes &&
+                hit_spark_last_frame.has_value() &&
+                hit_spark_last_frame->animation_frame == 4U &&
+                hit_spark_last_frame->animation_selector ==
+                    std::optional<std::uint16_t>{0x8004U},
+            "the hit spark did not follow its five ROM frames and 20-pass life")) {
+        std::cerr << scripts.failure() << '\n';
+        return 114;
+    }
+    spark_context.phase = ScriptActorHeartbeatPhase::behavior;
+    const auto hit_spark_retire_decision = scripts.actor_heartbeat(spark_context);
+    if (hit_spark_retire_decision.has_value() &&
+        hit_spark_retire_decision->animation_selector.has_value()) {
+        hit_spark->animation_selector = static_cast<std::int16_t>(
+            *hit_spark_retire_decision->animation_selector);
+    }
+    const bool hit_spark_retired = hit_spark.has_value() &&
+        hit_spark_retire_decision.has_value() &&
+        hit_spark_retire_decision->hit_spark_retired &&
+        retire_auxiliary_child(
+            hit_spark_slots[static_cast<std::size_t>(hit_spark->slot - 9U)],
+            *hit_spark);
+    if (!expect(hit_spark_retired && !hit_spark_slots[0].active,
+                "0xAC4E did not clear the finished hit-spark child")) {
+        std::cerr << scripts.failure() << '\n';
+        return 115;
     }
 
     auto projectile_context = actor_context(
@@ -9230,8 +9579,9 @@ int main() {
     unresolved_resource_entry = scripts.complete_native_menu_input("confirm");
     if (!expect(unresolved_resource_entry.status ==
                         ScriptTaskStep::Status::completed &&
-                    unresolved_resource_entry.result_id == std::optional<
-                        std::string>{"resource_matrix_target_unresolved"},
+                    unresolved_resource_entry.dialogue_outcome.has_value() &&
+                    std::holds_alternative<SourceBoundaryOutcome>(
+                        *unresolved_resource_entry.dialogue_outcome),
                 "unmapped resource scene did not report its Lua boundary")) {
         std::cerr << scripts.failure() << '\n';
         return 15;

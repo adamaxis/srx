@@ -370,15 +370,6 @@ bool paint_matrix_node_action_panel(
             current_x += 8;
         }
     };
-    const auto paint_transition_overlay = [&painter, &state]() {
-        if (!state.top_matrix_transition_fade_step.has_value()) return;
-        const auto fade_step = std::clamp(
-            *state.top_matrix_transition_fade_step, 0, 5);
-        const auto alpha = static_cast<int>(fade_step) * 51;
-        painter.fillRect(QRect(0, 0, kScreenWidth, kScreenHeight),
-                         QColor(0, 0, 0, alpha));
-    };
-
     // BMP assets preserve the tile's RGB values but discard its palette-zero
     // alpha. The ROM tile's color index 0 is transparent over the underlying
     // Matrix plane, so restore that transparency before drawing the 8x8 tile.
@@ -410,7 +401,6 @@ bool paint_matrix_node_action_panel(
             start = end + 1U;
         }
         draw_text(136, 112, std::to_string(*state.top_matrix_countdown));
-        paint_transition_overlay();
         painter.restore();
         return true;
     }
@@ -457,7 +447,6 @@ bool paint_matrix_node_action_panel(
         draw_text(state.top_matrix_node_status.has_value() ? 120 : 24,
                   y, state.top_option_labels[row]);
     }
-    paint_transition_overlay();
     painter.restore();
     return true;
 }

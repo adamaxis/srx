@@ -24,6 +24,8 @@ int main() {
     // BMP alpha mask, so the runtime must keep opaque black pixels. The
     // black-wipe helper and the alias transparency gate are gone; this test
     // only covers the surviving compositor utilities.
+    // ROM 0x5B2C2/0x5B2E2 keep the intro effect in 15 CRAM words per line;
+    // a scalar RGB-weight expectation would bless the removed approximation.
     QImage hud(320, 224, QImage::Format_ARGB32_Premultiplied);
     hud.fill(Qt::black);
     make_field_hud_layer_transparent_outside_chrome(hud);
@@ -31,18 +33,6 @@ int main() {
                 "field playfield color zero must be transparent") ||
         !expect(hud.pixelColor(280, 100).alpha() == 255,
                 "field six-tile chrome must remain opaque")) {
-        return 1;
-    }
-
-    QImage faded(1, 1, QImage::Format_ARGB32_Premultiplied);
-    faded.setPixelColor(0, 0, QColor(200, 100, 40, 255));
-    faded = scale_genesis_image_rgb(faded, 128U);
-    if (!expect(faded.pixelColor(0, 0).red() == 100 &&
-                    faded.pixelColor(0, 0).green() == 50 &&
-                    faded.pixelColor(0, 0).blue() == 20,
-                "palette fade must scale RGB without changing alpha") ||
-        !expect(faded.pixelColor(0, 0).alpha() == 255,
-                "palette fade must preserve sprite alpha")) {
         return 1;
     }
 
@@ -92,12 +82,18 @@ int main() {
         transition_genesis_cram_image(fasa, 1U, true);
     const auto fasa_fade_out_complete =
         transition_genesis_cram_image(fasa, 17U, true);
+    // ROM 0x18776 calls 0x1088 exactly five times before its display wipe.
+    const auto matrix_logout_pass_five =
+        transition_genesis_cram_image(fasa, 5U, true);
     if (!expect(fasa_fade_out_first.pixelColor(0, 0) ==
                     QColor(36, 109, 182, 255),
                 "FASA fade-out must remove one CRAM level per pass") ||
         !expect(fasa_fade_out_complete.pixelColor(0, 0) ==
                     QColor(0, 0, 0, 255),
                 "FASA fade-out must reach black") ||
+        !expect(matrix_logout_pass_five.pixelColor(0, 0) ==
+                    QColor(0, 0, 36, 255),
+                "Matrix logout pass five must preserve the remaining CRAM blue level") ||
         !expect(fasa_target.pixelColor(0, 0).alpha() == 255,
                 "FASA fade must preserve alpha")) {
         return 1;

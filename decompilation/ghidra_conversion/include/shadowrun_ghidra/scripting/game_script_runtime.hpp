@@ -277,7 +277,7 @@ struct ScriptMenuRouteGame {
     std::function<int(int)> save_status;
     std::function<std::optional<std::uint32_t>()> nuyen;
     std::function<void(std::uint32_t)> set_nuyen;
-    std::function<bool(int)> request_taxi_destination;
+    std::function<bool(int)> begin_taxi_cabbie;
     std::function<void()> consume_debug_unlock;
     std::function<void(std::uint32_t)> set_contact_flags;
     std::function<void()> set_walk_fast;
@@ -751,6 +751,9 @@ struct ScriptFieldModeContext {
     // A named modal variant lets a shared field-mode presenter resolve
     // service-specific notices without encoding content keys in C++.
     std::string prompt_variant;
+    // Selector-confirmed target passed to the Lua cabbie dialogue; mapped from
+    // the destination table at 0xD445D [C].
+    std::optional<std::uint8_t> taxi_destination_region;
 };
 
 enum class ScriptRunFieldEventAction : std::uint8_t {
@@ -915,11 +918,22 @@ struct ScriptCombatMeterUpdate {
     bool changed = false;
 };
 
+enum class ScriptActorSpellFieldEffectKind : std::uint8_t {
+    none,          // 0x00 / return at 0x1584C [C]
+    field_barrier, // 0x01 / 0x15830 -> 0x49A2 [C]
+};
+
 struct ScriptActorSpellActionResolution {
     std::uint8_t action_code = 0;
     std::string target_id;
+    // Untargeted 0xAE6E calls carry the caster's source slot/type here and an
+    // empty target id [C]; the stale 68k A1 value is not a stable target [H].
+    bool untargeted = false;
+    // For untargeted casts these fields identify the caster record [C].
     std::uint8_t target_record_slot = 0;
     std::uint16_t target_record_type = 0;
+    ScriptActorSpellFieldEffectKind field_effect_kind =
+        ScriptActorSpellFieldEffectKind::none;
     std::uint8_t action_result = 0;
     bool roll_attempted = false;
     std::optional<std::uint8_t> initial_trial_count;
@@ -1065,6 +1079,10 @@ enum class ScriptActorAnimationMode : std::uint8_t {
     idle,
     walking,
     attack,
+    strike, // ROM 0xB1DC C0A2 unarmed strike list
+    cast,   // ROM 0xAF7C/0xAFAE C082 spell pose
+    runner_down, // ROM 0xB330 C0B2 party runner down list
+    runner_hurt, // ROM 0xAFF2 C072 party runner hurt list
 };
 
 struct ScriptMovementOffset {
@@ -1121,6 +1139,24 @@ struct ScriptActorProjectileAnimation {
     std::int16_t increment = 0;
     std::int16_t period = 0;
     bool finite = false;
+};
+
+// Player strike child presentation data: ROM 0x7330 supplies five finite
+// sprite-list frames at the 0x600E cadence [C]. Lua owns the mutable counters;
+// C++ only passes the source facts and draws the returned frame.
+struct ScriptActorHitSparkAnimation {
+    std::uint16_t selector = 4U;
+    std::uint8_t frame_count = 5U;
+    std::uint8_t frame = 0U;
+    std::int16_t accumulator = 0;
+    std::int16_t increment = 0x0400;
+    std::int16_t period = 0x1000;
+};
+
+struct ScriptActorHitSparkSpawnRequest {
+    std::string target_id;
+    std::uint16_t world_x = 0U;
+    std::uint16_t world_y = 0U;
 };
 
 // Projectile behavior state is supplied by the native field scene, while
@@ -1256,6 +1292,15 @@ struct ScriptActorBehaviorContext {
     bool combat_action_ready = false;
     bool combat_action_available = false;
     bool combat_input_blocked = false;
+    // ROM 0xAD86: a negative +0x56 sends the field player's held-A action
+    // to 0xAE6E/0x1033E. The host offers the equipped D4EA0 row code
+    // (+0x57, spell row + 1) and the B-selected +0xA2 target in
+    // ai_target_candidates[1]; Lua owns the cast policy.
+    bool player_spell_available = false;
+    std::uint8_t player_spell_code = 0;
+    // ROM 0xAD86: non-negative +0x56 with +0x57 == 0 enters the 0xB1DC
+    // unarmed strike.
+    bool player_melee_available = false;
     std::uint8_t controller_nibble = 0;
     std::array<std::uint16_t, 16> controller_heading_table{};
     std::optional<std::uint16_t> movement_heading_override;
@@ -1265,6 +1310,7 @@ struct ScriptActorBehaviorContext {
     std::optional<std::uint8_t> animation_direction_override;
     std::optional<std::int16_t> animation_accumulator_override;
     std::optional<ScriptActorProjectileAnimation> projectile_animation;
+    std::optional<ScriptActorHitSparkAnimation> hit_spark_animation;
     std::optional<ScriptActorProjectileMovement> projectile_movement;
     // The first primary-record behavior pass resolves ROM 0x55640 once;
     // subsequent movement and the cloned secondary record retain its result.
@@ -1403,6 +1449,9 @@ struct ScriptActorBehaviorDecision {
     bool transition_complete = false;
     std::optional<std::uint16_t> audio_event;
     std::optional<std::uint16_t> target_heading_audio_event;
+    // ROM 0xB212: a +0xA2-linked unarmed strike writes the 0x15D3C bearing
+    // to +0x34 and +0x2E before selecting C0A2. Player behavior pass only.
+    std::optional<std::uint16_t> strike_heading;
     std::optional<std::uint8_t> weapon_item_id;
     std::optional<std::uint16_t> movement_heading;
     std::optional<std::uint16_t> movement_current_heading;
@@ -1432,6 +1481,9 @@ struct ScriptActorBehaviorDecision {
     std::optional<ScriptActorMovementStep> movement_step;
     std::optional<ScriptActorProjectileMovementDecision>
         projectile_movement;
+    std::optional<ScriptActorHitSparkSpawnRequest>
+        hit_spark_spawn_request;
+    bool hit_spark_retired = false;
     std::optional<std::int16_t> animation_increment;
     std::int16_t animation_accumulator = 0;
     std::optional<ScriptCombatMeterUpdate> combat_meter_update;
@@ -1576,6 +1628,10 @@ public:
                               std::optional<std::uint8_t> scene_id =
                                   std::nullopt);
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
+    // FFFBF8 is writable by selected Lua field commands such as the taxi
+    // destination handoff at ROM 0x208FE; the field host reads it back before
+    // applying the ROM 0x136B6 scene-change gate.
+    std::uint8_t field_mode_context_value() const noexcept;
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
     // ROM 0x5D29C checks the six live records at FF0500..FF0A00 on effect
@@ -1598,11 +1654,21 @@ public:
         const ScriptActorBehaviorContext& context);
     std::optional<std::string> call_string(
         std::string_view module, std::string_view function);
+    // Generic integer call: module.function(args...) must return an array of
+    // integers (at most 64). Used for small numeric Lua policies such as the
+    // world_links door placement; the Lua side owns the meaning of each slot.
+    std::optional<std::vector<std::int64_t>> call_integers(
+        std::string_view module, std::string_view function,
+        const std::vector<std::int64_t>& arguments);
     // Read an ordered, unique ID array that has no display labels.
     std::optional<std::vector<std::string>> string_list(
         std::string_view module, std::string_view function);
     std::optional<ScriptStringMap> string_map(
         std::string_view module, std::string_view function);
+    // module.function(argument) with one identifier argument.
+    std::optional<ScriptStringMap> string_map(
+        std::string_view module, std::string_view function,
+        std::optional<std::string_view> argument);
     std::optional<ScriptSpeakerProfile> speaker_profile(
         std::string_view speaker_id);
     std::optional<ScriptDialogueTextKeys> dialogue_event_text_keys(

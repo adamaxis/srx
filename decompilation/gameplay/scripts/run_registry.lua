@@ -437,6 +437,31 @@ function Registry.clear_active_offer_for_context(context)
     return cleared
 end
 
+-- The Lua registry supplies FFFBED and the active-run bit in the host model
+-- [H]. The host passes its typed FFFC1C bit-7 state, which ROM 0x0A72 sets
+-- when FFE18F is nonzero and 0xC678 checks for type 5 [C].
+function Registry.party_wipe_failure_state(world_activity_scene_reset)
+    local offer = Registry.active_offer
+    if offer == nil or type(offer.source_run_type) ~= "number" then
+        return { run_type = E.RunType.NONE, flags = 0 }
+    end
+    local flags = E.RunContextFlag.ACTIVE
+    if world_activity_scene_reset == true or
+       world_activity_scene_reset == 1 then
+        flags = flags | E.RunContextFlag.EMPLOYEE_FAILURE_GUARD
+    end
+    return { run_type = offer.source_run_type, flags = flags }
+end
+
+-- ROM 0x1E68C resets FFFBEC and clears the run-status byte at FFFC1C.
+function Registry.clear_active_offer_after_party_wipe()
+    local cleared = Registry.active_offer ~= nil or
+        Registry._pending_johnson_return ~= nil
+    Registry.active_offer = nil
+    Registry._pending_johnson_return = nil
+    return cleared
+end
+
 function Registry.active_run_id()
     return Registry.active_offer and Registry.active_offer.id or "none"
 end

@@ -919,42 +919,6 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                 std::optional<std::string>{
                     "medicine_lodge_wise_one_followup"};
             close();
-            if (task.result_id == std::optional<std::string>{
-                                    "tabatha_state_unavailable"}) {
-                open_source_boundary(
-                    "Tarislar City Inn could not apply Tabatha's ROM state changes");
-                return FieldDialogueAdvanceResult::source_boundary;
-            }
-            if (task.result_id == std::optional<std::string>{
-                                    "boris_strike_team_unconverted"}) {
-                open_source_boundary(
-                    "Boris' Brother? branch advances FFFBFB, then reaches actor list 0x1D6FD0 at command 0x2C / 0x21BE4; its world-effect and combat handoff are not converted yet");
-                return FieldDialogueAdvanceResult::source_boundary;
-            }
-            if (task.result_id == std::optional<std::string>{
-                                    "boris_dialogue_state_unavailable"}) {
-                open_source_boundary(
-                    "Boris' Greenhouse dialogue needs the saved FFFC26 byte, which this session does not provide");
-                return FieldDialogueAdvanceResult::source_boundary;
-            }
-            if (task.result_id == std::optional<std::string>{
-                                    "boris_payment_unavailable"}) {
-                open_source_boundary(
-                    "Boris' Greenhouse payment needs a resolved credstick balance");
-                return FieldDialogueAdvanceResult::source_boundary;
-            }
-            if (task.result_id == std::optional<std::string>{
-                                    "wylie_feature_state_unavailable"}) {
-                open_source_boundary(
-                    "Wylie's Gala Inn free-stay branch requires runner status byte FF018F, which this restored save does not provide");
-                return FieldDialogueAdvanceResult::source_boundary;
-            }
-            if (task.result_id == std::optional<std::string>{
-                                    "wylie_payment_unavailable"}) {
-                open_source_boundary(
-                    "Wylie's Gala Inn room payment requires a resolved credstick balance");
-                return FieldDialogueAdvanceResult::source_boundary;
-            }
             if (medicine_lodge_wise_one_followup) {
                 return FieldDialogueAdvanceResult::
                     medicine_lodge_wise_one_followup;
@@ -1206,12 +1170,6 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
                 "Cyberspace prerequisite facts are unresolved for this save");
             return FieldDialogueAdvanceResult::source_boundary;
         }
-        if (task.result_id == std::optional<std::string>{
-                "resource_matrix_target_unresolved"}) {
-            open_source_boundary(
-                "The ROM Matrix target for this resource scene is not mapped");
-            return FieldDialogueAdvanceResult::source_boundary;
-        }
         if (unresolved_passcode_flags) {
             open_source_boundary(
                 "Matrix passcode flags are unresolved for this save");
@@ -1311,33 +1269,7 @@ FieldDialogueAdvanceResult FieldDialogueRuntime::advance_controller_events(
             task.result_id == std::optional<std::string>{"hospital-options"};
         const bool medicine_lodge_store_requested = task.result_id ==
             std::optional<std::string>{"medicine_lodge_store_requested"};
-        const bool phone_services_unconverted = task.result_id ==
-            std::optional<std::string>{"phone_services_not_converted"};
-        const bool tabatha_state_unavailable = task.result_id ==
-            std::optional<std::string>{"tabatha_state_unavailable"};
         close();
-        if (phone_services_unconverted) {
-            open_source_boundary(
-                "This contact's service transactions are not converted yet");
-            return FieldDialogueAdvanceResult::source_boundary;
-        }
-        if (tabatha_state_unavailable) {
-            open_source_boundary(
-                "Tarislar City Inn could not apply Tabatha's ROM state changes");
-            return FieldDialogueAdvanceResult::source_boundary;
-        }
-        if (task.result_id == std::optional<std::string>{
-                                "wylie_feature_state_unavailable"}) {
-            open_source_boundary(
-                "Wylie's Gala Inn free-stay branch requires runner status byte FF018F, which this restored save does not provide");
-            return FieldDialogueAdvanceResult::source_boundary;
-        }
-        if (task.result_id == std::optional<std::string>{
-                                "wylie_payment_unavailable"}) {
-            open_source_boundary(
-                "Wylie's Gala Inn room payment requires a resolved credstick balance");
-            return FieldDialogueAdvanceResult::source_boundary;
-        }
         if (hotel_options_requested) {
             return FieldDialogueAdvanceResult::hotel_options_requested;
         }
@@ -1603,8 +1535,9 @@ std::string_view FieldDialogueRuntime::field_console_menu_title() const noexcept
 }
 
 bool FieldDialogueRuntime::uses_hospital_menu_layout() const noexcept {
-    if (!panel_.open || !active_script_menu_.has_value() ||
-        active_script_menu_->text_profile != "council_island_hospital") {
+    // The 0xC928 menu ids are unique to the shared hospital service; every
+    // data.hospital_sites profile (Council Island, Little Chiba's) uses them.
+    if (!panel_.open || !active_script_menu_.has_value()) {
         return false;
     }
     const auto& id = active_script_menu_->id;
@@ -1616,7 +1549,6 @@ bool FieldDialogueRuntime::uses_hospital_menu_layout() const noexcept {
 bool FieldDialogueRuntime::uses_hospital_medical_attention_layout()
     const noexcept {
     return panel_.open && active_script_menu_.has_value() &&
-           active_script_menu_->text_profile == "council_island_hospital" &&
            active_script_menu_->id == "hospital_medical_attention";
 }
 

@@ -602,7 +602,7 @@ void FieldInteractionRuntime::dispatch_command(
                     party[runner].inventory_phase_bytes[slot]) {
                     interaction_selection = 0xFFU;
                     if (source_audio_event_callback_) {
-                        source_audio_event_callback_(0x4BU);
+                        source_audio_event_callback_(static_cast<std::uint16_t>(srx::SoundId::RELOAD_OR_EMPTY));
                     }
                     build_result_prompt(TextKey::passkey_result);
                     return;
@@ -640,7 +640,7 @@ void FieldInteractionRuntime::dispatch_command(
         if (static_cast<std::int8_t>(remaining) <= 0) {
             interaction_selection = 0xFFU;
             if (source_audio_event_callback_) {
-                source_audio_event_callback_(0x4BU);
+                source_audio_event_callback_(static_cast<std::uint16_t>(srx::SoundId::RELOAD_OR_EMPTY));
             }
             build_result_prompt(TextKey::electronics_success);
             return;
@@ -680,7 +680,7 @@ void FieldInteractionRuntime::dispatch_command(
                     interaction_selection = 0xFFU;
                     begin_security_alert();
                     if (source_audio_event_callback_) {
-                        source_audio_event_callback_(0x2CU);
+                        source_audio_event_callback_(static_cast<std::uint16_t>(srx::SoundId::DAC_SAMPLE_2C));
                     }
                     return;
                 }

@@ -13,6 +13,7 @@ local pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_s
 local spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot
 local BehaviorFlag = R.BehaviorFlag   -- from actor/tables.lua
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
+local HitSpark = E.HitSpark
 local function direction_from_heading(...) return R.direction_from_heading(...) end   -- from actor/targeting.lua
 local item_action_pose_selectors = R.item_action_pose_selectors   -- from actor/tables.lua
 local spell_pose_selectors = R.spell_pose_selectors   -- from actor/anim.lua
@@ -417,6 +418,13 @@ local function begin_spell_cast(state, context, target, resolution)
     state.spell_effect_action_code = 0
     state.spell_effect_slot_released = nil
     state.spell_effect_resolution = nil
+    R.queue_spell_effect(state, context, target, resolution)
+end
+
+-- 0x1033E's successful dispatch reserves a shared effect record; the target
+-- record's heartbeat owns the delayed 0x521E callback. Shared by NPC casts
+-- (0x13FFE) and the field player's held-A cast (0xAE6E).
+function R.queue_spell_effect(state, context, target, resolution)
     if type(resolution) == "table" and resolution.effect_started == true and
        type(resolution.spell_effect_slot) == "number" and
        type(target.id) == "string" and
@@ -486,6 +494,169 @@ local function begin_spell_cast(state, context, target, resolution)
                 target.source_record_slot] = pending
         end
     end
+end
+
+-- ROM 0xACAE -> 0xAD86: a negative +0x56 sends held A to 0xAE6E. With a
+-- linked +0xA2, 0xAE6E aims +0x2E and runs the 0x14D8E line probe. With no
+-- link it skips the probe but still jumps to 0x1033E. That resolver's
+-- 0x55740 reads +0x9B/+0x11 through A1, which 0xAE6E did not load. In the
+-- player actor loop 0xA8EA, 0xAAA6 loads the prior record's +0x3A callback
+-- into A1 and 0xAAB0 executes it after that record's action; the callback
+-- can change A1 [C]. The first record also inherits A1 from the outer caller
+-- [C].
+-- The no-link 0x1033E path leaves A1 untouched through 0x55740, so its
+-- defender reads are state-dependent and not a stable target [H]. We retain
+-- the known attacker-side modifiers and omit those undefined stale bytes.
+-- The deterministic no-link dispatch at 0x15830 is still modeled: only
+-- action codes 7/14 reach the directional field barrier at 0x49A2 [C].
+-- Every path returns through 0xAD94 to 0xAFAE/0xAF7C, both of which reload
+-- delay mode 0 and set +0x16 = C082[dir(+0x2E)] [C].
+function R.begin_player_spell_cast(state, context)
+    if context.phase ~= "behavior" or
+       context.player_spell_available ~= true or
+       context.combat_confirm_held ~= true or
+       context.combat_action_ready ~= true or
+       context.combat_input_blocked == true then
+        return nil
+    end
+    if context.world_scene_state == 3 then
+        state.source_action_dispatch = "player_spell_suppressed"
+        return nil
+    end
+    local target = type(context.ai_target_candidates) == "table" and
+        context.ai_target_candidates[1] or nil
+    if type(target) ~= "table" then
+        local combat = game.modules.combat
+        if type(combat) ~= "table" or
+           type(combat.resolve_untargeted_spell_action) ~= "function" then
+            return nil
+        end
+        local cast_context = setmetatable(
+            {action_code = context.player_spell_code},
+            {__index = context})
+        local replaces_field_barrier =
+            context.player_spell_code == E.SpellActionCode.SUPER_BARRIER or
+            context.player_spell_code == E.SpellActionCode.BARRIER
+        -- 0x49A2 resets the previous field barrier before reserving its new
+        -- shared effect slot. Present that Lua-owned slot as free to the roll [C].
+        local old_field_effect = state.player_field_spell_effect
+        if replaces_field_barrier and
+           type(old_field_effect) == "table" and
+           type(context.world_effect_slot_occupancy) == "table" then
+            local occupancy = {}
+            for slot = 1, 18 do
+                occupancy[slot] = context.world_effect_slot_occupancy[slot]
+            end
+            if type(old_field_effect.effect_slot) == "number" then
+                occupancy[old_field_effect.effect_slot + 1] = false
+            end
+            cast_context.world_effect_slot_occupancy = occupancy
+        end
+        local resolution = combat.resolve_untargeted_spell_action(
+            cast_context)
+        if resolution == nil then
+            return nil
+        end
+        state.source_action_dispatch = "player_spell"
+        state.spell_action_resolution = resolution
+        state.action_result = resolution.action_result
+        state.combat_action_requested = false
+        state.combatant = resolution.combatant
+        if resolution.field_effect_kind == E.SpellEffectKind.FIELD_BARRIER then
+            state.player_field_spell_effect = nil
+            if resolution.effect_started and
+               type(resolution.spell_effect_slot) == "number" then
+                state.player_field_spell_effect = {
+                    action_code = resolution.action_code,
+                    effect_slot = resolution.spell_effect_slot,
+                    remaining = resolution.action_result *
+                        E.SpellTuning.FIELD_BARRIER_TICKS_PER_SUCCESS,
+                }
+            end
+        end
+        return resolution.audio_event
+    end
+    if not action_line_clear(context, target) then
+        state.source_action_dispatch = "player_spell_blocked"
+        return nil
+    end
+    local combat = game.modules.combat
+    if type(combat) ~= "table" or
+       type(combat.resolve_spell_action) ~= "function" then
+        return nil
+    end
+    local cast_context = setmetatable(
+        {action_code = context.player_spell_code},
+        {__index = context})
+    local resolution = combat.resolve_spell_action(cast_context, target)
+    if resolution == nil then
+        return nil
+    end
+    state.source_action_dispatch = "player_spell"
+    state.spell_action_resolution = resolution
+    state.combat_action_requested = false
+    R.queue_spell_effect(state, cast_context, target, resolution)
+    return resolution.audio_event
+end
+
+-- ROM 0xAD86: a non-negative +0x56 with +0x57 == 0 jumps to 0xB1DC, the
+-- unarmed strike. It reloads the delay in mode 1 (0xABFC) and requests 0x4C
+-- (0x55 when +0x0E == 0x0C). With a +0xA2 link it turns toward the target;
+-- 0x15C84/0x15C58 then accepts only an active target closer than 0x200.
+-- In range it requests 0x4D (0x4E when FFF9F8 bit 7) and runs the shared
+-- 0x55C76 reaction. Returns swing audio and the optional heading audio.
+-- [C] the target's 0xAFF2 hit pose is the incoming_hit reaction that
+-- combat.commit_combatant_meters raises for world actors.
+-- 0xB29E..0xB2EA installs the kind-1 child through 0x15A8C only when the
+-- shared reaction changes a meter; this player-side decision returns that
+-- spawn fact without changing enemy incoming_hit handling [C].
+function R.begin_player_melee(state, context)
+    if context.phase ~= "behavior" or
+       context.player_melee_available ~= true or
+       context.combat_confirm_held ~= true or
+       context.combat_action_ready ~= true or
+       context.combat_input_blocked == true then
+        return nil
+    end
+    state.combat_action_requested = false
+    local swing = context.entity_kind == 0x0C and SoundId.MELEE_SWING_ALT
+        or SoundId.MELEE_SWING
+    local target = type(context.ai_target_candidates) == "table" and
+        context.ai_target_candidates[1] or nil
+    if type(target) == "table" and type(target.heading) == "number" then
+        -- ROM 0xB212: 0x15D3C self->target bearing to +0x34 and +0x2E.
+        state.strike_heading = target.heading & 0xffff
+    end
+    -- ROM 0x15C58: target +0x10 bit 0 set, bit 6 clear, 0x14D58 < 0x200.
+    local flags = type(target) == "table" and target.service_flags or nil
+    if type(target) ~= "table" or type(target.distance) ~= "number" or
+       type(flags) ~= "number" or
+       (flags & ActorStatus.ACTIVE) == 0 or
+       (flags & ActorStatus.DEAD) ~= 0 or
+       (target.distance & 0xffff) >= HitSpark.RANGE_LIMIT then
+        state.source_action_dispatch = "player_melee"
+        return swing
+    end
+    local combat = game.modules.combat
+    local update = type(combat) == "table" and
+        type(combat.resolve_reaction) == "function" and
+        combat.resolve_reaction(context, target) or nil
+    state.source_action_dispatch = "player_melee_hit"
+    state.combat_meter_update = update
+    if update ~= nil and update.changed == true and
+       type(target.world_x) == "number" and
+       type(target.world_y) == "number" then
+        -- ROM 0xB29E compares defender +0x4C/+0x9C after 0x55C76 and only
+        -- allocates the 0x15A8C kind-1 child when either meter changed [C].
+        state.hit_spark_spawn_request = {
+            target_id = target.id,
+            world_x = target.world_x,
+            world_y = target.world_y,
+        }
+    end
+    local heading_event = context.target_heading_audio_alternate
+        and SoundId.TARGET_HEADING_ALT or SoundId.TARGET_HEADING
+    return swing, heading_event
 end
 
 local function actor_matches_pending_spell_target(context, pending)
@@ -566,6 +737,21 @@ local function advance_spell_effect(state, context)
     state.spell_effect_action_code = 0
     state.spell_effect_completed = false
     transfer_pending_spell_effect(state, context)
+    local field_effect = state.player_field_spell_effect
+    if type(field_effect) == "table" and context.phase == "render" then
+        -- ROM 0x49F2 stores action_result * 0x190 in the field effect timer;
+        -- 0x4ADC decrements that timer on the effect service pass [C]. The host
+        -- owns the allocated shared slot; Lua owns this source clock.
+        field_effect.remaining = field_effect.remaining - 1
+        if field_effect.remaining <= 0 then
+            state.spell_effect_action_code = field_effect.action_code
+            state.spell_effect_phase = 1
+            state.spell_effect_slot_released = field_effect.effect_slot
+            state.spell_effect_completed = true
+            state.player_field_spell_effect = nil
+            return
+        end
+    end
     if context.phase ~= "render" or
        type(state.spell_effect_pending) ~= "table" then
         return

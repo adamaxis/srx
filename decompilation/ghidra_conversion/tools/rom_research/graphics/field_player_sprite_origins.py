@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Set ROM sprite origins for the field player (idle/movement/attack).
+"""Set ROM sprite origins for the field player (idle/movement/actions).
 
 The catalog stored only the transparent-crop offset; the ROM descriptor's
 signed screen offset (+8/+0xA, consumed by 0x3EFE) was dropped, so the player
 was drawn with its top-left at the world anchor. origin = descriptor offset +
 crop offset. Descriptors come from the player record 0x7291A, the kind state
 table 0x62AC, the idle state lists (record +0x1E index) and the movement
-(0xC062) / attack (0xC042) selector tables.
+(0xC062) / attack (0xC042) / strike (0xC0A2) / spell (0xC082) selector
+tables.
 
 usage (from decompilation/):
   python ghidra_conversion/tools/rom_research/graphics/field_player_sprite_origins.py \
@@ -21,6 +22,10 @@ PLAYER_RECORD = 0x7291A
 KIND_STATE_TABLE = 0x62AC
 MOVEMENT_SELECTORS = 0xC062
 ATTACK_SELECTORS = 0xC042
+STRIKE_SELECTORS = 0xC0A2  # 0xB1DC unarmed strike, two frames
+SPELL_SELECTORS = 0xC082   # 0xAF7C/0xAFAE spell pose, one frame
+DOWN_SELECTORS = 0xC0B2    # 0xB330 down pose; 0x8008 list holds frame 1
+HURT_SELECTORS = 0xC072    # 0xAFF2 hurt pose; kind-3 list has two frames
 DIRECTIONS = 8
 
 
@@ -87,6 +92,17 @@ def main():
             rows[f'field.entities.movement.{d}.{f}'] = desc
     for d, descs in enumerate(sequences(ATTACK_SELECTORS)):
         rows[f'field.entities.attack.{d}'] = descs[0]
+    for d, descs in enumerate(sequences(STRIKE_SELECTORS)):
+        for f, desc in enumerate(descs):
+            rows[f'field.entities.strike.{d}.{f}'] = desc
+    for d, descs in enumerate(sequences(SPELL_SELECTORS)):
+        rows[f'field.entities.spell.{d}'] = descs[0]
+    for d, descs in enumerate(sequences(DOWN_SELECTORS)):
+        for f, desc in enumerate(descs[:2]):
+            rows[f'field.entities.down.{d}.{f}'] = desc
+    for d, descs in enumerate(sequences(HURT_SELECTORS)):
+        for f, desc in enumerate(descs):
+            rows[f'field.entities.hurt.{d}.{f}'] = desc
     lines = open(root + 'resources.tsv').read().split('\n')
     changed = 0
     for n, line in enumerate(lines):

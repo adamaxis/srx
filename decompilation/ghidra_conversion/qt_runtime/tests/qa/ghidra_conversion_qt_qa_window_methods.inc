@@ -1462,8 +1462,11 @@
                 }
             }
         }
+        // ROM 0x5B2C2 fills entity palette line 1 with CRAM word 0x0EEE
+        // before the flash sequence steps it. Verify that source word
+        // directly instead of its removed linear RGB weight [C].
         if (colored_body_pixels < kMinimumBodyPixelMatches ||
-            opening_entity_palette_fade_weight(1U) != 255U) {
+            opening_entity_palette_color_word(1U) != 0x0EEEU) {
             return fail("the source body art is not fully visible for pixel checks");
         }
 

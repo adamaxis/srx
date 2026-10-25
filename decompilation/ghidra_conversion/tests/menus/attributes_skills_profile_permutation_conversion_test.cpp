@@ -617,7 +617,9 @@ int main() {
                                        ? 0
                                        : 17;
                         }
-                    } else if (next >= 13U) {
+                    } else if (current + 1U >= 13U) {
+                        // ROM 0xD920 tests the selected skill's own value + 1
+                        // against 0x0D before the Firearms substitution.
                         if (preview.status !=
                             AttributeSkillUpgradeStatus::at_limit) {
                             return fail("skill rank 12/13 boundary mismatch")
