@@ -1,5 +1,26 @@
 find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia Network)
 
+# Decode imported actor BMPs and query the Lua-owned Animator.list counts.
+# This is a headless asset QA target; it does not construct the game window or
+# start audio.
+add_executable(shadowrun_ghidra_actor_animation_art_qa
+    tests/qa/actor_animation_art_qa.cpp)
+target_include_directories(shadowrun_ghidra_actor_animation_art_qa
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/srx_refactor"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/lua-5.4.9/src")
+target_compile_definitions(shadowrun_ghidra_actor_animation_art_qa
+    PRIVATE
+        SRX_ACTOR_ANIMATION_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        SRX_ACTOR_ANIMATION_SCRIPT_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/scripts")
+target_link_libraries(shadowrun_ghidra_actor_animation_art_qa
+    PRIVATE shadowrun_lua_5_4_9 Qt6::Gui)
+add_test(NAME shadowrun_ghidra_conversion_qt_actor_animation_art_qa
+         COMMAND shadowrun_ghidra_actor_animation_art_qa)
+set_tests_properties(shadowrun_ghidra_conversion_qt_actor_animation_art_qa
+    PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+
 set(SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/app"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/audio"
@@ -158,6 +179,8 @@ add_test(NAME shadowrun_ghidra_conversion_qt_field_map_composition_qa
 
 add_executable(shadowrun_gameplay_script_runtime_test
     tests/scripting/game_script_runtime_test.cpp)
+target_include_directories(shadowrun_gameplay_script_runtime_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/srx_refactor")
 target_link_libraries(shadowrun_gameplay_script_runtime_test
     PRIVATE shadowrun_gameplay_script_runtime)
 target_compile_definitions(shadowrun_gameplay_script_runtime_test PRIVATE
@@ -281,8 +304,14 @@ function(add_shadowrun_qt_qa_case test_name)
         # Headless rule: QA never shows a window or takes focus. Windows
         # builds deploy platforms/qoffscreen.dll beside the QA executable
         # (windeployqt block below); Linux/macOS use the Qt install's plugin.
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1")
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
 endfunction()
+
+# Scene 21's ROM rectangles exercise the real field-tick alarm bridge [C].
+# The test writes an actual.bmp checkpoint as a headless QA artifact [H].
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_alarm_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-alarm-qa "${CMAKE_CURRENT_BINARY_DIR}/field-alarm-qa")
 
 # One end-to-end startup/field QA walk. The executable writes its visual
 # checkpoints outside the asset tree so this remains a verification artifact,
@@ -2073,6 +2102,7 @@ add_test(NAME shadowrun_ghidra_shop_menu_runtime
 # source tables and ammo/paired-slot ordering independently of the presenter.
 foreach(SHADOWRUN_GHIDRA_ENTITY_TEST IN ITEMS
         entity_combat entity_transition entity_animation_spawn_probe
+        entity_animation_player_action entity_delay
         entity_proximity_collision movement_metric)
     add_executable(shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test
         ../tests/entities/${SHADOWRUN_GHIDRA_ENTITY_TEST}_conversion_test.cpp

@@ -193,13 +193,13 @@ increment on render heartbeats and `0x600E` holds the last finite-list frame.
 The action resolver at `0x55C76` is called after this transition and is still
 not connected to live encounter actors.
 
-The offline importer now exports all directional action frames as individually
-named actor assets and writes `actor-action-profiles.tsv` with the source kind,
-frame count, increment, threshold, and cue. The extracted lists contain two
-frames at `0x0200` for kinds 4-11 and 14, one frame at `0x01F4` for kind 12,
-and three frames at `0x0200` for kind 13. Lua owns the finite-list accumulator,
-completion state, transition condition, and cue request; C++ supplies that
-named profile and renders the frame returned by Lua.
+The offline importer exports directional action frames as individually named
+actor assets. Lua reads each kind's `0xC0A2` list from the generated
+`data/actor_anim_lists.lua`, including frame count and increment; that same
+source supplies the animation clock and the ROM `B03E`/`B05E` cues. The lists
+contain two frames at `0x0200` for kinds 4-11 and 14, one frame at `0x01F4` for
+kind 12, and three frames at `0x0200` for kind 13. C++ renders the frame
+selected by Lua from the named actor images.
 
 The Scene 2 field QA repositions the already-selected live actor only after
 the natural offscreen-spawn and B-edge captures, then records both action
@@ -324,20 +324,18 @@ step while `0xB07E` continues its eight-service countdown. C072 therefore stays
 visible while stationary, but does not mask the ROM's walk pose once movement
 resumes.
 
-The offline graphics import now extracts every available directional `C072`
-frame for dynamic kinds 4 through 14 and writes their frame counts,
-increments, threshold, and `B03E`/`B05E` cue IDs to
-`assets/field/entities/actor-reaction-profiles.tsv`. The source lists use an
-increment of `0x0300`; kind 14 has one frame and the other imported profiles
-have two. The C0B2 lists used by these encounter kinds use increment `0x0200`
-and period `0x1000`; kinds 13 and 14 have five and eight frames respectively,
-while the other kinds have two. Lua receives the typed hurt facts, owns the
-eight-service countdown and both finite animation states, and emits one
-profile-matched cue. The existing field actor renderer loads named transparent
-hurt frames and uses the returned Lua animation ID and frame. The zero-meter
-branch currently reuses the extracted C0B2 transition images. The ROM cue
-request is verified; audible playback and duration for all of these
-kind-indexed IDs have not been independently verified.
+The offline graphics import extracts every available directional `C072` frame
+for dynamic kinds 4 through 14. Lua reads each kind's `C072` and `C0B2` count,
+rate, and threshold from the generated `data/actor_anim_lists.lua`; the same
+data includes `B03E[kind]` and `B05E[kind]`, indexed at `0xB08C` and `0xB340`.
+The source `C072` lists use increment `0x0300`; kind 14 has one frame and the
+other imported profiles have two. The `C0B2` lists use increment `0x0200` and
+period `0x1000`; kinds 13 and 14 have five and eight frames respectively,
+while the other kinds have two. Lua owns the eight-service countdown and both
+finite animation states. The field renderer loads named transparent hurt
+frames and uses the animation ID and frame returned by Lua. The ROM cue request
+is traced; audible playback and duration for all kind-indexed IDs have not
+been independently verified.
 
 Debug and Release `shadowrun_gameplay_script_runtime_qa` drive a Warhawk
 projectile through Lua's typed hit-resolution path into a live Hell Hound actor

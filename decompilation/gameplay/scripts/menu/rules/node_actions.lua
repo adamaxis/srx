@@ -3,6 +3,7 @@
 -- run = {state FFF0E3, objective FFFBF2, value FFFBF6 (signed), size FFFBF7, fc28, fc1c};
 -- field = {alarm FFE16F, security_off FFE170, maglocks_off FFE17F}. rand(n) = 0xD3A -> 0..n-1. Texts are ROM addresses.
 local E = require("enums")
+local FieldAlarm = require("field_alarm")
 local DECK = require("menu.rules.deck")
 local SPECIAL = require("menu.rules.datastore_special")
 local M = {}
@@ -47,10 +48,8 @@ end
 -- 0x1E09A alarm off: if FFE16F set -> clear; actors FF0400..FF0A00 with +0x9E bit1 get bit2;
 -- always stops E.SoundId.ALARM (0x30) through 0x530D2 (FF 12 30).
 function M.alarm_off(field, actors)
-    if not field.alarm then return false end
-    field.alarm = false
-    for _, a in ipairs(actors or {}) do if a.flags9e & 2 ~= 0 then a.flags9e = a.flags9e | 4 end end
-    return true                                        -- caller stops E.SoundId.ALARM
+    local result = FieldAlarm.clear(field, actors)
+    return result ~= nil and result.was_active == true -- caller stops E.SoundId.ALARM
 end
 -- 0x54BD2 Turn Off Node by class (+1).
 M.TURN_OFF = { [0x27] = { alarm = true, security = true }, [0x28] = { security = true },

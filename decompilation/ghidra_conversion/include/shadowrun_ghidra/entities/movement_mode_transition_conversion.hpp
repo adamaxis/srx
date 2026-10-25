@@ -35,6 +35,7 @@ enum class MovementModeTransitionContinuation {
     scene_55_tomb_credits_callback, // source callback 0x5BAC4
     mode_table_world_activity, // source-selected field activity during 0x2CE0
     field_mode_exit_finalizer, // native boundary for source 0x0C64C
+    guard_spotted_field_event, // source event 0x20FEC queued by 0x1E2E0
 };
 
 struct EntityMovementModeTransitionState {

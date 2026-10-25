@@ -62,7 +62,8 @@ add_library(shadowrun_gameplay_script_runtime STATIC
     src/scripting/cyberdeck_menu_bindings.cpp
     src/scripting/world_content_tsv_loader.cpp)
 target_include_directories(shadowrun_gameplay_script_runtime PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/qt_runtime/src/srx_refactor")
 target_link_libraries(shadowrun_gameplay_script_runtime
     PUBLIC shadowrun_ghidra_conversion_modules shadowrun_lua_5_4_9)
 
@@ -147,6 +148,8 @@ target_link_libraries(shadowrun_ghidra_asset_import
 add_executable(shadowrun_graphics_extract
     tools/rom_research/graphics_extract.cpp
     tools/rom_research/field_mode_profile_import.cpp)
+target_include_directories(shadowrun_graphics_extract PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/qt_runtime/src/srx_refactor")
 target_link_libraries(shadowrun_graphics_extract PRIVATE
     shadowrun_ghidra_asset_import shadowrun_ghidra_asset_import_support
     ZLIB::ZLIB)
@@ -185,6 +188,9 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
 
         set(test_target "shadowrun_ghidra_${test_name}_test")
         add_executable(${test_target} "${test_source}")
+        # Generated srx:: enums (enums.hpp) are header-only; any test may name them.
+        target_include_directories(${test_target} PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/qt_runtime/src/srx_refactor")
         if(test_name STREQUAL "gameplay_script_menu_route" OR
            test_name STREQUAL "matrix_lua_rules")
             target_link_libraries(${test_target}

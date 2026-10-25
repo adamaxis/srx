@@ -1,23 +1,12 @@
 #include "shadowrun_ghidra/entities/entity_animation_player_action_conversion.hpp"
 
 #include "shadowrun_ghidra/entities/entity_animation_dispatch_conversion.hpp"
-#include "shadowrun_ghidra/entities/entity_delay_conversion.hpp"
 
 namespace shadowrun::ghidra_conversion {
 namespace {
 
-EntityDelayAttributes delay_attributes(const RunnerRecordFields& record) {
-    return {record.attributes[1U], record.attributes[4U],
-            record.cyberware_flags};
-}
-
-EntityDelayScale action_delay_scale(const std::uint8_t item_code) {
-    // ROM 0x14226 subtracts one from +0x57, then selects D0=2 for source
-    // codes 4, 0xA, and 0xB (equipped action codes 5, 11, and 12).
-    return item_code == 5U || item_code == 11U || item_code == 12U
-               ? EntityDelayScale::Double
-               : EntityDelayScale::Normal;
-}
+using AssetAdvance =
+    std::function<RunnerAssetOperationResult(RunnerRecordFields&)>;
 
 void service_audio(const PlayerActionDispatchCallbacks& callbacks) {
     if (callbacks.service_audio_event) {
@@ -25,11 +14,52 @@ void service_audio(const PlayerActionDispatchCallbacks& callbacks) {
     }
 }
 
-void update_delay(RunnerRecordFields& record,
-                  const EntityDelayScale scale) {
-    EntityDelayState delay{record.animation_action_gate};
-    update_entity_animation_delay(delay, delay_attributes(record), scale);
-    record.animation_action_gate = delay.animation_delay;
+PlayerActionDispatchResult dispatch_player_action(
+    RunnerRecordFields& record, const AssetAdvance& advance_asset,
+    const PlayerActionDelayLookup& delay_lookup,
+    const PlayerActionDispatchCallbacks& callbacks) {
+    if (record.ammo_rounds != 0U) {
+        return {PlayerActionDispatchStatus::waiting_for_loaded_rounds,
+                RunnerAssetOperationResult::no_change};
+    }
+    if (record.ammo_clips == 0U) {
+        return {PlayerActionDispatchStatus::waiting_for_clip_reserve,
+                RunnerAssetOperationResult::no_change};
+    }
+    if (record.animation_action_gate >= 0) {
+        return {PlayerActionDispatchStatus::waiting_for_animation_gate,
+                RunnerAssetOperationResult::no_change};
+    }
+    if (!delay_lookup || !advance_asset) {
+        return {PlayerActionDispatchStatus::weapon_template_unresolved,
+                RunnerAssetOperationResult::missing_source_data};
+    }
+    const auto action_delay =
+        delay_lookup(record, PlayerActionDelayStage::weapon_action);
+    const auto shared_delay =
+        delay_lookup(record, PlayerActionDelayStage::shared_action);
+    if (!action_delay.has_value() || !shared_delay.has_value()) {
+        return {PlayerActionDispatchStatus::weapon_template_unresolved,
+                RunnerAssetOperationResult::missing_source_data};
+    }
+
+    RunnerAssetOperationResult asset_result =
+        RunnerAssetOperationResult::no_change;
+    EntityAnimationActionServiceState action_state{record.ammo_clips};
+    service_entity_animation_action(
+        action_state,
+        {[&callbacks] { service_audio(callbacks); },
+         [&record, action_delay] {
+             record.animation_action_gate = *action_delay;
+         },
+         [&record, &advance_asset, &asset_result] {
+             asset_result = advance_asset(record);
+         }});
+    record.ammo_clips = action_state.pending_actions;
+
+    service_audio(callbacks);
+    record.animation_action_gate = *shared_delay;
+    return {PlayerActionDispatchStatus::serviced, asset_result};
 }
 
 } // namespace
@@ -45,89 +75,30 @@ void advance_active_entity_animation_action_gate(
 
 PlayerActionDispatchResult dispatch_player_action_if_ready(
     RunnerRecordFields& record, const UsItemCatalog& item_catalog,
+    const PlayerActionDelayLookup& delay_lookup,
     const PlayerActionDispatchCallbacks& callbacks) {
-    if (record.ammo_rounds != 0U) {
-        return {PlayerActionDispatchStatus::waiting_for_loaded_rounds,
-                RunnerAssetOperationResult::no_change};
-    }
-    if (record.ammo_clips == 0U) {
-        return {PlayerActionDispatchStatus::waiting_for_clip_reserve,
-                RunnerAssetOperationResult::no_change};
-    }
-    if (record.animation_action_gate >= 0) {
-        return {PlayerActionDispatchStatus::waiting_for_animation_gate,
-                RunnerAssetOperationResult::no_change};
-    }
-
-    RunnerAssetOperationResult asset_result =
-        RunnerAssetOperationResult::no_change;
-    EntityAnimationActionServiceState action_state{record.ammo_clips};
-    service_entity_animation_action(
-        action_state,
-        {[&callbacks] { service_audio(callbacks); },
-         [&record] { update_delay(record, action_delay_scale(
-                                                   record.equipped_item_code)); },
-         [&record, &item_catalog, &asset_result] {
-             asset_result = advance_entity_asset_meter(
-                 record, static_cast<std::int8_t>(0x26), item_catalog);
-         }});
-    record.ammo_clips = action_state.pending_actions;
-
-    // The successful carry from 0xAAD2 enters 0xACAE's shared action tail.
-    // It emits the same event a second time and replaces the action-specific
-    // delay with the source's normal-scale delay.
-    service_audio(callbacks);
-    update_delay(record, EntityDelayScale::Normal);
-
-    return {PlayerActionDispatchStatus::serviced, asset_result};
+    return dispatch_player_action(
+        record,
+        [&item_catalog](RunnerRecordFields& current) {
+            return advance_entity_asset_meter(
+                current, static_cast<std::int8_t>(0x26), item_catalog);
+        },
+        delay_lookup, callbacks);
 }
 
 PlayerActionDispatchResult dispatch_player_action_if_ready(
     RunnerRecordFields& record,
     const WeaponMagazineCapacityLookup& magazine_capacity,
-    const WeaponReloadDelayModeLookup& reload_delay_mode,
+    const PlayerActionDelayLookup& delay_lookup,
     const PlayerActionDispatchCallbacks& callbacks) {
-    if (record.ammo_rounds != 0U) {
-        return {PlayerActionDispatchStatus::waiting_for_loaded_rounds,
-                RunnerAssetOperationResult::no_change};
-    }
-    if (record.ammo_clips == 0U) {
-        return {PlayerActionDispatchStatus::waiting_for_clip_reserve,
-                RunnerAssetOperationResult::no_change};
-    }
-    if (record.animation_action_gate >= 0) {
-        return {PlayerActionDispatchStatus::waiting_for_animation_gate,
-                RunnerAssetOperationResult::no_change};
-    }
-    if (!reload_delay_mode) {
-        return {PlayerActionDispatchStatus::weapon_template_unresolved,
-                RunnerAssetOperationResult::missing_source_data};
-    }
-    const auto delay_mode = reload_delay_mode(record.equipped_item_code);
-    if (!delay_mode.has_value()) {
-        return {PlayerActionDispatchStatus::weapon_template_unresolved,
-                RunnerAssetOperationResult::missing_source_data};
-    }
-
-    RunnerAssetOperationResult asset_result =
-        RunnerAssetOperationResult::no_change;
-    EntityAnimationActionServiceState action_state{record.ammo_clips};
-    service_entity_animation_action(
-        action_state,
-        {[&callbacks] { service_audio(callbacks); },
-         [&record, delay_mode] {
-             update_delay(record, decode_entity_delay_scale(*delay_mode));
-         },
-         [&record, &magazine_capacity, &asset_result] {
-             asset_result = advance_entity_asset_meter(
-                 record, static_cast<std::int8_t>(0x26),
-                 magazine_capacity);
-         }});
-    record.ammo_clips = action_state.pending_actions;
-
-    service_audio(callbacks);
-    update_delay(record, EntityDelayScale::Normal);
-    return {PlayerActionDispatchStatus::serviced, asset_result};
+    return dispatch_player_action(
+        record,
+        [&magazine_capacity](RunnerRecordFields& current) {
+            return advance_entity_asset_meter(
+                current, static_cast<std::int8_t>(0x26),
+                magazine_capacity);
+        },
+        delay_lookup, callbacks);
 }
 
 } // namespace shadowrun::ghidra_conversion

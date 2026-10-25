@@ -250,7 +250,7 @@ void begin_world_activity(
 }
 
 bool schedule_world_activity_timeout(WorldActivityTimeoutState& state) {
-    if (state.scene_id == 0x36U && state.scene_36_gate == 0U) {
+    if (state.scene_id == 0x36U && state.encounter_actor_count == 0U) {
         return false;
     }
     if (state.timeout_marker == 0) {

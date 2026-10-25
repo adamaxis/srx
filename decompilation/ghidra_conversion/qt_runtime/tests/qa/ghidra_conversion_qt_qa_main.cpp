@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <cstdio>
 #include "ghidra_conversion_qt_window.hpp"
 #include "enums.hpp"
 #include "genesis_image_compositor.hpp"
@@ -263,6 +265,84 @@ int run_field_terrain_mark_qa(qt_runtime::FieldSceneRuntime& field_scene,
     }
     std::cout << "field_terrain_mark_qa=passed target=" << *target
               << " donor=" << *donor << '\n';
+    return 0;
+}
+
+// Scene 21 has extracted 0x1E030 alarm rectangles and a 0x1E0DC actor list.
+// Exercise the live field-frame seam with deterministic source facts [C].
+int run_field_alarm_qa(
+    qt_runtime::FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::filesystem::path& asset_root,
+    const std::vector<std::uint16_t>& audio_events,
+    const std::vector<std::uint16_t>& audio_stops) {
+    std::filesystem::create_directories(output);
+    const auto scene_id = static_cast<std::uint16_t>(
+        srx::FieldAlarmRomLayout::FIRST_LIST_SCENE);
+    if (field_scene.field_scene_reference_for_dump() != scene_id) {
+        std::cerr << "field alarm QA: expected extracted scene 21 rectangles\n";
+        return 3;
+    }
+    const auto alarm_sound = static_cast<std::uint16_t>(srx::SoundId::ALARM);
+    const auto frame_due = static_cast<std::uint16_t>(
+        srx::FieldAlarm::FRAME_VALUE);
+    const auto field_building = static_cast<std::uint16_t>(
+        srx::SceneMode::BUILDING);
+    const auto tile_shift = static_cast<unsigned>(srx::FieldAlarm::TILE_SHIFT);
+    const auto actors_before =
+        field_scene.world_activity_script_actor_count_for_dump();
+    field_scene.set_field_interaction_mode_for_dump(field_building);
+    // Tile 33,385 lies inside the extracted Scene 21 rectangle beginning at
+    // tile 32,384 [H probe inside the 0x1D7498 ROM rectangle, C].
+    field_scene.set_field_entity_world_position_for_dump(
+        static_cast<std::uint16_t>(33U << tile_shift),
+        static_cast<std::uint16_t>(385U << tile_shift));
+    // Seed zero is a deterministic [H] probe that passes the source cutoff [C].
+    field_scene.set_source_random_seed_for_dump(0U);
+    field_scene.set_field_world_frame_counter_for_dump(frame_due);
+    field_scene.advance_frame();
+
+    const QImage alarm_image = render_qa_field(field_scene);
+    const bool actual_saved = save_qa_image(output, "actual.bmp", alarm_image);
+    const auto alarm_start_count = static_cast<std::size_t>(std::count(
+        audio_events.begin(), audio_events.end(), alarm_sound));
+    const auto spawned_after =
+        field_scene.world_activity_script_actor_count_for_dump();
+    if (!field_scene.field_alarm_active_for_dump() ||
+        field_scene.field_alarm_timer_for_dump() !=
+            static_cast<std::int16_t>(srx::AiTuning::ALARM_FRAMES) ||
+        alarm_start_count == 0U || spawned_after <= actors_before ||
+        alarm_image.isNull() ||
+        alarm_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !field_hud_chrome_survives(alarm_image, asset_root) || !actual_saved) {
+        std::cerr << "field alarm QA: ROM scene rectangle did not raise, sound, "
+                     "spawn, and dump; alarm="
+                  << field_scene.field_alarm_active_for_dump()
+                  << " timer=" << field_scene.field_alarm_timer_for_dump()
+                  << " actors=" << actors_before << "->" << spawned_after
+                  << " sound_starts=" << alarm_start_count
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    // Inject zero [H]; the next active tick reaches the source negative clear [C].
+    field_scene.set_field_alarm_timer_for_dump(0);
+    field_scene.set_field_world_frame_counter_for_dump(
+        static_cast<std::uint16_t>(frame_due + 1U));
+    field_scene.advance_frame();
+    const auto alarm_stop_count = static_cast<std::size_t>(std::count(
+        audio_stops.begin(), audio_stops.end(), alarm_sound));
+    if (field_scene.field_alarm_active_for_dump() || alarm_stop_count == 0U) {
+        std::cerr << "field alarm QA: negative countdown did not use shared clear; "
+                     "alarm="
+                  << field_scene.field_alarm_active_for_dump()
+                  << " sound_stops=" << alarm_stop_count << '\n';
+        return 3;
+    }
+    std::cout << "field_alarm_qa=passed scene=21 rectangles=4 actors="
+              << spawned_after - actors_before
+              << " countdown_clear=1 actual="
+              << (output / "actual.bmp").string() << '\n';
     return 0;
 }
 
@@ -581,10 +661,13 @@ int run_field_world_activity_qa(
     const auto floor_result = render_field();
     const bool floor_result_saved = save("floor-result.bmp", floor_result) &&
                                     save("actual.bmp", floor_result);
-    // 0x2E starts through 0x530DE (FF 10 2E). Alarm-off 0x1E09A then sends
+    // No start events: the old 0x2E here was the B05E[kind] death cue that
+    // the port wrongly played when the scene's guard spawned. In the ROM,
+    // 0xB350 sends it only from 0xB330 (death), so a live guard is silent
+    // (9304db25). Alarm-off 0x1E09A sends
     // 0x30 through 0x530D2, which queues FF 12 30: a stop-resource request,
     // so it belongs on the stop callback, not the start-event list.
-    const std::vector<std::uint16_t> expected_audio_events{0x2EU};
+    const std::vector<std::uint16_t> expected_audio_events{};
     const std::vector<std::uint16_t> expected_audio_stops{0x30U};
     if (!third_floor_visible || !result_panel.source_complete ||
         field_audio_events != expected_audio_events ||
@@ -792,6 +875,36 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
+    // Opt-in diagnostic: SRX_QA_ENCOUNTER_TIMELINE=1 saves one frame per
+    // second for 60 s plus a positions log, then stops before the checks.
+    if (const char* timeline = std::getenv("SRX_QA_ENCOUNTER_TIMELINE");
+        timeline != nullptr && timeline[0] == '1') {
+        std::ofstream log(output / "timeline.tsv");
+        log << "frame\trunner_x\trunner_y\tactors\n";
+        for (std::uint32_t frame = 0U; frame <= 3600U; ++frame) {
+            if (frame % 60U == 0U) {
+                char name[32];
+                std::snprintf(name, sizeof(name), "timeline-%02u.bmp",
+                              frame / 60U);
+                save(name, render());
+            }
+            if (frame % 15U == 0U) {
+                const auto& lead = field_scene.field_entity_world_position();
+                log << frame << '\t' << lead.x << '\t' << lead.y << '\t';
+                for (const auto& actor :
+                     field_scene.active_default_actor_positions_for_dump()) {
+                    log << actor.x << ',' << actor.y << ' ';
+                }
+                log << '\t'
+                    << field_scene.default_actor_animation_id_for_dump(0U)
+                           .value_or("-")
+                    << '\n';
+            }
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+        return 0;
+    }
     const auto advance_and_capture = [&field_scene, &render, &save](
                                         const std::uint16_t frames,
                                         const std::string& name) {
@@ -919,7 +1032,14 @@ int run_field_random_encounter_spawn_qa(
         positions_changed(edge_positions_after_30,
                           edge_positions_after_180) ||
         positions_changed(edge_positions_after_180, actor_positions);
-    const std::vector<std::uint16_t> expected_entry_audio{0x2EU, 0x2EU};
+    // combat-fixes-1: ROM 0x1E25A spawns encounter actors live; the B05E
+    // death cue (0x2E for Weenrs) and C0B2 list belong to 0xB330 only, so an
+    // unhurt encounter must never publish it.
+    const std::vector<std::uint16_t> expected_entry_audio{};
+    const bool spawn_death_cue_seen = std::find(
+        field_audio_events.begin() +
+            static_cast<std::ptrdiff_t>(audio_start),
+        field_audio_events.end(), 0x002EU) != field_audio_events.end();
     bool approach_attack_cued = false;
     for (std::size_t index = audio_start + expected_entry_audio.size();
          index + 1U < field_audio_events.size(); ++index) {
@@ -931,7 +1051,7 @@ int run_field_random_encounter_spawn_qa(
         }
     }
     if (!after_30_saved || !after_180_saved || !after_480_saved ||
-        !after_1200_saved || !actual_saved ||
+        !after_1200_saved || !actual_saved || spawn_death_cue_seen ||
         actor_count_after_480 != actors_after ||
         actor_positions.size() != 2U ||
         !natural_edge_ai_moved ||
@@ -1131,9 +1251,13 @@ int run_field_random_encounter_spawn_qa(
     // that real spawn untouched in the production frames above, then move
     // the selected source actor record into a known visible patch for the
     // selector-pixel capture. This is only a renderer fixture; it is not a
-    // claim about the natural approach path.
+    // claim about the natural approach path. With the ROM player sprite
+    // origins (0x8002 descriptors, core-fixes-1) the runner, and the other
+    // live encounter actor engaging it, cover the marker's right-hand corners
+    // at a 0x100 offset; 0x300 to the runner's left keeps every 0x5C7E
+    // marker corner unobstructed.
     const auto target_marker_fixture_x = static_cast<std::uint16_t>(
-        field_scene.field_entity_world_position().x - 0x0100U);
+        field_scene.field_entity_world_position().x - 0x0300U);
     const auto target_marker_fixture_y =
         field_scene.field_entity_world_position().y;
     if (!field_scene.set_selected_default_actor_world_position_for_dump(
@@ -1183,7 +1307,7 @@ int run_field_random_encounter_spawn_qa(
         save("target-selection-b-static.bmp", target_selection_static_image);
     const QImage target_marker_tile(QString::fromStdWString(
         (asset_root / "field" / "entities" / "target-marker" /
-         "scene-2-action-0-2.png")
+         "scene-2-meter-9-plus.png")
             .wstring()));
     const auto marker_corner_pixel_matches =
         marker_steady.has_value()
@@ -1201,7 +1325,9 @@ int run_field_random_encounter_spawn_qa(
         !marker_during_shrink.has_value() ||
         !marker_during_shrink->visible ||
         !marker_during_shrink->animating ||
-        marker_during_shrink->style != 0U ||
+        // combat-fixes-1: an unhurt Weenr (+0x4C = +0x9C = 10) is in the
+        // ROM 0x5C7E >= 9 tier (0x5DD4, tile 0x5E7 palette 3).
+        marker_during_shrink->style != 3U ||
         marker_during_shrink->radius > 64U ||
         marker_during_shrink->radius % 8U != 0U ||
         !marker_steady.has_value() || !marker_steady->visible ||
@@ -1346,7 +1472,7 @@ int run_field_random_encounter_spawn_qa(
         field_scene.advance_frame();
     }
     if (!hit_encounter_entry_complete) {
-        std::cerr << "field random-encounter QA: source C0B2 entry did not finish before the weapon-hit fixture\n";
+        std::cerr << "field random-encounter QA: live-spawn entry delay did not finish before the weapon-hit fixture\n";
         return 3;
     }
 
@@ -2071,12 +2197,23 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
-    // The ROM actor service begins C0B2 only after each actor's randomized
-    // entry delay. Its B05E[kind] cue therefore belongs to a later heartbeat,
-    // not to the selector/list-dispatch frame.
+    // combat-fixes-1: ROM 0x1E25A spawns each encounter actor live. The
+    // per-actor entry delay only holds its AI; no C0B2 list and no B05E cue
+    // play at spawn (those belong to 0xB330 death). Completion must still
+    // follow each actor's own delay.
     const auto maximum_entry_delay = *std::max_element(
         production_seed->actor_entry_delays.begin(),
         production_seed->actor_entry_delays.end());
+    const auto completed_count = [&field_scene]() {
+        std::size_t count = 0U;
+        for (std::uint16_t order = 0U; order < 2U; ++order) {
+            if (field_scene.default_actor_transition_complete_for_dump(order) ==
+                std::optional<bool>{true}) {
+                ++count;
+            }
+        }
+        return count;
+    };
     bool entry_heartbeat_cadence_matches = true;
     for (std::uint16_t service_pass = 1U;
          service_pass <=
@@ -2084,21 +2221,17 @@ int run_field_random_encounter_spawn_qa(
          ++service_pass) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
-        const auto expected_started = static_cast<std::size_t>(
+        const auto expected_complete = static_cast<std::size_t>(
             std::count_if(
                 production_seed->actor_entry_delays.begin(),
                 production_seed->actor_entry_delays.end(),
                 [service_pass](const std::uint8_t delay) {
                     return delay < service_pass;
                 }));
-        const auto current_audio_count = field_audio_events.size() -
-                                         production_audio_start;
         entry_heartbeat_cadence_matches =
             entry_heartbeat_cadence_matches &&
-            field_scene.default_actor_transition_started_count_for_dump() ==
-                expected_started &&
-            current_audio_count == expected_started &&
-            std::all_of(
+            completed_count() == expected_complete &&
+            std::none_of(
                 field_audio_events.begin() + static_cast<std::ptrdiff_t>(
                     production_audio_start),
                 field_audio_events.end(), [](const std::uint16_t event) {
@@ -2115,14 +2248,10 @@ int run_field_random_encounter_spawn_qa(
     const auto production_entry_audio_count = field_audio_events.size() -
                                               production_audio_start;
     if (!production_entry_cue_frame_saved ||
-        production_entry_audio_count != 2U ||
-        field_audio_events[production_audio_start] != 0x002EU ||
-        field_audio_events[production_audio_start + 1U] != 0x002EU ||
-        field_scene.default_actor_transition_started_count_for_dump() !=
-            2U ||
+        completed_count() != 2U ||
         !entry_heartbeat_cadence_matches ||
         !field_hud_chrome_survives(production_entry_cue_frame, asset_root)) {
-        std::cerr << "field random-encounter QA: two Weenr B05E entry cues did not follow their per-actor delays"
+        std::cerr << "field random-encounter QA: live-spawn entry delays or spawn silence diverged"
                   << " audio_count=" << production_entry_audio_count
                   << " transitions_started="
                   << field_scene.default_actor_transition_started_count_for_dump();
@@ -2135,6 +2264,46 @@ int run_field_random_encounter_spawn_qa(
             std::cerr << " failure=" << field_scene.failure();
         }
         std::cerr << '\n';
+        return 3;
+    }
+
+    // Map-edge scroll: the camera follow stops at scene-profile word 4
+    // (scene 2: 0x6700 -> 1648 px = image_width 1920 - 272). The map must
+    // scroll with the same camera the actors are projected from; a map-side
+    // clamp to width-320 left it 48 px behind and actors slid against it.
+    const auto& edge_profile = field_scene.state().field_scene_buffers.profile;
+    const auto edge_camera_x = edge_profile.size() > 4U ? edge_profile[4] : 0U;
+    const auto edge_camera_y = field_scene.state().field_scene_buffers.camera_y;
+    field_scene.set_field_camera_world_position_for_dump(edge_camera_x,
+                                                         edge_camera_y);
+    const auto edge_frame = render_qa_field(field_scene, true);
+    const QImage edge_map = field_scene.field_map_for_dump().convertToFormat(
+        QImage::Format_RGB32);
+    const int edge_origin_x = static_cast<int>(edge_camera_x >> 4U);
+    const int edge_origin_y = static_cast<int>(edge_camera_y >> 4U);
+    std::size_t edge_samples = 0U;
+    std::size_t edge_matches = 0U;
+    for (int y = 0; y < kSceneHeight; y += 2) {
+        for (int x = 0; x < 272; x += 2) {
+            const int map_x = edge_origin_x + x;
+            const int map_y = edge_origin_y + y;
+            if (map_x >= edge_map.width() || map_y >= edge_map.height()) {
+                continue;
+            }
+            ++edge_samples;
+            edge_matches += edge_frame.pixel(x, y) == edge_map.pixel(map_x, map_y);
+        }
+    }
+    const auto edge_match_percent =
+        edge_samples == 0U ? 0U : edge_matches * 100U / edge_samples;
+    if (edge_camera_x != 0x6700U || edge_samples == 0U ||
+        edge_match_percent < 90U ||
+        !edge_frame.save(QString::fromStdWString(
+            (output / "map-edge-scroll.bmp").wstring()))) {
+        std::cerr << "field random-encounter QA: map did not scroll with the "
+                     "actor camera at the profile edge camera_x=0x"
+                  << std::hex << edge_camera_x << std::dec
+                  << " match=" << edge_match_percent << "%\n";
         return 3;
     }
 
@@ -2176,9 +2345,7 @@ int run_field_random_encounter_spawn_qa(
     std::cout << "} runner="
               << field_scene.field_entity_world_position().x << ','
               << field_scene.field_entity_world_position().y
-              << " viewport_world_origin="
-              << field_scene.state().field_scene_buffers.camera_x << ','
-              << field_scene.state().field_scene_buffers.camera_y
+              << " map_edge_scroll_match=" << edge_match_percent << '%'
               << " target_selected=" << *selected_actor_after_release
               << " visible_fixture_actor_count=" << visible_fixture_count
               << " creature_walk_frames="
@@ -2217,7 +2384,7 @@ int run_field_random_encounter_spawn_qa(
                      production_seed->actor_entry_delays[0])
               << ',' << static_cast<unsigned>(
                      production_seed->actor_entry_delays[1])
-              << ",entry_cues:2x0x2E} "
+              << ",spawn_death_cues:0} "
               << " artifacts=" << output.string() << '\n';
     return 0;
 }
@@ -3414,6 +3581,9 @@ int run_field_scene26_maglock_descriptor_route_qa(
                   << ", probes=" << static_cast<unsigned>(
                          movement.negative_probe_count)
                   << ", panel=" << field_scene.field_interaction_open()
+                  << ", alarm=" << field_scene.field_alarm_active_for_dump()
+                  << ", activity_actors="
+                  << field_scene.world_activity_script_actor_count_for_dump()
                   << ")\n";
         return 3;
     }
@@ -4154,7 +4324,23 @@ int run_scene2_event9_gang_contract_entry_qa(
     // rectangle occupies the south half of that wall; approach from the open
     // row below it with ordinary Up input, as the ROM collision map requires.
     field_scene.set_field_entity_world_position_for_dump(0x6900U, 0x4A00U);
-    field_scene.set_field_camera_world_position_for_dump(0x6900U, 0x4A00U);
+    {
+        // Scene profile words 4/5 are the camera maxima (scene 2: 0x6700,
+        // 0x4400). The ROM camera never exceeds them, so clamp the fixture.
+        const auto& profile = field_scene.state().field_scene_buffers.profile;
+        if (profile.size() < 6U) {
+            std::cerr << "Scene-2 event-9 gang-contract QA: no scene profile\n";
+            return 3;
+        }
+        const auto camera_x = static_cast<std::uint16_t>(
+            std::min<std::uint32_t>(0x6900U, profile[4]));
+        const auto camera_y = static_cast<std::uint16_t>(
+            std::min<std::uint32_t>(0x4A00U, profile[5]));
+        field_scene.set_field_camera_world_position_for_dump(camera_x,
+                                                             camera_y);
+        std::cout << "gang_contract_fixture_camera=0x" << std::hex
+                  << camera_x << ",0x" << camera_y << std::dec << '\n';
+    }
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
     const auto save = [&render, &output](const std::string_view name) {
         const auto image = render();
@@ -4539,6 +4725,9 @@ int run_field_scene26_event1_terminal_qa(
     };
 
     const auto physical_route_output = output / "scene26-physical-route";
+    // Hold the unrelated alarm service off for this route-only fixture [H].
+    // The Scene 21 integration QA exercises alarm raising and clearing [C].
+    field_scene.set_field_alarm_disabled_for_dump(true);
     if (run_field_scene26_maglock_descriptor_route_qa(
             field_scene, asset_root, physical_route_output,
             field_audio_events, source_boundaries) != 0) {
@@ -7114,6 +7303,8 @@ int run_field_scene20_physical_entry_qa(
     if (!record_actor_animation(0U)) {
         return 3;
     }
+    const auto actor_visible_at_entry =
+        field_scene.visible_default_actor_count_for_dump();
     QImage actor_frame_8;
     QImage actor_frame_30;
     QImage actor_frame_40;
@@ -7136,7 +7327,7 @@ int run_field_scene20_physical_entry_qa(
     }
     if (field_scene.default_actor_transition_started_count_for_dump() != 7U) {
         std::cerr << "Scene-20 physical-entry QA: the seven allocated default "
-                     "actors did not enter their finite behavior animation "
+                     "actors did not go live (think timer started) "
                      "within 30 ticks\n";
         return 3;
     }
@@ -7145,8 +7336,11 @@ int run_field_scene20_physical_entry_qa(
         ++frame;
     }
     if (field_scene.default_actor_transition_complete_count_for_dump() != 7U ||
-        actor_audio_event_count(0x2EU) <= actor_audio_2e_at_entry ||
-        actor_audio_event_count(0x2FU) <= actor_audio_2f_at_entry ||
+        // Default-list actors spawn live (9304db25): ROM 0x4618 runs 0x5A56/
+        // 0x5FDC/0x600E on the current pose list, and the 0x2E/0x2F death
+        // cues (B05E[kind]) are sent only by 0xB350 inside 0xB330 [C].
+        actor_audio_event_count(0x2EU) != actor_audio_2e_at_entry ||
+        actor_audio_event_count(0x2FU) != actor_audio_2f_at_entry ||
         field_scene.dialogue_open() || field_scene.command_overview_open() ||
         field_scene.field_interaction_open() || field_scene.shop_menu_open() ||
         !record_actor_animation(40U)) {
@@ -7157,11 +7351,15 @@ int run_field_scene20_physical_entry_qa(
     }
     actor_frame_40 = render();
     if (!save_image("scene20-frame-40", actor_frame_40) ||
-        actor_frame_30 == scene20_image || actor_frame_8 == actor_frame_30 ||
-        actor_frame_30 != actor_frame_40) {
-        std::cerr << "Scene-20 physical-entry QA: the actor pose sequence did "
-                     "not change the full-screen pixels by frame 30 and then "
-                     "hold its terminal frame without leaving stale graphics\n";
+        actor_visible_at_entry == 0U ||
+        field_scene.visible_default_actor_count_for_dump() <
+            actor_visible_at_entry) {
+        // Only visibility is pinned: every 0x62AC IDLE list is one frame, so
+        // live actors add no pixel change, and after 0x14 frames they may
+        // start 0x13904 think paths (patrol); a pixel sequence is not a ROM
+        // fact. No spawn-time death means none may vanish.
+        std::cerr << "Scene-20 physical-entry QA: live default actors were "
+                     "not drawn at entry or vanished by frame 40\n";
         return 3;
     }
 
@@ -7183,8 +7381,10 @@ int run_field_scene20_physical_entry_qa(
             field_scene.visible_default_actor_count_for_dump() != 2U ||
             field_scene.default_actor_transition_complete_count_for_dump() !=
                 7U ||
-            order_3_frame != std::optional<std::uint8_t>{1U} ||
-            order_4_frame != std::optional<std::uint8_t>{1U} ||
+            // Every 0x62AC IDLE list (pose 0x00) has one frame [C]; the old
+            // pin of 1 was the DEATH list's terminal frame.
+            order_3_frame != std::optional<std::uint8_t>{0U} ||
+            order_4_frame != std::optional<std::uint8_t>{0U} ||
             actor_audio_event_count(0x2EU) != actor_audio_2e_after_entry ||
             actor_audio_event_count(0x2FU) != actor_audio_2f_after_entry ||
             field_scene.dialogue_open() ||
@@ -21650,6 +21850,13 @@ int run_field_penumbra_mako_qa(
         return 3;
     }
 
+    // The four list actors spawn live (combat-fixes-1); FFE177 counts them
+    // down only as each one dies (0xAB02). Stand in for the fight.
+    if (field_scene.defeat_mako_actor_list_for_qa() != 4U) {
+        std::cerr << "Club Penumbra Mako QA: could not defeat the four list "
+                     "actors\n";
+        return 3;
+    }
     for (std::uint16_t frame = 0U;
          frame < 900U && !contains("On the floor, Mako lies unconscious");
          ++frame) {
@@ -27644,6 +27851,7 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_gang_contract_target_entry_qa_path;
         std::optional<std::filesystem::path> field_transition_qa_path;
+        std::optional<std::filesystem::path> field_alarm_qa_path;
         std::optional<std::filesystem::path> field_world_activity_qa_path;
         std::optional<std::filesystem::path> field_party_wipe_qa_path;
         bool field_audio_qa = false;
@@ -27953,6 +28161,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_transition_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-alarm-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_alarm_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-terrain-mark-qa" &&
@@ -29861,7 +30075,11 @@ int main(int argc, char** argv) {
                 field_scene.set_field_world_frame_counter_for_dump(0x0200U);
             }
             const auto bootstrapped =
-                (field_wylie_gala_inn_qa_path.has_value() ||
+                field_alarm_qa_path.has_value()
+                    ? field_scene.bootstrap_for_scene_dump(
+                          smoke_state, static_cast<std::uint16_t>(
+                              srx::FieldAlarmRomLayout::FIRST_LIST_SCENE))
+                    : ((field_wylie_gala_inn_qa_path.has_value() ||
                  field_penumbra_mako_qa_path.has_value() ||
                  field_penumbra_reputation_rejection_qa_path.has_value() ||
                  field_penumbra_doorman_later_qa_path.has_value() ||
@@ -29879,7 +30097,7 @@ int main(int argc, char** argv) {
                            field_sinsearach_gate_paid_physical_entry_qa_path
                                .has_value()
                        ? field_scene.bootstrap_for_scene_dump(smoke_state, 9U)
-                       : field_scene.bootstrap(smoke_state));
+                       : field_scene.bootstrap(smoke_state)));
             if (!bootstrapped) {
                 std::cerr << "field smoke: " << field_scene.failure() << '\n';
                 return 3;
@@ -33254,6 +33472,11 @@ int main(int argc, char** argv) {
                 return run_field_world_effect_repaint_qa(
                     field_scene, *field_world_effect_repaint_qa_path);
             }
+            if (field_alarm_qa_path.has_value()) {
+                return run_field_alarm_qa(
+                    field_scene, *field_alarm_qa_path, asset_root,
+                    field_audio_events, field_audio_stops);
+            }
             if (field_terrain_mark_qa_path.has_value()) {
                 return run_field_terrain_mark_qa(
                     field_scene, *field_terrain_mark_qa_path);
@@ -36542,10 +36765,10 @@ int main(int argc, char** argv) {
                     const auto runner_action_path =
                         field_hospital_menu_dump_path->parent_path() /
                         "runner-action-return.bmp";
-                    // A clean build tree has no output directory yet; the
-                    // final dump below creates it too late for this image.
-                    std::filesystem::create_directories(
-                        runner_action_path.parent_path());
+                    if (runner_action_path.has_parent_path()) {
+                        std::filesystem::create_directories(
+                            runner_action_path.parent_path());
+                    }
                     if (!runner_action_scene.save(QString::fromStdWString(
                             runner_action_path.wstring()))) {
                         std::cerr << "hospital menu dump: could not write runner-action-return.bmp\n";

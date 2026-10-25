@@ -170,6 +170,12 @@ void FieldInteractionRuntime::set_script_runtime(
     script_runtime_ = runtime;
 }
 
+void FieldInteractionRuntime::set_security_alarm_callbacks(
+    SecurityAlarmRaiseCallback raise, SecurityAlarmClearCallback clear) {
+    security_alarm_raise_callback_ = std::move(raise);
+    security_alarm_clear_callback_ = std::move(clear);
+}
+
 bool FieldInteractionRuntime::open(
     const MovementModeTransitionContinuation continuation,
     const std::uint16_t scene_id, const std::uint16_t world_mode,
@@ -542,6 +548,11 @@ bool FieldInteractionRuntime::party_has_item(
 }
 
 void FieldInteractionRuntime::begin_security_alert() {
+    if (security_alarm_raise_callback_) {
+        security_alarm_raise_callback_();
+        alert_latched_ = true;
+        return;
+    }
     const auto action = begin_world_effect_transition(
         *alert_transition_state_, *alert_timeout_state_,
         [this](const std::uint16_t sound_id) {
@@ -565,9 +576,14 @@ void FieldInteractionRuntime::begin_security_alert() {
                      action == WorldEffectTransitionAction::started;
 }
 
-void FieldInteractionRuntime::finish_security_alert() {
+void FieldInteractionRuntime::finish_security_alert(const bool disable_alarm) {
     alert_latched_ = false;
     alert_transition_state_->transition_latched = false;
+    if (security_alarm_clear_callback_) {
+        security_alarm_clear_callback_(disable_alarm);
+        security_alarm_disabled_ = security_alarm_disabled_ || disable_alarm;
+        return;
+    }
     if (source_audio_stop_callback_) {
         // ROM 0x1E09A sends sound 0x30 through 0x530D2's stop-resource path.
         source_audio_stop_callback_(
@@ -704,12 +720,10 @@ void FieldInteractionRuntime::dispatch_command(
             finish_security_alert();
             build_result_prompt(TextKey::security_alarm_disabled);
         } else if (successes < 3U) {
-            finish_security_alert();
-            security_alarm_disabled_ = true;
+            finish_security_alert(true);
             build_result_prompt(TextKey::security_system_disabled);
         } else {
-            finish_security_alert();
-            security_alarm_disabled_ = true;
+            finish_security_alert(true);
             build_result_prompt(TextKey::security_files);
             if (security_floor_index_.has_value() &&
                 *security_floor_index_ < 6U) {

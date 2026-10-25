@@ -9,6 +9,19 @@ local SpellEffectKind = E.SpellEffectKind
 local SpellTuning = E.SpellTuning
 local SoundId = E.SoundId
 
+-- ROM 0x490A spell-callback table: the callbacks for action codes 1 (0x521E),
+-- 2 (0x5152), 8 (0x508A) and 9 (0x4FE2) call 0xB0AC / 0xB0E4 instead of
+-- 0xAFF2 when the spell changed the target's +0x4C to zero. 0xB0AC selects
+-- pose 0xE0, 0xB0E4 pose 0xE4. Code 2's caller (0x51C8) skips kind 0xF.
+-- [H: codes are E.SpellType + 1 (code 12 = heal), i.e. flame dart/bolt and
+-- mana zap/blast; the names are not traced.]
+local SpellDeath = {
+    [1] = { pose = E.ActorPose.SPELL_DEATH_E0 },
+    [2] = { pose = E.ActorPose.SPELL_DEATH_E0, excluded_kind = E.SpriteType.THON },
+    [8] = { pose = E.ActorPose.SPELL_DEATH_E4 },
+    [9] = { pose = E.ActorPose.SPELL_DEATH_E4 },
+}
+
 local function signed_byte(value)
     value = value & 0xff
     return value >= 0x80 and value - 0x100 or value
@@ -37,7 +50,7 @@ local function command_average(record)
                    record.command_attribute_7c) & 0xff
     local value = total >> 1
     for slot = 1, 8 do
-        if record.item_codes[slot] == 0x28 then
+        if record.item_codes[slot] == E.ItemId.COMBAT_SENSE_SPELL_LOCK then
             return (value + record.item_phases[slot]) & 0xff
         end
     end
@@ -53,7 +66,7 @@ local function item18_skill_value(record)
     -- 0x55F02 scans slots 6..0; possession cell 7 is reserved for the
     -- separate special-item modifier path at 0x104F6.
     for slot = 7, 1, -1 do
-        if record.item_codes[slot] == 0x18 then
+        if record.item_codes[slot] == E.ItemId.POWER_FOCUS then
             return add_source_byte_to_word(
                 value, record.item_phases[slot])
         end
@@ -62,7 +75,7 @@ local function item18_skill_value(record)
 end
 
 local function action_phase_modifier(value, record, action_code)
-    local item_code = action_code + 0x18
+    local item_code = action_code + E.ItemId.POWER_FOCUS
     -- The ROM scans only possession cells 6..0 for the action phase.
     for slot = 7, 1, -1 do
         if record.item_codes[slot] == item_code then
@@ -72,7 +85,8 @@ local function action_phase_modifier(value, record, action_code)
     end
 
     local slot_item_code = record.item_codes[8]
-    if slot_item_code < 0x29 or slot_item_code > 0x2b then
+    if slot_item_code < E.ItemId.RAT_TOTEM or
+       slot_item_code > E.ItemId.BEAR_TOTEM then
         return value
     end
     local magic = game.modules.magic
@@ -158,16 +172,19 @@ local function thresholded_rolls(count, difficulty, random_bound)
 end
 
 local function condition_modifier(difficulty, attacker, target)
-    local has_cyberware = (attacker.cyberware_flags & 0x0002) ~= 0
+    local has_cyberware =
+        (attacker.cyberware_flags & E.CyberwareMask.CYBEREYES) ~= 0
     if has_cyberware then
         difficulty = difficulty - 1
     end
-    if target.class_code == 0x16 then
+    if target.class_code == E.CombatTargetClass.DIFFICULTY_PLUS_TWO then
         return difficulty + 2
     end
-    if has_cyberware or attacker.race_or_state == 0x04 or
-       attacker.race_or_state == 0x02 or
-       (target.interaction_flags & 0x80) == 0 then
+    if has_cyberware or
+       attacker.race_or_state == E.ActorRaceOrState.CONDITION_BONUS_EXEMPT_04 or
+       attacker.race_or_state == E.ActorRaceOrState.CONDITION_BONUS_EXEMPT_02 or
+       (target.interaction_flags &
+        E.CombatInteractionFlag.NO_COVERAGE_DIFFICULTY_BONUS) == 0 then
         return difficulty
     end
     return difficulty + 4
@@ -204,11 +221,11 @@ local function ready_party_bonus(context)
     for _, candidate in ipairs(context.ai_target_candidates or {}) do
         local record = candidate.combatant
         if not candidate.world_activity_actor and type(record) == "table" and
-           (record.source_flags & 0x01) ~= 0 and
+           (record.source_flags & E.ActorStatus.ACTIVE) ~= 0 and
            signed_byte(record.class_code) <= 1 then
             local item18 = record.item18_base
             for slot = 7, 1, -1 do
-                if record.item_codes[slot] == 0x18 then
+                if record.item_codes[slot] == E.ItemId.POWER_FOCUS then
                     item18 = (item18 + record.item_phases[slot]) & 0xff
                     break
                 end
@@ -224,8 +241,9 @@ end
 
 local function dynamic_status_modifier(difficulty, attacker, linked, context)
     local flags = attacker.action_profile_modifier_flags
-    local primary = (flags & 0x01) ~= 0
-    local secondary = not primary and (flags & 0x02) ~= 0
+    local primary = (flags & E.CombatActionProfileFlag.PRIMARY) ~= 0
+    local secondary = not primary and
+        (flags & E.CombatActionProfileFlag.SECONDARY) ~= 0
     if not primary and not secondary then
         return difficulty
     end
@@ -279,7 +297,7 @@ local function dynamic_status_modifier(difficulty, attacker, linked, context)
     if remaining <= 0 then
         return difficulty
     end
-    if (flags & 0x02) ~= 0 then
+    if (flags & E.CombatActionProfileFlag.SECONDARY) ~= 0 then
         remaining = math.floor(remaining / 2)
     end
     return difficulty + remaining
@@ -298,7 +316,8 @@ local function secondary_armor_modifier(target)
 end
 
 local function defense_modifier(value, attacker)
-    if (attacker.interaction_flags & 0x20) ~= 0 then
+    if (attacker.interaction_flags &
+        E.CombatInteractionFlag.DEFENSE_DIFFICULTY_REDUCTION) ~= 0 then
         return value - 2
     end
     for slot = 1, 8 do
@@ -325,7 +344,7 @@ local function adjusted_meters(record, physical, damage, context)
             return physical_meter, mental_meter
         end
         local function advance_delay(delta)
-            if (record.source_flags & 0x01) == 0 then
+            if (record.source_flags & E.ActorStatus.ACTIVE) == 0 then
                 physical_meter = 0
                 return
             end
@@ -339,7 +358,7 @@ local function adjusted_meters(record, physical, damage, context)
         if physical then
             advance_delay(-damage)
         else
-            if (record.source_flags & 0x01) == 0 then
+            if (record.source_flags & E.ActorStatus.ACTIVE) == 0 then
                 mental_meter = 0
             else
                 local updated = add_source_byte(mental_meter, -damage)
@@ -410,7 +429,7 @@ local function publish_player_hurt_event(target, defender, physical_meter,
 end
 
 local function commit_combatant_meters(target, defender, physical_meter,
-                                      mental_meter, source_flags)
+                                      mental_meter, source_flags, spell_death)
     if type(source_flags) == "number" then
         defender.source_flags = source_flags & 0xff
     end
@@ -435,6 +454,9 @@ local function commit_combatant_meters(target, defender, physical_meter,
         state.incoming_hit = {
             physical_meter = physical_meter,
             mental_meter = mental_meter,
+            spell_death_pose = physical_meter == 0 and spell_death ~= nil and
+                spell_death.excluded_kind ~= defender.record_type and
+                spell_death.pose or nil,
         }
     end
     publish_player_hurt_event(
@@ -633,7 +655,7 @@ local function resolve_spell_action(context, target, allow_untargeted)
     if residual <= 0 then
         if attacker.mental_meter == 0 then
             result.behavior_meter_delta = 1
-            if (attacker.source_flags & 0x01) ~= 0 then
+            if (attacker.source_flags & E.ActorStatus.ACTIVE) ~= 0 then
                 attacker.mental_meter = math.min(
                     attacker.mental_meter + result.behavior_meter_delta, 10)
             else
@@ -651,7 +673,7 @@ local function resolve_spell_action(context, target, allow_untargeted)
     result.inventory_changed = inventory_changed
     if consumption == "fetish_exhausted" and attacker.mental_meter == 0 then
         result.behavior_meter_delta = 1
-        if (attacker.source_flags & 0x01) ~= 0 then
+        if (attacker.source_flags & E.ActorStatus.ACTIVE) ~= 0 then
             attacker.mental_meter = math.min(
                 attacker.mental_meter + result.behavior_meter_delta, 10)
         else
@@ -721,11 +743,15 @@ function Combat.resolve_spell_impact(context, pending, target)
         if heal_amount <= 0 then
             heal_amount = 1
         end
-        local next_flags = (defender.source_flags & 0xaf) | 0x01
-        local physical_meter = (defender.source_flags & 0x01) ~= 0
+        local next_flags = (defender.source_flags &
+                            ~(E.ActorStatus.DOWN | E.ActorStatus.DEAD)) |
+                           E.ActorStatus.ACTIVE
+        local physical_meter =
+            (defender.source_flags & E.ActorStatus.ACTIVE) ~= 0
             and math.min(defender.physical_meter + heal_amount, 10) or 0
         local mental_meter = defender.mental_meter
-        if mental_meter == 0 and (next_flags & 0x01) ~= 0 then
+        if mental_meter == 0 and
+           (next_flags & E.ActorStatus.ACTIVE) ~= 0 then
             mental_meter = math.min(mental_meter + 1, 10)
         end
         result.physical_meter = physical_meter
@@ -745,7 +771,8 @@ function Combat.resolve_spell_impact(context, pending, target)
     -- against +0x9B == 0x17. It supplies D4/D6 but inherits D5 from its
     -- caller; keep that path explicit until the effect callback's D5 input
     -- is traced rather than assigning it an invented spell strength.
-    if pending.action_code <= 3 and defender.race_or_state == 0x17 then
+    if pending.action_code <= 3 and
+       defender.race_or_state == E.ActorRaceOrState.SPELL_SPECIAL_TARGET then
         result.outcome = "source_special_target_path"
         result.target_trial_count = 12
         result.difficulty = 2
@@ -803,7 +830,8 @@ function Combat.resolve_spell_impact(context, pending, target)
     result.physical_meter = physical_meter
     result.mental_meter = mental_meter
     result.changed = commit_combatant_meters(
-        target, defender, physical_meter, mental_meter)
+        target, defender, physical_meter, mental_meter, nil,
+        SpellDeath[pending.action_code])
     result.outcome = result.changed and "effect_applied" or "effect_no_change"
     return result
 end
@@ -892,8 +920,10 @@ function Combat.resolve_reaction(context, target)
         return nil
     end
 
-    local direct_physical = (attacker.cyberware_flags & 0x0008) ~= 0
-    local physical_penalty = (attacker.cyberware_flags & 0x0004) ~= 0
+    local direct_physical =
+        (attacker.cyberware_flags & E.CyberwareMask.SPURS) ~= 0
+    local physical_penalty =
+        (attacker.cyberware_flags & E.CyberwareMask.HAND_RAZORS) ~= 0
     if not direct_physical and physical_penalty then
         remaining = subtract_source_byte(remaining, 2)
         if signed_byte(remaining) <= 0 then
@@ -958,23 +988,23 @@ local function weapon_action_eligibility(difficulty, attacker,
     end
     if action_code >= 8 and action_code <= 10 then
         difficulty = difficulty + 3
-        if (phase & 0x10) ~= 0 then
+        if (phase & E.WeaponActionPhaseFlag.ACTION_DIFFICULTY_MINUS_TWO) ~= 0 then
             difficulty = difficulty - 2
-        elseif (phase & 0x20) ~= 0 then
+        elseif (phase & E.WeaponActionPhaseFlag.ACTION_DIFFICULTY_MINUS_THREE) ~= 0 then
             difficulty = difficulty - 3
         end
     end
-    if (phase & 0x08) ~= 0 then
+    if (phase & E.WeaponActionPhaseFlag.ACTION_DIFFICULTY_MINUS_ONE) ~= 0 then
         difficulty = difficulty - 1
     end
-    if (phase & 0x01) == 0 then
+    if (phase & E.WeaponActionPhaseFlag.CYBERWARE_DIFFICULTY_BONUS) == 0 then
         return difficulty
     end
-    if (attacker.cyberware_flags & 0x0010) ~= 0 then
+    if (attacker.cyberware_flags & E.CyberwareMask.SMARTLINK) ~= 0 then
         return difficulty - 2
     end
     for slot = #attacker.item_codes, 1, -1 do
-        if attacker.item_codes[slot] == 0x16 then
+        if attacker.item_codes[slot] == E.ItemId.SMART_GOGGLES then
             return difficulty - 1
         end
     end

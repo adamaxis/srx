@@ -12,12 +12,29 @@ local BehaviorFlag = R.BehaviorFlag   -- from actor/tables.lua
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
 local ActorFlag = R.ActorFlag   -- from actor/tables.lua
 local EntityMotionDistanceBounds = R.EntityMotionDistanceBounds   -- from actor/tables.lua
-local EntryAudioEventByKind = R.EntryAudioEventByKind   -- from actor/tables.lua
 local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
 local profiles = R.profiles   -- from actor/tables.lua
 local ActorProfileCatalog = require("data.actor_profiles")
 local source_close_range_threshold = R.source_close_range_threshold   -- from actor/tables.lua
 local target_motion_reacquire_updates = R.target_motion_reacquire_updates   -- from actor/tables.lua
+
+-- ROM 0x13874 selects the two pointer-list refreshes from FFDFE8 and
+-- FFDF88. Return world-list and runner-list decisions in that order [C].
+function R.should_rebuild_target_lists(frame_counter, display_service_word)
+    if type(frame_counter) ~= "number" or frame_counter % 1 ~= 0 or
+       frame_counter < 0 or frame_counter > AiTuning.WORD_MAX or
+       type(display_service_word) ~= "number" or
+       display_service_word % 1 ~= 0 or display_service_word < 0 or
+       display_service_word > AiTuning.WORD_MAX then
+        return nil
+    end
+    if display_service_word ~= 0 then
+        return true, true
+    end
+    local phase = frame_counter & AiTuning.TARGET_LIST_PHASE_MASK
+    return phase == AiTuning.WORLD_TARGET_LIST_PHASE,
+           phase == AiTuning.RUNNER_TARGET_LIST_PHASE
+end
 
 local function direction_from_heading(heading)
     -- ROM 0xB36A rotates the heading three bits, rounds signed values upward,
@@ -79,7 +96,6 @@ local function dynamic_encounter_profile(context)
         controls_movement = source_actor_profile.controls_movement,
         dynamic_encounter_only =
             source_actor_profile.dynamic_encounter_only,
-        entry_audio_event = source_actor_profile.entry_sound,
         source_profile = source_actor_profile,
     }
 end
@@ -105,7 +121,7 @@ end
 
 local function target_is_eligible(candidate, world_actor_pool)
     if type(candidate) ~= "table" or type(candidate.id) ~= "string" or
-       candidate.id == "" or candidate.has_action ~= true or
+       candidate.id == "" or candidate.projected_y_nonzero ~= true or
        (candidate.service_flags & ActorStatus.ACTIVE) == 0 or
        (candidate.service_flags & ActorStatus.DEAD) ~= 0 or
        (candidate.service_flags & ActorStatus.DOWN) ~= 0 then
@@ -294,6 +310,7 @@ local function initial_state(context, profile)
         action_kind = context.action_kind,
         action_code = context.action_code,
         source_record_flags = context.source_record_flags or 0,
+        source_spawn_state_flags = context.source_spawn_state_flags or 0,
         source_physical_meter = context.source_physical_meter,
         source_record_slot = context.source_record_slot,
         source_behavior_flags = context.source_behavior_flags or 0,
@@ -312,7 +329,6 @@ local function initial_state(context, profile)
         weapon_item_id = profile.weapon_item_id,
         direction = direction_from_heading(context.initial_heading),
         entry_delay = context.entry_delay,
-        entry_frame_count = context.entry_animation_frame_count,
         source_interaction_flags = context.source_interaction_flags or 0,
         behavior_timer = 0,
         animation_id = "idle",
@@ -320,19 +336,7 @@ local function initial_state(context, profile)
         animation_accumulator = 0,
         animation_increment = 0,
         animation_timing_word = 0,
-        walk_animation_frame_count = context.walk_animation_frame_count or 0,
-        action_animation_frame_count =
-            context.action_animation_frame_count or 0,
-        action_animation_increment =
-            context.action_animation_increment or 0,
-        action_animation_threshold =
-            context.action_animation_threshold or 0,
-        action_animation_audio_event =
-            context.action_animation_audio_event,
         action_animation_complete = false,
-        item_action_frame_count = context.item_action_frame_count or 0,
-        item_action_increment = context.item_action_increment or 0,
-        item_action_threshold = context.item_action_threshold or 0,
         item_action_complete = false,
         damage_reaction_active = false,
         damage_reaction_animation_complete = false,
@@ -417,7 +421,8 @@ local function initial_state(context, profile)
         state.animation_selector = animation.selector
         state.animation_frame = animation.frame
         state.animation_accumulator = animation.accumulator
-        state.animation_increment = E.HitSpark.FRAME_INCREMENT
+        state.animation_increment = R.Animator.list(
+            E.SpriteType.HIT_SPARK, E.HitSpark.SELECTOR).rate
         state.animation_period = animation.period
         state.animation_frame_count = animation.frame_count
         state.hit_spark_retired = false

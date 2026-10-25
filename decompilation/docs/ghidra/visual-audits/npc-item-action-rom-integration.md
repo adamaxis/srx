@@ -25,11 +25,10 @@ service.
 
 The ROM row is retained in
 [`dynamic-world-activity-actors.tsv`](../../../assets/field/entities/dynamic-world-activity-actors.tsv).
-The offline graphics importer exports named directional item-action frames
-and their per-stem cadence in
-[`actor-item-action-profiles.tsv`](../../../assets/field/entities/actor-item-action-profiles.tsv).
-The executable loads those files directly; it does not decode ROM data while
-running.
+The offline graphics importer exports named directional item-action frames.
+Lua reads each kind's `C042` count and increment from the generated
+`data/actor_anim_lists.lua`; the executable loads the named images directly and
+does not decode ROM data while running.
 
 ## Connected behavior
 

@@ -85,31 +85,6 @@ local walk_pose_selectors = {
 local ItemAction = {
     max_power_heavy_pistol = 6,
 }
--- ROM 0xB330 indexes the word table at 0xB05E by entity kind. These are
--- source audio requests; some table-2 slots are confirmed silent/no-op.
-local EntryAudioEventByKind = {
-    [0] = 0x40,
-    [1] = 0x40,
-    [2] = 0x40,
-    [3] = 0x2e,
-    [4] = 0x2f,
-    [5] = 0x2e,
-    [6] = 0x58,
-    [7] = 0x2e,
-    [8] = 0x2e,
-    [9] = 0x2e,
-    [10] = 0x58,
-    [11] = 0x2f,
-    [12] = 0x56,
-    [13] = 0x5a,
-    [14] = 0x5a,
-    [15] = 0x5a,
-}
-local ActorEntryCue = {
-    corp_guard = EntryAudioEventByKind[SpriteType.CORP_GUARD],
-    pedestrian = EntryAudioEventByKind[SpriteType.PEDESTRIAN],
-}
-
 local profiles = {
     ["corp_guard_k05_item06"] = {
         package_id = "corp_security.max_power_heavy_pistol",
@@ -117,14 +92,12 @@ local profiles = {
         action_kind = ActionKind.item,
         action_code = ItemAction.max_power_heavy_pistol,
         weapon_item_id = ItemAction.max_power_heavy_pistol,
-        entry_audio_event = ActorEntryCue.corp_guard,
     },
     ["pedestrian_k0b_none00"] = {
         package_id = "pedestrian.no_active_action",
         entity_kind = SpriteType.PEDESTRIAN,
         action_kind = ActionKind.none,
         action_code = 0,
-        entry_audio_event = ActorEntryCue.pedestrian,
     },
     ["field_runner_k03_none00"] = {
         package_id = "runner.field_controlled",
@@ -184,7 +157,6 @@ for profile_id, profile in pairs(profiles) do
     profile.source_profile = source_profile
     profile.entity_kind = source_profile.sprite_type
     profile.weapon_item_id = source_profile.weapon
-    profile.entry_audio_event = source_profile.entry_sound
     profile.controls_movement = source_profile.controls_movement
     profile.projectile_animation = source_profile.projectile
     profile.hit_spark_animation = profile_id == "field_hit_spark"
@@ -214,7 +186,5 @@ R.item_action_pose_selectors = item_action_pose_selectors
 R.idle_pose_selectors = idle_pose_selectors
 R.walk_pose_selectors = walk_pose_selectors
 R.ItemAction = ItemAction
-R.EntryAudioEventByKind = EntryAudioEventByKind
-R.ActorEntryCue = ActorEntryCue
 R.profiles = profiles
 return R

@@ -45,6 +45,40 @@ one context group and therefore the same nine outcome cells. The viewer groups
 the repeated scene contexts and summarizes known choice-dependent actor paths
 beside the complete selector tables below.
 
+### Field alarm state [C]
+
+The field tick at `0x1DE7C` calls the alarm routine at `0x1DFC4` after the
+scene-21-through-43 map-effect service. The alarm routine first decrements an
+active timer at `FFE11E`; a signed negative result enters clear helper `0x1E09A`.
+It then checks the security-terminal disable byte `FFE170`, requires
+`(FFDF88 & 0x3F) == 0x0D`, and accepts only a `0x0D44` random result below
+`0x8000`. The player's `FFFC04` position is converted to tile coordinates by
+shifting each axis right four bits. The scene profile pointer at `FFDE1E`
+contains the alarm rectangle list at `+0x0C`; each rectangle is four words
+`x_min, x_max, y_min, y_max`, terminated by a negative `x_min`. A hit uses
+exclusive lower and inclusive upper bounds on both axes.
+
+The rectangle and profile pointer values are extracted from the US ROM into
+`assets/field/field-alarm-profiles.tsv` and `field-alarm-regions.tsv`; their
+record addresses remain in the rows as provenance. The extraction source is
+`tools/rom_research/profile_field_world_effect_regions.py` [C]. The runtime
+uses those typed scene rectangles directly. A hit in scene `0x14` schedules
+the existing `0x1DBAA` timeout path and does not raise the alarm. Other scenes
+require field mode `2`; they load timer `0x960` even if the alarm was already
+active. A newly raised alarm sets `FFE16F`, starts sound `0x30`, clears bit 0
+of each of the seven actor records' `+0x9E` flags, and requests the scene
+profile's `+0x10` reinforcement list through `0x1E0DC`. The shared clear path
+clears `FFE16F`, promotes `+0x9E` bit 1 to bit 2 for those records, and stops
+sound `0x30`. A successful projected-terrain mark at `0x167D8` clears both
+`FFE16F` and `FFE170` without taking the alarm-clear side effects.
+
+The separate encounter selector called from `0x1E166` also changes while the
+alarm is active: it bypasses the `FFDF84` gate and uses the table at `0x1E20A`
+instead of `0x59986` [C]. That alarm-specific encounter table is not connected
+to the current typed encounter outcome seam [H], so this change ports the
+alarm state lifecycle and reinforcement request only; the alarm-specific
+random-encounter table remains a source boundary.
+
 ### Shared dice-pool check (`0x0DBA`)
 
 The ROM helper at `0x0DBA` takes a dice-pool count in `D6` and a target number

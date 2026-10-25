@@ -359,8 +359,23 @@ public:
     // Seeds a live encounter actor for deterministic field QA only.
     bool set_default_actor_physical_meter_for_dump(
         std::uint16_t source_order, std::uint8_t physical_meter) noexcept;
+    // QA stand-in for the fight: zero the +0x4C meter of every Club
+    // Penumbra Mako list member so 0xB330/0xAB02 run as in combat.
+    std::size_t defeat_mako_actor_list_for_qa() noexcept;
     bool open_command_overview_for_dump();
 #ifdef SHADOWRUN_QT_QA_DRIVER
+    bool field_alarm_active_for_dump() const noexcept {
+        return field_matrix_field_state_.alarm.value_or(false);
+    }
+    void set_field_alarm_disabled_for_dump(bool disabled) noexcept {
+        field_matrix_field_state_.security_off = disabled;
+    }
+    std::int16_t field_alarm_timer_for_dump() const noexcept {
+        return field_alarm_timer_;
+    }
+    void set_field_alarm_timer_for_dump(std::int16_t timer) noexcept {
+        field_alarm_timer_ = timer;
+    }
     bool dispatch_dialogue_service_for_dump(
         std::string_view service_id, std::string_view return_policy);
     // Start the source FFE166 party-wipe countdown for focused transition QA.
@@ -1528,7 +1543,7 @@ private:
     bool load_dynamic_world_actor_artwork(
         const ConversionAssetCatalog& catalog);
     void initialize_default_field_actors(std::uint16_t scene_reference);
-    void advance_default_field_actors();
+    void advance_default_field_actors(bool source_target_list_service);
     void resolve_default_actor_proximity(
         DefaultFieldActorPresentation& actor);
     void publish_pending_world_activity_script_actors(
@@ -1540,6 +1555,13 @@ private:
     bool apply_scripted_field_entity_target_selection(
         const std::optional<std::string>& selected_actor_id);
     void trigger_field_world_effect_sequence();
+    void advance_field_alarm(bool direct_raise = false,
+                             bool clear_alarm = false,
+                             bool disable_alarm = false,
+                             bool reset_alarm = false);
+    void apply_field_alarm_result(
+        const scripting::ScriptFieldAlarmResult& result,
+        std::uint16_t scene_reference);
     bool process_pending_story_world_effect_sequence();
     std::int16_t select_field_world_effect_sequence();
     void spawn_field_world_effect_sequence();
@@ -1772,9 +1794,6 @@ private:
         std::uint16_t source_animation_selector = 0;
         std::optional<scripting::ScriptActorItemSpawnResult>
             source_item_spawn_result;
-        std::uint8_t item_action_frame_count = 0;
-        std::uint16_t item_action_increment = 0;
-        std::uint16_t item_action_threshold = 0;
         scripting::ScriptCombatantFacts combatant{};
         std::optional<std::uint8_t> effect_slot;
         bool temporary_world_encounter = false;
@@ -1808,17 +1827,6 @@ private:
         bool movement_state_initialized = false;
         std::string ordered_overrides;
         std::uint8_t initial_behavior_delay = 0;
-        std::uint8_t entry_animation_frame_count = 2;
-        std::uint8_t walk_animation_frame_count = 0;
-        std::uint8_t action_animation_frame_count = 0;
-        std::uint16_t action_animation_increment = 0;
-        std::uint16_t action_animation_threshold = 0;
-        std::uint16_t action_animation_audio_event = 0;
-        std::uint8_t hurt_animation_frame_count = 0;
-        std::uint16_t hurt_animation_increment = 0;
-        std::uint16_t hurt_animation_threshold = 0;
-        std::uint16_t hurt_audio_event = 0;
-        std::uint16_t down_audio_event = 0;
         std::uint8_t animation_direction = 0;
         std::string animation_id = "idle";
         std::uint8_t animation_frame = 0;
@@ -1832,12 +1840,18 @@ private:
         std::array<QImage, 8> idle_images{};
         std::array<int, 8> idle_origin_x{};
         std::array<int, 8> idle_origin_y{};
-        std::array<QImage, 8> spell_images{};
-        std::array<int, 8> spell_origin_x{};
-        std::array<int, 8> spell_origin_y{};
-        std::array<std::array<QImage, 8>, 8> entry_images{};
-        std::array<std::array<int, 8>, 8> entry_origin_x{};
-        std::array<std::array<int, 8>, 8> entry_origin_y{};
+        std::array<std::vector<QImage>, 8> spell_images{};
+        std::array<std::vector<int>, 8> spell_origin_x{};
+        std::array<std::vector<int>, 8> spell_origin_y{};
+        std::vector<QImage> spell_death_e0_images{};
+        std::vector<int> spell_death_e0_origin_x{};
+        std::vector<int> spell_death_e0_origin_y{};
+        std::vector<QImage> spell_death_e4_images{};
+        std::vector<int> spell_death_e4_origin_x{};
+        std::vector<int> spell_death_e4_origin_y{};
+        std::array<std::vector<QImage>, 8> entry_images{};
+        std::array<std::vector<int>, 8> entry_origin_x{};
+        std::array<std::vector<int>, 8> entry_origin_y{};
         std::array<std::vector<QImage>, 8> walk_images{};
         std::array<std::vector<int>, 8> walk_origin_x{};
         std::array<std::vector<int>, 8> walk_origin_y{};
@@ -1850,20 +1864,6 @@ private:
         std::array<std::vector<QImage>, 8> hurt_images{};
         std::array<std::vector<int>, 8> hurt_origin_x{};
         std::array<std::vector<int>, 8> hurt_origin_y{};
-        std::uint8_t walk_frame_count = 0;
-        std::uint8_t entry_frame_count = 2;
-        std::uint8_t action_frame_count = 0;
-        std::uint16_t action_frame_increment = 0;
-        std::uint16_t action_frame_threshold = 0;
-        std::uint16_t action_audio_event = 0;
-        std::uint8_t item_action_frame_count = 0;
-        std::uint16_t item_action_increment = 0;
-        std::uint16_t item_action_threshold = 0;
-        std::uint8_t hurt_frame_count = 0;
-        std::uint16_t hurt_frame_increment = 0;
-        std::uint16_t hurt_frame_threshold = 0;
-        std::uint16_t hurt_audio_event = 0;
-        std::uint16_t down_audio_event = 0;
     };
 
     struct CreatureEffectArtwork {
@@ -2096,6 +2096,8 @@ private:
     // docs/24 R1: aliases the single ROM RNG word FFF9F8 shared with title/menus/Matrix (random_conversion.hpp).
     std::uint16_t& field_random_seed_ = source_random_seed();
     std::uint16_t field_world_frame_counter_ = 0U;
+    // ROM FFE11E and FFE170 are transient field alarm state [C].
+    std::int16_t field_alarm_timer_ = 0;
     std::uint32_t field_world_encounter_sequence_ = 0U;
     std::optional<SelectedInventoryItem>
         command_overview_selected_inventory_item_;
@@ -2240,6 +2242,11 @@ private:
     std::vector<std::array<SpellEffectArtwork, 5>>
         field_spell_effect_images_by_scene_;
     std::vector<DefaultFieldActorPresentation> field_default_actors_;
+    // The ROM lists hold record pointers and refresh on separate FFDF88
+    // phases. Cache source record identity only; actor facts are read live.
+    std::vector<std::uint8_t> runner_target_candidate_slots_;
+    std::vector<std::uint8_t> world_target_candidate_slots_;
+    bool target_candidate_lists_seeded_ = false;
     std::array<bool, 18> field_world_effect_slots_occupied_{};
     std::array<std::string, 18> field_spell_effect_slot_target_ids_{};
     EntityServiceTargetOwner field_entity_target_owner_{};
@@ -2401,6 +2408,9 @@ private:
     WorldActivityStartState world_activity_request_start_state_{};
     std::optional<WorldActivityReturnSnapshot>
         world_activity_return_snapshot_;
+    bool field_think_token_claimed_ = false; // FFE175, one claim per frame [C]
+    // FFE188: boot RAM clear (0xC3A/0xC58) leaves it 0; bootstrap seeds 0 [C].
+    std::optional<std::uint8_t> field_thon_period_counter_;
     MovementModeTransitionContinuation field_activity_continuation_ =
         MovementModeTransitionContinuation::none;
     // FFE12C selects a floor label on the successful Security Terminal file

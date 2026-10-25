@@ -3,6 +3,7 @@
 #include "shadowrun/rendering/asset_taxonomy.hpp"
 #include "shadowrun/rendering/resource_manifest.hpp"
 #include "field_mode_profile_import.hpp"
+#include "enums.hpp"
 
 #include <algorithm>
 #include <array>
@@ -6613,6 +6614,10 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_optional_state_row(
         "records.startup.save.roster.header",
         "records/startup/save-roster-header.bin");
+    emit_optional_state_row(
+        "field.alarm.profiles", "field/field-alarm-profiles.tsv");
+    emit_optional_state_row(
+        "field.alarm.regions", "field/field-alarm-regions.tsv");
     const auto emit_generated_resource_row = [&output, &aliases, &root](
                                                 const char* alias,
                                                 const char* relative,
@@ -6639,12 +6644,6 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
     emit_generated_resource_row(
         "field.entities.world.activity.encounter.actors",
         "field/entities/dynamic-world-activity-actors.tsv", "state");
-    emit_generated_resource_row(
-        "field.entities.actor.action.profiles",
-        "field/entities/actor-action-profiles.tsv", "state");
-    emit_generated_resource_row(
-        "field.entities.actor.reaction.profiles",
-        "field/entities/actor-reaction-profiles.tsv", "state");
     std::string line;
     std::getline(catalog, line);
     while (std::getline(catalog, line)) {
@@ -8513,7 +8512,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::int8_t pending_world_effect_gate = -1;
         WorldActivityActorTemplateFacts template_facts;
     };
-    const std::array<WorldActivityActorList, 14> kWorldActivityActorLists{{
+    // Named source lists above are extracted as ROM evidence [C]. The
+    // building alarm response lists are taken from each scene's effect
+    // profile below and enter the same typed actor-list asset [C].
+    std::vector<WorldActivityActorList> kWorldActivityActorLists{
         {0x0AU, 0, 0x17018U, "scene_10_event_6_script",
          "0x167AE: FFFBF9=6 and neither runner marker is 3"},
         {0x0AU, 1, 0x17034U, "scene_10_default_script",
@@ -8542,7 +8544,39 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
          "0x43B6 pending-list continuation for pointer 0x1E5C4"},
         {0x2FU, -1, 0x1E628U, "pending_list_1e628",
          "0x43B6 pending-list continuation for pointer 0x1E628"},
-    }};
+    };
+    constexpr auto kFieldSceneProfilePointerTable = static_cast<std::size_t>(
+        srx::FieldAlarmRomLayout::PROFILE_TABLE_ADDRESS);
+    constexpr auto kSceneProfileAlarmEffectPointer = static_cast<std::size_t>(
+        srx::FieldAlarmRomLayout::PROFILE_EFFECT_POINTER_OFFSET);
+    constexpr auto kAlarmEffectActorListPointer = static_cast<std::size_t>(
+        srx::FieldAlarmRomLayout::EFFECT_ACTOR_LIST_POINTER_OFFSET);
+    constexpr auto kFirstAlarmFieldScene = static_cast<std::uint16_t>(
+        srx::FieldAlarmRomLayout::FIRST_LIST_SCENE);
+    constexpr auto kLastAlarmFieldScene = static_cast<std::uint16_t>(
+        srx::FieldAlarmRomLayout::LAST_LIST_SCENE);
+    for (std::uint16_t scene_id = kFirstAlarmFieldScene;
+         scene_id <= kLastAlarmFieldScene; ++scene_id) {
+        const auto profile_offset = read_big_endian_long(
+            rom, kFieldSceneProfilePointerTable +
+                     static_cast<std::size_t>(scene_id) * sizeof(std::uint32_t));
+        const auto effect_profile = read_big_endian_long(
+            rom, profile_offset + kSceneProfileAlarmEffectPointer);
+        if (effect_profile == 0U) {
+            throw std::runtime_error(
+                "alarm field scene is missing its effect profile");
+        }
+        const auto actor_list = read_big_endian_long(
+            rom, effect_profile + kAlarmEffectActorListPointer);
+        if (actor_list == 0U) {
+            throw std::runtime_error(
+                "alarm field scene is missing its reinforcement list");
+        }
+        kWorldActivityActorLists.push_back(WorldActivityActorList{
+            scene_id, -1, actor_list,
+            "field_alarm_scene_" + std::to_string(scene_id),
+            "0x1E0DC scene alarm reinforcement list [C]"});
+    }
     const auto read_world_activity_actor_template_facts = [&rom](
         const std::size_t template_offset) {
         WorldActivityActorTemplateFacts facts{};
@@ -8914,6 +8948,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         std::uint8_t source_action_counter;
         std::string action_kind;
         std::uint8_t source_interaction_flags;
+        std::uint8_t source_spawn_state_flags = 0U;
         std::uint8_t physical_meter;
         std::uint8_t delay_primary_attribute;
         std::uint8_t delay_secondary_attribute;
@@ -8951,7 +8986,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     constexpr std::size_t kWorldActivitySequencePointerTableOffset = 0x1D7174U;
     constexpr std::size_t kWorldActivityColumns = 9U;
     constexpr std::size_t kWorldActivityGroups = 16U;
-    constexpr std::size_t kFieldSceneCount = 56U;
+    constexpr std::size_t kFieldSceneCount = static_cast<std::size_t>(
+        srx::v(srx::Scene::LAST_ID) + 1);
     std::vector<DynamicWorldActorRecord> dynamic_world_actor_records;
     for (std::size_t scene_id = 0U; scene_id < kFieldSceneCount; ++scene_id) {
         const auto context_group = rom[kFieldContextGroupTableOffset + scene_id];
@@ -9014,6 +9050,11 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 auto physical_meter = rom[template_offset + 0x04U];
                 auto source_interaction_flags = rom[
                     shadowrun::rom::kPostObjectEntityTemplate + 0x11U];
+                std::uint8_t source_spawn_state_flags = 0U;
+                // Dynamic encounters get their +0x9E runtime bit from the
+                // common 0x1E25A spawner. Preserve a source template value
+                // only for the alarm alternate list, whose rows are added
+                // separately below.
                 auto mental_meter = rom[template_offset + 0x43U];
                 auto cyberware_flags = read_big_endian_word(
                     rom, template_offset + 0x44U);
@@ -9192,6 +9233,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     palette_line, actor_name, profile_id, action_code,
                     action_selector, source_action_ammo,
                     source_action_counter, action_kind, source_interaction_flags,
+                    source_spawn_state_flags,
                     physical_meter, delay_primary_attribute,
                     delay_secondary_attribute, delay_capability_flags,
                     mental_meter, cyberware_flags, posture, attribute_77, attribute_78,
@@ -9221,6 +9263,153 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             if (!found_terminator) {
                 throw std::runtime_error(
                     "dynamic world actor list has no null sentinel");
+            }
+        }
+    }
+    // ROM 0x1E1DA selects the fixed two-entry alternate table at 0x1E20A
+    // when FFE16F is active. Both longwords point at template 0x1D6A1C;
+    // 0x1E216 sends this list through the map-derived candidate spawner.
+    {
+        const auto alarm_list_offset = static_cast<std::uint32_t>(
+            srx::v(srx::FieldEncounter::ALARM_SEQUENCE_LIST_ADDRESS));
+        const auto alarm_template_offset = static_cast<std::uint32_t>(
+            srx::v(srx::FieldEncounter::ALARM_ACTOR_TEMPLATE_ADDRESS));
+        std::vector<std::uint32_t> alarm_tagged_templates;
+        bool found_terminator = false;
+        for (std::uint16_t source_order = 0U; source_order < 32U;
+             ++source_order) {
+            const auto tagged_template = read_big_endian_long(
+                rom, static_cast<std::size_t>(alarm_list_offset) +
+                         static_cast<std::size_t>(source_order) * 4U);
+            if (tagged_template == 0U) {
+                found_terminator = true;
+                break;
+            }
+            if ((tagged_template & static_cast<std::uint32_t>(
+                     srx::v(srx::FieldEncounter::
+                                TEMPLATE_POINTER_ADDRESS_MASK))) !=
+                alarm_template_offset) {
+                throw std::runtime_error(
+                    "ROM alarm alternate table has an unexpected actor template");
+            }
+            alarm_tagged_templates.push_back(tagged_template);
+        }
+        if (!found_terminator || alarm_tagged_templates.size() != 2U) {
+            throw std::runtime_error(
+                "ROM alarm alternate table is not the traced two-actor list");
+        }
+
+        const auto template_offset =
+            static_cast<std::size_t>(alarm_template_offset);
+        if (template_offset > rom.size() ||
+            rom.size() - template_offset < 0x4AU) {
+            throw std::runtime_error(
+                "ROM alarm alternate actor template points outside the ROM");
+        }
+        const auto entity_kind = read_big_endian_word(rom, template_offset);
+        const auto palette_line = static_cast<std::uint8_t>(
+            (read_big_endian_word(rom, template_offset + 2U) >> 13U) &
+            0x03U);
+        const auto actor_name = read_actor_name(template_offset);
+        if (actor_name.empty()) {
+            throw std::runtime_error(
+                "ROM alarm alternate actor has no readable name");
+        }
+        const auto action_selector = rom[template_offset + 8U];
+        const auto action_code = rom[template_offset + 9U];
+        const auto action_kind = action_code == 0U
+            ? std::string("none")
+            : ((action_selector & 0x80U) != 0U
+                   ? std::string("spell")
+                   : std::string("item"));
+        const auto profile_id = make_actor_profile_id(
+            rom, template_offset, entity_kind, action_kind, action_code);
+        const auto template_facts =
+            read_world_activity_actor_template_facts(template_offset);
+        const auto sprite_stem = entity_kind == 5U
+            ? profile_id
+            : entity_kind == 7U
+                ? "actor-kind-7-palette-" + std::to_string(palette_line)
+                : entity_kind == 11U
+                    ? std::string("pedestrian")
+                    : entity_kind == 8U
+                        ? std::string("yakuza-weenr")
+                        : make_sprite_stem(actor_name);
+        const auto visual_key = std::make_pair(entity_kind, palette_line);
+        if (actor_visual_sources.find(visual_key) ==
+            actor_visual_sources.end()) {
+            actor_visual_sources.emplace(
+                visual_key,
+                DefaultActorKindSource{entity_kind, palette_line, actor_name,
+                                       sprite_stem, alarm_template_offset});
+        }
+
+        for (std::size_t scene_id = 0U; scene_id < kFieldSceneCount;
+             ++scene_id) {
+            const auto context_group =
+                rom[kFieldContextGroupTableOffset + scene_id];
+            if (context_group >= kWorldActivityGroups) {
+                throw std::runtime_error(
+                    "alarm actor scene has an invalid context group");
+            }
+            for (std::size_t source_order = 0U;
+                 source_order < alarm_tagged_templates.size(); ++source_order) {
+                DynamicWorldActorRecord actor{};
+                actor.scene_id = static_cast<std::uint16_t>(scene_id);
+                actor.context_group = context_group;
+                actor.random_sum = static_cast<std::uint8_t>(
+                    srx::v(srx::FieldEncounter::SOURCE_SEQUENCE_SENTINEL));
+                actor.source_order = static_cast<std::uint16_t>(source_order);
+                actor.pointer_cell_offset = 0U; // fixed list; no selector cell [C]
+                actor.sequence_list_offset = alarm_list_offset;
+                actor.tagged_template = alarm_tagged_templates[source_order];
+                actor.template_offset = alarm_template_offset;
+                actor.entity_kind = entity_kind;
+                actor.palette_line = palette_line;
+                actor.actor_name = actor_name;
+                actor.profile_id = profile_id;
+                actor.action_code = action_code;
+                actor.source_action_slot = action_selector;
+                actor.source_action_ammo = rom[template_offset + 6U];
+                actor.source_action_counter = rom[template_offset + 7U];
+                actor.action_kind = action_kind;
+                actor.source_interaction_flags =
+                    template_facts.source_interaction_flags;
+                actor.source_spawn_state_flags =
+                    template_facts.source_spawn_state_flags;
+                actor.physical_meter = template_facts.physical_meter;
+                actor.delay_primary_attribute =
+                    template_facts.delay_primary_attribute;
+                actor.delay_secondary_attribute =
+                    template_facts.delay_secondary_attribute;
+                actor.delay_capability_flags =
+                    template_facts.delay_capability_flags;
+                actor.mental_meter = template_facts.mental_meter;
+                actor.cyberware_flags = template_facts.cyberware_flags;
+                actor.posture = template_facts.posture;
+                actor.attribute_77 = template_facts.attribute_77;
+                actor.attribute_78 = template_facts.attribute_78;
+                actor.attribute_79 = template_facts.attribute_79;
+                actor.attribute_7b = template_facts.attribute_7b;
+                actor.attribute_7c = template_facts.attribute_7c;
+                actor.attribute_85 = template_facts.attribute_85;
+                actor.item18_base = template_facts.item18_base;
+                actor.armor_index = template_facts.armor_index;
+                actor.race_or_state = template_facts.race_or_state;
+                actor.class_code = template_facts.class_code;
+                actor.modifier_flags_df = template_facts.modifier_flags_df;
+                actor.profile_index_a0 = template_facts.profile_index_a0;
+                actor.item_codes = template_facts.item_codes;
+                actor.item_phases = template_facts.item_phases;
+                actor.action_phase_extension =
+                    template_facts.action_phase_extension;
+                actor.action_skills = template_facts.action_skills;
+                actor.auxiliary_roll_bonus =
+                    template_facts.auxiliary_roll_bonus;
+                actor.sprite_stem = sprite_stem;
+                actor.ordered_overrides = "-";
+                actor.map_derived_placement = true;
+                dynamic_world_actor_records.push_back(std::move(actor));
             }
         }
     }
@@ -9421,7 +9610,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         DynamicWorldActorRecord actor{};
         actor.scene_id = 2U;
         actor.context_group = 0U;
-        actor.random_sum = 0xFFU;
+        actor.random_sum = static_cast<std::uint8_t>(
+            srx::v(srx::FieldEncounter::SOURCE_SEQUENCE_SENTINEL));
         actor.source_order = source_order;
         actor.pointer_cell_offset = 0U;
         actor.sequence_list_offset = kBorisStrikeTeamListOffset;
@@ -9482,7 +9672,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         table << "scene\tcontext_group\trandom_sum\tselection_cell_offset"
                  "\tsequence_list_offset\tsource_order\tactor_name"
                  "\tprofile_id\taction_kind\taction_code"
-                 "\tsource_interaction_flags"
+                 "\tsource_spawn_state_flags\tsource_interaction_flags"
                  "\tentity_kind\tpalette_line\tsprite_stem"
                  "\ttagged_template\ttemplate_offset\tordered_overrides"
                  "\tplacement_rule\tphysical_meter"
@@ -9541,6 +9731,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                   << actor.source_order << '\t' << actor.actor_name << '\t'
                   << actor.profile_id << '\t' << actor.action_kind << '\t'
                   << static_cast<unsigned>(actor.action_code) << '\t'
+                  << static_cast<unsigned>(actor.source_spawn_state_flags)
+                  << '\t'
                   << static_cast<unsigned>(actor.source_interaction_flags)
                   << '\t'
                   << actor.entity_kind << '\t'
@@ -9609,9 +9801,6 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     constexpr std::size_t kSpellSelectorTableOffset = 0xC082U;
     constexpr std::size_t kEntrySelectorTableOffset = 0xC0B2U;
     constexpr std::size_t kActionSelectorTableOffset = 0xC0A2U;
-    constexpr std::size_t kActorHurtAudioTableOffset = 0xB03EU;
-    constexpr std::size_t kActorDownAudioTableOffset = 0xB05EU;
-    constexpr std::uint16_t kActorAnimationPeriod = 0x1000U;
     constexpr std::size_t kThonPatternStreamOffset = 0x1EBDEEU;
     constexpr std::size_t kThonPatternVramOffset = 0x5920U;
     constexpr std::size_t kActorStatePointerTableOffset = 0x62ACU;
@@ -9630,40 +9819,6 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
         }
         used_actor_directions[rotated & 0x0007U] = true;
     }
-    std::ofstream action_profile_table(
-        root / "field/entities/actor-action-profiles.tsv",
-        std::ios::binary);
-    if (!action_profile_table) {
-        throw std::runtime_error(
-            "cannot create field actor action profile table");
-    }
-    action_profile_table
-        << "sprite_stem\tentity_kind\tframe_count\tframe_increment"
-           "\tframe_threshold\taudio_event\n";
-    std::map<std::string, std::array<std::uint16_t, 3>> action_profile_facts;
-    std::ofstream item_action_profile_table(
-        root / "field/entities/actor-item-action-profiles.tsv",
-        std::ios::binary);
-    if (!item_action_profile_table) {
-        throw std::runtime_error(
-            "cannot create field actor item-action profile table");
-    }
-    item_action_profile_table
-        << "sprite_stem\tentity_kind\tframe_count\tframe_increment"
-           "\tframe_threshold\n";
-    std::map<std::string, std::array<std::uint16_t, 3>>
-        item_action_profile_facts;
-    std::ofstream reaction_profile_table(
-        root / "field/entities/actor-reaction-profiles.tsv",
-        std::ios::binary);
-    if (!reaction_profile_table) {
-        throw std::runtime_error(
-            "cannot create field actor reaction profile table");
-    }
-    reaction_profile_table
-        << "sprite_stem\tentity_kind\thurt_frame_count\thurt_increment"
-           "\tframe_threshold\thurt_audio_event\tdown_audio_event\n";
-    std::map<std::string, std::array<std::uint16_t, 6>> reaction_profile_facts;
     for (const auto& [kind_palette, kind_source] : actor_visual_sources) {
         (void)kind_palette;
         const auto asset_stem =
@@ -9672,7 +9827,7 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             // This is a distinct ROM format: 0x600E resolves a one-frame
             // state list whose entry is a seven-record VDP sprite list, not
             // an 0x8002 bitmap descriptor. The mode-55 marker-2 path loads
-            // the matching tile data via 0x5BA4C/0x1530 at VRAM 0x5920.
+            // the matching tile data via 0x5BA4C/0x1530 at VRAM 0x5920 [C].
             if (kind_source.actor_name != "Thon" ||
                 kind_source.palette_line != 1U) {
                 throw std::runtime_error(
@@ -9740,9 +9895,98 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 root, asset_stem + "-idle.bmp", thon_frame.image, "sprite",
                 "ROM 0x62AC/0xC052/0x600E/0x622C/0x624C/0xA77A Thon "
                 "seven-piece idle sprite list; 0x5BA4C/0x1530 loads "
-                "0x1EBDEE at VRAM 0x5920; template palette line 1",
+                "0x1EBDEE at VRAM 0x5920; template palette line 1 [C]",
                 true, manifest, written, missing, blank,
                 thon_frame.origin_x, thon_frame.origin_y);
+            for (std::size_t direction = 0U; direction < 8U; ++direction) {
+                const auto selector = read_big_endian_word(
+                    rom, kSpellSelectorTableOffset + direction * 2U);
+                const auto state_list = static_cast<std::size_t>(
+                    read_big_endian_long(rom, state_table + selector));
+                const auto marker = read_big_endian_word(rom, state_list);
+                const auto frame_count = static_cast<std::uint16_t>(
+                    marker & 0x7FFFU);
+                if ((marker & 0x8000U) == 0U || frame_count == 0U ||
+                    frame_count > 16U) {
+                    throw std::runtime_error(
+                        "Thon C082 spell list has an unsupported frame count");
+                }
+                for (std::uint16_t frame_index = 0U;
+                     frame_index < frame_count; ++frame_index) {
+                    const auto sprite_list = static_cast<std::size_t>(
+                        read_big_endian_long(
+                            rom, state_list + 4U +
+                                     static_cast<std::size_t>(frame_index) * 4U));
+                    const auto frame = decode_field_entity_sprite_list(
+                        rom, thon_vram, sprite_list, palette,
+                        template_palette_attributes);
+                    write_catalog_asset(
+                        root, asset_stem + "-spell-dir-" +
+                                  std::to_string(direction) + "-frame-" +
+                                  std::to_string(frame_index) + ".bmp",
+                        frame.image, "sprite",
+                        "ROM 0xAF7C/0xAFAE/0xC082/0x600E/0x622C kind=15 "
+                        "Thon sprite list=" +
+                            format_offset(static_cast<std::uint32_t>(
+                                sprite_list)) +
+                            " frame=" + std::to_string(frame_index) +
+                            " template palette attributes=" +
+                            format_offset(template_palette_attributes) +
+                            " [C]",
+                        true, manifest, written, missing, blank,
+                        frame.origin_x, frame.origin_y);
+                }
+            }
+            constexpr std::array<std::pair<srx::ActorPose,
+                                           std::string_view>, 2>
+                kThonSpellDeathPoses{{
+                    {srx::ActorPose::SPELL_DEATH_E0, "spell-death-e0"},
+                    {srx::ActorPose::SPELL_DEATH_E4, "spell-death-e4"},
+                }};
+            for (const auto& [pose, pose_name] : kThonSpellDeathPoses) {
+                const auto pose_selector =
+                    static_cast<std::uint16_t>(pose);
+                const auto state_list = static_cast<std::size_t>(
+                    read_big_endian_long(
+                        rom, state_table + pose_selector));
+                const auto marker = read_big_endian_word(rom, state_list);
+                const auto frame_count = static_cast<std::uint16_t>(
+                    marker & 0x7FFFU);
+                if ((marker & 0x8000U) == 0U || frame_count == 0U ||
+                    frame_count > 16U) {
+                    throw std::runtime_error(
+                        "Thon spell-death list has an unsupported frame count");
+                }
+                for (std::uint16_t frame_index = 0U;
+                     frame_index < frame_count; ++frame_index) {
+                    const auto sprite_list = static_cast<std::size_t>(
+                        read_big_endian_long(
+                            rom, state_list + 4U +
+                                     static_cast<std::size_t>(frame_index) * 4U));
+                    if (sprite_list == 0U) {
+                        throw std::runtime_error(
+                            "Thon spell-death frame has a null sprite-list pointer");
+                    }
+                    const auto frame = decode_field_entity_sprite_list(
+                        rom, thon_vram, sprite_list, palette,
+                        template_palette_attributes);
+                    write_catalog_asset(
+                        root, asset_stem + "-" + std::string(pose_name) +
+                                  "-frame-" + std::to_string(frame_index) +
+                                  ".bmp",
+                        frame.image, "sprite",
+                        "ROM 0x62AC/0xB0AC/0xB0E4/0x600E/0x622C kind=15 "
+                        "Thon sprite list=" +
+                            format_offset(static_cast<std::uint32_t>(
+                                sprite_list)) +
+                            " frame=" + std::to_string(frame_index) +
+                            " template palette attributes=" +
+                            format_offset(template_palette_attributes) +
+                            " [C]",
+                        true, manifest, written, missing, blank,
+                        frame.origin_x, frame.origin_y);
+                }
+            }
             continue;
         }
         // Static map inhabitants use the ordinary human actor kinds. The
@@ -9782,37 +10026,102 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 true, manifest, written, missing, blank,
                 idle_frame.origin_x, idle_frame.origin_y);
 
-            // AF7C/AFAE install the directional C082 state and switch the
-            // actor callback to 0xAFE0. That callback is a NOP, so the cast
-            // pose holds the first C082 image until another actor action
-            // replaces it. Export that source frame as an ordinary host
-            // sprite with its descriptor origin for the Qt field renderer.
-            const auto spell_selector = read_big_endian_word(
-                rom, kSpellSelectorTableOffset + direction * 2U);
-            const auto spell_frame =
-                shadowrun::graphics::decode_genesis_field_entity_state_frame(
-                    rom, kind_source.entity_kind, kind_source.palette_line,
-                    spell_selector, 0U);
-            const auto spell_name = asset_stem +
-                (direction == 0U
-                     ? std::string("-spell.bmp")
-                     : "-spell-dir-" + std::to_string(direction) + ".bmp");
-            write_catalog_asset(
-                root, spell_name, spell_frame.image, "sprite",
-                "0xAF7C/0xAFAE/0xC082/0xAFE0/0x600E actor=" +
-                    kind_source.actor_name + " kind=" +
-                    std::to_string(kind_source.entity_kind) + " template=" +
-                    format_offset(kind_source.template_offset) +
-                    " selector=" + format_offset(spell_selector) +
-                    " frame=0 palette-line=" +
-                    std::to_string(kind_source.palette_line),
-                true, manifest, written, missing, blank,
-                spell_frame.origin_x, spell_frame.origin_y);
             const auto kind_state_pointer = static_cast<std::size_t>(
                 read_big_endian_long(
-                    rom, 0x62ACU +
+                    rom, kActorStatePointerTableOffset +
                              static_cast<std::size_t>(kind_source.entity_kind) *
                                  4U));
+
+            // AF7C/AFAE install the directional C082 state. Export every
+            // source frame as an ordinary host sprite with its
+            // descriptor origin for the Qt field renderer [C: 0x600E].
+            const auto spell_selector = read_big_endian_word(
+                rom, kSpellSelectorTableOffset + direction * 2U);
+            const auto spell_list = static_cast<std::size_t>(
+                read_big_endian_long(rom, kind_state_pointer +
+                                             (spell_selector & 0x7FFFU)));
+            const auto spell_marker = read_big_endian_word(rom, spell_list);
+            const auto spell_frame_count = static_cast<std::uint16_t>(
+                spell_marker & 0x7FFFU);
+            if (spell_frame_count == 0U || spell_frame_count > 16U) {
+                throw std::runtime_error(
+                    "dynamic actor C082 spell list has an unsupported frame count");
+            }
+            for (std::uint16_t frame_index = 0U;
+                 frame_index < spell_frame_count; ++frame_index) {
+                const auto frame =
+                    shadowrun::graphics::decode_genesis_field_entity_state_frame(
+                        rom, kind_source.entity_kind,
+                        kind_source.palette_line, spell_selector, frame_index);
+                write_catalog_asset(
+                    root, asset_stem + "-spell-dir-" +
+                              std::to_string(direction) + "-frame-" +
+                              std::to_string(frame_index) + ".bmp",
+                    frame.image, "sprite",
+                    "ROM 0xAF7C/0xAFAE/0xC082/0x600E kind=" +
+                        std::to_string(kind_source.entity_kind) +
+                        " template=" +
+                        format_offset(kind_source.template_offset) +
+                        " selector=" + format_offset(spell_selector) +
+                        " frame=" + std::to_string(frame_index) +
+                        " palette-line=" +
+                        std::to_string(kind_source.palette_line) + " [C]",
+                    true, manifest, written, missing, blank,
+                    frame.origin_x, frame.origin_y);
+            }
+
+            // 0xB0AC/0xB0E4 install undirected, finite spell-death lists.
+            // 0x600E selects each frame record. 0x60FA queues its descriptor
+            // and mapping pointer for the field renderer; 0x3EFE expands the
+            // selected tile pixels. The actor template supplies the palette
+            // line for the field record [C].
+            if (direction == 0U) {
+                constexpr std::array<std::pair<srx::ActorPose,
+                                               std::string_view>, 2>
+                    kSpellDeathPoses{{
+                        {srx::ActorPose::SPELL_DEATH_E0, "spell-death-e0"},
+                        {srx::ActorPose::SPELL_DEATH_E4, "spell-death-e4"},
+                    }};
+                for (const auto& [pose, pose_name] : kSpellDeathPoses) {
+                    const auto pose_selector =
+                        static_cast<std::uint16_t>(pose);
+                    const auto list_offset = static_cast<std::size_t>(
+                        read_big_endian_long(
+                            rom, kind_state_pointer + pose_selector));
+                    const auto marker = read_big_endian_word(rom, list_offset);
+                    const auto frame_count = static_cast<std::uint16_t>(
+                        marker & 0x7FFFU);
+                    if ((marker & 0x8000U) == 0U || frame_count == 0U ||
+                        frame_count > 16U) {
+                        throw std::runtime_error(
+                            "ROM spell-death list has an unsupported frame count");
+                    }
+                    for (std::uint16_t frame_index = 0U;
+                         frame_index < frame_count; ++frame_index) {
+                        const auto frame =
+                            shadowrun::graphics::decode_genesis_field_entity_state_frame(
+                                rom, kind_source.entity_kind,
+                                kind_source.palette_line, pose_selector,
+                                frame_index);
+                        write_catalog_asset(
+                            root, asset_stem + "-" +
+                                      std::string(pose_name) + "-frame-" +
+                                      std::to_string(frame_index) + ".bmp",
+                            frame.image, "sprite",
+                            "ROM 0x62AC/0xB0AC/0xB0E4/0x600E/0x60FA/0x3EFE kind=" +
+                                std::to_string(kind_source.entity_kind) +
+                                " list=" +
+                                format_offset(static_cast<std::uint32_t>(
+                                    list_offset)) +
+                                " frame=" + std::to_string(frame_index) +
+                                " palette-line=" +
+                                std::to_string(kind_source.palette_line) +
+                                " [C]",
+                            true, manifest, written, missing, blank,
+                            frame.origin_x, frame.origin_y);
+                    }
+                }
+            }
 
             // ROM 0xB39A selects one of the directional C042 item-action
             // lists after the projectile service. Keep these separate from
@@ -9854,23 +10163,6 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                         "dynamic actor C042 item-action lists disagree by direction");
                 }
                 item_action_facts = profile_facts;
-                if (frame_direction == 0U) {
-                    const auto [profile, inserted] =
-                        item_action_profile_facts.emplace(
-                            kind_source.sprite_stem, profile_facts);
-                    if (!inserted && profile->second != profile_facts) {
-                        throw std::runtime_error(
-                            "dynamic actor C042 profiles disagree by sprite stem");
-                    }
-                    if (inserted) {
-                        item_action_profile_table
-                            << kind_source.sprite_stem << '\t'
-                            << kind_source.entity_kind << '\t'
-                            << item_action_frame_count << '\t'
-                            << item_action_increment << '\t' << 0x1000U
-                            << '\n';
-                    }
-                }
                 for (std::uint16_t frame_index = 0U;
                      frame_index < item_action_frame_count; ++frame_index) {
                     const auto frame =
@@ -9906,10 +10198,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
 
             // ROM 0xAFF2 selects the directional C072 list when a target's
             // physical meter remains nonzero. 0x600E uses the list's marker
-            // and increment; the entity record's +0x1C period is initialized
-            // to 0x1000 by 0x15132. Preserve the kind-indexed B03E/B05E
-            // sounds beside the extracted frames so Lua can run the full
-            // source reaction after a live hit.
+            // and increment; the generated Lua animation table records those
+            // source list values while this extractor writes only the frames.
             const auto hurt_selector = read_big_endian_word(
                 rom, kHurtSelectorTableOffset + direction * 2U);
             const auto hurt_list = static_cast<std::size_t>(
@@ -9925,31 +10215,6 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 hurt_increment == 0U) {
                 throw std::runtime_error(
                     "dynamic actor C072 hurt list has an unsupported source layout");
-            }
-            const auto hurt_audio_event = read_big_endian_word(
-                rom, kActorHurtAudioTableOffset +
-                         static_cast<std::size_t>(kind_source.entity_kind) * 2U);
-            const auto down_audio_event = read_big_endian_word(
-                rom, kActorDownAudioTableOffset +
-                         static_cast<std::size_t>(kind_source.entity_kind) * 2U);
-            const std::array<std::uint16_t, 6> reaction_facts{
-                kind_source.entity_kind, hurt_frame_count, hurt_increment,
-                kActorAnimationPeriod, hurt_audio_event, down_audio_event};
-            const auto [reaction_profile, reaction_inserted] =
-                reaction_profile_facts.emplace(kind_source.sprite_stem,
-                                                reaction_facts);
-            if (!reaction_inserted &&
-                reaction_profile->second != reaction_facts) {
-                throw std::runtime_error(
-                    "dynamic actor C072 lists disagree by direction");
-            }
-            if (direction == 0U && reaction_inserted) {
-                reaction_profile_table
-                    << kind_source.sprite_stem << '\t'
-                    << kind_source.entity_kind << '\t'
-                    << hurt_frame_count << '\t' << hurt_increment << '\t'
-                    << kActorAnimationPeriod << '\t' << hurt_audio_event
-                    << '\t' << down_audio_event << '\n';
             }
             for (std::uint16_t frame_index = 0U;
                  frame_index < hurt_frame_count; ++frame_index) {
@@ -10109,24 +10374,6 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 throw std::runtime_error(
                     "dynamic actor C0A2 list has an unsupported source layout");
             }
-            const std::array<std::uint16_t, 3> profile_facts{
-                kind_source.entity_kind, action_frame_count,
-                action_frame_increment};
-            const auto [profile, inserted] = action_profile_facts.emplace(
-                kind_source.sprite_stem, profile_facts);
-            if (!inserted && profile->second != profile_facts) {
-                throw std::runtime_error(
-                    "dynamic actor C0A2 lists disagree by direction");
-            }
-            if (direction == 0U && inserted) {
-                action_profile_table
-                    << kind_source.sprite_stem << '\t'
-                    << kind_source.entity_kind << '\t'
-                    << action_frame_count << '\t'
-                    << action_frame_increment << '\t' << 0x1000U << '\t'
-                    << (kind_source.entity_kind == 12U ? 0x55U : 0x4CU)
-                    << '\n';
-            }
             for (std::uint16_t frame_index = 0U;
                  frame_index < action_frame_count; ++frame_index) {
                 const auto frame =
@@ -10156,17 +10403,6 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             }
         }
     }
-    action_profile_table.close();
-    if (!action_profile_table) {
-        throw std::runtime_error(
-            "cannot write field actor action profile table");
-    }
-    reaction_profile_table.close();
-    if (!reaction_profile_table) {
-        throw std::runtime_error(
-            "cannot write field actor reaction profile table");
-    }
-
     for (std::size_t index = 0; index < assets.entity_frames.size(); ++index) {
         write_frame("field/entities/idle-" + std::to_string(index) + ".bmp",
                     assets.entity_frames[index], "sprite", "0x5A62/0x5FDC",
@@ -10238,10 +10474,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
 
     // ROM 0x5C7E selects one of four target-marker tile/palette variants,
     // while 0x1406 loads the current scene's palette for the shared object
-    // atlas. Bake a scene-specific 8x8 tile for each source action-code group;
+    // atlas. Bake a scene-specific 8x8 tile for each target meter tier (physical, or stun per 0x5C7E);
     // Qt consumes these named assets without a runtime VRAM atlas.
     constexpr std::array<std::string_view, 4> kTargetMarkerGroups{{
-        "action-0-2", "action-3-5", "action-6-8", "action-9-plus",
+        "meter-0-2", "meter-3-5", "meter-6-8", "meter-9-plus",
     }};
     for (std::uint16_t scene_id = 0U;
          scene_id < shadowrun::rom::kFieldModeCount; ++scene_id) {

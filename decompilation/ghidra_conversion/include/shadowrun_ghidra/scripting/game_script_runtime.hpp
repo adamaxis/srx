@@ -829,6 +829,16 @@ enum class ScriptActorActionKind : std::uint8_t {
     spell,
 };
 
+enum class ScriptPlayerDelayPurpose : std::uint8_t {
+    // ROM 0xACAE enters the weapon firing path, which uses the weapon's
+    // attack_delay_scale when resetting +0xDC. [C]
+    weapon_attack,
+    // ROM 0x14226 selects its helper scale from equipped +0x57. [C]
+    reload_action,
+    // ROM 0xACAE's shared tail replaces the helper delay with mode 0. [C]
+    shared_action,
+};
+
 enum class ScriptFieldEncounterOutcomeKind : std::uint8_t {
     dialogue_event,
     dynamic_world_effect_sequence,
@@ -845,23 +855,80 @@ enum class ScriptFieldEncounterTriggerAction : std::uint8_t {
     not_due,
     sample_probability,
     random_miss,
-    forward_active_sequence,
+    select_alarm_sequence,
     select_scene_outcome,
 };
 
 struct ScriptFieldEncounterTriggerInput {
     std::uint16_t scene_id = 0;
-    std::uint16_t frame_counter = 0;
-    bool trigger_delay_active = false;
-    bool current_entity_protected = false;
-    bool activity_lock = false;
-    bool sequence_mode = false;
-    bool world_effects_active = false;
-    bool placement_pending = false;
+    std::uint16_t frame_counter = 0; // FFDF88 cadence value; host mapping [H]
+    std::uint16_t display_service_word = 0; // FFDFE8 [C]
+    bool leader_protected = false; // FFFC04 +0x11 bit 7 [C]
+    bool field_activity_lock_active = false; // FFE18B [C]
+    bool field_alarm_active = false; // FFE16F, Lua field_alarm state [C]
+    bool combat_active = false; // FFDF84 [C]
+    std::uint8_t encounter_actor_count = 0; // FFE177 [C]
     // Absent for the first Lua call. The host draws only after Lua reports
     // sample_probability, preserving the ROM's conditional PRNG consumption.
     std::optional<std::uint16_t> probability_roll;
     std::uint16_t probability_threshold = 0;
+};
+
+struct ScriptFieldAlarmRegion {
+    std::uint16_t x_min = 0U;
+    std::uint16_t x_max = 0U;
+    std::uint16_t y_min = 0U;
+    std::uint16_t y_max = 0U;
+};
+
+struct ScriptFieldAlarmActorFlags {
+    std::string actor_id;
+    std::uint8_t flags_9e = 0U;
+};
+
+struct ScriptFieldAlarmProfile {
+    std::vector<ScriptFieldAlarmRegion> regions;
+    std::optional<std::uint32_t> reinforcement_list_address;
+};
+
+struct ScriptFieldAlarmInput {
+    std::uint16_t scene_id = 0U;
+    std::uint16_t frame_counter = 0U;
+    std::uint16_t scene_mode = 0U;
+    std::uint16_t player_tile_x = 0U;
+    std::uint16_t player_tile_y = 0U;
+    bool disabled = false;
+    bool alarm = false;
+    std::int16_t timer = 0;
+    std::optional<std::uint16_t> rng;
+    bool direct_raise = false;
+    bool clear_alarm = false;
+    bool disable_alarm = false;
+    bool reset = false;
+    std::vector<ScriptFieldAlarmRegion> regions;
+    std::vector<ScriptFieldAlarmActorFlags> actors;
+    std::optional<std::uint32_t> reinforcement_list_address;
+};
+
+enum class ScriptFieldAlarmFlagAction : std::uint8_t {
+    none,
+    clear_spotted,
+    promote_reinforcement,
+};
+
+struct ScriptFieldAlarmResult {
+    bool alarm = false;
+    bool disabled = false;
+    std::int16_t timer = 0;
+    bool sample_rng = false;
+    bool schedule_timeout = false;
+    std::optional<std::uint16_t> sound_start;
+    std::optional<std::uint16_t> sound_stop;
+    ScriptFieldAlarmFlagAction flag_action = ScriptFieldAlarmFlagAction::none;
+    bool spawn_reinforcements = false;
+    std::optional<std::uint32_t> reinforcement_list_address;
+    std::optional<std::uint8_t> reinforcement_flag;
+    std::vector<ScriptFieldAlarmActorFlags> actors;
 };
 
 // Source-derived fields consumed by the ROM close-target reaction path
@@ -1000,6 +1067,7 @@ struct ScriptFieldEncounterActor {
     std::string sprite_stem;
     std::uint32_t tagged_template = 0;
     std::uint32_t template_offset = 0;
+    std::uint8_t source_spawn_state_flags = 0; // +0x9E template byte [C]
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t physical_meter = 0;
     std::uint8_t delay_primary_attribute = 0;
@@ -1233,6 +1301,16 @@ struct ScriptActorMovementStep {
     std::uint16_t direction_animation = 0;
 };
 
+struct ScriptActorTargetListRebuildFacts {
+    std::uint16_t frame_counter = 0U; // FFDF88, typed field-frame fact [C]
+    std::uint16_t display_service_word = 0U; // FFDFE8 [C]
+};
+
+struct ScriptActorTargetListRebuildDecision {
+    bool rebuild_world = false;
+    bool rebuild_runner = false;
+};
+
 struct ScriptActorTargetCandidate {
     std::string id;
     std::uint16_t world_x = 0;
@@ -1243,7 +1321,7 @@ struct ScriptActorTargetCandidate {
     std::uint8_t interaction_flags = 0; // source entity +0x11
     std::uint8_t behavior_flags = 0; // source entity +0xB0
     std::uint8_t spawn_state_flags = 0; // source entity +0x9E
-    bool has_action = false; // source entity +0x0C != 0
+    bool projected_y_nonzero = false; // source entity +0x0C != 0 [C]
     bool world_activity_actor = false;
     // 0x13D0C routes either toward the linked record or toward a point
     // projected perpendicular to it. These are the source 0x15CA4 metrics
@@ -1269,6 +1347,14 @@ using ScriptActorRandomBound =
 // True when 0x14D8E leaves carry clear for these linked world coordinates.
 using ScriptActorActionLineClear =
     std::function<bool(std::uint16_t world_x, std::uint16_t world_y)>;
+struct ScriptActorDestinationMeasurement {
+    std::uint16_t heading = 0;
+    std::uint16_t distance = 0;
+    std::uint16_t step_cost = 0;
+};
+using ScriptActorDestinationMeasure =
+    std::function<std::optional<ScriptActorDestinationMeasurement>(
+        std::uint16_t world_x, std::uint16_t world_y)>;
 
 // Source-derived identity and spawn facts passed to an actor's Lua heartbeat.
 // Lua owns per-instance behavior state; the host retains world facts and
@@ -1339,10 +1425,35 @@ struct ScriptActorBehaviorContext {
     // same runtime pool. Keep that provenance explicit for Lua profile rules.
     bool world_activity_script_actor = false;
     std::optional<std::uint8_t> source_record_slot;
+    // ROM actor +0x3E: 0x44BC copies FFDD40 for scene actors and 0x42CC
+    // initializes runner records to 0..2 [C]. Kept separate from the host's
+    // candidate identity field because Lua consumes it as a behavior input.
+    std::optional<std::uint8_t> source_actor_slot;
+    // Source list identity selects the extracted +0xE0 waypoint data [C].
+    std::optional<std::uint32_t> source_actor_list_offset;
+    std::optional<std::uint16_t> source_actor_source_order;
+    // Live actor +0/+4 position, which seeds +0x96/+0x98 at spawn [C].
+    std::optional<std::uint16_t> source_world_x;
+    std::optional<std::uint16_t> source_world_y;
     std::uint8_t source_record_flags = 0;
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t source_behavior_flags = 0;
     std::uint8_t source_spawn_state_flags = 0;
+    // One field-frame token suppresses later due actor thoughts [C].
+    std::optional<bool> source_think_suppressed;
+    // FFE188 is shared by THON records. Its initial value has no explicit
+    // ROM initializer in the recovered trace, so nil preserves that boundary [H].
+    std::optional<std::uint8_t> source_thon_period_counter;
+    // FFE16F / FFDF40 actor-think inputs. Alarm remains optional until the
+    // field security fact is known; scene mode and camera/profile bounds are
+    // populated from the live field state [C].
+    std::optional<bool> source_alarm_active;
+    std::optional<std::uint16_t> source_scene_mode;
+    std::optional<std::uint8_t> controlled_runner_slot;
+    std::optional<std::uint16_t> source_camera_x;
+    std::optional<std::uint16_t> source_camera_y;
+    std::optional<std::uint16_t> source_camera_limit_x;
+    std::optional<std::uint16_t> source_camera_limit_y;
     std::uint8_t source_action_slot = 0;
     std::uint8_t source_action_ammo = 0;
     std::uint8_t source_action_counter = 0;
@@ -1356,25 +1467,6 @@ struct ScriptActorBehaviorContext {
     bool world_activity_active = false;
     // ROM 0x14C7C's kind-0xD branch checks animation frame +0x1E here.
     std::int16_t ai_animation_frame = 0;
-    // Positive C062 loop length supplied from extracted source art.
-    std::uint8_t walk_animation_frame_count = 0;
-    // Directional C0A2 target-action facts extracted to a named actor profile.
-    // Lua owns the per-instance frame accumulator and finite-list completion.
-    std::uint8_t action_animation_frame_count = 0;
-    std::uint16_t action_animation_increment = 0;
-    std::uint16_t action_animation_threshold = 0;
-    std::optional<std::uint16_t> action_animation_audio_event;
-    // Directional C042 item-action frames extracted from the actor state list.
-    std::uint8_t item_action_frame_count = 0;
-    std::uint16_t item_action_increment = 0;
-    std::uint16_t item_action_threshold = 0;
-    // Directional C072/C0B2 hit-reaction facts extracted from each actor
-    // template. Lua owns the reaction timer and finite animation state.
-    std::uint8_t hurt_animation_frame_count = 0;
-    std::uint16_t hurt_animation_increment = 0;
-    std::uint16_t hurt_animation_threshold = 0;
-    std::optional<std::uint16_t> hurt_audio_event;
-    std::optional<std::uint16_t> down_audio_event;
     // ROM FFF9F8 bit 7 selects 0x4D vs 0x4E after the target heading is
     // accepted. The source condition is a fact; Lua chooses the cue.
     bool target_heading_audio_alternate = false;
@@ -1388,6 +1480,10 @@ struct ScriptActorBehaviorContext {
     // ROM +0x11.4 target-selection latch, forwarded as a fact; Lua owns the
     // visible 0x5C7E marker cadence and returns its presentation state.
     bool target_selection_latched = false;
+    // ROM 0x5C82..0x5CBA: the leader (FFFC04) record's +0x56/+0x57/+0x91
+    // choose whether the 0x5C7E marker tiers the target's +0x9C stun meter
+    // (unarmed with no hand cyberware, or spell 5) instead of +0x4C.
+    bool target_marker_reads_stun_meter = false;
     bool target_selection_requested = false;
     bool target_selection_advances_cursor = false;
     bool target_selection_special_marker = false;
@@ -1398,7 +1494,6 @@ struct ScriptActorBehaviorContext {
     std::vector<ScriptActorTargetCandidate> ai_target_candidates;
     std::vector<ScriptActorTargetCandidate> world_target_selection_candidates;
     ScriptActorRandomBound ai_random_bound;
-    std::uint8_t entry_animation_frame_count = 2;
     std::optional<ScriptCombatantFacts> combatant;
     std::array<ScriptActionProfileModifierPair, 5>
         action_profile_modifiers{};
@@ -1415,6 +1510,8 @@ struct ScriptActorBehaviorContext {
     // Closed over the caster. Unset means the host cannot run 0x14D8E
     // honestly, and Lua then refuses the cast.
     ScriptActorActionLineClear action_line_clear;
+    // Source geometry fact service for a Lua-selected world destination.
+    ScriptActorDestinationMeasure measure_destination;
     // Source +0x4C physical meter. Lua retains this separate field for the
     // Scene-55 ending scan without exposing combatant facts to static actors.
     std::optional<std::uint8_t> source_physical_meter;
@@ -1442,6 +1539,13 @@ struct ScriptActorBehaviorDecision {
     std::uint8_t animation_frame = 0;
     std::uint8_t source_record_flags = 0;
     std::uint8_t source_behavior_flags = 0;
+    std::uint8_t source_spawn_state_flags = 0;
+    // Lua asks the host to run the ROM 0x1DBAA timeout service [C].
+    bool world_activity_requested = false;
+    std::optional<std::uint32_t> field_event_request;
+    bool think_token_claimed = false; // FFE175 was consumed in this heartbeat [C]
+    // Lua returns the shared FFE188 byte after the THON period path [C].
+    std::optional<std::uint8_t> source_thon_period_counter;
     std::uint16_t source_animation_selector = 0;
     std::optional<std::uint16_t> animation_selector;
     bool combat_action_requested = false;
@@ -1616,6 +1720,10 @@ public:
     std::optional<ScriptFieldEncounterTriggerAction>
     evaluate_field_encounter_trigger(
         const ScriptFieldEncounterTriggerInput& input);
+    std::optional<ScriptFieldAlarmProfile> field_alarm_profile(
+        std::uint16_t scene_id);
+    std::optional<ScriptFieldAlarmResult> evaluate_field_alarm(
+        const ScriptFieldAlarmInput& input);
     std::optional<std::vector<FieldMapEventRule>> map_event_rules();
     void set_story_state(const StoryFacts& facts);
     void set_story_fact_accessors(StoryFactReader read,
@@ -1632,8 +1740,18 @@ public:
     // destination handoff at ROM 0x208FE; the field host reads it back before
     // applying the ROM 0x136B6 scene-change gate.
     std::uint8_t field_mode_context_value() const noexcept;
+    // Lua resolves attack/reload mode from the weapon data and applies the
+    // shared 0xABFC / 0xD7EA calculation to the marshalled runner facts. [C]
+    std::optional<std::int16_t> player_weapon_action_delay(
+        std::uint8_t primary_attribute,
+        std::uint8_t secondary_attribute,
+        std::uint16_t capability_flags, std::uint8_t weapon_code,
+        ScriptPlayerDelayPurpose purpose);
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
+    std::optional<ScriptActorTargetListRebuildDecision>
+    should_rebuild_actor_target_lists(
+        const ScriptActorTargetListRebuildFacts& facts);
     // ROM 0x5D29C checks the six live records at FF0500..FF0A00 on effect
     // frame 3. These addresses map to typed host slots 4..9 because FF0400
     // is slot 3. The array is in record order; an empty ID denotes an unused

@@ -1,7 +1,9 @@
 -- actor/init.lua: loads the split modules in dependency order and returns the ActorAI table (same API as before).
 require("actor.tables")
+require("actor.animator")
 require("actor.targeting")
 require("actor.anim")
 require("actor.actions")
 require("actor.movement")
+require("actor.think")
 return require("actor.heartbeat")

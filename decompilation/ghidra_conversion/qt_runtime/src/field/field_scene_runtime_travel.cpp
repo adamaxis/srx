@@ -346,6 +346,8 @@ bool FieldSceneRuntime::transition_to_field_destination(
     world_frame_logic_state_.world_mode = scene_reference;
     field_world_activity_scene_entry_pending_ = false;
     field_world_activity_state_ = WorldActivityState{};
+    field_think_token_claimed_ = false;
+    // FFE188 is not cleared on a scene change; only boot clears it [C].
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     field_world_activity_timeout_state_.scene_id = scene_reference;
     world_activity_routine_state_ = WorldActivityRoutineState{};

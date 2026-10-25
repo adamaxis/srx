@@ -18,6 +18,17 @@ enum class PlayerActionDispatchStatus {
     serviced,
 };
 
+enum class PlayerActionDelayStage {
+    // The first 0x14226 delay update uses its weapon-selected scale. [C]
+    weapon_action,
+    // The shared 0xACAE tail replaces that delay using mode 0. [C]
+    shared_action,
+};
+
+using PlayerActionDelayLookup =
+    std::function<std::optional<std::int16_t>(
+        const RunnerRecordFields&, PlayerActionDelayStage)>;
+
 struct PlayerActionDispatchResult {
     PlayerActionDispatchStatus status =
         PlayerActionDispatchStatus::waiting_for_loaded_rounds;
@@ -29,11 +40,8 @@ struct PlayerActionDispatchCallbacks {
     std::function<void(std::uint16_t)> service_audio_event;
 };
 
-using WeaponReloadDelayModeLookup =
-    std::function<std::optional<std::uint16_t>(std::uint8_t)>;
-
 // ROM 0xA8EA decrements an active record's signed +0xDC animation gate once
-// per field behavior frame, stopping after it becomes negative.
+// per field behavior frame, stopping after it becomes negative. [C]
 void advance_active_entity_animation_action_gate(
     RunnerRecordFields& record);
 
@@ -42,15 +50,16 @@ void advance_active_entity_animation_action_gate(
 // delay, consumes one shared clip, and adds 0x26 to the equipped asset meter.
 // When 0xAAD2 is called from 0xACAE, that parent then dispatches 0x4B and a
 // normal delay update again; this function preserves that complete caller
-// order while mutating only the typed player record.
+// order while mutating only the typed player record. [C]
 PlayerActionDispatchResult dispatch_player_action_if_ready(
     RunnerRecordFields& record, const UsItemCatalog& item_catalog,
+    const PlayerActionDelayLookup& delay_lookup,
     const PlayerActionDispatchCallbacks& callbacks = {});
 
 PlayerActionDispatchResult dispatch_player_action_if_ready(
     RunnerRecordFields& record,
     const WeaponMagazineCapacityLookup& magazine_capacity,
-    const WeaponReloadDelayModeLookup& reload_delay_mode,
+    const PlayerActionDelayLookup& delay_lookup,
     const PlayerActionDispatchCallbacks& callbacks = {});
 
 } // namespace shadowrun::ghidra_conversion

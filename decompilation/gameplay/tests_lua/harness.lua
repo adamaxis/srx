@@ -92,7 +92,9 @@ end
 local function maybe(f) if R(5) == 1 then return nil end return f() end
 local function bool() return R(2) == 1 end
 local function cand(i)
-  return { id = "a" .. R(4), combatant = bool(), has_action = bool(), service_flags = num(), behavior_flags = num(),
+  local projected_y_nonzero = bool()
+  return { id = "a" .. R(4), combatant = bool(), has_action = projected_y_nonzero,
+           projected_y_nonzero = projected_y_nonzero, service_flags = num(), behavior_flags = num(),
            spawn_state_flags = num(), source_record_slot = R(0, 7), world_activity_actor = bool(),
            direct_route_step_cost = num(), direct_route_distance = num(), perpendicular_route_distance = num(),
            perpendicular_route_step_cost = num(), distance = num(), heading = num(), world_x = num(), world_y = num(),

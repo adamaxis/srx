@@ -10,18 +10,13 @@ local BehaviorFlag = R.BehaviorFlag   -- from actor/tables.lua
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
 local ActorFlag = R.ActorFlag   -- from actor/tables.lua
 local SpriteType = R.SpriteType   -- from actor/tables.lua
-local function advance_projectile_animation(...) return R.advance_projectile_animation(...) end   -- from actor/anim.lua
 local byte_mask = R.byte_mask   -- from actor/tables.lua
 local byte_modulus = R.byte_modulus   -- from actor/tables.lua
-local function direction_from_heading(...) return R.direction_from_heading(...) end   -- from actor/targeting.lua
 local fixed_fraction_scale = R.fixed_fraction_scale   -- from actor/tables.lua
 local fixed_integer_shift = R.fixed_integer_shift   -- from actor/tables.lua
 local fixed_long_mask = R.fixed_long_mask   -- from actor/tables.lua
-local function linked_target(...) return R.linked_target(...) end   -- from actor/targeting.lua
 local projectile = R.projectile   -- from actor/tables.lua
-local function request_target_motion_effect(...) return R.request_target_motion_effect(...) end   -- from actor/actions.lua
 local signed_byte_threshold = R.signed_byte_threshold   -- from actor/tables.lua
-local function snapshot(...) return R.snapshot(...) end   -- from actor/anim.lua
 
 -- 68000 helpers now shared via lib/int68k.lua (lua_review #4); names kept for call-site compatibility.
 local signed_byte = I.s8
@@ -232,10 +227,10 @@ end
 
 local function projectile_heartbeat(state, context)
     if context.phase == "render" then
-        if not advance_projectile_animation(state, context) then
+        if not R.advance_projectile_animation(state, context) then
             return nil
         end
-        return snapshot(state, "hold", nil)
+        return R.snapshot(state, "hold", nil)
     end
     if context.phase ~= "behavior" then
         return nil
@@ -281,16 +276,16 @@ local function projectile_heartbeat(state, context)
         end
     end
     state.animation_selector = movement.animation_selector
-    return snapshot(state, "hold", audio_event, movement)
+    return R.snapshot(state, "hold", audio_event, movement)
 end
 
 local function requested_movement_heading(context, profile, state)
     if profile.dynamic_encounter_only then
-        local target = linked_target(context, state)
+        local target = R.linked_target(context, state)
         local heading = target and target.heading or nil
         local distance = target and target.distance or nil
         -- Keep the selected source actor relation explicit in Lua state.
-        -- The host may render and inspect this snapshot but does not choose
+        -- The host may render and inspect this R.snapshot but does not choose
         -- the target or apply the creature's movement policy.
         state.ai_target_id = target and target.id or nil
         state.ai_target_heading = heading
@@ -337,7 +332,7 @@ local function resolve_source_target_motion(context, state, target)
         -- headings change immediately. At 0x600 the actor keeps pursuing.
         if distance < 0x300 then
             if state.action_delay < 0 then
-                accepted = request_target_motion_effect(
+                accepted = R.request_target_motion_effect(
                     state, context, heading)
                 if accepted then
                     state.movement_current_heading = heading
@@ -365,7 +360,7 @@ local function resolve_source_target_motion(context, state, target)
                 accepted = true
             end
         end
-    elseif distance < 0x200 then
+    elseif distance < AiTuning.CLOSE_STRIKE_RANGE then
         -- Other kinds use 0x15C58 directly. That branch writes +0x34 but
         -- leaves +0x2E to the actor's own action continuation.
         accepted = true
@@ -376,7 +371,7 @@ local function resolve_source_target_motion(context, state, target)
         state.movement_active = false
         state.movement_route_distance = nil
         state.ai_target_engaged = true
-        state.direction = direction_from_heading(heading)
+        state.direction = R.direction_from_heading(heading)
     end
     return accepted
 end
@@ -410,7 +405,7 @@ local function walk_direction_from_heading(heading)
     -- ROM 0xB574 walk handler (0xB57E, 0xB5BE) and its walk animation pick
     -- (0xB6CC, C062): rol.w #3 then andi.w #7 with no round-up, so the
     -- octant is truncated. 0xB36A-family animation picks and the 0xBABC
-    -- step round up instead (direction_from_heading) [C: disasm; emulator
+    -- step round up instead (R.direction_from_heading) [C: disasm; emulator
     -- run5 FF012E 0x7800..0x6000 step diagonally, 0x5800 steps right].
     return (heading >> 13) & 0x7
 end
@@ -420,7 +415,7 @@ local function movement_octant_selector(context)
     if (movement_record_flags(context) & ActorStatus.THINK) ~= 0 then
         return walk_direction_from_heading
     end
-    return direction_from_heading
+    return R.direction_from_heading
 end
 
 local function creature_movement_offsets(context, state)
@@ -576,7 +571,7 @@ local function reset_blocked_movement(context, state, movement_state)
     movement_state.movement_flags = movement_state.movement_flags | 0x01
     movement_state.route_status = -1
     state.movement_current_heading = state.movement_heading
-    local direction = direction_from_heading(movement_state.heading)
+    local direction = R.direction_from_heading(movement_state.heading)
     state.direction = direction
     state.animation_id = "idle"
     -- B442 replaces +0x16 and clears movement +0x38, but leaves the sprite
@@ -649,21 +644,21 @@ local function advance_entity_movement(context, state)
         end
         -- ROM 0xB7B8 sets the actor +0xB0 retry bit before dispatching the
         -- map event. Preserve that native collision side effect across the
-        -- Lua movement snapshot; 0xAC5E clears it after clear terrain. The
+        -- Lua movement R.snapshot; 0xAC5E clears it after clear terrain. The
         -- recovery result already carries the transition's separate movement
-        -- outcome, so keep the other route-state bits in Lua's snapshot.
+        -- outcome, so keep the other route-state bits in Lua's R.snapshot.
         movement_state.route_flags =
             u8(movement_state.route_flags & ~BehaviorFlag.ROUTE_TRANSITION) | (route_flags & BehaviorFlag.ROUTE_TRANSITION)
         if not recovered then
             movement_state.movement_substate = 0x1000
             commit_movement_candidate(movement_state, initial)
             state.animation_id = "walk"
-            state.direction = direction_from_heading(movement_state.heading)
+            state.direction = R.direction_from_heading(movement_state.heading)
             return {
                 outcome = "accepted",
                 state = movement_state,
                 direction_animation = 0x20 + context.movement_idle_selectors[
-                    direction_from_heading(movement_state.heading) + 1],
+                    R.direction_from_heading(movement_state.heading) + 1],
             }
         end
     end
@@ -690,12 +685,12 @@ local function advance_entity_movement(context, state)
             movement_state.collision_flags = movement_state.collision_flags & 0xfe
             commit_movement_candidate(movement_state, fallback)
             state.animation_id = "walk"
-            state.direction = direction_from_heading(movement_state.heading)
+            state.direction = R.direction_from_heading(movement_state.heading)
             return {
                 outcome = "accepted",
                 state = movement_state,
                 direction_animation = 0x20 + context.movement_idle_selectors[
-                    direction_from_heading(movement_state.heading) + 1],
+                    R.direction_from_heading(movement_state.heading) + 1],
             }
         end
         local reset = reset_blocked_movement(
@@ -729,12 +724,12 @@ local function advance_entity_movement(context, state)
     movement_state.movement_flags = movement_state.movement_flags | 0x04
     commit_movement_candidate(movement_state, selected)
     state.animation_id = "walk"
-    state.direction = direction_from_heading(movement_state.animation_heading)
+    state.direction = R.direction_from_heading(movement_state.animation_heading)
     return {
         outcome = "accepted",
         state = movement_state,
         direction_animation = 0x20 + context.movement_idle_selectors[
-            direction_from_heading(movement_state.animation_heading) + 1],
+            R.direction_from_heading(movement_state.animation_heading) + 1],
     }
 end
 

@@ -7,7 +7,7 @@ namespace srx {
 struct Item { uint8_t id; const char* name; ItemKind kind; uint16_t price; uint8_t b24, b25, b26, b27; uint32_t icon, detail; };  // 0xD4540
 struct Spell { uint8_t type, item_id; const char* name; uint8_t drain_level, damage_class, drain_modifier, flag27; int8_t totem_category; uint32_t icon, description; };  // 0xD4EA0, 0x10660, 0xC8AE0
 struct AccessoryRec { Accessory id; const char* name; uint32_t name_addr; std::array<uint16_t, 3> price_by_shop; };  // 0x1AAE07, 0x1AAE8C (0x58628)
-struct ActorProfile { const char* id; const char* package_id; int16_t sprite_type; const char* action_kind; uint8_t action_code; int16_t weapon; int16_t entry_sound; bool controls_movement, projectile, dynamic_encounter_only; };  // repo profiles + 0xB05E
+struct ActorProfile { const char* id; const char* package_id; int16_t sprite_type; const char* action_kind; uint8_t action_code; int16_t weapon; int16_t death_sound; bool controls_movement, projectile, dynamic_encounter_only; };  // repo profiles + 0xB05E
 inline constexpr std::array<Item, 50> kItems{{
   {0x01, "Streetline Special", ItemKind::FIREARM, 100, 6, 0, 4, 0, 0xD17DC, 0xCCA4A},
   {0x02, "Model 101T Light Pistol", ItemKind::FIREARM, 350, 12, 0, 6, 0, 0xD17DC, 0xCCAA4},

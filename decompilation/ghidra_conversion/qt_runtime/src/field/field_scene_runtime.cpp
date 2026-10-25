@@ -34,7 +34,6 @@
 #include "shadowrun_ghidra/entities/heading_animation_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_state_conversion.hpp"
 #include "shadowrun_ghidra/entities/movement_metric_conversion.hpp"
-#include "shadowrun_ghidra/entities/entity_delay_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_combat_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_transition_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_animation_spawn_probe_conversion.hpp"
@@ -115,6 +114,10 @@ using field_scene_detail::field_shop_cost_context;
 using field_scene_detail::draw_command_overview_number;
 using field_scene_detail::make_field_shop_progression_input;
 namespace {
+
+// Port-side scan limit for extracted per-direction actor art frames; the
+// longest 0x62AC list has 10 frames (0x75E8) [C], so 16 is headroom [H].
+constexpr std::uint8_t kActorArtFrameScanLimit = 16U;
 
 // Qt 6.9 added QImage::flipped(Qt::Orientations); 6.8 (Debian/Ubuntu packages)
 // only has mirrored(bool, bool). Same pixels either way.
@@ -256,6 +259,17 @@ constexpr bool actor_flag_is_set(const std::uint8_t flags,
 constexpr bool actor_flag_is_set(const std::uint8_t flags,
                                  const ActorSpawnStateFlag flag) {
     return (flags & actor_flag_mask(flag)) != 0U;
+}
+
+// ROM 0x5C82..0x5CBA, leader record FFFC04: +0x56 < 0 (spell) with +0x57
+// == 5, or +0x56 >= 0 with +0x57 == 0 (unarmed) and +0x91 bits 3/2 (hand
+// cyberware) clear, makes the target marker tier +0x9C instead of +0x4C.
+bool target_marker_reads_stun_meter(const RunnerRecordFields& leader) {
+    if (leader.equipped_inventory_slot < 0) {
+        return leader.equipped_item_code == 5U;
+    }
+    return leader.equipped_item_code == 0U &&
+           (leader.cyberware_flags & 0x000CU) == 0U;
 }
 
 scripting::ScriptCombatantFacts script_combatant_facts(
@@ -423,21 +437,6 @@ std::string centered_command_footer(const std::string_view label) {
     return centered_command_text(label, 17U);
 }
 
-
-
-std::optional<std::uint16_t> source_delay_mode(
-    const std::string_view scale) {
-    if (scale == "normal") {
-        return 0U;
-    }
-    if (scale == "half") {
-        return 1U;
-    }
-    if (scale == "double") {
-        return 2U;
-    }
-    return std::nullopt;
-}
 
 
 
@@ -649,6 +648,11 @@ FieldSceneRuntime::FieldSceneRuntime(
     hospital_random_grid_cells_.fill(-1);
     field_dialogue_.set_script_runtime(&game_scripts_);
     field_interaction_.set_script_runtime(&game_scripts_);
+    field_interaction_.set_security_alarm_callbacks(
+        [this] { advance_field_alarm(true); },
+        [this](const bool disable_alarm) {
+            advance_field_alarm(false, true, disable_alarm);
+        });
     field_dialogue_.set_room_payment_callback([this]()
         -> std::optional<StokerMotelRoomPaymentOutcome> {
         if (!field_funds_.has_value()) {
@@ -1934,24 +1938,132 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
                                artwork.idle_origin_y[direction])) {
             return false;
         }
-        for (std::size_t frame = 0; frame < 2U; ++frame) {
+        for (std::uint8_t frame = 0U;
+             frame < kActorArtFrameScanLimit; ++frame) {
+            const auto spell_alias =
+                actor_asset_prefixes[kind_index] + ".spell.dir." +
+                std::to_string(direction) + ".frame." +
+                std::to_string(frame);
+            if (catalog.find(spell_alias) == nullptr) {
+                break;
+            }
+            artwork.spell_images[direction].emplace_back();
+            artwork.spell_origin_x[direction].push_back(0);
+            artwork.spell_origin_y[direction].push_back(0);
+            const auto image_index = artwork.spell_images[direction].size() - 1U;
+            if (!load_sprite_image(catalog, spell_alias,
+                                   artwork.spell_images[direction][image_index],
+                                   artwork.spell_origin_x[direction][image_index],
+                                   artwork.spell_origin_y[direction][image_index])) {
+                return false;
+            }
+        }
+        for (std::size_t frame = 0; frame < kActorArtFrameScanLimit; ++frame) {
             const auto entry_alias =
                 actor_asset_prefixes[kind_index] + ".entry.dir." +
                 std::to_string(direction) + ".frame." +
                 std::to_string(frame);
+            if (catalog.find(entry_alias) == nullptr) {
+                break;
+            }
+            artwork.entry_images[direction].emplace_back();
+            artwork.entry_origin_x[direction].push_back(0);
+            artwork.entry_origin_y[direction].push_back(0);
+            const auto image_index =
+                artwork.entry_images[direction].size() - 1U;
             if (!load_sprite_image(
                     catalog, entry_alias,
-                    artwork.entry_images[direction][frame],
-                    artwork.entry_origin_x[direction][frame],
-                    artwork.entry_origin_y[direction][frame])) {
+                    artwork.entry_images[direction][image_index],
+                    artwork.entry_origin_x[direction][image_index],
+                    artwork.entry_origin_y[direction][image_index])) {
                 return false;
             }
+        }
+        if (artwork.entry_images[direction].empty()) {
+            failure_ = "default actor entry animation has no source art";
+            return false;
         }
         if (actor.entity_kind != kActorKinds[kind_index]) {
             failure_ = "default actor art kind mapping changed";
             return false;
         }
         loaded_directions[kind_index][direction] = true;
+    }
+
+    for (std::size_t kind_index = 0U;
+         kind_index < actor_asset_prefixes.size(); ++kind_index) {
+        if (actor_asset_prefixes[kind_index].empty()) {
+            continue;
+        }
+        auto& artwork = field_default_actor_artwork_[kind_index];
+        for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
+            auto& frames = artwork.spell_images[direction];
+            for (std::uint8_t frame =
+                     static_cast<std::uint8_t>(frames.size());
+                 frame < kActorArtFrameScanLimit; ++frame) {
+                const auto alias = actor_asset_prefixes[kind_index] +
+                    ".spell.dir." + std::to_string(direction) +
+                    ".frame." + std::to_string(frame);
+                if (catalog.find(alias) == nullptr) {
+                    break;
+                }
+                frames.emplace_back();
+                artwork.spell_origin_x[direction].push_back(0);
+                artwork.spell_origin_y[direction].push_back(0);
+                const auto image_index = frames.size() - 1U;
+                if (!load_sprite_image(
+                        catalog, alias, frames[image_index],
+                        artwork.spell_origin_x[direction][image_index],
+                        artwork.spell_origin_y[direction][image_index])) {
+                    return false;
+                }
+            }
+            if (frames.empty()) {
+                failure_ = "default actor C082 spell art is missing a direction";
+                return false;
+            }
+        }
+        const auto load_spell_death_frames =
+            [this, &catalog, &actor_asset_prefixes, kind_index](
+                const std::string_view pose_name,
+                std::vector<QImage>& images,
+                std::vector<int>& origin_x,
+                std::vector<int>& origin_y) {
+                for (std::uint8_t frame = 0U;
+                     frame < kActorArtFrameScanLimit; ++frame) {
+                    const auto alias = actor_asset_prefixes[kind_index] +
+                        "." + std::string(pose_name) + ".frame." +
+                        std::to_string(frame);
+                    if (catalog.find(alias) == nullptr) {
+                        break;
+                    }
+                    images.emplace_back();
+                    origin_x.push_back(0);
+                    origin_y.push_back(0);
+                    const auto image_index = images.size() - 1U;
+                    if (!load_sprite_image(catalog, alias,
+                                           images[image_index],
+                                           origin_x[image_index],
+                                           origin_y[image_index])) {
+                        return false;
+                    }
+                }
+                if (images.empty()) {
+                    failure_ = "default actor spell-death art is missing a list";
+                    return false;
+                }
+                return true;
+            };
+        if (!load_spell_death_frames(
+                "spell.death.e0", artwork.spell_death_e0_images,
+                artwork.spell_death_e0_origin_x,
+                artwork.spell_death_e0_origin_y) ||
+            !load_spell_death_frames(
+                "spell.death.e4", artwork.spell_death_e4_images,
+                artwork.spell_death_e4_origin_x,
+                artwork.spell_death_e4_origin_y)) {
+            return false;
+        }
     }
     return true;
 }
@@ -1961,7 +2073,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
     constexpr std::string_view kActorTableAlias =
         "field.entities.world.activity.encounter.actors";
     constexpr std::array<std::string_view, 4> kTargetMarkerGroups{{
-        "action.0.2", "action.3.5", "action.6.8", "action.9.plus",
+        "meter.0.2", "meter.3.5", "meter.6.8", "meter.9.plus",
     }};
     field_target_marker_images_by_scene_.clear();
     field_target_marker_images_by_scene_.resize(56U);
@@ -2052,7 +2164,8 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
     if (!std::getline(input, line) ||
         line != "scene\tcontext_group\trandom_sum\tselection_cell_offset"
                 "\tsequence_list_offset\tsource_order\tactor_name\tprofile_id"
-                "\taction_kind\taction_code\tsource_interaction_flags"
+                "\taction_kind\taction_code\tsource_spawn_state_flags"
+                "\tsource_interaction_flags"
                 "\tentity_kind\tpalette_line"
                 "\tsprite_stem\ttagged_template\ttemplate_offset"
                 "\tordered_overrides\tplacement_rule\tphysical_meter"
@@ -2105,23 +2218,25 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             while (std::getline(row, field, '\t')) {
                 fields.push_back(std::move(field));
             }
-            if (fields.size() != 75U) {
+            if (fields.size() != 76U) {
                 failure_ = "dynamic world-activity actor row is malformed";
                 return false;
             }
-            const auto kind = static_cast<std::uint16_t>(std::stoul(fields[11]));
-            const auto physical_meter = std::stoul(fields[18]);
-            const auto delay_primary_attribute = std::stoul(fields[19]);
-            const auto delay_secondary_attribute = std::stoul(fields[20]);
-            const auto delay_capability_flags = std::stoul(fields[21]);
-            const auto source_action_slot = std::stoul(fields[68]);
-            const auto source_action_ammo = std::stoul(fields[69]);
-            const auto source_action_counter = std::stoul(fields[70]);
-            const auto run_target_area = std::stoul(fields[71]);
-            const auto run_target_event = std::stoul(fields[72]);
-            const auto run_target_x = std::stoul(fields[73]);
-            const auto run_target_y = std::stoul(fields[74]);
-            if (kind < 4U || kind > 14U || fields[13].empty() ||
+            const auto source_spawn_state_flags = std::stoul(fields[10]);
+            const auto kind = static_cast<std::uint16_t>(std::stoul(fields[12]));
+            const auto physical_meter = std::stoul(fields[19]);
+            const auto delay_primary_attribute = std::stoul(fields[20]);
+            const auto delay_secondary_attribute = std::stoul(fields[21]);
+            const auto delay_capability_flags = std::stoul(fields[22]);
+            const auto source_action_slot = std::stoul(fields[69]);
+            const auto source_action_ammo = std::stoul(fields[70]);
+            const auto source_action_counter = std::stoul(fields[71]);
+            const auto run_target_area = std::stoul(fields[72]);
+            const auto run_target_event = std::stoul(fields[73]);
+            const auto run_target_x = std::stoul(fields[74]);
+            const auto run_target_y = std::stoul(fields[75]);
+            if (source_spawn_state_flags > 0xFFU || kind < 4U ||
+                kind > 14U || fields[14].empty() ||
                 physical_meter > 0xFFU ||
                 delay_primary_attribute > 0xFFU ||
                 delay_secondary_attribute > 0xFFU ||
@@ -2137,7 +2252,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 return false;
             }
             const auto [position, inserted] =
-                actor_kinds.emplace(fields[13], kind);
+                actor_kinds.emplace(fields[14], kind);
             if (!inserted && position->second != kind) {
                 failure_ = "dynamic actor sprite stem maps to multiple kinds";
                 return false;
@@ -2235,285 +2350,14 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
         return false;
     }
 
-    struct ActorActionProfile {
-        std::uint16_t entity_kind = 0U;
-        std::uint8_t frame_count = 0U;
-        std::uint16_t frame_increment = 0U;
-        std::uint16_t frame_threshold = 0U;
-        std::uint16_t audio_event = 0U;
-    };
-    std::unordered_map<std::string, ActorActionProfile> action_profiles;
-    const auto* action_profile_table =
-        catalog.find("field.entities.actor.action.profiles");
-    if (action_profile_table == nullptr ||
-        action_profile_table->kind != "state") {
-        failure_ = "missing extracted actor C0A2 action profile table";
-        return false;
-    }
-    std::ifstream action_profile_input(
-        action_profile_table->absolute_path, std::ios::binary);
-    if (!action_profile_input) {
-        failure_ = "cannot read extracted actor action profile table";
-        return false;
-    }
-    if (!std::getline(action_profile_input, line) ||
-        line != "sprite_stem\tentity_kind\tframe_count\tframe_increment"
-                "\tframe_threshold\taudio_event") {
-        failure_ = "actor action profile table header is invalid";
-        return false;
-    }
-    const auto parse_action_profile_number =
-        [](const std::string& value) -> std::uint32_t {
-        std::size_t consumed = 0U;
-        const auto parsed = std::stoul(value, &consumed, 10);
-        if (consumed != value.size() || parsed > 0xFFFFFFFFUL) {
-            throw std::invalid_argument("invalid actor action profile number");
-        }
-        return static_cast<std::uint32_t>(parsed);
-    };
-    try {
-        while (std::getline(action_profile_input, line)) {
-            if (!line.empty() && line.back() == '\r') {
-                line.pop_back();
-            }
-            if (line.empty()) {
-                continue;
-            }
-            std::vector<std::string> fields;
-            std::istringstream row(line);
-            std::string field;
-            while (std::getline(row, field, '\t')) {
-                fields.push_back(std::move(field));
-            }
-            if (fields.size() != 6U || fields[0].empty()) {
-                failure_ = "actor action profile row is malformed";
-                return false;
-            }
-            const auto kind = parse_action_profile_number(fields[1]);
-            const auto frame_count = parse_action_profile_number(fields[2]);
-            const auto frame_increment =
-                parse_action_profile_number(fields[3]);
-            const auto frame_threshold =
-                parse_action_profile_number(fields[4]);
-            const auto audio_event = parse_action_profile_number(fields[5]);
-            const auto expected_audio_event = kind == 12U ? 0x55U : 0x4CU;
-            // Conditional field-script actors include kind 3 (scene 15's
-            // ROM record at 0x170A2). Keep its extracted animation profile
-            // available even though the dynamic encounter census remains
-            // limited to kinds 4-14.
-            if (kind < 3U || kind > 14U || frame_count == 0U ||
-                frame_count > 8U || frame_increment == 0U ||
-                frame_increment > 0xFFFFU || frame_threshold == 0U ||
-                frame_threshold != 0x1000U ||
-                audio_event != expected_audio_event) {
-                failure_ = "actor action profile values are invalid";
-                return false;
-            }
-            ActorActionProfile profile;
-            profile.entity_kind = static_cast<std::uint16_t>(kind);
-            profile.frame_count = static_cast<std::uint8_t>(frame_count);
-            profile.frame_increment =
-                static_cast<std::uint16_t>(frame_increment);
-            profile.frame_threshold =
-                static_cast<std::uint16_t>(frame_threshold);
-            profile.audio_event = static_cast<std::uint16_t>(audio_event);
-            if (!action_profiles.emplace(fields[0], profile).second) {
-                failure_ = "actor action profile duplicates a sprite stem";
-                return false;
-            }
-        }
-    } catch (const std::exception& error) {
-        failure_ = std::string("cannot parse actor action profiles: ") +
-                   error.what();
-        return false;
-    }
-
-    struct ActorItemActionProfile {
-        std::uint16_t entity_kind = 0U;
-        std::uint8_t frame_count = 0U;
-        std::uint16_t frame_increment = 0U;
-        std::uint16_t frame_threshold = 0U;
-    };
-    std::unordered_map<std::string, ActorItemActionProfile>
-        item_action_profiles;
-    const auto* item_action_profile_table =
-        catalog.find("field.entities.actor.item.action.profiles");
-    if (item_action_profile_table == nullptr ||
-        item_action_profile_table->kind != "state") {
-        failure_ = "missing extracted actor C042 item-action profile table";
-        return false;
-    }
-    std::ifstream item_action_profile_input(
-        item_action_profile_table->absolute_path, std::ios::binary);
-    if (!item_action_profile_input) {
-        failure_ = "cannot read extracted actor item-action profile table";
-        return false;
-    }
-    if (!std::getline(item_action_profile_input, line) ||
-        line != "sprite_stem\tentity_kind\tframe_count\tframe_increment"
-                "\tframe_threshold") {
-        failure_ = "actor item-action profile table header is invalid";
-        return false;
-    }
-    try {
-        while (std::getline(item_action_profile_input, line)) {
-            if (!line.empty() && line.back() == '\r') {
-                line.pop_back();
-            }
-            if (line.empty()) {
-                continue;
-            }
-            std::vector<std::string> fields;
-            std::istringstream row(line);
-            std::string field;
-            while (std::getline(row, field, '\t')) {
-                fields.push_back(std::move(field));
-            }
-            if (fields.size() != 5U || fields[0].empty()) {
-                failure_ = "actor item-action profile row is malformed";
-                return false;
-            }
-            const auto kind = parse_action_profile_number(fields[1]);
-            const auto frame_count = parse_action_profile_number(fields[2]);
-            const auto frame_increment =
-                parse_action_profile_number(fields[3]);
-            const auto frame_threshold =
-                parse_action_profile_number(fields[4]);
-            // Scene 15's conditional story actor is ROM kind 3. Its C042
-            // profile is valid source data even though dynamic encounter
-            // records remain constrained to kinds 4-14.
-            if (kind < 3U || kind > 14U || frame_count == 0U ||
-                frame_count > 8U || frame_increment == 0U ||
-                frame_increment > 0xFFFFU || frame_threshold != 0x1000U) {
-                failure_ = "actor item-action profile values are invalid";
-                return false;
-            }
-            ActorItemActionProfile profile;
-            profile.entity_kind = static_cast<std::uint16_t>(kind);
-            profile.frame_count = static_cast<std::uint8_t>(frame_count);
-            profile.frame_increment =
-                static_cast<std::uint16_t>(frame_increment);
-            profile.frame_threshold =
-                static_cast<std::uint16_t>(frame_threshold);
-            if (!item_action_profiles.emplace(fields[0], profile).second) {
-                failure_ =
-                    "actor item-action profiles duplicate a sprite stem";
-                return false;
-            }
-        }
-    } catch (const std::exception& error) {
-        failure_ = std::string("cannot parse actor item-action profiles: ") +
-                   error.what();
-        return false;
-    }
-
-    struct ActorReactionProfile {
-        std::uint16_t entity_kind = 0U;
-        std::uint8_t hurt_frame_count = 0U;
-        std::uint16_t hurt_increment = 0U;
-        std::uint16_t frame_threshold = 0U;
-        std::uint16_t hurt_audio_event = 0U;
-        std::uint16_t down_audio_event = 0U;
-    };
-    std::unordered_map<std::string, ActorReactionProfile> reaction_profiles;
-    const auto* reaction_profile_table =
-        catalog.find("field.entities.actor.reaction.profiles");
-    if (reaction_profile_table == nullptr ||
-        reaction_profile_table->kind != "state") {
-        failure_ = "missing extracted actor C072 reaction profile table";
-        return false;
-    }
-    std::ifstream reaction_profile_input(
-        reaction_profile_table->absolute_path, std::ios::binary);
-    if (!reaction_profile_input) {
-        failure_ = "cannot read extracted actor reaction profile table";
-        return false;
-    }
-    if (!std::getline(reaction_profile_input, line) ||
-        line != "sprite_stem\tentity_kind\thurt_frame_count\thurt_increment"
-                "\tframe_threshold\thurt_audio_event\tdown_audio_event") {
-        failure_ = "actor reaction profile table header is invalid";
-        return false;
-    }
-    try {
-        while (std::getline(reaction_profile_input, line)) {
-            if (!line.empty() && line.back() == '\r') {
-                line.pop_back();
-            }
-            if (line.empty()) {
-                continue;
-            }
-            std::vector<std::string> fields;
-            std::istringstream row(line);
-            std::string field;
-            while (std::getline(row, field, '\t')) {
-                fields.push_back(std::move(field));
-            }
-            if (fields.size() != 7U || fields[0].empty()) {
-                failure_ = "actor reaction profile row is malformed";
-                return false;
-            }
-            const auto kind = parse_action_profile_number(fields[1]);
-            const auto frame_count = parse_action_profile_number(fields[2]);
-            const auto frame_increment =
-                parse_action_profile_number(fields[3]);
-            const auto frame_threshold =
-                parse_action_profile_number(fields[4]);
-            const auto hurt_audio_event =
-                parse_action_profile_number(fields[5]);
-            const auto down_audio_event =
-                parse_action_profile_number(fields[6]);
-            // Keep the conditional scene-15 kind-3 source profile alongside
-            // the dynamic encounter profiles; it is not an encounter row.
-            if (kind < 3U || kind > 14U || frame_count == 0U ||
-                frame_count > 8U || frame_increment == 0U ||
-                frame_increment > 0xFFFFU || frame_threshold != 0x1000U ||
-                hurt_audio_event > 0xFFFFU || down_audio_event > 0xFFFFU) {
-                failure_ = "actor reaction profile values are invalid";
-                return false;
-            }
-            ActorReactionProfile profile;
-            profile.entity_kind = static_cast<std::uint16_t>(kind);
-            profile.hurt_frame_count =
-                static_cast<std::uint8_t>(frame_count);
-            profile.hurt_increment =
-                static_cast<std::uint16_t>(frame_increment);
-            profile.frame_threshold =
-                static_cast<std::uint16_t>(frame_threshold);
-            profile.hurt_audio_event =
-                static_cast<std::uint16_t>(hurt_audio_event);
-            profile.down_audio_event =
-                static_cast<std::uint16_t>(down_audio_event);
-            if (!reaction_profiles.emplace(fields[0], profile).second) {
-                failure_ = "actor reaction profiles duplicate a sprite stem";
-                return false;
-            }
-        }
-    } catch (const std::exception& error) {
-        failure_ = std::string("cannot parse actor reaction profiles: ") +
-                   error.what();
-        return false;
-    }
-
     for (const auto& [sprite_stem, entity_kind] : script_actor_kinds) {
-        const auto action_profile = action_profiles.find(sprite_stem);
-        const auto item_action_profile = item_action_profiles.find(sprite_stem);
-        const auto reaction_profile = reaction_profiles.find(sprite_stem);
         std::string alias_prefix = "field.entities.actors.";
         for (const char character : sprite_stem) {
             alias_prefix.push_back(character == '-' ? '.' : character);
         }
-        // Some ROM-selected script rows intentionally remain visible as
-        // source data until their profile resources have been extracted. Do
-        // not fail unrelated field scenes for those rows; selection of an
-        // unsupported row is reported at the actor publication boundary.
-        if (action_profile == action_profiles.end() ||
-            action_profile->second.entity_kind != entity_kind ||
-            item_action_profile == item_action_profiles.end() ||
-            item_action_profile->second.entity_kind != entity_kind ||
-            reaction_profile == reaction_profiles.end() ||
-            reaction_profile->second.entity_kind != entity_kind ||
-            catalog.find(alias_prefix + ".idle") == nullptr) {
+        // Conditional actor rows may lack extracted sprite art. Keep them in
+        // source data and publish only rows with a directly loadable image.
+        if (catalog.find(alias_prefix + ".idle") == nullptr) {
             continue;
         }
         const auto [existing, inserted] =
@@ -2532,47 +2376,6 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
         }
 
         DefaultActorArtwork artwork{};
-        const auto action_profile = action_profiles.find(sprite_stem);
-        if (action_profile == action_profiles.end() ||
-            action_profile->second.entity_kind != entity_kind) {
-            failure_ = "dynamic actor has no matching C0A2 action profile";
-            return false;
-        }
-        artwork.action_frame_count = action_profile->second.frame_count;
-        artwork.action_frame_increment =
-            action_profile->second.frame_increment;
-        artwork.action_frame_threshold =
-            action_profile->second.frame_threshold;
-        artwork.action_audio_event = action_profile->second.audio_event;
-        const auto item_action_profile =
-            item_action_profiles.find(sprite_stem);
-        if (item_action_profile == item_action_profiles.end() ||
-            item_action_profile->second.entity_kind != entity_kind) {
-            failure_ = "dynamic actor has no matching C042 item-action profile";
-            return false;
-        }
-        artwork.item_action_frame_count =
-            item_action_profile->second.frame_count;
-        artwork.item_action_increment =
-            item_action_profile->second.frame_increment;
-        artwork.item_action_threshold =
-            item_action_profile->second.frame_threshold;
-        const auto reaction_profile = reaction_profiles.find(sprite_stem);
-        if (reaction_profile == reaction_profiles.end() ||
-            reaction_profile->second.entity_kind != entity_kind) {
-            failure_ = "dynamic actor has no matching C072 reaction profile";
-            return false;
-        }
-        artwork.hurt_frame_count =
-            reaction_profile->second.hurt_frame_count;
-        artwork.hurt_frame_increment =
-            reaction_profile->second.hurt_increment;
-        artwork.hurt_frame_threshold =
-            reaction_profile->second.frame_threshold;
-        artwork.hurt_audio_event =
-            reaction_profile->second.hurt_audio_event;
-        artwork.down_audio_event =
-            reaction_profile->second.down_audio_event;
         for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
             const auto suffix = direction == 0U
                 ? std::string{}
@@ -2585,16 +2388,33 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                     artwork.idle_origin_y[direction])) {
                 return false;
             }
-            const auto spell_alias = alias_prefix + ".spell" + suffix;
-            if (!load_sprite_image(
-                    catalog, spell_alias,
-                    artwork.spell_images[direction],
-                    artwork.spell_origin_x[direction],
-                    artwork.spell_origin_y[direction])) {
+            for (std::uint8_t frame = 0U;
+                 frame < kActorArtFrameScanLimit; ++frame) {
+                const auto spell_alias =
+                    alias_prefix + ".spell.dir." +
+                    std::to_string(direction) + ".frame." +
+                    std::to_string(frame);
+                if (catalog.find(spell_alias) == nullptr) {
+                    break;
+                }
+                artwork.spell_images[direction].emplace_back();
+                artwork.spell_origin_x[direction].push_back(0);
+                artwork.spell_origin_y[direction].push_back(0);
+                const auto image_index =
+                    artwork.spell_images[direction].size() - 1U;
+                if (!load_sprite_image(
+                        catalog, spell_alias,
+                        artwork.spell_images[direction][image_index],
+                        artwork.spell_origin_x[direction][image_index],
+                        artwork.spell_origin_y[direction][image_index])) {
+                    return false;
+                }
+            }
+            if (artwork.spell_images[direction].empty()) {
+                failure_ = "dynamic actor C082 spell art is missing a direction";
                 return false;
             }
-            std::uint8_t entry_frames = 0U;
-            for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
+            for (std::uint8_t frame = 0U; frame < kActorArtFrameScanLimit; ++frame) {
                 const auto entry_alias =
                     alias_prefix + ".entry.dir." +
                     std::to_string(direction) + ".frame." +
@@ -2602,30 +2422,26 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 if (catalog.find(entry_alias) == nullptr) {
                     break;
                 }
+                artwork.entry_images[direction].emplace_back();
+                artwork.entry_origin_x[direction].push_back(0);
+                artwork.entry_origin_y[direction].push_back(0);
+                const auto image_index =
+                    artwork.entry_images[direction].size() - 1U;
                 if (!load_sprite_image(
                         catalog, entry_alias,
-                        artwork.entry_images[direction][frame],
-                        artwork.entry_origin_x[direction][frame],
-                        artwork.entry_origin_y[direction][frame])) {
+                        artwork.entry_images[direction][image_index],
+                        artwork.entry_origin_x[direction][image_index],
+                        artwork.entry_origin_y[direction][image_index])) {
                     return false;
                 }
-                ++entry_frames;
             }
-            if (entry_frames == 0U) {
+            if (artwork.entry_images[direction].empty()) {
                 failure_ =
                     "dynamic actor entry animation is missing a direction";
                 return false;
             }
-            if (direction == 0U) {
-                artwork.entry_frame_count = entry_frames;
-            } else if (entry_frames != artwork.entry_frame_count) {
-                failure_ =
-                    "dynamic actor entry animation frame counts disagree";
-                return false;
-            }
 
-            std::uint8_t walk_frames = 0U;
-            for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
+            for (std::uint8_t frame = 0U; frame < kActorArtFrameScanLimit; ++frame) {
                 const auto walk_alias =
                     alias_prefix + ".walk.dir." +
                     std::to_string(direction) + ".frame." +
@@ -2645,26 +2461,20 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                         artwork.walk_origin_y[direction][image_index])) {
                     return false;
                 }
-                ++walk_frames;
             }
-            if (walk_frames == 0U) {
+            if (artwork.walk_images[direction].empty()) {
                 failure_ = "dynamic actor C062 walk art is missing a direction";
                 return false;
             }
-            if (direction == 0U) {
-                artwork.walk_frame_count = walk_frames;
-            } else if (walk_frames != artwork.walk_frame_count) {
-                failure_ =
-                    "dynamic actor C062 walk-list lengths disagree by direction";
-                return false;
-            }
 
-            for (std::uint8_t frame = 0U;
-                 frame < artwork.action_frame_count; ++frame) {
+            for (std::uint8_t frame = 0U; frame < kActorArtFrameScanLimit; ++frame) {
                 const auto action_alias =
                     alias_prefix + ".action.dir." +
                     std::to_string(direction) + ".frame." +
                     std::to_string(frame);
+                if (catalog.find(action_alias) == nullptr) {
+                    break;
+                }
                 artwork.action_images[direction].emplace_back();
                 artwork.action_origin_x[direction].push_back(0);
                 artwork.action_origin_y[direction].push_back(0);
@@ -2679,12 +2489,14 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 }
             }
 
-            for (std::uint8_t frame = 0U;
-                 frame < artwork.item_action_frame_count; ++frame) {
+            for (std::uint8_t frame = 0U; frame < kActorArtFrameScanLimit; ++frame) {
                 const auto item_action_alias =
                     alias_prefix + ".item.action.dir." +
                     std::to_string(direction) + ".frame." +
                     std::to_string(frame);
+                if (catalog.find(item_action_alias) == nullptr) {
+                    break;
+                }
                 artwork.item_action_images[direction].emplace_back();
                 artwork.item_action_origin_x[direction].push_back(0);
                 artwork.item_action_origin_y[direction].push_back(0);
@@ -2699,12 +2511,14 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 }
             }
 
-            for (std::uint8_t frame = 0U;
-                 frame < artwork.hurt_frame_count; ++frame) {
+            for (std::uint8_t frame = 0U; frame < kActorArtFrameScanLimit; ++frame) {
                 const auto hurt_alias =
                     alias_prefix + ".hurt.dir." +
                     std::to_string(direction) + ".frame." +
                     std::to_string(frame);
+                if (catalog.find(hurt_alias) == nullptr) {
+                    break;
+                }
                 artwork.hurt_images[direction].emplace_back();
                 artwork.hurt_origin_x[direction].push_back(0);
                 artwork.hurt_origin_y[direction].push_back(0);
@@ -2718,6 +2532,47 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                     return false;
                 }
             }
+        }
+        const auto load_spell_death_frames =
+            [this, &catalog, &alias_prefix](
+                const std::string_view pose_name,
+                std::vector<QImage>& images,
+                std::vector<int>& origin_x,
+                std::vector<int>& origin_y) {
+                for (std::uint8_t frame = 0U;
+                     frame < kActorArtFrameScanLimit; ++frame) {
+                    const auto alias =
+                        alias_prefix + "." + std::string(pose_name) +
+                        ".frame." + std::to_string(frame);
+                    if (catalog.find(alias) == nullptr) {
+                        break;
+                    }
+                    images.emplace_back();
+                    origin_x.push_back(0);
+                    origin_y.push_back(0);
+                    const auto image_index = images.size() - 1U;
+                    if (!load_sprite_image(catalog, alias,
+                                           images[image_index],
+                                           origin_x[image_index],
+                                           origin_y[image_index])) {
+                        return false;
+                    }
+                }
+                if (images.empty()) {
+                    failure_ = "dynamic actor spell-death art is missing a list";
+                    return false;
+                }
+                return true;
+            };
+        if (!load_spell_death_frames(
+                "spell.death.e0", artwork.spell_death_e0_images,
+                artwork.spell_death_e0_origin_x,
+                artwork.spell_death_e0_origin_y) ||
+            !load_spell_death_frames(
+                "spell.death.e4", artwork.spell_death_e4_images,
+                artwork.spell_death_e4_origin_x,
+                artwork.spell_death_e4_origin_y)) {
+            return false;
         }
         if (entity_kind < 3U || entity_kind > 14U) {
             failure_ = "dynamic actor source kind is outside the supported range";
@@ -3109,26 +2964,6 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         actor.movement_state.collision_extent = 0U;
         actor.movement_state_initialized = true;
 
-        const auto& actor_artwork = artwork->second;
-        actor.entry_animation_frame_count = actor_artwork.entry_frame_count;
-        actor.walk_animation_frame_count = actor_artwork.walk_frame_count;
-        actor.action_animation_frame_count =
-            actor_artwork.action_frame_count;
-        actor.action_animation_increment =
-            actor_artwork.action_frame_increment;
-        actor.action_animation_threshold =
-            actor_artwork.action_frame_threshold;
-        actor.action_animation_audio_event =
-            actor_artwork.action_audio_event;
-        actor.item_action_frame_count =
-            actor_artwork.item_action_frame_count;
-        actor.item_action_increment = actor_artwork.item_action_increment;
-        actor.item_action_threshold = actor_artwork.item_action_threshold;
-        actor.hurt_animation_frame_count = actor_artwork.hurt_frame_count;
-        actor.hurt_animation_increment = actor_artwork.hurt_frame_increment;
-        actor.hurt_animation_threshold = actor_artwork.hurt_frame_threshold;
-        actor.hurt_audio_event = actor_artwork.hurt_audio_event;
-        actor.down_audio_event = actor_artwork.down_audio_event;
 
         scripting::ScriptActorBehaviorContext context{
             actor.script_profile_id,
@@ -3161,26 +2996,6 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             world_frame_logic_state_.world_active != 0U;
         context.world_scene_state = world_frame_logic_state_.scene_state;
         context.movement_scene_id = scene_reference;
-        context.entry_animation_frame_count =
-            actor.entry_animation_frame_count;
-        context.walk_animation_frame_count = actor.walk_animation_frame_count;
-        context.action_animation_frame_count =
-            actor.action_animation_frame_count;
-        context.action_animation_increment =
-            actor.action_animation_increment;
-        context.action_animation_threshold =
-            actor.action_animation_threshold;
-        context.action_animation_audio_event =
-            actor.action_animation_audio_event;
-        context.item_action_frame_count = actor.item_action_frame_count;
-        context.item_action_increment = actor.item_action_increment;
-        context.item_action_threshold = actor.item_action_threshold;
-        context.hurt_animation_frame_count =
-            actor.hurt_animation_frame_count;
-        context.hurt_animation_increment = actor.hurt_animation_increment;
-        context.hurt_animation_threshold = actor.hurt_animation_threshold;
-        context.hurt_audio_event = actor.hurt_audio_event;
-        context.down_audio_event = actor.down_audio_event;
         context.delay_primary_attribute = actor.delay_primary_attribute;
         context.delay_secondary_attribute = actor.delay_secondary_attribute;
         context.delay_capability_flags = actor.delay_capability_flags;
@@ -3254,13 +3069,132 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
     }
 }
 
-void FieldSceneRuntime::advance_default_field_actors() {
+void FieldSceneRuntime::advance_default_field_actors(
+    const bool source_target_list_service) {
     const auto current_scene = state_.field_scene_buffers.scene_reference;
     publish_pending_world_activity_script_actors(current_scene);
+    std::vector<DefaultFieldActorPresentation*> ordered_actors;
+    ordered_actors.reserve(field_default_actors_.size());
     for (auto& actor : field_default_actors_) {
-        if (!actor.active || actor.scene_reference != current_scene) {
-            continue;
+        if (actor.active && actor.scene_reference == current_scene) {
+            ordered_actors.push_back(&actor);
         }
+    }
+    std::stable_sort(
+        ordered_actors.begin(), ordered_actors.end(),
+        [](const auto* left, const auto* right) {
+            if (!left->source_record_slot.has_value()) {
+                return false;
+            }
+            if (!right->source_record_slot.has_value()) {
+                return true;
+            }
+            return static_cast<std::size_t>(*left->source_record_slot) <
+                   static_cast<std::size_t>(*right->source_record_slot);
+        });
+
+    scripting::ScriptActorTargetListRebuildDecision target_list_decision{};
+    if (source_target_list_service) {
+        scripting::ScriptActorTargetListRebuildFacts target_list_facts{};
+        target_list_facts.frame_counter = field_world_frame_counter_;
+        // FFDFE8 is the port's typed display_service_word. A nonzero value
+        // forces both source lists through 0x13874 [C].
+        target_list_facts.display_service_word =
+            field_runtime_state_.display_service_word;
+        const auto decision =
+            game_scripts_.should_rebuild_actor_target_lists(
+                target_list_facts);
+        if (!decision.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.actor.target_list_rebuild_failed");
+            return;
+        }
+        target_list_decision = *decision;
+        // [H] The ROM lists are RAM pointer lists that earlier field frames
+        // already filled before any encounter; a port session bootstrapped
+        // straight into a scene has no earlier frames, so seed both once.
+        if (!target_candidate_lists_seeded_) {
+            target_list_decision.rebuild_runner = true;
+            target_list_decision.rebuild_world = true;
+            target_candidate_lists_seeded_ = true;
+        }
+    }
+    const auto has_projected_y = [this](const SceneRunnerPosition& position) {
+        EntityProjectionState projection{};
+        projection.world_x = position.x;
+        projection.world_y = position.y;
+        project_entity_screen_position_standard(
+            projection,
+            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
+            static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y));
+        // The ROM list builders require projected +0x0C != 0 [C]; the
+        // conversion's typed projection supplies that fact [H].
+        return projection.screen_y != 0U;
+    };
+    const auto active_status = static_cast<std::uint8_t>(
+        srx::ActorStatus::ACTIVE);
+    const auto rejected_status = static_cast<std::uint8_t>(
+        srx::ActorStatus::DEAD) |
+        static_cast<std::uint8_t>(srx::ActorStatus::DOWN);
+    if (target_list_decision.rebuild_runner) {
+        runner_target_candidate_slots_.clear();
+        for (std::size_t slot = 0U;
+             slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
+            if (!field_party_roster_.slot_active(slot)) {
+                continue;
+            }
+            auto position = state_.field_scene_buffers.source_metadata
+                                .initial_field_records[slot];
+            if (slot == field_party_roster_.active_slot() &&
+                field_entity_.active) {
+                position = field_entity_.world_position;
+            }
+            const auto flags = field_party_roster_.records()[slot].flags;
+            const auto service_flags = static_cast<std::uint8_t>(flags >> 8U);
+            if ((service_flags & active_status) != 0U &&
+                (service_flags & rejected_status) == 0U &&
+                has_projected_y(position)) {
+                runner_target_candidate_slots_.push_back(
+                    static_cast<std::uint8_t>(slot));
+            }
+        }
+    }
+    if (target_list_decision.rebuild_world) {
+        world_target_candidate_slots_.clear();
+        const auto excluded_role_flags = static_cast<std::uint8_t>(
+            srx::ActorFlag::PEDESTRIAN) |
+            static_cast<std::uint8_t>(srx::ActorFlag::QUEST);
+        const auto excluded_behavior_flags = static_cast<std::uint8_t>(
+            srx::BehaviorFlag::ESCORT);
+        const auto first_world_slot = static_cast<std::uint8_t>(
+            srx::ActorPool::PARTY);
+        const auto last_world_slot = static_cast<std::uint8_t>(
+            first_world_slot +
+            static_cast<std::uint8_t>(srx::ActorPool::OTHERS) - 1U);
+        for (const auto* target_record : ordered_actors) {
+            const auto& target = *target_record;
+            if (!target.source_record_slot.has_value()) {
+                continue;
+            }
+            const auto source_slot = static_cast<std::uint8_t>(
+                *target.source_record_slot);
+            if (source_slot < first_world_slot ||
+                source_slot > last_world_slot ||
+                (target.source_record_flags & active_status) == 0U ||
+                (target.source_record_flags & rejected_status) != 0U ||
+                (target.source_behavior_flags &
+                 excluded_behavior_flags) != 0U ||
+                (target.source_spawn_state_flags & excluded_role_flags) != 0U ||
+                !has_projected_y(target.world_position)) {
+                continue;
+            }
+            world_target_candidate_slots_.push_back(source_slot);
+        }
+    }
+
+    // 0x0A8EA services the FF0400..FF0A00 record pool in slot order [C].
+    for (auto* actor_record : ordered_actors) {
+        auto& actor = *actor_record;
         const bool dynamic_world_actor = actor.temporary_world_encounter ||
                                          actor.world_activity_script_actor;
         scripting::ScriptActorBehaviorContext context{
@@ -3277,8 +3211,12 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 : actor.initial_heading,
             false,
         };
+        context.source_think_suppressed = field_think_token_claimed_;
+        context.source_thon_period_counter = field_thon_period_counter_;
         context.walk_fast_enabled = field_walk_fast_enabled_;
         context.target_selection_latched = actor.target_selected;
+        context.target_marker_reads_stun_meter =
+            target_marker_reads_stun_meter(active_runner_record());
         context.action_profile_modifiers =
             script_action_profile_modifiers(state_.action_selection_profiles);
         context.action_attribute_selectors =
@@ -3286,10 +3224,46 @@ void FieldSceneRuntime::advance_default_field_actors() {
         context.combat_meter_service_blocked =
             field_movement_transition_state_.world_mode == 3U;
         if (actor.source_record_slot.has_value()) {
+            const auto source_slot = static_cast<std::uint8_t>(
+                *actor.source_record_slot);
             context.source_record_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
+            if (source_slot >= FieldPartyRosterRuntime::kSlotCount) {
+                // ROM 0x1A342 returns pool slots 3..9 in d0; 0x44BC copies
+                // that exact value from FFDD40 to actor +0x3E [C].
+                context.source_actor_slot = source_slot;
+            }
+            if (actor.list_offset != 0U) {
+                context.source_actor_list_offset = actor.list_offset;
+                context.source_actor_source_order = actor.source_order;
+            }
+            context.source_world_x = actor.world_position.x;
+            context.source_world_y = actor.world_position.y;
             context.source_record_flags = actor.source_record_flags;
+            context.source_interaction_flags =
+                actor.source_interaction_flags;
+            context.source_behavior_flags = actor.source_behavior_flags;
+            context.source_spawn_state_flags =
+                actor.source_spawn_state_flags;
             context.source_physical_meter = actor.physical_meter;
+            context.source_actor_posture = actor.combatant.posture;
+            context.source_animation_selector =
+                actor.source_animation_selector;
+            context.source_alarm_active = field_matrix_field_state_.alarm;
+            context.source_scene_mode =
+                field_movement_transition_state_.world_mode;
+            context.controlled_runner_slot = static_cast<std::uint8_t>(
+                field_party_roster_.active_slot());
+            context.world_activity_active =
+                world_frame_logic_state_.world_active != 0U;
+            context.world_scene_state = world_frame_logic_state_.scene_state;
+            context.movement_scene_id = current_scene;
+            context.source_projection_active = caster_projection_active(
+                actor.world_position.x, actor.world_position.y,
+                static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_x),
+                static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_y));
         }
         if (dynamic_world_actor) {
             context.combatant = actor.combatant;
@@ -3312,36 +3286,28 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 actor.source_item_spawn_result;
             context.source_spawn_state_flags =
                 actor.source_spawn_state_flags;
+            context.source_alarm_active = field_matrix_field_state_.alarm;
+            context.source_scene_mode =
+                field_movement_transition_state_.world_mode;
+            context.controlled_runner_slot = static_cast<std::uint8_t>(
+                field_party_roster_.active_slot());
+            // FFDDC6/FFDDC8 are the live camera origin; profile words +8/+10
+            // are FFDDCE/FFDDD0, the scene's far camera bounds [C].
+            const auto& field_profile = state_.field_scene_buffers.profile;
+            if (field_profile.size() > 5U) {
+                context.source_camera_x = static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_x);
+                context.source_camera_y = static_cast<std::uint16_t>(
+                    state_.field_scene_buffers.camera_y);
+                context.source_camera_limit_x = field_profile[4U];
+                context.source_camera_limit_y = field_profile[5U];
+            }
             context.world_activity_active =
                 world_frame_logic_state_.world_active != 0U;
             context.world_scene_state =
                 world_frame_logic_state_.scene_state;
             context.movement_scene_id = current_scene;
-            context.entry_animation_frame_count =
-                actor.entry_animation_frame_count;
             context.ai_animation_frame = actor.animation_frame;
-            context.walk_animation_frame_count =
-                actor.walk_animation_frame_count;
-            context.action_animation_frame_count =
-                actor.action_animation_frame_count;
-            context.action_animation_increment =
-                actor.action_animation_increment;
-            context.action_animation_threshold =
-                actor.action_animation_threshold;
-            context.item_action_frame_count =
-                actor.item_action_frame_count;
-            context.item_action_increment = actor.item_action_increment;
-            context.item_action_threshold = actor.item_action_threshold;
-            context.action_animation_audio_event =
-                actor.action_animation_audio_event;
-            context.hurt_animation_frame_count =
-                actor.hurt_animation_frame_count;
-            context.hurt_animation_increment =
-                actor.hurt_animation_increment;
-            context.hurt_animation_threshold =
-                actor.hurt_animation_threshold;
-            context.hurt_audio_event = actor.hurt_audio_event;
-            context.down_audio_event = actor.down_audio_event;
             context.target_heading_audio_alternate =
                 (field_random_seed_ & 0x8000U) != 0U;
             context.initial_action_delay = actor.action_delay;
@@ -3373,6 +3339,8 @@ void FieldSceneRuntime::advance_default_field_actors() {
                     std::optional<scripting::ScriptCombatantFacts> combatant,
                     const std::optional<std::uint16_t>
                         source_record_heading) {
+                    // ROM 0x14446/0x1438C require projected +0x0C != 0 [C];
+                    // the host computes the typed screen-Y fact here [H].
                     EntityProjectionState projection{};
                     projection.world_x = position.x;
                     projection.world_y = position.y;
@@ -3442,15 +3410,11 @@ void FieldSceneRuntime::advance_default_field_actors() {
                         std::move(candidate));
                 };
 
-            // ROM 0x14492 chooses the three runner records unless the acting
-            // record has +0x10 bit 3 set. Runner coordinates come from the
-            // scene/save's typed field positions; the active runner follows
-            // the live field entity as it moves.
-            for (std::size_t slot = 0U;
-                 slot < FieldPartyRosterRuntime::kSlotCount; ++slot) {
-                if (!field_party_roster_.slot_active(slot)) {
-                    continue;
-                }
+            // ROM 0x14492 chooses the cached three-record runner list unless
+            // the acting record has +0x10 bit 3 set. The cache stores record
+            // identity only; coordinates and facts are sampled live here [C].
+            for (const auto source_slot : runner_target_candidate_slots_) {
+                const auto slot = static_cast<std::size_t>(source_slot);
                 auto position = state_.field_scene_buffers.source_metadata
                                     .initial_field_records[slot];
                 if (slot == field_party_roster_.active_slot() &&
@@ -3475,18 +3439,21 @@ void FieldSceneRuntime::advance_default_field_actors() {
             }
 
             // The other source target pool is the seven world-actor records
-            // beginning at FF0400. These are live encounter/field actors, not
-            // scenery rows; Lua applies the source record eligibility gates.
-            for (const auto& target : field_default_actors_) {
-                const auto source_slot = target.source_record_slot.has_value()
-                    ? static_cast<std::uint8_t>(
-                          *target.source_record_slot)
-                    : 0U;
-                if (!target.active || target.scene_reference != current_scene ||
-                    !target.source_record_slot.has_value() ||
-                    source_slot < 3U || source_slot > 9U) {
+            // beginning at FF0400. Its slots are cached as pointer identity;
+            // every think resolves the current record and its live position.
+            for (const auto source_slot : world_target_candidate_slots_) {
+                const auto target_record = std::find_if(
+                    field_default_actors_.begin(), field_default_actors_.end(),
+                    [source_slot, current_scene](const auto& target) {
+                        return target.scene_reference == current_scene &&
+                            target.source_record_slot.has_value() &&
+                            static_cast<std::uint8_t>(
+                                *target.source_record_slot) == source_slot;
+                    });
+                if (target_record == field_default_actors_.end()) {
                     continue;
                 }
+                const auto& target = *target_record;
                 append_target_candidate(
                     target.actor_instance_id, target.world_position,
                     target.source_record_flags,
@@ -3531,6 +3498,30 @@ void FieldSceneRuntime::advance_default_field_actors() {
                                   *actor.source_record_slot)}
                         : std::nullopt,
                     target_x, target_y);
+            };
+
+            context.measure_destination = [
+                &actor](const std::uint16_t target_x,
+                        const std::uint16_t target_y)
+                -> std::optional<scripting::
+                    ScriptActorDestinationMeasurement> {
+                // 0x15CA4 provides heading/distance, and 0x1460E compares the
+                // direct route step cost to the arrival threshold [C].
+                const auto measurement =
+                    measure_entity_target_heading_and_distance(
+                        actor.world_position.x, actor.world_position.y,
+                        target_x, target_y);
+                const auto route_cost = std::min<std::uint32_t>(
+                    compute_record_diagonal_step_cost(
+                        actor.world_position.x, actor.world_position.y,
+                        target_x, target_y),
+                    std::numeric_limits<std::uint16_t>::max());
+                return scripting::ScriptActorDestinationMeasurement{
+                    measurement.heading,
+                    static_cast<std::uint16_t>(std::min<std::uint32_t>(
+                        measurement.distance,
+                        std::numeric_limits<std::uint16_t>::max())),
+                    static_cast<std::uint16_t>(route_cost)};
             };
 
             const bool has_candidate_in_source_pool = std::any_of(
@@ -3631,12 +3622,107 @@ void FieldSceneRuntime::advance_default_field_actors() {
             }
         }
 
+        if (actor.source_record_slot.has_value()) {
+            const auto active_runner_slot = static_cast<std::uint8_t>(
+                field_party_roster_.active_slot());
+            const bool has_controlled_runner = std::any_of(
+                context.ai_target_candidates.begin(),
+                context.ai_target_candidates.end(),
+                [active_runner_slot](const auto& candidate) {
+                    return !candidate.world_activity_actor &&
+                           candidate.source_record_slot.has_value() &&
+                           *candidate.source_record_slot ==
+                               active_runner_slot;
+                });
+            if (!has_controlled_runner &&
+                field_party_roster_.slot_active(active_runner_slot)) {
+                // 0x1450E reads the active runner through FFFC04 [C]. Supply
+                // its typed record if this actor's candidate pool omitted it.
+                auto runner_position = state_.field_scene_buffers
+                                           .source_metadata
+                                           .initial_field_records[
+                                               active_runner_slot];
+                if (active_runner_slot == field_party_roster_.active_slot() &&
+                    field_entity_.active) {
+                    runner_position = field_entity_.world_position;
+                }
+                const auto relative =
+                    measure_entity_target_heading_and_distance(
+                        actor.world_position.x, actor.world_position.y,
+                        runner_position.x, runner_position.y);
+                const auto& runner = field_party_roster_.records()[
+                    active_runner_slot];
+                scripting::ScriptActorTargetCandidate candidate{};
+                candidate.id = "party.runner." +
+                    std::to_string(active_runner_slot);
+                candidate.world_x = runner_position.x;
+                candidate.world_y = runner_position.y;
+                candidate.heading = relative.heading;
+                candidate.distance = static_cast<std::uint16_t>(
+                    std::min<std::uint32_t>(relative.distance, 0xFFFFU));
+                candidate.interaction_flags = static_cast<std::uint8_t>(
+                    runner.flags & 0x00FFU);
+                candidate.world_activity_actor = false;
+                candidate.source_record_slot = active_runner_slot;
+                if (field_entity_.active) {
+                    candidate.source_record_heading =
+                        field_movement_state_.heading;
+                }
+                context.ai_target_candidates.push_back(
+                    std::move(candidate));
+            }
+
+            if (!context.measure_destination) {
+                context.measure_destination = [
+                    &actor](const std::uint16_t target_x,
+                            const std::uint16_t target_y)
+                    -> std::optional<scripting::
+                        ScriptActorDestinationMeasurement> {
+                    const auto measurement =
+                        measure_entity_target_heading_and_distance(
+                            actor.world_position.x, actor.world_position.y,
+                            target_x, target_y);
+                    const auto route_cost = std::min<std::uint32_t>(
+                        compute_record_diagonal_step_cost(
+                            actor.world_position.x, actor.world_position.y,
+                            target_x, target_y),
+                        std::numeric_limits<std::uint16_t>::max());
+                    return scripting::ScriptActorDestinationMeasurement{
+                        measurement.heading,
+                        static_cast<std::uint16_t>(std::min<std::uint32_t>(
+                            measurement.distance,
+                            std::numeric_limits<std::uint16_t>::max())),
+                        static_cast<std::uint16_t>(route_cost)};
+                };
+            }
+            if (!context.movement_collision) {
+                context.movement_collision = [this, &actor](
+                    const std::uint16_t x, const std::uint16_t y) {
+                    const auto collision_code = evaluate_field_collision(
+                        x, y, actor.movement_collision_record,
+                        actor.movement_sample_state,
+                        actor.source_record_flags, false,
+                        &actor.movement_terrain_collision_code);
+                    return scripting::ScriptMovementCollisionResult{
+                        collision_code,
+                        actor.movement_terrain_collision_code};
+                };
+            }
+        }
+
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();
             source_boundary("field.actor.lua_behavior_failed");
             actor.active = false;
             continue;
+        }
+        if (decision->think_token_claimed) {
+            field_think_token_claimed_ = true;
+        }
+        if (decision->source_thon_period_counter.has_value()) {
+            field_thon_period_counter_ =
+                decision->source_thon_period_counter;
         }
         if (dynamic_world_actor) {
             actor.source_item_spawn_result.reset();
@@ -3686,12 +3772,54 @@ void FieldSceneRuntime::advance_default_field_actors() {
                 ? "field.actor.spell.effect_requested"
                 : "field.actor.spell.action_resolved");
         }
+        const auto previous_record_flags = actor.source_record_flags;
         if (dynamic_world_actor) {
             actor.source_record_flags = decision->source_record_flags;
             actor.source_behavior_flags = decision->source_behavior_flags;
+            actor.source_spawn_state_flags =
+                decision->source_spawn_state_flags;
             actor.source_animation_selector =
                 decision->source_animation_selector;
             actor.combatant.source_flags = actor.source_record_flags;
+        }
+        if (dynamic_world_actor && decision->world_activity_requested) {
+            // 0x1DBAA's FFDF84/FFDF86 effect uses the existing timeout model [C].
+            if (schedule_world_activity_timeout(
+                    field_world_activity_timeout_state_)) {
+                world_frame_logic_state_.world_active =
+                    static_cast<std::uint16_t>(
+                        field_world_activity_timeout_state_.timeout_marker);
+                world_frame_logic_state_.cleanup_countdown =
+                    static_cast<std::int16_t>(
+                        field_world_activity_timeout_state_.timeout_frames);
+                source_boundary("field.actor.think_world_activity_requested");
+            } else {
+                source_boundary("field.actor.think_world_activity_request_gated");
+            }
+        }
+        if (decision->field_event_request.has_value()) {
+            const auto event = static_cast<srx::EventFn>(
+                *decision->field_event_request);
+            if (event == srx::EventFn::GUARD_SPOTS_YOU) {
+                const auto continuation =
+                    MovementModeTransitionContinuation::
+                        guard_spotted_field_event;
+                if (begin_world_activity_if_idle(
+                        field_world_activity_state_,
+                        static_cast<std::uint16_t>(continuation))) {
+                    world_frame_logic_state_.resource_countdown =
+                        field_world_activity_state_.timeout;
+                    record_field_activity_start(continuation);
+                    source_boundary(
+                        "field.actor.guard_spotted_event_scheduled");
+                } else {
+                    source_boundary(
+                        "field.actor.guard_spotted_event_gated");
+                }
+            } else {
+                source_boundary(
+                    "field.actor.think_field_event_request_unresolved");
+            }
         }
         if (decision->target_motion_effect_slot_request.has_value()) {
             const auto slot = *decision->target_motion_effect_slot_request;
@@ -3714,9 +3842,15 @@ void FieldSceneRuntime::advance_default_field_actors() {
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_frame = decision->animation_frame;
+        // ROM 0xAB02 runs once, when the 0xB330 death list (C0B2) finishes
+        // and it latches +0x10 bit 6 (effect_locked/DEAD). Lua reports that
+        // edge; spawn no longer plays a death list (combat-fixes-1).
         const bool transition_just_completed =
             dynamic_world_actor &&
-            !actor.transition_complete && decision->transition_complete &&
+            !actor_flag_is_set(previous_record_flags,
+                               ActorServiceFlag::effect_locked) &&
+            actor_flag_is_set(actor.source_record_flags,
+                              ActorServiceFlag::effect_locked) &&
             actor_flag_is_set(actor.source_spawn_state_flags,
                               ActorSpawnStateFlag::world_activity_member) &&
             !actor_flag_is_set(
@@ -3729,15 +3863,15 @@ void FieldSceneRuntime::advance_default_field_actors() {
             // +0x10 bit 3 is clear. The random-encounter timeout counter below
             // is a separate host path; Club list results keep their own count.
             if (actor.temporary_world_encounter &&
-                field_world_activity_timeout_state_.scene_36_gate != 0U) {
-                --field_world_activity_timeout_state_.scene_36_gate;
+                field_world_activity_timeout_state_.encounter_actor_count != 0U) {
+                --field_world_activity_timeout_state_.encounter_actor_count;
             }
             if (actor.temporary_world_encounter) {
                 source_boundary(
                     "field.random_encounter.actor_transition_completed");
             }
             if (actor.temporary_world_encounter &&
-                field_world_activity_timeout_state_.scene_36_gate == 0U) {
+                field_world_activity_timeout_state_.encounter_actor_count == 0U) {
                 reset_field_entity_service_records();
                 source_boundary(
                     "field.random_encounter.sequence_transitions_complete");
@@ -3762,6 +3896,31 @@ void FieldSceneRuntime::advance_default_field_actors() {
                                     "_callback_dispatch_pending");
                 }
             }
+        }
+        if (dynamic_world_actor &&
+            actor_flag_is_set(previous_record_flags,
+                              ActorServiceFlag::active) &&
+            !actor_flag_is_set(actor.source_record_flags,
+                               ActorServiceFlag::active)) {
+            // ROM 0x1E514 (Lua deactivate_record): bclr #0,+0x10 removes the
+            // record from 0x4618 drawing and 0xA8EA service; 0x1A304 frees
+            // the record slot unless +0x10 b3 is set.
+            if (actor.target_motion_effect_slot.has_value() &&
+                *actor.target_motion_effect_slot <
+                    field_world_effect_slots_occupied_.size()) {
+                field_world_effect_slots_occupied_[
+                    *actor.target_motion_effect_slot] = false;
+                actor.target_motion_effect_slot.reset();
+            }
+            actor.active = false;
+            if (!actor_flag_is_set(
+                    actor.source_record_flags,
+                    ActorServiceFlag::targets_world_actor_group)) {
+                actor.source_record_slot.reset();
+            }
+            actor.target_selected = false;
+            source_boundary("field.actor.record_deactivated");
+            continue;
         }
         if (decision->combat_meter_update.has_value() &&
             decision->combat_meter_update->changed) {
@@ -4239,12 +4398,17 @@ FieldSceneRuntime::default_actor_sprite_view(
             artwork->walk_origin_y[direction][frame]};
     }
     if (actor.animation_id == "spell") {
-        // 0xAF7C/0xAFAE install a directional C082 selector and 0xAFE0 holds
-        // that first source frame until another actor state replaces it.
+        // Lua's C082 animator owns the frame index [C: 0xAF7C/0xAFAE/0x600E].
+        const auto& frames = artwork->spell_images[direction];
+        if (frames.empty()) {
+            return {};
+        }
+        const auto frame = std::min<std::size_t>(
+            actor.animation_frame, frames.size() - 1U);
         return DefaultActorSpriteView{
-            &artwork->spell_images[direction],
-            artwork->spell_origin_x[direction],
-            artwork->spell_origin_y[direction]};
+            &frames[frame],
+            artwork->spell_origin_x[direction][frame],
+            artwork->spell_origin_y[direction][frame]};
     }
     if (actor.animation_id == "weapon") {
         const auto& frames = artwork->item_action_images[direction];
@@ -4282,17 +4446,45 @@ FieldSceneRuntime::default_actor_sprite_view(
             artwork->hurt_origin_x[direction][frame],
             artwork->hurt_origin_y[direction][frame]};
     }
+    if (actor.animation_id == "down") {
+        // The source selector preserves the spell-death list; Lua owns its
+        // frame index [C: 0xB0AC/0xB0E4/0x600E].
+        const auto selector = actor.source_animation_selector;
+        const auto e0 = static_cast<std::uint16_t>(
+            srx::ActorPose::SPELL_DEATH_E0);  // pose base 0xE0 [C]
+        const auto e4 = static_cast<std::uint16_t>(
+            srx::ActorPose::SPELL_DEATH_E4);  // pose base 0xE4 [C]
+        const std::vector<QImage>* images = nullptr;
+        const std::vector<int>* origin_x = nullptr;
+        const std::vector<int>* origin_y = nullptr;
+        if (selector == e0) {
+            images = &artwork->spell_death_e0_images;
+            origin_x = &artwork->spell_death_e0_origin_x;
+            origin_y = &artwork->spell_death_e0_origin_y;
+        } else if (selector == e4) {
+            images = &artwork->spell_death_e4_images;
+            origin_x = &artwork->spell_death_e4_origin_x;
+            origin_y = &artwork->spell_death_e4_origin_y;
+        }
+        if (images != nullptr && !images->empty()) {
+            const auto frame = std::min<std::size_t>(
+                actor.animation_frame, images->size() - 1U);
+            return DefaultActorSpriteView{
+                &(*images)[frame], (*origin_x)[frame], (*origin_y)[frame]};
+        }
+    }
     if (actor.animation_id != "entry" && actor.animation_id != "down") {
         return {};
     }
-    if (artwork->entry_frame_count == 0U) {
+    const auto& frames = artwork->entry_images[direction];
+    if (frames.empty()) {
         return {};
     }
     const auto frame = std::min<std::size_t>(
         actor.animation_frame,
-        static_cast<std::size_t>(artwork->entry_frame_count - 1U));
+        frames.size() - 1U);
     return DefaultActorSpriteView{
-        &artwork->entry_images[direction][frame],
+        &frames[frame],
         artwork->entry_origin_x[direction][frame],
         artwork->entry_origin_y[direction][frame]};
 }
@@ -4627,30 +4819,6 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             source_actor.source_interaction_flags;
         const auto& actor_artwork =
             field_dynamic_actor_artwork_.at(source_actor.sprite_stem);
-        actor.entry_animation_frame_count = actor_artwork.entry_frame_count;
-        actor.walk_animation_frame_count = actor_artwork.walk_frame_count;
-        actor.action_animation_frame_count =
-            actor_artwork.action_frame_count;
-        actor.action_animation_increment =
-            actor_artwork.action_frame_increment;
-        actor.action_animation_threshold =
-            actor_artwork.action_frame_threshold;
-        actor.action_animation_audio_event =
-            actor_artwork.action_audio_event;
-        actor.item_action_frame_count =
-            actor_artwork.item_action_frame_count;
-        actor.item_action_increment =
-            actor_artwork.item_action_increment;
-        actor.item_action_threshold =
-            actor_artwork.item_action_threshold;
-        actor.hurt_animation_frame_count =
-            actor_artwork.hurt_frame_count;
-        actor.hurt_animation_increment =
-            actor_artwork.hurt_frame_increment;
-        actor.hurt_animation_threshold =
-            actor_artwork.hurt_frame_threshold;
-        actor.hurt_audio_event = actor_artwork.hurt_audio_event;
-        actor.down_audio_event = actor_artwork.down_audio_event;
         actor.template_offset = source_actor.template_offset;
         actor.list_offset = source_actor.sequence_list_offset;
         actor.selection_cell_offset = source_actor.selection_cell_offset;
@@ -4662,13 +4830,18 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.source_action_slot = source_actor.source_action_slot;
         actor.source_action_ammo = source_actor.source_action_ammo;
         actor.source_action_counter = source_actor.source_action_counter;
-        actor.source_spawn_state_flags = actor_flag_mask(
-            ActorSpawnStateFlag::world_activity_member);
         actor.combatant = source_actor.combatant;
         actor.combatant.record_type = actor_slot;
         actor.combatant.source_flags = actor.source_record_flags;
         actor.combatant.interaction_flags =
             actor.source_interaction_flags;
+        // ROM 0x1E25A writes +0x4D=4 after template construction.
+        actor.combatant.posture = static_cast<std::uint8_t>(
+            srx::v(srx::Posture::FULL_OFFENSE));
+        // ROM 0x1E25A sets +0x9E bit 6, preserving template/list flags.
+        actor.source_spawn_state_flags = static_cast<std::uint8_t>(
+            source_actor.source_spawn_state_flags |
+            static_cast<std::uint8_t>(srx::v(srx::ActorFlag::HOSTILE)));
         actor.effect_slot = static_cast<std::uint8_t>(
             std::distance(field_world_effect_slots_occupied_.begin(),
                           effect_slot));
@@ -4729,26 +4902,11 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         context.source_action_counter = actor.source_action_counter;
         context.source_animation_selector =
             actor.source_animation_selector;
-        context.item_action_frame_count = actor.item_action_frame_count;
-        context.item_action_increment = actor.item_action_increment;
-        context.item_action_threshold = actor.item_action_threshold;
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
         context.world_activity_active =
             world_frame_logic_state_.world_active != 0U;
         context.world_scene_state = world_frame_logic_state_.scene_state;
-        context.entry_animation_frame_count =
-            actor.entry_animation_frame_count;
         context.ai_animation_frame = actor.animation_frame;
-        context.walk_animation_frame_count =
-            actor.walk_animation_frame_count;
-        context.action_animation_frame_count =
-            actor.action_animation_frame_count;
-        context.action_animation_increment =
-            actor.action_animation_increment;
-        context.action_animation_threshold =
-            actor.action_animation_threshold;
-        context.action_animation_audio_event =
-            actor.action_animation_audio_event;
         context.initial_action_delay = actor.action_delay;
         context.delay_primary_attribute = actor.delay_primary_attribute;
         context.delay_secondary_attribute = actor.delay_secondary_attribute;
@@ -4779,9 +4937,9 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.transition_complete = decision->transition_complete;
 
         field_world_effect_slots_occupied_[actor.effect_slot.value()] = true;
-        field_world_activity_timeout_state_.scene_36_gate =
+        field_world_activity_timeout_state_.encounter_actor_count =
             static_cast<std::uint8_t>(
-                field_world_activity_timeout_state_.scene_36_gate + 1U);
+                field_world_activity_timeout_state_.encounter_actor_count + 1U);
         field_default_actors_.push_back(std::move(actor));
         (void)schedule_world_activity_timeout(
             field_world_activity_timeout_state_);
@@ -5699,7 +5857,9 @@ void FieldSceneRuntime::configure_callbacks() {
     callbacks_.entity_behavior_frames.dispatch_entity_action_candidates =
         [this] {
             source_boundary("field.entities.dispatch_action_candidates");
-            advance_default_field_actors();
+            // ROM 0x08C0 warmup runs 0x0A8EA but does not call the 0x13874
+            // target-list coordinator. Preserve the already cached identities.
+            advance_default_field_actors(false);
             advance_field_hit_spark_behaviors();
         };
     callbacks_.entity_behavior_frames.noop_entity_action_hook =
@@ -6444,6 +6604,14 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 return integration::PendingFieldSceneHandlerResult::resumed_field;
             }
         }
+        if (continuation == MovementModeTransitionContinuation::
+                                guard_spotted_field_event) {
+            // 0x20FEC points at the 0x121238/0x122030 field-message program.
+            // The current gameplay message runner cannot decode that record [H].
+            source_boundary(
+                "field.activity.guard_spotted_message_0x121238_0x122030_unresolved");
+            return integration::PendingFieldSceneHandlerResult::unresolved;
+        }
         if (continuation ==
             MovementModeTransitionContinuation::scene_37_antechamber_entry) {
             if (state_.field_scene_buffers.scene_reference != 55U) {
@@ -6651,10 +6819,12 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         return field_controller_sample_state_.events;
     };
     field_runtime_callbacks_.service_entity_behavior_frames = [this] {
+        // ROM 0x29F6 clears FFE175 before 0x13874 services the actor slots [C].
+        field_think_token_claimed_ = false;
         advance_player_weapon_action_gate();
         advance_field_weapon_projectiles();
         advance_field_movement();
-        advance_default_field_actors();
+        advance_default_field_actors(true);
         advance_field_hit_spark_behaviors();
     };
     field_runtime_callbacks_.update_field_camera = [this] {
@@ -6747,6 +6917,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             world_frame_logic_state_.region_or_mode = 10;
         }
         const auto scene_state_before = world_frame_logic_state_.scene_state;
+        world_frame_logic_state_.field_mode =
+            field_movement_transition_state_.world_mode;
         const auto transition_marker_before =
             world_frame_logic_state_.transition_marker;
         const auto region_or_mode_before =
@@ -6897,7 +7069,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         source_boundary("field.world_logic.process_terrain_work_batch");
     };
     world_frame_logic_callbacks_.advance_world_effect_trigger = [this] {
-        source_boundary("field.world_logic.advance_world_effect_trigger");
+        advance_field_alarm();
     };
     world_frame_logic_callbacks_.trigger_world_effect_sequence = [this] {
         trigger_field_world_effect_sequence();
@@ -7319,6 +7491,8 @@ void FieldSceneRuntime::configure_field_menu_route() {
                pocket_secretary_.maximum_selection > 4U;
     };
     bindings.game.in_combat = [this] {
+        // FFDF84 is the active marker [C]; the native timeout state keeps
+        // FFDF86 separately as a frame count [H].
         return world_frame_logic_state_.world_active != 0U;
     };
     bindings.game.scene_mode = [this] {
@@ -7452,7 +7626,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
                 continue;
             }
             world.actors.push_back(scripting::ScriptMatrixFieldActorState{
-                actor.actor_instance_id, actor.source_interaction_flags});
+                actor.actor_instance_id, actor.source_spawn_state_flags});
         }
         return world;
     };
@@ -7496,7 +7670,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
                         candidate.actor_instance_id == source.actor_id;
                 });
             if (actor != field_default_actors_.end()) {
-                actor->source_interaction_flags = source.flags_9e;
+                actor->source_spawn_state_flags = source.flags_9e;
             }
         }
     };
@@ -7677,6 +7851,9 @@ bool FieldSceneRuntime::bootstrap(
     field_funds_.reset();
     field_walk_fast_enabled_ = false;
     field_matrix_field_state_ = scripting::ScriptMatrixFieldState{};
+    field_matrix_field_state_.alarm = false;
+    field_alarm_timer_ = 0;
+    field_matrix_field_state_.security_off = false;
     // Startup 0x007F6 calls 0x53290; field mode also calls it when 0x17490
     // detects a system change. A fresh bootstrap starts a new RAM bank, and
     // this transient memory is not included in the host's durable save record.
@@ -7864,6 +8041,10 @@ bool FieldSceneRuntime::bootstrap(
     field_pending_actor_list_callback_.reset();
     field_active_route_actor_list_.clear();
     field_world_activity_state_ = WorldActivityState{};
+    field_think_token_claimed_ = false;
+    // Boot clears FF0000-FFFF7F (0xC3A) or FF0000-FFF1E7 (0xC58), so
+    // FFE188 starts at zero [C].
+    field_thon_period_counter_ = 0U;
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     world_activity_routine_state_ = WorldActivityRoutineState{};
     world_activity_request_state_ = WorldActivityRoutineRequestState{};
@@ -8951,7 +9132,9 @@ void FieldSceneRuntime::record_field_activity_start(
         continuation == MovementModeTransitionContinuation::
                            scene_55_tomb_credits_callback ||
         continuation == MovementModeTransitionContinuation::
-                           mode_table_world_activity) {
+                           mode_table_world_activity ||
+        continuation == MovementModeTransitionContinuation::
+                           guard_spotted_field_event) {
         field_runtime_state_.pending_field_scene_handler = true;
     }
     // ROM 0x1E2E0/0x1E2EC stores the typed continuation in the activity
@@ -9050,7 +9233,13 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
         // header owns a legacy TerrainWorkEntry name that is unrelated to
         // this runtime's source-backed field scene state.
         const auto cell = projected_terrain_cell();
-        return cell.has_value() && mark_field_terrain_cell(*cell);
+        if (!cell.has_value() || !mark_field_terrain_cell(*cell)) {
+            return false;
+        }
+        // ROM 0x16760 clears FFE16F and FFE170 after a projected cell is
+        // marked successfully; it does not run alarm-off side effects. [C]
+        advance_field_alarm(false, false, false, true);
+        return true;
     };
     transition_callbacks.project_entity_world_interaction = [this] {
         return project_field_world_interaction();
@@ -9313,7 +9502,7 @@ FieldSceneRuntime::heartbeat_field_player(
                     (source.effect_locked ? 0x40U : 0U));
                 candidate.interaction_flags = source.selected ? 0x10U : 0U;
                 candidate.behavior_flags = source.high_effect ? 0x80U : 0U;
-                candidate.has_action = source.has_action;
+                candidate.projected_y_nonzero = source.has_action;
                 const auto actor = std::find_if(
                     field_default_actors_.begin(),
                     field_default_actors_.end(),
@@ -9702,16 +9891,6 @@ void FieldSceneRuntime::service_player_weapon_action(
         return;
     }
 
-    const auto* weapon_template =
-        weapon_template_for_item_code(runner.equipped_item_code);
-    const auto attack_delay_mode = weapon_template == nullptr
-        ? std::optional<std::uint16_t>{}
-        : source_delay_mode(weapon_template->attack_delay_scale);
-    if (!attack_delay_mode.has_value()) {
-        source_boundary("field.combat.weapon_template_unresolved");
-        return;
-    }
-
     const PlayerActionDispatchCallbacks reload_callbacks{
         [this](const std::uint16_t event) {
             if (source_audio_event_callback_) {
@@ -9722,16 +9901,22 @@ void FieldSceneRuntime::service_player_weapon_action(
         [this](const std::uint8_t item_code) {
             return weapon_magazine_capacity_for_item(item_code);
         };
-    const WeaponReloadDelayModeLookup reload_delay_mode_lookup =
-        [this](const std::uint8_t item_code) {
-            const auto* weapon = weapon_template_for_item_code(item_code);
-            return weapon == nullptr
-                       ? std::optional<std::uint16_t>{}
-                       : source_delay_mode(weapon->reload_delay_scale);
+    const PlayerActionDelayLookup reload_delay_lookup =
+        [this](const RunnerRecordFields& source_record,
+               const PlayerActionDelayStage stage) {
+            const auto purpose =
+                stage == PlayerActionDelayStage::weapon_action
+                    ? scripting::ScriptPlayerDelayPurpose::reload_action
+                    : scripting::ScriptPlayerDelayPurpose::shared_action;
+            return game_scripts_.player_weapon_action_delay(
+                source_record.attributes[1U],
+                source_record.attributes[4U],
+                source_record.cyberware_flags,
+                source_record.equipped_item_code, purpose);
         };
     if (runner.ammo_rounds == 0U) {
         const auto reload = dispatch_player_action_if_ready(
-            runner, weapon_capacity_lookup, reload_delay_mode_lookup,
+            runner, weapon_capacity_lookup, reload_delay_lookup,
             reload_callbacks);
         if (reload.status == PlayerActionDispatchStatus::serviced) {
             refresh_field_hud_runner_slot();
@@ -9961,7 +10146,7 @@ void FieldSceneRuntime::service_player_weapon_action(
         if (spawn_cycle.action == EntitySpawnCycleAction::no_primary_slot ||
             spawn_cycle.action == EntitySpawnCycleAction::no_secondary_slot) {
             const auto fallback = dispatch_player_action_if_ready(
-                runner, weapon_capacity_lookup, reload_delay_mode_lookup,
+                runner, weapon_capacity_lookup, reload_delay_lookup,
                 reload_callbacks);
             if (fallback.status == PlayerActionDispatchStatus::serviced) {
                 refresh_field_hud_runner_slot();
@@ -9979,16 +10164,17 @@ void FieldSceneRuntime::service_player_weapon_action(
         spawned_heading);
     set_entity_heading_with_field_animation(
         attack_pose, spawned_heading,
-        *attack_delay_mode, kFieldAttackAnimationSelectors,
-        [this, &runner](const std::uint16_t delay_mode) {
-            EntityDelayState delay{runner.animation_action_gate};
-            update_entity_animation_delay(
-                delay,
-                EntityDelayAttributes{runner.attributes[1U],
-                                      runner.attributes[4U],
-                                      runner.cyberware_flags},
-                decode_entity_delay_scale(delay_mode));
-            runner.animation_action_gate = delay.animation_delay;
+        kFieldAttackAnimationSelectors,
+        [this, &runner] {
+            const auto delay = game_scripts_.player_weapon_action_delay(
+                runner.attributes[1U], runner.attributes[4U],
+                runner.cyberware_flags, runner.equipped_item_code,
+                scripting::ScriptPlayerDelayPurpose::weapon_attack);
+            if (!delay.has_value()) {
+                source_boundary("field.combat.player_weapon_delay_unresolved");
+                return;
+            }
+            runner.animation_action_gate = *delay;
         },
         [this] {
             field_entity_animation_.accumulator = 0;
@@ -10455,31 +10641,7 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 world_frame_logic_state_.world_active != 0U;
             context.world_scene_state =
                 world_frame_logic_state_.scene_state;
-            context.entry_animation_frame_count =
-                actor.entry_animation_frame_count;
             context.ai_animation_frame = actor.animation_frame;
-            context.walk_animation_frame_count =
-                actor.walk_animation_frame_count;
-            context.action_animation_frame_count =
-                actor.action_animation_frame_count;
-            context.action_animation_increment =
-                actor.action_animation_increment;
-            context.action_animation_threshold =
-                actor.action_animation_threshold;
-            context.item_action_frame_count =
-                actor.item_action_frame_count;
-            context.item_action_increment = actor.item_action_increment;
-            context.item_action_threshold = actor.item_action_threshold;
-            context.action_animation_audio_event =
-                actor.action_animation_audio_event;
-            context.hurt_animation_frame_count =
-                actor.hurt_animation_frame_count;
-            context.hurt_animation_increment =
-                actor.hurt_animation_increment;
-            context.hurt_animation_threshold =
-                actor.hurt_animation_threshold;
-            context.hurt_audio_event = actor.hurt_audio_event;
-            context.down_audio_event = actor.down_audio_event;
             context.initial_action_delay = actor.action_delay;
             context.delay_primary_attribute =
                 actor.delay_primary_attribute;
@@ -10529,7 +10691,18 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                     runner.flags >> 8U);
                 candidate.interaction_flags = static_cast<std::uint8_t>(
                     runner.flags & 0x00FFU);
-                candidate.has_action = true;
+                EntityProjectionState projection{};
+                projection.world_x = position.x;
+                projection.world_y = position.y;
+                project_entity_screen_position_standard(
+                    projection,
+                    static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_x),
+                    static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_y));
+                // This host projection supplies the typed screen-Y fact [H];
+                // ROM 0x14446 tests projected +0x0C != 0 [C].
+                candidate.projected_y_nonzero = projection.screen_y != 0U;
                 candidate.world_activity_actor = false;
                 candidate.source_record_slot =
                     static_cast<std::uint8_t>(slot);
@@ -10557,7 +10730,18 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 candidate.behavior_flags = target.source_behavior_flags;
                 candidate.spawn_state_flags =
                     target.source_spawn_state_flags;
-                candidate.has_action = target.physical_meter != 0U;
+                EntityProjectionState projection{};
+                projection.world_x = target.world_position.x;
+                projection.world_y = target.world_position.y;
+                project_entity_screen_position_standard(
+                    projection,
+                    static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_x),
+                    static_cast<std::uint16_t>(
+                        state_.field_scene_buffers.camera_y));
+                // This host projection supplies the typed screen-Y fact [H];
+                // ROM 0x1438C tests projected +0x0C != 0 [C].
+                candidate.projected_y_nonzero = projection.screen_y != 0U;
                 candidate.world_activity_actor = true;
                 candidate.source_record_slot = static_cast<std::uint8_t>(
                     *target.source_record_slot);
@@ -10582,6 +10766,8 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         }
         context.phase = scripting::ScriptActorHeartbeatPhase::render;
         context.target_selection_latched = actor.target_selected;
+        context.target_marker_reads_stun_meter =
+            target_marker_reads_stun_meter(active_runner_record());
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value()) {
             failure_ = game_scripts_.failure();
@@ -15843,6 +16029,20 @@ bool FieldSceneRuntime::set_default_actor_physical_meter_for_dump(
     actor->combatant.physical_meter = physical_meter;
     return true;
 }
+
+std::size_t FieldSceneRuntime::defeat_mako_actor_list_for_qa() noexcept {
+    std::size_t count = 0U;
+    for (auto& actor : field_default_actors_) {
+        // Route actor lists are named by route_actor_lists.lua descriptors.
+        if (actor.active && actor.actor_list_completion_group ==
+                                std::optional<std::string>{"club_penumbra_mako"}) {
+            actor.physical_meter = 0U;
+            actor.combatant.physical_meter = 0U;
+            ++count;
+        }
+    }
+    return count;
+}
 #endif // SHADOWRUN_QT_QA_DRIVER
 
 
@@ -15874,10 +16074,13 @@ void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
         0, static_cast<int>(scene.camera_x >> 4U));
     const auto camera_y = std::max(
         0, static_cast<int>(scene.camera_y >> 4U));
-    const auto max_x = std::max(0, field_map_.width() - 320);
-    const auto max_y = std::max(0, field_map_.height() - 224);
-    const auto viewport_x = std::min(camera_x, max_x);
-    const auto viewport_y = std::min(camera_y, max_y);
+    // The camera follow already clamps to the scene profile words 2..5; in
+    // 55 of 56 ROM scene profiles max_x>>4 == image_width-272 (272 px
+    // playfield, HUD window over x=272..319). A further clamp to width-320
+    // froze the map 48 px early while actors, projected from the same raw
+    // camera, kept scrolling, so they slid against the map at the edge.
+    const auto viewport_x = camera_x;
+    const auto viewport_y = camera_y;
     // ROM 0x481E builds ordinary field actors with sprite priority clear.
     // Preserve the source map's high-priority tiles over those actors; the
     // same draw order must hold for every scene loaded from a map resource.

@@ -291,6 +291,150 @@ std::int16_t FieldSceneRuntime::select_field_world_effect_sequence() {
                : 0;
 }
 
+void FieldSceneRuntime::advance_field_alarm(const bool direct_raise,
+                                           const bool clear_alarm,
+                                           const bool disable_alarm,
+                                           const bool reset_alarm) {
+    const auto scene_reference =
+        state_.field_scene_buffers.scene_reference;
+    auto profile = game_scripts_.field_alarm_profile(scene_reference);
+    if (!profile.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.alarm.profile_unresolved");
+        return;
+    }
+
+    scripting::ScriptFieldAlarmInput input{};
+    input.scene_id = scene_reference;
+    input.frame_counter = field_world_frame_counter_;
+    input.scene_mode = field_movement_transition_state_.world_mode;
+    input.player_tile_x = static_cast<std::uint16_t>(
+        field_entity_.world_position.x >> static_cast<unsigned>(
+            srx::FieldAlarm::TILE_SHIFT));
+    input.player_tile_y = static_cast<std::uint16_t>(
+        field_entity_.world_position.y >> static_cast<unsigned>(
+            srx::FieldAlarm::TILE_SHIFT));
+    input.disabled = field_matrix_field_state_.security_off.value_or(false);
+    input.alarm = field_matrix_field_state_.alarm.value_or(false);
+    input.timer = field_alarm_timer_;
+    input.direct_raise = direct_raise;
+    input.clear_alarm = clear_alarm;
+    input.disable_alarm = disable_alarm;
+    input.reset = reset_alarm;
+    input.regions = std::move(profile->regions);
+    input.reinforcement_list_address =
+        profile->reinforcement_list_address;
+    for (const auto& actor : field_default_actors_) {
+        if (!actor.active || actor.scene_reference != scene_reference ||
+            !actor.source_record_slot.has_value()) {
+            continue;
+        }
+        const auto slot = static_cast<std::uint16_t>(
+            *actor.source_record_slot);
+        if (slot < static_cast<std::uint16_t>(FieldWorldActorSlot::slot_3) ||
+            slot > static_cast<std::uint16_t>(FieldWorldActorSlot::slot_9)) {
+            continue;
+        }
+        input.actors.push_back(scripting::ScriptFieldAlarmActorFlags{
+            actor.actor_instance_id, actor.source_spawn_state_flags});
+    }
+
+    auto result = game_scripts_.evaluate_field_alarm(input);
+    if (!result.has_value()) {
+        failure_ = game_scripts_.failure();
+        source_boundary("field.alarm.script_tick_failed");
+        return;
+    }
+    if (result->sample_rng) {
+        // ROM 0x1DFC4 calls 0xD44 only on its frame gate; this preserves the
+        // source PRNG stream when any earlier gate rejects the alarm check. [C]
+        input.rng = advance_source_random_seed(field_random_seed_);
+        result = game_scripts_.evaluate_field_alarm(input);
+        if (!result.has_value() || result->sample_rng) {
+            failure_ = game_scripts_.failure().empty()
+                ? "field alarm requested more than one random word"
+                : game_scripts_.failure();
+            source_boundary("field.alarm.script_rng_failed");
+            return;
+        }
+    }
+    apply_field_alarm_result(*result, scene_reference);
+}
+
+void FieldSceneRuntime::apply_field_alarm_result(
+    const scripting::ScriptFieldAlarmResult& result,
+    const std::uint16_t scene_reference) {
+    field_matrix_field_state_.alarm = result.alarm;
+    field_matrix_field_state_.security_off = result.disabled;
+    field_alarm_timer_ = result.timer;
+
+    for (const auto& source : result.actors) {
+        const auto actor = std::find_if(
+            field_default_actors_.begin(), field_default_actors_.end(),
+            [scene_reference, &source](const auto& candidate) {
+                return candidate.active &&
+                    candidate.scene_reference == scene_reference &&
+                    candidate.source_record_slot.has_value() &&
+                    candidate.actor_instance_id == source.actor_id;
+            });
+        if (actor != field_default_actors_.end()) {
+            // ROM +0x9E is carried as the typed actor spawn-state flags. [C]
+            actor->source_spawn_state_flags = source.flags_9e;
+        }
+    }
+    if (result.sound_start.has_value() && source_audio_event_callback_) {
+        source_audio_event_callback_(*result.sound_start);
+    }
+    if (result.sound_stop.has_value() && source_audio_stop_callback_) {
+        source_audio_stop_callback_(*result.sound_stop);
+    }
+    if (result.schedule_timeout) {
+        if (schedule_world_activity_timeout(
+                field_world_activity_timeout_state_)) {
+            world_frame_logic_state_.world_active = static_cast<std::uint16_t>(
+                field_world_activity_timeout_state_.timeout_marker);
+            world_frame_logic_state_.cleanup_countdown =
+                static_cast<std::int16_t>(
+                    field_world_activity_timeout_state_.timeout_frames);
+            source_boundary("field.alarm.scene14_timeout_scheduled");
+        } else {
+            source_boundary("field.alarm.scene14_timeout_gated");
+        }
+    }
+    if (!result.spawn_reinforcements) {
+        return;
+    }
+    if (!result.reinforcement_list_address.has_value() ||
+        !result.reinforcement_flag.has_value()) {
+        source_boundary("field.alarm.reinforcement_data_unresolved");
+        return;
+    }
+    if (!pending_world_activity_script_actors_.empty() ||
+        pending_world_activity_script_actor_scene_.has_value() ||
+        field_pending_actor_list_transition_group_.has_value() ||
+        field_route_actor_transitions_remaining_.has_value()) {
+        source_boundary("field.alarm.reinforcement_list_conflict");
+        return;
+    }
+    auto actors = game_scripts_.world_activity_actors_for_source_list(
+        scene_reference, *result.reinforcement_list_address);
+    if (!actors.has_value() || actors->empty()) {
+        failure_ = game_scripts_.failure().empty()
+            ? "alarm reinforcement list has no extracted actors"
+            : game_scripts_.failure();
+        source_boundary("field.alarm.reinforcement_list_unresolved");
+        return;
+    }
+    for (auto& actor : *actors) {
+        actor.source_spawn_state_flags = static_cast<std::uint8_t>(
+            actor.source_spawn_state_flags | *result.reinforcement_flag);
+    }
+    pending_world_activity_script_actor_scene_ = scene_reference;
+    pending_world_activity_script_actors_ = std::move(*actors);
+    publish_pending_world_activity_script_actors(scene_reference);
+    source_boundary("field.alarm.reinforcements_published");
+}
+
 void FieldSceneRuntime::trigger_field_world_effect_sequence() {
     if (process_pending_story_world_effect_sequence()) {
         return;
@@ -298,15 +442,21 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
     scripting::ScriptFieldEncounterTriggerInput trigger{};
     trigger.scene_id = state_.field_scene_buffers.scene_reference;
     trigger.frame_counter = field_world_frame_counter_;
-    trigger.trigger_delay_active = state_.display_service_word != 0U;
-    trigger.current_entity_protected =
-        (field_movement_behavior_record_.record_flags & 0x80U) != 0U;
-    trigger.activity_lock = field_runtime_state_.field_activity_lock;
-    trigger.sequence_mode = world_frame_logic_state_.event_lock != 0U;
-    trigger.world_effects_active =
-        field_world_activity_timeout_state_.timeout_marker != 0;
-    trigger.placement_pending =
-        field_world_activity_timeout_state_.scene_36_gate != 0U;
+    trigger.display_service_word =
+        field_runtime_state_.display_service_word; // FFDFE8 [C]
+    const auto leader_status_ex = static_cast<std::uint8_t>(
+        active_runner_record().flags & 0x00FFU); // FFFC04 +0x11 (low byte) [C]
+    trigger.leader_protected =
+        (leader_status_ex & static_cast<std::uint8_t>(
+             srx::v(srx::ActorStatusEx::UNSEEN))) != 0U; // bit 7 [C]
+    trigger.field_activity_lock_active =
+        field_runtime_state_.field_activity_lock; // FFE18B [C]
+    trigger.field_alarm_active =
+        field_matrix_field_state_.alarm.value_or(false); // FFE16F [C]
+    trigger.combat_active =
+        world_frame_logic_state_.world_active != 0U; // FFDF84 [C]
+    trigger.encounter_actor_count =
+        field_world_activity_timeout_state_.encounter_actor_count; // FFE177 [C]
 
     auto action = game_scripts_.evaluate_field_encounter_trigger(trigger);
     if (!action.has_value()) {
@@ -336,9 +486,27 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
     case scripting::ScriptFieldEncounterTriggerAction::not_due:
     case scripting::ScriptFieldEncounterTriggerAction::random_miss:
         return;
-    case scripting::ScriptFieldEncounterTriggerAction::forward_active_sequence:
-        source_boundary("field.random_encounter.forward_existing_sequence");
+    case scripting::ScriptFieldEncounterTriggerAction::select_alarm_sequence: {
+        auto outcome = game_scripts_.resolve_field_actor_sequence(
+            trigger.scene_id,
+            static_cast<std::uint32_t>(
+                srx::v(srx::FieldEncounter::ALARM_SEQUENCE_LIST_ADDRESS)));
+        if (!outcome.has_value() ||
+            outcome->kind != scripting::
+                ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence ||
+            outcome->placement_policy != scripting::
+                ScriptFieldEncounterPlacementPolicy::map_derived_candidates) {
+            failure_ = game_scripts_.failure().empty()
+                ? "ROM alarm alternate actor list is unavailable"
+                : game_scripts_.failure();
+            source_boundary("field.random_encounter.alarm_list_unresolved");
+            return;
+        }
+        pending_field_encounter_outcome_ = std::move(*outcome);
+        source_boundary("field.random_encounter.alarm_sequence_resolved");
+        spawn_field_world_effect_sequence();
         return;
+    }
     case scripting::ScriptFieldEncounterTriggerAction::select_scene_outcome:
         (void)select_field_world_effect_sequence();
         if (!pending_field_encounter_outcome_.has_value()) {

@@ -1,4 +1,5 @@
 #include "world_content_tsv_loader.hpp"
+#include "enums.hpp"
 
 #include <algorithm>
 #include <array>
@@ -285,6 +286,74 @@ bool push_rows(lua_State* state, const TsvDocument& document,
             return false;
         }
         lua_rawseti(state, array_index, static_cast<lua_Integer>(index + 1U));
+    }
+    return true;
+}
+
+bool row_integer(const TsvDocument& document,
+                 const std::vector<std::string>& row,
+                 std::string_view column, lua_Integer& result,
+                 const std::filesystem::path& path,
+                 std::size_t row_number, std::string& failure);
+
+bool push_scene_indexed_rows(
+    lua_State* state, const TsvDocument& document,
+    const std::vector<std::string_view>& numeric_columns,
+    const std::filesystem::path& source_path, std::string& failure,
+    const bool arrays_by_scene) {
+    std::map<lua_Integer, std::vector<std::size_t>> rows_by_scene;
+    for (std::size_t row_index = 0U; row_index < document.rows.size();
+         ++row_index) {
+        lua_Integer scene_id = 0;
+        if (!row_integer(document, document.rows[row_index], "scene_id",
+                         scene_id, source_path, row_index + 2U, failure) ||
+            scene_id < 0 || scene_id > srx::v(srx::Scene::LAST_ID)) {
+            if (failure.empty()) {
+                failure = source_path.string() + ": row " +
+                    std::to_string(row_index + 2U) +
+                    " has a scene_id outside the ROM scene range";
+            }
+            return false;
+        }
+        rows_by_scene[scene_id].push_back(row_index);
+    }
+
+    lua_createtable(state, 0, static_cast<int>(rows_by_scene.size()));
+    const auto scenes_index = lua_absindex(state, -1);
+    for (const auto& [scene_id, row_indexes] : rows_by_scene) {
+        if (!arrays_by_scene && row_indexes.size() != 1U) {
+            failure = source_path.string() +
+                ": expected one profile row per scene";
+            lua_pop(state, 1);
+            return false;
+        }
+        if (arrays_by_scene) {
+            lua_createtable(state, static_cast<int>(row_indexes.size()), 0);
+            const auto rows_index = lua_absindex(state, -1);
+            for (std::size_t output_index = 0U;
+                 output_index < row_indexes.size(); ++output_index) {
+                const auto row_index = row_indexes[output_index];
+                if (!push_record(state, document, document.rows[row_index],
+                                 numeric_columns, {}, source_path,
+                                 row_index + 2U, failure)) {
+                    lua_pop(state, 2);
+                    return false;
+                }
+                lua_rawseti(state, rows_index,
+                            static_cast<lua_Integer>(output_index + 1U));
+            }
+        } else {
+            const auto row_index = row_indexes.front();
+            if (!push_record(state, document, document.rows[row_index],
+                             numeric_columns, {}, source_path,
+                             row_index + 2U, failure)) {
+                lua_pop(state, 1);
+                return false;
+            }
+        }
+        lua_pushinteger(state, scene_id);
+        lua_insert(state, -2);
+        lua_settable(state, scenes_index);
     }
     return true;
 }
@@ -826,6 +895,10 @@ void push_empty_data(lua_State* state, const int modules_reference) {
     lua_setfield(state, root_table, "dynamic_world_activity_actors");
     lua_createtable(state, 0, 0);
     lua_setfield(state, root_table, "world_activity_actor_lists");
+    lua_createtable(state, 0, 0);
+    lua_setfield(state, root_table, "field_alarm_profiles");
+    lua_createtable(state, 0, 0);
+    lua_setfield(state, root_table, "field_alarm_regions");
     lua_rawgeti(state, LUA_REGISTRYINDEX, modules_reference);
     lua_pushvalue(state, root_table);
     lua_setfield(state, -2, "world_content_data");
@@ -859,7 +932,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
     }
 
     const auto stack_base = lua_gettop(state);
-    lua_createtable(state, 0, 6);
+    lua_createtable(state, 0, 11);
     const auto root_table = lua_absindex(state, -1);
     if (!push_entities(state, world_directory, failure)) {
         lua_settop(state, stack_base);
@@ -883,7 +956,8 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
              "dynamic_world_activity_actors",
              {"scene", "context_group", "random_sum", "source_order",
               "selection_cell_offset", "sequence_list_offset",
-               "action_code", "source_interaction_flags", "entity_kind",
+               "action_code", "source_spawn_state_flags",
+              "source_interaction_flags", "entity_kind",
                "palette_line",
               "tagged_template", "template_offset", "physical_meter",
               "delay_primary_attribute", "delay_secondary_attribute",
@@ -961,6 +1035,34 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
             }
             lua_setfield(state, root_table, source_table.field);
         }
+
+        const auto profile_path =
+            field_asset_directory / "field-alarm-profiles.tsv";
+        TsvDocument alarm_profiles;
+        if (!read_tsv(profile_path, true, alarm_profiles, failure) ||
+            !push_scene_indexed_rows(
+                state, alarm_profiles,
+                {"scene_id", "effect_profile_address", "region_list_address",
+                 "reinforcement_list_address", "region_count"},
+                profile_path, failure, false)) {
+            lua_settop(state, stack_base);
+            return false;
+        }
+        lua_setfield(state, root_table, "field_alarm_profiles");
+
+        const auto regions_path =
+            field_asset_directory / "field-alarm-regions.tsv";
+        TsvDocument alarm_regions;
+        if (!read_tsv(regions_path, true, alarm_regions, failure) ||
+            !push_scene_indexed_rows(
+                state, alarm_regions,
+                {"scene_id", "record_address", "x_min", "x_max", "y_min",
+                 "y_max"},
+                regions_path, failure, true)) {
+            lua_settop(state, stack_base);
+            return false;
+        }
+        lua_setfield(state, root_table, "field_alarm_regions");
     } else {
         lua_createtable(state, 0, 0);
         lua_setfield(state, root_table, "world_activity_outcomes");
@@ -968,6 +1070,10 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
         lua_setfield(state, root_table, "dynamic_world_activity_actors");
         lua_createtable(state, 0, 0);
         lua_setfield(state, root_table, "world_activity_actor_lists");
+        lua_createtable(state, 0, 0);
+        lua_setfield(state, root_table, "field_alarm_profiles");
+        lua_createtable(state, 0, 0);
+        lua_setfield(state, root_table, "field_alarm_regions");
     }
     lua_rawgeti(state, LUA_REGISTRYINDEX, modules_reference);
     lua_pushvalue(state, root_table);

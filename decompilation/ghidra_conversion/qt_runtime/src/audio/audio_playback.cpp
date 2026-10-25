@@ -37,6 +37,12 @@ void AudioPlaybackService::ensure_loaded() {
         return;
     }
     loaded_ = true;
+    // SDL_AUDIODRIVER does not select Qt's QAudioSink device. Keep headless
+    // QA independent of a host PulseAudio/PipeWire server as well.
+    if (output_ == Output::device &&
+        qEnvironmentVariableIntValue("SRX_HEADLESS") != 0) {
+        output_ = Output::null;
+    }
     bank_ = std::make_unique<AudioResourceBank>(resolver_);
     const auto manifest = resolver_ ? resolver_("audio.manifest")
                                     : std::filesystem::path{};

@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/world/world_effect_trigger_conversion.hpp"
+#include "enums.hpp"
 
 namespace shadowrun::ghidra_conversion {
 
@@ -11,7 +12,11 @@ WorldEffectTriggerAction trigger_world_effect_sequence(
         state.placement_pending) {
         return WorldEffectTriggerAction::blocked;
     }
-    if ((state.frame_counter & 0x03FFU) != 10U) {
+    const auto cadence_mask = static_cast<std::uint16_t>(
+        srx::v(srx::FieldEncounter::FRAME_MASK));
+    const auto cadence_value = static_cast<std::uint16_t>(
+        srx::v(srx::FieldEncounter::FRAME_VALUE));
+    if ((state.frame_counter & cadence_mask) != cadence_value) {
         return WorldEffectTriggerAction::not_due;
     }
     if (!callbacks.sample_random) {

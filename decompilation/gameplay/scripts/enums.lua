@@ -17,13 +17,18 @@ E.ActorField = {
 E.ActorPool = { STRIDE = 0x100, PARTY = 3, OTHERS = 7, PROJECTILES = 6 }   -- FF0100.., FF0400.., FF0B00.. [C]
 -- Run-kill classification uses actor record +0x9B, not the rendered sprite
 -- type at +0x0E. The ghoul bounty checks this byte against 0x42 (0x559BC).
-E.ActorRaceOrState = { GHOUL_BOUNTY_TARGET = 0x42 }
+E.ActorRaceOrState = {
+    CONDITION_BONUS_EXEMPT_02 = 0x02, -- raw 0x02: skips the +4 combat condition adjustment [C value, H identity]
+    CONDITION_BONUS_EXEMPT_04 = 0x04, -- raw 0x04: skips the +4 combat condition adjustment [C value, H identity]
+    SPELL_SPECIAL_TARGET = 0x17, -- raw 0x17: 0x55B78 special target path [C]
+    GHOUL_BOUNTY_TARGET = 0x42,
+}
 E.GhoulBounty = { MAX_DEFEATS = 20 } -- FFFBF0 is capped at twenty (0x559BC) [C]
 
-E.ActorStatus   = { ACTIVE = 0x01, THINK = 0x02, AI_RUNNER = 0x08, DOWN = 0x10, GROUP_LEADER = 0x20, DEAD = 0x40 }  -- +0x10 [C]
+E.ActorStatus   = { NONE = 0, ACTIVE = 0x01, THINK = 0x02, AI_RUNNER = 0x08, DOWN = 0x10, GROUP_LEADER = 0x20, DEAD = 0x40 }  -- +0x10 [C]
 E.ActorStatusEx = { PROJECTILE = 0x01, BREATH_OUT = 0x40, UNSEEN = 0x80 }                                        -- +0x11 [C]
 -- +0x9E role/AI flags (doc 20 §2); REINFORCEMENT is set by the alarm spawner 0x1E0B8 [C]
-E.ActorFlag = { SPOTTED = 0x01, REINFORCEMENT = 0x02, DESPAWN_OFFSCREEN = 0x04, QUEST = 0x08,
+E.ActorFlag = { NONE = 0, SPOTTED = 0x01, REINFORCEMENT = 0x02, DESPAWN_OFFSCREEN = 0x04, QUEST = 0x08,
                 RUNNER = 0x10, PEDESTRIAN = 0x20, HOSTILE = 0x40 }
 E.BehaviorFlag = { ROUTE_CLEAR = 0x01, PATH = 0x02, RESTART_STEER = 0x04, WALL_FOLLOW = 0x08, IN_BAND = 0x10, ROUTE_TRANSITION = 0x20, FLEEING = 0x40, ESCORT = 0x80 } -- +0xB0 [C]; ROUTE_CLEAR/ROUTE_TRANSITION [H] repo route_flags usage
 E.SteerFlag = { TARGET_RIGHT = 0x01, TARGET_BELOW = 0x02, OVERSHOOT_X = 0x04, OVERSHOOT_Y = 0x08 }  -- +0xB1 [C]
@@ -41,23 +46,63 @@ E.PlayerHurt = {
 
 E.Posture   = { FULL_DEFENSE = 0, MEDIUM_DEFENSE = 1, NEUTRAL = 2, MEDIUM_OFFENSE = 3, FULL_OFFENSE = 4 }  -- +0x4D, names 0xD1A05 [C]
 E.SceneMode = { NONE = 0, STREET = 1, BUILDING = 2, CAVE = 3 }  -- FFDF40: 1 scenes <0x15, 2 0x15-0x2B, 3 0x2C-0x37 [C]
+E.Scene = { LAST_ID = 55 } -- raw 0x37: last ROM scene ID [C]
+E.FieldAlarm = {
+    TILE_SHIFT = 4, -- player world position to alarm tile coordinates [C]
+    FRAME_MASK = 0x3F, -- FFDF88 cadence mask [C]
+    FRAME_VALUE = 0x0D, -- FFDF88 cadence value [C]
+    RANDOM_REJECT_FROM = 0x8000, -- unsigned 0xD44 threshold [C]
+    WORD_MAX = 0xFFFF, -- source unsigned word bound [C]
+    TIMER_MIN = -0x8000, TIMER_MAX = 0x7FFF, -- signed word bounds [C]
+    LIST_ADDRESS_MAX = 0xFFFFFFFF, -- source longword bound [C]
+    ACTOR_FLAGS_MAX = 0xFF, -- +0x9E byte bound [C]
+} -- 0x1DFC4 cadence and unsigned random gate [C]
+E.FieldEncounter = {
+    FRAME_MASK = 0x03FF, -- raw 0x03FF: FFDF88 low-word cadence mask at 0x1E1AE [C]
+    FRAME_VALUE = 10, -- raw 10: matching cadence value at 0x1E1B2 [C]
+    SOURCE_SEQUENCE_SENTINEL = 0xFF, -- raw 0xFF: direct source lists are excluded from random-sum rows [C]
+    ROM_OFFSET_MAX = 0x1FFFFF, -- raw 0x1FFFFF: maximum 21-bit ROM offset accepted by the source table [C]
+    TEMPLATE_POINTER_ADDRESS_MASK = 0x7FFFFFFF, -- raw 0x7FFFFFFF: 0x1E25A masks the actor template pointer tag [C]
+    ALARM_SEQUENCE_LIST_ADDRESS = 0x1E20A, -- raw 0x1E20A: alarm alternate list selected at 0x1E1DA [C]
+    ALARM_ACTOR_TEMPLATE_ADDRESS = 0x1D6A1C, -- raw 0x1D6A1C: both alarm-list longwords reference this actor template [C]
+} -- ROM 0x1E166 trigger gate and 0x1E20A alarm alternate list [C]
+E.FieldAlarmRomLayout = {
+    PROFILE_TABLE_ADDRESS = 0x3232, -- raw 0x3232: scene profile pointer table [C; extractor only]
+    PROFILE_EFFECT_POINTER_OFFSET = 0x58, -- raw 0x58: profile +0x58 [C; extractor only]
+    EFFECT_ACTOR_LIST_POINTER_OFFSET = 0x10, -- raw 0x10: effect profile +0x10 [C; extractor only]
+    FIRST_LIST_SCENE = 21, -- raw 0x15: first profile list scene [C; extractor only]
+    LAST_LIST_SCENE = 43, -- raw 0x2B: last profile list scene [C; extractor only]
+    SCENE_21_REINFORCEMENT_LIST = 0x1D7460, -- raw 0x1D7460: scene 21 effect list [C; extractor/test fixture only]
+}
 E.StateFn   = { IDLE = 0xB45C, WALK = 0xB574, PROJECTILE = 0xAC4E }                 -- +0x3A handlers [C]
 E.CombatPhase = { NONE = 0, ATTACK_ANIM = 1, APPROACH = 2, HOLD = 3 }               -- FFDFE0 [C]
 E.EndingState = { NONE = 0, FINAL_FIGHT = 3 }                                        -- FFE186 [C]
+
+-- Shared 0xABFC / 0xD7EA delay calculation. D0=0 is unchanged, D0=2 doubles,
+-- and every other nonzero D0 is signed-halved; D7EA scans +0x90 bits 12..14
+-- in priority order and 0xABFC clamps the result to 0x0F. [C]
+-- Source callers use only 0, 1, and 2 [C].
+E.ActionDelayMode = { NORMAL = 0, HALF = 1, DOUBLE = 2 } -- 0xABFC D0 modes [C]
+E.ActionDelay = { BASE = 0x6A, FACTOR_STEP = 4, MINIMUM = 0x0F }                -- 0xABFC [C]
+E.DelayCapability = { FIRST_BIT = 12, SECOND_BIT = 13, THIRD_BIT = 14,
+                       MODIFIER_ORIGIN = 11 }                                    -- 0xD7EA +0x90 scan [C]
+
 E.SpriteType  = { FIELD_RUNNER = 3, CORP_GUARD = 5, GHOUL = 7, PEDESTRIAN = 11, HELL_HOUND = 12, GARGOYLE = 13,
                   WENDIGO = 14, THON = 15 }   -- +0x0E [C: 7,12,13,15 from our trace; 3,5,11,14 names from pre-module actor_ai.lua:40-46]
 E.SpriteType.HIT_SPARK = 0x01 -- child +0x0E at 0xB2C2 [C]
+-- Frame count/rate come from data/actor_anim_lists.lua kind 1 (list 0x7330).
 E.HitSpark = {
     SELECTOR = 0x0004, -- child +0x16 at 0xB2BC [C]
     PALETTE_ATTRIBUTES = 0x2000, -- child +0x2C at 0xB2E4 [C]
     TARGET_Y_OFFSET = 0x0010, -- target Y adjustment at 0xB2DC [C]
     RANGE_LIMIT = 0x0200, -- linked strike range gate at 0x15C58 [C]
-    FRAME_COUNT = 0x0005, -- finite list marker at 0x7330 [C]
-    FRAME_INCREMENT = 0x0400, -- finite list timing word at 0x7332 [C]
-    FRAME_PERIOD = 0x1000, -- +0x1C default initialized at 0x15118 [C]
     FINISHED_SELECTOR_BIT = 0x8000, -- finite selector bit set by 0x600E [C]
-    WORD_MODULUS = 0x10000, -- 16-bit accumulator wrap at 0x5FDC [C]
 }
+-- Pose bases selected from actor +0x16 by the actor animation service [C: 0x600E].
+E.ActorPose = { IDLE = 0x00, WALK = 0x20, ITEM = 0x40, HURT = 0x60,
+                SPELL = 0x80, WEAPON = 0xA0, ACTION = 0xC0,
+                SPELL_DEATH_E0 = 0xE0, SPELL_DEATH_E4 = 0xE4,
+                DEATH = 0xE8 } -- spell-death selected at 0xB0AC/0xB0E4 [C]
 
 -- Item codes (= +0x57 for weapons, = inventory byte); records 0xD4540 + 0x30*(code-1) (doc 08) [C]
 E.ItemId = {
@@ -66,6 +111,34 @@ E.ItemId = {
     ALLEGIANCE = 0x0B, ROOMSWEEPER = 0x0C, FRAG_GRENADE = 0x0D, SCATTER_GRENADE = 0x0E,
     CONCUSSION_GRENADE = 0x0F, MEDKIT = 0x10, STIM_PATCH = 0x11, TRAUMA_PATCH = 0x12, FETISH = 0x13,
     MAGLOCK_PASSKEY = 0x14, ELECTRONIC_KIT = 0x15, SMART_GOGGLES = 0x16,
+    POWER_FOCUS = 0x18, -- raw 0x18: Power Focus source item record [C]
+    COMBAT_SENSE_SPELL_LOCK = 0x28, -- raw 0x28: Combat Sense Spell Lock source item record [C]
+    RAT_TOTEM = 0x29, -- raw 0x29: Rat Totem source item record [C]
+    GATOR_TOTEM = 0x2A, -- raw 0x2A: Gator Totem source item record [C]
+    BEAR_TOTEM = 0x2B, -- raw 0x2B: Bear Totem source item record [C]
+}
+E.CombatTargetClass = {
+    DIFFICULTY_PLUS_TWO = 0x16, -- raw 0x16: condition modifier adds two [C value, H class identity]
+}
+E.CyberwareMask = {
+    CYBEREYES = 0x0002, -- raw 0x0002: cyberware word bit 1 [C]
+    HAND_RAZORS = 0x0004, -- raw 0x0004: cyberware word bit 2 [C]
+    SPURS = 0x0008, -- raw 0x0008: cyberware word bit 3 [C]
+    SMARTLINK = 0x0010, -- raw 0x0010: cyberware word bit 4 [C]
+}
+E.CombatInteractionFlag = {
+    NO_COVERAGE_DIFFICULTY_BONUS = 0x80, -- raw 0x80: prevents the +4 condition adjustment [C value, H flag name]
+    DEFENSE_DIFFICULTY_REDUCTION = 0x20, -- raw 0x20: subtracts two in defense_modifier [C value, H flag name]
+}
+E.CombatActionProfileFlag = {
+    PRIMARY = 0x01, -- raw 0x01: primary action profile modifier [C]
+    SECONDARY = 0x02, -- raw 0x02: secondary action profile modifier [C]
+}
+E.WeaponActionPhaseFlag = {
+    CYBERWARE_DIFFICULTY_BONUS = 0x01, -- raw 0x01: applies the cyberware/item difficulty path [C value, H flag name]
+    ACTION_DIFFICULTY_MINUS_ONE = 0x08, -- raw 0x08: subtracts one [C value, H flag name]
+    ACTION_DIFFICULTY_MINUS_TWO = 0x10, -- raw 0x10: action codes 8..10 subtract two [C value, H flag name]
+    ACTION_DIFFICULTY_MINUS_THREE = 0x20, -- raw 0x20: action codes 8..10 subtract three [C value, H flag name]
 }
 E.WeaponClass = { LIGHT_PISTOL = 0, HEAVY_PISTOL = 1, SMG = 2, SHOTGUN = 3, THROWN = 4 }  -- grouping of 0x15318 rows [C]
 E.WeaponSlot  = { NONE = 0x7F }                                                     -- +0x56 [C]
@@ -184,12 +257,33 @@ E.SceneId = { ALARM_COMBAT = 0x14, FINAL = 0x37 }                               
 E.EventFn = { GUARD_SPOTS_YOU = 0x20FEC }                                            -- scheduled via 0x1E2E0 [C]
 
 E.AiTuning = {   -- [C] unless marked
-    THINK_FRAMES = 0x14, ANIM_BUSY = 0x3C, ARRIVE_DIST = 0x1E0, FLANK_RADIUS = 0xE0, FLANK_ANGLE = 0x6000,
+    THINK_FRAMES = 0x14, THINK_RETRY = -1, -- 0x13904 + FFE175 retry remains negative [C]
+    ANIM_BUSY = 0x3C, ARRIVE_DIST = 0x1E0, FLANK_RADIUS = 0xE0, FLANK_ANGLE = 0x6000,
+    CLOSE_STRIKE_RANGE = 0x200, -- 0x15C58 accepts an actor target below this distance [C]
+    PATROL_WAYPOINT_STRIDE = 0x4, -- 0x142F4 advances +0xE4 by one XY pair [C]
+    FOLLOW_RADIUS_INITIAL = 0x20, -- 0x14512 first writes this radius [C]
+    FOLLOW_RADIUS = 0xE0, -- 0x14516 overwrites the prior radius [C]
+    FOLLOW_ANGLE_STEP = 0x6000, -- 0x14532 / 0x1452A [C]
+    FOLLOW_SAMPLE_SHIFT = 9, -- 0x15DCC indexes the wave by heading >> 9 [C]
+    FOLLOW_SAMPLE_MASK = 0x7F, -- 0x15E56 contains 128 signed samples [C]
+    FOLLOW_QUARTER_WAVE_SAMPLES = 0x20, -- 0x15E16 is 32 samples earlier [C]
+    FOLLOW_VECTOR_SCALE = 0x8000, -- 0x15DCC product is doubled then SWAPed [C]
+    FOLLOW_FIRST_SLOT = 0, -- 0x1451E checks actor +0x3E == zero [C]
+    FOLLOW_SECOND_SLOT = 1, -- 0x14522 checks actor +0x3E == one [C]
+    FOLLOW_FIRST_SCENE_ACTOR_SLOT = 3, -- 0x1A342 starts d0 at 3; 0x44BC copies it [C]
+    FOLLOW_FIRST_LEADER_SLOT = 0, -- 0x14534 tests leader +0x3E [C]
+    FOLLOW_COLLISION_CLEAR_MAX = 0, -- 0x1455A/0x14580 accept nonpositive results [C]
+    PATROL_INITIAL_CURSOR = 0, -- 0x142FE clears +0xE4 at the list terminator [C]
+    WORD_MAX = 0xFFFF, -- 0x1450E heading and coordinate inputs are 16-bit words [C]
     FLEE_OFFSET = 0x2580, FLEE_CAMERA_BIAS = 0xA00, ENGAGE_DIST = 0x500, WATCH_DIST = 0x640,
-    THON_PERIOD = 8, HURT_BELOW = 4, CAST_MIN_STUN = 5, SPELL_GATE_MAX = 2, APPROACH_TICKS = 6,
+    THON_PERIOD = 8, -- FFE188 reload at 0x13A66 [C]; boot RAM clear 0xC3A/0xC58 zeroes it [C]
+    HURT_BELOW = 4, CAST_MIN_STUN = 5, SPELL_GATE_MAX = 2, APPROACH_TICKS = 6,
     QUARTER_TURN = 0x4000, NO_TARGET = 0x12345678, STEER_NONE = 0x1000, ALARM_FRAMES = 0x960,
     RELOAD_ROUNDS = 0x26, PATH_TRIES = 5, ANIM_TIMER_MASK = 0x7FF,
-    ENDING_HOLD_ROUNDS = 0x28,   -- 0x13D20 [C value, H meaning]
+    ENDING_HOLD_ROUNDS = 0x28,   -- +0x4E tests at 0x13D20 and 0x139AA [C value, H meaning]
+    TARGET_LIST_PHASE_MASK = 0x3F, -- raw 0x3F: FFDF88 mask at 0x13874 [C]
+    WORLD_TARGET_LIST_PHASE = 0x0B, -- raw 0x0B: rebuild 0x1438C at 0x13874 [C]
+    RUNNER_TARGET_LIST_PHASE = 0x0F, -- raw 0x0F: rebuild 0x14446 at 0x13874 [C]
 }
 E.Collision = { BLOCKED = 0x7F, LOW_BITS = 0x1F, IMPASSABLE_FROM = 0x18 }   -- repo movement_collision_code [H names, C values]
 E.EntryDelayMax = { STATIC = 15, DYNAMIC_ENCOUNTER = 0x28 }                   -- repo heartbeat guard [H names]

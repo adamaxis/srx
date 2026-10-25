@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+#include "enums.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_route_primitives_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
@@ -599,6 +600,61 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
+    const auto world_list_schedule =
+        scripts.should_rebuild_actor_target_lists(
+            ScriptActorTargetListRebuildFacts{
+                static_cast<std::uint16_t>(
+                    srx::AiTuning::WORLD_TARGET_LIST_PHASE),
+                false});
+    const auto runner_list_schedule =
+        scripts.should_rebuild_actor_target_lists(
+            ScriptActorTargetListRebuildFacts{
+                static_cast<std::uint16_t>(
+                    srx::AiTuning::RUNNER_TARGET_LIST_PHASE),
+                false});
+    const auto encounter_list_schedule =
+        scripts.should_rebuild_actor_target_lists(
+            ScriptActorTargetListRebuildFacts{
+                0U,
+                static_cast<std::uint16_t>(srx::AiTuning::WORD_MAX)});
+    if (!expect(world_list_schedule.has_value() &&
+                    world_list_schedule->rebuild_world &&
+                    !world_list_schedule->rebuild_runner &&
+                    runner_list_schedule.has_value() &&
+                    !runner_list_schedule->rebuild_world &&
+                    runner_list_schedule->rebuild_runner &&
+                    encounter_list_schedule.has_value() &&
+                    encounter_list_schedule->rebuild_world &&
+                    encounter_list_schedule->rebuild_runner,
+                "Lua target-list rebuild cadence did not cross the C++ bridge")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    const auto player_attack_delay = scripts.player_weapon_action_delay(
+        0U, 0U, 0U,
+        static_cast<std::uint8_t>(srx::ItemId::WARHAWK),
+        ScriptPlayerDelayPurpose::weapon_attack);
+    const auto player_reload_action_delay =
+        scripts.player_weapon_action_delay(
+            0U, 0U, 0U,
+            static_cast<std::uint8_t>(srx::ItemId::WARHAWK),
+            ScriptPlayerDelayPurpose::reload_action);
+    const auto player_shared_action_delay = scripts.player_weapon_action_delay(
+        0U, 0U, 0U,
+        static_cast<std::uint8_t>(srx::ItemId::WARHAWK),
+        ScriptPlayerDelayPurpose::shared_action);
+    if (!expect(
+            player_attack_delay == static_cast<std::int16_t>(
+                srx::v(srx::ActionDelay::BASE) / 2) &&
+                player_reload_action_delay == static_cast<std::int16_t>(
+                    srx::v(srx::ActionDelay::BASE) *
+                    srx::v(srx::ActionDelayMode::DOUBLE)) &&
+                player_shared_action_delay == static_cast<std::int16_t>(
+                    srx::v(srx::ActionDelay::BASE)),
+            "player weapon delay bridge did not resolve Lua-owned modes")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
     const auto ilene_gate_actors =
         scripts.world_activity_actors_for_script(13U, 3U);
     const auto absent_scene_script_actors =
@@ -840,37 +896,40 @@ int main() {
 
     ScriptFieldEncounterTriggerInput encounter_trigger{};
     encounter_trigger.scene_id = 2U;
-    encounter_trigger.frame_counter = 10U;
+    encounter_trigger.frame_counter = static_cast<std::uint16_t>(
+        srx::v(srx::FieldEncounter::FRAME_VALUE));
     const auto gate_requests_roll =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.frame_counter = 9U;
+    encounter_trigger.frame_counter = static_cast<std::uint16_t>(
+        srx::v(srx::FieldEncounter::FRAME_VALUE) - 1);
     const auto gate_waits_for_cadence =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.frame_counter = 10U;
-    encounter_trigger.trigger_delay_active = true;
+    encounter_trigger.frame_counter = static_cast<std::uint16_t>(
+        srx::v(srx::FieldEncounter::FRAME_VALUE));
+    encounter_trigger.display_service_word = 1U;
     const auto gate_respects_delay =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.trigger_delay_active = false;
-    encounter_trigger.current_entity_protected = true;
+    encounter_trigger.display_service_word = 0U;
+    encounter_trigger.leader_protected = true;
     const auto gate_respects_protected_actor =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.current_entity_protected = false;
-    encounter_trigger.activity_lock = true;
+    encounter_trigger.leader_protected = false;
+    encounter_trigger.field_activity_lock_active = true;
     const auto gate_respects_activity_lock =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.activity_lock = false;
-    encounter_trigger.world_effects_active = true;
-    const auto gate_respects_active_world_effect =
+    encounter_trigger.field_activity_lock_active = false;
+    encounter_trigger.combat_active = true;
+    const auto gate_respects_active_combat =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.sequence_mode = true;
-    const auto gate_still_rolls_for_active_sequence =
+    encounter_trigger.field_alarm_active = true;
+    const auto gate_alarm_allows_active_combat =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.sequence_mode = false;
-    encounter_trigger.world_effects_active = false;
-    encounter_trigger.placement_pending = true;
-    const auto gate_respects_placement_lock =
+    encounter_trigger.encounter_actor_count = 1U;
+    const auto gate_respects_encounter_actor_count =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.placement_pending = false;
+    encounter_trigger.encounter_actor_count = 0U;
+    encounter_trigger.field_alarm_active = false;
+    encounter_trigger.combat_active = false;
     encounter_trigger.probability_roll = 4U;
     encounter_trigger.probability_threshold = 5U;
     const auto gate_accepts_below_threshold =
@@ -878,9 +937,10 @@ int main() {
     encounter_trigger.probability_roll = 5U;
     const auto gate_rejects_at_threshold =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.sequence_mode = true;
+    encounter_trigger.field_alarm_active = true;
+    encounter_trigger.combat_active = true;
     encounter_trigger.probability_roll = 0U;
-    const auto gate_forwards_without_resampling_outcome =
+    const auto gate_selects_alarm_sequence =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
     if (!expect(
             gate_requests_roll ==
@@ -893,21 +953,46 @@ int main() {
                     ScriptFieldEncounterTriggerAction::blocked &&
                 gate_respects_activity_lock ==
                     ScriptFieldEncounterTriggerAction::blocked &&
-                gate_respects_active_world_effect ==
+                gate_respects_active_combat ==
                     ScriptFieldEncounterTriggerAction::blocked &&
-                gate_still_rolls_for_active_sequence ==
+                gate_alarm_allows_active_combat ==
                     ScriptFieldEncounterTriggerAction::sample_probability &&
-                gate_respects_placement_lock ==
+                gate_respects_encounter_actor_count ==
                     ScriptFieldEncounterTriggerAction::blocked &&
                 gate_accepts_below_threshold ==
                     ScriptFieldEncounterTriggerAction::select_scene_outcome &&
                 gate_rejects_at_threshold ==
                     ScriptFieldEncounterTriggerAction::random_miss &&
-                gate_forwards_without_resampling_outcome ==
-                    ScriptFieldEncounterTriggerAction::forward_active_sequence,
+                gate_selects_alarm_sequence ==
+                    ScriptFieldEncounterTriggerAction::select_alarm_sequence,
             "Lua ROM encounter gates did not preserve eligibility and random thresholds")) {
         std::cerr << scripts.failure() << '\n';
         return 2;
+    }
+
+    const auto alarm_alternate_sequence = scripts.resolve_field_actor_sequence(
+        2U, static_cast<std::uint32_t>(
+                srx::v(srx::FieldEncounter::ALARM_SEQUENCE_LIST_ADDRESS)));
+    if (!expect(
+            alarm_alternate_sequence.has_value() &&
+                alarm_alternate_sequence->kind ==
+                    ScriptFieldEncounterOutcomeKind::
+                        dynamic_world_effect_sequence &&
+                alarm_alternate_sequence->placement_policy ==
+                    ScriptFieldEncounterPlacementPolicy::
+                        map_derived_candidates &&
+                alarm_alternate_sequence->actors.size() == 2U &&
+                alarm_alternate_sequence->actors[0].template_offset ==
+                    static_cast<std::uint32_t>(srx::v(
+                        srx::FieldEncounter::ALARM_ACTOR_TEMPLATE_ADDRESS)) &&
+                alarm_alternate_sequence->actors[1].template_offset ==
+                    static_cast<std::uint32_t>(srx::v(
+                        srx::FieldEncounter::ALARM_ACTOR_TEMPLATE_ADDRESS)) &&
+                alarm_alternate_sequence->actors[0].source_spawn_state_flags ==
+                    alarm_alternate_sequence->actors[1].source_spawn_state_flags,
+            "Lua did not resolve the two source actors from ROM alarm list 0x1E20A")) {
+        std::cerr << scripts.failure() << '\n';
+        return 3;
     }
 
     const auto run_ids =
@@ -2943,7 +3028,6 @@ int main() {
             context.dynamic_world_encounter_actor = true;
             context.source_record_slot = slot;
             context.source_record_flags = service_flags;
-            context.entry_animation_frame_count = 4U;
             ScriptCombatantFacts combatant{};
             combatant.record_type = slot;
             combatant.physical_meter = physical_meter;
@@ -3007,14 +3091,20 @@ int main() {
                    const std::string_view profile_id,
                    const std::uint16_t entity_kind,
                    const ScriptActorActionKind action_kind,
-                   const std::uint8_t action_code)
+                   const std::uint8_t action_code,
+                   const std::uint8_t physical_meter,
+                   const std::uint8_t mental_meter,
+                   const bool reads_stun_meter)
             -> std::optional<ScriptActorBehaviorDecision> {
         auto context = actor_context(profile_id, actor_id, entity_kind, action_kind,
                                      action_code, 0U, true);
         context.dynamic_world_encounter_actor = true;
+        ScriptCombatantFacts marker_facts{};
+        marker_facts.physical_meter = physical_meter;
+        marker_facts.mental_meter = mental_meter;
+        context.combatant = marker_facts;
+        context.target_marker_reads_stun_meter = reads_stun_meter;
         context.source_record_flags = 0x01U;
-        context.entry_animation_frame_count = 4U;
-        context.walk_animation_frame_count = 4U;
         if (!scripts.actor_heartbeat(context).has_value()) {
             std::cerr << "target marker actor spawn failed for " << profile_id
                       << ": " << scripts.failure() << '\n';
@@ -3030,26 +3120,30 @@ int main() {
         }
         return decision;
     };
+    // combat-fixes-1: ROM 0x5C7E tiers the target's +0x4C physical meter
+    // (or +0x9C stun per the leader weapon rule), never its action code.
+    // The action codes below deliberately disagree with the meters.
     const auto target_marker_action_0 = target_marker_style_for_action(
-        "target_marker_action_0", "hell_hound_k0c_none00", 12U,
-        ScriptActorActionKind::none, 0U);
+        "target_marker_action_0", "elven_mage_k06_spell09", 6U,
+        ScriptActorActionKind::spell, 9U, 2U, 10U, false);
     const auto target_marker_action_3 = target_marker_style_for_action(
         "target_marker_action_3", "eye5r_2_k07_item04", 7U,
-        ScriptActorActionKind::item, 4U);
+        ScriptActorActionKind::item, 4U, 5U, 0U, false);
     const auto target_marker_action_6 = target_marker_style_for_action(
         "target_marker_action_6", "rat_shaman_k0b_spell06", 11U,
-        ScriptActorActionKind::spell, 6U);
+        ScriptActorActionKind::spell, 6U, 6U, 1U, false);
     const auto target_marker_action_9 = target_marker_style_for_action(
-        "target_marker_action_9", "elven_mage_k06_spell09", 6U,
-        ScriptActorActionKind::spell, 9U);
+        "target_marker_action_9", "hell_hound_k0c_none00", 12U,
+        ScriptActorActionKind::none, 0U, 10U, 10U, false);
+    const auto target_marker_stun_0 = target_marker_style_for_action(
+        "target_marker_stun_0", "hell_hound_k0c_none00", 12U,
+        ScriptActorActionKind::none, 0U, 10U, 2U, true);
 
     auto target_marker_animation_context = actor_context(
         "marker_animation_k06_none00", "target_marker_animation", 6U,
         ScriptActorActionKind::none, 0U, 0U, true);
     target_marker_animation_context.dynamic_world_encounter_actor = true;
     target_marker_animation_context.source_record_flags = 0x01U;
-    target_marker_animation_context.entry_animation_frame_count = 4U;
-    target_marker_animation_context.walk_animation_frame_count = 4U;
     const auto target_marker_spawn =
         scripts.actor_heartbeat(target_marker_animation_context);
     target_marker_animation_context.spawn = false;
@@ -3073,13 +3167,13 @@ int main() {
                                        const std::uint8_t slot,
                                        const std::string& actor_id,
                                        const bool active,
-                                       const bool has_action) {
+                                       const bool projected_y_nonzero) {
         ScriptActorTargetCandidate candidate{};
         candidate.id = actor_id;
         candidate.source_record_slot = slot;
         candidate.descriptor_class = slot;
         candidate.service_flags = active ? 0x01U : 0U;
-        candidate.has_action = has_action;
+        candidate.projected_y_nonzero = projected_y_nonzero;
         return candidate;
     };
     auto target_selection_context = actor_context(
@@ -3131,8 +3225,6 @@ int main() {
     hound_effect_context.dynamic_world_encounter_actor = true;
     hound_effect_context.source_record_flags = 0x01U;
     hound_effect_context.movement_allowed = true;
-    hound_effect_context.entry_animation_frame_count = 1U;
-    hound_effect_context.walk_animation_frame_count = 1U;
     hound_effect_context.delay_primary_attribute = 8U;
     hound_effect_context.delay_secondary_attribute = 2U;
     hound_effect_context.ai_target_candidates.push_back(
@@ -3240,8 +3332,6 @@ int main() {
                 0U, true);
             context.dynamic_world_encounter_actor = true;
             context.source_record_flags = 0x25U;
-            context.entry_animation_frame_count = 1U;
-            context.walk_animation_frame_count = 4U;
             context.initial_action_delay = initial_action_delay;
             context.ai_animation_frame = ai_animation_frame;
             context.movement_allowed = true;
@@ -3413,12 +3503,6 @@ int main() {
         ScriptActorActionKind::none, 0U, 0U, true);
     c0a2_action_context.dynamic_world_encounter_actor = true;
     c0a2_action_context.source_record_flags = 0x25U;
-    c0a2_action_context.entry_animation_frame_count = 1U;
-    c0a2_action_context.walk_animation_frame_count = 4U;
-    c0a2_action_context.action_animation_frame_count = 2U;
-    c0a2_action_context.action_animation_increment = 0x0200U;
-    c0a2_action_context.action_animation_threshold = 0x1000U;
-    c0a2_action_context.action_animation_audio_event = 0x004CU;
     c0a2_action_context.initial_action_delay = 0;
     c0a2_action_context.delay_primary_attribute = 4U;
     c0a2_action_context.delay_secondary_attribute = 6U;
@@ -3501,12 +3585,14 @@ int main() {
         c0a2_entry_start.has_value() &&
         c0a2_action_start.has_value() &&
         c0a2_action_start->ai_target_engaged &&
+        c0a2_action_start->world_activity_requested &&
         c0a2_action_start->audio_event == 0x004CU &&
         c0a2_action_start->target_heading_audio_event == 0x004DU &&
         c0a2_action_start->action_delay == 45 &&
         c0a2_action_start->animation_frame == 0U &&
         c0a2_alternate_spawn.has_value() &&
         c0a2_alternate_action_start.has_value() &&
+        c0a2_alternate_action_start->world_activity_requested &&
         c0a2_alternate_action_start->audio_event == 0x004CU &&
         c0a2_alternate_action_start->target_heading_audio_event == 0x004EU &&
         c0a2_action_frame_zero.has_value() &&
@@ -3695,8 +3781,6 @@ int main() {
         context.dynamic_world_encounter_actor = true;
         context.source_record_flags = 0x01U;
         context.world_scene_state = world_scene_state;
-        context.entry_animation_frame_count = 1U;
-        context.walk_animation_frame_count = 4U;
         context.initial_action_delay = initial_delay;
         context.movement_scene_id = 2U;
         context.movement_allowed = true;
@@ -3994,7 +4078,9 @@ int main() {
     spell_caster.record_type = 7U;
     spell_caster.source_flags = 0x01U;
     spell_caster.physical_meter = 10U;
-    spell_caster.mental_meter = 0U;
+    // Keep the caster out of the ROM's zero-stun down transition while the
+    // spell tests exercise 0x1033E and its source-derived combat results.
+    spell_caster.mental_meter = 2U;
     spell_caster.posture = 4U;
     spell_caster.command_attribute_7c = 8U;
     spell_caster.item18_base = 8U;
@@ -4037,7 +4123,7 @@ int main() {
         ScriptActorTargetCandidate candidate{};
         candidate.id = id;
         candidate.service_flags = 0x01U;
-        candidate.has_action = true;
+        candidate.projected_y_nonzero = true;
         candidate.world_activity_actor = false;
         candidate.source_record_slot = slot;
         candidate.combatant = combatant;
@@ -4509,8 +4595,6 @@ int main() {
         // begins with the ROM record's clear flag and validates the decision.
         context.source_behavior_flags = 0U;
         context.source_animation_selector = 0U;
-        context.entry_animation_frame_count = 1U;
-        context.walk_animation_frame_count = 4U;
         context.initial_action_delay = initial_delay;
         context.movement_allowed = true;
         context.source_projection_active = projection;
@@ -4676,11 +4760,6 @@ int main() {
         context.source_action_ammo = 10U;
         context.source_action_counter = 0U;
         context.source_animation_selector = 0U;
-        context.entry_animation_frame_count = 1U;
-        context.walk_animation_frame_count = 4U;
-        context.item_action_frame_count = 1U;
-        context.item_action_increment = 0x0080U;
-        context.item_action_threshold = 0x1000U;
         context.initial_action_delay = 0;
         context.movement_allowed = true;
         context.source_projection_active = true;
@@ -4875,6 +4954,8 @@ int main() {
          CatalogDecision::unarmed},
         {"guard1_k05_item03", 5U, ScriptActorActionKind::item, 3U,
          CatalogDecision::item_gated},
+        {"corp_guard_k05_item06", 5U, ScriptActorActionKind::item, 6U,
+         CatalogDecision::item_gated},
         {"lone13_k05_item0a", 5U, ScriptActorActionKind::item, 10U,
          CatalogDecision::item_gated},
         {"ghoul1_k07_none00", 7U, ScriptActorActionKind::none, 0U,
@@ -4940,7 +5021,7 @@ int main() {
         }
         unsigned entity_kind = 0U;
         unsigned action_code = 0U;
-        if (!parse_unsigned(columns[11], entity_kind) ||
+        if (!parse_unsigned(columns[12], entity_kind) ||
             !parse_unsigned(columns[9], action_code)) {
             catalog_file_ok = false;
             break;
@@ -4981,7 +5062,7 @@ int main() {
     };
     bool catalog_ids_match =
         catalog_file_ok && catalog_seen.size() == catalog_profile_count &&
-        catalog_profile_count == 22U;
+        catalog_profile_count == 23U;
     if (catalog_ids_match) {
         for (const auto& seen : catalog_seen) {
             const auto* row = catalog_row_for(seen.profile_id);
@@ -5007,6 +5088,8 @@ int main() {
     ScriptCombatantFacts catalog_attacker{};
     catalog_attacker.record_type = 7U;
     catalog_attacker.source_flags = 0x25U;
+    catalog_attacker.physical_meter = 10U;
+    catalog_attacker.mental_meter = 10U;
     catalog_attacker.cyberware_flags = 0x0008U;
     catalog_attacker.command_attribute_77 = 2U;
     catalog_attacker.command_attribute_78 = 4U;
@@ -5044,8 +5127,6 @@ int main() {
             row.action_code, 0U, true);
         context.dynamic_world_encounter_actor = true;
         context.source_record_flags = 0x01U;
-        context.entry_animation_frame_count = 1U;
-        context.walk_animation_frame_count = 4U;
         context.movement_allowed = true;
         context.initial_action_delay = 0;
         if (row.decision == CatalogDecision::hound_effect) {
@@ -5054,10 +5135,6 @@ int main() {
             context.delay_secondary_attribute = 2U;
         }
         if (row.decision == CatalogDecision::unarmed) {
-            context.action_animation_frame_count = 2U;
-            context.action_animation_increment = 0x0200U;
-            context.action_animation_threshold = 0x1000U;
-            context.action_animation_audio_event = 0x004CU;
             context.combatant = catalog_attacker;
             context.action_attribute_selectors = {
                 catalog_spell_rows[5U].attribute_selector,
@@ -5251,12 +5328,6 @@ int main() {
         ScriptActorActionKind::none, 0U, 0U, true);
     combat_probe_context.dynamic_world_encounter_actor = true;
     combat_probe_context.source_record_flags = 0x25U;
-    combat_probe_context.entry_animation_frame_count = 1U;
-    combat_probe_context.walk_animation_frame_count = 4U;
-    combat_probe_context.action_animation_frame_count = 2U;
-    combat_probe_context.action_animation_increment = 0x0200U;
-    combat_probe_context.action_animation_threshold = 0x1000U;
-    combat_probe_context.action_animation_audio_event = 0x004CU;
     combat_probe_context.initial_action_delay = 0;
     combat_probe_context.delay_primary_attribute = 4U;
     combat_probe_context.delay_secondary_attribute = 6U;
@@ -5268,6 +5339,8 @@ int main() {
     ScriptCombatantFacts attacker_facts{};
     attacker_facts.record_type = 7U;
     attacker_facts.source_flags = 0x25U;
+    attacker_facts.physical_meter = 10U;
+    attacker_facts.mental_meter = 10U;
     attacker_facts.cyberware_flags = 0x0008U;
     attacker_facts.command_attribute_77 = 2U;
     attacker_facts.command_attribute_78 = 4U;
@@ -5365,28 +5438,30 @@ int main() {
                     ScriptActorBehaviorDecision::Action::hold &&
                 guard_entry_spawn.has_value() &&
                 guard_entry_spawn->animation_id == "idle" &&
+                // Default-list actors spawn live (meter 10): 0xB330/C0B2
+                // runs only after the meter reaches zero, never at spawn.
                 guard_entry.has_value() &&
                 guard_entry->action ==
-                    ScriptActorBehaviorDecision::Action::
-                        play_entry_animation &&
+                    ScriptActorBehaviorDecision::Action::hold &&
                 guard_entry->package_id ==
                     "corp_security.max_power_heavy_pistol" &&
-                guard_entry->animation_id == "entry" &&
-                guard_entry->animation_frame == 0U &&
-                guard_entry->animation_accumulator == -16 &&
-                guard_entry->audio_event == 0x002EU &&
+                guard_entry->animation_id == "idle" &&
+                guard_entry->transition_started &&
+                guard_entry->transition_complete &&
+                !guard_entry->audio_event.has_value() &&
                 guard_entry->weapon_item_id == 6U &&
                 guard_hold.has_value() &&
                 guard_hold->animation_frame == 0U &&
                 guard_entry_last_frame.has_value() &&
-                guard_entry_last_frame->animation_id == "entry" &&
-                guard_entry_last_frame->animation_frame == 1U &&
+                guard_entry_last_frame->animation_id == "idle" &&
+                guard_entry_last_frame->animation_frame == 0U &&
                 pedestrian_spawn.has_value() &&
                 pedestrian_spawn->animation_id == "idle" &&
                 pedestrian_entry.has_value() &&
                 pedestrian_entry->package_id ==
                     "pedestrian.no_active_action" &&
-                pedestrian_entry->audio_event == 0x002FU &&
+                pedestrian_entry->animation_id == "idle" &&
+                !pedestrian_entry->audio_event.has_value() &&
                 !pedestrian_entry->weapon_item_id.has_value() &&
                 target_marker_action_0.has_value() &&
                 target_marker_action_0->target_marker_visible &&
@@ -5398,6 +5473,8 @@ int main() {
                 target_marker_action_6->target_marker_style == 2U &&
                 target_marker_action_9.has_value() &&
                 target_marker_action_9->target_marker_style == 3U &&
+                target_marker_stun_0.has_value() &&
+                target_marker_stun_0->target_marker_style == 0U &&
                 target_marker_spawn.has_value() &&
                 target_marker_first.has_value() &&
                 target_marker_first->target_marker_visible &&
@@ -6194,13 +6271,6 @@ int main() {
             ScriptActorActionKind::none, 0U, 0U, true);
         context.dynamic_world_encounter_actor = true;
         context.source_record_flags = 0x25U;
-        context.entry_animation_frame_count = 2U;
-        context.walk_animation_frame_count = 4U;
-        context.hurt_animation_frame_count = 2U;
-        context.hurt_animation_increment = 0x0300U;
-        context.hurt_animation_threshold = 0x1000U;
-        context.hurt_audio_event = 0x0057U;
-        context.down_audio_event = 0x0056U;
         return context;
     };
     const auto configure_encounter_movement = [](
@@ -6312,8 +6382,9 @@ int main() {
         posture_band_actor.entity_kind = 8U;
         posture_band_actor.source_record_flags = 0x2DU;
         posture_band_actor.source_actor_posture = posture;
-        posture_band_actor.entry_animation_frame_count = 2U;
-        posture_band_actor.walk_animation_frame_count = 4U;
+        // This case exercises the linked-target combat route; FFDF84 is the
+        // source combat gate that keeps the patrol selector out of the case [C].
+        posture_band_actor.world_activity_active = true;
         configure_encounter_movement(posture_band_actor, target_distance);
         posture_band_actor.ai_target_candidates.front().world_activity_actor =
             true;
@@ -6353,6 +6424,9 @@ int main() {
     quickness_actor.source_projection_active = true;
     ScriptCombatantFacts quickness_facts{};
     quickness_facts.command_attribute_78 = 4U;
+    // A live actor: ROM 0xA93A sends +0x4C/+0x9C == 0 straight to 0xB330.
+    quickness_facts.physical_meter = 10U;
+    quickness_facts.mental_meter = 10U;
     quickness_actor.combatant = quickness_facts;
     configure_encounter_movement(quickness_actor, 0x0700U);
     const bool quickness_entered =
@@ -6367,6 +6441,44 @@ int main() {
                 quickness_actor.movement_state.position_y ==
                     static_cast<std::uint16_t>(0x1800U - 19U),
             "far actor with FFDF84 set did not step the Quickness 4 row of 0xBDF2")) {
+        std::cerr << scripts.failure() << " entered=" << quickness_entered
+                  << " moved=" << quickness_moved << " pos="
+                  << quickness_actor.movement_state.position_x << ','
+                  << quickness_actor.movement_state.position_y << '\n';
+        return 24;
+    }
+
+    // combat-fixes-1: ROM 0xA93A..0xAA4C. A live idle/walk actor whose stun
+    // meter (+0x9C) is zero enters 0xB330 on its next service pass even
+    // though its physical meter (+0x4C) is non-zero; a fully healthy actor
+    // never does. The hit path (0xAFF2) alone only checks +0x4C.
+    const auto service_down_after = [&](const std::uint8_t physical,
+                                        const std::uint8_t mental) {
+        auto context = make_encounter_reaction_context(
+            "field_scene_2_encounter_stun_service");
+        ScriptCombatantFacts facts{};
+        facts.physical_meter = physical;
+        facts.mental_meter = mental;
+        context.combatant = facts;
+        if (!scripts.actor_heartbeat(context).has_value()) {
+            return std::optional<ScriptActorBehaviorDecision>{};
+        }
+        context.spawn = false;
+        context.phase = ScriptActorHeartbeatPhase::behavior;
+        return scripts.actor_heartbeat(context);
+    };
+    const auto stunned_service = service_down_after(10U, 0U);
+    const auto healthy_service = service_down_after(10U, 10U);
+    if (!expect(
+            stunned_service.has_value() &&
+                stunned_service->animation_id == "down" &&
+                stunned_service->audio_event == 0x0056U &&
+                (stunned_service->source_record_flags & 0x10U) != 0U &&
+                healthy_service.has_value() &&
+                healthy_service->animation_id != "down" &&
+                healthy_service->audio_event != 0x0056U &&
+                (healthy_service->source_record_flags & 0x10U) == 0U,
+            "zero stun meter did not enter 0xB330 on the 0xA93A service pass")) {
         std::cerr << scripts.failure() << '\n';
         return 24;
     }
@@ -6662,6 +6774,44 @@ int main() {
                 "C0B2 exhausted transition did not retain its final frame and reserved actor flag")) {
         std::cerr << scripts.failure() << '\n';
         return 24;
+    }
+    // ROM 0xAA14 -> 0xA9BE: a Wendigo (kind 0xE) whose C0B2 list finished
+    // takes 0xAB02 (DEAD, 0x40) and then 0x1E514 (bclr #0,+0x10 ACTIVE).
+    {
+        auto wendigo = actor_context(
+            "wendigo_k0e_none00", "field_wendigo_death_actor", 14U,
+            ScriptActorActionKind::none, 0U, 0U, true);
+        wendigo.dynamic_world_encounter_actor = true;
+        wendigo.source_record_flags = 0x25U;
+        // Meters are Lua-owned after spawn, so seed stun 0 at spawn.
+        auto stunned = wendigo.combatant.value_or(ScriptCombatantFacts{});
+        stunned.physical_meter = 10U;
+        stunned.mental_meter = 0U;
+        wendigo.combatant = stunned;
+        const bool spawned = scripts.actor_heartbeat(wendigo).has_value();
+        wendigo.spawn = false;
+        wendigo.phase = ScriptActorHeartbeatPhase::behavior;
+        auto pass = scripts.actor_heartbeat(wendigo);
+        const bool went_down = pass.has_value() &&
+                               pass->animation_id == "down" &&
+                               (pass->source_record_flags & 0x10U) != 0U;
+        if (pass.has_value()) {
+            wendigo.source_record_flags = pass->source_record_flags;
+        }
+        wendigo.phase = ScriptActorHeartbeatPhase::render;
+        // Kind 14's ROM C0B2 list has eight entries at the Lua-owned rate;
+        // let all eight source frames complete before the behavior pass.
+        for (std::uint8_t frame = 0U; frame < 64U; ++frame) {
+            scripts.actor_heartbeat(wendigo);
+        }
+        wendigo.phase = ScriptActorHeartbeatPhase::behavior;
+        pass = scripts.actor_heartbeat(wendigo);
+        if (!expect(spawned && went_down && pass.has_value() &&
+                        (pass->source_record_flags & 0x41U) == 0x40U,
+                    "Wendigo did not deactivate (0x1E514) after its death list")) {
+            std::cerr << scripts.failure() << '\n';
+            return 24;
+        }
     }
 
     auto unresolved_weapon_seed = moving_projectile;

@@ -126,7 +126,7 @@ void begin_world_activity(
 
 struct WorldActivityTimeoutState {
     std::uint16_t scene_id = 0; // FFDDC4
-    std::uint8_t scene_36_gate = 0; // FFE177
+    std::uint8_t encounter_actor_count = 0; // FFE177 [C]
     std::int16_t timeout_marker = 0; // FFDF84
     std::uint16_t timeout_frames = 0; // FFDF86
     std::uint32_t extended_timeout = 0; // FFE162

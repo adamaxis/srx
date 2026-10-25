@@ -3,6 +3,7 @@
 local R = require("actor.registry")
 local E = require("enums")
 local I = require("lib.int68k")
+local Delay = require("actor.delay")
 local u8, u16, s16 = I.u8, I.u16, I.s16
 local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
@@ -14,44 +15,11 @@ local spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot
 local BehaviorFlag = R.BehaviorFlag   -- from actor/tables.lua
 local ActorStatus = R.ActorStatus   -- from actor/tables.lua
 local HitSpark = E.HitSpark
-local function direction_from_heading(...) return R.direction_from_heading(...) end   -- from actor/targeting.lua
 local item_action_pose_selectors = R.item_action_pose_selectors   -- from actor/tables.lua
 local spell_pose_selectors = R.spell_pose_selectors   -- from actor/anim.lua
+local Animator = R.Animator   -- from actor/animator.lua
 
-local function source_action_delay(context, state, mode)
-    -- ROM 0xB11C clears D0 before 0xABFC. 0xD7EA adds the first enabled
-    -- +0x90 capability modifier to the wrapped average of +0x78/+0x7B.
-    local capability_flags = context.delay_capability_flags or
-        state.delay_capability_flags or 0
-    local modifier = 0
-    for bit = 12, 14 do
-        if (capability_flags & (1 << bit)) ~= 0 then
-            modifier = (bit - 11) * 4
-            break
-        end
-    end
-    local primary = context.delay_primary_attribute or
-        state.delay_primary_attribute or 0
-    local secondary = context.delay_secondary_attribute or
-        state.delay_secondary_attribute or 0
-    local wrapped_sum = u8(primary + secondary)
-    local factor = (wrapped_sum >> 1) + modifier - 1
-    if factor < 0 then
-        factor = 0
-    end
-    local delay = 0x6a - factor * 4
-    -- ROM 0xABFC halves D2 with ASR when D0 is 1 (the B1DC target-action
-    -- transition). Keep the ordinary full reset used by B11C as mode 0.
-    if mode == 1 then
-        delay = math.floor(delay / 2)
-    elseif mode == 2 then
-        delay = delay * 2
-    end
-    if delay < 0x0f then
-        delay = 0x0f
-    end
-    return delay
-end
+local source_action_delay = Delay.actor_action_delay
 
 local function advance_source_action_delay(state, context)
     if context.phase ~= "behavior" or
@@ -102,7 +70,7 @@ local function request_target_motion_effect(state, context, heading)
             state.target_motion_effect_countdown = 0
             state.target_motion_effect_phase = 0
             state.target_motion_effect_direction =
-                direction_from_heading(heading)
+                R.direction_from_heading(heading)
             -- 0x14C7C sets +0x11.6; 0x13FFE then enters 0xB11C, which
             -- resets +0xDC with the actor's source-derived delay attributes.
             state.action_delay = source_action_delay(context, state)
@@ -126,15 +94,30 @@ local function advance_target_marker(state, context)
         return
     end
 
-    -- ROM 0x5C7E chooses a tile/palette group from the actor's +0x4C action
-    -- byte. The alternate +0x9C path depends on mode/runner flags which are
-    -- not present on these world-encounter records yet.
-    local action_code = context.action_code or 0
-    if action_code >= 9 then
+    -- ROM 0x5C7E tiers the TARGET's condition meter, not an action byte:
+    -- d0 = +0x4C (physical), or +0x9C (stun) when the leader record's
+    -- weapon rule says so (target_marker_reads_stun_meter, 0x5C82..0x5CBA).
+    -- <3 -> 0x5D92 (tile 0x5E7 pal 1), 3..5 -> 0x5DBE (0x5E5),
+    -- 6..8 -> 0x5DA8 (0x5E6), >=9 -> 0x5DD4 (0x5E7 pal 3).
+    local combatant = type(state.combatant) == "table" and state.combatant
+        or (type(context.combatant) == "table" and context.combatant or nil)
+    local meter
+    if context.target_marker_reads_stun_meter == true then
+        meter = combatant and combatant.mental_meter
+    else
+        meter = combatant and combatant.physical_meter
+        if type(meter) ~= "number" then
+            meter = context.source_physical_meter
+        end
+    end
+    if type(meter) ~= "number" then
+        meter = 0
+    end
+    if meter >= 9 then
         state.target_marker_style = 3
-    elseif action_code >= 6 then
+    elseif meter >= 6 then
         state.target_marker_style = 2
-    elseif action_code >= 3 then
+    elseif meter >= 3 then
         state.target_marker_style = 1
     else
         state.target_marker_style = 0
@@ -245,7 +228,7 @@ local function advance_world_target_selection(state, context)
                          ActorStatus.DOWN) == 0 and
                         (candidate.behavior_flags &
                          BehaviorFlag.ESCORT) == 0 and
-                        candidate.has_action == true
+                        candidate.projected_y_nonzero == true
                     if available and type(candidate.id) == "string" and
                        candidate.id ~= "" then
                         state.selected_world_actor_id = candidate.id
@@ -356,19 +339,55 @@ local function classify_item_dispatch(state, context, target)
     return "item_gated"
 end
 
+local function select_c082_directional_pose(state, heading)
+    if type(heading) ~= "number" then
+        return nil
+    end
+    local direction = R.direction_from_heading(u16(heading))
+    local selector = spell_pose_selectors[direction + 1]
+    if type(selector) ~= "number" then
+        return nil
+    end
+    state.direction = direction
+    state.animation_id = "spell"
+    state.animation_selector = selector
+    state.source_animation_selector = selector
+    state.animation_frame = 0
+    state.animation_accumulator = 0
+    return direction
+end
+
+local function begin_thon_action(state, target, line_clear)
+    if type(target) ~= "table" or
+       type(target.heading) ~= "number" then
+        return false
+    end
+    local direction = select_c082_directional_pose(state, target.heading)
+    if direction == nil then
+        return false
+    end
+
+    -- ROM 0xAE6E aims +0x2E at the linked record; both 0xAF7C and 0xAFAE
+    -- select the same directional +0x16 entry from the C082 list [C].
+    state.movement_current_heading = u16(target.heading)
+    state.ai_target_id = target.id
+    state.ai_target_heading = u16(target.heading)
+    state.ai_target_distance = target.distance
+    state.ai_target_engaged = line_clear == true
+    state.action_animation_complete = false
+    return true
+end
+
 local function begin_dynamic_item_action(state, context, target)
     local heading = type(target) == "table" and
         target.source_record_heading or nil
     if type(heading) ~= "number" then
         return false
     end
-    local direction = direction_from_heading(heading)
-    local frame_count = context.item_action_frame_count
-    local increment = context.item_action_increment
-    local threshold = context.item_action_threshold
-    if type(frame_count) ~= "number" or frame_count < 1 or frame_count > 8 or
-       type(increment) ~= "number" or increment < 1 or increment > 0xffff or
-       type(threshold) ~= "number" or threshold ~= 0x1000 then
+    local direction = R.direction_from_heading(heading)
+    local animation = Animator.list(state.entity_kind, Animator.Pose.ITEM,
+                                    direction)
+    if animation == nil or animation.finite ~= true then
         return false
     end
 
@@ -379,12 +398,11 @@ local function begin_dynamic_item_action(state, context, target)
     state.animation_id = "weapon"
     state.animation_frame = 0
     state.animation_accumulator = 0
-    state.animation_increment = increment
+    state.animation_increment = animation.rate
+    state.animation_period = Animator.PERIOD
     state.source_animation_selector =
         item_action_pose_selectors[direction + 1]
-    state.item_action_frame_count = frame_count
-    state.item_action_increment = increment
-    state.item_action_threshold = threshold
+    state.animation_selector = state.source_animation_selector
     state.item_action_complete = false
     state.action_delay = source_action_delay(context, state, 0)
     state.ai_target_engaged = false
@@ -397,7 +415,7 @@ local function begin_spell_cast(state, context, target, resolution)
     -- effect record through 0x15830; its 0x521E phase clock owns the delayed
     -- target callback.
     local heading = target.heading & 0xffff
-    local direction = direction_from_heading(heading)
+    local direction = R.direction_from_heading(heading)
     state.direction = direction
     state.animation_id = "spell"
     state.animation_selector = spell_pose_selectors[direction + 1]
@@ -878,26 +896,41 @@ end
 
 local function begin_dynamic_target_action(state, context, target)
     if not context.dynamic_world_encounter_actor or
-       state.action_delay >= 0 or state.target_motion_effect_active or
-       type(context.action_animation_frame_count) ~= "number" or
-       context.action_animation_frame_count < 1 or
-       type(context.action_animation_increment) ~= "number" or
-       context.action_animation_increment < 1 or
-       type(context.action_animation_threshold) ~= "number" or
-       context.action_animation_threshold < 1 or
-       type(context.action_animation_audio_event) ~= "number" then
+       state.action_delay >= 0 or state.target_motion_effect_active then
         return nil
     end
+
+    -- ROM 0xB1FC..0xB21C re-measures the linked target with 0x15D3C and
+    -- stores it in +0x34 and +0x2E before picking the C0A2 direction, so the
+    -- strike faces the target, not the last walk heading [C].
+    local heading = state.movement_current_heading or context.initial_heading or 0
+    if type(target) == "table" and type(target.heading) == "number" then
+        heading = target.heading
+    end
+    heading = u16(heading)
+    local direction = R.direction_from_heading(heading)
+    local animation = Animator.list(state.entity_kind,
+                                    Animator.Pose.ACTION, direction)
+    if animation == nil or animation.finite ~= true then
+        return nil
+    end
+    state.movement_current_heading = heading
 
     -- ROM 0xB1DC selects C0A2 for the accepted target heading, requests the
     -- kind-specific action cue, resets +0x1A/+0x1E, and applies delay mode 1.
     state.animation_id = "action"
     state.animation_frame = 0
     state.animation_accumulator = 0
-    state.animation_increment = context.action_animation_increment
-    state.animation_period = context.action_animation_threshold
+    state.direction = direction
+    state.animation_selector = Animator.Pose.ACTION + direction * 4
+    state.source_animation_selector = state.animation_selector
+    state.animation_increment = animation.rate
+    state.animation_period = Animator.PERIOD
     state.action_animation_complete = false
     state.action_delay = source_action_delay(context, state, 1)
+    -- ROM 0xB25E calls 0x1DBAA once the strike is accepted in range [C].
+    -- The typed heartbeat result lets the host set FFDF84/FFDF86 [H].
+    state.world_activity_requested = true
     -- ROM 0xB284 invokes the shared 0x55C76 reaction only after the linked
     -- heading is accepted. Lua resolves the source-derived action now and
     -- returns a one-heartbeat meter update for the host to apply.
@@ -905,7 +938,9 @@ local function begin_dynamic_target_action(state, context, target)
         context, target)
     local heading_event = context.target_heading_audio_alternate
         and SoundId.TARGET_HEADING_ALT or SoundId.TARGET_HEADING
-    return context.action_animation_audio_event, heading_event
+    local action_audio_event = state.entity_kind == E.SpriteType.HELL_HOUND
+        and SoundId.MELEE_SWING_ALT or SoundId.MELEE_SWING
+    return action_audio_event, heading_event
 end
 
 
@@ -920,6 +955,7 @@ R.action_line_clear = action_line_clear
 R.first_wounded_party_runner = first_wounded_party_runner
 R.classify_spell_dispatch = classify_spell_dispatch
 R.classify_item_dispatch = classify_item_dispatch
+R.begin_thon_action = begin_thon_action
 R.begin_dynamic_item_action = begin_dynamic_item_action
 R.begin_spell_cast = begin_spell_cast
 R.actor_matches_pending_spell_target = actor_matches_pending_spell_target
