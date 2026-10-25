@@ -137,11 +137,13 @@ do
     check(st(held).inventory_detail_pending and #held_log.sounds == 1,
           "seven-frame picture hold keeps panel blank for six following frames [C emulator]")
     held:frame(0)
-    check(st(held).inventory_detail_pending and #held_log.sounds == 2 and
+    check(not st(held).inventory_detail_pending and
+          st(held).inventory_picture_partial and #held_log.sounds == 2 and
           held_log.sounds[2] == E.MenuSound.MOVE,
-          "armor MOVE cue on the seventh following frame, panel still blank [C emulator zsnd e6]")
+          "armor MOVE cue on the seventh following frame, picture rows y>=57 only [C emulator zsnd e6 8747/8827]")
     held:frame(0)
     check(not st(held).inventory_detail_pending and
+          not st(held).inventory_picture_partial and
           not st(held).inventory_cursor_hidden and #held_log.sounds == 2,
           "armor detail appears one frame after the MOVE cue [C emulator e6 8748/8789]")
 

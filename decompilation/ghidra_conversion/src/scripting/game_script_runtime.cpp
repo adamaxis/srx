@@ -3257,6 +3257,12 @@ struct GameScriptRuntime::Impl {
                         lua_toboolean(state, -1) != 0;
                 }
                 lua_pop(state, 1);
+                lua_getfield(state, state_index, "inventory_picture_partial");
+                if (lua_isboolean(state, -1)) {
+                    menu_route_state.root_inventory_picture_partial =
+                        lua_toboolean(state, -1) != 0;
+                }
+                lua_pop(state, 1);
                 lua_getfield(state, state_index, "inventory_cursor_hidden");
                 if (lua_isboolean(state, -1)) {
                     menu_route_state.root_inventory_cursor_hidden =

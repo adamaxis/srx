@@ -10601,6 +10601,8 @@ void FieldSceneRuntime::synchronize_command_overview_inventory_from_route(
         route_state.root_inventory_detail_pending.value_or(false);
     command_overview_inventory_cursor_hidden_ =
         route_state.root_inventory_cursor_hidden.value_or(false);
+    command_overview_inventory_picture_partial_ =
+        route_state.root_inventory_picture_partial.value_or(false);
     command_overview_inventory_ammo_count_ =
         route_state.root_inventory_ammo_count;
 
@@ -21395,7 +21397,9 @@ void FieldSceneRuntime::paint_command_overview_posture_panel(
     // that strip [C emulator e1 8640: best fit (179,169)].
     // The inventory detail refresh also empties the bar fill for its hold:
     // e6 8740-8746, 8780-8787, 8820-8826 show only the frame [C emulator].
-    if (!command_overview_inventory_detail_pending_) {
+    // The fill returns with the ring on the MOVE frame (8788) [C emulator].
+    if (!command_overview_inventory_detail_pending_ ||
+        !command_overview_inventory_cursor_hidden_) {
         painter.drawImage(179, 169, command_overview_status_bars_[posture]);
     }
     draw_command_overview_text(
@@ -23950,6 +23954,14 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                           kInventoryIconPositions[slot][1], icon);
     }
 
+    if (view.source_state.primary_page < 2U &&
+        command_overview_inventory_picture_partial_) {
+        // [C emulator e6 8747/8827] The item picture tiles are still being
+        // uploaded on the MOVE frame: only rows y>=57 are already visible,
+        // and the ammo/uses count box left of the picture is not yet drawn.
+        painter.fillRect(QRect(112, 24, 136, 33), Qt::black);
+        painter.fillRect(QRect(112, 57, 32, 7), Qt::black);
+    }
     if (view.source_state.primary_page < 2U &&
         !command_overview_inventory_cursor_hidden_ &&
         !command_overview_inventory_selector_suppressed_) {
