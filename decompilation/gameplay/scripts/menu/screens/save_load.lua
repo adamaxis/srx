@@ -1,9 +1,25 @@
 -- Host state snapshots are versioned JSON files behind the narrow game API.
 -- Lua owns the screens and feedback; it does not reproduce cartridge SRAM.
 local E = require("enums")
+local Text = require("pocket_secretary")
 local P, R, T, MM, SL = E.Pad, E.MenuRegion, E.MenuTransition,
                          E.MenuMessage, E.SaveLoadOption
 local CONFIRM = P.A | P.B | P.C
+
+-- ROM 0xF000 writes the 0xC2600 rows at 0xC518 and its cursor at 0xC514 [C].
+local SAVE_LOAD_LAYOUT = {
+    label_x = 96, label_y = 80,
+    cursor_x = 80, cursor_y = 80,
+    row_spacing = 16,
+}
+-- ROM 0xF188 writes 0x1B6518 at 0xC39C and moves the cursor from 0xC398 [C].
+local SLOT_LAYOUT = {
+    title_x = 88, title_y = 32,
+    separator_x = 88, separator_y = 40,
+    label_x = 112, label_y = 56,
+    cursor_x = 96, cursor_y = 56,
+    row_spacing = 16,
+}
 
 local function wrap(value, delta, maximum)
     value = value + delta
@@ -29,8 +45,9 @@ local SaveLoad = { window = E.WindowPlane.SIDEBAR }
 function SaveLoad.new()
     return {
         row = SL.SAVE,
-        title = "Save or Load",
-        labels = { "Save Game", "Load Game" },
+        title = "",
+        labels = Text.save_load_options(),
+        layout = SAVE_LOAD_LAYOUT,
     }
 end
 function SaveLoad.enter(st, ctx)
@@ -77,19 +94,14 @@ end
 
 local Slot = { window = E.WindowPlane.SIDEBAR }
 function Slot.new(args)
-    return { op = args.op, row = 0, title = "Select Save Slot", labels = {} }
+    return {
+        op = args.op, row = 0, title = "",
+        labels = Text.save_load_slots(),
+        layout = SLOT_LAYOUT,
+    }
 end
 function Slot.enter(st, ctx)
-    local function label(slot)
-        local status = ctx.game.save_status(slot)
-        local prefix = "Game " .. tostring(slot + 1) .. ": "
-        if status == 1 then return prefix .. "Saved" end
-        if status == 2 then return prefix .. "Unreadable" end
-        if status == 3 then return prefix .. "Incompatible Version" end
-        return prefix .. "Empty"
-    end
-    st.title = st.op == SL.SAVE and "Save Game" or "Load Game"
-    st.labels = { label(0), label(1) }
+    st.title = Text.save_load_slot_titles()[st.op + 1]
     ctx.redraw(R.SUBMENU)
 end
 function Slot.input(st, events, ctx)

@@ -2078,6 +2078,25 @@ struct GameScriptRuntime::Impl {
                 (void)read_field_text(
                     state, screen_state_index, "description",
                     menu_route_state.top_matrix_deck_description);
+                lua_getfield(state, screen_state_index, "layout");
+                if (lua_istable(state, -1)) {
+                    const auto layout_index = lua_absindex(state, -1);
+                    ScriptMenuRouteLayout layout;
+                    layout.title_x = read_optional(layout_index, "title_x");
+                    layout.title_y = read_optional(layout_index, "title_y");
+                    layout.separator_x =
+                        read_optional(layout_index, "separator_x");
+                    layout.separator_y =
+                        read_optional(layout_index, "separator_y");
+                    layout.label_x = read_optional(layout_index, "label_x");
+                    layout.label_y = read_optional(layout_index, "label_y");
+                    layout.cursor_x = read_optional(layout_index, "cursor_x");
+                    layout.cursor_y = read_optional(layout_index, "cursor_y");
+                    layout.row_spacing =
+                        read_optional(layout_index, "row_spacing");
+                    menu_route_state.top_layout = std::move(layout);
+                }
+                lua_pop(state, 1);
                 if (menu_route_state.top_screen == 41U) {
                     lua_getfield(state, screen_state_index, "view");
                     if (lua_istable(state, -1)) {

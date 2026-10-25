@@ -45,6 +45,8 @@ inline constexpr std::size_t kCyberwareTextCount =
     kCyberwareTitleLineCount + 1U + kCyberwareEntryCount;
 inline constexpr std::size_t kCyberdeckUnavailableLineCount = 3U;
 inline constexpr std::size_t kDismissRunnerLabelCount = 3U;
+inline constexpr std::size_t kSaveLoadOptionCount = 2U;
+inline constexpr std::size_t kSaveLoadSlotLabelCount = 2U;
 inline constexpr std::size_t kMagicSpellTextCount = 14U;
 inline constexpr std::size_t kMagicPanelTextCount = 7U;
 inline constexpr std::size_t kFieldServiceTitleCount = 12U;
@@ -180,14 +182,28 @@ struct FieldMenuTextCatalog {
         pocket_secretary_group_items_empty_lines{};
     std::array<std::string, kPocketSecretaryGroupItemsEmptyLineCount>
         pocket_secretary_group_items_empty_text_ids{};
-    // ROM 0xC448 fixed text. The Dismiss separator has 12 backslashes,
-    // unlike the Pocket Secretary separator's 10.
+    // ROM 0xC448 passes 0xC1499 to C0DA at 0xC216; the separator has 12
+    // backslashes [C].
     std::array<std::string, kDismissRunnerLabelCount>
         dismiss_runner_labels{};
     std::array<std::string, kDismissRunnerLabelCount>
         dismiss_runner_choice_ids{};
     std::string dismiss_runner_separator;
     std::string dismiss_runner_separator_text_id;
+    // ROM 0xC2600 and 0xC2616/0xC262D option/title text [C].
+    std::array<std::string, kSaveLoadOptionCount>
+        save_load_option_labels{};
+    std::array<std::string, kSaveLoadOptionCount>
+        save_load_option_text_ids{};
+    std::array<std::string, kSaveLoadOptionCount>
+        save_load_slot_titles{};
+    std::array<std::string, kSaveLoadOptionCount>
+        save_load_slot_title_text_ids{};
+    // ROM 0x1B6518 contains only the static Game 1/Game 2 labels [C].
+    std::array<std::string, kSaveLoadSlotLabelCount>
+        save_load_slot_labels{};
+    std::array<std::string, kSaveLoadSlotLabelCount>
+        save_load_slot_text_ids{};
     // ROM F33E/F2E2 host text. Event gates are typed field-session state and
     // are intentionally not part of this static text catalog.
     std::array<std::string, kNotebookLabelCount> notebook_labels{};

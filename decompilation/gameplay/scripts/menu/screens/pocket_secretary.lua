@@ -401,7 +401,12 @@ end
 
 -- Dismiss Runner 0xC448: rows = Abort + candidates (slots 1..2 active); Up/Down 0x25; A/B/C 0x24 [srx FSR sounds H]
 local Dismiss = { window = E.WindowPlane.SIDEBAR }
-function Dismiss.new() return { row = 0, grid_cells = Grid.cells, grid_effect_frames = Grid.frames } end
+function Dismiss.new()
+    return {
+        row = 0, grid_cells = Grid.cells, grid_effect_frames = Grid.frames,
+        layout = { separator_x = 88, separator_y = 48 }, -- C448 text at C216 [C]
+    }
+end
 function Dismiss.enter(st, ctx)
     -- C448 replaces the inner panel but shares the parent's E660 lower bezel.
     st.grid_effect_frames = Grid.frames

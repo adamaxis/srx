@@ -22904,26 +22904,66 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 }
                 return;
             }
-            if (!routed_menu.top_title.empty()) {
+            const auto layout = routed_menu.top_layout.value_or(
+                scripting::ScriptMenuRouteLayout{});
+            const auto title_x = layout.title_x.value_or(88);
+            const auto title_y = layout.title_y.value_or(32);
+            const auto separator_x = layout.separator_x.value_or(72);
+            const auto separator_y = layout.separator_y.value_or(40);
+            const auto label_x = layout.label_x.value_or(88);
+            const auto label_y = layout.label_y.value_or(56);
+            const auto cursor_x = layout.cursor_x.value_or(72);
+            const auto cursor_y = layout.cursor_y.value_or(56);
+            const auto row_spacing = layout.row_spacing.value_or(16);
+            const bool save_slot_screen =
+                menu_route_screen_ == static_cast<std::uint16_t>(
+                                          srx::MenuScreen::SAVE_SLOT);
+            if (save_slot_screen) {
+                const auto title_id = std::find(
+                    field_menu_text_.save_load_slot_title_text_ids.begin(),
+                    field_menu_text_.save_load_slot_title_text_ids.end(),
+                    routed_menu.top_title);
+                if (title_id !=
+                    field_menu_text_.save_load_slot_title_text_ids.end()) {
+                    const auto title_index = static_cast<std::size_t>(
+                        title_id -
+                        field_menu_text_.save_load_slot_title_text_ids.begin());
+                    draw_command_overview_text(
+                        painter, title_x, title_y,
+                        field_menu_text_.save_load_slot_titles[title_index]);
+                }
                 draw_command_overview_text(
-                    painter, 88, 32, routed_menu.top_title);
-                draw_command_overview_text(
-                    painter, 72, 40,
+                    painter, separator_x, separator_y,
                     pocket_secretary_menu_content_.separator);
             }
+            const auto& label_ids =
+                save_slot_screen
+                    ? field_menu_text_.save_load_slot_text_ids
+                    : field_menu_text_.save_load_option_text_ids;
+            const auto& labels =
+                save_slot_screen
+                    ? field_menu_text_.save_load_slot_labels
+                    : field_menu_text_.save_load_option_labels;
             for (std::size_t row = 0;
                  row < routed_menu.top_option_labels.size(); ++row) {
-                draw_command_overview_text(
-                    painter, 88, 56 + static_cast<int>(row) * 16,
+                const auto label_id = std::find(
+                    label_ids.begin(), label_ids.end(),
                     routed_menu.top_option_labels[row]);
+                if (label_id == label_ids.end()) continue;
+                const auto label_index = static_cast<std::size_t>(
+                    label_id - label_ids.begin());
+                draw_command_overview_text(
+                    painter, label_x,
+                    label_y + static_cast<int>(row) * row_spacing,
+                    labels[label_index]);
             }
             const auto selected_row = routed_menu.top_row.value_or(0);
             if (selected_row >= 0 &&
                 static_cast<std::size_t>(selected_row) <
                     routed_menu.top_option_labels.size()) {
                 draw_pocket_secretary_cursor(
-                    painter, 72,
-                    56 + selected_row * 16);
+                    painter, cursor_x,
+                    cursor_y + selected_row * row_spacing);
             }
             return;
         }
@@ -23207,8 +23247,17 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 painter, 88, 32, field_menu_text_.dismiss_runner_labels[0]);
             draw_command_overview_text(
                 painter, 88, 40, field_menu_text_.dismiss_runner_labels[1]);
+            const auto separator_x = routed_menu.top_layout.has_value()
+                                         ? routed_menu.top_layout->separator_x
+                                               .value_or(88)
+                                         : 88;
+            const auto separator_y = routed_menu.top_layout.has_value()
+                                         ? routed_menu.top_layout->separator_y
+                                               .value_or(48)
+                                         : 48;
             draw_command_overview_text(
-                painter, 72, 48, field_menu_text_.dismiss_runner_separator);
+                painter, separator_x, separator_y,
+                field_menu_text_.dismiss_runner_separator);
             draw_command_overview_text(
                 painter, 88, 64, field_menu_text_.dismiss_runner_labels[2]);
             for (std::size_t row = 0;

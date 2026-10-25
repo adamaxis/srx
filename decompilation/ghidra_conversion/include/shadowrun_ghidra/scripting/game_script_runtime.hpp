@@ -464,6 +464,18 @@ struct ScriptNotebookCurrentRunView {
     std::vector<std::string> body_lines;
 };
 
+struct ScriptMenuRouteLayout {
+    std::optional<int> title_x;
+    std::optional<int> title_y;
+    std::optional<int> separator_x;
+    std::optional<int> separator_y;
+    std::optional<int> label_x;
+    std::optional<int> label_y;
+    std::optional<int> cursor_x;
+    std::optional<int> cursor_y;
+    std::optional<int> row_spacing;
+};
+
 struct ScriptMenuRouteSnapshot {
     bool open = false;
     bool field_return_transition_active = false;
@@ -476,6 +488,7 @@ struct ScriptMenuRouteSnapshot {
     std::string top_text;
     std::string top_footer_text;
     std::vector<std::string> top_option_labels;
+    std::optional<ScriptMenuRouteLayout> top_layout;
     std::optional<int> page;
     std::optional<int> row;
     std::optional<int> top_column;

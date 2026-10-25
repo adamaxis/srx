@@ -43066,18 +43066,23 @@ int main(int argc, char** argv) {
                 }
                 auto cyberdeck_scene = render_secretary_scene();
                 for (std::size_t line = 0; line < 3U; ++line) {
+                    const auto expected_y =
+                        64 + static_cast<int>(line) * 8 +
+                        (line == 2U ? 8 : 0);
                     if (!image_has_green_ink(
                             cyberdeck_scene, 56,
-                            64 + static_cast<int>(line) * 8, 240, 8)) {
+                            expected_y, 240, 8)) {
                         std::cerr << "field secretary dump: Cyberdeck source "
                                      "response line "
                                   << line << " has no visible text\n";
                         return 3;
                     }
                 }
-                if (image_has_green_ink(cyberdeck_scene, 88, 32, 80, 8)) {
+                if (image_has_green_ink(cyberdeck_scene, 56, 80, 240, 8) ||
+                    image_has_green_ink(cyberdeck_scene, 88, 32, 80, 8)) {
                     std::cerr << "field secretary dump: C3E6 response screen "
-                                 "left parent title text visible\n";
+                                 "lost the ROM blank line or left parent title "
+                                 "text visible\n";
                     return 3;
                 }
                 if (!save_secretary_scene("cyberdeck_unavailable",
@@ -44460,7 +44465,9 @@ int main(int argc, char** argv) {
                 };
                 if (!image_has_green_ink(dismiss_scene, 88, 32, 112, 8) ||
                     !image_has_green_ink(dismiss_scene, 88, 40, 112, 8) ||
-                    !image_has_green_ink(dismiss_scene, 72, 48, 160, 8) ||
+                    !image_has_green_ink(dismiss_scene, 88, 48, 104, 8) ||
+                    image_has_green_ink(dismiss_scene, 72, 48, 16, 8) ||
+                    image_has_green_ink(dismiss_scene, 192, 48, 8, 8) ||
                     !image_has_green_ink(dismiss_scene, 88, 64, 112, 8) ||
                     !image_has_green_ink(dismiss_scene, 88, 80, 112, 8) ||
                     !image_has_green_ink(dismiss_scene, 88, 96, 112, 8) ||
@@ -44787,8 +44794,87 @@ int main(int argc, char** argv) {
                                  "to Pocket Secretary row zero cleanly\n";
                     return 3;
                 }
+                for (int step = 0;
+                     field_scene.pocket_secretary_selection() != 4U &&
+                     step < 5;
+                     ++step) {
+                    press_secretary_button(0x02U);
+                }
+                if (field_scene.pocket_secretary_selection() != 4U) {
+                    std::cerr << "field secretary dump: could not select "
+                                 "Save/Load\n";
+                    return 3;
+                }
+                press_secretary_button(0x40U);
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                    static_cast<std::uint16_t>(srx::MenuScreen::SAVE_LOAD)) {
+                    std::cerr << "field secretary dump: Save/Load did not "
+                                 "open its typed option screen\n";
+                    return 3;
+                }
+                auto save_load_options_scene = render_secretary_scene();
+                if (image_has_green_ink(save_load_options_scene, 24, 24,
+                                        224, 24) ||
+                    image_has_green_ink(save_load_options_scene, 72, 56,
+                                        176, 24) ||
+                    !image_has_green_ink(save_load_options_scene, 80, 80,
+                                         8, 8) ||
+                    !image_has_green_ink(save_load_options_scene, 96, 80,
+                                         80, 8) ||
+                    !image_has_green_ink(save_load_options_scene, 96, 96,
+                                         80, 8) ||
+                    !save_secretary_scene("save-load-options-actual",
+                                          save_load_options_scene)) {
+                    std::cerr << "field secretary dump: Save/Load option "
+                                 "title, cursor, or source row pixels do not "
+                                 "match 0xC2600 at y=80/96\n";
+                    return 3;
+                }
+                press_secretary_button(0x02U); // Select Load Game from the source two-row list.
+                press_secretary_button(0x40U);
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                    static_cast<std::uint16_t>(srx::MenuScreen::SAVE_SLOT)) {
+                    std::cerr << "field secretary dump: Load Game did not "
+                                 "open the source slot screen\n";
+                    return 3;
+                }
+                const auto save_load_slots_scene = render_secretary_scene();
+                if (!image_has_green_ink(save_load_slots_scene, 88, 32,
+                                         96, 8) ||
+                    !image_has_green_ink(save_load_slots_scene, 88, 40,
+                                         88, 8) ||
+                    image_has_green_ink(save_load_slots_scene, 72, 40,
+                                        16, 8) ||
+                    !image_has_green_ink(save_load_slots_scene, 96, 56,
+                                         8, 8) ||
+                    !image_has_green_ink(save_load_slots_scene, 112, 56,
+                                         64, 8) ||
+                    !image_has_green_ink(save_load_slots_scene, 112, 72,
+                                         64, 8) ||
+                    image_has_green_ink(save_load_slots_scene, 160, 56,
+                                        80, 8) ||
+                    image_has_green_ink(save_load_slots_scene, 160, 72,
+                                        80, 8) ||
+                    !save_secretary_scene("save-load-slots-empty",
+                                          save_load_slots_scene)) {
+                    std::cerr << "field secretary dump: source Game 1/Game 2 "
+                                 "labels, title, or empty-slot text pixels "
+                                 "do not match 0x1B6518\n";
+                    return 3;
+                }
+                press_secretary_button(0x80U);
+                if (field_scene.field_menu_route_screen_for_dump() !=
+                        static_cast<std::uint16_t>(
+                            srx::MenuScreen::POCKET_SECRETARY) ||
+                    !field_scene.pocket_secretary_open()) {
+                    std::cerr << "field secretary dump: slot Start did not "
+                                 "return to Pocket Secretary\n";
+                    return 3;
+                }
                 std::cout << "installed_cyberdeck_route=field_secretary,"
                              "typed_deck_screen,full_footer,row_zero_return\n";
+                std::cout << "save_load_review=0xC2600_rows_y80_96,"
+                             "0x1B6518_static_slots,no_empty_suffix\n";
                 std::cout << "dismiss_runner_review=fixed_abort,active_list,"
                              "compact_marker,active_runner_switch,e660_cadence "
                              "e660_pixels=pending "

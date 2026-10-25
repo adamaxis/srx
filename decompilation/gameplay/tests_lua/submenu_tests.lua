@@ -246,6 +246,15 @@ do
         "pocket_secretary.notebook.no_run.option.last_line")
     check(last_line == "\\n     Get a job!!",
           "Current Run text retains its blank line before Get a job [C]")
+    local cyberdeck_last_line = raw_json_value(
+        "pocket_secretary.cyberdeck.option.look_for_deck")
+    check(cyberdeck_last_line == "\\n Keep looking.",
+          "Cyberdeck no-deck text retains its ROM blank line [C]")
+    local dismiss_separator = raw_json_value(
+        "pocket_secretary.dismiss.text.option.separator") or ""
+    local encoded_slash_count = select(2, dismiss_separator:gsub("\\", ""))
+    check(dismiss_separator:sub(1, 1) == "[" and encoded_slash_count == 24,
+          "Dismiss separator preserves the 12 ROM backslashes at C1499 [C]")
     local underline = raw_json_value(
         "pocket_secretary.notebook.tips.option.separator") or ""
     local slash_count = select(2, underline:gsub("\\", ""))
@@ -262,9 +271,11 @@ r9:frame(P.A); check(top(r9) == S.POCKET_SECRETARY, "gate -> PS rebuild")
 r9 = sl({ scene = 2 }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_OUTSIDE_ONLY, "gate FFDF40 [C 0xEFC4]")
 r9:frame(P.A); check(top(r9) == S.POCKET_SECRETARY, "outside gate -> PS rebuild")
 r9 = sl({ scene = 1, combat = true }); check(st(r9).message == MM.SAVE_OUTSIDE_ONLY, "FFDF40 checked before FFDF84 [C 0xEFC4 < 0xEFE6]")
-r9, l9, g9 = sl({ save_status = { [0] = 1 } }); check(top(r9) == S.SAVE_LOAD, "save/load open"); local s9 = #l9.sounds
+r9, l9, g9 = sl({ save_status = { [0] = 1 } }); check(top(r9) == S.SAVE_LOAD and st(r9).title == "" and st(r9).labels[1] == "save_game" and st(r9).labels[2] == "load_game", "Save/Load uses its ROM text IDs without a title [C]"); local s9 = #l9.sounds
+check(st(r9).layout.label_x == 96 and st(r9).layout.label_y == 80 and st(r9).layout.cursor_x == 80 and st(r9).layout.cursor_y == 80 and st(r9).layout.row_spacing == 16, "Save/Load option rows use ROM C518/C514 coordinates [C]")
 r9:frame(P.UP); check(st(r9).row == 1 and #l9.sounds == s9, "2 rows, silent wrap"); r9:frame(P.UP)
-r9:frame(P.B); check(top(r9) == S.SAVE_SLOT and st(r9).labels[1] == "Game 1: Saved" and st(r9).labels[2] == "Game 2: Empty", "B confirms; slot labels from save_status")
+r9:frame(P.B); check(top(r9) == S.SAVE_SLOT and st(r9).title == "save_game" and st(r9).labels[1] == "game_1" and st(r9).labels[2] == "game_2", "B confirms; occupied slots keep the static Game N labels [C]")
+check(st(r9).layout.title_x == 88 and st(r9).layout.separator_x == 88 and st(r9).layout.label_x == 112 and st(r9).layout.cursor_x == 96 and st(r9).layout.label_y == 56, "Save Slot rows use ROM C39C/C398 coordinates [C]")
 r9:frame(P.START); check(top(r9) == S.POCKET_SECRETARY and g9.saved == nil, "slot Start = abort -> PS")
 r9:frame(P.UP); r9:frame(P.A); r9:frame(P.A); r9:frame(P.DOWN); r9:frame(P.C)
 check(g9.saved == 1 and st(r9).message == MM.GAME_SAVED, "save slot 2"); r9:frame(P.A)
@@ -272,7 +283,7 @@ check(not r9:is_open() and l9.closed, "save -> FFF0CD exits menu [C 0xF178]")
 r9, l9, g9 = sl({ save_ok = false }); r9:frame(P.A); r9:frame(P.A)
 check(st(r9).message == MM.GAME_SAVED and st(r9).title == "Could not write this save slot.", "write failure text"); r9:frame(P.A)
 check(top(r9) == S.SAVE_SLOT, "failed save stays on the slot list")
-r9, l9, g9 = sl(); r9:frame(P.DOWN); r9:frame(P.A); r9:frame(P.A); check(g9.loaded == 0 and st(r9).message == MM.LOAD_EMPTY, "load empty")
+r9, l9, g9 = sl(); r9:frame(P.DOWN); r9:frame(P.A); check(top(r9) == S.SAVE_SLOT and st(r9).title == "load_game" and st(r9).labels[1] == "game_1" and st(r9).labels[2] == "game_2", "Load Slot shows only the ROM Game N labels [C]"); r9:frame(P.A); check(g9.loaded == 0 and st(r9).message == MM.LOAD_EMPTY, "load empty")
 r9:frame(P.A); check(top(r9) == S.SAVE_SLOT, "load empty returns to the slot list [srx]")
 r9 = sl({ load_ok = true }); r9:frame(P.DOWN); r9:frame(P.A); r9:frame(P.A); check(st(r9).message == MM.LOAD_OK, "load ok")
 r9:frame(P.START); check(not r9:is_open(), "any edge dismisses, load exits the menu")

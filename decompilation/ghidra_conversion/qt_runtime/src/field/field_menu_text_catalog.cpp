@@ -249,6 +249,15 @@ bool is_pocket_secretary_text_label_key(
                key, "pocket_secretary.dismiss.text.option.",
                catalog.dismiss_runner_separator_text_id) ||
            has_semantic_label_key(
+               key, "pocket_secretary.save_load.option.",
+               catalog.save_load_option_text_ids) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.save_load.title.",
+               catalog.save_load_slot_title_text_ids) ||
+           has_semantic_label_key(
+               key, "pocket_secretary.save_load.slot.",
+               catalog.save_load_slot_text_ids) ||
+           has_semantic_label_key(
                key, "pocket_secretary.cyberdeck.option.",
                catalog.pocket_secretary_cyberdeck_text_ids) ||
            has_semantic_label_key(
@@ -770,6 +779,21 @@ FieldMenuTextLoadResult load_field_menu_text_catalog(
     result.catalog.dismiss_runner_separator = dismiss_separator_text[0];
     result.catalog.dismiss_runner_separator_text_id =
         dismiss_separator_ids[0];
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "save_load_options",
+        "pocket_secretary.save_load", "option",
+        result.catalog.save_load_option_labels, result.errors, nullptr,
+        &result.catalog.save_load_option_text_ids);
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "save_load_slot_titles",
+        "pocket_secretary.save_load", "title",
+        result.catalog.save_load_slot_titles, result.errors, nullptr,
+        &result.catalog.save_load_slot_title_text_ids);
+    load_script_menu_labels(
+        scripts, "pocket_secretary", "save_load_slots",
+        "pocket_secretary.save_load", "slot",
+        result.catalog.save_load_slot_labels, result.errors, nullptr,
+        &result.catalog.save_load_slot_text_ids);
     std::array<std::string, kCyberdeckUnavailableLineCount>
         cyberdeck_unavailable_text{};
     load_script_menu_labels(
