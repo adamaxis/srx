@@ -12925,6 +12925,22 @@ void FieldSceneRuntime::paint_field_scene_entities(
                          }
                          return left.source_order < right.source_order;
                      });
+    // ROM 0x5B1E orders the source SAT before the reverse painter loop; the
+    // mirror consumes the same ordered pieces at its next 0x1872 VBlank
+    // latch. Paint-only HUD clipping is a second pass and must not replace it.
+    if (field_vdp_mirror_ && clip_rect.isEmpty()) {
+        std::vector<VdpSpritePiece> pieces;
+        pieces.reserve(sprites.size());
+        for (const auto& sprite : sprites) {
+            if (sprite.image == nullptr || sprite.image->isNull()) {
+                continue;
+            }
+            pieces.push_back(VdpSpritePiece{
+                sprite.x, sprite.y, sprite.image->width(),
+                sprite.image->height()});
+        }
+        field_vdp_mirror_->stage_sat_pieces(std::move(pieces));
+    }
     if (!clip_rect.isEmpty()) {
         painter.save();
         painter.setClipRect(clip_rect, Qt::IntersectClip);
@@ -16709,10 +16725,26 @@ void FieldSceneRuntime::paint_field_scene(QPainter& painter) const {
     // ROM 0x481E builds ordinary field actors with sprite priority clear.
     // Preserve the source map's high-priority tiles over those actors; the
     // same draw order must hold for every scene loaded from a map resource.
-    paint_field_map_composition(
-        painter, field_map_, field_map_priority_overlay_,
-        QRect(viewport_x, viewport_y, 320, 224),
-        [this](QPainter& target) { paint_field_scene_entities(target); });
+    if (field_vdp_mirror_) {
+        QImage composed(VdpModel::kDisplayWidth, VdpModel::kDisplayHeight,
+                        QImage::Format_ARGB32_Premultiplied);
+        const auto& latch = field_vdp_mirror_->frame_latch();
+        const auto* displayed = latch.has_displayed_frame()
+                                    ? &latch.displayed_frame()
+                                    : nullptr;
+        field_vdp_mirror_->model().compose(
+            composed,
+            [this](QPainter& target) {
+                paint_field_scene_entities(target);
+            },
+            {}, displayed);
+        painter.drawImage(0, 0, composed);
+    } else {
+        paint_field_map_composition(
+            painter, field_map_, field_map_priority_overlay_,
+            QRect(viewport_x, viewport_y, 320, 224),
+            [this](QPainter& target) { paint_field_scene_entities(target); });
+    }
 
     // 0x334C supplies the static chrome. 0x35D4/0x35F0/0x36FC/0x3674 stamp
     // the live face, item, and counter overlays at the $F000 nametable

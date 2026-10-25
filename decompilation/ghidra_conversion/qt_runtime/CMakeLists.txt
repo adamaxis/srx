@@ -538,6 +538,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_vdp_mirror_qa
 set_tests_properties(shadowrun_ghidra_conversion_qt_field_vdp_mirror_qa
     PROPERTIES ENVIRONMENT
     "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;SRX_VDP_MODEL=0")
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_vdp_compose_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-vdp-compose-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-vdp-compose-qa")
+set_tests_properties(shadowrun_ghidra_conversion_qt_field_vdp_compose_qa
+    PROPERTIES ENVIRONMENT
+    "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy;SRX_VDP_MODEL=0")
 # Field audio rules: scene-init music (profile +0x40 via audio.lua), the
 # Start-menu op-0x20 duck and its restore, music on a scene change.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_audio_qa

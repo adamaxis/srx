@@ -1,8 +1,7 @@
-# Rendering R2/R9 plan: 3 name tables + VdpModel
+# Rendering R2/R8/R9 plan: 3 name tables + VdpModel
 
 Source: /workspace/shadowrun/docs/21_rendering_entity_model.md §2 (R2, R9) and §3.
-Status: R1, R2 runtime mirror, R3, R4, R6 latch, R7 H40 SAT limits, R9 base scroll input, and R10 are implemented.
-R6/R7 are wired into the opt-in field mirror; the SAT feed from paint is pending combat integration. R8/R11 are [H] and out of scope.
+Status: R1, R2 runtime mirror, R3, R4, R6 latch, R7 H40 SAT limits, R8 opt-in field compose, R9 base scroll input, and R10 are implemented. R11 remains [H] and out of scope.
 
 ## Status
 - **Done — R2 live mirror, default off:** `FieldSceneRuntime` recognizes
@@ -25,8 +24,7 @@ R6/R7 are wired into the opt-in field mirror; the SAT feed from paint is pending
   field-camera step [C]. `FieldCameraFollowState` tracks the A/B step biases,
   whose difference is zero in the 23 captured field save states [C, emulator].
   The independent increment at `0x26E2` is outside the field
-  path [C]. A scene-specific offset capture is still needed before claiming
-  which field scenes visibly use a nonzero offset.
+  path [C]. Field plane B offset is zero in the captured field states.
 - **Done — R6 frame latch in the opt-in mirror:** each completed `advance_frame`
   tick stages its field camera scroll and pending SAT pieces. The next tick
   latches them before field logic and streams the mirror from that displayed
@@ -37,15 +35,18 @@ R6/R7 are wired into the opt-in field mirror; the SAT feed from paint is pending
 - **Done — R7 H40 limits in the opt-in mirror:** each latched SAT list runs
   through `apply_vdp_sprite_limits`, retaining per-piece visible scanlines,
   pieces rejected by the 80-entry cap, and scanline counts that reached the
-  20-sprite and 320-visible-pixel limits [C: H40 VDP]. The
-  `stage_field_sat_pieces` entry point is wired; after combat integration,
-  `paint_field_scene_entities` should call it with the source-ordered SAT list
-  before its reverse draw loop. The current field sprite list is local to that
-  paint function, so no real SAT pieces are collected yet.
-- **Left:** do not swap `paint_field_scene` to `VdpModel::compose` until the
-  combat merge; that function remains combat-owned. Add an R9 offset capture
-  after an independent field-path FFDD0E write is traced. R5 fade writes and
-  paint integration of real SAT pieces remain pending.
+  20-sprite and 320-visible-pixel limits [C: H40 VDP].
+  `paint_field_scene_entities` stages its source-ordered image bounds before
+  the reverse draw loop when the mirror is enabled. ROM 0x5B1E stably orders
+  the source SAT and lower SAT indices win overlap [C]; representing each
+  extracted host sprite image as one SAT piece is [H].
+- **Done — R8 opt-in field compose:** with `SRX_VDP_MODEL=1` (or the QA
+  override), `paint_field_scene` composes Plane B/A and the existing field
+  sprite callback through `VdpModel::compose`; the default path retains the
+  legacy flattened map compositor. Scene 2 and 26 QA compares complete field
+  renders and requires zero pixel differences. VDP priority order is [C];
+  reconstructing plane words from extracted assets remains [H].
+- **Left:** R5 fade writes into CRAM remain pending.
 Hook points below are given by function name, because FSR line numbers move with the thinning work.
 
 ## Problem
@@ -78,25 +79,26 @@ Hook points below are given by function name, because FSR line numbers move with
 2. **Runtime tile writes — done**
    - Where: the door, terrain-mark and metatile write paths that today only toggle state. Find them by ROM 0x406A..0x41A2.
    - Change: `repaint_field_map_cell` writes both mirrored plane cells with `PlaneStreamer::write_metatile`; map reset rebuilds the mirror from the current scene assets.
-3. **Scroll — base path done; nonzero R9 capture pending**
+3. **Scroll — field path done**
    - Where: the camera_x/camera_y source used by `paint_field_scene`.
    - Change: feed plane A from the camera and plane B from the camera plus the tracked B-minus-A vertical bias. The current field path keeps the biases equal.
-4. **Compose**
+4. **Compose — opt-in path done**
    - Where: `paint_field_scene` -> `paint_field_map_composition(painter, field_map_, field_map_priority_overlay_, ...)`.
-   - Change: replace the call with `vdp_model_.compose(...)`, passing the low/high sprite callbacks.
-   - **paint_field_scene is owned by the combat branch.** Land this one-line swap only after that branch merges, or as a separately reviewed patch.
+  - Change: when the mirror is enabled, call `VdpModel::compose(...)` with the existing field sprite painter as the low-priority callback. The disabled branch keeps `paint_field_map_composition` unchanged. `paint_field_scene_entities` stages its ordered sprite bounds for the next SAT latch.
 5. **Fades (R5); latch (R6) wired to the opt-in mirror**
    - Where: VdpModel's CRAM and `FieldVdpMirror::latch_vblank`.
    - Change: 0x1088/0x10D6 saturating fades still need CRAM writes. The R6
      latch applies pending SAT/scroll before field logic on the next host tick;
-     it does not change composition or painting.
+     opt-in composition uses the latched scroll while preserving the field
+     renderer's sprite callback.
 
 ## Order of work
 1. VdpModel with unit tests: name-table word decode and the priority compose order. **Done.**
 2. Static-scene parity against the current flattened images for field modes 0, 2, and 26. **Done as a mirror/parity check only.**
 3. PlaneStreamer runtime metatile writes and headless field-scene QA. **Done.**
-4. Capture a field scene where the B-minus-A vertical offset is nonzero. **Pending; no independent field FFDD0E write is currently modeled.**
-5. Compose swap in `paint_field_scene`. **Pending combat merge.**
+4. Capture the field B-minus-A vertical offset. **Done: zero in 23 field save states; nonzero title offset is outside the field path.**
+5. Compose swap in `paint_field_scene`. **Done for the opt-in mirror; legacy
+   path remains in use when disabled.**
 
 
 ## FFDD0E (plane B vertical scroll) capture, 2026-10-25

@@ -389,6 +389,22 @@ std::size_t vdp_mirror_mismatch_count(
     return mismatches;
 }
 
+std::size_t image_pixel_mismatch_count(const QImage& left,
+                                       const QImage& right) {
+    if (left.size() != right.size()) {
+        return std::numeric_limits<std::size_t>::max();
+    }
+    std::size_t mismatches = 0U;
+    for (int y = 0; y < left.height(); ++y) {
+        for (int x = 0; x < left.width(); ++x) {
+            if (left.pixel(x, y) != right.pixel(x, y)) {
+                ++mismatches;
+            }
+        }
+    }
+    return mismatches;
+}
+
 int run_field_vdp_mirror_qa(
     const shadowrun::ghidra_conversion::integration::StartupIntegrationState&
         startup_state,
@@ -615,6 +631,62 @@ int run_field_vdp_mirror_qa(
         }
     }
     std::cout << "field_vdp_mirror_qa=passed scenes=2,26\n";
+    return 0;
+}
+
+int run_field_vdp_compose_qa(
+    const shadowrun::ghidra_conversion::integration::StartupIntegrationState&
+        startup_state,
+    qt_runtime::FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    std::filesystem::create_directories(output);
+    for (const std::uint16_t scene_id : {2U, 26U}) {
+        field_scene.set_field_vdp_mirror_enabled_for_qa(false);
+        if (!field_scene.bootstrap_for_scene_dump(startup_state, scene_id)) {
+            std::cerr << "field VDP compose QA: could not bootstrap scene "
+                      << scene_id << ": " << field_scene.failure() << '\n';
+            return 3;
+        }
+        const auto legacy = render_qa_field(field_scene, true);
+        field_scene.set_field_vdp_mirror_enabled_for_qa(true);
+        const auto mirrored = render_qa_field(field_scene, true);
+        const auto mismatches = image_pixel_mismatch_count(legacy, mirrored);
+        if (mismatches != 0U) {
+            std::cerr << "field VDP compose QA: scene " << scene_id
+                      << " pixel mismatches=" << mismatches << '\n';
+            return 3;
+        }
+        const auto suffix = std::string("scene-") +
+                            std::to_string(scene_id);
+        if (!legacy.save(QString::fromStdString(
+                (output / (suffix + "-legacy.bmp")).string())) ||
+            !mirrored.save(QString::fromStdString(
+                (output / (suffix + "-mirror.bmp")).string()))) {
+            std::cerr << "field VDP compose QA: could not save scene "
+                      << scene_id << " images\n";
+            return 3;
+        }
+        if (scene_id == 2U) {
+            // paint_field_scene_entities feeds the next staged SAT; the
+            // following advance_frame publishes that list for the next latch.
+            field_scene.advance_frame();
+            const auto* latch = field_scene.field_vdp_frame_latch_for_dump();
+            const auto* pending = latch == nullptr
+                                      ? nullptr
+                                      : latch->pending_frame();
+            if (pending == nullptr ||
+                pending->sat_ordered_pieces.empty()) {
+                std::cerr << "field VDP compose QA: field paint did not stage "
+                             "its sprite pieces\n";
+                return 3;
+            }
+            std::cout << "field_vdp_compose_sat_pieces="
+                      << pending->sat_ordered_pieces.size() << '\n';
+        }
+        std::cout << "field_vdp_compose_scene=" << scene_id
+                  << " pixel_mismatches=" << mismatches << '\n';
+    }
+    std::cout << "field_vdp_compose_qa=passed scenes=2,26 mismatches=0\n";
     return 0;
 }
 
@@ -28648,6 +28720,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_vdp_mirror_qa_path;
         std::optional<std::filesystem::path>
+            field_vdp_compose_qa_path;
+        std::optional<std::filesystem::path>
             field_random_encounter_spawn_qa_path;
         std::optional<std::filesystem::path>
             field_npc_item_action_qa_path;
@@ -28977,6 +29051,12 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_vdp_mirror_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) == "--field-vdp-compose-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_vdp_compose_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-audio-qa") {
@@ -30829,6 +30909,10 @@ int main(int argc, char** argv) {
             if (field_vdp_mirror_qa_path.has_value()) {
                 return run_field_vdp_mirror_qa(
                     smoke_state, field_scene, *field_vdp_mirror_qa_path);
+            }
+            if (field_vdp_compose_qa_path.has_value()) {
+                return run_field_vdp_compose_qa(
+                    smoke_state, field_scene, *field_vdp_compose_qa_path);
             }
             if (field_gang_contract_target_entry_qa_path.has_value()) {
                 return run_gang_contract_target_entry_qa(
