@@ -122,6 +122,41 @@ check(st(r4).page == 6 and r4:top().screen == S.COMMAND and g4.reselects == 1, "
 local r5, l5 = mk({ items = { [0] = 0x01 } }); r5:frame(P.RIGHT); clear(l5)
 r5:frame(P.DOWN); r5:frame(P.A); check(r5:top().screen == S.COMMAND and l5.sounds[2] == 0x24, "empty slot")
 r5:frame(P.UP); r5:frame(P.B); check(r5:top().screen == S.ITEM_ACTION, "item action")
+-- ROM 0x117BA..0x117D0 and 0x11824..0x1183A select a 17-cell footer for
+-- each action selector; 0x11788..0x11798 choose the First Aid table for
+-- medical item codes. The source padding is part of the text placement.
+do
+    local expected_actions = {
+        [E.ItemAction.EQUIP_OR_USE] = "  Equip/Unequip  ",
+        [E.ItemAction.DISCARD] = "     Discard     ",
+        [E.ItemAction.TRADE] = "      Trade      ",
+        [E.ItemAction.CANCEL] = "     Cancel      ",
+    }
+    local expected_first_aid = {
+        [E.ItemAction.EQUIP_OR_USE] = "    First Aid    ",
+        [E.ItemAction.DISCARD] = "     Discard     ",
+        [E.ItemAction.TRADE] = "      Trade      ",
+        [E.ItemAction.CANCEL] = "     Cancel      ",
+    }
+    local function action_route(item_code)
+        local route = mk({ items = { [0] = item_code } })
+        route:frame(P.RIGHT) -- pocket secretary wraps to Inventory
+        route:frame(P.A)
+        return route
+    end
+    for _, fixture in ipairs({
+        { E.ItemId.STREETLINE_SPECIAL, expected_actions, "ordinary" },
+        { E.ItemId.MEDKIT, expected_first_aid, "First Aid" },
+    }) do
+        local route = action_route(fixture[1])
+        for selector = E.ItemAction.EQUIP_OR_USE, E.ItemAction.CANCEL do
+            check(route:top().state.selector == selector and
+                  route:top().state.footer_text == fixture[2][selector],
+                  fixture[3] .. " action footer selector " .. selector)
+            if selector < E.ItemAction.CANCEL then route:frame(P.RIGHT) end
+        end
+    end
+end
 -- attributes return rebuilds and resets page to 6; window OFF while open
 local r6, l6 = mk(); for _ = 1, 3 do r6:frame(P.LEFT) end; check(st(r6).page == 3, "page 3")
 r6:frame(P.A); check(l6.windows[#l6.windows] == E.WindowPlane.OFF, "attr hides sidebar")

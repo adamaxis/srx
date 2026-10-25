@@ -2015,6 +2015,9 @@ struct GameScriptRuntime::Impl {
                 lua_pop(state, 1);
                 (void)read_field_text(state, screen_state_index, "text",
                                       menu_route_state.top_text);
+                (void)read_field_text(state, screen_state_index,
+                                      "footer_text",
+                                      menu_route_state.top_footer_text);
                 (void)read_field_text(
                     state, screen_state_index, "description",
                     menu_route_state.top_matrix_deck_description);

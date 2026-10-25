@@ -23524,20 +23524,35 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             const auto item_code =
                 active_runner_record().inventory_item_codes[slot];
             if (item_code >= 1U && item_code <= field_menu_text_.items.size()) {
+                const auto& selected_item = field_menu_text_.items[
+                    static_cast<std::size_t>(item_code - 1U)].definition;
+                const auto& selected_text = field_menu_text_.items[
+                    static_cast<std::size_t>(item_code - 1U)];
+                // ROM 0x12A8C writes the selected D4540 row at C420, and
+                // 0x111E8 uses that same twelve-cell field for equipped-item
+                // text. Armor Clothing's D4D80 row pads "Armor" and
+                // "Clothing" into that field; script text is trimmed, so
+                // restore its per-line centering here. The emulator's e4
+                // 8800 pixels begin at x=153 and x=145. Keep weapon text at
+                // its existing origin.
+                const auto armor_name_x = selected_item.armor.has_value()
+                    ? centered_text_x(128, kMenuLabelCells,
+                                      selected_text.name)
+                    : 128;
+                const auto armor_category_x = selected_item.armor.has_value()
+                    ? centered_text_x(128, kMenuLabelCells,
+                                      selected_text.category)
+                    : 128;
                 draw_command_overview_text(
-                    painter, 128, 64,
-                    field_menu_text_.items[item_code - 1U].name);
+                    painter, armor_name_x, 64, selected_text.name);
                 draw_command_overview_text(
-                    painter, 128, 72,
-                    field_menu_text_.items[item_code - 1U].category);
+                    painter, armor_category_x, 72, selected_text.category);
                 draw_item_detail_rows(item_code, slot, true);
                 // ROM 0x12A8C sends selected armor to 0x11352. It previews
                 // the selected D4D50 row in the lower armor summary at
                 // C820/C922/C92C/C9AC, then restores the equipped record.
                 // Repaint that panel from typed state rather than placing a
                 // second Wpns/Guns pair beside the selected-item text.
-                const auto& selected_item = field_menu_text_.items[
-                    static_cast<std::size_t>(item_code - 1U)].definition;
                 if (selected_item.armor.has_value()) {
                     draw_armor_summary(
                         selected_item.armor->armor_index);
@@ -23730,14 +23745,15 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                                   kCommandOverviewActionFocusY,
                                   command_overview_action_focus_[focus_index]);
             }
-            // ROM 0x117D0/0x11712 shows the Inventory footer for the item
-            // action row. First Aid changes it only after entering its child.
-            const auto inventory_page = view.source_state.primary_page;
-            if (inventory_page < field_menu_text_.command_labels.size()) {
+            // ROM 0x117BA..0x117D0 selects D1D94 or D1E6C and 0x11824..
+            // 0x1183A redraws that selector's padded 17-cell footer. Lua
+            // supplies the selected table entry; draw its source padding at
+            // the existing x=112, y=200 field without recentering it.
+            const auto action_footer =
+                game_scripts_.menu_route_snapshot().top_footer_text;
+            if (!action_footer.empty()) {
                 draw_command_overview_text(
-                    painter, 112, 200,
-                    centered_command_footer(
-                        field_menu_text_.command_labels[inventory_page]));
+                    painter, 112, 200, action_footer);
             }
         }
     } else if (!clips_owns_button_panel &&

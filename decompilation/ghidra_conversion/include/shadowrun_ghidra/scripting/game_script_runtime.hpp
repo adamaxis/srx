@@ -461,6 +461,7 @@ struct ScriptMenuRouteSnapshot {
     std::uint16_t top_screen = 0U;
     std::string top_title;
     std::string top_text;
+    std::string top_footer_text;
     std::vector<std::string> top_option_labels;
     std::optional<int> page;
     std::optional<int> row;

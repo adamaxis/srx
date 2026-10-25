@@ -44657,6 +44657,7 @@ int main(int argc, char** argv) {
                 constexpr std::size_t kArmorTableBase = 0xD4D50U;
                 constexpr std::size_t kArmorTableStride = 0x30U;
                 constexpr std::size_t kArmorCount = 7U;
+                constexpr std::uint8_t kArmorClothingIndex = 2U;
 #ifndef SHADOWRUN_US_ROM_PATH
                 return profile_failure(
                     "the QA target has no primary US ROM path");
@@ -44761,6 +44762,12 @@ int main(int argc, char** argv) {
                 if (clear_error) {
                     return profile_failure(
                         "could not clear prior bitmap artifacts");
+                }
+                const QImage menu_font(QString::fromStdWString(
+                    (asset_root / "menu" / "field" / "font.bmp").wstring()));
+                if (menu_font.isNull()) {
+                    return profile_failure(
+                        "the command-overview font asset was not loaded");
                 }
                 const auto region_matches_bar_asset =
                     [&asset_root](const QImage& scene,
@@ -46352,13 +46359,25 @@ int main(int argc, char** argv) {
                                                item_code, selected_slot);
                         const bool selected_summary_matches =
                             armor_summary_matches(selected_scene, armor_index);
+                        // ROM 0x12A8C draws the selected D4540 row at C420;
+                        // item 0x2D is the D4D80 "   Armor    /  Clothing  "
+                        // record. The real e4 8800 frame lights Armor at
+                        // x=153 and Clothing at x=145 (rows 64..79).
+                        const bool armor_detail_text_matches =
+                            armor_index != kArmorClothingIndex ||
+                            (source_menu_caption_matches(
+                                 selected_scene, menu_font, 152, 64, "Armor") &&
+                             source_menu_caption_matches(
+                                 selected_scene, menu_font, 144, 72,
+                                 "Clothing"));
                         if (!selected_item_matches ||
                             !selected_phase_matches ||
                             !selected_armor_matches ||
                             !marker_source_slot_matches ||
                             !marker_selected_slot_matches ||
                             !selected_icon_matches ||
-                            !selected_summary_matches) {
+                            !selected_summary_matches ||
+                            !armor_detail_text_matches) {
                             selected_scene.save(QString::fromStdWString(
                                 (armor_output_directory /
                                  (armor_prefix + "-selected-failure.bmp"))
@@ -46375,11 +46394,13 @@ int main(int argc, char** argv) {
                                       << marker_selected_slot_matches
                                       << " icon=" << selected_icon_matches
                                       << " summary="
-                                      << selected_summary_matches << '\n';
+                                      << selected_summary_matches
+                                      << " detail_text="
+                                      << armor_detail_text_matches << '\n';
                             return profile_failure(
                                 "selected armor icon, equipped marker, phase "
-                                "or D4D50 preview did not match the source "
-                                "profile");
+                                "D4D50 preview, or D4D80 text origin did not "
+                                "match the source profile");
                         }
                         if (!save_armor_frame(armor_prefix + "-selected.bmp",
                                               selected_scene)) {
@@ -47776,6 +47797,9 @@ int main(int argc, char** argv) {
                                  "not open\n";
                     return 3;
                 }
+                // ROM 0x117BA/0x11824 select and redraw the action-row
+                // caption. Emulator e4 frames 8819..8820 show Inventory
+                // changing to Equip/Unequip when A opens the row.
                 const auto action_open_scene = render_scene();
 
                 field_scene.set_controller_port_byte(0x40U);
@@ -50055,7 +50079,7 @@ int main(int argc, char** argv) {
                 if (!region_matches(action_open_scene, focus_equip, 136, 184) ||
                     !source_menu_caption_matches(
                         action_open_scene, direct_asset("font.bmp"), 112,
-                        200, "    Inventory    ") ||
+                        200, "  Equip/Unequip  ") ||
                     !field_inventory_selector_survives(action_open_scene, 0U,
                                                        0U) ||
                     !weapon_damage_row_matches(action_open_scene, 1U) ||
@@ -50086,7 +50110,7 @@ int main(int argc, char** argv) {
                                     184) ||
                     !source_menu_caption_matches(
                         action_cancel_scene, direct_asset("font.bmp"), 112,
-                        200, "    Inventory    ") ||
+                        200, "     Cancel      ") ||
                     !save_scene("01_inventory_action_cancel",
                                 action_cancel_scene)) {
                     std::cerr << "field action dump: cancel focus is "
@@ -50103,6 +50127,9 @@ int main(int argc, char** argv) {
                 const auto action_reselected_scene = render_scene();
                 if (!region_matches(action_reselected_scene, focus_equip, 136,
                                     184) ||
+                    !source_menu_caption_matches(
+                        action_reselected_scene, direct_asset("font.bmp"),
+                        112, 200, "  Equip/Unequip  ") ||
                     !same_image(action_open_scene, action_reselected_scene) ||
                     !save_scene("02_inventory_action_reselected",
                                 action_reselected_scene)) {
