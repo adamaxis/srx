@@ -40,6 +40,8 @@ set(SHADOWRUN_GHIDRA_QT_GAME_SOURCES
     src/rendering/genesis_image_compositor.cpp
     src/rendering/vdp_sprite_limits.cpp
     src/rendering/vdp_frame_latch.cpp
+    src/rendering/vdp_model.cpp
+    src/rendering/plane_streamer.cpp
     src/rendering/numeric_visual_renderer.cpp
     src/dialogue/dialogue_panel.cpp
     src/dialogue/dialogue_panel_presenter.cpp
@@ -1787,6 +1789,48 @@ set_target_properties(shadowrun_ghidra_vdp_rendering_helpers_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 add_test(NAME shadowrun_ghidra_vdp_rendering_helpers
          COMMAND shadowrun_ghidra_vdp_rendering_helpers_test)
+
+add_executable(shadowrun_ghidra_vdp_model_test
+    tests/rendering/vdp_model_test.cpp
+    src/rendering/vdp_model.cpp
+    src/rendering/genesis_image_compositor.cpp
+)
+target_include_directories(shadowrun_ghidra_vdp_model_test
+    PRIVATE ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS})
+set_target_properties(shadowrun_ghidra_vdp_model_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_link_libraries(shadowrun_ghidra_vdp_model_test PRIVATE Qt6::Gui)
+add_test(NAME shadowrun_ghidra_vdp_model
+         COMMAND shadowrun_ghidra_vdp_model_test)
+set_tests_properties(shadowrun_ghidra_vdp_model PROPERTIES
+    ENVIRONMENT "SRX_HEADLESS=1;QT_QPA_PLATFORM=offscreen;SDL_AUDIODRIVER=dummy")
+
+add_executable(shadowrun_ghidra_plane_streaming_parity_test
+    tests/rendering/plane_streaming_parity_test.cpp
+    src/field/field_map_composition.cpp
+    src/rendering/genesis_image_compositor.cpp
+    src/rendering/vdp_model.cpp
+    src/rendering/plane_streamer.cpp
+)
+target_include_directories(shadowrun_ghidra_plane_streaming_parity_test
+    PRIVATE
+        ${SHADOWRUN_GHIDRA_QT_RUNTIME_INCLUDE_DIRS}
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+set_target_properties(shadowrun_ghidra_plane_streaming_parity_test PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
+target_compile_definitions(shadowrun_ghidra_plane_streaming_parity_test PRIVATE
+    SHADOWRUN_FIELD_MAP_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    SHADOWRUN_US_ROM_PATH="${CMAKE_CURRENT_SOURCE_DIR}/../../input/shadowrun_genesis_us.bin")
+target_link_libraries(shadowrun_ghidra_plane_streaming_parity_test
+    PRIVATE shadowrun_ghidra_conversion_runtime Qt6::Gui)
+add_test(NAME shadowrun_ghidra_plane_streaming_parity
+         COMMAND shadowrun_ghidra_plane_streaming_parity_test)
+set_tests_properties(shadowrun_ghidra_plane_streaming_parity PROPERTIES
+    ENVIRONMENT "SRX_HEADLESS=1;QT_QPA_PLATFORM=offscreen;SDL_AUDIODRIVER=dummy")
 
 add_executable(shadowrun_ghidra_bmp_alpha_load_test
     tests/rendering/bmp_alpha_load_test.cpp
