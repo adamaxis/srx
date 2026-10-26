@@ -116,7 +116,21 @@ local function source_profile(context)
        context.action_code ~= profile.action_code then
         return nil
     end
-    return profile
+    -- Default-list patrol is a behavior rule over ROM facts, not a profile
+    -- identity. A kind-11 template or a template carrying +0x9E bit 5 can
+    -- patrol when its extracted +0xE0/+0xE4 route is present.
+    local template_kind = context.source_actor_template_kind
+    local pedestrian_kind = template_kind == E.SpriteType.PEDESTRIAN
+    local pedestrian_flag =
+        ((context.source_spawn_state_flags or 0) & E.ActorFlag.PEDESTRIAN) ~= 0
+    local source_profile_patrol = (pedestrian_kind or pedestrian_flag) and
+        context.source_actor_has_waypoint_data == true
+    local resolved_profile = {}
+    for key, value in pairs(profile) do
+        resolved_profile[key] = value
+    end
+    resolved_profile.source_profile_patrol = source_profile_patrol
+    return resolved_profile
 end
 
 local function target_is_eligible(candidate, world_actor_pool)

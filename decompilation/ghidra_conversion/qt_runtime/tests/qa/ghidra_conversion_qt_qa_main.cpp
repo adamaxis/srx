@@ -18675,6 +18675,103 @@ int run_field_scene2_pedestrians_qa(
     return 0;
 }
 
+int run_field_pedestrian_scenes_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    std::error_code directory_error;
+    std::filesystem::remove_all(output, directory_error);
+    if (directory_error) {
+        std::cerr << "Pedestrian scenes QA: could not clear output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, directory_error);
+    if (directory_error) {
+        std::cerr << "Pedestrian scenes QA: could not create output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+
+    // ROM default lists 0x17D660 and 0x18A73A contain three pedestrians
+    // each. Scene 2 remains covered by its separate opening/return QA.
+    constexpr std::array<std::uint16_t, 2> kScenes{{1U, 3U}};
+    for (const auto scene : kScenes) {
+        field_scene.set_field_entity_world_position_for_dump(0x1000U,
+                                                              0x1000U);
+        if (!field_scene.reenter_field_scene_for_dump(scene)) {
+            std::cerr << "Pedestrian scenes QA: scene " << scene
+                      << " re-entry failed: " << field_scene.failure()
+                      << '\n';
+            return 3;
+        }
+        const auto initial_positions =
+            field_scene.active_default_actor_positions_for_dump();
+        if (field_scene.field_scene_reference_for_dump() != scene ||
+            field_scene.default_actor_count_for_dump() != 3U ||
+            initial_positions.size() != 3U) {
+            std::cerr << "Pedestrian scenes QA: scene " << scene
+                      << " did not spawn its three ROM pedestrians; count="
+                      << field_scene.default_actor_count_for_dump()
+                      << " positions=" << initial_positions.size()
+                      << " failure=" << field_scene.failure() << '\n';
+            return 3;
+        }
+
+        constexpr std::size_t kMaximumFieldFrames = 360U;
+        std::optional<std::size_t> moved_actor;
+        for (std::size_t frame = 0U; frame < kMaximumFieldFrames; ++frame) {
+            field_scene.advance_frame();
+            const auto positions =
+                field_scene.active_default_actor_positions_for_dump();
+            if (positions.size() != initial_positions.size()) {
+                break;
+            }
+            for (std::size_t index = 0U; index < positions.size(); ++index) {
+                if (positions[index].x != initial_positions[index].x ||
+                    positions[index].y != initial_positions[index].y) {
+                    moved_actor = index;
+                    break;
+                }
+            }
+            if (moved_actor.has_value()) {
+                break;
+            }
+        }
+        const auto actual_positions =
+            field_scene.active_default_actor_positions_for_dump();
+        if (!moved_actor.has_value() || actual_positions.size() != 3U) {
+            std::cerr << "Pedestrian scenes QA: no pedestrian moved in scene "
+                      << scene << " within " << kMaximumFieldFrames
+                      << " frames; positions=" << actual_positions.size()
+                      << " failure=" << field_scene.failure() << '\n';
+            return 3;
+        }
+        const auto& visible_position = actual_positions[*moved_actor];
+        field_scene.set_field_camera_world_position_for_dump(
+            static_cast<std::uint16_t>(visible_position.x - 0x0800U),
+            static_cast<std::uint16_t>(visible_position.y - 0x0800U));
+        if (field_scene.visible_default_actor_count_for_dump() == 0U) {
+            std::cerr << "Pedestrian scenes QA: moved pedestrian in scene "
+                      << scene << " was not drawable\n";
+            return 3;
+        }
+        const auto actual = render_qa_field(field_scene);
+        const auto bitmap = output /
+            ("scene-" + std::to_string(scene) + "-actual.bmp");
+        if (actual.isNull() ||
+            !actual.save(QString::fromStdWString(bitmap.wstring()))) {
+            std::cerr << "Pedestrian scenes QA: could not save "
+                      << bitmap.string() << '\n';
+            return 3;
+        }
+        std::cout << "field_pedestrian_scene_qa=passed scene=" << scene
+                  << " spawned=3 moved_actor=" << *moved_actor
+                  << " frames<= " << kMaximumFieldFrames
+                  << " actual=" << bitmap.string() << '\n';
+    }
+    return 0;
+}
+
 int run_field_scene2_motel_street_collision_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
@@ -29500,6 +29597,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene2_pedestrians_qa_path;
         std::optional<std::filesystem::path>
+            field_pedestrian_scenes_qa_path;
+        std::optional<std::filesystem::path>
             field_scene2_motel_street_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
@@ -30370,6 +30469,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene2_pedestrians_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-pedestrian-scenes-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_pedestrian_scenes_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -31573,6 +31679,7 @@ int main(int argc, char** argv) {
             }
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_pedestrians_qa_path.has_value() ||
+                field_pedestrian_scenes_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||
                 field_movement_qa_path.has_value() ||
                 field_sinsearach_gate_choice_permutation_qa_path.has_value() ||
@@ -31615,7 +31722,9 @@ int main(int argc, char** argv) {
                 field_scene.set_field_world_frame_counter_for_dump(0x0200U);
             }
             const auto bootstrapped =
-                field_scene2_pedestrians_qa_path.has_value()
+                field_pedestrian_scenes_qa_path.has_value()
+                    ? field_scene.bootstrap_for_scene_dump(smoke_state, 1U)
+                    : field_scene2_pedestrians_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 2U)
                     : field_alarm_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(
@@ -35896,6 +36005,10 @@ int main(int argc, char** argv) {
             if (field_scene2_pedestrians_qa_path.has_value()) {
                 return run_field_scene2_pedestrians_qa(
                     field_scene, *field_scene2_pedestrians_qa_path);
+            }
+            if (field_pedestrian_scenes_qa_path.has_value()) {
+                return run_field_pedestrian_scenes_qa(
+                    field_scene, *field_pedestrian_scenes_qa_path);
             }
             if (field_scene2_motel_street_collision_qa_path.has_value()) {
                 return run_field_scene2_motel_street_collision_qa(

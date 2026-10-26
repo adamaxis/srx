@@ -1498,9 +1498,10 @@ struct ScriptActorBehaviorContext {
     // measured target facts from the native geometry query. Lua chooses the
     // behavior; the host does not infer a target from screen proximity.
     bool dynamic_world_encounter_actor = false;
-    // Default-list profiles may opt into typed Lua patrol movement without
-    // being promoted to dynamic encounter records.
-    bool source_profile_patrol_actor = false;
+    // ROM default-list template facts. Lua decides whether these identify a
+    // pedestrian with a usable +0xE0/+0xE4 route.
+    std::optional<std::uint16_t> source_actor_template_kind;
+    bool source_actor_has_waypoint_data = false;
     // ROM world-activity script lists may create non-encounter actors in the
     // same runtime pool. Keep that provenance explicit for Lua profile rules.
     bool world_activity_script_actor = false;

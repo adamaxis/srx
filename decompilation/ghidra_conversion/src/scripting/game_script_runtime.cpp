@@ -8724,7 +8724,7 @@ GameScriptRuntime::actor_heartbeat(
     default:
         return fail("gameplay Lua actor animation mode is invalid");
     }
-    lua_createtable(state, 0, 51);
+    lua_createtable(state, 0, 53);
     lua_pushlstring(state, actor_id.data(), actor_id.size());
     lua_setfield(state, -2, "actor_id");
     lua_pushlstring(state, context.profile_id.data(),
@@ -8732,6 +8732,14 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "profile_id");
     lua_pushinteger(state, context.entity_kind);
     lua_setfield(state, -2, "entity_kind");
+    if (context.source_actor_template_kind.has_value()) {
+        lua_pushinteger(state, *context.source_actor_template_kind);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "source_actor_template_kind");
+    lua_pushboolean(state, context.source_actor_has_waypoint_data);
+    lua_setfield(state, -2, "source_actor_has_waypoint_data");
     lua_pushlstring(state, action_kind.data(), action_kind.size());
     lua_setfield(state, -2, "action_kind");
     lua_pushinteger(state, context.action_code);
@@ -10366,7 +10374,7 @@ GameScriptRuntime::actor_heartbeat(
     // the render heartbeat without advancing that animation itself.
     const bool dynamic_creature_walk =
         (context.dynamic_world_encounter_actor ||
-         context.source_profile_patrol_actor) &&
+         context.source_actor_slot.has_value()) &&
         decision.animation_id == "walk";
     const bool dynamic_creature_action =
         context.dynamic_world_encounter_actor &&
@@ -10550,8 +10558,7 @@ GameScriptRuntime::actor_heartbeat(
         const bool movement_actor =
             context.profile_id == "field_runner_k03_none00" ||
             context.dynamic_world_encounter_actor ||
-            (context.source_profile_patrol_actor &&
-             context.source_actor_slot.has_value());
+            context.source_actor_slot.has_value();
         // Lua snapshots retain the last selected route heading during the
         // separate render heartbeat. It is applied only on behavior passes;
         // render passes must still be able to return the same typed actor
@@ -10588,8 +10595,7 @@ GameScriptRuntime::actor_heartbeat(
         if (!lua_istable(state, -1) ||
             (context.profile_id != "field_runner_k03_none00" &&
              !context.dynamic_world_encounter_actor &&
-             !(context.source_profile_patrol_actor &&
-               context.source_actor_slot.has_value())) ||
+             !context.source_actor_slot.has_value()) ||
             context.phase != ScriptActorHeartbeatPhase::behavior ||
             !context.movement_allowed ||
             !context.movement_services_available) {

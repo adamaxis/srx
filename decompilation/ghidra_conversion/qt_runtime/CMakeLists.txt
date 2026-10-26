@@ -1250,6 +1250,13 @@ add_shadowrun_qt_qa_case(
     --field-scene2-pedestrians-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-scene2-pedestrians-qa")
 
+# Check the generic ROM-fact patrol rule on two additional default-list scenes.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-pedestrian-scenes-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-pedestrian-scenes-qa")
+
 # Follow ordinary New Game movement into the west wall of Stoker's motel,
 # hold against the source collision cells, move diagonally along the frontage,
 # and retreat. Whole-screen checkpoints and a per-frame coordinate log keep

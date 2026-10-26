@@ -98,10 +98,6 @@ local profiles = {
         entity_kind = SpriteType.PEDESTRIAN,
         action_kind = ActionKind.none,
         action_code = 0,
-        -- Default-list pedestrians follow the source +0xE0/+0xE4 waypoint
-        -- pairs. They use the source actor service without becoming encounter
-        -- records.
-        source_profile_patrol = true,
     },
     ["field_runner_k03_none00"] = {
         package_id = "runner.field_controlled",

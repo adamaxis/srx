@@ -85,7 +85,6 @@ void FieldSceneRuntime::provide_source_profile_patrol_movement_services(
 
     context.movement_allowed = true;
     context.movement_services_available = true;
-    context.source_profile_patrol_actor = true;
     context.movement_state = scripting::ScriptMovementStepState{
         actor.movement_state.position_x,
         actor.movement_state.position_y,

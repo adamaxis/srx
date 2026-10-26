@@ -62,6 +62,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <limits>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <cstdio>
@@ -1822,6 +1823,52 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
         }
         return static_cast<std::uint16_t>(parsed);
     };
+    std::set<std::pair<std::uint16_t, std::uint16_t>> actors_with_waypoints;
+    constexpr std::string_view kWaypointTableAlias =
+        "field.entities.default.actor.waypoints";
+    constexpr std::string_view kWaypointTableHeader =
+        "scene\tsource_order\twaypoint_order\tactor_name"
+        "\tposition_list_address\tworld_x\tworld_y\tterminator_rule";
+    const auto* waypoint_table = catalog.find(kWaypointTableAlias);
+    if (waypoint_table == nullptr || waypoint_table->kind != "state") {
+        failure_ = "missing extracted default field actor waypoint table";
+        return false;
+    }
+    std::ifstream waypoint_input(waypoint_table->absolute_path,
+                                 std::ios::binary);
+    if (!waypoint_input) {
+        failure_ = "cannot read extracted default field actor waypoint table";
+        return false;
+    }
+    if (!std::getline(waypoint_input, line) || line != kWaypointTableHeader) {
+        failure_ = "default field actor waypoint table header is invalid";
+        return false;
+    }
+    while (std::getline(waypoint_input, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        if (line.empty()) {
+            continue;
+        }
+        std::vector<std::string> fields;
+        std::istringstream row(line);
+        std::string field;
+        while (std::getline(row, field, '\t')) {
+            fields.push_back(std::move(field));
+        }
+        if (fields.size() != 8U) {
+            failure_ = "default actor waypoint table row is malformed";
+            return false;
+        }
+        try {
+            actors_with_waypoints.emplace(parse_word(fields[0]),
+                                           parse_word(fields[1]));
+        } catch (const std::exception&) {
+            failure_ = "default actor waypoint scene/order is invalid";
+            return false;
+        }
+    }
     std::array<std::uint16_t, 2> scene_record_counts{};
     try {
         while (std::getline(input, line)) {
@@ -1845,19 +1892,31 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             actor.scene_reference = parse_word(fields[0]);
             actor.source_order = parse_word(fields[1]);
             actor.entity_kind = parse_word(fields[2]);
+            actor.source_actor_has_waypoint_data =
+                actors_with_waypoints.find(
+                    {actor.scene_reference, actor.source_order}) !=
+                actors_with_waypoints.end();
+            const auto source_spawn_flags = parse_number(fields[17], 10);
+            if (source_spawn_flags > 0xFFU) {
+                failure_ = "default actor spawn flags exceed one byte";
+                return false;
+            }
+            actor.source_spawn_state_flags =
+                static_cast<std::uint8_t>(source_spawn_flags);
             // The field runtime currently has Lua behavior and directional
             // entry/idle art for pedestrians and corp guards. Other source
-            // populations remain visible in the map viewer, but are not
-            // instantiated with a substitute actor or sprite here.
-            if (actor.entity_kind != 5U && actor.entity_kind != 11U) {
+            // populations remain visible in the map viewer. A source
+            // pedestrian flag also admits its explicitly extracted sprite.
+            if (actor.entity_kind != 5U && actor.entity_kind != 11U &&
+                (actor.source_spawn_state_flags &
+                 static_cast<std::uint8_t>(
+                     srx::ActorFlag::PEDESTRIAN)) == 0U) {
                 continue;
             }
             actor.actor_instance_id =
                 "field_scene_" + std::to_string(actor.scene_reference) +
                 "_actor_" + std::to_string(actor.source_order);
             actor.script_profile_id = fields[3];
-            actor.source_profile_patrol_actor =
-                actor.script_profile_id == "pedestrian_k0b_none00";
             actor.sprite_stem = fields[5];
             if (actor.script_profile_id.empty()) {
                 failure_ = "default actor Lua profile identity is empty";
@@ -2963,6 +3022,9 @@ void FieldSceneRuntime::initialize_default_field_actors(
             actor.initial_heading,
             true,
         };
+        context.source_actor_template_kind = actor.entity_kind;
+        context.source_actor_has_waypoint_data =
+            actor.source_actor_has_waypoint_data;
         context.combatant = actor.combatant;
         context.source_actor_posture = actor.combatant.posture;
         context.source_record_slot = static_cast<std::uint8_t>(
@@ -3389,8 +3451,6 @@ void FieldSceneRuntime::advance_default_field_actors(
         auto& actor = *actor_record;
         const bool dynamic_world_actor = actor.temporary_world_encounter ||
                                          actor.world_activity_script_actor;
-        const bool source_profile_patrol_actor =
-            actor.source_profile_patrol_actor;
         scripting::ScriptActorBehaviorContext context{
             actor.script_profile_id,
             actor.entity_kind,
@@ -3400,11 +3460,14 @@ void FieldSceneRuntime::advance_default_field_actors(
             actor.transition_started,
             actor.transition_complete,
             actor.actor_instance_id,
-            dynamic_world_actor || source_profile_patrol_actor
+            dynamic_world_actor || actor.source_record_slot.has_value()
                 ? actor.movement_state.heading
                 : actor.initial_heading,
             false,
         };
+        context.source_actor_template_kind = actor.entity_kind;
+        context.source_actor_has_waypoint_data =
+            actor.source_actor_has_waypoint_data;
         context.source_think_suppressed = field_think_token_claimed_;
         context.source_thon_period_counter = field_thon_period_counter_;
         context.walk_fast_enabled = field_walk_fast_enabled_;
@@ -3902,7 +3965,7 @@ void FieldSceneRuntime::advance_default_field_actors(
             }
         }
 
-        if (source_profile_patrol_actor) {
+        if (actor.source_actor_has_waypoint_data) {
             provide_source_profile_patrol_movement_services(context, actor);
         }
 
@@ -4189,7 +4252,7 @@ void FieldSceneRuntime::advance_default_field_actors(
         if (decision->hit_spark_spawn_request.has_value()) {
             spawn_field_hit_spark(*decision->hit_spark_spawn_request);
         }
-        if ((dynamic_world_actor || source_profile_patrol_actor) &&
+        if ((dynamic_world_actor || actor.source_record_slot.has_value()) &&
             decision->movement_step.has_value()) {
             const auto& step = *decision->movement_step;
             actor.movement_state.position_x = step.state.position_x;
@@ -11080,8 +11143,9 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 context.source_actor_slot = source_slot;
             }
         }
-        context.source_profile_patrol_actor =
-            actor.source_profile_patrol_actor;
+        context.source_actor_template_kind = actor.entity_kind;
+        context.source_actor_has_waypoint_data =
+            actor.source_actor_has_waypoint_data;
         context.combatant = actor.combatant;
         context.source_actor_posture = actor.combatant.posture;
         context.source_record_flags = actor.source_record_flags;

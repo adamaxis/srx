@@ -1920,7 +1920,7 @@ private:
         scripting::ScriptCombatantFacts combatant{};
         std::optional<std::uint8_t> effect_slot;
         bool temporary_world_encounter = false;
-        bool source_profile_patrol_actor = false;
+        bool source_actor_has_waypoint_data = false;
         // ROM-selected scene script actors share the dynamic actor behavior
         // package, but their lifetime is tied to the selected scene script,
         // not to a random encounter sequence.
