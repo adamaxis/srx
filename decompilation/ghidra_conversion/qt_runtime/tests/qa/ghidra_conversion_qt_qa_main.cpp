@@ -43864,6 +43864,193 @@ int main(int argc, char** argv) {
                     return 3;
                 }
 
+                if (!field_command_page.has_value()) {
+                    const auto picture_move_matches =
+                        [&](const std::uint8_t source_item,
+                            const std::uint8_t target_item,
+                            const int expected_hold_frames) {
+                            const auto fail = [&](const std::string_view stage) {
+                                std::cerr << "field command picture QA: source="
+                                          << static_cast<unsigned>(source_item)
+                                          << " target="
+                                          << static_cast<unsigned>(target_item)
+                                          << " hold=" << expected_hold_frames
+                                          << " stage=" << stage << "\n";
+                                return false;
+                            };
+                            std::vector<std::uint16_t> picture_audio_events;
+                            std::vector<std::string> picture_boundaries;
+                            qt_runtime::FieldSceneRuntime picture_scene(
+                                [&picture_boundaries](
+                                    const std::string_view boundary) {
+                                    picture_boundaries.emplace_back(boundary);
+                                },
+                                [&picture_audio_events](
+                                    const std::uint16_t event) {
+                                    picture_audio_events.push_back(event);
+                                });
+                            if (!picture_scene.bootstrap(smoke_state)) {
+                                return fail("bootstrap");
+                            }
+                            auto& runner = picture_scene.active_runner_record();
+                            runner.inventory_item_codes.fill(0U);
+                            runner.inventory_phase_bytes.fill(0U);
+                            runner.inventory_item_codes[0U] = source_item;
+                            runner.inventory_item_codes[2U] = target_item;
+                            runner.equipped_inventory_slot = 0;
+                            runner.equipped_item_code = source_item;
+                            if (!picture_scene.open_command_overview_for_dump() ||
+                                !picture_scene.seek_command_overview_page(0U)) {
+                                return fail("open-or-seek-inventory");
+                            }
+                            picture_audio_events.clear();
+                            picture_scene.set_controller_port_byte(0x02U);
+                            picture_scene.advance_frame();
+                            auto moved = picture_scene
+                                .field_menu_route_snapshot_for_dump();
+                            if (expected_hold_frames == 0) {
+                                if (moved.root_inventory_detail_pending
+                                        .value_or(true) ||
+                                    moved.root_inventory_cursor_hidden
+                                        .value_or(true) ||
+                                    moved.root_inventory_picture_partial
+                                        .value_or(false) ||
+                                    picture_audio_events !=
+                                        std::vector<std::uint16_t>{0x25U}) {
+                                    std::cerr << "  state pending="
+                                              << moved.root_inventory_detail_pending
+                                                     .value_or(false)
+                                              << " cursor_hidden="
+                                              << moved.root_inventory_cursor_hidden
+                                                     .value_or(false)
+                                              << " partial="
+                                              << moved.root_inventory_picture_partial
+                                                     .value_or(false)
+                                              << " sounds="
+                                              << picture_audio_events.size();
+                                    for (const auto event : picture_audio_events) {
+                                        std::cerr << " 0x" << std::hex << event
+                                                  << std::dec;
+                                    }
+                                    std::cerr << "\n";
+                                    return fail("same-bank-immediate");
+                                }
+                                picture_scene.set_controller_port_byte(0U);
+                                picture_scene.advance_frame();
+                                return true;
+                            }
+
+                            if (!moved.root_inventory_detail_pending
+                                     .value_or(false) ||
+                                !moved.root_inventory_cursor_hidden
+                                     .value_or(false) ||
+                                !picture_audio_events.empty()) {
+                                std::cerr << "  press state pending="
+                                          << moved.root_inventory_detail_pending
+                                                 .value_or(false)
+                                          << " cursor_hidden="
+                                          << moved.root_inventory_cursor_hidden
+                                                 .value_or(false)
+                                          << " sounds="
+                                          << picture_audio_events.size() << "\n";
+                                return fail("bank-change-press");
+                            }
+                            picture_scene.set_controller_port_byte(0U);
+                            for (int frame = 1;
+                                 frame < expected_hold_frames; ++frame) {
+                                picture_scene.advance_frame();
+                            }
+                            moved = picture_scene
+                                .field_menu_route_snapshot_for_dump();
+                            if (!moved.root_inventory_detail_pending
+                                     .value_or(false) ||
+                                !moved.root_inventory_cursor_hidden
+                                     .value_or(false) ||
+                                !picture_audio_events.empty()) {
+                                std::cerr << "  pre-cue state pending="
+                                          << moved.root_inventory_detail_pending
+                                                 .value_or(false)
+                                          << " cursor_hidden="
+                                          << moved.root_inventory_cursor_hidden
+                                                 .value_or(false)
+                                          << " sounds="
+                                          << picture_audio_events.size() << "\n";
+                                return fail("pre-cue");
+                            }
+                            picture_scene.advance_frame();
+                            moved = picture_scene
+                                .field_menu_route_snapshot_for_dump();
+                            const bool seven_frame_reveal =
+                                expected_hold_frames == 7 &&
+                                !moved.root_inventory_detail_pending
+                                     .value_or(true) &&
+                                moved.root_inventory_picture_partial
+                                    .value_or(false);
+                            const bool eight_frame_reveal =
+                                expected_hold_frames == 8 &&
+                                moved.root_inventory_detail_pending
+                                    .value_or(false) &&
+                                !moved.root_inventory_picture_partial
+                                     .value_or(true);
+                            if (picture_audio_events !=
+                                std::vector<std::uint16_t>{0x25U}) {
+                                std::cerr << "  cue sounds="
+                                          << picture_audio_events.size()
+                                          << " pending="
+                                          << moved.root_inventory_detail_pending
+                                                 .value_or(false)
+                                          << " cursor_hidden="
+                                          << moved.root_inventory_cursor_hidden
+                                                 .value_or(false)
+                                          << " partial="
+                                          << moved.root_inventory_picture_partial
+                                                 .value_or(false)
+                                          << "\n";
+                                return fail("cue-audio");
+                            }
+                            if (!seven_frame_reveal && !eight_frame_reveal) {
+                                std::cerr << "  reveal state pending="
+                                          << moved.root_inventory_detail_pending
+                                                 .value_or(false)
+                                          << " cursor_hidden="
+                                          << moved.root_inventory_cursor_hidden
+                                                 .value_or(false)
+                                          << " partial="
+                                          << moved.root_inventory_picture_partial
+                                                 .value_or(false)
+                                          << " sounds="
+                                          << picture_audio_events.size()
+                                          << "\n";
+                                return fail("partial-reveal");
+                            }
+                            picture_scene.advance_frame();
+                            moved = picture_scene
+                                .field_menu_route_snapshot_for_dump();
+                            const bool completed =
+                                !moved.root_inventory_detail_pending
+                                        .value_or(false) &&
+                                   !moved.root_inventory_cursor_hidden
+                                        .value_or(false) &&
+                                   !moved.root_inventory_picture_partial
+                                        .value_or(false) &&
+                                   picture_audio_events ==
+                                       std::vector<std::uint16_t>{0x25U};
+                            if (!completed) {
+                                return fail("reveal-complete");
+                            }
+                            return true;
+                        };
+                    if (!picture_move_matches(0x2DU, 0x11U, 0) ||
+                        !picture_move_matches(0x01U, 0x2DU, 7) ||
+                        !picture_move_matches(0x2DU, 0x02U, 8) ||
+                        !picture_move_matches(0x01U, 0x13U, 7)) {
+                        std::cerr << "field command dump: same-bank picture "
+                                     "move was delayed, or bank-change hold "
+                                     "length/reveal regressed\n";
+                        return 3;
+                    }
+                }
+
                 // Release the synthetic Start from entry, then press it to
                 // close through the same controller/coordinator path. The
                 // returned full frame must equal the fresh field composition;
@@ -50324,6 +50511,46 @@ int main(int argc, char** argv) {
                     }
                     return true;
                 };
+                const auto trade_posture_fill_matches = [](
+                    const QImage& scene, const QImage* recipient_preview) {
+                    // Emulator e7_give frame 8900: x96..263, y160..183 black.
+                    const QColor kSourceGray(0, 0, 0);
+                    if (recipient_preview != nullptr &&
+                        recipient_preview->size() != QSize(32, 32)) {
+                        return false;
+                    }
+                    int mismatch_count = 0;
+                    for (int y = 160; y < 184; ++y) {
+                        for (int x = 96; x < 264; ++x) {
+                            const bool covered_by_preview =
+                                recipient_preview != nullptr && x >= 160 &&
+                                x < 192 && y >= 160 && y < 176;
+                            const auto expected = covered_by_preview
+                                ? recipient_preview->pixelColor(x - 160,
+                                                                y - 144)
+                                : kSourceGray;
+                            if (scene.pixelColor(x, y) != expected) {
+                                if (mismatch_count < 8) {
+                                    const auto actual = scene.pixelColor(x, y);
+                                    std::cerr << "  posture clear mismatch ("
+                                              << x << "," << y
+                                              << "): expected "
+                                              << expected.red() << ","
+                                              << expected.green() << ","
+                                              << expected.blue() << " got "
+                                              << actual.red() << ","
+                                              << actual.green() << ","
+                                              << actual.blue() << "\n";
+                                }
+                                ++mismatch_count;
+                            }
+                        }
+                    }
+                    return mismatch_count == 0;
+                };
+                const QImage command_font(QString::fromStdWString(
+                    (asset_root / "menu" / "field" / "font.bmp")
+                        .wstring()));
 
                 if (!field_scene.open_command_overview_for_dump()) {
                     std::cerr << "field inventory-trade dump: command "
@@ -50484,6 +50711,7 @@ int main(int argc, char** argv) {
                      "action-confirm-focus-0.bmp")
                         .wstring()));
                 if (!field_inventory_selector_survives(full_scene, 0U, 0U) ||
+                    !trade_posture_fill_matches(full_scene, nullptr) ||
                     !has_green_ink(full_scene, QRect(120, 104, 176, 48)) ||
                     !image_region_matches(full_scene, 184, 184, no_focus) ||
                     image_region_matches(full_scene, 160, 144,
@@ -50536,15 +50764,43 @@ int main(int argc, char** argv) {
                     return 3;
                 }
                 const auto dog_no_scene = render_scene();
-                if (!has_green_ink(dog_no_scene, QRect(152, 120, 80, 8)) ||
-                    !has_green_ink(dog_no_scene, QRect(128, 128, 96, 8)) ||
-                    !image_region_matches(dog_no_scene, 160, 144,
-                                          available_recipient_preview) ||
-                    !field_inventory_selector_survives(dog_no_scene, 0U, 0U) ||
-                    !image_region_matches(dog_no_scene, 184, 184, no_focus) ||
+                const bool trade_fill_matches =
+                    trade_posture_fill_matches(
+                        dog_no_scene, &available_recipient_preview);
+                const bool recipient_label_matches = source_menu_caption_matches(
+                    dog_no_scene, command_font, 152, 120, "Give to");
+                const bool recipient_placeholder_matches =
+                    source_menu_caption_matches(
+                        dog_no_scene, command_font, 144, 136, "  ????");
+                const bool recipient_name_matches = source_menu_caption_matches(
+                    dog_no_scene, command_font, 128, 128, "Winston Marrs");
+                const bool recipient_name_ink =
+                    has_green_ink(dog_no_scene, QRect(128, 128, 96, 8));
+                const bool recipient_preview_matches = image_region_matches(
+                    dog_no_scene, 160, 144, available_recipient_preview);
+                const bool inventory_selector_matches =
+                    field_inventory_selector_survives(dog_no_scene, 0U, 0U);
+                const bool recipient_no_focus_matches = image_region_matches(
+                    dog_no_scene, 184, 184, no_focus);
+                if (!trade_fill_matches || !recipient_label_matches ||
+                    !recipient_placeholder_matches ||
+                    !recipient_name_matches || !recipient_name_ink ||
+                    !recipient_preview_matches ||
+                    !inventory_selector_matches ||
+                    !recipient_no_focus_matches ||
                     !save_scene("trade_recipient_winston_no", dog_no_scene)) {
                     std::cerr << "field inventory-trade dump: recipient "
-                                 "label/name/preview or default No state failed\n";
+                                 "label/name/preview or default No state failed "
+                              << "(fill=" << trade_fill_matches
+                              << ", label=" << recipient_label_matches
+                              << ", placeholder="
+                              << recipient_placeholder_matches
+                              << ", name=" << recipient_name_matches
+                              << ", name_ink=" << recipient_name_ink
+                              << ", preview=" << recipient_preview_matches
+                              << ", selector=" << inventory_selector_matches
+                              << ", no_focus=" << recipient_no_focus_matches
+                              << ")\n";
                     return 3;
                 }
                 press(0x40U);

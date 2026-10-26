@@ -20,11 +20,30 @@ function M.new()
     return {
         page = Page.POCKET_SECRETARY, row = 0, posture_gate = false,
         panel_dirty = false, inventory_item_hold_frames = 0,
+        inventory_picture_bank = nil,
         inventory_cursor_hidden_frames = 0, inventory_cursor_hidden = false,
     }
 end
 
 local function leader(ctx) return ctx.game.party()[ctx.game.active_slot()] end
+
+local function picture_bank(code)
+    if not code or code == E.ItemId.NONE then return nil end
+    return code < E.FIRST_NON_WEAPON and "weapon" or "non_weapon"
+end
+
+local function mark_picture_bank(st, code)
+    local bank = picture_bank(code)
+    if bank then st.inventory_picture_bank = bank end
+end
+
+local function current_picture_code(st, ctx)
+    if st.page < Page.CLIPS then
+        local selected = Inv.selected(leader(ctx), st.page, st.row)
+        return selected and selected.code or nil
+    end
+    return leader(ctx).weapon_code
+end
 
 -- 0x10D36/0x10D40: btst #6 / #4 on leader +0x10 (DEAD / DOWN), then 0x391A [C].
 -- party().status is the +0x10 byte. The old C++ binding tested the +0x11 byte.
@@ -84,12 +103,18 @@ local function build(st, ctx, full, black_frames, reveal_line, reveal, lead)
     st.panel_dirty = true                                   -- FFF112=FF [C value, H meaning]
     ctx.sound(S.MOVE)                                       -- 0x10E2E plays 0x25 even on open [C]
     ctx.redraw(M.REFRESH)
+    -- 0x12A54 compares FFF100 with the selected picture bank and calls
+    -- 0x1107E to upload only when the bank changes.
+    mark_picture_bank(st, current_picture_code(st, ctx))
 end
 
 function M.enter(st, ctx) build(st, ctx, true, BLANK_OPEN, BLANK_REVEAL_LINE, OPEN.reveal, OPEN.lead) end
 
 -- 0x11592: inventory cursor sprite at (page*0x28, row*0x18) + item detail [C]
-local function inventory_cursor(st, ctx) ctx.redraw(R.INVENTORY_CURSOR | R.ITEM_PICTURE | R.ITEM_HEADER) end
+local function inventory_cursor(st, ctx)
+    ctx.redraw(R.INVENTORY_CURSOR | R.ITEM_PICTURE | R.ITEM_HEADER)
+    mark_picture_bank(st, current_picture_code(st, ctx))
+end
 
 -- 0x114A0 [C]
 function M.step_page(st, d, ctx)
@@ -115,14 +140,10 @@ function M.step_row(st, d, events, ctx)
     return { transition = T.PUSH, screen = E.MenuScreen.POSTURE }
 end
 
--- [C emulator] Item-picture changes delay the MOVE request seven frames on
--- Armor Clothing and Fetish, and eight on Model 101T; the panel follows one frame later. [H] Other
--- item pictures use the seven-frame fallback until measured separately.
-local ITEM_PICTURE_HOLD_FRAMES = {
-    [E.ItemId.MODEL_101T] = 8,
-    [E.ItemId.ARMOR_CLOTHING] = 7,
-    [E.ItemId.FETISH] = 7,
-}
+-- ROM 0x12A54 updates FFF100 and calls 0x1107E only when the picture bank
+-- changes. Emulator measurements: weapon-bank upload holds eight frames;
+-- non-weapon-bank upload holds seven. Same-bank selections draw immediately.
+local PICTURE_BANK_HOLD_FRAMES = { weapon = 8, non_weapon = 7 }
 
 local function selected_inventory_item(st, ctx)
     if st.page >= Page.CLIPS then return nil end
@@ -140,20 +161,35 @@ local function update_inventory_ammo_count(st, ctx)
     end
 end
 
-local function finish_move(st, old_page, old_row, ctx)
+local function finish_move(st, old_page, old_row, previous_picture_bank, ctx)
     local moved_inventory_item = old_page < Page.CLIPS and
         st.page < Page.CLIPS and (old_page ~= st.page or old_row ~= st.row)
     local previous = moved_inventory_item and
         Inv.selected(leader(ctx), old_page, old_row) or nil
     local selected = moved_inventory_item and selected_inventory_item(st, ctx) or nil
     if previous and selected then
-        st.inventory_item_hold_frames =
-            ITEM_PICTURE_HOLD_FRAMES[selected.code] or 7
-        st.inventory_item_hold_total = st.inventory_item_hold_frames
-        st.inventory_detail_pending = true
-        st.inventory_cursor_hidden_frames = 0
-        st.inventory_cursor_hidden = true
-        ctx.redraw(M.REFRESH)
+        local next_picture_bank = picture_bank(selected.code)
+        local loaded_picture_bank = previous_picture_bank or
+            picture_bank(previous.code)
+        if loaded_picture_bank == next_picture_bank then
+            st.inventory_item_hold_frames = 0
+            st.inventory_detail_pending = false
+            st.inventory_picture_partial = false
+            st.inventory_cursor_hidden_frames = 0
+            st.inventory_cursor_hidden = false
+            ctx.sound(S.MOVE)
+            ctx.redraw(M.REFRESH)
+            mark_picture_bank(st, selected.code)
+        else
+            st.inventory_item_hold_frames =
+                PICTURE_BANK_HOLD_FRAMES[next_picture_bank]
+            st.inventory_item_hold_total = st.inventory_item_hold_frames
+            st.inventory_detail_pending = true
+            st.inventory_cursor_hidden_frames = 0
+            st.inventory_cursor_hidden = true
+            ctx.redraw(M.REFRESH)
+            mark_picture_bank(st, selected.code)
+        end
     else
         st.inventory_item_hold_frames = 0
         st.inventory_detail_pending = false
@@ -166,6 +202,7 @@ local function finish_move(st, old_page, old_row, ctx)
             st.inventory_cursor_hidden_frames > 0
         ctx.sound(S.MOVE)
         ctx.redraw(M.REFRESH)
+        mark_picture_bank(st, current_picture_code(st, ctx))
     end
     update_inventory_ammo_count(st, ctx)
 end
@@ -174,12 +211,11 @@ function M.input(st, events, ctx)
     if st.inventory_item_hold_frames > 0 then
         st.inventory_item_hold_frames = st.inventory_item_hold_frames - 1
         if st.inventory_item_hold_frames == 0 then
-            -- [C emulator e6 + zsnd] MOVE is requested on 8747/8788/8827;
-            -- the ring and posture bar appear on that frame. On the
-            -- seven-frame holds (8747 Armor Clothing, 8827 Fetish) the text
-            -- and bars appear too and only picture rows y>=56 are uploaded.
-            -- On 8788 (Model 101T, eight frames) the panel is still blank.
-            -- The rest lands one frame later.
+            -- [C emulator e6 + zsnd] MOVE is requested after the bank upload:
+            -- weapon-bank changes take eight frames and non-weapon changes
+            -- take seven. The seven-frame path reveals text/bars and picture
+            -- rows y>=56 here; the eight-frame path reveals its full panel on
+            -- the next frame.
             ctx.sound(S.MOVE)
             st.inventory_cursor_hidden = false
             if (st.inventory_item_hold_total or 7) < 8 then
@@ -209,24 +245,25 @@ function M.input(st, events, ctx)
             st.inventory_cursor_hidden_frames > 0
     end
     update_inventory_ammo_count(st, ctx)
+    local previous_picture_bank = st.inventory_picture_bank
     -- priority order of 0x10DD8..0x10F2A [C]
     if events & P.LEFT ~= 0 then
         local old_page, old_row = st.page, st.row
-        M.step_page(st, -1, ctx); finish_move(st, old_page, old_row, ctx); return
+        M.step_page(st, -1, ctx); finish_move(st, old_page, old_row, previous_picture_bank, ctx); return
     end
     if events & P.UP ~= 0 then
         local old_page, old_row = st.page, st.row
         local r = M.step_row(st, -1, events, ctx); if r then return r end
-        finish_move(st, old_page, old_row, ctx); return
+        finish_move(st, old_page, old_row, previous_picture_bank, ctx); return
     end
     if events & P.RIGHT ~= 0 then
         local old_page, old_row = st.page, st.row
-        M.step_page(st, 1, ctx); finish_move(st, old_page, old_row, ctx); return
+        M.step_page(st, 1, ctx); finish_move(st, old_page, old_row, previous_picture_bank, ctx); return
     end
     if events & P.DOWN ~= 0 then
         local old_page, old_row = st.page, st.row
         local r = M.step_row(st, 1, events, ctx); if r then return r end
-        finish_move(st, old_page, old_row, ctx); return
+        finish_move(st, old_page, old_row, previous_picture_bank, ctx); return
     end
     if events & (P.A | P.B) ~= 0 then
         ctx.sound(S.SELECT)                                  -- 0x10E4E [C]

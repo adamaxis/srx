@@ -15853,6 +15853,13 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
     // in a helper lets child screens restore the shared panel after clearing
     // their content region.
     paint_command_overview_posture_panel(painter);
+    if (command_overview_inventory_trade_.open) {
+        // 0x1286A calls 0x11900, whose C1320 grid replaces the full posture
+        // plate (21x3 cells at $EA18) while either recipient path is open.
+        // The repeated source tile is blank (palette 0): emulator e7_give
+        // frame 8900 is black across x96..263, y160..183.
+        painter.fillRect(QRect(96, 160, 168, 24), QColor(0, 0, 0));
+    }
 
     const auto draw_item_detail_rows =
         [this, &painter](const std::uint8_t item_code,
@@ -16424,6 +16431,11 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             draw_command_overview_text(
                 painter, 152, 120,
                 field_menu_text_.action_trade_recipient_label);
+            // ROM 0x12908 writes D1D19 at C7A6. Its two line breaks put the
+            // source " ????" on y=136; the catalog's Clips prompt carries the
+            // same ROM text with two leading spaces, so its origin is x=144.
+            draw_command_overview_text(
+                painter, 144, 136, field_menu_text_.clips_trade_prompt[2]);
             const auto recipient =
                 command_overview_inventory_trade_.recipient_slot;
             if (recipient < FieldPartyRosterRuntime::kSlotCount) {
