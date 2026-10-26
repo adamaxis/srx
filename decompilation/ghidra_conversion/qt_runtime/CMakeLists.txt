@@ -2164,6 +2164,15 @@ foreach(SHADOWRUN_GHIDRA_ENTITY_TEST IN ITEMS
              COMMAND shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test)
 endforeach()
 
+# ROM 0x5A62 defines the entity projection culling window.
+add_executable(shadowrun_ghidra_entity_projection_conversion_test
+    ../tests/entities/entity_projection_conversion_test.cpp
+)
+target_link_libraries(shadowrun_ghidra_entity_projection_conversion_test
+    PRIVATE shadowrun_ghidra_conversion_modules)
+add_test(NAME shadowrun_ghidra_entity_projection_conversion
+         COMMAND shadowrun_ghidra_entity_projection_conversion_test)
+
 add_executable(shadowrun_ghidra_movement_mode_transition_test
     ../tests/entities/movement_mode_transition_conversion_test.cpp
 )
