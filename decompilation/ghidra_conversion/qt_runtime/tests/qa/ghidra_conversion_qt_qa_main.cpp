@@ -43911,8 +43911,10 @@ int main(int argc, char** argv) {
                             if (expected_hold_frames == 0) {
                                 if (moved.root_inventory_detail_pending
                                         .value_or(true) ||
-                                    moved.root_inventory_cursor_hidden
-                                        .value_or(true) ||
+                                    // [C emulator e7 8720/8721] cursor is
+                                    // hidden on the press frame only.
+                                    !moved.root_inventory_cursor_hidden
+                                        .value_or(false) ||
                                     moved.root_inventory_picture_partial
                                         .value_or(false) ||
                                     picture_audio_events !=
@@ -43937,6 +43939,12 @@ int main(int argc, char** argv) {
                                 }
                                 picture_scene.set_controller_port_byte(0U);
                                 picture_scene.advance_frame();
+                                if (picture_scene
+                                        .field_menu_route_snapshot_for_dump()
+                                        .root_inventory_cursor_hidden
+                                        .value_or(true)) {
+                                    return fail("same-bank-cursor-next-frame");
+                                }
                                 return true;
                             }
 

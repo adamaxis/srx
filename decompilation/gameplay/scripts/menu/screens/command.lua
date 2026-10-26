@@ -175,8 +175,11 @@ local function finish_move(st, old_page, old_row, previous_picture_bank, ctx)
             st.inventory_item_hold_frames = 0
             st.inventory_detail_pending = false
             st.inventory_picture_partial = false
-            st.inventory_cursor_hidden_frames = 0
-            st.inventory_cursor_hidden = false
+            -- [C emulator e7 8720] Same-bank move: detail and MOVE land on the
+            -- press frame; the slot cursor is hidden that frame and shown at
+            -- the new slot on 8721.
+            st.inventory_cursor_hidden_frames = 1
+            st.inventory_cursor_hidden = true
             ctx.sound(S.MOVE)
             ctx.redraw(M.REFRESH)
             mark_picture_bank(st, selected.code)
