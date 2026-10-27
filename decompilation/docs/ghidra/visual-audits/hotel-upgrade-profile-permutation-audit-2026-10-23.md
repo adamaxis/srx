@@ -99,9 +99,14 @@ The output `profile-cells.tsv` records the raw source record address, cursor
 column/row, record offset, current value, status, next value, cost, Karma, and
 relative BMP path. Each profile has a full-screen `actual.bmp`, all twenty
 cell frames, the relevant boundary states, transaction frames, and a Hotel
-return frame. Debug and Release each write 398 BMPs; every relative path and
-SHA-256 hash matches. `physical-route.tsv` in the paired field-Hotel output
-retains the ordinary Stoker entry, Hotel service, and existing checkout path.
+return frame. The QA also presses Left/Up at the upper-left cell and Right/Down
+at the lower-right cell for every profile; each input must preserve its cursor,
+preview, runner fields, status, and full-screen pixels. The successful purchase
+holds A for four frames and must apply exactly one upgrade, matching the input
+duration in the supplied Karma capture. Debug and Release each write 476 BMPs;
+all relative paths and SHA-256 hashes match. `physical-route.tsv` in the paired
+field-Hotel output retains the ordinary Stoker entry, Hotel service, and
+existing checkout path.
 
 ## Visual review and limits
 

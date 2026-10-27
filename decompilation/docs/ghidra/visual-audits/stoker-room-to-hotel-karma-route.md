@@ -91,10 +91,12 @@ an independent Genesis visual oracle.
 The user supplied `e8_karma_spend.zip`, containing `au/e8_karma_spend/` with
 620 consecutive 320x224 PNG frames (`e_08541.png` through `e_09160.png`), an
 input log, RAM snapshots, and audio. The user reports that Grok bot provided
-the archive. That provenance is user-reported; the package has no ROM hash,
-emulator/build identity, or capture method, so it is useful as an external
-comparison but is not independently verified Genesis footage. The archive
-remains outside the repository and is not part of this documentation commit.
+the archive. Its expanded copy is now available under the ignored research
+output `decompilation/ghidra_conversion/build/research/au/e8_karma_spend/`
+(`frames/`, `inputs.txt`, `ram.npy`, and `audio.wav`). The package has no ROM
+hash, emulator/build identity, or capture method, so it is useful for matching
+screens to its own RAM/input trace but is not independently verified Genesis
+footage.
 
 The input log records Up at frame 8641 followed by A presses at 8751, 8767,
 8807, 8847, 8891, 9001, and 9081. The visible sequence reaches the Stoker
@@ -113,6 +115,52 @@ uses the US-ROM route, `0xD53C` returns on that edge and `0xD3EA` should write
 Body 3 and Karma 17. The unchanged record conflicts with that source path; the
 missing ROM/build identity prevents assigning the discrepancy to the port. It
 shows neither a checkout nor a field return.
+
+## Doorway and Karma input audit of the expanded capture (2026-10-27)
+
+The 620 snapshots keep `FFFBF8/FFFBF9 = 0x02/0x02`, the current scene/event
+pair, from frame 8541 through 9160. The ROM copies the scene byte from
+`FFDDC4` at `0x03084..0x0308A`; the selector at `0x1F086` consumes the pair.
+The capture therefore stays in Scene 2/event 2 throughout the Stoker pages,
+room payment, Hotel Options, and Karma child. The doorway is the Scene-2
+terrain collision record 91 at `0x173138` (property `0xC2`, event 2); it does
+not load a motel interior scene. The route resolves through the Stoker arrival
+record at `0xF4AA0`, the room-payment command `0x06`/handler `0x21458`, and
+Hotel Options at `0xCF38`; its Karma child is `0xD024`.
+
+`inputs.txt` records B for four frames at 8621 and Up for 200 frames from
+8641. It then records A holds of 12, 12, 32, 5, 4, and 17 frames at 8751,
+8767, 8807, 8847, 8891, and 9001; a four-frame Left hold at 9041; and a
+four-frame A hold at 9081. The long Up hold overlaps the first Stoker pages,
+while the input log and RAM show the same-scene service route rather than a
+door-to-interior transition. The active conversion's expected path is the
+Stoker interaction and Hotel menu, both still in Scene 2; its field-Hotel QA
+exercises that path from ordinary input.
+
+At frame 9040 the active record is Joshua's Human/Shaman preset: race index 0,
+class index 1, Body `+0x77 = 2`, and runtime Karma `+0x8D = 20`. The selected
+Body preview is 3 at cost 3. The capture logs Left at the upper-left grid
+boundary; `FFF0D0/FFF0D1` remain `0/0`, and the full 9040/9041 images are
+identical. This matches `0xD01C`: Left at column zero leaves the selected
+Body cell unchanged.
+
+The A input logged at 9081 appears as `FFDD22 = 0x4040` at frame 9080, with
+`FFF0DC = 0` (default Yes). Body and Karma remain 2 and 20, and the same image
+and live 0x100-byte runner record persist through frame 9160. In the ROM,
+`0x195C` publishes A's new-press edge in the high byte, `0xD53C` returns on
+that edge, and the accepted Yes path reaches the write at `0xD3EA`; that path
+would raise Body to 3 and spend 3 Karma. The supplied capture's unchanged
+record conflicts with that path. Without a ROM hash or emulator identity,
+this remains a discrepancy in the supplied recording, not a demonstrated
+defect in the active conversion.
+
+The Hotel profile QA now repeats all four direction boundaries for each of
+the thirteen ROM profiles and checks the full 320x224 frame, cursor, preview,
+race/class, attributes, skills, auxiliary/Karma, cyberware flags, and status
+message after each rejected direction. Its purchase
+confirmation holds A for four frames, matching the supplied input duration,
+and requires one Body increment and one Karma debit. Debug and Release pass;
+their 476 BMPs and profile manifest match by SHA-256.
 
 The supplied Stoker, manager, room-offer, paid-message, Hotel Options, and
 Karma frames resemble their corresponding native QA screens at the page and

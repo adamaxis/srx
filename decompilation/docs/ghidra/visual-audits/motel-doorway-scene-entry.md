@@ -132,7 +132,10 @@ starting at 8733, and complete opening text by 8736. This is a 40-frame black
 hold in the supplied recording, compared with five full-black frames in the
 current native route QA. The archive contains no ROM hash or emulator build
 identity or capture method, so it cannot establish independent Genesis
-fidelity. The source ordering for the transition is now traced: `0x16396`
+fidelity. Its expanded copy, including the numbered PNGs, `inputs.txt`,
+`ram.npy`, and `audio.wav`, is available under
+`decompilation/ghidra_conversion/build/research/au/e8_karma_spend/` for local
+review. The source ordering for the transition is now traced: `0x16396`
 decrements `FFDF3C`; on
 underflow it clears `FFDF3A` and sets `FFDF3E`. The main loop at `0x095E` sees
 that completion flag, sets `FFE172`, clears `FFDF3E`, and calls `0x53126`

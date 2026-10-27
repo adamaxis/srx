@@ -86,7 +86,9 @@ give the command view a spending path it does not have.
   that edge and `0xD3EA` should write Body 3 and Karma 17. The unchanged record
   conflicts with that source path; the missing ROM/build identity prevents
   assigning the discrepancy to the port. Treat the recording as an external
-  visual comparison, not verified Genesis footage.
+  visual comparison, not verified Genesis footage. The expanded local copy
+  (`frames/`, `inputs.txt`, `ram.npy`, `audio.wav`) is under
+  `decompilation/ghidra_conversion/build/research/au/e8_karma_spend/`.
 
   The Human/Shaman values are consistent with the profile at ROM `0x72B1A`
   (Human race, Shaman class, Body 2), while Karma 20 is runtime state: the

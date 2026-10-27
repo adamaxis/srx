@@ -45204,6 +45204,18 @@ int main(int argc, char** argv) {
                         field_scene.set_controller_port_byte(0U);
                         field_scene.advance_frame();
                     };
+                    const auto hold_profile_button = [&field_scene](
+                        const std::uint8_t port_byte,
+                        const std::uint8_t frame_count) {
+                        settle_qa_dialogue_input(field_scene);
+                        field_scene.set_controller_port_byte(port_byte);
+                        for (std::uint8_t frame = 0U; frame < frame_count;
+                             ++frame) {
+                            field_scene.advance_frame();
+                        }
+                        field_scene.set_controller_port_byte(0U);
+                        field_scene.advance_frame();
+                    };
                     const auto move_profile_cursor = [&] (
                         const std::uint8_t column,
                         const std::uint8_t row) {
@@ -45523,6 +45535,20 @@ int main(int argc, char** argv) {
                             return profile_failure(
                                 "ROM profile order or race/class identity changed");
                         }
+                        const auto profile_gameplay_fields_unchanged =
+                            [&field_scene, &profile] {
+                                const auto& live =
+                                    field_scene.active_runner_record();
+                                return live.flags == profile.flags &&
+                                    live.species_index == profile.species_index &&
+                                    live.archetype_index ==
+                                        profile.archetype_index &&
+                                    live.attributes == profile.attributes &&
+                                    live.skills == profile.skills &&
+                                    live.auxiliary == profile.auxiliary &&
+                                    live.cyberware_flags ==
+                                        profile.cyberware_flags;
+                            };
 
                         field_scene.active_runner_record() = profile;
                         field_scene.refresh_field_hud_for_dump();
@@ -45558,6 +45584,53 @@ int main(int argc, char** argv) {
                         }
                         cursor_column = 0U;
                         cursor_row = 0U;
+
+                        // ROM 0xD01C ignores Left at column 0 and Up at row
+                        // 0. Keep those edge inputs visible in the full
+                        // profile sweep: neither may move the cursor, change
+                        // the selected Body preview, or leave a redraw mark.
+                        const auto boundary_origin = capture(
+                            profile_directory / "direction-boundary-origin.bmp");
+                        if (boundary_origin.isNull() ||
+                            field_scene.hotel_karma_screen()
+                                    .state().cursor.column != 0U ||
+                            field_scene.hotel_karma_screen()
+                                    .state().cursor.row != 0U) {
+                            return profile_failure(
+                                "the Hotel Karma boundary audit did not start on Body");
+                        }
+                        press_profile_button(0x04U); // Left at column 0.
+                        const auto left_at_origin = capture(
+                            profile_directory / "left-at-origin.bmp");
+                        if (field_scene.hotel_karma_screen()
+                                    .state().cursor.column != 0U ||
+                            field_scene.hotel_karma_screen()
+                                    .state().cursor.row != 0U ||
+                            !profile_gameplay_fields_unchanged() ||
+                            field_scene.hotel_karma_screen().message() !=
+                                AttributesSkillsMenuMessage::none ||
+                            left_at_origin.isNull() ||
+                            left_at_origin != boundary_origin) {
+                            return profile_failure(
+                                "Left at Body changed the ROM cursor, runner, message, or pixels");
+                        }
+                        ++boundary_frames;
+                        press_profile_button(0x01U); // Up at row 0.
+                        const auto up_at_origin = capture(
+                            profile_directory / "up-at-origin.bmp");
+                        if (field_scene.hotel_karma_screen()
+                                    .state().cursor.column != 0U ||
+                            field_scene.hotel_karma_screen()
+                                    .state().cursor.row != 0U ||
+                            !profile_gameplay_fields_unchanged() ||
+                            field_scene.hotel_karma_screen().message() !=
+                                AttributesSkillsMenuMessage::none ||
+                            up_at_origin.isNull() ||
+                            up_at_origin != boundary_origin) {
+                            return profile_failure(
+                                "Up at Body changed the ROM cursor, runner, message, or pixels");
+                        }
+                        ++boundary_frames;
 
                         const auto check_current = [&] (
                             const std::uint8_t column,
@@ -45615,6 +45688,53 @@ int main(int argc, char** argv) {
                                     "the second column failed its source/profile/pixel checks");
                             }
                         }
+
+                        // The opposite grid corner clamps Right and Down in
+                        // ROM 0xD01C. Check the selected label/value and the
+                        // whole frame after each rejected boundary input.
+                        const auto bottom_right = capture(
+                            profile_directory /
+                                "direction-boundary-bottom-right.bmp");
+                        if (bottom_right.isNull() ||
+                            field_scene.hotel_karma_screen()
+                                    .state().cursor.column != 1U ||
+                            field_scene.hotel_karma_screen()
+                                    .state().cursor.row != 9U) {
+                            return profile_failure(
+                                "the Hotel Karma boundary audit did not reach the last cell");
+                        }
+                        press_profile_button(0x08U); // Right at column 1.
+                        const auto right_at_bottom = capture(
+                            profile_directory / "right-at-bottom.bmp");
+                        if (field_scene.hotel_karma_screen()
+                                    .state().cursor.column != 1U ||
+                            field_scene.hotel_karma_screen()
+                                    .state().cursor.row != 9U ||
+                            !profile_gameplay_fields_unchanged() ||
+                            field_scene.hotel_karma_screen().message() !=
+                                AttributesSkillsMenuMessage::none ||
+                            right_at_bottom.isNull() ||
+                            right_at_bottom != bottom_right) {
+                            return profile_failure(
+                                "Right at the last cell changed the ROM cursor, runner, message, or pixels");
+                        }
+                        ++boundary_frames;
+                        press_profile_button(0x02U); // Down at row 9.
+                        const auto down_at_bottom = capture(
+                            profile_directory / "down-at-bottom.bmp");
+                        if (field_scene.hotel_karma_screen()
+                                    .state().cursor.column != 1U ||
+                            field_scene.hotel_karma_screen()
+                                    .state().cursor.row != 9U ||
+                            !profile_gameplay_fields_unchanged() ||
+                            field_scene.hotel_karma_screen().message() !=
+                                AttributesSkillsMenuMessage::none ||
+                            down_at_bottom.isNull() ||
+                            down_at_bottom != bottom_right) {
+                            return profile_failure(
+                                "Down at the last cell changed the ROM cursor, runner, message, or pixels");
+                        }
+                        ++boundary_frames;
 
                         const auto is_race_representative =
                             race_representatives[profile.species_index] ==
@@ -45871,7 +45991,10 @@ int main(int argc, char** argv) {
                             return profile_failure(
                                 "A did not reopen the confirmation with Yes selected");
                         }
-                        press_profile_button(0x40U); // A buys Body +1.
+                        // Match the supplied Karma replay's four-frame A
+                        // hold. ROM 0x195C emits one new-press edge, so this
+                        // must buy exactly once while A remains held.
+                        hold_profile_button(0x40U, 4U);
                         const auto applied_frame = capture(
                             profile_directory / "upgrade-applied.bmp");
                         const auto& applied_record =
