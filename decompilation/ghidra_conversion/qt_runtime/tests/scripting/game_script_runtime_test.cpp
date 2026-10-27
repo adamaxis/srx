@@ -1099,6 +1099,7 @@ int main() {
                 candidate.entity_kind != 11U ||
                 candidate.palette_line != 3U ||
                 candidate.template_offset != 0x1D6988U ||
+                candidate.source_spawn_state_flags != 0x08U ||
                 candidate.selection_group !=
                     "scene-" + std::to_string(scene) + "-one-of-three" ||
                 candidate.activation_gate.find("choice 3 unreachable") ==
@@ -1531,8 +1532,8 @@ int main() {
                 first_candidate_scene->front().world_y == 0x0580U &&
                 first_candidate_scene->front().heading_word == 0xC000U &&
                 first_candidate_scene->front().direction == 6U &&
-                first_candidate_scene->front().ordered_overrides ==
-                    "0x9E=0x20,0x2E=0xC0,0x9E=0x08" &&
+                first_candidate_scene->front().source_spawn_state_flags ==
+                    0x08U &&
                 scripts.failure().empty(),
             "Lua did not return the typed ROM scene actor lists")) {
         const auto print_route = [](

@@ -851,7 +851,10 @@ ordinary slot-ordered actor path. Debug/Release `field_pedestrian_scenes_qa` ver
 the A8AE actor in Scene 34 at (0x1D00,0x4100), with the pedestrian profile in
 slot 3, and writes `scene-34-story-contact-actual.bmp`. The selector bridge
 also converts a chosen candidate row into a live pedestrian descriptor using
-the extracted template profile and ordered overrides. Debug/Release script QA
+the extracted template profile and typed final spawn flags. ROM `0x44BC`
+applies the list's byte overrides in order; the offline candidate extractor
+records the final `+0x9E` value as `source_spawn_state_flags`, so runtime code
+does not parse ROM offset strings. Debug/Release script QA
 accepts Employee Recruitment through Johnson's work menu for raw initializers
 5 and 11 at Matchstick and 12 at Caleb's booth, then verifies each normalized
 A800 choice through the typed request scan.

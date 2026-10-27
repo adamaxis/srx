@@ -19446,7 +19446,9 @@ int run_field_pedestrian_scenes_qa(
                 !default_guard_population_matches ||
                 actor->list_offset != expected->list_offset ||
                 actor->initial_heading != expected->heading_word ||
-                actor->spawn_state_flags != 0x08U || !actor->visible) {
+                actor->spawn_state_flags !=
+                    expected->source_spawn_state_flags ||
+                !actor->visible) {
                 std::cerr << "Pedestrian scenes QA: Scene " << scene
                           << " choice " << static_cast<unsigned>(choice)
                           << " projection mismatch actor_count="

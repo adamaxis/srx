@@ -1029,7 +1029,8 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
              "conditional_actor_candidates",
              {"scene", "choice", "entity_kind", "palette_line",
               "template_offset", "list_offset", "position_offset",
-              "world_x", "world_y", "heading_word", "direction"}},
+              "world_x", "world_y", "heading_word", "direction",
+              "source_spawn_state_flags"}},
         }};
         for (const auto& source_table : source_tables) {
             TsvDocument document;

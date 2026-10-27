@@ -6593,6 +6593,7 @@ GameScriptRuntime::conditional_actor_candidates_for_scene(
         std::uint32_t world_y = 0U;
         std::uint32_t heading_word = 0U;
         std::uint32_t direction = 0U;
+        std::uint32_t source_spawn_state_flags = 0U;
         const bool valid =
             read_field_integer(state, row_index, "scene", 55U, row_scene) &&
             row_scene == scene_id &&
@@ -6618,8 +6619,8 @@ GameScriptRuntime::conditional_actor_candidates_for_scene(
                                heading_word) &&
             read_field_integer(state, row_index, "direction", 7U,
                                direction) &&
-            read_field_text(state, row_index, "ordered_overrides",
-                            candidate.ordered_overrides, 512U) &&
+            read_field_integer(state, row_index, "source_spawn_state_flags",
+                               0xFFU, source_spawn_state_flags) &&
             read_field_text(state, row_index, "selection_group",
                             candidate.selection_group, 128U) &&
             read_field_text(state, row_index, "activation_gate",
@@ -6639,6 +6640,8 @@ GameScriptRuntime::conditional_actor_candidates_for_scene(
         candidate.world_y = static_cast<std::uint16_t>(world_y);
         candidate.heading_word = static_cast<std::uint16_t>(heading_word);
         candidate.direction = static_cast<std::uint8_t>(direction);
+        candidate.source_spawn_state_flags =
+            static_cast<std::uint8_t>(source_spawn_state_flags);
         previous_choice = choice;
         candidates.push_back(std::move(candidate));
         lua_pop(state, 1);

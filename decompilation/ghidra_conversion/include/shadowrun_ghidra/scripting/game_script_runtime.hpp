@@ -1170,7 +1170,8 @@ struct ScriptConditionalActorCandidate {
     std::uint16_t world_y = 0;
     std::uint16_t heading_word = 0;
     std::uint8_t direction = 0;
-    std::string ordered_overrides;
+    // Offline extraction resolves the ordered source writes to final state.
+    std::uint8_t source_spawn_state_flags = 0;
     std::string selection_group;
     std::string activation_gate;
 };

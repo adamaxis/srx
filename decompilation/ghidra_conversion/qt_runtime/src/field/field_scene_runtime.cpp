@@ -3068,40 +3068,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
                     actor.world_x = candidate->world_x;
                     actor.world_y = candidate->world_y;
                     actor.heading = candidate->heading_word;
-                    actor.ordered_overrides = candidate->ordered_overrides;
                     actor.source_spawn_state_flags =
-                        actor_template->source_spawn_state_flags;
-                    try {
-                        std::istringstream override_stream(
-                            candidate->ordered_overrides);
-                        std::string override_pair;
-                        while (std::getline(override_stream, override_pair, ',')) {
-                            const auto equals = override_pair.find('=');
-                            if (equals == std::string::npos) {
-                                throw std::invalid_argument(
-                                    "candidate override is missing '='");
-                            }
-                            const auto offset = std::stoul(
-                                override_pair.substr(0U, equals), nullptr, 0);
-                            const auto value = std::stoul(
-                                override_pair.substr(equals + 1U), nullptr, 0);
-                            if (offset == 0x9EU) {
-                                if (value > 0xFFU) {
-                                    throw std::out_of_range(
-                                        "candidate spawn flags exceed one byte");
-                                }
-                                actor.source_spawn_state_flags =
-                                    static_cast<std::uint8_t>(value);
-                            }
-                        }
-                    } catch (const std::exception& error) {
-                        failure_ = std::string(
-                            "A800 pedestrian override is invalid: ") +
-                            error.what();
-                        source_boundary(
-                            "field.conditional_actor.overrides_invalid");
-                        break;
-                    }
+                        candidate->source_spawn_state_flags;
                     actor.source_interaction_flags =
                         actor_template->source_interaction_flags;
                     actor.physical_meter = actor_template->physical_meter;

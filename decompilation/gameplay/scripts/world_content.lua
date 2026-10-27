@@ -389,7 +389,7 @@ function World.conditional_actor_candidates_for_scene(scene_id)
                 world_y = row.world_y,
                 heading_word = row.heading_word,
                 direction = row.direction,
-                ordered_overrides = row.ordered_overrides,
+                source_spawn_state_flags = row.source_spawn_state_flags,
                 selection_group = row.selection_group,
                 activation_gate = row.activation_gate,
             }

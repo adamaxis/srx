@@ -53,6 +53,7 @@ FIELDS = (
     "world_y",
     "heading_word",
     "direction",
+    "source_spawn_state_flags",
     "ordered_overrides",
     "selection_group",
     "activation_gate",
@@ -133,6 +134,9 @@ def parse_candidate(rom: bytes, scene: int, choice: int, list_offset: int) -> di
         raise ValueError(
             f"scene 0x{scene:02X} choice {choice}: actor state overrides changed"
         )
+    # 0x44BC applies byte overrides in order. Publish the final +0x9E value as
+    # a typed actor-state field so runtime code does not decode ROM offsets.
+    source_spawn_state_flags = override_pairs[2][1]
     heading_byte = override_pairs[1][1]
     heading_word = heading_byte << 8
 
@@ -159,6 +163,7 @@ def parse_candidate(rom: bytes, scene: int, choice: int, list_offset: int) -> di
         "world_y": str(world_y),
         "heading_word": str(heading_word),
         "direction": str(direction_from_heading(heading_word)),
+        "source_spawn_state_flags": str(source_spawn_state_flags),
         "ordered_overrides": overrides,
         "selection_group": f"scene-{scene:02d}-one-of-three",
         "activation_gate": ACTIVATION_GATE,

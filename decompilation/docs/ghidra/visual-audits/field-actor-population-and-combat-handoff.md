@@ -240,6 +240,15 @@ candidate scene is not covered by that matrix. Independent Genesis
 identification remains open; the physical Scene-34 lift-to-A8AE route has its
 own QA.
 
+The ROM candidate extractor validates the ordered writes consumed by
+`0x44BC` and emits the final `+0x9E` byte as typed
+`source_spawn_state_flags`. The raw `ordered_overrides` string remains in the
+offline TSV for source review and map inspection; `world_content.lua` and the
+field runtime consume the typed flag and no longer parse that offset string.
+Debug/Release script-runtime QA checks the typed flag on all 69 source rows,
+and `extract_field_actor_candidates.py --check` verifies the table against the
+US ROM.
+
 The same Debug/Release QA now exercises the A800 late gates with the natural
 initializer-5 registry state. On Scene 30, `FFE12C=4` / `FFF0C8=0` samples
 choice 1 before the index check and publishes no pedestrian. A direct child
