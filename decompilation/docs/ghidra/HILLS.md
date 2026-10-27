@@ -901,7 +901,13 @@ work path, saving the resulting registry state, and restoring it into field
 Lua before scene entry; Scene 22 choices 1/2 use initializers 11/12 and the
 remaining cases use initializer 5. This verifies the run-state persistence
 contract and actor projection, while the uninterrupted in-world
-Johnson-to-field route remains open. The ordinary-
+Johnson-to-field route remains open. A second Debug/Release case enters Scene
+30 with selected index 4/active index 0, confirms choice 1 is retained without
+an actor, then enters child resource Scene 34 with both indices at 4 and checks
+choice 1 at its ROM position despite an opposite RNG seed. The FFFC3C pending-
+spawn case similarly retains choice 2 from Scene 30 and publishes it in Scene
+34 after the pending flag clears. These are resource-entry tests, not a
+physical elevator-input route. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches
 the success page after the source 10-frame choice gate, requests sound `0x4B`,

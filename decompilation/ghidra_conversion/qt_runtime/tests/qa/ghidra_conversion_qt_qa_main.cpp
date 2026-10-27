@@ -18829,6 +18829,224 @@ bool accept_employee_offer_for_field_pedestrian_qa(
     return true;
 }
 
+bool verify_field_pedestrian_late_gate_retention_qa(
+    FieldSceneRuntime& field_scene, const std::filesystem::path& output) {
+    constexpr std::uint16_t kFirstScene = 30U;
+    constexpr std::uint16_t kChildScene = 34U;
+    constexpr std::uint8_t kSourceInitializer = 5U;
+
+    // ROM 0xA800 stores FFE183 before the FFE12C/FFF0C8 and FFFC3C
+    // comparisons. Scene 30's 0x1DB004 group contains child floor Scene 34;
+    // the elevator advances FFF0C8 while the selected FFE12C and choice stay
+    // live. Source clears are confined to 0x2A32/0x2A44, 0xC684, and 0x1E45E.
+    const auto stage_scene = [&field_scene]() {
+        field_scene.set_field_entity_world_position_for_dump(0x1000U,
+                                                              0x1000U);
+        return field_scene.reenter_field_scene_for_dump(1U);
+    };
+    const auto capture = [&field_scene, &output](const std::string_view name) {
+        const auto image = render_qa_field(field_scene);
+        const auto path = output / std::string(name);
+        return !image.isNull() &&
+            image.save(QString::fromStdWString(path.wstring()));
+    };
+    const auto expect_deferred =
+        [&field_scene, &capture, kFirstScene, kSourceInitializer](
+        const std::string_view artifact,
+        const std::optional<std::uint16_t> selected_effect_index,
+        const bool player_spawn_pending) {
+        if (field_scene.field_scene_reference_for_dump() != kFirstScene ||
+            field_scene.field_interaction_mode_for_dump() != 2U ||
+            field_scene.active_run_source_initializer_for_dump() !=
+                std::optional<std::uint8_t>{kSourceInitializer} ||
+            field_scene.active_effect_index_for_dump() !=
+                std::optional<std::uint16_t>{0U} ||
+            field_scene.selected_effect_index_for_dump() !=
+                selected_effect_index ||
+            field_scene.world_effect_player_spawn_pending_for_dump() !=
+                player_spawn_pending ||
+            field_scene.world_activity_script_actor_count_for_dump() != 0U ||
+            !capture(artifact)) {
+            std::cerr << "Pedestrian gate QA: A800 late gate did not defer "
+                         "the candidate as expected; scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << " selected_index="
+                      << (field_scene.selected_effect_index_for_dump()
+                              .has_value()
+                              ? std::to_string(*field_scene
+                                                    .selected_effect_index_for_dump())
+                              : std::string("missing"))
+                      << " player_spawn_pending="
+                      << field_scene.world_effect_player_spawn_pending_for_dump()
+                      << " actors="
+                      << field_scene.world_activity_script_actor_count_for_dump()
+                      << " failure=" << field_scene.failure() << '\n';
+            return false;
+        }
+        return true;
+    };
+    const auto expect_spawned_choice =
+        [&field_scene, &capture, kChildScene, kSourceInitializer](
+        const std::uint8_t choice, const std::string_view artifact) {
+        const auto candidates =
+            field_scene.conditional_actor_candidates_for_dump(kChildScene);
+        if (!candidates.has_value()) {
+            std::cerr << "Pedestrian gate QA: child-scene candidates are "
+                         "unavailable\n";
+            return false;
+        }
+        const auto expected = std::find_if(
+            candidates->begin(), candidates->end(),
+            [choice](const auto& candidate) {
+                return candidate.choice == choice;
+            });
+        const auto active_effect_index =
+            field_scene.active_effect_index_for_dump();
+        const auto selected_effect_index =
+            field_scene.selected_effect_index_for_dump();
+        if (expected != candidates->end()) {
+            const auto camera_x = expected->world_x >= 0x0800U
+                ? static_cast<std::uint16_t>(expected->world_x - 0x0800U)
+                : std::uint16_t{0U};
+            const auto camera_y = expected->world_y >= 0x0800U
+                ? static_cast<std::uint16_t>(expected->world_y - 0x0800U)
+                : std::uint16_t{0U};
+            field_scene.set_field_camera_world_position_for_dump(camera_x,
+                                                                  camera_y);
+        }
+        const auto actor =
+            field_scene.world_activity_script_actor_projection_for_dump(0U);
+        if (expected == candidates->end() || !actor ||
+            field_scene.field_scene_reference_for_dump() != kChildScene ||
+            field_scene.field_interaction_mode_for_dump() != 2U ||
+            field_scene.active_run_source_initializer_for_dump() !=
+                std::optional<std::uint8_t>{kSourceInitializer} ||
+            !active_effect_index.has_value() ||
+            selected_effect_index != active_effect_index ||
+            field_scene.world_effect_player_spawn_pending_for_dump() ||
+            field_scene.world_activity_script_actor_count_for_dump() != 1U ||
+            actor->list_offset != expected->list_offset ||
+            actor->world_position.x != expected->world_x ||
+            actor->world_position.y != expected->world_y ||
+            actor->profile_id != "pedestrian_k0b_none00" ||
+            actor->record_slot !=
+                std::optional<FieldWorldActorSlot>{
+                    FieldWorldActorSlot::slot_3} ||
+            actor->initial_heading != expected->heading_word ||
+            actor->spawn_state_flags != 0x08U || !actor->visible) {
+            std::cerr << "Pedestrian gate QA: child-scene actor did not reuse "
+                         "choice "
+                      << static_cast<unsigned>(choice) << "; scene="
+                      << field_scene.field_scene_reference_for_dump()
+                      << " actors="
+                      << field_scene.world_activity_script_actor_count_for_dump()
+                      << " expected_list="
+                      << (expected != candidates->end()
+                              ? std::to_string(expected->list_offset)
+                              : std::string("missing"))
+                      << " actual_list="
+                      << (actor ? std::to_string(actor->list_offset)
+                                : std::string("missing"))
+                      << " actual_position="
+                      << (actor
+                              ? std::to_string(actor->world_position.x) + "," +
+                                    std::to_string(actor->world_position.y)
+                              : std::string("missing"))
+                      << " active_index="
+                      << (active_effect_index.has_value()
+                              ? std::to_string(*active_effect_index)
+                              : std::string("missing"))
+                      << " selected_index="
+                      << (selected_effect_index.has_value()
+                              ? std::to_string(*selected_effect_index)
+                              : std::string("missing"))
+                      << " profile="
+                      << (actor ? actor->profile_id : std::string("missing"))
+                      << " slot="
+                      << (actor && actor->record_slot.has_value()
+                              ? std::to_string(static_cast<unsigned>(
+                                    *actor->record_slot))
+                              : std::string("missing"))
+                      << " heading="
+                      << (actor ? std::to_string(actor->initial_heading)
+                                : std::string("missing"))
+                      << " flags="
+                      << (actor
+                              ? std::to_string(actor->spawn_state_flags)
+                              : std::string("missing"))
+                      << " visible=" << (actor && actor->visible)
+                      << " failure=" << field_scene.failure() << '\n';
+            return false;
+        }
+        if (!capture(artifact)) {
+            std::cerr << "Pedestrian gate QA: could not write " << artifact
+                      << '\n';
+            return false;
+        }
+        const auto consumed =
+            field_scene.consume_conditional_actor_selection_choice_for_dump();
+        if (consumed != std::optional<std::uint8_t>{choice}) {
+            std::cerr << "Pedestrian gate QA: 0x1E45E consumed "
+                         "the wrong retained choice\n";
+            return false;
+        }
+        return true;
+    };
+
+    if (!stage_scene()) {
+        std::cerr << "Pedestrian gate QA: could not enter the staging scene: "
+                  << field_scene.failure() << '\n';
+        return false;
+    }
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        false, false, 0U, 4U);
+    field_scene.set_world_effect_player_spawn_pending_for_dump(false);
+    field_scene.set_source_random_seed_for_dump(0x0000U);
+    if (!field_scene.reenter_field_scene_for_dump(kFirstScene) ||
+        !expect_deferred("scene-30-index-mismatch-deferred-actual.bmp", 4U,
+                         false)) {
+        return false;
+    }
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        false, false, 4U, 4U);
+    field_scene.set_source_random_seed_for_dump(0x8000U);
+    if (!field_scene.reenter_field_scene_for_dump(kChildScene) ||
+        !expect_spawned_choice(1U,
+                               "scene-34-index-mismatch-choice-1-actual.bmp")) {
+        return false;
+    }
+
+    if (!stage_scene()) {
+        std::cerr << "Pedestrian gate QA: second staging entry failed: "
+                  << field_scene.failure() << '\n';
+        return false;
+    }
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        false, false, 0U, 0U);
+    field_scene.set_world_effect_player_spawn_pending_for_dump(true);
+    field_scene.set_source_random_seed_for_dump(0x8000U);
+    if (!field_scene.reenter_field_scene_for_dump(kFirstScene) ||
+        !expect_deferred("scene-30-player-spawn-pending-deferred-actual.bmp",
+                         0U, true)) {
+        return false;
+    }
+    field_scene.set_world_effect_player_spawn_pending_for_dump(false);
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        false, false, 4U, 4U);
+    field_scene.set_source_random_seed_for_dump(0x0000U);
+    if (!field_scene.reenter_field_scene_for_dump(kChildScene) ||
+        !expect_spawned_choice(
+            2U, "scene-34-player-spawn-pending-choice-2-actual.bmp")) {
+        return false;
+    }
+
+    std::cout << "field_pedestrian_late_gate_retention_qa=passed "
+                 "index_mismatch=choice_1 player_spawn_pending=choice_2 "
+                 "child_scene=34 actuals="
+              << output.string() << '\n';
+    return true;
+}
+
 int run_field_pedestrian_scenes_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -19075,6 +19293,10 @@ int run_field_pedestrian_scenes_qa(
               << candidate_cases << " actuals="
               << output.string() << " manifest="
               << candidate_manifest_path.string() << '\n';
+    if (!verify_field_pedestrian_late_gate_retention_qa(field_scene,
+                                                         output)) {
+        return 3;
+    }
 
     // ROM default lists 0x17D660 and 0x18A73A contain three pedestrians
     // each. Scene 2 remains covered by its separate opening/return QA.

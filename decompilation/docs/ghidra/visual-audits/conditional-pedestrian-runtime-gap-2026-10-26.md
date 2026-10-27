@@ -360,7 +360,18 @@ it into field Lua before each scene entry and ordinary actor publication.
 Scene 21 writes `scene-21-choice-{1,2}-actual.bmp`; the manifest records each
 source initializer. The Debug/Release candidate BMP hashes match. This proves
 the accepted-registry persistence contract and field projection in QA, not a
-single uninterrupted in-world Johnson-to-field route. No independent
+single uninterrupted in-world Johnson-to-field route. Late-gate QA enters
+Scene 30 with `FFE12C=4` and `FFF0C8=0`, verifies that the sampled choice is
+retained without an actor, then enters child resource Scene 34 with both words
+at 4 and an opposite random seed; the actor uses the original choice. The
+separate `FFFC3C` case samples choice 2 while player-spawn is pending, then
+publishes that choice in Scene 34 after clearing the pending flag. Debug and
+Release pass, and all 55 QA BMP hashes match. These use destination resource
+entry rather than physical elevator input. The captures are
+`scene-30-index-mismatch-deferred-actual.bmp`,
+`scene-34-index-mismatch-choice-1-actual.bmp`,
+`scene-30-player-spawn-pending-deferred-actual.bmp`, and
+`scene-34-player-spawn-pending-choice-2-actual.bmp`. No independent
 Genesis capture identifies this candidate,
 Scene 34, the A8AE actor, or the contact conversation;
 the BMPs remain internal runtime regression evidence only.
@@ -467,9 +478,9 @@ independent Genesis animation or map comparison.
 Next, cover the record-90 Electronics outcome and insufficient-passkey branch.
 The ordinary Scene-34 route to A8AE is now established. Cover
 the Electronics results with the live runner's class, skill, inventory, and
-source RNG inputs. Carry the naturally accepted registry state through field
-entry and actor projection, then exercise player-spawn pending, index mismatch,
-and choice persistence across a child-scene transition. Then match a real
-capture to the selected scene and live actor record; the current internal BMPs
-are regression artifacts, not an independent visual oracle. The pedestrian
-population hill remains partial.
+source RNG inputs. The accepted-registry persistence seam and both late-gate
+choice-retention branches now pass field resource-entry QA; the uninterrupted
+in-world Johnson-to-field route and physical elevator-input route remain open.
+Then match a real capture to the selected scene and live actor record; the
+current internal BMPs are regression artifacts, not an independent visual
+oracle. The pedestrian population hill remains partial.

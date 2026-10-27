@@ -235,6 +235,18 @@ field projection; the uninterrupted in-world Johnson-to-field route remains
 open. Independent Genesis identification and the physical Scene-34
 lift-to-A8AE route remain open.
 
+The same Debug/Release QA now exercises the A800 late gates with the natural
+initializer-5 registry state. On Scene 30, `FFE12C=4` / `FFF0C8=0` samples
+choice 1 before the index check and publishes no pedestrian. A direct child
+resource entry to Scene 34 uses matching index 4 and an opposite RNG seed; the
+Scene-34 actor still matches choice 1. A separate Scene-30 case sets `FFFC3C`
+pending, samples choice 2 with equal index 0, and publishes no actor. Scene 34
+then clears the pending flag, matches index 4, and publishes choice 2 despite
+the opposite seed. The QA captures both deferred and child-entry frames and
+consumes `FFE183` through the typed `0x1E45E` callback after publication. This
+verifies persistence over destination resource entry, not elevator input or
+the full in-world route.
+
 Independent longplay contact sheets contain map frames with pedestrian-like
 actors (for example around `02:58:10` in Section 41), but those frames do not
 identify the ROM scene, active run type, selected resource index, or actor
