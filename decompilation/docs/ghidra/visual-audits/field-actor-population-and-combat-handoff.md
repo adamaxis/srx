@@ -286,12 +286,23 @@ See the dedicated trace in
 `conditional-pedestrian-runtime-gap-2026-10-26.md`; this lifecycle remains
 partial.
 
-Independent longplay contact sheets contain map frames with pedestrian-like
-actors (for example around `02:58:10` in Section 41), but those frames do not
-identify the ROM scene, active run type, selected resource index, or actor
-record. They therefore do not yet prove that a specific `0xA800` candidate
-was live. The 69 positions remain candidate inputs pending a route-matched
-capture and the runtime gates above.
+Independent capture `video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_41_source_10620-10815/frame_002100.png`
+contains two small figures in the field view. A grayscale
+`TM_CCOEFF_NORMED` match of the left 260x224 pixels against the extracted map
+assets selects `mode-5.bmp` at offset `(895,800)` with score `0.9336`; the next
+map result is `mode-2.bmp` at `0.5236`. This identifies the map resource as
+Scene 5, but not either figure's source actor record.
+
+**[C]** Scene 5's default list at `0x67994` contains three kind-11 pedestrian
+rows using template `0x1D6988` and position data beginning at `0x679F0`.
+Source `0x1684C` sets world mode 1 for scenes below `0x15`; the random
+pedestrian branch at `0xA800` requires world mode 2 and indexes its candidate
+table only for scenes `0x15..0x2B`. The screenshot therefore does not support
+the claim that this figure came from the random candidate branch. It is
+consistent with Scene 5's default pedestrian population, but the frame does
+not reveal FFE180/FFE182, the actor record, or which visible figure is Joshua.
+The 69 A800 positions remain candidate inputs pending a route-matched capture
+from one of their source scenes and visible gate state.
 
 All 69 choices contain one root-tagged `0x1D6988` pedestrian template (kind
 11, palette line 3, no initial item/spell action), one position, and the same
