@@ -20,13 +20,18 @@ int main() {
     std::vector<int> events;
     std::optional<ExitEffectSlotGroup> cleared_group;
     std::vector<FieldModeExitServicePhase> service_phases;
+    bool reset_callback_saw_cleared_rom_state = false;
     const auto result = finalize_field_mode_exit_transition(
         state,
         {[&](const ExitEffectSlotGroup group) {
              cleared_group = group;
              events.push_back(1);
          },
-         [&] { events.push_back(2); },
+         [&] {
+             reset_callback_saw_cleared_rom_state =
+                 state.exit_mode == 0xFFU && state.transition_flags == 0U;
+             events.push_back(2);
+         },
          [&](const FieldModeExitServicePhase phase) {
              service_phases.push_back(phase);
              events.push_back(phase == FieldModeExitServicePhase::mode_specific_cleanup
@@ -49,6 +54,7 @@ int main() {
         service_phases != std::vector<FieldModeExitServicePhase>{
                                FieldModeExitServicePhase::mode_specific_cleanup,
                                FieldModeExitServicePhase::common_state_refresh} ||
+        !reset_callback_saw_cleared_rom_state || state.exit_mode != 0xFFU ||
         state.effect_transition_marker != 0U ||
         state.effect_animation_marker != 0U || state.mode_prompt_pending != 0U ||
         state.mode_five_effect_marker != 0U ||
@@ -79,7 +85,7 @@ int main() {
          {},
          {}});
     if (!mode_two_result.mode_specific_cleanup_ran ||
-        mode_two.transition_flags != 0U ||
+        mode_two.exit_mode != 0xFFU || mode_two.transition_flags != 0U ||
         (mode_two.effect_service_flags & (1UL << 9U)) != 0U ||
         (mode_two.effect_service_flags & 0x05U) != 0x05U) {
         return 2;
@@ -108,6 +114,7 @@ int main() {
          [&] { conditional_actor_choice_cleared = true; }});
     if (rejected_result.mode_specific_cleanup_ran || cleared ||
         conditional_actor_choice_cleared || rejected.transition_flags != 0x81U ||
+        rejected.exit_mode != 5U ||
         common_services != 1) {
         return 3;
     }

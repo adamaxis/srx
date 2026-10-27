@@ -16,7 +16,9 @@ void run_mode_specific_cleanup(
     if (callbacks.clear_high_effect_slots) {
         callbacks.clear_high_effect_slots(group);
     }
-    // ROM 0x1E68C clears the complete FFFC1C byte after any 0x1DED8 sweep.
+    // ROM 0x1E68C writes 0xFFFF to FFFBEC, resetting FFFBED and its paired
+    // context byte, then clears the complete FFFC1C byte.
+    state.exit_mode = 0xFFU;
     state.transition_flags = 0U;
     if (callbacks.reset_world_effect_globals) {
         callbacks.reset_world_effect_globals();

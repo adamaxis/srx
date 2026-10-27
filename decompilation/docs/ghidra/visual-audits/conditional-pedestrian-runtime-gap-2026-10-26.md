@@ -954,9 +954,12 @@ The Qt contact path now carries the successful generic-contact callback into
 typed field-exit state: ROM `0xA800` selects mode 5 (`FFFBED=5`), and
 `0x1F146` sets `FFFC1C` bit 0 while preserving its independent bit-7 mirror.
 The accepted mode-5 branch in `finalize_field_mode_exit_transition` clears the
-Lua-owned `FFE183` choice before its high-slot cleanup and clears the complete
-typed `FFFC1C` byte at the `0x1E68C` cleanup boundary. Its focused CTest covers
-accepted cleanup ordering and the rejected bit-7 branch; physical Scene-30 and
+Lua-owned `FFE183` choice before its high-slot cleanup. ROM `0xC69A` calls
+`0x1E68C`, whose `move.w #-1,(FFFBEC)` resets the typed `FFFBED` selector to
+`0xFF` and whose following byte clear resets the complete typed `FFFC1C` flag.
+The native cleanup publishes both resets before its cleanup callback. Its
+focused CTest covers accepted cleanup ordering and the rejected bit-7 branch;
+physical Scene-30 and
 Scene-38 contact QA asserts the published mode and bit 0. Those contact tests
 still consume the choice through the `0x1E45E` QA seam: they do not establish
 the physical trigger for automatic `0x1E43C` processing or the direct

@@ -1004,7 +1004,7 @@ transfer; Scene 30 choice 2 uses A. The shared `0x1F3C4` no-options wait has a
 separate Debug/Release input sweep for A/B/C/Start and all four D-pad events
 after its 31-frame host lockout; neutral and low-byte input leave the page open.
 Both physical cases keep FFE183 through the page and consume it only at the
-`0x1E45E` QA seam. All 93 generated artifacts match between Debug and Release
+`0x1E45E` QA seam. All 96 generated artifacts match between Debug and Release
 by SHA-256. The bounded ROM census finds only a direct `FFDF42` read at
 `0x0A68` and clear at `0x0A9E`; dynamic aliases remain unresolved. The typed
 host callback at `0x1F16A` now dispatches on the next eligible coordinator
