@@ -29,13 +29,14 @@ local function context(overrides)
     return value
 end
 
-local function actor_row(source_order)
+local function actor_row(source_order, sequence_list_offset, placement_rule)
     return {
         scene = 2,
         context_group = 0,
         random_sum = E.FieldEncounter.SOURCE_SEQUENCE_SENTINEL,
         selection_cell_offset = 0,
-        sequence_list_offset = E.FieldEncounter.ALARM_SEQUENCE_LIST_ADDRESS,
+        sequence_list_offset = sequence_list_offset or
+            E.FieldEncounter.ALARM_SEQUENCE_LIST_ADDRESS,
         source_order = source_order,
         actor_name = "corp guard",
         profile_id = "corp_guard_k05_item06",
@@ -54,8 +55,8 @@ local function actor_row(source_order)
         tagged_template = E.FieldEncounter.ALARM_ACTOR_TEMPLATE_ADDRESS,
         template_offset = E.FieldEncounter.ALARM_ACTOR_TEMPLATE_ADDRESS,
         ordered_overrides = "-",
-        placement_rule =
-            "map-derived candidates around camera-relative map anchors",
+        placement_rule = placement_rule or
+            "open screen-edge candidates based on the current viewport and terrain",
         physical_meter = 10,
         delay_primary_attribute = 3,
         delay_secondary_attribute = 2,
@@ -115,6 +116,10 @@ game = {
             dynamic_world_activity_actors = {
                 actor_row(1),
                 actor_row(0),
+                actor_row(1, 0x1D6FD0,
+                    "map-derived candidates around camera-relative map anchors"),
+                actor_row(0, 0x1D6FD0,
+                    "map-derived candidates around camera-relative map anchors"),
             },
         },
     },
@@ -161,8 +166,11 @@ eq(alarm_sequence.kind, "dynamic_world_effect_sequence",
 eq(alarm_sequence.sequence_list_offset,
    E.FieldEncounter.ALARM_SEQUENCE_LIST_ADDRESS,
    "alarm sequence retains the 0x1E20A table provenance")
-eq(alarm_sequence.placement_policy, "map_derived_candidates",
-   "alarm sequence uses the ROM 0x1E302 map placement path")
+eq(alarm_sequence.placement_policy, "screen_edge_candidates",
+   "alarm sequence uses the ROM 0x1E302 screen-edge placement path")
+eq(alarm_sequence.actors[1].placement_rule,
+   "open screen-edge candidates based on the current viewport and terrain",
+   "alarm rows retain the source-derived placement metadata")
 eq(#alarm_sequence.actors, 2, "alarm table resolves its two actor pointers")
 eq(alarm_sequence.actors[1].source_order, 0,
    "alarm actors retain source order")
@@ -173,5 +181,11 @@ eq(alarm_sequence.actors[1].source_spawn_state_flags,
    E.ActorFlag.SPOTTED | E.ActorFlag.REINFORCEMENT |
        E.ActorFlag.RUNNER | E.ActorFlag.HOSTILE,
    "alarm actor template flags are preserved for the common spawn path")
+
+local map_sequence = Encounters.resolve_source_sequence(2, 0x1D6FD0)
+eq(map_sequence.placement_policy, "map_derived_candidates",
+   "named map-derived source lists retain their placement path")
+eq(#map_sequence.actors, 2,
+   "named map-derived source list retains both actor rows")
 
 print(("field encounter tests passed (%d checks)"):format(checks))

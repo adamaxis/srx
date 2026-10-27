@@ -74,10 +74,10 @@ sound `0x30`. A successful projected-terrain mark at `0x167D8` clears both
 
 The separate encounter selector called from `0x1E166` also changes while the
 alarm is active: it bypasses the `FFDF84` gate and uses the table at `0x1E20A`
-instead of `0x59986` [C]. That alarm-specific encounter table is not connected
-to the current typed encounter outcome seam [H], so this change ports the
-alarm state lifecycle and reinforcement request only; the alarm-specific
-random-encounter table remains a source boundary.
+instead of `0x59986` [C]. The typed encounter outcome resolves that fixed list
+from Lua content. Since `0x1E1E0` clears `D0`, the list uses the screen-edge
+candidate branch at `0x1E302`; the map-derived `0x1E40C` branch is reserved for
+calls that enter `0x1E216` with nonzero `D0`.
 
 ### Shared dice-pool check (`0x0DBA`)
 

@@ -123,6 +123,18 @@ local function ordered_actor_rows(data, predicate)
     return actors
 end
 
+local function placement_policy_for_rule(placement_rule)
+    if placement_rule ==
+       "open screen-edge candidates based on the current viewport and terrain" then
+        return "screen_edge_candidates"
+    end
+    if placement_rule ==
+       "map-derived candidates around camera-relative map anchors" then
+        return "map_derived_candidates"
+    end
+    return nil
+end
+
 -- ROM 0x1E166 owns the encounter attempt policy. The host supplies typed
 -- world facts and performs the source PRNG draw only when this function asks
 -- for one, so blocked/not-due field passes do not consume random state.
@@ -228,14 +240,8 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
             return nil
         end
     end
-    local placement_policy
-    if placement_rule ==
-       "open screen-edge candidates based on the current viewport and terrain" then
-        placement_policy = "screen_edge_candidates"
-    elseif placement_rule ==
-       "map-derived candidates around camera-relative map anchors" then
-        placement_policy = "map_derived_candidates"
-    else
+    local placement_policy = placement_policy_for_rule(placement_rule)
+    if placement_policy == nil then
         return nil
     end
     return {
@@ -300,16 +306,24 @@ function Encounters.resolve_source_sequence(scene_id, sequence_list_offset)
     local actors = ordered_actor_rows(data, function(row)
         return row.scene == scene_id and
                row.random_sum == E.FieldEncounter.SOURCE_SEQUENCE_SENTINEL and
-               row.sequence_list_offset == sequence_list_offset and
-               row.placement_rule ==
-                   "map-derived candidates around camera-relative map anchors"
+               row.sequence_list_offset == sequence_list_offset
     end)
     if #actors == 0 then
         return nil
     end
+    local placement_rule = actors[1].placement_rule
+    for _, actor in ipairs(actors) do
+        if actor.placement_rule ~= placement_rule then
+            return nil
+        end
+    end
+    local placement_policy = placement_policy_for_rule(placement_rule)
+    if placement_policy == nil then
+        return nil
+    end
     return {
         kind = "dynamic_world_effect_sequence",
-        placement_policy = "map_derived_candidates",
+        placement_policy = placement_policy,
         scene = scene_id,
         context_group = 0,
         random_sum = 0,

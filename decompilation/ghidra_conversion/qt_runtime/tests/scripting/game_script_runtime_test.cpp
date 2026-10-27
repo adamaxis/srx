@@ -1536,7 +1536,7 @@ int main() {
                         dynamic_world_effect_sequence &&
                 alarm_alternate_sequence->placement_policy ==
                     ScriptFieldEncounterPlacementPolicy::
-                        map_derived_candidates &&
+                        screen_edge_candidates &&
                 alarm_alternate_sequence->actors.size() == 2U &&
                 alarm_alternate_sequence->actors[0].template_offset ==
                     static_cast<std::uint32_t>(srx::v(

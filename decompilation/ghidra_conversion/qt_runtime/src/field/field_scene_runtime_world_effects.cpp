@@ -497,7 +497,7 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
             outcome->kind != scripting::
                 ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence ||
             outcome->placement_policy != scripting::
-                ScriptFieldEncounterPlacementPolicy::map_derived_candidates) {
+                ScriptFieldEncounterPlacementPolicy::screen_edge_candidates) {
             failure_ = game_scripts_.failure().empty()
                 ? "ROM alarm alternate actor list is unavailable"
                 : game_scripts_.failure();

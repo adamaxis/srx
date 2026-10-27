@@ -19,8 +19,10 @@ Once all gates pass, `0x1E1AE..0x1E1B2` applies mask `0x03FF` and compares
 against 10. `0x1E1BC..0x1E1CA` calls `0xD44` and accepts only a draw below
 `FFDE18`. With `FFE16F` set, `0x1E1DA` selects the longword list at
 `0x1E20A`; its two entries both point to template `0x1D6A1C`, followed by a
-zero terminator. `0x1E216` sends this list to the map-derived spawn path, and
-`0x1E25A` applies the common encounter actor setup.
+zero terminator. `0x1E1E0` clears `D0` before the call to `0x1E216`. That
+helper branches on `D0` and sends zero to the screen-edge candidate builder at
+`0x1E302`; nonzero selects the map-derived builder at `0x1E40C`. The shared
+spawn at `0x1E25A` applies the common encounter actor setup.
 
 The source-derived gate facts and alarm table address live in
 `decompilation/gameplay/scripts/enums.lua`; the active Qt runtime only supplies

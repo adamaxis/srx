@@ -9822,7 +9822,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
     }
     // ROM 0x1E1DA selects the fixed two-entry alternate table at 0x1E20A
     // when FFE16F is active. Both longwords point at template 0x1D6A1C;
-    // 0x1E216 sends this list through the map-derived candidate spawner.
+    // 0x1E1E0 clears D0 before 0x1E216, selecting its screen-edge candidate
+    // branch at 0x1E302 rather than the map-derived branch at 0x1E40C.
     {
         const auto alarm_list_offset = static_cast<std::uint32_t>(
             srx::v(srx::FieldEncounter::ALARM_SEQUENCE_LIST_ADDRESS));
@@ -9962,7 +9963,6 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     template_facts.auxiliary_roll_bonus;
                 actor.sprite_stem = sprite_stem;
                 actor.ordered_overrides = "-";
-                actor.map_derived_placement = true;
                 dynamic_world_actor_records.push_back(std::move(actor));
             }
         }
