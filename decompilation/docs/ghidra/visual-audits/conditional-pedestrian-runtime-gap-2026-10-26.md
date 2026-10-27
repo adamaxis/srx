@@ -767,6 +767,24 @@ guard. Scene 30 choice 2 uses A; Scene 38 choice 1 now uses B. This adds
 physical input coverage for another scene, the other reachable random result,
 and both button dismissals.
 
+### Contact-page frame inspection
+
+I inspected the full 320x224 Scene-30 and Scene-38 contact frames. Both show
+the same portrait at the left of the no-options dialogue window and the text
+`Hey! There you are.` / `Let's go. My new employer is waiting.` without any
+choice rows. The two page BMPs are byte-identical across scenes and across
+Debug/Release, SHA-256
+`5e3f21af532a86afb2f0da0221b7eb116c2c56cfedc31dfb116b203dbffa8981`.
+Their closed-field frames differ, retaining each scene's map and actor/player
+positions.
+
+This payload-to-frame match is consistent with ROM `0x1F146` loading text
+through `0xFDE3E -> 0xFE1F7`, portrait profile `0x121FF4`, and the following
+no-options sentinel before the shared `0x1F3C4` wait. It confirms the host
+shows the expected text and portrait consistently for both contacts; it is
+not a Genesis pixel comparison. An independent, route-matched capture of this
+specific page remains open.
+
 ## No-options controller event sweep
 
 **[C]** ROM `0x1F3C4` sends a no-options text record through `0x1F592`, which

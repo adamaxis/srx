@@ -310,6 +310,18 @@ assets selects `mode-5.bmp` at offset `(895,800)` with score `0.9336`; the next
 map result is `mode-2.bmp` at `0.5236`. This identifies the map resource as
 Scene 5, but not either figure's source actor record.
 
+A masked BGR `TM_CCORR_NORMED` sweep of the two visible sprite crops against
+the extracted actor idle/walk frames ranks the left blue figure as
+`actor-kind-9-palette-1-walk-dir-6-frame-0.bmp` (score `0.9447`); the best
+kind-11 pedestrian template for that crop scores `0.5919`. The center brown
+figure ranks as `actor-kind-3-palette-3-walk-dir-6-frame-0.bmp` (`0.8909`),
+while its best kind-11 pedestrian template scores `0.7074`. The approximate
+crop windows are `(0,82)..(34,132)` and `(88,92)..(126,139)` respectively.
+This visual ranking favors other actor art over the kind-11 pedestrian, but
+it does not identify either actor record, party membership, or the visible
+RAM state; treat the classification as **[H]** rather than proof that Scene
+5's pedestrians are absent.
+
 **[C]** Scene 5's default list at `0x67994` contains three kind-11 pedestrian
 rows using template `0x1D6988` and position data beginning at `0x679F0`.
 Source `0x1684C` sets world mode 1 for scenes below `0x15`; the random
