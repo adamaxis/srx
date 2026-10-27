@@ -13,8 +13,10 @@ queues and publishes the selected A8AE story actor and randomized candidate
 rows through the ordinary actor path. The Qt `0x286E` callback now scans the
 typed active/effect state and publishes the `0x1E4AC` fallback through the Lua
 actor service at Joshua x+`0x80` / y. Debug/Release QA covers the spawn and the
-following duplicate-suppression pass. Physical randomized-candidate contact
-and an independent Genesis comparison remain open. The
+following duplicate-suppression pass. Debug/Release QA also walks into the
+randomized candidates in Scene 30 choice 2 and Scene 38 choice 1 after
+resource-scene reentry; source-valid travel to those scenes and an independent
+Genesis comparison remain open. The
 Scene-3/event-3 branch is represented by a Lua entry graph and gated route;
 Debug/Release physical QA walks record 95, checks the `0xF4BB4` page and
 `0x12209C` portrait, then resumes through the event-table route into Scene 30.
@@ -413,8 +415,8 @@ finds that record instead of duplicating it. The captures are internal Qt
 images, not independent Genesis evidence; the Debug and Release fallback
 captures have matching SHA-256
 `E95E506ACB226E1F43B3D2665401F06A88008A67B5F8F27C9ECA61CFEBCF9FB0`. This
-remains a partial hill because the physical randomized-candidate contact route
-and a route-matched Genesis capture are still open.
+remains a partial hill because source-valid candidate-scene travel and a
+route-matched Genesis capture are still open.
 
 ## Active runtime boundary
 
