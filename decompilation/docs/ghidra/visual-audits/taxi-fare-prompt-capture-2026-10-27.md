@@ -17,12 +17,34 @@ The longplay segment is
 | `frame_002425.png` | `02:58:20.833` | Follow-up page says `Hop in, chum.` |
 | `frame_002430.png` | `02:58:21.000` | `Hop in, chum.` remains visible. |
 | `frame_002460.png` | `02:58:22.000` | Dialogue has closed; the display is in the travel transition. |
-| `frame_002600.png` | `02:58:26.667` | Field map is visible again; the exact scene is not identified by the capture. |
+| `frame_002600.png` | `02:58:26.667` | Field map is visible again after the ride. |
 
 The quote and follow-up are one observed path through the fare prompt. The
 screen sequence supports a selection of `Sure thing, Cabbie.` followed by the
 normal `Hop in, chum.` result. It does not show the wallet before and after,
 so the exact 40-nuyen debit is source-derived rather than visually measured.
+
+### Post-ride destination map
+
+**[C]** I matched the 272x224 gameplay viewport, excluding the right HUD,
+against the 56 ROM-derived field map images. Both post-ride frames match
+Scene 1, whose ROM profile-table entry at `0x003236` resolves to profile
+`0x17D5C4`:
+
+| Frame | Scene/profile | Score | Map offset (pixels) |
+|---|---|---:|---:|
+| `frame_002600.png` | Scene 1 / `0x17D5C4` | 0.9405 | `(1064,1002)` |
+| `frame_002700.png` | Scene 1 / `0x17D5C4` | 0.9609 | `(1285,708)` |
+
+The ROM route agrees with that destination. `0x136B6` waits for the taxi
+dialogue handoff at `FFF0E0`, compares the accepted region byte `FFFBF8` with
+the current scene `FFDDC4`, then calls `0x136DE` with the selected byte when
+they differ. At `0xD445D`, cursor row 6 maps to region 1; its destination
+record at `0xD4482` names Puyallup. The `0x208FE` accepted-ride path writes
+that region, and the Lua taxi task retains it as the destination scene. The
+captured Scene-1 map therefore agrees with the accepted Puyallup ride. This
+identifies the destination map and supports the accepted branch; it does not
+measure the wallet debit or expose the player's other live state.
 
 ## ROM-to-display trace
 
