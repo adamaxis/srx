@@ -265,13 +265,28 @@ has 69 scene/choice rows and 50 unique list offsets. Directly reading the
 three-pointer arrays selected from `0x1EDB88` confirms all 69 manifest
 scene/choice pointers match the ROM.
 
-One additional tagged record begins at `0x1EE232`, adjacent to the Scene-41
-and Scene-42 candidate data. It is not an A800 choice: Scene 41 selects
-`[0x1EE1F6, 0x1EE214, 0x1EE214]`; Scene 42 selects
-`[0x1EE250, 0x1EE26E, 0x1EE28C]`. A scan found no big-endian literal ROM
-longword reference to `0x001EE232`. This establishes that the current
-`0x1EDB88` candidate table does not select it, not that every computed or
-indirect path to the record has been ruled out.
+**[C]** The three tagged references at `0x1D9212`, `0x1D921A`, and
+`0x1D9222` are the Scene-20 default-list pedestrian entries, not a separate
+spawn path. The mixed list begins at `0x1D91DA` and has eight actors (five
+corp guards followed by three pedestrians). Each pedestrian template pointer
+is followed by its position-list pointer: `0x1D922E`, `0x1D9238`, or
+`0x1D923E`. These three records are already included in the 21 rows of
+`default-actors.tsv`.
+
+[C] The tagged-pointer scan now reconciles all 74 US-ROM occurrences: 50
+unique selected A800 list offsets, 21 default-list pedestrians, the A8AE
+story actor, the `0x1E5FA` pending-list actor, and one unselected record at
+`0x1EE232`. The groups are disjoint and every occurrence is classified. The
+single unselected record is not selected by the A800 table: ROM `0x5BA98` indexes the
+outer scene table at `0x1EDB88` by `FFDDC4 - 0x15`, then indexes that scene's
+three choices by `FFE183 - 1`. Scene `0x29` (41) points to choice table
+`0x1EDC98`, whose entries are `[0x1EE1F6, 0x1EE214, 0x1EE214]`; Scene `0x2A`
+(42) points to `0x1EDCA4`, whose entries are
+`[0x1EE250, 0x1EE26E, 0x1EE28C]`. The `0x1EE232` record itself points to
+position data at `0x1EE24A` (`0x0780,0x3980`), but no A800 choice selects it,
+and a bytewise scan finds no `1E E2 32`, `00 1E E2 32`, or `80 1E E2 32`
+reference. **[H]** Another computed or indirect owner remains possible; this
+orphan does not establish a general pedestrian spawner.
 
 The other extracted literal pedestrian rows are bounded as follows:
 `default-actors.tsv` has 21 rows across scenes 0-5 and 20;
