@@ -6950,6 +6950,19 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.handle_world_activity_request =
         [this](integration::FieldRuntimeCoordinatorState& runtime) {
+            // ROM 0x1E45E consumes FFE183 before it scans actor records. Keep
+            // Lua authoritative and publish only that consumed byte to the
+            // typed routine model for this source pass.
+            const auto conditional_choice =
+                game_scripts_.consume_conditional_actor_selection_choice();
+            world_activity_request_state_.request_flag = 0U;
+            if (!conditional_choice.has_value()) {
+                failure_ = game_scripts_.failure();
+                source_boundary(
+                    "field.world_activity.conditional_actor_choice_unresolved");
+                return;
+            }
+            world_activity_request_state_.request_flag = *conditional_choice;
             std::array<WorldActivityRequestSlot,
                        kWorldActivityRequestSlotCount> request_slots{};
             const auto& entities = state_.behavior_entities;

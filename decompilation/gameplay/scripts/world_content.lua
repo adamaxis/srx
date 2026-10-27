@@ -405,6 +405,15 @@ function World.reset_conditional_actor_selection()
     conditional_actor_selection_choice = 0
 end
 
+-- ROM 0x1E45E consumes FFE183 before scanning the active actor records.
+-- Return the pending byte and clear it as one Lua-owned state transition so
+-- the host cannot observe one value and later clear a different one.
+function World.consume_conditional_actor_selection_choice()
+    local choice = conditional_actor_selection_choice
+    conditional_actor_selection_choice = 0
+    return choice
+end
+
 -- Lua-owned decision and FFE183 state for the A800 pending-list precedence
 -- and pedestrian branch. The choice remains here between source passes and
 -- returns even when a late index/spawn gate fails; source clear points call

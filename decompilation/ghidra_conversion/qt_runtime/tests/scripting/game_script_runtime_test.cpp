@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+#include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
 #include "enums.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_route_primitives_conversion.hpp"
@@ -354,6 +355,136 @@ bool verify_package_delivery_field_events(
                 std::optional<std::string>{"package_delivery"} &&
             !scripts.active_run_source_initializer().has_value(),
         "package run did not collect at origin, pay once at destination, and clear");
+}
+
+bool verify_employee_recruitment_pedestrian_request(
+    const std::filesystem::path& script_directory,
+    const std::filesystem::path& dialogue_text) {
+    using namespace shadowrun::ghidra_conversion;
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    GameScriptRuntime scripts;
+    if (!scripts.load_package(script_directory, dialogue_text)) {
+        return expect(false,
+                      "could not load the Employee Recruitment source offer");
+    }
+    scripts.set_story_state({{"mr_johnsons_flag_bit_5", true}});
+    scripts.set_location_context(
+        "building", "matchstick_strouther_booth",
+        "matchstick.julius_strouther", "julius_strouther");
+    scripts.set_field_mode_context(ScriptFieldModeContext{1U, 18U, 0});
+
+    auto task = scripts.start_task("johnson", "interaction");
+    if (!expect(task.status == ScriptTaskStep::Status::awaiting_native_operation &&
+                    task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_menu &&
+                    task.operation->menu.has_value() &&
+                    task.operation->menu->id == "opening",
+                "Matchstick's ordinary Johnson interaction did not open its root menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("work");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_say &&
+                    task.operation->dialogue.has_value() &&
+                    task.operation->dialogue->event_id == "work_opening",
+                "Matchstick's work choice skipped the source offer opening")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::service_call &&
+                    task.operation->service_id == "random.bounded_8",
+                "Matchstick's Johnson did not select from the eight ROM offer rows")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+
+    // ROM F3EBC context 1, row 2 is raw initializer 5. Follow its native
+    // negotiation, four-site target, and client draws through the real Lua
+    // Johnson/run scripts, then let the script accept its text-only offer.
+    task = scripts.complete_native_service_result("roll_2");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "runner.negotiation_skill",
+                "initializer-5 Employee Recruitment skipped Negotiation lookup")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_service_result("skill_3");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "random.bounded_16",
+                "initializer-5 Employee Recruitment used the wrong payment bound")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_service_result("roll_0");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "random.bounded_4",
+                "initializer-5 Employee Recruitment did not use its four-site pool")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_service_result("roll_0");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "random.bounded_12",
+                "initializer-5 Employee Recruitment skipped its client-name draw")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_service_result("roll_0");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_say,
+                "initializer-5 Employee Recruitment did not present its offer")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    const auto active_initializer = scripts.active_run_source_initializer();
+    if (!expect(task.status == ScriptTaskStep::Status::completed &&
+                    task.result_id == std::optional<std::string>{"accepted"} &&
+                    active_initializer == std::optional<std::uint8_t>{5U},
+                "accepted Matchstick offer did not retain raw initializer 5")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+
+    ScriptConditionalActorSelectionContext selection_facts{};
+    selection_facts.active_offer_source_initializer = *active_initializer;
+    selection_facts.world_mode = 2U;
+    selection_facts.active_effect_index = 0U;
+    selection_facts.selected_effect_index = 0U;
+    const auto selection = scripts.resolve_conditional_actor_selection(
+        0x15U, selection_facts,
+        [](const std::uint16_t bound) -> std::optional<std::uint16_t> {
+            return bound == 2U ? std::optional<std::uint16_t>{1U}
+                              : std::nullopt;
+        });
+    const auto consumed_choice =
+        scripts.consume_conditional_actor_selection_choice();
+
+    WorldActivityRoutineRequestState request_state{};
+    if (consumed_choice.has_value()) {
+        request_state.request_flag = *consumed_choice;
+    }
+    std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
+        request_slots{};
+    request_slots[0U] = WorldActivityRequestSlot{0x01U, 0x80U};
+    WorldActivityStartState activity{};
+    const bool activity_started = handle_world_activity_request(
+        request_state, request_slots, activity);
+    return expect(
+        selection.has_value() &&
+            selection->kind ==
+                ScriptConditionalActorSelectionKind::random_pedestrian &&
+            selection->selection_choice == 2U &&
+            selection->choice_changed && consumed_choice ==
+                std::optional<std::uint8_t>{2U} && activity_started &&
+            request_state.request_flag == 0U && request_state.found_marker == 0U &&
+            activity.activity_pointer == kWorldActivityRequestDescriptor &&
+            activity.timer_frames == 0x3CU,
+        "accepted raw initializer 5 did not flow through A800 into 0x1E43C");
 }
 
 bool verify_dialogue_graph_outcomes(
@@ -1021,6 +1152,28 @@ int main() {
                   << scripts.failure() << '\n';
         return 1;
     }
+    const auto consumed_conditional_choice =
+        scripts.consume_conditional_actor_selection_choice();
+    const auto empty_conditional_choice =
+        scripts.consume_conditional_actor_selection_choice();
+    const auto reselection_after_source_consume =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, wide_effect_context, conditional_roll(1U));
+    if (!expect(consumed_conditional_choice ==
+                    std::optional<std::uint8_t>{1U} &&
+                    empty_conditional_choice ==
+                    std::optional<std::uint8_t>{0U} &&
+                    reselection_after_source_consume.has_value() &&
+                    reselection_after_source_consume->kind ==
+                        ScriptConditionalActorSelectionKind::random_pedestrian &&
+                    reselection_after_source_consume->selection_choice == 2U &&
+                    reselection_after_source_consume->choice_changed &&
+                    conditional_random_calls == 6U,
+                "ROM 0x1E45E did not consume and clear the Lua FFE183 choice")) {
+        std::cerr << "conditional actor source consume failure: "
+                  << scripts.failure() << '\n';
+        return 1;
+    }
     if (!expect(
             spirit_eyes_entry_list.has_value() &&
                 spirit_eyes_entry_list->size() == 5U &&
@@ -1416,6 +1569,13 @@ int main() {
         return 3;
     }
     if (!verify_package_delivery_field_events(
+            SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
+            std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
+                "dialogue" / "script-text.json")) {
+        std::cerr << scripts.failure() << '\n';
+        return 3;
+    }
+    if (!verify_employee_recruitment_pedestrian_request(
             SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
             std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
                 "dialogue" / "script-text.json")) {

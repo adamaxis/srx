@@ -1845,6 +1845,9 @@ public:
     std::optional<std::vector<ScriptConditionalActorCandidate>>
     conditional_actor_candidates_for_scene(std::uint16_t scene_id);
     bool reset_conditional_actor_selection();
+    // ROM 0x1E45E tests and clears FFE183 before scanning actor records.
+    // Lua returns the pending selection byte while atomically clearing it.
+    std::optional<std::uint8_t> consume_conditional_actor_selection_choice();
     std::optional<ScriptConditionalActorSelection>
     resolve_conditional_actor_selection(
         std::uint16_t scene_id,

@@ -6679,6 +6679,46 @@ bool GameScriptRuntime::reset_conditional_actor_selection() {
     return true;
 }
 
+std::optional<std::uint8_t>
+GameScriptRuntime::consume_conditional_actor_selection_choice() {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure =
+            "Lua runtime is unavailable for A800 choice consumption";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<std::uint8_t> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("world_content")) {
+        return fail("gameplay script module is missing: world_content");
+    }
+    lua_getfield(state, -1, "consume_conditional_actor_selection_choice");
+    if (!lua_isfunction(state, -1)) {
+        return fail(
+            "world_content.consume_conditional_actor_selection_choice is missing");
+    }
+    lua_remove(state, -2);
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 0, 1, 0) != LUA_OK) {
+        return fail(
+            "world_content.consume_conditional_actor_selection_choice: " +
+            stack_error(state));
+    }
+    std::uint32_t choice = 0U;
+    if (!read_integer(state, -1, 0xFFU, choice)) {
+        return fail(
+            "conditional actor selection choice is outside byte range");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return static_cast<std::uint8_t>(choice);
+}
+
 std::optional<ScriptConditionalActorSelection>
 GameScriptRuntime::resolve_conditional_actor_selection(
     const std::uint16_t scene_id,
