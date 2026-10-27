@@ -304,6 +304,11 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
         // not used by player-side gameplay [C].
         world_activity_request_state_.request_flag = 0U;
         field_mode_exit_transition_state_.mode_five_effect_marker = 0U;
+        if (!game_scripts_.reset_conditional_actor_selection()) {
+            failure_ = game_scripts_.failure();
+            source_boundary(
+                "field.party_wipe.conditional_actor_selection_reset_failed");
+        }
         source_boundary("field.party_wipe.world_activity_request_cleared");
     }
     if ((*run_failure)[4] != 0) {
@@ -507,6 +512,11 @@ void FieldSceneRuntime::start_field_party_wake_transition() {
     world_activity_request_state_ = WorldActivityRoutineRequestState{};
     field_mode_exit_transition_state_.effect_animation_marker = 0U; // FFE182
     field_mode_exit_transition_state_.mode_five_effect_marker = 0U; // FFE183
+    if (!game_scripts_.reset_conditional_actor_selection()) {
+        failure_ = game_scripts_.failure();
+        source_boundary(
+            "field.party_wipe.conditional_actor_selection_reset_failed");
+    }
     world_frame_logic_state_.world_active = 0U; // FFDF84
     field_dialogue_scene_pending_destination_ = scene;
     field_dialogue_scene_pending_spawn_ = SceneRunnerPosition{

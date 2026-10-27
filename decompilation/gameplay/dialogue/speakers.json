@@ -244,6 +244,36 @@
       "portrait_alias": "dialogue.portraits.david.owlfeather",
       "text_profile": "salish.owlfeather"
     },
+    "aragorn_mitsuhama_narrator": {
+      "events": {
+        "mitsuhama_entry": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.owlfeather.page.mitsuhama_entry"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "dialogue.portraits.mitsuhama.after_hours_entry",
+      "text_profile": "salish.owlfeather"
+    },
+    "aragorn_mitsuhama_contact": {
+      "events": {
+        "aragorn_contact_opening": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.owlfeather.page.aragorn_contact_opening"
+        },
+        "aragorn_contact_reply": {
+          "continuation_key": "shared.more",
+          "title_key": "salish.owlfeather.page.aragorn_contact_reply"
+        },
+        "aragorn_contact_outcome": {
+          "continuation_key": "",
+          "title_key": "salish.owlfeather.page.aragorn_contact_outcome"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "dialogue.portraits.aragorn.mitsuhama",
+      "text_profile": "salish.owlfeather"
+    },
     "field_narrator": {
       "events": {
         "cyberspace_no_datajack": {

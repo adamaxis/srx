@@ -466,6 +466,12 @@ function Registry.active_run_id()
     return Registry.active_offer and Registry.active_offer.id or "none"
 end
 
+-- ROM FFFBED keeps the selected source offer initializer, including variants
+-- that share one normalized Lua run implementation.
+function Registry.active_source_initializer()
+    return Registry.active_offer and Registry.active_offer.source_initializer
+end
+
 function Registry.active_completion_condition()
     return Registry.active_offer and
         Registry.active_offer.completion_condition or "none"

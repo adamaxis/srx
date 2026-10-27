@@ -1058,6 +1058,7 @@ struct GameScriptRuntime::Impl {
     ScriptMenuRouteSnapshot menu_route_state{};
     ScriptActorHeartbeatObserver actor_heartbeat_observer;
     const ScriptActorBehaviorContext* active_actor_context = nullptr;
+    ScriptActorRandomBound active_conditional_actor_random_bound;
     std::string bridge_failure;
     std::string failure;
 
@@ -3641,6 +3642,31 @@ struct GameScriptRuntime::Impl {
         }
     }
 
+    static int conditional_actor_random_bound(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        std::uint32_t bound = 0U;
+        if (self == nullptr || !self->active_conditional_actor_random_bound ||
+            !read_integer(lua, 1, 0xFFFFU, bound) || bound == 0U) {
+            return luaL_error(
+                lua,
+                "conditional actor selection needs a nonzero source random bound");
+        }
+        try {
+            const auto result = self->active_conditional_actor_random_bound(
+                static_cast<std::uint16_t>(bound));
+            if (!result.has_value() || *result >= bound) {
+                return luaL_error(
+                    lua,
+                    "conditional actor random service returned an invalid index");
+            }
+            lua_pushinteger(lua, *result);
+            return 1;
+        } catch (...) {
+            return luaL_error(
+                lua, "conditional actor random service failed");
+        }
+    }
+
     static int actor_action_line_clear(lua_State* lua) {
         auto* self = from_upvalue(lua);
         std::uint32_t x = 0U;
@@ -4450,6 +4476,7 @@ struct GameScriptRuntime::Impl {
         menu_route_bindings = ScriptMenuRouteBindings{};
         menu_route_state = ScriptMenuRouteSnapshot{};
         active_actor_context = nullptr;
+        active_conditional_actor_random_bound = {};
         bridge_failure.clear();
         failure.clear();
         if (state == nullptr) {
@@ -5610,6 +5637,48 @@ GameScriptRuntime::resolve_field_location_route(
     return route;
 }
 
+std::optional<std::uint8_t>
+GameScriptRuntime::active_run_source_initializer() {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure =
+            "Lua runtime is unavailable for the active run initializer";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<std::uint8_t> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("run_registry")) {
+        return fail("run_registry.lua module is missing");
+    }
+    lua_getfield(state, -1, "active_source_initializer");
+    if (!lua_isfunction(state, -1)) {
+        return fail("run_registry active source initializer is missing");
+    }
+    lua_remove(state, -2);
+    if (lua_pcall(state, 0, 1, 0) != LUA_OK) {
+        return fail("run_registry active source initializer failed: " +
+                    stack_error(state));
+    }
+    if (lua_isnil(state, -1)) {
+        lua_settop(state, stack_base);
+        impl_->failure.clear();
+        return std::nullopt;
+    }
+    std::uint32_t initializer = 0U;
+    if (!read_integer(state, -1, 0xFFU, initializer)) {
+        return fail("active source offer initializer is outside byte range");
+    }
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return static_cast<std::uint8_t>(initializer);
+}
+
 std::optional<ScriptRunFieldEventDecision>
 GameScriptRuntime::resolve_active_run_field_event(
     const std::uint8_t map_id, const std::uint8_t event_id) {
@@ -6104,7 +6173,7 @@ GameScriptRuntime::resolve_field_location_entry(
     }
     const auto floor_table_index = lua_absindex(state, -1);
     const auto floor_count = lua_rawlen(state, floor_table_index);
-    if (floor_count < 2U || floor_count > 5U) {
+    if (floor_count < 2U || floor_count > 6U) {
         lua_pop(state, 1);
         return fail("building.lua elevator entry has an invalid floor count");
     }
@@ -6153,7 +6222,7 @@ std::optional<std::uint16_t> GameScriptRuntime::resolve_elevator_destination(
         impl_->failure = std::string(reason);
         return std::nullopt;
     };
-    if (group.scene_ids.size() < 2U || group.scene_ids.size() > 5U ||
+    if (group.scene_ids.size() < 2U || group.scene_ids.size() > 6U ||
         floor_index >= group.scene_ids.size()) {
         return fail("elevator destination request has an invalid floor");
     }
@@ -6461,6 +6530,270 @@ GameScriptRuntime::world_activity_actors_for_list_id(
     return world_activity_actors_for_selector(
         scene_id, "list_id", 0U, 0U,
         "world_activity_actors_for_list_id", list_id);
+}
+
+std::optional<std::vector<ScriptConditionalActorCandidate>>
+GameScriptRuntime::conditional_actor_candidates_for_scene(
+    const std::uint16_t scene_id) {
+    auto* state = impl_->state;
+    if (state == nullptr || scene_id > 55U) {
+        impl_->failure =
+            "conditional actor-candidate scene is outside source bounds";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<std::vector<ScriptConditionalActorCandidate>> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("world_content")) {
+        return fail("gameplay script module is missing: world_content");
+    }
+    lua_getfield(state, -1, "conditional_actor_candidates_for_scene");
+    if (!lua_isfunction(state, -1)) {
+        return fail(
+            "world_content.conditional_actor_candidates_for_scene is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("world_content.conditional_actor_candidates_for_scene: " +
+                    stack_error(state));
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("conditional actor-candidate lookup must return an array");
+    }
+    const auto rows_index = lua_absindex(state, -1);
+    const auto row_count = lua_rawlen(state, rows_index);
+    if (row_count > 3U) {
+        return fail("conditional actor-candidate scene exceeds three rows");
+    }
+
+    std::vector<ScriptConditionalActorCandidate> candidates;
+    candidates.reserve(row_count);
+    std::uint32_t previous_choice = 0U;
+    for (std::size_t index = 0U; index < row_count; ++index) {
+        lua_rawgeti(state, rows_index, static_cast<lua_Integer>(index + 1U));
+        if (!lua_istable(state, -1)) {
+            return fail("conditional actor-candidate list contains a bad row");
+        }
+        const auto row_index = lua_absindex(state, -1);
+        ScriptConditionalActorCandidate candidate{};
+        std::uint32_t row_scene = 0U;
+        std::uint32_t choice = 0U;
+        std::uint32_t entity_kind = 0U;
+        std::uint32_t palette_line = 0U;
+        std::uint32_t template_offset = 0U;
+        std::uint32_t list_offset = 0U;
+        std::uint32_t position_offset = 0U;
+        std::uint32_t world_x = 0U;
+        std::uint32_t world_y = 0U;
+        std::uint32_t heading_word = 0U;
+        std::uint32_t direction = 0U;
+        const bool valid =
+            read_field_integer(state, row_index, "scene", 55U, row_scene) &&
+            row_scene == scene_id &&
+            read_field_integer(state, row_index, "choice", 3U, choice) &&
+            choice > previous_choice &&
+            read_field_text(state, row_index, "actor_name",
+                            candidate.actor_name, 128U) &&
+            read_field_integer(state, row_index, "entity_kind", 15U,
+                               entity_kind) &&
+            read_field_integer(state, row_index, "palette_line", 3U,
+                               palette_line) &&
+            read_field_integer(state, row_index, "template_offset",
+                               0x1FFFFFU, template_offset) &&
+            read_field_integer(state, row_index, "list_offset", 0x1FFFFFU,
+                               list_offset) &&
+            read_field_integer(state, row_index, "position_offset",
+                               0x1FFFFFU, position_offset) &&
+            read_field_integer(state, row_index, "world_x", 0xFFFFU,
+                               world_x) &&
+            read_field_integer(state, row_index, "world_y", 0xFFFFU,
+                               world_y) &&
+            read_field_integer(state, row_index, "heading_word", 0xFFFFU,
+                               heading_word) &&
+            read_field_integer(state, row_index, "direction", 7U,
+                               direction) &&
+            read_field_text(state, row_index, "ordered_overrides",
+                            candidate.ordered_overrides, 512U) &&
+            read_field_text(state, row_index, "selection_group",
+                            candidate.selection_group, 128U) &&
+            read_field_text(state, row_index, "activation_gate",
+                            candidate.activation_gate, 512U);
+        if (!valid) {
+            return fail("conditional actor-candidate row has invalid fields");
+        }
+
+        candidate.scene_id = static_cast<std::uint16_t>(row_scene);
+        candidate.choice = static_cast<std::uint8_t>(choice);
+        candidate.entity_kind = static_cast<std::uint16_t>(entity_kind);
+        candidate.palette_line = static_cast<std::uint8_t>(palette_line);
+        candidate.template_offset = template_offset;
+        candidate.list_offset = list_offset;
+        candidate.position_offset = position_offset;
+        candidate.world_x = static_cast<std::uint16_t>(world_x);
+        candidate.world_y = static_cast<std::uint16_t>(world_y);
+        candidate.heading_word = static_cast<std::uint16_t>(heading_word);
+        candidate.direction = static_cast<std::uint8_t>(direction);
+        previous_choice = choice;
+        candidates.push_back(std::move(candidate));
+        lua_pop(state, 1);
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return candidates;
+}
+
+bool GameScriptRuntime::reset_conditional_actor_selection() {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure = "Lua runtime is unavailable for A800 state reset";
+        return false;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason) {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return false;
+    };
+    if (!impl_->push_module("world_content")) {
+        return fail("gameplay script module is missing: world_content");
+    }
+    lua_getfield(state, -1, "reset_conditional_actor_selection");
+    if (!lua_isfunction(state, -1)) {
+        return fail(
+            "world_content.reset_conditional_actor_selection is missing");
+    }
+    lua_remove(state, -2);
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 0, 0, 0) != LUA_OK) {
+        return fail("world_content.reset_conditional_actor_selection: " +
+                    stack_error(state));
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return true;
+}
+
+std::optional<ScriptConditionalActorSelection>
+GameScriptRuntime::resolve_conditional_actor_selection(
+    const std::uint16_t scene_id,
+    const ScriptConditionalActorSelectionContext& context,
+    const ScriptActorRandomBound& random_bound) {
+    auto* state = impl_->state;
+    if (state == nullptr || scene_id > 55U) {
+        impl_->failure =
+            "conditional actor selection input is outside source bounds";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptConditionalActorSelection> {
+        lua_settop(state, stack_base);
+        impl_->active_conditional_actor_random_bound = {};
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("world_content")) {
+        return fail("gameplay script module is missing: world_content");
+    }
+    lua_getfield(state, -1, "resolve_conditional_actor_selection");
+    if (!lua_isfunction(state, -1)) {
+        return fail(
+            "world_content.resolve_conditional_actor_selection is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
+    lua_createtable(state, 0, 8);
+    lua_pushboolean(state, context.world_effect_active);
+    lua_setfield(state, -2, "world_effect_active");
+    lua_pushboolean(state, context.pending_world_effect);
+    lua_setfield(state, -2, "pending_world_effect");
+    if (context.active_offer_source_initializer.has_value()) {
+        lua_pushinteger(state, *context.active_offer_source_initializer);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "active_offer_source_initializer");
+    lua_pushinteger(state, context.world_mode);
+    lua_setfield(state, -2, "world_mode");
+    if (context.active_effect_index.has_value()) {
+        lua_pushinteger(state, *context.active_effect_index);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "active_effect_index");
+    if (context.selected_effect_index.has_value()) {
+        lua_pushinteger(state, *context.selected_effect_index);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "selected_effect_index");
+    lua_pushboolean(state, context.player_spawn_pending);
+    lua_setfield(state, -2, "player_spawn_pending");
+
+    impl_->active_conditional_actor_random_bound = random_bound;
+    lua_pushlightuserdata(state, impl_.get());
+    lua_pushcclosure(state, Impl::conditional_actor_random_bound, 1);
+    ScopedInstructionBudget instruction_budget(state);
+    const auto call_status = lua_pcall(state, 3, 1, 0);
+    impl_->active_conditional_actor_random_bound = {};
+    if (call_status != LUA_OK) {
+        return fail("world_content.resolve_conditional_actor_selection: " +
+                    stack_error(state));
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("conditional actor selector must return a decision table");
+    }
+    const auto decision_index = lua_absindex(state, -1);
+    std::string kind;
+    std::uint32_t choice = 0U;
+    std::uint32_t list_offset = 0U;
+    if (!read_field_text(state, decision_index, "kind", kind) ||
+        !read_field_integer(state, decision_index, "selection_choice", 3U,
+                            choice) ||
+        !read_field_integer(state, decision_index, "list_offset", 0x1FFFFFU,
+                            list_offset)) {
+        return fail("conditional actor selector returned invalid decision fields");
+    }
+    lua_getfield(state, decision_index, "choice_changed");
+    if (!lua_isboolean(state, -1)) {
+        return fail(
+            "conditional actor selector omitted its choice-change status");
+    }
+    const bool choice_changed = lua_toboolean(state, -1) != 0;
+    lua_pop(state, 1);
+
+    ScriptConditionalActorSelection decision{};
+    if (kind == "none") {
+        decision.kind = ScriptConditionalActorSelectionKind::none;
+        if (list_offset != 0U) {
+            return fail("empty conditional actor decision names a source list");
+        }
+    } else if (kind == "story_contact") {
+        decision.kind = ScriptConditionalActorSelectionKind::story_contact;
+    } else if (kind == "pending_world_activity") {
+        decision.kind =
+            ScriptConditionalActorSelectionKind::pending_world_activity;
+    } else if (kind == "random_pedestrian") {
+        decision.kind = ScriptConditionalActorSelectionKind::random_pedestrian;
+    } else {
+        return fail("conditional actor selector returned an unknown decision");
+    }
+    if (decision.kind != ScriptConditionalActorSelectionKind::none &&
+        list_offset == 0U) {
+        return fail("selected conditional actor decision has no source list");
+    }
+    decision.selection_choice = static_cast<std::uint8_t>(choice);
+    decision.choice_changed = choice_changed;
+    decision.list_offset = list_offset;
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return decision;
 }
 
 std::optional<std::uint32_t>

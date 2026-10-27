@@ -283,6 +283,7 @@ bool verify_package_delivery_field_events(
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
                     task.result_id ==
                         std::optional<std::string>{"package_delivery"} &&
+                    !scripts.active_run_source_initializer().has_value() &&
                     route.has_value() &&
                     route->at("origin_area") == "area_2" &&
                     route->at("origin_location") == "location_4" &&
@@ -319,6 +320,11 @@ bool verify_package_delivery_field_events(
                 "package offer did not become an active run after acceptance")) {
         return false;
     }
+    if (!expect(scripts.active_run_source_initializer() ==
+                    std::optional<std::uint8_t>{2U},
+                "active run did not preserve its raw FFFBED offer initializer")) {
+        return false;
+    }
 
     const auto before_origin = scripts.resolve_active_run_field_event(2U, 5U);
     const auto origin = scripts.resolve_active_run_field_event(2U, 4U);
@@ -345,7 +351,8 @@ bool verify_package_delivery_field_events(
                 std::optional<std::string>{"none"} &&
             scripts.call_string(
                 "run_registry", "last_completed_offer_id") ==
-                std::optional<std::string>{"package_delivery"},
+                std::optional<std::string>{"package_delivery"} &&
+            !scripts.active_run_source_initializer().has_value(),
         "package run did not collect at origin, pay once at destination, and clear");
 }
 
@@ -723,6 +730,297 @@ int main() {
         scripts.pending_world_activity_actor_list_for_scene(20U, false, true);
     const auto ilene_blocked_pending_list =
         scripts.pending_world_activity_actor_list_for_scene(20U, true, true);
+    const auto seed_contact_actor = [&scripts](
+        const std::string_view actor_id,
+        const std::uint16_t scene_id,
+        const std::uint32_t list_offset,
+        const std::string_view profile_id,
+        const std::uint16_t entity_kind) {
+        ScriptActorBehaviorContext context{};
+        context.profile_id = profile_id;
+        context.entity_kind = entity_kind;
+        context.instance_id = actor_id;
+        context.spawn = true;
+        context.dynamic_world_encounter_actor = true;
+        context.world_activity_script_actor = true;
+        context.source_record_slot = 3U;
+        context.source_actor_slot = 3U;
+        context.source_actor_list_offset = list_offset;
+        context.source_actor_source_order = 0U;
+        context.source_record_flags = 0x01U;
+        context.source_spawn_state_flags = 0x08U;
+        context.movement_scene_id = scene_id;
+        return scripts.actor_heartbeat(context).has_value();
+    };
+    const bool seeded_aragorn_contact_actor = seed_contact_actor(
+        "qa_aragorn_contact", 34U, 0xA8AEU,
+        "pedestrian_k0b_none00", 11U);
+    const bool seeded_ilene_contact_actor = seed_contact_actor(
+        "qa_ilene_contact", 20U, 0xA8CCU,
+        "pedestrian_k0b_none00", 11U);
+    const auto aragorn_contact_route = scripts.call_integers(
+        "world_content", "field_actor_contact_task",
+        {34, 0xA8AEU, 0, 1, 0});
+    const auto aragorn_contact_priority_route = scripts.call_integers(
+        "world_content", "field_actor_contact_task",
+        {34, 0xA8AEU, 0, 1, 1});
+    const auto ilene_contact_route = scripts.call_integers(
+        "world_content", "field_actor_contact_task",
+        {20, 0xA8CCU, 0, 0, 1});
+    const auto unrelated_contact_route = scripts.call_integers(
+        "world_content", "field_actor_contact_task",
+        {20, 0xA8CCU, 0, 1, 0});
+    bool conditional_candidate_table_valid = true;
+    std::size_t conditional_candidate_count = 0U;
+    for (std::uint16_t scene = 0x15U; scene <= 0x2BU; ++scene) {
+        const auto candidates =
+            scripts.conditional_actor_candidates_for_scene(scene);
+        if (!candidates.has_value() || candidates->size() != 3U) {
+            conditional_candidate_table_valid = false;
+            break;
+        }
+        conditional_candidate_count += candidates->size();
+        for (std::size_t index = 0U; index < candidates->size(); ++index) {
+            const auto& candidate = (*candidates)[index];
+            if (candidate.scene_id != scene ||
+                candidate.choice != index + 1U ||
+                candidate.entity_kind != 11U ||
+                candidate.palette_line != 3U ||
+                candidate.template_offset != 0x1D6988U ||
+                candidate.selection_group !=
+                    "scene-" + std::to_string(scene) + "-one-of-three" ||
+                candidate.activation_gate.find("choice 3 unreachable") ==
+                    std::string::npos) {
+                conditional_candidate_table_valid = false;
+                break;
+            }
+        }
+        if (!conditional_candidate_table_valid) {
+            break;
+        }
+    }
+    const auto non_candidate_scene =
+        scripts.conditional_actor_candidates_for_scene(20U);
+    const auto first_candidate_scene =
+        scripts.conditional_actor_candidates_for_scene(0x15U);
+    std::size_t conditional_random_calls = 0U;
+    const auto conditional_roll = [&conditional_random_calls](
+                                     const std::uint16_t roll) {
+        return [roll, &conditional_random_calls](const std::uint16_t bound)
+                   -> std::optional<std::uint16_t> {
+            ++conditional_random_calls;
+            if (bound != 2U) return std::nullopt;
+            return roll;
+        };
+    };
+    const auto unexpected_conditional_roll =
+        [&conditional_random_calls](const std::uint16_t)
+            -> std::optional<std::uint16_t> {
+        ++conditional_random_calls;
+        return std::nullopt;
+    };
+    const bool initial_conditional_selection_reset =
+        scripts.reset_conditional_actor_selection();
+    const auto no_actor_selection = scripts
+        .resolve_conditional_actor_selection(
+            0x15U, ScriptConditionalActorSelectionContext{},
+            unexpected_conditional_roll);
+
+    ScriptConditionalActorSelectionContext story_contact_context{};
+    story_contact_context.world_effect_active = true;
+    story_contact_context.pending_world_effect = true;
+    story_contact_context.active_effect_index = 4U;
+    const auto story_contact_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x22U, story_contact_context, unexpected_conditional_roll);
+
+    auto blocked_story_context = story_contact_context;
+    blocked_story_context.active_effect_index = 3U;
+    const auto blocked_story_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x22U, blocked_story_context, unexpected_conditional_roll);
+
+    ScriptConditionalActorSelectionContext pending_context{};
+    pending_context.pending_world_effect = true;
+    pending_context.active_offer_source_initializer = 5U;
+    pending_context.world_mode = 2U;
+    const auto pending_selection = scripts.resolve_conditional_actor_selection(
+        0x15U, pending_context, unexpected_conditional_roll);
+
+    auto rejected_initializer_context = pending_context;
+    rejected_initializer_context.pending_world_effect = false;
+    rejected_initializer_context.active_offer_source_initializer = 11U;
+    rejected_initializer_context.active_effect_index = 0U;
+    rejected_initializer_context.selected_effect_index = 0U;
+    const auto rejected_initializer_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, rejected_initializer_context,
+            unexpected_conditional_roll);
+    auto rejected_variant_context = rejected_initializer_context;
+    rejected_variant_context.active_offer_source_initializer = 12U;
+    const auto rejected_variant_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, rejected_variant_context, unexpected_conditional_roll);
+    auto rejected_mode_context = rejected_initializer_context;
+    rejected_mode_context.active_offer_source_initializer = 5U;
+    rejected_mode_context.world_mode = 1U;
+    const auto rejected_mode_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, rejected_mode_context, unexpected_conditional_roll);
+
+    ScriptConditionalActorSelectionContext late_effect_context{};
+    late_effect_context.active_offer_source_initializer = 5U;
+    late_effect_context.world_mode = 2U;
+    late_effect_context.active_effect_index = 4U;
+    late_effect_context.selected_effect_index = 3U;
+    const auto late_effect_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, late_effect_context, conditional_roll(1U));
+    auto resumed_effect_context = late_effect_context;
+    resumed_effect_context.selected_effect_index = 4U;
+    const auto resumed_effect_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, resumed_effect_context, unexpected_conditional_roll);
+
+    const bool choice_one_selection_reset =
+        scripts.reset_conditional_actor_selection();
+    auto reachable_choice_one_context = late_effect_context;
+    reachable_choice_one_context.selected_effect_index = 4U;
+    const auto reachable_choice_one_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, reachable_choice_one_context, conditional_roll(0U));
+
+    const bool blocked_spawn_selection_reset =
+        scripts.reset_conditional_actor_selection();
+    auto blocked_spawn_context = late_effect_context;
+    blocked_spawn_context.selected_effect_index = 4U;
+    blocked_spawn_context.player_spawn_pending = true;
+    const auto blocked_spawn_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, blocked_spawn_context, conditional_roll(0U));
+
+    const bool conditional_selection_matrix_valid =
+        initial_conditional_selection_reset &&
+        choice_one_selection_reset && blocked_spawn_selection_reset &&
+        no_actor_selection.has_value() &&
+        no_actor_selection->kind ==
+            ScriptConditionalActorSelectionKind::none &&
+        story_contact_selection.has_value() &&
+        story_contact_selection->kind ==
+            ScriptConditionalActorSelectionKind::story_contact &&
+        story_contact_selection->list_offset == 0xA8AEU &&
+        story_contact_selection->selection_choice == 0U &&
+        !story_contact_selection->choice_changed &&
+        blocked_story_selection.has_value() &&
+        blocked_story_selection->kind ==
+            ScriptConditionalActorSelectionKind::none &&
+        pending_selection.has_value() &&
+        pending_selection->kind ==
+            ScriptConditionalActorSelectionKind::pending_world_activity &&
+        pending_selection->list_offset == 0xA8CCU &&
+        rejected_initializer_selection.has_value() &&
+        rejected_initializer_selection->kind ==
+            ScriptConditionalActorSelectionKind::none &&
+        rejected_variant_selection.has_value() &&
+        rejected_variant_selection->kind ==
+            ScriptConditionalActorSelectionKind::none &&
+        rejected_mode_selection.has_value() &&
+        rejected_mode_selection->kind ==
+            ScriptConditionalActorSelectionKind::none &&
+        late_effect_selection.has_value() &&
+        late_effect_selection->kind ==
+            ScriptConditionalActorSelectionKind::none &&
+        late_effect_selection->selection_choice == 2U &&
+        late_effect_selection->choice_changed &&
+        resumed_effect_selection.has_value() &&
+        resumed_effect_selection->kind ==
+            ScriptConditionalActorSelectionKind::random_pedestrian &&
+        resumed_effect_selection->selection_choice == 2U &&
+        resumed_effect_selection->list_offset ==
+            (first_candidate_scene.has_value() &&
+                     first_candidate_scene->size() > 1U
+                 ? first_candidate_scene->at(1U).list_offset
+                 : 0U) &&
+        !resumed_effect_selection->choice_changed &&
+        reachable_choice_one_selection.has_value() &&
+        reachable_choice_one_selection->kind ==
+            ScriptConditionalActorSelectionKind::random_pedestrian &&
+        reachable_choice_one_selection->selection_choice == 1U &&
+        reachable_choice_one_selection->list_offset ==
+            (first_candidate_scene.has_value() &&
+                     !first_candidate_scene->empty()
+                 ? first_candidate_scene->front().list_offset
+                 : 0U) &&
+        reachable_choice_one_selection->choice_changed &&
+        blocked_spawn_selection.has_value() &&
+        blocked_spawn_selection->kind ==
+            ScriptConditionalActorSelectionKind::none &&
+        blocked_spawn_selection->selection_choice == 1U &&
+        blocked_spawn_selection->choice_changed &&
+        conditional_random_calls == 3U;
+    if (!expect(conditional_selection_matrix_valid,
+                "Lua conditional actor selector decision matrix mismatch")) {
+        std::cerr << "conditional random calls: "
+                  << conditional_random_calls << "; runtime error: "
+                  << scripts.failure() << '\n';
+        return 1;
+    }
+
+    auto wide_mode_context = late_effect_context;
+    wide_mode_context.world_mode = 0x0102U;
+    wide_mode_context.active_effect_index = 0U;
+    wide_mode_context.selected_effect_index = 0U;
+    const auto wide_mode_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, wide_mode_context, unexpected_conditional_roll);
+    if (!expect(wide_mode_selection.has_value() &&
+                    wide_mode_selection->kind ==
+                        ScriptConditionalActorSelectionKind::none &&
+                    conditional_random_calls == 3U,
+                "A800 compared the FFDF40 mode word as a byte")) {
+        std::cerr << "wide mode-word rejection failure: "
+                  << scripts.failure() << '\n';
+        return 1;
+    }
+
+    const bool wide_effect_mismatch_reset =
+        scripts.reset_conditional_actor_selection();
+    auto wide_effect_context = late_effect_context;
+    wide_effect_context.active_effect_index = 0x0100U;
+    wide_effect_context.selected_effect_index = 0U;
+    const auto wide_effect_mismatch =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, wide_effect_context, conditional_roll(0U));
+    if (!expect(wide_effect_mismatch_reset &&
+                    wide_effect_mismatch.has_value() &&
+                    wide_effect_mismatch->kind ==
+                        ScriptConditionalActorSelectionKind::none &&
+                    wide_effect_mismatch->selection_choice == 1U &&
+                    wide_effect_mismatch->choice_changed &&
+                    conditional_random_calls == 4U,
+                "A800 compared effect-index words as byte values")) {
+        std::cerr << "wide effect-index mismatch failure: "
+                  << scripts.failure() << '\n';
+        return 1;
+    }
+
+    const bool equal_wide_effect_reset =
+        scripts.reset_conditional_actor_selection();
+    wide_effect_context.selected_effect_index = 0x0100U;
+    const auto equal_wide_effect_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, wide_effect_context, conditional_roll(0U));
+    if (!expect(equal_wide_effect_reset &&
+                    equal_wide_effect_selection.has_value() &&
+                    equal_wide_effect_selection->kind ==
+                        ScriptConditionalActorSelectionKind::random_pedestrian &&
+                    equal_wide_effect_selection->selection_choice == 1U &&
+                    conditional_random_calls == 5U,
+                "A800 rejected equal 16-bit effect indices")) {
+        std::cerr << "wide effect-index equality failure: "
+                  << scripts.failure() << '\n';
+        return 1;
+    }
     if (!expect(
             spirit_eyes_entry_list.has_value() &&
                 spirit_eyes_entry_list->size() == 5U &&
@@ -813,8 +1111,58 @@ int main() {
                     0x08U &&
                 ilene_selected_pending_list == 0xA8CCU &&
                 !ilene_blocked_pending_list.has_value() &&
+                seeded_aragorn_contact_actor &&
+                seeded_ilene_contact_actor &&
+                aragorn_contact_route.has_value() &&
+                *aragorn_contact_route ==
+                    std::vector<std::int64_t>{1, 0x80} &&
+                aragorn_contact_priority_route.has_value() &&
+                *aragorn_contact_priority_route ==
+                    std::vector<std::int64_t>{1, 0x80} &&
+                ilene_contact_route.has_value() &&
+                *ilene_contact_route ==
+                    std::vector<std::int64_t>{2, 0x80} &&
+                unrelated_contact_route.has_value() &&
+                *unrelated_contact_route ==
+                    std::vector<std::int64_t>{0, 0} &&
+                conditional_candidate_table_valid &&
+                conditional_candidate_count == 69U &&
+                non_candidate_scene.has_value() &&
+                non_candidate_scene->empty() &&
+                first_candidate_scene.has_value() &&
+                first_candidate_scene->front().choice == 1U &&
+                first_candidate_scene->front().list_offset == 0x1EDECCU &&
+                first_candidate_scene->front().position_offset == 0x1EDEE4U &&
+                first_candidate_scene->front().world_x == 0x2800U &&
+                first_candidate_scene->front().world_y == 0x0580U &&
+                first_candidate_scene->front().heading_word == 0xC000U &&
+                first_candidate_scene->front().direction == 6U &&
+                first_candidate_scene->front().ordered_overrides ==
+                    "0x9E=0x20,0x2E=0xC0,0x9E=0x08" &&
                 scripts.failure().empty(),
             "Lua did not return the typed ROM scene actor lists")) {
+        const auto print_route = [](
+            const std::string_view label,
+            const std::optional<std::vector<std::int64_t>>& route) {
+            std::cerr << label << '=';
+            if (!route.has_value()) {
+                std::cerr << "<missing>";
+            } else {
+                for (std::size_t index = 0U; index < route->size(); ++index) {
+                    if (index != 0U) {
+                        std::cerr << ',';
+                    }
+                    std::cerr << route->at(index);
+                }
+            }
+            std::cerr << ' ';
+        };
+        std::cerr << "contact actor seeds=" << seeded_aragorn_contact_actor
+                  << ',' << seeded_ilene_contact_actor << ' ';
+        print_route("aragorn", aragorn_contact_route);
+        print_route("aragorn_priority", aragorn_contact_priority_route);
+        print_route("ilene", ilene_contact_route);
+        print_route("unrelated", unrelated_contact_route);
         std::cerr << "scene script actor lookup: " << scripts.failure()
                   << '\n';
         return 1;
@@ -2675,22 +3023,24 @@ int main() {
 
     std::vector<std::vector<std::uint16_t>> source_elevator_groups(56U);
     for (std::uint16_t scene_id = 21U; scene_id <= 25U; ++scene_id) {
-        source_elevator_groups[scene_id] = {21U, 22U, 23U, 24U};
+        source_elevator_groups[scene_id] =
+            {21U, 22U, 23U, 24U, 25U};
     }
     for (std::uint16_t scene_id = 26U; scene_id <= 29U; ++scene_id) {
-        source_elevator_groups[scene_id] = {26U, 27U, 28U};
+        source_elevator_groups[scene_id] = {26U, 27U, 28U, 29U};
     }
     for (std::uint16_t scene_id = 30U; scene_id <= 34U; ++scene_id) {
-        source_elevator_groups[scene_id] = {30U, 31U, 32U, 33U};
+        source_elevator_groups[scene_id] =
+            {30U, 31U, 32U, 33U, 34U};
     }
     for (std::uint16_t scene_id = 35U; scene_id <= 40U; ++scene_id) {
         source_elevator_groups[scene_id] =
-            {35U, 36U, 37U, 38U, 39U};
+            {35U, 36U, 37U, 38U, 39U, 40U};
     }
     for (std::uint16_t scene_id = 41U; scene_id <= 43U; ++scene_id) {
-        source_elevator_groups[scene_id] = {41U, 42U};
+        source_elevator_groups[scene_id] = {41U, 42U, 43U};
     }
-    const auto nonmember_elevator_entry =
+    const auto endpoint_elevator_entry =
         scripts.resolve_field_location_entry(
             25U, FieldCollisionEventCode::event_29,
             source_elevator_groups);
@@ -2698,21 +3048,25 @@ int main() {
         scripts.resolve_field_location_entry(
             22U, FieldCollisionEventCode::event_29,
             source_elevator_groups);
-    const auto three_floor_member_entry =
+    const auto scene28_entry =
         scripts.resolve_field_location_entry(
             28U, FieldCollisionEventCode::event_29,
             source_elevator_groups);
-    const auto five_floor_member_entry =
+    const auto scene36_entry =
         scripts.resolve_field_location_entry(
             36U, FieldCollisionEventCode::event_29,
             source_elevator_groups);
-    const auto four_floor_member_entry =
+    const auto scene40_entry =
+        scripts.resolve_field_location_entry(
+            40U, FieldCollisionEventCode::event_29,
+            source_elevator_groups);
+    const auto scene32_entry =
         scripts.resolve_field_location_entry(
             32U, FieldCollisionEventCode::event_29,
             source_elevator_groups);
-    const auto two_floor_member_entry =
+    const auto scene43_entry =
         scripts.resolve_field_location_entry(
-            42U, FieldCollisionEventCode::event_29,
+            43U, FieldCollisionEventCode::event_29,
             source_elevator_groups);
     const auto no_group_entry = scripts.resolve_field_location_entry(
         5U, FieldCollisionEventCode::event_29, source_elevator_groups);
@@ -2721,37 +3075,44 @@ int main() {
             25U, FieldCollisionEventCode::event_28,
             source_elevator_groups);
     const auto elevator_destination =
-        nonmember_elevator_entry.has_value()
+        endpoint_elevator_entry.has_value()
             ? scripts.resolve_elevator_destination(
-                  nonmember_elevator_entry->elevator_group, 3U)
+                  endpoint_elevator_entry->elevator_group, 3U)
             : std::optional<std::uint16_t>{};
     const auto invalid_elevator_destination =
-        nonmember_elevator_entry.has_value()
+        endpoint_elevator_entry.has_value()
             ? scripts.resolve_elevator_destination(
-                  nonmember_elevator_entry->elevator_group, 4U)
+                  endpoint_elevator_entry->elevator_group, 5U)
             : std::optional<std::uint16_t>{};
-    const auto two_floor_destination =
-        two_floor_member_entry.has_value()
+    const auto six_floor_destination =
+        scene40_entry.has_value()
             ? scripts.resolve_elevator_destination(
-                  two_floor_member_entry->elevator_group, 0U)
+                  scene40_entry->elevator_group, 5U)
+            : std::optional<std::uint16_t>{};
+    const auto three_floor_destination =
+        scene43_entry.has_value()
+            ? scripts.resolve_elevator_destination(
+                  scene43_entry->elevator_group, 0U)
             : std::optional<std::uint16_t>{};
     if (!expect(
-            nonmember_elevator_entry.has_value() &&
-                nonmember_elevator_entry->action ==
+            endpoint_elevator_entry.has_value() &&
+                endpoint_elevator_entry->action ==
                     ScriptLocationEntryAction::open_elevator_selector &&
-                nonmember_elevator_entry->elevator_group.scene_ids ==
-                    std::vector<std::uint16_t>{21U, 22U, 23U, 24U} &&
-                nonmember_elevator_entry->elevator_group.entry_floor == 0U &&
+                endpoint_elevator_entry->elevator_group.scene_ids ==
+                    std::vector<std::uint16_t>{21U, 22U, 23U, 24U, 25U} &&
+                endpoint_elevator_entry->elevator_group.entry_floor == 4U &&
                 member_elevator_entry.has_value() &&
                 member_elevator_entry->elevator_group.entry_floor == 1U &&
-                three_floor_member_entry.has_value() &&
-                three_floor_member_entry->elevator_group.entry_floor == 2U &&
-                five_floor_member_entry.has_value() &&
-                five_floor_member_entry->elevator_group.entry_floor == 1U &&
-                four_floor_member_entry.has_value() &&
-                four_floor_member_entry->elevator_group.entry_floor == 2U &&
-                two_floor_member_entry.has_value() &&
-                two_floor_member_entry->elevator_group.entry_floor == 1U &&
+                scene28_entry.has_value() &&
+                scene28_entry->elevator_group.entry_floor == 2U &&
+                scene36_entry.has_value() &&
+                scene36_entry->elevator_group.entry_floor == 1U &&
+                scene40_entry.has_value() &&
+                scene40_entry->elevator_group.entry_floor == 5U &&
+                scene32_entry.has_value() &&
+                scene32_entry->elevator_group.entry_floor == 2U &&
+                scene43_entry.has_value() &&
+                scene43_entry->elevator_group.entry_floor == 2U &&
                 no_group_entry.has_value() &&
                 no_group_entry->action ==
                     ScriptLocationEntryAction::no_action &&
@@ -2760,7 +3121,8 @@ int main() {
                     ScriptLocationEntryAction::no_action &&
                 elevator_destination == 24U &&
                 !invalid_elevator_destination.has_value() &&
-                two_floor_destination == 41U,
+                three_floor_destination == 41U &&
+                six_floor_destination == 40U,
             "Lua did not resolve ROM-backed elevator entry and destinations")) {
         std::cerr << scripts.failure() << '\n';
         return 105;
@@ -10568,6 +10930,191 @@ int main() {
         return 17;
     }
 
+    constexpr std::string_view kMitsuhamaLocation =
+        "penumbra_site_03_mitsuhama";
+    scripts.set_location_context(
+        "building", kMitsuhamaLocation, "salish.owlfeather",
+        "aragorn_mitsuhama_narrator");
+    scripts.set_field_mode_context(ScriptFieldModeContext{3U, 3U, 0});
+    FieldScriptRouteContext mitsuhama_context{};
+    mitsuhama_context.scene_id = 3U;
+    mitsuhama_context.field_mode = 3U;
+    mitsuhama_context.event_code = FieldCollisionEventCode::event_3;
+    mitsuhama_context.event_table_available = true;
+    mitsuhama_context.event_table[3U] = 30U;
+    mitsuhama_context.alternate_result = 0;
+    const auto resolve_mitsuhama_route = [&scripts, &mitsuhama_context]() {
+        return scripts.resolve_field_location_route(mitsuhama_context);
+    };
+    scripts.set_story_state({
+        {"story_flag_bit_2", true},
+        {"story_flag_bit_3", false},
+        {"field_mode_flag_bit_12", true},
+        {"notebook_tip_flag_bit_68", false},
+        {"notebook_tip_flag_bit_69", false},
+    });
+    auto mitsuhama_route = resolve_mitsuhama_route();
+    if (!expect(mitsuhama_route.has_value() &&
+                    mitsuhama_route->kind ==
+                        FieldScriptRouteKind::area_event &&
+                    mitsuhama_route->area_event_target ==
+                        std::optional<std::uint8_t>{30U} &&
+                    mitsuhama_route->entry_dialogue_module ==
+                        "salish_owlfeather" &&
+                    mitsuhama_route->entry_dialogue_function ==
+                        "present_mitsuhama_entry" &&
+                    mitsuhama_route->entry_speaker_id ==
+                        "aragorn_mitsuhama_narrator",
+                "Mitsuhama's FFFC30 bit-12 gate did not attach the ROM entry page to Scene 30")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_story_state({
+        {"story_flag_bit_2", true},
+        {"story_flag_bit_3", false},
+        {"field_mode_flag_bit_12", false},
+        {"notebook_tip_flag_bit_68", true},
+        {"notebook_tip_flag_bit_69", false},
+    });
+    mitsuhama_route = resolve_mitsuhama_route();
+    if (!expect(mitsuhama_route.has_value() &&
+                    !mitsuhama_route->entry_dialogue_module.empty(),
+                "Mitsuhama's FFFC38 bit-4 alternative did not admit the entry page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    scripts.set_story_state({
+        {"story_flag_bit_2", true},
+        {"story_flag_bit_3", false},
+        {"field_mode_flag_bit_12", false},
+        {"notebook_tip_flag_bit_68", false},
+        {"notebook_tip_flag_bit_69", true},
+    });
+    mitsuhama_route = resolve_mitsuhama_route();
+    if (!expect(mitsuhama_route.has_value() &&
+                    !mitsuhama_route->entry_dialogue_module.empty(),
+                "Mitsuhama's FFFC38 bit-5 alternative did not admit the entry page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    const auto preserves_mitsuhama_fallback =
+        [&resolve_mitsuhama_route](const char* reason) {
+            const auto route = resolve_mitsuhama_route();
+            return expect(route.has_value() &&
+                              route->kind == FieldScriptRouteKind::area_event &&
+                              route->area_event_target ==
+                                  std::optional<std::uint8_t>{30U} &&
+                              route->entry_dialogue_module.empty(),
+                          reason);
+        };
+    scripts.set_story_state({
+        {"story_flag_bit_2", true},
+        {"story_flag_bit_3", false},
+        {"field_mode_flag_bit_12", false},
+        {"notebook_tip_flag_bit_68", false},
+        {"notebook_tip_flag_bit_69", false},
+    });
+    if (!preserves_mitsuhama_fallback(
+            "Mitsuhama opened the entry page with all three lead flags clear")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    scripts.set_story_state({
+        {"story_flag_bit_2", false},
+        {"story_flag_bit_3", false},
+        {"field_mode_flag_bit_12", true},
+        {"notebook_tip_flag_bit_68", false},
+        {"notebook_tip_flag_bit_69", false},
+    });
+    if (!preserves_mitsuhama_fallback(
+            "Mitsuhama ignored the required Owlfeather story bit 2")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    scripts.set_story_state({
+        {"story_flag_bit_2", true},
+        {"story_flag_bit_3", true},
+        {"field_mode_flag_bit_12", true},
+        {"notebook_tip_flag_bit_68", false},
+        {"notebook_tip_flag_bit_69", false},
+    });
+    if (!preserves_mitsuhama_fallback(
+            "Mitsuhama ignored the already-found Aragorn story bit")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    mitsuhama_context.alternate_result = 1;
+    scripts.set_field_mode_context(ScriptFieldModeContext{3U, 3U, 1});
+    if (!preserves_mitsuhama_fallback(
+            "Mitsuhama ignored nonzero FFF0D5")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    mitsuhama_context.alternate_result = 0;
+    scripts.set_field_mode_context(ScriptFieldModeContext{3U, 3U, 0});
+    scripts.set_story_state({
+        {"story_flag_bit_2", true},
+        {"story_flag_bit_3", false},
+        {"field_mode_flag_bit_12", false},
+        {"notebook_tip_flag_bit_69", false},
+    });
+    mitsuhama_route = resolve_mitsuhama_route();
+    if (!expect(mitsuhama_route.has_value() &&
+                    mitsuhama_route->kind ==
+                        FieldScriptRouteKind::source_boundary &&
+                    mitsuhama_route->boundary_reason.find(
+                        "condition_unknown") != std::string::npos,
+                "Mitsuhama guessed when its FFFC38 bit-4 value was unresolved")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_location_context(
+        "building", kMitsuhamaLocation, "salish.owlfeather",
+        "aragorn_mitsuhama_narrator");
+    scripts.set_field_mode_context(ScriptFieldModeContext{3U, 3U, 0});
+    scripts.set_story_state({
+        {"story_flag_bit_2", true},
+        {"story_flag_bit_3", false},
+        {"field_mode_flag_bit_12", true},
+        {"notebook_tip_flag_bit_68", false},
+        {"notebook_tip_flag_bit_69", false},
+    });
+    auto mitsuhama_task = scripts.start_task(
+        "salish_owlfeather", "present_mitsuhama_entry");
+    if (!expect(mitsuhama_task.status ==
+                        ScriptTaskStep::Status::awaiting_native_operation &&
+                    mitsuhama_task.operation.has_value() &&
+                    mitsuhama_task.operation->type ==
+                        ScriptNativeOperation::Type::ui_say &&
+                    mitsuhama_task.operation->dialogue.has_value() &&
+                    mitsuhama_task.operation->dialogue->event_id ==
+                        "mitsuhama_entry",
+                "Mitsuhama's source entry graph did not show the 0xF5B00 page")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+    mitsuhama_task = scripts.complete_native_operation(true);
+    const auto mitsuhama_state = scripts.story_state();
+    if (!expect(mitsuhama_task.status == ScriptTaskStep::Status::completed &&
+                    mitsuhama_task.dialogue_outcome.has_value() &&
+                    dialogue_outcome_type(*mitsuhama_task.dialogue_outcome) ==
+                        DialogueOutcomeType::resume_source_route &&
+                    mitsuhama_state.at("story_trigger_active_3") &&
+                    mitsuhama_state.at("world_effect_active") &&
+                    !mitsuhama_state.at("story_flag_bit_3") &&
+                    scripts.dialogue_text(
+                        "salish.owlfeather.page.mitsuhama_entry") != nullptr,
+                "Mitsuhama's entry graph did not arm FFE180 and resume Scene 30")) {
+        std::cerr << scripts.failure() << '\n';
+        return 17;
+    }
+
+    scripts.set_location_context("building", kOwlfeatherLocation,
+                                 "salish.owlfeather", "david_owlfeather");
+    scripts.set_field_mode_context(ScriptFieldModeContext{6U, 0U, 0});
     scripts.set_story_state({
         {"story_flag_bit_1", true},
         {"story_flag_bit_2", false},

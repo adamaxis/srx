@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Extract the ROM's gated one-of-three field pedestrian candidates.
+"""Extract the ROM's gated field pedestrian candidate table.
 
 The ROM branch at 0xA800 gates selection; 0x5BA98 indexes the scene table at
 0x1EDB88. Each scene row (0x15..0x2B) points to three one-actor lists. The
-runtime chooses one list, so the output is candidate evidence, not three
-simultaneously active NPCs. This is an offline import helper; the game and map
-viewer consume the named TSV, never the ROM.
+branch's only non-clear write to FFE183 samples bound 2 and stores 1 or 2, so
+table choice 3 is retained as source data but is unreachable after valid field
+initialization. The output records source candidates, not three simultaneously
+active NPCs. This offline importer writes a named TSV; the game and map viewer
+consume the TSV, never the ROM.
 """
 
 from __future__ import annotations
@@ -32,8 +34,9 @@ CHOICE_COUNT = 3
 PEDESTRIAN_TEMPLATE = 0x1D6988
 EXPECTED_OVERRIDES = (0x9E, 0x2E, 0x9E)
 ACTIVATION_GATE = (
-    "event_phase=5;world_mode=2;FF_E12C==FFF0C8;FF_FC3C=0;"
-    "FFE183 selects 1..3, or 0 triggers random(0..2)+1"
+    "FFFBED=5(selected offer initializer from F3EBC[FFF0AE]);world_mode=2;"
+    "FFE12C==FFF0C8;FFFC3C=0;FFE183 indexes table 1..3;zero triggers "
+    "0x0D3A bound-2 sample + 1 (fresh choices 1..2; choice 3 unreachable)"
 )
 
 FIELDS = (

@@ -954,6 +954,12 @@ bool FieldSceneRuntime::handle_dialogue_continue_in_place(
     if (!ready_) {
         return false;
     }
+    if (field_contact_actor_cleanup_pending_) {
+        field_contact_actor_cleanup_pending_ = false;
+        if (!retire_dialogue_escort_records()) {
+            return false;
+        }
+    }
     hospital_service_session_active_ = false;
     field_mode_entry_transition_pending_ = false;
     field_mode_entry_destination_scene_.reset();

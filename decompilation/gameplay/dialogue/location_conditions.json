@@ -612,6 +612,92 @@
         "scope": "entry"
       }
     },
+    "penumbra_site_03_mitsuhama.aragorn_after_hours_entry.route": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_2",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_3",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        },
+        {
+          "any": [
+            {
+              "fact": "story.field_mode_flag_bit_12",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "fact": "story.notebook_tip_flag_bit_68",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "fact": "story.notebook_tip_flag_bit_69",
+              "op": "eq",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "provenance": {
+        "entityId": "penumbra_site_03_mitsuhama",
+        "linkId": "aragorn_after_hours_entry",
+        "scope": "route"
+      }
+    },
+    "penumbra_site_03_mitsuhama.aragorn_after_hours_entry.entry": {
+      "all": [
+        {
+          "fact": "story.story_flag_bit_2",
+          "op": "eq",
+          "value": true
+        },
+        {
+          "fact": "story.story_flag_bit_3",
+          "op": "eq",
+          "value": false
+        },
+        {
+          "fact": "field.alternate_result",
+          "op": "eq",
+          "value": 0
+        },
+        {
+          "any": [
+            {
+              "fact": "story.field_mode_flag_bit_12",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "fact": "story.notebook_tip_flag_bit_68",
+              "op": "eq",
+              "value": true
+            },
+            {
+              "fact": "story.notebook_tip_flag_bit_69",
+              "op": "eq",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "provenance": {
+        "entityId": "penumbra_site_03_mitsuhama",
+        "linkId": "aragorn_after_hours_entry",
+        "scope": "entry"
+      }
+    },
     "ares_weapon_emporium.rom_event_11.route": {
       "all": [
         {

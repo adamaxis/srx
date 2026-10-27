@@ -19,6 +19,39 @@
       "provenance": {
         "evidence": "ROM scene 3 record 95 at 0x18AB8C; after the conditional maglock path, event-table row 3 at 0x18A6FF selects numeric resource-activity scene 30. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
       }
+    },
+    {
+      "id": "aragorn_after_hours_entry",
+      "source": {
+        "sceneId": 3,
+        "eventCode": "event_3"
+      },
+      "route": {
+        "kind": "area_event",
+        "script": "area_event_table",
+        "priority": 10,
+        "sourceRoutePolicy": "resume_source_route",
+        "conditionId": "penumbra_site_03_mitsuhama.aragorn_after_hours_entry.route",
+        "returnAnchor": "collision_probe_lead",
+        "returnFacing": "face_away_from_entry"
+      },
+      "entryDialogue": {
+        "task": {
+          "module": "salish_owlfeather",
+          "function": "present_mitsuhama_entry"
+        },
+        "locationContext": {
+          "type": "building",
+          "id": "penumbra_site_03_mitsuhama",
+          "textProfile": "salish.owlfeather",
+          "speakerId": "aragorn_mitsuhama_narrator"
+        },
+        "conditionId": "penumbra_site_03_mitsuhama.aragorn_after_hours_entry.entry",
+        "continueOutcomeType": "resume_source_route"
+      },
+      "provenance": {
+        "evidence": "ROM service 3 at 0x53BCC selects this Scene-3/event-3 branch when FFFC1E bit 2 is set, bit 3 is clear, FFF0D5 is zero, and FFFC30 bit 12 or FFFC38 bit 4/5 is set. It opens 0xF4BB4 (text 0xF5B00, portrait 0x12209C), sets FFE180 after the page, and continues through event-table row 3 at 0x18A6FF to resource Scene 30."
+      }
     }
   ]
 }

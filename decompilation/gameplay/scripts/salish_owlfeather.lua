@@ -24,4 +24,12 @@ function Owlfeather.present_return_followup()
     return present("return_followup")
 end
 
+function Owlfeather.present_mitsuhama_entry()
+    return DialogueGraph.run("salish.owlfeather.mitsuhama_entry")
+end
+
+function Owlfeather.present_mitsuhama_contact()
+    return DialogueGraph.run("salish.owlfeather.mitsuhama_contact")
+end
+
 return Owlfeather

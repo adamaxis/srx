@@ -254,6 +254,11 @@ bool FieldSceneRuntime::open_field_elevator_selector(
         field_elevator_floor_group_.reset();
         return false;
     }
+    // The selector's saved entry floor is the live FFF0C8 value. Its native
+    // selector state is about to be discarded on a child-scene handoff, so
+    // retain the source word in the field facts consumed by A800.
+    field_active_effect_index_ =
+        field_elevator_floor_group_->entry_floor;
     field_elevator_script_destination_ =
         game_scripts_.resolve_elevator_destination(
             *field_elevator_floor_group_,
@@ -435,6 +440,14 @@ void FieldSceneRuntime::advance_field_elevator_selector() {
         }
         source_boundary("field.elevator.selector.source_sound_25");
     }
+    if (update.current_floor_changed) {
+        // ROM 0x59058/0x59062 updates FFF0C8 at every completed 17-frame
+        // floor step. Keep the session fact consumed by 0xA800 in sync with
+        // the selector's displayed current-floor label during the animation.
+        field_active_effect_index_ =
+            field_elevator_selector_.current_floor();
+        source_boundary("field.elevator.current_floor_changed");
+    }
     if (update.animation_started) {
         source_boundary("field.elevator.animation.started");
     } else if (update.animation_frame_changed) {
@@ -470,6 +483,8 @@ void FieldSceneRuntime::advance_field_elevator_selector() {
             source_boundary("field.elevator.selector.returned_to_current_scene");
             return;
         }
+        field_active_effect_index_ =
+            field_elevator_selector_.current_floor();
         field_elevator_pending_destination_ = destination;
         if (field_elevator_scene_transition_.begin_fade_out()) {
             source_boundary("field.elevator.destination_fade_out_started");

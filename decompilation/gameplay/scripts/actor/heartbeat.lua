@@ -109,6 +109,12 @@ function ActorAI.heartbeat(context)
                                state.source_record_slot
     state.source_spawn_state_flags = context.source_spawn_state_flags or
                                      state.source_spawn_state_flags or 0
+    state.movement_scene_id = context.movement_scene_id or
+                              state.movement_scene_id
+    state.source_actor_list_offset = context.source_actor_list_offset or
+                                     state.source_actor_list_offset
+    state.source_actor_source_order = context.source_actor_source_order or
+                                     state.source_actor_source_order
     state.source_behavior_flags = context.source_behavior_flags or
                                   state.source_behavior_flags
     state.source_action_slot = context.source_action_slot or
@@ -119,6 +125,17 @@ function ActorAI.heartbeat(context)
                                   state.source_action_counter
     state.source_animation_selector = context.source_animation_selector or
                                       state.source_animation_selector
+    if context.phase == "behavior" and
+       state.source_record_cleanup_requested then
+        state.source_record_cleanup_requested = false
+        if (state.source_record_flags & ActorStatus.ACTIVE) ~= 0 and
+           (state.source_behavior_flags & BehaviorFlag.ESCORT) ~= 0 then
+            -- ROM 0x1E514 clears +0xB0 bit 7 and +0x10 bit 0. The field host
+            -- observes the inactive typed record and retires its live slot.
+            deactivate_record(state)
+            return R.snapshot(state, "hold", nil)
+        end
+    end
     R.advance_source_action_delay(state, context)
     if context.action_kind == ActionKind.item and
        context.source_item_spawn_result == "spawned" then

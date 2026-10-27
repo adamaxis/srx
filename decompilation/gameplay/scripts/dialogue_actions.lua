@@ -4,6 +4,10 @@ local DialogueActions = {}
 local Registry = {}
 Registry.__index = Registry
 local StoryFlags = require("story_flags")
+local E = require("enums")
+local ActorStatus, BehaviorFlag, ActorPool =
+    E.ActorStatus, E.BehaviorFlag, E.ActorPool
+local LAST_WORLD_ACTOR_SLOT = 9 -- ROM 0x1DED8 scans FF0400..FF0A00.
 
 local function is_identifier(value)
     return type(value) == "string" and value ~= "" and
@@ -87,6 +91,31 @@ local function register_core_actions(registry)
         return true
     end)
 
+    registry:register("field.set_mode_flag", function(arguments)
+        assert(is_integer(arguments.flagBit, 0, 31) and
+               type(arguments.value) == "boolean",
+            "field.set_mode_flag needs a flagBit and boolean value")
+        game.state["field_mode_flag_bit_" .. arguments.flagBit] =
+            arguments.value
+        return true
+    end)
+
+    registry:register("field.set_notebook_tip_flag", function(arguments)
+        assert(is_integer(arguments.flagBit, 0, 31) and
+               type(arguments.value) == "boolean",
+            "field.set_notebook_tip_flag needs a flagBit and boolean value")
+        game.state["notebook_tip_flag_bit_" .. arguments.flagBit] =
+            arguments.value
+        return true
+    end)
+
+    registry:register("field.set_world_effect_active", function(arguments)
+        assert(type(arguments.value) == "boolean",
+            "field.set_world_effect_active needs a boolean value")
+        game.state.world_effect_active = arguments.value
+        return true
+    end)
+
     registry:register("field.set_auxiliary_flag", function(arguments)
         assert(is_integer(arguments.flagBit, 0, 31) and
                type(arguments.value) == "boolean",
@@ -157,6 +186,35 @@ local function register_core_actions(registry)
     registry:register("field.apply_mako_callback", function()
         local result = require("club_penumbra").apply_mako_callback()
         return result == "applied" and result or "service_unavailable"
+    end)
+
+    -- ROM 0x1DED8 scans actor records FF0400..FF0A00 and calls 0x1E514
+    -- for active records carrying +0xB0 bit 7. The actor service consumes
+    -- these Lua requests and clears the typed record fields there.
+    registry:register("actor.cleanup_escort_records", function()
+        assert(type(game.actors) == "table",
+            "actor.cleanup_escort_records needs the Lua actor registry")
+        local cleanup_count = 0
+        for _, state in pairs(game.actors) do
+            local slot = type(state) == "table" and
+                state.source_record_slot or nil
+            local record_flags = type(state) == "table" and
+                state.source_record_flags or 0
+            local behavior_flags = type(state) == "table" and
+                state.source_behavior_flags or 0
+            if type(slot) == "number" and slot % 1 == 0 and
+               slot >= ActorPool.PARTY and slot <= LAST_WORLD_ACTOR_SLOT and
+               type(record_flags) == "number" and
+               (record_flags & ActorStatus.ACTIVE) ~= 0 and
+               type(behavior_flags) == "number" and
+               (behavior_flags & BehaviorFlag.ESCORT) ~= 0 then
+                state.source_record_cleanup_requested = true
+                cleanup_count = cleanup_count + 1
+            end
+        end
+        assert(cleanup_count > 0,
+            "actor.cleanup_escort_records found no active +0xB0 bit-7 record")
+        return true
     end)
 end
 

@@ -875,7 +875,7 @@ bool push_world_areas(lua_State* state,
 }
 
 void push_empty_data(lua_State* state, const int modules_reference) {
-    lua_createtable(state, 0, 9);
+    lua_createtable(state, 0, 12);
     const auto root_table = lua_absindex(state, -1);
     lua_createtable(state, 0, 0);
     lua_setfield(state, root_table, "entities");
@@ -895,6 +895,8 @@ void push_empty_data(lua_State* state, const int modules_reference) {
     lua_setfield(state, root_table, "dynamic_world_activity_actors");
     lua_createtable(state, 0, 0);
     lua_setfield(state, root_table, "world_activity_actor_lists");
+    lua_createtable(state, 0, 0);
+    lua_setfield(state, root_table, "conditional_actor_candidates");
     lua_createtable(state, 0, 0);
     lua_setfield(state, root_table, "field_alarm_profiles");
     lua_createtable(state, 0, 0);
@@ -932,7 +934,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
     }
 
     const auto stack_base = lua_gettop(state);
-    lua_createtable(state, 0, 11);
+    lua_createtable(state, 0, 12);
     const auto root_table = lua_absindex(state, -1);
     if (!push_entities(state, world_directory, failure)) {
         lua_settop(state, stack_base);
@@ -949,7 +951,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
             const char* field;
             std::vector<std::string_view> numeric_columns;
         };
-        const std::array<SourceTable, 3> source_tables{{
+        const std::array<SourceTable, 4> source_tables{{
             {"world-activity-outcomes.tsv", "world_activity_outcomes",
              {"scene", "context_group", "random_sum", "handler_offset"}},
             {"entities/dynamic-world-activity-actors.tsv",
@@ -1023,6 +1025,11 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "combat_action_skill_81", "combat_action_skill_82",
               "combat_action_skill_83", "combat_action_skill_84",
               "combat_auxiliary_roll_bonus"}},
+            {"entities/conditional-actor-candidates.tsv",
+             "conditional_actor_candidates",
+             {"scene", "choice", "entity_kind", "palette_line",
+              "template_offset", "list_offset", "position_offset",
+              "world_x", "world_y", "heading_word", "direction"}},
         }};
         for (const auto& source_table : source_tables) {
             TsvDocument document;

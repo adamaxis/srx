@@ -50,7 +50,7 @@ struct WorldActivityRoutineInput {
     std::uint8_t secondary_runner_marker = 0xFFU;
     std::vector<std::int8_t> runner_slot_by_scene;
     std::vector<bool> world_script_available;
-    std::uint16_t default_resource_word = 0;
+    std::uint16_t default_resource_word = 0; // FFF0C8 on resource entry
     SceneResourceProfileFields resource_cursor_source{};
 
     // ROM 0x167AE's resource branch reads the bound from the selected profile
@@ -68,7 +68,7 @@ struct WorldActivityRoutineState {
     std::uint16_t resource_random_index_bound = 0; // FFF0C6
     std::uint16_t selected_resource_random_index = 0; // FFE12C
     std::uint8_t resource_marker_ordinal = 0; // FFE185
-    std::uint16_t default_resource_word = 0;
+    std::uint16_t default_resource_word = 0; // initial FFF0C8 value
     SceneResourceCursorState resource_cursor{};
     std::optional<std::size_t> selected_world_script;
     bool selected_scene_ten_variant_script = false;

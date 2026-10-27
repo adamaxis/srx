@@ -66,6 +66,15 @@ int main() {
         !expect(gated_markers[2] == 0xDA && gated_markers[5] == 0x9A)) {
         return 3;
     }
+    auto mismatched_word_state = marker_state;
+    mismatched_word_state.selected_effect_index = 0x0100U;
+    mismatched_word_state.active_effect_index = 0U;
+    auto mismatched_word_markers = gated_markers;
+    if (!expect(!replace_nth_terrain_marker(
+                    mismatched_word_markers, mismatched_word_state)) ||
+        !expect(mismatched_word_markers == gated_markers)) {
+        return 4;
+    }
     marker_state.world_effect_active = true;
     if (!expect(!replace_nth_terrain_marker(gated_markers, marker_state))) {
         return 4;

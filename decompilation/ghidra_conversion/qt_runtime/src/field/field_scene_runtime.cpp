@@ -234,6 +234,7 @@ enum class ActorServiceFlag : std::uint8_t {
     action_candidate_reserved = 1U << 4U,
     activity_probe_enabled = 1U << 5U,
     effect_locked = 1U << 6U,
+    escort = 1U << 7U,
 };
 
 enum class ActorSpawnStateFlag : std::uint8_t {
@@ -2517,9 +2518,10 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
     };
     const auto script_index_column = column_index("script_index");
     const auto entity_kind_column = column_index("entity_kind");
+    const auto profile_id_column = column_index("profile_id");
     const auto sprite_stem_column = column_index("sprite_stem");
     if (script_actor_columns.size() < 21U || !script_index_column ||
-        !entity_kind_column || !sprite_stem_column) {
+        !entity_kind_column || !profile_id_column || !sprite_stem_column) {
         failure_ = "conditional world-activity actor table header is invalid";
         return false;
     }
@@ -2544,11 +2546,17 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             }
             const auto script_index =
                 std::stoi(fields[*script_index_column]);
-            if (script_index < 0) {
-                continue;
-            }
             const auto entity_kind = static_cast<std::uint16_t>(
                 std::stoul(fields[*entity_kind_column]));
+            // The A8AE story-contact row uses the extracted pedestrian
+            // animation profile as its host-art key. Other non-script lists
+            // keep their own list-specific asset sources.
+            if (script_index < 0 &&
+                (entity_kind != 11U ||
+                 fields[*sprite_stem_column] !=
+                     fields[*profile_id_column])) {
+                continue;
+            }
             if (script_index > 0xFF || entity_kind < 3U ||
                 entity_kind > 14U) {
                 failure_ = "conditional world-activity actor identity is invalid";
@@ -2794,6 +2802,17 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
         field_dynamic_actor_artwork_.emplace(sprite_stem,
                                               std::move(artwork));
     }
+    const auto pedestrian_template = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [](const DefaultFieldActorPresentation& actor) {
+            return actor.entity_kind == 11U && actor.palette_line == 3U;
+        });
+    if (pedestrian_template == field_default_actors_.end()) {
+        failure_ = "conditional pedestrian has no extracted kind-11 art profile";
+        return false;
+    }
+    field_dynamic_actor_artwork_.try_emplace(
+        pedestrian_template->sprite_stem, field_default_actor_artwork_[1U]);
     return true;
 }
 
@@ -2930,21 +2949,180 @@ void FieldSceneRuntime::initialize_default_field_actors(
         queue_pending_actor_list(std::move(actors),
                                  "field.mode_transition.actor_list_unresolved");
     } else if (!preserved_scene_script_actors) {
-        const auto selected_pending_list =
-            game_scripts_.pending_world_activity_actor_list_for_scene(
-                scene_reference, field_world_effect_active_,
-                field_pending_world_effect_);
-        if (!selected_pending_list.has_value() &&
+        scripting::ScriptConditionalActorSelectionContext facts{};
+        facts.world_effect_active = field_world_effect_active_;
+        facts.pending_world_effect = field_pending_world_effect_;
+        facts.world_mode = field_movement_transition_state_.world_mode;
+        facts.active_effect_index = field_active_effect_index_;
+        facts.selected_effect_index = field_selected_effect_index_;
+        facts.player_spawn_pending = field_world_effect_player_spawn_pending_;
+        facts.active_offer_source_initializer =
+            game_scripts_.active_run_source_initializer();
+        if (!facts.active_offer_source_initializer.has_value() &&
             !game_scripts_.failure().empty()) {
             failure_ = game_scripts_.failure();
             source_boundary(
-                "field.world_activity.pending_list_selection_failed");
-        } else if (selected_pending_list.has_value()) {
-            auto actors = game_scripts_.world_activity_actors_for_source_list(
-                scene_reference, *selected_pending_list);
-            queue_pending_actor_list(
-                std::move(actors),
-                "field.world_activity.pending_list_unresolved");
+                "field.conditional_actor.active_offer_unresolved");
+        } else {
+            const auto selection =
+                game_scripts_.resolve_conditional_actor_selection(
+                    scene_reference, facts,
+                    [this](const std::uint16_t bound)
+                        -> std::optional<std::uint16_t> {
+                        if (bound == 0U) {
+                            return std::nullopt;
+                        }
+                        const auto sample = sample_source_random_bound(
+                            field_random_seed_, bound);
+                        if (sample < 0 || sample >=
+                                static_cast<std::int16_t>(bound)) {
+                            return std::nullopt;
+                        }
+                        return static_cast<std::uint16_t>(sample);
+                    });
+            if (!selection.has_value()) {
+                failure_ = game_scripts_.failure();
+                source_boundary(
+                    "field.conditional_actor.selection_failed");
+            } else if (selection->choice_changed) {
+                source_boundary("field.conditional_actor.choice_sampled");
+            }
+            if (selection.has_value()) {
+                using scripting::ScriptConditionalActorSelectionKind;
+                switch (selection->kind) {
+                case ScriptConditionalActorSelectionKind::none:
+                    break;
+                case ScriptConditionalActorSelectionKind::story_contact:
+                case ScriptConditionalActorSelectionKind::pending_world_activity:
+                    queue_pending_actor_list(
+                        game_scripts_.world_activity_actors_for_source_list(
+                            scene_reference, selection->list_offset),
+                        selection->kind ==
+                                ScriptConditionalActorSelectionKind::story_contact
+                            ? "field.conditional_actor.story_contact_list_unresolved"
+                            : "field.conditional_actor.pending_list_unresolved");
+                    break;
+                case ScriptConditionalActorSelectionKind::random_pedestrian: {
+                    const auto candidates =
+                        game_scripts_.conditional_actor_candidates_for_scene(
+                            scene_reference);
+                    if (!candidates.has_value()) {
+                        failure_ = game_scripts_.failure();
+                        source_boundary(
+                            "field.conditional_actor.candidates_unresolved");
+                        break;
+                    }
+                    const auto candidate = std::find_if(
+                        candidates->begin(), candidates->end(),
+                        [&selection](const auto& row) {
+                            return row.list_offset == selection->list_offset;
+                        });
+                    if (candidate == candidates->end()) {
+                        failure_ = "A800 selected a list absent from its scene table";
+                        source_boundary(
+                            "field.conditional_actor.selected_list_missing");
+                        break;
+                    }
+                    const auto actor_template = std::find_if(
+                        field_default_actors_.begin(),
+                        field_default_actors_.end(),
+                        [&candidate](const auto& actor) {
+                            return actor.template_offset ==
+                                       candidate->template_offset &&
+                                   actor.entity_kind ==
+                                       candidate->entity_kind &&
+                                   actor.palette_line ==
+                                       candidate->palette_line;
+                        });
+                    if (actor_template == field_default_actors_.end()) {
+                        failure_ =
+                            "A800 pedestrian candidate has no extracted actor template";
+                        source_boundary(
+                            "field.conditional_actor.template_unresolved");
+                        break;
+                    }
+
+                    scripting::ScriptWorldActivityActor actor{};
+                    actor.scene_id = scene_reference;
+                    actor.script_index = -1;
+                    actor.source_order = 0U;
+                    actor.list_offset = candidate->list_offset;
+                    actor.source_record_offset = candidate->list_offset;
+                    actor.tagged_template =
+                        candidate->template_offset | 0x80000000U;
+                    actor.template_offset = candidate->template_offset;
+                    actor.position_offset = candidate->position_offset;
+                    actor.actor_name = candidate->actor_name;
+                    actor.profile_id = actor_template->script_profile_id;
+                    actor.entity_kind = candidate->entity_kind;
+                    actor.sprite_stem = actor_template->sprite_stem;
+                    actor.action_kind = actor_template->action_kind;
+                    actor.action_code = actor_template->initial_action_code;
+                    actor.source_action_slot =
+                        actor_template->source_action_slot;
+                    actor.source_action_ammo =
+                        actor_template->source_action_ammo;
+                    actor.source_action_counter =
+                        actor_template->source_action_counter;
+                    actor.palette_line = candidate->palette_line;
+                    actor.world_x = candidate->world_x;
+                    actor.world_y = candidate->world_y;
+                    actor.heading = candidate->heading_word;
+                    actor.ordered_overrides = candidate->ordered_overrides;
+                    actor.source_spawn_state_flags =
+                        actor_template->source_spawn_state_flags;
+                    try {
+                        std::istringstream override_stream(
+                            candidate->ordered_overrides);
+                        std::string override_pair;
+                        while (std::getline(override_stream, override_pair, ',')) {
+                            const auto equals = override_pair.find('=');
+                            if (equals == std::string::npos) {
+                                throw std::invalid_argument(
+                                    "candidate override is missing '='");
+                            }
+                            const auto offset = std::stoul(
+                                override_pair.substr(0U, equals), nullptr, 0);
+                            const auto value = std::stoul(
+                                override_pair.substr(equals + 1U), nullptr, 0);
+                            if (offset == 0x9EU) {
+                                if (value > 0xFFU) {
+                                    throw std::out_of_range(
+                                        "candidate spawn flags exceed one byte");
+                                }
+                                actor.source_spawn_state_flags =
+                                    static_cast<std::uint8_t>(value);
+                            }
+                        }
+                    } catch (const std::exception& error) {
+                        failure_ = std::string(
+                            "A800 pedestrian override is invalid: ") +
+                            error.what();
+                        source_boundary(
+                            "field.conditional_actor.overrides_invalid");
+                        break;
+                    }
+                    actor.source_interaction_flags =
+                        actor_template->source_interaction_flags;
+                    actor.physical_meter = actor_template->physical_meter;
+                    actor.delay_primary_attribute =
+                        actor_template->delay_primary_attribute;
+                    actor.delay_secondary_attribute =
+                        actor_template->delay_secondary_attribute;
+                    actor.delay_capability_flags =
+                        actor_template->delay_capability_flags;
+                    actor.combatant = actor_template->initial_combatant;
+                    pending_world_activity_script_actor_scene_ =
+                        scene_reference;
+                    pending_world_activity_script_actors_.clear();
+                    pending_world_activity_script_actors_.push_back(
+                        std::move(actor));
+                    source_boundary(
+                        "field.conditional_actor.random_pedestrian_queued");
+                    break;
+                }
+                }
+            }
         }
     }
     // Records kept from this scene's earlier destination-entry drain still
@@ -3025,6 +3203,9 @@ void FieldSceneRuntime::initialize_default_field_actors(
         context.source_actor_template_kind = actor.entity_kind;
         context.source_actor_has_waypoint_data =
             actor.source_actor_has_waypoint_data;
+        context.source_actor_list_offset = actor.list_offset;
+        context.source_actor_source_order = actor.source_order;
+        context.movement_scene_id = scene_reference;
         context.combatant = actor.combatant;
         context.source_actor_posture = actor.combatant.posture;
         context.source_record_slot = static_cast<std::uint8_t>(
@@ -3234,6 +3415,8 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         context.dynamic_world_encounter_actor = true;
         context.world_activity_script_actor =
             actor.world_activity_script_actor;
+        context.source_actor_list_offset = actor.list_offset;
+        context.source_actor_source_order = actor.source_order;
         context.combatant = actor.combatant;
         context.source_actor_posture = actor.combatant.posture;
         context.source_record_flags = actor.source_record_flags;
@@ -4314,15 +4497,23 @@ void FieldSceneRuntime::advance_default_field_actors(
 void FieldSceneRuntime::resolve_default_actor_proximity(
     DefaultFieldActorPresentation& actor) {
     constexpr std::uint16_t kSceneTwenty = 0x0014U;
-    constexpr std::uint8_t kIleneContactFlag = 0x08U;
+    constexpr std::uint16_t kSceneThirtyFour = 0x0022U;
+    constexpr std::uint16_t kIleneContactList = 0xA8CCU;
+    constexpr std::uint16_t kAragornContactList = 0xA8AEU;
+    constexpr std::uint8_t kWorldActivityContactFlag = 0x08U;
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    // ROM 0xA8CC publishes this Scene-20 actor with +0x9E bit 3. Keep the
-    // interaction eligible only while that ROM-derived record and FFE182's
-    // pending-list handoff are both present.
+    // ROM 0xA8CC and 0xA8AE publish +0x9E bit 3 contact actors. The former is
+    // Scene-20 Ilene (FFE182); the latter is Scene-34 Aragorn (FFE180). 0xECCC
+    // selects the active handler from the live collision state.
+    const bool ilene_contact_actor = scene_reference == kSceneTwenty &&
+        actor.list_offset == kIleneContactList;
+    const bool aragorn_contact_actor =
+        scene_reference == kSceneThirtyFour &&
+        actor.list_offset == kAragornContactList;
     if (!actor.active || !actor.world_activity_script_actor ||
         actor.scene_reference != scene_reference ||
-        scene_reference != kSceneTwenty ||
-        (actor.source_spawn_state_flags & kIleneContactFlag) == 0U ||
+        (!ilene_contact_actor && !aragorn_contact_actor) ||
+        (actor.source_spawn_state_flags & kWorldActivityContactFlag) == 0U ||
         !actor.source_record_slot.has_value() || !field_entity_.active ||
         field_dialogue_.open()) {
         return;
@@ -4393,8 +4584,8 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
 
     const auto proximity = resolve_entity_proximity_interactions(
         records, 0U,
-        {[this, &records, &world](EntityProximityRecord& current,
-                                 EntityProximityRecord& candidate) {
+        {[this, &actor, &records, &world, scene_reference](EntityProximityRecord& current,
+                                          EntityProximityRecord& candidate) {
              EntityPairCollisionEntity current_entity{
                  current.special_flags, current.entity_flags,
                  current.activity_flags};
@@ -4403,27 +4594,86 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                  candidate.activity_flags};
              const auto collision = resolve_entity_pair_collision_event(
                  current_entity, candidate_entity, world,
-                 {{}, [this] {
+                 {{}, [this, &actor, &world, &current_entity,
+                       scene_reference] {
                       if (field_dialogue_.open()) {
                           return;
                       }
-                      game_scripts_.set_location_context(
-                          "field_map", "scene_20_ilene",
-                          "field.world_event", "field_narrator");
+                      const bool world_effect_handler =
+                          world.handler == EntityPairActivityHandler::
+                              world_effect_collision;
+                      const bool pending_effect_handler =
+                          world.handler == EntityPairActivityHandler::
+                              pending_world_effect_collision;
+                      const auto contact_route = game_scripts_.call_integers(
+                          "world_content", "field_actor_contact_task",
+                          {static_cast<std::int64_t>(scene_reference),
+                           static_cast<std::int64_t>(actor.list_offset),
+                           static_cast<std::int64_t>(actor.source_order),
+                           world_effect_handler ? 1 : 0,
+                           pending_effect_handler ? 1 : 0});
+                      if (!contact_route || contact_route->size() != 2U ||
+                          contact_route->front() < 0 ||
+                          contact_route->front() > 2 ||
+                          contact_route->at(1U) < 0 ||
+                          contact_route->at(1U) > 0xFF) {
+                          failure_ = game_scripts_.failure().empty()
+                              ? "Lua field actor contact route is invalid"
+                              : game_scripts_.failure();
+                          source_boundary(
+                              "field.world_activity.contact_route_failed");
+                          return;
+                      }
+                      const auto contact_task = contact_route->front();
+                      if (contact_task != 0) {
+                          // ROM 0xECCC sets the contacted record's +0xB0 bit 7
+                          // before entering the dialogue helper. Keep that
+                          // returned Lua state in the live typed record so
+                          // the post-dialogue 0x1DED8 scan sees it.
+                          actor.source_behavior_flags =
+                              static_cast<std::uint8_t>(contact_route->at(1U));
+                          current_entity.activity_flags =
+                              actor.source_behavior_flags;
+                      }
                       begin_world_activity(field_world_activity_state_, 0U);
                       world_frame_logic_state_.resource_countdown =
                           field_world_activity_state_.timeout;
-                      if (!field_dialogue_.open_gameplay_task(
-                              "ilene", "complete_scene_20_activity")) {
-                          failure_ = field_dialogue_.failure().empty()
-                              ? "Ilene contact task could not be opened"
-                              : field_dialogue_.failure();
+                      std::string_view module;
+                      std::string_view task;
+                      std::string_view location;
+                      std::string_view speaker;
+                      std::string_view opened_boundary;
+                      if (contact_task == 1) {
+                          module = "salish_owlfeather";
+                          task = "present_mitsuhama_contact";
+                          location = "mitsuhama_aragorn";
+                          speaker = "aragorn_mitsuhama_contact";
+                          opened_boundary =
+                              "field.world_activity.aragorn_contact_opened";
+                      } else if (contact_task == 2) {
+                          module = "ilene";
+                          task = "complete_scene_20_activity";
+                          location = "scene_20_ilene";
+                          speaker = "field_narrator";
+                          opened_boundary =
+                              "field.world_activity.ilene_contact_opened";
+                      } else {
                           source_boundary(
-                              "field.world_activity.ilene_contact_open_failed");
+                              "field.world_activity.unmapped_actor_contact");
                           return;
                       }
-                      source_boundary(
-                          "field.world_activity.ilene_contact_opened");
+                      game_scripts_.set_location_context(
+                          "field_map", location, "field.world_event", speaker);
+                      if (!field_dialogue_.open_gameplay_task(module, task)) {
+                          failure_ = field_dialogue_.failure().empty()
+                              ? "field actor contact task could not be opened"
+                              : field_dialogue_.failure();
+                          source_boundary(
+                              "field.world_activity.contact_open_failed");
+                          return;
+                      }
+                      source_boundary(opened_boundary);
+                      field_contact_actor_cleanup_pending_ = true;
                   }});
              current.activity_flags = current_entity.activity_flags;
              candidate.activity_flags = candidate_entity.activity_flags;
@@ -4445,6 +4695,91 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
     if (proximity.pairs_resolved != 0U) {
         source_boundary("field.entities.resolve_proximity");
     }
+}
+
+bool FieldSceneRuntime::retire_dialogue_escort_records() {
+    for (auto& actor : field_default_actors_) {
+        if (!actor.active || !actor.source_record_slot.has_value() ||
+            static_cast<std::uint16_t>(*actor.source_record_slot) <
+                static_cast<std::uint16_t>(FieldWorldActorSlot::slot_3) ||
+            static_cast<std::uint16_t>(*actor.source_record_slot) >
+                static_cast<std::uint16_t>(FieldWorldActorSlot::slot_9) ||
+            !actor_flag_is_set(actor.source_record_flags,
+                               ActorServiceFlag::active) ||
+            !actor_flag_is_set(actor.source_behavior_flags,
+                               ActorServiceFlag::escort)) {
+            continue;
+        }
+
+        scripting::ScriptActorBehaviorContext context{
+            actor.script_profile_id,
+            actor.entity_kind,
+            actor.action_kind,
+            actor.initial_action_code,
+            actor.initial_behavior_delay,
+            actor.transition_started,
+            actor.transition_complete,
+            actor.actor_instance_id,
+            actor.movement_state.heading,
+            false,
+        };
+        context.dynamic_world_encounter_actor =
+            actor.temporary_world_encounter ||
+            actor.world_activity_script_actor;
+        context.world_activity_script_actor =
+            actor.world_activity_script_actor;
+        context.source_actor_template_kind = actor.entity_kind;
+        context.source_record_slot = static_cast<std::uint8_t>(
+            *actor.source_record_slot);
+        context.source_actor_slot = static_cast<std::uint8_t>(
+            *actor.source_record_slot);
+        if (actor.list_offset != 0U) {
+            context.source_actor_list_offset = actor.list_offset;
+            context.source_actor_source_order = actor.source_order;
+        }
+        context.source_record_flags = actor.source_record_flags;
+        context.source_interaction_flags = actor.source_interaction_flags;
+        context.source_behavior_flags = actor.source_behavior_flags;
+        context.source_spawn_state_flags = actor.source_spawn_state_flags;
+        context.source_action_slot = actor.source_action_slot;
+        context.source_action_ammo = actor.source_action_ammo;
+        context.source_action_counter = actor.source_action_counter;
+        context.source_animation_selector = actor.source_animation_selector;
+        context.source_physical_meter = actor.physical_meter;
+        context.movement_scene_id = actor.scene_reference;
+        context.combatant = actor.combatant;
+        const auto decision = game_scripts_.actor_heartbeat(context);
+        if (!decision.has_value()) {
+            failure_ = game_scripts_.failure();
+            source_boundary("field.actor.contact_cleanup_failed");
+            return false;
+        }
+        if (actor_flag_is_set(decision->source_record_flags,
+                              ActorServiceFlag::active)) {
+            failure_ = "Lua did not retire an escort record after dialogue";
+            source_boundary("field.actor.contact_cleanup_not_applied");
+            return false;
+        }
+
+        actor.source_record_flags = decision->source_record_flags;
+        actor.source_behavior_flags = decision->source_behavior_flags;
+        actor.combatant.source_flags = actor.source_record_flags;
+        if (actor.target_motion_effect_slot.has_value() &&
+            *actor.target_motion_effect_slot <
+                field_world_effect_slots_occupied_.size()) {
+            field_world_effect_slots_occupied_[
+                *actor.target_motion_effect_slot] = false;
+            actor.target_motion_effect_slot.reset();
+        }
+        actor.active = false;
+        if (!actor_flag_is_set(actor.source_record_flags,
+                               ActorServiceFlag::targets_world_actor_group)) {
+            actor.source_record_slot.reset();
+        }
+        actor.target_selected = false;
+        source_boundary("field.actor.record_deactivated");
+    }
+    return true;
 }
 
 void FieldSceneRuntime::service_dynamic_actor_weapon_action(
@@ -6377,6 +6712,11 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 input.resource_overrides.force_index_four = true;
                 break;
             }
+            // The Scene-3/event-3 story route leaves FFE180 armed through
+            // resource initialization; ROM 0x167AE then forces FFE12C to 4.
+            input.resource_overrides.force_index_four =
+                input.resource_overrides.force_index_four ||
+                field_world_effect_active_;
             input.primary_runner_marker =
                 field_party_roster_.primary_compact_marker();
             input.secondary_runner_marker =
@@ -6543,6 +6883,11 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 }
             }
             if (result == WorldActivityResult::resource_activity_ready) {
+                field_active_effect_index_ =
+                    world_activity_routine_state_.default_resource_word;
+                field_selected_effect_index_ =
+                    world_activity_routine_state_
+                        .selected_resource_random_index;
                 field_security_floor_index_ = static_cast<std::uint8_t>(
                     world_activity_routine_state_
                         .selected_resource_random_index);
@@ -8536,6 +8881,8 @@ bool FieldSceneRuntime::bootstrap(
     field_weapon_slots_occupied_.fill(false);
     last_field_weapon_spawn_result_ = EntitySpawnCycleResult{};
     field_security_floor_index_.reset();
+    field_active_effect_index_.reset(); // FFF0C8 is field-session state.
+    field_selected_effect_index_.reset(); // FFE12C is field-session state.
     field_activity_continuation_ = MovementModeTransitionContinuation::none;
     field_projected_terrain_mark_count_ = 0U;
     field_terrain_sample_state_ = {};

@@ -25,8 +25,8 @@ struct TerrainMarkerReplacementState {
     std::uint8_t effect_context_active = 0;       // FFE184
     std::uint8_t alternate_effect_context = 0;    // FFE187
     std::uint8_t effect_handler_index = 0;        // FFFBED
-    std::uint8_t selected_effect_index = 0;       // FFE12C
-    std::uint8_t active_effect_index = 0;         // FFF0C8
+    std::uint16_t selected_effect_index = 0;      // FFE12C
+    std::uint16_t active_effect_index = 0;        // FFF0C8
     std::uint8_t marker_ordinal = 0;              // FFE185
     bool world_effect_active = false;             // FFE180
 };

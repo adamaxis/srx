@@ -369,6 +369,138 @@
           "reason": "The requested Owlfeather dialogue command has no converted story-flag effect."
         }
       }
+    },
+    "salish.owlfeather.mitsuhama_entry": {
+      "entryNode": "begin_trigger",
+      "speakerId": "aragorn_mitsuhama_narrator",
+      "textProfile": "salish.owlfeather",
+      "provenance": {
+        "romAddresses": ["0x53BCC", "0x53C3C", "0xF4BB4", "0xF5B00", "0x12209C"],
+        "scope": "scene_3_event_3_entry_passage_then_scene_30"
+      },
+      "nodes": {
+        "begin_trigger": {
+          "type": "action",
+          "actionId": "story.begin_trigger",
+          "arguments": { "triggerId": 3 },
+          "next": "entry_page",
+          "evidence": "ROM 0x53A78 records indexed service 3 in FFDD64 before calling 0x53BCC."
+        },
+        "entry_page": {
+          "type": "page",
+          "eventId": "mitsuhama_entry",
+          "next": "arm_story_contact",
+          "evidence": "ROM 0x53C3C opens dialogue root 0xF4BB4; its text pointer is 0xF5B00 and portrait profile is 0x12209C."
+        },
+        "arm_story_contact": {
+          "type": "action",
+          "actionId": "field.set_world_effect_active",
+          "arguments": { "value": true },
+          "next": "resume_activity_route",
+          "evidence": "After the root page returns, ROM 0x53C3C sets FFE180 and leaves the event-table destination live."
+        },
+        "resume_activity_route": {
+          "type": "terminal",
+          "outcome": { "type": "resume_source_route" }
+        }
+      }
+    },
+    "salish.owlfeather.mitsuhama_contact": {
+      "entryNode": "consume_after_hours_contact",
+      "speakerId": "aragorn_mitsuhama_contact",
+      "textProfile": "salish.owlfeather",
+      "provenance": {
+        "romAddresses": ["0xECCC", "0xED7E", "0x53C90", "0x53C96", "0xF4BBC", "0xF5B78", "0xF5C49", "0xF5C6F", "0x121E08"],
+        "scope": "mitsuhama_after_hours_aragorn_contact"
+      },
+      "nodes": {
+        "consume_after_hours_contact": {
+          "type": "action",
+          "actionId": "field.set_world_effect_active",
+          "arguments": { "value": false },
+          "next": "mark_aragorn_found",
+          "evidence": "ROM 0xED7E consumes FFE180 before 0x53C90 handles the special actor contact."
+        },
+        "mark_aragorn_found": {
+          "type": "action",
+          "actionId": "story.set_flag",
+          "arguments": { "flagBit": 3, "value": true },
+          "next": "clear_field_mode_bit_10",
+          "evidence": "ROM 0x53C90 sets FFFC1E bit 3 at 0x53C96 before opening root 0xF4BBC."
+        },
+        "clear_field_mode_bit_10": {
+          "type": "action",
+          "actionId": "field.set_mode_flag",
+          "arguments": { "flagBit": 10, "value": false },
+          "next": "clear_field_mode_bit_11"
+        },
+        "clear_field_mode_bit_11": {
+          "type": "action",
+          "actionId": "field.set_mode_flag",
+          "arguments": { "flagBit": 11, "value": false },
+          "next": "clear_field_mode_bit_12"
+        },
+        "clear_field_mode_bit_12": {
+          "type": "action",
+          "actionId": "field.set_mode_flag",
+          "arguments": { "flagBit": 12, "value": false },
+          "next": "set_field_mode_bit_13"
+        },
+        "set_field_mode_bit_13": {
+          "type": "action",
+          "actionId": "field.set_mode_flag",
+          "arguments": { "flagBit": 13, "value": true },
+          "next": "clear_notebook_tip_bit_4"
+        },
+        "clear_notebook_tip_bit_4": {
+          "type": "action",
+          "actionId": "field.set_notebook_tip_flag",
+          "arguments": { "flagBit": 4, "value": false },
+          "next": "clear_notebook_tip_bit_5"
+        },
+        "clear_notebook_tip_bit_5": {
+          "type": "action",
+          "actionId": "field.set_notebook_tip_flag",
+          "arguments": { "flagBit": 5, "value": false },
+          "next": "aragorn_contact_opening"
+        },
+        "aragorn_contact_opening": {
+          "type": "page",
+          "eventId": "aragorn_contact_opening",
+          "next": "player_rescue_reply",
+          "evidence": "ROM root 0xF4BBC reads text record 0xF5B78 first."
+        },
+        "player_rescue_reply": {
+          "type": "page",
+          "eventId": "aragorn_contact_reply",
+          "next": "apply_command_18",
+          "evidence": "ROM root 0xF4BBC next reads text record 0xF5C49."
+        },
+        "apply_command_18": {
+          "type": "action",
+          "actionId": "story.apply_dialogue_command",
+          "arguments": { "commandId": 24 },
+          "next": "aragorn_refuses_help",
+          "evidence": "ROM root 0xF4BBC applies dialogue command 0x18 before its final text record."
+        },
+        "aragorn_refuses_help": {
+          "type": "page",
+          "eventId": "aragorn_contact_outcome",
+          "next": "cleanup_contact_actor",
+          "evidence": "ROM root 0xF4BBC ends with text record 0xF5C6F."
+        },
+        "cleanup_contact_actor": {
+          "type": "action",
+          "actionId": "actor.cleanup_escort_records",
+          "arguments": {},
+          "next": "continue_in_place",
+          "evidence": "After the dialogue returns, ROM 0x53C90 calls 0x1DED8; it scans FF0400..FF0A00 and calls 0x1E514 for active records with +0xB0 bit 7 set."
+        },
+        "continue_in_place": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
     }
   }
 }

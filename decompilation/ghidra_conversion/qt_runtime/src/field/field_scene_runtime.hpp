@@ -432,6 +432,25 @@ public:
     bool world_effect_player_spawn_pending_for_dump() const noexcept {
         return field_world_effect_player_spawn_pending_;
     }
+    void seed_conditional_actor_effect_facts_for_dump(
+        const bool world_effect_active,
+        const bool pending_world_effect,
+        const std::optional<std::uint16_t> active_effect_index,
+        const std::optional<std::uint16_t> selected_effect_index) noexcept {
+        field_world_effect_active_ = world_effect_active;
+        field_pending_world_effect_ = pending_world_effect;
+        field_active_effect_index_ = active_effect_index;
+        field_selected_effect_index_ = selected_effect_index;
+    }
+    bool world_effect_active_for_dump() const noexcept {
+        return field_world_effect_active_;
+    }
+    std::optional<std::uint16_t> active_effect_index_for_dump() const noexcept {
+        return field_active_effect_index_;
+    }
+    std::optional<std::uint16_t> selected_effect_index_for_dump() const noexcept {
+        return field_selected_effect_index_;
+    }
     const EffectFadeMarkerState& field_effect_fade_marker_for_dump()
         const noexcept {
         return field_effect_fade_marker_;
@@ -1657,6 +1676,7 @@ private:
         DefaultFieldActorPresentation& actor);
     void resolve_default_actor_proximity(
         DefaultFieldActorPresentation& actor);
+    bool retire_dialogue_escort_records();
     void publish_pending_world_activity_script_actors(
         std::uint16_t scene_reference);
     void service_dynamic_actor_weapon_action(
@@ -2629,6 +2649,14 @@ private:
     // FFE180 suppresses pending-list selection while a higher-priority
     // world effect is active.
     bool field_world_effect_active_ = false;
+    // A8AE/A8CC contact tasks run the ROM 0x1DED8 cleanup before the modal
+    // return fade suspends ordinary actor service.
+    bool field_contact_actor_cleanup_pending_ = false;
+    // Source words FFF0C8 and FFE12C survive elevator child-scene loads. Keep
+    // them as typed field facts so the A800 selector can compare the active
+    // floor with the resource's selected index after the routine state resets.
+    std::optional<std::uint16_t> field_active_effect_index_;
+    std::optional<std::uint16_t> field_selected_effect_index_;
     // ROM FFFC40: separate world-activity facts, including Spirit Eyes
     // component-request markers at bits 0..2.
     std::uint32_t field_auxiliary_flags_ = 0;

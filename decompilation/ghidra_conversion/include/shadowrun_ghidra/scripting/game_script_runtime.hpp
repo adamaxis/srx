@@ -1154,6 +1154,56 @@ struct ScriptFieldEncounterActor {
     ScriptCombatantFacts combatant;
 };
 
+// A conditional table row is source data for the ROM's A800 selector.
+// Candidate rows remain descriptors until FieldSceneRuntime supplies the
+// source facts and selection lifecycle and publishes the selected actor.
+struct ScriptConditionalActorCandidate {
+    std::uint16_t scene_id = 0;
+    std::uint8_t choice = 0;
+    std::string actor_name;
+    std::uint16_t entity_kind = 0;
+    std::uint8_t palette_line = 0;
+    std::uint32_t template_offset = 0;
+    std::uint32_t list_offset = 0;
+    std::uint32_t position_offset = 0;
+    std::uint16_t world_x = 0;
+    std::uint16_t world_y = 0;
+    std::uint16_t heading_word = 0;
+    std::uint8_t direction = 0;
+    std::string ordered_overrides;
+    std::string selection_group;
+    std::string activation_gate;
+};
+
+// Inputs for the ROM 0xA800 list decision. FFDF40, FFE12C, and FFF0C8 are
+// source words; the latter two are the distinct selected and active effect
+// indices. Lua retains FFE183 between selector calls and exposes source clears
+// through an explicit reset method.
+struct ScriptConditionalActorSelectionContext {
+    bool world_effect_active = false;
+    bool pending_world_effect = false;
+    std::optional<std::uint8_t> active_offer_source_initializer;
+    std::uint16_t world_mode = 0;
+    std::optional<std::uint16_t> active_effect_index;
+    std::optional<std::uint16_t> selected_effect_index;
+    bool player_spawn_pending = false;
+};
+
+enum class ScriptConditionalActorSelectionKind : std::uint8_t {
+    none,
+    story_contact,
+    pending_world_activity,
+    random_pedestrian,
+};
+
+struct ScriptConditionalActorSelection {
+    ScriptConditionalActorSelectionKind kind =
+        ScriptConditionalActorSelectionKind::none;
+    std::uint8_t selection_choice = 0;
+    bool choice_changed = false;
+    std::uint32_t list_offset = 0;
+};
+
 // A source-selected field script list is installed by the world-activity
 // selector and consumed by the next actor-service pass. It remains separate
 // from random-encounter actors because its placement and lifecycle come from
@@ -1755,6 +1805,7 @@ public:
     dialogue_text_entries() const noexcept;
     std::optional<FieldScriptRoute> resolve_field_location_route(
         const FieldScriptRouteContext& context);
+    std::optional<std::uint8_t> active_run_source_initializer();
     std::optional<ScriptRunFieldEventDecision> resolve_active_run_field_event(
         std::uint8_t map_id, std::uint8_t event_id);
     std::optional<ScriptRunActorDefeatDecision>
@@ -1791,6 +1842,14 @@ public:
     std::optional<std::vector<ScriptWorldActivityActor>>
     world_activity_actors_for_list_id(std::uint16_t scene_id,
                                      std::string_view list_id);
+    std::optional<std::vector<ScriptConditionalActorCandidate>>
+    conditional_actor_candidates_for_scene(std::uint16_t scene_id);
+    bool reset_conditional_actor_selection();
+    std::optional<ScriptConditionalActorSelection>
+    resolve_conditional_actor_selection(
+        std::uint16_t scene_id,
+        const ScriptConditionalActorSelectionContext& context,
+        const ScriptActorRandomBound& random_bound);
     std::optional<std::uint32_t>
     pending_world_activity_actor_list_for_scene(
         std::uint16_t scene_id, bool world_effect_active,

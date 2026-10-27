@@ -3,6 +3,8 @@
 -- game.modules.world_content_data and versioned route JSON into
 -- game.content.entities; this module joins those records for map scripts.
 local World = {}
+local conditional_actor_selection_choice = 0
+local E = require("enums")
 
 local function content()
     local data = game.modules.world_content_data
@@ -364,8 +366,199 @@ function World.world_activity_actors_for_list_id(scene_id, list_id)
     return world_activity_actor_descriptors(scene_id, "list_id", list_id)
 end
 
+-- Preserve all ROM table rows as named source candidates. This lookup does
+-- not run the A800 gates or claim that every listed choice is reachable.
+function World.conditional_actor_candidates_for_scene(scene_id)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
+       scene_id < 0 or scene_id > 55 then
+        return {}
+    end
+    local result = {}
+    for _, row in ipairs(content().conditional_actor_candidates or {}) do
+        if row.scene == scene_id then
+            result[#result + 1] = {
+                scene = row.scene,
+                choice = row.choice,
+                actor_name = row.actor_name,
+                entity_kind = row.entity_kind,
+                palette_line = row.palette_line,
+                template_offset = row.template_offset,
+                list_offset = row.list_offset,
+                position_offset = row.position_offset,
+                world_x = row.world_x,
+                world_y = row.world_y,
+                heading_word = row.heading_word,
+                direction = row.direction,
+                ordered_overrides = row.ordered_overrides,
+                selection_group = row.selection_group,
+                activation_gate = row.activation_gate,
+            }
+        end
+    end
+    table.sort(result, function(left, right)
+        return left.choice < right.choice
+    end)
+    return result
+end
+
+function World.reset_conditional_actor_selection()
+    conditional_actor_selection_choice = 0
+end
+
+-- Lua-owned decision and FFE183 state for the A800 pending-list precedence
+-- and pedestrian branch. The choice remains here between source passes and
+-- returns even when a late index/spawn gate fails; source clear points call
+-- reset_conditional_actor_selection rather than keeping a second host copy.
+function World.resolve_conditional_actor_selection(
+    scene_id, facts, random_below)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
+       scene_id < 0 or scene_id > 55 or type(facts) ~= "table" or
+       type(facts.world_effect_active) ~= "boolean" or
+       type(facts.pending_world_effect) ~= "boolean" or
+       type(facts.world_mode) ~= "number" or facts.world_mode % 1 ~= 0 or
+       facts.world_mode < 0 or facts.world_mode > 0xFFFF or
+       type(facts.player_spawn_pending) ~= "boolean" or
+       type(random_below) ~= "function" then
+        error("conditional actor selection facts are invalid")
+    end
+    local byte_or_nil = function(value)
+        return value == nil or
+            (type(value) == "number" and value % 1 == 0 and
+             value >= 0 and value <= 0xFF)
+    end
+    local word_or_nil = function(value)
+        return value == nil or
+            (type(value) == "number" and value % 1 == 0 and
+             value >= 0 and value <= 0xFFFF)
+    end
+    if not byte_or_nil(facts.active_offer_source_initializer) or
+       not word_or_nil(facts.active_effect_index) or
+       not word_or_nil(facts.selected_effect_index) then
+        error("conditional actor selection has an invalid source word")
+    end
+
+    local choice = conditional_actor_selection_choice
+    local choice_changed = false
+    local result = function(kind, list_offset)
+        return {
+            kind = kind,
+            selection_choice = choice,
+            choice_changed = choice_changed,
+            list_offset = list_offset,
+        }
+    end
+
+    -- 0xA800 returns from this higher-priority branch unless FFF0C8, the
+    -- active effect index, is 4; FFE182 and the random branch are skipped.
+    if facts.world_effect_active then
+        if facts.active_effect_index == 4 then
+            return result("story_contact", 0xA8AE)
+        end
+        return result("none", 0)
+    end
+    if facts.pending_world_effect then
+        return result("pending_world_activity", 0xA8CC)
+    end
+
+    -- FFFBED is the raw selected offer initializer, not canonical run type.
+    if facts.active_offer_source_initializer ~= 5 or facts.world_mode ~= 2 then
+        return result("none", 0)
+    end
+    if choice == 0 then
+        local roll = random_below(2)
+        if type(roll) ~= "number" or roll % 1 ~= 0 or
+           roll < 0 or roll >= 2 then
+            error("conditional actor random service returned an invalid roll")
+        end
+        choice = roll + 1
+        conditional_actor_selection_choice = choice
+        choice_changed = true
+    end
+
+    -- A failed late gate keeps the choice sampled above, as the ROM does.
+    if facts.active_effect_index == nil or
+       facts.selected_effect_index ~= facts.active_effect_index or
+       facts.player_spawn_pending then
+        return result("none", 0)
+    end
+
+    local candidates = World.conditional_actor_candidates_for_scene(scene_id)
+    for _, candidate in ipairs(candidates) do
+        if candidate.choice == choice then
+            return result("random_pedestrian", candidate.list_offset)
+        end
+    end
+    return result("none", 0)
+end
+
 -- Resolve coordinator-installed lists through their extracted transient
 -- marker gates. Lists without typed gates remain owned by their route.
+-- ROM 0xECCC consumes the special actor's one-shot contact bit, then selects
+-- 0x53C90 for the active FFE180 list or 0x54402 for the pending FFE182 list.
+-- The source list comes from the extracted actor row; the host supplies the
+-- handler selected by that ordered ROM branch.
+function World.field_actor_contact_task(
+    scene_id, source_list_offset, source_order,
+    world_effect_handler, pending_effect_handler)
+    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
+       scene_id < 0 or scene_id > 55 or
+       type(source_list_offset) ~= "number" or
+       source_list_offset % 1 ~= 0 or source_list_offset < 0 or
+       source_list_offset > 0xFFFF or
+       type(source_order) ~= "number" or source_order % 1 ~= 0 or
+       source_order < 0 or source_order > 31 or
+       type(world_effect_handler) ~= "number" or
+       world_effect_handler % 1 ~= 0 or
+       (world_effect_handler ~= 0 and world_effect_handler ~= 1) or
+       type(pending_effect_handler) ~= "number" or
+       pending_effect_handler % 1 ~= 0 or
+       (pending_effect_handler ~= 0 and pending_effect_handler ~= 1) then
+        error("field actor contact needs a source list and typed handler")
+    end
+    if world_effect_handler == 1 then
+        if scene_id == 34 and source_list_offset == 0xA8AE then
+            local behavior_flags = World.mark_contact_actor_for_escort_cleanup(
+                scene_id, source_list_offset, source_order)
+            return { behavior_flags and 1 or 0, behavior_flags or 0 }
+        end
+        return { 0, 0 }
+    end
+    if pending_effect_handler == 1 then
+        if scene_id == 20 and source_list_offset == 0xA8CC then
+            local behavior_flags = World.mark_contact_actor_for_escort_cleanup(
+                scene_id, source_list_offset, source_order)
+            return { behavior_flags and 2 or 0, behavior_flags or 0 }
+        end
+        return { 0, 0 }
+    end
+    return { 0, 0 }
+end
+
+function World.mark_contact_actor_for_escort_cleanup(
+    scene_id, source_list_offset, source_order)
+    if type(game.actors) ~= "table" then
+        error("contact actor cleanup needs the Lua actor registry")
+    end
+    local matched_behavior_flags
+    for _, state in pairs(game.actors) do
+        if type(state) == "table" and
+           state.movement_scene_id == scene_id and
+           state.source_actor_list_offset == source_list_offset and
+           state.source_actor_source_order == source_order and
+           type(state.source_record_slot) == "number" and
+           state.source_record_slot >= E.ActorPool.PARTY and
+           state.source_record_slot <= 9 and
+           type(state.source_record_flags) == "number" and
+           (state.source_record_flags & E.ActorStatus.ACTIVE) ~= 0 then
+            state.source_behavior_flags =
+                (state.source_behavior_flags or 0) |
+                E.BehaviorFlag.ESCORT
+            matched_behavior_flags = state.source_behavior_flags
+        end
+    end
+    return matched_behavior_flags
+end
+
 function World.pending_world_activity_actor_list_for_scene(
     scene_id, world_effect_active, pending_world_effect)
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
