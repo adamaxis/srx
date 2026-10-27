@@ -489,15 +489,24 @@ input was selected or any resulting branch. `FF017A`, heat, active-runner
 inventory, and the permit flag remain live source inputs; the frame does not
 identify their values or the runner's class/race profile.
 
-At original resolution, frame `002100` shows a small brown standing sprite on
-the blue map with another sprite at left and the party HUD at right. Its broad
-silhouette and palette resemble the extracted
-`pedestrian_k0b_none00` idle art, but the on-screen sprite is too small for a
-unique match. The capture contains no scene ID, run-type value, resource index,
-or actor-record identity; the surrounding sprites may also be party members.
-The sequence cannot establish that the brown sprite came from one of the
-`0xA800` lists. Keep it as a visual lead until a route-matched state trace or
-actor-record capture identifies the candidate. The same contact sheet shows
+Frames `002140` through `002170` provide a route-level match for the brown
+walker. The unobscured 240x58 top strip in those frames matches the extracted
+mode-5 map at camera offsets `(1028,782)`, `(1070,782)`, `(1110,782)`, and
+`(1148,782)` respectively; the first match scores 0.977 normalized
+correlation. After subtracting those offsets and accounting for the sprite's
+foot anchor, the walker stays near the map's `y=920` route band and moves west
+as the camera advances. Scene 5's default list at `0x679F0`, row 1 at position
+record `0x67A30`, starts at `(19328,8704)` and gives waypoints
+`(19328,14720)` then `(6656,14720)`: in map pixels, `(1208,544)` to
+`(1208,920)` then west to `(416,920)`. The captured westbound segment agrees
+with that pedestrian route;
+the earlier southbound leg is not visible in this excerpt. It is separate
+from the `0xA800` randomized candidate lists. [C] The map and route
+match are visible in the independent frames and present in the source data.
+[H] The footage has no actor-record telemetry, so the exact live record and
+party membership of the other sprites are not directly exposed. This does not
+tie the walker causally to the earlier Lone Star prompt in the same section.
+The same contact sheet shows
 Tarislar City Inn dialogue later in Section 41; it does not show the
 Mitsuhama after-hours page or identify Scene 30/34. The new
 `field-mitsuhama-after-hours-entry-qa/actual.bmp`, `scene-30-entry.bmp`, and

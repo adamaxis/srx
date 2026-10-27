@@ -809,6 +809,13 @@ that seven rows activate and the eighth stays inactive. This covers the
 default-only route; pending-list allocation and the complete 16-record actor
 lifecycle remain partial.
 
+Independent Section 41 frames `002140`-`002170` match the mode-5 map and show a
+walker following the westbound segment of Scene 5's default pedestrian route
+at `0x679F0` / `0x67A30`. The capture supports that route match but does not
+expose an actor-record ID. It is a default-list walker, separate from the
+`0xA800` randomized choices. See the [conditional pedestrian runtime
+audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md).
+
 The `0xA800` gated pedestrian branch and all 69 ROM candidate positions for
 scenes `0x15..0x2B` are profiled in the actor population audit and extracted
 from the US ROM into a checked named TSV. The standalone map viewer now shows
