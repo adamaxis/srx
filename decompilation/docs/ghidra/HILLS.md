@@ -913,9 +913,18 @@ opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches
 the success page after the source 10-frame choice gate, requests sound `0x4B`,
 holds for the 30-frame result wait, and changes only record 90's collision-map
 cell from `0x82` to `0x81` after A acknowledgement. The seeded passkey remains
-in the live runner inventory. Electronics, insufficient-quality branches, and
-independent Genesis identification of the actor remain open, so this hill
-remains partial. The route also exposed the delayed player hurt cue `0x40`
+in the live runner inventory. A second Debug/Release route reaches the same
+Scene-34 record with a QA-seeded quality-1 passkey. Against selection 2, it
+shows the three-choice insufficient-quality page, holds it across the source
+input wait, and uses ordinary C to Walk Away. The item quality, selection,
+collision map (`0x82`), and action-audio count stay unchanged; the returned
+full-screen frame matches its field-only rendering. The new CTest writes 17
+BMPs with matching Debug/Release SHA-256 hashes. These are internal captures,
+not independent Genesis visuals, and the passkey is a QA fixture. Scene-34
+Electronics outcomes and independent Genesis identification remain open, so
+this hill remains partial. The separate Scene-20 interaction audit covers
+Samurai/Decker Electronics outcomes, but does not substitute for this scene's
+remaining routes. The route also exposed the delayed player hurt cue `0x40`
 after the runner returned to walking animation; the C++ heartbeat validator
 now accepts that source-delayed cue on the runner's behavior pass, and this QA
 requires a clean heartbeat result.

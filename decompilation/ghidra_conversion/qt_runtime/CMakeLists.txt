@@ -1265,6 +1265,15 @@ add_shadowrun_qt_qa_case(
     --field-mitsuhama-after-hours-entry-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-mitsuhama-after-hours-entry-qa")
 
+# Re-run the physical Scene-30/34 route with a quality-1 passkey. Scene-34
+# record 90 selects level 2, so ROM 0x21628 must retain the three-action prompt
+# and leave the locked map cell, inventory, and action audio unchanged.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_mitsuhama_after_hours_insufficient_passkey_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-mitsuhama-after-hours-insufficient-passkey-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-mitsuhama-after-hours-insufficient-passkey-qa")
+
 # Follow ordinary New Game movement into the west wall of Stoker's motel,
 # hold against the source collision cells, move diagonally along the frontage,
 # and retreat. Whole-screen checkpoints and a per-frame coordinate log keep

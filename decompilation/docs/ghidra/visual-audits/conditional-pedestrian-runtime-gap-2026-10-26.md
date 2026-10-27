@@ -42,8 +42,21 @@ record 90's collision-map cell changing from `0x82` to `0x81`; the seeded item
 and quality remain in the runner inventory. Debug/Release captures include the
 passkey action/result/wait pages, field return, `passkey-action.tsv`, and
 `passkey-map-delta.tsv`; the BMPs have matching hashes. This covers the
-quality-2 success branch only. Electronics and insufficient passkey quality
-have not been exercised. Ordinary input reaches the live A8AE actor at
+quality-2 success branch. The new
+`shadowrun_ghidra_conversion_qt_field_mitsuhama_after_hours_insufficient_passkey_qa`
+replays the route with a QA-seeded quality-1 key. At Scene-34 record 90,
+selection 2, ordinary A presents the three-choice insufficient-quality page;
+the screen holds through the source input wait, then ordinary C chooses Walk
+Away. The test verifies that quality 1, selection 2, collision cell `0x82`,
+and action-audio count remain unchanged, and that the returned full-screen
+frame equals the field-only image. Debug/Release CTest passes for both the
+quality-2 and quality-1 Scene-34 routes; the insufficient branch writes 17
+BMPs with matching SHA-256 hashes. I inspected the 320x224 choice and return
+frames. They are internal renderer evidence, not an independent Genesis
+comparison; the passkey is a QA fixture. The separate Scene-20 physical
+interaction tests cover Samurai/Decker Electronics outcomes, but those results
+do not establish the remaining Scene-34 Electronics paths. Ordinary input
+reaches the live A8AE actor at
 `(0x1D00,0x4100)` within the ROM `+/-0x40` proximity window. A presses advance
 all three `0xF4BBC` pages, and the source cleanup retires Aragorn's actor
 record. The direct marker setters and `FFE120` producer census are traced
@@ -475,12 +488,12 @@ fade. Debug/Release QA verifies Aragorn's source slot is removed and saves a
 closed Scene-34 BMP. The route captures are internal runtime evidence, not an
 independent Genesis animation or map comparison.
 
-Next, cover the record-90 Electronics outcome and insufficient-passkey branch.
-The ordinary Scene-34 route to A8AE is now established. Cover
-the Electronics results with the live runner's class, skill, inventory, and
-source RNG inputs. The accepted-registry persistence seam and both late-gate
-choice-retention branches now pass field resource-entry QA; the uninterrupted
-in-world Johnson-to-field route and physical elevator-input route remain open.
-Then match a real capture to the selected scene and live actor record; the
-current internal BMPs are regression artifacts, not an independent visual
-oracle. The pedestrian population hill remains partial.
+Next, cover the Scene-34 record-90 Electronics outcomes with real active-party
+class/skill profiles, inventory, and source RNG inputs. Do not use the
+Scene-20 cases as substitutes for this scene. The accepted-registry
+persistence seam and both late-gate choice-retention branches pass field
+resource-entry QA; the uninterrupted in-world Johnson-to-field route and
+physical elevator-input route remain open. Then match a real capture to the
+selected scene and live actor record; the current internal BMPs are regression
+artifacts, not an independent visual oracle. The pedestrian population hill
+remains partial.
