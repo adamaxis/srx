@@ -1499,6 +1499,20 @@ directory. These are internal runtime captures, not a Genesis visual match.
 The hill remains partial while other default-list routes, collision behavior,
 and general NPC targeting remain open.
 
+## Scene-20 default corp-guard routes (partial, 2026-10-27)
+
+ROM list `0x1D91DA` loads five corp guards before pedestrians. Scene-20
+Debug/Release `shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa`
+checks that the seven-record pool activates the first five guards and first
+two pedestrians in source order, leaving the eighth row inactive. The first
+three guard route lists at `0x1D9248`, `0x1D9252`, and `0x1D925C` advance
+toward their second coordinates at frames 30, 35, and 44. QA saves start and
+moved full-frame captures plus a route manifest under
+`qt_runtime/field-pedestrian-scenes-qa`. Debug/Release outputs match each
+other; they are internal runtime captures, not a Genesis visual match. Other
+default-list routes, collision behavior, and general NPC targeting remain
+open.
+
 ## Scene-34 record-90 Electronics no-skill branch (partial, 2026-10-27)
 
 The physical Scene-3/30/34 route now covers ordinary New Game Samurai input at

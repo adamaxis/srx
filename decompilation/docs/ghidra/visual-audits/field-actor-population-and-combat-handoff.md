@@ -470,11 +470,17 @@ terminator. This is route-data evidence, not proof that every actor walks it
 on every visit: the `0x13904` actor-state, target, world-activity, and
 collision gates still decide which path runs. Lua resolves the extracted
 route by source list and order. Debug/Release
-`shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa` checks one
-non-pedestrian case: Scene 40 guard order 1 follows the ROM route at
-`0x1DDE48` from `(0x2300,0x2580)` toward `(0x2A80,0x2580)`. This is an
-internal runtime check, not an independent Genesis capture or proof that every
-default-list actor moves.
+`shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa` checks two guard
+contexts. Scene 40 guard order 1 follows the ROM route at `0x1DDE48` from
+`(0x2300,0x2580)` toward `(0x2A80,0x2580)`. Decimal Scene 20 (ROM `0x14`)
+loads default list `0x1D91DA`; the QA verifies its seven active rows match the
+first five corp guards and first two pedestrians, with the eighth source row
+inactive at the seven-slot limit. It checks the first three guard routes at
+`0x1D9248`, `0x1D9252`, and `0x1D925C`, and confirms each moves toward its
+second ROM coordinate. The route advances first appear at frames 30, 35, and
+44; the Debug/Release `scene-20-corp-guard-routes.tsv` traces and start/actual
+BMPs match by SHA-256. These are internal Qt runtime checks, not Genesis
+captures, and do not prove every default-list actor moves.
 
 The default list is bounded by the live record allocator. `0x43B6` prepares
 pending lists first, then drains `FFE124`, `FFE120`, and finally the default
@@ -710,12 +716,13 @@ general NPC idle, movement, attack, or independent-ROM visual fidelity.
 
 The named default-list data and the initial idle-to-C0B2 transition reach the
 Qt field compositor. Lua route patrol also runs for default-list actors with
-extracted waypoints; the Scene 40 guard check covers one path through
-`0x142AE`. Continue with the other `0x13904` branches, post-transition
-`0xAB02`, the live `0x4658` record update, and kind-specific action dispatch.
-Keep actor targeting outside combat until collision, hit, damage, and
-retirement paths are traced and connected. The hill remains partial; exact
-independent Genesis captures for these scene actors are not identified.
+extracted waypoints; Scene 20 and Scene 40 guards now cover several `0x142AE`
+route-list paths. Continue with the other `0x13904` branches,
+post-transition `0xAB02`, the live `0x4658` record update, and kind-specific
+action dispatch. Keep actor targeting outside combat until collision, hit,
+damage, and retirement paths are traced and connected. The hill remains
+partial; exact independent Genesis captures for these scene actors are not
+identified.
 
 ## Map-viewer actor population evidence
 
