@@ -943,21 +943,22 @@ Each candidate occupies slot 3 before its exact source default-guard list,
 which remains active in slots 4 onward. This verifies the in-world
 Johnson-to-offer segment and pending/default actor allocation. The per-choice
 candidate matrix still uses resource-scene reentry, so it does not exercise
-physical travel to every candidate map. The index-mismatch case now starts
-Scene 30 at the ROM profile checkpoint `(0x3A00,0x0600)` from a staging entry,
-with selected index 4 and active index 0. Ordinary Up reaches event 29 records
-82/83 at `0x1DB032`; the selector uses group `0x1DB004` `[30,31,32,33,34]`.
-Ordinary Up selects index 4, A runs the source-timed lift for 17x8 frames per
-floor, and Start completes the physical trip to Scene 34. Setting the
-destination seed to `0x8000` checks that choice 1 survives the late index
-gate; Scene 34 publishes list `0x1EDE18`, position `(0x1800,0x0F00)`, profile
-`pedestrian_k0b_none00`, slot 3. The focused CTest writes the lift selector,
-floor selection/arrival, Scene-34 entry, centered actor BMPs, and a route TSV.
-It passes in Debug and Release, and all six route BMPs plus the route TSV match
-by SHA-256. I inspected the selector and centered actor frames;
-they are internal captures, not independent Genesis references. This starts
-from a staged profile checkpoint and does not exercise the
-accepted Johnson offer through the lift. The FFFC3C pending-spawn case still
+physical travel to every candidate map. Both index-mismatch cases start Scene
+30 at the ROM profile checkpoint `(0x3A00,0x0600)` from a staging entry, with
+selected index 4 and active index 0. Ordinary Up reaches event 29 records 82/83
+at `0x1DB032`; the selector uses group `0x1DB004` `[30,31,32,33,34]`. Ordinary
+Up selects index 4, A runs the source-timed lift for 17x8 frames per floor,
+and Start completes the physical trip to Scene 34. Choice 1 uses source seed
+`0x0000` and destination seed `0x8000`, publishing list `0x1EDE18` at
+`(0x1800,0x0F00)`. Choice 2 uses source seed `0x8000` and destination seed
+`0x0000`, publishing list `0x1EDE36` at `(0x0380,0x4880)`. Both use profile
+`pedestrian_k0b_none00` in slot 3. The focused CTest writes the lift selector,
+floor selection/arrival, Scene-34 entry, centered actor BMPs, and route TSVs.
+It passes in Debug and Release; all 16 generated artifacts (14 BMPs and two
+TSVs) match by SHA-256. I inspected the selector and both centered actor frames; they are
+internal captures, not independent Genesis references. These routes start
+from a staged profile checkpoint and do not exercise the accepted Johnson
+offer through the lift. The FFFC3C pending-spawn case still
 retains choice 2 from Scene 30 and publishes it in Scene 34 through QA
 resource entry after the pending flag clears. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and

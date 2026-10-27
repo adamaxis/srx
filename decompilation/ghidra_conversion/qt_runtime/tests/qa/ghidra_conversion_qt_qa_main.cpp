@@ -19029,15 +19029,28 @@ bool accept_employee_offer_for_field_pedestrian_qa(
 bool ride_scene30_elevator_for_pedestrian_qa(
     FieldSceneRuntime& field_scene, const std::filesystem::path& output,
     const std::uint8_t expected_choice,
+    const std::uint16_t initial_choice_seed,
     const std::uint16_t destination_random_seed) {
     constexpr std::uint16_t kSourceScene = 30U;
     constexpr std::uint16_t kDestinationScene = 34U;
     constexpr std::uint16_t kStartX = 0x3A00U;
     constexpr std::uint16_t kStartY = 0x0600U;
     constexpr std::size_t kLiftRecord = 82U;
+    auto initial_sample_seed = initial_choice_seed;
+    const auto initial_sample =
+        shadowrun::ghidra_conversion::sample_source_random_bound(
+            initial_sample_seed, 2U);
+    auto destination_sample_seed = destination_random_seed;
+    const auto destination_sample =
+        shadowrun::ghidra_conversion::sample_source_random_bound(
+            destination_sample_seed, 2U);
+    const auto expected_opposite_choice =
+        expected_choice == 1U ? std::int16_t{1} : std::int16_t{0};
     const auto& rectangles = field_scene.state()
         .field_scene_buffers.source_metadata.terrain_collision_rectangles;
     if (expected_choice < 1U || expected_choice > 2U ||
+        initial_sample != static_cast<std::int16_t>(expected_choice - 1U) ||
+        destination_sample != expected_opposite_choice ||
         field_scene.field_scene_reference_for_dump() != kSourceScene ||
         field_scene.field_interaction_mode_for_dump() != 2U ||
         field_scene.active_run_source_initializer_for_dump() !=
@@ -19369,17 +19382,20 @@ bool ride_scene30_elevator_for_pedestrian_qa(
              "\tresult\tlist_offset\tactor_x\tactor_y\tprofile\trecord_slot\n";
     trace << "scene-30-deferred\t30\tentry\t" << entry_wait
           << "\t0\t4\t" << static_cast<unsigned>(expected_choice)
-          << "\t0x0000\t0x" << std::hex << destination_random_seed
+          << "\t0x" << std::hex << initial_choice_seed << "\t0x"
+          << destination_random_seed
           << "\tno_actor\t0\t0\t0\t-none-\t-none-\n";
     trace << std::dec << "scene-30-event-29\t30\tUp\t"
           << lift_approach_updates
           << "\t0\t4\t" << static_cast<unsigned>(expected_choice)
-          << "\t0x0000\t0x" << std::hex << destination_random_seed
+          << "\t0x" << std::hex << initial_choice_seed << "\t0x"
+          << destination_random_seed
           << "\tselector\t0\t0\t0\t-none-\t-none-\n";
     trace << std::dec << "scene-34-arrival\t34\tUp,A,Start\t"
           << lift_updates + scene_transition_updates
           << "\t4\t4\t" << static_cast<unsigned>(expected_choice)
-          << "\t0x0000\t0x" << std::hex << destination_random_seed
+          << "\t0x" << std::hex << initial_choice_seed << "\t0x"
+          << destination_random_seed
           << "\tspawned\t0x" << actor->list_offset << "\t0x"
           << actor->world_position.x << "\t0x"
           << actor->world_position.y << '\t' << actor->profile_id << '\t'
@@ -19571,9 +19587,33 @@ bool verify_field_pedestrian_late_gate_retention_qa(
         return false;
     }
     if (!ride_scene30_elevator_for_pedestrian_qa(
-            field_scene, output, 1U, 0x8000U) ||
+            field_scene, output, 1U, 0x0000U, 0x8000U) ||
         !expect_spawned_choice(1U,
             "scene-34-index-mismatch-choice-1-after-lift-actual.bmp")) {
+        return false;
+    }
+
+    // ROM 0x0D3A's other reachable result selects choice 2; the destination
+    // seed now selects choice 1 if A800 samples again instead of retaining it.
+    if (!stage_scene()) {
+        std::cerr << "Pedestrian gate QA: choice-2 staging entry failed: "
+                  << field_scene.failure() << '\n';
+        return false;
+    }
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        false, false, 0U, 4U);
+    field_scene.set_world_effect_player_spawn_pending_for_dump(false);
+    field_scene.set_source_random_seed_for_dump(0x8000U);
+    field_scene.set_field_entity_world_position_for_dump(0x3A00U, 0x0600U);
+    field_scene.set_field_camera_world_position_for_dump(0x2D00U, 0x0000U);
+    if (!field_scene.reenter_field_scene_for_dump(kFirstScene) ||
+        !expect_deferred(
+            "scene-30-index-mismatch-choice-2-deferred-actual.bmp", 4U,
+            false) ||
+        !ride_scene30_elevator_for_pedestrian_qa(
+            field_scene, output, 2U, 0x8000U, 0x0000U) ||
+        !expect_spawned_choice(
+            2U, "scene-34-index-mismatch-choice-2-after-lift-actual.bmp")) {
         return false;
     }
 
@@ -19602,7 +19642,7 @@ bool verify_field_pedestrian_late_gate_retention_qa(
     }
 
     std::cout << "field_pedestrian_late_gate_retention_qa=passed "
-                 "index_mismatch=choice_1 player_spawn_pending=choice_2 "
+                 "index_mismatch=choices_1_2 player_spawn_pending=choice_2 "
                  "child_scene=34 actuals="
               << output.string() << '\n';
     return true;

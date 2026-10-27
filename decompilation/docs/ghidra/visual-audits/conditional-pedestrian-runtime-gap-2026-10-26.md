@@ -107,17 +107,19 @@ single `FieldSceneRuntime`, then keeps the accepted offer state live while
 entering each candidate resource scene. It covers initializer 5 throughout
 the matrix and initializers 11/12 for Scene 22 choices 1/2. Ordinary input
 reaches the Johnson contact and offer in the same runtime; the 46-candidate
-matrix still uses resource reentry. A separate focused Debug QA starts Scene
+matrix still uses resource reentry. Focused Debug and Release QA starts Scene
 30 at its ROM profile checkpoint `(0x3A00,0x0600)`, reaches event 29 with
-ordinary Up, selects floor index 4, rides the lift, and arrives in Scene 34.
-Late-gate choice 1 remains selected after the destination seed is set to
-`0x8000`, which would choose row 2 if the candidate were sampled again. Scene
-34 publishes list `0x1EDE18` at `(0x1800,0x0F00)` in actor slot 3. This tests
-one physical destination from a staged Scene-30 checkpoint, not the
-accepted-offer-to-lift route or every candidate map. The focused CTest passes
-in Debug and Release, and all six route BMPs plus the route TSV match by
-SHA-256. The inspected BMPs are internal renderer evidence; independent
-Genesis comparison and the Section-41 route-matched visual check remain open.
+ordinary Up, selects floor index 4, rides the lift, and arrives in Scene 34
+for both bound-2 choices. Choice 1 uses initial seed `0x0000` and opposing
+destination seed `0x8000`; it publishes list `0x1EDE18` at
+`(0x1800,0x0F00)`. Choice 2 uses initial seed `0x8000` and opposing
+destination seed `0x0000`; it publishes list `0x1EDE36` at `(0x0380,0x4880)`.
+Both actors occupy slot 3. The focused CTest passes in Debug and Release, and
+all 16 generated artifacts (14 BMPs and two TSVs) match by SHA-256. These routes start from a
+staged Scene-30 checkpoint; they do not connect accepted-offer input to the
+lift or physically visit every candidate map. The inspected BMPs are internal
+renderer evidence; independent Genesis comparison and the Section-41
+route-matched visual check remain open.
 
 ## ROM path confirmed from the US image
 
@@ -441,19 +443,21 @@ generated-offer captures for all three initializers are also saved under
 runtime captures, not independent Genesis reference images. This closes the
 physical Johnson-to-accepted-offer segment, while these 46 candidate cases
 still use resource-scene reentry instead of physically traveling to each
-candidate scene. The index-mismatch case starts Scene 30 at the ROM profile
+candidate scene. The index-mismatch cases start Scene 30 at the ROM profile
 checkpoint `(0x3A00,0x0600)` with `FFE12C=4` and `FFF0C8=0`, then ordinary Up
 reaches event 29 records 82/83 at `0x1DB032`. The selector group at `0x1DB004`
 is `[30,31,32,33,34]`; ordinary Up selects floor index 4, A runs the
 source-timed lift for 17x8 frames per floor, and Start completes the trip.
-The destination seed `0x8000` checks that the earlier choice 1 survives the
-late index gate. Scene 34 publishes list `0x1EDE18`, position
-`(0x1800,0x0F00)`, profile `pedestrian_k0b_none00`, slot 3. The focused CTest
-passes in Debug and Release; the six route BMPs and physical-route TSV match by
-SHA-256. I inspected the selector and centered actor frames; these are internal
-captures, not independent Genesis references. This route starts from a staged
-profile checkpoint and does not carry the accepted offer to the lift. The
-separate `FFFC3C` case samples choice 2 while player-spawn is
+For choice 1, source seed `0x0000` and destination seed `0x8000` publish list
+`0x1EDE18` at `(0x1800,0x0F00)`. For choice 2, source seed `0x8000` and
+destination seed `0x0000` publish list `0x1EDE36` at `(0x0380,0x4880)`.
+Both use profile `pedestrian_k0b_none00` in slot 3. Focused Debug and Release
+CTest pass; all 16 generated artifacts (14 BMPs and two TSVs) match by
+SHA-256. I inspected
+the selector and both centered actor frames; these are internal captures, not
+independent Genesis references. Both routes start from a staged profile
+checkpoint and do not carry the accepted offer to the lift. The separate
+`FFFC3C` case samples choice 2 while player-spawn is
 pending, then publishes that choice in Scene 34 after clearing the pending
 flag through resource entry. The other matrix cases also use resource entry.
 No independent

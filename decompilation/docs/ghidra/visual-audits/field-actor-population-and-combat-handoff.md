@@ -249,17 +249,22 @@ Debug/Release script-runtime QA checks the typed flag on all 69 source rows,
 and `extract_field_actor_candidates.py --check` verifies the table against the
 US ROM.
 
-The same Debug/Release QA now exercises the A800 late gates with the natural
-initializer-5 registry state. On Scene 30, `FFE12C=4` / `FFF0C8=0` samples
-choice 1 before the index check and publishes no pedestrian. A direct child
-resource entry to Scene 34 uses matching index 4 and an opposite RNG seed; the
-Scene-34 actor still matches choice 1. A separate Scene-30 case sets `FFFC3C`
-pending, samples choice 2 with equal index 0, and publishes no actor. Scene 34
-then clears the pending flag, matches index 4, and publishes choice 2 despite
-the opposite seed. The QA captures both deferred and child-entry frames and
-consumes `FFE183` through the typed `0x1E45E` callback after publication. This
-verifies persistence over destination resource entry, not elevator input or
-the full in-world route.
+The same Debug/Release QA now exercises both reachable A800 random choices
+through Scene-30 event 29 and the physical lift to Scene 34. It starts from the
+ROM profile checkpoint `(0x3A00,0x0600)`, with `FFE12C=4` / `FFF0C8=0` so each
+choice is retained before the index gate. Source seeds `0x0000` and `0x8000`
+select choices 1 and 2; each destination uses the opposing seed to verify the
+stored choice survives the late gate. The `[30,31,32,33,34]` group at
+`0x1DB004` advances to floor index 4 through ordinary Up/A/Start input, and
+Scene 34 publishes the matching candidate list, source position, pedestrian
+profile, and slot 3. The six route images and TSVs per choice plus the two
+deferred captures match across Debug and Release. A separate `FFFC3C` case
+sets the pending-spawn condition, samples choice 2 with equal index 0, and
+publishes it through QA resource entry after the marker clears. These checks
+cover both A800 random outcomes on the Scene-30-to-34 route; they do not drive
+the accepted office offer through the lift or physically visit every
+candidate map. The QA consumes `FFE183` through the typed `0x1E45E` callback
+after publication.
 
 Independent longplay contact sheets contain map frames with pedestrian-like
 actors (for example around `02:58:10` in Section 41), but those frames do not
