@@ -34,10 +34,12 @@ function EmployeeRecruitment.present_offer()
         "Unfortunately, his current employer frowns upon this.||" ..
         "Assist my client with his professional growth and return here " ..
         "to receive full compensation for your services.", false)
-    -- ROM 0x214CE: every recruitment initializer (5, 11, 12) canonicalises
-    -- FFFBED to 5 (0x1E810/0x1E81C/0x1E7D0), and F3E1E row 5 has secondary
-    -- handler 0x1E9AC. It prints F39EC ("Unfortunately ...") and returns
-    -- text-only descriptor 0x1058B8, never the 0x214F6 payment screen [C].
+    -- ROM 0x1E69C copies the selected F3EBC initializer to FFFBED and calls
+    -- F3DC6[FFFBED]. Base initializer 5 uses 0x1E810; Employee Recruitment
+    -- variants 11/12 use 0x1E81C/0x1E7D0 and their fallback branches store 5
+    -- at 0x1E848/0x1E804 before 0xA800 reads it. Later 0x214CE dispatches
+    -- F3E1E row 5 to 0x1E9AC, which prints F39EC and returns text-only
+    -- descriptor 0x1058B8, never the 0x214F6 payment screen [C].
     -- Accepting without a Yes/No mirrors the bodyguard row; what state 0x0A
     -- after that descriptor does beyond accepting is not yet traced [H].
     return game.runs.registry.resolve_current_offer("yes")

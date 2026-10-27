@@ -812,21 +812,24 @@ selection gate, distinguished from active/default-list records. Direct tracing
 of `0x0D3A` shows the bound-2 random path produces only choices 1 and 2. A
 cross-reference of all `FFE183` writes finds only the sample store at `0xA87A`
 and clears at `0x2A82`, `0xC684`, and `0x1E45E`; choice 3 is therefore an
-unreachable source-table row after field-mode initialization. The gate is raw
-offer initializer ID `FFFBED=5`, copied from `F3EBC[FFF0AE]`; it covers base
-Employee Recruitment initializer 5, not canonical run-type variants 11/12.
+unreachable source-table row after field-mode initialization. The `FFFBED=5`
+gate compares the post-`F3DC6` value: raw initializers 5, 11, and 12 become 5,
+while Package Recovery initializers 9 and 10 become 4.
 All 69 rows now load into Lua and return through a typed host candidate lookup;
 `shadowrun_gameplay_script_runtime_qa` checks their scene/choice ordering and
 source fields in Debug and Release. `World.resolve_conditional_actor_selection`
 now expresses the A800 branch order in Lua behind a typed C++ fact boundary.
-Its QA covers A8AE/A8CC precedence, raw initializer 5 versus 11/12, word-width
-FFDF40 mode rejection, lazy bound-2 sampling, retained choice after late-gate
-failures, unequal/equal 16-bit FFE12C/FFF0C8 comparisons, and selection of
-reachable choices 1 and 2 while retaining all three table rows. Lua owns the
-choice; the field runtime calls its reset at the modeled
-`0x2A32`/`0x2A44` and type-5 `0xC684` clears. The `0x1E45E` clear is connected through `0x0A92` to the typed 13-record reset at `0x1E43C` and is covered by focused Debug/Release QA. The field runtime now calls the selector with the accepted offer's raw
-FFFBED byte, FFDF40, both effect markers, FFFC3C, and typed FFE12C/FFF0C8
-words. Resource initialization captures the selected index, and elevator
+Its QA covers A8AE/A8CC precedence, initializer normalization for 5/11/12 and
+rejection of 9/10, word-width FFDF40 mode rejection, lazy bound-2 sampling,
+retained choice after late-gate failures, unequal/equal 16-bit FFE12C/FFF0C8
+comparisons, and selection of reachable choices 1 and 2 while retaining all
+three table rows. Lua owns the choice; the field runtime calls its reset at the
+modeled `0x2A32`/`0x2A44` and type-5 `0xC684` clears. The `0x1E45E` clear is
+connected through `0x0A92` to the typed 13-record reset at `0x1E43C` and is
+covered by focused Debug/Release QA. The field runtime now calls the selector
+with the accepted offer's raw FFFBED byte, FFDF40, both effect markers,
+FFFC3C, and typed FFE12C/FFF0C8 words. Resource initialization captures the
+selected index, and elevator
 handoffs retain the current floor word across child-scene loads. The A8AE list
 is represented by a typed world-activity actor row and publishes through the
 ordinary slot-ordered actor path. Debug/Release `field_pedestrian_scenes_qa` verifies

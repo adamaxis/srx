@@ -252,21 +252,22 @@ a general pedestrian spawner.
 
 ### Meaning of the `FFFBED == 5` gate
 
-The comparison at `0xA84C` is confirmed. The writer at `0x1E6D6` copies the
-first byte of the selected six-byte offer record in `0xF3EBC` to `FFFBED`; the
-record is chosen from context `FFF0AE`. This is the raw selected offer
-initializer ID (`source_initializer` in `data/johnson_run_offers.lua`), not a
-separate normalized run-type byte. `0x1E71C` indexes the initializer table at
-`0xF3DC6` with it. The `0xA800` branch compares the byte exactly to 5.
+The comparison at `0xA84C` is confirmed, and it reads the post-dispatch value
+rather than the raw offer-record byte. ROM `0x1E69C` copies the selected
+initializer from `0xF3EBC[FFF0AE]` to `FFFBED`, then indexes `0xF3DC6` and calls
+the selected setup routine at `0x1E71C`. Raw initializer 5 uses `0x1E810` and
+retains 5. Employee Recruitment variants 11 and 12 use `0x1E81C` and `0x1E7D0`;
+their non-9/10 branches write 5 at `0x1E848` and `0x1E804`. Package Recovery
+variants 9 and 10 use those same handlers but write 4 at `0x1E83C` and
+`0x1E7F8`. Thus the selector's `FFFBED==5` gate admits raw offer initializers
+5, 11, and 12, while rejecting 9 and 10.
 
-Lua maps initializer IDs 5, 11, and 12 to canonical
-`RunType.EMPLOYEE_RECRUITMENT`, but the `0xA800` predicate admits only ID 5.
-The only non-reset byte assignment to `FFFBED` is at `0x1E6D6`; `0x1E68C`
-resets the containing word to `0xFFFF`. No source assignment normalizes IDs
-11 or 12 to 5. This gate covers the
-base Employee Recruitment offer initializer only; it does not cover the
-two-site or Renraku variants just because they share a canonical Lua run type.
-Candidate metadata preserves the raw initializer gate.
+The Lua run registry retains the raw `source_initializer`. The conditional
+selector now models the `0x1E69C`/`0xF3DC6` normalization before applying the
+`0xA800` gate, so both Employee Recruitment variants reach the same branch as
+initializer 5, while both Package Recovery variants resolve to 4. Candidate
+metadata records this normalization instead of treating `FFFBED` as the
+untouched offer-record byte.
 
 ### Full `0xA800` selection matrix
 
@@ -291,9 +292,10 @@ for provenance, but treat row 3 as unreachable under the ROM's valid
 `GameScriptRuntime::resolve_conditional_actor_selection` after the explicit
 route-owned lists. It passes the active offer's raw initializer, the current
 FFDF40 mode, FFE180/FFE182, FFFC3C, and separate optional 16-bit FFE12C and
-FFF0C8 values. The one-shot FFE183 choice remains Lua-owned. The random
+FFF0C8 values. Lua derives the post-`F3DC6` FFFBED value before checking the
+A800 initializer gate. The one-shot FFE183 choice remains Lua-owned. The random
 callback uses the field PRNG's bound sampler, and Lua calls it only after the
-marker, initializer, and mode gates pass.
+marker, normalized-initializer, and mode gates pass.
 
 Resource initialization records the selected FFE12C index and initial FFF0C8
 word. Elevator entry and completed floor movement update the active floor
@@ -314,9 +316,10 @@ actor slot 3, checks the profile and draw visibility, and writes
 each build. The Debug and Release BMPs have the same SHA-256. This test
 exercises the selector-to-actor projection and internal rendering; it does
 not establish that the real story route sets those facts correctly.
-Gameplay-script QA still covers raw initializer 5 versus variants 11/12,
-both reachable rolls, late-gate choice retention, and unequal/equal 16-bit
-effect indices.
+Gameplay-script QA now checks raw initializer 5 and normalized variants 11/12
+against reachable choice rows, rejects package-recovery variants 9/10 after
+their source normalization to 4, and covers both rolls, late-gate choice
+retention, and unequal/equal 16-bit effect indices.
 
 `world_effect_active` still initializes false, but the Scene-3/event-3 entry
 graph sets it true after the `0xF4BB4` page. The ordinary-input route now walks

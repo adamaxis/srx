@@ -414,6 +414,24 @@ function World.consume_conditional_actor_selection_choice()
     return choice
 end
 
+local function field_initializer_after_source_dispatch(initializer)
+    -- ROM 0x1E69C writes the selected F3EBC initializer to FFFBED, then calls
+    -- F3DC6[FFFBED]. The two-site/Renraku package-recovery handlers normalize
+    -- 9/10 to 4, while the employee-recruitment handlers normalize 11/12 to
+    -- 5 before the later 0xA800 field gate reads FFFBED.
+    if initializer == E.RunOfferInitializer.PACKAGE_RECOVERY_TWO_SITE_POOL or
+       initializer == E.RunOfferInitializer.PACKAGE_RECOVERY_RENRAKU then
+        return E.RunOfferInitializer.PACKAGE_RECOVERY
+    end
+    if initializer ==
+            E.RunOfferInitializer.EMPLOYEE_RECRUITMENT_TWO_SITE_POOL or
+       initializer ==
+            E.RunOfferInitializer.EMPLOYEE_RECRUITMENT_RENRAKU then
+        return E.RunOfferInitializer.EMPLOYEE_RECRUITMENT
+    end
+    return initializer
+end
+
 -- Lua-owned decision and FFE183 state for the A800 pending-list precedence
 -- and pedestrian branch. The choice remains here between source passes and
 -- returns even when a late index/spawn gate fails; source clear points call
@@ -469,8 +487,13 @@ function World.resolve_conditional_actor_selection(
         return result("pending_world_activity", 0xA8CC)
     end
 
-    -- FFFBED is the raw selected offer initializer, not canonical run type.
-    if facts.active_offer_source_initializer ~= 5 or facts.world_mode ~= 2 then
+    -- The host passes the active offer's raw initializer. ROM 0x1E69C runs
+    -- F3DC6[FFFBED] before the later 0xA800 gate; compare that resulting byte,
+    -- not the raw Lua offer identifier.
+    local field_initializer = field_initializer_after_source_dispatch(
+        facts.active_offer_source_initializer)
+    if field_initializer ~= E.RunOfferInitializer.EMPLOYEE_RECRUITMENT or
+       facts.world_mode ~= 2 then
         return result("none", 0)
     end
     if choice == 0 then

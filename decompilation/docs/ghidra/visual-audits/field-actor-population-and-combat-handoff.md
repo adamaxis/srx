@@ -109,13 +109,15 @@ one. The selected pending list is placed in `FFE124`; `0x43B6` drains it
 before the `FFE120` list and scene default list. This order matters because
 each spawned row consumes an ordinary actor slot before later lists run.
 
-The literal `FFFBED=5` gate is confirmed. ROM `0x1E6D6` copies the selected
-offer record's initializer byte from `0xF3EBC[FFF0AE]` to `FFFBED`, and
-`0x1E71C` indexes the initializer table at `0xF3DC6` with it. This is the raw
-source offer initializer ID. Lua maps IDs 5, 11, and 12 to canonical Employee
-Recruitment, but this branch admits only ID 5. The only non-reset byte
-assignment to `FFFBED` is at `0x1E6D6`; `0x1E68C` resets its containing word to
-`0xFFFF`. No source assignment normalizes IDs 11 and 12 to 5 before this gate.
+The literal `FFFBED=5` gate is confirmed, but it compares the value after
+initializer dispatch. ROM `0x1E69C` copies the selected offer-record byte from
+`0xF3EBC[FFF0AE]` to `FFFBED`, then `0x1E71C` calls `F3DC6[FFFBED]`. Raw
+initializer 5 uses `0x1E810` and remains 5. Employee Recruitment variants 11
+and 12 use `0x1E81C` and `0x1E7D0`; their fallback branches write 5 at
+`0x1E848` and `0x1E804`. Package Recovery variants 9 and 10 use those same
+handlers but write 4 at `0x1E83C` and `0x1E7F8`. Lua retains the raw offer
+initializer and now derives this effective FFFBED value before the A800 gate:
+5/11/12 pass, while 9/10 resolve to 4 and fail.
 
 For the `0x15..0x2B` scene-entry path, ROM `0x167AE` sets `FFDF40=2`, clears
 the 16-bit active effect index `FFF0C8`, reads the random-index bound from the

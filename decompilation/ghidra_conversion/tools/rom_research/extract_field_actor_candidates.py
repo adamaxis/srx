@@ -34,7 +34,8 @@ CHOICE_COUNT = 3
 PEDESTRIAN_TEMPLATE = 0x1D6988
 EXPECTED_OVERRIDES = (0x9E, 0x2E, 0x9E)
 ACTIVATION_GATE = (
-    "FFFBED=5(selected offer initializer from F3EBC[FFF0AE]);world_mode=2;"
+    "FFFBED=5(after F3DC6 maps source initializer IDs 5/11/12 to 5; 9/10 to 4);"
+    "world_mode=2;"
     "FFE12C==FFF0C8;FFFC3C=0;FFE183 indexes table 1..3;zero triggers "
     "0x0D3A bound-2 sample + 1 (fresh choices 1..2; choice 3 unreachable)"
 )

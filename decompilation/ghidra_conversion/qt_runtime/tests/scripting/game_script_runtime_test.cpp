@@ -978,9 +978,10 @@ int main() {
     const auto pending_selection = scripts.resolve_conditional_actor_selection(
         0x15U, pending_context, unexpected_conditional_roll);
 
+    // ROM 0x1E81C/0x1E7D0 normalize both package-recovery variants to FFFBED=4.
     auto rejected_initializer_context = pending_context;
     rejected_initializer_context.pending_world_effect = false;
-    rejected_initializer_context.active_offer_source_initializer = 11U;
+    rejected_initializer_context.active_offer_source_initializer = 9U;
     rejected_initializer_context.active_effect_index = 0U;
     rejected_initializer_context.selected_effect_index = 0U;
     const auto rejected_initializer_selection =
@@ -988,7 +989,7 @@ int main() {
             0x15U, rejected_initializer_context,
             unexpected_conditional_roll);
     auto rejected_variant_context = rejected_initializer_context;
-    rejected_variant_context.active_offer_source_initializer = 12U;
+    rejected_variant_context.active_offer_source_initializer = 10U;
     const auto rejected_variant_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, rejected_variant_context, unexpected_conditional_roll);
@@ -1093,6 +1094,65 @@ int main() {
                 "Lua conditional actor selector decision matrix mismatch")) {
         std::cerr << "conditional random calls: "
                   << conditional_random_calls << "; runtime error: "
+                  << scripts.failure() << '\n';
+        return 1;
+    }
+
+    std::size_t normalized_initializer_random_calls = 0U;
+    const auto normalized_initializer_roll =
+        [&normalized_initializer_random_calls](const std::uint16_t roll) {
+            return [roll, &normalized_initializer_random_calls](
+                       const std::uint16_t bound)
+                       -> std::optional<std::uint16_t> {
+                ++normalized_initializer_random_calls;
+                if (bound != 2U) return std::nullopt;
+                return roll;
+            };
+        };
+    const bool employee_two_site_selection_reset =
+        scripts.reset_conditional_actor_selection();
+    auto employee_two_site_context = rejected_initializer_context;
+    employee_two_site_context.active_offer_source_initializer = 11U;
+    const auto employee_two_site_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, employee_two_site_context,
+            normalized_initializer_roll(0U));
+    const bool employee_renraku_selection_reset =
+        scripts.reset_conditional_actor_selection();
+    auto employee_renraku_context = rejected_initializer_context;
+    employee_renraku_context.active_offer_source_initializer = 12U;
+    const auto employee_renraku_selection =
+        scripts.resolve_conditional_actor_selection(
+            0x15U, employee_renraku_context,
+            normalized_initializer_roll(1U));
+    const bool normalized_employee_initializers_select_pedestrians =
+        employee_two_site_selection_reset &&
+        employee_renraku_selection_reset &&
+        employee_two_site_selection.has_value() &&
+        employee_two_site_selection->kind ==
+            ScriptConditionalActorSelectionKind::random_pedestrian &&
+        employee_two_site_selection->selection_choice == 1U &&
+        employee_two_site_selection->choice_changed &&
+        employee_two_site_selection->list_offset ==
+            (first_candidate_scene.has_value() &&
+                     !first_candidate_scene->empty()
+                 ? first_candidate_scene->front().list_offset
+                 : 0U) &&
+        employee_renraku_selection.has_value() &&
+        employee_renraku_selection->kind ==
+            ScriptConditionalActorSelectionKind::random_pedestrian &&
+        employee_renraku_selection->selection_choice == 2U &&
+        employee_renraku_selection->choice_changed &&
+        employee_renraku_selection->list_offset ==
+            (first_candidate_scene.has_value() &&
+                     first_candidate_scene->size() > 1U
+                 ? first_candidate_scene->at(1U).list_offset
+                 : 0U) &&
+        normalized_initializer_random_calls == 2U;
+    if (!expect(normalized_employee_initializers_select_pedestrians,
+                "ROM-normalized employee initializer did not pass A800")) {
+        std::cerr << "normalized initializer random calls: "
+                  << normalized_initializer_random_calls << "; runtime error: "
                   << scripts.failure() << '\n';
         return 1;
     }
