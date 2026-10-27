@@ -349,9 +349,13 @@ The three scene-2 pointers share tails of one ROM coordinate stream. The
 one-point scene-`0x14` lists have no additional destination before the zero
 terminator. This is route-data evidence, not proof that every actor walks it
 on every visit: the `0x13904` actor-state, target, world-activity, and
-collision gates still decide which path runs. The Lua package currently gets
-only the source spawn position and heading; the path points and cursor are
-not yet exposed to its instance state, and NPC movement remains unimplemented.
+collision gates still decide which path runs. Lua resolves the extracted
+route by source list and order. Debug/Release
+`shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa` checks one
+non-pedestrian case: Scene 40 guard order 1 follows the ROM route at
+`0x1DDE48` from `(0x2300,0x2580)` toward `(0x2A80,0x2580)`. This is an
+internal runtime check, not an independent Genesis capture or proof that every
+default-list actor moves.
 
 The default list is bounded by the live record allocator. `0x43B6` prepares
 pending lists first, then drains `FFE124`, `FFE120`, and finally the default
@@ -422,8 +426,10 @@ The script owns the entry delay, directional C0B2 choice, two-frame timer,
 terminal hold, and cue request; C++ stores only the latest returned pose for
 rendering and forwards the cue to the audio host. This replaces the prior
 `FieldActorBehaviorState` C++ timer/animation implementation for this entry
-branch. Targeting, attack decisions, actual NPC weapon firing, movement,
-collision outcomes, and damage are not implemented by these profiles yet.
+branch. Combat targeting, attack decisions, actual NPC weapon firing,
+collision outcomes, and damage are not implemented by these profiles yet. Lua
+route movement is enabled for default-list records with extracted waypoint
+data; other NPC movement and collision branches remain open.
 
 The existing field entity catalog is not these actors: the importer currently
 decodes the live Joshua template at `0x7291A` (kind 3). `0x4658` updates the
@@ -583,13 +589,14 @@ general NPC idle, movement, attack, or independent-ROM visual fidelity.
 
 ## Next implementation slice
 
-The named default-list data and the initial idle-to-C0B2 transition now reach
-the Qt field compositor. Next, trace the other `0x13904` branches, the
-post-transition `0xAB02` path, the live `0x4658` record update, and
-kind-specific action dispatch. Add only source-backed states and keep actor
-targeting outside combat until collision, hit, damage, and retirement paths
-are traced and connected. The hill remains partial; exact independent Genesis
-captures for these scene actors are not identified.
+The named default-list data and the initial idle-to-C0B2 transition reach the
+Qt field compositor. Lua route patrol also runs for default-list actors with
+extracted waypoints; the Scene 40 guard check covers one path through
+`0x142AE`. Continue with the other `0x13904` branches, post-transition
+`0xAB02`, the live `0x4658` record update, and kind-specific action dispatch.
+Keep actor targeting outside combat until collision, hit, damage, and
+retirement paths are traced and connected. The hill remains partial; exact
+independent Genesis captures for these scene actors are not identified.
 
 ## Map-viewer actor population evidence
 

@@ -1551,6 +1551,32 @@ int main() {
         return 3;
     }
 
+    const auto populated_alarm_profile = scripts.field_alarm_profile(21U);
+    const auto empty_alarm_profile_39 = scripts.field_alarm_profile(39U);
+    const auto empty_alarm_profile_40 = scripts.field_alarm_profile(40U);
+    const auto empty_alarm_profile_43 = scripts.field_alarm_profile(43U);
+    if (!expect(
+            populated_alarm_profile.has_value() &&
+                populated_alarm_profile->regions.size() == 4U &&
+                populated_alarm_profile->reinforcement_list_address ==
+                    std::optional<std::uint32_t>{0x1D7460U} &&
+                empty_alarm_profile_39.has_value() &&
+                empty_alarm_profile_39->regions.empty() &&
+                empty_alarm_profile_39->reinforcement_list_address ==
+                    std::optional<std::uint32_t>{0x1DD8E2U} &&
+                empty_alarm_profile_40.has_value() &&
+                empty_alarm_profile_40->regions.empty() &&
+                empty_alarm_profile_40->reinforcement_list_address ==
+                    std::optional<std::uint32_t>{0x1DDD96U} &&
+                empty_alarm_profile_43.has_value() &&
+                empty_alarm_profile_43->regions.empty() &&
+                empty_alarm_profile_43->reinforcement_list_address ==
+                    std::optional<std::uint32_t>{0x1DE8BAU},
+            "ROM zero-region alarm profile did not resolve as an empty profile")) {
+        std::cerr << scripts.failure() << '\n';
+        return 4;
+    }
+
     const auto run_ids =
         scripts.string_list("run_registry", "available_run_ids");
     const std::vector<std::string> expected_run_ids{

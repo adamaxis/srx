@@ -7821,6 +7821,12 @@ GameScriptRuntime::field_alarm_profile(const std::uint16_t scene_id) {
         return fail("field alarm profile has an invalid reinforcement list");
     }
     profile.reinforcement_list_address = list_address;
+    std::optional<std::uint32_t> expected_region_count;
+    if (!read_optional_field_u32(state, profile_table, "region_count", 256U,
+                                 expected_region_count) ||
+        !expected_region_count.has_value()) {
+        return fail("field alarm profile has an invalid region count");
+    }
 
     lua_getfield(state, content_table, "field_alarm_regions");
     if (!lua_istable(state, -1)) {
@@ -7828,12 +7834,17 @@ GameScriptRuntime::field_alarm_profile(const std::uint16_t scene_id) {
     }
     lua_rawgeti(state, -1, static_cast<lua_Integer>(scene_id));
     if (!lua_istable(state, -1)) {
+        if (lua_isnil(state, -1) && *expected_region_count == 0U) {
+            lua_settop(state, stack_base);
+            impl_->failure.clear();
+            return profile;
+        }
         return fail("field alarm region rows are missing or invalid");
     }
     const auto regions_table = lua_absindex(state, -1);
     const auto region_count = lua_rawlen(state, regions_table);
-    if (region_count > 256U) {
-        return fail("field alarm profile exceeds the region limit");
+    if (region_count > 256U || region_count != *expected_region_count) {
+        return fail("field alarm region rows disagree with the profile count");
     }
     profile.regions.reserve(region_count);
     for (std::size_t index = 0U; index < region_count; ++index) {

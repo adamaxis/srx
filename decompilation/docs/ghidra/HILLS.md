@@ -1331,3 +1331,29 @@ hill stays partial because `0x1DED8` scans world-actor high-effect slots and
 the full `0x391A` runner-resource refresh remains outside the player-side
 runtime path. No independent Genesis wipe frame has been claimed. See the
 [party-wipe recovery audit](party-wipe-recovery.md).
+
+## Empty field-alarm region profiles (partial, 2026-10-26)
+
+ROM alarm profiles for Scenes 39, 40, and 43 declare `region_count=0` and have
+no corresponding rows in `field-alarm-regions.tsv`. The typed profile reader
+now treats a missing region table as empty only for those zero-count profiles;
+populated profiles must match their declared count. Debug/Release
+`shadowrun_gameplay_script_runtime_qa` checks populated Scene 21 and the three
+empty profiles. Field alarm and random-encounter QA also pass in both builds.
+This verifies profile loading and runtime continuation, not every alarm
+outcome or an independent Genesis capture.
+
+## Scene-40 default corp-guard route (partial, 2026-10-26)
+
+ROM `0x44BC` initializes each default-list actor's route pointer and cursor;
+`0x142AE` selects the waypoint branch through actor status bit `+0x10.5`.
+Lua now enables route behavior for default-list actors with extracted waypoint
+data, regardless of sprite kind. Debug/Release
+`shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa` checks Scene 40
+source order 1, the kind-5 guard in slot 4, route `0x1DDE48`, start
+`(0x2300,0x2580)`, and next point `(0x2A80,0x2580)`. The manifest records
+progress at frame 36 and position `(0x236C,0x2526)`; start and moved full-frame
+captures are retained under the build's `qt_runtime/field-pedestrian-scenes-qa`
+directory. These are internal runtime captures, not a Genesis visual match.
+The hill remains partial while other default-list routes, collision behavior,
+and general NPC targeting remain open.

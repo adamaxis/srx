@@ -19013,6 +19013,148 @@ int run_field_pedestrian_scenes_qa(
                   << " actual=" << bitmap.string() << '\n';
     }
 
+    // Scene 40's default list at 0x1DDE26 contains two corp guards. Source
+    // order 1 uses route 0x1DDE48 from (0x2300,0x2580) toward
+    // (0x2A80,0x2580), exercising the default-actor Lua patrol path.
+    constexpr std::uint16_t kCorpGuardScene = 40U;
+    constexpr std::uint16_t kGuardOrder = 1U;
+    constexpr std::uint16_t kGuardStartX = 0x2300U;
+    constexpr std::uint16_t kGuardStartY = 0x2580U;
+    constexpr std::uint16_t kGuardNextX = 0x2A80U;
+    constexpr std::uint16_t kGuardNextY = 0x2580U;
+    field_scene.set_field_entity_world_position_for_dump(0x1000U,
+                                                          0x1000U);
+    if (!field_scene.seed_current_run_for_dump(0U)) {
+        std::cerr << "Pedestrian scenes QA: no-run initializer could not be "
+                     "installed for the corp-guard route check\n";
+        return 3;
+    }
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        false, false, 0U, 1U);
+    field_scene.set_world_effect_player_spawn_pending_for_dump(false);
+    if (!field_scene.reenter_field_scene_for_dump(kCorpGuardScene)) {
+        std::cerr << "Pedestrian scenes QA: corp-guard scene entry failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_field_world_frame_counter_for_dump(400U);
+    field_scene.set_source_random_seed_for_dump(0U);
+    const auto guard_start_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    const auto guard_profile =
+        field_scene.default_actor_script_profile_for_dump(kGuardOrder);
+    const auto guard_slot =
+        field_scene.default_actor_record_slot_for_dump(kGuardOrder);
+    if (field_scene.field_scene_reference_for_dump() != kCorpGuardScene ||
+        field_scene.default_actor_count_for_dump() != 2U ||
+        field_scene.world_activity_script_actor_count_for_dump() != 0U ||
+        guard_start_positions.size() != 2U ||
+        guard_start_positions[kGuardOrder].x != kGuardStartX ||
+        guard_start_positions[kGuardOrder].y != kGuardStartY ||
+        guard_profile !=
+            std::optional<std::string>{"corp_guard_k05_item06"} ||
+        guard_slot != std::optional<FieldWorldActorSlot>{
+                          FieldWorldActorSlot::slot_4}) {
+        std::cerr << "Pedestrian scenes QA: Scene-40 guard list differs from "
+                     "ROM; count="
+                  << field_scene.default_actor_count_for_dump()
+                  << " positions=" << guard_start_positions.size()
+                  << " profile="
+                  << (guard_profile.has_value() ? *guard_profile : "missing")
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_field_camera_world_position_for_dump(
+        static_cast<std::uint16_t>(kGuardStartX - 0x0800U),
+        static_cast<std::uint16_t>(kGuardStartY - 0x0800U));
+    if (field_scene.visible_default_actor_count_for_dump() == 0U) {
+        std::cerr << "Pedestrian scenes QA: Scene-40 corp guard is not "
+                     "drawable\n";
+        return 3;
+    }
+    const auto guard_start_image = render_qa_field(field_scene);
+    const auto guard_start_bitmap =
+        output / "scene-40-corp-guard-route-start.bmp";
+    if (guard_start_image.isNull() ||
+        !guard_start_image.save(QString::fromStdString(
+            guard_start_bitmap.string()))) {
+        std::cerr << "Pedestrian scenes QA: could not save "
+                  << guard_start_bitmap.string() << '\n';
+        return 3;
+    }
+    const auto distance_to_next_waypoint = [](const SceneRunnerPosition& point) {
+        const auto distance = [](const std::uint16_t lhs,
+                                 const std::uint16_t rhs) {
+            return lhs >= rhs ? static_cast<std::uint32_t>(lhs - rhs)
+                              : static_cast<std::uint32_t>(rhs - lhs);
+        };
+        return distance(point.x, kGuardNextX) +
+               distance(point.y, kGuardNextY);
+    };
+    const auto initial_waypoint_distance =
+        distance_to_next_waypoint(guard_start_positions[kGuardOrder]);
+    constexpr std::size_t kMaximumGuardRouteFrames = 360U;
+    std::optional<std::size_t> guard_route_progress_frame;
+    for (std::size_t frame = 0U; frame < kMaximumGuardRouteFrames; ++frame) {
+        field_scene.advance_frame();
+        const auto positions =
+            field_scene.active_default_actor_positions_for_dump();
+        if (positions.size() != guard_start_positions.size()) {
+            break;
+        }
+        if (distance_to_next_waypoint(positions[kGuardOrder]) <
+            initial_waypoint_distance) {
+            guard_route_progress_frame = frame + 1U;
+            break;
+        }
+    }
+    const auto guard_final_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    if (!guard_route_progress_frame.has_value() ||
+        guard_final_positions.size() != 2U ||
+        distance_to_next_waypoint(guard_final_positions[kGuardOrder]) >=
+            initial_waypoint_distance ||
+        field_scene.visible_default_actor_count_for_dump() == 0U) {
+        std::cerr << "Pedestrian scenes QA: Scene-40 corp guard did not "
+                     "advance toward its ROM waypoint; progress_frame="
+                  << (guard_route_progress_frame.has_value()
+                          ? std::to_string(*guard_route_progress_frame)
+                          : std::string("missing"))
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    const auto guard_final_image = render_qa_field(field_scene);
+    const auto guard_final_bitmap =
+        output / "scene-40-corp-guard-route-actual.bmp";
+    if (guard_final_image.isNull() ||
+        !guard_final_image.save(QString::fromStdString(
+            guard_final_bitmap.string()))) {
+        std::cerr << "Pedestrian scenes QA: could not save "
+                  << guard_final_bitmap.string() << '\n';
+        return 3;
+    }
+    std::ofstream guard_route_manifest(
+        output / "scene-40-corp-guard-route.tsv", std::ios::trunc);
+    guard_route_manifest
+        << "scene\tlist_offset\tposition_offset\tsource_order\tactor"
+           "\tstart_x\tstart_y\tnext_x\tnext_y\tend_x\tend_y"
+           "\tprogress_frame\n"
+        << "40\t0x1DDE26\t0x1DDE48\t1\tcorp_guard_k05_item06\t0x"
+        << std::hex << guard_start_positions[kGuardOrder].x << "\t0x"
+        << guard_start_positions[kGuardOrder].y << "\t0x" << kGuardNextX
+        << "\t0x" << kGuardNextY << "\t0x"
+        << guard_final_positions[kGuardOrder].x << "\t0x"
+        << guard_final_positions[kGuardOrder].y << std::dec << '\t'
+        << *guard_route_progress_frame << '\n';
+    if (!guard_route_manifest) {
+        std::cerr << "Pedestrian scenes QA: could not write corp-guard route "
+                     "manifest\n";
+        return 3;
+    }
+    std::cout << "field_corp_guard_route_qa=passed scene=40 source_order=1 "
+              << "slot=4 progress_frame=" << *guard_route_progress_frame
+              << " actual=" << guard_final_bitmap.string() << '\n';
+
     // ROM 0xA800 gives the active FFE180 story list precedence and selects
     // 0xA8AE only at active effect index 4. This route has one extracted
     // pedestrian descriptor and consumes actor slot 3 before defaults.
