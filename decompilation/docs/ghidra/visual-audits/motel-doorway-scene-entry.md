@@ -135,6 +135,18 @@ Genesis fidelity. The mode-entry audio service at `0x53126` waits 18 VBlanks in
 total, but its reachability and visual timing contribution on this route remain
 untraced. The source call path and blank interval are still open.
 
+[C] The supplied `ram.npy` contains 620 consecutive 64-KiB snapshots for
+frames 8541..9160. In the doorway interval, RAM bytes `FFFBF8` and `FFFBF9`
+are both `0x02` (word `0x0202`) from frame 8641 through 9160. ROM
+`0x03084..0x0308A` copies the low byte of the current scene from `FFDDC4` into
+`FFFBF8`; the scene/event pair is consumed by the route selector at `0x1F086`
+(also documented in [field-map script routing](field-map-script-routing.md)).
+The supplied snapshot therefore maps to scene 2/event 2 through the doorway,
+fade, and Stoker panel. Scene-2 terrain record 91 at `0x173138` has value
+`0xC2`; its low five bits select event 2, matching the observed interaction.
+[H] The capture's missing emulator/build identity limits this to a mapping of
+its supplied RAM and images, not proof that it came from the US ROM.
+
 ## Portrait extraction correction
 
 ROM `0x1F292` loads Stoker's profile at `0x121FA0`, decodes pattern stream
