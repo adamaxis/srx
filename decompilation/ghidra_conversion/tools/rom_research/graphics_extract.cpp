@@ -48,6 +48,100 @@ std::uint16_t read_big_endian_word(
         static_cast<std::uint16_t>(bytes[offset + 1U]));
 }
 
+std::array<shadowrun::graphics::RgbaImage, 2U>
+decode_genesis_field_menu_extended_defense_bars(
+    const std::vector<std::uint8_t>& rom) {
+    // 0x12CEE advances the Defense base at 0xCF610 by 0x1A per row and has
+    // no upper clamp. The two legal high rows selected by the race/attribute
+    // bounds are therefore the name-word blocks at 0xCF866 and 0xCF880.
+    constexpr std::size_t kDefenseTable = 0xCF610U;
+    constexpr std::size_t kFirstExtendedIndex = 23U;
+    constexpr std::size_t kEntryStride = 0x1AU;
+    constexpr std::size_t kTileColumns = 13U;
+    constexpr std::size_t kPatternStreamOffset = 0xCAB0CU;
+    constexpr std::size_t kPatternVramOffset = 0x1E20U;
+    constexpr std::size_t kAppendedPatternOffset = 0xCF134U;
+    constexpr std::size_t kAppendedPatternVramOffset = 0x5A80U;
+    constexpr std::size_t kAppendedPatternBytes = 0x200U;
+    constexpr std::uint16_t kPaletteLineOne = 0x2000U;
+
+    auto pattern_vram = shadowrun::graphics::decode_genesis_1530_vram(
+        rom, kPatternStreamOffset, kPatternVramOffset);
+    if (kAppendedPatternOffset > rom.size() ||
+        kAppendedPatternBytes > rom.size() - kAppendedPatternOffset ||
+        kAppendedPatternVramOffset > pattern_vram.size() ||
+        kAppendedPatternBytes >
+            pattern_vram.size() - kAppendedPatternVramOffset) {
+        throw std::out_of_range(
+            "Genesis command stat-bar pattern upload is truncated");
+    }
+    std::copy_n(rom.begin() + kAppendedPatternOffset,
+                kAppendedPatternBytes,
+                pattern_vram.begin() + kAppendedPatternVramOffset);
+
+    std::array<shadowrun::native::Rgba8, 64U> palette{};
+    const auto first_palette_line =
+        shadowrun::graphics::read_genesis_palette(rom, 0xD29D6U);
+    std::copy(first_palette_line.begin(), first_palette_line.end(),
+              palette.begin());
+    for (std::size_t index = 16U; index < palette.size(); ++index) {
+        palette[index] = shadowrun::graphics::decode_genesis_cram_word(
+            read_big_endian_word(rom,
+                                 0x18AC56U + (index - 16U) * 2U));
+    }
+
+    std::array<shadowrun::graphics::RgbaImage, 2U> images{};
+    for (std::size_t extra = 0U; extra < images.size(); ++extra) {
+        const auto bar_index = kFirstExtendedIndex + extra;
+        const auto table_offset = kDefenseTable + bar_index * kEntryStride;
+        if (table_offset > rom.size() ||
+            kTileColumns * 2U > rom.size() - table_offset) {
+            throw std::out_of_range(
+                "Genesis command Defense bar name words are truncated");
+        }
+
+        auto& image = images[extra];
+        image.width = static_cast<std::uint16_t>(kTileColumns * 8U);
+        image.height = 8U;
+        image.pixels.assign(
+            static_cast<std::size_t>(image.width) * image.height,
+            shadowrun::native::Rgba8{0U, 0U, 0U, 255U});
+
+        for (std::size_t column = 0U; column < kTileColumns; ++column) {
+            const auto name_word = static_cast<std::uint16_t>(
+                read_big_endian_word(rom, table_offset + column * 2U) |
+                kPaletteLineOne);
+            const auto tile_index = static_cast<std::size_t>(
+                name_word & 0x07FFU);
+            const auto tile_offset = tile_index * 32U;
+            if (tile_offset > pattern_vram.size() ||
+                pattern_vram.size() - tile_offset < 32U) {
+                throw std::out_of_range(
+                    "Genesis command Defense bar tile is truncated");
+            }
+            const auto tile = shadowrun::graphics::decode_genesis_tile(
+                pattern_vram.data() + tile_offset, 32U);
+            const auto palette_line = static_cast<std::size_t>(
+                (name_word >> 13U) & 0x03U);
+            const auto hflip = (name_word & 0x0800U) != 0U;
+            const auto vflip = (name_word & 0x1000U) != 0U;
+            for (std::size_t pixel_y = 0U; pixel_y < 8U; ++pixel_y) {
+                for (std::size_t pixel_x = 0U; pixel_x < 8U; ++pixel_x) {
+                    const auto source_x = hflip ? 7U - pixel_x : pixel_x;
+                    const auto source_y = vflip ? 7U - pixel_y : pixel_y;
+                    auto color = palette[
+                        palette_line * 16U +
+                        tile.pixels[source_y * 8U + source_x]];
+                    color.alpha = 255U;
+                    image.pixels[pixel_y * image.width + column * 8U +
+                                 pixel_x] = color;
+                }
+            }
+        }
+    }
+    return images;
+}
+
 std::uint32_t read_big_endian_long(
     const std::vector<std::uint8_t>& bytes,
     const std::size_t offset) {
@@ -1450,6 +1544,12 @@ void write_dialogue_text_catalog(const std::vector<std::uint8_t>& rom,
         {"salish.owlfeather.page.status_topic", 0x0F6AF5U},
         {"salish.owlfeather.page.simple_task", 0x0F6BA2U},
         {"salish.owlfeather.page.search_followup", 0x0F7190U},
+        // Scene-3/event-3 service 3 sends the crew in after hours.
+        {"salish.owlfeather.page.mitsuhama_entry", 0x0F5B00U},
+        // The A8AE contact handler opens root 0xF4BBC after arriving at Scene 34.
+        {"salish.owlfeather.page.aragorn_contact_opening", 0x0F5B78U},
+        {"salish.owlfeather.page.aragorn_contact_reply", 0x0F5C49U},
+        {"salish.owlfeather.page.aragorn_contact_outcome", 0x0F5C6FU},
         {"salish.owlfeather.page.task_result", 0x0F6CE8U},
         {"salish.owlfeather.page.return_offer", 0x0F6DB9U},
         {"salish.owlfeather.page.return_arrival", 0x0F6EB4U},
@@ -2978,7 +3078,7 @@ void extract_field_session_record_assets(
     scene_profiles.reserve(shadowrun::rom::kFieldModeCount * 0x60U);
     std::vector<std::uint8_t> elevator_scene_groups;
     elevator_scene_groups.reserve(
-        shadowrun::rom::kFieldModeCount * 6U);
+        shadowrun::rom::kFieldModeCount * 7U);
     for (std::uint16_t scene_id = 0;
          scene_id < shadowrun::rom::kFieldModeCount; ++scene_id) {
         const auto table_entry =
@@ -2996,12 +3096,12 @@ void extract_field_session_record_assets(
             rom.begin() +
                 static_cast<std::ptrdiff_t>(profile_offset + 0x60U));
 
-        // 0x58DE0 reads a scene group from the selected profile's +0x58
-        // resource pointer: its first longword points to a word-counted list
-        // of child scene IDs. Resolve the list now, preserving empty rows for
-        // profiles without an elevator group so the runtime consumes only
-        // typed native IDs.
-        std::array<std::uint8_t, 6U> elevator_group{};
+        // 0x167AE copies the first word of the child list into FFF0C6;
+        // 0x58DE0 treats that value as an inclusive maximum floor index, and
+        // 0x16A8E indexes the scene list at +2 + 2*FFF0C8. Resolve every
+        // destination (header + 1) here, preserving empty rows for profiles
+        // without an elevator group.
+        std::array<std::uint8_t, 7U> elevator_group{};
         const auto resource_bundle = static_cast<std::size_t>(
             read_big_endian_long(rom, profile_offset + 0x58U));
         if (resource_bundle != 0U && resource_bundle <= rom.size() &&
@@ -3010,14 +3110,17 @@ void extract_field_session_record_assets(
                 read_big_endian_long(rom, resource_bundle));
             if (group_offset != 0U && group_offset <= rom.size() &&
                 rom.size() - group_offset >= sizeof(std::uint16_t)) {
-                const auto count = read_big_endian_word(rom, group_offset);
-                if (count >= 2U && count <= 5U &&
+                const auto maximum_floor_index =
+                    read_big_endian_word(rom, group_offset);
+                const auto member_count =
+                    static_cast<std::size_t>(maximum_floor_index) + 1U;
+                if (maximum_floor_index >= 1U && maximum_floor_index <= 5U &&
                     rom.size() - group_offset >=
-                        (1U + static_cast<std::size_t>(count)) *
+                        (1U + member_count) *
                             sizeof(std::uint16_t)) {
-                    std::array<std::uint16_t, 5U> child_scenes{};
+                    std::array<std::uint16_t, 6U> child_scenes{};
                     bool valid_group = true;
-                    for (std::size_t child = 0; child < count; ++child) {
+                    for (std::size_t child = 0; child < member_count; ++child) {
                         child_scenes[child] = read_big_endian_word(
                             rom, group_offset +
                                      (1U + child) * sizeof(std::uint16_t));
@@ -3026,8 +3129,10 @@ void extract_field_session_record_assets(
                                 shadowrun::rom::kFieldModeCount;
                     }
                     if (valid_group) {
-                        elevator_group[0] = static_cast<std::uint8_t>(count);
-                        for (std::size_t child = 0; child < count; ++child) {
+                        elevator_group[0] =
+                            static_cast<std::uint8_t>(member_count);
+                        for (std::size_t child = 0; child < member_count;
+                             ++child) {
                             elevator_group[1U + child] =
                                 static_cast<std::uint8_t>(child_scenes[child]);
                         }
@@ -6636,10 +6741,13 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         throw std::runtime_error("cannot read generated asset catalog");
     }
     // Graphics extraction is an explicit import step, but it must not erase
-    // independently imported runtime resources. Preserve existing state and
-    // audio rows while regenerating the image aliases from catalog.tsv.
+    // independently imported runtime resources. Preserve state/audio rows and
+    // source-aligned field entity aliases that are not generated by catalog.tsv.
     std::vector<std::string> preserved_state_rows;
     std::vector<std::string> preserved_runtime_rows;
+    std::vector<std::string> preserved_field_entity_image_rows;
+    std::unordered_map<std::string, std::string>
+        preserved_field_entity_image_by_alias;
     std::ifstream prior_manifest(
         root / std::string(shadowrun::resources::kManifestFile),
         std::ios::binary);
@@ -6667,11 +6775,16 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
                 (fields[0].rfind("records.field.mode.0.", 0U) == 0U ||
                  fields[0].rfind("records.field.mode.2.", 0U) == 0U);
             if (fields.size() == 5U && fields[0] != "state" &&
-                fields[2] != "image" && !legacy_field_scene_record &&
+                !legacy_field_scene_record &&
                 std::filesystem::is_regular_file(root / fields[1])) {
                 if (fields[2] == "state") {
                     preserved_state_rows.push_back(prior_line);
-                } else {
+                } else if (fields[2] == "image" &&
+                           fields[0].rfind("field.entities.", 0U) == 0U) {
+                    preserved_field_entity_image_rows.push_back(prior_line);
+                    preserved_field_entity_image_by_alias.insert_or_assign(
+                        fields[0], prior_line);
+                } else if (fields[2] != "image") {
                     preserved_runtime_rows.push_back(prior_line);
                 }
             }
@@ -6842,6 +6955,17 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
                 alias = story_page.alias;
             }
         }
+        const auto preserved_player_image =
+            preserved_field_entity_image_by_alias.find(alias);
+        if (preserved_player_image !=
+            preserved_field_entity_image_by_alias.end()) {
+            if (!aliases.insert(alias).second) {
+                throw std::runtime_error(
+                    "duplicate preserved field entity alias: " + alias);
+            }
+            output << preserved_player_image->second << '\n';
+            continue;
+        }
         if (!aliases.insert(alias).second) {
             throw std::runtime_error("duplicate generated resource alias: " +
                                      alias);
@@ -6849,6 +6973,7 @@ void write_runtime_resource_manifest(const std::filesystem::path& root) {
         output << alias << '\t' << relative << "\timage\t" << fields[2]
                << '\t' << fields[3] << '\n';
     }
+    emit_preserved_rows(preserved_field_entity_image_rows);
     emit_preserved_rows(preserved_runtime_rows);
 }
 
@@ -7603,6 +7728,22 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             rom, 0x121E14U),
         "sprite", "0x53B78/0x53BCC/0x53CEA/0x121E14", false, manifest,
         written, missing, blank);
+    // The Scene-3/event-3 branch of service 3 uses a separate source profile
+    // for the after-hours entry passage rooted at 0xF4BB4.
+    write_catalog_asset(
+        root, "dialogue/portraits/mitsuhama-after-hours-entry.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x12209CU),
+        "sprite", "0x53BCC/0x12209C/0xF4BB4", false, manifest,
+        written, missing, blank);
+    // Scene-34 A8AE contact 0x53C90 opens Aragorn's 0xF4BBC conversation
+    // with the profile at 0x121E08. Keep this portrait as direct host art.
+    write_catalog_asset(
+        root, "dialogue/portraits/aragorn-mitsuhama.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121E08U),
+        "sprite", "0x53C90/0x121E08/0xF4BBC", false, manifest, written,
+        missing, blank);
     // Tabatha's profile is selected by command 0x14 before the apartment
     // pages and again by command 0x4C between the Renraku and holopix pages.
     write_catalog_asset(
@@ -7881,21 +8022,44 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 std::to_string(frame),
             false, manifest, written, missing, blank);
     }
-    for (std::size_t floor = 0; floor < 5U; ++floor) {
+    const auto decode_elevator_floor_layer =
+        [&rom](const std::size_t floor, const bool selected) {
+            if (floor < 5U) {
+                return shadowrun::graphics::
+                    decode_genesis_field_elevator_selector_floor_layer(
+                        rom, floor, selected);
+            }
+            if (floor != 5U) {
+                throw std::out_of_range(
+                    "elevator floor index is outside the ROM selector");
+            }
+
+            // The offline graphics helper predates six-map groups and checks
+            // only indices 0..4. The ROM has valid art-table rows at index 5
+            // (0x1B60E8 + 20 and 0x1B6100 + 40). Copy those rows into the
+            // helper's final accepted slot in a private ROM buffer so it
+            // decodes the original sixth-floor patterns without changing the
+            // archived native-port extraction library.
+            auto remapped_rom = rom;
+            std::copy_n(rom.begin() + 0x1B60E8U + 5U * 4U, 4U,
+                        remapped_rom.begin() + 0x1B60E8U + 4U * 4U);
+            std::copy_n(rom.begin() + 0x1B6100U + 5U * 8U, 8U,
+                        remapped_rom.begin() + 0x1B6100U + 4U * 8U);
+            return shadowrun::graphics::
+                decode_genesis_field_elevator_selector_floor_layer(
+                    remapped_rom, 4U, selected);
+        };
+    for (std::size_t floor = 0; floor < 6U; ++floor) {
         write_catalog_asset(
             root, "menu/field/elevator-selector-current-floor-" +
                       std::to_string(floor) + ".bmp",
-            shadowrun::graphics::
-                decode_genesis_field_elevator_selector_floor_layer(
-                    rom, floor, false),
+            decode_elevator_floor_layer(floor, false),
             "overlay", "0x58FCC/0x1B6100",
             false, manifest, written, missing, blank);
         write_catalog_asset(
             root, "menu/field/elevator-selector-selected-floor-" +
                       std::to_string(floor) + ".bmp",
-            shadowrun::graphics::
-                decode_genesis_field_elevator_selector_floor_layer(
-                    rom, floor, true),
+            decode_elevator_floor_layer(floor, true),
             "overlay", "0x58FA8/0x1B60E8",
             false, manifest, written, missing, blank);
     }
@@ -8117,6 +8281,20 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                 "0x12CEE/0xCF3D4", true);
     write_array("menu/field/defense-bar-", assets.field_menu_defense_bars, "sprite",
                 "0x12CEE/0xCF610", true);
+    const auto extended_defense_bars =
+        decode_genesis_field_menu_extended_defense_bars(rom);
+    for (std::size_t extra = 0U; extra < extended_defense_bars.size();
+         ++extra) {
+        const auto index = 23U + extra;
+        const auto source_offset = 0xCF610U + index * 0x1AU;
+        std::ostringstream provenance;
+        provenance << "0x12CEE/0xCF610[index=" << index << "][source=0x"
+                   << std::hex << std::uppercase << source_offset << ']';
+        write_catalog_asset(
+            root, "menu/field/defense-bar-" + std::to_string(index) + ".bmp",
+            extended_defense_bars[extra], "sprite", provenance.str(),
+            false, manifest, written, missing, blank);
+    }
     write_catalog_asset(
         root, "menu/field/magic-panel-background.bmp",
         shadowrun::graphics::decode_genesis_field_magic_panel_background(rom),
@@ -8910,6 +9088,8 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
          "0x167AE: neither runner marker is 1"},
         {0x14U, -1, 0xA8CCU, "scene_20_ilene_pending_list",
          "0xA800: FFE180 clear and FFE182 set", 0, 1},
+        {0x22U, -1, 0xA8AEU, "scene_34_story_contact",
+         "0xA800: FFE180 set and FFF0C8 == 4"},
         {0x2FU, -1, 0x1E552U, "mode_13_entry",
          "0x2CE0 mode 0x13 transition, with FFFC1E bit 8 clear"},
         {0x2FU, -1, 0x1E5C4U, "pending_list_1e5c4",
@@ -9076,8 +9256,10 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
                     // resolve to the named sprite/profile assets, so pending
                     // kind-5 lists could never publish their actor record.
                     ? profile_id
-                    : entity_kind == 11U
-                        ? std::string("pedestrian")
+                : entity_kind == 11U
+                    ? (list.list_offset == 0xA8AEU
+                           ? profile_id
+                           : std::string("pedestrian"))
                         : entity_kind == 8U
                             ? std::string("yakuza-weenr")
                             : make_sprite_stem(actor_name);
@@ -11030,10 +11212,12 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
 
     extract_field_session_record_assets(rom, root);
     manifest.flush();
+    manifest.close();
     std::filesystem::create_directories(root / "native");
     shadowrun::graphics::write_native_asset_state(
         (root / "native" / "state.bin").string(), assets);
     write_runtime_resource_manifest(root);
+    extract_field_player_hit_spark_assets(rom, root);
     extract_field_barrier_assets(rom, root);
     std::cout << "all graphics assets written to " << root << "\n"
               << "extracted=" << written << " blank=" << blank
