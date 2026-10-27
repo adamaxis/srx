@@ -963,8 +963,16 @@ source-capped counter helper.
 Debug and Release `shadowrun_ghidra_world_activity_routine` and
 `shadowrun_gameplay_script_runtime_qa` cover the typed request result, the
 success/failure pages, the MORE continuation, active-offer retention/clearing,
-and the Renraku-only counter gate at values 7 and 8. These tests do not produce
-an `actual.bmp` for either callback page and do not prove a physical contact
-automatically reaches the request. The direct `FFDF42` producer, a
-route-matched independent Genesis capture, and the full callback hill's image
-dump remain open; this callback remains partial under the hill rule.
+and the Renraku-only counter gate at values 7 and 8. The focused
+`shadowrun_ghidra_conversion_qt_field_world_activity_qa` now seeds both outcomes
+of the 13-record scan, dispatches the typed `0x1F16A` continuation through the
+field coordinator, and writes full-screen `actual.bmp` files for success page
+one (with MORE), its follow-up page, and the cancellation page, plus
+`extraction-return-field.bmp`. Debug and Release hashes match for all four
+captures; I inspected the full frames for the Mortimer portrait, ROM-derived
+Wasp/cancellation text, page affordance, and return cleanup. These are internal
+regression captures, not an independent Genesis comparison. The QA seam starts
+after the A800/contact trigger and supplies the scan outcome; it does not prove
+that a physical contact reaches `0x1E43C`/`0x1F16A`. The direct `FFDF42`
+producer, physical automatic route, and route-matched independent Genesis
+capture remain open, so the callback hill remains partial.

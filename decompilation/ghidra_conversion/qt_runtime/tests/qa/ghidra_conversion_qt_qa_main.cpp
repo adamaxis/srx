@@ -1262,8 +1262,135 @@ int run_field_world_activity_qa(
         std::cerr << "field world-activity QA: terminal UI left stale graphics over the selected scene\n";
         return 3;
     }
+    if (!finish_field_modal_return_transition(field_scene)) {
+        std::cerr << "field world-activity QA: terminal return fade did not "
+                     "finish before the extraction-result branch sweep\n";
+        return 3;
+    }
+
+    const auto success_page_one_directory =
+        output / "extraction-success-page-1";
+    const auto success_page_two_directory =
+        output / "extraction-success-page-2";
+    const auto failure_page_directory = output / "extraction-failure-page";
+    std::error_code extraction_directory_error;
+    std::filesystem::create_directories(success_page_one_directory,
+                                        extraction_directory_error);
+    if (!extraction_directory_error) {
+        std::filesystem::create_directories(success_page_two_directory,
+                                            extraction_directory_error);
+    }
+    if (!extraction_directory_error) {
+        std::filesystem::create_directories(failure_page_directory,
+                                            extraction_directory_error);
+    }
+    if (extraction_directory_error) {
+        std::cerr << "field world-activity QA: could not create extraction "
+                     "result output directories: "
+                  << extraction_directory_error.message() << '\n';
+        return 3;
+    }
+    const auto dialogue_text_contains = [](const DialoguePanelView& panel,
+                                           const std::string_view text) {
+        return std::any_of(
+            panel.text_segments.begin(),
+            panel.text_segments.begin() +
+                static_cast<std::ptrdiff_t>(panel.text_segment_count),
+            [text](const std::string_view segment) {
+                return segment.find(text) != std::string_view::npos;
+            });
+    };
+    const auto run_extraction_result =
+        [&](const bool actor_found, const bool success_branch) {
+            if (!field_scene.dispatch_world_activity_extraction_result_for_dump(
+                    actor_found)) {
+                std::cerr << "field world-activity QA: 0x1E43C scan result "
+                             "did not dispatch the typed 0x1F16A page: "
+                          << field_scene.failure() << '\n';
+                return false;
+            }
+            const auto& first_panel = field_scene.dialogue_panel();
+            const auto first_page = render_field();
+            const auto& first_page_directory =
+                success_branch ? success_page_one_directory
+                               : failure_page_directory;
+            const auto first_page_text =
+                success_branch ? std::string_view("Northrup PRC-42 Wasp")
+                               : std::string_view("look of disappointment");
+            if (!first_panel.open || !first_panel.source_complete ||
+                first_panel.text_segment_count == 0U ||
+                first_panel.portrait_alias.empty() ||
+                first_panel.has_more != success_branch ||
+                field_scene.field_world_effect_control_bit_for_dump() !=
+                    success_branch ||
+                field_scene.world_activity_request_timeout_for_dump() == 0U ||
+                field_scene.field_runtime_state_for_dump()
+                        .world_activity_countdown != 0U ||
+                !dialogue_text_contains(first_panel, first_page_text) ||
+                first_page.size() != QSize(kSceneWidth, kSceneHeight) ||
+                !image_has_green_ink(first_page, 88, 16, 216, 120) ||
+                !save(first_page_directory / "actual.bmp", first_page)) {
+                std::cerr << "field world-activity QA: extraction "
+                          << (success_branch ? "success" : "failure")
+                          << " page, portrait, message, timer separation, or "
+                             "full-screen dump diverged (speaker=\""
+                          << first_panel.actor_name << "\", portrait=\""
+                          << first_panel.portrait_alias << "\", more="
+                          << first_panel.has_more << ", FFE11C="
+                          << static_cast<unsigned>(field_scene
+                                                       .world_activity_request_timeout_for_dump())
+                          << ", FFE166="
+                          << field_scene.field_runtime_state_for_dump()
+                                 .world_activity_countdown
+                          << ")\n";
+                return false;
+            }
+
+            tap_qa_controller_button(field_scene, 0x40U);
+            if (success_branch) {
+                const auto& second_panel = field_scene.dialogue_panel();
+                const auto second_page = render_field();
+                if (!second_panel.open || !second_panel.source_complete ||
+                    second_panel.has_more ||
+                    !dialogue_text_contains(second_panel,
+                                             "disappears into the sky") ||
+                    !image_has_green_ink(second_page, 88, 16, 216, 120) ||
+                    !save(success_page_two_directory / "actual.bmp",
+                          second_page)) {
+                    std::cerr << "field world-activity QA: the MORE input "
+                                 "did not show the no-options Wasp departure "
+                                 "page\n";
+                    return false;
+                }
+                tap_qa_controller_button(field_scene, 0x40U);
+            }
+            if (!finish_field_modal_return_transition(field_scene) ||
+                field_scene.dialogue_open() ||
+                field_scene.field_world_effect_control_bit_for_dump() !=
+                    success_branch) {
+                std::cerr << "field world-activity QA: extraction result did "
+                             "not return to the field with its source flag "
+                             "state\n";
+                return false;
+            }
+            return true;
+        };
+    if (!run_extraction_result(true, true) ||
+        !run_extraction_result(false, false)) {
+        return 3;
+    }
+    const auto extraction_return_field = render_field_scene();
+    if (!save("extraction-return-field.bmp", extraction_return_field) ||
+        extraction_return_field != returned_field) {
+        std::cerr << "field world-activity QA: extraction result left modal "
+                     "pixels over the source field\n";
+        return 3;
+    }
     std::cout << "field_world_activity_qa=passed scene=0x1A bound=3 floor=2 cursor=0x18 terminal_floor_text=third-floor artifacts="
-              << output.string() << '\n';
+              << output.string()
+              << " extraction_pages=success-more/success-follow-up/failure "
+                 "source_scan=1E43C callback=1F16A"
+              << '\n';
     return 0;
 }
 

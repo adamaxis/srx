@@ -1000,16 +1000,21 @@ by SHA-256. The bounded ROM census finds only a direct `FFDF42` read at
 host callback at `0x1F16A` now dispatches on the next eligible coordinator
 pass, keeps its `FFE11C` countdown separate from `FFE166`, retires the success
 actor records, and opens Lua-owned success/failure result pages. Debug/Release
-`shadowrun_ghidra_world_activity_routine` and
-`shadowrun_gameplay_script_runtime_qa` cover the request, both pages, the MORE
-continuation, run-offer state, and the target-gated FFFBFB cap. The direct
-`FFDF42` request producer remains unknown. There is no callback `actual.bmp` or
-route-matched independent Genesis comparison yet, so this callback remains
-partial. Separately,
+`shadowrun_ghidra_world_activity_routine`,
+`shadowrun_gameplay_script_runtime_qa`, and
+`shadowrun_ghidra_conversion_qt_field_world_activity_qa` cover the typed
+request, both callback outcomes, the MORE continuation, run-offer state, and
+the target-gated FFFBFB cap. The field QA writes full-screen `actual.bmp`
+captures for both success pages and cancellation, plus the clean return field;
+Debug/Release hashes match and the frames were inspected. These are internal
+regression images, not independent Genesis comparisons. The direct `FFDF42`
+request producer remains unknown, and the result QA seeds the scan outcome
+after the A800/contact trigger. The automatic physical route and a route-matched
+Genesis comparison remain open, so this callback remains partial. Separately,
 the `FFDF3E`/`FFDF40` transition path to `0x1E43C` is traced and mode-2 gate
 reentry is covered by the coordinator test. The body of `0x1F16A` is decoded as
 actor-found Wasp pickup pages or a no-record contract-cancellation page, and
-its typed host result callback and Lua pages are now covered by focused tests.
+its typed host result callback and Lua pages now have internal frame captures.
 The physical A800 routes still use
 the `0x1E45E` QA seam and do not claim automatic activity continuation. These
 captures are internal regression artifacts, not independent Genesis

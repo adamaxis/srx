@@ -860,6 +860,62 @@ bool FieldSceneRuntime::dispatch_selected_security_terminal_for_dump() {
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::dispatch_world_activity_extraction_result_for_dump(
+    const bool active_high_effect_actor_found) {
+    if (!ready_ || field_dialogue_.open() || field_interaction_.open()) {
+        failure_ = "extraction result QA requires an idle, ready field";
+        return false;
+    }
+
+    // Seed the two possible outcomes of the ROM 0x1E43C thirteen-record scan,
+    // then exercise its typed callback/timer state and the production pending
+    // field-scene handler. This QA seam begins after the A800/contact trigger.
+    world_activity_request_state_ = WorldActivityRoutineRequestState{};
+    world_activity_request_state_.request_flag = 1U;
+    std::array<WorldActivityRequestSlot,
+               kWorldActivityRequestSlotCount> request_slots{};
+    if (active_high_effect_actor_found) {
+        request_slots[0] = {0x01U, 0x80U};
+    }
+    world_activity_request_start_state_ = WorldActivityStartState{};
+    if (!handle_world_activity_request(
+            world_activity_request_state_, request_slots,
+            world_activity_request_start_state_) ||
+        world_activity_request_start_state_.callback !=
+            WorldActivityCallbackKind::extraction_result) {
+        failure_ = "0x1E43C QA request did not publish its typed result";
+        return false;
+    }
+
+    begin_world_activity(field_world_activity_state_, 0U);
+    world_frame_logic_state_.resource_countdown =
+        field_world_activity_state_.timeout;
+    field_runtime_state_.world_activity_countdown = 0U;
+    field_runtime_state_.field_activity_lock = false;
+    field_runtime_state_.display_service_word = 0U;
+    record_field_activity_start(
+        MovementModeTransitionContinuation::world_activity_extraction_result);
+    advance_frame();
+    if (!field_dialogue_.open()) {
+        failure_ =
+            "0x1F16A QA callback did not open; pending=" +
+            std::to_string(field_runtime_state_.pending_field_scene_handler) +
+            " countdown=" +
+            std::to_string(field_runtime_state_.world_activity_countdown) +
+            " lock=" + std::to_string(field_runtime_state_.field_activity_lock) +
+            " display=" +
+            std::to_string(field_runtime_state_.display_service_word) +
+            " found=" + std::to_string(world_activity_request_state_.found_marker) +
+            " activity_timer=" +
+            std::to_string(field_world_activity_state_.timeout);
+        return false;
+    }
+    return true;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 void FieldSceneRuntime::paint_field_scene_for_dump(
     QPainter& painter) const {
     painter.fillRect(0, 0, 320, 224, Qt::black);

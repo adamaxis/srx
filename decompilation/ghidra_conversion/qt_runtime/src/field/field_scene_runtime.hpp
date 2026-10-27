@@ -737,6 +737,13 @@ public:
                                             std::uint16_t random_seed);
     bool return_from_world_activity_for_dump();
     bool dispatch_selected_security_terminal_for_dump();
+    // Seed the result of the 0x1E43C record scan, then dispatch its typed
+    // 0x1F16A continuation through the normal field coordinator.
+    bool dispatch_world_activity_extraction_result_for_dump(
+        bool active_high_effect_actor_found);
+    bool field_world_effect_control_bit_for_dump() const noexcept {
+        return field_movement_transition_state_.world_effect_control_bit;
+    }
     // R3: apply the 0x16760 terrain mark to an explicit FF2700 cell.
     bool mark_field_terrain_cell_for_dump(std::size_t cell) {
         return mark_field_terrain_cell(cell);
