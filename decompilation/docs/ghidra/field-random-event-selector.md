@@ -343,6 +343,25 @@ away returns `0x12121C`, beginning with the leave-behind text and the floor
 string sequence. These routines do not write funds or queue actors. The linked
 floor/security continuation after these returned text records remains partial.
 
+### Section-37 longplay visual check
+
+The independent 30-fps dump in
+`video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_37_source_9420-9720/`
+shows the scientist prompt at local frame `000216` (source frame 9636). Its
+visible caption is “A scientist walks by, deep in thought.”, with “I'm looking
+for some information.” and “Walk away.” in that order. At local frame `000230`
+(source frame 9650), the portrait and dialogue window display “You leave them
+behind.” with no choice rows. This matches the prompt content at `0x1211F4`
+and the leave-behind result beginning at `0x12121C`; it is consistent with
+selecting the scientist's walk-away path, but the compressed video exposes no
+event ID or controller telemetry. The page remains visible at frame `000261`,
+is mostly faded by `000270`, and is black at `000285`. The next captured
+segment begins on a Matrix view at source frame 9720; adjacency does not prove
+that the scientist response caused Matrix entry. No skill value, scene state,
+or hidden flag can be recovered from these pixels. This is independent visual
+corroboration for the prompt and response wording, not a complete branch or
+timing audit.
+
 **Management terminal (`0x2109A`, scenes 21-40).** The selector chooses this
 event at sum 5 in scenes 21-25, sum 4 in scenes 26-29, sum 3 in scenes 30-34,
 and sum 0 in scenes 35-40. The prompt record at `0x1214AC` offers Hack the
