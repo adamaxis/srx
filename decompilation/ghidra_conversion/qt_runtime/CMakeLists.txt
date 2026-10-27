@@ -1284,6 +1284,15 @@ add_shadowrun_qt_qa_case(
     --field-mitsuhama-after-hours-electronics-no-skill-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-mitsuhama-after-hours-electronics-no-skill-qa")
 
+# Follow the same record-90 route with the ordinary New Game Decker. Source
+# seed 6 yields one face-5 success against target 5, reducing selection 2->1.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_mitsuhama_after_hours_electronics_partial_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-archetype decker
+    --field-mitsuhama-after-hours-electronics-partial-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-mitsuhama-after-hours-electronics-partial-qa")
+
 # Follow ordinary New Game movement into the west wall of Stoker's motel,
 # hold against the source collision cells, move diagonally along the frontage,
 # and retreat. Whole-screen checkpoints and a per-frame coordinate log keep

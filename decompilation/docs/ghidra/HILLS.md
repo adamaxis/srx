@@ -1414,7 +1414,12 @@ checks the Electronics/Frag/Walk prompt, no-skill page and 30-frame hold,
 selection 2, active-party inventory, locked map cell `0x82`, unchanged action
 audio, and clean field return. Its 16 Debug/Release BMPs match by SHA-256, and
 the choices, result, and return images were inspected at 320x224. They are
-internal captures, not independent Genesis evidence. The hill stays partial:
-Scene-34 Decker partial and zero-roll results, the world-mode-2 `0x1E04A`
-effect-list/latch path, kit-assisted trials, and independent Genesis visuals
-remain open. See the [conditional pedestrian and Scene-34 runtime audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md).
+internal captures, not independent Genesis evidence. A second physical route
+uses the ordinary Decker preset (template 1/class 3, Electronics 1), without
+a kit or passkey. ROM `0x0DBA` with action-boundary seed `0x0006` yields one
+face-5 success against target 5; the result reduces selection 2 to 1 without
+changing the map or requesting sound. Its 16 Debug/Release BMPs match by
+SHA-256. The hill stays partial: Scene-34 zero-roll behavior through
+world-mode-2 `0x1E04A`, the effect-list/latch path, kit-assisted trials, and
+independent Genesis visuals remain open. See the
+[conditional pedestrian and Scene-34 runtime audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md).

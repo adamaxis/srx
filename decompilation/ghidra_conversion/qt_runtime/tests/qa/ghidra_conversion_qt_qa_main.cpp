@@ -19591,24 +19591,35 @@ enum class MitsuhamaAfterHoursEntryQaPath : std::uint8_t {
     passkey_success,
     passkey_insufficient,
     electronics_no_skill,
+    electronics_partial,
 };
 
-int run_field_mitsuhama_scene34_electronics_no_skill_qa(
+int run_field_mitsuhama_scene34_electronics_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::filesystem::path& probe_output,
-    const std::vector<std::uint16_t>& field_audio_events) {
+    const std::vector<std::uint16_t>& field_audio_events,
+    const MitsuhamaAfterHoursEntryQaPath path) {
     constexpr std::size_t kScene34DoorMapIndex = 21U * 64U + 13U;
     constexpr std::uint8_t kMaglockPasskeyItem = 0x14U;
     constexpr std::uint8_t kElectronicsKitItem = 0x15U;
+    const bool no_skill_path =
+        path == MitsuhamaAfterHoursEntryQaPath::electronics_no_skill;
+    const auto expected_archetype = static_cast<std::uint8_t>(
+        no_skill_path ? 2U : 3U);
+    const auto expected_electronics_skill = static_cast<std::uint8_t>(
+        no_skill_path ? 0U : 1U);
+    const auto expected_selection = static_cast<std::uint8_t>(
+        no_skill_path ? 2U : 1U);
+    const std::string scenario = no_skill_path ? "no-skill" : "partial";
     const auto& active_party = field_scene.field_party_records_for_dump();
     const auto party_before = active_party;
     const auto map_before = field_scene.state()
         .field_scene_buffers.source_metadata.terrain_collision_map;
     const auto audio_before = field_audio_events.size();
     bool active_party_found = false;
-    bool every_active_runner_has_no_electronics = true;
+    std::uint8_t best_electronics_skill = 0U;
     bool no_relevant_inventory_items = true;
     for (std::size_t slot = 0U; slot < active_party.size(); ++slot) {
         const auto& runner = active_party[slot];
@@ -19617,8 +19628,8 @@ int run_field_mitsuhama_scene34_electronics_no_skill_qa(
             continue;
         }
         active_party_found = true;
-        every_active_runner_has_no_electronics =
-            every_active_runner_has_no_electronics && runner.skills[9] == 0U;
+        best_electronics_skill = std::max(
+            best_electronics_skill, runner.skills[9]);
         no_relevant_inventory_items = no_relevant_inventory_items &&
             std::find(runner.inventory_item_codes.begin(),
                       runner.inventory_item_codes.end(),
@@ -19629,9 +19640,13 @@ int run_field_mitsuhama_scene34_electronics_no_skill_qa(
     }
     const auto& initial_panel = field_scene.field_interaction_panel();
     const auto initial_image = render_qa_field(field_scene);
-    if (!active_party_found || !every_active_runner_has_no_electronics ||
+    if (!active_party_found ||
+        best_electronics_skill != expected_electronics_skill ||
         !no_relevant_inventory_items ||
-        field_scene.active_runner_record().archetype_index != 2U ||
+        field_scene.active_runner_record().archetype_index !=
+            expected_archetype ||
+        field_scene.active_runner_record().skills[9] !=
+            expected_electronics_skill ||
         field_scene.field_scene_reference_for_dump() != 34U ||
         field_scene.field_activity_selection_for_dump() != 2U ||
         map_before.size() != 64U * 64U ||
@@ -19642,13 +19657,36 @@ int run_field_mitsuhama_scene34_electronics_no_skill_qa(
         initial_panel.text_segments[0].find("sturdy door") ==
             std::string_view::npos ||
         initial_image.size() != QSize(kSceneWidth, kSceneHeight)) {
-        std::cerr << "Mitsuhama entry QA: Scene-34 Electronics no-skill "
-                     "route did not start from the ordinary Samurai preset, "
-                     "locked record 90, and the source maglock prompt\n";
+        std::cerr << "Mitsuhama entry QA: Scene-34 Electronics " << scenario
+                  << " route did not start from the expected ordinary class "
+                     "preset, locked record 90, and source maglock prompt "
+                     "(class="
+                  << static_cast<unsigned>(
+                         field_scene.active_runner_record().archetype_index)
+                  << ", best_skill="
+                  << static_cast<unsigned>(best_electronics_skill) << ")\n";
         return 3;
     }
 
-    std::ofstream trace(probe_output / "scene-34-electronics-no-skill.tsv",
+    const auto inventory_unchanged = [&field_scene, &party_before] {
+        const auto& current_party = field_scene.field_party_records_for_dump();
+        for (std::size_t slot = 0U; slot < party_before.size(); ++slot) {
+            if (current_party[slot].inventory_item_codes !=
+                    party_before[slot].inventory_item_codes ||
+                current_party[slot].inventory_phase_bytes !=
+                    party_before[slot].inventory_phase_bytes) {
+                return false;
+            }
+        }
+        return true;
+    };
+    const auto map_unchanged = [&field_scene, &map_before] {
+        return field_scene.state().field_scene_buffers.source_metadata
+                   .terrain_collision_map == map_before;
+    };
+
+    std::ofstream trace(probe_output /
+                            ("scene-34-electronics-" + scenario + ".tsv"),
                         std::ios::trunc);
     if (!trace) return 3;
     trace << "step\tframe\tinput\tevent\tselection\tpanel_kind"
@@ -19667,8 +19705,8 @@ int run_field_mitsuhama_scene34_electronics_no_skill_qa(
         trace.flush();
     };
 
-    // ROM 0x20E48 waits ten input frames before dispatching the current
-    // maglock action. Keep the source introduction unchanged through the wait.
+    // Preserve the source's ten-frame input gate before dispatching the
+    // current maglock action; keep the introduction unchanged through it.
     for (std::uint8_t tick = 0U; tick < 10U; ++tick) {
         field_scene.advance_frame();
         ++frame;
@@ -19714,6 +19752,11 @@ int run_field_mitsuhama_scene34_electronics_no_skill_qa(
                      "during the source input wait\n";
         return 3;
     }
+    if (!no_skill_path) {
+        // ROM 0x0D44/0x0D3A/0x0DBA: one no-kit trial at seed 6 yields face 5,
+        // meeting target 5. Pin the PRNG at the Electronics action boundary.
+        field_scene.set_source_random_seed_for_dump(0x0006U);
+    }
     field_scene.set_controller_port_byte(0x40U);
     field_scene.advance_frame();
     ++frame;
@@ -19723,37 +19766,54 @@ int run_field_mitsuhama_scene34_electronics_no_skill_qa(
     ++frame;
     const auto& result = field_scene.field_interaction_panel();
     const auto result_image = render_qa_field(field_scene);
-    const bool no_skill_result = field_scene.field_interaction_open() &&
+    const auto expected_result_text = no_skill_path
+        ? std::string_view("not skilled in Electronics")
+        : std::string_view("This attempt at the lock eludes you");
+    const bool expected_result = field_scene.field_interaction_open() &&
         result.open && result.source_complete &&
         result.kind == DialoguePanelKind::information_page &&
         result.actor_kind == DialoguePanelActorKind::none &&
         result.option_count == 0U && result.text_segment_count == 1U &&
-        result.text_segments[0].find("not skilled in Electronics") !=
+        result.text_segments[0].find(expected_result_text) !=
             std::string_view::npos;
     const auto result_path =
-        probe_output / "scene-34-electronics-no-skill-result.bmp";
-    if ((electronics_event & 0xFF00U) != 0x4000U || !no_skill_result ||
-        field_scene.field_activity_selection_for_dump() != 2U ||
+        probe_output / ("scene-34-electronics-" + scenario + "-result.bmp");
+    if ((electronics_event & 0xFF00U) != 0x4000U || !expected_result ||
+        field_scene.field_activity_selection_for_dump() != expected_selection ||
+        !inventory_unchanged() || !map_unchanged() ||
         field_audio_events.size() != audio_before ||
         result_image.size() != QSize(kSceneWidth, kSceneHeight) ||
         !result_image.save(QString::fromStdWString(result_path.wstring()))) {
-        std::cerr << "Mitsuhama entry QA: ROM 0x21692 Samurai zero-skill "
-                     "branch did not show the no-skill page without changing "
-                     "selection or action audio\n";
+        std::cerr << "Mitsuhama entry QA: ROM 0x21692 Electronics "
+                  << scenario << " result did not preserve its source state "
+                     "(selection="
+                  << static_cast<unsigned>(
+                         field_scene.field_activity_selection_for_dump())
+                  << ", inventory=" << inventory_unchanged()
+                  << ", map=" << map_unchanged() << ", audio="
+                  << audio_before << "->" << field_audio_events.size() << ")\n";
         return 3;
     }
-    write_step("no-skill-result", "a", electronics_event);
+    write_step(scenario + "-result", "a", electronics_event);
 
     for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
         field_scene.advance_frame();
         ++frame;
         if (render_qa_field(field_scene) != result_image) {
-            std::cerr << "Mitsuhama entry QA: no-skill result changed during "
-                         "the source 30-frame acknowledgement wait\n";
+            std::cerr << "Mitsuhama entry QA: Electronics " << scenario
+                      << " result changed during the source 30-frame "
+                         "acknowledgement wait\n";
             return 3;
         }
     }
-    write_step("no-skill-result-held", "neutral", 0U);
+    if (!inventory_unchanged() || !map_unchanged() ||
+        field_scene.field_activity_selection_for_dump() != expected_selection ||
+        field_audio_events.size() != audio_before) {
+        std::cerr << "Mitsuhama entry QA: Electronics " << scenario
+                  << " result mutated state during its 30-frame wait\n";
+        return 3;
+    }
+    write_step(scenario + "-result-held", "neutral", 0U);
     field_scene.set_controller_port_byte(0x40U);
     field_scene.advance_frame();
     ++frame;
@@ -19767,7 +19827,8 @@ int run_field_mitsuhama_scene34_electronics_no_skill_qa(
     if (!controller_event_contains_a(acknowledgement_event) ||
         !modal_return_finished) {
         std::cerr << "Mitsuhama entry QA: ordinary A did not acknowledge the "
-                     "Scene-34 no-skill result and return to the field "
+                  << "Scene-34 Electronics " << scenario
+                  << " result and return to the field "
                      "(event=0x" << std::hex << acknowledgement_event
                   << std::dec << ", modal_return=" << modal_return_finished
                   << ", remaining="
@@ -19781,36 +19842,30 @@ int run_field_mitsuhama_scene34_electronics_no_skill_qa(
     const auto returned_field_only = render_qa_field(field_scene, true);
     const auto& returned_map = field_scene.state()
         .field_scene_buffers.source_metadata.terrain_collision_map;
-    const auto& party_after = field_scene.field_party_records_for_dump();
-    bool party_inventory_unchanged = true;
-    for (std::size_t slot = 0U; slot < party_before.size(); ++slot) {
-        party_inventory_unchanged = party_inventory_unchanged &&
-            party_after[slot].inventory_item_codes ==
-                party_before[slot].inventory_item_codes &&
-            party_after[slot].inventory_phase_bytes ==
-                party_before[slot].inventory_phase_bytes;
-    }
     const bool clean_return =
         field_scene.field_scene_reference_for_dump() == 34U &&
-        field_scene.field_activity_selection_for_dump() == 2U &&
+        field_scene.field_activity_selection_for_dump() == expected_selection &&
         !field_scene.field_interaction_open() && !field_scene.dialogue_open() &&
         !field_scene.field_mode_text_open_for_dump() &&
         !field_scene.shop_menu_open() && field_scene.field_entity_visible_for_dump() &&
-        returned_map == map_before && party_inventory_unchanged &&
+        returned_map == map_before && inventory_unchanged() &&
         field_audio_events.size() == audio_before &&
         returned_image == returned_field_only &&
         returned_image.size() == QSize(kSceneWidth, kSceneHeight) &&
         field_hud_chrome_survives(returned_image, asset_root);
     const bool captures_saved = returned_image.save(QString::fromStdWString(
-            (probe_output / "scene-34-electronics-no-skill-return.bmp").wstring())) &&
+            (probe_output / ("scene-34-electronics-" + scenario +
+                             "-return.bmp")).wstring())) &&
         returned_field_only.save(QString::fromStdWString(
-            (probe_output / "scene-34-electronics-no-skill-field-only.bmp").wstring())) &&
+            (probe_output / ("scene-34-electronics-" + scenario +
+                             "-field-only.bmp")).wstring())) &&
         returned_image.save(QString::fromStdWString(
             (output / "actual.bmp").wstring()));
     if (!clean_return || !captures_saved || !trace) {
-        std::cerr << "Mitsuhama entry QA: no-skill acknowledgement did not "
-                     "restore the unchanged Scene-34 field (clean="
-                  << clean_return << ", inventory=" << party_inventory_unchanged
+        std::cerr << "Mitsuhama entry QA: Electronics " << scenario
+                  << " acknowledgement did not restore the unchanged "
+                     "Scene-34 field (clean="
+                  << clean_return << ", inventory=" << inventory_unchanged()
                   << ", map=" << (returned_map == map_before) << ", audio="
                   << audio_before << "->" << field_audio_events.size() << ")\n";
         return 3;
@@ -19818,9 +19873,12 @@ int run_field_mitsuhama_scene34_electronics_no_skill_qa(
     write_step("field-return", "neutral", acknowledgement_event);
     trace.close();
     if (!trace) return 3;
-    std::cout << "field_mitsuhama_after_hours_electronics_no_skill_qa="
-                 "passed scene=34 class=samurai skill=0 selection=2 "
-                 "map=0x82 audio=unchanged artifacts="
+    std::cout << "field_mitsuhama_after_hours_electronics_"
+              << scenario << "_qa=passed scene=34 class="
+              << (no_skill_path ? "samurai" : "decker") << " skill="
+              << static_cast<unsigned>(expected_electronics_skill)
+              << " selection=" << static_cast<unsigned>(expected_selection)
+              << " map=0x82 audio=unchanged artifacts="
               << probe_output.string() << '\n';
     return 0;
 }
@@ -20690,9 +20748,11 @@ int run_field_mitsuhama_after_hours_entry_qa(
         return 3;
     }
 
-    if (path == MitsuhamaAfterHoursEntryQaPath::electronics_no_skill) {
-        return run_field_mitsuhama_scene34_electronics_no_skill_qa(
-            field_scene, asset_root, output, probe_output, field_audio_events);
+    if (path == MitsuhamaAfterHoursEntryQaPath::electronics_no_skill ||
+        path == MitsuhamaAfterHoursEntryQaPath::electronics_partial) {
+        return run_field_mitsuhama_scene34_electronics_qa(
+            field_scene, asset_root, output, probe_output, field_audio_events,
+            path);
     }
 
     // ROM 0xB984 routes event 2 to the shared 0x20E48 maglock handler in
@@ -33133,6 +33193,15 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_mitsuhama_after_hours_entry_qa_mode =
                     MitsuhamaAfterHoursEntryQaPath::electronics_no_skill;
+                field_mitsuhama_after_hours_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-mitsuhama-after-hours-electronics-partial-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_mitsuhama_after_hours_entry_qa_mode =
+                    MitsuhamaAfterHoursEntryQaPath::electronics_partial;
                 field_mitsuhama_after_hours_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }

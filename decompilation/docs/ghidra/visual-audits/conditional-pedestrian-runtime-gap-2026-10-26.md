@@ -63,13 +63,21 @@ The test verifies active-party skill and inventory, selection 2, map cell
 `0x82`, unchanged action audio, and a clean field-only return. Its 16 Debug and
 Release BMPs match by SHA-256; I inspected the full-screen choices, result, and
 return frames at 320x224. These are internal runtime captures, not an
-independent Genesis comparison. The separate Scene-20 physical interaction
-tests cover Decker positive-skill outcomes, but those results do not establish
-the remaining Scene-34 Electronics paths. Ordinary input reaches the live
-A8AE actor at `(0x1D00,0x4100)` within the ROM `+/-0x40` proximity window. A
-presses advance all three `0xF4BBC` pages, and the source cleanup retires
-Aragorn's actor record. The direct marker setters and `FFE120` producer census
-are traced below. Gameplay-script QA now follows accepted Employee Recruitment offers
+independent Genesis comparison. The new
+`shadowrun_ghidra_conversion_qt_field_mitsuhama_after_hours_electronics_partial_qa`
+uses the ordinary New Game Decker (class 3, Electronics 1) without a kit or
+passkey. It pins the source PRNG at the Electronics action boundary to seed
+`0x0006`; `0x0DBA` yields one face-5 success against target 5, reducing
+selection 2 to 1. The partial result remains static for 30 frames, adds no
+sound, leaves the lock cell `0x82`, and returns to a clean field with selection
+1. Its 16 Debug/Release BMPs match by SHA-256; the prompt, result, and return
+frames were inspected at 320x224. They are internal runtime evidence, not an
+independent Genesis comparison. Decker zero-roll and kit-assisted Scene-34
+paths remain open. Ordinary input reaches the live A8AE actor at
+`(0x1D00,0x4100)` within the ROM `+/-0x40` proximity window. A presses advance
+all three `0xF4BBC` pages, and the source cleanup retires Aragorn's actor
+record. The direct marker setters and `FFE120` producer census are traced
+below. Gameplay-script QA now follows accepted Employee Recruitment offers
 from their Johnson work menus through the normalized `0xA800` choice and the
 typed `0x1E43C` request. Field QA now drives the Johnson offer tasks in a
 separate Lua runtime, saves the accepted `run_registry` state, restores that
@@ -497,13 +505,13 @@ fade. Debug/Release QA verifies Aragorn's source slot is removed and saves a
 closed Scene-34 BMP. The route captures are internal runtime evidence, not an
 independent Genesis animation or map comparison.
 
-Next, cover Scene-34 record-90 Decker partial and zero-roll Electronics
-outcomes with the ordinary class profile, inventory, and source RNG inputs.
-The zero-roll call reaches `0x1E04A`; Scene 34 follows its world-mode-2 path,
+Next, cover the Scene-34 record-90 Decker zero-roll and kit-assisted
+Electronics outcomes with the ordinary class profile, inventory, and source
+RNG inputs. The zero-roll call reaches `0x1E04A`; Scene 34 follows its world-mode-2 path,
 whose effect-list and sound behavior must be checked against the scene's live
 latch state. Do not use the Scene-20 cases as substitutes for this scene. The
-accepted-registry persistence seam and both late-gate choice-retention branches pass field
-resource-entry QA; the uninterrupted in-world Johnson-to-field route and
+accepted-registry persistence seam and both late-gate choice-retention
+branches pass field resource-entry QA; the uninterrupted in-world Johnson-to-field route and
 physical elevator-input route remain open. Then match a real capture to the
 selected scene and live actor record; the current internal BMPs are regression
 artifacts, not an independent visual oracle. The pedestrian population hill
