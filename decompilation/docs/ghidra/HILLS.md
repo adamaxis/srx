@@ -32,6 +32,14 @@ place. Lua now passes that parent row plus live deck artwork state to the
 presenter; CyberInfo, Run Info, and Deck Stats QA checks the retained assets in
 full frames. The Cyberdeck hill remains partial pending broader Matrix visual
 and action coverage.
+The 2026-10-27 Cyberdeck route QA now walks all sixteen grid cells with normal
+controller input. It checks each selected row, column, label, cursor and
+retained deck/footer surface; all four installed program value tuples; and the
+ROM-positioned `Empty / Utility Slot` response for eight uninstalled programs.
+That pass found and fixed the empty-slot heading's one-tile left shift from
+`0xE39B7`; the first glyph now starts at `(200,64)` from `$C42C`. Independent
+Genesis comparison is available for the Attack 3 state at frame `004220`; the
+other numeric states and empty-cell message are checked against ROM data.
 The Storage screen at ROM `0x18D1A` keeps that parent row, program grid, and
 footer while drawing the source panel and live capacity. View at `0x18F5E`
 walks occupied records from slot 4 down to 0, drawing each ROM filename,

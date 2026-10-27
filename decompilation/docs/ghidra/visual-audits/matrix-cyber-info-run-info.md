@@ -197,6 +197,46 @@ program icons, and footer were also inspected in the full frames. The four
 palette captures are `cyberdeck.bmp` and
 `cyberdeck-palette-phase-{1,2,3}.bmp`.
 
+## Cyberdeck grid selection and numeric panel (2026-10-27)
+
+ROM `0x18326` waits for a VBlank before sampling the Cyberdeck controller. The
+direction checks at `0x1833C` through `0x18418` give Up, Down, Left, Right
+priority and wrap the selected row and column through `0..3`. `0x18A92`
+computes `row * 4 + column`; `0x1882E` uses that index to select a program
+rating, icon, and right-panel content.
+
+The uninstalled-program stream at `0xE39B7` begins with three `0x20` spaces,
+then `Empty`, a `0x80` row advance, and `Utility Slot`. ROM `0x1884C` writes it
+at `$C42C`, which starts at `(176,64)`. Each leading space occupies one
+8-pixel tile, so `Empty` begins at `(200,64)` and `Utility Slot` begins at
+`(176,72)`. The presenter had used two spaces and started `Empty` at `x=192`;
+it now uses the ROM's three spaces.
+
+The Debug/Release route QA now walks all sixteen cells with ordinary
+controller input and saves `cyberdeck-cell-00.bmp` through
+`cyberdeck-cell-15.bmp`. It checks the row/column and label at each cell, the
+source selected-row and cursor assets, the retained program grid/footer, and
+that no prior cell's numeric detail survives a move. Eight uninstalled
+programs show the ROM `Empty / Utility Slot` text at the coordinates above;
+the four utility cells show their own names and icons without program stats.
+
+For the reference deck fixture, the ROM footprint bytes at `0xE2DF2` and
+rating-squared calculation at `0x1952C` produce Attack 3 = 18 Mp, Medic 1 =
+4 Mp, Deception 1 = 2 Mp, and Analyze 1 = 3 Mp. Its 15 Mp memory and loaded
+Deception/Analyze slots (2 + 3 Mp) produce 10 Mp free via `0x1957E`. Load/IO
+speed 10 yields two steps for Attack and one for the other installed programs
+via the ceiling and six-step cap at `0x195A6`. These values come from the
+active Cyberdeck record; the runner Success/Defense row remains `Unknown` in
+this no-active-run fixture. The independent frame `004220` confirms the
+selected Attack 3 detail and the visible program/footer state. Medic's rating
+and the other numeric panels are source-derived QA states, not independent
+Genesis observations; no matching capture of an uninstalled cell is present.
+
+The expanded `shadowrun_ghidra_conversion_qt_field_matrix_cyber_info_qa` passes
+in Debug and Release. All sixteen cell BMPs match across configurations. This
+extends the source-backed selection and detail checks; the complete Matrix
+hill remains partial.
+
 ## Pull Plug placement
 
 The row-3/column-3 branch at `0x18450` keeps the selected Command grid while it

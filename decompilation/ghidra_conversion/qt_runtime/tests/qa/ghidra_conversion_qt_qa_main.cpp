@@ -38654,6 +38654,161 @@ int main(int argc, char** argv) {
                                  "placed its graphics incorrectly\n";
                     return 3;
                 }
+
+                // Walk every cell through the ordinary direction input path
+                // at 0x1833C..0x18418. The four nonzero ratings in this ROM
+                // fixture are Attack 3, Medic 1, Deception 1, and Analyze 1.
+                // ROM 0xE2DF2 footprints plus 0x1952C/0x1957E/0x195A6 yield
+                // the literal selected-program values below; 0xE39B7 has
+                // three leading spaces before "Empty" at $C42C.
+                constexpr std::array<std::string_view, 16>
+                    kExpectedCyberdeckCellLabels{{
+                        "Attack", "Slow", "Degrade", "Rebound", "Medic",
+                        "Shield", "Smoke", "Mirrors", "Sleaze",
+                        "Deception", "Relocate", "Analyze", "CyberInfo",
+                        "Storage", "Map", "Pull Plug"}};
+                constexpr std::array<std::uint16_t, 16>
+                    kExpectedCyberdeckCellSizes{{
+                        18U, 0U, 0U, 0U, 4U, 0U, 0U, 0U,
+                        0U, 2U, 0U, 3U, 0U, 0U, 0U, 0U}};
+                constexpr std::array<int, 16> kCyberdeckCellSnake{{
+                    0, 1, 2, 3, 7, 6, 5, 4,
+                    8, 9, 10, 11, 15, 14, 13, 12}};
+                for (std::size_t step = 0U;
+                     step < kCyberdeckCellSnake.size(); ++step) {
+                    const auto cell = kCyberdeckCellSnake[step];
+                    if (step > 0U) {
+                        const auto previous = kCyberdeckCellSnake[step - 1U];
+                        if (cell / 4 != previous / 4) {
+                            tap_qa_controller_button(field_scene, 0x02U);
+                        } else if (cell % 4 > previous % 4) {
+                            tap_qa_controller_button(field_scene, 0x08U);
+                        } else {
+                            tap_qa_controller_button(field_scene, 0x04U);
+                        }
+                    }
+
+                    const auto route =
+                        field_scene.field_menu_route_snapshot_for_dump();
+                    const auto image = capture(
+                        "cyberdeck-cell-" +
+                        (cell < 10 ? std::string("0") : std::string()) +
+                        std::to_string(cell));
+                    const auto column = cell % 4;
+                    const auto row = cell / 4;
+                    const auto phase = route.top_matrix_deck_palette_phase
+                                           .value_or(0);
+                    const auto cursor_asset = phase == 0
+                        ? std::filesystem::path(
+                              "cyberspace/matrix/cyberdeck-cursor.bmp")
+                        : std::filesystem::path("cyberspace/matrix") /
+                              ("cyberdeck-cursor-phase-" +
+                               std::to_string(phase) + ".bmp");
+                    const bool cursor_matches = source_pixels_match_at(
+                        image, 12 + column * 32, 20 + row * 40,
+                        cursor_asset);
+                    const bool parent_surface_matches =
+                        route.top_matrix_deck_program_ratings_present &&
+                        route.top_matrix_deck_active_programs_present &&
+                        route.top_matrix_deck_program_slot_status_present &&
+                        retained_deck_surface_matches(
+                            image, phase, row,
+                            route.top_matrix_deck_program_ratings,
+                            route.top_matrix_deck_active_programs,
+                            route.top_matrix_deck_program_slot_status);
+                    const auto index = static_cast<std::size_t>(cell);
+                    const bool state_matches =
+                        field_scene.field_menu_route_screen_for_dump() ==
+                            static_cast<std::uint16_t>(
+                                srx::MenuScreen::CYBERDECK) &&
+                        route.top_column.value_or(-1) == column &&
+                        route.top_row.value_or(-1) == row &&
+                        route.top_option_labels.size() ==
+                            kExpectedCyberdeckCellLabels.size() &&
+                        route.top_option_labels[index] ==
+                            kExpectedCyberdeckCellLabels[index] &&
+                        !route.top_matrix_deck_description.empty() &&
+                        image.size() == QSize(kSceneWidth, kSceneHeight) &&
+                        full_cyberdeck_frame(image) && cursor_matches &&
+                        parent_surface_matches;
+                    if (!state_matches) {
+                        std::cerr << "Matrix CyberInfo QA: grid cell "
+                                  << cell
+                                  << " lost its source position, label, "
+                                     "cursor, or retained deck surface\n";
+                        return 3;
+                    }
+
+                    if (cell < 12 &&
+                        kExpectedCyberdeckCellSizes[index] != 0U) {
+                        const auto size =
+                            kExpectedCyberdeckCellSizes[index];
+                        const auto expected_details =
+                            std::array<std::string, 3>{
+                                std::to_string(size), "10",
+                                std::to_string((size + 9U) / 10U)};
+                        if (!route
+                                 .top_matrix_deck_program_detail_values_present ||
+                            route.top_matrix_deck_program_detail_values !=
+                                expected_details ||
+                            !has_matrix_green(image, QRect(216, 24, 48, 8)) ||
+                            !has_matrix_green(image, QRect(264, 24, 8, 8)) ||
+                            !has_matrix_green(image, QRect(272, 40, 32, 8)) ||
+                            !has_matrix_green(image, QRect(272, 48, 32, 8)) ||
+                            !has_matrix_green(image, QRect(256, 56, 48, 8)) ||
+                            !source_pixels_match_at(
+                                image, 184, 16,
+                                std::filesystem::path("cyberspace/matrix") /
+                                    ("program-icon-" +
+                                     std::to_string(cell) + ".bmp"))) {
+                            std::cerr << "Matrix CyberInfo QA: installed "
+                                         "program cell "
+                                      << cell
+                                      << " showed the wrong ROM-derived "
+                                         "size/memory/load values\n";
+                            return 3;
+                        }
+                    } else if (cell < 12) {
+                        if (route
+                                .top_matrix_deck_program_detail_values_present ||
+                            has_matrix_green(image, QRect(152, 40, 152, 24)) ||
+                            has_matrix_green(image, QRect(192, 64, 8, 8)) ||
+                            !has_matrix_green(image, QRect(200, 64, 40, 8)) ||
+                            !has_matrix_green(image, QRect(176, 72, 96, 8))) {
+                            std::cerr << "Matrix CyberInfo QA: empty program "
+                                         "cell "
+                                      << cell
+                                      << " did not place ROM text 0xE39B7 "
+                                         "at $C42C\n";
+                            return 3;
+                        }
+                    } else if (
+                        route.top_matrix_deck_program_detail_values_present ||
+                        !has_matrix_green(image, QRect(216, 24, 88, 8)) ||
+                        !source_pixels_match_at(
+                            image, 184, 16,
+                            std::filesystem::path("cyberspace/matrix") /
+                                ("program-icon-" + std::to_string(cell) +
+                                 ".bmp"))) {
+                        std::cerr << "Matrix CyberInfo QA: utility cell "
+                                  << cell
+                                  << " did not show its source icon/name "
+                                     "without program statistics\n";
+                        return 3;
+                    }
+                }
+                for (int frame = 0; frame < 3; ++frame) {
+                    tap_qa_controller_button(field_scene, 0x01U);
+                }
+                const auto returned_to_attack =
+                    field_scene.field_menu_route_snapshot_for_dump();
+                if (returned_to_attack.top_column.value_or(-1) != 0 ||
+                    returned_to_attack.top_row.value_or(-1) != 0) {
+                    std::cerr << "Matrix CyberInfo QA: grid walk did not "
+                                 "return to Attack before child-route checks\n";
+                    return 3;
+                }
+
                 for (int row = 0; row < 3; ++row) {
                     tap_qa_controller_button(field_scene, 0x02U);
                 }

@@ -15627,7 +15627,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                         routed_menu.top_matrix_deck_description);
                 } else {
                     draw_matrix_rows(176, 64,
-                                     std::string("  Empty|Utility Slot"),
+                                     std::string("   Empty|Utility Slot"),
                                      8, 2);
                 }
                 if (routed_menu
