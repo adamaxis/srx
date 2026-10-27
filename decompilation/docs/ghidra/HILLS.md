@@ -1419,7 +1419,11 @@ uses the ordinary Decker preset (template 1/class 3, Electronics 1), without
 a kit or passkey. ROM `0x0DBA` with action-boundary seed `0x0006` yields one
 face-5 success against target 5; the result reduces selection 2 to 1 without
 changing the map or requesting sound. Its 16 Debug/Release BMPs match by
-SHA-256. The hill stays partial: Scene-34 zero-roll behavior through
-world-mode-2 `0x1E04A`, the effect-list/latch path, kit-assisted trials, and
-independent Genesis visuals remain open. See the
+SHA-256. The physical Decker seed-0 route now reaches the zero-success result
+and `0x1E04A`. Its QA suppresses the separate `0x1DFC4` region at
+`0x1DB576` while walking to record 90, then verifies the fresh `0x960`
+alarm timer, sound `0x30`, latch, reinforcement boundary, and all three
+actors from list `0x1DB518` at their source-list positions. The kit-assisted
+trials and independent Genesis visuals remain open; the hill stays partial.
+See the
 [conditional pedestrian and Scene-34 runtime audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md).

@@ -1293,6 +1293,17 @@ add_shadowrun_qt_qa_case(
     --field-mitsuhama-after-hours-electronics-partial-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-mitsuhama-after-hours-electronics-partial-qa")
 
+# Seed the ordinary New Game Decker's source roll to zero at record 90. QA
+# suppresses the separate 0x1DB576 region alarm on walk-in; ROM 0x21692 then
+# reaches the fresh Scene-34 0x1E04A path, sound 0x30, and all three 0x1DB518
+# guards.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_mitsuhama_after_hours_electronics_alert_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-archetype decker
+    --field-mitsuhama-after-hours-electronics-alert-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-mitsuhama-after-hours-electronics-alert-qa")
+
 # Follow ordinary New Game movement into the west wall of Stoker's motel,
 # hold against the source collision cells, move diagonally along the frontage,
 # and retreat. Whole-screen checkpoints and a per-frame coordinate log keep

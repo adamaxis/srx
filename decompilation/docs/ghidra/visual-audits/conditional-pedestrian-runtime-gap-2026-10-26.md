@@ -72,8 +72,21 @@ selection 2 to 1. The partial result remains static for 30 frames, adds no
 sound, leaves the lock cell `0x82`, and returns to a clean field with selection
 1. Its 16 Debug/Release BMPs match by SHA-256; the prompt, result, and return
 frames were inspected at 320x224. They are internal runtime evidence, not an
-independent Genesis comparison. Decker zero-roll and kit-assisted Scene-34
-paths remain open. Ordinary input reaches the live A8AE actor at
+independent Genesis comparison. The Decker zero-roll path now uses the same
+ordinary route with seed 0 at the Electronics action boundary. ROM `0x0DBA`
+yields zero successes; `0x21692` selects alert text `0x11CD4A` and calls
+`0x1E04A`. The walk crosses the separate Scene-34 coordinate alarm at
+`0x1DB576`, so this route sets QA `FFE170` while walking and restores it
+immediately after the direct action. ROM `0x1E04A` does not use that region
+gate: it arms `FFE11E=0x960`, sets the clear `FFE16F` latch, requests sound
+`0x30`, and processes list `0x1DB518` through `0x1E0DC`. Debug/Release
+QA verifies three new actors at the coordinates in source-list records
+`0x1DB534`, `0x1DB54A`, and `0x1DB55C`, the 30-frame alert hold, and clean
+field return. Its 16 BMPs per configuration match by SHA-256; choices,
+alert-result, and return images were inspected at 320x224. They remain
+internal captures, not independent Genesis evidence. Kit-assisted Scene-34
+trials and the independent Genesis comparison remain open. Ordinary input
+reaches the live A8AE actor at
 `(0x1D00,0x4100)` within the ROM `+/-0x40` proximity window. A presses advance
 all three `0xF4BBC` pages, and the source cleanup retires Aragorn's actor
 record. The direct marker setters and `FFE120` producer census are traced
@@ -505,14 +518,13 @@ fade. Debug/Release QA verifies Aragorn's source slot is removed and saves a
 closed Scene-34 BMP. The route captures are internal runtime evidence, not an
 independent Genesis animation or map comparison.
 
-Next, cover the Scene-34 record-90 Decker zero-roll and kit-assisted
-Electronics outcomes with the ordinary class profile, inventory, and source
-RNG inputs. The zero-roll call reaches `0x1E04A`; Scene 34 follows its world-mode-2 path,
-whose effect-list and sound behavior must be checked against the scene's live
-latch state. Do not use the Scene-20 cases as substitutes for this scene. The
-accepted-registry persistence seam and both late-gate choice-retention
-branches pass field resource-entry QA; the uninterrupted in-world Johnson-to-field route and
-physical elevator-input route remain open. Then match a real capture to the
-selected scene and live actor record; the current internal BMPs are regression
-artifacts, not an independent visual oracle. The pedestrian population hill
-remains partial.
+Next, cover the Scene-34 record-90 Decker kit-assisted Electronics outcome
+with the ordinary class profile, inventory, and source RNG inputs. The
+zero-roll call to `0x1E04A` and its fresh-latch `0x1DB518` actor handoff are
+now tested separately from the walk-in region alarm. Do not use the Scene-20
+cases as substitutes for this scene. The accepted-registry persistence seam
+and both late-gate choice-retention branches pass field resource-entry QA; the
+uninterrupted in-world Johnson-to-field route and a Section-41 route-matched
+visual check remain open. Then match a real capture to the selected scene and
+live actor record; the current internal BMPs are regression artifacts, not an
+independent visual oracle. The pedestrian population hill remains partial.

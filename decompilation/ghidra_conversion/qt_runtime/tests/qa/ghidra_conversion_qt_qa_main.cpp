@@ -19592,6 +19592,7 @@ enum class MitsuhamaAfterHoursEntryQaPath : std::uint8_t {
     passkey_insufficient,
     electronics_no_skill,
     electronics_partial,
+    electronics_alert,
 };
 
 int run_field_mitsuhama_scene34_electronics_qa(
@@ -19600,24 +19601,36 @@ int run_field_mitsuhama_scene34_electronics_qa(
     const std::filesystem::path& output,
     const std::filesystem::path& probe_output,
     const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries,
     const MitsuhamaAfterHoursEntryQaPath path) {
     constexpr std::size_t kScene34DoorMapIndex = 21U * 64U + 13U;
     constexpr std::uint8_t kMaglockPasskeyItem = 0x14U;
     constexpr std::uint8_t kElectronicsKitItem = 0x15U;
     const bool no_skill_path =
         path == MitsuhamaAfterHoursEntryQaPath::electronics_no_skill;
+    const bool partial_path =
+        path == MitsuhamaAfterHoursEntryQaPath::electronics_partial;
+    const bool alert_path =
+        path == MitsuhamaAfterHoursEntryQaPath::electronics_alert;
     const auto expected_archetype = static_cast<std::uint8_t>(
         no_skill_path ? 2U : 3U);
     const auto expected_electronics_skill = static_cast<std::uint8_t>(
         no_skill_path ? 0U : 1U);
     const auto expected_selection = static_cast<std::uint8_t>(
-        no_skill_path ? 2U : 1U);
-    const std::string scenario = no_skill_path ? "no-skill" : "partial";
+        (no_skill_path || alert_path) ? 2U : 1U);
+    const std::string scenario = no_skill_path
+        ? "no-skill"
+        : partial_path ? "partial" : "alert";
     const auto& active_party = field_scene.field_party_records_for_dump();
     const auto party_before = active_party;
     const auto map_before = field_scene.state()
         .field_scene_buffers.source_metadata.terrain_collision_map;
     const auto audio_before = field_audio_events.size();
+    const auto audio_event_count = [&field_audio_events](
+                                       const std::uint16_t event) {
+        return static_cast<std::size_t>(std::count(
+            field_audio_events.begin(), field_audio_events.end(), event));
+    };
     bool active_party_found = false;
     std::uint8_t best_electronics_skill = 0U;
     bool no_relevant_inventory_items = true;
@@ -19752,15 +19765,65 @@ int run_field_mitsuhama_scene34_electronics_qa(
                      "during the source input wait\n";
         return 3;
     }
+    // The ordinary walk crosses Scene 34's alarm rectangle at 0x1DB576.
+    // No-skill and partial routes retain that ambient alarm. The alert route
+    // suppresses that separate region so its zero roll can test a fresh latch.
+    const auto world_actors_before_action =
+        field_scene.world_activity_script_actor_count_for_dump();
+    const auto positions_before_action =
+        field_scene.active_default_actor_positions_for_dump();
+    const bool alarm_was_active = field_scene.field_alarm_active_for_dump();
+    const auto alarm_timer_before_action =
+        field_scene.field_alarm_timer_for_dump();
+    const auto alarm_sounds_before_action = audio_event_count(0x30U);
+    const auto alarm_boundary_count_before_action = static_cast<std::size_t>(
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string("field.alarm.reinforcements_published")));
+    const bool walk_in_alarm_matches = alert_path
+        ? !alarm_was_active && world_actors_before_action == 1U &&
+              alarm_sounds_before_action == 0U &&
+              alarm_boundary_count_before_action == 0U
+        : alarm_was_active && world_actors_before_action == 4U &&
+              alarm_sounds_before_action == 1U &&
+              alarm_boundary_count_before_action == 1U;
     if (!no_skill_path) {
         // ROM 0x0D44/0x0D3A/0x0DBA: one no-kit trial at seed 6 yields face 5,
-        // meeting target 5. Pin the PRNG at the Electronics action boundary.
-        field_scene.set_source_random_seed_for_dump(0x0006U);
+        // meeting target 5. The zero-roll alert uses seed 0 / face 1.
+        // Pin the PRNG at the Electronics action boundary.
+        field_scene.set_source_random_seed_for_dump(
+            alert_path ? 0x0000U : 0x0006U);
     }
     field_scene.set_controller_port_byte(0x40U);
     field_scene.advance_frame();
     ++frame;
+    if (alert_path) {
+        // Restore the normal FFE170 value after the direct alarm action; the
+        // fixture only suppresses the separate coordinate alarm on walk-in.
+        field_scene.set_field_alarm_disabled_for_dump(false);
+    }
     const auto electronics_event = field_scene.controller_event_word_for_dump();
+    const auto alarm_active_after_action =
+        field_scene.field_alarm_active_for_dump();
+    const auto alarm_timer_after_action =
+        field_scene.field_alarm_timer_for_dump();
+    const auto alarm_sounds_after_action = audio_event_count(0x30U);
+    const auto world_actors_after_action =
+        field_scene.world_activity_script_actor_count_for_dump();
+    const auto positions_after_action =
+        field_scene.active_default_actor_positions_for_dump();
+    const auto alarm_reinforcement_boundary_count = static_cast<std::size_t>(
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string("field.alarm.reinforcements_published")));
+    const auto has_position = [](
+                                  const std::vector<SceneRunnerPosition>& positions,
+                                  const std::uint16_t x,
+                                  const std::uint16_t y) {
+        return std::any_of(
+            positions.begin(), positions.end(),
+            [x, y](const SceneRunnerPosition& position) {
+                return position.x == x && position.y == y;
+            });
+    };
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
     ++frame;
@@ -19768,20 +19831,63 @@ int run_field_mitsuhama_scene34_electronics_qa(
     const auto result_image = render_qa_field(field_scene);
     const auto expected_result_text = no_skill_path
         ? std::string_view("not skilled in Electronics")
-        : std::string_view("This attempt at the lock eludes you");
+        : partial_path
+              ? std::string_view("This attempt at the lock eludes you")
+              : std::string_view("fragged this attempt at the lock");
+    const bool expected_result_text_matches = alert_path
+        ? result.text_segment_count == 3U &&
+              result.text_segments[0].find(expected_result_text) !=
+                  std::string_view::npos &&
+              result.text_segments[1].empty() &&
+              result.text_segments[2].find("alert klaxon") !=
+                  std::string_view::npos
+        : result.text_segment_count == 1U &&
+              result.text_segments[0].find(expected_result_text) !=
+                  std::string_view::npos;
+    const bool no_reinforcement_delta =
+        alarm_sounds_after_action == alarm_sounds_before_action &&
+        world_actors_after_action == world_actors_before_action &&
+        positions_after_action.size() == positions_before_action.size() &&
+        alarm_reinforcement_boundary_count ==
+            alarm_boundary_count_before_action;
+    // ROM list 0x1DB518 points to the source-list position records at
+    // 0x1DB534, 0x1DB54A, and 0x1DB55C. Their first two words are the host
+    // world positions (0x1700,0x1B00), (0x0300,0x0B00), and (0x2300,0x0500).
+    const bool fresh_alert_latch = alert_path && !alarm_was_active &&
+        alarm_active_after_action &&
+        alarm_timer_after_action == static_cast<std::int16_t>(
+            srx::AiTuning::ALARM_FRAMES) &&
+        alarm_sounds_after_action == alarm_sounds_before_action + 1U &&
+        world_actors_after_action == world_actors_before_action + 3U &&
+        positions_after_action.size() == positions_before_action.size() + 3U &&
+        alarm_reinforcement_boundary_count ==
+            alarm_boundary_count_before_action + 1U &&
+        has_position(positions_after_action, 0x1700U, 0x1B00U) &&
+        has_position(positions_after_action, 0x0300U, 0x0B00U) &&
+        has_position(positions_after_action, 0x2300U, 0x0500U);
+    const bool expected_alarm_effect = alert_path
+        ? walk_in_alarm_matches && fresh_alert_latch
+        : walk_in_alarm_matches &&
+              alarm_active_after_action == alarm_was_active &&
+              alarm_timer_after_action <= alarm_timer_before_action &&
+              no_reinforcement_delta;
+    const auto expected_audio_count = audio_before + (alert_path ? 1U : 0U);
+    const bool expected_alarm_active_after_action =
+        alarm_was_active || alert_path;
+    const auto expected_world_actors_after_action =
+        world_actors_before_action + (alert_path ? 3U : 0U);
     const bool expected_result = field_scene.field_interaction_open() &&
         result.open && result.source_complete &&
         result.kind == DialoguePanelKind::information_page &&
         result.actor_kind == DialoguePanelActorKind::none &&
-        result.option_count == 0U && result.text_segment_count == 1U &&
-        result.text_segments[0].find(expected_result_text) !=
-            std::string_view::npos;
+        result.option_count == 0U && expected_result_text_matches;
     const auto result_path =
         probe_output / ("scene-34-electronics-" + scenario + "-result.bmp");
     if ((electronics_event & 0xFF00U) != 0x4000U || !expected_result ||
         field_scene.field_activity_selection_for_dump() != expected_selection ||
         !inventory_unchanged() || !map_unchanged() ||
-        field_audio_events.size() != audio_before ||
+        field_audio_events.size() != expected_audio_count ||
+        !expected_alarm_effect ||
         result_image.size() != QSize(kSceneWidth, kSceneHeight) ||
         !result_image.save(QString::fromStdWString(result_path.wstring()))) {
         std::cerr << "Mitsuhama entry QA: ROM 0x21692 Electronics "
@@ -19791,7 +19897,39 @@ int run_field_mitsuhama_scene34_electronics_qa(
                          field_scene.field_activity_selection_for_dump())
                   << ", inventory=" << inventory_unchanged()
                   << ", map=" << map_unchanged() << ", audio="
-                  << audio_before << "->" << field_audio_events.size() << ")\n";
+                  << audio_before << "->" << field_audio_events.size()
+                  << ", event=0x" << std::hex << electronics_event
+                  << std::dec << ", panel=" << expected_result
+                  << ", text=" << expected_result_text_matches
+                  << ", result=" << result.open << "/"
+                  << static_cast<unsigned>(result.kind) << "/"
+                  << result.option_count << "/" << result.text_segment_count
+                  << ", walk-alarm=" << walk_in_alarm_matches
+                  << ", alarm-effect=" << expected_alarm_effect
+                  << ", alarm=" << alarm_active_after_action << ", timer="
+                  << alarm_timer_before_action << "->"
+                  << alarm_timer_after_action << ", actors="
+                  << world_actors_before_action << "->"
+                  << world_actors_after_action << ", alarm-sound="
+                  << alarm_sounds_before_action << "->"
+                  << alarm_sounds_after_action << ", list-boundaries="
+                  << alarm_reinforcement_boundary_count << ", positions="
+                  << positions_before_action.size() << "->"
+                  << positions_after_action.size() << ", guard-positions="
+                  << has_position(positions_after_action, 0x1700U, 0x1B00U)
+                  << has_position(positions_after_action, 0x0300U, 0x0B00U)
+                  << has_position(positions_after_action, 0x2300U, 0x0500U)
+                  << ", active-positions=";
+        for (std::size_t index = 0U;
+             index < result.text_segment_count; ++index) {
+            std::cerr << " text[" << index << "]="
+                      << result.text_segments[index];
+        }
+        for (const auto& position : positions_after_action) {
+            std::cerr << " [0x" << std::hex << position.x << ",0x"
+                      << position.y << std::dec << "]";
+        }
+        std::cerr << ")\n";
         return 3;
     }
     write_step(scenario + "-result", "a", electronics_event);
@@ -19808,7 +19946,11 @@ int run_field_mitsuhama_scene34_electronics_qa(
     }
     if (!inventory_unchanged() || !map_unchanged() ||
         field_scene.field_activity_selection_for_dump() != expected_selection ||
-        field_audio_events.size() != audio_before) {
+        field_audio_events.size() != expected_audio_count ||
+        field_scene.field_alarm_active_for_dump() !=
+            expected_alarm_active_after_action ||
+        field_scene.world_activity_script_actor_count_for_dump() !=
+            expected_world_actors_after_action) {
         std::cerr << "Mitsuhama entry QA: Electronics " << scenario
                   << " result mutated state during its 30-frame wait\n";
         return 3;
@@ -19849,7 +19991,11 @@ int run_field_mitsuhama_scene34_electronics_qa(
         !field_scene.field_mode_text_open_for_dump() &&
         !field_scene.shop_menu_open() && field_scene.field_entity_visible_for_dump() &&
         returned_map == map_before && inventory_unchanged() &&
-        field_audio_events.size() == audio_before &&
+        field_audio_events.size() == expected_audio_count &&
+        field_scene.field_alarm_active_for_dump() ==
+            expected_alarm_active_after_action &&
+        field_scene.world_activity_script_actor_count_for_dump() ==
+            expected_world_actors_after_action &&
         returned_image == returned_field_only &&
         returned_image.size() == QSize(kSceneWidth, kSceneHeight) &&
         field_hud_chrome_survives(returned_image, asset_root);
@@ -19878,7 +20024,9 @@ int run_field_mitsuhama_scene34_electronics_qa(
               << (no_skill_path ? "samurai" : "decker") << " skill="
               << static_cast<unsigned>(expected_electronics_skill)
               << " selection=" << static_cast<unsigned>(expected_selection)
-              << " map=0x82 audio=unchanged artifacts="
+              << " map=0x82 alarm=" << expected_alarm_active_after_action
+              << " audio=" << audio_before << "->" << expected_audio_count
+              << " artifacts="
               << probe_output.string() << '\n';
     return 0;
 }
@@ -20555,6 +20703,12 @@ int run_field_mitsuhama_after_hours_entry_qa(
     // The floor-4 elevator leaves the runner at the ROM Scene-34 lift entry.
     // Preserve that live position for the ordinary-input route probe.
     field_scene.set_field_camera_world_position_for_dump(0x3000U, 0U);
+    if (path == MitsuhamaAfterHoursEntryQaPath::electronics_alert) {
+        // Suppress the separate Scene-34 coordinate alarm at 0x1DB576 while
+        // walking in. The direct 0x1E04A path does not test FFE170, so the
+        // Electronics zero roll still exercises a fresh alarm latch.
+        field_scene.set_field_alarm_disabled_for_dump(true);
+    }
     const auto probe_output = output / "scene-34-contact-route-probe";
     std::filesystem::create_directories(probe_output, output_error);
     if (output_error) {
@@ -20749,10 +20903,11 @@ int run_field_mitsuhama_after_hours_entry_qa(
     }
 
     if (path == MitsuhamaAfterHoursEntryQaPath::electronics_no_skill ||
-        path == MitsuhamaAfterHoursEntryQaPath::electronics_partial) {
+        path == MitsuhamaAfterHoursEntryQaPath::electronics_partial ||
+        path == MitsuhamaAfterHoursEntryQaPath::electronics_alert) {
         return run_field_mitsuhama_scene34_electronics_qa(
             field_scene, asset_root, output, probe_output, field_audio_events,
-            path);
+            source_boundaries, path);
     }
 
     // ROM 0xB984 routes event 2 to the shared 0x20E48 maglock handler in
@@ -33202,6 +33357,15 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_mitsuhama_after_hours_entry_qa_mode =
                     MitsuhamaAfterHoursEntryQaPath::electronics_partial;
+                field_mitsuhama_after_hours_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-mitsuhama-after-hours-electronics-alert-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_mitsuhama_after_hours_entry_qa_mode =
+                    MitsuhamaAfterHoursEntryQaPath::electronics_alert;
                 field_mitsuhama_after_hours_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
