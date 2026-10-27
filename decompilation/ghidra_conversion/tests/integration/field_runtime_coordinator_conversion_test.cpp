@@ -215,19 +215,40 @@ int test_transition_branch_source_order() {
         return 6;
     }
 
+    // ROM 0x095E..0x0A9E also calls 0x1E43C after FFDF3E when FFDF40 is
+    // nonzero. This route does not depend on the separate FFDF42 request.
+    observations.order.clear();
+    state = FieldRuntimeCoordinatorState{};
+    state.field_transition_requested = true;
+    state.field_mode = 2U;
+    state.field_scene_gate = 2U;
+    state.world_activity_transition_marker = 1U;
+    if (expect(advance_field_runtime_frame(state, callbacks) ==
+               FieldRuntimeFrameResult::world_activity_scene_reentry_requested) !=
+        0) {
+        return 7;
+    }
+    if (expect(state.world_activity_scene_reset_bit &&
+               !state.world_activity_requested &&
+               observations.order == std::vector<std::string>{
+                   "vblank", "prepare_mode_entry", "world_activity_request",
+                   "initialize_field_scene"}) != 0) {
+        return 8;
+    }
+
     observations.order.clear();
     state = FieldRuntimeCoordinatorState{};
     state.field_transition_requested = true;
     observations.exit_requires_anchor_refresh = true;
     if (expect(advance_field_runtime_frame(state, callbacks) ==
                FieldRuntimeFrameResult::field_transition_dispatched) != 0) {
-        return 7;
+        return 9;
     }
     if (expect(observations.order == std::vector<std::string>{
                    "vblank", "prepare_mode_entry", "toggle_variant", "field_exit",
                    "reset_anchor_words", "snapshot_anchors", "scene_transition"}) !=
         0) {
-        return 8;
+        return 10;
     }
     observations.exit_requires_anchor_refresh = false;
 
@@ -239,7 +260,7 @@ int test_transition_branch_source_order() {
     state.mode_event_code = 6U;
     if (expect(advance_field_runtime_frame(state, callbacks) ==
                FieldRuntimeFrameResult::field_transition_dispatched) != 0) {
-        return 9;
+        return 11;
     }
     return expect(observations.order == std::vector<std::string>{
                       "vblank", "prepare_mode_entry", "toggle_variant",

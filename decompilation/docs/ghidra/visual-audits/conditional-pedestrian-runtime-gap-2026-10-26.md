@@ -857,12 +857,32 @@ B on the actual A800 generic-contact page. This verifies the input filter and
 host timing; it does not prove automatic FFDF42 activity continuation or an
 independent Genesis page comparison.
 
-This does not establish that the callback is invoked automatically by the
-current host main loop. That loop still requires an FFDF42 request before
-calling `0x1E43C`. The ROM body at `0x1F16A` has since been decoded below, but
-its automatic invocation and host implementation remain open. Both physical
-cases consume the retained choice through the `0x1E45E` test seam and do not
-claim activity completion.
+The controller sweep alone does not establish that an A800 contact automatically
+continues into the world-activity result. The ROM has a separate automatic
+request path that does not require `FFDF42`: at `0x095E`, the field loop tests
+`FFDF3E` and clears it at `0x0970`. When `FFE186` is zero, it tests `FFDF40` at
+`0x0992`; a nonzero value branches directly to `0x0A72`, which calls
+`0x1E43C` at `0x0A92`, calls `0x2F32` at `0x0A98`, and clears `FFDF42` at
+`0x0A9E`. This path bypasses the ordinary `FFDF42` test at `0x0A68`.
+
+The preceding world-frame code also traces one way to raise `FFDF3E`:
+`0x0B7B8` calls `0x1651E` at `0x0BA7C`; its carry result initializes the
+`FFDF3A`/`FFDF3C` fade at `0x0BA86..0x0BA8E`. The ordinary service calls
+`0x16396` at `0x0AC6`; when that fade expires, `0x163D0` sets `FFDF3E` for the
+next loop pass. This traces a world-interaction producer for `FFDF3E`; the
+subsequent call to `0x1E43C` remains conditional on `FFDF40` being nonzero at
+the transition, and no specific A800 candidate is identified as its trigger.
+
+The typed coordinator maps the prepared-scene gate at `0x0992` to its
+world-activity request and field-scene initialization callbacks. The
+`shadowrun_ghidra_field_runtime_coordinator` CTest now explicitly covers mode 2
+with `field_scene_gate=2`, as well as the existing generic gate-1 case. This
+covers the coordinator branch; it does not port the downstream `0x1F16A`
+result callback, whose prompt and actor-retirement behavior remain open in the
+host.
+The direct `FFDF42` producer is still unknown, and both physical A800 cases
+consume the retained choice through the `0x1E45E` test seam rather than proving
+that a pedestrian contact reaches this automatic route.
 
 All 93 files in the Debug and Release pedestrian QA output directories match
 by SHA-256, including the entry, contact, and closed-field BMPs, both route and
@@ -870,9 +890,11 @@ waypoint traces, the 46-row candidate matrix, and the Scene-40 guard route.
 I inspected
 the Scene-38 page and restored-field frames; these are regression artifacts,
 not independent Genesis evidence. Scene-entry travel and physical contact for
-other A800 candidates, the FFDF42 request producer, the
-`0x1E43C`/`0x1F16A` continuation, and a route-matched Genesis comparison remain
-open. The A800 hill remains partial.
+other A800 candidates, the direct FFDF42 producer, native `0x1F16A`
+result-callback behavior, and a route-matched Genesis comparison remain open.
+The FFDF3E/FFDF40 coordinator call path is traced above, but the current A800
+physical routes do not demonstrate that they trigger it. The A800 hill remains
+partial.
 
 ## FFDF42 request-producer census (bounded)
 
@@ -894,12 +916,12 @@ read and clear in `fn_0000075E.cpp`. The nearby exported pointer walks begin at
 for action-candidate arrays; the inspected walks advance from those bases and
 do not write backward into `FFDF42`.
 
-This is a bounded result, not proof that the ROM has no producer. A dynamically
-computed pointer or unresolved indirect call could still alias the request
-word; the current export does not identify such a path. Keep automatic
-`0x1E43C` dispatch and the `0x1F16A` callback's host integration open until the
-`FFDF42` producer and its triggering state transition are traced from ROM
-behavior. The callback body itself is summarized below.
+This is a bounded result, not proof that the ROM has no direct producer. A
+dynamically computed pointer or unresolved indirect call could still alias the
+request word; the current export does not identify such a path. The separate
+`FFDF3E` + `FFDF40` call into `0x1E43C` is traced above and does not depend on a
+nonzero `FFDF42`; the direct request producer and the `0x1F16A` callback's host
+integration remain open. The callback body itself is summarized below.
 
 ## ROM callback at `0x1F16A`: extraction result
 
