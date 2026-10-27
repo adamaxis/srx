@@ -19269,6 +19269,23 @@ int run_field_pedestrian_scenes_qa(
     // position, heading override, final spawn flag, actor slot, and visibility.
     // Scene 22 also exercises both accepted initializer variants at that same
     // actor boundary; the other matrix cases retain initializer 5.
+    // ROM 0x43B6 drains the A800 pending list before each scene's default
+    // list, and 0x1A342 assigns the seven ordinary records as slots 3..9.
+    // The extracted default-actor-lists.tsv records these source guard counts
+    // for scenes 0x15..0x2B; keep them explicit so the pending pedestrian
+    // cannot silently displace or truncate a later default actor.
+    constexpr std::array<std::uint8_t, 23> kDefaultCorpGuardCounts{{
+        2U, 2U, 3U, 2U, 2U, 1U, 2U, 1U, 1U, 1U, 1U, 2U,
+        2U, 1U, 4U, 1U, 1U, 2U, 2U, 2U, 1U, 3U, 1U,
+    }};
+    constexpr std::array<FieldWorldActorSlot, 6> kSlotsAfterCandidate{{
+        FieldWorldActorSlot::slot_4,
+        FieldWorldActorSlot::slot_5,
+        FieldWorldActorSlot::slot_6,
+        FieldWorldActorSlot::slot_7,
+        FieldWorldActorSlot::slot_8,
+        FieldWorldActorSlot::slot_9,
+    }};
     const auto candidate_manifest_path = output / "conditional-candidates.tsv";
     std::ofstream candidate_manifest(candidate_manifest_path,
                                      std::ios::trunc);
@@ -19279,7 +19296,8 @@ int run_field_pedestrian_scenes_qa(
     candidate_manifest
         << "scene_id\tchoice\tsource_initializer\tlist_offset\tposition_offset"
            "\tworld_x\tworld_y"
-           "\theading_word\tspawn_flags\tactor_slot\tvisible\n";
+           "\theading_word\tspawn_flags\tactor_slot\tvisible"
+           "\tdefault_guard_count\tguard_record_slots\n";
     std::size_t candidate_cases = 0U;
     for (std::uint16_t scene = 0x15U; scene <= 0x2BU; ++scene) {
         const auto candidates =
@@ -19372,6 +19390,37 @@ int run_field_pedestrian_scenes_qa(
                 field_scene.world_activity_script_actor_projection_for_dump(0U);
             const auto active_initializer =
                 field_scene.active_run_source_initializer_for_dump();
+            const auto source_scene_index =
+                static_cast<std::size_t>(scene - 0x15U);
+            const auto expected_default_guard_count =
+                kDefaultCorpGuardCounts[source_scene_index];
+            bool default_guard_population_matches =
+                field_scene.default_actor_count_for_dump() ==
+                static_cast<std::size_t>(expected_default_guard_count) + 1U;
+            for (std::uint16_t source_order = 0U;
+                 source_order < expected_default_guard_count; ++source_order) {
+                const auto guard_profile =
+                    field_scene.default_actor_script_profile_for_dump(
+                        source_order);
+                const auto guard_slot =
+                    field_scene.default_actor_record_slot_for_dump(
+                        source_order);
+                default_guard_population_matches =
+                    default_guard_population_matches &&
+                    guard_profile == std::optional<std::string>{
+                                         "corp_guard_k05_item06"} &&
+                    guard_slot == std::optional<FieldWorldActorSlot>{
+                                      kSlotsAfterCandidate[source_order]};
+            }
+            // Source orders are contiguous in the default list. The next
+            // order must stay inactive, with every extracted row accounted
+            // for by the exact live actor count above.
+            default_guard_population_matches =
+                default_guard_population_matches &&
+                !field_scene.default_actor_script_profile_for_dump(
+                    expected_default_guard_count) &&
+                !field_scene.default_actor_record_slot_for_dump(
+                    expected_default_guard_count);
             const bool source_gates_match =
                 field_scene.field_scene_reference_for_dump() == scene &&
                 field_scene.field_interaction_mode_for_dump() == 2U &&
@@ -19394,6 +19443,7 @@ int run_field_pedestrian_scenes_qa(
                 actor->record_slot !=
                     std::optional<FieldWorldActorSlot>{
                         FieldWorldActorSlot::slot_3} ||
+                !default_guard_population_matches ||
                 actor->list_offset != expected->list_offset ||
                 actor->initial_heading != expected->heading_word ||
                 actor->spawn_state_flags != 0x08U || !actor->visible) {
@@ -19422,6 +19472,10 @@ int run_field_pedestrian_scenes_qa(
                           << (active_initializer.has_value()
                                   ? std::to_string(*active_initializer)
                                   : std::string("missing"))
+                          << " active_actor_count="
+                          << field_scene.default_actor_count_for_dump()
+                          << " expected_default_guards="
+                          << static_cast<unsigned>(expected_default_guard_count)
                           << " failure=" << field_scene.failure() << '\n';
                 return 3;
             }
@@ -19449,8 +19503,26 @@ int run_field_pedestrian_scenes_qa(
                                << expected->position_offset << "\t0x"
                                << expected->world_x << "\t0x"
                                << expected->world_y << "\t0x"
-                               << expected->heading_word << "\t0x08\t3\t1\n"
-                               << std::dec;
+                               << expected->heading_word << "\t0x08\t3\t1\t"
+                               << std::dec
+                               << static_cast<unsigned>(
+                                      expected_default_guard_count)
+                               << '\t';
+            for (std::uint16_t source_order = 0U;
+                 source_order < expected_default_guard_count; ++source_order) {
+                if (source_order != 0U) candidate_manifest << ',';
+                const auto guard_slot =
+                    field_scene.default_actor_record_slot_for_dump(
+                        source_order);
+                if (!guard_slot.has_value()) {
+                    std::cerr << "Pedestrian scenes QA: Scene " << scene
+                              << " lost default guard slot " << source_order
+                              << " while writing the candidate manifest\n";
+                    return 3;
+                }
+                candidate_manifest << static_cast<unsigned>(*guard_slot);
+            }
+            candidate_manifest << '\n';
             if (!candidate_manifest) {
                 std::cerr << "Pedestrian scenes QA: candidate manifest write "
                              "failed\n";

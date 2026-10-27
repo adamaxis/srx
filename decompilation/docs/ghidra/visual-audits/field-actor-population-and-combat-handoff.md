@@ -226,14 +226,19 @@ callback now calls Lua's atomic FFE183 consume before the typed `0x1E43C` scan.
 Lua's other resets remain connected to the modeled `0x2A32`/`0x2A44` and
 type-5 `0xC684` paths. Debug/Release script QA follows accepted Johnson offers
 with initializers 5, 11, and 12 through A800 and the typed request scan. Field
-QA now drives those same Johnson offer tasks in a separate Lua runtime, saves
-the accepted `run_registry` state, restores it through the field runtime's
-persistence API, and checks actor publication after scene entry. It covers
-initializer 5 for the other matrix entries and initializers 11/12 for Scene
-22 choices 1/2. This verifies the accepted-registry persistence contract and
-field projection; the uninterrupted in-world Johnson-to-field route remains
-open. Independent Genesis identification and the physical Scene-34
-lift-to-A8AE route remain open.
+QA walks to the Johnson contact, selects Work, accepts the generated offer,
+and retains that state in the same `FieldSceneRuntime` through candidate
+resource entry. Across all 46 reachable scene/choice pairs it verifies the
+candidate in slot 3 and the exact default-list corp-guard count, profiles, and
+slots 4 onward. Those expected counts come from
+`assets/field/entities/default-actor-lists.tsv`; ROM `0x43B6` drains the A800
+list before the default list, and `0x1A342` allocates the seven ordinary actor
+records. Scene 22 choices 1/2 use initializers 11/12; the other cases use 5.
+This covers the in-world Johnson-to-offer path and candidate/default actor
+allocation. The 46 scene entries remain resource reentries, so travel to each
+candidate scene is not covered by that matrix. Independent Genesis
+identification remains open; the physical Scene-34 lift-to-A8AE route has its
+own QA.
 
 The same Debug/Release QA now exercises the A800 late gates with the natural
 initializer-5 registry state. On Scene 30, `FFE12C=4` / `FFF0C8=0` samples

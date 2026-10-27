@@ -103,12 +103,13 @@ record. The direct marker setters and `FFE120` producer census are traced
 below. Gameplay-script QA now follows accepted Employee Recruitment offers
 from their Johnson work menus through the normalized `0xA800` choice and the
 typed `0x1E43C` request. Field QA now drives the Johnson offer tasks in a
-separate Lua runtime, saves the accepted `run_registry` state, restores that
-state through the field runtime's persistence API, and enters the candidate
-scene before checking actor projection. It covers initializer 5 throughout
-the matrix and initializers 11/12 for Scene 22 choices 1/2. This closes the
-accepted-registry-to-field-entry data seam; the physical in-world Johnson-to-
-field route and a Section-41 route-matched visual check remain open.
+single `FieldSceneRuntime`, then keeps the accepted offer state live while
+entering each candidate resource scene. It covers initializer 5 throughout
+the matrix and initializers 11/12 for Scene 22 choices 1/2. Ordinary input
+reaches the Johnson contact and offer in the same runtime; candidate scene
+entry itself still uses resource reentry. The physical elevator/destination
+route across all candidate scenes and a Section-41 route-matched visual check
+remain open.
 
 ## ROM path confirmed from the US image
 
@@ -421,13 +422,18 @@ checkpoint before the contact; the accepted offer then remains in that runtime
 through candidate resource entry, with no `run_registry` save/restore.
 Scene 22 choices 1 and 2 use initializers 11 and 12; other cases use 5.
 All 46 reachable scene/choice pairs write candidate images and record their
-initializer. Debug/Release candidate BMP hashes match. Root, work-opening,
-and generated-offer captures for all three initializers are also saved under
+initializer. Each case also checks that its candidate takes slot 3 before the
+scene's complete source-ordered default guard list, that every guard remains
+active in slots 4 onward, and that no extra default row is active. The expected
+guard counts come from `assets/field/entities/default-actor-lists.tsv`; the
+list drain order is ROM `0x43B6`, with the seven ordinary records allocated by
+`0x1A342`. Debug/Release candidate BMP hashes match. Root, work-opening, and
+generated-offer captures for all three initializers are also saved under
 `qt_runtime/field-pedestrian-scenes-qa/johnson-offer-*`. They are internal
 runtime captures, not independent Genesis reference images. This closes the
-physical Johnson-to-accepted-offer segment, while the subsequent elevator and
-destination travel path remains open because these candidate cases use
-resource-scene reentry. Late-gate QA enters
+physical Johnson-to-accepted-offer segment, while these 46 candidate cases
+still use resource-scene reentry instead of physically traveling to each
+candidate scene. Late-gate QA enters
 Scene 30 with `FFE12C=4` and `FFF0C8=0`, verifies that the sampled choice is
 retained without an actor, then enters child resource Scene 34 with both words
 at 4 and an opposite random seed; the actor uses the original choice. The

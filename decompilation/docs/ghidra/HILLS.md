@@ -870,12 +870,17 @@ The QA checks one visible random pedestrian in slot 3 at each of the 46
 reachable ROM positions and writes
 `scene-<id>-choice-<n>[-initializer-<id>]-actual.bmp`. The candidate BMPs
 match between Debug and Release, and the manifest records the initializer
-for every candidate image. The route also saves root, work-opening, and
+for every candidate image. It also checks the scene's complete default guard
+population from `default-actor-lists.tsv`: the A800 actor uses slot 3, and all
+source-ordered guards remain active in slots 4 onward. This follows ROM
+`0x43B6` list order and `0x1A342`'s slots 3-9. The manifest records each guard
+count and slot list. The route also saves root, work-opening, and
 generated-offer BMPs for initializers 5, 11, and 12 under
 `qt_runtime/field-pedestrian-scenes-qa/johnson-offer-*`; these remain internal
-runtime captures. The 46 candidate entries still use resource-scene reentry,
-so the physical Johnson-to-offer path is covered while the elevator/destination
-travel route remains open. The transition now installs the
+runtime captures. The 46 candidate entries still use resource-scene reentry;
+the matrix checks physical Johnson offer acceptance but does not travel to all
+46 candidate scenes. A separate Mitsuhama route drives the lift to Scene 34
+for the A8AE story actor. The transition now installs the
 destination mode before actor population,
 matching the `0x167AE` to `0xA800` source order. The same
 coordinator also has a separate higher-priority
@@ -924,18 +929,19 @@ slot leaves the live list, the activity count drops by one while other records
 remain active, and saves the closed Scene-34 image.
 The accepted initializer 5/11/12 offer-to-request paths and the `0x1E45E`
 FFE183 clear now pass focused Debug/Release script QA. Field QA covers all 46
-candidate scene/choice pairs by accepting those offers through Johnson's Lua
-work path, saving the resulting registry state, and restoring it into field
-Lua before scene entry; Scene 22 choices 1/2 use initializers 11/12 and the
-remaining cases use initializer 5. This verifies the run-state persistence
-contract and actor projection, while the uninterrupted in-world
-Johnson-to-field route remains open. A second Debug/Release case enters Scene
-30 with selected index 4/active index 0, confirms choice 1 is retained without
-an actor, then enters child resource Scene 34 with both indices at 4 and checks
-choice 1 at its ROM position despite an opposite RNG seed. The FFFC3C pending-
-spawn case similarly retains choice 2 from Scene 30 and publishes it in Scene
-34 after the pending flag clears. These are resource-entry tests, not a
-physical elevator-input route. The ordinary-
+candidate scene/choice pairs by walking to Johnson's work menu, accepting the
+offer in the same field runtime, and re-entering the candidate resource scene;
+Scene 22 choices 1/2 use initializers 11/12 and the remaining cases use 5.
+Each candidate occupies slot 3 before its exact source default-guard list,
+which remains active in slots 4 onward. This verifies the in-world
+Johnson-to-offer segment and pending/default actor allocation. The per-choice
+candidate matrix still uses resource-scene reentry, so it does not exercise
+physical travel to every candidate map. A second Debug/Release case enters
+Scene 30 with selected index 4/active index 0, confirms choice 1 is retained
+without an actor, then enters child resource Scene 34 with both indices at 4
+and checks choice 1 at its ROM position despite an opposite RNG seed. The
+FFFC3C pending-spawn case similarly retains choice 2 from Scene 30 and
+publishes it in Scene 34 after the pending flag clears. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches
 the success page after the source 10-frame choice gate, requests sound `0x4B`,
