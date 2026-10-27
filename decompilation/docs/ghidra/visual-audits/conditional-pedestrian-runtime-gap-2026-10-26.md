@@ -729,7 +729,13 @@ the actor and runner in the same prepared scene. They do not verify map entry,
 reachability from a normal route, or that the player would encounter these
 actors during ordinary travel. No-route results from the same resource-reentry
 setup likewise cannot establish that a candidate is unreachable from the
-game's real entry point.
+game's real entry point. The position mismatch is directly visible in the US
+ROM profiles: Scene 30 profile `0x1DAEB8` has first field record
+`(0x3A00,0x0600)` at `+0x42`, while Scene 38 profile `0x1DD100` has
+`(0x0000,0x0080)` there. Both contact QA cases instead carry `(4906,1156)` into
+the reloaded map. The zero first records in profiles such as Scenes 22 and 23
+also need their incoming route traced before they can be treated as usable
+arrival points.
 
 **[C]** The extracted US-ROM candidate row in
 `assets/field/entities/conditional-actor-candidates.tsv` selects Scene 30,
