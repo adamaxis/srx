@@ -114,13 +114,17 @@ tuples a runner can reach.
 Independent section-06 frame `002550` shows Joshua as a Human Shaman with
 Mana Zap selected, `Damage None`, `Power Very Low`, the posture panel, and
 Atk/Def strips. Frames `000015..000020` in the same supplied section show
-Mana Zap at force three with Neutral posture. This pins the Gator Shaman's
-source context: race 0/class 1, Sorcery 3, Magic cap 6, posture 2, force 3,
-and slot-7 Gator totem item `0x2A`. The first matching Power Focus and Mana
-Zap spell-focus items are absent. `0xC8AE0[7]` selects word `+0x24`, whose
-D4540 item-`0x2A` value is 2. The resulting Attack is 6 (row 5). The command
-average is 5; posture leaves 3 Defense before Body 2, with no defense flag,
-item-`0x27`, or cyberware bonus, so Defense is 5 (row 4).
+Mana Zap at force three with Neutral posture. Raw starter record `0x72B1A`
+confirms race `+0x9A=0` (Human), class `+0x9B=1` (Shaman), Body `+0x77=2`,
+Sorcery `+0x80=3`, Magic cap `+0x7F=6`, posture `+0x4D=2`, and Gator Totem
+item `+0x6D=0x2A`. “Gator Shaman” is the project label for this Human/Shaman
+preset with its totem; it does not mean a different race or class. Race and
+class select the preset data, while the bar routines consume the live record
+and state. The first matching Power Focus and Mana Zap spell-focus items are
+absent. `0xC8AE0[7]` selects word `+0x24`, whose D4540 item-`0x2A` value is 2.
+The resulting Attack is 6 (row 5). The command average is 5; posture leaves 3
+Defense before Body 2, with no defense flag, item-`0x27`, or cyberware bonus,
+so Defense is 5 (row 4).
 
 The Debug/Release Qt QA builds this typed Gator action state and checks the
 title, `Damage None`, force label, exact 104x8 bar assets, and full-frame
