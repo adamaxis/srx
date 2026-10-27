@@ -1,6 +1,6 @@
 # Physical Stoker doorway to Hotel Karma route
 
-Date: 2026-10-08 (Lua text-binding review updated 2026-10-09)
+Date: 2026-10-08 (Lua text-binding review updated 2026-10-09; extended capture review updated 2026-10-27)
 
 Scope: the ordinary New Game field route from scene-2 Stoker collision record
 91 through the paid-room message, Hotel status/options, Hotel Karma spending,
@@ -45,32 +45,42 @@ has been recovered.
 
 Debug and Release `--field-hotel-qa` runs write
 `decompilation/ghidra_conversion/build/conversion/qt/{debug,release}/qt_runtime/field-hotel-qa/sequence/`.
-Each sequence has 223 consecutive 320x224 BMPs: frame 0000 is the initialized
-New Game field before input; frames 0001..0192 cover approach, trigger/fade,
-dialogue, Hotel pages, Karma prompt/result, checkout, and the immediate field
-return; frames 0193..0222 are the 30-frame stable field hold. The QA also
-writes `physical-route.tsv` and named full-screen state checkpoints. All 223
-Debug/Release image SHA-256 pairs match.
+Each sequence has 414 consecutive 320x224 BMPs: frame 0000 is the initialized
+New Game field before input; frames 0001..0381 cover approach, trigger/fade,
+dialogue, Hotel pages, Karma prompt/result, checkout, the field-door return,
+and its 30-frame hold; frames 0382..0413 cover opening and closing the command
+overview after checkout. The checkout return is visibly extended: the prompt
+begins dimming after the Yes selection, faint HUD remnants remain in frames
+0233..0234, the full screen is black from frame 0235 through frame 0317, the
+field begins to reveal at frame 0318, and it is fully drawn at frame 0321. The
+QA also writes `physical-route.tsv`
+and 64 named full-screen state checkpoints, for 478 BMPs total per
+configuration. All 478 Debug/Release image SHA-256 pairs match.
 
 The route's state milestones are:
 
 | Frame | Ordinary input/state | Result |
 |---:|---|---|
 | 0000 | New Game spawn | Scene 2, position `(15584,11520)`, wallet 20 |
-| 0017 | Up | Record 91; raw collision `0xFFC2`, event 2 |
-| 0034 | Up released; transition complete | Stoker arrival panel |
-| 0036 | A | First-visit scripted manager menu with package choice |
-| 0038 | A | Room offer for 20 nuyen |
-| 0040 | A | Paid message; wallet 20 to 0 |
-| 0042 | A | Hotel status page |
-| 0074 | A | Hotel options |
-| 0076 | A | Hotel Karma spending page |
-| 0116 | A on Body upgrade | Body 1 to 2; Karma 50 to 48 |
-| 0118 | Start | Hotel options redrawn |
-| 0152 | Down, A | Checkout prompt, default No |
-| 0190 | Up | Checkout Yes selected |
-| 0192 | B | Field restored; Hotel closed |
-| 0222 | 30 idle frames after return | Stable field still has no Hotel graphics |
+| 0022 | Up | Record 91; raw collision `0xFFC2`, event 2 |
+| 0039 | Up released; transition complete | Stoker arrival panel |
+| 0041 | A | First-visit scripted manager menu with package choice |
+| 0043 | A | Room offer for 20 nuyen |
+| 0045 | A | Paid message; wallet 20 to 0 |
+| 0047 | A | Hotel status page |
+| 0080 | 30 idle frames | Hotel status remains stable |
+| 0082 | A | Hotel options |
+| 0101 | A | Hotel Karma spending page |
+| 0141 | A on Body upgrade | Body 1 to 2; Karma 50 to 48 |
+| 0143 | Start | Hotel options redrawn |
+| 0177 | Down, A | Checkout prompt, default No |
+| 0218 | Up | Checkout Yes selected |
+| 0235..0317 | B on Yes; return transition | Full-screen black interval |
+| 0318 | Field-door return fade | Field begins to reveal |
+| 0321 | Field-door return fade | Field scene fully drawn again |
+| 0381 | 30 idle frames after return | Stable field still has no Hotel graphics |
+| 0411 | Start; 27 black frames plus reveal | Command overview visible |
+| 0413 | Start | Command overview closed; clean field return |
 
 The source and native route checks were reviewed alongside every full-screen
 frame. The capture is an internally generated regression artifact and is not
@@ -116,8 +126,9 @@ an independent Genesis visual oracle.
    not retain Hotel controls; return restores the field. Other unrelated
    scene defects are not closed by this route.
 7. **Do multiple frames support the interpretation? — Partial.** The native
-   capture includes separate input moments, idle frames, page changes, and
-   return. Independent section 03 frames support the Stoker doorway and
+   capture includes separate input moments, idle frames, page changes, the
+   full fade-to-black/field-return interval, and the later command overview.
+   Independent section 03 frames support the Stoker doorway and
    dialogue appearance, but contain no Hotel menu visit or controller log.
    Independent Hotel interaction frames remain unavailable.
 8. **Does the new UI replace the old UI cleanly? — Yes in the tested route.**
@@ -127,10 +138,11 @@ an independent Genesis visual oracle.
    equals the immediate and 30-frame returned full-screen images. No old
    buttons or graphics remain over the next page.
 9. **Was the whole time window reviewed? — Yes for this route.** The sequence
-   begins at initialized New Game field spawn, runs continuously at one image
-   per controller/update frame through checkout, then holds the field for 30
-   idle frames. All 223 full-screen images were reviewed in chronological
-   contact sheets and transition frames were inspected at native size. The
+   begins at initialized New Game field spawn and runs continuously at one
+   image per controller/update frame through checkout, field return, and the
+   command-overview open/close sequence. All 414 full-screen images were
+   reviewed in chronological contact sheets; frames 0218, 0233, 0235, 0317,
+   0318, 0321, 0381, and 0411..0413 were inspected at native size. The
    QA process reached the stable field state and exited normally. This scope
    starts after New Game initialization; it is not a full boot/title capture.
 
@@ -161,12 +173,13 @@ an independent Genesis visual oracle.
 - **Text-binding follow-up:** Debug and Release passed
   `shadowrun_gameplay_script_runtime_qa`,
   `shadowrun_ghidra_conversion_qt_field_hotel_qa`, and
-  `shadowrun_ghidra_field_menu_text_catalog`. All 223 route frames and all
-  named BMP checkpoints (252 BMPs total per configuration) retain matching
-  SHA-256 hashes. Eight chronological contact sheets were scanned; the
-  Options default/Check Out selection, checkout default-No/Yes selection,
-  status page, and clean field return were inspected at full resolution. The
-  binding change leaves the output pixels unchanged.
+  `shadowrun_ghidra_field_menu_text_catalog`. The current Debug and Release
+  outputs contain 414 route frames and 64 named BMP checkpoints (478 BMPs
+  total per configuration), with matching SHA-256 hashes. The earlier review
+  covered frames 0000..0222; this update reviews frames 0223..0413 in 24
+  chronological contact sheets. The checkout fade, long black interval,
+  field reveal, command overview, and clean return were inspected at full
+  resolution. The text-binding change leaves the output pixels unchanged.
 - **Independently visually checked:** section 03 supports the Stoker doorway
   and dialogue panel only. No independent Hotel-page capture is available.
 - **Reported defect resolved:** no new independent Hotel appearance claim is

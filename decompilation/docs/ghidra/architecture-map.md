@@ -300,9 +300,10 @@ Options at `0xCF38`. `FieldSceneRuntime::advance_frame()` carries the same
 typed party records through Hotel status, the separate Hotel Karma upgrade
 page, checkout, and the field redraw. The Stoker property has no interior map;
 Hotel is presented as its source menus. The Debug/Release Hotel QA follows
-this whole route with controller-port input and writes 223 consecutive
-320x224 frames, including the initial spawn and a 30-frame field hold after
-checkout. A deterministic PRNG seed selects the manager branch and
+this whole route with controller-port input and writes 414 consecutive
+320x224 frames, including the initial spawn, field-door fade/re-entry, a
+30-frame field hold, and the post-checkout command-overview open/close. A
+deterministic PRNG seed selects the manager branch and
 stabilizes the Hotel animation; the production PRNG seed remains unresolved.
 The complete route also confirms the source manager choice and payment feed
 the existing generic dialogue and Hotel controllers rather than starting
