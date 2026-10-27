@@ -977,13 +977,18 @@ field input from the live runner position retained by the Johnson-offer
 resource-entry case. After 59 host modal-release frames, 141 input frames reach
 contact at runner `(0x08DA,0x0AD8)`. The contact sets actor `+0xB0` bit 7,
 retains FFFC3C with the typed FFE110 pedestrian transfer, and finds the
-existing effect instead of duplicating it. FFE183 remains at the unresolved
-`0x1F146` callback boundary;
-the QA checks its choice through the `0x1E45E` seam without claiming automatic
-activity continuation. The entry/contact BMPs and route/waypoint TSVs match
-between Debug and Release. These are internal captures, not independent
-Genesis comparisons; the other physical A800 candidates and the generic
-activity continuation remain open. See the
+existing effect instead of duplicating it. ROM `0xED60` installs callback
+`0x1F146` for this generic contact. Lua now routes the reachable A800 row to
+`run_employee_recruitment.present_random_contact`; the typed dialogue host
+shows the ROM text at `0xFE1F7` with Mortimer Reed's `0x121FF4` portrait. The
+no-options page waits for the source input interval, accepts A, returns to the
+visible field, and keeps the actor active for the later request scan. Debug and
+Release QA capture the page and the restored field as full-screen images. The
+FFE183 choice remains available through the `0x1E45E` test seam: the main loop's
+FFDF42 request and the `0x1E43C`/`0x1F16A` continuation are still open, so the
+test does not claim automatic activity continuation. The captures are internal
+regression artifacts, not independent Genesis comparisons; the other physical
+A800 candidates and the request path remain open. See the
 `conditional-pedestrian-runtime-gap-2026-10-26.md` audit. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches

@@ -77,4 +77,19 @@ function EmployeeRecruitment.present_target_entry()
     return "shown"
 end
 
+function EmployeeRecruitment.present_random_contact()
+    local offer = game.runs.registry.active_offer
+    assert(offer ~= nil and offer.id == "employee_recruitment")
+
+    -- ROM 0xED6A installs callback 0x1F146. That callback sets FFFC1C bit 0
+    -- and opens the one-page text at 0xFDE3E -> 0xFE1F7 with portrait profile
+    -- 0x121FF4. Its next longword is the no-options sentinel, so 0x1F3C4 waits
+    -- 0x1E VBlanks and then accepts an ordinary controller event. Keep the
+    -- source progress fact in the active offer for the later request path.
+    offer.contact_reached = true
+    game.ui.say_text(
+        "Hey! There you are.\n\nLet's go. My new employer is waiting.", false)
+    return "contacted"
+end
+
 return EmployeeRecruitment

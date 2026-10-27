@@ -4597,7 +4597,7 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                            pending_effect_handler ? 1 : 0});
                       if (!contact_route || contact_route->size() != 2U ||
                           contact_route->front() < 0 ||
-                          contact_route->front() > 2 ||
+                          contact_route->front() > 3 ||
                           contact_route->at(1U) < 0 ||
                           contact_route->at(1U) > 0xFF) {
                           failure_ = game_scripts_.failure().empty()
@@ -4608,7 +4608,7 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                           return;
                       }
                       const auto contact_task = contact_route->front();
-                      if (contact_task != 0) {
+                      if (contact_task == 1 || contact_task == 2) {
                           // ROM 0xECCC sets the contacted record's +0xB0 bit 7
                           // before entering the dialogue helper. Keep that
                           // returned Lua state in the live typed record so
@@ -4633,6 +4633,7 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                       std::string_view task;
                       std::string_view location;
                       std::string_view speaker;
+                      std::string_view text_profile = "field.world_event";
                       std::string_view opened_boundary;
                       if (contact_task == 1) {
                           module = "salish_owlfeather";
@@ -4648,6 +4649,14 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                           speaker = "field_narrator";
                           opened_boundary =
                               "field.world_activity.ilene_contact_opened";
+                      } else if (contact_task == 3) {
+                          module = "run_employee_recruitment";
+                          task = "present_random_contact";
+                          location = "employee_recruitment_contact";
+                          speaker = "mortimer_reed";
+                          text_profile = "big-rhino.mortimer_reed";
+                          opened_boundary =
+                              "field.world_activity.employee_recruitment_contact_opened";
                       } else {
                           failure_ = "Lua returned an unknown actor contact task";
                           source_boundary(
@@ -4655,17 +4664,23 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                           return;
                       }
                       game_scripts_.set_location_context(
-                          "field_map", location, "field.world_event", speaker);
+                          "field_map", location, text_profile, speaker);
                       if (!field_dialogue_.open_gameplay_task(module, task)) {
-                          failure_ = field_dialogue_.failure().empty()
-                              ? "field actor contact task could not be opened"
-                              : field_dialogue_.failure();
+                          failure_ = !field_dialogue_.failure().empty()
+                              ? field_dialogue_.failure()
+                              : !game_scripts_.failure().empty()
+                                  ? game_scripts_.failure()
+                                  : "field actor contact task could not be opened";
                           source_boundary(
                               "field.world_activity.contact_open_failed");
                           return;
                       }
                       source_boundary(opened_boundary);
-                      field_contact_actor_cleanup_pending_ = true;
+                      // 0x1F146 leaves its actor active for the later
+                      // 0x1E43C request scan. The story-contact handlers have
+                      // their own 0x1E514 cleanup after their dialogue.
+                      field_contact_actor_cleanup_pending_ =
+                          contact_task != 3;
                   }});
              current.activity_flags = current_entity.activity_flags;
              candidate.activity_flags = candidate_entity.activity_flags;

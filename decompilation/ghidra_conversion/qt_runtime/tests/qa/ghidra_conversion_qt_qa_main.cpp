@@ -19758,6 +19758,17 @@ bool verify_scene30_random_pedestrian_contact_qa(
     const auto guard_action =
         field_scene.guard_world_effect_player_spawn_for_dump();
     const auto contact_image = render_qa_field(field_scene);
+    const auto& contact_page = field_scene.dialogue_panel();
+    const auto page_contains = [&contact_page](const std::string_view needle) {
+        for (std::size_t index = 0U;
+             index < contact_page.text_segment_count; ++index) {
+            if (contact_page.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
     const auto contact_bitmap =
         output / "scene-30-random-contact-actual.bmp";
     if (contact_frames == 0U || !trace || !contact_position ||
@@ -19772,12 +19783,18 @@ bool verify_scene30_random_pedestrian_contact_qa(
         guard_action !=
             WorldEffectPlayerSpawnGuardAction::existing_effect_found ||
         field_scene.world_activity_script_actor_count_for_dump() != 1U ||
-        field_scene.dialogue_open() ||
+        !field_scene.dialogue_open() || !contact_page.source_complete ||
+        contact_page.actor_name != "Mortimer Reed" ||
+        contact_page.portrait_alias !=
+            "dialogue.portraits.mortimer.reed" ||
+        contact_page.option_count != 0U || contact_page.has_more ||
+        !page_contains("Hey! There you are.") ||
+        !page_contains("Let's go. My new employer is waiting.") ||
         field_scene.field_scene_reference_for_dump() != kScene ||
         !field_scene.failure().empty() || contact_image.isNull() ||
         !contact_image.save(QString::fromStdWString(contact_bitmap.wstring()))) {
         std::cerr << "Pedestrian scenes QA: ordinary Scene-30 input did not "
-                     "contact and retain the randomized pedestrian "
+                     "show the ROM-backed random-contact page and retain its actor "
                      "(frames="
                   << contact_frames << '/' << maximum_walk_frames
                   << ", position="
@@ -19791,13 +19808,69 @@ bool verify_scene30_random_pedestrian_contact_qa(
                   << field_scene.world_effect_player_spawn_pending_for_dump()
                   << ", guard=" << static_cast<unsigned>(guard_action)
                   << ", dialogue=" << field_scene.dialogue_open()
+                  << ", speaker=" << contact_page.actor_name
+                  << ", portrait=" << contact_page.portrait_alias
+                  << ", text=" << page_contains("Hey! There you are.")
                   << ", failure='" << field_scene.failure() << "')\n";
         return false;
     }
 
-    // 0x1F146 remains unresolved. The tested runtime path therefore stops at
-    // its verified contact/request handoff; use the 0x1E45E QA seam only to
-    // check that the correct FFE183 choice survived that boundary.
+    // ROM 0x1F3C4 takes the no-options path for this prompt, waits 0x1E
+    // VBlanks, then returns on a controller event. The release frame above
+    // samples the first neutral event; 30 more neutral updates clear the
+    // host's measured closing-page lockout before the next press.
+    for (std::uint8_t frame = 0U; frame < 30U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        if (!field_scene.dialogue_open()) {
+            std::cerr << "Pedestrian scenes QA: source contact page closed "
+                         "before its 30-frame input wait\n";
+            return false;
+        }
+    }
+    field_scene.set_controller_port_byte(0x40U); // A: dismiss the page
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    std::uint16_t field_return_frames = 0U;
+    for (; field_return_frames < 120U &&
+           (field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+            field_scene.field_modal_return_blocked_inputs_for_dump() != 0U);
+         ++field_return_frames) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto closed_image = render_qa_field(field_scene);
+    const auto closed_bitmap =
+        output / "scene-30-random-contact-closed-actual.bmp";
+    if (field_scene.dialogue_open() || field_return_frames >= 120U ||
+        field_scene.field_scene_reference_for_dump() != kScene ||
+        !field_scene.field_entity_visible_for_dump() ||
+        count_playfield_lit(closed_image) < 100U ||
+        field_scene.world_activity_script_actor_count_for_dump() != 1U ||
+        !field_scene.world_effect_player_spawn_pending_for_dump() ||
+        !field_scene.failure().empty() || closed_image.isNull() ||
+        !closed_image.save(QString::fromStdWString(closed_bitmap.wstring()))) {
+        std::cerr << "Pedestrian scenes QA: A did not close the source page "
+                     "while retaining the actor for the later request scan "
+                  << "(dialogue=" << field_scene.dialogue_open()
+                  << ", locked=" << field_scene.dialogue_input_locked()
+                  << ", return_frames=" << field_return_frames
+                  << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", visible="
+                  << field_scene.field_entity_visible_for_dump()
+                  << ", lit=" << count_playfield_lit(closed_image)
+                  << ", actors="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << ", pending="
+                  << field_scene.world_effect_player_spawn_pending_for_dump()
+                  << ", failure='" << field_scene.failure() << "')\n";
+        return false;
+    }
+
+    // The later 0x1E43C request scan is gated by FFDF42. Keep this test seam
+    // solely to prove the sampled FFE183 choice survives the real contact page.
     const auto retained_choice =
         field_scene.consume_conditional_actor_selection_choice_for_dump();
     if (retained_choice != std::optional<std::uint8_t>{kChoice}) {
@@ -19813,6 +19886,7 @@ bool verify_scene30_random_pedestrian_contact_qa(
               << static_cast<unsigned>(guard_action)
               << " entry=" << entry_bitmap.string()
               << " actual=" << contact_bitmap.string()
+              << " closed=" << closed_bitmap.string()
               << " trace=" << trace_path.string() << '\n';
     return true;
 }

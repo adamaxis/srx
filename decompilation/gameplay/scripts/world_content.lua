@@ -563,6 +563,19 @@ function World.field_actor_contact_task(
         end
         return { 0, 0 }
     end
+
+    -- ROM 0xED60 leaves the generic contact on callback 0x1F146 when neither
+    -- higher-priority effect handler replaces it. A8xx's reachable random
+    -- pedestrian rows all use that callback; identify them from the extracted
+    -- candidate table instead of special-casing a scene or actor name.
+    if source_order == 0 then
+        for _, candidate in ipairs(
+            World.conditional_actor_candidates_for_scene(scene_id)) do
+            if candidate.list_offset == source_list_offset then
+                return { 3, 0 }
+            end
+        end
+    end
     return { 0, 0 }
 end
 

@@ -730,16 +730,31 @@ by the live runtime.
 
 **[C]** On contact, the candidate's `+0xB0` bit 7 is set, FFFC3C retains the
 typed FFE110 pedestrian transfer, and the player-spawn guard reports an
-existing effect rather than creating a duplicate. This matches the generic
-contact handoff at ROM `0xED60` and its retained actor marker. The correct
-FFE183 choice remains available at the test's `0x1E45E` seam. The following
-`0x1F146` callback is unresolved, so this audit does not claim that ordinary
-contact automatically reaches cleanup or completes the activity.
+existing effect rather than creating a duplicate. ROM `0xED60` installs the
+generic callback `0x1F146` for this contact. The callback sets FFFC1C bit 0,
+loads A0 from `0xFDE3E` and A5 with portrait profile `0x121FF4`, then reaches
+the text pointer `0xFE1F7`. Its next longword is the no-options sentinel;
+`0x1F3C4` waits `0x1E` VBlanks before the `0xD94` controller-event wait.
+
+Lua routes the reachable candidate row to
+`run_employee_recruitment.present_random_contact`, which presents the source
+text `Hey! There you are.` followed by `Let's go. My new employer is waiting.`
+with the registered Mortimer Reed profile and portrait. The Qt field runtime
+accepts A after the source-timed lockout and returns to the visible Scene-30
+field. It leaves the candidate record active and keeps the sampled FFE183
+choice available for the later request scan. Debug/Release QA checks the text,
+portrait, no-options state, close input, actor retention, and FFFC3C transfer.
+
+This does not establish that the callback is invoked automatically by the
+current host main loop. That loop still requires an FFDF42 request before
+calling `0x1E43C`; its later actor scan and `0x1F16A` continuation remain open.
+The QA consumes the retained choice through the `0x1E45E` test seam and does
+not claim activity completion.
 
 The Debug and Release captures
-`scene-30-random-contact-{entry,actual}.bmp` and route/waypoint TSVs have
-matching SHA-256 hashes. I inspected both internal frames; they are regression
-artifacts, not independent Genesis evidence. Scene-entry travel and physical
-contact for the other A800 candidates, the automatic `0x1F146` continuation,
-and a route-matched Genesis comparison remain open. The A800 hill remains
-partial.
+`scene-30-random-contact-{entry,actual,closed-actual}.bmp` and route/waypoint
+TSVs have matching SHA-256 hashes. I inspected the page and restored-field
+frames; they are regression artifacts, not independent Genesis evidence.
+Scene-entry travel and physical contact for the other A800 candidates, the
+automatic request/`0x1F146` continuation, and a route-matched Genesis comparison
+remain open. The A800 hill remains partial.

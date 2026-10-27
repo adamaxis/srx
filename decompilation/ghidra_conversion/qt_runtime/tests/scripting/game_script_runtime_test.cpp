@@ -1119,6 +1119,34 @@ int main() {
         scripts.conditional_actor_candidates_for_scene(20U);
     const auto first_candidate_scene =
         scripts.conditional_actor_candidates_for_scene(0x15U);
+    bool reachable_random_contact_routes_valid = true;
+    std::size_t reachable_random_contact_route_count = 0U;
+    for (std::uint16_t scene = 0x15U; scene <= 0x2BU; ++scene) {
+        const auto candidates =
+            scripts.conditional_actor_candidates_for_scene(scene);
+        if (!candidates.has_value()) {
+            reachable_random_contact_routes_valid = false;
+            break;
+        }
+        for (const auto& candidate : *candidates) {
+            // ROM 0xA800's bound-2 sample reaches choices 1 and 2 only.
+            if (candidate.choice > 2U) {
+                continue;
+            }
+            const auto route = scripts.call_integers(
+                "world_content", "field_actor_contact_task",
+                {scene, static_cast<std::int64_t>(candidate.list_offset),
+                 0, 0, 0});
+            if (!route || *route != std::vector<std::int64_t>{3, 0}) {
+                reachable_random_contact_routes_valid = false;
+                break;
+            }
+            ++reachable_random_contact_route_count;
+        }
+        if (!reachable_random_contact_routes_valid) {
+            break;
+        }
+    }
     std::size_t conditional_random_calls = 0U;
     const auto conditional_roll = [&conditional_random_calls](
                                      const std::uint16_t roll) {
@@ -1525,9 +1553,11 @@ int main() {
                     std::vector<std::int64_t>{0, 0} &&
                 random_pedestrian_contact_route.has_value() &&
                 *random_pedestrian_contact_route ==
-                    std::vector<std::int64_t>{0, 0} &&
+                    std::vector<std::int64_t>{3, 0} &&
                 conditional_candidate_table_valid &&
                 conditional_candidate_count == 69U &&
+                reachable_random_contact_routes_valid &&
+                reachable_random_contact_route_count == 46U &&
                 non_candidate_scene.has_value() &&
                 non_candidate_scene->empty() &&
                 first_candidate_scene.has_value() &&

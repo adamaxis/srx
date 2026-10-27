@@ -287,13 +287,20 @@ modal-return input release, ordinary Left/Down reaches `(0x08DA,0x0AD8)` in
 141 field frames. Contact sets `+0xB0.7`, retains FFFC3C with the typed FFE110
 transfer, and the player-spawn guard finds the existing actor without
 duplication.
-FFE183 remains pending after contact: callback `0x1F146` is unresolved, so the
-test uses the `0x1E45E` QA seam to verify and consume choice 2, not to assert an
-automatic continuation. Both BMPs and both TSV traces match between Debug and
-Release. The candidate matrix still enters scenes through QA resource reentry;
-physical travel to the other candidates, activity continuation/cleanup through
-`0x1F146`, and independent Genesis proof remain open. See the dedicated trace
-in `conditional-pedestrian-runtime-gap-2026-10-26.md`; this lifecycle remains
+ROM `0xED60` installs callback `0x1F146` for the generic contact. The callback
+sets FFFC1C bit 0 and presents text at `0xFE1F7` with portrait profile
+`0x121FF4`; its no-options branch waits `0x1E` VBlanks before accepting a
+controller event. Lua now presents that page through Mortimer Reed's registered
+speaker profile. Debug/Release QA verifies the text, portrait, A dismissal,
+restored Scene-30 field, actor retention, and FFFC3C transfer. The page and
+post-dismissal BMPs plus route/waypoint TSVs match between builds. The later
+request remains unconnected: the host main loop still needs FFDF42 before
+`0x1E43C`, and its actor scan/`0x1F16A` continuation are open. QA checks and
+consumes choice 2 at the `0x1E45E` seam without claiming automatic activity
+continuation. The candidate matrix still enters scenes through QA resource
+reentry; physical travel to the other candidates and independent Genesis proof
+remain open. See the dedicated trace in
+`conditional-pedestrian-runtime-gap-2026-10-26.md`; this lifecycle remains
 partial.
 
 Independent capture `video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_41_source_10620-10815/frame_002100.png`
