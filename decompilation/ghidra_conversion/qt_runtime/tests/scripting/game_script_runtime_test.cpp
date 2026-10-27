@@ -1722,16 +1722,55 @@ int main() {
         scripts.resolve_field_encounter(1U, 1U, 1U);
     const auto elven_mage_sequence =
         scripts.resolve_field_encounter(3U, 0U, 0U);
+    const auto scene26_security_plate =
+        scripts.resolve_field_encounter(26U, 2U, 4U);
+    const auto redmond_grenade_seller =
+        scripts.resolve_field_encounter(0U, 2U, 4U);
     if (!redmond_creature_sequence.has_value() ||
         !barrens_creature_sequence.has_value() ||
         !lone_star_sequence.has_value() ||
-        !elven_mage_sequence.has_value()) {
+        !elven_mage_sequence.has_value() ||
+        !scene26_security_plate.has_value() ||
+        !redmond_grenade_seller.has_value()) {
         std::cerr << "encounter lookup presence: redmond="
                   << redmond_creature_sequence.has_value()
                   << " barrens=" << barrens_creature_sequence.has_value()
                   << " lone_star=" << lone_star_sequence.has_value()
                   << " elven_mage=" << elven_mage_sequence.has_value()
+                  << " scene26_security_plate="
+                  << scene26_security_plate.has_value()
+                  << " redmond_grenade_seller="
+                  << redmond_grenade_seller.has_value()
                   << " detail=" << scripts.failure() << '\n';
+        return 1;
+    }
+    if (!expect(
+            scene26_security_plate->kind ==
+                    ScriptFieldEncounterOutcomeKind::dialogue_event &&
+                scene26_security_plate->event_name ==
+                    "You look down and notice you are about to step on a "
+                    "concealed security plate." &&
+                scene26_security_plate->choice_commands ==
+                    std::array<std::optional<std::uint32_t>, 3>{
+                        0xD7U, std::nullopt, std::nullopt} &&
+                scene26_security_plate->choice_dispatch_targets ==
+                    std::array<std::optional<std::uint32_t>, 3>{
+                        0x245AAU, std::nullopt, std::nullopt} &&
+                scene26_security_plate->choice_dispatch_returns ==
+                    std::array<bool, 3>{false, false, false} &&
+                redmond_grenade_seller->kind ==
+                    ScriptFieldEncounterOutcomeKind::dialogue_event &&
+                redmond_grenade_seller->choice_commands ==
+                    std::array<std::optional<std::uint32_t>, 3>{
+                        0xF1U, 0xF2U, 0x121670U} &&
+                redmond_grenade_seller->choice_dispatch_targets ==
+                    std::array<std::optional<std::uint32_t>, 3>{
+                        0x24C4CU, 0x24C96U, 0x121670U} &&
+                redmond_grenade_seller->choice_dispatch_returns ==
+                    std::array<bool, 3>{false, false, true},
+            "world encounter prompts did not preserve typed source commands "
+            "and dispatch outcomes")) {
+        std::cerr << scripts.failure() << '\n';
         return 1;
     }
     if (!expect(

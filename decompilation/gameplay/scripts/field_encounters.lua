@@ -17,6 +17,37 @@ local function content()
     return value
 end
 
+local function source_hex_word(value)
+    if value == nil or value == "" then
+        return nil, true
+    end
+    if type(value) ~= "string" then
+        return nil, false
+    end
+    local digits = value:match("^0[xX]([%da-fA-F]+)$")
+    if digits == nil then
+        return nil, false
+    end
+    local parsed = tonumber(digits, 16)
+    if not integer(parsed, 0, 0xffffffff) then
+        return nil, false
+    end
+    return parsed, true
+end
+
+local function source_dispatch_target(value)
+    if value == nil or value == "" then
+        return nil, false, true
+    end
+    if type(value) ~= "string" then
+        return nil, false, false
+    end
+    local returns_from_prompt = value:sub(1, 7) == "return:"
+    local address = returns_from_prompt and value:sub(8) or value
+    local parsed, valid = source_hex_word(address)
+    return parsed, returns_from_prompt, valid
+end
+
 local function actor_from_row(row)
     local actor = {
         source_order = row.source_order,
@@ -203,6 +234,22 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
     end
 
     if selected.outcome_kind == "dialogue_event" then
+        local choice_1_command, choice_1_command_valid =
+            source_hex_word(selected.choice_1_command)
+        local choice_2_command, choice_2_command_valid =
+            source_hex_word(selected.choice_2_command)
+        local choice_3_command, choice_3_command_valid =
+            source_hex_word(selected.choice_3_command)
+        local choice_1_target, choice_1_returns, choice_1_target_valid =
+            source_dispatch_target(selected.choice_1_dispatch_target)
+        local choice_2_target, choice_2_returns, choice_2_target_valid =
+            source_dispatch_target(selected.choice_2_dispatch_target)
+        local choice_3_target, choice_3_returns, choice_3_target_valid =
+            source_dispatch_target(selected.choice_3_dispatch_target)
+        assert(choice_1_command_valid and choice_2_command_valid and
+               choice_3_command_valid and choice_1_target_valid and
+               choice_2_target_valid and choice_3_target_valid,
+               "world activity outcome contains an invalid choice route")
         return {
             kind = "dialogue_event",
             scene = scene_id,
@@ -214,12 +261,15 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
             choice_1 = selected.choice_1,
             choice_2 = selected.choice_2,
             choice_3 = selected.choice_3,
-            choice_1_command = selected.choice_1_command,
-            choice_1_dispatch_target = selected.choice_1_dispatch_target,
-            choice_2_command = selected.choice_2_command,
-            choice_2_dispatch_target = selected.choice_2_dispatch_target,
-            choice_3_command = selected.choice_3_command,
-            choice_3_dispatch_target = selected.choice_3_dispatch_target,
+            choice_1_command = choice_1_command,
+            choice_1_dispatch_target = choice_1_target,
+            choice_1_dispatch_returns = choice_1_returns,
+            choice_2_command = choice_2_command,
+            choice_2_dispatch_target = choice_2_target,
+            choice_2_dispatch_returns = choice_2_returns,
+            choice_3_command = choice_3_command,
+            choice_3_dispatch_target = choice_3_target,
+            choice_3_dispatch_returns = choice_3_returns,
         }
     end
     if selected.outcome_kind ~= "dynamic_world_effect_sequence" then
@@ -255,6 +305,9 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
         choice_1 = "",
         choice_2 = "",
         choice_3 = "",
+        choice_1_dispatch_returns = false,
+        choice_2_dispatch_returns = false,
+        choice_3_dispatch_returns = false,
         actors = actors,
     }
 end
@@ -286,6 +339,9 @@ function Encounters.resolve_run_target_actor_group(area_id, event_id)
         choice_1 = "",
         choice_2 = "",
         choice_3 = "",
+        choice_1_dispatch_returns = false,
+        choice_2_dispatch_returns = false,
+        choice_3_dispatch_returns = false,
         actors = actors,
     }
 end
@@ -332,6 +388,9 @@ function Encounters.resolve_source_sequence(scene_id, sequence_list_offset)
         choice_1 = "",
         choice_2 = "",
         choice_3 = "",
+        choice_1_dispatch_returns = false,
+        choice_2_dispatch_returns = false,
+        choice_3_dispatch_returns = false,
         sequence_list_offset = sequence_list_offset,
         actors = actors,
     }

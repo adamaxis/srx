@@ -246,12 +246,27 @@ bool push_record(lua_State* state, const TsvDocument& document,
                  const std::vector<
                      std::pair<std::string_view, std::string_view>>& aliases,
                  const std::filesystem::path& source_path,
-                 const std::size_t row_number, std::string& failure) {
+                 const std::size_t row_number, std::string& failure,
+                 const std::vector<std::string_view>& optional_numeric_columns = {}) {
     lua_createtable(state, 0, static_cast<int>(document.columns.size()));
     const auto table_index = lua_absindex(state, -1);
     for (const auto& column : document.columns) {
         const auto value = value_at(document, row, column);
-        if (numeric_column(column, numeric_columns)) {
+        if (numeric_column(column, optional_numeric_columns)) {
+            if (value.empty() || value == "-") {
+                lua_pushnil(state);
+            } else {
+                lua_Integer number = 0;
+                if (!parse_integer(value, number)) {
+                    failure = source_path.string() + ": row " +
+                              std::to_string(row_number) + " column " + column +
+                              " is not an integer";
+                    lua_pop(state, 1);
+                    return false;
+                }
+                lua_pushinteger(state, number);
+            }
+        } else if (numeric_column(column, numeric_columns)) {
             lua_Integer number = 0;
             if (!parse_integer(value, number)) {
                 failure = source_path.string() + ": row " +
@@ -275,13 +290,14 @@ bool push_rows(lua_State* state, const TsvDocument& document,
                const std::filesystem::path& source_path,
                std::string& failure,
                const std::vector<
-                   std::pair<std::string_view, std::string_view>>& aliases = {}) {
+                   std::pair<std::string_view, std::string_view>>& aliases = {},
+               const std::vector<std::string_view>& optional_numeric_columns = {}) {
     lua_createtable(state, static_cast<int>(document.rows.size()), 0);
     const auto array_index = lua_absindex(state, -1);
     for (std::size_t index = 0; index < document.rows.size(); ++index) {
         if (!push_record(state, document, document.rows[index],
                          numeric_columns, aliases, source_path, index + 2U,
-                         failure)) {
+                         failure, optional_numeric_columns)) {
             lua_pop(state, 1);
             return false;
         }
@@ -950,10 +966,12 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
             const char* relative_path;
             const char* field;
             std::vector<std::string_view> numeric_columns;
+            std::vector<std::string_view> optional_numeric_columns;
         };
         const std::array<SourceTable, 4> source_tables{{
             {"world-activity-outcomes.tsv", "world_activity_outcomes",
-             {"scene", "context_group", "random_sum", "handler_offset"}},
+             {"scene", "context_group", "random_sum"},
+             {"handler_offset"}},
             {"entities/dynamic-world-activity-actors.tsv",
              "dynamic_world_activity_actors",
              {"scene", "context_group", "random_sum", "source_order",
@@ -1037,7 +1055,8 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
             const auto path = field_asset_directory / source_table.relative_path;
             if (!read_tsv(path, false, document, failure) ||
                 !push_rows(state, document, source_table.numeric_columns,
-                           path, failure)) {
+                           path, failure, {},
+                           source_table.optional_numeric_columns)) {
                 lua_settop(state, stack_base);
                 return false;
             }

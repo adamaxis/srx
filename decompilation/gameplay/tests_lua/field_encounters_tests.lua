@@ -113,6 +113,26 @@ end
 game = {
     modules = {
         world_content_data = {
+            world_activity_outcomes = {
+                {
+                    scene = 0,
+                    context_group = 0,
+                    random_sum = 6,
+                    outcome_kind = "dialogue_event",
+                    event_name = "grenade seller",
+                    handler_offset = 0x2112C,
+                    opening_text = "A man calls from an alley.",
+                    choice_1 = "<Attack!!>",
+                    choice_2 = "Buy the grenades.",
+                    choice_3 = "<Walk away.>",
+                    choice_1_command = "0xF1",
+                    choice_1_dispatch_target = "0x24C4C",
+                    choice_2_command = "0xF2",
+                    choice_2_dispatch_target = "0x24C96",
+                    choice_3_command = "0x121670",
+                    choice_3_dispatch_target = "return:0x121670",
+                },
+            },
             dynamic_world_activity_actors = {
                 actor_row(1),
                 actor_row(0),
@@ -159,6 +179,24 @@ eq(Encounters.trigger_attempt(context({
        probability_threshold = 5,
    })), "select_alarm_sequence",
    "active alarm selects the fixed alternate list after a successful roll")
+
+local grenade_seller = Encounters.resolve(0, 2, 4)
+eq(grenade_seller.kind, "dialogue_event",
+   "Redmond sum-6 row resolves as a dialogue event")
+eq(grenade_seller.choice_1_command, 0xF1,
+   "hex command IDs become typed numeric commands")
+eq(grenade_seller.choice_1_dispatch_target, 0x24C4C,
+   "hex dispatcher addresses become typed targets")
+eq(grenade_seller.choice_2_command, 0xF2,
+   "second choice command is retained")
+eq(grenade_seller.choice_3_command, 0x121670,
+   "long prompt return value retains its full source width")
+eq(grenade_seller.choice_3_dispatch_target, 0x121670,
+   "prompt return value is retained as its typed value")
+eq(grenade_seller.choice_3_dispatch_returns, true,
+   "return-tagged choice target retains prompt-return semantics")
+eq(grenade_seller.choice_1_dispatch_returns, false,
+   "ordinary dispatcher target remains a handler call")
 
 local alarm_sequence = Encounters.resolve_alarm_sequence(2)
 eq(alarm_sequence.kind, "dynamic_world_effect_sequence",

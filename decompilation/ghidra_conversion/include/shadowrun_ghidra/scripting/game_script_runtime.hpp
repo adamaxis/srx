@@ -1257,8 +1257,9 @@ struct ScriptFieldEncounterOutcome {
     std::uint32_t handler_offset = 0;
     std::string opening_text;
     std::array<std::string, 3> choices{};
-    std::array<std::optional<std::uint8_t>, 3> choice_commands{};
+    std::array<std::optional<std::uint32_t>, 3> choice_commands{};
     std::array<std::optional<std::uint32_t>, 3> choice_dispatch_targets{};
+    std::array<bool, 3> choice_dispatch_returns{};
     std::vector<ScriptFieldEncounterActor> actors;
 };
 

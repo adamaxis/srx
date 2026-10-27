@@ -7340,20 +7340,36 @@ GameScriptRuntime::resolve_field_encounter_impl(
     constexpr std::array<const char*, 3> target_fields{
         "choice_1_dispatch_target", "choice_2_dispatch_target",
         "choice_3_dispatch_target"};
+    constexpr std::array<const char*, 3> target_return_fields{
+        "choice_1_dispatch_returns", "choice_2_dispatch_returns",
+        "choice_3_dispatch_returns"};
     for (std::size_t index = 0U; index < outcome.choices.size(); ++index) {
         std::optional<std::uint32_t> command;
         if (!read_field_text(state, result_index, choice_fields[index],
-                             outcome.choices[index], 512U) ||
-            !read_optional_field_u32(state, result_index,
-                                     command_fields[index], 255U, command) ||
-            !read_optional_field_u32(state, result_index,
-                                     target_fields[index], 0x1FFFFFU,
-                                     outcome.choice_dispatch_targets[index])) {
-            return fail("field_encounters.resolve returned invalid choices");
+                             outcome.choices[index], 512U)) {
+            return fail(std::string("field_encounters.") + resolver_name +
+                        " returned invalid " + choice_fields[index]);
+        }
+        if (!read_optional_field_u32(state, result_index,
+                                     command_fields[index], 0xFFFFFFFFU,
+                                     command)) {
+            return fail(std::string("field_encounters.") + resolver_name +
+                        " returned invalid " + command_fields[index]);
+        }
+        if (!read_optional_field_u32(
+                state, result_index, target_fields[index], 0x1FFFFFU,
+                outcome.choice_dispatch_targets[index])) {
+            return fail(std::string("field_encounters.") + resolver_name +
+                        " returned invalid " + target_fields[index]);
+        }
+        if (!read_field_boolean(state, result_index,
+                                target_return_fields[index],
+                                outcome.choice_dispatch_returns[index])) {
+            return fail(std::string("field_encounters.") + resolver_name +
+                        " returned invalid " + target_return_fields[index]);
         }
         if (command.has_value()) {
-            outcome.choice_commands[index] =
-                static_cast<std::uint8_t>(*command);
+            outcome.choice_commands[index] = *command;
         }
     }
 
