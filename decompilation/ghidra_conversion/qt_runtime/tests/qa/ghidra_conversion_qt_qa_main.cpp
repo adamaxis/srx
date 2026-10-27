@@ -15144,7 +15144,8 @@ int run_field_elevator_physical_entry_qa(
                      "feedback did not appear on selection\n";
         return 3;
     }
-    for (std::uint8_t tick = 0U; tick < 6U; ++tick) {
+    for (std::uint8_t tick = 0U;
+         tick < kElevatorSelectorNavigationFeedbackFrameCount - 2U; ++tick) {
         tick_frame();
     }
     const auto selection_feedback_last_active =
@@ -15155,14 +15156,14 @@ int run_field_elevator_physical_entry_qa(
         field_scene.elevator_selector_navigation_feedback_frames_remaining_for_dump() !=
             1U) {
         std::cerr << "Elevator physical-entry QA: navigation feedback did not "
-                     "hold for its source eight-VBlank window\n";
+                     "hold for the source nine-VBlank interval\n";
         return 3;
     }
     tick_frame();
     if (field_scene.elevator_selector_navigation_feedback_for_dump() !=
         ElevatorSelectorNavigationFeedback::next_floor_rest) {
         std::cerr << "Elevator physical-entry QA: navigation feedback did not "
-                     "restore the source arrow state after eight VBlanks\n";
+                     "restore the source arrow state after nine VBlanks\n";
         return 3;
     }
     const auto current_one_selected_two =
@@ -15260,7 +15261,8 @@ int run_field_elevator_physical_entry_qa(
                      "third-floor label is missing\n";
         return 3;
     }
-    for (std::uint8_t tick = 0U; tick < 7U; ++tick) {
+    for (std::uint8_t tick = 0U;
+         tick < kElevatorSelectorNavigationFeedbackFrameCount - 1U; ++tick) {
         tick_frame();
     }
     if (field_scene.elevator_selector_navigation_feedback_for_dump() !=
@@ -15550,46 +15552,46 @@ int run_field_elevator_group_route_qa(
             group_scene_ids;
     };
     const std::array<RouteSourceExpectation, 20U> route_expectations{{
-        {21U, 0U, {0x3000U, 0x0600U}, 100U, 0x02E0U, 0x0300U, 0x0020U, 4U,
-         {21U, 22U, 23U, 24U, 0U}},
-        {22U, 1U, {0x3000U, 0x0600U}, 113U, 0x02E0U, 0x0300U, 0x0020U, 4U,
-         {21U, 22U, 23U, 24U, 0U}},
-        {23U, 2U, {0x3000U, 0x0600U}, 133U, 0x02E0U, 0x0300U, 0x0020U, 4U,
-         {21U, 22U, 23U, 24U, 0U}},
-        {24U, 3U, {0x3000U, 0x0600U}, 113U, 0x02E0U, 0x0300U, 0x0020U, 4U,
-         {21U, 22U, 23U, 24U, 0U}},
-        {25U, 0U, {0x3000U, 0x0600U}, 102U, 0x02E0U, 0x0300U, 0x0020U, 4U,
-         {21U, 22U, 23U, 24U, 0U}},
-        {29U, 0U, {0x0A00U, 0x0500U}, 112U, 0x0080U, 0x00A0U, 0x0020U, 3U,
-         {26U, 27U, 28U, 0U, 0U}},
-        {30U, 0U, {0x3A00U, 0x0600U}, 82U, 0x0380U, 0x03A0U, 0x0020U, 4U,
-         {30U, 31U, 32U, 33U, 0U}},
-        {31U, 1U, {0x3800U, 0x0600U}, 85U, 0x0380U, 0x03A0U, 0x0020U, 4U,
-         {30U, 31U, 32U, 33U, 0U}},
-        {32U, 2U, {0x3800U, 0x0600U}, 97U, 0x0380U, 0x03A0U, 0x0020U, 4U,
-         {30U, 31U, 32U, 33U, 0U}},
-        {33U, 3U, {0x3800U, 0x0600U}, 97U, 0x0380U, 0x03A0U, 0x0020U, 4U,
-         {30U, 31U, 32U, 33U, 0U}},
-        {34U, 0U, {0x3800U, 0x0600U}, 85U, 0x0380U, 0x03A0U, 0x0020U, 4U,
-         {30U, 31U, 32U, 33U, 0U}},
-        {40U, 0U, {0x1600U, 0x0500U}, 70U, 0x0140U, 0x0160U, 0x0020U, 5U,
-         {35U, 36U, 37U, 38U, 39U}},
-        {35U, 0U, {0x2800U, 0x1580U}, 117U, 0x0260U, 0x0280U, 0x0120U, 5U,
-         {35U, 36U, 37U, 38U, 39U}},
-        {36U, 1U, {0x2800U, 0x1580U}, 109U, 0x0260U, 0x0280U, 0x0120U, 5U,
-         {35U, 36U, 37U, 38U, 39U}},
-        {37U, 2U, {0x2800U, 0x1580U}, 109U, 0x0260U, 0x0280U, 0x0120U, 5U,
-         {35U, 36U, 37U, 38U, 39U}},
-        {38U, 3U, {0x2800U, 0x1580U}, 112U, 0x0260U, 0x0280U, 0x0120U, 5U,
-         {35U, 36U, 37U, 38U, 39U}},
-        {39U, 4U, {0x1600U, 0x0500U}, 58U, 0x0140U, 0x0160U, 0x0020U, 5U,
-         {35U, 36U, 37U, 38U, 39U}},
-        {41U, 0U, {0x0500U, 0x2300U}, 79U, 0x0020U, 0x0040U, 0x01C0U, 2U,
-         {41U, 42U, 0U, 0U, 0U}},
-        {42U, 1U, {0x0500U, 0x2300U}, 76U, 0x0020U, 0x0040U, 0x01E0U, 2U,
-         {41U, 42U, 0U, 0U, 0U}},
-        {43U, 0U, {0x0500U, 0x2300U}, 76U, 0x0020U, 0x0040U, 0x01E0U, 2U,
-         {41U, 42U, 0U, 0U, 0U}},
+        {21U, 0U, {0x3000U, 0x0600U}, 100U, 0x02E0U, 0x0300U, 0x0020U, 5U,
+         {21U, 22U, 23U, 24U, 25U, 0U}},
+        {22U, 1U, {0x3000U, 0x0600U}, 113U, 0x02E0U, 0x0300U, 0x0020U, 5U,
+         {21U, 22U, 23U, 24U, 25U, 0U}},
+        {23U, 2U, {0x3000U, 0x0600U}, 133U, 0x02E0U, 0x0300U, 0x0020U, 5U,
+         {21U, 22U, 23U, 24U, 25U, 0U}},
+        {24U, 3U, {0x3000U, 0x0600U}, 113U, 0x02E0U, 0x0300U, 0x0020U, 5U,
+         {21U, 22U, 23U, 24U, 25U, 0U}},
+        {25U, 4U, {0x3000U, 0x0600U}, 102U, 0x02E0U, 0x0300U, 0x0020U, 5U,
+         {21U, 22U, 23U, 24U, 25U, 0U}},
+        {29U, 3U, {0x0A00U, 0x0500U}, 112U, 0x0080U, 0x00A0U, 0x0020U, 4U,
+         {26U, 27U, 28U, 29U, 0U, 0U}},
+        {30U, 0U, {0x3A00U, 0x0600U}, 82U, 0x0380U, 0x03A0U, 0x0020U, 5U,
+         {30U, 31U, 32U, 33U, 34U, 0U}},
+        {31U, 1U, {0x3800U, 0x0600U}, 85U, 0x0380U, 0x03A0U, 0x0020U, 5U,
+         {30U, 31U, 32U, 33U, 34U, 0U}},
+        {32U, 2U, {0x3800U, 0x0600U}, 97U, 0x0380U, 0x03A0U, 0x0020U, 5U,
+         {30U, 31U, 32U, 33U, 34U, 0U}},
+        {33U, 3U, {0x3800U, 0x0600U}, 97U, 0x0380U, 0x03A0U, 0x0020U, 5U,
+         {30U, 31U, 32U, 33U, 34U, 0U}},
+        {34U, 4U, {0x3800U, 0x0600U}, 85U, 0x0380U, 0x03A0U, 0x0020U, 5U,
+         {30U, 31U, 32U, 33U, 34U, 0U}},
+        {40U, 5U, {0x1600U, 0x0500U}, 70U, 0x0140U, 0x0160U, 0x0020U, 6U,
+         {35U, 36U, 37U, 38U, 39U, 40U}},
+        {35U, 0U, {0x2800U, 0x1580U}, 117U, 0x0260U, 0x0280U, 0x0120U, 6U,
+         {35U, 36U, 37U, 38U, 39U, 40U}},
+        {36U, 1U, {0x2800U, 0x1580U}, 109U, 0x0260U, 0x0280U, 0x0120U, 6U,
+         {35U, 36U, 37U, 38U, 39U, 40U}},
+        {37U, 2U, {0x2800U, 0x1580U}, 109U, 0x0260U, 0x0280U, 0x0120U, 6U,
+         {35U, 36U, 37U, 38U, 39U, 40U}},
+        {38U, 3U, {0x2800U, 0x1580U}, 112U, 0x0260U, 0x0280U, 0x0120U, 6U,
+         {35U, 36U, 37U, 38U, 39U, 40U}},
+        {39U, 4U, {0x1600U, 0x0500U}, 58U, 0x0140U, 0x0160U, 0x0020U, 6U,
+         {35U, 36U, 37U, 38U, 39U, 40U}},
+        {41U, 0U, {0x0500U, 0x2300U}, 79U, 0x0020U, 0x0040U, 0x01C0U, 3U,
+         {41U, 42U, 43U, 0U, 0U, 0U}},
+        {42U, 1U, {0x0500U, 0x2300U}, 76U, 0x0020U, 0x0040U, 0x01E0U, 3U,
+         {41U, 42U, 43U, 0U, 0U, 0U}},
+        {43U, 2U, {0x0500U, 0x2300U}, 76U, 0x0020U, 0x0040U, 0x01E0U, 3U,
+         {41U, 42U, 43U, 0U, 0U, 0U}},
     }};
     const auto route_expectation = std::find_if(
         route_expectations.begin(), route_expectations.end(),
@@ -15628,9 +15630,50 @@ int run_field_elevator_group_route_qa(
         rectangles[expected.first_trigger_record + 1U].bottom !=
             expected.trigger_y + 0x001FU ||
         rectangles[expected.first_trigger_record + 1U].value != 0x00DDU) {
+        const auto first_record_matches =
+            rectangles.size() > expected.first_trigger_record;
+        const auto second_record_matches =
+            rectangles.size() > expected.first_trigger_record + 1U;
         std::cerr << "Elevator group route QA: scene " << scene_id
                   << " descriptor spawn, group, or paired event-29 collision "
-                     "records do not match the extracted source data\n";
+                     "records do not match the extracted source data"
+                  << " (live_scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", spawn=" << metadata.initial_field_records[0U].x
+                  << ',' << metadata.initial_field_records[0U].y
+                  << ", expected_spawn=" << expected.spawn.x << ','
+                  << expected.spawn.y << ", group_count="
+                  << static_cast<unsigned>(source_group.count)
+                  << ", expected_group_count="
+                  << static_cast<unsigned>(expected.group_count)
+                  << ", group=";
+        for (std::size_t group_index = 0U;
+             group_index < source_group.scene_ids.size(); ++group_index) {
+            std::cerr << (group_index == 0U ? "" : ",")
+                      << source_group.scene_ids[group_index];
+        }
+        std::cerr << ", first_record=" << expected.first_trigger_record;
+        if (first_record_matches) {
+            const auto& record = rectangles[expected.first_trigger_record];
+            std::cerr << " [" << record.left << ',' << record.top << ".."
+                      << record.right << ',' << record.bottom << ",0x"
+                      << std::hex << static_cast<unsigned>(record.value)
+                      << std::dec << ']';
+        } else {
+            std::cerr << " [missing]";
+        }
+        if (second_record_matches) {
+            const auto& record =
+                rectangles[expected.first_trigger_record + 1U];
+            std::cerr << " second=[" << record.left << ',' << record.top
+                      << ".." << record.right << ',' << record.bottom
+                      << ",0x" << std::hex
+                      << static_cast<unsigned>(record.value) << std::dec
+                      << ']';
+        } else {
+            std::cerr << " second=[missing]";
+        }
+        std::cerr << ")\n";
         return 3;
     }
     const auto scene_label = std::to_string(scene_id);
@@ -15950,7 +15993,9 @@ int run_field_elevator_group_route_qa(
             if (!save(checkpoint_prefix + "-feedback")) {
                 return false;
             }
-            for (std::uint8_t tick = 0U; tick < 6U; ++tick) {
+            for (std::uint8_t tick = 0U;
+                 tick < kElevatorSelectorNavigationFeedbackFrameCount - 2U;
+                 ++tick) {
                 if (!advance()) {
                     return false;
                 }
@@ -15966,7 +16011,7 @@ int run_field_elevator_group_route_qa(
                     selected_floor_index ||
                 !save(checkpoint_prefix + "-selected")) {
                 std::cerr << "Elevator group route QA: " << direction_label
-                          << " feedback did not retire after eight VBlanks\n";
+                          << " feedback did not retire after nine VBlanks\n";
                 return false;
             }
         }
@@ -18769,6 +18814,920 @@ int run_field_pedestrian_scenes_qa(
                   << " frames<= " << kMaximumFieldFrames
                   << " actual=" << bitmap.string() << '\n';
     }
+
+    // ROM 0xA800 gives the active FFE180 story list precedence and selects
+    // 0xA8AE only at active effect index 4. This route has one extracted
+    // pedestrian descriptor and consumes actor slot 3 before defaults.
+    constexpr std::uint16_t kStoryContactScene = 34U;
+    field_scene.set_field_entity_world_position_for_dump(0x1000U, 0x1000U);
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        true, false, 4U, 4U);
+    if (!field_scene.reenter_field_scene_for_dump(kStoryContactScene)) {
+        std::cerr << "Pedestrian scenes QA: story-contact scene re-entry failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    const auto story_contact_position =
+        field_scene.world_activity_script_actor_position_for_dump(0U);
+    const auto story_contact_profile =
+        field_scene.world_activity_script_actor_profile_for_dump(0U);
+    const auto story_contact_slot =
+        field_scene.world_activity_script_actor_record_slot_for_dump(0U);
+    if (field_scene.field_scene_reference_for_dump() != kStoryContactScene ||
+        field_scene.world_activity_script_actor_count_for_dump() != 1U ||
+        !story_contact_position.has_value() ||
+        story_contact_position->x != 0x1D00U ||
+        story_contact_position->y != 0x4100U ||
+        story_contact_profile !=
+            std::optional<std::string>{"pedestrian_k0b_none00"} ||
+        story_contact_slot !=
+            std::optional<FieldWorldActorSlot>{FieldWorldActorSlot::slot_3}) {
+        std::cerr << "Pedestrian scenes QA: A8AE story actor mismatch count="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << " position="
+                  << (story_contact_position.has_value()
+                          ? std::to_string(story_contact_position->x) + "," +
+                                std::to_string(story_contact_position->y)
+                          : std::string("missing"))
+                  << " profile="
+                  << (story_contact_profile.has_value()
+                          ? *story_contact_profile
+                          : std::string("missing"))
+                  << " slot="
+                  << (story_contact_slot.has_value()
+                          ? std::to_string(static_cast<unsigned>(
+                                *story_contact_slot))
+                          : std::string("missing"))
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_field_camera_world_position_for_dump(
+        static_cast<std::uint16_t>(story_contact_position->x - 0x0800U),
+        static_cast<std::uint16_t>(story_contact_position->y - 0x0800U));
+    if (field_scene.visible_default_actor_count_for_dump() == 0U) {
+        std::cerr << "Pedestrian scenes QA: A8AE story actor is not drawable\n";
+        return 3;
+    }
+    const auto story_contact_image = render_qa_field(field_scene);
+    const auto story_contact_bitmap =
+        output / "scene-34-story-contact-actual.bmp";
+    if (story_contact_image.isNull() ||
+        !story_contact_image.save(QString::fromStdWString(
+            story_contact_bitmap.wstring()))) {
+        std::cerr << "Pedestrian scenes QA: could not save "
+                  << story_contact_bitmap.string() << '\n';
+        return 3;
+    }
+    std::cout << "field_pedestrian_story_contact_qa=passed scene=34 "
+              << "list=0xA8AE index=4 slot=3 position=0x1D00,0x4100 "
+              << "actual=" << story_contact_bitmap.string() << '\n';
+    return 0;
+}
+
+int run_field_mitsuhama_after_hours_entry_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Mitsuhama entry QA: could not clear prior captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Mitsuhama entry QA: could not create capture folder: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::uint16_t kSourceScene = 3U;
+    constexpr std::size_t kMitsuhamaRecord = 95U;
+    constexpr std::uint16_t kMitsuhamaCollision = 0x00C3U;
+    constexpr std::uint16_t kStartX = 0x2D00U;
+    constexpr std::uint16_t kStartY = 0x0C00U;
+    const auto& rectangles = field_scene.state()
+        .field_scene_buffers.source_metadata.terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != kSourceScene ||
+        rectangles.size() <= kMitsuhamaRecord ||
+        rectangles[kMitsuhamaRecord].left != 0x02C0U ||
+        rectangles[kMitsuhamaRecord].right != 0x02DFU ||
+        rectangles[kMitsuhamaRecord].top != 0x00A0U ||
+        rectangles[kMitsuhamaRecord].bottom != 0x00BFU ||
+        rectangles[kMitsuhamaRecord].value != kMitsuhamaCollision ||
+        !field_scene.set_story_flag_for_dump(2U, true) ||
+        !field_scene.set_story_flag_for_dump(3U, false)) {
+        std::cerr << "Mitsuhama entry QA: Scene-3 checkpoint, record 95, or "
+                     "FFFC1E gate did not match the ROM\n";
+        return 3;
+    }
+
+    // Seed one of the source's three alternative leads: FFFC30 bit 12.
+    // The Lua route matrix independently covers the two FFFC38 tip bits.
+    field_scene.seed_field_mode_flags_for_qa(1U << 12U);
+    field_scene.seed_notebook_tip_flags_for_qa({0U, 0U, 0U});
+    field_scene.set_field_exit_alternate_result_for_dump(0);
+    field_scene.set_field_entity_world_position_for_dump(kStartX, kStartY);
+    field_scene.set_field_camera_world_position_for_dump(
+        static_cast<std::uint16_t>(kStartX - 0x0800U),
+        static_cast<std::uint16_t>(kStartY - 0x0800U));
+
+    const auto save = [&field_scene, &output](const std::string_view name) {
+        const auto image = render_qa_field(field_scene);
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+            image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()));
+    };
+    if (!save("spawn")) {
+        std::cerr << "Mitsuhama entry QA: spawn capture failed\n";
+        return 3;
+    }
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up to record 95
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_scene_reference_for_dump() != kSourceScene) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto expected_collision = static_cast<std::uint16_t>(
+        0xFF00U | kMitsuhamaCollision);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() !=
+            expected_collision ||
+        field_scene.field_projected_code_for_dump() != expected_collision ||
+        field_scene.field_mode_event_code_for_dump() != 3U ||
+        !field_scene.field_interaction_transition_active_for_dump() ||
+        !save("doorway-contact")) {
+        const auto position = field_scene.field_entity_world_position();
+        std::cerr << "Mitsuhama entry QA: ordinary Up did not contact record "
+                     "95/event 3 (ticks=" << movement_ticks
+                  << ", position=" << position.x << ',' << position.y
+                  << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 120U && !field_scene.dialogue_open() &&
+         field_scene.field_scene_reference_for_dump() == kSourceScene;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto& page = field_scene.dialogue_panel();
+    const auto contains = [&page](const std::string_view needle) {
+        for (std::size_t index = 0U; index < page.text_segment_count; ++index) {
+            if (page.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool page_matches =
+        field_scene.dialogue_open() && page.source_complete &&
+        page.option_count == 1U &&
+        page.options[0U].source_label.find("MORE") !=
+            std::string_view::npos &&
+        contains("You wait until after hours") &&
+        contains("Hopefully Aragorn is still here") &&
+        page.portrait_alias ==
+            "dialogue.portraits.mitsuhama.after_hours_entry" &&
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string("field.entry.location_dialogue_opened")) == 1;
+    if (!page_matches || !save("actual")) {
+        std::cerr << "Mitsuhama entry QA: record 95 did not open the "
+                     "source-gated F5B00 page with profile 12209C (dialogue="
+                  << field_scene.dialogue_open() << ", text="
+                  << (contains("You wait until after hours") &&
+                      contains("Hopefully Aragorn is still here"))
+                  << ", portrait=" << page.portrait_alias
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U); // A: resume Scene-3 route
+    for (std::uint16_t settle = 0U;
+         settle < 180U &&
+         (field_scene.dialogue_open() ||
+          field_scene.field_scene_reference_for_dump() == kSourceScene);
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto return_frames =
+        field_scene.field_modal_return_transition_frames_for_dump();
+    const bool transition_finished =
+        finish_field_modal_return_transition(field_scene);
+    const auto scene30_image = render_qa_field(field_scene);
+    const auto& activity = field_scene.world_activity_state_for_dump();
+    const auto live_active_effect_index =
+        field_scene.active_effect_index_for_dump();
+    const auto live_selected_effect_index =
+        field_scene.selected_effect_index_for_dump();
+    const auto live_story_actor_count =
+        field_scene.world_activity_script_actor_count_for_dump();
+    const auto live_story_actor_position =
+        field_scene.world_activity_script_actor_position_for_dump(0U);
+    const auto live_story_actor_profile =
+        field_scene.world_activity_script_actor_profile_for_dump(0U);
+    const auto live_story_actor_slot =
+        field_scene.world_activity_script_actor_record_slot_for_dump(0U);
+    const auto entry_position = field_scene.field_entity_world_position();
+    const auto& entry_records = field_scene.state()
+        .field_scene_buffers.source_metadata.initial_field_records;
+    const auto entry_camera_x = static_cast<std::uint16_t>(
+        field_scene.state().field_scene_buffers.camera_x);
+    const auto entry_camera_y = static_cast<std::uint16_t>(
+        field_scene.state().field_scene_buffers.camera_y);
+    const bool resource_entry_runner_placement_matches =
+        entry_records.size() >= 3U &&
+        entry_records[0U].x == 0x1F00U &&
+        entry_records[0U].y == 0x4900U &&
+        entry_records[1U].x == 0x1F00U &&
+        entry_records[1U].y == 0x4B00U &&
+        entry_records[2U].x == 0x1F00U &&
+        entry_records[2U].y == 0x4D00U;
+    const bool route_resumed =
+        !field_scene.dialogue_open() &&
+        field_scene.field_scene_reference_for_dump() == 30U &&
+        field_scene.field_runtime_state_for_dump().field_mode == 30U &&
+        activity.resource_random_index_bound == 4U &&
+        activity.selected_resource_random_index == 4U &&
+        field_scene.world_effect_active_for_dump() &&
+        !field_scene.pending_world_effect_for_dump() &&
+        live_active_effect_index == std::optional<std::uint16_t>{0U} &&
+        live_selected_effect_index == std::optional<std::uint16_t>{4U} &&
+        live_story_actor_count == 0U &&
+        resource_entry_runner_placement_matches &&
+        return_frames == 59U && transition_finished &&
+        count_playfield_lit(scene30_image) >= 100U &&
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string("field.entry.area_event_scene_entered")) == 1;
+    const bool scene30_capture_saved = scene30_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        scene30_image.save(QString::fromStdWString(
+            (output / "scene-30-entry.bmp").wstring()));
+    if (!route_resumed || !scene30_capture_saved) {
+        std::cerr << "Mitsuhama entry QA: accepting the page did not resume "
+                     "event-table row 3 to Scene 30 (dialogue="
+                  << field_scene.dialogue_open() << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", mode="
+                  << field_scene.field_runtime_state_for_dump().field_mode
+                  << ", return_frames="
+                  << static_cast<unsigned>(return_frames)
+                  << ", transition_finished=" << transition_finished
+                  << ", resource_bound="
+                  << activity.resource_random_index_bound
+                  << ", resource_index="
+                  << activity.selected_resource_random_index
+                  << ", world_effect_active="
+                  << field_scene.world_effect_active_for_dump()
+                  << ", pending_world_effect="
+                  << field_scene.pending_world_effect_for_dump()
+                  << ", active_effect_index="
+                  << (live_active_effect_index.has_value()
+                          ? std::to_string(*live_active_effect_index)
+                          : std::string("none"))
+                  << ", selected_effect_index="
+                  << (live_selected_effect_index.has_value()
+                          ? std::to_string(*live_selected_effect_index)
+                          : std::string("none"))
+                  << ", story_actors=" << live_story_actor_count
+                  << ", resource_entry_runner_placement="
+                  << resource_entry_runner_placement_matches
+                  << ", camera=" << entry_camera_x << ',' << entry_camera_y
+                  << ", lit=" << count_playfield_lit(scene30_image)
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "rom_entry\trom_record\tevent\tgate\tmovement_ticks\t"
+             "dialogue_portrait\tdestination_scene\tresource_bound\t"
+             "resource_index\truntime_entry_x\truntime_entry_y\t"
+             "entry_placement_rom_address\truntime_camera_x\t"
+             "runtime_camera_y\trunner_1_x\trunner_1_y\trunner_2_x\t"
+             "runner_2_y\t"
+             "world_effect_active\tpending_world_effect\t"
+             "active_effect_index\tselected_effect_index\t"
+             "story_actor_count\tstory_actor_profile\tstory_actor_slot\t"
+             "story_actor_x\tstory_actor_y\n"
+          << "0x53BCC\t95\t3\tFFFC1E.bit2=1,bit3=0;FFFC30.bit12=1;"
+             "FFF0D5=0\t"
+          << movement_ticks
+          << "\tdialogue.portraits.mitsuhama.after_hours_entry\t30\t"
+          << activity.resource_random_index_bound << '\t'
+          << activity.selected_resource_random_index << '\t'
+          << entry_position.x << '\t' << entry_position.y << '\t'
+          << "0x1DAFE0\t" << entry_camera_x << '\t' << entry_camera_y
+          << '\t' << (entry_records.size() >= 2U
+                            ? std::to_string(entry_records[1U].x)
+                            : std::string("missing"))
+          << '\t' << (entry_records.size() >= 2U
+                            ? std::to_string(entry_records[1U].y)
+                            : std::string("missing"))
+          << '\t' << (entry_records.size() >= 3U
+                            ? std::to_string(entry_records[2U].x)
+                            : std::string("missing"))
+          << '\t' << (entry_records.size() >= 3U
+                            ? std::to_string(entry_records[2U].y)
+                            : std::string("missing"))
+          << '\t'
+          << field_scene.world_effect_active_for_dump() << '\t'
+          << field_scene.pending_world_effect_for_dump() << '\t'
+          << (live_active_effect_index.has_value()
+                  ? std::to_string(*live_active_effect_index)
+                  : std::string("none"))
+          << '\t'
+          << (live_selected_effect_index.has_value()
+                  ? std::to_string(*live_selected_effect_index)
+                  : std::string("none"))
+          << '\t'
+          << live_story_actor_count << '\t'
+          << live_story_actor_profile.value_or("none") << '\t'
+          << (live_story_actor_slot.has_value()
+                  ? std::to_string(static_cast<unsigned>(
+                        *live_story_actor_slot))
+                  : std::string("none"))
+          << '\t'
+          << (live_story_actor_position.has_value()
+                  ? std::to_string(live_story_actor_position->x)
+                  : std::string("none"))
+          << '\t'
+          << (live_story_actor_position.has_value()
+                  ? std::to_string(live_story_actor_position->y)
+                  : std::string("none"))
+          << '\n';
+    if (!trace) return 3;
+
+    // ROM 0x1DB032 is the Scene-30 collision stream. Its record 89 (0x81)
+    // is the generic event cell immediately north of the ordinary resource
+    // entry; records 82-83 are the event-29 lift trigger, while records 86-87
+    // are the source-activity return cells south of the entry corridor. Keep
+    // this route on the open row-33 lane so it reaches the lift without
+    // crossing either return cell.
+    constexpr std::size_t kScene30LiftTriggerFirstRecord = 82U;
+    constexpr std::size_t kScene30SourceReturnFirstRecord = 86U;
+    constexpr std::size_t kScene30GenericEventRecord = 89U;
+    const auto& scene30_rectangles = field_scene.state()
+        .field_scene_buffers.source_metadata.terrain_collision_rectangles;
+    if (scene30_rectangles.size() <= kScene30GenericEventRecord ||
+        scene30_rectangles[kScene30LiftTriggerFirstRecord].left != 0x0380U ||
+        scene30_rectangles[kScene30LiftTriggerFirstRecord].right != 0x039FU ||
+        scene30_rectangles[kScene30LiftTriggerFirstRecord].top != 0x0020U ||
+        scene30_rectangles[kScene30LiftTriggerFirstRecord].bottom != 0x003FU ||
+        scene30_rectangles[kScene30LiftTriggerFirstRecord].value != 0x00DDU ||
+        scene30_rectangles[kScene30LiftTriggerFirstRecord + 1U].left !=
+            0x03A0U ||
+        scene30_rectangles[kScene30LiftTriggerFirstRecord + 1U].right !=
+            0x03BFU ||
+        scene30_rectangles[kScene30LiftTriggerFirstRecord + 1U].value !=
+            0x00DDU ||
+        scene30_rectangles[kScene30SourceReturnFirstRecord].left != 0x01E0U ||
+        scene30_rectangles[kScene30SourceReturnFirstRecord].top != 0x04E0U ||
+        scene30_rectangles[kScene30SourceReturnFirstRecord].value != 0x0080U ||
+        scene30_rectangles[kScene30GenericEventRecord].left != 0x01E0U ||
+        scene30_rectangles[kScene30GenericEventRecord].top != 0x0460U ||
+        scene30_rectangles[kScene30GenericEventRecord].value != 0x0081U ||
+        entry_position.x != 0x1F00U || entry_position.y != 0x4900U) {
+        std::cerr << "Mitsuhama entry QA: ordinary Scene-30 lift corridor "
+                     "records or ROM placement changed unexpectedly\n";
+        return 3;
+    }
+
+    const auto walk_output = output / "ordinary-entry-to-lift";
+    std::filesystem::create_directories(walk_output, output_error);
+    if (output_error) {
+        std::cerr << "Mitsuhama entry QA: could not create ordinary-entry "
+                     "walk output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::ofstream walk_trace(walk_output / "route.tsv", std::ios::trunc);
+    if (!walk_trace) return 3;
+    walk_trace << "stage\tinput\tupdates\tstart_x\tstart_y\tend_x\tend_y\t"
+                  "terrain_collision\tmode_event\tselector_open\n";
+    const auto no_modal_screen = [&field_scene] {
+        return !field_scene.dialogue_open() &&
+               !field_scene.field_interaction_open() &&
+               !field_scene.field_mode_text_open_for_dump() &&
+               !field_scene.shop_menu_open();
+    };
+    const auto walk_until = [&field_scene, &no_modal_screen](
+                                const std::uint8_t input,
+                                const std::uint32_t max_updates,
+                                const auto& reached) {
+        std::uint32_t updates = 0U;
+        while (updates < max_updates && !reached()) {
+            field_scene.set_controller_nibble(input);
+            field_scene.advance_frame();
+            ++updates;
+            if (field_scene.field_scene_reference_for_dump() != 30U ||
+                field_scene.elevator_selector_open_for_dump() ||
+                !no_modal_screen()) {
+                break;
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        return updates;
+    };
+    const auto record_walk_segment = [&field_scene, &walk_trace](
+                                         const std::string_view stage,
+                                         const std::string_view input,
+                                         const std::uint32_t updates,
+                                         const SceneRunnerPosition start) {
+        const auto end = field_scene.field_entity_world_position();
+        walk_trace << stage << '\t' << input << '\t' << updates << '\t'
+                   << start.x << '\t' << start.y << '\t' << end.x << '\t'
+                   << end.y << '\t'
+                   << field_scene.field_terrain_collision_code_for_dump()
+                   << '\t'
+                   << static_cast<unsigned>(
+                          field_scene.field_mode_event_code_for_dump())
+                   << '\t' << field_scene.elevator_selector_open_for_dump()
+                   << '\n';
+        return static_cast<bool>(walk_trace);
+    };
+    // ROM 0xBDF2's cardinal movement table has a minimum step of 9 raw
+    // position units per field update. The bound includes 256 updates for
+    // heading changes, collision dispatch, and the source event-29 open.
+    const auto source_walk_bound = [](const std::uint32_t raw_distance) {
+        return (raw_distance + 8U) / 9U + 256U;
+    };
+    auto walk_position = field_scene.field_entity_world_position();
+    const auto corridor_north_updates = walk_until(
+        0x01U,
+        source_walk_bound(static_cast<std::uint32_t>(walk_position.y - 0x4300U)),
+        [&field_scene] {
+            return field_scene.field_entity_world_position().y <= 0x4300U;
+        });
+    if (field_scene.field_scene_reference_for_dump() != 30U ||
+        !no_modal_screen() || field_scene.elevator_selector_open_for_dump() ||
+        field_scene.field_entity_world_position().x != 0x1F00U ||
+        field_scene.field_entity_world_position().y > 0x4300U ||
+        !record_walk_segment("north-to-row-33", "up", corridor_north_updates,
+                             walk_position) ||
+        !save("ordinary-entry-row-33")) {
+        const auto position = field_scene.field_entity_world_position();
+        std::cerr << "Mitsuhama entry QA: ordinary Up did not reach the "
+                     "source row-33 corridor (updates="
+                  << corridor_north_updates << ", position=" << position.x
+                  << ',' << position.y << ", terrain=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << std::dec << ", scene="
+                  << field_scene.field_scene_reference_for_dump() << ")\n";
+        return 3;
+    }
+
+    walk_position = field_scene.field_entity_world_position();
+    const auto corridor_east_updates = walk_until(
+        0x08U,
+        source_walk_bound(static_cast<std::uint32_t>(0x3900U -
+                                                      walk_position.x)),
+        [&field_scene] {
+            const auto position = field_scene.field_entity_world_position();
+            return position.x >= 0x3900U && position.x < 0x3A00U;
+        });
+    const auto corridor_east_position = field_scene.field_entity_world_position();
+    if (field_scene.field_scene_reference_for_dump() != 30U ||
+        !no_modal_screen() || field_scene.elevator_selector_open_for_dump() ||
+        corridor_east_position.x < 0x3900U ||
+        corridor_east_position.x >= 0x3A00U ||
+        (corridor_east_position.y >> 4U) < 0x0420U ||
+        (corridor_east_position.y >> 4U) > 0x043FU ||
+        !record_walk_segment("east-on-row-33", "right",
+                             corridor_east_updates, walk_position) ||
+        !save("ordinary-entry-elevator-lane")) {
+        std::cerr << "Mitsuhama entry QA: ordinary Right did not align the "
+                     "row-33 elevator lane (updates="
+                  << corridor_east_updates << ", position="
+                  << corridor_east_position.x << ','
+                  << corridor_east_position.y << ")\n";
+        return 3;
+    }
+
+    walk_position = corridor_east_position;
+    const auto lift_approach_updates = walk_until(
+        0x01U,
+        source_walk_bound(static_cast<std::uint32_t>(walk_position.y -
+                                                      0x0200U)),
+        [&field_scene] {
+            return field_scene.elevator_selector_open_for_dump() ||
+                   field_scene.field_scene_reference_for_dump() != 30U;
+        });
+    const auto lift_transition =
+        field_scene.last_field_movement_transition_for_dump();
+    const auto lift_contact_image = render_qa_field(field_scene);
+    const auto lift_contact_bitmap = walk_output / "lift-selector-actual.bmp";
+    const bool lift_contact_image_saved = lift_contact_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        lift_contact_image.save(QString::fromStdWString(
+            lift_contact_bitmap.wstring()));
+    const bool lift_route_reached =
+        lift_approach_updates != 0U &&
+        field_scene.field_scene_reference_for_dump() == 30U &&
+        field_scene.elevator_selector_open_for_dump() && no_modal_screen() &&
+        lift_transition.event_code == FieldCollisionEventCode::event_29 &&
+        lift_transition.continuation ==
+            MovementModeTransitionContinuation::event_29_world_activity &&
+        lift_transition.kind ==
+            EntityMovementModeTransitionResultKind::world_activity_started &&
+        // The row-35 0x81 tile published mode event 1. Lua deliberately does
+        // not publish event 29 into FFFBF9; 0xB7B8 consumes it through the
+        // typed movement transition instead.
+        field_scene.field_mode_event_code_for_dump() == 1U &&
+        field_scene.elevator_selector_current_floor_for_dump() == 0U &&
+        field_scene.elevator_selector_selected_floor_for_dump() == 0U &&
+        field_scene.world_effect_active_for_dump() &&
+        !field_scene.pending_world_effect_for_dump() &&
+        field_scene.active_effect_index_for_dump() ==
+            std::optional<std::uint16_t>{0U} &&
+        field_scene.selected_effect_index_for_dump() ==
+            std::optional<std::uint16_t>{4U} &&
+        field_scene.world_activity_script_actor_count_for_dump() == 0U &&
+        lift_contact_image_saved &&
+        record_walk_segment("event-29-lift-contact", "up",
+                            lift_approach_updates, walk_position);
+    if (!lift_route_reached) {
+        const auto position = field_scene.field_entity_world_position();
+        std::cerr << "Mitsuhama entry QA: source row-33 route did not open "
+                     "Scene-30 event 29 (updates="
+                  << lift_approach_updates << ", position=" << position.x
+                  << ',' << position.y << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", selector="
+                  << field_scene.elevator_selector_open_for_dump()
+                  << ", event="
+                  << static_cast<unsigned>(lift_transition.event_code)
+                  << ", continuation="
+                  << static_cast<unsigned>(lift_transition.continuation)
+                  << ", terrain=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << std::dec << ", failure=" << field_scene.failure()
+                  << ")\n";
+        return 3;
+    }
+
+    // The selector starts at current floor 0. ROM 0x58DE0 changes only the
+    // highlighted FFF0CA index; A runs the 0x58FF8 lift and its caller loads
+    // the scene named by FFF0C8 through 0x16A8E. Exercise that state path with
+    // ordinary input so the 0xA800 actor gate sees the resulting live index.
+    for (std::uint8_t selected_floor = 1U; selected_floor <= 4U;
+         ++selected_floor) {
+        field_scene.set_controller_nibble(0x01U);
+        field_scene.advance_frame();
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        for (std::uint8_t tick = 0U;
+             tick < kElevatorSelectorNavigationFeedbackFrameCount - 2U;
+             ++tick) {
+            field_scene.advance_frame();
+        }
+        const bool selection_feedback_matches =
+            field_scene.elevator_selector_navigation_feedback_frames_remaining_for_dump() ==
+                1U &&
+            field_scene.elevator_selector_current_floor_for_dump() == 0U &&
+            field_scene.elevator_selector_selected_floor_for_dump() ==
+                selected_floor;
+        field_scene.advance_frame();
+        const auto expected_resting_feedback =
+            ElevatorSelectorNavigationFeedback::next_floor_rest;
+        if (!selection_feedback_matches ||
+            field_scene.elevator_selector_navigation_feedback_for_dump() !=
+                expected_resting_feedback ||
+            field_scene.elevator_selector_current_floor_for_dump() != 0U ||
+            field_scene.elevator_selector_selected_floor_for_dump() !=
+                selected_floor) {
+            std::cerr << "Mitsuhama entry QA: ordinary Up did not select "
+                         "Scene-30 elevator index "
+                      << static_cast<unsigned>(selected_floor) << '\n';
+            return 3;
+        }
+    }
+    if (!save("scene-30-lift-selected-index-4")) return 3;
+
+    constexpr std::uint16_t kElevatorLiftFramesPerFloor = 17U * 8U;
+    constexpr std::uint16_t kElevatorTravelFrameLimit =
+        4U * kElevatorLiftFramesPerFloor + 1U;
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    const bool lift_animation_started =
+        field_scene.elevator_selector_animating_for_dump() &&
+        field_scene.elevator_selector_animation_frame_for_dump() == 16U;
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    std::uint16_t lift_animation_updates = 0U;
+    while (lift_animation_updates < kElevatorTravelFrameLimit &&
+           field_scene.elevator_selector_animating_for_dump()) {
+        field_scene.advance_frame();
+        ++lift_animation_updates;
+    }
+    const auto active_floor_after_lift =
+        field_scene.active_effect_index_for_dump();
+    if (!lift_animation_started ||
+        lift_animation_updates >= kElevatorTravelFrameLimit ||
+        field_scene.elevator_selector_animating_for_dump() ||
+        field_scene.elevator_selector_current_floor_for_dump() != 4U ||
+        field_scene.elevator_selector_selected_floor_for_dump() != 4U ||
+        active_floor_after_lift != std::optional<std::uint16_t>{4U} ||
+        field_scene.selected_effect_index_for_dump() !=
+            std::optional<std::uint16_t>{4U}) {
+        std::cerr << "Mitsuhama entry QA: the source-timed lift did not advance "
+                     "the active effect index to four (updates="
+                  << lift_animation_updates << ", current="
+                  << static_cast<unsigned>(
+                         field_scene.elevator_selector_current_floor_for_dump())
+                  << ", selected="
+                  << static_cast<unsigned>(
+                         field_scene.elevator_selector_selected_floor_for_dump())
+                  << ", active="
+                  << (active_floor_after_lift.has_value()
+                          ? std::to_string(*active_floor_after_lift)
+                          : std::string("none"))
+                  << ")\n";
+        return 3;
+    }
+
+    field_scene.set_controller_port_byte(0x80U);
+    field_scene.advance_frame();
+    const bool scene_transition_started =
+        field_scene.elevator_scene_transition_phase_for_dump() ==
+            ElevatorSceneTransitionPhase::fading_to_black;
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    std::uint16_t scene_transition_updates = 0U;
+    while (scene_transition_updates < 500U &&
+           (field_scene.field_scene_reference_for_dump() != 34U ||
+            field_scene.elevator_scene_transition_phase_for_dump() !=
+                ElevatorSceneTransitionPhase::idle)) {
+        field_scene.advance_frame();
+        ++scene_transition_updates;
+    }
+
+    const auto scene34_position = field_scene.field_entity_world_position();
+    const auto& scene34_entry_records = field_scene.state()
+        .field_scene_buffers.source_metadata.initial_field_records;
+    const auto story_actor_count =
+        field_scene.world_activity_script_actor_count_for_dump();
+    const auto story_actor_position =
+        field_scene.world_activity_script_actor_position_for_dump(0U);
+    const auto story_actor_profile =
+        field_scene.world_activity_script_actor_profile_for_dump(0U);
+    const auto story_actor_slot =
+        field_scene.world_activity_script_actor_record_slot_for_dump(0U);
+    const auto scene34_image = render_qa_field(field_scene);
+    const auto scene34_image_path =
+        walk_output / "scene-34-active-index-4-actual.bmp";
+    const bool scene34_image_saved = scene34_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        scene34_image.save(QString::fromStdWString(
+            scene34_image_path.wstring()));
+    const bool scene34_story_actor_matches =
+        story_actor_count == 1U && story_actor_position.has_value() &&
+        story_actor_position->x == 0x1D00U &&
+        story_actor_position->y == 0x4100U &&
+        story_actor_profile ==
+            std::optional<std::string>{"pedestrian_k0b_none00"} &&
+        story_actor_slot ==
+            std::optional<FieldWorldActorSlot>{FieldWorldActorSlot::slot_3};
+    const bool scene34_route_reached =
+        scene_transition_started && scene_transition_updates < 500U &&
+        field_scene.field_scene_reference_for_dump() == 34U &&
+        field_scene.elevator_scene_transition_phase_for_dump() ==
+            ElevatorSceneTransitionPhase::idle &&
+        !field_scene.elevator_selector_open_for_dump() && no_modal_screen() &&
+        scene34_entry_records.size() != 0U &&
+        scene34_position.x == scene34_entry_records[0U].x &&
+        scene34_position.y == scene34_entry_records[0U].y &&
+        scene34_position.x == 0x3800U && scene34_position.y == 0x0600U &&
+        field_scene.world_effect_active_for_dump() &&
+        !field_scene.pending_world_effect_for_dump() &&
+        field_scene.active_effect_index_for_dump() ==
+            std::optional<std::uint16_t>{4U} &&
+        field_scene.selected_effect_index_for_dump() ==
+            std::optional<std::uint16_t>{4U} && scene34_story_actor_matches &&
+        scene34_image_saved &&
+        record_walk_segment("scene-34-active-index-4", "up-up-up-up/A/Start",
+                            lift_animation_updates + scene_transition_updates,
+                            lift_contact_image.size() == QSize(kSceneWidth,
+                                                              kSceneHeight)
+                                ? corridor_east_position
+                                : SceneRunnerPosition{});
+    if (!scene34_route_reached) {
+        std::cerr << "Mitsuhama entry QA: index-4 transition did not load "
+                     "the A8AE story actor in Scene 34 (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", transition_updates=" << scene_transition_updates
+                  << ", entry=" << scene34_position.x << ','
+                  << scene34_position.y << ", expected_actors=1 actual_actors="
+                  << story_actor_count << ", actor_position="
+                  << (story_actor_position.has_value()
+                          ? std::to_string(story_actor_position->x) + "," +
+                                std::to_string(story_actor_position->y)
+                          : std::string("none"))
+                  << ", actor_profile="
+                  << story_actor_profile.value_or("none")
+                  << ", active_index="
+                  << field_scene.active_effect_index_for_dump().value_or(
+                         0xFFFFU)
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    // ROM 0xECCC services A8AE when its +0x9E bit 3 actor overlaps the live
+    // player record; A8AE is reached through Scene-34 maglock/event cells on
+    // the ordinary map, so this QA seam starts at the extracted contact
+    // coordinates and does not claim the physical corridor is traversable.
+    field_scene.set_field_entity_world_position_for_dump(0x1D00U, 0x4100U);
+    field_scene.set_field_camera_world_position_for_dump(0x1500U, 0x3900U);
+    if (!save("scene-34-aragorn-contact-approach")) {
+        std::cerr << "Mitsuhama entry QA: Aragorn approach capture failed\n";
+        return 3;
+    }
+    std::uint16_t contact_updates = 0U;
+    for (; contact_updates < 180U && !field_scene.dialogue_open();
+         ++contact_updates) {
+        field_scene.advance_frame();
+    }
+    const auto page_contains = [&field_scene](const std::string_view needle) {
+        const auto& current_page = field_scene.dialogue_panel();
+        for (std::size_t index = 0U;
+             index < current_page.text_segment_count; ++index) {
+            if (current_page.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto contact_actor_flags =
+        field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
+    const auto contact_notebook_flags =
+        field_scene.notebook_story_flags_for_dump();
+    const auto contact_mode_flags = field_scene.field_mode_flags_for_dump();
+    const auto& contact_page = field_scene.dialogue_panel();
+    const bool contact_opened =
+        contact_updates < 180U && field_scene.dialogue_open() &&
+        contact_page.source_complete && contact_page.option_count == 1U &&
+        contact_page.options[0U].source_label.find("MORE") !=
+            std::string_view::npos &&
+        page_contains("Walking into the room") &&
+        contact_page.portrait_alias ==
+            "dialogue.portraits.aragorn.mitsuhama" &&
+        !field_scene.world_effect_active_for_dump() &&
+        !field_scene.pending_world_effect_for_dump() &&
+        (field_scene.field_world_fact_flags_for_dump() & (1U << 3U)) != 0U &&
+        (contact_mode_flags & 0x3C00U) == 0x2000U &&
+        contact_notebook_flags.has_value() &&
+        (*contact_notebook_flags & 0x30U) == 0U &&
+        contact_actor_flags.has_value() &&
+        (*contact_actor_flags & 0x80U) != 0U &&
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string(
+                       "field.world_activity.aragorn_contact_opened")) == 1;
+    if (!contact_opened || !save("scene-34-aragorn-contact-actual")) {
+        std::cerr << "Mitsuhama entry QA: A8AE contact did not consume FFE180, "
+                     "apply the recovered FFFC state, and open F4BBC "
+                     "(updates=" << contact_updates << ", dialogue="
+                  << field_scene.dialogue_open() << ", text="
+                  << page_contains("Walking into the room")
+                  << ", portrait=" << contact_page.portrait_alias
+                  << ", world_effect="
+                  << field_scene.world_effect_active_for_dump()
+                  << ", story_flags=0x" << std::hex
+                  << field_scene.field_world_fact_flags_for_dump()
+                  << ", mode_flags=0x" << contact_mode_flags
+                  << ", notebook_flags=0x"
+                  << contact_notebook_flags.value_or(0U) << std::dec
+                  << ", actor_flags=0x"
+                  << static_cast<unsigned>(contact_actor_flags.value_or(0U))
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U);
+    for (std::uint16_t settle = 0U;
+         settle < 120U && !page_contains("get you outta' here"); ++settle) {
+        field_scene.advance_frame();
+    }
+    const bool reply_page_matches = field_scene.dialogue_open() &&
+        page_contains("get you outta' here") &&
+        field_scene.dialogue_panel().portrait_alias ==
+            "dialogue.portraits.aragorn.mitsuhama";
+    if (!reply_page_matches || !save("scene-34-aragorn-contact-reply")) {
+        std::cerr << "Mitsuhama entry QA: the second F4BBC text record did not "
+                     "follow ordinary A input (dialogue="
+                  << field_scene.dialogue_open() << ", text="
+                  << page_contains("get you outta' here") << ", failure="
+                  << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U);
+    for (std::uint16_t settle = 0U;
+         settle < 120U && !page_contains("runs from the room"); ++settle) {
+        field_scene.advance_frame();
+    }
+    const bool outcome_page_matches = field_scene.dialogue_open() &&
+        page_contains("runs from the room") &&
+        field_scene.dialogue_panel().portrait_alias ==
+            "dialogue.portraits.aragorn.mitsuhama" &&
+        (field_scene.field_world_fact_flags_for_dump() & (1U << 3U)) != 0U;
+    if (!outcome_page_matches ||
+        !save("scene-34-aragorn-contact-outcome")) {
+        std::cerr << "Mitsuhama entry QA: the final F4BBC text record or "
+                     "dialogue command 0x18 did not resolve (dialogue="
+                  << field_scene.dialogue_open() << ", text="
+                  << page_contains("runs from the room") << ", failure="
+                  << field_scene.failure() << ")\n";
+        return 3;
+    }
+    const auto deactivated_records_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.actor.record_deactivated"));
+    const auto modal_returns_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.modal_return.transition_completed"));
+    tap_qa_controller_button(field_scene, 0x40U);
+    for (std::uint8_t settle = 0U;
+         settle < 8U && field_scene.dialogue_open(); ++settle) {
+        field_scene.advance_frame();
+    }
+    for (std::uint8_t service = 0U;
+         service < 8U &&
+         field_scene.world_activity_script_actor_count_for_dump() != 0U;
+         ++service) {
+        field_scene.advance_frame();
+    }
+    const auto retired_actor_flags =
+        field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
+    const auto deactivated_records_after = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.actor.record_deactivated"));
+    if (field_scene.dialogue_open() ||
+        field_scene.world_effect_active_for_dump() ||
+        field_scene.world_activity_script_actor_count_for_dump() != 0U ||
+        retired_actor_flags.has_value() ||
+        deactivated_records_after != deactivated_records_before + 1) {
+        std::cerr << "Mitsuhama entry QA: final A did not close the contact "
+                     "dialogue and retire its +0xB0 bit-7 actor through "
+                     "the 0x1DED8/0x1E514 cleanup (dialogue="
+                  << field_scene.dialogue_open() << ", world_effect="
+                  << field_scene.world_effect_active_for_dump()
+                  << ", actors="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << ", actor_flags_present="
+                  << retired_actor_flags.has_value()
+                  << ", actor_behavior_flags="
+                  << (retired_actor_flags.has_value()
+                          ? static_cast<unsigned>(*retired_actor_flags)
+                          : 0x100U)
+                  << ", deactivations=" << deactivated_records_before << "->"
+                  << deactivated_records_after << ", failure="
+                  << field_scene.failure() << ")\n";
+        return 3;
+    }
+    for (std::uint16_t frame = 0U;
+         frame < 120U &&
+         std::count(source_boundaries.begin(), source_boundaries.end(),
+                    std::string("field.modal_return.transition_completed")) ==
+             modal_returns_before;
+         ++frame) {
+        field_scene.advance_frame();
+    }
+    if (std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string("field.modal_return.transition_completed")) !=
+        modal_returns_before + 1) {
+        std::cerr << "Mitsuhama entry QA: modal return did not complete after "
+                     "the contact actor was retired\n";
+        return 3;
+    }
+    if (!save("scene-34-aragorn-contact-closed")) {
+        std::cerr << "Mitsuhama entry QA: post-contact departure capture failed\n";
+        return 3;
+    }
+
+    std::cout << "field_mitsuhama_after_hours_entry_qa=passed scene=3 "
+                 "record=95 event=3 destination=30 ordinary_walk=event29 "
+                 "lift_index=4 destination=34 story_actor=A8AE "
+                 "contact=0xECCC dialogue=0xF4BBC "
+                 "artifacts="
+              << output.string() << '\n';
     return 0;
 }
 
@@ -29599,6 +30558,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_pedestrian_scenes_qa_path;
         std::optional<std::filesystem::path>
+            field_mitsuhama_after_hours_entry_qa_path;
+        std::optional<std::filesystem::path>
             field_scene2_motel_street_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
         std::optional<std::filesystem::path> field_hotel_qa_path;
@@ -30476,6 +31437,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_pedestrian_scenes_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-mitsuhama-after-hours-entry-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_mitsuhama_after_hours_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -31680,6 +32648,7 @@ int main(int argc, char** argv) {
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_pedestrians_qa_path.has_value() ||
                 field_pedestrian_scenes_qa_path.has_value() ||
+                field_mitsuhama_after_hours_entry_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||
                 field_movement_qa_path.has_value() ||
                 field_sinsearach_gate_choice_permutation_qa_path.has_value() ||
@@ -31726,6 +32695,8 @@ int main(int argc, char** argv) {
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 1U)
                     : field_scene2_pedestrians_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 2U)
+                    : field_mitsuhama_after_hours_entry_qa_path.has_value()
+                    ? field_scene.bootstrap_for_scene_dump(smoke_state, 3U)
                     : field_alarm_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(
                           smoke_state, static_cast<std::uint16_t>(
@@ -31812,6 +32783,11 @@ int main(int argc, char** argv) {
             // entry cues during the 31 bootstrap ticks are checked by the
             // scene-actor route and must not masquerade as input-driven audio.
             field_audio_events.clear();
+            if (field_mitsuhama_after_hours_entry_qa_path.has_value()) {
+                return run_field_mitsuhama_after_hours_entry_qa(
+                    field_scene, *field_mitsuhama_after_hours_entry_qa_path,
+                    field_source_boundaries);
+            }
             if (field_matrix_traversal_entry_qa_path.has_value()) {
                 const auto output = *field_matrix_traversal_entry_qa_path;
                 std::filesystem::create_directories(output);
@@ -35837,9 +36813,24 @@ int main(int argc, char** argv) {
                         spec->matrix_node, spec->adjacent_x,
                         spec->adjacent_y);
                 }
+                std::optional<std::uint8_t> initial_group_route_floor;
+                if ((*field_elevator_nonmember_entry_scene == 25U &&
+                     field_elevator_scene25_group_roundtrip_qa) ||
+                    (*field_elevator_nonmember_entry_scene == 34U &&
+                     field_elevator_scene34_group_roundtrip_qa) ||
+                    (*field_elevator_nonmember_entry_scene == 40U &&
+                     field_elevator_scene40_group_roundtrip_qa) ||
+                    *field_elevator_nonmember_entry_scene == 43U) {
+                    // Start each chained route at member 1. The endpoint
+                    // descriptor now restores its true current floor, so the
+                    // default destination would land on member 0 and leave
+                    // the following physical member route out of sequence.
+                    initial_group_route_floor = 1U;
+                }
                 auto route_status = run_scene_route(
                     *field_elevator_nonmember_entry_scene,
-                    *field_elevator_nonmember_entry_qa_path);
+                    *field_elevator_nonmember_entry_qa_path,
+                    initial_group_route_floor);
                 if (route_status != 0) {
                     return route_status;
                 }
@@ -47380,10 +48371,91 @@ int main(int argc, char** argv) {
                     return profile_failure(
                         "the command-overview font asset was not loaded");
                 }
+                const QImage magic_force_font(QString::fromStdWString(
+                    (asset_root / "menu" / "field" /
+                     "magic-font-palette-0.bmp")
+                        .wstring()));
+                if (magic_force_font.isNull()) {
+                    return profile_failure(
+                        "the Magic Force font asset was not loaded");
+                }
+                const auto magic_force_value_pixels_match =
+                    [&magic_force_font](const QImage& scene,
+                                        const std::uint8_t force) {
+                        const auto text = std::to_string(force);
+                        auto cursor_x = 216;
+                        constexpr int kCursorY = 104;
+                        for (const unsigned char code : text) {
+                            if (code < 0x20U || code > 0x7EU) {
+                                return false;
+                            }
+                            const auto glyph =
+                                static_cast<int>(code - 0x20U);
+                            const auto source_x = (glyph % 16) * 8;
+                            const auto source_y = (glyph / 16) * 8;
+                            if (source_x + 8 > magic_force_font.width() ||
+                                source_y + 8 > magic_force_font.height() ||
+                                cursor_x + 8 > scene.width() ||
+                                kCursorY + 8 > scene.height()) {
+                                return false;
+                            }
+                            for (int y = 0; y < 8; ++y) {
+                                for (int x = 0; x < 8; ++x) {
+                                    const auto expected =
+                                        magic_force_font.pixelColor(
+                                            source_x + x, source_y + y);
+                                    if (expected.alpha() == 0) {
+                                        continue;
+                                    }
+                                    const auto actual = scene.pixelColor(
+                                        cursor_x + x, kCursorY + y);
+                                    if (actual.red() != expected.red() ||
+                                        actual.green() != expected.green() ||
+                                        actual.blue() != expected.blue()) {
+                                        return false;
+                                    }
+                                }
+                            }
+                            cursor_x += 8;
+                        }
+                        return true;
+                    };
+                const QImage mana_storm_damage_bar(QString::fromStdWString(
+                    (asset_root / "menu" / "field" / "damage-bar-2.bmp")
+                        .wstring()));
+                if (mana_storm_damage_bar.isNull()) {
+                    return profile_failure(
+                        "the source Mana Storm Damage bar asset was not loaded");
+                }
+                const auto mana_storm_damage_presentation_matches =
+                    [&menu_font, &mana_storm_damage_bar](
+                        const QImage& scene,
+                        const EquipmentCombatBarResult& bars) {
+                        const auto& effect = bars.special_action;
+                        if (!effect.residual_calculated ||
+                            effect.magic_spell_missing ||
+                            effect.effect_written !=
+                                (effect.residual_effect > 0)) {
+                            return false;
+                        }
+                        if (effect.residual_effect <= 0) {
+                            return source_menu_caption_matches(
+                                scene, menu_font, 168, 80, "None");
+                        }
+                        const auto width = mana_storm_damage_bar.width();
+                        const auto height = mana_storm_damage_bar.height();
+                        return width > 0 && height > 0 &&
+                               168 + width <= scene.width() &&
+                               80 + height <= scene.height() &&
+                               scene.copy(168, 80, width, height)
+                                       .convertToFormat(QImage::Format_RGB32) ==
+                                   mana_storm_damage_bar.convertToFormat(
+                                       QImage::Format_RGB32);
+                    };
                 const auto region_matches_bar_asset =
                     [&asset_root](const QImage& scene,
                                   const EquipmentCombatBarResult& bars) {
-                        if (bars.attack_bar > 22U || bars.defense_bar > 22U) {
+                        if (bars.attack_bar > 24U || bars.defense_bar > 24U) {
                             return false;
                         }
                         const auto matches = [&scene](
@@ -47402,11 +48474,15 @@ int main(int argc, char** argv) {
                                    asset.convertToFormat(QImage::Format_RGB32);
                         };
                         const auto menu_root = asset_root / "menu" / "field";
-                        return matches(menu_root /
-                                           ("attack-bar-" +
-                                            std::to_string(bars.attack_bar) +
-                                            ".bmp"),
-                                       144, 104) &&
+                        const auto attack_path = bars.attack_bar >= 23U
+                            ? menu_root /
+                                  ("defense-bar-" +
+                                   std::to_string(bars.attack_bar - 22U) +
+                                   ".bmp")
+                            : menu_root /
+                                  ("attack-bar-" +
+                                   std::to_string(bars.attack_bar) + ".bmp");
+                        return matches(attack_path, 144, 104) &&
                                matches(menu_root /
                                            ("defense-bar-" +
                                             std::to_string(bars.defense_bar) +
@@ -49333,6 +50409,465 @@ int main(int argc, char** argv) {
                         ++armor_profile_cases;
                     }
                 }
+                const auto pre_upper_range_record =
+                    field_scene.active_runner_record();
+                const auto pre_upper_range_field = render_qa_field(field_scene);
+                auto& upper_range_runner = field_scene.active_runner_record();
+                upper_range_runner.attributes[0U] = 6U; // Human Body ceiling.
+                upper_range_runner.attributes[1U] = 6U; // Quickness ceiling.
+                upper_range_runner.attributes[4U] = 6U; // Intelligence ceiling.
+                upper_range_runner.attributes[5U] = 6U; // Willpower ceiling.
+                upper_range_runner.skills[1U] = 12U;
+                upper_range_runner.skills[2U] = 12U;
+                upper_range_runner.skills[3U] = 12U;
+                upper_range_runner.skills[4U] = 12U;
+                upper_range_runner.inventory_item_codes[0U] = 0x28U;
+                upper_range_runner.inventory_phase_bytes[0U] = 4U;
+                upper_range_runner.inventory_item_codes[1U] = 2U;
+                upper_range_runner.inventory_phase_bytes[1U] = 0U;
+                upper_range_runner.equipped_inventory_slot = 1;
+                upper_range_runner.equipped_item_code = 2U;
+                upper_range_runner.posture = 4U;
+                if (!field_scene.open_command_overview_for_dump() ||
+                    !move_to_combat_page()) {
+                    field_scene.active_runner_record() =
+                        pre_upper_range_record;
+                    return profile_failure(
+                        "the upper Attack profile could not enter the combat page");
+                }
+                const auto upper_range_bars =
+                    field_scene.command_overview_combat_bars();
+                const auto upper_range_scene = render_qa_field(field_scene);
+                const auto upper_range_frame =
+                    output_directory / "upper-range-attack-24-human.bmp";
+                if (upper_range_bars.command_average != 13U ||
+                    upper_range_bars.attack_value != 24U ||
+                    upper_range_bars.attack_bar != 23U ||
+                    upper_range_bars.defense_bar > 22U ||
+                    !region_matches_bar_asset(upper_range_scene,
+                                              upper_range_bars) ||
+                    !upper_range_scene.save(QString::fromStdWString(
+                        upper_range_frame.wstring()))) {
+                    press(0x80U);
+                    field_scene.active_runner_record() =
+                        pre_upper_range_record;
+                    return profile_failure(
+                        "Attack 24 did not render the source Defense-1 row at index 23");
+                }
+                press(0x80U);
+                field_scene.active_runner_record() = pre_upper_range_record;
+                if (field_scene.command_overview_open() ||
+                    render_qa_field(field_scene) != pre_upper_range_field) {
+                    return profile_failure(
+                        "the upper-range combat-page visit left stale field pixels");
+                }
+
+                const auto pre_max_defense_record =
+                    field_scene.active_runner_record();
+                const auto pre_max_defense_field = render_qa_field(field_scene);
+                LiveRunnerRecord troll_source_record{};
+                const auto troll_source_offset = 0x72D1AU;
+                std::copy_n(
+                    profile_rom_bytes.begin() +
+                        static_cast<std::ptrdiff_t>(troll_source_offset),
+                    troll_source_record.bytes.size(),
+                    troll_source_record.bytes.begin());
+                const auto troll_source =
+                    read_runner_record_fields(troll_source_record);
+                if (troll_source.species_index != 4U ||
+                    troll_source.archetype_index != 2U ||
+                    troll_source.attributes[0U] != 7U ||
+                    troll_source.cyberware_essence_tens() != 6U ||
+                    troll_source.cyberware_essence_ones() != 0U ||
+                    std::any_of(
+                        troll_source.inventory_item_codes.begin() + 4,
+                        troll_source.inventory_item_codes.end(),
+                        [](const std::uint8_t item) { return item != 0U; })) {
+                    return profile_failure(
+                        "Troll Samurai ROM template no longer supports the source-backed upper Defense state");
+                }
+                auto& max_defense_runner = field_scene.active_runner_record();
+                // Troll Samurai template 0x72D1A has four open item slots and
+                // 60 Essence. The ROM race caps at 0xC22A6 permit Body 11,
+                // Quickness 5, Intelligence 4, and Willpower 5. The item and
+                // tier-3 cyberware values are seeded as an acquired state;
+                // their no-class-gate acquisition paths are checked in ROM.
+                max_defense_runner = troll_source;
+                max_defense_runner.attributes[0U] = 11U;
+                max_defense_runner.attributes[1U] = 5U;
+                max_defense_runner.attributes[4U] = 4U;
+                max_defense_runner.attributes[5U] = 5U;
+                max_defense_runner.inventory_item_codes[4U] = 2U;
+                max_defense_runner.inventory_phase_bytes[4U] = 0U;
+                max_defense_runner.inventory_item_codes[5U] = 0x28U;
+                max_defense_runner.inventory_phase_bytes[5U] = 4U;
+                max_defense_runner.equipped_inventory_slot = 4;
+                max_defense_runner.equipped_item_code = 2U;
+                max_defense_runner.cyberware_flags = 1U << 11U;
+                max_defense_runner.flags = 0U;
+                max_defense_runner.posture = 0U;
+                if (!field_scene.open_command_overview_for_dump() ||
+                    !move_to_combat_page()) {
+                    field_scene.active_runner_record() =
+                        pre_max_defense_record;
+                    return profile_failure(
+                        "the Troll high-Defense profile could not enter the combat page");
+                }
+                const auto max_defense_bars =
+                    field_scene.command_overview_combat_bars();
+                const auto max_defense_scene = render_qa_field(field_scene);
+                const auto max_defense_frame =
+                    output_directory / "upper-range-defense-25-troll.bmp";
+                if (max_defense_bars.command_average != 11U ||
+                    max_defense_bars.defense_value != 25U ||
+                    max_defense_bars.defense_bar != 24U ||
+                    !region_matches_bar_asset(max_defense_scene,
+                                              max_defense_bars) ||
+                    !max_defense_scene.save(QString::fromStdWString(
+                        max_defense_frame.wstring()))) {
+                    press(0x80U);
+                    field_scene.active_runner_record() =
+                        pre_max_defense_record;
+                    return profile_failure(
+                        "Troll Defense 25 did not render source row 24 from 0xCF880");
+                }
+                press(0x80U);
+                field_scene.active_runner_record() = pre_max_defense_record;
+                if (field_scene.command_overview_open() ||
+                    render_qa_field(field_scene) != pre_max_defense_field) {
+                    return profile_failure(
+                        "the Troll high-Defense visit left stale field pixels");
+                }
+
+                const auto pre_max_spell_record =
+                    field_scene.active_runner_record();
+                const auto pre_max_spell_field = render_qa_field(field_scene);
+                LiveRunnerRecord bear_source_record{};
+                constexpr std::size_t kBearShamanRecordOffset = 0x7301AU;
+                std::copy_n(
+                    profile_rom_bytes.begin() +
+                        static_cast<std::ptrdiff_t>(
+                            kBearShamanRecordOffset),
+                    bear_source_record.bytes.size(),
+                    bear_source_record.bytes.begin());
+                const auto bear_source =
+                    read_runner_record_fields(bear_source_record);
+                const auto* mana_storm_detail = find_us_magic_spell(9U);
+                if (bear_source.species_index != 3U ||
+                    bear_source.archetype_index != 1U ||
+                    bear_source.magic_table_index != 2U ||
+                    bear_source.auxiliary[0U] != 6U ||
+                    bear_source.inventory_item_codes[7U] != 0x2BU ||
+                    mana_storm_detail == nullptr ||
+                    mana_storm_detail->availability_byte != 2) {
+                    return profile_failure(
+                        "Orc Shaman template 0x7301A, Bear Totem, or Mana Storm D4EA0 +0x25 row no longer anchors the source maximum spell state");
+                }
+                auto& max_spell_runner =
+                    field_scene.active_runner_record();
+                max_spell_runner = bear_source;
+                max_spell_runner.skills[0U] = 12U; // +0x80 Sorcery.
+                max_spell_runner.inventory_item_codes[5U] =
+                    0x22U; // +0x66: Mana Storm Spell Focus.
+                max_spell_runner.inventory_phase_bytes[5U] =
+                    4U; // +0x6E: phase 4.
+                max_spell_runner.inventory_item_codes[6U] =
+                    0x18U; // +0x66: Power Focus.
+                max_spell_runner.inventory_phase_bytes[6U] =
+                    2U; // +0x6E: phase 2.
+                if (!field_scene.open_command_overview_for_dump() ||
+                    !field_scene.seek_command_overview_page(5U)) {
+                    field_scene.active_runner_record() =
+                        pre_max_spell_record;
+                    return profile_failure(
+                        "the Orc Shaman profile could not open the Magic command tab");
+                }
+                press(0x40U); // A opens the source spell page.
+                if (!field_scene.magic_spell_panel_open()) {
+                    field_scene.active_runner_record() =
+                        pre_max_spell_record;
+                    return profile_failure(
+                        "the Orc Shaman source profile did not enter its spell table");
+                }
+                press(0x08U); // Right selects Mana Storm, table row 2 entry 1.
+                const auto selected_max_spell =
+                    field_scene.magic_selected_spell();
+                if (!selected_max_spell.has_value() ||
+                    selected_max_spell->spell_code != 9U ||
+                    field_scene.magic_maximum_force() != 4U) {
+                    field_scene.active_runner_record() =
+                        pre_max_spell_record;
+                    return profile_failure(
+                        "the physical spell cursor did not select Mana Storm with source Force cap 4");
+                }
+                press(0x40U); // A enters Force selection at its source maximum.
+                if (!field_scene.magic_force_selection_open() ||
+                    field_scene.magic_current_force() != 4U ||
+                    field_scene.magic_maximum_force() != 4U) {
+                    field_scene.active_runner_record() =
+                        pre_max_spell_record;
+                    return profile_failure(
+                        "Mana Storm Force selection did not retain source maximum 4");
+                }
+                const auto max_force_panel = render_qa_field(field_scene);
+                const auto max_force_panel_path = output_directory /
+                    "higher-mode-force-selection-4-orc-shaman-mana-storm.bmp";
+                const auto max_force_counter_matches =
+                    magic_force_value_pixels_match(max_force_panel, 4U);
+                const auto max_force_hud_matches =
+                    field_hud_chrome_survives(max_force_panel, asset_root);
+                const auto max_force_panel_saved =
+                    max_force_panel.save(QString::fromStdWString(
+                        max_force_panel_path.wstring()));
+                if (!max_force_counter_matches || !max_force_hud_matches ||
+                    !max_force_panel_saved) {
+                    field_scene.active_runner_record() =
+                        pre_max_spell_record;
+                    return profile_failure(
+                        "Mana Storm Force 4 render check failed: counter=" +
+                        std::to_string(max_force_counter_matches) +
+                        " hud=" + std::to_string(max_force_hud_matches) +
+                        " saved=" + std::to_string(max_force_panel_saved));
+                }
+                press(0x02U); // Down opens the posture selector.
+                if (!field_scene.magic_posture_selection_open()) {
+                    field_scene.active_runner_record() =
+                        pre_max_spell_record;
+                    return profile_failure(
+                        "Mana Storm Force selection did not open the posture selector");
+                }
+                std::size_t posture_input_count = 0U;
+                while (field_scene.active_runner_record().posture < 4U &&
+                       posture_input_count < 4U) {
+                    press(0x08U); // Right raises posture one source step.
+                    ++posture_input_count;
+                }
+                if (field_scene.active_runner_record().posture != 4U ||
+                    !field_scene.magic_posture_selection_open()) {
+                    field_scene.active_runner_record() =
+                        pre_max_spell_record;
+                    return profile_failure(
+                        "physical posture input did not reach Full Offense");
+                }
+                press(0x40U); // A completes the source spell action.
+                if (!field_scene.magic_spell_panel_open() ||
+                    field_scene.active_runner_record()
+                            .equipped_inventory_slot != -1 ||
+                    field_scene.active_runner_record().equipped_item_code !=
+                        10U ||
+                    field_scene.active_runner_record().magic_force != 4U ||
+                    field_scene.active_runner_record().posture != 4U) {
+                    field_scene.active_runner_record() =
+                        pre_max_spell_record;
+                    return profile_failure(
+                        "Mana Storm completion did not publish the negative slot, spell code, force, and posture fields");
+                }
+                press(0x80U); // Start returns to command page 6.
+                if (field_scene.magic_spell_panel_open() ||
+                    !field_scene.command_overview_open() ||
+                    field_scene.command_overview_primary_page() != 6U) {
+                    field_scene.active_runner_record() =
+                        pre_max_spell_record;
+                    return profile_failure(
+                        "the completed Mana Storm action did not return to command page 6");
+                }
+                settle_qa_menu_blank(field_scene);
+                if (!move_to_combat_page()) {
+                    field_scene.active_runner_record() =
+                        pre_max_spell_record;
+                    return profile_failure(
+                        "the completed Mana Storm action did not reach the combat-bar page");
+                }
+                const auto max_spell_bars =
+                    field_scene.command_overview_combat_bars();
+                const auto max_spell_scene = render_qa_field(field_scene);
+                const auto max_spell_frame = output_directory /
+                    "higher-mode-special-attack-14-orc-shaman-bear-totem.bmp";
+                if (!max_spell_bars.attack_written ||
+                    max_spell_bars.source_data_missing ||
+                    !max_spell_bars.special_action.residual_calculated ||
+                    max_spell_bars.attack_value != 14U ||
+                    max_spell_bars.attack_bar != 13U ||
+                    field_scene.menu_display_blank_active_for_dump() ||
+                    !field_command_shell_survives(max_spell_scene,
+                                                  asset_root) ||
+                    !field_hud_chrome_survives(max_spell_scene, asset_root) ||
+                    !source_menu_caption_matches(
+                        max_spell_scene, menu_font, 128, 64, "Mana Storm") ||
+                    !source_menu_caption_matches(
+                        max_spell_scene, menu_font, 112, 80, "Damage") ||
+                    !source_menu_caption_matches(
+                        max_spell_scene, menu_font, 112, 88, "Power") ||
+                    !source_menu_caption_matches(
+                        max_spell_scene, menu_font, 168, 88, "Low") ||
+                    !mana_storm_damage_presentation_matches(
+                        max_spell_scene, max_spell_bars) ||
+                    !region_matches_bar_asset(max_spell_scene,
+                                              max_spell_bars) ||
+                    !max_spell_scene.save(QString::fromStdWString(
+                        max_spell_frame.wstring()))) {
+                    press(0x80U);
+                    field_scene.active_runner_record() =
+                        pre_max_spell_record;
+                    return profile_failure(
+                        "Orc Shaman Mana Storm Attack 14 did not render source row 13 in the command page");
+                }
+                press(0x80U);
+                field_scene.active_runner_record() = pre_max_spell_record;
+                if (field_scene.command_overview_open() ||
+                    render_qa_field(field_scene) != pre_max_spell_field) {
+                    return profile_failure(
+                        "the maximum higher-mode spell visit left stale field pixels");
+                }
+
+                // ROM 0x100A8 clamps the physical Force selector to 1..max.
+                // ROM 0x1303C..0x13042 reads the selected spell's +0x9D;
+                // 0x13094..0x130B4 subtracts one, clamps to 13 rows, then
+                // draws the matching D1F5E label. Mana Storm's table-2 row
+                // reaches Force 4 at 0x166AD8. With this source Orc Shaman
+                // profile, the 0x12CEE formula yields Attack 10+Force after
+                // the cap, phase-4 spell focus, Bear modifier, and Full
+                // Offense posture are applied.
+                constexpr std::array<std::uint8_t, 3U>
+                    lower_special_forces{{1U, 2U, 3U}};
+                constexpr std::array<std::string_view, 3U>
+                    lower_special_power_labels{{"Meager", "Minor",
+                                                "Very Low"}};
+                for (std::size_t force_index = 0U;
+                     force_index < lower_special_forces.size();
+                     ++force_index) {
+                    const auto target_force =
+                        lower_special_forces[force_index];
+                    auto force_source = bear_source;
+                    force_source.skills[0U] = 12U; // +0x80 Sorcery.
+                    force_source.inventory_item_codes[5U] =
+                        0x22U; // +0x66: Mana Storm Spell Focus.
+                    force_source.inventory_phase_bytes[5U] =
+                        4U; // +0x6E: phase 4.
+                    force_source.inventory_item_codes[6U] =
+                        0x18U; // +0x66: Power Focus.
+                    force_source.inventory_phase_bytes[6U] =
+                        2U; // +0x6E: phase 2.
+                    field_scene.active_runner_record() = force_source;
+
+                    if (!field_scene.open_command_overview_for_dump() ||
+                        !field_scene.seek_command_overview_page(5U)) {
+                        return profile_failure(
+                            "the Orc Shaman profile could not reopen the Magic command tab for the Force-label sweep");
+                    }
+                    press(0x40U); // A opens the source spell page.
+                    press(0x08U); // Right selects Mana Storm, table row 2 entry 1.
+                    const auto selected_force_spell =
+                        field_scene.magic_selected_spell();
+                    if (!field_scene.magic_spell_panel_open() ||
+                        !selected_force_spell.has_value() ||
+                        selected_force_spell->spell_code != 9U ||
+                        field_scene.magic_maximum_force() != 4U) {
+                        return profile_failure(
+                            "the Force-label sweep did not physically select Mana Storm with source maximum 4");
+                    }
+                    press(0x40U); // A enters Force selection at maximum 4.
+                    for (auto force = field_scene.magic_current_force();
+                         force > target_force; --force) {
+                        press(0x04U); // Left lowers Force by one source step.
+                    }
+                    const auto force_panel = render_qa_field(field_scene);
+                    const auto force_panel_path = output_directory /
+                        ("higher-mode-force-selection-" +
+                         std::to_string(target_force) +
+                         "-orc-shaman-mana-storm.bmp");
+                    if (!field_scene.magic_force_selection_open() ||
+                        field_scene.magic_current_force() != target_force ||
+                        field_scene.active_runner_record().magic_force !=
+                            target_force ||
+                        !magic_force_value_pixels_match(force_panel,
+                                                        target_force) ||
+                        !field_hud_chrome_survives(force_panel, asset_root) ||
+                        !force_panel.save(QString::fromStdWString(
+                            force_panel_path.wstring()))) {
+                        return profile_failure(
+                            "physical Left input did not select and render the requested Mana Storm Force");
+                    }
+
+                    press(0x02U); // Down enters posture adjustment.
+                    std::size_t force_posture_inputs = 0U;
+                    while (field_scene.active_runner_record().posture < 4U &&
+                           force_posture_inputs < 4U) {
+                        press(0x08U); // Right raises posture one source step.
+                        ++force_posture_inputs;
+                    }
+                    if (!field_scene.magic_posture_selection_open() ||
+                        field_scene.active_runner_record().posture != 4U) {
+                        return profile_failure(
+                            "the Force-label sweep did not reach Full Offense through posture input");
+                    }
+                    press(0x40U); // A completes the selected spell action.
+                    if (!field_scene.magic_spell_panel_open() ||
+                        field_scene.active_runner_record()
+                                .equipped_inventory_slot != -1 ||
+                        field_scene.active_runner_record().equipped_item_code !=
+                            10U ||
+                        field_scene.active_runner_record().magic_force !=
+                            target_force ||
+                        field_scene.active_runner_record().posture != 4U) {
+                        return profile_failure(
+                            "the Force-label sweep did not publish the selected Force and Full Offense action");
+                    }
+                    press(0x80U); // Start returns to command page 6.
+                    if (field_scene.magic_spell_panel_open() ||
+                        !field_scene.command_overview_open() ||
+                        field_scene.command_overview_primary_page() != 6U) {
+                        return profile_failure(
+                            "the Force-label sweep did not return to command page 6");
+                    }
+                    settle_qa_menu_blank(field_scene);
+                    if (!move_to_combat_page()) {
+                        return profile_failure(
+                            "the Force-label sweep did not reach the combat-bar page");
+                    }
+                    const auto force_bars =
+                        field_scene.command_overview_combat_bars();
+                    const auto force_scene = render_qa_field(field_scene);
+                    const auto force_frame = output_directory /
+                        ("higher-mode-special-power-force-" +
+                         std::to_string(target_force) +
+                         "-orc-shaman-bear-totem.bmp");
+                    const auto expected_attack = static_cast<std::uint8_t>(
+                        10U + target_force);
+                    if (!force_bars.attack_written ||
+                        force_bars.source_data_missing ||
+                        force_bars.attack_value != expected_attack ||
+                        force_bars.attack_bar != expected_attack - 1U ||
+                        field_scene.menu_display_blank_active_for_dump() ||
+                        !field_command_shell_survives(force_scene,
+                                                      asset_root) ||
+                        !field_hud_chrome_survives(force_scene, asset_root) ||
+                        !source_menu_caption_matches(
+                            force_scene, menu_font, 128, 64, "Mana Storm") ||
+                        !source_menu_caption_matches(
+                            force_scene, menu_font, 112, 80, "Damage") ||
+                        !source_menu_caption_matches(
+                            force_scene, menu_font, 112, 88, "Power") ||
+                        !source_menu_caption_matches(
+                            force_scene, menu_font, 168, 88,
+                            lower_special_power_labels[force_index]) ||
+                        !mana_storm_damage_presentation_matches(
+                            force_scene, force_bars) ||
+                        !region_matches_bar_asset(force_scene, force_bars) ||
+                        !force_scene.save(QString::fromStdWString(
+                            force_frame.wstring()))) {
+                        return profile_failure(
+                            "Mana Storm Force did not select its ROM label and formula-derived attack-bar row");
+                    }
+                    press(0x80U);
+                    field_scene.active_runner_record() =
+                        pre_max_spell_record;
+                    if (field_scene.command_overview_open() ||
+                        render_qa_field(field_scene) != pre_max_spell_field) {
+                        return profile_failure(
+                            "a lower-Force Mana Storm visit left stale field pixels");
+                    }
+                }
                 armor_manifest.flush();
                 detail_value_manifest.flush();
                 weapon_profile_manifest.flush();
@@ -49391,7 +50926,12 @@ int main(int argc, char** argv) {
                           << " weapon_capacity_pairs="
                           << weapon_matrix_pairs
                           << " weapon_round_transition_states="
-                          << weapon_matrix_state_cases << '\n';
+                          << weapon_matrix_state_cases
+                          << " high_attack=24/high_attack_row=23"
+                          << " high_defense=25/high_defense_row=24"
+                          << " high_special_route=ManaStorm/Force4/FullOffense"
+                          << " high_special_attack=14/high_special_row=13"
+                          << '\n';
                 return 0;
             }
 
@@ -49833,19 +51373,21 @@ int main(int argc, char** argv) {
                     [&asset_root, &region_matches_asset](
                         const QImage& scene,
                         const EquipmentCombatBarResult& bars) {
-                        if (bars.attack_bar > 22U ||
+                        if (bars.attack_bar > 23U ||
                             bars.defense_bar > 22U) {
                             return false;
                         }
+                        const auto menu_root = asset_root / "menu" / "field";
+                        const auto attack_path = bars.attack_bar == 23U
+                            ? menu_root / "defense-bar-1.bmp"
+                            : menu_root /
+                                  ("attack-bar-" +
+                                   std::to_string(bars.attack_bar) + ".bmp");
                         const auto attack_asset = QImage(
-                            QString::fromStdWString(
-                                (asset_root / "menu" / "field" /
-                                 ("attack-bar-" +
-                                  std::to_string(bars.attack_bar) + ".bmp"))
-                                    .wstring()));
+                            QString::fromStdWString(attack_path.wstring()));
                         const auto defense_asset = QImage(
                             QString::fromStdWString(
-                                (asset_root / "menu" / "field" /
+                                (menu_root /
                                  ("defense-bar-" +
                                   std::to_string(bars.defense_bar) + ".bmp"))
                                     .wstring()));
