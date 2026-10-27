@@ -169,9 +169,12 @@ pages, and profile `0x121E08`. After the last page, `0x53C90` calls `0x1DED8`;
 that scan dispatches active records with `+0xB0` bit 7 to `0x1E514`, which
 clears the escort and active bits. Debug/Release QA checks exactly one actor
 retirement before the modal return fade and saves a closed Scene-34 image. That
-seam does not verify a physical route from the lift entry to Aragorn; Scene-34
-A1 and A2 event cells still need a ROM-first walk audit. No matching
-independent gameplay capture is available. The special transition through
+contact seam does not verify the physical route to Aragorn. Separate
+Debug/Release route QA restores the ROM lift placement `(0x3800,0x0600)`,
+crosses Scene-34 record 92 (`0x1DB990`, event 1), and reaches the event-2
+maglock at record 90 (`0x1DB97C`), opening the generic `0x20E48` door prompt.
+The passkey/Electronics outcome and the remaining walk from that door to A8AE
+are still open. No matching independent gameplay capture is available. The special transition through
 `0xC64C` and `0x2A32`/`0x2A44` clears `FFE180`; the ordinary resource entry and
 elevator handoff preserve it until contact. The static list still has no scene
 ID in `0xA800`.

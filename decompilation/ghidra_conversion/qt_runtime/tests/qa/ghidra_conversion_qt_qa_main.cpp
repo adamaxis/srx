@@ -20062,6 +20062,214 @@ int run_field_mitsuhama_after_hours_entry_qa(
         return 3;
     }
 
+    // ROM Scene 34 begins at (0x3800,0x0600) after the floor-4 lift.
+    // Re-enter that source placement with ordinary input to record the first
+    // physical event on the route toward the A8AE contact. The actor has been
+    // retired above, so this probe isolates map/event traversal from the
+    // contact callback and never uses coordinate injection as route evidence.
+    field_scene.set_field_entity_world_position_for_dump(0x3800U, 0x0600U);
+    field_scene.set_field_camera_world_position_for_dump(0x3000U, 0U);
+    const auto probe_output = output / "scene-34-contact-route-probe";
+    std::filesystem::create_directories(probe_output, output_error);
+    if (output_error) {
+        std::cerr << "Mitsuhama entry QA: could not create Scene-34 route "
+                     "probe directory: " << output_error.message() << '\n';
+        return 3;
+    }
+    const auto probe_start = field_scene.field_entity_world_position();
+    const auto probe_start_image = render_qa_field(field_scene);
+    if (probe_start.x != 0x3800U || probe_start.y != 0x0600U ||
+        probe_start_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !probe_start_image.save(QString::fromStdWString(
+            (probe_output / "start.bmp").wstring()))) {
+        std::cerr << "Mitsuhama entry QA: Scene-34 source route probe did "
+                     "not start at the ROM lift placement\n";
+        return 3;
+    }
+    std::ofstream probe_trace(probe_output / "route.tsv", std::ios::trunc);
+    if (!probe_trace) return 3;
+    probe_trace << "frame\tinput\tscene\tx\ty\tcollision\tevent\t"
+                   "dialogue\tinteraction\tselection\n";
+    const auto& probe_collision_map = field_scene.state()
+        .field_scene_buffers.source_metadata.terrain_collision_map;
+    if (probe_collision_map.size() != 64U * 64U) {
+        std::cerr << "Mitsuhama entry QA: Scene-34 collision map is not "
+                     "64x64 for route analysis\n";
+        return 3;
+    }
+    std::ofstream collision_map_dump(
+        probe_output / "terrain-collision-map.tsv", std::ios::trunc);
+    if (!collision_map_dump) return 3;
+    collision_map_dump << "row/col";
+    for (std::size_t column = 0U; column < 64U; ++column) {
+        collision_map_dump << '\t' << column;
+    }
+    collision_map_dump << '\n' << std::hex << std::setfill('0');
+    for (std::size_t row = 0U; row < 64U; ++row) {
+        collision_map_dump << std::dec << row;
+        for (std::size_t column = 0U; column < 64U; ++column) {
+            collision_map_dump << '\t' << std::hex << std::setw(2)
+                               << static_cast<unsigned>(
+                                      probe_collision_map[row * 64U + column]);
+        }
+        collision_map_dump << '\n';
+    }
+    if (!collision_map_dump) return 3;
+    const auto& scene34_rectangles = field_scene.state()
+        .field_scene_buffers.source_metadata.terrain_collision_rectangles;
+    if (scene34_rectangles.size() <= 100U ||
+        scene34_rectangles[92U].left != 0x0200U ||
+        scene34_rectangles[92U].right != 0x021FU ||
+        scene34_rectangles[92U].top != 0x0060U ||
+        scene34_rectangles[92U].bottom != 0x007FU ||
+        scene34_rectangles[92U].value != 0x00A1U ||
+        scene34_rectangles[90U].left != 0x01A0U ||
+        scene34_rectangles[90U].right != 0x01BFU ||
+        scene34_rectangles[90U].top != 0x02A0U ||
+        scene34_rectangles[90U].bottom != 0x02BFU ||
+        scene34_rectangles[90U].value != 0x0082U) {
+        std::cerr << "Mitsuhama entry QA: Scene-34 records 92/90 no longer "
+                     "match the traced event-1 corridor and event-2 lock\n";
+        return 3;
+    }
+    std::uint32_t probe_frames = 0U;
+    const auto walk_probe_leg =
+        [&field_scene, &probe_trace, &probe_frames, &record_walk_segment](
+            const std::uint8_t input_mask, const std::string_view input_name,
+            const std::string_view stage, const std::uint32_t update_limit,
+            const auto& reached) {
+            const auto start = field_scene.field_entity_world_position();
+            std::uint32_t updates = 0U;
+            while (updates < update_limit && !reached() &&
+                   !field_scene.dialogue_open() &&
+                   !field_scene.field_interaction_open() &&
+                   field_scene.field_scene_reference_for_dump() == 34U) {
+                field_scene.set_controller_nibble(input_mask);
+                field_scene.advance_frame();
+                ++updates;
+                ++probe_frames;
+                const auto position = field_scene.field_entity_world_position();
+                probe_trace << probe_frames << '\t' << input_name << '\t'
+                            << field_scene.field_scene_reference_for_dump()
+                            << '\t' << position.x << '\t' << position.y
+                            << "\t0x" << std::hex
+                            << field_scene.field_terrain_collision_code_for_dump()
+                            << std::dec << '\t'
+                            << static_cast<unsigned>(
+                                   field_scene.field_mode_event_code_for_dump())
+                            << '\t' << field_scene.dialogue_open() << '\t'
+                            << field_scene.field_interaction_open() << '\t'
+                            << static_cast<unsigned>(field_scene
+                                                         .field_activity_selection_for_dump())
+                            << '\n';
+            }
+            field_scene.set_controller_nibble(0U);
+            field_scene.advance_frame();
+            return record_walk_segment(stage, input_name, updates, start);
+        };
+    const auto west_to_row_two = walk_probe_leg(
+        0x04U, "left", "scene34-west-to-row-two", source_walk_bound(0x1800U),
+        [&field_scene] {
+            return field_scene.field_entity_world_position().x <= 0x2300U;
+        });
+    const auto south_into_generic_event_row = west_to_row_two
+        ? walk_probe_leg(
+              0x02U, "down", "scene34-south-into-event-row",
+              source_walk_bound(0x0100U), [&field_scene] {
+                  const auto position = field_scene.field_entity_world_position();
+                  return position.y >= 0x0600U && position.y < 0x0800U;
+              })
+        : false;
+    const auto west_through_generic_event = south_into_generic_event_row
+        ? walk_probe_leg(
+              0x04U, "left", "scene34-cross-event-1-record-92",
+              source_walk_bound(0x0600U), [&field_scene] {
+                  return field_scene.field_entity_world_position().x <=
+                      0x1F00U;
+              })
+        : false;
+    const auto south_to_row_thirteen = west_through_generic_event
+        ? walk_probe_leg(
+              0x02U, "down", "scene34-south-to-row-thirteen",
+              source_walk_bound(0x1400U), [&field_scene] {
+                  return field_scene.field_entity_world_position().y >=
+                      0x1A00U;
+              })
+        : false;
+    const auto west_to_maglock_lane = south_to_row_thirteen
+        ? walk_probe_leg(
+              0x04U, "left", "scene34-west-to-record-90-lane",
+              source_walk_bound(0x0500U), [&field_scene] {
+                  const auto position = field_scene.field_entity_world_position();
+                  return position.x <= 0x1A00U && position.y >= 0x1A00U &&
+                         position.y < 0x1C00U;
+              })
+        : false;
+    const auto south_to_maglock = west_to_maglock_lane
+        ? walk_probe_leg(
+              0x02U, "down", "scene34-enter-maglock-record-90",
+              source_walk_bound(0x1000U), [&field_scene] {
+                  return field_scene.field_interaction_open() ||
+                         field_scene.dialogue_open() ||
+                         field_scene.field_entity_world_position().y >=
+                             0x2A00U;
+              })
+        : false;
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    const auto probe_end = field_scene.field_entity_world_position();
+    const auto probe_end_image = render_qa_field(field_scene);
+    if (!probe_trace || probe_end_image.size() != QSize(kSceneWidth,
+                                                         kSceneHeight) ||
+        !probe_end_image.save(QString::fromStdWString(
+            (probe_output / "end.bmp").wstring()))) {
+        std::cerr << "Mitsuhama entry QA: Scene-34 route probe capture failed\n";
+        return 3;
+    }
+    const auto& probe_movement =
+        field_scene.last_field_movement_transition_for_dump();
+    const auto& probe_panel = field_scene.field_interaction_panel();
+    const bool source_maglock_opened = west_to_row_two &&
+        south_into_generic_event_row && west_through_generic_event &&
+        south_to_row_thirteen && west_to_maglock_lane && south_to_maglock &&
+        field_scene.field_scene_reference_for_dump() == 34U &&
+        field_scene.field_interaction_open() &&
+        field_scene.field_activity_selection_for_dump() == 2U &&
+        probe_movement.event_code == FieldCollisionEventCode::event_2 &&
+        probe_movement.continuation ==
+            MovementModeTransitionContinuation::maglock_door_interaction &&
+        probe_panel.source_complete && probe_panel.option_count == 1U &&
+        probe_panel.text_segment_count != 0U &&
+        probe_panel.text_segments[0].find("sturdy door") !=
+            std::string_view::npos;
+    const auto probe_lock_image = render_qa_field(field_scene);
+    const bool probe_lock_image_saved =
+        probe_lock_image.size() == QSize(kSceneWidth, kSceneHeight) &&
+        probe_lock_image.save(QString::fromStdWString(
+            (probe_output / "scene-34-maglock-introduction.bmp").wstring()));
+    if (!source_maglock_opened || !probe_lock_image_saved) {
+        std::cerr << "Mitsuhama entry QA: physical Scene-34 route did not "
+                     "reach record 90's event-2 maglock (frames="
+                  << probe_frames << ", position=" << probe_end.x << ','
+                  << probe_end.y << ", event=" << static_cast<unsigned>(
+                         field_collision_event_value(probe_movement.event_code))
+                  << ", selection=" << static_cast<unsigned>(
+                         field_scene.field_activity_selection_for_dump())
+                  << ", interaction=" << field_scene.field_interaction_open()
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+    std::cout << "field_scene34_contact_route_probe=passed frames="
+              << probe_frames << " end=" << probe_end.x << ','
+              << probe_end.y << " scene="
+              << field_scene.field_scene_reference_for_dump()
+              << " dialogue=" << field_scene.dialogue_open()
+              << " interaction=" << field_scene.field_interaction_open()
+              << " selection=" << static_cast<unsigned>(
+                     field_scene.field_activity_selection_for_dump())
+              << " event=2 record=90 rom=0x1DB97C"
+              << " artifacts=" << probe_output.string() << '\n';
+
     std::cout << "field_mitsuhama_after_hours_entry_qa=passed scene=3 "
                  "record=95 event=3 destination=30 ordinary_walk=event29 "
                  "lift_index=4 destination=34 story_actor=A8AE "

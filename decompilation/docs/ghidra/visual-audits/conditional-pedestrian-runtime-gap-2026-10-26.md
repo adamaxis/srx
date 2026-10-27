@@ -23,13 +23,20 @@ and zero A8AE story actors. This is consistent with the `0xA800` gate: its
 active-list choice requires `FFF0C8==4`; the selected resource index alone
 does not publish the actor. The Debug/Release Mitsuhama QA now walks from the
 ordinary Scene-30 resource entry to event 29, uses the live selector and lift
-to set active index 4, and confirms Scene 34 and the actor. It then injects
-player proximity at the actor coordinates to exercise `0xECCC`, the Lua
-`0x53C90` graph, and all three `0xF4BBC` pages. That contact seam does not
-establish an ordinary walk from the Scene-34 lift entry through its A1/A2
-event cells to Aragorn. Other live marker producers and the random-candidate
-path through an accepted initializer-5 offer remain open. Section 41 has no
-route-matched visual check.
+to set active index 4, and confirms Scene 34 and the actor. After the contact
+callback QA, a separate ordinary-input route probe restores the ROM lift
+placement `(0x3800,0x0600)`, walks around the west wall through collision
+record 92 (`0x1DB990`, generic event 1), and reaches record 90 (`0x1DB97C`,
+collision `0x0082`, event 2). The resulting `0x20E48` “sturdy door” prompt
+uses selection 2. Debug and Release write matching full-screen
+`scene-34-maglock-introduction.bmp` captures and a frame-by-frame input,
+position, collision, and event trace under
+`scene-34-contact-route-probe/`. The probe stops at this first lock; its
+passkey/Electronics outcomes and the remaining route to Aragorn have not been
+exercised. The A8AE dialogue QA still injects proximity to test `0xECCC`, the
+Lua `0x53C90` graph, and the three `0xF4BBC` pages. Other live marker
+producers and the random-candidate path through an accepted initializer-5
+offer remain open. Section 41 has no route-matched visual check.
 
 ## ROM path confirmed from the US image
 
@@ -233,11 +240,12 @@ proximity at the extracted actor coordinates, advances all three pages with A,
 checks the flags and actor one-shot bit, and writes
 `scene-34-aragorn-contact-{actual,reply,outcome}.bmp`; the opening-page images
 have matching SHA-256 hashes. The approach injection is a test seam, not proof
-of a traversable route: the static route from the lift entry crosses Scene-34
-A1 generic and A2 maglock event cells, and no ordinary walk through those
-events has been established. The `0x1E45E` FFE183 clear is now connected at the
-`0x0A92` request callback: Lua returns and clears the choice atomically, and
-the callback passes that byte into the typed 13-record `0x1E43C` scan.
+of a traversable route to the actor. Ordinary input now reaches the record-90
+event-2 maglock after crossing record 92; neither passage through that lock nor
+the remaining walk to A8AE is established. The `0x1E45E` FFE183 clear is
+connected at the `0x0A92` request callback: Lua returns and clears the choice
+atomically, and the callback passes that byte into the typed 13-record
+`0x1E43C` scan.
 
 Gameplay-script QA reaches Matchstick's accepted Employee Recruitment offer
 through Johnson's work menu, checks raw initializer 5, samples a reachable
@@ -291,12 +299,12 @@ this source-record cleanup, and the host consumes it before the modal return
 fade. Debug/Release QA checks one retirement and saves a closed Scene-34 BMP.
 This verifies record removal; it does not claim a walking animation or path.
 
-Next, resolve the Scene-34 A1/A2 event-cell route so a player can reach A8AE
-from the lift without coordinate injection. Exercise the random branch through
-an accepted raw initializer-5 offer, including offer variants 11/12,
-player-spawn pending, index mismatch, and choice persistence across a
-child-scene transition. Add the `0x1E45E` FFE183 reset at its traced
-actor-record consumption point. Finally, match a real capture to the selected
+Next, resolve the record-90 maglock action and continue the Scene-34 route to
+A8AE without coordinate injection. Cover its passkey and Electronics outcomes
+with the live runner's class, skills, inventory, and source RNG inputs. Exercise
+the random branch through an accepted raw initializer-5 offer, including offer
+variants 11/12, player-spawn pending, index mismatch, and choice persistence
+across a child-scene transition. Finally, match a real capture to the selected
 scene and live actor record; the current internal BMPs are regression
 artifacts, not an independent visual oracle. The pedestrian population hill
 remains partial.
