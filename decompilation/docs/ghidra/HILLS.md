@@ -951,11 +951,12 @@ Ordinary Up selects index 4, A runs the source-timed lift for 17x8 frames per
 floor, and Start completes the physical trip to Scene 34. Setting the
 destination seed to `0x8000` checks that choice 1 survives the late index
 gate; Scene 34 publishes list `0x1EDE18`, position `(0x1800,0x0F00)`, profile
-`pedestrian_k0b_none00`, slot 3. The focused Debug CTest passed and writes the
-lift selector, floor selection/arrival, Scene-34 entry, centered actor BMPs,
-and a route TSV. I inspected the selector and centered actor frames; they are
-internal captures, not independent Genesis references. Release rerun remains
-open. This starts from a staged profile checkpoint and does not exercise the
+`pedestrian_k0b_none00`, slot 3. The focused CTest writes the lift selector,
+floor selection/arrival, Scene-34 entry, centered actor BMPs, and a route TSV.
+It passes in Debug and Release, and all six route BMPs plus the route TSV match
+by SHA-256. I inspected the selector and centered actor frames;
+they are internal captures, not independent Genesis references. This starts
+from a staged profile checkpoint and does not exercise the
 accepted Johnson offer through the lift. The FFFC3C pending-spawn case still
 retains choice 2 from Scene 30 and publishes it in Scene 34 through QA
 resource entry after the pending flag clears. The ordinary-

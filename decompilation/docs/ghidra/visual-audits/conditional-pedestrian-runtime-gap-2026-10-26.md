@@ -114,9 +114,10 @@ Late-gate choice 1 remains selected after the destination seed is set to
 `0x8000`, which would choose row 2 if the candidate were sampled again. Scene
 34 publishes list `0x1EDE18` at `(0x1800,0x0F00)` in actor slot 3. This tests
 one physical destination from a staged Scene-30 checkpoint, not the
-accepted-offer-to-lift route or every candidate map. Its inspected BMPs are
-internal renderer evidence; Release rerun and independent Genesis comparison
-remain open. The Section-41 route-matched visual check also remains open.
+accepted-offer-to-lift route or every candidate map. The focused CTest passes
+in Debug and Release, and all six route BMPs plus the route TSV match by
+SHA-256. The inspected BMPs are internal renderer evidence; independent
+Genesis comparison and the Section-41 route-matched visual check remain open.
 
 ## ROM path confirmed from the US image
 
@@ -447,13 +448,12 @@ is `[30,31,32,33,34]`; ordinary Up selects floor index 4, A runs the
 source-timed lift for 17x8 frames per floor, and Start completes the trip.
 The destination seed `0x8000` checks that the earlier choice 1 survives the
 late index gate. Scene 34 publishes list `0x1EDE18`, position
-`(0x1800,0x0F00)`, profile `pedestrian_k0b_none00`, slot 3. The focused Debug
-CTest passed and writes the lift selector, floor selection/arrival, Scene-34
-entry and centered actor BMPs, plus a physical-route TSV. I inspected the
-selector and centered actor frames; these are internal captures, not
-independent Genesis references. Release rerun remains open. This route starts
-from a staged profile checkpoint and does not carry the accepted offer to the
-lift. The separate `FFFC3C` case samples choice 2 while player-spawn is
+`(0x1800,0x0F00)`, profile `pedestrian_k0b_none00`, slot 3. The focused CTest
+passes in Debug and Release; the six route BMPs and physical-route TSV match by
+SHA-256. I inspected the selector and centered actor frames; these are internal
+captures, not independent Genesis references. This route starts from a staged
+profile checkpoint and does not carry the accepted offer to the lift. The
+separate `FFFC3C` case samples choice 2 while player-spawn is
 pending, then publishes that choice in Scene 34 after clearing the pending
 flag through resource entry. The other matrix cases also use resource entry.
 No independent
