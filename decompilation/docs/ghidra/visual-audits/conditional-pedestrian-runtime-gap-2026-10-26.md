@@ -369,14 +369,34 @@ contains these inspected frames:
 | `frame_002700.png` | `02:58:30.000` | Field map with a red/brown sprite near machinery; scene and actor identity remain unknown. |
 | `frame_003000.png` | `02:58:40.000` | Tarislar City Inn introduction dialogue and portrait. |
 
-The patrol choices in `frame_001500` structurally match the three option
-commands in the ROM prompt record at `0x120E54`: Attack `0x95`, Talk `0x96`,
-and Run `0x99`, dispatched to `0x23412`, `0x23452`, and `0x23782`. Handler
-`0x20F12` loads that record and resource bundle `0x122084`; the selector table
-enables it in scenes 0 and 3 at sums 3 and 4. This only matches the choice
-layout: the extracted bundle opening (“A moment, citizen. We want a word with
-you.”) does not match the line visible in the capture, so the exact dialogue
-source and scene are unresolved.
+The screen in `frame_001500` exactly matches the follow-up prompt record at
+`0x120E98`. Its text pointer is `0x11D48C`, whose ROM text reads “Hey, Flick.
+I think this guy's packing. You got a permit for that illegal weapon?” Its
+choice commands are Attack `0x95`, Talk `0x97`, and Run `0x99`, matching the
+three visible labels. The record shares the three resource pointers at
+`0x103A9A`, `0x103AA5`, and `0x103AEB` with the initial patrol record at
+`0x120E54`, but its Talk command differs: the initial prompt uses `0x96`.
+
+For event `0x20F12`, the initial prompt at `0x120E54` is enabled in scenes 0
+and 3 at selector sums 3 and 4. Choosing Talk (`0x96`) enters the shared
+compliance handler at `0x23452`. After its special-pass check, `0x23482`
+samples a bound-12 value, subtracts heat `FFFBFA`, and compares the result with
+the live field `FF017A`. On the failed check, `0x234B4` tests the heat cutoff:
+heat 3 or higher returns the suspect-ID prompt at `0x120EB4`; lower heat enters
+the item scan at `0x234C8`. The scan starts at `0xFF0100` and can inspect up to
+three `0x100`-byte runner blocks. It tests a block's eight item slots only
+when bit 0 at `+0x10` is set; a clear bit skips that block's item scan and the
+code does not advance to the next block. The item bytes are compared with
+`0x08`, `0x09`, `0x0A`, `0x0C`, `0x0D`, `0x14`, `0x31`, or `0x32`. A match
+branches to `0x23542`, which returns `0x120E98`; no match returns the release
+prompt at `0x120ED0` and lowers heat. The Talk choice `0x97` from the captured prompt enters
+`0x2354A`, where the next branch checks weapon-permit bit 11 of `FFFC22`.
+
+This corrects the source path in the terminal-outcomes table: `0x234C8` starts
+the inventory scan; it does not load the prompt. Event `0x20F12` is one
+confirmed route to this exact follow-up, but the same compliance handler is
+shared by other Lone Star events in the table. The capture identifies the
+dialogue record and state branch, not which event or scene initiated it.
 
 The direct Scene-41-to-43 patrol event is a different presentation. Handler
 `0x2106A` loads prompt `0x1213CC` and bundle `0x122048`; the prompt has one
@@ -395,7 +415,9 @@ by 1 (capped at 8) and can produce a detective encounter, a mixed pursuit, or
 an escape according to the chase roll. The terminal branches are recorded in
 `decompilation/assets/field/world-activity-terminal-outcomes.tsv` under
 `0x20F12`. The capture shows the choice screen only; it does not reveal which
-input was selected or any resulting branch.
+input was selected or any resulting branch. `FF017A`, heat, active-runner
+inventory, and the permit flag remain live source inputs; the frame does not
+identify their values or the runner's class/race profile.
 
 At original resolution, frame `002100` shows a small brown standing sprite on
 the blue map with another sprite at left and the party HUD at right. Its broad
