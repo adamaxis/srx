@@ -126,8 +126,12 @@ The Debug/Release Qt QA builds this typed Gator action state and checks the
 title, `Damage None`, force label, exact 104x8 bar assets, and full-frame
 capture at `qt_runtime/field-spell-combat-bar-qa/actual.bmp`. The Debug and
 Release files have identical SHA-256 hashes. The independent 30 fps capture
-is compressed, so the bar comparison is nearest-row corroboration (Atk 5,
-Def 4), not an exact pixel golden. It shows Mental 10%; the QA sets the
+is compressed, so it is not an exact pixel golden. Comparing each independent
+104x8 strip against every extracted ROM bar row ranks Attack row 5 first
+(normalized correlation 0.916, mean absolute channel error 8.52/255) and
+Defense row 4 first (0.961, 7.46/255). The Qt crops match those two named
+assets exactly. This independently corroborates the formula-derived values
+without claiming pixel identity. The capture shows Mental 10%; the QA sets the
 record's `+0x9C` behavior meter to 1 to match that visible value. The preset's
 default meter remains independently tested in the profile sweep.
 
