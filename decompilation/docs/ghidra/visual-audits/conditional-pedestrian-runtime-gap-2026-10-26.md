@@ -197,6 +197,33 @@ every small sprite in gameplay captures and do not exhaust generated or
 computed actor paths. Keep the Section-41 sprite identification open until a
 matching scene and live actor record are traced.
 
+### Other direct `FFE120` producers
+
+A scan of the US ROM for the absolute operand `00 FF E1 20`, followed by
+instruction checks at each store, finds these pending-list writes:
+
+| ROM address | Queued pointer | Source result |
+|---|---:|---|
+| `0x2D2C` | `0x1E552` | Five `eye5r 1` records for the mode-13 entry path. |
+| `0x16912`, `0x16928`, `0x16946` | `0x16FD4` scene table result | A gated singleton `lone11` script in scenes `0x0A`, `0x0B`, and `0x0D..0x13`; scene `0x0C` has a null table entry. Scene `0x0A` chooses `0x17018` when `FFFBF9==6`, otherwise `0x17034`. |
+| `0x16A52` | `0xFFE132` | Builds a temporary list from the separate `FFE162` descriptor pointer and pairs each descriptor with a local callback. Its 857 extracted dynamic actor rows across 56 scenes contain no literal pedestrian profile, name, or sprite stem. |
+| `0x2247C`, `0x224EC` | `0x1E5C4` | Three Strike Team/bodyguard records and one kind-11 pedestrian record. |
+| `0x22622` | `0x1E628` | Three Strike Team records and one corp guard. This store is reached by the paid Club Penumbra command-`0x60` branch at `0x225D2`, after its fee and story gates. |
+
+The three `0x16FD4` stores are source-script selection, not a per-map generic
+pedestrian table: each selected ROM list contains one `lone11` actor with its
+own kind, palette, position, and item-action template. The table covers scene
+IDs `0x0A..0x13`; the special Scene-20 branch exits before indexing it. The
+`0x1E5C4` pending story list is the only one in this census that adds the
+shared `0x1D6988` pedestrian template. The `0x1E628` and `0x1E552` lists do not.
+
+This closes the direct absolute-operand producer census for `FFE120`. It does
+not establish another general pedestrian spawner: the only additional generic
+pedestrian in these queues is the single actor in `0x1E5C4`, while the separate
+`0xA800` scene/choice table remains the broad conditional pedestrian source
+for scenes `0x15..0x2B`. Indirect writes through a copied pointer and the
+identity of the pedestrian-like sprites in Section 41 remain open.
+
 ### Meaning of the `FFFBED == 5` gate
 
 The comparison at `0xA84C` is confirmed. The writer at `0x1E6D6` copies the
