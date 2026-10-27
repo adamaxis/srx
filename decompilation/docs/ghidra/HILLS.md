@@ -820,6 +820,16 @@ asserts Scene-5 order 1's `(0x4B80,0x2200)` start and movement toward waypoint
 [conditional pedestrian runtime
 audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md).
 
+The separate Debug/Release
+`shadowrun_ghidra_conversion_qt_field_region_map_pedestrians_qa` now checks
+all three default pedestrians after QA scene reentry on each of the six
+regional maps. It verifies their ROM-derived positions, profile, slots 3-5,
+visible sprites, and movement, then saves six full-screen actual BMPs and a
+route trace. All paired captures
+match by SHA-256. The test complements the independent Scene-5 route match;
+the screenshots themselves remain internal regression evidence. Exact patrol
+cadence across every waypoint and collision behavior remain open.
+
 The `0xA800` gated pedestrian branch and all 69 ROM candidate positions for
 scenes `0x15..0x2B` are profiled in the actor population audit and extracted
 from the US ROM into a checked named TSV. The standalone map viewer now shows

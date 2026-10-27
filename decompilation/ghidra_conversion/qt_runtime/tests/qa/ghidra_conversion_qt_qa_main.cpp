@@ -18847,6 +18847,193 @@ int run_field_scene2_pedestrians_qa(
     return 0;
 }
 
+int run_field_region_map_pedestrians_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    struct RegionCase {
+        std::uint16_t scene;
+        std::string_view name;
+        std::array<SceneRunnerPosition, 3> spawn_positions;
+    };
+    constexpr std::array<RegionCase, 6> kRegions{{
+        {0U, "downtown", {{{2048U, 1536U}, {6656U, 13312U},
+                            {15360U, 13824U}}}},
+        {1U, "puyallup", {{{12032U, 6400U}, {8064U, 18176U},
+                            {2816U, 3584U}}}},
+        {2U, "barrens", {{{13440U, 8704U}, {21248U, 14080U},
+                           {25216U, 6400U}}}},
+        {3U, "penumbra", {{{31232U, 3584U}, {22528U, 12544U},
+                            {5248U, 3584U}}}},
+        {4U, "council-island", {{{384U, 13056U}, {14592U, 8448U},
+                                 {15360U, 14592U}}}},
+        {5U, "renraku", {{{1536U, 4096U}, {19328U, 8704U},
+                          {6656U, 8704U}}}},
+    }};
+    constexpr std::array<FieldWorldActorSlot, 3> kSlots{{
+        FieldWorldActorSlot::slot_3,
+        FieldWorldActorSlot::slot_4,
+        FieldWorldActorSlot::slot_5,
+    }};
+    constexpr std::size_t kMaximumFieldFrames = 1200U;
+
+    std::error_code directory_error;
+    const auto region_output = output / "region-map-pedestrians";
+    std::filesystem::remove_all(region_output, directory_error);
+    if (directory_error) {
+        std::cerr << "Region-map pedestrians QA: could not clear output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(region_output, directory_error);
+    if (directory_error) {
+        std::cerr << "Region-map pedestrians QA: could not create output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+    const auto trace_path = region_output / "pedestrian-routes.tsv";
+    std::ofstream trace(trace_path, std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Region-map pedestrians QA: could not write route trace\n";
+        return 3;
+    }
+    trace << "scene\tregion\tsource_order\tprofile\tactor_slot"
+             "\tspawn_x\tspawn_y\tfinal_x\tfinal_y\tever_moved\n";
+
+    for (const auto& region : kRegions) {
+        field_scene.set_field_entity_world_position_for_dump(0x1000U,
+                                                              0x1000U);
+        if (!field_scene.reenter_field_scene_for_dump(region.scene)) {
+            std::cerr << "Region-map pedestrians QA: scene " << region.scene
+                      << " (" << region.name << ") entry failed: "
+                      << field_scene.failure() << '\n';
+            return 3;
+        }
+
+        const auto spawn_positions =
+            field_scene.active_default_actor_positions_for_dump();
+        if (field_scene.default_actor_count_for_dump() != 3U ||
+            spawn_positions.size() != region.spawn_positions.size()) {
+            std::cerr << "Region-map pedestrians QA: scene " << region.scene
+                      << " expected three source pedestrians, got actors="
+                      << field_scene.default_actor_count_for_dump()
+                      << " positions=" << spawn_positions.size() << '\n';
+            return 3;
+        }
+        for (std::size_t actor_index = 0U;
+             actor_index < region.spawn_positions.size(); ++actor_index) {
+            const auto& actual = spawn_positions[actor_index];
+            const auto& expected = region.spawn_positions[actor_index];
+            const auto profile = field_scene
+                .default_actor_script_profile_for_dump(
+                    static_cast<std::uint16_t>(actor_index));
+            const auto slot = field_scene.default_actor_record_slot_for_dump(
+                static_cast<std::uint16_t>(actor_index));
+            const auto camera_x = actual.x >= 0x0800U
+                ? static_cast<std::uint16_t>(actual.x - 0x0800U)
+                : std::uint16_t{0U};
+            const auto camera_y = actual.y >= 0x0800U
+                ? static_cast<std::uint16_t>(actual.y - 0x0800U)
+                : std::uint16_t{0U};
+            field_scene.set_field_camera_world_position_for_dump(camera_x,
+                                                                  camera_y);
+            if (actual.x != expected.x || actual.y != expected.y ||
+                profile != std::optional<std::string>{
+                               "pedestrian_k0b_none00"} ||
+                slot != std::optional<FieldWorldActorSlot>{
+                            kSlots[actor_index]} ||
+                field_scene.visible_default_actor_count_for_dump() == 0U) {
+                std::cerr << "Region-map pedestrians QA: scene "
+                          << region.scene << " source order " << actor_index
+                          << " failed profile, slot, source-position, or "
+                             "visibility check (actual="
+                          << actual.x << ',' << actual.y << " expected="
+                          << expected.x << ',' << expected.y << ")\n";
+                return 3;
+            }
+        }
+
+        std::array<bool, 3> ever_moved{};
+        std::size_t frames = 0U;
+        for (; frames < kMaximumFieldFrames &&
+               !std::all_of(ever_moved.begin(), ever_moved.end(),
+                            [](const bool moved) { return moved; });
+             ++frames) {
+            field_scene.advance_frame();
+            const auto positions =
+                field_scene.active_default_actor_positions_for_dump();
+            if (positions.size() != region.spawn_positions.size()) {
+                std::cerr << "Region-map pedestrians QA: scene "
+                          << region.scene
+                          << " lost a default pedestrian during patrol\n";
+                return 3;
+            }
+            for (std::size_t actor_index = 0U;
+                 actor_index < positions.size(); ++actor_index) {
+                ever_moved[actor_index] = ever_moved[actor_index] ||
+                    positions[actor_index].x !=
+                        region.spawn_positions[actor_index].x ||
+                    positions[actor_index].y !=
+                        region.spawn_positions[actor_index].y;
+            }
+        }
+        if (!std::all_of(ever_moved.begin(), ever_moved.end(),
+                         [](const bool moved) { return moved; })) {
+            std::cerr << "Region-map pedestrians QA: scene " << region.scene
+                      << " did not advance all three ROM patrols within "
+                      << kMaximumFieldFrames << " frames (moved="
+                      << ever_moved[0] << ',' << ever_moved[1] << ','
+                      << ever_moved[2] << ")\n";
+            return 3;
+        }
+
+        const auto final_positions =
+            field_scene.active_default_actor_positions_for_dump();
+        for (std::size_t actor_index = 0U;
+             actor_index < final_positions.size(); ++actor_index) {
+            trace << region.scene << '\t' << region.name << '\t'
+                  << actor_index << "\tpedestrian_k0b_none00\t"
+                  << static_cast<unsigned>(kSlots[actor_index]) << '\t'
+                  << region.spawn_positions[actor_index].x << '\t'
+                  << region.spawn_positions[actor_index].y << '\t'
+                  << final_positions[actor_index].x << '\t'
+                  << final_positions[actor_index].y << "\tyes\n";
+        }
+        if (!trace) {
+            std::cerr << "Region-map pedestrians QA: failed writing "
+                      << trace_path.string() << '\n';
+            return 3;
+        }
+
+        const auto& capture_position = final_positions.front();
+        field_scene.set_field_camera_world_position_for_dump(
+            capture_position.x >= 0x0800U
+                ? static_cast<std::uint16_t>(capture_position.x - 0x0800U)
+                : std::uint16_t{0U},
+            capture_position.y >= 0x0800U
+                ? static_cast<std::uint16_t>(capture_position.y - 0x0800U)
+                : std::uint16_t{0U});
+        if (field_scene.visible_default_actor_count_for_dump() == 0U) {
+            std::cerr << "Region-map pedestrians QA: scene " << region.scene
+                      << " final patrol frame has no visible pedestrians\n";
+            return 3;
+        }
+        const auto image = render_qa_field(field_scene);
+        const auto bitmap = region_output /
+            ("scene-" + std::to_string(region.scene) + "-actual.bmp");
+        if (image.isNull() ||
+            !image.save(QString::fromStdWString(bitmap.wstring()))) {
+            std::cerr << "Region-map pedestrians QA: could not save "
+                      << bitmap.string() << '\n';
+            return 3;
+        }
+        std::cout << "region_map_pedestrians scene=" << region.scene
+                  << " region=" << region.name << " spawned=3 moved=3 frames="
+                  << frames << " actual=" << bitmap.string() << '\n';
+    }
+
+    return 0;
+}
+
 bool accept_employee_offer_for_field_pedestrian_qa(
     FieldSceneRuntime& field_scene, const std::uint8_t initializer,
     const std::filesystem::path& output,
@@ -34506,6 +34693,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene2_pedestrians_qa_path;
         std::optional<std::filesystem::path>
+            field_region_map_pedestrians_qa_path;
+        std::optional<std::filesystem::path>
             field_pedestrian_scenes_qa_path;
         std::optional<std::filesystem::path>
             field_mitsuhama_after_hours_entry_qa_path;
@@ -35392,6 +35581,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene2_pedestrians_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-region-map-pedestrians-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_region_map_pedestrians_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -36661,6 +36857,7 @@ int main(int argc, char** argv) {
             }
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_pedestrians_qa_path.has_value() ||
+                field_region_map_pedestrians_qa_path.has_value() ||
                 field_pedestrian_scenes_qa_path.has_value() ||
                 field_mitsuhama_after_hours_entry_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||
@@ -36710,6 +36907,8 @@ int main(int argc, char** argv) {
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 1U)
                     : field_scene2_pedestrians_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 2U)
+                    : field_region_map_pedestrians_qa_path.has_value()
+                    ? field_scene.bootstrap_for_scene_dump(smoke_state, 1U)
                     : field_mitsuhama_after_hours_entry_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 3U)
                     : field_alarm_qa_path.has_value()
@@ -41022,6 +41221,10 @@ int main(int argc, char** argv) {
             if (field_scene2_pedestrians_qa_path.has_value()) {
                 return run_field_scene2_pedestrians_qa(
                     field_scene, *field_scene2_pedestrians_qa_path);
+            }
+            if (field_region_map_pedestrians_qa_path.has_value()) {
+                return run_field_region_map_pedestrians_qa(
+                    field_scene, *field_region_map_pedestrians_qa_path);
             }
             if (field_pedestrian_scenes_qa_path.has_value()) {
                 return run_field_pedestrian_scenes_qa(

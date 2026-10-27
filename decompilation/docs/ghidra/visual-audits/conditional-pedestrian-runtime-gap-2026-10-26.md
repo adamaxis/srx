@@ -712,6 +712,50 @@ identity and pedestrian producer question open; this footage does not prove
 that the red-brown figure is an ambient pedestrian, and no runtime behavior or
 hill status changes from this frame audit.
 
+## Regional default pedestrian population and route coverage
+
+The source scene profiles and extracted area manifests distinguish the six
+large region maps from the later building/resource scenes: Scene 0 Downtown,
+Scene 1 Puyallup, Scene 2 Barrens, Scene 3 Penumbra, Scene 4 Council Island,
+and Scene 5 Renraku. `default-actor-lists.tsv` has three
+`pedestrian_k0b_none00` rows in each region map. `default-actor-waypoints.tsv`
+resolves their `+0xE0` route pointers. The table below counts runtime
+waypoints after the initial spawn coordinate; the generated Lua stores that
+coordinate separately as `initial`:
+
+| Scene | Region | Source list | Pedestrian waypoint counts by source order |
+|---:|---|---:|---|
+| 0 | Downtown | `0xD5538` | 19, 13, 9 |
+| 1 | Puyallup | `0x17D660` | 10, 4, 7 |
+| 2 | Barrens | `0x172D1C` | 11, 7, 3 |
+| 3 | Penumbra | `0x18A73A` | 8, 2, 7 |
+| 4 | Council Island | `0x15B998` | 17, 11, 7 |
+| 5 | Renraku | `0x679F0` | 8, 5, 2 |
+
+All 18 region-map route lists have nonzero waypoint counts. The selector at
+`0xA800` is a different population: direct decoding of all 69 candidate
+coordinate lists in scenes `0x15..0x2B` finds the zero-X terminator immediately
+after each initial coordinate pair, so none carries a patrol waypoint. This
+fits the gated employee-contact path and does not make those rows a general
+walker spawner. The default-list movement service enters `0x142AE`, reads the
+`+0xE0` list initialized by `0x44BC`, and advances each actor's selected
+`+0x96/+0x98` target through the Lua `apply_patrol` path.
+
+The new
+`shadowrun_ghidra_conversion_qt_field_region_map_pedestrians_qa` checks each
+map via the QA scene-reentry helper in a fresh field runtime. This does not
+claim physical travel between the region maps. For every source order it
+asserts the extracted spawn coordinate, pedestrian profile, actor slots 3-5,
+and visibility. Ordinary field updates must move all three actors. The QA writes
+`pedestrian-routes.tsv` plus a full-screen `scene-0` through `scene-5`
+`actual.bmp`. The Debug and Release CTests pass, and all six corresponding
+screenshots are byte-identical across configurations. I inspected the six
+screenshots; each shows the expected region-map artwork and a visible pedestrian
+near the source actor route. They are internal runtime captures, not independent
+Genesis comparisons. This confirms the source list/model/runtime path covers
+all six regional maps, while exact patrol waypoint cadence, collision behavior
+for every segment, and actor identity in the independent captures remain open.
+
 ## Next source-backed slice
 
 The post-page effect is now traced: `0x53C90` calls `0x1DED8`, which scans

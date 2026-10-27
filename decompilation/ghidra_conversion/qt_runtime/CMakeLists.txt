@@ -1266,8 +1266,16 @@ add_shadowrun_qt_qa_case(
     --field-scene2-pedestrians-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-scene2-pedestrians-qa")
 
-# Check default-list patrols, all reachable A800 candidate rows, and physical
-# pedestrian contact branches through ordinary field input.
+# Check the three default pedestrian patrols and source-position visibility on
+# every regional map, using a fresh field runtime separate from other QA paths.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_region_map_pedestrians_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-region-map-pedestrians-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-region-map-pedestrians-qa")
+
+# Check all reachable A800 candidate rows and physical contact through field
+# input without adding these conditional rows to the regional map population.
 add_shadowrun_qt_qa_case(
     shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa
     --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
