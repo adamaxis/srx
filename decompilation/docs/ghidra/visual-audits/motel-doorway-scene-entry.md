@@ -130,10 +130,18 @@ with Up recorded at frame 8641. It shows the runner at the Stoker door around
 starting at 8733, and complete opening text by 8736. This is a 40-frame black
 hold in the supplied recording, compared with five full-black frames in the
 current native route QA. The archive contains no ROM hash or emulator build
-identity, so it cannot settle the ROM timing question or establish independent
-Genesis fidelity. The mode-entry audio service at `0x53126` waits 18 VBlanks in
-total, but its reachability and visual timing contribution on this route remain
-untraced. The source call path and blank interval are still open.
+identity, so it cannot establish independent Genesis fidelity. The source
+ordering for the transition is now traced: `0x16396` decrements `FFDF3C`; on
+underflow it clears `FFDF3A` and sets `FFDF3E`. The main loop at `0x095E` sees
+that completion flag, sets `FFE172`, clears `FFDF3E`, and calls `0x53126`
+before checking its mode and variant gates. In these snapshots `FFE186=0` and
+`FFDF40=0`; because event 2 is not `0x10`, `0x3168` takes its `0x31EC` branch
+and clears carry, so the main loop calls the field-exit orchestrator at
+`0x1F5CA`. That orchestrator reaches `0x1F65A`, whose scene-2/event-2 branch
+selects Stoker's arrival record at `0xF4AA0` for the zero alternate result.
+`0x53126` runs six command-`0x14` transactions, each followed by three waits
+through `0x0C24`/`0x00BD2`, for 18 explicit VBlank waits. `0x00BD2` increments
+`FFDF88` once per wait.
 
 [C] The supplied `ram.npy` contains 620 consecutive 64-KiB snapshots for
 frames 8541..9160. In the doorway interval, RAM bytes `FFFBF8` and `FFFBF9`
@@ -144,6 +152,17 @@ are both `0x02` (word `0x0202`) from frame 8641 through 9160. ROM
 The supplied snapshot therefore maps to scene 2/event 2 through the doorway,
 fade, and Stoker panel. Scene-2 terrain record 91 at `0x173138` has value
 `0xC2`; its low five bits select event 2, matching the observed interaction.
+[C] The fade state is also visible in the snapshots: at frame 8680,
+`FFDF3A=0xFF` and `FFDF3C=0x000F`; the countdown reaches zero at frame 8695,
+then `FFDF3E=0xFFFF` at frame 8696. At frame 8697 the completion flag is clear,
+`FFE172=0xFF`, and `FFDF88=0x20B4`. `FFDF88` reaches `0x20C6` at frame 8718,
+an increase of exactly 18 waits, then remains `0x20C6` through frame 8734.
+The images are fully black from frames 8693 through 8732 and first show the
+panel border at 8733. This maps the 18-wait mode-entry service into the
+captured transition, but it does not account for the additional black images
+after the counter reaches 18 waits. [H] Those remaining images may reflect
+later mode-entry work or capture cadence; the unknown capture identity prevents
+assigning them to the US-ROM route without another trace.
 [H] The capture's missing emulator/build identity limits this to a mapping of
 its supplied RAM and images, not proof that it came from the US ROM.
 

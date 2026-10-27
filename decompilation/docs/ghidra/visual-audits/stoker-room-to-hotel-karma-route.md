@@ -110,9 +110,17 @@ prevent using these comparisons as exact Genesis pixel goldens. The external
 sequence also holds full black for frames 8693..8732 (40 frames), begins
 drawing the shared panel at 8733, and shows its complete text by 8736. The
 current native doorway QA has five full-black frames before drawing the
-populated page. The ROM trace includes mode-entry audio waits totaling 18
-VBlanks at `0x53126`, but its call relationship to this particular 40-frame
-visual interval has not been established. Keep the transition timing open.
+populated page. The ROM call relationship is now traced: fade completion at
+`0x16396` is consumed at `0x095E`, which calls `0x53126` before the
+`0x1F5CA` field-exit orchestrator. For the captured scene-2/event-2 state, the
+mode gates `FFE186` and `FFDF40` are zero; `0x3168` takes the non-`0x10` branch
+at `0x31EC` and clears carry, allowing that orchestrator call. The supplied
+RAM counter `FFDF88` advances by exactly 18 waits from frame 8697 to 8718,
+matching `0x53126`'s six three-VBlank groups. It stays at `0x20C6` through
+frame 8734 while the image remains black through 8732 and the panel starts at
+8733. The mode-entry service is therefore tied to this capture's transition,
+but the later black frames remain unexplained and the capture has no ROM/build
+identity. See the detailed [doorway transition trace](motel-doorway-scene-entry.md#supplemental-recording-reviewed-2026-10-27).
 
 ## Nine-question visual review
 
