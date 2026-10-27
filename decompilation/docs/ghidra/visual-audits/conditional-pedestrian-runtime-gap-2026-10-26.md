@@ -816,3 +816,29 @@ not independent Genesis evidence. Scene-entry travel and physical contact for
 other A800 candidates, the FFDF42 request producer, the
 `0x1E43C`/`0x1F16A` continuation, and a route-matched Genesis comparison remain
 open. The A800 hill remains partial.
+
+## FFDF42 request-producer census (bounded)
+
+**[C]** A byte scan of the US ROM for the big-endian absolute address operand
+`00 FF DF 42` finds two occurrences, at file offsets `0x0A6A` and `0x0AA0`.
+The instructions are the `tst.w (0x00FFDF42).l` at ROM `0x0A68` and
+`clr.w (0x00FFDF42).l` at `0x0A9E`. The field loop branches around the request
+path when the word is zero; when nonzero it calls `0x1E43C` at `0x0A92`, calls
+`0x2F32`, clears the request, then restarts the scene loop. The exported call
+graph also has only this direct caller for `0x1E43C`.
+
+The adjacent absolute operands were checked for writes that could overlap the
+word at `FFDF42`. `FFDF3E` accesses are word-sized; `FFDF40` has word-sized
+tests and stores only; no `FFDF41` or `FFDF43` absolute operand occurs. There is
+no direct longword store beginning at `FFDF40` that could include the request
+word. In the generated Ghidra C, the only `DAT_00ffdf42` references are the
+read and clear in `fn_0000075E.cpp`. The nearby exported pointer walks begin at
+`FFDF44` for the scene anchor/collision-probe records or at `FFDF96`/`FFDFCA`
+for action-candidate arrays; the inspected walks advance from those bases and
+do not write backward into `FFDF42`.
+
+This is a bounded result, not proof that the ROM has no producer. A dynamically
+computed pointer or unresolved indirect call could still alias the request
+word; the current export does not identify such a path. Keep automatic
+`0x1E43C` dispatch, its actor scan, and the `0x1F16A` continuation open until a
+producer and its triggering state transition are traced from ROM behavior.

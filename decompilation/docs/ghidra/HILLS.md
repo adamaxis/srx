@@ -999,8 +999,10 @@ by SHA-256. The main loop's FFDF42 request producer and the
 remain open, so neither case claims automatic activity continuation. These
 captures are internal regression artifacts, not independent Genesis
 comparisons; other physical A800 candidates and the request path remain open.
-See the
-`conditional-pedestrian-runtime-gap-2026-10-26.md` audit. The ordinary-
+The bounded census in the
+`conditional-pedestrian-runtime-gap-2026-10-26.md` audit finds only the direct
+`FFDF42` read at `0x0A68` and clear at `0x0A9E`, with no adjacent direct-width
+overlap; dynamically computed aliases remain unresolved. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches
 the success page after the source 10-frame choice gate, requests sound `0x4B`,
