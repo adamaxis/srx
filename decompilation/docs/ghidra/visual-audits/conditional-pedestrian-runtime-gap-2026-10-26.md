@@ -538,17 +538,35 @@ contains these inspected frames:
 
 | Frame | Capture time | Observation |
 |---|---|---|
-| `frame_001200.png` | `02:57:40.000` | Industrial-looking field map with a blue sprite near the left wall and a brown sprite near the center; neither has a confirmed actor identity. |
+| `frame_001200.png` | `02:57:40.000` | Field map matches Scene 0; blue and brown sprites are visible, but their identities are not confirmed. |
 | `frame_001500.png` | `02:57:50.000` | Lone Star badge portrait; “Hey, Flick. I think this guy's packing. You got a permit for that illegal weapon?”; choices `Attack!!`, `Talk to them.`, `Run away!`. |
 | `frame_001800.png` | `02:58:00.000` | Black transition frame. |
-| `frame_002100.png` | `02:58:10.000` | Blue and brown field sprites are visible. |
+| `frame_002100.png` | `02:58:10.000` | Field map matches Scene 5; blue and brown field sprites are visible. |
 | `frame_002110.png` | `02:58:10.333` | Another sprite is visible at the right edge while the camera follows the party. |
-| `frame_002120.png` | `02:58:10.667` | The party and surrounding sprites have shifted on screen with the camera. |
+| `frame_002120.png` | `02:58:10.667` | Scene 5 map and actor positions shift with the camera. |
 | `frame_002140.png` | `02:58:11.333` | Several sprites remain in view during movement. |
 | `frame_002150.png` | `02:58:11.667` | The sprites overlap near the center of the field. |
 | `frame_002400.png` | `02:58:20.000` | Taxi asks for 40 yen to travel to the Puyallup Barrens, with accept and cancel choices. |
-| `frame_002700.png` | `02:58:30.000` | Field map with a red/brown sprite near machinery; scene and actor identity remain unknown. |
+| `frame_002700.png` | `02:58:30.000` | Field map matches Scene 1; the red/brown sprite near machinery is not identified. |
 | `frame_003000.png` | `02:58:40.000` | Tarislar City Inn introduction dialogue and portrait. |
+
+I matched the 272x224 gameplay viewport, excluding the right HUD, against all
+56 ROM-derived map images in `assets/field/maps`. The highest normalized
+correlation scores and map offsets are:
+
+| Frame | Scene/profile | Score | Map offset (pixels) |
+|---|---|---:|---:|
+| `frame_001200.png` | Scene 0 / `0x0D5456` | 0.9069 | `(678,736)` |
+| `frame_002100.png` | Scene 5 / `0x06796A` | 0.9082 | `(895,800)` |
+| `frame_002120.png` | Scene 5 / `0x06796A` | 0.8757 | `(955,790)` |
+| `frame_002150.png` | Scene 5 / `0x06796A` | 0.8790 | `(1070,782)` |
+| `frame_002700.png` | Scene 1 / `0x17D5C4` | 0.9609 | `(1285,708)` |
+
+The map offsets also follow the moving background geometry seen in the
+independent frames. This identifies the visible field maps; it does not identify
+the other sprites or provide input/event telemetry. The sequence shows Scene 0
+before the prompt/black interval, Scene 5 after it, and Scene 1 after the later
+taxi prompt. It does not establish which input caused either transition.
 
 The screen in `frame_001500` exactly matches the follow-up prompt record at
 `0x120E98`. Its text pointer is `0x11D48C`, whose ROM text reads “Hey, Flick.
