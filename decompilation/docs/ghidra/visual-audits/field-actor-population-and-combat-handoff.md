@@ -173,8 +173,15 @@ contact seam does not verify the physical route to Aragorn. Separate
 Debug/Release route QA restores the ROM lift placement `(0x3800,0x0600)`,
 crosses Scene-34 record 92 (`0x1DB990`, event 1), and reaches the event-2
 maglock at record 90 (`0x1DB97C`), opening the generic `0x20E48` door prompt.
-The passkey/Electronics outcome and the remaining walk from that door to A8AE
-are still open. No matching independent gameplay capture is available. The special transition through
+The route seeds a QA-only quality-2 Maglock Passkey (`0x14`) in the live runner
+and presses ordinary A after the source 10-frame choice gate. It checks the
+success page and `0x4B` sound, holds the result for 30 source frames,
+acknowledges with A, and verifies that Scene 34 returns with only record 90's
+map cell changing `0x82 -> 0x81`; the passkey remains in inventory.
+Debug/Release BMPs and action/map-delta traces match. This tests only the
+quality-2 passkey success branch. Electronics, insufficient quality, and the
+walk beyond the lock remain open. No matching independent gameplay capture is
+available. The special transition through
 `0xC64C` and `0x2A32`/`0x2A44` clears `FFE180`; the ordinary resource entry and
 elevator handoff preserve it until contact. The static list still has no scene
 ID in `0xA800`.

@@ -854,7 +854,7 @@ Scene 30 through event-table row 3, walks the entry corridor to the lift with
 ordinary input, rides to Scene 34, and verifies the A8AE actor. It writes
 `qt_runtime/field-mitsuhama-after-hours-entry-qa/{actual.bmp,scene-30-entry.bmp,route.tsv}`
 and contact-page BMPs. The Scene-34 route probe writes
-`qt_runtime/field-mitsuhama-after-hours-entry-qa/scene-34-contact-route-probe/{start.bmp,end.bmp,scene-34-maglock-introduction.bmp,route.tsv,terrain-collision-map.tsv}`.
+`qt_runtime/field-mitsuhama-after-hours-entry-qa/scene-34-contact-route-probe/{start.bmp,end.bmp,scene-34-maglock-introduction.bmp,scene-34-maglock-passkey-{action,result,wait-15,wait-30}.bmp,scene-34-after-passkey-return.bmp,route.tsv,passkey-action.tsv,passkey-map-delta.tsv,terrain-collision-map.tsv}`.
 The route manifest records runtime arrival `(0x1F00,0x4900)` and validates
 the three party positions from ordinary resource-entry placement at ROM
 `0x1DAFE0`: `(0x1F00,0x4900)`, `(0x1F00,0x4B00)`, and `(0x1F00,0x4D00)`.
@@ -882,9 +882,13 @@ maglock cells, and the contact test still uses test-only player proximity.
 The accepted initializer-5 random spawn path and the `0x1E45E` FFE183 clear
 now pass focused Debug/Release script and field QA. The ordinary-input
 Scene-34 route reaches event 2 at record 90 after crossing record 92 and
-opens the generic maglock introduction; the lock action and route beyond the
-lock to A8AE remain open. Independent Genesis identification of the actor is
-also open, so this hill remains partial.
+opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches
+the success page after the source 10-frame choice gate, requests sound `0x4B`,
+holds for the 30-frame result wait, and changes only record 90's collision-map
+cell from `0x82` to `0x81` after A acknowledgement. The seeded passkey remains
+in the live runner inventory. Electronics, insufficient-quality branches,
+the route beyond the lock to A8AE, and independent Genesis identification of
+the actor remain open, so this hill remains partial.
 
 The Stoker and field-object ROM dialogue strings have moved from separate TSV
 catalogs into `assets/dialogue/script-text.json`. The offline importer writes

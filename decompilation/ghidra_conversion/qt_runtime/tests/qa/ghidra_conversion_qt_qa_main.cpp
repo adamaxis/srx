@@ -19226,7 +19226,9 @@ int run_field_pedestrian_scenes_qa(
 
 int run_field_mitsuhama_after_hours_entry_qa(
     FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries) {
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
@@ -20233,6 +20235,7 @@ int run_field_mitsuhama_after_hours_entry_qa(
         south_into_generic_event_row && west_through_generic_event &&
         south_to_row_thirteen && west_to_maglock_lane && south_to_maglock &&
         field_scene.field_scene_reference_for_dump() == 34U &&
+        field_scene.field_interaction_mode_for_dump() == 2U &&
         field_scene.field_interaction_open() &&
         field_scene.field_activity_selection_for_dump() == 2U &&
         probe_movement.event_code == FieldCollisionEventCode::event_2 &&
@@ -20259,15 +20262,274 @@ int run_field_mitsuhama_after_hours_entry_qa(
                   << ", failure=" << field_scene.failure() << ")\n";
         return 3;
     }
+
+    // ROM 0xB984 routes event 2 to the shared 0x20E48 maglock handler in
+    // world mode 2; 0xB994 stores selection 2 for the passkey/electronics
+    // action. Exercise the passkey-success branch with a live active-runner
+    // inventory record, then verify the Scene-34 record-90 map cell changes
+    // from locked 0x82 to open 0x81 after ordinary A acknowledgement.
+    constexpr std::uint8_t kScene34PasskeyItemCode = 0x14U;
+    constexpr std::uint8_t kScene34PasskeyQuality = 2U;
+    constexpr std::size_t kScene34DoorMapIndex = 21U * 64U + 13U;
+    const auto& active_party = field_scene.field_party_records_for_dump();
+    const auto active_slot = field_scene.field_active_party_slot_for_dump();
+    if (!field_scene.field_party_slot_active_for_dump(active_slot) ||
+        active_slot >= active_party.size() ||
+        (field_scene.active_runner_record().flags & 0x0100U) == 0U) {
+        std::cerr << "Mitsuhama entry QA: record-90 passkey branch has no "
+                     "live active runner\n";
+        return 3;
+    }
+    for (std::size_t runner_slot = 0U; runner_slot < active_party.size();
+         ++runner_slot) {
+        if (!field_scene.field_party_slot_active_for_dump(runner_slot) ||
+            (active_party[runner_slot].flags & 0x0100U) == 0U) {
+            continue;
+        }
+        if (std::find(active_party[runner_slot].inventory_item_codes.begin(),
+                      active_party[runner_slot].inventory_item_codes.end(),
+                      kScene34PasskeyItemCode) !=
+            active_party[runner_slot].inventory_item_codes.end()) {
+            std::cerr << "Mitsuhama entry QA: passkey fixture is already "
+                         "present in a live party record\n";
+            return 3;
+        }
+    }
+    std::optional<std::size_t> scene34_passkey_slot;
+    auto& scene34_active_runner = field_scene.active_runner_record();
+    for (std::size_t slot = 0U;
+         slot < scene34_active_runner.inventory_item_codes.size(); ++slot) {
+        if (scene34_active_runner.inventory_item_codes[slot] == 0U) {
+            scene34_passkey_slot = slot;
+            break;
+        }
+    }
+    const auto scene34_map_before_passkey = field_scene.state()
+        .field_scene_buffers.source_metadata.terrain_collision_map;
+    if (!scene34_passkey_slot.has_value() ||
+        scene34_map_before_passkey.size() != 64U * 64U ||
+        scene34_map_before_passkey[kScene34DoorMapIndex] != 0x82U) {
+        std::cerr << "Mitsuhama entry QA: no passkey slot or record-90 map "
+                     "cell is not locked 0x82 before the action\n";
+        return 3;
+    }
+    scene34_active_runner.inventory_item_codes[*scene34_passkey_slot] =
+        kScene34PasskeyItemCode;
+    scene34_active_runner.inventory_phase_bytes[*scene34_passkey_slot] =
+        kScene34PasskeyQuality;
+    const auto scene34_maglock_intro_image = render_qa_field(field_scene);
+    if (scene34_maglock_intro_image.size() !=
+        QSize(kSceneWidth, kSceneHeight)) {
+        std::cerr << "Mitsuhama entry QA: record-90 introduction image is "
+                     "invalid before its source input delay\n";
+        return 3;
+    }
+    std::uint32_t passkey_frame = 0U;
+    for (std::uint32_t frame = 1U; frame <= 10U; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++passkey_frame;
+        if (!field_scene.field_interaction_open() ||
+            render_qa_field(field_scene) != scene34_maglock_intro_image) {
+            std::cerr << "Mitsuhama entry QA: record-90 prompt changed or "
+                         "closed during its source 10-frame input delay\n";
+            return 3;
+        }
+    }
+    std::ofstream passkey_trace(probe_output / "passkey-action.tsv",
+                                std::ios::trunc);
+    if (!passkey_trace) return 3;
+    passkey_trace << "step\tinput\tframe\tscene\tx\ty\tselection"
+                     "\tinteraction\tpanel_kind\toption_count\taudio_count\n";
+    const auto write_passkey_step = [&] (const std::string_view step,
+                                         const std::string_view input,
+                                         const std::uint32_t frame) {
+        const auto position = field_scene.field_entity_world_position();
+        const auto& panel = field_scene.field_interaction_panel();
+        passkey_trace << step << '\t' << input << '\t' << frame << '\t'
+                      << field_scene.field_scene_reference_for_dump() << '\t'
+                      << position.x << '\t' << position.y << '\t'
+                      << static_cast<unsigned>(
+                             field_scene.field_activity_selection_for_dump())
+                      << '\t' << field_scene.field_interaction_open() << '\t'
+                      << static_cast<unsigned>(panel.kind) << '\t'
+                      << panel.option_count << '\t'
+                      << field_audio_events.size() << '\n';
+        passkey_trace.flush();
+    };
+    write_passkey_step("maglock-input-delay", "neutral", passkey_frame);
+    const auto audio_before_scene34_passkey = field_audio_events.size();
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    const auto scene34_passkey_action_event =
+        field_scene.controller_event_word_for_dump();
+    const auto scene34_passkey_action_image = render_qa_field(field_scene);
+    const auto scene34_passkey_action_path =
+        probe_output / "scene-34-maglock-passkey-action.bmp";
+    ++passkey_frame;
+    if ((scene34_passkey_action_event & 0xFF00U) != 0x4000U ||
+        scene34_passkey_action_image.size() !=
+            QSize(kSceneWidth, kSceneHeight) ||
+        !scene34_passkey_action_image.save(QString::fromStdWString(
+            scene34_passkey_action_path.wstring()))) {
+        std::cerr << "Mitsuhama entry QA: ordinary A did not produce the "
+                     "record-90 passkey action event\n";
+        return 3;
+    }
+    write_passkey_step("passkey-action", "a", passkey_frame);
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++passkey_frame;
+    const auto& scene34_passkey_result = field_scene.field_interaction_panel();
+    const auto scene34_passkey_result_image = render_qa_field(field_scene);
+    const bool scene34_passkey_result_text =
+        scene34_passkey_result.text_segment_count == 3U &&
+        scene34_passkey_result.text_segments[0].find("Your Maglock Passkey") !=
+            std::string_view::npos &&
+        scene34_passkey_result.text_segments[2].find(
+            "door has been disabled") != std::string_view::npos;
+    const auto scene34_passkey_result_path =
+        probe_output / "scene-34-maglock-passkey-result.bmp";
+    if (!field_scene.field_interaction_open() ||
+        !scene34_passkey_result.open ||
+        !scene34_passkey_result.source_complete ||
+        scene34_passkey_result.kind !=
+            DialoguePanelKind::information_page ||
+        scene34_passkey_result.option_count != 0U ||
+        !scene34_passkey_result_text ||
+        field_scene.field_activity_selection_for_dump() != 0xFFU ||
+        field_audio_events.size() != audio_before_scene34_passkey + 1U ||
+        field_audio_events.back() != 0x4BU ||
+        scene34_passkey_result_image.size() !=
+            QSize(kSceneWidth, kSceneHeight) ||
+        !scene34_passkey_result_image.save(QString::fromStdWString(
+            scene34_passkey_result_path.wstring()))) {
+        std::cerr << "Mitsuhama entry QA: record-90 passkey success did not "
+                     "resolve to the source result (event=0x" << std::hex
+                  << scene34_passkey_action_event << std::dec
+                  << ", selection=" << static_cast<unsigned>(
+                         field_scene.field_activity_selection_for_dump())
+                  << ", audio=" << audio_before_scene34_passkey << "->"
+                  << field_audio_events.size() << ")\n";
+        return 3;
+    }
+    write_passkey_step("passkey-result", "neutral", passkey_frame);
+    for (std::uint32_t wait_frame = 2U; wait_frame <= 30U; ++wait_frame) {
+        field_scene.advance_frame();
+        ++passkey_frame;
+        if (wait_frame == 15U || wait_frame == 30U) {
+            const auto held_image = render_qa_field(field_scene);
+            if (held_image != scene34_passkey_result_image) {
+                std::cerr << "Mitsuhama entry QA: record-90 passkey result "
+                             "changed during its source 30-frame wait\n";
+                return 3;
+            }
+            const auto held_path = probe_output /
+                (wait_frame == 15U ? "scene-34-maglock-passkey-wait-15.bmp"
+                                   : "scene-34-maglock-passkey-wait-30.bmp");
+            if (!held_image.save(QString::fromStdWString(
+                    held_path.wstring()))) {
+                return 3;
+            }
+            write_passkey_step("passkey-result-wait", "neutral",
+                               passkey_frame);
+        }
+    }
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    ++passkey_frame;
+    write_passkey_step("acknowledge-result", "a", passkey_frame);
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++passkey_frame;
+    field_scene.advance_frame();
+    ++passkey_frame;
+    const auto pending_return_frames =
+        field_scene.field_modal_return_transition_frames_for_dump();
+    if (!finish_field_modal_return_transition(field_scene)) {
+        std::cerr << "Mitsuhama entry QA: passkey return transition did not "
+                     "complete\n";
+        return 3;
+    }
+    passkey_frame += pending_return_frames;
+    const auto scene34_map_after_passkey = field_scene.state()
+        .field_scene_buffers.source_metadata.terrain_collision_map;
+    std::vector<std::tuple<std::size_t, std::uint8_t, std::uint8_t>>
+        scene34_passkey_map_changes;
+    if (scene34_map_before_passkey.size() ==
+        scene34_map_after_passkey.size()) {
+        for (std::size_t index = 0U;
+             index < scene34_map_before_passkey.size(); ++index) {
+            if (scene34_map_before_passkey[index] !=
+                scene34_map_after_passkey[index]) {
+                scene34_passkey_map_changes.emplace_back(
+                    index, scene34_map_before_passkey[index],
+                    scene34_map_after_passkey[index]);
+            }
+        }
+    }
+    const auto scene34_after_passkey_image = render_qa_field(field_scene);
+    const auto& scene34_return_runner = field_scene.active_runner_record();
+    const bool scene34_passkey_returned_cleanly =
+        !field_scene.field_interaction_open() &&
+        !field_scene.dialogue_open() &&
+        !field_scene.field_mode_text_open_for_dump() &&
+        !field_scene.shop_menu_open() &&
+        field_scene.field_scene_reference_for_dump() == 34U &&
+        field_scene.field_entity_visible_for_dump() &&
+        scene34_return_runner.inventory_item_codes[*scene34_passkey_slot] ==
+            kScene34PasskeyItemCode &&
+        scene34_return_runner.inventory_phase_bytes[*scene34_passkey_slot] ==
+            kScene34PasskeyQuality &&
+        scene34_passkey_map_changes.size() == 1U &&
+        std::get<0>(scene34_passkey_map_changes.front()) ==
+            kScene34DoorMapIndex &&
+        std::get<1>(scene34_passkey_map_changes.front()) == 0x82U &&
+        std::get<2>(scene34_passkey_map_changes.front()) == 0x81U &&
+        field_audio_events.size() == audio_before_scene34_passkey + 1U &&
+        scene34_after_passkey_image.size() ==
+            QSize(kSceneWidth, kSceneHeight) &&
+        field_hud_chrome_survives(scene34_after_passkey_image, asset_root) &&
+        scene34_after_passkey_image.save(QString::fromStdWString(
+            (probe_output / "scene-34-after-passkey-return.bmp").wstring()));
+    if (!scene34_passkey_returned_cleanly) {
+        std::cerr << "Mitsuhama entry QA: passkey acknowledgement did not "
+                     "return with record-90 map cell 0x82->0x81 (changes="
+                  << scene34_passkey_map_changes.size() << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", interaction=" << field_scene.field_interaction_open()
+                  << ", hud=" << field_hud_chrome_survives(
+                         scene34_after_passkey_image, asset_root)
+                  << ")\n";
+        return 3;
+    }
+    write_passkey_step("field-return", "neutral", passkey_frame);
+    passkey_trace.close();
+    if (!passkey_trace) return 3;
+    {
+        std::ofstream delta(probe_output / "passkey-map-delta.tsv",
+                            std::ios::trunc);
+        if (!delta) return 3;
+        delta << "map_index\tbefore\tafter\n";
+        for (const auto& [index, before, after] : scene34_passkey_map_changes) {
+            delta << index << "\t0x" << std::hex
+                  << static_cast<unsigned>(before) << "\t0x"
+                  << static_cast<unsigned>(after) << std::dec << '\n';
+        }
+    }
     std::cout << "field_scene34_contact_route_probe=passed frames="
               << probe_frames << " end=" << probe_end.x << ','
               << probe_end.y << " scene="
               << field_scene.field_scene_reference_for_dump()
+              << " world_mode="
+              << field_scene.field_interaction_mode_for_dump()
               << " dialogue=" << field_scene.dialogue_open()
               << " interaction=" << field_scene.field_interaction_open()
               << " selection=" << static_cast<unsigned>(
                      field_scene.field_activity_selection_for_dump())
-              << " event=2 record=90 rom=0x1DB97C"
+              << " event=2 record=90 rom=0x1DB97C passkey_quality=2"
+              << " map_index=" << kScene34DoorMapIndex
+              << " map=0x82->0x81"
               << " artifacts=" << probe_output.string() << '\n';
 
     std::cout << "field_mitsuhama_after_hours_entry_qa=passed scene=3 "
@@ -33333,8 +33595,9 @@ int main(int argc, char** argv) {
             field_audio_events.clear();
             if (field_mitsuhama_after_hours_entry_qa_path.has_value()) {
                 return run_field_mitsuhama_after_hours_entry_qa(
-                    field_scene, *field_mitsuhama_after_hours_entry_qa_path,
-                    field_source_boundaries);
+                    field_scene, asset_root,
+                    *field_mitsuhama_after_hours_entry_qa_path,
+                    field_audio_events, field_source_boundaries);
             }
             if (field_matrix_traversal_entry_qa_path.has_value()) {
                 const auto output = *field_matrix_traversal_entry_qa_path;

@@ -31,9 +31,18 @@ collision `0x0082`, event 2). The resulting `0x20E48` “sturdy door” prompt
 uses selection 2. Debug and Release write matching full-screen
 `scene-34-maglock-introduction.bmp` captures and a frame-by-frame input,
 position, collision, and event trace under
-`scene-34-contact-route-probe/`. The probe stops at this first lock; its
-passkey/Electronics outcomes and the remaining route to Aragorn have not been
-exercised. The A8AE dialogue QA still injects proximity to test `0xECCC`, the
+`scene-34-contact-route-probe/`. The physical movement stops at this lock;
+the passkey branch is now exercised with a QA-seeded live-runner item `0x14`,
+quality 2, and ordinary A after the prompt's source 10-frame choice gate. The
+route checks the result page and `0x4B` sound through its 30-frame wait, then
+acknowledges it with A and verifies the runner returns to Scene 34 with only
+record 90's collision-map cell changing from `0x82` to `0x81`; the seeded item
+and quality remain in the runner inventory. Debug/Release captures include the
+passkey action/result/wait pages, field return, `passkey-action.tsv`, and
+`passkey-map-delta.tsv`; the BMPs have matching hashes. This covers the
+quality-2 success branch only. Electronics, insufficient passkey quality, and
+the remaining route to Aragorn have not been exercised. The A8AE dialogue QA
+still injects proximity to test `0xECCC`, the
 Lua `0x53C90` graph, and the three `0xF4BBC` pages. Other live marker
 producers and the random-candidate path through an accepted initializer-5
 offer remain open. Section 41 has no route-matched visual check.
@@ -299,9 +308,10 @@ this source-record cleanup, and the host consumes it before the modal return
 fade. Debug/Release QA checks one retirement and saves a closed Scene-34 BMP.
 This verifies record removal; it does not claim a walking animation or path.
 
-Next, resolve the record-90 maglock action and continue the Scene-34 route to
-A8AE without coordinate injection. Cover its passkey and Electronics outcomes
-with the live runner's class, skills, inventory, and source RNG inputs. Exercise
+Next, cover the record-90 Electronics outcome and insufficient-passkey branch,
+then continue the Scene-34 route to A8AE without coordinate injection. Cover
+the Electronics results with the live runner's class, skill, inventory, and
+source RNG inputs. Exercise
 the random branch through an accepted raw initializer-5 offer, including offer
 variants 11/12, player-spawn pending, index mismatch, and choice persistence
 across a child-scene transition. Finally, match a real capture to the selected
