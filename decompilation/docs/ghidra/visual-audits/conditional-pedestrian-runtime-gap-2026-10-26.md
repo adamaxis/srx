@@ -282,9 +282,13 @@ outer scene table at `0x1EDB88` by `FFDDC4 - 0x15`, then indexes that scene's
 three choices by `FFE183 - 1`. Scene `0x29` (41) points to choice table
 `0x1EDC98`, whose entries are `[0x1EE1F6, 0x1EE214, 0x1EE214]`; Scene `0x2A`
 (42) points to `0x1EDCA4`, whose entries are
-`[0x1EE250, 0x1EE26E, 0x1EE28C]`. The `0x1EE232` record itself points to
-position data at `0x1EE24A` (`0x0780,0x3980`), but no A800 choice selects it,
-and a bytewise scan finds no `1E E2 32`, `00 1E E2 32`, or `80 1E E2 32`
+`[0x1EE250, 0x1EE26E, 0x1EE28C]`. **[C]** The selected list at `0x1EE214`
+contains one template/position pair and its overrides, then a zero longword at
+`0x1EE228`; `0x4466` tests that next longword and returns on zero. The
+position data it references begins at `0x1EE22C` and terminates on zero X at
+`0x1EE230`. The adjacent tagged record at `0x1EE232` points to position data
+at `0x1EE24A` (`0x0780,0x3980`), but no A800 choice selects it, and a
+bytewise scan finds no `1E E2 32`, `00 1E E2 32`, or `80 1E E2 32`
 reference. **[H]** Another computed or indirect owner remains possible; this
 orphan does not establish a general pedestrian spawner.
 
