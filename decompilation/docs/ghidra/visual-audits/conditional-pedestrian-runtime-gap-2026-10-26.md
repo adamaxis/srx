@@ -698,11 +698,19 @@ black pixels in the ROM-derived sprite assets, matches the figure crop
 `x=32..77, y=30..91` to `pedestrian_k0b_none00` idle/walk direction 2 or 6,
 frame 3, at `(39,49)` with score `0.9498`; the next kind-11 sprite match scores
 `0.9281`. **[C]** The captured sprite is a close visual match for the extracted
-kind-11 pedestrian art. **[H]** This does not identify its actor record or
-party membership. Movement also means the current position cannot be compared
-directly with an A800 initial position to prove which source path created it.
-Keep the A800 identity and pedestrian producer question open; no runtime
-behavior or hill status changes from this frame audit.
+kind-11 pedestrian art. **[C]** Five of the six estimated screen centers
+cluster within `x=112..170`, `y=89..109`; frame `008340` is the outlier at
+approximately `(49,61)`. Another small figure is visible near `(46,129)` in
+frame `008370`. **[H]** The clustered positions are compatible with a
+camera-followed controlled runner, and the second figure is compatible with a
+party member or another actor. Neither observation identifies the
+red-brown figure's actor record or party membership. The art match establishes
+only that it uses the same visual family as the extracted kind-11 pedestrian.
+Movement also means its current position cannot be compared directly with an
+A800 initial position to prove which source path created it. Keep the A800
+identity and pedestrian producer question open; this footage does not prove
+that the red-brown figure is an ambient pedestrian, and no runtime behavior or
+hill status changes from this frame audit.
 
 ## Next source-backed slice
 
