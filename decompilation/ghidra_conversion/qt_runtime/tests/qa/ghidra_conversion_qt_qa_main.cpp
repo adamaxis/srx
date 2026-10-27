@@ -4476,12 +4476,20 @@ int run_field_elevator_floor_group_roundtrip_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries);
 
+bool verify_random_pedestrian_contact_qa(
+    FieldSceneRuntime& field_scene, const std::filesystem::path& output,
+    std::uint16_t scene_id, std::uint8_t choice,
+    std::uint8_t source_initializer, std::uint8_t dismissal_port_byte,
+    std::string_view dismissal_label);
+
 int run_field_scene26_maglock_descriptor_route_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
-    const std::vector<std::string>& source_boundaries) {
+    const std::vector<std::string>& source_boundaries,
+    const bool contact_a800_candidate = false,
+    const std::uint8_t a800_choice = 1U) {
     std::error_code error;
     std::filesystem::remove_all(output, error);
     if (error) {
@@ -5417,6 +5425,21 @@ int run_field_scene26_maglock_descriptor_route_qa(
         std::cerr << "Scene-26 descriptor route QA: current collision map "
                      "could not be captured before the D8 route\n";
         return 3;
+    }
+
+    if (contact_a800_candidate) {
+        if (!verify_random_pedestrian_contact_qa(
+                field_scene, output, kScene, a800_choice, 5U, 0x40U, "a")) {
+            return 3;
+        }
+        std::cout << "field_scene26_a800_contact_route_qa=passed "
+                     "choice="
+                  << static_cast<unsigned>(a800_choice)
+                  << " maglocks=A2->A1,82->81 passkey_quality="
+                  << static_cast<unsigned>(kPasskeyQuality)
+                  << " checkpoint=scene26_static_profile artifacts="
+                  << output.string() << '\n';
+        return 0;
     }
 
     // Records 124/125 place the D8 trigger in projected-grid rows 1-2,
@@ -19927,11 +19950,14 @@ bool verify_random_pedestrian_contact_qa(
         return lhs >= rhs ? static_cast<std::uint32_t>(lhs - rhs)
                           : static_cast<std::uint32_t>(rhs - lhs);
     };
-    // Trace a collision-clear route through the imported ROM terrain grid.
-    // The route chooser only supplies ordinary D-pad facts; player position,
-    // terrain checks, and actor contact remain on the live runtime path.
+    // Trace a route through collision-free cells and source-opened gates in
+    // the imported ROM terrain grid. The route chooser only supplies ordinary
+    // D-pad facts; player position, terrain checks, and actor contact remain
+    // on the live runtime path.
     constexpr std::uint16_t kGridStep = 0x0040U;
-    constexpr std::size_t kGridWidth = 256U;
+    // Scene 26's ordinary resource entry reaches raw x=0x4C00, beyond the
+    // 256-cell span used by the shorter Scene-30/38 contact routes.
+    constexpr std::size_t kGridWidth = 512U;
     constexpr std::size_t kGridCellCount = kGridWidth * kGridWidth;
     const auto grid_index = [](const SceneRunnerPosition position) {
         const auto column = static_cast<std::size_t>(
@@ -19953,6 +19979,14 @@ bool verify_random_pedestrian_contact_qa(
                 static_cast<std::uint16_t>(row * kGridStep));
         }
         return cached;
+    };
+    const auto collision_is_passable = [](const std::int16_t code) {
+        // The passkey handler changes these source cells from A2/82 to A1/81.
+        // The probe returns the latter as signed negative words, but the ROM
+        // movement path accepts the opened passages.
+        return code == 0 ||
+               code == static_cast<std::int8_t>(0xA1U) ||
+               code == static_cast<std::int8_t>(0x81U);
     };
     const auto start_index = grid_index(runner_start);
     const std::array<std::uint16_t, 2> contact_x_positions{{
@@ -19997,7 +20031,8 @@ bool verify_random_pedestrian_contact_qa(
             const auto next = static_cast<std::size_t>(next_row) *
                     kGridWidth +
                 static_cast<std::size_t>(next_column);
-            if (previous[next] != -2 || collision_at(next) != 0) {
+            if (previous[next] != -2 ||
+                !collision_is_passable(collision_at(next))) {
                 continue;
             }
             previous[next] = static_cast<std::int32_t>(current);
@@ -20009,8 +20044,8 @@ bool verify_random_pedestrian_contact_qa(
         const auto target_collision =
             field_scene.probe_field_collision_for_dump(
                 actor_start->x, actor_start->y);
-        std::cerr << "Pedestrian scenes QA: no collision-clear ROM-grid "
-                     "route connects "
+        std::cerr << "Pedestrian scenes QA: no passable ROM-grid route "
+                     "connects "
                   << scene_label << " entry to the candidate contact window "
                      "(start_collision="
                   << start_collision << ", target_collision="
@@ -20581,6 +20616,75 @@ bool verify_field_pedestrian_late_gate_retention_qa(
                  "child_scene=34 actuals="
               << output.string() << '\n';
     return true;
+}
+
+int run_field_scene26_a800_contact_route_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    // Use the ROM +0x11.UNSEEN gate to keep unsupported random-event dialogue
+    // handlers from interrupting either long physical route under audit.
+    auto& contact_runner = field_scene.active_runner_record();
+    const auto saved_runner_flags = contact_runner.flags;
+    contact_runner.flags = static_cast<std::uint16_t>(
+        contact_runner.flags | srx::v(srx::ActorStatusEx::UNSEEN));
+    const auto entry_output = output / "scene2-event1-entry";
+    if (run_field_scene26_event1_physical_entry_qa(
+            field_scene, asset_root, entry_output, field_audio_events,
+            source_boundaries, "employee_recruitment", true) != 0) {
+        contact_runner.flags = saved_runner_flags;
+        return 3;
+    }
+
+    constexpr std::uint8_t kChoice = 1U;
+    const auto candidates =
+        field_scene.conditional_actor_candidates_for_dump(26U);
+    const auto actor =
+        field_scene.world_activity_script_actor_projection_for_dump(0U);
+    const auto candidate = candidates.has_value()
+        ? std::find_if(candidates->begin(), candidates->end(),
+                       [](const auto& row) { return row.choice == kChoice; })
+        : std::vector<shadowrun::ghidra_conversion::scripting::
+              ScriptConditionalActorCandidate>::const_iterator{};
+    if (!candidates.has_value() || candidate == candidates->end() ||
+        !actor || actor->list_offset != candidate->list_offset ||
+        actor->world_position.x != candidate->world_x ||
+        actor->world_position.y != candidate->world_y ||
+        actor->record_slot !=
+            std::optional<FieldWorldActorSlot>{
+                FieldWorldActorSlot::slot_3} ||
+        field_scene.active_run_source_initializer_for_dump() !=
+            std::optional<std::uint8_t>{5U} ||
+        field_scene.field_interaction_mode_for_dump() != 2U ||
+        field_scene.active_effect_index_for_dump() !=
+            field_scene.selected_effect_index_for_dump()) {
+        std::cerr << "Scene-26 A800 contact QA: source-routed choice 1 was "
+                     "not active before the profile checkpoint\n";
+        contact_runner.flags = saved_runner_flags;
+        return 3;
+    }
+
+    // The contact route uses Scene 26's ROM static profile position as an
+    // explicit QA checkpoint. Candidate allocation above was checked after
+    // ordinary Scene-2 event-1 travel in the same live runtime.
+    field_scene.set_field_entity_world_position_for_dump(0x0A00U, 0x0500U);
+    field_scene.set_field_camera_world_position_for_dump(0x0200U, 0x0000U);
+    field_scene.set_field_entity_heading_for_dump(0x0000U);
+    if (field_scene.field_scene_reference_for_dump() != 26U ||
+        field_scene.field_entity_world_position().x != 0x0A00U ||
+        field_scene.field_entity_world_position().y != 0x0500U) {
+        std::cerr << "Scene-26 A800 contact QA: could not establish the "
+                     "documented static-profile checkpoint\n";
+        contact_runner.flags = saved_runner_flags;
+        return 3;
+    }
+    const auto route_result = run_field_scene26_maglock_descriptor_route_qa(
+        field_scene, asset_root, output / "candidate-contact",
+        field_audio_events, source_boundaries, true, kChoice);
+    contact_runner.flags = saved_runner_flags;
+    return route_result;
 }
 
 int run_field_pedestrian_scenes_qa(
@@ -34764,6 +34868,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene26_event1_entry_qa_path;
         std::optional<std::filesystem::path>
+            field_scene26_a800_contact_qa_path;
+        std::optional<std::filesystem::path>
             field_little_chiba_hospital_qa_path;
         std::optional<std::filesystem::path>
             field_scene26_johnson_run_entry_qa_path;
@@ -35443,6 +35549,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene26_event1_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene26-a800-contact-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene26_a800_contact_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -41100,6 +41213,12 @@ int main(int argc, char** argv) {
                 return run_field_scene26_event1_physical_entry_qa(
                     field_scene, asset_root,
                     *field_little_chiba_hospital_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_scene26_a800_contact_qa_path.has_value()) {
+                return run_field_scene26_a800_contact_route_qa(
+                    field_scene, asset_root,
+                    *field_scene26_a800_contact_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_scene26_event1_entry_qa_path.has_value()) {

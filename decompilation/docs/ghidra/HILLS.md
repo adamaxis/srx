@@ -916,8 +916,21 @@ do not produce that pair. At entry, A800 publishes choice 1 from list
 entry camera. The `shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa`
 test and candidate BMP/TSV match across configurations.
 This adds one source-routed candidate entry, not contact proof; the candidate
-contact path, normal offer generation for this pair, and independent Genesis
-comparison remain open.
+contact route now has a separate focused CTest. It follows the normal Scene-2
+event-1 route and verifies that choice 1 is retained, then establishes the
+documented Scene-26 static-profile QA checkpoint `(0x0A00,0x0500)`. The test
+crosses both physical passkey gates (`0xA2 -> 0xA1`, `0x82 -> 0x81`) and walks
+163 ordinary input frames to the candidate at `(0x2000,0x0500)`. Contact opens
+the no-options Mortimer Reed page, sets actor `+0xB0.7`, retains the typed
+FFE110 transfer, and dismisses with A while leaving the actor active. The QA
+sets the ROM `+0x11.UNSEEN` guard for its long route to block unrelated random
+encounters; it restores the original runner flags afterward. Debug/Release
+CTest passes, and all 34 output files match by SHA-256. I inspected the
+full-screen contact and field-return BMPs; they are internal captures, not an
+independent Genesis comparison. The run does not prove continuous travel from
+the normal Scene-26 resource-entry position to this candidate, normal offer
+generation for the selected map/event pair, or the automatic `0x1E43C` request
+route. Those paths and independent Genesis comparison remain open.
 
 A separate Mitsuhama route drives the lift to Scene 34
 for the A8AE story actor. The transition now installs the

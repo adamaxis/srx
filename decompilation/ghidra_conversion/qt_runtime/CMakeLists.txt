@@ -1021,6 +1021,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene26_event1_ent
                  --field-scene26-event1-entry-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene26-event1-entry-qa")
 
+# Trace the reachable A800 pedestrian on that route, then use the documented
+# static profile checkpoint to open its two source maglock gates and walk to
+# the candidate through the live collision/contact path.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene26_a800_contact_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene26-a800-contact-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene26-a800-contact-qa")
+
 # A ROM-valid type-5 run targeting Little Chiba shows its diversion passage
 # before resuming the same event-table transition into resource scene 26.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene26_johnson_run_entry_qa

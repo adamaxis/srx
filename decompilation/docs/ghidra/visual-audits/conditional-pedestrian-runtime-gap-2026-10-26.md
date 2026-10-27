@@ -1095,3 +1095,44 @@ after the A800/contact trigger and supplies the scan outcome; it does not prove
 that a physical contact reaches `0x1E43C`/`0x1F16A`. The direct `FFDF42`
 producer, physical automatic route, and route-matched independent Genesis
 capture remain open, so the callback hill remains partial.
+
+## Scene-26 A800 candidate contact route (2026-10-27)
+
+The source-routed Scene-2 event-1 QA selects Scene 26 and verifies choice 1 at
+list `0x1EDCB0`, position record `0x1EDCC8`, `(0x2000,0x0500)`, slot 3. The
+contact CTest retains that actor, then uses the documented Scene-26 static
+profile QA checkpoint `(0x0A00,0x0500)`. It opens both source passkey cells
+(`0xA2 -> 0xA1` and `0x82 -> 0x81`) through ordinary input and follows a
+collision-map route to the pedestrian. The route trace records 163 movement
+frames; at contact the runner is `(0x2008,0x04C4)` and actor is
+`(0x2000,0x0500)`.
+
+ROM `0xED60` installs callback `0x1F146` when this generic A800 row is
+contacted. Debug/Release `shadowrun_ghidra_conversion_qt_field_scene26_a800_contact_qa`
+checks the one-page Mortimer Reed text, portrait `0x121FF4`, zero-option wait,
+A dismissal, return to the visible Scene-26 field, actor `+0xB0.7`, and retained
+FFE110/FFFC3C transfer state. The test sets the source `+0x11.UNSEEN` gate for
+the full travel and contact route so unrelated random encounters do not
+interrupt this audit, then restores the original runner flags. This gate is a
+QA fixture; it is not evidence that the ordinary profile blocks those events.
+All 34 Debug/Release output hashes match. I inspected the full-screen contact
+page and returned field; they are internal renderer captures, not independent
+Genesis visuals.
+
+The contact-route investigation also exercised the real scene-26 random
+outcome rows and found that command IDs and dispatch values were stored as
+hexadecimal TSV strings, including the tagged `return:` form for a prompt-loop
+return. `field_encounters.resolve` now converts these to typed numeric command
+and target values while preserving whether the result is a handler call or a
+prompt return. The C++ outcome holds the full 32-bit source command. Debug and
+Release `shadowrun_gameplay_script_runtime_qa` verifies the real Scene-26
+security-plate row and a Redmond prompt row with a tagged return target; the
+world-content loader QA also passes. The UI handlers for selected random
+dialogue events remain unconnected, so the contact CTest exercises the source
+leader-protected gate to isolate this candidate-contact path.
+
+This route does not prove continuous travel from the normal Scene-26 resource
+entry to the candidate: it checkpoints the runner at the static profile before
+opening the two gates. Normal generation of the target map/event pair, physical
+automatic `0x1E43C` processing after contact, the direct `FFDF42` producer, and
+a route-matched Genesis capture remain open.
