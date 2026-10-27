@@ -236,6 +236,76 @@ int main() {
     input.posture = 2U;
     input.selected_inventory_slot = 6U;
 
+    // ROM race ceilings at 0xC22A6 permit a Human command average of 9;
+    // Merlin's Lore offers item 0x28 at phase 4, making the command pool 13.
+    // Full Offense (posture 4) plus a rank-12 action at 0x12C74 yields Attack
+    // 24, whose 0x12CEE row index 23 aliases Defense row 1 at 0xCF62A.
+    EquipmentCombatInput upper_attack{};
+    upper_attack.attributes = {6U, 6U, 0U, 0U, 6U, 6U, 0U, 0U};
+    upper_attack.skills[0] = 12U;
+    upper_attack.skills[1] = 12U;
+    upper_attack.skills[2] = 12U;
+    upper_attack.skills[3] = 12U;
+    upper_attack.inventory_item_codes[0] = 0x28U;
+    upper_attack.inventory_phase_bytes[0] = 4U;
+    upper_attack.inventory_item_codes[1] = 2U;
+    upper_attack.posture = 4U;
+    upper_attack.selected_inventory_slot = 1U;
+    upper_attack.source_action_code = 2U;
+    const auto upper_attack_result =
+        compute_equipment_combat_bars(upper_attack);
+    if (upper_attack_result.command_average != 13U ||
+        upper_attack_result.attack_value != 24U ||
+        upper_attack_result.attack_bar != 23U ||
+        !upper_attack_result.attack_written) {
+        return 33;
+    }
+
+    // 0xC22A6 race ceilings plus the Merlin's Lore phase-4 item 0x28 and
+    // installed Dermal Plating tier 3 (cyberware bit 11) produce legal
+    // Defense rows 21..24. The last row is selected from 0xCF880 by the
+    // source's unbounded 0x12CEE pointer arithmetic.
+    struct RaceDefenseCeiling {
+        std::uint8_t body;
+        std::uint8_t quickness;
+        std::uint8_t intelligence;
+        std::uint8_t willpower;
+        std::uint8_t expected_average;
+        std::uint8_t expected_defense;
+    };
+    constexpr std::array<RaceDefenseCeiling, 5U> race_defense_ceilings{{
+        {6U, 6U, 6U, 6U, 13U, 22U},
+        {6U, 7U, 6U, 6U, 13U, 22U},
+        {7U, 5U, 6U, 7U, 13U, 23U},
+        {9U, 6U, 5U, 6U, 12U, 24U},
+        {11U, 5U, 4U, 5U, 11U, 25U},
+    }};
+    for (std::size_t race = 0U; race < race_defense_ceilings.size(); ++race) {
+        const auto& ceiling = race_defense_ceilings[race];
+        EquipmentCombatInput maximum_defense{};
+        maximum_defense.attributes = {
+            ceiling.body, ceiling.quickness, 0U, 0U,
+            ceiling.intelligence, ceiling.willpower, 0U, 0U};
+        maximum_defense.inventory_item_codes[0U] = 0x28U;
+        maximum_defense.inventory_phase_bytes[0U] = 4U;
+        maximum_defense.inventory_item_codes[1U] = 2U;
+        maximum_defense.source_action_code = 2U;
+        maximum_defense.cyberware_flags = 1U << 11U;
+        maximum_defense.posture = 0U;
+        const auto maximum_bars =
+            compute_equipment_combat_bars(maximum_defense);
+        if (!maximum_bars.defense_written ||
+            maximum_bars.command_average != ceiling.expected_average ||
+            maximum_bars.defense_value != ceiling.expected_defense ||
+            maximum_bars.defense_bar != ceiling.expected_defense - 1U) {
+            std::cerr << "race-ceiling Defense mismatch at race " << race
+                      << " average=" << maximum_bars.command_average
+                      << " defense=" << maximum_bars.defense_value << "/"
+                      << maximum_bars.defense_bar << '\n';
+            return 48;
+        }
+    }
+
     const auto result = compute_equipment_combat_bars(input);
     if (result.command_average != 8U || result.attack_value != 4U ||
         result.attack_bar != 3U || result.defense_value != 6U ||
@@ -609,6 +679,64 @@ int main() {
         gator_mana_zap.defense_bar != 4U ||
         gator_mana_zap.source_data_missing) {
         return 47;
+    }
+
+    // The ROM's strongest reachable higher-mode action is the Orc Shaman
+    // profile's Mana Storm with Bear Totem: trained Sorcery 12, Power Focus
+    // phase 2, Magic cap 6, Force 4, Mana Storm Spell Focus phase 4, and Bear
+    // slot-7 modifier 0. Table 0x166AD8 caps Mana Storm at Force 4; offer
+    // 0x1AAEE9 supplies its phase-4 focus (stored item code 0x22). This
+    // reaches Attack 14, the highest legal source row (bar index 13).
+    auto maximum_spell_record = caster_records[2U];
+    maximum_spell_record.bytes[0x80U] = 12U;
+    maximum_spell_record.bytes[0x66U + 5U] = 0x22U;
+    maximum_spell_record.bytes[0x6EU + 5U] = 4U;
+    maximum_spell_record.bytes[0x66U + 6U] = 0x18U;
+    maximum_spell_record.bytes[0x6EU + 6U] = 2U;
+    const auto maximum_spell_fields =
+        read_runner_record_fields(maximum_spell_record);
+    const auto* mana_storm = find_us_magic_spell(9U);
+    const auto* bear_spell_table = find_us_magic_spell_table(2U);
+    const MagicSpellTableEntry* mana_storm_entry = nullptr;
+    if (bear_spell_table != nullptr) {
+        const auto mana_storm_position = std::find_if(
+            bear_spell_table->entries.begin(),
+            bear_spell_table->entries.begin() +
+                static_cast<std::ptrdiff_t>(bear_spell_table->entry_count),
+            [](const MagicSpellTableEntry& entry) {
+                return entry.spell_code == 9U;
+            });
+        if (mana_storm_position != bear_spell_table->entries.begin() +
+                                       static_cast<std::ptrdiff_t>(
+                                           bear_spell_table->entry_count)) {
+            mana_storm_entry = &*mana_storm_position;
+        }
+    }
+    if (maximum_spell_fields.species_index != 3U ||
+        maximum_spell_fields.archetype_index != 1U ||
+        maximum_spell_fields.magic_table_index != 2U ||
+        maximum_spell_fields.auxiliary[0U] != 6U || mana_storm == nullptr ||
+        mana_storm_entry == nullptr ||
+        mana_storm_entry->force_limit != 4U ||
+        maximum_spell_record.bytes[0x6DU] != 0x2BU ||
+        maximum_spell_record.bytes[0x66U + 5U] != 0x22U ||
+        maximum_spell_record.bytes[0x6EU + 5U] != 4U ||
+        maximum_spell_record.bytes[0x66U + 6U] != 0x18U ||
+        maximum_spell_record.bytes[0x6EU + 6U] != 2U) {
+        return 48;
+    }
+    const auto maximum_spell_bars = compute_equipment_combat_bars(
+        make_spell_bar_input(maximum_spell_record, *mana_storm, 4U, 4U));
+    if (expected_rom_spell_attack_value(maximum_spell_record, 9U, 4U, 4U) !=
+            14U ||
+        !maximum_spell_bars.attack_written ||
+        maximum_spell_bars.source_data_missing ||
+        maximum_spell_bars.attack_value != 14U ||
+        maximum_spell_bars.attack_bar != 13U ||
+        !maximum_spell_bars.special_action.menu_service_called ||
+        maximum_spell_bars.special_action.magic_spell_missing ||
+        !maximum_spell_bars.special_action.residual_calculated) {
+        return 49;
     }
 
     MagicActionEffectValueInput metric_input{};

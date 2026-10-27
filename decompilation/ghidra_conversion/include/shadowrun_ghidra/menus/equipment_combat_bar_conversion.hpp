@@ -68,8 +68,8 @@ struct EquipmentCombatSpecialActionResult {
 };
 
 struct EquipmentCombatBarResult {
-    std::uint8_t attack_bar = 0;
-    std::uint8_t defense_bar = 0;
+    std::uint16_t attack_bar = 0;
+    std::uint16_t defense_bar = 0;
     bool attack_written = true;
     bool defense_written = true;
     std::uint16_t command_average = 0;

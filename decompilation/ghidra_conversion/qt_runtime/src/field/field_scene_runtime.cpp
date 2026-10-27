@@ -5880,17 +5880,26 @@ bool FieldSceneRuntime::load_command_overview_assets(
             return false;
         }
     }
-    for (std::size_t index = 0; index < command_overview_attack_bars_.size();
-         ++index) {
+    for (std::size_t index = 0; index <= 22U; ++index) {
         if (!load_sprite(std::string(kCommandOverviewAttackBarAliasPrefix) +
                              std::to_string(index),
-                         command_overview_attack_bars_[index]) ||
-            !load_sprite(std::string(kCommandOverviewDefenseBarAliasPrefix) +
+                         command_overview_attack_bars_[index])) {
+            return false;
+        }
+    }
+    for (std::size_t index = 0; index < command_overview_defense_bars_.size();
+         ++index) {
+        if (!load_sprite(std::string(kCommandOverviewDefenseBarAliasPrefix) +
                              std::to_string(index),
                          command_overview_defense_bars_[index])) {
             return false;
         }
     }
+    // ROM 0x12CEE selects rows from 0xCF3D4 and 0xCF610. The bases differ by
+    // 22 rows, so Attack indices 22..24 alias Defense rows 0..2. These use
+    // the same named host assets as their source-selected table rows.
+    command_overview_attack_bars_[23U] = command_overview_defense_bars_[1U];
+    command_overview_attack_bars_[24U] = command_overview_defense_bars_[2U];
     return true;
 }
 

@@ -2220,8 +2220,8 @@ private:
     std::array<QImage, 14> command_overview_drain_bars_{};
     std::array<QImage, 9> command_overview_armor_summary_bars_{};
     std::array<QImage, 40> command_overview_detail_values_{};
-    std::array<QImage, 23> command_overview_attack_bars_{};
-    std::array<QImage, 23> command_overview_defense_bars_{};
+    std::array<QImage, 25> command_overview_attack_bars_{};
+    std::array<QImage, 25> command_overview_defense_bars_{};
     ResourceVariantState command_overview_resource_variant_{};
     EquipmentCombatBarResult command_overview_combat_bars_{};
     ItemActionDetailResult command_overview_item_detail_{};

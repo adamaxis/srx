@@ -55,9 +55,16 @@ EquipmentActionSkillMergeResult merge_equipment_action_skill_value(
 
 namespace {
 
-std::uint8_t bar_index(const std::uint16_t value) {
-    return static_cast<std::uint8_t>(
-        std::min<unsigned>(22U, value == 0U ? 0U : value - 1U));
+std::uint16_t attack_bar_index(const std::uint16_t value) {
+    // ROM 0x12CEE clears the negative result after subtracting one, but does
+    // not clamp the upper bound before selecting the source row.
+    return value == 0U ? 0U : static_cast<std::uint16_t>(value - 1U);
+}
+
+std::uint16_t defense_bar_index(const std::uint16_t value) {
+    // ROM 0x12CEE subtracts one and clears only a negative result. Like the
+    // Attack path, it has no upper clamp before selecting the source row.
+    return value == 0U ? 0U : static_cast<std::uint16_t>(value - 1U);
 }
 
 std::uint8_t selected_action_code(const EquipmentCombatInput& input) {
@@ -204,7 +211,7 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
         result.source_data_missing = phase_modifiers.source_data_missing;
         special_value = phase_modifiers.value;
         result.attack_value = special_value;
-        result.attack_bar = bar_index(result.attack_value);
+        result.attack_bar = attack_bar_index(result.attack_value);
     } else {
         const auto attack_base = posture_value(result.command_average,
                                                input.posture, false);
@@ -216,29 +223,29 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
             // neighboring +0x86 byte.
             result.attack_value = merge_direct_equipment_skill(
                 attack_base, input.skills[4]);
-            result.attack_bar = bar_index(result.attack_value);
+            result.attack_bar = attack_bar_index(result.attack_value);
         } else if (action_code < 0x0DU) {
             const auto merged = merge_equipment_action_skill_value(
                 {attack_base, action_code, input.skills[0], input.skills[1],
                  input.skills[2], input.skills[3]});
             result.attack_value = merged.value;
-            result.attack_bar = bar_index(result.attack_value);
+            result.attack_bar = attack_bar_index(result.attack_value);
         } else if (action_code < 0x10U) {
             // 0x12D46 selects record +0x87 directly.
             result.attack_value = merge_direct_equipment_skill(
                 attack_base, input.skills[6]);
-            result.attack_bar = bar_index(result.attack_value);
+            result.attack_bar = attack_bar_index(result.attack_value);
         } else if (input.source_mode < 2U && action_code == 0x17U) {
             // 0x12DD2 selects record +0x85 for the special action row.
             result.attack_value = merge_direct_equipment_skill(
                 attack_base, input.skills[4]);
-            result.attack_bar = bar_index(result.attack_value);
+            result.attack_bar = attack_bar_index(result.attack_value);
         } else if (input.source_mode >= 2U) {
             // 0x12D46 is also the higher-mode fallback for an equipped
             // action code at or above thirteen.
             result.attack_value = merge_direct_equipment_skill(
                 attack_base, input.skills[6]);
-            result.attack_bar = bar_index(result.attack_value);
+            result.attack_bar = attack_bar_index(result.attack_value);
         } else {
             // The ROM exits the lower-mode attack path for 0x10..0x16 and
             // does not publish an attack strip for those action codes.
@@ -272,7 +279,7 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
         input, defense_value);
     result.defense_value = static_cast<std::uint16_t>(
         defense_value + cyberware_defense_bonus(input.cyberware_flags));
-    result.defense_bar = bar_index(result.defense_value);
+    result.defense_bar = defense_bar_index(result.defense_value);
     return result;
 }
 
