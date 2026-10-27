@@ -168,6 +168,32 @@ Therefore choice 3 is a source-table row, but is unreachable after the field
 mode initializes this byte. The candidate rows are not proof that all three
 can spawn.
 
+### Tagged-list and scene-selector census
+
+A byte scan of the 2 MiB US ROM finds 74 occurrences of the tagged pedestrian
+template longword `80 1D 69 88`. The extracted conditional-candidate manifest
+has 69 scene/choice rows and 50 unique list offsets. Directly reading the
+three-pointer arrays selected from `0x1EDB88` confirms all 69 manifest
+scene/choice pointers match the ROM.
+
+One additional tagged record begins at `0x1EE232`, adjacent to the Scene-41
+and Scene-42 candidate data. It is not an A800 choice: Scene 41 selects
+`[0x1EE1F6, 0x1EE214, 0x1EE214]`; Scene 42 selects
+`[0x1EE250, 0x1EE26E, 0x1EE28C]`. A scan found no big-endian literal ROM
+longword reference to `0x001EE232`. This establishes that the current
+`0x1EDB88` candidate table does not select it, not that every computed or
+indirect path to the record has been ruled out.
+
+The other extracted literal pedestrian rows are bounded as follows:
+`default-actors.tsv` has 21 rows across scenes 0-5 and 20;
+`world-activity-actors.tsv` has the A8AE story actor in Scene 34 and a
+pending-list actor at source record `0x1E5FA` in Scene 47; the 857
+`dynamic-world-activity-actors.tsv` rows across 56 scenes contain no literal
+pedestrian profile, name, or sprite stem. These table counts do not identify
+every small sprite in gameplay captures and do not exhaust generated or
+computed actor paths. Keep the Section-41 sprite identification open until a
+matching scene and live actor record are traced.
+
 ### Meaning of the `FFFBED == 5` gate
 
 The comparison at `0xA84C` is confirmed. The writer at `0x1E6D6` copies the
