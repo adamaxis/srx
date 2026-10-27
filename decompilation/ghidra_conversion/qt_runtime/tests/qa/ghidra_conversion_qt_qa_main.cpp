@@ -19026,6 +19026,368 @@ bool accept_employee_offer_for_field_pedestrian_qa(
     return true;
 }
 
+bool ride_scene30_elevator_for_pedestrian_qa(
+    FieldSceneRuntime& field_scene, const std::filesystem::path& output,
+    const std::uint8_t expected_choice,
+    const std::uint16_t destination_random_seed) {
+    constexpr std::uint16_t kSourceScene = 30U;
+    constexpr std::uint16_t kDestinationScene = 34U;
+    constexpr std::uint16_t kStartX = 0x3A00U;
+    constexpr std::uint16_t kStartY = 0x0600U;
+    constexpr std::size_t kLiftRecord = 82U;
+    const auto& rectangles = field_scene.state()
+        .field_scene_buffers.source_metadata.terrain_collision_rectangles;
+    if (expected_choice < 1U || expected_choice > 2U ||
+        field_scene.field_scene_reference_for_dump() != kSourceScene ||
+        field_scene.field_interaction_mode_for_dump() != 2U ||
+        field_scene.active_run_source_initializer_for_dump() !=
+            std::optional<std::uint8_t>{5U} ||
+        field_scene.world_effect_active_for_dump() ||
+        field_scene.pending_world_effect_for_dump() ||
+        field_scene.active_effect_index_for_dump() !=
+            std::optional<std::uint16_t>{0U} ||
+        field_scene.selected_effect_index_for_dump() !=
+            std::optional<std::uint16_t>{4U} ||
+        field_scene.world_effect_player_spawn_pending_for_dump() ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        rectangles.size() <= kLiftRecord + 1U ||
+        rectangles[kLiftRecord].left != 0x0380U ||
+        rectangles[kLiftRecord].right != 0x039FU ||
+        rectangles[kLiftRecord].top != 0x0020U ||
+        rectangles[kLiftRecord].bottom != 0x003FU ||
+        rectangles[kLiftRecord].value != 0x00DDU ||
+        rectangles[kLiftRecord + 1U].left != 0x03A0U ||
+        rectangles[kLiftRecord + 1U].right != 0x03BFU ||
+        rectangles[kLiftRecord + 1U].top != 0x0020U ||
+        rectangles[kLiftRecord + 1U].bottom != 0x003FU ||
+        rectangles[kLiftRecord + 1U].value != 0x00DDU) {
+        const auto start_position = field_scene.field_entity_world_position();
+        const auto initializer =
+            field_scene.active_run_source_initializer_for_dump();
+        const auto active_index = field_scene.active_effect_index_for_dump();
+        const auto selected_index = field_scene.selected_effect_index_for_dump();
+        std::cerr << "Pedestrian elevator QA: Scene-30 profile, source run, "
+                     "A800 late-gate facts, or ROM lift records did not match"
+                  << " (scene=" << field_scene.field_scene_reference_for_dump()
+                  << ", mode=" << field_scene.field_interaction_mode_for_dump()
+                  << ", initializer="
+                  << (initializer.has_value()
+                          ? std::to_string(*initializer)
+                          : std::string("missing"))
+                  << ", position=" << start_position.x << ','
+                  << start_position.y << ", world_effect="
+                  << field_scene.world_effect_active_for_dump()
+                  << ", pending_effect="
+                  << field_scene.pending_world_effect_for_dump()
+                  << ", active_index="
+                  << (active_index.has_value()
+                          ? std::to_string(*active_index)
+                          : std::string("missing"))
+                  << ", selected_index="
+                  << (selected_index.has_value()
+                          ? std::to_string(*selected_index)
+                          : std::string("missing"))
+                  << ", player_spawn_pending="
+                  << field_scene.world_effect_player_spawn_pending_for_dump()
+                  << ", rectangles=" << rectangles.size();
+        if (rectangles.size() > kLiftRecord + 1U) {
+            std::cerr << ", lift82=" << rectangles[kLiftRecord].left << ','
+                      << rectangles[kLiftRecord].right << ','
+                      << rectangles[kLiftRecord].top << ','
+                      << rectangles[kLiftRecord].bottom << ",0x" << std::hex
+                      << rectangles[kLiftRecord].value << std::dec
+                      << ", lift83=" << rectangles[kLiftRecord + 1U].left
+                      << ',' << rectangles[kLiftRecord + 1U].right << ','
+                      << rectangles[kLiftRecord + 1U].top << ','
+                      << rectangles[kLiftRecord + 1U].bottom << ",0x" << std::hex
+                      << rectangles[kLiftRecord + 1U].value << std::dec;
+        }
+        std::cerr << ")\n";
+        return false;
+    }
+
+    // ROM 0x1DB032 records 82/83 are the Scene-30 event-29 lift lane. Its
+    // descriptor starts at (0x3A00,0x0600); ordinary Up reaches the trigger.
+    const auto save = [&field_scene, &output, expected_choice](
+                           const std::string_view stage) {
+        const auto image = render_qa_field(field_scene);
+        const auto path = output /
+            ("scene-30-to-34-choice-" +
+             std::to_string(expected_choice) + "-" + std::string(stage) +
+             ".bmp");
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+            image.save(QString::fromStdWString(path.wstring()));
+    };
+    const auto no_modal_screen = [&field_scene] {
+        return !field_scene.dialogue_open() &&
+               !field_scene.field_interaction_open() &&
+               !field_scene.field_mode_text_open_for_dump() &&
+               !field_scene.shop_menu_open();
+    };
+
+    std::uint16_t entry_wait = 0U;
+    for (; entry_wait < 120U &&
+           field_scene.field_modal_return_transition_frames_for_dump() != 0U;
+         ++entry_wait) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    if (field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        !save("scene-30-start")) {
+        std::cerr << "Pedestrian elevator QA: Scene-30 entry did not settle\n";
+        return false;
+    }
+
+    std::uint32_t lift_approach_updates = 0U;
+    for (; lift_approach_updates < 400U &&
+           !field_scene.elevator_selector_open_for_dump() &&
+           field_scene.field_scene_reference_for_dump() == kSourceScene;
+         ++lift_approach_updates) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up
+        field_scene.advance_frame();
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    const auto lift_transition =
+        field_scene.last_field_movement_transition_for_dump();
+    if (lift_approach_updates == 0U || lift_approach_updates >= 400U ||
+        field_scene.field_scene_reference_for_dump() != kSourceScene ||
+        !field_scene.elevator_selector_open_for_dump() ||
+        !no_modal_screen() ||
+        lift_transition.event_code != FieldCollisionEventCode::event_29 ||
+        lift_transition.continuation !=
+            MovementModeTransitionContinuation::event_29_world_activity ||
+        lift_transition.kind !=
+            EntityMovementModeTransitionResultKind::world_activity_started ||
+        field_scene.elevator_selector_current_floor_for_dump() != 0U ||
+        field_scene.elevator_selector_selected_floor_for_dump() != 0U ||
+        field_scene.active_effect_index_for_dump() !=
+            std::optional<std::uint16_t>{0U} ||
+        field_scene.selected_effect_index_for_dump() !=
+            std::optional<std::uint16_t>{4U} ||
+        field_scene.world_activity_script_actor_count_for_dump() != 0U ||
+        !save("lift-selector")) {
+        std::cerr << "Pedestrian elevator QA: ordinary Up did not enter the "
+                     "Scene-30 event-29 selector (updates="
+                  << lift_approach_updates << ", scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", selector="
+                  << field_scene.elevator_selector_open_for_dump()
+                  << ", event="
+                  << static_cast<unsigned>(lift_transition.event_code)
+                  << ", active_index="
+                  << (field_scene.active_effect_index_for_dump().has_value()
+                          ? std::to_string(*field_scene.active_effect_index_for_dump())
+                          : std::string("missing"))
+                  << ", selected_index="
+                  << (field_scene.selected_effect_index_for_dump().has_value()
+                          ? std::to_string(*field_scene.selected_effect_index_for_dump())
+                          : std::string("missing"))
+                  << ")\n";
+        return false;
+    }
+
+    // ROM 0x58DE0 changes only FFF0CA; the lift at 0x58FF8 advances FFF0C8.
+    for (std::uint8_t selected_floor = 1U; selected_floor <= 4U;
+         ++selected_floor) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up
+        field_scene.advance_frame();
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+        for (std::uint8_t tick = 0U;
+             tick < kElevatorSelectorNavigationFeedbackFrameCount - 2U;
+             ++tick) {
+            field_scene.advance_frame();
+        }
+        if (field_scene.elevator_selector_current_floor_for_dump() != 0U ||
+            field_scene.elevator_selector_selected_floor_for_dump() !=
+                selected_floor) {
+            std::cerr << "Pedestrian elevator QA: floor selection did not "
+                         "follow ordinary Up to index "
+                      << static_cast<unsigned>(selected_floor) << '\n';
+            return false;
+        }
+        field_scene.advance_frame();
+    }
+    if (field_scene.elevator_selector_selected_floor_for_dump() != 4U ||
+        !save("floor-4-selected")) {
+        std::cerr << "Pedestrian elevator QA: selected floor 4 did not hold\n";
+        return false;
+    }
+
+    constexpr std::uint16_t kLiftFramesPerFloor = 17U * 8U;
+    constexpr std::uint16_t kLiftUpdateLimit = 4U * kLiftFramesPerFloor + 1U;
+    field_scene.set_controller_port_byte(0x40U); // A: ride the lift
+    field_scene.advance_frame();
+    const bool lift_animation_started =
+        field_scene.elevator_selector_animating_for_dump() &&
+        field_scene.elevator_selector_animation_frame_for_dump() == 16U;
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    std::uint16_t lift_updates = 0U;
+    while (lift_updates < kLiftUpdateLimit &&
+           field_scene.elevator_selector_animating_for_dump()) {
+        field_scene.advance_frame();
+        ++lift_updates;
+    }
+    if (!lift_animation_started || lift_updates >= kLiftUpdateLimit ||
+        field_scene.elevator_selector_animating_for_dump() ||
+        field_scene.elevator_selector_current_floor_for_dump() != 4U ||
+        field_scene.elevator_selector_selected_floor_for_dump() != 4U ||
+        field_scene.active_effect_index_for_dump() !=
+            std::optional<std::uint16_t>{4U} ||
+        field_scene.selected_effect_index_for_dump() !=
+            std::optional<std::uint16_t>{4U} ||
+        !save("floor-4-arrived")) {
+        std::cerr << "Pedestrian elevator QA: source-timed lift did not "
+                     "advance FFF0C8 to 4\n";
+        return false;
+    }
+
+    // If the destination re-samples FFE183, this opposing seed selects the
+    // other row. A8xx must retain the choice sampled before the index gate.
+    field_scene.set_source_random_seed_for_dump(destination_random_seed);
+    field_scene.set_controller_port_byte(0x80U); // Start: finish floor trip
+    field_scene.advance_frame();
+    const bool scene_transition_started =
+        field_scene.elevator_scene_transition_phase_for_dump() ==
+            ElevatorSceneTransitionPhase::fading_to_black;
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    std::uint16_t scene_transition_updates = 0U;
+    while (scene_transition_updates < 500U &&
+           (field_scene.field_scene_reference_for_dump() !=
+                kDestinationScene ||
+            field_scene.elevator_scene_transition_phase_for_dump() !=
+                ElevatorSceneTransitionPhase::idle)) {
+        field_scene.advance_frame();
+        ++scene_transition_updates;
+    }
+    const auto final_position = field_scene.field_entity_world_position();
+    const bool destination_loaded =
+        scene_transition_started && scene_transition_updates < 500U &&
+        field_scene.field_scene_reference_for_dump() == kDestinationScene &&
+        field_scene.field_interaction_mode_for_dump() == 2U &&
+        field_scene.elevator_scene_transition_phase_for_dump() ==
+            ElevatorSceneTransitionPhase::idle &&
+        !field_scene.elevator_selector_open_for_dump() && no_modal_screen() &&
+        field_scene.active_effect_index_for_dump() ==
+            std::optional<std::uint16_t>{4U} &&
+        field_scene.selected_effect_index_for_dump() ==
+            std::optional<std::uint16_t>{4U} &&
+        !field_scene.world_effect_active_for_dump() &&
+        !field_scene.pending_world_effect_for_dump() &&
+        !field_scene.world_effect_player_spawn_pending_for_dump() &&
+        field_scene.active_run_source_initializer_for_dump() ==
+            std::optional<std::uint8_t>{5U} &&
+        field_scene.world_activity_script_actor_count_for_dump() == 1U &&
+        save("scene-34-entry-actual");
+    if (!destination_loaded) {
+        std::cerr << "Pedestrian elevator QA: physical floor trip did not "
+                     "publish the conditional pedestrian (scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", transition_updates=" << scene_transition_updates
+                  << ", active_index="
+                  << (field_scene.active_effect_index_for_dump().has_value()
+                          ? std::to_string(*field_scene.active_effect_index_for_dump())
+                          : std::string("missing"))
+                  << ", selected_index="
+                  << (field_scene.selected_effect_index_for_dump().has_value()
+                          ? std::to_string(*field_scene.selected_effect_index_for_dump())
+                          : std::string("missing"))
+                  << ", actors="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << ", position=" << final_position.x << ','
+                  << final_position.y << ", failure="
+                  << field_scene.failure() << ")\n";
+        return false;
+    }
+
+    const auto actor =
+        field_scene.world_activity_script_actor_projection_for_dump(0U);
+    const auto candidates =
+        field_scene.conditional_actor_candidates_for_dump(kDestinationScene);
+    if (!actor || !candidates.has_value()) {
+        std::cerr << "Pedestrian elevator QA: Scene-34 actor or source "
+                     "candidate rows are unavailable\n";
+        return false;
+    }
+    const auto expected = std::find_if(
+        candidates->begin(), candidates->end(),
+        [expected_choice](const auto& candidate) {
+            return candidate.choice == expected_choice;
+        });
+    if (expected == candidates->end() ||
+        actor->list_offset != expected->list_offset ||
+        actor->world_position.x != expected->world_x ||
+        actor->world_position.y != expected->world_y ||
+        actor->profile_id != "pedestrian_k0b_none00" ||
+        actor->record_slot !=
+            std::optional<FieldWorldActorSlot>{FieldWorldActorSlot::slot_3}) {
+        std::cerr << "Pedestrian elevator QA: Scene-34 A800 actor did not "
+                     "match the retained choice "
+                  << static_cast<unsigned>(expected_choice)
+                  << " (expected_list="
+                  << (expected != candidates->end()
+                          ? std::to_string(expected->list_offset)
+                          : std::string("missing"))
+                  << ", actual_list=" << actor->list_offset
+                  << ", expected_position="
+                  << (expected != candidates->end()
+                          ? std::to_string(expected->world_x) + "," +
+                                std::to_string(expected->world_y)
+                          : std::string("missing"))
+                  << ", actual_position=" << actor->world_position.x << ','
+                  << actor->world_position.y << ", profile="
+                  << actor->profile_id << ", slot="
+                  << (actor->record_slot.has_value()
+                          ? std::to_string(static_cast<unsigned>(
+                                *actor->record_slot))
+                          : std::string("missing"))
+                  << ", active_index="
+                  << (field_scene.active_effect_index_for_dump().has_value()
+                          ? std::to_string(*field_scene.active_effect_index_for_dump())
+                          : std::string("missing"))
+                  << ", selected_index="
+                  << (field_scene.selected_effect_index_for_dump().has_value()
+                          ? std::to_string(*field_scene.selected_effect_index_for_dump())
+                          : std::string("missing"))
+                  << ", actor_count="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << ")\n";
+        return false;
+    }
+
+    std::ofstream trace(
+        output / ("scene-30-to-34-choice-" +
+                  std::to_string(expected_choice) + "-physical-route.tsv"),
+        std::ios::trunc);
+    if (!trace) return false;
+    trace << "stage\tscene\tinput\tupdates\tactive_index\tselected_index"
+             "\tchoice\tinitial_choice_seed\topposing_destination_seed"
+             "\tresult\tlist_offset\tactor_x\tactor_y\tprofile\trecord_slot\n";
+    trace << "scene-30-deferred\t30\tentry\t" << entry_wait
+          << "\t0\t4\t" << static_cast<unsigned>(expected_choice)
+          << "\t0x0000\t0x" << std::hex << destination_random_seed
+          << "\tno_actor\t0\t0\t0\t-none-\t-none-\n";
+    trace << std::dec << "scene-30-event-29\t30\tUp\t"
+          << lift_approach_updates
+          << "\t0\t4\t" << static_cast<unsigned>(expected_choice)
+          << "\t0x0000\t0x" << std::hex << destination_random_seed
+          << "\tselector\t0\t0\t0\t-none-\t-none-\n";
+    trace << std::dec << "scene-34-arrival\t34\tUp,A,Start\t"
+          << lift_updates + scene_transition_updates
+          << "\t4\t4\t" << static_cast<unsigned>(expected_choice)
+          << "\t0x0000\t0x" << std::hex << destination_random_seed
+          << "\tspawned\t0x" << actor->list_offset << "\t0x"
+          << actor->world_position.x << "\t0x"
+          << actor->world_position.y << '\t' << actor->profile_id << '\t'
+          << static_cast<unsigned>(*actor->record_slot) << '\n';
+    if (!trace) return false;
+    return true;
+}
+
 bool verify_field_pedestrian_late_gate_retention_qa(
     FieldSceneRuntime& field_scene, const std::filesystem::path& output) {
     constexpr std::uint16_t kFirstScene = 30U;
@@ -19199,17 +19561,19 @@ bool verify_field_pedestrian_late_gate_retention_qa(
         false, false, 0U, 4U);
     field_scene.set_world_effect_player_spawn_pending_for_dump(false);
     field_scene.set_source_random_seed_for_dump(0x0000U);
+    // ROM profile 0x1DAEB8 places Scene 30 at its lift landing. The preceding
+    // Scene-1 staging entry exists only to clear prior transient actors.
+    field_scene.set_field_entity_world_position_for_dump(0x3A00U, 0x0600U);
+    field_scene.set_field_camera_world_position_for_dump(0x2D00U, 0x0000U);
     if (!field_scene.reenter_field_scene_for_dump(kFirstScene) ||
         !expect_deferred("scene-30-index-mismatch-deferred-actual.bmp", 4U,
                          false)) {
         return false;
     }
-    field_scene.seed_conditional_actor_effect_facts_for_dump(
-        false, false, 4U, 4U);
-    field_scene.set_source_random_seed_for_dump(0x8000U);
-    if (!field_scene.reenter_field_scene_for_dump(kChildScene) ||
+    if (!ride_scene30_elevator_for_pedestrian_qa(
+            field_scene, output, 1U, 0x8000U) ||
         !expect_spawned_choice(1U,
-                               "scene-34-index-mismatch-choice-1-actual.bmp")) {
+            "scene-34-index-mismatch-choice-1-after-lift-actual.bmp")) {
         return false;
     }
 

@@ -943,12 +943,22 @@ Each candidate occupies slot 3 before its exact source default-guard list,
 which remains active in slots 4 onward. This verifies the in-world
 Johnson-to-offer segment and pending/default actor allocation. The per-choice
 candidate matrix still uses resource-scene reentry, so it does not exercise
-physical travel to every candidate map. A second Debug/Release case enters
-Scene 30 with selected index 4/active index 0, confirms choice 1 is retained
-without an actor, then enters child resource Scene 34 with both indices at 4
-and checks choice 1 at its ROM position despite an opposite RNG seed. The
-FFFC3C pending-spawn case similarly retains choice 2 from Scene 30 and
-publishes it in Scene 34 after the pending flag clears. The ordinary-
+physical travel to every candidate map. The index-mismatch case now starts
+Scene 30 at the ROM profile checkpoint `(0x3A00,0x0600)` from a staging entry,
+with selected index 4 and active index 0. Ordinary Up reaches event 29 records
+82/83 at `0x1DB032`; the selector uses group `0x1DB004` `[30,31,32,33,34]`.
+Ordinary Up selects index 4, A runs the source-timed lift for 17x8 frames per
+floor, and Start completes the physical trip to Scene 34. Setting the
+destination seed to `0x8000` checks that choice 1 survives the late index
+gate; Scene 34 publishes list `0x1EDE18`, position `(0x1800,0x0F00)`, profile
+`pedestrian_k0b_none00`, slot 3. The focused Debug CTest passed and writes the
+lift selector, floor selection/arrival, Scene-34 entry, centered actor BMPs,
+and a route TSV. I inspected the selector and centered actor frames; they are
+internal captures, not independent Genesis references. Release rerun remains
+open. This starts from a staged profile checkpoint and does not exercise the
+accepted Johnson offer through the lift. The FFFC3C pending-spawn case still
+retains choice 2 from Scene 30 and publishes it in Scene 34 through QA
+resource entry after the pending flag clears. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches
 the success page after the source 10-frame choice gate, requests sound `0x4B`,

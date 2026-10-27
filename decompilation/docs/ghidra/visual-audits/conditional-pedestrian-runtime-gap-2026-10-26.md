@@ -106,10 +106,17 @@ typed `0x1E43C` request. Field QA now drives the Johnson offer tasks in a
 single `FieldSceneRuntime`, then keeps the accepted offer state live while
 entering each candidate resource scene. It covers initializer 5 throughout
 the matrix and initializers 11/12 for Scene 22 choices 1/2. Ordinary input
-reaches the Johnson contact and offer in the same runtime; candidate scene
-entry itself still uses resource reentry. The physical elevator/destination
-route across all candidate scenes and a Section-41 route-matched visual check
-remain open.
+reaches the Johnson contact and offer in the same runtime; the 46-candidate
+matrix still uses resource reentry. A separate focused Debug QA starts Scene
+30 at its ROM profile checkpoint `(0x3A00,0x0600)`, reaches event 29 with
+ordinary Up, selects floor index 4, rides the lift, and arrives in Scene 34.
+Late-gate choice 1 remains selected after the destination seed is set to
+`0x8000`, which would choose row 2 if the candidate were sampled again. Scene
+34 publishes list `0x1EDE18` at `(0x1800,0x0F00)` in actor slot 3. This tests
+one physical destination from a staged Scene-30 checkpoint, not the
+accepted-offer-to-lift route or every candidate map. Its inspected BMPs are
+internal renderer evidence; Release rerun and independent Genesis comparison
+remain open. The Section-41 route-matched visual check also remains open.
 
 ## ROM path confirmed from the US image
 
@@ -433,18 +440,23 @@ generated-offer captures for all three initializers are also saved under
 runtime captures, not independent Genesis reference images. This closes the
 physical Johnson-to-accepted-offer segment, while these 46 candidate cases
 still use resource-scene reentry instead of physically traveling to each
-candidate scene. Late-gate QA enters
-Scene 30 with `FFE12C=4` and `FFF0C8=0`, verifies that the sampled choice is
-retained without an actor, then enters child resource Scene 34 with both words
-at 4 and an opposite random seed; the actor uses the original choice. The
-separate `FFFC3C` case samples choice 2 while player-spawn is pending, then
-publishes that choice in Scene 34 after clearing the pending flag. Debug and
-Release pass, and all 55 QA BMP hashes match. These use destination resource
-entry rather than physical elevator input. The captures are
-`scene-30-index-mismatch-deferred-actual.bmp`,
-`scene-34-index-mismatch-choice-1-actual.bmp`,
-`scene-30-player-spawn-pending-deferred-actual.bmp`, and
-`scene-34-player-spawn-pending-choice-2-actual.bmp`. No independent
+candidate scene. The index-mismatch case starts Scene 30 at the ROM profile
+checkpoint `(0x3A00,0x0600)` with `FFE12C=4` and `FFF0C8=0`, then ordinary Up
+reaches event 29 records 82/83 at `0x1DB032`. The selector group at `0x1DB004`
+is `[30,31,32,33,34]`; ordinary Up selects floor index 4, A runs the
+source-timed lift for 17x8 frames per floor, and Start completes the trip.
+The destination seed `0x8000` checks that the earlier choice 1 survives the
+late index gate. Scene 34 publishes list `0x1EDE18`, position
+`(0x1800,0x0F00)`, profile `pedestrian_k0b_none00`, slot 3. The focused Debug
+CTest passed and writes the lift selector, floor selection/arrival, Scene-34
+entry and centered actor BMPs, plus a physical-route TSV. I inspected the
+selector and centered actor frames; these are internal captures, not
+independent Genesis references. Release rerun remains open. This route starts
+from a staged profile checkpoint and does not carry the accepted offer to the
+lift. The separate `FFFC3C` case samples choice 2 while player-spawn is
+pending, then publishes that choice in Scene 34 after clearing the pending
+flag through resource entry. The other matrix cases also use resource entry.
+No independent
 Genesis capture identifies this candidate,
 Scene 34, the A8AE actor, or the contact conversation;
 the BMPs remain internal runtime regression evidence only.
@@ -617,10 +629,13 @@ independent Genesis animation or map comparison.
 The Scene-34 Electronics branch matrix now covers Samurai no-skill, ordinary
 Decker no-kit partial success, Decker zero-success alert, and Decker kit
 success. The physical office-to-accepted-offer segment now passes for Matchstick
-and Caleb in the same runtime, and both late-gate choice-retention branches
-still pass field resource-entry QA. The accepted offer then reaches candidate
-resource scenes through QA reentry; the in-world elevator and destination
-travel segment remains open. Continue from that source transition and resume
+and Caleb in the same runtime. The index-mismatch late-gate branch now uses the
+physical Scene-30-to-34 lift case; FFFC3C still uses resource entry. The
+accepted offer then reaches candidate
+resource scenes through QA reentry; one separate late-gate case now covers a
+physical Scene-30-to-34 lift trip from the ROM profile checkpoint. The
+accepted-offer-to-lift route and travel to the other candidate destinations
+remain open. Continue from that source transition and resume
 the pedestrian producer census across street scenes, matching candidate
 records to independent longplay frames. The current Scene-34 BMPs remain
 internal regression evidence and do not identify a live actor in the longplay.
