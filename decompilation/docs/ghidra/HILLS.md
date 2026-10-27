@@ -1402,3 +1402,19 @@ captures are retained under the build's `qt_runtime/field-pedestrian-scenes-qa`
 directory. These are internal runtime captures, not a Genesis visual match.
 The hill remains partial while other default-list routes, collision behavior,
 and general NPC targeting remain open.
+
+## Scene-34 record-90 Electronics no-skill branch (partial, 2026-10-27)
+
+The physical Scene-3/30/34 route now covers ordinary New Game Samurai input at
+record 90, event 2. ROM `0x21692` scans active runner Electronics bytes at
+`+0x8A` and returns the no-skill page before rolling when the party value is
+zero; the selected Scene-34 template is the ROM Samurai at `0x7291A`. Debug
+and Release `shadowrun_ghidra_conversion_qt_field_mitsuhama_after_hours_electronics_no_skill_qa`
+checks the Electronics/Frag/Walk prompt, no-skill page and 30-frame hold,
+selection 2, active-party inventory, locked map cell `0x82`, unchanged action
+audio, and clean field return. Its 16 Debug/Release BMPs match by SHA-256, and
+the choices, result, and return images were inspected at 320x224. They are
+internal captures, not independent Genesis evidence. The hill stays partial:
+Scene-34 Decker partial and zero-roll results, the world-mode-2 `0x1E04A`
+effect-list/latch path, kit-assisted trials, and independent Genesis visuals
+remain open. See the [conditional pedestrian and Scene-34 runtime audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md).

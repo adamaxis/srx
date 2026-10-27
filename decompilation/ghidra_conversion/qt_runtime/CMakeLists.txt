@@ -1274,6 +1274,16 @@ add_shadowrun_qt_qa_case(
     --field-mitsuhama-after-hours-insufficient-passkey-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-mitsuhama-after-hours-insufficient-passkey-qa")
 
+# The ordinary New Game Samurai has Electronics 0 in ROM template 0x7291A.
+# Reach Scene-34 record 90 and verify ROM 0x21692 takes the no-skill branch
+# before rolling, leaving the locked cell and active-party inventory unchanged.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_mitsuhama_after_hours_electronics_no_skill_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-archetype samurai
+    --field-mitsuhama-after-hours-electronics-no-skill-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-mitsuhama-after-hours-electronics-no-skill-qa")
+
 # Follow ordinary New Game movement into the west wall of Stoker's motel,
 # hold against the source collision cells, move diagonally along the frontage,
 # and retreat. Whole-screen checkpoints and a per-frame coordinate log keep

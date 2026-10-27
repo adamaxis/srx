@@ -19587,13 +19587,252 @@ int run_field_pedestrian_scenes_qa(
     return 0;
 }
 
+enum class MitsuhamaAfterHoursEntryQaPath : std::uint8_t {
+    passkey_success,
+    passkey_insufficient,
+    electronics_no_skill,
+};
+
+int run_field_mitsuhama_scene34_electronics_no_skill_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::filesystem::path& probe_output,
+    const std::vector<std::uint16_t>& field_audio_events) {
+    constexpr std::size_t kScene34DoorMapIndex = 21U * 64U + 13U;
+    constexpr std::uint8_t kMaglockPasskeyItem = 0x14U;
+    constexpr std::uint8_t kElectronicsKitItem = 0x15U;
+    const auto& active_party = field_scene.field_party_records_for_dump();
+    const auto party_before = active_party;
+    const auto map_before = field_scene.state()
+        .field_scene_buffers.source_metadata.terrain_collision_map;
+    const auto audio_before = field_audio_events.size();
+    bool active_party_found = false;
+    bool every_active_runner_has_no_electronics = true;
+    bool no_relevant_inventory_items = true;
+    for (std::size_t slot = 0U; slot < active_party.size(); ++slot) {
+        const auto& runner = active_party[slot];
+        if (!field_scene.field_party_slot_active_for_dump(slot) ||
+            (runner.flags & 0x0100U) == 0U) {
+            continue;
+        }
+        active_party_found = true;
+        every_active_runner_has_no_electronics =
+            every_active_runner_has_no_electronics && runner.skills[9] == 0U;
+        no_relevant_inventory_items = no_relevant_inventory_items &&
+            std::find(runner.inventory_item_codes.begin(),
+                      runner.inventory_item_codes.end(),
+                      kMaglockPasskeyItem) == runner.inventory_item_codes.end() &&
+            std::find(runner.inventory_item_codes.begin(),
+                      runner.inventory_item_codes.end(),
+                      kElectronicsKitItem) == runner.inventory_item_codes.end();
+    }
+    const auto& initial_panel = field_scene.field_interaction_panel();
+    const auto initial_image = render_qa_field(field_scene);
+    if (!active_party_found || !every_active_runner_has_no_electronics ||
+        !no_relevant_inventory_items ||
+        field_scene.active_runner_record().archetype_index != 2U ||
+        field_scene.field_scene_reference_for_dump() != 34U ||
+        field_scene.field_activity_selection_for_dump() != 2U ||
+        map_before.size() != 64U * 64U ||
+        map_before[kScene34DoorMapIndex] != 0x82U ||
+        !field_scene.field_interaction_open() ||
+        !initial_panel.source_complete || initial_panel.option_count != 1U ||
+        initial_panel.text_segment_count == 0U ||
+        initial_panel.text_segments[0].find("sturdy door") ==
+            std::string_view::npos ||
+        initial_image.size() != QSize(kSceneWidth, kSceneHeight)) {
+        std::cerr << "Mitsuhama entry QA: Scene-34 Electronics no-skill "
+                     "route did not start from the ordinary Samurai preset, "
+                     "locked record 90, and the source maglock prompt\n";
+        return 3;
+    }
+
+    std::ofstream trace(probe_output / "scene-34-electronics-no-skill.tsv",
+                        std::ios::trunc);
+    if (!trace) return 3;
+    trace << "step\tframe\tinput\tevent\tselection\tpanel_kind"
+             "\toptions\taudio_count\n";
+    std::uint32_t frame = 0U;
+    const auto write_step = [&] (const std::string_view step,
+                                const std::string_view input,
+                                const std::uint16_t event) {
+        const auto& panel = field_scene.field_interaction_panel();
+        trace << step << '\t' << frame << '\t' << input << "\t0x"
+              << std::hex << event << std::dec << '\t'
+              << static_cast<unsigned>(
+                     field_scene.field_activity_selection_for_dump()) << '\t'
+              << static_cast<unsigned>(panel.kind) << '\t'
+              << panel.option_count << '\t' << field_audio_events.size() << '\n';
+        trace.flush();
+    };
+
+    // ROM 0x20E48 waits ten input frames before dispatching the current
+    // maglock action. Keep the source introduction unchanged through the wait.
+    for (std::uint8_t tick = 0U; tick < 10U; ++tick) {
+        field_scene.advance_frame();
+        ++frame;
+        if (!field_scene.field_interaction_open() ||
+            render_qa_field(field_scene) != initial_image) {
+            std::cerr << "Mitsuhama entry QA: Scene-34 maglock introduction "
+                         "changed during its source ten-frame input delay\n";
+            return 3;
+        }
+    }
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto open_choices_event = field_scene.controller_event_word_for_dump();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto& choices = field_scene.field_interaction_panel();
+    const auto choices_image = render_qa_field(field_scene);
+    const bool source_choices = field_scene.field_interaction_open() &&
+        choices.open && choices.source_complete && choices.option_count == 3U &&
+        choices.options[0].source_label.find("Electronics") !=
+            std::string_view::npos &&
+        choices.options[1].source_label.find("Frag") != std::string_view::npos &&
+        choices.options[2].source_label.find("Walk") != std::string_view::npos;
+    if ((open_choices_event & 0xFF00U) != 0x4000U || !source_choices ||
+        choices_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !choices_image.save(QString::fromStdWString(
+            (probe_output / "scene-34-electronics-choices.bmp").wstring()))) {
+        std::cerr << "Mitsuhama entry QA: ordinary A did not open the source "
+                     "Electronics/Frag/Walk choice panel\n";
+        return 3;
+    }
+    write_step("choices", "a", open_choices_event);
+    // The released A frame plus eight idle frames complete the source input
+    // delay; the next ordinary A selects the first (Electronics) row.
+    for (std::uint8_t tick = 0U; tick < 8U; ++tick) {
+        field_scene.advance_frame();
+        ++frame;
+    }
+    if (render_qa_field(field_scene) != choices_image) {
+        std::cerr << "Mitsuhama entry QA: Scene-34 maglock choices changed "
+                     "during the source input wait\n";
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto electronics_event = field_scene.controller_event_word_for_dump();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto& result = field_scene.field_interaction_panel();
+    const auto result_image = render_qa_field(field_scene);
+    const bool no_skill_result = field_scene.field_interaction_open() &&
+        result.open && result.source_complete &&
+        result.kind == DialoguePanelKind::information_page &&
+        result.actor_kind == DialoguePanelActorKind::none &&
+        result.option_count == 0U && result.text_segment_count == 1U &&
+        result.text_segments[0].find("not skilled in Electronics") !=
+            std::string_view::npos;
+    const auto result_path =
+        probe_output / "scene-34-electronics-no-skill-result.bmp";
+    if ((electronics_event & 0xFF00U) != 0x4000U || !no_skill_result ||
+        field_scene.field_activity_selection_for_dump() != 2U ||
+        field_audio_events.size() != audio_before ||
+        result_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !result_image.save(QString::fromStdWString(result_path.wstring()))) {
+        std::cerr << "Mitsuhama entry QA: ROM 0x21692 Samurai zero-skill "
+                     "branch did not show the no-skill page without changing "
+                     "selection or action audio\n";
+        return 3;
+    }
+    write_step("no-skill-result", "a", electronics_event);
+
+    for (std::uint8_t tick = 0U; tick < 30U; ++tick) {
+        field_scene.advance_frame();
+        ++frame;
+        if (render_qa_field(field_scene) != result_image) {
+            std::cerr << "Mitsuhama entry QA: no-skill result changed during "
+                         "the source 30-frame acknowledgement wait\n";
+            return 3;
+        }
+    }
+    write_step("no-skill-result-held", "neutral", 0U);
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    ++frame;
+    const auto acknowledgement_event =
+        field_scene.controller_event_word_for_dump();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    ++frame;
+    const bool modal_return_finished =
+        finish_field_modal_return_transition(field_scene);
+    if (!controller_event_contains_a(acknowledgement_event) ||
+        !modal_return_finished) {
+        std::cerr << "Mitsuhama entry QA: ordinary A did not acknowledge the "
+                     "Scene-34 no-skill result and return to the field "
+                     "(event=0x" << std::hex << acknowledgement_event
+                  << std::dec << ", modal_return=" << modal_return_finished
+                  << ", remaining="
+                  << field_scene.field_modal_return_transition_frames_for_dump()
+                  << ", fade=" << static_cast<unsigned>(
+                         field_scene.field_palette_fade_steps_for_dump())
+                  << ")\n";
+        return 3;
+    }
+    const auto returned_image = render_qa_field(field_scene);
+    const auto returned_field_only = render_qa_field(field_scene, true);
+    const auto& returned_map = field_scene.state()
+        .field_scene_buffers.source_metadata.terrain_collision_map;
+    const auto& party_after = field_scene.field_party_records_for_dump();
+    bool party_inventory_unchanged = true;
+    for (std::size_t slot = 0U; slot < party_before.size(); ++slot) {
+        party_inventory_unchanged = party_inventory_unchanged &&
+            party_after[slot].inventory_item_codes ==
+                party_before[slot].inventory_item_codes &&
+            party_after[slot].inventory_phase_bytes ==
+                party_before[slot].inventory_phase_bytes;
+    }
+    const bool clean_return =
+        field_scene.field_scene_reference_for_dump() == 34U &&
+        field_scene.field_activity_selection_for_dump() == 2U &&
+        !field_scene.field_interaction_open() && !field_scene.dialogue_open() &&
+        !field_scene.field_mode_text_open_for_dump() &&
+        !field_scene.shop_menu_open() && field_scene.field_entity_visible_for_dump() &&
+        returned_map == map_before && party_inventory_unchanged &&
+        field_audio_events.size() == audio_before &&
+        returned_image == returned_field_only &&
+        returned_image.size() == QSize(kSceneWidth, kSceneHeight) &&
+        field_hud_chrome_survives(returned_image, asset_root);
+    const bool captures_saved = returned_image.save(QString::fromStdWString(
+            (probe_output / "scene-34-electronics-no-skill-return.bmp").wstring())) &&
+        returned_field_only.save(QString::fromStdWString(
+            (probe_output / "scene-34-electronics-no-skill-field-only.bmp").wstring())) &&
+        returned_image.save(QString::fromStdWString(
+            (output / "actual.bmp").wstring()));
+    if (!clean_return || !captures_saved || !trace) {
+        std::cerr << "Mitsuhama entry QA: no-skill acknowledgement did not "
+                     "restore the unchanged Scene-34 field (clean="
+                  << clean_return << ", inventory=" << party_inventory_unchanged
+                  << ", map=" << (returned_map == map_before) << ", audio="
+                  << audio_before << "->" << field_audio_events.size() << ")\n";
+        return 3;
+    }
+    write_step("field-return", "neutral", acknowledgement_event);
+    trace.close();
+    if (!trace) return 3;
+    std::cout << "field_mitsuhama_after_hours_electronics_no_skill_qa="
+                 "passed scene=34 class=samurai skill=0 selection=2 "
+                 "map=0x82 audio=unchanged artifacts="
+              << probe_output.string() << '\n';
+    return 0;
+}
+
 int run_field_mitsuhama_after_hours_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries,
-    const bool insufficient_passkey_only = false) {
+    const MitsuhamaAfterHoursEntryQaPath path =
+        MitsuhamaAfterHoursEntryQaPath::passkey_success) {
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -20451,6 +20690,11 @@ int run_field_mitsuhama_after_hours_entry_qa(
         return 3;
     }
 
+    if (path == MitsuhamaAfterHoursEntryQaPath::electronics_no_skill) {
+        return run_field_mitsuhama_scene34_electronics_no_skill_qa(
+            field_scene, asset_root, output, probe_output, field_audio_events);
+    }
+
     // ROM 0xB984 routes event 2 to the shared 0x20E48 maglock handler in
     // world mode 2; 0xB994 stores selection 2 for the passkey/electronics
     // action. Exercise the passkey-success branch with a live active-runner
@@ -20458,7 +20702,9 @@ int run_field_mitsuhama_after_hours_entry_qa(
     // from locked 0x82 to open 0x81 after ordinary A acknowledgement.
     constexpr std::uint8_t kScene34PasskeyItemCode = 0x14U;
     const auto scene34_passkey_quality = static_cast<std::uint8_t>(
-        insufficient_passkey_only ? 1U : 2U);
+        path == MitsuhamaAfterHoursEntryQaPath::passkey_insufficient
+            ? 1U
+            : 2U);
     constexpr std::size_t kScene34DoorMapIndex = 21U * 64U + 13U;
     const auto& active_party = field_scene.field_party_records_for_dump();
     const auto active_slot = field_scene.field_active_party_slot_for_dump();
@@ -20571,7 +20817,7 @@ int run_field_mitsuhama_after_hours_entry_qa(
     ++passkey_frame;
     const auto& scene34_passkey_result = field_scene.field_interaction_panel();
     const auto scene34_passkey_result_image = render_qa_field(field_scene);
-    if (insufficient_passkey_only) {
+    if (path == MitsuhamaAfterHoursEntryQaPath::passkey_insufficient) {
         const auto& insufficient_runner = field_scene.active_runner_record();
         const auto& insufficient_map = field_scene.state()
             .field_scene_buffers.source_metadata.terrain_collision_map;
@@ -31983,7 +32229,8 @@ int main(int argc, char** argv) {
             field_pedestrian_scenes_qa_path;
         std::optional<std::filesystem::path>
             field_mitsuhama_after_hours_entry_qa_path;
-        bool field_mitsuhama_after_hours_insufficient_passkey = false;
+        MitsuhamaAfterHoursEntryQaPath field_mitsuhama_after_hours_entry_qa_mode =
+            MitsuhamaAfterHoursEntryQaPath::passkey_success;
         std::optional<std::filesystem::path>
             field_scene2_motel_street_collision_qa_path;
         std::optional<std::filesystem::path> field_hud_qa_path;
@@ -32875,7 +33122,17 @@ int main(int argc, char** argv) {
                     "--field-mitsuhama-after-hours-insufficient-passkey-qa" &&
                 index + 1 < argc) {
                 field_smoke = true;
-                field_mitsuhama_after_hours_insufficient_passkey = true;
+                field_mitsuhama_after_hours_entry_qa_mode =
+                    MitsuhamaAfterHoursEntryQaPath::passkey_insufficient;
+                field_mitsuhama_after_hours_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-mitsuhama-after-hours-electronics-no-skill-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_mitsuhama_after_hours_entry_qa_mode =
+                    MitsuhamaAfterHoursEntryQaPath::electronics_no_skill;
                 field_mitsuhama_after_hours_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }
@@ -34221,7 +34478,7 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_mitsuhama_after_hours_entry_qa_path,
                     field_audio_events, field_source_boundaries,
-                    field_mitsuhama_after_hours_insufficient_passkey);
+                    field_mitsuhama_after_hours_entry_qa_mode);
             }
             if (field_matrix_traversal_entry_qa_path.has_value()) {
                 const auto output = *field_matrix_traversal_entry_qa_path;
