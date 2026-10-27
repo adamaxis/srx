@@ -266,6 +266,18 @@ the accepted office offer through the lift or physically visit every
 candidate map. The QA consumes `FFE183` through the typed `0x1E45E` callback
 after publication.
 
+The FFFC3C source trace is now explicit: `0xED60` copies the selected tagged
+template from FFE110 into the marker on eligible contact; `0x286E` scans for
+an active record with `+0xB0` bit 7 and otherwise passes that template to
+`0x1E4AC`, which allocates and places the actor at Joshua `x+0x80` / `y`.
+Every A800 candidate row points to root-tagged template `0x801D6988`. In Qt,
+the selector currently receives only a bool projection of FFFC3C, the live
+collision state does not populate its typed transfer value, and the scene
+entry guard callback remains a boundary. QA can seed the bool, but no runtime
+contact sets it or creates the source player-position actor. See the dedicated
+trace in `conditional-pedestrian-runtime-gap-2026-10-26.md`; this lifecycle
+remains open.
+
 Independent longplay contact sheets contain map frames with pedestrian-like
 actors (for example around `02:58:10` in Section 41), but those frames do not
 identify the ROM scene, active run type, selected resource index, or actor

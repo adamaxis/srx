@@ -1,9 +1,13 @@
 # Conditional pedestrian runtime gap audit
 
 **Status:** `FieldSceneRuntime` now calls the Lua `0xA800` selector with the
-raw active run initializer, FFDF40, FFE180/FFE182, FFFC3C, and typed FFE12C /
-FFF0C8 indices. It queues and publishes the selected A8AE story actor, and it
-can turn a randomized candidate row into an ordinary actor descriptor. The
+raw active run initializer, FFDF40, FFE180/FFE182, a boolean zero/nonzero
+projection of FFFC3C, and typed FFE12C / FFF0C8 indices. That boolean covers
+the selector's `TST.L` gate only; the source marker also carries a tagged
+actor-template value for a later player-position spawn path that is not yet
+connected in Qt. The runtime queues and publishes the selected A8AE story
+actor, and it can turn a randomized candidate row into an ordinary actor
+descriptor. The
 Scene-3/event-3 branch is represented by a Lua entry graph and gated route;
 Debug/Release physical QA walks record 95, checks the `0xF4BB4` page and
 `0x12209C` portrait, then resumes through the event-table route into Scene 30.
@@ -356,14 +360,48 @@ so a candidate consumes an ordinary actor slot first. Keep all three table rows
 for provenance, but treat row 3 as unreachable under the ROM's valid
 `FFE183` lifecycle.
 
+### FFFC3C player-position spawn lifecycle
+
+FFFC3C stores the 32-bit FFE110 transfer value, which is a tagged actor
+template for the A800 lists; it is not a standalone boolean. At `0xED60`, an
+eligible `+0x9E` bit-3 actor contacted by an entity with `+0x10` bit 1 copies
+FFE110 into FFFC3C, sets its `+0xB0` bit 7, and starts world activity. All 69
+conditional-candidate rows use root-tagged pedestrian template
+`0x801D6988`, so the native representation can retain a typed actor-template
+descriptor without keeping a ROM pointer.
+
+At `0x286E`, the ROM tests the marker, scans thirteen records from `FF0400`
+with stride `0x100`, and returns if any record has `+0x10` bit 0 and `+0xB0`
+bit 7 set. If no record matches, it passes the exact marker value to
+`0x1E4AC`. That routine allocates an ordinary actor slot and effect slot,
+initializes from the selected template, sets `+0xB0` bit 7, retains the marker,
+and places the actor at Joshua's `x+0x80` / `y`. The `0x2FA4` entry path also
+repositions the first existing active/effect-ready record to that location;
+`0x1E514` clears FFFC3C when it clears an actor's `+0xB0` bit 7.
+
+The active Qt runtime currently has only
+`field_world_effect_player_spawn_pending_` as a boolean. A800 receives that
+zero/nonzero fact, which is sufficient for its gate, but the live pair-collision
+state leaves `source_transfer_value` at zero, and
+`callbacks_.guard_world_effect_player_spawn` is still a source boundary. The
+only current assignments to the boolean are QA seeding and the party-wipe
+clear. Lua contact routing maps the A8AE and A8CC story dialogues, but their
+contact path does not propagate FFE110 into a typed marker. Generic
+conditional-pedestrian contact is not wired either.
+The pure 13-record guard helper is unit-tested, but it is not the scene-entry
+callback and has no actor-spawn integration or CLI frame dump. This remains a
+partial hill; the physical two-choice lift QA validates list retention, not
+the contact-to-player-spawn lifecycle.
+
 ## Active runtime boundary
 
 `FieldSceneRuntime::initialize_default_field_actors` now calls
 `GameScriptRuntime::resolve_conditional_actor_selection` after the explicit
 route-owned lists. It passes the active offer's raw initializer, the current
-FFDF40 mode, FFE180/FFE182, FFFC3C, and separate optional 16-bit FFE12C and
-FFF0C8 values. Lua derives the post-`F3DC6` FFFBED value before checking the
-A800 initializer gate. The one-shot FFE183 choice remains Lua-owned. The random
+FFDF40 mode, FFE180/FFE182, a boolean projection of FFFC3C, and separate
+optional 16-bit FFE12C and FFF0C8 values. Lua derives the post-`F3DC6` FFFBED
+value before checking the A800 initializer gate. The one-shot FFE183 choice
+remains Lua-owned. The random
 callback uses the field PRNG's bound sampler, and Lua calls it only after the
 marker, normalized-initializer, and mode gates pass.
 

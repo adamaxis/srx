@@ -842,9 +842,9 @@ three table rows. Lua owns the choice; the field runtime calls its reset at the
 modeled `0x2A32`/`0x2A44` and type-5 `0xC684` clears. The `0x1E45E` clear is
 connected through `0x0A92` to the typed 13-record reset at `0x1E43C` and is
 covered by focused Debug/Release QA. The field runtime now calls the selector
-with the accepted offer's raw FFFBED byte, FFDF40, both effect markers,
-FFFC3C, and typed FFE12C/FFF0C8 words. Resource initialization captures the
-selected index, and elevator
+with the accepted offer's raw FFFBED byte, FFDF40, both effect markers, the
+boolean zero/nonzero FFFC3C gate, and typed FFE12C/FFF0C8 words. Resource
+initialization captures the selected index, and elevator
 handoffs retain the current floor word across child-scene loads. The A8AE list
 is represented by a typed world-activity actor row and publishes through the
 ordinary slot-ordered actor path. Debug/Release `field_pedestrian_scenes_qa` verifies
@@ -960,7 +960,12 @@ internal captures, not independent Genesis references. These routes start
 from a staged profile checkpoint and do not exercise the accepted Johnson
 offer through the lift. The FFFC3C pending-spawn case still
 retains choice 2 from Scene 30 and publishes it in Scene 34 through QA
-resource entry after the pending flag clears. The ordinary-
+resource entry after the pending flag clears. That covers A800's nonzero gate
+only. ROM `0xED60` stores the tagged FFE110 template in FFFC3C, and `0x286E`
+uses it for the `0x1E4AC` player-position spawn if no active/effect-ready
+record exists. Qt currently has a bool marker and leaves the scene-entry guard
+as a source boundary, so contact-to-spawn remains open; see the
+`conditional-pedestrian-runtime-gap-2026-10-26.md` audit. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches
 the success page after the source 10-frame choice gate, requests sound `0x4B`,
