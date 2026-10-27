@@ -803,9 +803,10 @@ independent Genesis page comparison.
 
 This does not establish that the callback is invoked automatically by the
 current host main loop. That loop still requires an FFDF42 request before
-calling `0x1E43C`; its later actor scan and `0x1F16A` continuation remain open.
-Both physical cases consume the retained choice through the `0x1E45E` test
-seam and do not claim activity completion.
+calling `0x1E43C`. The ROM body at `0x1F16A` has since been decoded below, but
+its automatic invocation and host implementation remain open. Both physical
+cases consume the retained choice through the `0x1E45E` test seam and do not
+claim activity completion.
 
 All 93 files in the Debug and Release pedestrian QA output directories match
 by SHA-256, including the entry, contact, and closed-field BMPs, both route and
@@ -840,5 +841,35 @@ do not write backward into `FFDF42`.
 This is a bounded result, not proof that the ROM has no producer. A dynamically
 computed pointer or unresolved indirect call could still alias the request
 word; the current export does not identify such a path. Keep automatic
-`0x1E43C` dispatch, its actor scan, and the `0x1F16A` continuation open until a
-producer and its triggering state transition are traced from ROM behavior.
+`0x1E43C` dispatch and the `0x1F16A` callback's host integration open until the
+`FFDF42` producer and its triggering state transition are traced from ROM
+behavior. The callback body itself is summarized below.
+
+## ROM callback at `0x1F16A`: extraction result
+
+**[C]** ROM `0x1E43C` installs `0x1F16A` at `0x1E49C` as the pending field
+callback before `0x1E2EC` starts the 60-frame activity countdown. Decoding the
+US-ROM instructions at `0x1F16A` shows a shared prelude at `0x1F1B0`: when
+`FFFBED` is 4 or 5, `FFFBEE` is 5, and `FFFBEF` is 6, it advances `FFFBFB`
+and applies the source upper clamp of 8. Other input combinations leave that
+counter unchanged.
+
+The callback branches on `FFE181`, which `0x1E43C` sets to zero when its
+13-record scan finds an active record with `+0x10` bit 0 and `+0xB0` bit 7;
+otherwise the scan leaves it nonzero:
+
+| Callback state | ROM writes and calls | Prompt sequence |
+|---|---|---|
+| `FFE181 == 0` (matching record found) | Set `FFFC1C` bit 7, then call `0x1DED8`; that routine clears `FFFC3C` and retires its seven actor slots carrying `+0xB0` bit 7 through `0x1E514`. | Descriptor `0xF3D64` presents text `0xF3A91` with the shared MORE label `0xFE5BF`. Selecting it sends descriptor `0xF3D78`, whose no-options page uses text `0xF3B2D`. The two pages describe the Wasp pickup and departure. |
+| `FFE181 != 0` (no matching record) | Call `0x1E68C`, which clears `FFFBEC` and `FFFC1C`. | Descriptor `0xF3D80` has the no-options sentinel and presents the cancellation text at `0xF3BE3`. |
+
+Both branches set portrait profile `0x121FF4`, clear `FFF10C`, and enter the
+shared mode-exit and prompt path at `0x1F246` / `0x1F3C4`. ROM `0x1F3C4`
+confirms that the success branch's command pointer `0xF3D78` loops back as the
+next prompt descriptor, while the `0xFFFFFFFF` first-option sentinel takes the
+one-page input wait. The text bytes terminate at `0xFF`; `0x80` becomes a line
+break, matching the offline field-text reader.
+
+This recovers the result callback's branch and display sequence from ROM. The
+`FFDF42` producer is still unknown, so the host does not yet invoke this path
+automatically; neither branch has a route-matched independent Genesis capture.

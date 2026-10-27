@@ -994,15 +994,15 @@ separate Debug/Release input sweep for A/B/C/Start and all four D-pad events
 after its 31-frame host lockout; neutral and low-byte input leave the page open.
 Both physical cases keep FFE183 through the page and consume it only at the
 `0x1E45E` QA seam. All 93 generated artifacts match between Debug and Release
-by SHA-256. The main loop's FFDF42 request producer and the
-`0x1E43C`/`0x1F16A` continuation
-remain open, so neither case claims automatic activity continuation. These
+by SHA-256. The bounded ROM census finds only a direct `FFDF42` read at
+`0x0A68` and clear at `0x0A9E`; dynamic aliases remain unresolved. The body of
+`0x1F16A` is now decoded as actor-found Wasp pickup pages or a no-record
+contract-cancellation page, but the request producer and host callback remain
+open, so these routes do not claim automatic activity continuation. These
 captures are internal regression artifacts, not independent Genesis
 comparisons; other physical A800 candidates and the request path remain open.
-The bounded census in the
-`conditional-pedestrian-runtime-gap-2026-10-26.md` audit finds only the direct
-`FFDF42` read at `0x0A68` and clear at `0x0A9E`, with no adjacent direct-width
-overlap; dynamically computed aliases remain unresolved. The ordinary-
+See the
+`conditional-pedestrian-runtime-gap-2026-10-26.md` audit. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches
 the success page after the source 10-frame choice gate, requests sound `0x4B`,
