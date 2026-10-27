@@ -432,6 +432,12 @@ public:
     bool world_effect_player_spawn_pending_for_dump() const noexcept {
         return field_world_effect_player_spawn_pending_;
     }
+    bool pending_mode_transition_actor_list_for_dump() const noexcept {
+        return field_pending_mode_transition_actor_list_.has_value();
+    }
+    bool pending_route_actor_list_for_dump() const noexcept {
+        return field_pending_route_actor_list_.has_value();
+    }
     void seed_conditional_actor_effect_facts_for_dump(
         const bool world_effect_active,
         const bool pending_world_effect,
@@ -481,6 +487,10 @@ public:
                                   std::uint8_t event_id);
     bool seed_current_run_for_dump(std::uint8_t source_run_type,
                                    bool matrix_max_payment = false);
+    std::optional<std::uint8_t>
+    active_run_source_initializer_for_dump() {
+        return game_scripts_.active_run_source_initializer();
+    }
     bool field_dialogue_uses_console_layout_for_dump() const noexcept {
         return field_dialogue_.uses_field_console_menu_layout();
     }

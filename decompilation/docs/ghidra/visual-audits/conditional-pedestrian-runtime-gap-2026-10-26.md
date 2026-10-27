@@ -235,12 +235,20 @@ checks the flags and actor one-shot bit, and writes
 have matching SHA-256 hashes. The approach injection is a test seam, not proof
 of a traversable route: the static route from the lift entry crosses Scene-34
 A1 generic and A2 maglock event cells, and no ordinary walk through those
-events has been established. The additional FFE182 producer at
-`0x543A2..0x543FA` and the `0x1E45E` FFE183 choice clear remain unconnected.
-Random candidate publication has code but still needs field QA driven by an
-accepted raw initializer-5 offer. No independent capture identifies Scene 34,
-the A8AE actor, or this conversation; the new BMPs are internal runtime
-regression evidence only.
+events has been established. The `0x1E45E` FFE183 clear is now connected at the
+`0x0A92` request callback: Lua returns and clears the choice atomically, and
+the callback passes that byte into the typed 13-record `0x1E43C` scan.
+
+Gameplay-script QA reaches Matchstick's accepted Employee Recruitment offer
+through Johnson's work menu, checks raw initializer 5, samples a reachable
+choice, consumes it once, and starts the typed request. Field pedestrian QA
+seeds that accepted source row, enters Scene 21 with the equal-index and
+no-pending-spawn gates, and verifies one visible slot-3 candidate at a ROM
+choice-1 or choice-2 position; it writes
+`scene-21-random-pedestrian-actual.bmp`. The independent offer path and the
+field projection path are separate checks. No independent Genesis capture
+identifies this candidate, Scene 34, the A8AE actor, or the contact conversation;
+the BMPs remain internal runtime regression evidence only.
 
 ## Independent capture review
 

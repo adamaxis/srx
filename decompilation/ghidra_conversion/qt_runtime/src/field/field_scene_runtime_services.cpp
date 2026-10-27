@@ -576,6 +576,8 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         {"completion_condition",
          scalar(std::string(kCompletionConditions[type]))},
         {"runner_progress_delta", scalar(progress_delta)},
+        {"source_initializer",
+         scalar(static_cast<std::int64_t>(source_initializer))},
         {"source_offer_type", scalar(static_cast<std::int64_t>(source_initializer))},
         {"source_offer_context", scalar(static_cast<std::int64_t>(context))},
         {"source_run_type", scalar(static_cast<std::int64_t>(source_run_type))},

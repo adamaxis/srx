@@ -185,6 +185,11 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
     field_map_priority_overlay_ =
         std::move(next_field_map_priority_overlay);
     reset_field_map_cell_words();
+    // ROM 0x167AE selects FFDF40 before 0xA800's conditional actor decision.
+    // Install the destination mode before the native actor population pass so
+    // its Lua selector sees the same source state on resource-scene entry.
+    field_movement_transition_state_.world_mode =
+        same_scene && !force_scene_entry ? prior_world_mode : *interaction_mode;
     if (!same_scene || field_world_activity_scene_entry_pending_ ||
         force_scene_entry) {
         initialize_default_field_actors(scene_reference);
@@ -221,12 +226,8 @@ bool FieldSceneRuntime::prepare_runtime_field_scene(
         state_.field_scene_buffers.field_resource_mode;
     field_movement_transition_state_.scene_id = scene_reference;
     field_world_activity_timeout_state_.scene_id = scene_reference;
-    // ROM 0x2BD2 performs a same-scene redraw in place; its visible code does
-    // not replace FFDF40. Preserve the active field mode across that modal
-    // return so 0xBC36 keeps refreshing collision probes when the source had
-    // FFDF40 clear. A genuinely new scene still selects its source mode.
-    field_movement_transition_state_.world_mode =
-        same_scene && !force_scene_entry ? prior_world_mode : *interaction_mode;
+    // A same-scene 0x2BD2 redraw preserves FFDF40; the value was chosen above
+    // before actor population to match the 0x167AE -> 0xA800 source order.
     field_movement_transition_state_.field_origin_x =
         static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x);
     world_frame_logic_state_.world_mode = scene_reference;

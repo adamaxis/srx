@@ -201,18 +201,18 @@ consumption at `0x1E43C`, and the type-5 mode-exit path at `0xC684` when
 `FFE183`, scans actor records, and may start the `0x1F16A` world activity.
 These transitions matter because `FFE183` is shared with the world-activity
 request path; it cannot be treated as a fresh per-scene random roll. Lua's
-`World.resolve_conditional_actor_selection` now implements the A800 gate order
-and retains FFE183 between calls, but the current field runtime does not call
-it or create an actor from its result. `WorldActivityRoutineState` carries
-`FFE12C` and initializes `FFF0C8` to zero through `default_resource_word`; the
-elevator's later change to the active index is not synchronized into the
-actor-selection facts. The existing pending-list query receives only the two
-`FFE180`/`FFE182` markers. The `FFFC3C` host fact exists. Lua's FFE183 reset is
-connected to the modeled
-`0x2A32`/`0x2A44` and type-5 `0xC684` paths, but the `0x1E45E` consumer clear,
-FFE180/FFE182 producers, live active/selected-effect indices, and actor
-creation remain open.
-This remains an implementation gap, not a spawn claim.
+`World.resolve_conditional_actor_selection` implements the A800 gate order and
+retains FFE183 between calls. The field scene installs the destination
+FFDF40 mode before actor population, matching the `0x167AE` resource-entry
+state consumed by A800. It passes the raw offer initializer, effect markers,
+FFFC3C, and separate 16-bit active/selected indices into Lua, then publishes a
+selected candidate through the ordinary actor-slot allocator. The `0x0A92`
+callback now calls Lua's atomic FFE183 consume before the typed `0x1E43C` scan.
+Lua's other resets remain connected to the modeled `0x2A32`/`0x2A44` and
+type-5 `0xC684` paths. Focused script QA covers the accepted initializer-5
+offer-to-request lifecycle; field QA covers a visible Scene-21 randomized
+candidate. Independent Genesis identification and the physical Scene-34
+lift-to-A8AE route remain open.
 
 Independent longplay contact sheets contain map frames with pedestrian-like
 actors (for example around `02:58:10` in Section 41), but those frames do not

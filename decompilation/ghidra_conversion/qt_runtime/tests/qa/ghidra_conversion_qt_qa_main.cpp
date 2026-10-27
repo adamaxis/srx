@@ -18737,6 +18737,124 @@ int run_field_pedestrian_scenes_qa(
         return 3;
     }
 
+    // ROM 0xA800 reaches the random branch only for accepted raw initializer
+    // 5 in field mode 2 with equal 16-bit effect indices and no player spawn
+    // pending. Seed the accepted source row, then exercise the ordinary field
+    // actor publisher and visible frame for one reachable choice.
+    if (!field_scene.seed_current_run_for_dump(5U)) {
+        std::cerr << "Pedestrian scenes QA: could not seed accepted source "
+                     "initializer 5: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_source_random_seed_for_dump(0x1234U);
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        false, false, 0U, 0U);
+    field_scene.set_field_entity_world_position_for_dump(0x1000U,
+                                                          0x1000U);
+    if (!field_scene.reenter_field_scene_for_dump(0x15U)) {
+        std::cerr << "Pedestrian scenes QA: initializer-5 candidate scene "
+                     "re-entry failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    const auto random_pedestrian_position =
+        field_scene.world_activity_script_actor_position_for_dump(0U);
+    const auto random_pedestrian_profile =
+        field_scene.world_activity_script_actor_profile_for_dump(0U);
+    const auto random_pedestrian_slot =
+        field_scene.world_activity_script_actor_record_slot_for_dump(0U);
+    const auto random_active_initializer =
+        field_scene.active_run_source_initializer_for_dump();
+    const bool reachable_scene_21_position =
+        random_pedestrian_position.has_value() &&
+        ((random_pedestrian_position->x == 0x2800U &&
+          random_pedestrian_position->y == 0x0580U) ||
+         (random_pedestrian_position->x == 0x4700U &&
+          random_pedestrian_position->y == 0x2D80U));
+    if (field_scene.field_scene_reference_for_dump() != 0x15U ||
+        field_scene.world_activity_script_actor_count_for_dump() != 1U ||
+        !reachable_scene_21_position ||
+        random_pedestrian_profile !=
+            std::optional<std::string>{"pedestrian_k0b_none00"} ||
+        random_pedestrian_slot !=
+            std::optional<FieldWorldActorSlot>{FieldWorldActorSlot::slot_3}) {
+        std::cerr << "Pedestrian scenes QA: accepted initializer-5 random "
+                     "candidate mismatch count="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << " position="
+                  << (random_pedestrian_position.has_value()
+                          ? std::to_string(random_pedestrian_position->x) + "," +
+                                std::to_string(random_pedestrian_position->y)
+                          : std::string("missing"))
+                  << " profile="
+                  << (random_pedestrian_profile.has_value()
+                          ? *random_pedestrian_profile
+                          : std::string("missing"))
+                  << " slot="
+                  << (random_pedestrian_slot.has_value()
+                          ? std::to_string(static_cast<unsigned>(
+                                *random_pedestrian_slot))
+                          : std::string("missing"))
+                  << " initializer="
+                  << (random_active_initializer.has_value()
+                          ? std::to_string(*random_active_initializer)
+                          : std::string("missing"))
+                  << " world_mode="
+                  << field_scene.field_interaction_mode_for_dump()
+                  << " active_index="
+                  << (field_scene.active_effect_index_for_dump().has_value()
+                          ? std::to_string(
+                                *field_scene.active_effect_index_for_dump())
+                          : std::string("missing"))
+                  << " selected_index="
+                  << (field_scene.selected_effect_index_for_dump().has_value()
+                          ? std::to_string(
+                                *field_scene.selected_effect_index_for_dump())
+                          : std::string("missing"))
+                  << " world_effect_active="
+                  << field_scene.world_effect_active_for_dump()
+                  << " pending_world_effect="
+                  << field_scene.pending_world_effect_for_dump()
+                  << " pending_mode_actor_list="
+                  << field_scene.pending_mode_transition_actor_list_for_dump()
+                  << " pending_route_actor_list="
+                  << field_scene.pending_route_actor_list_for_dump()
+                  << " player_spawn_pending="
+                  << field_scene.world_effect_player_spawn_pending_for_dump()
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    const auto random_pedestrian_camera_y =
+        random_pedestrian_position->y >= 0x0800U
+            ? static_cast<std::uint16_t>(
+                  random_pedestrian_position->y - 0x0800U)
+            : std::uint16_t{0U};
+    field_scene.set_field_camera_world_position_for_dump(
+        static_cast<std::uint16_t>(random_pedestrian_position->x - 0x0800U),
+        random_pedestrian_camera_y);
+    if (field_scene.visible_default_actor_count_for_dump() == 0U) {
+        std::cerr << "Pedestrian scenes QA: random candidate is not drawable\n";
+        return 3;
+    }
+    const auto random_pedestrian_image = render_qa_field(field_scene);
+    const auto random_pedestrian_bitmap =
+        output / "scene-21-random-pedestrian-actual.bmp";
+    if (random_pedestrian_image.isNull() ||
+        !random_pedestrian_image.save(QString::fromStdWString(
+            random_pedestrian_bitmap.wstring()))) {
+        std::cerr << "Pedestrian scenes QA: could not save "
+                  << random_pedestrian_bitmap.string() << '\n';
+        return 3;
+    }
+    std::cout << "field_pedestrian_random_candidate_qa=passed "
+              << "scene=21 initializer=5 position=0x"
+              << std::hex << random_pedestrian_position->x << ",0x"
+              << random_pedestrian_position->y << std::dec
+              << " slot=3 actual=" << random_pedestrian_bitmap.string()
+              << '\n';
+
+
     // ROM default lists 0x17D660 and 0x18A73A contain three pedestrians
     // each. Scene 2 remains covered by its separate opening/return QA.
     constexpr std::array<std::uint16_t, 2> kScenes{{1U, 3U}};
