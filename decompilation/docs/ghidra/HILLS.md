@@ -987,10 +987,15 @@ Release QA capture the page and the restored field as full-screen images. The
 same QA now covers Scene 38 choice 1 from list `0x1EE0E8`, whose position record
 at `0x1EE100` is `(0x0D00,0x0500)`. After the same 59 neutral entry frames,
 55 ordinary Left/Down frames reach contact at runner `(0x0CD6,0x04DE)` and actor
-`(0x0D00,0x0500)`. Its source choice 1 also presents and dismisses the generic
-contact page while retaining the actor and FFFC3C transfer. Both physical cases
-keep FFE183 through the page and consume it only at the `0x1E45E` QA seam. The
-main loop's FFDF42 request producer and the `0x1E43C`/`0x1F16A` continuation
+`(0x0D00,0x0500)`. Its source choice 1 presents the generic
+contact page and dismisses it with B while retaining the actor and FFFC3C
+transfer; Scene 30 choice 2 uses A. The shared `0x1F3C4` no-options wait has a
+separate Debug/Release input sweep for A/B/C/Start and all four D-pad events
+after its 31-frame host lockout; neutral and low-byte input leave the page open.
+Both physical cases keep FFE183 through the page and consume it only at the
+`0x1E45E` QA seam. All 93 generated artifacts match between Debug and Release
+by SHA-256. The main loop's FFDF42 request producer and the
+`0x1E43C`/`0x1F16A` continuation
 remain open, so neither case claims automatic activity continuation. These
 captures are internal regression artifacts, not independent Genesis
 comparisons; other physical A800 candidates and the request path remain open.
@@ -1485,7 +1490,7 @@ data, regardless of sprite kind. Debug/Release
 `shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa` checks Scene 40
 source order 1, the kind-5 guard in slot 4, route `0x1DDE48`, start
 `(0x2300,0x2580)`, and next point `(0x2A80,0x2580)`. The manifest records
-progress at frame 36 and position `(0x236C,0x2526)`; start and moved full-frame
+progress at frame 34 and position `(0x236C,0x2526)`; start and moved full-frame
 captures are retained under the build's `qt_runtime/field-pedestrian-scenes-qa`
 directory. These are internal runtime captures, not a Genesis visual match.
 The hill remains partial while other default-list routes, collision behavior,

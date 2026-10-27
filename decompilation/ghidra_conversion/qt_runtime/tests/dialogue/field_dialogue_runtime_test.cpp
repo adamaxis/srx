@@ -2088,10 +2088,61 @@ int main() {
                                16, 16)) ||
         !expect(matches_region(room_insufficient_scene, standard_frame, 16, 200,
                                16, 16)) ||
-        !expect(runtime.advance_controller_events(0x4000U) ==
-                FieldDialogueAdvanceResult::returned_to_field) ||
-        !expect(!runtime.open())) {
+        !expect(runtime.input_lockout_active())) {
         return 67;
+    }
+
+    // ROM 0x1F592 waits 30 VBlanks, then 0x0D94 waits for any FFDD22
+    // high-byte controller event. Exercise every button and direction on the
+    // same no-options closing page, and ensure low-byte/neutral input cannot
+    // dismiss it.
+    constexpr std::array<std::uint16_t, 8> kClosingPageEvents{{
+        0x4000U, 0x1000U, 0x2000U, 0x8000U,
+        0x0100U, 0x0200U, 0x0400U, 0x0800U}};
+    for (std::size_t event_index = 0U;
+         event_index < kClosingPageEvents.size(); ++event_index) {
+        const auto event_word = kClosingPageEvents[event_index];
+        if (event_index != 0U) {
+            room_payment_funds = 19U;
+            if (!expect(runtime.open_stoker_prompt_for_dump(
+                            StokerMotelPromptId::room_offer)) ||
+                !expect(runtime.advance_controller_events(0x4000U) ==
+                        FieldDialogueAdvanceResult::prompt_advanced) ||
+                !expect(runtime.panel().option_count == 0U) ||
+                !expect(runtime.panel().text_segments[0].find(
+                            "low on creds") != std::string_view::npos) ||
+                !expect(runtime.panel().returns_to_field) ||
+                !expect(runtime.input_lockout_active())) {
+                std::cerr << "Closing-page controller event setup failed for 0x"
+                          << std::hex << event_word << std::dec << '\n';
+                return 68;
+            }
+        }
+        for (std::size_t frame = 0U; frame < 31U; ++frame) {
+            if (!expect(runtime.consume_input_lockout_frame())) {
+                std::cerr << "Closing-page input lockout ended early for 0x"
+                          << std::hex << event_word << std::dec << '\n';
+                return 68;
+            }
+        }
+        if (!expect(!runtime.consume_input_lockout_frame()) ||
+            !expect(runtime.advance_controller_events(0U) ==
+                    FieldDialogueAdvanceResult::waiting_for_controller) ||
+            !expect(runtime.advance_controller_events(0x0001U) ==
+                    FieldDialogueAdvanceResult::waiting_for_controller) ||
+            !expect(runtime.open())) {
+            std::cerr << "Closing page accepted neutral or low-byte input\n";
+            return 68;
+        }
+        const auto close_result =
+            runtime.advance_controller_events(event_word);
+        if (!expect(close_result ==
+                    FieldDialogueAdvanceResult::returned_to_field) ||
+            !expect(!runtime.open())) {
+            std::cerr << "Closing page rejected FFDD22 high-byte event 0x"
+                      << std::hex << event_word << std::dec << '\n';
+            return 68;
+        }
     }
 
     runtime.set_room_payment_callback({});

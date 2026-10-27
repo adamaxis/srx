@@ -19407,7 +19407,9 @@ bool ride_scene30_elevator_for_pedestrian_qa(
 bool verify_random_pedestrian_contact_qa(
     FieldSceneRuntime& field_scene, const std::filesystem::path& output,
     const std::uint16_t scene_id, const std::uint8_t choice,
-    const std::uint8_t source_initializer) {
+    const std::uint8_t source_initializer,
+    const std::uint8_t dismissal_port_byte,
+    const std::string_view dismissal_label) {
     constexpr std::uint8_t kEscortFlag = 0x80U;
     constexpr std::uint32_t kRawMovementStepBound = 9U;
     constexpr std::uint32_t kSettlingFrameAllowance = 256U;
@@ -19842,7 +19844,7 @@ bool verify_random_pedestrian_contact_qa(
             return false;
         }
     }
-    field_scene.set_controller_port_byte(0x40U); // A: dismiss the page
+    field_scene.set_controller_port_byte(dismissal_port_byte);
     field_scene.advance_frame();
     field_scene.set_controller_port_byte(0U);
     field_scene.advance_frame();
@@ -19865,8 +19867,9 @@ bool verify_random_pedestrian_contact_qa(
         !field_scene.world_effect_player_spawn_pending_for_dump() ||
         !field_scene.failure().empty() || closed_image.isNull() ||
         !closed_image.save(QString::fromStdWString(closed_bitmap.wstring()))) {
-        std::cerr << "Pedestrian scenes QA: A did not close the source page "
-                     "while retaining the actor for the later request scan "
+        std::cerr << "Pedestrian scenes QA: " << dismissal_label
+                  << " did not close the source page while retaining the actor "
+                     "for the later request scan "
                   << "(dialogue=" << field_scene.dialogue_open()
                   << ", locked=" << field_scene.dialogue_input_locked()
                   << ", return_frames=" << field_return_frames
@@ -19897,6 +19900,7 @@ bool verify_random_pedestrian_contact_qa(
     std::cout << "field_pedestrian_random_contact_qa=passed scene="
               << scene_id << " choice="
               << static_cast<unsigned>(choice) << ' '
+              << "dismissal=" << dismissal_label << ' '
               << "entry_wait=" << entry_settle_frames
               << " frames=" << contact_frames << " actor="
               << contact_position->x << ',' << contact_position->y
@@ -20447,9 +20451,16 @@ int run_field_pedestrian_scenes_qa(
                 (scene == 38U && choice == 1U) ||
                 (scene == 30U && choice == 2U);
             if (physically_contacted_candidate) {
+                const auto dismissal_port_byte =
+                    scene == 38U ? std::uint8_t{0x10U}
+                                 : std::uint8_t{0x40U};
+                const auto dismissal_label =
+                    scene == 38U ? std::string_view{"B"}
+                                 : std::string_view{"A"};
                 if (!verify_random_pedestrian_contact_qa(
                         field_scene, output, scene, choice,
-                        source_initializer)) {
+                        source_initializer, dismissal_port_byte,
+                        dismissal_label)) {
                     return 3;
                 }
             } else {

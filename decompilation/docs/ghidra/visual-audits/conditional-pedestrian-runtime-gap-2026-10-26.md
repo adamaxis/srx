@@ -761,11 +761,27 @@ also drives this candidate through the live runtime. The runner starts at
 `(4906,1156)`; after 59 neutral modal-release frames, ordinary Left/Down input
 reaches the actor in 55 frames at runner `(3286,1246)` and actor `(3328,1280)`.
 The runtime sets the contact bit, presents the same ROM-backed no-options page
-and portrait, accepts A after the source wait, and restores the field with the
+and portrait, accepts B after the source wait, and restores the field with the
 actor retained. It checks the FFE110-to-FFFC3C transfer and existing-effect
-guard. This adds physical input coverage for another scene and the other
-reachable random result; the remaining rows have resource-entry matrix
-coverage only.
+guard. Scene 30 choice 2 uses A; Scene 38 choice 1 now uses B. This adds
+physical input coverage for another scene, the other reachable random result,
+and both button dismissals.
+
+## No-options controller event sweep
+
+**[C]** ROM `0x1F3C4` sends a no-options text record through `0x1F592`, which
+waits `0x1E` VBlanks and then calls `0x0D94`. The wait loops until
+`FFDD22 & 0xFF00` is nonzero, so A, B, C, Start, and all four directions are
+accepted events. The Qt field dialogue runtime uses a 31-frame lockout to
+represent the source delay plus the following VBlank sample.
+
+Debug/Release `shadowrun_ghidra_field_dialogue_runtime` sweeps all eight
+high-byte event bits against a no-options page, verifies neutral and low-byte
+input keep it open, drains all 31 lockout frames, then checks that each event
+returns to the field. The physical Scene-38 contact above separately verifies
+B on the actual A800 generic-contact page. This verifies the input filter and
+host timing; it does not prove automatic FFDF42 activity continuation or an
+independent Genesis page comparison.
 
 This does not establish that the callback is invoked automatically by the
 current host main loop. That loop still requires an FFDF42 request before
@@ -773,8 +789,10 @@ calling `0x1E43C`; its later actor scan and `0x1F16A` continuation remain open.
 Both physical cases consume the retained choice through the `0x1E45E` test
 seam and do not claim activity completion.
 
-The entry, contact, and closed-field BMPs for both physical cases, plus their
-route and waypoint TSVs, have matching Debug/Release SHA-256 hashes. I inspected
+All 93 files in the Debug and Release pedestrian QA output directories match
+by SHA-256, including the entry, contact, and closed-field BMPs, both route and
+waypoint traces, the 46-row candidate matrix, and the Scene-40 guard route.
+I inspected
 the Scene-38 page and restored-field frames; these are regression artifacts,
 not independent Genesis evidence. Scene-entry travel and physical contact for
 other A800 candidates, the FFDF42 request producer, the
