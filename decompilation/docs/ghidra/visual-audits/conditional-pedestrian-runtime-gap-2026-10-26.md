@@ -136,6 +136,30 @@ lift or physically visit every candidate map. The inspected BMPs are internal
 renderer evidence; independent Genesis comparison and the Section-41
 route-matched visual check remain open.
 
+### Scene-2 event-1 arrival at a Scene-26 A800 candidate
+
+The focused `shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa`
+adds one source-routed destination to the candidate entry checks. Ordinary
+field input reaches Scene 2 collision record 93 at ROM `0x17314C`; event 1
+uses event-table row 1 at `0x172CDD` to load resource Scene 26. The QA retains
+the accepted Employee Recruitment offer and its source dialogue, but its
+QA-only fixture overrides the offer target to map 2/event 1 because the normal
+generated offer pool does not produce that target pair. Thus the field entry
+and destination table are source-routed, while the selected Johnson target is
+forced for this case.
+
+At arrival, the QA checks raw source initializer 5, mode `FFDF40=2`, clear
+`FFE180`/`FFE182`, clear pending actor marker `FFFC3C`, and equal
+`FFE12C`/`FFF0C8`. The bound-2 selector chooses choice 1: list `0x1EDCB0`,
+position record `0x1EDCC8`, coordinates `(0x2000,0x0500)`, and actor slot 3.
+The candidate is not visible from the entry camera (`visible=0`). Debug and
+Release CTests pass, and their candidate TSV and full-frame BMP hashes match.
+This verifies the reachable A800 choice and actor allocation after one
+ordinary-input ROM event route; it does not verify candidate contact or its
+appearance when the runner reaches it. The QA-only target override, contact
+route, normal Johnson target generation for this pair, and independent
+Genesis comparison remain open.
+
 ## ROM path confirmed from the US image
 
 The ROM image at `decompilation/input/shadowrun_genesis_us.bin` is 2 MiB, so

@@ -533,6 +533,8 @@ public:
                                    std::optional<std::uint8_t>
                                        employee_source_initializer =
                                            std::nullopt);
+    bool seed_employee_recruitment_run_target_for_dump(
+        std::uint8_t map_id, std::uint8_t event_id);
     std::optional<std::uint8_t>
     active_run_source_initializer_for_dump() {
         return game_scripts_.active_run_source_initializer();

@@ -907,6 +907,18 @@ the matrix checks physical Johnson offer acceptance but does not travel to all
 shared Scene-32/33 Mitsuhama map, and a moving red/brown figure resembles the
 pedestrian art; its actor record and party membership remain unconfirmed. See
 the [Section 36 visual audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md#section-36-mitsuhama-map-and-moving-sprite-review).
+A separate Scene-2 event-1 route now reaches Scene 26 through collision record
+93 (`0x17314C`) and event-table row 1 (`0x172CDD`). Its Debug/Release QA
+retains the accepted Employee Recruitment dialogue and source initializer 5,
+then forces only the target tuple to map 2/event 1 because generated offers
+do not produce that pair. At entry, A800 publishes choice 1 from list
+`0x1EDCB0` at `(0x2000,0x0500)` in slot 3; the actor is off-screen at the
+entry camera. The `shadowrun_ghidra_conversion_qt_field_scene26_event1_entry_qa`
+test and candidate BMP/TSV match across configurations.
+This adds one source-routed candidate entry, not contact proof; the candidate
+contact path, normal offer generation for this pair, and independent Genesis
+comparison remain open.
+
 A separate Mitsuhama route drives the lift to Scene 34
 for the A8AE story actor. The transition now installs the
 destination mode before actor population,

@@ -656,6 +656,53 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
     return game_scripts_.restore_run_registry_state(registry_state);
 }
 
+bool FieldSceneRuntime::seed_employee_recruitment_run_target_for_dump(
+    const std::uint8_t map_id, const std::uint8_t event_id) {
+    using PersistentValue = scripting::ScriptPersistentValue;
+    if (!seed_current_run_for_dump(5U)) {
+        return false;
+    }
+    auto registry_state = game_scripts_.save_run_registry_state();
+    if (!registry_state.has_value()) {
+        return false;
+    }
+    auto* root = std::get_if<PersistentValue::Object>(
+        &registry_state->value);
+    if (root == nullptr) {
+        return false;
+    }
+    const auto active_offer = root->find("active_offer");
+    if (active_offer == root->end()) {
+        return false;
+    }
+    auto* offer = std::get_if<PersistentValue::Object>(
+        &active_offer->second.value);
+    if (offer == nullptr) {
+        return false;
+    }
+    const auto route_value = offer->find("route");
+    if (route_value == offer->end()) {
+        return false;
+    }
+    auto* route = std::get_if<PersistentValue::Object>(
+        &route_value->second.value);
+    if (route == nullptr) {
+        return false;
+    }
+    const auto scalar = [](const std::uint8_t value) {
+        PersistentValue result{};
+        result.value = static_cast<std::int64_t>(value);
+        return result;
+    };
+    route->insert_or_assign(
+        "target",
+        PersistentValue{PersistentValue::Object{
+            {"area_id", scalar(map_id)},
+            {"location_id", scalar(event_id)},
+        }});
+    return game_scripts_.restore_run_registry_state(*registry_state);
+}
+
 bool FieldSceneRuntime::open_taxi_selector_for_dump(
     const std::uint8_t current_region) {
     if (!ready_ || current_region > 6U) {

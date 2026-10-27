@@ -10815,12 +10815,18 @@ int run_field_scene26_event1_physical_entry_qa(
                   << entry_records.size() << ")\n";
         return 3;
     }
-    if (!johnson_run_target.empty() &&
-        !field_scene.seed_run_target_for_dump(
-            johnson_run_target, 2U, 1U)) {
-        std::cerr << "Scene-26 Johnson run-entry QA: could not seed the "
-                     "ROM-valid run target tuple (map 2, event 1)\n";
-        return 3;
+    if (!johnson_run_target.empty()) {
+        const bool run_seeded =
+            johnson_run_target == "employee_recruitment"
+                ? field_scene.seed_employee_recruitment_run_target_for_dump(
+                      2U, 1U)
+                : field_scene.seed_run_target_for_dump(
+                      johnson_run_target, 2U, 1U);
+        if (!run_seeded) {
+            std::cerr << "Scene-26 Johnson run-entry QA: could not seed the "
+                         "active run state and target tuple (map 2, event 1)\n";
+            return 3;
+        }
     }
 
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
@@ -11375,6 +11381,105 @@ int run_field_scene26_event1_physical_entry_qa(
         return 3;
     }
     write_state("scene26-entry");
+
+    if (continue_after_run_entry &&
+        johnson_run_target == "employee_recruitment") {
+        // This route enters Scene 26 through Scene 2's live event-table row,
+        // so check the A800 actor at the resource scene after the accepted
+        // run target has survived the source dialogue and transition. The
+        // candidate matrix below still covers every scene/choice separately.
+        const auto candidates =
+            field_scene.conditional_actor_candidates_for_dump(
+                kDestinationScene);
+        const auto actor =
+            field_scene.world_activity_script_actor_projection_for_dump(0U);
+        const auto active_index = field_scene.active_effect_index_for_dump();
+        const auto selected_index =
+            field_scene.selected_effect_index_for_dump();
+        const auto source_initializer =
+            field_scene.active_run_source_initializer_for_dump();
+        std::uint8_t selected_choice = 0U;
+        std::uint32_t selected_position_offset = 0U;
+        bool candidate_matches = false;
+        if (candidates.has_value() && actor.has_value()) {
+            const auto selected_candidate = std::find_if(
+                candidates->begin(), candidates->end(),
+                [&actor](const auto& row) {
+                    return row.list_offset == actor->list_offset;
+                });
+            if (selected_candidate != candidates->end()) {
+                selected_choice = selected_candidate->choice;
+                selected_position_offset =
+                    selected_candidate->position_offset;
+                candidate_matches = selected_candidate->choice >= 1U &&
+                    selected_candidate->choice <= 2U &&
+                    actor->world_position.x == selected_candidate->world_x &&
+                    actor->world_position.y == selected_candidate->world_y &&
+                    actor->profile_id == "pedestrian_k0b_none00" &&
+                    actor->record_slot ==
+                        std::optional<FieldWorldActorSlot>{
+                            FieldWorldActorSlot::slot_3};
+            }
+        }
+        const bool a800_entry_gates_match =
+            source_initializer == std::optional<std::uint8_t>{5U} &&
+            field_scene.field_interaction_mode_for_dump() == 2U &&
+            !field_scene.world_effect_active_for_dump() &&
+            !field_scene.pending_world_effect_for_dump() &&
+            !field_scene.world_effect_player_spawn_pending_for_dump() &&
+            active_index.has_value() && selected_index.has_value() &&
+            *active_index == *selected_index;
+        if (!a800_entry_gates_match ||
+            field_scene.world_activity_script_actor_count_for_dump() != 1U ||
+            !candidate_matches) {
+            std::cerr << "Scene-26 A800 entry QA: physical event-1 route did "
+                         "not publish its reachable pedestrian choice "
+                         "(initializer="
+                      << (source_initializer.has_value()
+                              ? static_cast<unsigned>(*source_initializer)
+                              : 0xFFU)
+                      << ", mode="
+                      << field_scene.field_interaction_mode_for_dump()
+                      << ", activity_actors="
+                      << field_scene.world_activity_script_actor_count_for_dump()
+                      << ", active_index="
+                      << (active_index.has_value()
+                              ? static_cast<unsigned>(*active_index)
+                              : 0xFFFFU)
+                      << ", selected_index="
+                      << (selected_index.has_value()
+                              ? static_cast<unsigned>(*selected_index)
+                              : 0xFFFFU)
+                      << ")\n";
+            return 3;
+        }
+        if (!save("scene26-a800-candidate-entry")) {
+            return 3;
+        }
+        std::ofstream candidate_trace(
+            output / "scene26-a800-candidate.tsv", std::ios::trunc);
+        if (!candidate_trace) {
+            std::cerr << "Scene-26 A800 entry QA: could not write candidate "
+                         "trace\n";
+            return 3;
+        }
+        candidate_trace
+            << "scene\tchoice\tlist_offset\tposition_offset\tworld_x"
+               "\tworld_y\theading\tactor_slot\tvisible"
+               "\tsource_initializer\tworld_mode\teffect_index\n";
+        candidate_trace << static_cast<unsigned>(kDestinationScene) << '\t'
+                        << static_cast<unsigned>(selected_choice) << "\t0x"
+                        << std::hex << actor->list_offset << "\t0x"
+                        << selected_position_offset << "\t0x"
+                        << actor->world_position.x << "\t0x"
+                        << actor->world_position.y << "\t0x"
+                        << actor->initial_heading << std::dec << '\t'
+                        << static_cast<unsigned>(*actor->record_slot) << '\t'
+                        << (actor->visible ? 1 : 0) << '\t'
+                        << static_cast<unsigned>(*source_initializer) << '\t'
+                        << field_scene.field_interaction_mode_for_dump()
+                        << '\t' << *active_index << '\n';
+    }
 
     for (std::uint8_t idle = 0U; idle < 30U; ++idle) {
         step(0U);
