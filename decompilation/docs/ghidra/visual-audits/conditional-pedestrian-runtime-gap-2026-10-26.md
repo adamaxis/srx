@@ -358,8 +358,12 @@ kind-11 template facts and applies its ordered spawn-flag overrides before
 using the same ordinary actor publisher.
 
 The focused Debug/Release `field_pedestrian_scenes_qa` checks the ordinary
-Scene-1 and Scene-3 default pedestrians, then seeds the high-priority story
-marker and floor index 4. It verifies one A8AE actor at `(0x1D00,0x4100)` in
+Scene-1 and Scene-3 default pedestrians and the Scene-5 row-1 route. For Scene
+5, it asserts the `0x679F0` actor starts at `(0x4B80,0x2200)` and moves closer
+to its first waypoint `(0x4B80,0x3980)`, then saves
+`qt_runtime/field-pedestrian-scenes-qa/scene-5-actual.bmp`; these Debug/Release
+images are pixel-identical. The test then seeds the high-priority story marker
+and floor index 4. It verifies one A8AE actor at `(0x1D00,0x4100)` in
 actor slot 3, checks the profile and draw visibility, and writes
 `qt_runtime/field-pedestrian-scenes-qa/scene-34-story-contact-actual.bmp` in
 each build. The Debug and Release BMPs have the same SHA-256. This test

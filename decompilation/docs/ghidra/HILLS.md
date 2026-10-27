@@ -813,7 +813,10 @@ Independent Section 41 frames `002140`-`002170` match the mode-5 map and show a
 walker following the westbound segment of Scene 5's default pedestrian route
 at `0x679F0` / `0x67A30`. The capture supports that route match but does not
 expose an actor-record ID. It is a default-list walker, separate from the
-`0xA800` randomized choices. See the [conditional pedestrian runtime
+`0xA800` randomized choices. Debug/Release `field_pedestrian_scenes_qa` now
+asserts Scene-5 order 1's `(0x4B80,0x2200)` start and movement toward waypoint
+`(0x4B80,0x3980)`, and saves matching `scene-5-actual.bmp` captures. See the
+[conditional pedestrian runtime
 audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md).
 
 The `0xA800` gated pedestrian branch and all 69 ROM candidate positions for

@@ -19298,9 +19298,27 @@ int run_field_pedestrian_scenes_qa(
         return 3;
     }
 
-    // ROM default lists 0x17D660 and 0x18A73A contain three pedestrians
-    // each. Scene 2 remains covered by its separate opening/return QA.
-    constexpr std::array<std::uint16_t, 2> kScenes{{1U, 3U}};
+    // ROM default lists 0x17D660, 0x18A73A, and 0x679F0 contain three
+    // pedestrians each. Scene 2 remains covered by its separate opening/return
+    // QA; Scene 5 order 1 is also the pedestrian route seen in Section 41.
+    constexpr std::array<std::uint16_t, 3> kScenes{{1U, 3U, 5U}};
+    constexpr std::uint16_t kScene5 = 5U;
+    constexpr std::size_t kScene5RouteOrder = 1U;
+    constexpr std::uint16_t kScene5RouteStartX = 0x4B80U;
+    constexpr std::uint16_t kScene5RouteStartY = 0x2200U;
+    constexpr std::uint16_t kScene5FirstWaypointX = 0x4B80U;
+    constexpr std::uint16_t kScene5FirstWaypointY = 0x3980U;
+    const auto route_distance = [](const SceneRunnerPosition& position,
+                                   const std::uint16_t target_x,
+                                   const std::uint16_t target_y) {
+        const auto distance = [](const std::uint16_t lhs,
+                                 const std::uint16_t rhs) {
+            return lhs >= rhs ? static_cast<std::uint32_t>(lhs - rhs)
+                              : static_cast<std::uint32_t>(rhs - lhs);
+        };
+        return distance(position.x, target_x) +
+               distance(position.y, target_y);
+    };
     for (const auto scene : kScenes) {
         field_scene.set_field_entity_world_position_for_dump(0x1000U,
                                                               0x1000U);
@@ -19323,6 +19341,22 @@ int run_field_pedestrian_scenes_qa(
             return 3;
         }
 
+        std::uint32_t scene5_initial_waypoint_distance = 0U;
+        if (scene == kScene5) {
+            const auto& route_start =
+                initial_positions[kScene5RouteOrder];
+            if (route_start.x != kScene5RouteStartX ||
+                route_start.y != kScene5RouteStartY) {
+                std::cerr << "Pedestrian scenes QA: Scene-5 order-1 start "
+                             "differs from ROM 0x67A30; actual="
+                          << route_start.x << ',' << route_start.y << '\n';
+                return 3;
+            }
+            scene5_initial_waypoint_distance = route_distance(
+                route_start, kScene5FirstWaypointX,
+                kScene5FirstWaypointY);
+        }
+
         constexpr std::size_t kMaximumFieldFrames = 360U;
         std::optional<std::size_t> moved_actor;
         for (std::size_t frame = 0U; frame < kMaximumFieldFrames; ++frame) {
@@ -19331,6 +19365,16 @@ int run_field_pedestrian_scenes_qa(
                 field_scene.active_default_actor_positions_for_dump();
             if (positions.size() != initial_positions.size()) {
                 break;
+            }
+            if (scene == kScene5) {
+                if (route_distance(positions[kScene5RouteOrder],
+                                   kScene5FirstWaypointX,
+                                   kScene5FirstWaypointY) <
+                    scene5_initial_waypoint_distance) {
+                    moved_actor = kScene5RouteOrder;
+                    break;
+                }
+                continue;
             }
             for (std::size_t index = 0U; index < positions.size(); ++index) {
                 if (positions[index].x != initial_positions[index].x ||
