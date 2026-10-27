@@ -18720,8 +18720,118 @@ int run_field_scene2_pedestrians_qa(
     return 0;
 }
 
+bool accept_employee_offer_for_field_pedestrian_qa(
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts,
+    FieldSceneRuntime& field_scene, const std::uint8_t initializer) {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    if (initializer != 5U && initializer != 11U && initializer != 12U) {
+        std::cerr << "Pedestrian scenes QA: unsupported Employee Recruitment "
+                     "initializer "
+                  << static_cast<unsigned>(initializer) << '\n';
+        return false;
+    }
+
+    const bool caleb_offer = initializer == 12U;
+    scripts.set_story_state({
+        {caleb_offer ? "mr_johnsons_flag_bit_7"
+                     : "mr_johnsons_flag_bit_5",
+         true},
+    });
+    scripts.set_location_context(
+        "building",
+        caleb_offer ? "icarus_descending_booth"
+                    : "matchstick_strouther_booth",
+        caleb_offer ? "icarus-descending.caleb_brightmore"
+                    : "matchstick.julius_strouther",
+        caleb_offer ? "caleb_brightmore" : "julius_strouther");
+    scripts.set_field_mode_context(
+        caleb_offer
+            ? ScriptFieldModeContext{1U, 12U, 30}
+            : ScriptFieldModeContext{1U, 18U, 0});
+
+    const auto fail = [initializer](const std::string_view step) {
+        std::cerr << "Pedestrian scenes QA: natural accepted offer "
+                     "initializer "
+                  << static_cast<unsigned>(initializer) << ' ' << step
+                  << '\n';
+        return false;
+    };
+    const auto is_type = [](const ScriptTaskStep& task,
+                            const ScriptNativeOperation::Type type) {
+        return task.operation.has_value() &&
+               task.operation->type == type;
+    };
+    const auto is_service = [&is_type](const ScriptTaskStep& task,
+                                       const std::string_view service_id) {
+        return is_type(task, ScriptNativeOperation::Type::service_call) &&
+               task.operation->service_id == service_id;
+    };
+
+    auto task = scripts.start_task("johnson", "interaction");
+    if (!is_type(task, ScriptNativeOperation::Type::ui_menu) ||
+        !task.operation->menu.has_value() ||
+        task.operation->menu->id != "opening") {
+        return fail("did not open the Johnson root menu");
+    }
+    task = scripts.complete_native_menu_choice("work");
+    if (!is_type(task, ScriptNativeOperation::Type::ui_say)) {
+        return fail("work did not present its source opening page");
+    }
+    task = scripts.complete_native_operation(true);
+    if (!is_service(task, "random.bounded_8")) {
+        return fail("did not select from the eight source offer rows");
+    }
+    task = scripts.complete_native_service_result(
+        initializer == 5U ? "roll_2" : "roll_4");
+    if (!is_service(task, "runner.negotiation_skill")) {
+        return fail("skipped the source Negotiation lookup");
+    }
+    task = scripts.complete_native_service_result("skill_3");
+    const std::string_view expected_payment_bound =
+        initializer == 12U ? "random.bounded_46" : "random.bounded_16";
+    if (!is_service(task, expected_payment_bound)) {
+        return fail("did not use its source payment bound");
+    }
+    task = scripts.complete_native_service_result("roll_0");
+    if (initializer == 5U || initializer == 11U) {
+        const std::string_view expected_target_bound =
+            initializer == 5U ? "random.bounded_4" : "random.bounded_2";
+        if (!is_service(task, expected_target_bound)) {
+            return fail("did not use its source target-location bound");
+        }
+        task = scripts.complete_native_service_result("roll_0");
+        if (!is_service(task, "random.bounded_12")) {
+            return fail("skipped its source client-name draw");
+        }
+    } else if (!is_service(task, "random.bounded_12")) {
+        return fail("skipped its source client-name draw");
+    }
+    task = scripts.complete_native_service_result("roll_0");
+    if (!is_type(task, ScriptNativeOperation::Type::ui_say)) {
+        return fail("did not present the generated source offer");
+    }
+    task = scripts.complete_native_operation(true);
+    const auto active_initializer = scripts.active_run_source_initializer();
+    if (task.status != ScriptTaskStep::Status::completed ||
+        task.result_id != std::optional<std::string>{"accepted"} ||
+        active_initializer != std::optional<std::uint8_t>{initializer}) {
+        return fail("did not publish the naturally accepted source row");
+    }
+    const auto saved_registry_state = scripts.save_run_registry_state();
+    if (!saved_registry_state.has_value() ||
+        !field_scene.restore_run_registry_state_for_dump(
+            *saved_registry_state) ||
+        field_scene.active_run_source_initializer_for_dump() !=
+            std::optional<std::uint8_t>{initializer}) {
+        return fail("accepted registry state did not restore into field Lua");
+    }
+    return true;
+}
+
 int run_field_pedestrian_scenes_qa(
     FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
     const std::filesystem::path& output) {
     std::error_code directory_error;
     std::filesystem::remove_all(output, directory_error);
@@ -18754,6 +18864,19 @@ int run_field_pedestrian_scenes_qa(
         << "scene_id\tchoice\tsource_initializer\tlist_offset\tposition_offset"
            "\tworld_x\tworld_y"
            "\theading_word\tspawn_flags\tactor_slot\tvisible\n";
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime
+        accepted_offer_scripts;
+    const auto script_directory =
+        asset_root.parent_path() / "gameplay" / "scripts";
+    const auto dialogue_text_file =
+        asset_root / "dialogue" / "script-text.json";
+    if (!accepted_offer_scripts.load_package(script_directory,
+                                             dialogue_text_file)) {
+        std::cerr << "Pedestrian scenes QA: could not load the independent "
+                     "offer script runtime: "
+                  << accepted_offer_scripts.failure() << '\n';
+        return 3;
+    }
     std::size_t candidate_cases = 0U;
     for (std::uint16_t scene = 0x15U; scene <= 0x2BU; ++scene) {
         const auto candidates =
@@ -18797,14 +18920,12 @@ int run_field_pedestrian_scenes_qa(
                 scene == 0x16U && choice == 1U ? 11U
                 : scene == 0x16U && choice == 2U ? 12U
                                                  : 5U;
-            if (!field_scene.seed_current_run_for_dump(
-                    5U, false, source_initializer == 5U
-                        ? std::nullopt
-                        : std::optional<std::uint8_t>{source_initializer})) {
+            if (!accept_employee_offer_for_field_pedestrian_qa(
+                    accepted_offer_scripts, field_scene,
+                    source_initializer)) {
                 std::cerr << "Pedestrian scenes QA: accepted Employee "
-                             "Recruitment initializer "
-                          << static_cast<unsigned>(source_initializer)
-                          << " could not be installed for "
+                             "Recruitment state could not be carried into "
+                             "Scene "
                           << scene << ':' << static_cast<unsigned>(choice)
                           << '\n';
                 return 3;
@@ -37942,7 +38063,8 @@ int main(int argc, char** argv) {
             }
             if (field_pedestrian_scenes_qa_path.has_value()) {
                 return run_field_pedestrian_scenes_qa(
-                    field_scene, *field_pedestrian_scenes_qa_path);
+                    field_scene, asset_root,
+                    *field_pedestrian_scenes_qa_path);
             }
             if (field_scene2_motel_street_collision_qa_path.has_value()) {
                 return run_field_scene2_motel_street_collision_qa(

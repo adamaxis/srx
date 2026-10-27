@@ -49,11 +49,13 @@ all three `0xF4BBC` pages, and the source cleanup retires Aragorn's actor
 record. The direct marker setters and `FFE120` producer census are traced
 below. Gameplay-script QA now follows accepted Employee Recruitment offers
 from their Johnson work menus through the normalized `0xA800` choice and the
-typed `0x1E43C` request. Field QA uses validated accepted-state fixtures to
-check actor projection: initializer 5 in Scene 21 and initializers 11/12 for
-the two reachable choices in Scene 22. Entering either scene through the
-natural field route with the live accepted offer remains open. Section 41 has
-no route-matched visual check.
+typed `0x1E43C` request. Field QA now drives the Johnson offer tasks in a
+separate Lua runtime, saves the accepted `run_registry` state, restores that
+state through the field runtime's persistence API, and enters the candidate
+scene before checking actor projection. It covers initializer 5 throughout
+the matrix and initializers 11/12 for Scene 22 choices 1/2. This closes the
+accepted-registry-to-field-entry data seam; the physical in-world Johnson-to-
+field route and a Section-41 route-matched visual check remain open.
 
 ## ROM path confirmed from the US image
 
@@ -352,12 +354,13 @@ Gameplay-script QA follows Matchstick's work menu to accepted initializers 5
 and 11, and Caleb's Icarus work menu to accepted initializer 12. For each it
 passes the retained active source ID through A800, samples a reachable choice,
 consumes it once, and starts the typed request. Field pedestrian QA covers
-initializer 5 across the candidate matrix except Scene 22: its choice 1/2
-projections use accepted-state fixtures for initializers 11/12. Scene 21 still
-writes `scene-21-choice-{1,2}-actual.bmp`; the manifest records each source
-initializer. Natural offer-to-selector coverage and field actor projection
-meet at the Lua request boundary, but the accepted registry state is not yet
-carried through natural field entry to the rendered actor. No independent
+all 46 reachable scene/choice pairs using offers accepted through those same
+Johnson work-menu tasks. It saves the resulting registry state and restores
+it into field Lua before each scene entry and ordinary actor publication.
+Scene 21 writes `scene-21-choice-{1,2}-actual.bmp`; the manifest records each
+source initializer. The Debug/Release candidate BMP hashes match. This proves
+the accepted-registry persistence contract and field projection in QA, not a
+single uninterrupted in-world Johnson-to-field route. No independent
 Genesis capture identifies this candidate,
 Scene 34, the A8AE actor, or the contact conversation;
 the BMPs remain internal runtime regression evidence only.

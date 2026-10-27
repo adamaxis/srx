@@ -515,6 +515,10 @@ public:
     active_run_source_initializer_for_dump() {
         return game_scripts_.active_run_source_initializer();
     }
+    bool restore_run_registry_state_for_dump(
+        const scripting::ScriptPersistentValue& state) {
+        return game_scripts_.restore_run_registry_state(state);
+    }
     bool field_dialogue_uses_console_layout_for_dump() const noexcept {
         return field_dialogue_.uses_field_console_menu_layout();
     }

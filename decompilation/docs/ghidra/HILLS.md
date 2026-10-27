@@ -840,14 +840,15 @@ the extracted template profile and ordered overrides. Debug/Release script QA
 accepts Employee Recruitment through Johnson's work menu for raw initializers
 5 and 11 at Matchstick and 12 at Caleb's booth, then verifies each normalized
 A800 choice through the typed request scan.
-Debug/Release field QA seeds that accepted source row, enters Scene 21 after
-installing FFDF40=2, and checks one visible random pedestrian in slot 3 at one
-of the two reachable ROM positions; it writes
-`scene-21-choice-{1,2}-actual.bmp`. Scene 22 choices 1 and 2 additionally use
-accepted-state fixtures for initializers 11 and 12 through the field actor
-publisher; their initializer-tagged BMPs match between Debug and Release.
-The manifest records the initializer for every candidate image. The
-transition now installs the destination mode before actor population,
+Debug/Release field QA drives the corresponding Johnson work-menu task in a
+separate Lua runtime, saves the naturally accepted `run_registry` state, and
+restores it into the field runtime before scene entry. It checks one visible
+random pedestrian in slot 3 at each of the 46 reachable ROM positions and
+writes `scene-<id>-choice-<n>[-initializer-<id>]-actual.bmp`. Scene 22
+choices 1 and 2 use the accepted initializer-11 and initializer-12 variants;
+the candidate BMPs match between Debug and Release. The manifest records the
+initializer for every candidate image. The transition now installs the
+destination mode before actor population,
 matching the `0x167AE` to `0xA800` source order. The same
 coordinator also has a separate higher-priority
 static pedestrian list at `0xA8AE` (template `0x1D6988`, position
@@ -895,8 +896,12 @@ slot leaves the live list, the activity count drops by one while other records
 remain active, and saves the closed Scene-34 image.
 The accepted initializer 5/11/12 offer-to-request paths and the `0x1E45E`
 FFE183 clear now pass focused Debug/Release script QA. Field QA covers all 46
-candidate scene/choice pairs, using initializer 5 except for Scene 22 choices
-1/2, which use accepted-state fixtures for initializers 11/12. The ordinary-
+candidate scene/choice pairs by accepting those offers through Johnson's Lua
+work path, saving the resulting registry state, and restoring it into field
+Lua before scene entry; Scene 22 choices 1/2 use initializers 11/12 and the
+remaining cases use initializer 5. This verifies the run-state persistence
+contract and actor projection, while the uninterrupted in-world
+Johnson-to-field route remains open. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches
 the success page after the source 10-frame choice gate, requests sound `0x4B`,
