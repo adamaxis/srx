@@ -408,16 +408,26 @@ atomically, and the callback passes that byte into the typed 13-record
 `0x1E43C` scan.
 
 Gameplay-script QA follows Matchstick's work menu to accepted initializers 5
-and 11, and Caleb's Icarus work menu to accepted initializer 12. For each it
-passes the retained active source ID through A800, samples a reachable choice,
-consumes it once, and starts the typed request. Field pedestrian QA covers
-all 46 reachable scene/choice pairs using offers accepted through those same
-Johnson work-menu tasks. It saves the resulting registry state and restores
-it into field Lua before each scene entry and ordinary actor publication.
-Scene 21 writes `scene-21-choice-{1,2}-actual.bmp`; the manifest records each
-source initializer. The Debug/Release candidate BMP hashes match. This proves
-the accepted-registry persistence contract and field projection in QA, not a
-single uninterrupted in-world Johnson-to-field route. Late-gate QA enters
+and 11, and Caleb's Icarus work menu to accepted initializer 12. Field QA now
+reaches those same offers through ordinary input in a single
+`FieldSceneRuntime`: Scene 18 starts from its source player record and walks
+Up, Left, Right, then Up into record 9/event 30; Scene 12 starts at the
+documented `(16,80)` checkpoint and walks Up into Caleb's event 30. B selects
+Work; A advances the source work page and generated offer text. Julius's and
+Caleb's source text are asserted before acceptance. The tests seed the source
+offer-selection random draw only, leaving subsequent negotiation and target
+draws live. Caleb cases bootstrap the same runtime at Scene 12's source
+checkpoint before the contact; the accepted offer then remains in that runtime
+through candidate resource entry, with no `run_registry` save/restore.
+Scene 22 choices 1 and 2 use initializers 11 and 12; other cases use 5.
+All 46 reachable scene/choice pairs write candidate images and record their
+initializer. Debug/Release candidate BMP hashes match. Root, work-opening,
+and generated-offer captures for all three initializers are also saved under
+`qt_runtime/field-pedestrian-scenes-qa/johnson-offer-*`. They are internal
+runtime captures, not independent Genesis reference images. This closes the
+physical Johnson-to-accepted-offer segment, while the subsequent elevator and
+destination travel path remains open because these candidate cases use
+resource-scene reentry. Late-gate QA enters
 Scene 30 with `FFE12C=4` and `FFF0C8=0`, verifies that the sampled choice is
 retained without an actor, then enters child resource Scene 34 with both words
 at 4 and an opposite random seed; the actor uses the original choice. The
@@ -543,11 +553,12 @@ independent Genesis animation or map comparison.
 
 The Scene-34 Electronics branch matrix now covers Samurai no-skill, ordinary
 Decker no-kit partial success, Decker zero-success alert, and Decker kit
-success. The accepted-registry persistence seam and both late-gate
-choice-retention branches pass field resource-entry QA, but the uninterrupted
-in-world Johnson-to-field route remains open. Continue that route without
-restoring `run_registry` through the test persistence API, then resume the
-pedestrian producer census across street scenes and match candidate records to
-independent longplay frames. The current Scene-34 BMPs remain internal
-regression evidence and do not identify a live actor in the longplay. The
-pedestrian population hill remains partial.
+success. The physical office-to-accepted-offer segment now passes for Matchstick
+and Caleb in the same runtime, and both late-gate choice-retention branches
+still pass field resource-entry QA. The accepted offer then reaches candidate
+resource scenes through QA reentry; the in-world elevator and destination
+travel segment remains open. Continue from that source transition and resume
+the pedestrian producer census across street scenes, matching candidate
+records to independent longplay frames. The current Scene-34 BMPs remain
+internal regression evidence and do not identify a live actor in the longplay.
+The pedestrian population hill remains partial.

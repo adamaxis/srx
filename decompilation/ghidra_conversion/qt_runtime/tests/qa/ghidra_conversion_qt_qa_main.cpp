@@ -18721,10 +18721,10 @@ int run_field_scene2_pedestrians_qa(
 }
 
 bool accept_employee_offer_for_field_pedestrian_qa(
-    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts,
-    FieldSceneRuntime& field_scene, const std::uint8_t initializer) {
-    using namespace shadowrun::ghidra_conversion::scripting;
-
+    FieldSceneRuntime& field_scene, const std::uint8_t initializer,
+    const std::filesystem::path& output,
+    const shadowrun::ghidra_conversion::integration::StartupIntegrationState&
+        startup_state) {
     if (initializer != 5U && initializer != 11U && initializer != 12U) {
         std::cerr << "Pedestrian scenes QA: unsupported Employee Recruitment "
                      "initializer "
@@ -18733,98 +18733,295 @@ bool accept_employee_offer_for_field_pedestrian_qa(
     }
 
     const bool caleb_offer = initializer == 12U;
-    scripts.set_story_state({
-        {caleb_offer ? "mr_johnsons_flag_bit_7"
-                     : "mr_johnsons_flag_bit_5",
-         true},
-    });
-    scripts.set_location_context(
-        "building",
-        caleb_offer ? "icarus_descending_booth"
-                    : "matchstick_strouther_booth",
-        caleb_offer ? "icarus-descending.caleb_brightmore"
-                    : "matchstick.julius_strouther",
-        caleb_offer ? "caleb_brightmore" : "julius_strouther");
-    scripts.set_field_mode_context(
-        caleb_offer
-            ? ScriptFieldModeContext{1U, 12U, 30}
-            : ScriptFieldModeContext{1U, 18U, 0});
+    const std::uint16_t office_scene = caleb_offer ? 12U : 18U;
+    const auto speaker = caleb_offer ? std::string_view{"Caleb Brightmore"}
+                                     : std::string_view{"Julius Strouther"};
+    const bool prepared_office = caleb_offer
+        ? field_scene.bootstrap_for_scene_dump(startup_state, office_scene)
+        : field_scene.reenter_field_scene_for_dump(office_scene);
+    if (!prepared_office) {
+        std::cerr << "Pedestrian scenes QA: could not enter Johnson scene "
+                  << office_scene << ": " << field_scene.failure() << '\n';
+        return false;
+    }
+    if (caleb_offer) {
+        // Scene 12's ROM checkpoint is (16,80); Scene 18 uses its own
+        // initialized record at (256,256). The offer test starts at those
+        // source entry positions before walking into event 30.
+        field_scene.set_field_entity_world_position_for_dump(16U * 16U,
+                                                              80U * 16U);
+    }
+    // The source first-visit tests use FFFC27 bits 5 and 7. Keep those
+    // conditions in the native field state so the physical event and Lua
+    // dialogue read the same facts used by later field-scene entry.
+    field_scene.seed_notebook_referral_flags_for_qa(
+        caleb_offer ? 0x80U : 0x20U);
+    if (caleb_offer && !field_scene.set_story_flag_for_dump(10U, true)) {
+        std::cerr << "Pedestrian scenes QA: could not seed Caleb's ROM access "
+                     "flag\n";
+        return false;
+    }
+    const auto source_entry_position = field_scene.field_entity_world_position();
+    std::uint16_t scene_entry_wait_frames = 0U;
+    for (; scene_entry_wait_frames < 120U &&
+           field_scene.field_modal_return_transition_frames_for_dump() != 0U;
+         ++scene_entry_wait_frames) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    if (!caleb_offer &&
+        (field_scene.probe_field_collision_for_dump(304U * 16U, 72U * 16U) !=
+             0 ||
+         field_scene.probe_field_collision_for_dump(304U * 16U, 64U * 16U) >=
+             0)) {
+        std::cerr << "Pedestrian scenes QA: Scene-18 source collision map no "
+                     "longer exposes a clear approach below event 30\n";
+        return false;
+    }
 
-    const auto fail = [initializer](const std::string_view step) {
+    const auto fail = [initializer, office_scene](const std::string_view step) {
         std::cerr << "Pedestrian scenes QA: natural accepted offer "
                      "initializer "
                   << static_cast<unsigned>(initializer) << ' ' << step
+                  << " (office scene " << office_scene << ')'
                   << '\n';
         return false;
     };
-    const auto is_type = [](const ScriptTaskStep& task,
-                            const ScriptNativeOperation::Type type) {
-        return task.operation.has_value() &&
-               task.operation->type == type;
+    const auto capture_once = [&field_scene, &output, initializer](
+                                  const std::string_view stage) {
+        const auto path = output /
+            ("johnson-offer-" + std::to_string(initializer) + "-" +
+             std::string(stage) + ".bmp");
+        if (std::filesystem::exists(path)) {
+            return true;
+        }
+        const auto image = render_qa_field(field_scene);
+        return !image.isNull() &&
+               image.save(QString::fromStdWString(path.wstring()));
     };
-    const auto is_service = [&is_type](const ScriptTaskStep& task,
-                                       const std::string_view service_id) {
-        return is_type(task, ScriptNativeOperation::Type::service_call) &&
-               task.operation->service_id == service_id;
-    };
+    const auto root_capture_path = output /
+        ("johnson-offer-" + std::to_string(initializer) + "-root.bmp");
+    const bool record_offer_route = !std::filesystem::exists(root_capture_path);
 
-    auto task = scripts.start_task("johnson", "interaction");
-    if (!is_type(task, ScriptNativeOperation::Type::ui_menu) ||
-        !task.operation->menu.has_value() ||
-        task.operation->menu->id != "opening") {
-        return fail("did not open the Johnson root menu");
-    }
-    task = scripts.complete_native_menu_choice("work");
-    if (!is_type(task, ScriptNativeOperation::Type::ui_say)) {
-        return fail("work did not present its source opening page");
-    }
-    task = scripts.complete_native_operation(true);
-    if (!is_service(task, "random.bounded_8")) {
-        return fail("did not select from the eight source offer rows");
-    }
-    task = scripts.complete_native_service_result(
-        initializer == 5U ? "roll_2" : "roll_4");
-    if (!is_service(task, "runner.negotiation_skill")) {
-        return fail("skipped the source Negotiation lookup");
-    }
-    task = scripts.complete_native_service_result("skill_3");
-    const std::string_view expected_payment_bound =
-        initializer == 12U ? "random.bounded_46" : "random.bounded_16";
-    if (!is_service(task, expected_payment_bound)) {
-        return fail("did not use its source payment bound");
-    }
-    task = scripts.complete_native_service_result("roll_0");
-    if (initializer == 5U || initializer == 11U) {
-        const std::string_view expected_target_bound =
-            initializer == 5U ? "random.bounded_4" : "random.bounded_2";
-        if (!is_service(task, expected_target_bound)) {
-            return fail("did not use its source target-location bound");
+    std::uint16_t north_to_corridor_frames = 0U;
+    std::uint16_t west_frames = 0U;
+    std::uint16_t north_after_west_frames = 0U;
+    std::uint16_t east_frames = 0U;
+    std::uint16_t north_to_event_frames = 0U;
+    if (caleb_offer) {
+        for (; north_to_event_frames < 90U && !field_scene.dialogue_open();
+             ++north_to_event_frames) {
+            field_scene.set_controller_port_byte(0x01U); // ordinary Up
+            field_scene.advance_frame();
         }
-        task = scripts.complete_native_service_result("roll_0");
-        if (!is_service(task, "random.bounded_12")) {
-            return fail("skipped its source client-name draw");
+    } else {
+        for (; north_to_corridor_frames < 180U &&
+               (field_scene.field_entity_world_position().y >> 4U) > 72U &&
+               !field_scene.dialogue_open();
+             ++north_to_corridor_frames) {
+            field_scene.set_controller_port_byte(0x01U); // ordinary Up
+            field_scene.advance_frame();
         }
-    } else if (!is_service(task, "random.bounded_12")) {
-        return fail("skipped its source client-name draw");
+        // Approach the source-clear y=72 booth corridor from its west side,
+        // then travel east to event 30 and move north into the booth.
+        for (; west_frames < 120U && !field_scene.dialogue_open() &&
+               (field_scene.field_entity_world_position().x >> 4U) > 224U;
+             ++west_frames) {
+            field_scene.set_controller_port_byte(0x04U); // ordinary Left
+            field_scene.advance_frame();
+        }
+        for (; north_after_west_frames < 90U &&
+               !field_scene.dialogue_open() &&
+               (field_scene.field_entity_world_position().y >> 4U) > 72U;
+             ++north_after_west_frames) {
+            field_scene.set_controller_port_byte(0x01U); // ordinary Up
+            field_scene.advance_frame();
+        }
+        while (east_frames < 200U && !field_scene.dialogue_open() &&
+               (field_scene.field_entity_world_position().x >> 4U) < 304U) {
+            field_scene.set_controller_port_byte(0x08U); // ordinary Right
+            field_scene.advance_frame();
+            ++east_frames;
+        }
+        for (; north_to_event_frames < 90U && !field_scene.dialogue_open();
+             ++north_to_event_frames) {
+            field_scene.set_controller_port_byte(0x01U); // ordinary Up into 30
+            field_scene.advance_frame();
+        }
     }
-    task = scripts.complete_native_service_result("roll_0");
-    if (!is_type(task, ScriptNativeOperation::Type::ui_say)) {
-        return fail("did not present the generated source offer");
+    field_scene.set_controller_nibble(0U);
+    const auto movement_frames = static_cast<std::uint16_t>(
+        north_to_corridor_frames + west_frames + north_after_west_frames +
+        east_frames + north_to_event_frames);
+    const auto east_position = field_scene.field_entity_world_position();
+    if (movement_frames == 0U ||
+        field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_scene.field_scene_reference_for_dump() != office_scene ||
+        !field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().actor_name != speaker ||
+        field_scene.dialogue_panel().option_count != 3U ||
+        !capture_once("root")) {
+        const auto position = field_scene.field_entity_world_position();
+        std::cerr << "Pedestrian scenes QA: Johnson contact diagnostics "
+                  << "frames=" << movement_frames << " scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " mode=" << field_scene.field_interaction_mode_for_dump()
+                  << " source_position=" << source_entry_position.x << ','
+                  << source_entry_position.y
+                  << " scene_entry_wait_frames=" << scene_entry_wait_frames
+                  << " north_to_corridor_frames="
+                  << north_to_corridor_frames
+                  << " west_frames=" << west_frames
+                  << " north_after_west_frames=" << north_after_west_frames
+                  << " east_frames=" << east_frames
+                  << " north_to_event_frames=" << north_to_event_frames
+                  << " east_position=" << east_position.x << ','
+                  << east_position.y
+                  << " position=" << position.x << ',' << position.y
+                  << " interaction=" << field_scene.field_interaction_open()
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " speaker='" << field_scene.dialogue_panel().actor_name
+                  << "' options="
+                  << static_cast<unsigned>(
+                         field_scene.dialogue_panel().option_count)
+                  << " failure='" << field_scene.failure() << "'\n";
+        if (office_scene == 18U) {
+            std::cerr << "Pedestrian scenes QA: Scene-18 collision map "
+                         "(x=160..352, y=32..112, 4px; .=clear, #=blocked, "
+                         "E=event)\n";
+            for (int y = 112; y >= 32; y -= 4) {
+                std::cerr << y << ' ';
+                for (int x = 160; x <= 352; x += 4) {
+                    const auto code = field_scene.probe_field_collision_for_dump(
+                        static_cast<std::uint16_t>(x * 16),
+                        static_cast<std::uint16_t>(y * 16));
+                    std::cerr << (code == 0 ? '.' : (code < 0 ? 'E' : '#'));
+                }
+                std::cerr << '\n';
+            }
+        }
+        return fail("ordinary Up did not open the physical Johnson root");
     }
-    task = scripts.complete_native_operation(true);
-    const auto active_initializer = scripts.active_run_source_initializer();
-    if (task.status != ScriptTaskStep::Status::completed ||
-        task.result_id != std::optional<std::string>{"accepted"} ||
-        active_initializer != std::optional<std::uint8_t>{initializer}) {
-        return fail("did not publish the naturally accepted source row");
+
+    const auto tap = [&field_scene](const std::uint8_t button) {
+        for (std::uint8_t wait = 0U;
+             wait < 60U && field_scene.dialogue_input_locked(); ++wait) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+        if (!field_scene.dialogue_open() ||
+            field_scene.dialogue_input_locked()) {
+            return false;
+        }
+        // The ROM page wait does not sample the pad. Release during that
+        // interval is therefore invisible to the host edge latch; sample one
+        // neutral frame after the wait before generating the next press.
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        field_scene.set_controller_port_byte(button);
+        field_scene.advance_frame();
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        return field_scene.failure().empty();
+    };
+    const bool selected_work = tap(0x10U);
+    const bool work_opening_captured = capture_once("work-opening");
+    const auto& work_opening_panel = field_scene.dialogue_panel();
+    const auto work_text_contains = [&work_opening_panel](
+                                        const std::string_view text) {
+        for (std::size_t index = 0U;
+             index < work_opening_panel.text_segment_count; ++index) {
+            if (work_opening_panel.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const bool source_work_opening = caleb_offer
+        ? work_opening_panel.option_count == 0U &&
+              !work_opening_panel.has_more &&
+              work_text_contains("If your half as good") &&
+              work_text_contains("I can always use another good man.")
+        : work_opening_panel.option_count == 1U &&
+              work_opening_panel.has_more &&
+              work_text_contains("Julius raises a furry brow.") &&
+              work_text_contains("Okay, you want a contract, you got one.");
+    if (!selected_work || !field_scene.dialogue_open() ||
+        !source_work_opening ||
+        !work_opening_captured) {
+        std::cerr << "Pedestrian scenes QA: work selection diagnostics "
+                  << "tap=" << selected_work
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " options=" << static_cast<unsigned>(
+                         field_scene.dialogue_panel().option_count)
+                  << " selected=" << field_scene.dialogue_panel().selected_option
+                  << " cursor=" << field_scene.dialogue_panel().cursor_selection
+                  << " kind=" << static_cast<unsigned>(
+                         field_scene.dialogue_panel().kind)
+                  << " segments=" << field_scene.dialogue_panel().text_segment_count
+                  << " failure='" << field_scene.failure() << "'\n";
+        for (std::size_t index = 0U;
+             index < work_opening_panel.text_segment_count; ++index) {
+            std::cerr << "  work text[" << index << "]='"
+                      << work_opening_panel.text_segments[index] << "'\n";
+        }
+        return fail("ordinary B did not open the Johnson work passage");
     }
-    const auto saved_registry_state = scripts.save_run_registry_state();
-    if (!saved_registry_state.has_value() ||
-        !field_scene.restore_run_registry_state_for_dump(
-            *saved_registry_state) ||
-        field_scene.active_run_source_initializer_for_dump() !=
-            std::optional<std::uint8_t>{initializer}) {
-        return fail("accepted registry state did not restore into field Lua");
+
+    // Force the source 0x0D44 bounded draw to the offer row already covered by
+    // this candidate: row 2 yields initializer 5; row 4 yields 11 or 12 by
+    // Johnson context. All following random and skill services remain live.
+    field_scene.set_source_random_seed_for_dump(
+        initializer == 5U ? 2U : 4U);
+    if (!tap(0x40U) || !field_scene.dialogue_open() ||
+        field_scene.dialogue_panel().option_count != 0U ||
+        !capture_once("generated-offer")) {
+        return fail("ordinary A did not present the generated source offer");
+    }
+    const bool offer_acknowledged = tap(0x40U);
+    const auto accepted_initializer =
+        field_scene.active_run_source_initializer_for_dump();
+    if (!offer_acknowledged || field_scene.dialogue_open() ||
+        accepted_initializer != std::optional<std::uint8_t>{initializer}) {
+        const auto& panel = field_scene.dialogue_panel();
+        std::cerr << "Pedestrian scenes QA: offer acceptance diagnostics "
+                  << "tap=" << offer_acknowledged
+                  << " dialogue=" << field_scene.dialogue_open()
+                  << " options=" << static_cast<unsigned>(panel.option_count)
+                  << " more=" << panel.has_more
+                  << " segments=" << panel.text_segment_count
+                  << " initializer="
+                  << (accepted_initializer.has_value()
+                          ? std::to_string(*accepted_initializer)
+                          : std::string("missing"))
+                  << " failure='" << field_scene.failure() << "'\n";
+        return fail("offer acceptance did not persist in the field Lua runtime");
+    }
+    const auto route_path = output / "johnson-offer-route.tsv";
+    if (record_offer_route) {
+        const bool route_exists = std::filesystem::exists(route_path);
+        std::ofstream route(route_path, std::ios::app);
+        if (!route) {
+            return fail("could not write the same-runtime route manifest");
+        }
+        if (!route_exists) {
+            route << "initializer\toffice_scene\tspeaker\tsource_x"
+                     "\tsource_y\tscene_entry_wait_frames"
+                     "\tnorth_to_corridor_frames\twest_frames"
+                     "\tnorth_after_west_frames\teast_frames"
+                     "\tnorth_to_event_frames\tselection_seed"
+                     "\tacceptance\n";
+        }
+        route << static_cast<unsigned>(initializer) << '\t' << office_scene
+              << '\t' << speaker << '\t' << source_entry_position.x << '\t'
+              << source_entry_position.y << '\t' << scene_entry_wait_frames
+              << '\t'
+              << north_to_corridor_frames << '\t' << west_frames << '\t'
+              << north_after_west_frames << '\t' << east_frames << '\t'
+              << north_to_event_frames << '\t'
+              << (initializer == 5U ? 2U : 4U)
+              << "\tfield_runtime_lua\n";
     }
     return true;
 }
@@ -19049,8 +19246,9 @@ bool verify_field_pedestrian_late_gate_retention_qa(
 
 int run_field_pedestrian_scenes_qa(
     FieldSceneRuntime& field_scene,
-    const std::filesystem::path& asset_root,
-    const std::filesystem::path& output) {
+    const std::filesystem::path& output,
+    const shadowrun::ghidra_conversion::integration::StartupIntegrationState&
+        startup_state) {
     std::error_code directory_error;
     std::filesystem::remove_all(output, directory_error);
     if (directory_error) {
@@ -19082,19 +19280,6 @@ int run_field_pedestrian_scenes_qa(
         << "scene_id\tchoice\tsource_initializer\tlist_offset\tposition_offset"
            "\tworld_x\tworld_y"
            "\theading_word\tspawn_flags\tactor_slot\tvisible\n";
-    shadowrun::ghidra_conversion::scripting::GameScriptRuntime
-        accepted_offer_scripts;
-    const auto script_directory =
-        asset_root.parent_path() / "gameplay" / "scripts";
-    const auto dialogue_text_file =
-        asset_root / "dialogue" / "script-text.json";
-    if (!accepted_offer_scripts.load_package(script_directory,
-                                             dialogue_text_file)) {
-        std::cerr << "Pedestrian scenes QA: could not load the independent "
-                     "offer script runtime: "
-                  << accepted_offer_scripts.failure() << '\n';
-        return 3;
-    }
     std::size_t candidate_cases = 0U;
     for (std::uint16_t scene = 0x15U; scene <= 0x2BU; ++scene) {
         const auto candidates =
@@ -19139,10 +19324,10 @@ int run_field_pedestrian_scenes_qa(
                 : scene == 0x16U && choice == 2U ? 12U
                                                  : 5U;
             if (!accept_employee_offer_for_field_pedestrian_qa(
-                    accepted_offer_scripts, field_scene,
-                    source_initializer)) {
-                std::cerr << "Pedestrian scenes QA: accepted Employee "
-                             "Recruitment state could not be carried into "
+                    field_scene, source_initializer, output,
+                    startup_state)) {
+                std::cerr << "Pedestrian scenes QA: in-runtime accepted "
+                             "Employee Recruitment offer did not reach "
                              "Scene "
                           << scene << ':' << static_cast<unsigned>(choice)
                           << '\n';
@@ -39043,8 +39228,8 @@ int main(int argc, char** argv) {
             }
             if (field_pedestrian_scenes_qa_path.has_value()) {
                 return run_field_pedestrian_scenes_qa(
-                    field_scene, asset_root,
-                    *field_pedestrian_scenes_qa_path);
+                    field_scene, *field_pedestrian_scenes_qa_path,
+                    smoke_state);
             }
             if (field_scene2_motel_street_collision_qa_path.has_value()) {
                 return run_field_scene2_motel_street_collision_qa(

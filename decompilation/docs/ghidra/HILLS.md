@@ -855,14 +855,27 @@ the extracted template profile and ordered overrides. Debug/Release script QA
 accepts Employee Recruitment through Johnson's work menu for raw initializers
 5 and 11 at Matchstick and 12 at Caleb's booth, then verifies each normalized
 A800 choice through the typed request scan.
-Debug/Release field QA drives the corresponding Johnson work-menu task in a
-separate Lua runtime, saves the naturally accepted `run_registry` state, and
-restores it into the field runtime before scene entry. It checks one visible
-random pedestrian in slot 3 at each of the 46 reachable ROM positions and
-writes `scene-<id>-choice-<n>[-initializer-<id>]-actual.bmp`. Scene 22
-choices 1 and 2 use the accepted initializer-11 and initializer-12 variants;
-the candidate BMPs match between Debug and Release. The manifest records the
-initializer for every candidate image. The transition now installs the
+Debug/Release field QA now performs the Johnson contact and Work choice with
+ordinary field input in the same `FieldSceneRuntime` that accepts the offer
+and enters the candidate resource scene. Scene 18 starts at its source player
+record and walks Up, Left, Right, then Up into record 9/event 30; Scene 12
+uses Caleb's documented `(16,80)` entry checkpoint and ordinary Up into event
+30. B selects Work and A advances the source opening and generated offer text.
+The tests check the Julius and Caleb source text, including Caleb's ROM
+spelling `"If your half as good"`, then confirm the accepted raw initializer
+remains in that runtime. Only the offer-selection random seed is set; later
+negotiation and target draws run through their normal services. Scene 22
+choices 1 and 2 use accepted initializers 11 and 12; all other cases use 5.
+The QA checks one visible random pedestrian in slot 3 at each of the 46
+reachable ROM positions and writes
+`scene-<id>-choice-<n>[-initializer-<id>]-actual.bmp`. The candidate BMPs
+match between Debug and Release, and the manifest records the initializer
+for every candidate image. The route also saves root, work-opening, and
+generated-offer BMPs for initializers 5, 11, and 12 under
+`qt_runtime/field-pedestrian-scenes-qa/johnson-offer-*`; these remain internal
+runtime captures. The 46 candidate entries still use resource-scene reentry,
+so the physical Johnson-to-offer path is covered while the elevator/destination
+travel route remains open. The transition now installs the
 destination mode before actor population,
 matching the `0x167AE` to `0xA800` source order. The same
 coordinator also has a separate higher-priority
