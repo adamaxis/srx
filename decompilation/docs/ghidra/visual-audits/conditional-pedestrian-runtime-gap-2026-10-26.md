@@ -357,11 +357,45 @@ contains these inspected frames:
 
 | Frame | Capture time | Observation |
 |---|---|---|
+| `frame_001200.png` | `02:57:40.000` | Industrial-looking field map with a blue sprite near the left wall and a brown sprite near the center; neither has a confirmed actor identity. |
+| `frame_001500.png` | `02:57:50.000` | Lone Star badge portrait; “Hey, Flick. I think this guy's packing. You got a permit for that illegal weapon?”; choices `Attack!!`, `Talk to them.`, `Run away!`. |
+| `frame_001800.png` | `02:58:00.000` | Black transition frame. |
 | `frame_002100.png` | `02:58:10.000` | Blue and brown field sprites are visible. |
 | `frame_002110.png` | `02:58:10.333` | Another sprite is visible at the right edge while the camera follows the party. |
 | `frame_002120.png` | `02:58:10.667` | The party and surrounding sprites have shifted on screen with the camera. |
 | `frame_002140.png` | `02:58:11.333` | Several sprites remain in view during movement. |
 | `frame_002150.png` | `02:58:11.667` | The sprites overlap near the center of the field. |
+| `frame_002400.png` | `02:58:20.000` | Taxi asks for 40 yen to travel to the Puyallup Barrens, with accept and cancel choices. |
+| `frame_002700.png` | `02:58:30.000` | Field map with a red/brown sprite near machinery; scene and actor identity remain unknown. |
+| `frame_003000.png` | `02:58:40.000` | Tarislar City Inn introduction dialogue and portrait. |
+
+The patrol choices in `frame_001500` structurally match the three option
+commands in the ROM prompt record at `0x120E54`: Attack `0x95`, Talk `0x96`,
+and Run `0x99`, dispatched to `0x23412`, `0x23452`, and `0x23782`. Handler
+`0x20F12` loads that record and resource bundle `0x122084`; the selector table
+enables it in scenes 0 and 3 at sums 3 and 4. This only matches the choice
+layout: the extracted bundle opening (“A moment, citizen. We want a word with
+you.”) does not match the line visible in the capture, so the exact dialogue
+source and scene are unresolved.
+
+The direct Scene-41-to-43 patrol event is a different presentation. Handler
+`0x2106A` loads prompt `0x1213CC` and bundle `0x122048`; the prompt has one
+MORE command `0xD9` to `0x24622`, not the three Attack/Talk/Run commands shown
+in `frame_001500`. Its source outcome is “A Lone Star patrol spots you.” /
+“Hold it right there!” at selector sum 5. Therefore this capture does not
+identify the direct Scene-41-to-43 patrol branch, despite being in the same
+video section as the later field frames.
+
+For the three-option prompt family, the traced input branches have different
+actor and state outcomes: Attack can start the patrol list and raise heat by
+2 (capped at 8), or display the radio-call exit if the actor sequence fails;
+Talk can release the player, continue into ID or illegal-weapon/permit checks,
+or reach arrest depending on flags, rolls, inventory, and heat; Run raises heat
+by 1 (capped at 8) and can produce a detective encounter, a mixed pursuit, or
+an escape according to the chase roll. The terminal branches are recorded in
+`decompilation/assets/field/world-activity-terminal-outcomes.tsv` under
+`0x20F12`. The capture shows the choice screen only; it does not reveal which
+input was selected or any resulting branch.
 
 At original resolution, frame `002100` shows a small brown standing sprite on
 the blue map with another sprite at left and the party HUD at right. Its broad
