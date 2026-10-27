@@ -71,7 +71,8 @@ give the command view a spending path it does not have.
   and raises Body.
 - The supplied longplay has no identified capture of either exact page;
   section 06 frame `000090` shows a runner status panel. A separate user-
-  supplied `e8_karma_spend.zip` recording shows the Hotel page with Joshua as
+  supplied `e8_karma_spend.zip` recording, reported as obtained from Grok bot,
+  shows the Hotel page with Joshua as
   Human/Shaman, Body 2, Karma 20, and a Body 3 preview costing 3 Karma, then
   the default-Yes confirmation prompt at frame 9080. [C] Its input log records
   a four-frame A press beginning at frame 9081; snapshots from 9040 through
@@ -104,7 +105,8 @@ give the command view a spending path it does not have.
    shared two-column grid, current Karma, focused row, Essence pair, and any
    installed-cyberware details. The Hotel child shows its upgrade target and
    cost. The supplied `e8_karma_spend.zip` provides a broad external
-   comparison for the Hotel page, but its source identity is unrecorded, so
+   comparison for the Hotel page. The user reports that Grok bot provided it,
+   but the archive has no ROM hash, emulator/build identity, or capture method;
    exact Genesis appearance remains unverified.
 
 2. **Does the visible state match behavior?** Yes in typed and pixel QA. Only

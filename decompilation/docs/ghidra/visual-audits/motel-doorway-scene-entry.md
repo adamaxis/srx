@@ -124,14 +124,16 @@ same-state matches.
 
 ### Supplemental recording reviewed 2026-10-27
 
-The user supplied `e8_karma_spend.zip` includes an external doorway sequence
-with Up recorded at frame 8641. It shows the runner at the Stoker door around
+The user supplied `e8_karma_spend.zip`, reported as obtained from Grok bot,
+includes an external doorway sequence with Up recorded at frame 8641. It shows
+the runner at the Stoker door around
 8680, the fade beginning at 8681, full black from 8693 through 8732, the panel
 starting at 8733, and complete opening text by 8736. This is a 40-frame black
 hold in the supplied recording, compared with five full-black frames in the
 current native route QA. The archive contains no ROM hash or emulator build
-identity, so it cannot establish independent Genesis fidelity. The source
-ordering for the transition is now traced: `0x16396` decrements `FFDF3C`; on
+identity or capture method, so it cannot establish independent Genesis
+fidelity. The source ordering for the transition is now traced: `0x16396`
+decrements `FFDF3C`; on
 underflow it clears `FFDF3A` and sets `FFDF3E`. The main loop at `0x095E` sees
 that completion flag, sets `FFE172`, clears `FFDF3E`, and calls `0x53126`
 before checking its mode and variant gates. In these snapshots `FFE186=0` and

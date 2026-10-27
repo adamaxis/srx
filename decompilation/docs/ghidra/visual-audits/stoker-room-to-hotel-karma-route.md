@@ -90,10 +90,11 @@ an independent Genesis visual oracle.
 
 The user supplied `e8_karma_spend.zip`, containing `au/e8_karma_spend/` with
 620 consecutive 320x224 PNG frames (`e_08541.png` through `e_09160.png`), an
-input log, RAM snapshots, and audio. The package has no ROM hash, emulator
-build identity, or capture method, so it is useful as an external comparison
-but is not independently verified Genesis footage. The archive remains
-outside the repository and is not part of this documentation commit.
+input log, RAM snapshots, and audio. The user reports that Grok bot provided
+the archive. That provenance is user-reported; the package has no ROM hash,
+emulator/build identity, or capture method, so it is useful as an external
+comparison but is not independently verified Genesis footage. The archive
+remains outside the repository and is not part of this documentation commit.
 
 The input log records Up at frame 8641 followed by A presses at 8751, 8767,
 8807, 8847, 8891, 9001, and 9081. The visible sequence reaches the Stoker
