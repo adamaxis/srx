@@ -48,6 +48,7 @@ struct FieldModeExitTransitionCallbacks {
     std::function<void()> handle_mode_action_event;
     std::function<void()> initialize_field_mode_profile_a;
     std::function<void()> initialize_field_mode_profile_b;
+    std::function<void()> clear_mode_five_conditional_actor_choice;
 };
 
 struct FieldModeExitTransitionResult {

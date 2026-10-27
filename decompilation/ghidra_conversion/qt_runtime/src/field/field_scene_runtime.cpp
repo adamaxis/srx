@@ -4650,6 +4650,16 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                           opened_boundary =
                               "field.world_activity.ilene_contact_opened";
                       } else if (contact_task == 3) {
+                          // ROM 0xA800's random-pedestrian gate guarantees
+                          // FFFBED=5; its 0x1F146 callback sets FFFC1C bit 0.
+                          // Preserve the independent bit-7 scene-reset fact.
+                          field_mode_exit_transition_state_.exit_mode = 5U;
+                          field_mode_exit_transition_state_.transition_flags =
+                              static_cast<std::uint8_t>(
+                                  (field_runtime_state_.world_activity_scene_reset_bit
+                                       ? 0x80U
+                                       : 0U) |
+                                  0x01U);
                           module = "run_employee_recruitment";
                           task = "present_random_contact";
                           location = "employee_recruitment_contact";

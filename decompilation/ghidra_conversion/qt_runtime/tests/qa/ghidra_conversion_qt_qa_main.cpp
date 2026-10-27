@@ -20202,6 +20202,13 @@ bool verify_random_pedestrian_contact_qa(
 
     // The later 0x1E43C request scan is gated by FFDF42. Keep this test seam
     // solely to prove the sampled FFE183 choice survives the real contact page.
+    if (field_scene.field_mode_exit_mode_for_dump() != 5U ||
+        (field_scene.field_mode_exit_transition_flags_for_dump() & 0x01U) ==
+            0U) {
+        std::cerr << "Pedestrian scenes QA: 0x1F146 did not publish its "
+                     "mode-5 FFFC1C bit-0 state\n";
+        return false;
+    }
     const auto retained_choice =
         field_scene.consume_conditional_actor_selection_choice_for_dump();
     if (retained_choice != std::optional<std::uint8_t>{choice}) {

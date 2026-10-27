@@ -938,7 +938,7 @@ The direct `FFDF42` producer is still unknown, and both physical A800 cases
 consume the retained choice through the `0x1E45E` test seam rather than proving
 that a pedestrian contact reaches this automatic route.
 
-All 93 files in the Debug and Release pedestrian QA output directories match
+All 96 files in the Debug and Release pedestrian QA output directories match
 by SHA-256, including the entry, contact, and closed-field BMPs, both route and
 waypoint traces, the 46-row candidate matrix, and the Scene-40 guard route.
 I inspected
@@ -949,6 +949,18 @@ comparison remain open.
 The FFDF3E/FFDF40 coordinator call path is traced above, but the current A800
 physical routes do not demonstrate that they trigger it. The A800 hill remains
 partial.
+
+The Qt contact path now carries the successful generic-contact callback into
+typed field-exit state: ROM `0xA800` selects mode 5 (`FFFBED=5`), and
+`0x1F146` sets `FFFC1C` bit 0 while preserving its independent bit-7 mirror.
+The accepted mode-5 branch in `finalize_field_mode_exit_transition` clears the
+Lua-owned `FFE183` choice before its high-slot cleanup and clears the complete
+typed `FFFC1C` byte at the `0x1E68C` cleanup boundary. Its focused CTest covers
+accepted cleanup ordering and the rejected bit-7 branch; physical Scene-30 and
+Scene-38 contact QA asserts the published mode and bit 0. Those contact tests
+still consume the choice through the `0x1E45E` QA seam: they do not establish
+the physical trigger for automatic `0x1E43C` processing or the direct
+`FFDF42` producer.
 
 ## FFDF42 request-producer census (bounded)
 

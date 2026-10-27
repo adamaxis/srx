@@ -185,7 +185,11 @@ void FieldSceneRuntime::run_field_mode_exit_transition() {
         {[this](const ExitEffectSlotGroup) {
              source_boundary("field.effects.clear_high_slots");
          },
-         [this] { source_boundary("field.world.reset_effect_globals"); },
+         [this] {
+             // ROM 0x1E68C clears FFFC1C, including its bit-7 mirror.
+             field_runtime_state_.world_activity_scene_reset_bit = false;
+             source_boundary("field.world.reset_effect_globals");
+         },
          [this](const FieldModeExitServicePhase phase) {
              source_boundary(phase == FieldModeExitServicePhase::
                                          mode_specific_cleanup
@@ -196,7 +200,16 @@ void FieldSceneRuntime::run_field_mode_exit_transition() {
          [this] { source_boundary("field.resources.run_animation_triplet"); },
          [this] { handle_field_mode_action_event(); },
          [this] { source_boundary("field.mode_exit.initialize_profile_a"); },
-         [this] { source_boundary("field.mode_exit.initialize_profile_b"); }});
+         [this] { source_boundary("field.mode_exit.initialize_profile_b"); },
+         [this] {
+             if (!game_scripts_.reset_conditional_actor_selection()) {
+                 failure_ = game_scripts_.failure();
+                 source_boundary(
+                     "field.mode_exit.conditional_actor_choice_reset_failed");
+                 return;
+             }
+             source_boundary("field.mode_exit.conditional_actor_choice_cleared");
+         }});
     field_action_counter_ = field_mode_exit_transition_state_.action_counter;
 }
 

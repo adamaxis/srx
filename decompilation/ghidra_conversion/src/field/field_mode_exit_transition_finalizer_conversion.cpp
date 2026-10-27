@@ -7,6 +7,7 @@ namespace shadowrun::ghidra_conversion {
 namespace {
 
 void run_mode_specific_cleanup(
+    FieldModeExitTransitionState& state,
     const FieldModeExitTransitionCallbacks& callbacks,
     const ExitEffectSlotGroup group,
     FieldModeExitTransitionResult& result) {
@@ -15,6 +16,8 @@ void run_mode_specific_cleanup(
     if (callbacks.clear_high_effect_slots) {
         callbacks.clear_high_effect_slots(group);
     }
+    // ROM 0x1E68C clears the complete FFFC1C byte after any 0x1DED8 sweep.
+    state.transition_flags = 0U;
     if (callbacks.reset_world_effect_globals) {
         callbacks.reset_world_effect_globals();
     }
@@ -43,13 +46,17 @@ FieldModeExitTransitionResult finalize_field_mode_exit_transition(
         if (transition_started &&
             (state.transition_flags & 0x80U) == 0U) {
             state.mode_five_effect_marker = 0U;
-            run_mode_specific_cleanup(callbacks,
+            if (callbacks.clear_mode_five_conditional_actor_choice) {
+                // ROM 0xC684 clears FFE183 before 0x1DED8 and 0x1E68C.
+                callbacks.clear_mode_five_conditional_actor_choice();
+            }
+            run_mode_specific_cleanup(state, callbacks,
                                       ExitEffectSlotGroup::mode_five, result);
         }
         break;
     case 1U:
         if (transition_started) {
-            run_mode_specific_cleanup(callbacks,
+            run_mode_specific_cleanup(state, callbacks,
                                       ExitEffectSlotGroup::mode_one, result);
         }
         break;
@@ -57,7 +64,7 @@ FieldModeExitTransitionResult finalize_field_mode_exit_transition(
     case 4U:
         if (transition_started) {
             state.effect_service_flags &= ~(1UL << 9U);
-            run_mode_specific_cleanup(callbacks,
+            run_mode_specific_cleanup(state, callbacks,
                                       ExitEffectSlotGroup::mode_two_or_four,
                                       result);
         }

@@ -469,6 +469,12 @@ public:
     consume_conditional_actor_selection_choice_for_dump() {
         return game_scripts_.consume_conditional_actor_selection_choice();
     }
+    std::uint8_t field_mode_exit_mode_for_dump() const noexcept {
+        return field_mode_exit_transition_state_.exit_mode;
+    }
+    std::uint8_t field_mode_exit_transition_flags_for_dump() const noexcept {
+        return field_mode_exit_transition_state_.transition_flags;
+    }
     bool pending_mode_transition_actor_list_for_dump() const noexcept {
         return field_pending_mode_transition_actor_list_.has_value();
     }
