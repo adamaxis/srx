@@ -707,7 +707,7 @@ records to independent longplay frames. The current Scene-34 BMPs remain
 internal regression evidence and do not identify a live actor in the longplay.
 The pedestrian population hill remains partial.
 
-## Scene-30 A800 choice-2 physical contact
+## Scene-30 and Scene-38 A800 physical contact
 
 **[C]** The extracted US-ROM candidate row in
 `assets/field/entities/conditional-actor-candidates.tsv` selects Scene 30,
@@ -745,16 +745,38 @@ field. It leaves the candidate record active and keeps the sampled FFE183
 choice available for the later request scan. Debug/Release QA checks the text,
 portrait, no-options state, close input, actor retention, and FFFC3C transfer.
 
+### Scene-38 choice 1
+
+**[C]** The US-ROM row at `0x1EE0E8` selects template `0x1D6988`, position
+record `0x1EE100`, and ordered overrides `+0x9E=0x20`, `+0x2E=0x80`,
+`+0x9E=0x08`. Bytes at `0x1EE100` begin `0D 00 05 00`, placing the candidate
+at `(0x0D00,0x0500)`. The extracted table identifies it as Scene 38 choice 1
+in the same `0xA800` one-of-three group. The QA uses source initializer 5,
+matching effect indices, no pending player spawn, and seed zero; ROM `0x0D3A`
+therefore selects choice 1. `0x43B6` drains this A800 row before Scene 38's
+default list.
+
+Debug and Release `shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa`
+also drives this candidate through the live runtime. The runner starts at
+`(4906,1156)`; after 59 neutral modal-release frames, ordinary Left/Down input
+reaches the actor in 55 frames at runner `(3286,1246)` and actor `(3328,1280)`.
+The runtime sets the contact bit, presents the same ROM-backed no-options page
+and portrait, accepts A after the source wait, and restores the field with the
+actor retained. It checks the FFE110-to-FFFC3C transfer and existing-effect
+guard. This adds physical input coverage for another scene and the other
+reachable random result; the remaining rows have resource-entry matrix
+coverage only.
+
 This does not establish that the callback is invoked automatically by the
 current host main loop. That loop still requires an FFDF42 request before
 calling `0x1E43C`; its later actor scan and `0x1F16A` continuation remain open.
-The QA consumes the retained choice through the `0x1E45E` test seam and does
-not claim activity completion.
+Both physical cases consume the retained choice through the `0x1E45E` test
+seam and do not claim activity completion.
 
-The Debug and Release captures
-`scene-30-random-contact-{entry,actual,closed-actual}.bmp` and route/waypoint
-TSVs have matching SHA-256 hashes. I inspected the page and restored-field
-frames; they are regression artifacts, not independent Genesis evidence.
-Scene-entry travel and physical contact for the other A800 candidates, the
-automatic request/`0x1F146` continuation, and a route-matched Genesis comparison
-remain open. The A800 hill remains partial.
+The entry, contact, and closed-field BMPs for both physical cases, plus their
+route and waypoint TSVs, have matching Debug/Release SHA-256 hashes. I inspected
+the Scene-38 page and restored-field frames; these are regression artifacts,
+not independent Genesis evidence. Scene-entry travel and physical contact for
+other A800 candidates, the FFDF42 request producer, the
+`0x1E43C`/`0x1F16A` continuation, and a route-matched Genesis comparison remain
+open. The A800 hill remains partial.

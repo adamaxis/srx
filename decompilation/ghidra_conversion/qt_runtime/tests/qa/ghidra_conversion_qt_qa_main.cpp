@@ -19404,15 +19404,18 @@ bool ride_scene30_elevator_for_pedestrian_qa(
     return true;
 }
 
-bool verify_scene30_random_pedestrian_contact_qa(
-    FieldSceneRuntime& field_scene, const std::filesystem::path& output) {
-    constexpr std::uint16_t kScene = 30U;
-    constexpr std::uint8_t kChoice = 2U;
+bool verify_random_pedestrian_contact_qa(
+    FieldSceneRuntime& field_scene, const std::filesystem::path& output,
+    const std::uint16_t scene_id, const std::uint8_t choice,
+    const std::uint8_t source_initializer) {
     constexpr std::uint8_t kEscortFlag = 0x80U;
     constexpr std::uint32_t kRawMovementStepBound = 9U;
     constexpr std::uint32_t kSettlingFrameAllowance = 256U;
-    constexpr SceneRunnerPosition kCandidatePosition{0x0900U, 0x0B00U};
     constexpr std::uint16_t kEntrySettleFrameLimit = 120U;
+    const auto scene_label = "Scene-" + std::to_string(scene_id);
+    const auto contact_case = "scene-" + std::to_string(scene_id) +
+        "-random-contact-choice-" +
+        std::to_string(static_cast<unsigned>(choice));
     std::uint16_t entry_settle_frames = 0U;
     for (; entry_settle_frames < kEntrySettleFrameLimit &&
            (field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
@@ -19424,7 +19427,8 @@ bool verify_scene30_random_pedestrian_contact_qa(
     }
     if (field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
         field_scene.field_modal_return_blocked_inputs_for_dump() != 0U) {
-        std::cerr << "Pedestrian scenes QA: Scene-30 entry transition did not "
+        std::cerr << "Pedestrian scenes QA: " << scene_label
+                  << " entry transition did not "
                      "release its close input before physical contact\n";
         return false;
     }
@@ -19434,10 +19438,12 @@ bool verify_scene30_random_pedestrian_contact_qa(
     const auto selected_effect_index =
         field_scene.selected_effect_index_for_dump();
     const auto candidates =
-        field_scene.conditional_actor_candidates_for_dump(kScene);
+        field_scene.conditional_actor_candidates_for_dump(scene_id);
     const auto candidate = candidates.has_value()
         ? std::find_if(candidates->begin(), candidates->end(),
-                       [](const auto& row) { return row.choice == kChoice; })
+                       [choice](const auto& row) {
+                           return row.choice == choice;
+                       })
         : std::vector<shadowrun::ghidra_conversion::scripting::
               ScriptConditionalActorCandidate>::const_iterator{};
     const auto runner_start = field_scene.field_entity_world_position();
@@ -19446,22 +19452,23 @@ bool verify_scene30_random_pedestrian_contact_qa(
     const auto actor_flags_start =
         field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
     if (!candidates.has_value() || candidate == candidates->end() ||
-        field_scene.field_scene_reference_for_dump() != kScene ||
+        field_scene.field_scene_reference_for_dump() != scene_id ||
         field_scene.field_interaction_mode_for_dump() != 2U ||
         field_scene.active_run_source_initializer_for_dump() !=
-            std::optional<std::uint8_t>{5U} ||
+            std::optional<std::uint8_t>{source_initializer} ||
         !active_effect_index.has_value() ||
         selected_effect_index != active_effect_index ||
         field_scene.world_effect_active_for_dump() ||
         field_scene.pending_world_effect_for_dump() ||
         field_scene.world_effect_player_spawn_pending_for_dump() ||
-        !actor_start || actor_start->x != kCandidatePosition.x ||
-        actor_start->y != kCandidatePosition.y || !actor_flags_start ||
+        !actor_start || actor_start->x != candidate->world_x ||
+        actor_start->y != candidate->world_y || !actor_flags_start ||
         (*actor_flags_start & kEscortFlag) != 0U ||
-        candidate->world_x != kCandidatePosition.x ||
-        candidate->world_y != kCandidatePosition.y) {
-        std::cerr << "Pedestrian scenes QA: Scene-30 contact did not begin "
-                     "with the retained choice-2 candidate "
+        (choice != 1U && choice != 2U)) {
+        std::cerr << "Pedestrian scenes QA: " << scene_label
+                  << " contact did not begin "
+                     "with the retained choice-"
+                  << static_cast<unsigned>(choice) << " candidate "
                      "(runner="
                   << runner_start.x << ',' << runner_start.y << " actor="
                   << (actor_start
@@ -19484,11 +19491,13 @@ bool verify_scene30_random_pedestrian_contact_qa(
             : std::uint16_t{0U});
     const auto entry_image = render_qa_field(field_scene);
     const auto entry_bitmap =
-        output / "scene-30-random-contact-entry-actual.bmp";
+        output / (contact_case + "-entry-actual.bmp");
     if (entry_image.isNull() ||
         !entry_image.save(QString::fromStdWString(entry_bitmap.wstring()))) {
-        std::cerr << "Pedestrian scenes QA: could not save the Scene-30 "
-                     "random-contact entry image\n";
+        std::cerr << "Pedestrian scenes QA: could not save the "
+                     "random-contact image for "
+                  << scene_label << " entry, choice "
+                  << static_cast<unsigned>(choice) << '\n';
         return false;
     }
 
@@ -19580,11 +19589,14 @@ bool verify_scene30_random_pedestrian_contact_qa(
             field_scene.probe_field_collision_for_dump(
                 actor_start->x, actor_start->y);
         std::cerr << "Pedestrian scenes QA: no collision-clear ROM-grid "
-                     "route connects Scene-30 entry to the candidate "
-                     "contact window (start_collision="
+                     "route connects "
+                  << scene_label << " entry to the candidate contact window "
+                     "(start_collision="
                   << start_collision << ", target_collision="
                   << target_collision << ", reachable_cells="
-                  << frontier.size() << ")\n";
+                  << frontier.size() << ", start=" << runner_start.x << ','
+                  << runner_start.y << ", candidate=" << actor_start->x << ','
+                  << actor_start->y << ")\n";
         return false;
     }
     std::vector<std::size_t> route_nodes;
@@ -19596,7 +19608,7 @@ bool verify_scene30_random_pedestrian_contact_qa(
         const auto parent = previous[node];
         if (parent < 0) {
             std::cerr << "Pedestrian scenes QA: invalid predecessor in the "
-                         "Scene-30 collision route\n";
+                      << scene_label << " collision route\n";
             return false;
         }
         node = static_cast<std::size_t>(parent);
@@ -19631,12 +19643,12 @@ bool verify_scene30_random_pedestrian_contact_qa(
             kRawMovementStepBound +
         kSettlingFrameAllowance;
     const auto waypoint_manifest_path =
-        output / "scene-30-random-contact-waypoints.tsv";
+        output / (contact_case + "-waypoints.tsv");
     std::ofstream waypoint_manifest(waypoint_manifest_path,
                                     std::ios::trunc);
     if (!waypoint_manifest) {
-        std::cerr << "Pedestrian scenes QA: could not write Scene-30 "
-                     "collision route waypoints\n";
+        std::cerr << "Pedestrian scenes QA: could not write " << scene_label
+                  << " collision route waypoints\n";
         return false;
     }
     waypoint_manifest << "waypoint\tworld_x\tworld_y\tcollision_code\n";
@@ -19649,16 +19661,17 @@ bool verify_scene30_random_pedestrian_contact_qa(
                           << '\n';
     }
     if (!waypoint_manifest) {
-        std::cerr << "Pedestrian scenes QA: failed writing Scene-30 "
-                     "collision route waypoints\n";
+        std::cerr << "Pedestrian scenes QA: failed writing " << scene_label
+                  << " collision route waypoints\n";
         return false;
     }
     const auto trace_path =
-        output / "scene-30-random-contact-route.tsv";
+        output / (contact_case + "-route.tsv");
     std::ofstream trace(trace_path, std::ios::trunc);
     if (!trace) {
-        std::cerr << "Pedestrian scenes QA: could not write the Scene-30 "
-                     "random-contact route trace\n";
+        std::cerr << "Pedestrian scenes QA: could not write the "
+                  << scene_label << " random-contact route trace for choice "
+                  << static_cast<unsigned>(choice) << '\n';
         return false;
     }
     trace << "frame\tinput\trunner_x\trunner_y\tactor_x\tactor_y"
@@ -19736,7 +19749,7 @@ bool verify_scene30_random_pedestrian_contact_qa(
               << std::hex << static_cast<unsigned>(*flags_after) << std::dec
               << '\t' << field_scene.dialogue_open() << '\n';
         if (!field_scene.failure().empty() ||
-            field_scene.field_scene_reference_for_dump() != kScene ||
+            field_scene.field_scene_reference_for_dump() != scene_id ||
             field_scene.dialogue_open()) {
             break;
         }
@@ -19770,7 +19783,7 @@ bool verify_scene30_random_pedestrian_contact_qa(
         return false;
     };
     const auto contact_bitmap =
-        output / "scene-30-random-contact-actual.bmp";
+        output / (contact_case + "-actual.bmp");
     if (contact_frames == 0U || !trace || !contact_position ||
         !contact_flags || (*contact_flags & kEscortFlag) == 0U ||
         contact_profile !=
@@ -19790,11 +19803,12 @@ bool verify_scene30_random_pedestrian_contact_qa(
         contact_page.option_count != 0U || contact_page.has_more ||
         !page_contains("Hey! There you are.") ||
         !page_contains("Let's go. My new employer is waiting.") ||
-        field_scene.field_scene_reference_for_dump() != kScene ||
+        field_scene.field_scene_reference_for_dump() != scene_id ||
         !field_scene.failure().empty() || contact_image.isNull() ||
         !contact_image.save(QString::fromStdWString(contact_bitmap.wstring()))) {
-        std::cerr << "Pedestrian scenes QA: ordinary Scene-30 input did not "
-                     "show the ROM-backed random-contact page and retain its actor "
+        std::cerr << "Pedestrian scenes QA: ordinary " << scene_label
+                  << " input did not show the ROM-backed random-contact page "
+                     "and retain its actor "
                      "(frames="
                   << contact_frames << '/' << maximum_walk_frames
                   << ", position="
@@ -19842,9 +19856,9 @@ bool verify_scene30_random_pedestrian_contact_qa(
     }
     const auto closed_image = render_qa_field(field_scene);
     const auto closed_bitmap =
-        output / "scene-30-random-contact-closed-actual.bmp";
+        output / (contact_case + "-closed-actual.bmp");
     if (field_scene.dialogue_open() || field_return_frames >= 120U ||
-        field_scene.field_scene_reference_for_dump() != kScene ||
+        field_scene.field_scene_reference_for_dump() != scene_id ||
         !field_scene.field_entity_visible_for_dump() ||
         count_playfield_lit(closed_image) < 100U ||
         field_scene.world_activity_script_actor_count_for_dump() != 1U ||
@@ -19873,12 +19887,16 @@ bool verify_scene30_random_pedestrian_contact_qa(
     // solely to prove the sampled FFE183 choice survives the real contact page.
     const auto retained_choice =
         field_scene.consume_conditional_actor_selection_choice_for_dump();
-    if (retained_choice != std::optional<std::uint8_t>{kChoice}) {
+    if (retained_choice != std::optional<std::uint8_t>{choice}) {
         std::cerr << "Pedestrian scenes QA: contact did not retain the "
-                     "selected FFE183 choice for the 0x1E45E request seam\n";
+                     "selected FFE183 choice-"
+                  << static_cast<unsigned>(choice)
+                  << " for the 0x1E45E request seam\n";
         return false;
     }
-    std::cout << "field_pedestrian_random_contact_qa=passed scene=30 choice=2 "
+    std::cout << "field_pedestrian_random_contact_qa=passed scene="
+              << scene_id << " choice="
+              << static_cast<unsigned>(choice) << ' '
               << "entry_wait=" << entry_settle_frames
               << " frames=" << contact_frames << " actor="
               << contact_position->x << ',' << contact_position->y
@@ -20422,15 +20440,16 @@ int run_field_pedestrian_scenes_qa(
                 return 3;
             }
             // ROM 0xED60 starts generic pedestrian activity from ordinary
-            // actor-pair contact; 0x1E43C/0x1E45E is the FFE183 request scan.
-            // Exercise that physical path from the live Scene-34 runner
-            // position for one candidate while retaining the selector matrix.
+            // actor-pair contact; 0x1E43C/0x1E45E is the separate FFE183
+            // request scan. Exercise Scene-38's choice-1 and Scene-30's
+            // choice-2 contacts through ordinary input.
             const bool physically_contacted_candidate =
-                scene == 30U && choice == 2U;
+                (scene == 38U && choice == 1U) ||
+                (scene == 30U && choice == 2U);
             if (physically_contacted_candidate) {
-                if (source_initializer != 5U ||
-                    !verify_scene30_random_pedestrian_contact_qa(
-                        field_scene, output)) {
+                if (!verify_random_pedestrian_contact_qa(
+                        field_scene, output, scene, choice,
+                        source_initializer)) {
                     return 3;
                 }
             } else {

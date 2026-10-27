@@ -984,11 +984,17 @@ shows the ROM text at `0xFE1F7` with Mortimer Reed's `0x121FF4` portrait. The
 no-options page waits for the source input interval, accepts A, returns to the
 visible field, and keeps the actor active for the later request scan. Debug and
 Release QA capture the page and the restored field as full-screen images. The
-FFE183 choice remains available through the `0x1E45E` test seam: the main loop's
-FFDF42 request and the `0x1E43C`/`0x1F16A` continuation are still open, so the
-test does not claim automatic activity continuation. The captures are internal
-regression artifacts, not independent Genesis comparisons; the other physical
-A800 candidates and the request path remain open. See the
+same QA now covers Scene 38 choice 1 from list `0x1EE0E8`, whose position record
+at `0x1EE100` is `(0x0D00,0x0500)`. After the same 59 neutral entry frames,
+55 ordinary Left/Down frames reach contact at runner `(0x0CD6,0x04DE)` and actor
+`(0x0D00,0x0500)`. Its source choice 1 also presents and dismisses the generic
+contact page while retaining the actor and FFFC3C transfer. Both physical cases
+keep FFE183 through the page and consume it only at the `0x1E45E` QA seam. The
+main loop's FFDF42 request producer and the `0x1E43C`/`0x1F16A` continuation
+remain open, so neither case claims automatic activity continuation. These
+captures are internal regression artifacts, not independent Genesis
+comparisons; other physical A800 candidates and the request path remain open.
+See the
 `conditional-pedestrian-runtime-gap-2026-10-26.md` audit. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches

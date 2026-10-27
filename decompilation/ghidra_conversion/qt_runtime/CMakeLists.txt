@@ -1250,7 +1250,8 @@ add_shadowrun_qt_qa_case(
     --field-scene2-pedestrians-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-scene2-pedestrians-qa")
 
-# Check the generic ROM-fact patrol rule on two additional default-list scenes.
+# Check default-list patrols, all reachable A800 candidate rows, and physical
+# pedestrian contact branches through ordinary field input.
 add_shadowrun_qt_qa_case(
     shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa
     --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
