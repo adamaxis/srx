@@ -7806,6 +7806,15 @@ void extract_all_assets(const std::vector<std::uint8_t>& rom,
             rom, 0x121F58U),
         "sprite", "0x53F8C/0x121F58/0x1F246", false, manifest, written,
         missing, blank);
+    // Taxi entry 0x20714 always selects the shared dialogue portrait profile
+    // at 0x121F10 before calling 0x1F246. Keep the 56x72 cabbie art as a direct
+    // host asset; the Qt presenter owns only its source-matched placement.
+    write_catalog_asset(
+        root, "dialogue/portraits/taxi-cabbie.bmp",
+        shadowrun::ghidra_conversion::rom_research::decode_mode_profile_sprite(
+            rom, 0x121F10U),
+        "sprite", "0x20714/0x121F10/0x1F246", false, manifest, written,
+        missing, blank);
     struct VidPhonePortraitRecord {
         std::string_view file_name;
         std::size_t contact_index;

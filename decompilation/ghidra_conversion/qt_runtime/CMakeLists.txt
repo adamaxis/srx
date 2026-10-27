@@ -1349,6 +1349,8 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_command_qa
                  --field-command-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-command-qa.bmp")
 
+# Reproduce the captured Puyallup fare page and no-charge decline, check the
+# source cab portrait, then complete the paid Downtown travel route.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_taxi_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-taxi-dump

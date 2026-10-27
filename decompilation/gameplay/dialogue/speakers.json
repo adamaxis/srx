@@ -1390,7 +1390,7 @@
         }
       },
       "name": "Taxi Cabbie",
-      "portrait_alias": "none",
+      "portrait_alias": "dialogue.portraits.taxi.cabbie",
       "text_profile": "field.taxi"
     },
     "wylie_gala_inn_narrator": {

@@ -66,26 +66,31 @@ implemented in `taxi_cabbie.lua`:
 
 The existing `taxi_cabbie_tests.lua` enumerates the fare values, comments,
 traffic and already-there gates, declined offers, armband and visa cases,
-insufficient funds, paid travel, and visa consumption. No test was run or
-changed for this documentation audit.
+insufficient funds, paid travel, and visa consumption. The focused Debug/Release
+Qt taxi QA now also reproduces the Puyallup fare page, exercises the B-button
+decline with unchanged funds and location, and continues through the paid
+Downtown trip. The generated fare image is internal regression evidence; the
+independent Genesis frame remains the visual authority.
 
-## Portrait gap and limits
+## Portrait match and limits
 
-The captured Genesis prompt visibly includes the cabbie portrait. The active
-speaker profile in `gameplay/dialogue/speakers.json` currently binds
-`taxi_cabbie` to `portrait_alias: "none"`, and the asset catalog has no taxi
-portrait alias. The field runtime starts this task with the `taxi_cabbie`
-speaker; the shared Qt presenter draws a portrait only when that profile
-resolves to an image asset. The ROM entry at `0x20714` passes resource block
-`0x121F10` to the shared dialogue routine at `0x1F246`, but that block has not
-yet been connected to a host portrait asset. Thus the amount and choice flow
-match this captured branch while the portrait mapping remains an open visual
-gap.
+The ROM path now resolves the portrait. Entry `0x20714` sets `A5=0x121F10`
+before calling the shared dialogue routine `0x1F246`; the 12-byte profile
+points to palette `0x121BDC`, pattern stream `0x1268DA`, and sprite stream
+`0x122338`. The offline profile decoder produces the 56x72 cabbie image,
+registered as `dialogue.portraits.taxi.cabbie`. The Lua speaker uses that alias.
+The focused Qt taxi QA follows Redmond's ROM cursor order to select Puyallup,
+saves the matching 40-nuyen fare prompt, checks its visible portrait pixels at
+source placement `(16,32)`, and then declines without charging or traveling. A
+separate path still accepts the Downtown fare and completes travel. I inspected
+the captured Genesis crop and the extracted art: the face, cap, and crop match
+at that placement.
 
 The capture does not show class or race values, wallet balance, service-bit
 state, armband state, visa state, or a scene ID. It cannot establish those
 inputs from the displayed fare alone. The traced fare amount uses the
 destination record; no class or race value enters the taxi fare calculation.
-Keep the audit partial until `0x121F10` is traced into a host portrait asset
-and the other fare-gate outcomes are matched to independent frames or a
-route/state trace.
+The fare screenshot produced by the Qt test is internal regression evidence;
+the independent capture remains the visual authority for the shown branch.
+Keep the audit partial until the other fare-gate outcomes are matched to
+independent frames or a route/state trace.

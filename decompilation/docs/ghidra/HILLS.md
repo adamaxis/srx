@@ -252,11 +252,14 @@ already-there response, normal fare deduction, and Downtown arrival, while
 now has an independent Section-41 capture of the Puyallup 40-nuyen quote,
 choice labels, `Hop in, chum.` response, and field return. It confirms that
 fare branch only; it does not expose the wallet or the other gates. The capture
-also exposes the missing taxi-cabbie portrait binding: the host speaker profile
-uses `portrait_alias: none` while the Genesis prompt shows the portrait. The
-source resource at `0x121F10` still needs an asset mapping, and the hill remains
-partial pending that portrait trace, the other fare branches, and a CLI
-`actual.bmp` dump. See the [taxi fare prompt capture audit](visual-audits/taxi-fare-prompt-capture-2026-10-27.md).
+also shows the cabbie portrait. ROM entry `0x20714` selects profile `0x121F10`;
+the offline importer now produces `dialogue.portraits.taxi.cabbie`, and the
+Qt speaker uses it. Focused taxi QA selects Puyallup in ROM cursor order,
+checks the portrait pixels at `(16,32)`, writes
+`field-taxi-fare-offer-actual.bmp`, and declines without charge or travel; it
+then completes the paid Downtown route. The hill remains partial while the
+other fare branches lack independent captures. See the [taxi fare prompt
+capture audit](visual-audits/taxi-fare-prompt-capture-2026-10-27.md).
 
 Capt. Quinton's full call graph is connected. The ROM menu rooted at `0x1096F4`
 reaches Firepower (`0x109750`) and Contacts (`0x109780`); command IDs `0x68`-

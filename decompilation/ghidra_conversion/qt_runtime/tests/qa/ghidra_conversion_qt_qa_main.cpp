@@ -46718,10 +46718,110 @@ int main(int argc, char** argv) {
                 }
                 field_scene.set_controller_port_byte(0U);
 
-                // Re-enter the selector, choose Downtown through its ROM
-                // cursor order, accept both cabbie prompts, and dismiss the
-                // ride page. This exercises the field dialogue task before
-                // the destination fade/load route.
+                // Follow the independent capture's Puyallup choice through
+                // the fare page, then choose No. The 0xD445D row order from
+                // Redmond reaches Puyallup after three left inputs.
+                if (!field_scene.open_taxi_selector_for_dump(
+                        kRedmondRegion)) {
+                    std::cerr << "field taxi dump: selector did not reopen "
+                                 "for the Puyallup fare audit\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 12; ++frame) {
+                    field_scene.advance_frame();
+                }
+                for (int left = 0; left < 3; ++left) {
+                    tap_qa_controller_button(field_scene, 0x04U);
+                    for (int frame = 0; frame < 12; ++frame) {
+                        field_scene.advance_frame();
+                    }
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // A: cabbie call.
+                if (!field_scene.dialogue_open()) {
+                    std::cerr << "field taxi dump: Puyallup selection did "
+                                 "not open cabbie dialogue\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // Yes: ride.
+                if (!field_scene.dialogue_open()) {
+                    std::cerr << "field taxi dump: Puyallup Yes did not open "
+                                 "the fare offer\n";
+                    return 3;
+                }
+                const auto fare_offer = capture_field_scene();
+                const auto taxi_portrait = QImage(QString::fromStdWString(
+                    (asset_root / "dialogue" / "portraits" /
+                     "taxi-cabbie.bmp")
+                        .wstring()));
+                std::size_t matched_taxi_portrait_pixels = 0U;
+                bool taxi_portrait_matches =
+                    !fare_offer.isNull() &&
+                    taxi_portrait.size() == QSize(56, 72);
+                if (taxi_portrait_matches) {
+                    // ROM 0x1F246 presents the 0x121F10 profile at the
+                    // dialogue panel's source position (16,32).
+                    for (int y = 0; y < taxi_portrait.height(); ++y) {
+                        for (int x = 0; x < taxi_portrait.width(); ++x) {
+                            const auto source_pixel =
+                                taxi_portrait.pixelColor(x, y);
+                            if (source_pixel.alpha() == 0) continue;
+                            if (fare_offer.pixelColor(x + 16, y + 32) !=
+                                source_pixel) {
+                                taxi_portrait_matches = false;
+                                continue;
+                            }
+                            ++matched_taxi_portrait_pixels;
+                        }
+                    }
+                }
+                auto fare_offer_path = *field_taxi_dump_path;
+                fare_offer_path.replace_filename(
+                    "field-taxi-fare-offer-actual.bmp");
+                if (!fare_offer.save(QString::fromStdWString(
+                        fare_offer_path.wstring())) ||
+                    !taxi_portrait_matches ||
+                    matched_taxi_portrait_pixels < 500U) {
+                    std::cerr << "field taxi dump: Puyallup fare prompt did "
+                                 "not draw the ROM cabbie portrait at (16,32); "
+                                 "matched="
+                              << matched_taxi_portrait_pixels << '\n';
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x10U); // B: No thanks.
+                const bool declined_dialogue_closed =
+                    !field_scene.dialogue_open();
+                const auto declined_return_finished =
+                    declined_dialogue_closed &&
+                    finish_field_modal_return_transition(field_scene);
+                const auto declined_scene =
+                    field_scene.field_scene_reference_for_dump();
+                const auto declined_funds = field_scene.field_funds_for_dump();
+                const bool declined_field_restored =
+                    capture_field_scene() == field_before_taxi;
+                if (!declined_dialogue_closed || !declined_return_finished ||
+                    declined_scene != kRedmondRegion ||
+                    declined_funds !=
+                        std::optional<std::uint32_t>{100U} ||
+                    !declined_field_restored) {
+                    std::cerr << "field taxi dump: declining the Puyallup "
+                                 "fare did not return without a charge or trip "
+                                 "(dialogue_closed="
+                              << declined_dialogue_closed
+                              << ", return_finished="
+                              << declined_return_finished
+                              << ", scene=" << declined_scene
+                              << ", funds="
+                              << (declined_funds.has_value()
+                                      ? std::to_string(*declined_funds)
+                                      : std::string("missing"))
+                              << ", field_restored="
+                              << declined_field_restored << ")\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0U);
+
+                // Now choose Downtown through its ROM cursor order, accept
+                // both cabbie prompts, and complete the destination fade.
                 if (!field_scene.open_taxi_selector_for_dump(
                         kRedmondRegion)) {
                     std::cerr << "field taxi dump: selector did not reopen "
