@@ -46,9 +46,10 @@ quality-2 success branch only. Electronics and insufficient passkey quality
 have not been exercised. Ordinary input reaches the live A8AE actor at
 `(0x1D00,0x4100)` within the ROM `+/-0x40` proximity window. A presses advance
 all three `0xF4BBC` pages, and the source cleanup retires Aragorn's actor
-record. Other live marker
-producers and the random-candidate path through an accepted initializer-5
-offer remain open. Section 41 has no route-matched visual check.
+record. The direct marker setters and `FFE120` producer census are traced
+below. The full random-candidate path from an accepted initializer-5 offer
+into a naturally entered scene remains open. Section 41 has no route-matched
+visual check.
 
 ## ROM path confirmed from the US image
 
@@ -223,6 +224,31 @@ pedestrian in these queues is the single actor in `0x1E5C4`, while the separate
 `0xA800` scene/choice table remains the broad conditional pedestrian source
 for scenes `0x15..0x2B`. Indirect writes through a copied pointer and the
 identity of the pedestrian-like sprites in Section 41 remain open.
+
+### `FFE180` / `FFE182` story-marker setters
+
+The same US-ROM absolute-operand scan finds one non-clear direct setter for
+each marker. `0x53C3C` writes `FFE180=1` from indexed service 3 after its
+Scene-3/event-3, story-bit, alternate-result, and group-item gates. That
+marker reaches the fixed A8AE Aragorn-contact list only while
+`FFF0C8==4`; the list is a story actor with a generic pedestrian template,
+not an ambient walker.
+
+`0x53A78` loads FFFC1E into D1 before dispatching indexed services. Service
+19 at `0x543A2` requires FFFC1E bit 18 (`RED_BUFFALO_WOMAN`) set and bit 19
+(`ILENE_MET`) clear, `FFFBF8==2`, `FFFBF9==0`, `FFF0D5==0`, FFFC34 bit 0
+clear, and FFFC38 bit 12 set. It then writes `FFF0B4=0` and `FFE182=0xFF`
+at `0x543F8`. On the Scene-20 path, A800 reaches A8CC only when FFE180 is
+clear; that fixed list is one `lone11` actor (kind 10, palette 1, item action
+3) at `(0x0E80,0x0700)`, with ordered overrides `+0x9E=0x20`,
+`+0x2E=0x80`, `+0x9E=0x08`. It is Ilene's encounter actor, not the shared
+`0x1D6988` pedestrian template.
+
+Direct clear instructions found for `FFE180` are at `0x2A64`, `0xED7E`, and
+`0x1E43C`; direct clears for `FFE182` are at `0x2A6A`, `0xC652`, `0xED9C`,
+`0x1E442`, and `0x22796`. This bounds the direct absolute-operand setter and
+clear paths; both marker-selected lists are story-specific and do not explain
+a general pedestrian spawner.
 
 ### Meaning of the `FFFBED == 5` gate
 
