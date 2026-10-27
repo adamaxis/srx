@@ -279,11 +279,21 @@ contact route also accepts an A800 candidate list offset as generic activity.
 The live `0x286E` guard now projects the source-eligible actor records,
 detects an existing `+0xB0` bit-7 escort, and publishes the retained typed
 FFE110 actor template at Joshua's `x+0x80/y` when no escort remains. It uses
-the ordinary Lua actor heartbeat and actor/effect-slot allocation. There is
-still no physical random-candidate route that selects an A800 candidate,
-walks Joshua into contact, and observes the resulting activity and cleanup.
-See the dedicated trace in
-`conditional-pedestrian-runtime-gap-2026-10-26.md`; this lifecycle remains
+the ordinary Lua actor heartbeat and actor/effect-slot allocation. Debug and
+Release `field_pedestrian_scenes_qa` now physically walks Scene 30 choice 2,
+list `0x1EDDDC` at `(0x0900,0x0B00)`, from the live runner position retained
+through the accepted Johnson offer's resource-scene reentry. After the host
+modal-return input release, ordinary Left/Down reaches `(0x08DA,0x0AD8)` in
+141 field frames. Contact sets `+0xB0.7`, retains FFFC3C with the typed FFE110
+transfer, and the player-spawn guard finds the existing actor without
+duplication.
+FFE183 remains pending after contact: callback `0x1F146` is unresolved, so the
+test uses the `0x1E45E` QA seam to verify and consume choice 2, not to assert an
+automatic continuation. Both BMPs and both TSV traces match between Debug and
+Release. The candidate matrix still enters scenes through QA resource reentry;
+physical travel to the other candidates, activity continuation/cleanup through
+`0x1F146`, and independent Genesis proof remain open. See the dedicated trace
+in `conditional-pedestrian-runtime-gap-2026-10-26.md`; this lifecycle remains
 partial.
 
 Independent capture `video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_41_source_10620-10815/frame_002100.png`

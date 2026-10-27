@@ -971,8 +971,19 @@ now scans the typed seven actor records that can hold `+0xB0.7`, publishes the
 `0x1E4AC` fallback at Joshua x+`0x80`/y through Lua, and suppresses a duplicate
 on the next guard pass. The Scene-34 pedestrian QA captures
 `scene-34-player-spawn-fallback-actual.bmp` and passes in Debug/Release. This is
-an internal capture; physical random-candidate contact and independent Genesis
-comparison are still open; see the
+an internal capture. Debug/Release `field_pedestrian_scenes_qa` now also walks
+to Scene 30 A800 choice 2, list `0x1EDDDC`, at `(0x0900,0x0B00)` using ordinary
+field input from the live runner position retained by the Johnson-offer
+resource-entry case. After 59 host modal-release frames, 141 input frames reach
+contact at runner `(0x08DA,0x0AD8)`. The contact sets actor `+0xB0` bit 7,
+retains FFFC3C with the typed FFE110 pedestrian transfer, and finds the
+existing effect instead of duplicating it. FFE183 remains at the unresolved
+`0x1F146` callback boundary;
+the QA checks its choice through the `0x1E45E` seam without claiming automatic
+activity continuation. The entry/contact BMPs and route/waypoint TSVs match
+between Debug and Release. These are internal captures, not independent
+Genesis comparisons; the other physical A800 candidates and the generic
+activity continuation remain open. See the
 `conditional-pedestrian-runtime-gap-2026-10-26.md` audit. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches

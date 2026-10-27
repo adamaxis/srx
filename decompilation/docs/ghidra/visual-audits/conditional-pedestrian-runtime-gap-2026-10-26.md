@@ -706,3 +706,40 @@ the pedestrian producer census across street scenes, matching candidate
 records to independent longplay frames. The current Scene-34 BMPs remain
 internal regression evidence and do not identify a live actor in the longplay.
 The pedestrian population hill remains partial.
+
+## Scene-30 A800 choice-2 physical contact
+
+**[C]** The extracted US-ROM candidate row in
+`assets/field/entities/conditional-actor-candidates.tsv` selects Scene 30,
+choice 2, list `0x1EDDDC`, at `(0x0900,0x0B00)`. The source selector at
+`0xA800` samples choices 1 or 2 through `0x0D3A`; field QA seeds the existing
+choice-2 input `0x8000` while leaving subsequent gameplay services live.
+`0x43B6` drains the pending A800 row before the scene's default guards.
+
+Debug and Release `shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa`
+now exercises ordinary field contact for that candidate. The setup accepts
+the Johnson offer in the same `FieldSceneRuntime` and uses the matrix's
+resource-scene reentry; the candidate itself is not reached by walking from
+Johnson. The live runner position at Scene-30 entry is `(4906,1156)`. The QA
+releases the host modal-close input for 59 neutral frames, then uses ordinary
+Left/Down input. Contact occurs on frame 141 at runner `(0x08DA,0x0AD8)` and
+actor `(0x0900,0x0B00)`, a per-axis delta of `(-0x26,-0x28)`. The route planner
+uses the imported terrain collision model only to choose waypoints; the runner
+position, collision response, input handling, and actor contact are processed
+by the live runtime.
+
+**[C]** On contact, the candidate's `+0xB0` bit 7 is set, FFFC3C retains the
+typed FFE110 pedestrian transfer, and the player-spawn guard reports an
+existing effect rather than creating a duplicate. This matches the generic
+contact handoff at ROM `0xED60` and its retained actor marker. The correct
+FFE183 choice remains available at the test's `0x1E45E` seam. The following
+`0x1F146` callback is unresolved, so this audit does not claim that ordinary
+contact automatically reaches cleanup or completes the activity.
+
+The Debug and Release captures
+`scene-30-random-contact-{entry,actual}.bmp` and route/waypoint TSVs have
+matching SHA-256 hashes. I inspected both internal frames; they are regression
+artifacts, not independent Genesis evidence. Scene-entry travel and physical
+contact for the other A800 candidates, the automatic `0x1F146` continuation,
+and a route-matched Genesis comparison remain open. The A800 hill remains
+partial.

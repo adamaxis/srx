@@ -19404,6 +19404,419 @@ bool ride_scene30_elevator_for_pedestrian_qa(
     return true;
 }
 
+bool verify_scene30_random_pedestrian_contact_qa(
+    FieldSceneRuntime& field_scene, const std::filesystem::path& output) {
+    constexpr std::uint16_t kScene = 30U;
+    constexpr std::uint8_t kChoice = 2U;
+    constexpr std::uint8_t kEscortFlag = 0x80U;
+    constexpr std::uint32_t kRawMovementStepBound = 9U;
+    constexpr std::uint32_t kSettlingFrameAllowance = 256U;
+    constexpr SceneRunnerPosition kCandidatePosition{0x0900U, 0x0B00U};
+    constexpr std::uint16_t kEntrySettleFrameLimit = 120U;
+    std::uint16_t entry_settle_frames = 0U;
+    for (; entry_settle_frames < kEntrySettleFrameLimit &&
+           (field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+            field_scene.field_modal_return_blocked_inputs_for_dump() != 0U);
+         ++entry_settle_frames) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.set_controller_nibble(0U);
+        field_scene.advance_frame();
+    }
+    if (field_scene.field_modal_return_transition_frames_for_dump() != 0U ||
+        field_scene.field_modal_return_blocked_inputs_for_dump() != 0U) {
+        std::cerr << "Pedestrian scenes QA: Scene-30 entry transition did not "
+                     "release its close input before physical contact\n";
+        return false;
+    }
+
+    const auto active_effect_index =
+        field_scene.active_effect_index_for_dump();
+    const auto selected_effect_index =
+        field_scene.selected_effect_index_for_dump();
+    const auto candidates =
+        field_scene.conditional_actor_candidates_for_dump(kScene);
+    const auto candidate = candidates.has_value()
+        ? std::find_if(candidates->begin(), candidates->end(),
+                       [](const auto& row) { return row.choice == kChoice; })
+        : std::vector<shadowrun::ghidra_conversion::scripting::
+              ScriptConditionalActorCandidate>::const_iterator{};
+    const auto runner_start = field_scene.field_entity_world_position();
+    const auto actor_start =
+        field_scene.world_activity_script_actor_position_for_dump(0U);
+    const auto actor_flags_start =
+        field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
+    if (!candidates.has_value() || candidate == candidates->end() ||
+        field_scene.field_scene_reference_for_dump() != kScene ||
+        field_scene.field_interaction_mode_for_dump() != 2U ||
+        field_scene.active_run_source_initializer_for_dump() !=
+            std::optional<std::uint8_t>{5U} ||
+        !active_effect_index.has_value() ||
+        selected_effect_index != active_effect_index ||
+        field_scene.world_effect_active_for_dump() ||
+        field_scene.pending_world_effect_for_dump() ||
+        field_scene.world_effect_player_spawn_pending_for_dump() ||
+        !actor_start || actor_start->x != kCandidatePosition.x ||
+        actor_start->y != kCandidatePosition.y || !actor_flags_start ||
+        (*actor_flags_start & kEscortFlag) != 0U ||
+        candidate->world_x != kCandidatePosition.x ||
+        candidate->world_y != kCandidatePosition.y) {
+        std::cerr << "Pedestrian scenes QA: Scene-30 contact did not begin "
+                     "with the retained choice-2 candidate "
+                     "(runner="
+                  << runner_start.x << ',' << runner_start.y << " actor="
+                  << (actor_start
+                          ? std::to_string(actor_start->x) + ',' +
+                                std::to_string(actor_start->y)
+                          : std::string("missing"))
+                  << ", scene=" << field_scene.field_scene_reference_for_dump()
+                  << ", failure='" << field_scene.failure() << "')\n";
+        return false;
+    }
+
+    // The preceding selector assertion moved the QA camera over the distant
+    // candidate. Restore the actual live runner start view before walking.
+    field_scene.set_field_camera_world_position_for_dump(
+        runner_start.x >= 0x0800U
+            ? static_cast<std::uint16_t>(runner_start.x - 0x0800U)
+            : std::uint16_t{0U},
+        runner_start.y >= 0x0800U
+            ? static_cast<std::uint16_t>(runner_start.y - 0x0800U)
+            : std::uint16_t{0U});
+    const auto entry_image = render_qa_field(field_scene);
+    const auto entry_bitmap =
+        output / "scene-30-random-contact-entry-actual.bmp";
+    if (entry_image.isNull() ||
+        !entry_image.save(QString::fromStdWString(entry_bitmap.wstring()))) {
+        std::cerr << "Pedestrian scenes QA: could not save the Scene-30 "
+                     "random-contact entry image\n";
+        return false;
+    }
+
+    const auto absolute_delta = [](const std::uint16_t lhs,
+                                   const std::uint16_t rhs) {
+        return lhs >= rhs ? static_cast<std::uint32_t>(lhs - rhs)
+                          : static_cast<std::uint32_t>(rhs - lhs);
+    };
+    // Trace a collision-clear route through the imported ROM terrain grid.
+    // The route chooser only supplies ordinary D-pad facts; player position,
+    // terrain checks, and actor contact remain on the live runtime path.
+    constexpr std::uint16_t kGridStep = 0x0040U;
+    constexpr std::size_t kGridWidth = 256U;
+    constexpr std::size_t kGridCellCount = kGridWidth * kGridWidth;
+    const auto grid_index = [](const SceneRunnerPosition position) {
+        const auto column = static_cast<std::size_t>(
+            position.x / kGridStep);
+        const auto row = static_cast<std::size_t>(
+            position.y / kGridStep);
+        return row * kGridWidth + column;
+    };
+    std::vector<std::int16_t> collision_cache(
+        kGridCellCount, std::numeric_limits<std::int16_t>::max());
+    const auto collision_at = [&field_scene, &collision_cache](
+                                  const std::size_t index) {
+        auto& cached = collision_cache[index];
+        if (cached == std::numeric_limits<std::int16_t>::max()) {
+            const auto column = index % kGridWidth;
+            const auto row = index / kGridWidth;
+            cached = field_scene.probe_field_collision_for_dump(
+                static_cast<std::uint16_t>(column * kGridStep),
+                static_cast<std::uint16_t>(row * kGridStep));
+        }
+        return cached;
+    };
+    const auto start_index = grid_index(runner_start);
+    const std::array<std::uint16_t, 2> contact_x_positions{{
+        static_cast<std::uint16_t>(actor_start->x - kGridStep),
+        actor_start->x}};
+    const std::array<std::uint16_t, 2> contact_y_positions{{
+        static_cast<std::uint16_t>(actor_start->y - kGridStep),
+        actor_start->y}};
+    std::vector<bool> contact_goals(kGridCellCount, false);
+    for (const auto x : contact_x_positions) {
+        for (const auto y : contact_y_positions) {
+            contact_goals[grid_index(SceneRunnerPosition{x, y})] = true;
+        }
+    }
+    std::vector<std::int32_t> previous(kGridCellCount, -2);
+    std::vector<std::size_t> frontier;
+    frontier.reserve(kGridCellCount / 4U);
+    frontier.push_back(start_index);
+    previous[start_index] = -1;
+    std::size_t reached_goal = kGridCellCount;
+    constexpr std::array<std::int32_t, 4> kGridDeltaX{{-1, 0, 1, 0}};
+    constexpr std::array<std::int32_t, 4> kGridDeltaY{{0, -1, 0, 1}};
+    for (std::size_t cursor = 0U;
+         cursor < frontier.size() && reached_goal == kGridCellCount;
+         ++cursor) {
+        const auto current = frontier[cursor];
+        if (contact_goals[current]) {
+            reached_goal = current;
+            break;
+        }
+        const auto column = static_cast<std::int32_t>(current % kGridWidth);
+        const auto row = static_cast<std::int32_t>(current / kGridWidth);
+        for (std::size_t direction = 0U; direction < kGridDeltaX.size();
+             ++direction) {
+            const auto next_column = column + kGridDeltaX[direction];
+            const auto next_row = row + kGridDeltaY[direction];
+            if (next_column < 0 || next_row < 0 ||
+                next_column >= static_cast<std::int32_t>(kGridWidth) ||
+                next_row >= static_cast<std::int32_t>(kGridWidth)) {
+                continue;
+            }
+            const auto next = static_cast<std::size_t>(next_row) *
+                    kGridWidth +
+                static_cast<std::size_t>(next_column);
+            if (previous[next] != -2 || collision_at(next) != 0) {
+                continue;
+            }
+            previous[next] = static_cast<std::int32_t>(current);
+            frontier.push_back(next);
+        }
+    }
+    if (reached_goal == kGridCellCount) {
+        const auto start_collision = collision_at(start_index);
+        const auto target_collision =
+            field_scene.probe_field_collision_for_dump(
+                actor_start->x, actor_start->y);
+        std::cerr << "Pedestrian scenes QA: no collision-clear ROM-grid "
+                     "route connects Scene-30 entry to the candidate "
+                     "contact window (start_collision="
+                  << start_collision << ", target_collision="
+                  << target_collision << ", reachable_cells="
+                  << frontier.size() << ")\n";
+        return false;
+    }
+    std::vector<std::size_t> route_nodes;
+    for (auto node = reached_goal;;) {
+        route_nodes.push_back(node);
+        if (node == start_index) {
+            break;
+        }
+        const auto parent = previous[node];
+        if (parent < 0) {
+            std::cerr << "Pedestrian scenes QA: invalid predecessor in the "
+                         "Scene-30 collision route\n";
+            return false;
+        }
+        node = static_cast<std::size_t>(parent);
+    }
+    std::reverse(route_nodes.begin(), route_nodes.end());
+    const auto position_for_grid_index = [](const std::size_t index) {
+        return SceneRunnerPosition{
+            static_cast<std::uint16_t>((index % kGridWidth) * kGridStep),
+            static_cast<std::uint16_t>((index / kGridWidth) * kGridStep)};
+    };
+    std::vector<SceneRunnerPosition> route_points;
+    route_points.reserve(route_nodes.size());
+    for (std::size_t index = 0U; index < route_nodes.size(); ++index) {
+        const auto point = position_for_grid_index(route_nodes[index]);
+        if (index == 0U || index + 1U == route_nodes.size()) {
+            route_points.push_back(point);
+            continue;
+        }
+        const auto before = position_for_grid_index(route_nodes[index - 1U]);
+        const auto after = position_for_grid_index(route_nodes[index + 1U]);
+        const bool direction_changes =
+            (point.x - before.x) != (after.x - point.x) ||
+            (point.y - before.y) != (after.y - point.y);
+        if (direction_changes) {
+            route_points.push_back(point);
+        }
+    }
+    const auto route_distance = static_cast<std::uint32_t>(
+        route_nodes.size() - 1U) * kGridStep;
+    const auto maximum_walk_frames =
+        (route_distance + kRawMovementStepBound - 1U) /
+            kRawMovementStepBound +
+        kSettlingFrameAllowance;
+    const auto waypoint_manifest_path =
+        output / "scene-30-random-contact-waypoints.tsv";
+    std::ofstream waypoint_manifest(waypoint_manifest_path,
+                                    std::ios::trunc);
+    if (!waypoint_manifest) {
+        std::cerr << "Pedestrian scenes QA: could not write Scene-30 "
+                     "collision route waypoints\n";
+        return false;
+    }
+    waypoint_manifest << "waypoint\tworld_x\tworld_y\tcollision_code\n";
+    for (std::size_t index = 0U; index < route_points.size(); ++index) {
+        const auto point = route_points[index];
+        waypoint_manifest << index << '\t' << point.x << '\t' << point.y
+                          << '\t'
+                          << field_scene.probe_field_collision_for_dump(
+                                 point.x, point.y)
+                          << '\n';
+    }
+    if (!waypoint_manifest) {
+        std::cerr << "Pedestrian scenes QA: failed writing Scene-30 "
+                     "collision route waypoints\n";
+        return false;
+    }
+    const auto trace_path =
+        output / "scene-30-random-contact-route.tsv";
+    std::ofstream trace(trace_path, std::ios::trunc);
+    if (!trace) {
+        std::cerr << "Pedestrian scenes QA: could not write the Scene-30 "
+                     "random-contact route trace\n";
+        return false;
+    }
+    trace << "frame\tinput\trunner_x\trunner_y\tactor_x\tactor_y"
+             "\tactor_behavior_flags\tdialogue\n";
+    trace << "0\tentry-settle-" << entry_settle_frames << '\t'
+          << runner_start.x << '\t' << runner_start.y << '\t'
+          << actor_start->x << '\t' << actor_start->y << "\t0x"
+          << std::hex << static_cast<unsigned>(*actor_flags_start) << std::dec
+          << '\t' << field_scene.dialogue_open() << '\n';
+    const auto signed_delta = [](const std::uint16_t target,
+                                 const std::uint16_t current) {
+        return static_cast<std::int32_t>(
+            static_cast<std::int16_t>(
+                static_cast<std::uint16_t>(target - current)));
+    };
+    std::uint32_t contact_frames = 0U;
+    std::size_t route_waypoint = 1U;
+    while (contact_frames < maximum_walk_frames) {
+        const auto actor_position =
+            field_scene.world_activity_script_actor_position_for_dump(0U);
+        const auto actor_flags =
+            field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
+        if (!actor_position || !actor_flags ||
+            (*actor_flags & kEscortFlag) != 0U) {
+            break;
+        }
+        const auto runner_position = field_scene.field_entity_world_position();
+        const auto delta_x = signed_delta(actor_position->x,
+                                          runner_position.x);
+        const auto delta_y = signed_delta(actor_position->y,
+                                          runner_position.y);
+        std::uint8_t input = 0U;
+        std::string_view input_name = "neutral";
+        if (absolute_delta(actor_position->x, runner_position.x) >= 0x40U ||
+            absolute_delta(actor_position->y, runner_position.y) >= 0x40U) {
+            while (route_waypoint < route_points.size() &&
+                   absolute_delta(
+                       runner_position.x,
+                       route_points[route_waypoint].x) <= 0x30U &&
+                   absolute_delta(
+                       runner_position.y,
+                       route_points[route_waypoint].y) <= 0x30U) {
+                ++route_waypoint;
+            }
+            const auto target = route_waypoint < route_points.size()
+                ? route_points[route_waypoint]
+                : *actor_position;
+            const auto waypoint_delta_x =
+                signed_delta(target.x, runner_position.x);
+            const auto waypoint_delta_y =
+                signed_delta(target.y, runner_position.y);
+            if (absolute_delta(target.x, runner_position.x) >=
+                    absolute_delta(target.y, runner_position.y)) {
+                input = waypoint_delta_x < 0 ? 0x04U : 0x08U;
+                input_name = waypoint_delta_x < 0 ? "left" : "right";
+            } else {
+                input = waypoint_delta_y < 0 ? 0x01U : 0x02U;
+                input_name = waypoint_delta_y < 0 ? "up" : "down";
+            }
+        }
+        field_scene.set_controller_nibble(input);
+        field_scene.advance_frame();
+        ++contact_frames;
+        const auto runner_after = field_scene.field_entity_world_position();
+        const auto actor_after =
+            field_scene.world_activity_script_actor_position_for_dump(0U);
+        const auto flags_after =
+            field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
+        if (!actor_after || !flags_after) {
+            break;
+        }
+        trace << contact_frames << '\t' << input_name << '\t'
+              << runner_after.x << '\t' << runner_after.y << '\t'
+              << actor_after->x << '\t' << actor_after->y << "\t0x"
+              << std::hex << static_cast<unsigned>(*flags_after) << std::dec
+              << '\t' << field_scene.dialogue_open() << '\n';
+        if (!field_scene.failure().empty() ||
+            field_scene.field_scene_reference_for_dump() != kScene ||
+            field_scene.dialogue_open()) {
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    field_scene.advance_frame();
+    trace.close();
+
+    const auto contact_position =
+        field_scene.world_activity_script_actor_position_for_dump(0U);
+    const auto contact_flags =
+        field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
+    const auto contact_profile =
+        field_scene.world_activity_script_actor_profile_for_dump(0U);
+    const auto contact_slot =
+        field_scene.world_activity_script_actor_record_slot_for_dump(0U);
+    const auto retained_transfer_profile =
+        field_scene.world_effect_player_spawn_profile_for_dump();
+    const auto guard_action =
+        field_scene.guard_world_effect_player_spawn_for_dump();
+    const auto contact_image = render_qa_field(field_scene);
+    const auto contact_bitmap =
+        output / "scene-30-random-contact-actual.bmp";
+    if (contact_frames == 0U || !trace || !contact_position ||
+        !contact_flags || (*contact_flags & kEscortFlag) == 0U ||
+        contact_profile !=
+            std::optional<std::string>{"pedestrian_k0b_none00"} ||
+        contact_slot !=
+            std::optional<FieldWorldActorSlot>{FieldWorldActorSlot::slot_3} ||
+        !field_scene.world_effect_player_spawn_pending_for_dump() ||
+        retained_transfer_profile !=
+            std::optional<std::string>{"pedestrian_k0b_none00"} ||
+        guard_action !=
+            WorldEffectPlayerSpawnGuardAction::existing_effect_found ||
+        field_scene.world_activity_script_actor_count_for_dump() != 1U ||
+        field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != kScene ||
+        !field_scene.failure().empty() || contact_image.isNull() ||
+        !contact_image.save(QString::fromStdWString(contact_bitmap.wstring()))) {
+        std::cerr << "Pedestrian scenes QA: ordinary Scene-30 input did not "
+                     "contact and retain the randomized pedestrian "
+                     "(frames="
+                  << contact_frames << '/' << maximum_walk_frames
+                  << ", position="
+                  << (contact_position
+                          ? std::to_string(contact_position->x) + ',' +
+                                std::to_string(contact_position->y)
+                          : std::string("missing"))
+                  << ", flags=0x" << std::hex
+                  << static_cast<unsigned>(contact_flags.value_or(0U))
+                  << std::dec << ", pending="
+                  << field_scene.world_effect_player_spawn_pending_for_dump()
+                  << ", guard=" << static_cast<unsigned>(guard_action)
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", failure='" << field_scene.failure() << "')\n";
+        return false;
+    }
+
+    // 0x1F146 remains unresolved. The tested runtime path therefore stops at
+    // its verified contact/request handoff; use the 0x1E45E QA seam only to
+    // check that the correct FFE183 choice survived that boundary.
+    const auto retained_choice =
+        field_scene.consume_conditional_actor_selection_choice_for_dump();
+    if (retained_choice != std::optional<std::uint8_t>{kChoice}) {
+        std::cerr << "Pedestrian scenes QA: contact did not retain the "
+                     "selected FFE183 choice for the 0x1E45E request seam\n";
+        return false;
+    }
+    std::cout << "field_pedestrian_random_contact_qa=passed scene=30 choice=2 "
+              << "entry_wait=" << entry_settle_frames
+              << " frames=" << contact_frames << " actor="
+              << contact_position->x << ',' << contact_position->y
+              << " escort=0x80 guard="
+              << static_cast<unsigned>(guard_action)
+              << " entry=" << entry_bitmap.string()
+              << " actual=" << contact_bitmap.string()
+              << " trace=" << trace_path.string() << '\n';
+    return true;
+}
+
 bool verify_field_pedestrian_late_gate_retention_qa(
     FieldSceneRuntime& field_scene, const std::filesystem::path& output) {
     constexpr std::uint16_t kFirstScene = 30U;
@@ -19934,13 +20347,28 @@ int run_field_pedestrian_scenes_qa(
                              "failed\n";
                 return 3;
             }
-            const auto consumed_choice =
-                field_scene.consume_conditional_actor_selection_choice_for_dump();
-            if (consumed_choice != std::optional<std::uint8_t>{choice}) {
-                std::cerr << "Pedestrian scenes QA: 0x1E45E did not consume "
-                          << "Scene " << scene << " choice "
-                          << static_cast<unsigned>(choice) << '\n';
-                return 3;
+            // ROM 0xED60 starts generic pedestrian activity from ordinary
+            // actor-pair contact; 0x1E43C/0x1E45E is the FFE183 request scan.
+            // Exercise that physical path from the live Scene-34 runner
+            // position for one candidate while retaining the selector matrix.
+            const bool physically_contacted_candidate =
+                scene == 30U && choice == 2U;
+            if (physically_contacted_candidate) {
+                if (source_initializer != 5U ||
+                    !verify_scene30_random_pedestrian_contact_qa(
+                        field_scene, output)) {
+                    return 3;
+                }
+            } else {
+                const auto consumed_choice = field_scene
+                    .consume_conditional_actor_selection_choice_for_dump();
+                if (consumed_choice !=
+                    std::optional<std::uint8_t>{choice}) {
+                    std::cerr << "Pedestrian scenes QA: 0x1E45E did not consume "
+                              << "Scene " << scene << " choice "
+                              << static_cast<unsigned>(choice) << '\n';
+                    return 3;
+                }
             }
             ++candidate_cases;
         }
