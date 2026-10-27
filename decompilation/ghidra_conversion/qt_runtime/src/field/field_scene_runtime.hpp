@@ -247,6 +247,16 @@ enum class FieldWorldActorSlot : std::uint8_t {
     slot_9 = 9,
 };
 
+struct WorldActivityActorProjectionForDump {
+    SceneRunnerPosition world_position{};
+    std::string profile_id;
+    std::optional<FieldWorldActorSlot> record_slot;
+    std::uint32_t list_offset = 0U;
+    std::uint16_t initial_heading = 0U;
+    std::uint8_t spawn_state_flags = 0U;
+    bool visible = false;
+};
+
 struct MagicDefenseStripView {
     std::uint16_t value = 0;
     std::uint8_t bar_row = 0;
@@ -343,6 +353,9 @@ public:
     std::optional<FieldWorldActorSlot>
     world_activity_script_actor_record_slot_for_dump(
         std::uint16_t source_order) const noexcept;
+    std::optional<WorldActivityActorProjectionForDump>
+    world_activity_script_actor_projection_for_dump(
+        std::uint16_t source_order) const;
     std::optional<std::uint8_t>
     world_activity_script_actor_behavior_flags_for_dump(
         std::uint16_t source_order) const noexcept;
@@ -431,6 +444,14 @@ public:
     }
     bool world_effect_player_spawn_pending_for_dump() const noexcept {
         return field_world_effect_player_spawn_pending_;
+    }
+    std::optional<std::vector<scripting::ScriptConditionalActorCandidate>>
+    conditional_actor_candidates_for_dump(const std::uint16_t scene_id) {
+        return game_scripts_.conditional_actor_candidates_for_scene(scene_id);
+    }
+    std::optional<std::uint8_t>
+    consume_conditional_actor_selection_choice_for_dump() {
+        return game_scripts_.consume_conditional_actor_selection_choice();
     }
     bool pending_mode_transition_actor_list_for_dump() const noexcept {
         return field_pending_mode_transition_actor_list_.has_value();

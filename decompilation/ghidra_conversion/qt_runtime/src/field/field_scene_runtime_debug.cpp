@@ -957,6 +957,57 @@ FieldSceneRuntime::world_activity_script_actor_record_slot_for_dump(
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<WorldActivityActorProjectionForDump>
+FieldSceneRuntime::world_activity_script_actor_projection_for_dump(
+    const std::uint16_t source_order) const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.active && candidate.world_activity_script_actor &&
+                   candidate.scene_reference == scene_reference &&
+                   candidate.source_order == source_order;
+        });
+    if (actor == field_default_actors_.end()) {
+        return std::nullopt;
+    }
+
+    bool visible = false;
+    const auto sprite = default_actor_sprite_view(*actor);
+    if (sprite.image != nullptr && !sprite.image->isNull()) {
+        EntityProjectionState projection{};
+        projection.world_x = actor->world_position.x;
+        projection.world_y = actor->world_position.y;
+        if (project_entity_screen_position_standard(
+                projection,
+                static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
+                static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y))
+                .visible) {
+            const auto left = static_cast<int>(projection.screen_x) -
+                              kGenesisSpriteOrigin + sprite.origin_x;
+            const auto top = static_cast<int>(projection.screen_y) -
+                             kGenesisSpriteOrigin + sprite.origin_y;
+            visible = left < 272 &&
+                      left + sprite.image->width() > 0 &&
+                      top < 224 &&
+                      top + sprite.image->height() > 0;
+        }
+    }
+
+    return WorldActivityActorProjectionForDump{
+        actor->world_position,
+        actor->script_profile_id,
+        actor->source_record_slot,
+        actor->list_offset,
+        actor->initial_heading,
+        actor->source_spawn_state_flags,
+        visible};
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint8_t>
 FieldSceneRuntime::world_activity_script_actor_behavior_flags_for_dump(
     const std::uint16_t source_order) const noexcept {
