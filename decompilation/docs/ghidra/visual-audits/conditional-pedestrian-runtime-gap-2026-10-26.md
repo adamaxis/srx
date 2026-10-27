@@ -278,10 +278,18 @@ The other extracted literal pedestrian rows are bounded as follows:
 `world-activity-actors.tsv` has the A8AE story actor in Scene 34 and a
 pending-list actor at source record `0x1E5FA` in Scene 47; the 857
 `dynamic-world-activity-actors.tsv` rows across 56 scenes contain no literal
-pedestrian profile, name, or sprite stem. These table counts do not identify
-every small sprite in gameplay captures and do not exhaust generated or
-computed actor paths. Keep the Section-41 sprite identification open until a
-matching scene and live actor record are traced.
+pedestrian profile, name, or sprite stem. They do contain three dynamic
+`entity_kind=11` encounter records: a Rat Shaman and an Indian Warrior in
+Scene 1's random-sum-6 sequence at `0x1D6DDE`, and a Rat Shaman in Scene 5's
+random-sum-8 sequence at `0x1D6E7A`. Their ROM templates at `0x1D6BD8` and
+`0x1D6C22` select spell/item actions, and their positions are resolved from
+open screen-edge candidates. This is a different source population from the
+fixed `0x1D6988` pedestrian template and its default route lists. **[C]** The
+entity-kind number and a close sprite match identify a visual family, not an
+ambient-pedestrian role or a particular live actor record. These table counts
+do not identify every small sprite in gameplay captures and do not exhaust
+generated or computed actor paths. Keep the Section-41 sprite identification
+open until a matching scene and live actor record are traced.
 
 ### Other direct `FFE120` producers
 
