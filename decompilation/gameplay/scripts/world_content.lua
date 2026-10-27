@@ -536,7 +536,7 @@ function World.field_actor_contact_task(
        scene_id < 0 or scene_id > 55 or
        type(source_list_offset) ~= "number" or
        source_list_offset % 1 ~= 0 or source_list_offset < 0 or
-       source_list_offset > 0xFFFF or
+       source_list_offset > 0xFFFFFF or
        type(source_order) ~= "number" or source_order % 1 ~= 0 or
        source_order < 0 or source_order > 31 or
        type(world_effect_handler) ~= "number" or

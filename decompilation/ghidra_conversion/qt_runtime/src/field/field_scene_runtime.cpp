@@ -2955,7 +2955,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
         facts.world_mode = field_movement_transition_state_.world_mode;
         facts.active_effect_index = field_active_effect_index_;
         facts.selected_effect_index = field_selected_effect_index_;
-        facts.player_spawn_pending = field_world_effect_player_spawn_pending_;
+        facts.player_spawn_pending = has_pending_world_effect_player_spawn();
         facts.active_offer_source_initializer =
             game_scripts_.active_run_source_initializer();
         if (!facts.active_offer_source_initializer.has_value() &&
@@ -2993,15 +2993,23 @@ void FieldSceneRuntime::initialize_default_field_actors(
                 case ScriptConditionalActorSelectionKind::none:
                     break;
                 case ScriptConditionalActorSelectionKind::story_contact:
-                case ScriptConditionalActorSelectionKind::pending_world_activity:
-                    queue_pending_actor_list(
+                case ScriptConditionalActorSelectionKind::pending_world_activity: {
+                    auto actors =
                         game_scripts_.world_activity_actors_for_source_list(
-                            scene_reference, selection->list_offset),
+                            scene_reference, selection->list_offset);
+                    field_world_activity_transfer_actor_template_.reset();
+                    if (actors.has_value() && !actors->empty()) {
+                        field_world_activity_transfer_actor_template_ =
+                            actors->front();
+                    }
+                    queue_pending_actor_list(
+                        std::move(actors),
                         selection->kind ==
                                 ScriptConditionalActorSelectionKind::story_contact
                             ? "field.conditional_actor.story_contact_list_unresolved"
                             : "field.conditional_actor.pending_list_unresolved");
                     break;
+                }
                 case ScriptConditionalActorSelectionKind::random_pedestrian: {
                     const auto candidates =
                         game_scripts_.conditional_actor_candidates_for_scene(
@@ -3080,6 +3088,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
                     actor.delay_capability_flags =
                         actor_template->delay_capability_flags;
                     actor.combatant = actor_template->initial_combatant;
+                    field_world_activity_transfer_actor_template_ = actor;
                     pending_world_activity_script_actor_scene_ =
                         scene_reference;
                     pending_world_activity_script_actors_.clear();
@@ -4464,23 +4473,12 @@ void FieldSceneRuntime::advance_default_field_actors(
 
 void FieldSceneRuntime::resolve_default_actor_proximity(
     DefaultFieldActorPresentation& actor) {
-    constexpr std::uint16_t kSceneTwenty = 0x0014U;
-    constexpr std::uint16_t kSceneThirtyFour = 0x0022U;
-    constexpr std::uint16_t kIleneContactList = 0xA8CCU;
-    constexpr std::uint16_t kAragornContactList = 0xA8AEU;
     constexpr std::uint8_t kWorldActivityContactFlag = 0x08U;
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    // ROM 0xA8CC and 0xA8AE publish +0x9E bit 3 contact actors. The former is
-    // Scene-20 Ilene (FFE182); the latter is Scene-34 Aragorn (FFE180). 0xECCC
-    // selects the active handler from the live collision state.
-    const bool ilene_contact_actor = scene_reference == kSceneTwenty &&
-        actor.list_offset == kIleneContactList;
-    const bool aragorn_contact_actor =
-        scene_reference == kSceneThirtyFour &&
-        actor.list_offset == kAragornContactList;
+    // ROM 0xED60 accepts every active +0x9E bit-3 actor; the A8CC/A8AE
+    // story tasks are Lua mappings layered on top of that shared contact path.
     if (!actor.active || !actor.world_activity_script_actor ||
         actor.scene_reference != scene_reference ||
-        (!ilene_contact_actor && !aragorn_contact_actor) ||
         (actor.source_spawn_state_flags & kWorldActivityContactFlag) == 0U ||
         !actor.source_record_slot.has_value() || !field_entity_.active ||
         field_dialogue_.open()) {
@@ -4547,6 +4545,8 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
     world.activity_in_progress = field_runtime_state_.field_activity_lock;
     world.world_effect_active = field_world_effect_active_;
     world.pending_world_effect = field_pending_world_effect_;
+    world.transfer_actor_template_available =
+        field_world_activity_transfer_actor_template_.has_value();
     world.scene_activity_id = scene_reference;
     world.field_mode = field_movement_transition_state_.mode_event_code;
 
@@ -4566,6 +4566,20 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                        scene_reference] {
                       if (field_dialogue_.open()) {
                           return;
+                      }
+                      if (world.published_transfer_actor_template_available) {
+                          if (!field_world_activity_transfer_actor_template_
+                                   .has_value()) {
+                              failure_ =
+                                  "world contact published an unavailable actor template";
+                              source_boundary(
+                                  "field.world_activity.transfer_template_missing");
+                              return;
+                          }
+                          field_world_effect_player_spawn_actor_template_ =
+                              field_world_activity_transfer_actor_template_;
+                          source_boundary(
+                              "field.world_activity.player_spawn_request_set");
                       }
                       const bool world_effect_handler =
                           world.handler == EntityPairActivityHandler::
@@ -4606,6 +4620,14 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                       begin_world_activity(field_world_activity_state_, 0U);
                       world_frame_logic_state_.resource_countdown =
                           field_world_activity_state_.timeout;
+                      if (contact_task == 0) {
+                          // Ordinary +0x9E bit-3 contacts start the shared
+                          // activity and retain their +0xB0 one-shot state;
+                          // only the story lists open dialogue here.
+                          source_boundary(
+                              "field.world_activity.generic_contact_started");
+                          return;
+                      }
                       std::string_view module;
                       std::string_view task;
                       std::string_view location;
@@ -4626,8 +4648,9 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                           opened_boundary =
                               "field.world_activity.ilene_contact_opened";
                       } else {
+                          failure_ = "Lua returned an unknown actor contact task";
                           source_boundary(
-                              "field.world_activity.unmapped_actor_contact");
+                              "field.world_activity.contact_task_invalid");
                           return;
                       }
                       game_scripts_.set_location_context(
@@ -4732,6 +4755,11 @@ bool FieldSceneRuntime::retire_dialogue_escort_records() {
         actor.source_record_flags = decision->source_record_flags;
         actor.source_behavior_flags = decision->source_behavior_flags;
         actor.combatant.source_flags = actor.source_record_flags;
+        // ROM 0x1E514 clears FFFC3C when it clears an escort actor's +0xB0
+        // bit 7. Keep the selected template marker paired with that lifecycle.
+        field_world_effect_player_spawn_actor_template_.reset();
+        source_boundary(
+            "field.world_activity.player_spawn_request_cleared");
         if (actor.target_motion_effect_slot.has_value() &&
             *actor.target_motion_effect_slot <
                 field_world_effect_slots_occupied_.size()) {

@@ -958,13 +958,17 @@ It passes in Debug and Release; all 16 generated artifacts (14 BMPs and two
 TSVs) match by SHA-256. I inspected the selector and both centered actor frames; they are
 internal captures, not independent Genesis references. These routes start
 from a staged profile checkpoint and do not exercise the accepted Johnson
-offer through the lift. The FFFC3C pending-spawn case still
-retains choice 2 from Scene 30 and publishes it in Scene 34 through QA
-resource entry after the pending flag clears. That covers A800's nonzero gate
-only. ROM `0xED60` stores the tagged FFE110 template in FFFC3C, and `0x286E`
-uses it for the `0x1E4AC` player-position spawn if no active/effect-ready
-record exists. Qt currently has a bool marker and leaves the scene-entry guard
-as a source boundary, so contact-to-spawn remains open; see the
+offer through the lift. The FFFC3C pending-spawn case still retains choice 2
+from Scene 30 and publishes it in Scene 34 through QA resource entry after the
+pending marker clears. That covers A800's nonzero gate only. ROM `0xED60`
+stores the tagged FFE110 template in FFFC3C, and `0x286E` uses it for the
+`0x1E4AC` player-position spawn if no active/effect-ready record exists. The
+typed transfer descriptor and FFFC3C producer/cleanup now run in Qt; Debug and
+Release Scene-34 QA check the pedestrian template while A8AE dialogue is open
+and its clear through `0x1E514`. Lua accepts 24-bit candidate list offsets and
+leaves generic A800 contact on the shared activity path. The `0x286E` scene-
+entry callback and player-position actor spawn remain open, and there is no
+physical random-candidate contact QA yet; see the
 `conditional-pedestrian-runtime-gap-2026-10-26.md` audit. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches

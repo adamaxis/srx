@@ -66,7 +66,8 @@ void begin_normal_activity(
     EntityPairCollisionWorldState& world,
     const EntityPairCollisionCallbacks& callbacks,
     EntityPairCollisionResult& result) {
-    world.published_transfer_value = world.source_transfer_value;
+    world.published_transfer_actor_template_available =
+        world.transfer_actor_template_available;
     if (world.world_effect_active) {
         world.world_effect_active = false;
         world.handler = EntityPairActivityHandler::world_effect_collision;

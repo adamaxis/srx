@@ -1082,6 +1082,9 @@ int main() {
     const auto unrelated_contact_route = scripts.call_integers(
         "world_content", "field_actor_contact_task",
         {20, 0xA8CCU, 0, 1, 0});
+    const auto random_pedestrian_contact_route = scripts.call_integers(
+        "world_content", "field_actor_contact_task",
+        {0x15, 0x1EDECCU, 0, 0, 0});
     bool conditional_candidate_table_valid = true;
     std::size_t conditional_candidate_count = 0U;
     for (std::uint16_t scene = 0x15U; scene <= 0x2BU; ++scene) {
@@ -1519,6 +1522,9 @@ int main() {
                     std::vector<std::int64_t>{2, 0x80} &&
                 unrelated_contact_route.has_value() &&
                 *unrelated_contact_route ==
+                    std::vector<std::int64_t>{0, 0} &&
+                random_pedestrian_contact_route.has_value() &&
+                *random_pedestrian_contact_route ==
                     std::vector<std::int64_t>{0, 0} &&
                 conditional_candidate_table_valid &&
                 conditional_candidate_count == 69U &&

@@ -1,13 +1,17 @@
 # Conditional pedestrian runtime gap audit
 
-**Status:** `FieldSceneRuntime` now calls the Lua `0xA800` selector with the
-raw active run initializer, FFDF40, FFE180/FFE182, a boolean zero/nonzero
-projection of FFFC3C, and typed FFE12C / FFF0C8 indices. That boolean covers
-the selector's `TST.L` gate only; the source marker also carries a tagged
-actor-template value for a later player-position spawn path that is not yet
-connected in Qt. The runtime queues and publishes the selected A8AE story
-actor, and it can turn a randomized candidate row into an ordinary actor
-descriptor. The
+**Status:** `FieldSceneRuntime` calls the Lua `0xA800` selector with the raw
+active run initializer, FFDF40, FFE180/FFE182, a derived presence projection of
+the typed FFFC3C actor-template marker, and typed FFE12C / FFF0C8 indices. The
+selected FFE110 actor descriptor is retained in typed state; eligible bit-3
+contact copies that descriptor into FFFC3C, and escort cleanup clears it.
+Lua accepts the candidate list's full 24-bit source offset and keeps generic
+pedestrian contact on the shared activity path without opening a story task.
+Debug/Release Scene-34 QA verifies the pedestrian template is pending while
+the A8AE dialogue is open and is cleared by its `0x1E514` cleanup. The runtime
+queues and publishes the selected A8AE story actor and randomized candidate
+rows through the ordinary actor path. The `0x286E` scene-entry guard and its
+`0x1E4AC` player-position fallback spawn remain unimplemented. The
 Scene-3/event-3 branch is represented by a Lua entry graph and gated route;
 Debug/Release physical QA walks record 95, checks the `0xF4BB4` page and
 `0x12209C` portrait, then resumes through the event-table route into Scene 30.
@@ -379,27 +383,27 @@ and places the actor at Joshua's `x+0x80` / `y`. The `0x2FA4` entry path also
 repositions the first existing active/effect-ready record to that location;
 `0x1E514` clears FFFC3C when it clears an actor's `+0xB0` bit 7.
 
-The active Qt runtime currently has only
-`field_world_effect_player_spawn_pending_` as a boolean. A800 receives that
-zero/nonzero fact, which is sufficient for its gate, but the live pair-collision
-state leaves `source_transfer_value` at zero, and
-`callbacks_.guard_world_effect_player_spawn` is still a source boundary. The
-only current assignments to the boolean are QA seeding and the party-wipe
-clear. Lua contact routing maps the A8AE and A8CC story dialogues, but their
-contact path does not propagate FFE110 into a typed marker. Generic
-conditional-pedestrian contact is not wired either.
-The pure 13-record guard helper is unit-tested, but it is not the scene-entry
-callback and has no actor-spawn integration or CLI frame dump. This remains a
-partial hill; the physical two-choice lift QA validates list retention, not
-the contact-to-player-spawn lifecycle.
+The active Qt runtime now retains typed FFE110 actor-template data and a typed
+FFFC3C marker. A800 receives a derived presence fact, sufficient for its gate.
+The pair-collision model publishes whether the
+typed transfer template is available; the scene-entry guard callback remains
+a source boundary. Eligible bit-3 contact copies the typed template into FFFC3C.
+Lua contact routing keeps A8AE/A8CC story dialogue while generic 24-bit A800
+contact starts the shared activity path without being rejected as an unmapped
+story actor. Scene-34 QA checks the pedestrian profile while dialogue is open
+and its clear after cleanup. The pure thirteen-record guard remains separate
+from the live scene-entry callback, which still has no actor-spawn integration
+or CLI frame dump. This remains a partial hill; the physical two-choice lift
+QA does not yet trace a randomized candidate through contact and the
+player-position fallback.
 
 ## Active runtime boundary
 
 `FieldSceneRuntime::initialize_default_field_actors` now calls
 `GameScriptRuntime::resolve_conditional_actor_selection` after the explicit
 route-owned lists. It passes the active offer's raw initializer, the current
-FFDF40 mode, FFE180/FFE182, a boolean projection of FFFC3C, and separate
-optional 16-bit FFE12C and FFF0C8 values. Lua derives the post-`F3DC6` FFFBED
+FFDF40 mode, FFE180/FFE182, a presence projection of the typed FFFC3C template,
+and separate optional 16-bit FFE12C and FFF0C8 values. Lua derives the post-`F3DC6` FFFBED
 value before checking the A800 initializer gate. The one-shot FFE183 choice
 remains Lua-owned. The random
 callback uses the field PRNG's bound sampler, and Lua calls it only after the

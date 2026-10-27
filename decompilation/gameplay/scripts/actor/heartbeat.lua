@@ -10,8 +10,8 @@ local ActorStatus = E.ActorStatus
 local ActorPool = E.ActorPool
 local ActorFlag, SpriteType = E.ActorFlag, E.SpriteType
 
--- ROM 0x1E514: bclr #7,+0xB0 (escort; when it was set the ROM also clears FFFC3C,
--- which the port does not model [H: FFFC3C meaning unknown]) and bclr #0,+0x10
+-- ROM 0x1E514: bclr #7,+0xB0 (escort; the host clears the typed FFFC3C actor
+-- template marker when it observes this transition [C]) and bclr #0,+0x10
 -- (ACTIVE). The C++ host frees the record slot (0x1A304) unless +0x10 b3 is set
 -- and stops drawing/servicing the record (0x4618/0xA8EA skip inactive records).
 local function deactivate_record(state)

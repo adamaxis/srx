@@ -440,10 +440,20 @@ public:
     }
     void set_world_effect_player_spawn_pending_for_dump(
         const bool pending) noexcept {
-        field_world_effect_player_spawn_pending_ = pending; // 0x1DED8 FFFC3C [C]
+        field_world_effect_player_spawn_qa_override_ = pending;
+        if (!pending) {
+            field_world_effect_player_spawn_actor_template_.reset();
+        }
     }
     bool world_effect_player_spawn_pending_for_dump() const noexcept {
-        return field_world_effect_player_spawn_pending_;
+        return has_pending_world_effect_player_spawn();
+    }
+    std::optional<std::string>
+    world_effect_player_spawn_profile_for_dump() const {
+        if (!field_world_effect_player_spawn_actor_template_.has_value()) {
+            return std::nullopt;
+        }
+        return field_world_effect_player_spawn_actor_template_->profile_id;
     }
     std::optional<std::vector<scripting::ScriptConditionalActorCandidate>>
     conditional_actor_candidates_for_dump(const std::uint16_t scene_id) {
@@ -1714,6 +1724,10 @@ private:
         DefaultFieldActorPresentation& actor);
     void resolve_default_actor_proximity(
         DefaultFieldActorPresentation& actor);
+    bool has_pending_world_effect_player_spawn() const noexcept {
+        return field_world_effect_player_spawn_actor_template_.has_value() ||
+               field_world_effect_player_spawn_qa_override_;
+    }
     bool retire_dialogue_escort_records();
     void publish_pending_world_activity_script_actors(
         std::uint16_t scene_reference);
@@ -2442,7 +2456,14 @@ private:
     // FFE166, so this timer is transient across ROM loads [C]; whether the
     // writer copies it is [H].
     std::uint8_t field_party_wipe_countdown_ = 0;
-    bool field_world_effect_player_spawn_pending_ = false; // 0x1DED8 FFFC3C [C]
+    // FFE110 and FFFC3C carry a selected actor template, not a numeric runtime
+    // pointer. Keep the extracted profile and placement data typed; the QA
+    // override exists only for selector-gate permutation tests.
+    std::optional<scripting::ScriptWorldActivityActor>
+        field_world_activity_transfer_actor_template_;
+    std::optional<scripting::ScriptWorldActivityActor>
+        field_world_effect_player_spawn_actor_template_;
+    bool field_world_effect_player_spawn_qa_override_ = false;
     EffectFadeMarkerState field_effect_fade_marker_{}; // FFDFDA/FFDFDC [C]
     std::array<DefaultActorArtwork, 2> field_default_actor_artwork_{};
     std::unordered_map<std::string, DefaultActorArtwork>

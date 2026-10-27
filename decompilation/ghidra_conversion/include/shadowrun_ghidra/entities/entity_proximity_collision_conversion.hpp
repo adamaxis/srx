@@ -82,7 +82,7 @@ struct EntityPairCollisionWorldState {
     bool activity_in_progress = false;       // FFE176
     bool world_effect_active = false;         // FFE180
     bool pending_world_effect = false;        // FFE182
-    std::uint32_t source_transfer_value = 0; // FFE110
+    bool transfer_actor_template_available = false; // Typed FFE110 value
     std::uint16_t scene_activity_id = 0;     // FFDDC4
     std::uint8_t field_mode = 0;              // FFFBF9
     std::vector<std::uint8_t> scene_activity_table;
@@ -90,7 +90,7 @@ struct EntityPairCollisionWorldState {
     std::optional<EntityPairActor> selected_activity_actor;
     EntityPairActivityHandler handler = EntityPairActivityHandler::none;
     std::uint8_t activity_variant = 0;
-    std::uint32_t published_transfer_value = 0;
+    bool published_transfer_actor_template_available = false;
     bool world_activity_started = false;
 };
 

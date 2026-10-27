@@ -270,13 +270,16 @@ The FFFC3C source trace is now explicit: `0xED60` copies the selected tagged
 template from FFE110 into the marker on eligible contact; `0x286E` scans for
 an active record with `+0xB0` bit 7 and otherwise passes that template to
 `0x1E4AC`, which allocates and places the actor at Joshua `x+0x80` / `y`.
-Every A800 candidate row points to root-tagged template `0x801D6988`. In Qt,
-the selector currently receives only a bool projection of FFFC3C, the live
-collision state does not populate its typed transfer value, and the scene
-entry guard callback remains a boundary. QA can seed the bool, but no runtime
-contact sets it or creates the source player-position actor. See the dedicated
+Every A800 candidate row points to root-tagged template `0x801D6988`. Qt now
+retains a typed transfer descriptor, publishes typed marker availability to
+pair collision, sets FFFC3C after eligible contact, and clears it with the
+`0x1E514` escort cleanup. The physical Scene-34 A8AE QA checks the pending
+pedestrian profile during dialogue and its clear afterward; the 24-bit Lua
+contact route also accepts an A800 candidate list offset as generic activity.
+The scene-entry guard callback and `0x1E4AC` actor spawn remain boundaries, and
+there is not yet a physical random-candidate contact route. See the dedicated
 trace in `conditional-pedestrian-runtime-gap-2026-10-26.md`; this lifecycle
-remains open.
+remains partial.
 
 Independent longplay contact sheets contain map frames with pedestrian-like
 actors (for example around `02:58:10` in Section 41), but those frames do not

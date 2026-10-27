@@ -99,7 +99,7 @@ int main() {
     candidate = {};
     candidate.special_flags = 0x08U;
     EntityPairCollisionWorldState normal_world{};
-    normal_world.source_transfer_value = 0x12345678U;
+    normal_world.transfer_actor_template_available = true;
     normal_world.world_effect_active = true;
     int normal_calls = 0;
     const auto normal = resolve_entity_pair_collision_event(
@@ -110,7 +110,7 @@ int main() {
         (candidate.activity_flags & 0x80U) == 0U || normal_calls != 1 ||
         normal.handler != EntityPairActivityHandler::world_effect_collision ||
         normal_world.world_effect_active ||
-        normal_world.published_transfer_value != 0x12345678U) {
+        !normal_world.published_transfer_actor_template_available) {
         return 5;
     }
 

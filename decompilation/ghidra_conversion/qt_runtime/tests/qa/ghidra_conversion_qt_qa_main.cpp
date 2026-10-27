@@ -22202,6 +22202,8 @@ int run_field_mitsuhama_after_hours_entry_qa(
     };
     const auto contact_actor_flags =
         field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
+    const auto contact_spawn_profile =
+        field_scene.world_effect_player_spawn_profile_for_dump();
     const auto contact_notebook_flags =
         field_scene.notebook_story_flags_for_dump();
     const auto contact_mode_flags = field_scene.field_mode_flags_for_dump();
@@ -22216,6 +22218,9 @@ int run_field_mitsuhama_after_hours_entry_qa(
             "dialogue.portraits.aragorn.mitsuhama" &&
         !field_scene.world_effect_active_for_dump() &&
         !field_scene.pending_world_effect_for_dump() &&
+        field_scene.world_effect_player_spawn_pending_for_dump() &&
+        contact_spawn_profile ==
+            std::optional<std::string>{"pedestrian_k0b_none00"} &&
         (field_scene.field_world_fact_flags_for_dump() & (1U << 3U)) != 0U &&
         (contact_mode_flags & 0x3C00U) == 0x2000U &&
         contact_notebook_flags.has_value() &&
@@ -22235,6 +22240,10 @@ int run_field_mitsuhama_after_hours_entry_qa(
                   << ", portrait=" << contact_page.portrait_alias
                   << ", world_effect="
                   << field_scene.world_effect_active_for_dump()
+                  << ", player_spawn_pending="
+                  << field_scene.world_effect_player_spawn_pending_for_dump()
+                  << ", spawn_profile="
+                  << contact_spawn_profile.value_or("missing")
                   << ", story_flags=0x" << std::hex
                   << field_scene.field_world_fact_flags_for_dump()
                   << ", mode_flags=0x" << contact_mode_flags
@@ -22321,6 +22330,7 @@ int run_field_mitsuhama_after_hours_entry_qa(
     const bool aragorn_record_retired = !aragorn_source_slot_is_live();
     if (field_scene.dialogue_open() ||
         field_scene.world_effect_active_for_dump() ||
+        field_scene.world_effect_player_spawn_pending_for_dump() ||
         world_activity_actors_before_departure == 0U ||
         world_activity_actors_after_departure + 1U !=
             world_activity_actors_before_departure ||

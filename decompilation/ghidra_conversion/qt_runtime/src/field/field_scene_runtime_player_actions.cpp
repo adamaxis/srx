@@ -293,7 +293,7 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
     const auto run_failure = game_scripts_.call_integers(
         "party_down", "prepare_run_failure_flat",
         {field_runtime_state_.world_activity_scene_reset_bit ? 1 : 0,
-         field_world_effect_player_spawn_pending_ ? 1 : 0});
+         has_pending_world_effect_player_spawn() ? 1 : 0});
     if (!run_failure.has_value() || run_failure->size() != 6U) {
         failure_ = game_scripts_.failure();
         source_boundary("field.party_wipe.run_failure_script_failed");
@@ -312,7 +312,8 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
         source_boundary("field.party_wipe.world_activity_request_cleared");
     }
     if ((*run_failure)[4] != 0) {
-        field_world_effect_player_spawn_pending_ = false; // FFFC3C [C]
+        field_world_effect_player_spawn_actor_template_.reset(); // FFFC3C [C]
+        field_world_effect_player_spawn_qa_override_ = false;
         source_boundary("field.party_wipe.player_spawn_request_cleared");
     }
     if ((*run_failure)[1] != 0) {
