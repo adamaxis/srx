@@ -837,8 +837,9 @@ the A8AE actor in Scene 34 at (0x1D00,0x4100), with the pedestrian profile in
 slot 3, and writes `scene-34-story-contact-actual.bmp`. The selector bridge
 also converts a chosen candidate row into a live pedestrian descriptor using
 the extracted template profile and ordered overrides. Debug/Release script QA
-accepts Matchstick's Employee Recruitment offer through Johnson's work menu
-and verifies the raw initializer-5 choice through the typed request scan.
+accepts Employee Recruitment through Johnson's work menu for raw initializers
+5 and 11 at Matchstick and 12 at Caleb's booth, then verifies each normalized
+A800 choice through the typed request scan.
 Debug/Release field QA seeds that accepted source row, enters Scene 21 after
 installing FFDF40=2, and checks one visible random pedestrian in slot 3 at one
 of the two reachable ROM positions; it writes
@@ -889,8 +890,9 @@ records and invokes `0x1E514` for records with the escort bit; that effect
 clears the escort and active bits. Debug/Release QA verifies Aragorn's source
 slot leaves the live list, the activity count drops by one while other records
 remain active, and saves the closed Scene-34 image.
-The accepted initializer-5 random spawn path and the `0x1E45E` FFE183 clear
-now pass focused Debug/Release script and field QA. The ordinary-input
+The accepted initializer 5/11/12 offer-to-request paths and the `0x1E45E`
+FFE183 clear now pass focused Debug/Release script QA. The field scene still
+uses an initializer-5 fixture to verify candidate publication. The ordinary-input
 Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches
 the success page after the source 10-frame choice gate, requests sound `0x4B`,

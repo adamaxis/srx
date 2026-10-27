@@ -224,10 +224,12 @@ FFFC3C, and separate 16-bit active/selected indices into Lua, then publishes a
 selected candidate through the ordinary actor-slot allocator. The `0x0A92`
 callback now calls Lua's atomic FFE183 consume before the typed `0x1E43C` scan.
 Lua's other resets remain connected to the modeled `0x2A32`/`0x2A44` and
-type-5 `0xC684` paths. Focused script QA covers the accepted initializer-5
-offer-to-request lifecycle; field QA covers a visible Scene-21 randomized
-candidate. Independent Genesis identification and the physical Scene-34
-lift-to-A8AE route remain open.
+type-5 `0xC684` paths. Debug/Release script QA follows accepted Johnson offers
+with initializers 5, 11, and 12 through A800 and the typed request scan. Field
+QA still seeds initializer 5 to verify a visible Scene-21 randomized
+candidate; carrying the naturally accepted run through field entry and actor
+publication remains open. Independent Genesis identification and the physical
+Scene-34 lift-to-A8AE route remain open.
 
 Independent longplay contact sheets contain map frames with pedestrian-like
 actors (for example around `02:58:10` in Section 41), but those frames do not

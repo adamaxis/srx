@@ -47,9 +47,12 @@ have not been exercised. Ordinary input reaches the live A8AE actor at
 `(0x1D00,0x4100)` within the ROM `+/-0x40` proximity window. A presses advance
 all three `0xF4BBC` pages, and the source cleanup retires Aragorn's actor
 record. The direct marker setters and `FFE120` producer census are traced
-below. The full random-candidate path from an accepted initializer-5 offer
-into a naturally entered scene remains open. Section 41 has no route-matched
-visual check.
+below. Gameplay-script QA now follows accepted Employee Recruitment offers
+from their Johnson work menus through the normalized `0xA800` choice and the
+typed `0x1E43C` request. Field QA still seeds initializer 5 to verify actor
+projection in Scene 21; entering that scene through the natural field route
+with the accepted offer remains open. Section 41 has no route-matched visual
+check.
 
 ## ROM path confirmed from the US image
 
@@ -316,10 +319,13 @@ actor slot 3, checks the profile and draw visibility, and writes
 each build. The Debug and Release BMPs have the same SHA-256. This test
 exercises the selector-to-actor projection and internal rendering; it does
 not establish that the real story route sets those facts correctly.
-Gameplay-script QA now checks raw initializer 5 and normalized variants 11/12
-against reachable choice rows, rejects package-recovery variants 9/10 after
-their source normalization to 4, and covers both rolls, late-gate choice
-retention, and unequal/equal 16-bit effect indices.
+Gameplay-script QA drives accepted offers through Johnson's work menu for
+F3EBC context 1 zero-based slots 2 and 4 (raw initializers 5 and 11) and
+context 4 slot 4 (raw initializer 12). It checks their source negotiation
+and target draws, then confirms all three reach the normalized `0xA800`
+branch and typed `0x1E43C` request. Selector coverage rejects package-recovery
+variants 9/10 after their normalization to 4 and covers both reachable rolls,
+late-gate choice retention, and unequal/equal 16-bit effect indices.
 
 `world_effect_active` still initializes false, but the Scene-3/event-3 entry
 graph sets it true after the `0xF4BB4` page. The ordinary-input route now walks
@@ -341,15 +347,18 @@ connected at the `0x0A92` request callback: Lua returns and clears the choice
 atomically, and the callback passes that byte into the typed 13-record
 `0x1E43C` scan.
 
-Gameplay-script QA reaches Matchstick's accepted Employee Recruitment offer
-through Johnson's work menu, checks raw initializer 5, samples a reachable
-choice, consumes it once, and starts the typed request. Field pedestrian QA
-seeds that accepted source row, enters Scene 21 with the equal-index and
-no-pending-spawn gates, and verifies one visible slot-3 candidate at a ROM
+Gameplay-script QA follows Matchstick's work menu to accepted initializers 5
+and 11, and Caleb's Icarus work menu to accepted initializer 12. For each it
+passes the retained active source ID through A800, samples a reachable choice,
+consumes it once, and starts the typed request. Field pedestrian QA still
+seeds an accepted initializer-5 source row, enters Scene 21 with equal indices
+and no pending spawn, and verifies one visible slot-3 candidate at a ROM
 choice-1 or choice-2 position; it writes
-`scene-21-random-pedestrian-actual.bmp`. The independent offer path and the
-field projection path are separate checks. No independent Genesis capture
-identifies this candidate, Scene 34, the A8AE actor, or the contact conversation;
+`scene-21-random-pedestrian-actual.bmp`. Natural offer-to-selector coverage
+and field actor projection now meet at the Lua request boundary, but the
+accepted registry state is not yet carried through a natural field entry to
+the rendered actor. No independent Genesis capture identifies this candidate,
+Scene 34, the A8AE actor, or the contact conversation;
 the BMPs remain internal runtime regression evidence only.
 
 ## Independent capture review
@@ -454,10 +463,9 @@ independent Genesis animation or map comparison.
 Next, cover the record-90 Electronics outcome and insufficient-passkey branch.
 The ordinary Scene-34 route to A8AE is now established. Cover
 the Electronics results with the live runner's class, skill, inventory, and
-source RNG inputs. Exercise
-the random branch through an accepted raw initializer-5 offer, including offer
-variants 11/12, player-spawn pending, index mismatch, and choice persistence
-across a child-scene transition. Finally, match a real capture to the selected
-scene and live actor record; the current internal BMPs are regression
+source RNG inputs. Carry accepted raw initializers 5/11/12 through field-scene
+actor projection, including player-spawn pending, index mismatch, and choice
+persistence across a child-scene transition. Then match a real capture to the
+selected scene and live actor record; the current internal BMPs are regression
 artifacts, not an independent visual oracle. The pedestrian population hill
 remains partial.

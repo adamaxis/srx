@@ -357,6 +357,171 @@ bool verify_package_delivery_field_events(
         "package run did not collect at origin, pay once at destination, and clear");
 }
 
+bool verify_accepted_employee_offer_variant_reaches_a800(
+    const std::filesystem::path& script_directory,
+    const std::filesystem::path& dialogue_text,
+    const std::string_view location_id,
+    const std::string_view text_profile,
+    const std::string_view speaker_id,
+    const shadowrun::ghidra_conversion::scripting::ScriptFieldModeContext
+        field_context,
+    const std::string_view first_visit_fact,
+    const std::string_view expected_payment_bound,
+    const std::optional<std::string_view> expected_target_bound,
+    const std::uint8_t expected_initializer,
+    const std::uint16_t a800_roll) {
+    using namespace shadowrun::ghidra_conversion;
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    GameScriptRuntime scripts;
+    if (!scripts.load_package(script_directory, dialogue_text)) {
+        std::cerr << scripts.failure() << '\n';
+        return expect(false,
+                      "could not load an Employee Recruitment variant offer");
+    }
+    scripts.set_story_state({{std::string(first_visit_fact), true}});
+    scripts.set_location_context(
+        "building", location_id, text_profile, speaker_id);
+    scripts.set_field_mode_context(field_context);
+
+    // ROM F3EBC context 1 zero-based slot 4 is initializer 11; context 4
+    // zero-based slot 4 is initializer 12. The ordinary Johnson work menu
+    // selects each row, then the accepted initializer flows through
+    // 0x1E69C/F3DC6 to A800.
+    auto task = scripts.start_task("johnson", "interaction");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type ==
+                        ScriptNativeOperation::Type::ui_menu &&
+                    task.operation->menu.has_value() &&
+                    task.operation->menu->id == "opening",
+                "Employee Recruitment variant did not open Johnson's menu")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_menu_choice("work");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_say,
+                "Johnson work choice skipped the run-offer preamble")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "random.bounded_8",
+                "Johnson did not select from the eight source offer rows")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_service_result("roll_4");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "runner.negotiation_skill",
+                "selected Employee Recruitment row skipped Negotiation")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_service_result("skill_3");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id ==
+                        std::string(expected_payment_bound),
+                "variant Negotiation bound did not follow its F3EBC row")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_service_result("roll_0");
+    if (expected_target_bound.has_value()) {
+        if (!expect(task.operation.has_value() &&
+                        task.operation->service_id ==
+                            std::string(*expected_target_bound),
+                    "two-site initializer skipped its source target draw")) {
+            std::cerr << scripts.failure() << '\n';
+            return false;
+        }
+        task = scripts.complete_native_service_result("roll_0");
+    }
+    if (!expect(task.operation.has_value() &&
+                    task.operation->service_id == "random.bounded_12",
+                "Employee Recruitment row skipped its client-name draw")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_service_result("roll_0");
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_say,
+                "Employee Recruitment variant did not present its offer")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    const auto active_initializer = scripts.active_run_source_initializer();
+    if (!expect(task.status == ScriptTaskStep::Status::completed &&
+                    task.result_id == std::optional<std::string>{"accepted"} &&
+                    active_initializer ==
+                        std::optional<std::uint8_t>{expected_initializer},
+                "accepted variant did not preserve its source initializer")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+
+    ScriptConditionalActorSelectionContext facts{};
+    facts.active_offer_source_initializer = *active_initializer;
+    facts.world_mode = 2U;
+    facts.active_effect_index = 0U;
+    facts.selected_effect_index = 0U;
+    std::size_t random_calls = 0U;
+    const auto selection = scripts.resolve_conditional_actor_selection(
+        0x15U, facts,
+        [&random_calls, a800_roll](const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+            ++random_calls;
+            if (bound != 2U) return std::nullopt;
+            return a800_roll;
+        });
+    const auto candidates = scripts.conditional_actor_candidates_for_scene(0x15U);
+    bool expected_candidate_found = false;
+    std::uint32_t expected_list_offset = 0U;
+    if (candidates.has_value()) {
+        const auto expected_candidate = std::find_if(
+            candidates->begin(), candidates->end(),
+            [a800_roll](const auto& candidate) {
+                return candidate.choice == a800_roll + 1U;
+            });
+        expected_candidate_found = expected_candidate != candidates->end();
+        if (expected_candidate_found) {
+            expected_list_offset = expected_candidate->list_offset;
+        }
+    }
+    const auto consumed_choice =
+        scripts.consume_conditional_actor_selection_choice();
+    WorldActivityRoutineRequestState request_state{};
+    if (consumed_choice.has_value()) {
+        request_state.request_flag = *consumed_choice;
+    }
+    std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
+        request_slots{};
+    request_slots[0U] = WorldActivityRequestSlot{0x01U, 0x80U};
+    WorldActivityStartState activity{};
+    const bool activity_started = handle_world_activity_request(
+        request_state, request_slots, activity);
+
+    return expect(
+        selection.has_value() &&
+            selection->kind ==
+                ScriptConditionalActorSelectionKind::random_pedestrian &&
+            selection->choice_changed &&
+            selection->selection_choice == a800_roll + 1U &&
+            expected_candidate_found &&
+            selection->list_offset == expected_list_offset &&
+            random_calls == 1U &&
+            consumed_choice ==
+                std::optional<std::uint8_t>{a800_roll + 1U} &&
+            activity_started && request_state.request_flag == 0U &&
+            request_state.found_marker == 0U &&
+            activity.activity_pointer == kWorldActivityRequestDescriptor &&
+            activity.timer_frames == 0x3CU,
+        "accepted Employee Recruitment variant did not flow through A800 "
+        "into the typed 0x1E43C request");
+}
+
 bool verify_employee_recruitment_pedestrian_request(
     const std::filesystem::path& script_directory,
     const std::filesystem::path& dialogue_text) {
@@ -474,7 +639,7 @@ bool verify_employee_recruitment_pedestrian_request(
     WorldActivityStartState activity{};
     const bool activity_started = handle_world_activity_request(
         request_state, request_slots, activity);
-    return expect(
+    const bool base_initializer_reaches_request = expect(
         selection.has_value() &&
             selection->kind ==
                 ScriptConditionalActorSelectionKind::random_pedestrian &&
@@ -485,6 +650,22 @@ bool verify_employee_recruitment_pedestrian_request(
             activity.activity_pointer == kWorldActivityRequestDescriptor &&
             activity.timer_frames == 0x3CU,
         "accepted raw initializer 5 did not flow through A800 into 0x1E43C");
+    const bool two_site_variant_reaches_request =
+        verify_accepted_employee_offer_variant_reaches_a800(
+            script_directory, dialogue_text,
+            "matchstick_strouther_booth", "matchstick.julius_strouther",
+            "julius_strouther", ScriptFieldModeContext{1U, 18U, 0},
+            "mr_johnsons_flag_bit_5", "random.bounded_16",
+            std::optional<std::string_view>{"random.bounded_2"}, 11U, 1U);
+    const bool renraku_variant_reaches_request =
+        verify_accepted_employee_offer_variant_reaches_a800(
+            script_directory, dialogue_text, "icarus_descending_booth",
+            "icarus-descending.caleb_brightmore", "caleb_brightmore",
+            ScriptFieldModeContext{1U, 12U, 30},
+            "mr_johnsons_flag_bit_7", "random.bounded_46", std::nullopt,
+            12U, 0U);
+    return base_initializer_reaches_request &&
+        two_site_variant_reaches_request && renraku_variant_reaches_request;
 }
 
 bool verify_dialogue_graph_outcomes(
