@@ -249,8 +249,14 @@ the fare and applies the insufficient-funds ride; `0x208FE` publishes the
 accepted destination and consumes a Salish visa [C]. The Qt taxi QA covers the
 already-there response, normal fare deduction, and Downtown arrival, while
 `taxi_cabbie_tests` covers the fare comments and gate permutations. The hill
-remains partial pending an independent full cabbie-dialogue reference and a
-CLI `actual.bmp` dump.
+now has an independent Section-41 capture of the Puyallup 40-nuyen quote,
+choice labels, `Hop in, chum.` response, and field return. It confirms that
+fare branch only; it does not expose the wallet or the other gates. The capture
+also exposes the missing taxi-cabbie portrait binding: the host speaker profile
+uses `portrait_alias: none` while the Genesis prompt shows the portrait. The
+source resource at `0x121F10` still needs an asset mapping, and the hill remains
+partial pending that portrait trace, the other fare branches, and a CLI
+`actual.bmp` dump. See the [taxi fare prompt capture audit](visual-audits/taxi-fare-prompt-capture-2026-10-27.md).
 
 Capt. Quinton's full call graph is connected. The ROM menu rooted at `0x1096F4`
 reaches Firepower (`0x109750`) and Contacts (`0x109780`); command IDs `0x68`-
