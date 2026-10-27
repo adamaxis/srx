@@ -760,9 +760,18 @@ All 18 region-map route lists have nonzero waypoint counts. The selector at
 coordinate lists in scenes `0x15..0x2B` finds the zero-X terminator immediately
 after each initial coordinate pair, so none carries a patrol waypoint. This
 fits the gated employee-contact path and does not make those rows a general
-walker spawner. The default-list movement service enters `0x142AE`, reads the
-`+0xE0` list initialized by `0x44BC`, and advances each actor's selected
-`+0x96/+0x98` target through the Lua `apply_patrol` path.
+walker spawner. The ROM's movement path explains why: `0x44BC` copies the
+initial `+0xE0` coordinate into both the actor's live position and target
+`+0x96/+0x98`. On the tagged-record branch, `0x142AE` checks that target with
+`0x144E8`; once it is reached, the routine reads the next `+0xE0` pair. Every
+A800 list has a zero-X terminator there, so `0x142AE` clears cursor `+0xE4`
+and selects the initial pair again. The selected target is still the actor's
+spawn position, so the close-range check reports it reached and does not
+install the `0xB574` walk continuation through `0x145A2`. The current Lua
+`apply_patrol` path represents the same loop: an empty point list resets the
+target to `initial`, while the zero-distance check leaves movement inactive.
+These entries are stationary contacts unless another source action changes
+their target. The six regional default lists have separate nonempty routes.
 
 The new
 `shadowrun_ghidra_conversion_qt_field_region_map_pedestrians_qa` checks each
