@@ -1438,7 +1438,18 @@ SHA-256. The physical Decker seed-0 route now reaches the zero-success result
 and `0x1E04A`. Its QA suppresses the separate `0x1DFC4` region at
 `0x1DB576` while walking to record 90, then verifies the fresh `0x960`
 alarm timer, sound `0x30`, latch, reinforcement boundary, and all three
-actors from list `0x1DB518` at their source-list positions. The kit-assisted
-trials and independent Genesis visuals remain open; the hill stays partial.
+actors from list `0x1DB518` at their source-list positions. The new
+`shadowrun_ghidra_conversion_qt_field_mitsuhama_after_hours_electronics_kit_success_qa`
+uses the ordinary New Game Decker (template 1/class 3, Electronics 1) and adds
+only a QA fixture of ROM item `0x15`. ROM `0x21692` selects the three-die,
+target-3 path; source seed `0x0004` yields faces 4, 2, and 4, meeting the
+two-success requirement. It displays the success text at `0x11CD3A`, sets
+selection `0xFF`, and requests sound `0x4B`. The result holds for 30 frames
+with record 90 still locked at `0x82`; ordinary A commits the single map-cell
+change to `0x81` while preserving the kit. All 16 BMP and five TSV artifacts
+match between Debug and Release by SHA-256. The inspected prompt, choices,
+result, and field return are internal runtime captures, not independent
+Genesis evidence. Normal Electronic Kit acquisition and independent visuals
+remain open; the hill stays partial.
 See the
 [conditional pedestrian and Scene-34 runtime audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md).

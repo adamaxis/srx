@@ -19637,6 +19637,7 @@ enum class MitsuhamaAfterHoursEntryQaPath : std::uint8_t {
     electronics_no_skill,
     electronics_partial,
     electronics_alert,
+    electronics_kit_success,
 };
 
 int run_field_mitsuhama_scene34_electronics_qa(
@@ -19656,17 +19657,20 @@ int run_field_mitsuhama_scene34_electronics_qa(
         path == MitsuhamaAfterHoursEntryQaPath::electronics_partial;
     const bool alert_path =
         path == MitsuhamaAfterHoursEntryQaPath::electronics_alert;
+    const bool kit_path =
+        path == MitsuhamaAfterHoursEntryQaPath::electronics_kit_success;
     const auto expected_archetype = static_cast<std::uint8_t>(
         no_skill_path ? 2U : 3U);
     const auto expected_electronics_skill = static_cast<std::uint8_t>(
         no_skill_path ? 0U : 1U);
     const auto expected_selection = static_cast<std::uint8_t>(
-        (no_skill_path || alert_path) ? 2U : 1U);
+        kit_path ? 0xFFU : (no_skill_path || alert_path) ? 2U : 1U);
     const std::string scenario = no_skill_path
         ? "no-skill"
-        : partial_path ? "partial" : "alert";
+        : partial_path ? "partial"
+        : alert_path ? "alert" : "kit-success";
     const auto& active_party = field_scene.field_party_records_for_dump();
-    const auto party_before = active_party;
+    auto party_before = active_party;
     const auto map_before = field_scene.state()
         .field_scene_buffers.source_metadata.terrain_collision_map;
     const auto audio_before = field_audio_events.size();
@@ -19723,6 +19727,39 @@ int run_field_mitsuhama_scene34_electronics_qa(
                   << ", best_skill="
                   << static_cast<unsigned>(best_electronics_skill) << ")\n";
         return 3;
+    }
+
+    std::optional<std::size_t> electronics_kit_slot;
+    if (kit_path) {
+        auto& decker = field_scene.active_runner_record();
+        for (std::size_t slot = 0U;
+             slot < decker.inventory_item_codes.size(); ++slot) {
+            if (decker.inventory_item_codes[slot] == 0U) {
+                electronics_kit_slot = slot;
+                break;
+            }
+        }
+        if (!electronics_kit_slot.has_value()) {
+            std::cerr << "Mitsuhama entry QA: the ordinary Decker has no "
+                         "inventory slot for the QA Electronic Kit\n";
+            return 3;
+        }
+        // The ordinary New Game Decker preset has Electronics 1 and no kit.
+        // Add only ROM item 0x15 as a fixture so the source's kit branch can
+        // be exercised without changing the class or skill profile.
+        decker.inventory_item_codes[*electronics_kit_slot] =
+            kElectronicsKitItem;
+        decker.inventory_phase_bytes[*electronics_kit_slot] = 0U;
+        party_before = active_party;
+        const auto kit_count = static_cast<std::size_t>(std::count(
+            decker.inventory_item_codes.begin(),
+            decker.inventory_item_codes.end(), kElectronicsKitItem));
+        if (kit_count != 1U ||
+            decker.inventory_phase_bytes[*electronics_kit_slot] != 0U) {
+            std::cerr << "Mitsuhama entry QA: the active Decker kit fixture "
+                         "did not match ROM inventory item 0x15\n";
+            return 3;
+        }
     }
 
     const auto inventory_unchanged = [&field_scene, &party_before] {
@@ -19820,6 +19857,7 @@ int run_field_mitsuhama_scene34_electronics_qa(
     const auto alarm_timer_before_action =
         field_scene.field_alarm_timer_for_dump();
     const auto alarm_sounds_before_action = audio_event_count(0x30U);
+    const auto success_sounds_before_action = audio_event_count(0x4BU);
     const auto alarm_boundary_count_before_action = static_cast<std::size_t>(
         std::count(source_boundaries.begin(), source_boundaries.end(),
                    std::string("field.alarm.reinforcements_published")));
@@ -19835,7 +19873,7 @@ int run_field_mitsuhama_scene34_electronics_qa(
         // meeting target 5. The zero-roll alert uses seed 0 / face 1.
         // Pin the PRNG at the Electronics action boundary.
         field_scene.set_source_random_seed_for_dump(
-            alert_path ? 0x0000U : 0x0006U);
+            alert_path ? 0x0000U : kit_path ? 0x0004U : 0x0006U);
     }
     field_scene.set_controller_port_byte(0x40U);
     field_scene.advance_frame();
@@ -19875,6 +19913,8 @@ int run_field_mitsuhama_scene34_electronics_qa(
     const auto result_image = render_qa_field(field_scene);
     const auto expected_result_text = no_skill_path
         ? std::string_view("not skilled in Electronics")
+        : kit_path
+              ? std::string_view("quick work of the lock")
         : partial_path
               ? std::string_view("This attempt at the lock eludes you")
               : std::string_view("fragged this attempt at the lock");
@@ -19915,7 +19955,13 @@ int run_field_mitsuhama_scene34_electronics_qa(
               alarm_active_after_action == alarm_was_active &&
               alarm_timer_after_action <= alarm_timer_before_action &&
               no_reinforcement_delta;
-    const auto expected_audio_count = audio_before + (alert_path ? 1U : 0U);
+    const auto expected_audio_count =
+        audio_before + ((alert_path || kit_path) ? 1U : 0U);
+    const bool action_sounds_match =
+        audio_event_count(0x4BU) ==
+            success_sounds_before_action + (kit_path ? 1U : 0U) &&
+        alarm_sounds_after_action ==
+            alarm_sounds_before_action + (alert_path ? 1U : 0U);
     const bool expected_alarm_active_after_action =
         alarm_was_active || alert_path;
     const auto expected_world_actors_after_action =
@@ -19931,6 +19977,7 @@ int run_field_mitsuhama_scene34_electronics_qa(
         field_scene.field_activity_selection_for_dump() != expected_selection ||
         !inventory_unchanged() || !map_unchanged() ||
         field_audio_events.size() != expected_audio_count ||
+        !action_sounds_match ||
         !expected_alarm_effect ||
         result_image.size() != QSize(kSceneWidth, kSceneHeight) ||
         !result_image.save(QString::fromStdWString(result_path.wstring()))) {
@@ -19942,6 +19989,8 @@ int run_field_mitsuhama_scene34_electronics_qa(
                   << ", inventory=" << inventory_unchanged()
                   << ", map=" << map_unchanged() << ", audio="
                   << audio_before << "->" << field_audio_events.size()
+                  << " (kit-sound=" << audio_event_count(0x4BU)
+                  << ", alarm-sound=" << alarm_sounds_after_action << ")"
                   << ", event=0x" << std::hex << electronics_event
                   << std::dec << ", panel=" << expected_result
                   << ", text=" << expected_result_text_matches
@@ -20028,13 +20077,27 @@ int run_field_mitsuhama_scene34_electronics_qa(
     const auto returned_field_only = render_qa_field(field_scene, true);
     const auto& returned_map = field_scene.state()
         .field_scene_buffers.source_metadata.terrain_collision_map;
+    bool returned_map_matches = returned_map == map_before;
+    if (kit_path) {
+        returned_map_matches = map_before.size() == 64U * 64U &&
+            returned_map.size() == map_before.size() &&
+            map_before[kScene34DoorMapIndex] == 0x82U &&
+            returned_map[kScene34DoorMapIndex] == 0x81U;
+        for (std::size_t index = 0U;
+             returned_map_matches && index < returned_map.size(); ++index) {
+            if (index != kScene34DoorMapIndex &&
+                returned_map[index] != map_before[index]) {
+                returned_map_matches = false;
+            }
+        }
+    }
     const bool clean_return =
         field_scene.field_scene_reference_for_dump() == 34U &&
         field_scene.field_activity_selection_for_dump() == expected_selection &&
         !field_scene.field_interaction_open() && !field_scene.dialogue_open() &&
         !field_scene.field_mode_text_open_for_dump() &&
         !field_scene.shop_menu_open() && field_scene.field_entity_visible_for_dump() &&
-        returned_map == map_before && inventory_unchanged() &&
+        returned_map_matches && inventory_unchanged() &&
         field_audio_events.size() == expected_audio_count &&
         field_scene.field_alarm_active_for_dump() ==
             expected_alarm_active_after_action &&
@@ -20053,10 +20116,10 @@ int run_field_mitsuhama_scene34_electronics_qa(
             (output / "actual.bmp").wstring()));
     if (!clean_return || !captures_saved || !trace) {
         std::cerr << "Mitsuhama entry QA: Electronics " << scenario
-                  << " acknowledgement did not restore the unchanged "
-                     "Scene-34 field (clean="
+                  << " acknowledgement did not restore the expected "
+                     "Scene-34 field state (clean="
                   << clean_return << ", inventory=" << inventory_unchanged()
-                  << ", map=" << (returned_map == map_before) << ", audio="
+                  << ", map=" << returned_map_matches << ", audio="
                   << audio_before << "->" << field_audio_events.size() << ")\n";
         return 3;
     }
@@ -20068,7 +20131,9 @@ int run_field_mitsuhama_scene34_electronics_qa(
               << (no_skill_path ? "samurai" : "decker") << " skill="
               << static_cast<unsigned>(expected_electronics_skill)
               << " selection=" << static_cast<unsigned>(expected_selection)
-              << " map=0x82 alarm=" << expected_alarm_active_after_action
+              << " map=" << (kit_path ? "0x82->0x81" : "0x82")
+              << " kit=" << kit_path
+              << " alarm=" << expected_alarm_active_after_action
               << " audio=" << audio_before << "->" << expected_audio_count
               << " artifacts="
               << probe_output.string() << '\n';
@@ -20948,7 +21013,8 @@ int run_field_mitsuhama_after_hours_entry_qa(
 
     if (path == MitsuhamaAfterHoursEntryQaPath::electronics_no_skill ||
         path == MitsuhamaAfterHoursEntryQaPath::electronics_partial ||
-        path == MitsuhamaAfterHoursEntryQaPath::electronics_alert) {
+        path == MitsuhamaAfterHoursEntryQaPath::electronics_alert ||
+        path == MitsuhamaAfterHoursEntryQaPath::electronics_kit_success) {
         return run_field_mitsuhama_scene34_electronics_qa(
             field_scene, asset_root, output, probe_output, field_audio_events,
             source_boundaries, path);
@@ -33410,6 +33476,15 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_mitsuhama_after_hours_entry_qa_mode =
                     MitsuhamaAfterHoursEntryQaPath::electronics_alert;
+                field_mitsuhama_after_hours_entry_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-mitsuhama-after-hours-electronics-kit-success-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_mitsuhama_after_hours_entry_qa_mode =
+                    MitsuhamaAfterHoursEntryQaPath::electronics_kit_success;
                 field_mitsuhama_after_hours_entry_qa_path =
                     std::filesystem::path(argv[++index]);
             }

@@ -84,8 +84,18 @@ QA verifies three new actors at the coordinates in source-list records
 `0x1DB534`, `0x1DB54A`, and `0x1DB55C`, the 30-frame alert hold, and clean
 field return. Its 16 BMPs per configuration match by SHA-256; choices,
 alert-result, and return images were inspected at 320x224. They remain
-internal captures, not independent Genesis evidence. Kit-assisted Scene-34
-trials and the independent Genesis comparison remain open. Ordinary input
+internal captures, not independent Genesis evidence. The new
+`shadowrun_ghidra_conversion_qt_field_mitsuhama_after_hours_electronics_kit_success_qa`
+uses the ordinary New Game Decker profile (class 3, Electronics 1) with only a
+QA-seeded Electronic Kit (`0x15`). ROM `0x21692` switches this inventory state
+to three trials against target 3; seed `0x0004` yields faces 4, 2, and 4. Two
+successes show text `0x11CD3A`, set selection `0xFF`, and request sound `0x4B`.
+The result is static for the source 30-frame hold and leaves record 90 locked
+at `0x82`; ordinary A commits only that map cell to `0x81`. The kit remains in
+the Decker's inventory. All 16 BMP and five TSV artifacts match between Debug
+and Release by SHA-256. I inspected the complete prompt, choices, success
+page, and clean field return; these remain internal captures, not independent
+Genesis evidence. Normal kit acquisition remains open. Ordinary input
 reaches the live A8AE actor at
 `(0x1D00,0x4100)` within the ROM `+/-0x40` proximity window. A presses advance
 all three `0xF4BBC` pages, and the source cleanup retires Aragorn's actor
@@ -531,13 +541,13 @@ fade. Debug/Release QA verifies Aragorn's source slot is removed and saves a
 closed Scene-34 BMP. The route captures are internal runtime evidence, not an
 independent Genesis animation or map comparison.
 
-Next, cover the Scene-34 record-90 Decker kit-assisted Electronics outcome
-with the ordinary class profile, inventory, and source RNG inputs. The
-zero-roll call to `0x1E04A` and its fresh-latch `0x1DB518` actor handoff are
-now tested separately from the walk-in region alarm. Do not use the Scene-20
-cases as substitutes for this scene. The accepted-registry persistence seam
-and both late-gate choice-retention branches pass field resource-entry QA; the
-uninterrupted in-world Johnson-to-field route and a Section-41 route-matched
-visual check remain open. Then match a real capture to the selected scene and
-live actor record; the current internal BMPs are regression artifacts, not an
-independent visual oracle. The pedestrian population hill remains partial.
+The Scene-34 Electronics branch matrix now covers Samurai no-skill, ordinary
+Decker no-kit partial success, Decker zero-success alert, and Decker kit
+success. The accepted-registry persistence seam and both late-gate
+choice-retention branches pass field resource-entry QA, but the uninterrupted
+in-world Johnson-to-field route remains open. Continue that route without
+restoring `run_registry` through the test persistence API, then resume the
+pedestrian producer census across street scenes and match candidate records to
+independent longplay frames. The current Scene-34 BMPs remain internal
+regression evidence and do not identify a live actor in the longplay. The
+pedestrian population hill remains partial.

@@ -1293,6 +1293,16 @@ add_shadowrun_qt_qa_case(
     --field-mitsuhama-after-hours-electronics-partial-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-mitsuhama-after-hours-electronics-partial-qa")
 
+# Keep the ordinary Decker profile and seed only ROM item 0x15 as a QA fixture.
+# ROM 0x21692 then uses three dice at target 3; seed 0x0004 yields 4, 2, 4.
+# The success sound plays on selection, while record 90 opens only after A.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_mitsuhama_after_hours_electronics_kit_success_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-archetype decker
+    --field-mitsuhama-after-hours-electronics-kit-success-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-mitsuhama-after-hours-electronics-kit-success-qa")
+
 # Seed the ordinary New Game Decker's source roll to zero at record 90. QA
 # suppresses the separate 0x1DB576 region alarm on walk-in; ROM 0x21692 then
 # reaches the fresh Scene-34 0x1E04A path, sound 0x30, and all three 0x1DB518
