@@ -86,14 +86,43 @@ The source and native route checks were reviewed alongside every full-screen
 frame. The capture is an internally generated regression artifact and is not
 an independent Genesis visual oracle.
 
+## Supplemental external recording reviewed 2026-10-27
+
+The user supplied `e8_karma_spend.zip`, containing `au/e8_karma_spend/` with
+620 consecutive 320x224 PNG frames (`e_08541.png` through `e_09160.png`), an
+input log, RAM snapshots, and audio. The package has no ROM hash, emulator
+build identity, or capture method, so it is useful as an external comparison
+but is not independently verified Genesis footage. The archive remains
+outside the repository and is not part of this documentation commit.
+
+The input log records Up at frame 8641 followed by A presses at 8751, 8767,
+8807, 8847, 8891, 9001, and 9081. The visible sequence reaches the Stoker
+door, room offer and payment, Hotel status/options, and the Karma child. At
+frame 9040 Joshua is Human/Shaman with Body 2 and Karma 20; the page previews
+Body 3 for cost 3. A later frame shows the default-Yes purchase prompt, but
+the recording contains no subsequent confirmation input or resulting spend.
+It does not show a checkout or field return.
+
+The supplied Stoker, manager, room-offer, paid-message, Hotel Options, and
+Karma frames resemble their corresponding native QA screens at the page and
+layout level. Their differing runner state and unrecorded source identity
+prevent using these comparisons as exact Genesis pixel goldens. The external
+sequence also holds full black for frames 8693..8732 (40 frames), begins
+drawing the shared panel at 8733, and shows its complete text by 8736. The
+current native doorway QA has five full-black frames before drawing the
+populated page. The ROM trace includes mode-entry audio waits totaling 18
+VBlanks at `0x53126`, but its call relationship to this particular 40-frame
+visual interval has not been established. Keep the transition timing open.
+
 ## Nine-question visual review
 
 1. **Does it look correct? — Unknown against the Genesis game.** The supplied
    independent section 03 footage supports the Stoker doorway/fade/panel
-   family, including frames 000028..000055 and 000080..000082. No matching
-   independent Hotel status, options, Karma-spending, or checkout frames were
-   found. The native screens are internally legible and consistently laid
-   out, but that cannot establish their exact original appearance.
+   family, including frames 000028..000055 and 000080..000082. The supplied
+   `e8_karma_spend.zip` adds Hotel status, options, and Karma pages, but has no
+   ROM or emulator identity. It supports broad layout comparison, not verified
+   Genesis pixel fidelity. The native screens are internally legible and
+   consistently laid out, but their exact original appearance remains open.
 2. **Does the visible look match behavioral state? — Yes for the tested
    route.** Ordinary input selects collision `0xFFC2`/event 2, the first-visit
    manager offers rent, leave, and Michael's package, payment changes the
@@ -104,8 +133,10 @@ an independent Genesis visual oracle.
 3. **Are the visuals themselves correct? — Unknown against independent
    Genesis pixels.** The source-derived full-page redraw, text colors,
    selection cursor, cost/result details, and output dimensions are checked by
-   the Qt route assertions. No independent Hotel screenshot is available to
-   verify its exact pixel placement, palette, or text appearance.
+    the Qt route assertions. The supplied external sequence resembles the
+    corresponding Hotel pages, but uses a different runner state and does not
+    identify its ROM/emulator build. Exact original pixel placement and palette
+    remain unverified.
 4. **Does it animate as expected? — Yes for the traced native cadence.** The
    Hotel status/options and checkout wait loops call `0xE660` once per update;
    Debug and Release check 30 updates, stable text, and change confined to the
@@ -130,7 +161,9 @@ an independent Genesis visual oracle.
    full fade-to-black/field-return interval, and the later command overview.
    Independent section 03 frames support the Stoker doorway and
    dialogue appearance, but contain no Hotel menu visit or controller log.
-   Independent Hotel interaction frames remain unavailable.
+   The separate supplied sequence covers Hotel status/options and the Karma
+   preview/prompt, without a confirmed purchase or checkout; its source
+   identity is unknown.
 8. **Does the new UI replace the old UI cleanly? — Yes in the tested route.**
    Hotel status replaces the field/HUD; options replace status; the Karma
    spending page contains no old Hotel options; Hotel options are redrawn on
@@ -181,7 +214,9 @@ an independent Genesis visual oracle.
   field reveal, command overview, and clean return were inspected at full
   resolution. The text-binding change leaves the output pixels unchanged.
 - **Independently visually checked:** section 03 supports the Stoker doorway
-  and dialogue panel only. No independent Hotel-page capture is available.
+  and dialogue panel. The supplied external recording adds Hotel-page visual
+  comparisons, but its source identity is unknown and it does not establish
+  Genesis pixel fidelity.
 - **Reported defect resolved:** no new independent Hotel appearance claim is
   made. The native route is connected and internally verified; exact Hotel
   visual fidelity remains open.

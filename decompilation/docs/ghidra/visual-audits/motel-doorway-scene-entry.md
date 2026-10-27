@@ -122,6 +122,19 @@ or palette are correct. The video route's input/archetype state is also not
 logged, so movement timing and portrait-color comparisons are not treated as
 same-state matches.
 
+### Supplemental recording reviewed 2026-10-27
+
+The user supplied `e8_karma_spend.zip` includes an external doorway sequence
+with Up recorded at frame 8641. It shows the runner at the Stoker door around
+8680, the fade beginning at 8681, full black from 8693 through 8732, the panel
+starting at 8733, and complete opening text by 8736. This is a 40-frame black
+hold in the supplied recording, compared with five full-black frames in the
+current native route QA. The archive contains no ROM hash or emulator build
+identity, so it cannot settle the ROM timing question or establish independent
+Genesis fidelity. The mode-entry audio service at `0x53126` waits 18 VBlanks in
+total, but its reachability and visual timing contribution on this route remain
+untraced. The source call path and blank interval are still open.
+
 ## Portrait extraction correction
 
 ROM `0x1F292` loads Stoker's profile at `0x121FA0`, decodes pattern stream

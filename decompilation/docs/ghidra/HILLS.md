@@ -676,9 +676,11 @@ physically opens the spending child for all thirteen raw runner profiles,
 checks all 260 cursor/profile states, the thirty race-stat ceilings, zero and
 rank-12 boundaries, and an insufficient/decline/confirm transaction for every
 profile. Its 398 Debug/Release full-screen frames match by SHA-256. Keep the
-visual hill partial: the supplied video still has no matching Hotel Karma
-screen, and the Mage Only/insufficient message shares pixels with the selected
-description in the host capture.
+visual hill partial: the user-supplied `e8_karma_spend.zip` includes a Hotel
+Karma preview/prompt sequence (Human/Shaman, Body 2, Karma 20), but has no ROM
+or emulator identity and ends before confirmation input or purchase result.
+The Mage Only/insufficient message shares pixels with the selected description
+in the host capture.
 
 Magic has two user-type-specific presentations per the user's visual
 reference: magic users get the yellow advanced breakdown, while non-magic

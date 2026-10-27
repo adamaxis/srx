@@ -69,18 +69,33 @@ give the command view a spending path it does not have.
   detail row. The runtime test separately checks that command A returns
   without mutation, Hotel No preserves the record, and Hotel Yes spends Karma
   and raises Body.
-- The supplied longplay has no identified independent Genesis capture of
-  either exact page. Section 06 frame `000090` shows a runner status panel, not
-  either Attributes/Skills Karma page. The generated captures are internal
-  conversion evidence, not Genesis visual goldens.
+- The supplied longplay has no identified capture of either exact page;
+  section 06 frame `000090` shows a runner status panel. A separate user-
+  supplied `e8_karma_spend.zip` recording shows the Hotel page with Joshua as
+  Human/Shaman, Body 2, Karma 20, and a Body 3 preview costing 3 Karma, then
+  the default-Yes confirmation prompt. It contains no confirmation input or
+  purchase result, and provides no ROM hash or emulator build identity. Treat
+  it as an external visual comparison, not verified Genesis footage.
+
+  The Human/Shaman values are consistent with the profile at ROM `0x72B1A`
+  (Human race, Shaman class, Body 2), while Karma 20 is runtime state: the
+  preset's `+0x8D` Karma byte is zero. The native Hotel route's Human/Samurai
+  Body 1/Karma 50 setup is a separate QA fixture, intentionally chosen to
+  expose a Body 2 preview costing 2. The profile permutation QA covers the
+  source-derived class/race records and limits; neither fixture should be read
+  as the only valid page state.
+
+  The generated captures remain internal conversion evidence, not Genesis
+  visual goldens.
 
 ## Nine verification questions
 
 1. **Does each page look correct?** The source-derived command view shows the
    shared two-column grid, current Karma, focused row, Essence pair, and any
    installed-cyberware details. The Hotel child shows its upgrade target and
-   cost. No matching independent Genesis frames were identified, so exact
-   Genesis appearance remains unverified.
+   cost. The supplied `e8_karma_spend.zip` provides a broad external
+   comparison for the Hotel page, but its source identity is unrecorded, so
+   exact Genesis appearance remains unverified.
 
 2. **Does the visible state match behavior?** Yes in typed and pixel QA. Only
    the currently focused cell uses palette line 2; moving restores the prior
@@ -97,7 +112,8 @@ give the command view a spending path it does not have.
    runner fixtures, pixel QA confines their difference to the lower
    upgrade/cost row. Script QA checks each label key and exact ROM copy. This
    checks the conversion against its source-derived layout, not against an
-   independent Genesis image.
+   verified Genesis image. The supplied external comparison is useful for the
+   Hotel page's broad layout, but it is not a known Genesis capture.
 
 4. **Should either page animate?** No page animation is indicated by these
    source paths. The command view stays pixel-identical for 30 advanced frames;
@@ -120,9 +136,10 @@ give the command view a spending path it does not have.
 7. **Do multiple frames support the reading?** Internally, yes: all 20
    selected cells, focus without opening, static hold, populated/empty
    cyberware, Hotel prompt, applied upgrade, and parent returns are captured.
-   Debug and Release images match. The longplay lacks a matching multi-frame
-   sequence for either exact page, so it provides no independent visual
-   support.
+   Debug and Release images match. The longplay lacks either exact page. The
+   supplied external sequence does show the Hotel page over multiple frames,
+   but no purchase result and no identified ROM/emulator build; it provides
+   partial visual comparison only.
 
 8. **Are old controls cleared before the new page is drawn?** Yes in the
    route QA. Entry replaces the full parent composition; command return is
