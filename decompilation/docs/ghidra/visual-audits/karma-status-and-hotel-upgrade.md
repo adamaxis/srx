@@ -73,9 +73,19 @@ give the command view a spending path it does not have.
   section 06 frame `000090` shows a runner status panel. A separate user-
   supplied `e8_karma_spend.zip` recording shows the Hotel page with Joshua as
   Human/Shaman, Body 2, Karma 20, and a Body 3 preview costing 3 Karma, then
-  the default-Yes confirmation prompt. It contains no confirmation input or
-  purchase result, and provides no ROM hash or emulator build identity. Treat
-  it as an external visual comparison, not verified Genesis footage.
+  the default-Yes confirmation prompt at frame 9080. [C] Its input log records
+  a four-frame A press beginning at frame 9081; snapshots from 9040 through
+  9160 retain `FFFC04=0x00FF0100`, Body 2 at `+0x77`, and Karma 20 at `+0x8D`,
+  with cost/increase both 3. The recording has no applied upgrade. [C] At frame
+  9080, `FFDD22=0x4040` and `FFF0DC=0`; at 9081, `FFDD22=0x0040`. ROM `0x19F2`
+  maps A to controller bit 6, and `0x195C` stores current buttons in the low
+  byte and new press edges in the high byte. The snapshots therefore show an A
+  edge with the prompt visible at 9080; the `inputs.txt` onset at 9081 is one
+  image later. [H] If the capture uses the US-ROM route, `0xD53C` returns on
+  that edge and `0xD3EA` should write Body 3 and Karma 17. The unchanged record
+  conflicts with that source path; the missing ROM/build identity prevents
+  assigning the discrepancy to the port. Treat the recording as an external
+  visual comparison, not verified Genesis footage.
 
   The Human/Shaman values are consistent with the profile at ROM `0x72B1A`
   (Human race, Shaman class, Body 2), while Karma 20 is runtime state: the

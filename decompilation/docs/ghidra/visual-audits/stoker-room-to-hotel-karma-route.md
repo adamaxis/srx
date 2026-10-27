@@ -99,9 +99,19 @@ The input log records Up at frame 8641 followed by A presses at 8751, 8767,
 8807, 8847, 8891, 9001, and 9081. The visible sequence reaches the Stoker
 door, room offer and payment, Hotel status/options, and the Karma child. At
 frame 9040 Joshua is Human/Shaman with Body 2 and Karma 20; the page previews
-Body 3 for cost 3. A later frame shows the default-Yes purchase prompt, but
-the recording contains no subsequent confirmation input or resulting spend.
-It does not show a checkout or field return.
+[C] Frame 9080 shows the default-Yes purchase prompt, and the input log records
+a four-frame A press beginning at 9081. From frames 9040 through 9160 the
+snapshots keep `FFFC04=0x00FF0100`; Body at record `+0x77` and Karma at `+0x8D`
+remain 2 and 20, while the displayed cost and increase remain 3. No upgrade
+is applied in this capture. [C] At frame 9080, `FFDD22=0x4040` and
+`FFF0DC=0`; at 9081, `FFDD22=0x0040`. ROM `0x19F2` maps A to controller bit 6,
+and `0x195C` stores current buttons in the low byte and new press edges in the
+high byte. The snapshots therefore show an A edge with the prompt visible at
+9080; the `inputs.txt` onset at 9081 is one image later. [H] If the capture
+uses the US-ROM route, `0xD53C` returns on that edge and `0xD3EA` should write
+Body 3 and Karma 17. The unchanged record conflicts with that source path; the
+missing ROM/build identity prevents assigning the discrepancy to the port. It
+shows neither a checkout nor a field return.
 
 The supplied Stoker, manager, room-offer, paid-message, Hotel Options, and
 Karma frames resemble their corresponding native QA screens at the page and
