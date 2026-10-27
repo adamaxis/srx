@@ -15,6 +15,52 @@ The active project consumes shared files from `decompilation/input/`,
 `decompilation/docs/ghidra/`. Gameplay video and numbered frame analysis remain
 under `video analysis/`.
 
+## Required ongoing handoff
+
+Before any Shadowrun project work, read
+`decompilation/ghidra_conversion/LUNA_HANDOFF.md` in full. Refer back to it
+throughout longer tasks, and read the relevant backlog or progress notes it
+points to before selecting or closing work. It is the current continuation
+record for the integration branch, open work, intentional choices, and known
+failure modes. Verify mutable facts such as branch, HEAD, test count, and file
+paths against this checkout; its `/workspace/...` paths and Linux commands may
+belong to another environment. Preserve its uncommitted contents and do not
+stage, overwrite, or discard them without a direct request.
+
+The handoff identifies `port-fixes` as the integration branch. Confirm the
+actual branch and worktree state before changes; do not switch to `sr-refactor`,
+`main`, or retired worktrees for project work. **Do not push from this
+workspace.**
+
+Carry these standing rules from the handoff into each task:
+
+- Mark source findings `[C]` only when confirmed from ROM data/code or a cited
+  emulator frame; mark uncertain readings `[H]`. Put the ROM address or
+  recording/frame/pixel evidence beside behavioral claims and test expectation
+  changes. Never invent source details.
+- Never weaken tests to get a pass. Keep assertions and full input loops;
+  change expected behavior only with source evidence documented next to the
+  change. Wire new tests into CMake/CTest.
+- Run tests and QA headlessly with `QT_QPA_PLATFORM=offscreen`,
+  `SRX_HEADLESS=1`, and null/dummy audio. Do not open a game window, play audio,
+  or capture the user's screen. A focused pass validates only that subset; do
+  not report project-wide QA as green unless the full available QA suite passes.
+- Do not overwrite tracked assets. Extract to a build or temporary directory
+  and copy only appropriate generated files into the asset tree.
+- Preserve intentional behavior recorded in the handoff, including outward
+  facing building exits, the debug menu testing unlock, approximate ordinary
+  fades, and source-sized variable choice lists. Check the handoff before
+  changing any of these.
+- Before closing a fix, review the handoff's failure modes: alternate callers
+  and state paths, exact ROM arithmetic and transition order, narrow source
+  conditions, ROM side effects, unnecessary clamps, palette-valid colors, and
+  capture/setup differences.
+
+The handoff's sections 7–8 and the live playtest backlog define current
+priorities; do not copy a dated backlog snapshot into this file. If a linked
+`/workspace/...` file is absent here, locate its current equivalent or record
+that it is unavailable instead of assuming its status.
+
 ## Objective
 
 Reconstruct the US Genesis game in `decompilation/ghidra_conversion/`. The Qt

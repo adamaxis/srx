@@ -233,11 +233,11 @@ if (NOT SHADOWRUN_GHIDRA_QT_FRONTEND)
     endforeach()
 endif()
 
-# Build-time asset import. The game reads individually named files under
-# decompilation/assets/; most are gitignored and produced from the user's ROM.
-# Re-runs only when the extractor, the ROM, or resources.tsv change.
+# Optional build-time asset import. Normal builds consume the individually
+# named files under decompilation/assets/; import them explicitly with
+# shadowrun_graphics_extract --all-assets when source assets need refreshing.
 option(SRX_AUTO_EXTRACT_ASSETS
-       "Run shadowrun_graphics_extract --all-assets as part of the build" ON)
+       "Run shadowrun_graphics_extract --all-assets as part of the build" OFF)
 set(SHADOWRUN_US_ROM "${CMAKE_CURRENT_SOURCE_DIR}/../input/shadowrun_genesis_us.bin"
     CACHE FILEPATH "US Shadowrun Genesis ROM used for asset extraction")
 set(SHADOWRUN_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets"
