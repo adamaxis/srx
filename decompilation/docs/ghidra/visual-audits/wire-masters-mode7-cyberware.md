@@ -46,6 +46,23 @@ insufficient-funds, and field-return states. All eleven named full-frame
 captures have matching Debug/Release SHA-256 hashes; the complete 320x224
 frames were inspected.
 
+## Dermal Plating tier correction (2026-10-26)
+
+The shop purchase path in `0x571B2` maps category 6 to flag bits 9 through 11.
+At `0x5725C`, it starts with bit 9, advances to bit 10 or bit 11 when the
+previous tier is installed, and stops once bit 11 is present. The conversion
+previously initialized category 6 at bit 6, which is the Muscle Replacement
+range, so a Dermal Plating purchase wrote the wrong runner-record flag. The
+typed resolver now starts at bit 9 and preserves the source tier replacement
+sequence.
+
+`shadowrun_ghidra_field_equipment_upgrade` now checks purchases through bits
+9, 10, and 11 and verifies the terminal already-owned result. Debug and
+Release focused CTest runs pass. The dedicated Qt Wire-Masters interaction
+still buys only a datajack, so the Dermal Plating cursor-to-confirmation UI
+path and its displayed essence changes remain open for a separate runtime QA
+case. This unit coverage establishes flag progression, not visual fidelity.
+
 No matching independent Genesis Wire-Masters frame was identified in the
 supplied longplay. The captures are host regression output, not an independent
 visual golden; exact visual fidelity remains unclaimed.

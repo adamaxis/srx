@@ -91,9 +91,17 @@ Low`. The corresponding full-frame actual.bmp is byte-identical between
 Debug and Release. The complete 13-profile and 260-case spell matrix is
 documented in [the equipment combat-bar audit](equipment-combat-bar-profile-permutation-audit-2026-10-23.md).
 
-The source screenshot supports this exact Gator context. It does not cover the
-other class/race profiles or force values, and it is not a pixel-perfect
-golden.
+Independent section-06 frame `002550` supports the Gator Mana Zap Force-3
+command page (`Damage None`, `Power Very Low`); frames `000015`/`000020` show
+the Force-3 / Neutral `Set Force & Posture` panel. They support nearby layout,
+not pixel-perfect matches. They do not cover the Orc Shaman Mana Storm route,
+Forces 1, 2, or 4, or the other class/race profiles. The Debug/Release
+profile test now physically drives Mana Storm through Forces 1..4 and checks
+the `Meager`, `Minor`, `Very Low`, and `Low` Power text, the live Force
+counter, D4EA0 `+0x25` Damage row, the `0x10660` residual-driven `None`/bar
+branch, and the formula-derived Attack 11..14 bar rows. Those added frames
+are internal Qt captures; independent Genesis evidence is still open. See the
+[Force-label sweep](equipment-combat-bar-profile-permutation-audit-2026-10-23.md#force-dependent-power-label-and-mana-storm-sweep-2026-10-26).
 
 ## Outcome
 

@@ -63,19 +63,163 @@ slots.
 `0x5BA98` indexes the table at `0x1EDB88` from scene `FFDDC4` and the
 one-based selection counter `FFE183`. Its rows cover scenes `0x15..0x2B` and
 provide three single-pedestrian position lists. `0xA800` only selects one
-through its event-phase/world-mode/context gates. Those entries are not the
+through its run-type, world-mode, resource-index, and pending-spawn gates.
+Those entries are not the
 three actor groups above and must not be inserted as generic enemies to make
 the weapon appear to hit something.
 
-The random-pedestrian branch in `0xA800` requires byte `FFFBED` value 5,
+### `0xA800` branch precedence and side effects
+
+Raw ROM `0xA800` (`disassembly.s:0000A800..0000A8AC`) resolves these branches
+in order:
+
+| First matching branch | Additional condition | Pending list result | State side effect |
+|---|---|---|---|
+| `FFE180 != 0` | `FFF0C8 == 4` | Static list `0xA8AE` | Writes its header to `FFE110`, pointer to `FFE124` |
+| `FFE180 != 0` | `FFF0C8 != 4` | None; returns without considering `FFE182` | None |
+| `FFE180 == 0`, `FFE182 != 0` | None | Static list `0xA8CC` | Writes its header to `FFE110`, pointer to `FFE124` |
+| Both effect markers clear | `FFFBED != 5` or `FFDF40 != 2` | None | Does not sample `0x0D3A` |
+| Both effect markers clear; offer-initializer/mode gates pass | `FFE183 == 0` | No list decision yet | Samples bound 2, adds one, stores choice 1 or 2 in `FFE183` |
+| Random branch reached | `FFE12C != FFF0C8` | None | The sampled `FFE183` remains stored |
+| Random branch reached and indices equal | `FFFC3C != 0` | None | The sampled `FFE183` remains stored |
+| Run/mode gates pass, indices equal, `FFFC3C == 0` | `FFE183` selects a valid scene row | `0x5BA98` returns the scene/choice list | Writes list header to `FFE110`, pointer to `FFE124` |
+
+This ordering distinguishes “no list” from “no random work”: resource-index
+mismatch and a pending player-spawn request suppress the list only after the
+one-time choice has been stored. The static `FFE180` and `FFE182` branches
+precede and bypass the offer-initializer, mode, random-choice, resource-index, and
+player-spawn checks. The candidate row's `activation_gate` records this branch
+ordering; it is source documentation, not runtime logic.
+
+The random-pedestrian branch in `0xA800` requires selected offer initializer
+byte `FFFBED` value 5,
 world mode `FFDF40` value 2, word `FFE12C` equal to word `FFF0C8`, and dword
 `FFFC3C` equal to zero. When `FFE183` is zero, it calls `0x0D3A` with bound 2,
-adds one to the `0..2` result, and keeps the resulting one-based choice until
-source code clears the byte.
+then adds one to the result. The ROM routine at `0x0D3A` multiplies the
+16-bit PRNG value by the bound and returns the high word (`MULU`, `SWAP`,
+`EXT.L`); with bound 2 this is only 0 or 1. A fresh random choice is therefore
+1 or 2, not 1 through 3. The table at `0x1EDB88` contains a third pointer for
+each scene, but the traced random branch cannot select it. The only non-clear
+write to `FFE183` is the bound-2 sample plus one at `0xA87A`; its other writes
+are clears at `0x2A82`, `0xC684`, and `0x1E45E`. Choice 3 has no ROM writer and
+is unreachable after field-mode initialization; retain it as a table row, not
+as a possible random outcome.
 `0x5BA98` then indexes `0x1EDB88` by `scene_id - 0x15` and that choice minus
 one. The selected pending list is placed in `FFE124`; `0x43B6` drains it
 before the `FFE120` list and scene default list. This order matters because
 each spawned row consumes an ordinary actor slot before later lists run.
+
+The literal `FFFBED=5` gate is confirmed. ROM `0x1E6D6` copies the selected
+offer record's initializer byte from `0xF3EBC[FFF0AE]` to `FFFBED`, and
+`0x1E71C` indexes the initializer table at `0xF3DC6` with it. This is the raw
+source offer initializer ID. Lua maps IDs 5, 11, and 12 to canonical Employee
+Recruitment, but this branch admits only ID 5. The only non-reset byte
+assignment to `FFFBED` is at `0x1E6D6`; `0x1E68C` resets its containing word to
+`0xFFFF`. No source assignment normalizes IDs 11 and 12 to 5 before this gate.
+
+For the `0x15..0x2B` scene-entry path, ROM `0x167AE` sets `FFDF40=2`, clears
+the 16-bit active effect index `FFF0C8`, reads the random-index bound from the
+active scene-resource record, and samples the 16-bit selected effect index
+`FFE12C`. Thus the equality gate first compares that random choice with the
+initial active index, zero. The `0xA800` code stores the random
+pedestrian choice in `FFE183` before testing this equality and `FFFC3C`; a
+failed later gate retains the selected choice through the `0xA800` return.
+Higher-priority `FFE180` and `FFE182` branches run before the pedestrian gate
+and select their own static lists (the `FFE180` branch additionally requires
+`FFF0C8=4`).
+
+The higher-priority `FFE180` list at `0xA8AE` is also a pedestrian source. Its
+ROM entry begins `80 1D 69 88 00 00 A8 C6 00 00 00 02 9E 20 2E 80 9E 08`:
+the tagged template resolves to `0x1D6988`, the position data is at `0xA8C6`
+(`x=0x1D00`, `y=0x4100`), and its ordered overrides are
+`+0x9E=0x20`, `+0x2E=0x80`, `+0x9E=0x08`. It is selected only when
+`FFE180 != 0` and the active effect index `FFF0C8` is 4; this return precedes
+the `FFE182` list and the random pedestrian branch. This is a separate static
+list from the 69 scene/choice rows in `0x1EDB88`; it has no scene ID in this
+branch. `world-activity-actors.tsv` now carries the A8AE actor in Scene 34,
+and the field runtime passes active and selected index facts through Lua before
+publishing its extracted template, position, overrides, and slot-3 record.
+
+The `0x167AE` scene-entry path clears `FFF0C8` on resource entry, while the
+elevator selector can later change that active index as it selects a child
+scene. A direct `FFE180` producer exists:
+service 3 at `0x53BCC` writes the marker at `0x53C3C` on its Scene-3/event-3
+branch when FFFC1E bit 2 is set, bit 3 is clear, `FFF0D5` is zero, and FFFC30
+bit 12 or FFFC38 bit 4/5 is set. It opens root `0xF4BB4`, then sets `FFE180`,
+clears D6, and sets `FFF0CC=0xFF`. The same service's separate Scene-6/event-0
+branch at `0x53C50` opens the Owlfeather repeat root `0xF4B84`.
+
+The negative `FFF0CC` aborts the remaining indexed-service stages inside
+`0x1F5CA`; the caller `0x75E` continues. With D6 clear and `FFFBF9=3`, it
+calls `0x167AE`, whose event-table row selects resource Scene 30. Its profile
+references group `0x1DB004`, whose header is inclusive maximum index 4 and
+whose children are `[30,31,32,33,34]`. Lift index 4 selects Scene 34. The
+actor descriptor's final `+0x9E=0x08` write satisfies the special-contact gate
+in `0xECCC`; while `FFE180` is set, that routine clears it and dispatches
+`0x53C90`, which sets story bit 3 (`ARAGORN_FOUND`) and opens root `0xF4BBC`
+with portrait `0x121E08`. The `0xF4BB4` text identifies the after-hours
+Mitsuhama route, and Notebook tip 70 identifies Aragorn's destination as its
+fifth floor. Their joined route resolves the numeric destination as Scene 34.
+Debug/Release QA now walks the Scene-3 after-hours route to Scene 30, traverses
+to the Scene-30 elevator, selects index 4, and verifies Scene 34 and the A8AE
+actor. A separate test seam places the player at the extracted A8AE coordinates
+so the ordinary proximity loop exercises `0xECCC`; it verifies FFE180
+consumption, story and mode flags, the actor one-shot bit, three `0xF4BBC`
+pages, and profile `0x121E08`. After the last page, `0x53C90` calls `0x1DED8`;
+that scan dispatches active records with `+0xB0` bit 7 to `0x1E514`, which
+clears the escort and active bits. Debug/Release QA checks exactly one actor
+retirement before the modal return fade and saves a closed Scene-34 image. That
+seam does not verify a physical route from the lift entry to Aragorn; Scene-34
+A1 and A2 event cells still need a ROM-first walk audit. No matching
+independent gameplay capture is available. The special transition through
+`0xC64C` and `0x2A32`/`0x2A44` clears `FFE180`; the ordinary resource entry and
+elevator handoff preserve it until contact. The static list still has no scene
+ID in `0xA800`.
+
+The bounds come from the raw `0x3232` profile table: `0x167AE` follows each
+profile's `+0x58` resource-bundle pointer, then the bundle's first longword to
+the bound word sampled by `0x0D3A`. The scene groups are:
+
+| Scene IDs | Bound for `FFE12C` | Values that pass the initial `FFF0C8=0` comparison |
+|---|---:|---|
+| `0x15..0x19` | 4 | `0` |
+| `0x1A..0x1D` | 3 | `0` |
+| `0x1E..0x22` | 4 | `0` |
+| `0x23..0x28` | 5 | `0` |
+| `0x29..0x2B` | 2 | `0` |
+
+The sample range is therefore `0..bound-1`, and the pedestrian branch only
+passes this gate when the selected resource index is zero. This is a source
+state condition, not a fixed percentage of visits; the deterministic PRNG
+seed and preceding calls decide whether a given scene entry passes.
+
+The source reset points found so far are field-mode initialization at
+`0x2A32`/`0x2A44`, request
+consumption at `0x1E43C`, and the type-5 mode-exit path at `0xC684` when
+`FFFC1C` bit 0 is set and bit 7 is clear. The top-level transition path at
+`0x0A92` calls `0x1E43C` when `FFDF42` is pending; that routine clears
+`FFE183`, scans actor records, and may start the `0x1F16A` world activity.
+These transitions matter because `FFE183` is shared with the world-activity
+request path; it cannot be treated as a fresh per-scene random roll. Lua's
+`World.resolve_conditional_actor_selection` now implements the A800 gate order
+and retains FFE183 between calls, but the current field runtime does not call
+it or create an actor from its result. `WorldActivityRoutineState` carries
+`FFE12C` and initializes `FFF0C8` to zero through `default_resource_word`; the
+elevator's later change to the active index is not synchronized into the
+actor-selection facts. The existing pending-list query receives only the two
+`FFE180`/`FFE182` markers. The `FFFC3C` host fact exists. Lua's FFE183 reset is
+connected to the modeled
+`0x2A32`/`0x2A44` and type-5 `0xC684` paths, but the `0x1E45E` consumer clear,
+FFE180/FFE182 producers, live active/selected-effect indices, and actor
+creation remain open.
+This remains an implementation gap, not a spawn claim.
+
+Independent longplay contact sheets contain map frames with pedestrian-like
+actors (for example around `02:58:10` in Section 41), but those frames do not
+identify the ROM scene, active run type, selected resource index, or actor
+record. They therefore do not yet prove that a specific `0xA800` candidate
+was live. The 69 positions remain candidate inputs pending a route-matched
+capture and the runtime gates above.
 
 All 69 choices contain one root-tagged `0x1D6988` pedestrian template (kind
 11, palette line 3, no initial item/spell action), one position, and the same

@@ -19,6 +19,18 @@ counters, marks story bit 2, and opens the brother-information page. Services
 `dialogue.entry_id` to one shared JSON graph; JSON conditions check that entry
 alongside the lodge, scene 6/event 0, and the corresponding story-bit gate.
 
+Service 3 at `0x53BCC` also has a distinct Scene-3/event-3 branch before its
+Scene-6/event-0 repeat branch. With story bit 2 set, bit 3 clear, `FFF0D5=0`,
+and FFFC30 bit 12 or FFFC38 bit 4/5 set, it opens root `0xF4BB4` with portrait
+profile `0x12209C`, then sets `FFE180` and `FFF0CC=0xFF`. The negative service
+marker makes `0x1F5CA` return from its indexed-service stages after clearing
+`FFF0CC`; caller `0x75E` then continues to `0x167AE` because D6 is clear and
+event 3 is below 8. The event-table row selects Scene 30, where the Mitsuhama
+group `[30,31,32,33,34]` lets lift index 4 reach Scene 34. Its conditional
+pedestrian contact path is documented separately in the
+[conditional pedestrian audit](conditional-pedestrian-runtime-gap-2026-10-26.md)
+and is not part of this lodge interaction graph.
+
 ## QA evidence
 
 The physical-entry QA walks with ordinary Up input into record 193 and saves
