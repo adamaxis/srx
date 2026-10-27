@@ -83,6 +83,55 @@ int main() {
         return 4;
     }
 
+    // ROM 0x5725C begins Dermal Plating at bit 9, advances through bits 10
+    // and 11, and replaces the previous tier after each purchase.
+    int dermal_confirmations = 0;
+    int dermal_already_owned = 0;
+    const FieldEquipmentUpgradeCallbacks dermal_callbacks{
+        {},
+        [&] { ++dermal_already_owned; },
+        {},
+        {},
+        {},
+        [&] {
+            ++dermal_confirmations;
+            return true;
+        },
+    };
+    state.selection_category = 6U;
+    state.upgrade_flags = 0U;
+    state.meter_tens = 9U;
+    state.meter_ones = 9U;
+    state.funds = 500U;
+    if (!expect(apply_field_equipment_upgrade(
+                    table, state, dermal_callbacks) ==
+                    FieldEquipmentUpgradeResult::applied &&
+                state.upgrade_flags == static_cast<std::uint16_t>(1U << 9U) &&
+                dermal_confirmations == 1)) {
+        return 15;
+    }
+    if (!expect(apply_field_equipment_upgrade(
+                    table, state, dermal_callbacks) ==
+                    FieldEquipmentUpgradeResult::applied &&
+                state.upgrade_flags == static_cast<std::uint16_t>(1U << 10U) &&
+                dermal_confirmations == 2)) {
+        return 16;
+    }
+    if (!expect(apply_field_equipment_upgrade(
+                    table, state, dermal_callbacks) ==
+                    FieldEquipmentUpgradeResult::applied &&
+                state.upgrade_flags == static_cast<std::uint16_t>(1U << 11U) &&
+                dermal_confirmations == 3)) {
+        return 17;
+    }
+    if (!expect(apply_field_equipment_upgrade(
+                    table, state, dermal_callbacks) ==
+                    FieldEquipmentUpgradeResult::already_owned &&
+                state.upgrade_flags == static_cast<std::uint16_t>(1U << 11U) &&
+                dermal_confirmations == 3 && dermal_already_owned == 1)) {
+        return 18;
+    }
+
     // ROM 0x5722A scans only Wired Reflexes bits 12..14. Bit 14 is the
     // terminal tier; the unrelated bit 15 does not change target selection.
     state.selection_category = 7U;

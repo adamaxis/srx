@@ -34,6 +34,8 @@ std::optional<FieldEquipmentUpgradeTarget> resolve_target(
     }
 
     if (category == 6U) {
+        // ROM 0x5725C starts Dermal Plating at bit 9 and replaces the prior
+        // tier with bit 10, then bit 11.
         for (std::uint8_t offset = 0; offset < 3U; ++offset) {
             const auto previous_bit = static_cast<std::uint8_t>(9U + offset);
             if ((state.upgrade_flags & (1U << previous_bit)) == 0U) {
@@ -45,7 +47,7 @@ std::optional<FieldEquipmentUpgradeTarget> resolve_target(
             return FieldEquipmentUpgradeTarget{
                 static_cast<std::uint8_t>(10U + offset), true};
         }
-        return FieldEquipmentUpgradeTarget{6U, false};
+        return FieldEquipmentUpgradeTarget{9U, false};
     }
 
     const auto base_bit = static_cast<unsigned>(category) + 5U;
@@ -82,6 +84,9 @@ std::optional<std::uint8_t> field_equipment_upgrade_display_essence_cost(
     if (selection_category >= 8U) {
         return std::nullopt;
     }
+
+    // ROM 0x57FA4's displayed cost uses a separate category-derived table
+    // index; it is not the purchase resolver's FFF0D5 target bit.
     auto threshold_index = static_cast<unsigned>(selection_category);
     if (selection_category >= 6U) {
         threshold_index += 5U;
