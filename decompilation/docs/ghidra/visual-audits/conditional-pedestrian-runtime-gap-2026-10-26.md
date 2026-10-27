@@ -670,16 +670,17 @@ captures. Approximate screen centers and resulting map coordinates are:
 
 These nearby-frame offsets use the same broad mask, with the sidebar and center
 of the viewport excluded; figure centers are visual estimates from the
-independent frames. The frame-8340 focused mask described above scores 0.97534
-at the same offset. [C] The map
-and moving figure are present in the capture. [H] The figure's colors and pose
-look closer to the extracted `pedestrian_k0b_none00` idle art than to the
-yellow-and-black `corp_guard_k05_item06` art, but the compressed video does
-not identify its actor record or party membership. Movement also means the
-current position cannot be compared directly with the A800 initial positions
-to prove which source path created it. Keep the A800 identity and pedestrian
-producer question open; no runtime behavior or hill status changes from this
-frame audit.
+independent frames. The frame-8340 focused map mask described above scores
+0.97534 at the same offset. A separate BGR `TM_CCORR_NORMED` search, masking
+black pixels in the ROM-derived sprite assets, matches the figure crop
+`x=32..77, y=30..91` to `pedestrian_k0b_none00` idle/walk direction 2 or 6,
+frame 3, at `(39,49)` with score `0.9498`; the next kind-11 sprite match scores
+`0.9281`. **[C]** The captured sprite is a close visual match for the extracted
+kind-11 pedestrian art. **[H]** This does not identify its actor record or
+party membership. Movement also means the current position cannot be compared
+directly with an A800 initial position to prove which source path created it.
+Keep the A800 identity and pedestrian producer question open; no runtime
+behavior or hill status changes from this frame audit.
 
 ## Next source-backed slice
 
