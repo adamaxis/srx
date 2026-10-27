@@ -23,7 +23,9 @@ constexpr std::size_t kFieldSessionModeSelectionWordCount = 0x17U;
 constexpr std::size_t kFieldSceneProfileWordCount = 48U;
 constexpr std::size_t kFieldSceneProfileByteCount =
     kFieldSceneProfileWordCount * sizeof(std::uint16_t);
-constexpr std::size_t kFieldElevatorSceneGroupMemberCount = 5U;
+// The ROM group header is the greatest valid zero-based floor index, so a
+// maximum value of five describes six destination scenes.
+constexpr std::size_t kFieldElevatorSceneGroupMemberCount = 6U;
 constexpr std::size_t kFieldElevatorSceneGroupRecordByteCount =
     1U + kFieldElevatorSceneGroupMemberCount;
 constexpr std::size_t kFieldElevatorSceneGroupTableByteCount =
@@ -113,8 +115,9 @@ struct FieldSceneSourceRecord {
 };
 
 struct FieldElevatorSceneGroupSourceRecord {
-    // ROM 0x58DE0's child scene list, resolved offline from the selected
-    // scene profile's resource bundle. IDs are copied into typed host data;
+    // ROM 0x167AE loads the list header into FFF0C6; 0x58DE0 permits floor
+    // indices through that value, and 0x16A8E reads child index + 1 after the
+    // header. The offline importer stores the resulting member count and IDs;
     // the Qt runtime never follows the profile or list pointers.
     std::uint8_t count = 0;
     std::array<std::uint16_t, kFieldElevatorSceneGroupMemberCount> scene_ids{};

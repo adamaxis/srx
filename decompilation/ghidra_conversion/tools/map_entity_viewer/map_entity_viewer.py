@@ -2502,7 +2502,7 @@ def read_elevator_scene_group(asset_root: Path, scene_id: int) -> list[int]:
         data = path.read_bytes()
     except OSError:
         return []
-    record_size = 6  # one count byte and five scene-reference bytes
+    record_size = 7  # one member-count byte and six scene-reference bytes
     offset = scene_id * record_size
     if scene_id < 0 or offset + record_size > len(data):
         return []

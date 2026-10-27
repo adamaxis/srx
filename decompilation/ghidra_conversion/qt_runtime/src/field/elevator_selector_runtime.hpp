@@ -5,10 +5,13 @@
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
 
-constexpr std::size_t kElevatorSelectorMaximumFloors = 5U;
+constexpr std::size_t kElevatorSelectorMaximumFloors = 6U;
 constexpr std::size_t kElevatorSelectorAnimationFrameCount = 17U;
 constexpr std::uint8_t kElevatorSelectorAnimationFrameDelay = 8U;
-constexpr std::uint8_t kElevatorSelectorNavigationFeedbackFrameCount = 8U;
+// ROM 0x58F14 sets D5 to 8 before 0xC24. That routine waits for VBlank and
+// DBF-loops, so the active arrow interval is nine VBlanks; 0x58E5A waits once
+// more before polling the controller again.
+constexpr std::uint8_t kElevatorSelectorNavigationFeedbackFrameCount = 9U;
 // ROM 0x131C / 0x12F6 loop d6 from 0x10 through zero: 17 calls to 0x1088 /
 // 0x10D6, with each call spaced by two VBlanks at 0x1342 [C].
 constexpr std::uint8_t kElevatorSceneTransitionPaletteStepCount = 17U;
@@ -41,6 +44,7 @@ struct ElevatorSelectorUpdate {
     bool navigation_feedback_finished = false;
     bool animation_started = false;
     bool animation_frame_changed = false;
+    bool current_floor_changed = false;
     bool animation_finished = false;
     bool sound_effect_requested = false;
     bool confirmed = false;

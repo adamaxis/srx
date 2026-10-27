@@ -87,6 +87,7 @@ ElevatorSelectorUpdate ElevatorSelectorRuntime::advance(
         current_floor_ = static_cast<std::uint8_t>(
             static_cast<std::int16_t>(current_floor_) +
             animation_direction_);
+        update.current_floor_changed = true;
         if (current_floor_ == selected_floor_) {
             animation_frame_ = 0U;
             animation_direction_ = 0;
@@ -125,14 +126,17 @@ ElevatorSelectorUpdate ElevatorSelectorRuntime::advance(
         update.navigation_feedback_started = true;
         return update;
     }
+    if (button_pressed(controller_events, ElevatorSelectorButton::confirm)) {
+        if (selected_floor_ != current_floor_) {
+            begin_floor_step();
+            update.animation_started = true;
+        }
+        // ROM 0x58F74 handles A before B and Start, even when the lift is
+        // already on the selected floor. Consume this input poll either way.
+        return update;
+    }
     if (button_pressed(controller_events, ElevatorSelectorButton::cancel)) {
         update.sound_effect_requested = true;
-    }
-    if (button_pressed(controller_events, ElevatorSelectorButton::confirm) &&
-        selected_floor_ != current_floor_) {
-        begin_floor_step();
-        update.animation_started = true;
-        return update;
     }
     if (button_pressed(controller_events, ElevatorSelectorButton::start)) {
         update.confirmed = true;

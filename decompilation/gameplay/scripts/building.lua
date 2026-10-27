@@ -600,7 +600,7 @@ function Building.resolve_field_location_entry(context)
     if type(group) ~= "table" or #group == 0 then
         return { action = "no_action" }
     end
-    if #group < 2 or #group > 5 then
+    if #group < 2 or #group > 6 then
         return nil
     end
 

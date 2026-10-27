@@ -25,12 +25,14 @@ int main() {
     }
     update = selector.advance(elevator_selector_button_mask(
         ElevatorSelectorButton::confirm));
-    if (update.animation_started || selector.is_animating() ||
+    if (update.animation_started || update.current_floor_changed ||
+        selector.is_animating() ||
         selector.navigation_feedback() !=
             ElevatorSelectorNavigationFeedback::next_floor_active) {
         return 3;
     }
-    for (std::uint8_t tick = 0U; tick < 6U; ++tick) {
+    for (std::uint8_t tick = 0U;
+         tick < kElevatorSelectorNavigationFeedbackFrameCount - 2U; ++tick) {
         update = selector.advance(0U);
         if (update.navigation_feedback_finished ||
             selector.navigation_feedback() !=
@@ -53,7 +55,7 @@ int main() {
     update = selector.advance(elevator_selector_button_mask(
         ElevatorSelectorButton::confirm));
     if (!update.animation_started || !selector.is_animating() ||
-        selector.animation_frame() != 16U) {
+        update.current_floor_changed || selector.animation_frame() != 16U) {
         return 6;
     }
     for (std::uint8_t tick = 0U; tick < 7U; ++tick) {
@@ -74,6 +76,7 @@ int main() {
         update = selector.advance(0U);
     }
     if (!update.animation_finished || selector.is_animating() ||
+        !update.current_floor_changed ||
         selector.current_floor() != 2U || selector.selected_floor() != 2U ||
         !selector.destination_changed()) {
         return 9;
@@ -97,10 +100,30 @@ int main() {
          tick < kElevatorSelectorNavigationFeedbackFrameCount; ++tick) {
         update = selector.advance(0U);
     }
-    update = selector.advance(elevator_selector_button_mask(
-        ElevatorSelectorButton::cancel));
-    if (!update.sound_effect_requested || !selector.is_open()) {
+    const auto confirm_cancel_start =
+        elevator_selector_button_mask(ElevatorSelectorButton::confirm) |
+        elevator_selector_button_mask(ElevatorSelectorButton::cancel) |
+        elevator_selector_button_mask(ElevatorSelectorButton::start);
+    update = selector.advance(confirm_cancel_start);
+    if (!update.animation_started || update.sound_effect_requested ||
+        update.confirmed || !selector.is_animating()) {
         return 12;
+    }
+    for (std::size_t tick = 0U;
+         tick < kElevatorSelectorAnimationFrameCount *
+                   kElevatorSelectorAnimationFrameDelay;
+         ++tick) {
+        update = selector.advance(0U);
+    }
+    if (!update.animation_finished || !update.current_floor_changed ||
+        selector.current_floor() != 1U ||
+        selector.selected_floor() != 1U) {
+        return 25;
+    }
+    update = selector.advance(confirm_cancel_start);
+    if (update.animation_started || update.sound_effect_requested ||
+        update.confirmed || selector.is_animating()) {
+        return 26;
     }
     update = selector.advance(elevator_selector_button_mask(
         ElevatorSelectorButton::next_floor));
@@ -111,16 +134,81 @@ int main() {
          tick < kElevatorSelectorNavigationFeedbackFrameCount; ++tick) {
         selector.advance(0U);
     }
-    update = selector.advance(elevator_selector_button_mask(
-        ElevatorSelectorButton::start));
-    if (!update.confirmed || !selector.is_open() ||
-        !selector.destination_changed()) {
+    update = selector.advance(
+        elevator_selector_button_mask(ElevatorSelectorButton::cancel) |
+        elevator_selector_button_mask(ElevatorSelectorButton::start));
+    if (!update.confirmed || !update.sound_effect_requested ||
+        !selector.is_open() || selector.is_animating() ||
+        selector.current_floor() != 1U ||
+        selector.selected_floor() != 2U || selector.destination_changed()) {
         return 14;
+    }
+    update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::cancel));
+    if (!update.sound_effect_requested || update.confirmed ||
+        !selector.is_open()) {
+        return 28;
     }
     selector.close();
 
-    if (selector.open(1U, 0U) || selector.open(6U, 0U)) {
+    if (selector.open(1U, 0U) || selector.open(7U, 0U) ||
+        !selector.open(6U, 0U) || selector.floor_count() != 6U) {
         return 15;
+    }
+    update = selector.advance(
+        elevator_selector_button_mask(ElevatorSelectorButton::previous_floor) |
+        elevator_selector_button_mask(ElevatorSelectorButton::next_floor) |
+        elevator_selector_button_mask(ElevatorSelectorButton::confirm) |
+        elevator_selector_button_mask(ElevatorSelectorButton::cancel) |
+        elevator_selector_button_mask(ElevatorSelectorButton::start));
+    if (update.selection_moved || !update.navigation_feedback_started ||
+        selector.selected_floor() != 0U ||
+        selector.navigation_feedback() !=
+            ElevatorSelectorNavigationFeedback::previous_floor_active) {
+        return 27;
+    }
+    for (std::uint8_t tick = 0U;
+         tick < kElevatorSelectorNavigationFeedbackFrameCount; ++tick) {
+        selector.advance(0U);
+    }
+    update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::next_floor));
+    if (!update.selection_moved || selector.selected_floor() != 1U) {
+        return 29;
+    }
+    for (std::uint8_t tick = 0U;
+         tick < kElevatorSelectorNavigationFeedbackFrameCount; ++tick) {
+        update = selector.advance(elevator_selector_button_mask(
+            ElevatorSelectorButton::next_floor));
+        if (update.selection_moved || selector.selected_floor() != 1U) {
+            return 30;
+        }
+    }
+    update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::next_floor));
+    if (!update.selection_moved || selector.selected_floor() != 2U) {
+        return 31;
+    }
+    for (std::uint8_t tick = 0U;
+         tick < kElevatorSelectorNavigationFeedbackFrameCount; ++tick) {
+        selector.advance(0U);
+    }
+    for (std::uint8_t floor = 3U; floor <= 5U; ++floor) {
+        update = selector.advance(elevator_selector_button_mask(
+            ElevatorSelectorButton::next_floor));
+        if (!update.selection_moved || selector.selected_floor() != floor) {
+            return 23;
+        }
+        for (std::uint8_t tick = 0U;
+             tick < kElevatorSelectorNavigationFeedbackFrameCount; ++tick) {
+            selector.advance(0U);
+        }
+    }
+    update = selector.advance(elevator_selector_button_mask(
+        ElevatorSelectorButton::next_floor));
+    if (update.selection_moved || !update.navigation_feedback_started ||
+        selector.selected_floor() != 5U) {
+        return 24;
     }
     ElevatorSceneTransitionRuntime transition;
     if (transition.is_active() || transition.palette_step() != 0U ||

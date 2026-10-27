@@ -62,24 +62,32 @@ int main() {
         return 18;
     }
     const auto& elevator_groups = source.assets->field_elevator_scene_groups;
-    if (elevator_groups[25U].count != 4U ||
+    if (elevator_groups[25U].count != 5U ||
         elevator_groups[25U].scene_ids[0] != 21U ||
-        elevator_groups[25U].scene_ids[3] != 24U ||
-        elevator_groups[26U].count != 3U ||
+        elevator_groups[25U].scene_ids[4] != 25U ||
+        elevator_groups[26U].count != 4U ||
         elevator_groups[26U].scene_ids[0] != 26U ||
         elevator_groups[26U].scene_ids[1] != 27U ||
         elevator_groups[26U].scene_ids[2] != 28U ||
-        elevator_groups[27U].count != 3U ||
+        elevator_groups[26U].scene_ids[3] != 29U ||
+        elevator_groups[27U].count != 4U ||
         elevator_groups[27U].scene_ids[0] != 26U ||
         elevator_groups[27U].scene_ids[1] != 27U ||
         elevator_groups[27U].scene_ids[2] != 28U ||
-        elevator_groups[28U].count != 3U ||
+        elevator_groups[27U].scene_ids[3] != 29U ||
+        elevator_groups[28U].count != 4U ||
         elevator_groups[28U].scene_ids[0] != 26U ||
         elevator_groups[28U].scene_ids[1] != 27U ||
         elevator_groups[28U].scene_ids[2] != 28U ||
-        elevator_groups[30U].count != 4U ||
-        elevator_groups[35U].count != 5U ||
-        elevator_groups[41U].count != 2U ||
+        elevator_groups[28U].scene_ids[3] != 29U ||
+        elevator_groups[29U].count != 4U ||
+        elevator_groups[29U].scene_ids[3] != 29U ||
+        elevator_groups[30U].count != 5U ||
+        elevator_groups[30U].scene_ids[4] != 34U ||
+        elevator_groups[35U].count != 6U ||
+        elevator_groups[35U].scene_ids[5] != 40U ||
+        elevator_groups[41U].count != 3U ||
+        elevator_groups[41U].scene_ids[2] != 43U ||
         elevator_groups[0U].count != 0U) {
         return 26;
     }
