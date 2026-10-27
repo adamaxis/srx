@@ -3343,6 +3343,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
                  : 0U));
         actor.source_interaction_flags =
             source_actor.source_interaction_flags;
+        actor.source_behavior_flags = source_actor.source_behavior_flags;
         actor.source_spawn_state_flags =
             source_actor.source_spawn_state_flags;
         if (field_pending_actor_list_transition_group_.has_value()) {
@@ -5166,6 +5167,105 @@ void FieldSceneRuntime::refresh_world_entity_service_targets() {
         field_entity_target_records_[*selected].effect_locked;
 }
 
+WorldEffectPlayerSpawnGuardAction
+FieldSceneRuntime::guard_world_effect_player_spawn() {
+    if (!field_world_effect_player_spawn_actor_template_.has_value()) {
+        return WorldEffectPlayerSpawnGuardAction::no_pending_effect;
+    }
+
+    // ROM 0x286E scans the thirteen entity records at FF0400..FF1000, which
+    // correspond to source slots 3..15. The +0xB0.7 writers are narrower:
+    // 0xEB92 bounds both 0xED60 contact endpoints to FF0400..FF0A00, and
+    // 0x1E4AC allocates from 0x1A342's same slots 3..9. The common 0x44BC
+    // record template has +0xB0=0. Project the seven live typed actor records;
+    // slots 10..15 cannot acquire this flag through the source paths.
+    std::array<WorldEffectGuardEntity, 13U> records{};
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    for (const auto& actor : field_default_actors_) {
+        if (!actor.active || actor.scene_reference != scene_reference ||
+            !actor.source_record_slot.has_value()) {
+            continue;
+        }
+        const auto source_slot = static_cast<std::size_t>(
+            *actor.source_record_slot);
+        if (source_slot < 3U || source_slot > 9U) {
+            continue;
+        }
+        auto& record = records[source_slot - 3U];
+        record.behavior_flags = static_cast<std::uint8_t>(
+            record.behavior_flags | actor.source_record_flags);
+        record.effect_flags = static_cast<std::uint8_t>(
+            record.effect_flags | actor.source_behavior_flags);
+    }
+
+    const auto count_live_activity_actors = [this, scene_reference] {
+        return static_cast<std::size_t>(std::count_if(
+            field_default_actors_.begin(), field_default_actors_.end(),
+            [scene_reference](const DefaultFieldActorPresentation& actor) {
+                return actor.active && actor.world_activity_script_actor &&
+                       actor.scene_reference == scene_reference;
+            }));
+    };
+    const auto action = ::shadowrun::ghidra_conversion::
+        guard_world_effect_player_spawn(
+            true, records, [this, scene_reference,
+                            &count_live_activity_actors] {
+                auto fallback_actor =
+                    *field_world_effect_player_spawn_actor_template_;
+                fallback_actor.scene_id = scene_reference;
+                fallback_actor.world_x = static_cast<std::uint16_t>(
+                    field_entity_.world_position.x + 0x0080U);
+                fallback_actor.world_y = field_entity_.world_position.y;
+                fallback_actor.source_behavior_flags =
+                    static_cast<std::uint8_t>(
+                        fallback_actor.source_behavior_flags |
+                        actor_flag_mask(ActorBehaviorFlag::high_effect_route));
+
+                // The scene-entry guard runs after 0x43B6 has drained the
+                // selected list. Preserve any queued host list and its
+                // completion bookkeeping while publishing this independent
+                // 0x1E4AC record through the ordinary Lua actor service.
+                auto saved_pending_actors =
+                    std::move(pending_world_activity_script_actors_);
+                auto saved_pending_scene =
+                    std::move(pending_world_activity_script_actor_scene_);
+                auto saved_transition_group =
+                    std::move(field_pending_actor_list_transition_group_);
+                auto saved_transition_count =
+                    std::move(field_route_actor_transitions_remaining_);
+                pending_world_activity_script_actor_scene_ = scene_reference;
+                pending_world_activity_script_actors_.clear();
+                pending_world_activity_script_actors_.push_back(
+                    std::move(fallback_actor));
+                field_pending_actor_list_transition_group_.reset();
+                field_route_actor_transitions_remaining_.reset();
+
+                const auto actors_before = count_live_activity_actors();
+                publish_pending_world_activity_script_actors(scene_reference);
+                const auto actors_after = count_live_activity_actors();
+
+                pending_world_activity_script_actors_ =
+                    std::move(saved_pending_actors);
+                pending_world_activity_script_actor_scene_ =
+                    std::move(saved_pending_scene);
+                field_pending_actor_list_transition_group_ =
+                    std::move(saved_transition_group);
+                field_route_actor_transitions_remaining_ =
+                    std::move(saved_transition_count);
+                if (actors_after == actors_before) {
+                    source_boundary(
+                        "field.world.guard_player_spawn_fallback_unresolved");
+                } else {
+                    source_boundary(
+                        "field.world.guard_player_spawn_fallback_published");
+                }
+            });
+    if (action == WorldEffectPlayerSpawnGuardAction::existing_effect_found) {
+        source_boundary("field.world.guard_player_spawn_existing_record");
+    }
+    return action;
+}
+
 bool FieldSceneRuntime::apply_scripted_field_entity_target_selection(
     const std::optional<std::string>& selected_actor_id) {
     const bool special_path = field_entity_target_owner_.special_marker &&
@@ -6481,7 +6581,7 @@ void FieldSceneRuntime::configure_callbacks() {
         source_boundary("field.scene.upload_profile_block");
     };
     callbacks_.guard_world_effect_player_spawn = [this] {
-        source_boundary("field.world.guard_player_spawn");
+        static_cast<void>(guard_world_effect_player_spawn());
     };
 
     callbacks_.entity_behavior_frames.dispatch_entity_action_candidates =

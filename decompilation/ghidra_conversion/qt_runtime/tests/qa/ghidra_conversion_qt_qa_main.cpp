@@ -20288,9 +20288,89 @@ int run_field_pedestrian_scenes_qa(
                   << story_contact_bitmap.string() << '\n';
         return 3;
     }
+
+    // ROM 0x286E suppresses 0x1E4AC only when one of its thirteen records is
+    // active and has +0xB0 bit 7. Model the entry state after the selected
+    // actor record has left the scanned pool while FFFC3C still retains its
+    // FFE110 template. The fallback must use Joshua x+0x80/y and publish the
+    // same Lua actor state the following guard pass recognizes.
+    const auto fallback_player_position =
+        field_scene.field_entity_world_position();
+    const auto expected_fallback_position = SceneRunnerPosition{
+        static_cast<std::uint16_t>(fallback_player_position.x + 0x0080U),
+        fallback_player_position.y};
+    if (!field_scene
+             .seed_world_effect_player_spawn_from_transfer_template_for_dump() ||
+        !field_scene.remove_world_activity_script_actor_for_dump(0U)) {
+        std::cerr << "Pedestrian scenes QA: could not stage the FFFC3C source "
+                     "template with its actor record absent\n";
+        return 3;
+    }
+    const auto fallback_action =
+        field_scene.guard_world_effect_player_spawn_for_dump();
+    const auto fallback_position =
+        field_scene.world_activity_script_actor_position_for_dump(0U);
+    const auto fallback_profile =
+        field_scene.world_activity_script_actor_profile_for_dump(0U);
+    const auto fallback_slot =
+        field_scene.world_activity_script_actor_record_slot_for_dump(0U);
+    const auto fallback_flags =
+        field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
+    if (fallback_action !=
+            WorldEffectPlayerSpawnGuardAction::spawn_requested ||
+        field_scene.world_activity_script_actor_count_for_dump() != 1U ||
+        !fallback_position.has_value() ||
+        fallback_position->x != expected_fallback_position.x ||
+        fallback_position->y != expected_fallback_position.y ||
+        fallback_profile !=
+            std::optional<std::string>{"pedestrian_k0b_none00"} ||
+        fallback_slot != std::optional<FieldWorldActorSlot>{
+                             FieldWorldActorSlot::slot_3} ||
+        !fallback_flags.has_value() || (*fallback_flags & 0x80U) == 0U) {
+        std::cerr << "Pedestrian scenes QA: 0x1E4AC fallback did not publish "
+                     "the active escort at Joshua x+0x80/y (action="
+                  << static_cast<unsigned>(fallback_action)
+                  << ", actors="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << ", position="
+                  << (fallback_position.has_value()
+                          ? std::to_string(fallback_position->x) + "," +
+                                std::to_string(fallback_position->y)
+                          : std::string("missing"))
+                  << ", flags=0x"
+                  << std::hex << static_cast<unsigned>(
+                         fallback_flags.value_or(0U))
+                  << std::dec << ", failure=" << field_scene.failure()
+                  << ")\n";
+        return 3;
+    }
+    if (field_scene.guard_world_effect_player_spawn_for_dump() !=
+            WorldEffectPlayerSpawnGuardAction::existing_effect_found ||
+        field_scene.world_activity_script_actor_count_for_dump() != 1U) {
+        std::cerr << "Pedestrian scenes QA: 0x286E did not suppress a second "
+                     "fallback for the active +0xB0.7 record\n";
+        return 3;
+    }
+    field_scene.set_field_camera_world_position_for_dump(
+        static_cast<std::uint16_t>(fallback_player_position.x - 0x0800U),
+        static_cast<std::uint16_t>(fallback_player_position.y - 0x0800U));
+    const auto fallback_image = render_qa_field(field_scene);
+    const auto fallback_bitmap =
+        output / "scene-34-player-spawn-fallback-actual.bmp";
+    if (fallback_image.isNull() ||
+        !fallback_image.save(QString::fromStdWString(
+            fallback_bitmap.wstring()))) {
+        std::cerr << "Pedestrian scenes QA: could not save "
+                  << fallback_bitmap.string() << '\n';
+        return 3;
+    }
     std::cout << "field_pedestrian_story_contact_qa=passed scene=34 "
               << "list=0xA8AE index=4 slot=3 position=0x1D00,0x4100 "
-              << "actual=" << story_contact_bitmap.string() << '\n';
+              << "actual=" << story_contact_bitmap.string()
+              << " fallback=0x1E4AC at "
+              << expected_fallback_position.x << ','
+              << expected_fallback_position.y << " actual="
+              << fallback_bitmap.string() << '\n';
     return 0;
 }
 

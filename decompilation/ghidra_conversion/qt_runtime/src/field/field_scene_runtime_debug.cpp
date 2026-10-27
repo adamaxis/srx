@@ -883,6 +883,53 @@ std::size_t FieldSceneRuntime::default_actor_count_for_dump() const noexcept {
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::seed_world_effect_player_spawn_from_transfer_template_for_dump() {
+    if (!field_world_activity_transfer_actor_template_.has_value()) {
+        return false;
+    }
+    field_world_effect_player_spawn_actor_template_ =
+        field_world_activity_transfer_actor_template_;
+    field_world_effect_player_spawn_qa_override_ = false;
+    return true;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::remove_world_activity_script_actor_for_dump(
+    const std::uint16_t source_order) {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.active && candidate.world_activity_script_actor &&
+                   candidate.scene_reference == scene_reference &&
+                   candidate.source_order == source_order;
+        });
+    if (actor == field_default_actors_.end()) {
+        return false;
+    }
+    if (actor->effect_slot.has_value() &&
+        *actor->effect_slot < field_world_effect_slots_occupied_.size()) {
+        field_world_effect_slots_occupied_[*actor->effect_slot] = false;
+    }
+    field_default_actors_.erase(actor);
+    refresh_world_entity_service_targets();
+    return true;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+WorldEffectPlayerSpawnGuardAction
+FieldSceneRuntime::guard_world_effect_player_spawn_for_dump() {
+    return guard_world_effect_player_spawn();
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::size_t FieldSceneRuntime::world_activity_script_actor_count_for_dump()
     const noexcept {
     const auto scene_reference = state_.field_scene_buffers.scene_reference;

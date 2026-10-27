@@ -10,8 +10,11 @@ pedestrian contact on the shared activity path without opening a story task.
 Debug/Release Scene-34 QA verifies the pedestrian template is pending while
 the A8AE dialogue is open and is cleared by its `0x1E514` cleanup. The runtime
 queues and publishes the selected A8AE story actor and randomized candidate
-rows through the ordinary actor path. The `0x286E` scene-entry guard and its
-`0x1E4AC` player-position fallback spawn remain unimplemented. The
+rows through the ordinary actor path. The Qt `0x286E` callback now scans the
+typed active/effect state and publishes the `0x1E4AC` fallback through the Lua
+actor service at Joshua x+`0x80` / y. Debug/Release QA covers the spawn and the
+following duplicate-suppression pass. Physical randomized-candidate contact
+and an independent Genesis comparison remain open. The
 Scene-3/event-3 branch is represented by a Lua entry graph and gated route;
 Debug/Release physical QA walks record 95, checks the `0xF4BB4` page and
 `0x12209C` portrait, then resumes through the event-table route into Scene 30.
@@ -383,19 +386,35 @@ and places the actor at Joshua's `x+0x80` / `y`. The `0x2FA4` entry path also
 repositions the first existing active/effect-ready record to that location;
 `0x1E514` clears FFFC3C when it clears an actor's `+0xB0` bit 7.
 
-The active Qt runtime now retains typed FFE110 actor-template data and a typed
+The active Qt runtime retains typed FFE110 actor-template data and a typed
 FFFC3C marker. A800 receives a derived presence fact, sufficient for its gate.
-The pair-collision model publishes whether the
-typed transfer template is available; the scene-entry guard callback remains
-a source boundary. Eligible bit-3 contact copies the typed template into FFFC3C.
-Lua contact routing keeps A8AE/A8CC story dialogue while generic 24-bit A800
+The pair-collision model publishes whether the typed transfer template is
+available; eligible bit-3 contact copies that descriptor into FFFC3C. Lua
+contact routing keeps A8AE/A8CC story dialogue while generic 24-bit A800
 contact starts the shared activity path without being rejected as an unmapped
 story actor. Scene-34 QA checks the pedestrian profile while dialogue is open
-and its clear after cleanup. The pure thirteen-record guard remains separate
-from the live scene-entry callback, which still has no actor-spawn integration
-or CLI frame dump. This remains a partial hill; the physical two-choice lift
-QA does not yet trace a randomized candidate through contact and the
-player-position fallback.
+and its clear after cleanup.
+
+The live `0x286E` callback maps typed source actor slots 3..9 into the
+thirteen-record guard input. **[C]** ROM `0xEB92` bounds the `0xED60` contact
+pair to records `FF0400..FF0A00`; `0x1E4AC` allocates through `0x1A342`, which
+searches the same slots 3..9. `0x44BC` initializes from the common record at
+`0x7361A`, whose `+0xB0` byte is zero, and the ROM's `+0xB0` bit-7 set
+instructions are only `0xED60`/`0xEDD2` and `0x1E4AC`. The remaining guard
+entries (slots 10..15) cannot carry this flag through those source paths.
+When no flagged actor remains, the runtime clones the retained typed transfer
+descriptor, places it at Joshua x+`0x80` / y, sets the typed `+0xB0` bit-7
+behavior fact, and publishes it through the ordinary Lua actor heartbeat and
+slot/effect allocation. The added Scene-34 QA removes the selected A8AE record
+while retaining its source descriptor, checks the exact fallback profile,
+position, actor slot, and escort flag, captures
+`scene-34-player-spawn-fallback-actual.bmp`, then verifies a second guard pass
+finds that record instead of duplicating it. The captures are internal Qt
+images, not independent Genesis evidence; the Debug and Release fallback
+captures have matching SHA-256
+`E95E506ACB226E1F43B3D2665401F06A88008A67B5F8F27C9ECA61CFEBCF9FB0`. This
+remains a partial hill because the physical randomized-candidate contact route
+and a route-matched Genesis capture are still open.
 
 ## Active runtime boundary
 

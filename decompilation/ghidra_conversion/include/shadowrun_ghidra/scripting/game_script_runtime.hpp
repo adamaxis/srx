@@ -1234,6 +1234,7 @@ struct ScriptWorldActivityActor {
     std::string ordered_overrides;
     std::uint8_t source_spawn_state_flags = 0;
     std::uint8_t source_interaction_flags = 0;
+    std::uint8_t source_behavior_flags = 0;
     std::uint8_t physical_meter = 0;
     std::uint8_t delay_primary_attribute = 0;
     std::uint8_t delay_secondary_attribute = 0;

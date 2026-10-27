@@ -45,6 +45,7 @@
 #include "shadowrun_ghidra/rendering/display_service_batch_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_table_conversion.hpp"
 #include "shadowrun_ghidra/world/world_entity_conversion.hpp"
+#include "shadowrun_ghidra/world/world_effect_conversion.hpp"
 #include "shadowrun_ghidra/world/world_effect_batch_conversion.hpp"
 #include "shadowrun_ghidra/world/world_effect_edge_conversion.hpp"
 #include "shadowrun_ghidra/world/world_frame_logic_conversion.hpp"
@@ -445,6 +446,11 @@ public:
             field_world_effect_player_spawn_actor_template_.reset();
         }
     }
+    bool seed_world_effect_player_spawn_from_transfer_template_for_dump();
+    bool remove_world_activity_script_actor_for_dump(
+        std::uint16_t source_order);
+    WorldEffectPlayerSpawnGuardAction
+    guard_world_effect_player_spawn_for_dump();
     bool world_effect_player_spawn_pending_for_dump() const noexcept {
         return has_pending_world_effect_player_spawn();
     }
@@ -1728,6 +1734,7 @@ private:
         return field_world_effect_player_spawn_actor_template_.has_value() ||
                field_world_effect_player_spawn_qa_override_;
     }
+    WorldEffectPlayerSpawnGuardAction guard_world_effect_player_spawn();
     bool retire_dialogue_escort_records();
     void publish_pending_world_activity_script_actors(
         std::uint16_t scene_reference);

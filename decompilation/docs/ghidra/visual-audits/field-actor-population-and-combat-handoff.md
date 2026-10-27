@@ -276,10 +276,15 @@ pair collision, sets FFFC3C after eligible contact, and clears it with the
 `0x1E514` escort cleanup. The physical Scene-34 A8AE QA checks the pending
 pedestrian profile during dialogue and its clear afterward; the 24-bit Lua
 contact route also accepts an A800 candidate list offset as generic activity.
-The scene-entry guard callback and `0x1E4AC` actor spawn remain boundaries, and
-there is not yet a physical random-candidate contact route. See the dedicated
-trace in `conditional-pedestrian-runtime-gap-2026-10-26.md`; this lifecycle
-remains partial.
+The live `0x286E` guard now projects the source-eligible actor records,
+detects an existing `+0xB0` bit-7 escort, and publishes the retained typed
+FFE110 actor template at Joshua's `x+0x80/y` when no escort remains. It uses
+the ordinary Lua actor heartbeat and actor/effect-slot allocation. There is
+still no physical random-candidate route that selects an A800 candidate,
+walks Joshua into contact, and observes the resulting activity and cleanup.
+See the dedicated trace in
+`conditional-pedestrian-runtime-gap-2026-10-26.md`; this lifecycle remains
+partial.
 
 Independent longplay contact sheets contain map frames with pedestrian-like
 actors (for example around `02:58:10` in Section 41), but those frames do not
@@ -333,10 +338,17 @@ Thus the scene-20 route's seven-row cap applies to its default list, while the
 
 The converted helpers are `prepare_pending_entity_template_list` and
 `select_pending_entity_template_list` in
-`src/entities/entity_template_conversion.cpp`; the Qt field
-runtime does not yet feed this table into Lua actor instances. No pending
-pedestrian is added to a scene until that runtime gate and allocation order
-are connected.
+`src/entities/entity_template_conversion.cpp`. The Qt field runtime now passes
+the offer initializer, world mode, story markers, typed FFFC3C template
+presence, and selected/active effect indices to Lua's A800 selector after
+scene-entry setup. It queues the selected pending list before the default list,
+matching `0x43B6` allocation order, and publishes the resulting actor through
+the shared Lua actor path. Debug/Release selector and scene QA cover the state
+gates and selected-list records; they do not yet cover the physical
+randomized-candidate contact path or identify a candidate in an independent
+Genesis frame. See
+`conditional-pedestrian-runtime-gap-2026-10-26.md` for the live gate and spawn
+lifecycle trace.
 
 Spawn lists also are not always flat pointer pairs. After each template and
 position pointer pair, `0x44BC` checks the following word for override mode

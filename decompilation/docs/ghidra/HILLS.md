@@ -966,9 +966,13 @@ stores the tagged FFE110 template in FFFC3C, and `0x286E` uses it for the
 typed transfer descriptor and FFFC3C producer/cleanup now run in Qt; Debug and
 Release Scene-34 QA check the pedestrian template while A8AE dialogue is open
 and its clear through `0x1E514`. Lua accepts 24-bit candidate list offsets and
-leaves generic A800 contact on the shared activity path. The `0x286E` scene-
-entry callback and player-position actor spawn remain open, and there is no
-physical random-candidate contact QA yet; see the
+leaves generic A800 contact on the shared activity path. The `0x286E` callback
+now scans the typed seven actor records that can hold `+0xB0.7`, publishes the
+`0x1E4AC` fallback at Joshua x+`0x80`/y through Lua, and suppresses a duplicate
+on the next guard pass. The Scene-34 pedestrian QA captures
+`scene-34-player-spawn-fallback-actual.bmp` and passes in Debug/Release. This is
+an internal capture; physical random-candidate contact and independent Genesis
+comparison are still open; see the
 `conditional-pedestrian-runtime-gap-2026-10-26.md` audit. The ordinary-
 input Scene-34 route reaches event 2 at record 90 after crossing record 92 and
 opens the generic maglock introduction. A QA-seeded quality-2 passkey reaches
