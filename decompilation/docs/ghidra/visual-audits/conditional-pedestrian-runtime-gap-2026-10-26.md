@@ -14,8 +14,10 @@ rows through the ordinary actor path. The Qt `0x286E` callback now scans the
 typed active/effect state and publishes the `0x1E4AC` fallback through the Lua
 actor service at Joshua x+`0x80` / y. Debug/Release QA covers the spawn and the
 following duplicate-suppression pass. Debug/Release QA also walks into the
-randomized candidates in Scene 30 choice 2 and Scene 38 choice 1 after
-resource-scene reentry; source-valid travel to those scenes and an independent
+randomized candidates in Scene 30 choice 2 and Scene 38 choice 1 after QA-only
+scene reentry. That seam reloads scene resources and actors while retaining
+the runner's prior world coordinates; it does not establish a valid source
+arrival or travel route. Source-valid travel to those scenes and an independent
 Genesis comparison remain open. The
 Scene-3/event-3 branch is represented by a Lua entry graph and gated route;
 Debug/Release physical QA walks record 95, checks the `0xF4BB4` page and
@@ -711,6 +713,24 @@ The pedestrian population hill remains partial.
 
 ## Scene-30 and Scene-38 A800 physical contact
 
+### Resource-reentry boundary
+
+**[C]** `reenter_field_scene_for_dump` is a QA-only resource reload. For a
+different scene it calls `prepare_runtime_field_scene` directly and does not
+assign the controlled runner's position. By contrast,
+`transition_to_field_destination` installs its requested spawn or the
+destination profile's first field record after preparing the map; the ROM
+profile reload path is `0x16A8E -> 0x03074 -> 0x03084`, with pending runner
+coordinates handled by `0x030CC..0x0312E`. Therefore the Scene-30 and Scene-38
+contact walks below begin at the position retained from the preceding QA
+context, not a source-proven arrival point in those maps. They verify candidate
+contact, callback, text, portrait, and dismissal behavior once the test places
+the actor and runner in the same prepared scene. They do not verify map entry,
+reachability from a normal route, or that the player would encounter these
+actors during ordinary travel. No-route results from the same resource-reentry
+setup likewise cannot establish that a candidate is unreachable from the
+game's real entry point.
+
 **[C]** The extracted US-ROM candidate row in
 `assets/field/entities/conditional-actor-candidates.tsv` selects Scene 30,
 choice 2, list `0x1EDDDC`, at `(0x0900,0x0B00)`. The source selector at
@@ -722,13 +742,14 @@ Debug and Release `shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa`
 now exercises ordinary field contact for that candidate. The setup accepts
 the Johnson offer in the same `FieldSceneRuntime` and uses the matrix's
 resource-scene reentry; the candidate itself is not reached by walking from
-Johnson. The live runner position at Scene-30 entry is `(4906,1156)`. The QA
+Johnson. After reentry, the carried runner position is `(4906,1156)`. The QA
 releases the host modal-close input for 59 neutral frames, then uses ordinary
 Left/Down input. Contact occurs on frame 141 at runner `(0x08DA,0x0AD8)` and
 actor `(0x0900,0x0B00)`, a per-axis delta of `(-0x26,-0x28)`. The route planner
 uses the imported terrain collision model only to choose waypoints; the runner
 position, collision response, input handling, and actor contact are processed
-by the live runtime.
+by the live runtime. This is the contact-mechanics check described above, not
+an arrival route.
 
 **[C]** On contact, the candidate's `+0xB0` bit 7 is set, FFFC3C retains the
 typed FFE110 pedestrian transfer, and the player-spawn guard reports an
@@ -760,8 +781,9 @@ default list.
 
 Debug and Release `shadowrun_ghidra_conversion_qt_field_pedestrian_scenes_qa`
 also drives this candidate through the live runtime. The runner starts at
-`(4906,1156)`; after 59 neutral modal-release frames, ordinary Left/Down input
-reaches the actor in 55 frames at runner `(3286,1246)` and actor `(3328,1280)`.
+`(4906,1156)` carried from the prior QA context; after 59 neutral modal-release
+frames, ordinary Left/Down input reaches the actor in 55 frames at runner
+`(3286,1246)` and actor `(3328,1280)`.
 The runtime sets the contact bit, presents the same ROM-backed no-options page
 and portrait, accepts B after the source wait, and restores the field with the
 actor retained. It checks the FFE110-to-FFFC3C transfer and existing-effect

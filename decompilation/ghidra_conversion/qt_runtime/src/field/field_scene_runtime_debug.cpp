@@ -633,9 +633,10 @@ bool FieldSceneRuntime::reenter_field_scene_for_dump(
         return false;
     }
     if (scene_reference != state_.field_scene_buffers.scene_reference) {
-        // QA scene sweeps use the ordinary destination-scene preparation and
-        // its ROM default-list population pass, starting at the destination's
-        // profile position.
+        // This QA-only seam reloads scene resources and the default actor
+        // list, but it does not perform a destination transition or change
+        // the controlled runner's world position. Use an ordinary routed
+        // transition when validating arrival coordinates or travel.
         return prepare_runtime_field_scene(scene_reference);
     }
     // Supplying the live runner position selects the same forced scene-entry
