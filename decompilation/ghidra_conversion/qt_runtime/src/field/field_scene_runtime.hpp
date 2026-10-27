@@ -991,6 +991,11 @@ public:
         field_movement_behavior_record_.behavior_flags =
             field_entity_behavior_flags_;
         refresh_field_hud_runner_slot();
+        // Match the ordinary active-runner switch's menu refreshes. QA may
+        // install records while the command overview is already open, so its
+        // cached Off/Def rows and item detail must follow the selected record.
+        refresh_command_overview_combat_bars();
+        refresh_command_overview_item_detail();
     }
     bool field_party_slot_active_for_dump(std::size_t slot) const noexcept {
         return field_party_roster_.slot_active(slot);

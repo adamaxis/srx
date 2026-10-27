@@ -29,6 +29,14 @@ branch but did not verify a non-magic character. The fallback QA now uses
 Samurai's unmodified startup record. The spell QA continues to use Gator's
 unmodified record.
 
+## Raw-profile field-runtime sweep (2026-10-27)
+
+The Debug/Release CTest `shadowrun_ghidra_conversion_qt_field_magic_defense_profile_qa` drives the fallback UI from ROM presets rather than modifying one Samurai record. It reads the three Joshua records at `0x7291A` and ten recruit templates at `0x72C1A`, checks every byte against the named host asset, and verifies the race/class bytes at `+0x9A/+0x9B`. Eight class-2/3 profiles take the non-caster route; five class-0/1 profiles are available as party casters.
+
+For each non-caster recipient, the test renders a three-record party with zero, one, or two other ready caster records (24 cases). The expected party pool follows ROM `0x1047E`: each eligible record calls `0x55F02`, whose Sorcery input is `+0x80` plus the first Power Focus (`0x18`) found from inventory slot 6 down through slot 0, with byte wrap. The source divides each caster result by four and rounds only a remainder of three upward. ROM `0x1055E` adds that pool separately to the active Body `+0x77` and Willpower `+0x7C` values; the two resulting bytes select the Physical and Mana `0xCF610` strip rows.
+
+Each case follows the page-5 A action, verifies both displayed values and exact named `104x8` strip pixels, checks the untouched shared layout, title redraw, HUD and profile portrait, then compares a 30-frame idle hold, unchanged runner fields, and fresh-edge return to the parent page. The first Samurai/no-caster Defense frame is emitted as `actual.bmp`; all 24 parent/Defense/hold/return captures and a TSV case manifest are retained under `decompilation/ghidra_conversion/build/conversion/qt/{debug,release}/qt_runtime/field-magic-defense-profiles/`. The captures are internal regression artifacts, not independent Genesis evidence, and the party combinations do not claim recruitment reachability.
+
 ## Nine-question review
 
 1. **Does it look correct? — Unknown for the complete split.** The independent

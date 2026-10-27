@@ -34415,6 +34415,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path> field_clips_dump_path;
         std::optional<std::filesystem::path> field_shop_dump_path;
         std::optional<std::filesystem::path> field_magic_dump_path;
+        std::optional<std::filesystem::path>
+            field_magic_defense_profile_qa_path;
         std::optional<std::filesystem::path> field_magic_spell_dump_path;
         std::optional<std::filesystem::path>
             field_attributes_skills_dump_path;
@@ -35423,6 +35425,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_magic_dump_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-magic-defense-profile-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_magic_defense_profile_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) == "--field-magic-spell-dump" &&
@@ -48156,6 +48165,447 @@ int main(int argc, char** argv) {
                           << " cursor=4x7frames force=1..4 posture=0..4 "
                              "equip=record+0x57/+0x9D return=page6\n";
                 return 0;
+            }
+            if (field_magic_defense_profile_qa_path.has_value()) {
+                using namespace shadowrun::ghidra_conversion;
+                struct SourceProfile {
+                    std::string_view slug;
+                    std::uint8_t race;
+                    std::uint8_t runner_class;
+                };
+                static constexpr std::array<SourceProfile, 13U> profiles{{
+                    {"joshua-samurai", 0U, 2U},
+                    {"joshua-decker", 0U, 3U},
+                    {"joshua-gator-shaman", 0U, 1U},
+                    {"rat-shaman", 2U, 1U},
+                    {"troll-samurai", 4U, 2U},
+                    {"human-mage", 0U, 0U},
+                    {"dwarf-decker", 2U, 3U},
+                    {"bear-shaman", 3U, 1U},
+                    {"elf-decker-1", 1U, 3U},
+                    {"human-samurai-1", 0U, 2U},
+                    {"elf-mage", 1U, 0U},
+                    {"elf-decker-2", 1U, 3U},
+                    {"human-samurai-2", 0U, 2U},
+                }};
+                const auto fail = [](const std::string& reason) {
+                    std::cerr << "field Magic Defense profile QA: " << reason
+                              << '\n';
+                    return 3;
+                };
+                if (!smoke_state.startup_records.has_value()) {
+                    return fail("source starter/recruit templates were not loaded");
+                }
+#ifndef SHADOWRUN_US_ROM_PATH
+                return fail("the QA target has no primary US ROM path");
+#else
+                constexpr std::size_t kRecordSize = 0x100U;
+                constexpr std::size_t kJoshuaBase = 0x7291AU;
+                constexpr std::size_t kRecruitBase = 0x72C1AU;
+                constexpr std::uint8_t kPowerFocus = 0x18U;
+                std::ifstream rom_file(SHADOWRUN_US_ROM_PATH,
+                                       std::ios::binary);
+                if (!rom_file) {
+                    return fail("could not open the authoritative US ROM");
+                }
+                const std::vector<std::uint8_t> rom(
+                    std::istreambuf_iterator<char>{rom_file},
+                    std::istreambuf_iterator<char>{});
+                if (rom.size() < kRecruitBase + 10U * kRecordSize) {
+                    return fail("source runner profile records are truncated");
+                }
+                std::array<std::array<std::uint8_t, kRecordSize>, 13U>
+                    source_bytes{};
+                std::array<RunnerRecordFields, 13U> typed_profiles{};
+                std::vector<std::size_t> noncasters;
+                std::vector<std::size_t> casters;
+                for (std::size_t index = 0U; index < profiles.size(); ++index) {
+                    const auto offset = index < 3U
+                        ? kJoshuaBase + index * kRecordSize
+                        : kRecruitBase + (index - 3U) * kRecordSize;
+                    std::copy_n(
+                        rom.begin() + static_cast<std::ptrdiff_t>(offset),
+                        kRecordSize, source_bytes[index].begin());
+                    const auto& asset_bytes = index < 3U
+                        ? smoke_state.startup_records->joshua_archetypes[index]
+                              .record
+                        : smoke_state.startup_records->save_roster_templates[
+                              index - 2U].record;
+                    if (source_bytes[index] != asset_bytes ||
+                        source_bytes[index][0x9AU] != profiles[index].race ||
+                        source_bytes[index][0x9BU] !=
+                            profiles[index].runner_class) {
+                        return fail("raw ROM, named asset, or race/class identity "
+                                    "differs for " +
+                                    std::string(profiles[index].slug));
+                    }
+                    LiveRunnerRecord raw_record{};
+                    raw_record.bytes = source_bytes[index];
+                    typed_profiles[index] =
+                        read_runner_record_fields(raw_record);
+                    const auto caster = source_bytes[index][0x9BU] <= 1U;
+                    (caster ? casters : noncasters).push_back(index);
+                    if (typed_profiles[index].species_index !=
+                            profiles[index].race ||
+                        typed_profiles[index].archetype_index !=
+                            profiles[index].runner_class) {
+                        return fail("typed race/class mapping differs for " +
+                                    std::string(profiles[index].slug));
+                    }
+                }
+                if (noncasters.size() != 8U || casters.size() != 5U) {
+                    return fail("expected eight fallback profiles and five "
+                                "caster profiles from the source records");
+                }
+
+                const auto output_directory =
+                    *field_magic_defense_profile_qa_path;
+                std::filesystem::create_directories(output_directory);
+                std::error_code clear_error;
+                clear_qa_bitmap_artifacts(output_directory, clear_error);
+                if (clear_error) {
+                    return fail("could not clear prior profile captures: " +
+                                clear_error.message());
+                }
+                std::ofstream manifest(output_directory /
+                                       "party-profile-permutation.tsv");
+                if (!manifest) {
+                    return fail("could not write the profile manifest");
+                }
+                manifest << "recipient\trecipient_record\trace\tclass"
+                            "\tparty_case\tparty_slot_1\tparty_slot_2"
+                            "\tparty_bonus\tphysical\tphysical_row"
+                            "\tmana\tmana_row\n";
+                const auto save_scene = [&](const std::string& name,
+                                            const QImage& scene) {
+                    return scene.save(QString::fromStdWString(
+                        (output_directory / (name + ".bmp")).wstring()));
+                };
+                const auto same_menu_inputs = [](
+                    const RunnerRecordFields& left,
+                    const RunnerRecordFields& right) {
+                    return left.flags == right.flags &&
+                           left.species_index == right.species_index &&
+                           left.archetype_index == right.archetype_index &&
+                           left.magic_force == right.magic_force &&
+                           left.magic_table_index == right.magic_table_index &&
+                           left.attributes == right.attributes &&
+                           left.skills == right.skills &&
+                           left.inventory_item_codes ==
+                               right.inventory_item_codes &&
+                           left.inventory_phase_bytes ==
+                               right.inventory_phase_bytes &&
+                           left.posture == right.posture;
+                };
+                const auto rom_party_bonus = [&](
+                    const std::array<std::size_t, 3U>& party) {
+                    // ROM 0x1047E calls 0x55F02 once per ready Mage/Shaman,
+                    // divides each byte result by four, and rounds a
+                    // remainder of three upward. All three QA slots are
+                    // installed as ready by the explicit dump fixture.
+                    std::uint16_t pool = 0U;
+                    for (const auto profile_index : party) {
+                        const auto& bytes = source_bytes[profile_index];
+                        if (bytes[0x9BU] > 1U) {
+                            continue;
+                        }
+                        auto sorcery = bytes[0x80U];
+                        for (int slot = 6; slot >= 0; --slot) {
+                            const auto slot_index =
+                                static_cast<std::size_t>(slot);
+                            if (bytes[0x66U + slot_index] == kPowerFocus) {
+                                sorcery = static_cast<std::uint8_t>(
+                                    sorcery + bytes[0x6EU + slot_index]);
+                                break;
+                            }
+                        }
+                        pool = static_cast<std::uint16_t>(
+                            pool + sorcery / 4U +
+                            ((sorcery & 0x03U) == 0x03U ? 1U : 0U));
+                    }
+                    return static_cast<std::uint8_t>(pool);
+                };
+                const auto source_record_offset = [](const std::size_t index) {
+                    return index < 3U
+                        ? kJoshuaBase + index * kRecordSize
+                        : kRecruitBase + (index - 3U) * kRecordSize;
+                };
+                const QImage command_background(QString::fromStdWString(
+                    (asset_root / "menu" / "field" / "background.bmp")
+                        .wstring()));
+                if (!field_scene.open_command_overview_for_dump()) {
+                    return fail("the startup Joshua record could not open "
+                                "the command overview");
+                }
+                std::size_t rendered_cases = 0U;
+                for (const auto recipient : noncasters) {
+                    std::array<std::size_t, 2U> other_noncaster{};
+                    std::size_t other_count = 0U;
+                    for (const auto candidate : noncasters) {
+                        if (candidate != recipient &&
+                            other_count < other_noncaster.size()) {
+                            other_noncaster[other_count++] = candidate;
+                        }
+                    }
+                    if (other_count != other_noncaster.size() ||
+                        casters.size() < 2U) {
+                        return fail("could not form distinct source party cases");
+                    }
+                    struct PartyCase {
+                        std::string_view slug;
+                        std::size_t first;
+                        std::size_t second;
+                    };
+                    const std::array<PartyCase, 3U> party_cases{{
+                        {"no-casters", other_noncaster[0U],
+                         other_noncaster[1U]},
+                        {"one-caster", casters[0U], other_noncaster[0U]},
+                        {"two-casters", casters[0U], casters[1U]},
+                    }};
+                    for (const auto& party_case : party_cases) {
+                        const std::array<std::size_t, 3U> party{{
+                            recipient, party_case.first, party_case.second}};
+                        if (party[0U] == party[1U] ||
+                            party[0U] == party[2U] ||
+                            party[1U] == party[2U]) {
+                            return fail("party case reused a source profile");
+                        }
+                        for (std::size_t slot = 0U; slot < party.size(); ++slot) {
+                            const auto profile_index = party[slot];
+                            field_scene.install_party_member_for_dump(
+                                slot, typed_profiles[profile_index],
+                                std::string(profiles[profile_index].slug),
+                                static_cast<std::uint8_t>(profile_index));
+                            const auto ready_byte = static_cast<std::uint8_t>(
+                                field_scene.field_party_records_for_dump()[slot]
+                                    .flags >> 8U);
+                            if ((ready_byte & 0x01U) == 0U) {
+                                return fail("installed source party record was "
+                                            "not marked ready");
+                            }
+                        }
+                        field_scene.set_active_party_slot_for_dump(0U);
+                        const auto selected_page =
+                            field_scene.seek_command_overview_page(5U);
+                        if (!field_scene.command_overview_open() ||
+                            !selected_page) {
+                            return fail(
+                                "could not select command page 5 for " +
+                                std::string(profiles[recipient].slug) +
+                                " (menu=" + std::to_string(
+                                    field_scene.command_overview_open()) +
+                                ", selected=" + std::to_string(selected_page) +
+                                ", page=" + std::to_string(
+                                    field_scene.command_overview_view()
+                                        .source_state.primary_page) +
+                                ", scene=" + std::to_string(
+                                    field_scene.field_scene_reference_for_dump()) +
+                                ", failure=" + field_scene.failure() + ")");
+                        }
+                        const auto parent = render_qa_field(field_scene);
+                        const auto profile_prefix =
+                            std::string(profiles[recipient].slug) + "-" +
+                            std::string(party_case.slug);
+                        if (!field_command_shell_survives(parent, asset_root) ||
+                            !field_hud_chrome_survives(parent, asset_root) ||
+                            !field_hud_face_family_survives(
+                                parent, asset_root, recipient) ||
+                            !save_scene(profile_prefix + "-parent", parent)) {
+                            return fail("source parent page or HUD did not "
+                                        "match " + profile_prefix);
+                        }
+                        const auto before_records =
+                            field_scene.field_party_records_for_dump();
+                        field_audio_events.clear();
+                        tap_qa_controller_button(field_scene, 0x40U);
+                        if (!field_scene.magic_defense_open() ||
+                            field_scene.magic_spell_interface_open() ||
+                            !field_scene.command_overview_open() ||
+                            field_scene.command_overview_view()
+                                    .source_state.primary_page != 5U ||
+                            field_audio_events !=
+                                std::vector<std::uint16_t>{0x24U}) {
+                            return fail("page-5 A did not open the fallback "
+                                        "Defense panel for " + profile_prefix);
+                        }
+
+                        const auto bonus = rom_party_bonus(party);
+                        const auto& recipient_bytes = source_bytes[recipient];
+                        const auto expected_physical =
+                            static_cast<std::uint8_t>(
+                                bonus + recipient_bytes[0x77U]);
+                        const auto expected_mana = static_cast<std::uint8_t>(
+                            bonus + recipient_bytes[0x7CU]);
+                        const auto& physical =
+                            field_scene.magic_physical_defense_view();
+                        const auto& mana =
+                            field_scene.magic_mana_defense_view();
+                        const auto expected_physical_row =
+                            expected_physical == 0U
+                                ? std::uint16_t{0U}
+                                : static_cast<std::uint16_t>(
+                                      expected_physical - 1U);
+                        const auto expected_mana_row =
+                            expected_mana == 0U
+                                ? std::uint16_t{0U}
+                                : static_cast<std::uint16_t>(expected_mana - 1U);
+                        const auto actual = render_qa_field(field_scene);
+                        const auto region_matches =
+                            image_region_matches_rgb32_asset;
+                        const auto physical_asset = QImage(
+                            QString::fromStdWString(
+                                (asset_root / "menu" / "field" /
+                                 ("defense-bar-" +
+                                  std::to_string(expected_physical_row) +
+                                  ".bmp"))
+                                    .wstring()));
+                        const auto mana_asset = QImage(
+                            QString::fromStdWString(
+                                (asset_root / "menu" / "field" /
+                                 ("defense-bar-" +
+                                  std::to_string(expected_mana_row) + ".bmp"))
+                                    .wstring()));
+                        bool shared_layout_matches = true;
+                        for (int y = 0; y < actual.height() &&
+                                        shared_layout_matches; ++y) {
+                            for (int x = 0; x < actual.width(); ++x) {
+                                if (x >= 96 && x < 264 && y >= 16 && y < 160) {
+                                    continue;
+                                }
+                                if (actual.pixel(x, y) != parent.pixel(x, y)) {
+                                    shared_layout_matches = false;
+                                    break;
+                                }
+                            }
+                        }
+                        const auto clean_center_redraw = [&] {
+                            for (int y = 16; y < 160; ++y) {
+                                for (int x = 96; x < 264; ++x) {
+                                    const auto title = y >= 48 && y < 56 &&
+                                                       x >= 112 && x < 240;
+                                    const auto strip =
+                                        ((y >= 80 && y < 88) ||
+                                         (y >= 104 && y < 112)) &&
+                                        x >= 120 && x < 224;
+                                    if (!title && !strip &&
+                                        actual.pixel(x, y) !=
+                                            command_background.pixel(x, y)) {
+                                        return false;
+                                    }
+                                }
+                            }
+                            return true;
+                        };
+                        bool title_changed = false;
+                        for (int y = 48; y < 56; ++y) {
+                            for (int x = 112; x < 240; ++x) {
+                                title_changed = title_changed ||
+                                    actual.pixel(x, y) != parent.pixel(x, y);
+                            }
+                        }
+                        if (physical.value != expected_physical ||
+                            physical.bar_row != expected_physical_row ||
+                            mana.value != expected_mana ||
+                            mana.bar_row != expected_mana_row ||
+                            physical.bar_row >= 23U || mana.bar_row >= 23U ||
+                            !region_matches(actual, physical_asset, 120, 80) ||
+                            !region_matches(actual, mana_asset, 120, 104) ||
+                            !shared_layout_matches || !clean_center_redraw() ||
+                            !title_changed ||
+                            !field_command_shell_survives(actual, asset_root) ||
+                            !field_hud_chrome_survives(actual, asset_root) ||
+                            !field_hud_face_family_survives(
+                                actual, asset_root, recipient) ||
+                            !save_scene(profile_prefix + "-defense", actual)) {
+                            return fail("ROM-derived values, bar rows, pixels, "
+                                        "title, or persistent layers diverged " +
+                                        profile_prefix);
+                        }
+                        if (rendered_cases == 0U &&
+                            !save_scene("actual", actual)) {
+                            return fail("could not save the representative "
+                                        "Defense screen as actual.bmp");
+                        }
+                        for (int frame = 0; frame < 30; ++frame) {
+                            field_scene.set_controller_port_byte(0U);
+                            field_scene.advance_frame();
+                        }
+                        const auto held = render_qa_field(field_scene);
+                        if (held != actual ||
+                            !save_scene(profile_prefix + "-held", held) ||
+                            field_audio_events !=
+                                std::vector<std::uint16_t>{0x24U}) {
+                            return fail("the fallback screen changed during "
+                                        "its 30-frame static hold: " +
+                                        profile_prefix);
+                        }
+                        tap_qa_controller_button(field_scene, 0x04U);
+                        const auto returned = render_qa_field(field_scene);
+                        const auto& after_records =
+                            field_scene.field_party_records_for_dump();
+                        for (std::size_t slot = 0U; slot < party.size(); ++slot) {
+                            if (!same_menu_inputs(before_records[slot],
+                                                  after_records[slot])) {
+                                return fail("Defense view changed a source "
+                                            "profile record: " + profile_prefix);
+                            }
+                        }
+                        const auto return_saved =
+                            save_scene(profile_prefix + "-return", returned);
+                        if (field_scene.magic_defense_open() ||
+                            !field_scene.command_overview_open() ||
+                            field_scene.command_overview_view()
+                                    .source_state.primary_page != 5U ||
+                            returned != parent ||
+                            field_audio_events !=
+                                std::vector<std::uint16_t>{0x24U, 0x25U} ||
+                            !return_saved) {
+                            return fail(
+                                "fresh-edge return did not restore its "
+                                "source profile page: " + profile_prefix +
+                                " (modal=" + std::to_string(
+                                    field_scene.magic_defense_open()) +
+                                ", menu=" + std::to_string(
+                                    field_scene.command_overview_open()) +
+                                ", page=" + std::to_string(
+                                    field_scene.command_overview_view()
+                                        .source_state.primary_page) +
+                                ", pixels=" + std::to_string(
+                                    returned == parent) + ", sounds=" +
+                                std::to_string(field_audio_events.size()) + ")");
+                        }
+                        manifest << profiles[recipient].slug << '\t'
+                                 << "0x" << std::hex
+                                 << source_record_offset(recipient) << std::dec
+                                 << '\t'
+                                 << static_cast<unsigned>(profiles[recipient].race)
+                                 << '\t'
+                                 << static_cast<unsigned>(
+                                        profiles[recipient].runner_class)
+                                 << '\t' << party_case.slug << '\t'
+                                 << profiles[party_case.first].slug << '\t'
+                                 << profiles[party_case.second].slug << '\t'
+                                 << static_cast<unsigned>(bonus) << '\t'
+                                 << static_cast<unsigned>(expected_physical) << '\t'
+                                 << expected_physical_row << '\t'
+                                 << static_cast<unsigned>(expected_mana) << '\t'
+                                 << expected_mana_row << '\n';
+                        ++rendered_cases;
+                    }
+                }
+                tap_qa_controller_button(field_scene, 0x80U);
+                if (field_scene.command_overview_open() ||
+                    rendered_cases != 24U || !manifest) {
+                    return fail("did not finish all 24 profile/party cases");
+                }
+                std::cout << "field_magic_defense_profile_qa=written path="
+                          << output_directory.string()
+                          << " noncaster_profiles=8 party_states=3 "
+                             "screens=24 raw_rom_oracle=0x1047E/0x55F02 "
+                             "bar_assets=24x2 held_frames=30"
+                          << '\n';
+                return 0;
+#endif
             }
             if (field_magic_dump_path.has_value()) {
                 // ROM archetype template 0 is Samurai, class 2 with +0x7F=0.
