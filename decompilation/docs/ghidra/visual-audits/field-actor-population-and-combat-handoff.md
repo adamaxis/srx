@@ -162,14 +162,14 @@ Mitsuhama route, and Notebook tip 70 identifies Aragorn's destination as its
 fifth floor. Their joined route resolves the numeric destination as Scene 34.
 Debug/Release QA now walks the Scene-3 after-hours route to Scene 30, traverses
 to the Scene-30 elevator, selects index 4, and verifies Scene 34 and the A8AE
-actor. A separate test seam places the player at the extracted A8AE coordinates
-so the ordinary proximity loop exercises `0xECCC`; it verifies FFE180
+actor. The same Debug/Release QA crosses the record-90 door after the
+quality-2 passkey branch and reaches A8AE by ordinary input. It verifies FFE180
 consumption, story and mode flags, the actor one-shot bit, three `0xF4BBC`
 pages, and profile `0x121E08`. After the last page, `0x53C90` calls `0x1DED8`;
 that scan dispatches active records with `+0xB0` bit 7 to `0x1E514`, which
-clears the escort and active bits. Debug/Release QA checks exactly one actor
-retirement before the modal return fade and saves a closed Scene-34 image. That
-contact seam does not verify the physical route to Aragorn. Separate
+clears the escort and active bits. Debug/Release QA checks Aragorn's source
+slot leaves the live list, the activity count drops by one while other records
+remain active, and saves a closed Scene-34 image.
 Debug/Release route QA restores the ROM lift placement `(0x3800,0x0600)`,
 crosses Scene-34 record 92 (`0x1DB990`, event 1), and reaches the event-2
 maglock at record 90 (`0x1DB97C`), opening the generic `0x20E48` door prompt.
@@ -179,9 +179,12 @@ success page and `0x4B` sound, holds the result for 30 source frames,
 acknowledges with A, and verifies that Scene 34 returns with only record 90's
 map cell changing `0x82 -> 0x81`; the passkey remains in inventory.
 Debug/Release BMPs and action/map-delta traces match. This tests only the
-quality-2 passkey success branch. Electronics, insufficient quality, and the
-walk beyond the lock remain open. No matching independent gameplay capture is
-available. The special transition through
+quality-2 passkey success branch. Electronics and insufficient quality remain
+open. No matching independent gameplay capture is available. The route also
+exposed the delayed player hurt cue `0x40` after the runner returned to walking
+animation; the C++ heartbeat validator now accepts that source-delayed cue on
+the runner's behavior pass, and this QA requires a clean heartbeat result. The
+special transition through
 `0xC64C` and `0x2A32`/`0x2A44` clears `FFE180`; the ordinary resource entry and
 elevator handoff preserve it until contact. The static list still has no scene
 ID in `0xA800`.

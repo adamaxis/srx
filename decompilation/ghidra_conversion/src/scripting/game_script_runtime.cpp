@@ -11487,10 +11487,11 @@ GameScriptRuntime::actor_heartbeat(
         player_spell_cast;
     // ROM 0xAFF2 selects the kind-3 C072 pose for a nonzero physical meter;
     // its 0xB07E continuation emits the 0xB03E (0x40) cue after eight actor
-    // services. This delayed cue belongs to any runner's hurt pose.
+    // services. Animation can return to walk/idle before that delayed cue, so
+    // identify it by its runner behavior service and source audio event.
     const bool player_hurt_audio =
+        context.instance_id == "field_player_runner" &&
         context.phase == ScriptActorHeartbeatPhase::behavior &&
-        decision.animation_id == "runner_hurt" &&
         decision.audio_event == std::optional<std::uint16_t>{0x0040U};
     // ROM 0xB1DC: the player strike always requests 0x4C/0x55; only an
     // in-range strike adds the 0x4D/0x4E heading cue.

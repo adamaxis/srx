@@ -19891,185 +19891,8 @@ int run_field_mitsuhama_after_hours_entry_qa(
         return 3;
     }
 
-    // ROM 0xECCC services A8AE when its +0x9E bit 3 actor overlaps the live
-    // player record; A8AE is reached through Scene-34 maglock/event cells on
-    // the ordinary map, so this QA seam starts at the extracted contact
-    // coordinates and does not claim the physical corridor is traversable.
-    field_scene.set_field_entity_world_position_for_dump(0x1D00U, 0x4100U);
-    field_scene.set_field_camera_world_position_for_dump(0x1500U, 0x3900U);
-    if (!save("scene-34-aragorn-contact-approach")) {
-        std::cerr << "Mitsuhama entry QA: Aragorn approach capture failed\n";
-        return 3;
-    }
-    std::uint16_t contact_updates = 0U;
-    for (; contact_updates < 180U && !field_scene.dialogue_open();
-         ++contact_updates) {
-        field_scene.advance_frame();
-    }
-    const auto page_contains = [&field_scene](const std::string_view needle) {
-        const auto& current_page = field_scene.dialogue_panel();
-        for (std::size_t index = 0U;
-             index < current_page.text_segment_count; ++index) {
-            if (current_page.text_segments[index].find(needle) !=
-                std::string_view::npos) {
-                return true;
-            }
-        }
-        return false;
-    };
-    const auto contact_actor_flags =
-        field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
-    const auto contact_notebook_flags =
-        field_scene.notebook_story_flags_for_dump();
-    const auto contact_mode_flags = field_scene.field_mode_flags_for_dump();
-    const auto& contact_page = field_scene.dialogue_panel();
-    const bool contact_opened =
-        contact_updates < 180U && field_scene.dialogue_open() &&
-        contact_page.source_complete && contact_page.option_count == 1U &&
-        contact_page.options[0U].source_label.find("MORE") !=
-            std::string_view::npos &&
-        page_contains("Walking into the room") &&
-        contact_page.portrait_alias ==
-            "dialogue.portraits.aragorn.mitsuhama" &&
-        !field_scene.world_effect_active_for_dump() &&
-        !field_scene.pending_world_effect_for_dump() &&
-        (field_scene.field_world_fact_flags_for_dump() & (1U << 3U)) != 0U &&
-        (contact_mode_flags & 0x3C00U) == 0x2000U &&
-        contact_notebook_flags.has_value() &&
-        (*contact_notebook_flags & 0x30U) == 0U &&
-        contact_actor_flags.has_value() &&
-        (*contact_actor_flags & 0x80U) != 0U &&
-        std::count(source_boundaries.begin(), source_boundaries.end(),
-                   std::string(
-                       "field.world_activity.aragorn_contact_opened")) == 1;
-    if (!contact_opened || !save("scene-34-aragorn-contact-actual")) {
-        std::cerr << "Mitsuhama entry QA: A8AE contact did not consume FFE180, "
-                     "apply the recovered FFFC state, and open F4BBC "
-                     "(updates=" << contact_updates << ", dialogue="
-                  << field_scene.dialogue_open() << ", text="
-                  << page_contains("Walking into the room")
-                  << ", portrait=" << contact_page.portrait_alias
-                  << ", world_effect="
-                  << field_scene.world_effect_active_for_dump()
-                  << ", story_flags=0x" << std::hex
-                  << field_scene.field_world_fact_flags_for_dump()
-                  << ", mode_flags=0x" << contact_mode_flags
-                  << ", notebook_flags=0x"
-                  << contact_notebook_flags.value_or(0U) << std::dec
-                  << ", actor_flags=0x"
-                  << static_cast<unsigned>(contact_actor_flags.value_or(0U))
-                  << ", failure=" << field_scene.failure() << ")\n";
-        return 3;
-    }
-
-    tap_qa_controller_button(field_scene, 0x40U);
-    for (std::uint16_t settle = 0U;
-         settle < 120U && !page_contains("get you outta' here"); ++settle) {
-        field_scene.advance_frame();
-    }
-    const bool reply_page_matches = field_scene.dialogue_open() &&
-        page_contains("get you outta' here") &&
-        field_scene.dialogue_panel().portrait_alias ==
-            "dialogue.portraits.aragorn.mitsuhama";
-    if (!reply_page_matches || !save("scene-34-aragorn-contact-reply")) {
-        std::cerr << "Mitsuhama entry QA: the second F4BBC text record did not "
-                     "follow ordinary A input (dialogue="
-                  << field_scene.dialogue_open() << ", text="
-                  << page_contains("get you outta' here") << ", failure="
-                  << field_scene.failure() << ")\n";
-        return 3;
-    }
-
-    tap_qa_controller_button(field_scene, 0x40U);
-    for (std::uint16_t settle = 0U;
-         settle < 120U && !page_contains("runs from the room"); ++settle) {
-        field_scene.advance_frame();
-    }
-    const bool outcome_page_matches = field_scene.dialogue_open() &&
-        page_contains("runs from the room") &&
-        field_scene.dialogue_panel().portrait_alias ==
-            "dialogue.portraits.aragorn.mitsuhama" &&
-        (field_scene.field_world_fact_flags_for_dump() & (1U << 3U)) != 0U;
-    if (!outcome_page_matches ||
-        !save("scene-34-aragorn-contact-outcome")) {
-        std::cerr << "Mitsuhama entry QA: the final F4BBC text record or "
-                     "dialogue command 0x18 did not resolve (dialogue="
-                  << field_scene.dialogue_open() << ", text="
-                  << page_contains("runs from the room") << ", failure="
-                  << field_scene.failure() << ")\n";
-        return 3;
-    }
-    const auto deactivated_records_before = std::count(
-        source_boundaries.begin(), source_boundaries.end(),
-        std::string("field.actor.record_deactivated"));
-    const auto modal_returns_before = std::count(
-        source_boundaries.begin(), source_boundaries.end(),
-        std::string("field.modal_return.transition_completed"));
-    tap_qa_controller_button(field_scene, 0x40U);
-    for (std::uint8_t settle = 0U;
-         settle < 8U && field_scene.dialogue_open(); ++settle) {
-        field_scene.advance_frame();
-    }
-    for (std::uint8_t service = 0U;
-         service < 8U &&
-         field_scene.world_activity_script_actor_count_for_dump() != 0U;
-         ++service) {
-        field_scene.advance_frame();
-    }
-    const auto retired_actor_flags =
-        field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
-    const auto deactivated_records_after = std::count(
-        source_boundaries.begin(), source_boundaries.end(),
-        std::string("field.actor.record_deactivated"));
-    if (field_scene.dialogue_open() ||
-        field_scene.world_effect_active_for_dump() ||
-        field_scene.world_activity_script_actor_count_for_dump() != 0U ||
-        retired_actor_flags.has_value() ||
-        deactivated_records_after != deactivated_records_before + 1) {
-        std::cerr << "Mitsuhama entry QA: final A did not close the contact "
-                     "dialogue and retire its +0xB0 bit-7 actor through "
-                     "the 0x1DED8/0x1E514 cleanup (dialogue="
-                  << field_scene.dialogue_open() << ", world_effect="
-                  << field_scene.world_effect_active_for_dump()
-                  << ", actors="
-                  << field_scene.world_activity_script_actor_count_for_dump()
-                  << ", actor_flags_present="
-                  << retired_actor_flags.has_value()
-                  << ", actor_behavior_flags="
-                  << (retired_actor_flags.has_value()
-                          ? static_cast<unsigned>(*retired_actor_flags)
-                          : 0x100U)
-                  << ", deactivations=" << deactivated_records_before << "->"
-                  << deactivated_records_after << ", failure="
-                  << field_scene.failure() << ")\n";
-        return 3;
-    }
-    for (std::uint16_t frame = 0U;
-         frame < 120U &&
-         std::count(source_boundaries.begin(), source_boundaries.end(),
-                    std::string("field.modal_return.transition_completed")) ==
-             modal_returns_before;
-         ++frame) {
-        field_scene.advance_frame();
-    }
-    if (std::count(source_boundaries.begin(), source_boundaries.end(),
-                   std::string("field.modal_return.transition_completed")) !=
-        modal_returns_before + 1) {
-        std::cerr << "Mitsuhama entry QA: modal return did not complete after "
-                     "the contact actor was retired\n";
-        return 3;
-    }
-    if (!save("scene-34-aragorn-contact-closed")) {
-        std::cerr << "Mitsuhama entry QA: post-contact departure capture failed\n";
-        return 3;
-    }
-
-    // ROM Scene 34 begins at (0x3800,0x0600) after the floor-4 lift.
-    // Re-enter that source placement with ordinary input to record the first
-    // physical event on the route toward the A8AE contact. The actor has been
-    // retired above, so this probe isolates map/event traversal from the
-    // contact callback and never uses coordinate injection as route evidence.
-    field_scene.set_field_entity_world_position_for_dump(0x3800U, 0x0600U);
+    // The floor-4 elevator leaves the runner at the ROM Scene-34 lift entry.
+    // Preserve that live position for the ordinary-input route probe.
     field_scene.set_field_camera_world_position_for_dump(0x3000U, 0U);
     const auto probe_output = output / "scene-34-contact-route-probe";
     std::filesystem::create_directories(probe_output, output_error);
@@ -20091,7 +19914,7 @@ int run_field_mitsuhama_after_hours_entry_qa(
     std::ofstream probe_trace(probe_output / "route.tsv", std::ios::trunc);
     if (!probe_trace) return 3;
     probe_trace << "frame\tinput\tscene\tx\ty\tcollision\tevent\t"
-                   "dialogue\tinteraction\tselection\n";
+                   "dialogue\tinteraction\tselection\tfailure\n";
     const auto& probe_collision_map = field_scene.state()
         .field_scene_buffers.source_metadata.terrain_collision_map;
     if (probe_collision_map.size() != 64U * 64U) {
@@ -20163,6 +19986,7 @@ int run_field_mitsuhama_after_hours_entry_qa(
                             << field_scene.field_interaction_open() << '\t'
                             << static_cast<unsigned>(field_scene
                                                          .field_activity_selection_for_dump())
+                            << '\t' << field_scene.failure()
                             << '\n';
             }
             field_scene.set_controller_nibble(0U);
@@ -20517,6 +20341,294 @@ int run_field_mitsuhama_after_hours_entry_qa(
                   << static_cast<unsigned>(after) << std::dec << '\n';
         }
     }
+    // The ordinary walk below follows the newly opened record-90 collision
+    // cell, skirts the row-24/row-27 obstruction using the open west lane,
+    // then returns east on row 31 to approach the live A8AE actor.
+    const auto route_contact_actor = [&](const std::uint16_t x,
+                                          const std::uint16_t y) {
+        const auto position = field_scene.field_entity_world_position();
+        return position.x >= static_cast<std::uint16_t>(x - 0x40U) &&
+               position.x < static_cast<std::uint16_t>(x + 0x40U) &&
+               position.y >= static_cast<std::uint16_t>(y - 0x40U) &&
+               position.y < static_cast<std::uint16_t>(y + 0x40U);
+    };
+    const auto contact_actor_position =
+        field_scene.world_activity_script_actor_position_for_dump(0U);
+    const auto contact_actor_source_slot =
+        field_scene.world_activity_script_actor_record_slot_for_dump(0U);
+    const bool contact_actor_is_live =
+        contact_actor_position.has_value() &&
+        contact_actor_position->x == 0x1D00U &&
+        contact_actor_position->y == 0x4100U &&
+        contact_actor_source_slot.has_value() &&
+        field_scene.world_activity_script_actor_profile_for_dump(0U) ==
+            std::optional<std::string>{"pedestrian_k0b_none00"};
+    const bool walk_south_through_open_record_90 = walk_probe_leg(
+        0x02U, "down", "scene34-open-record90-south-to-row23",
+        source_walk_bound(0x0500U), [&field_scene] {
+            return field_scene.dialogue_open() ||
+                   field_scene.field_entity_world_position().y >= 0x2E00U;
+        });
+    const auto after_record_90_position =
+        field_scene.field_entity_world_position();
+    const bool reached_row_23 = walk_south_through_open_record_90 &&
+        !field_scene.dialogue_open() && after_record_90_position.y >= 0x2E00U;
+    const bool walk_west_to_row_23_lane = reached_row_23 &&
+        walk_probe_leg(0x04U, "left", "scene34-row23-west-lane",
+                       source_walk_bound(0x0500U), [&field_scene] {
+                           return field_scene.dialogue_open() ||
+                                  field_scene.field_entity_world_position().x <=
+                                      0x1700U;
+                       });
+    const auto row_23_lane_position = field_scene.field_entity_world_position();
+    const bool reached_west_lane = walk_west_to_row_23_lane &&
+        !field_scene.dialogue_open() && row_23_lane_position.x <= 0x1700U;
+    const bool walk_south_to_row_31_lane = reached_west_lane &&
+        walk_probe_leg(0x02U, "down", "scene34-west-lane-south-to-row31",
+                       source_walk_bound(0x1000U), [&field_scene] {
+                           return field_scene.dialogue_open() ||
+                                  field_scene.field_entity_world_position().y >=
+                                      0x3E00U;
+                       });
+    const auto row_31_lane_position = field_scene.field_entity_world_position();
+    const bool reached_row_31 = walk_south_to_row_31_lane &&
+        !field_scene.dialogue_open() && row_31_lane_position.y >= 0x3E00U;
+    const bool walk_east_on_row_31 = reached_row_31 &&
+        walk_probe_leg(0x08U, "right", "scene34-row31-east-to-actor",
+                       source_walk_bound(0x0700U), [&field_scene] {
+                           return field_scene.dialogue_open() ||
+                                  field_scene.field_entity_world_position().x >=
+                                      0x1CC0U;
+                       });
+    const auto row_31_east_position = field_scene.field_entity_world_position();
+    const bool reached_actor_column = walk_east_on_row_31 &&
+        !field_scene.dialogue_open() && row_31_east_position.x >= 0x1CC0U;
+    const bool walk_south_into_a8ae_contact = reached_actor_column &&
+        walk_probe_leg(0x02U, "down", "scene34-row32-a8ae-contact",
+                       source_walk_bound(0x0400U), [&field_scene] {
+                           return field_scene.dialogue_open() ||
+                                  field_scene.field_entity_world_position().y >=
+                                      0x40C0U;
+                       });
+    const auto contact_approach_position =
+        field_scene.field_entity_world_position();
+    const bool contact_route_reached_actor =
+        walk_south_through_open_record_90 && reached_row_23 &&
+        walk_west_to_row_23_lane && reached_west_lane &&
+        walk_south_to_row_31_lane && reached_row_31 &&
+        walk_east_on_row_31 && reached_actor_column &&
+        walk_south_into_a8ae_contact && contact_actor_is_live &&
+        route_contact_actor(0x1D00U, 0x4100U);
+    if (!contact_route_reached_actor) {
+        std::cerr << "Mitsuhama entry QA: ordinary input did not cross the "
+                     "open record-90 cell and reach the live A8AE contact "
+                     "window (legs=" << walk_south_through_open_record_90
+                  << ',' << walk_west_to_row_23_lane << ','
+                  << walk_south_to_row_31_lane << ',' << walk_east_on_row_31
+                  << ',' << walk_south_into_a8ae_contact << ", player="
+                  << contact_approach_position.x << ','
+                  << contact_approach_position.y << ", actor="
+                  << (contact_actor_position.has_value()
+                          ? std::to_string(contact_actor_position->x) + "," +
+                                std::to_string(contact_actor_position->y)
+                          : std::string("missing"))
+                  << ", actor_live=" << contact_actor_is_live
+                  << ", actor_count="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << ", actor_profile="
+                  << field_scene.world_activity_script_actor_profile_for_dump(0U)
+                         .value_or("missing")
+                  << ", contact_radius="
+                  << route_contact_actor(0x1D00U, 0x4100U)
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+    if (!save("scene-34-aragorn-contact-approach")) {
+        std::cerr << "Mitsuhama entry QA: Aragorn route capture failed\n";
+        return 3;
+    }
+    std::uint16_t contact_updates = 0U;
+    for (; contact_updates < 180U && !field_scene.dialogue_open();
+         ++contact_updates) {
+        field_scene.advance_frame();
+    }
+    const auto page_contains = [&field_scene](const std::string_view needle) {
+        const auto& current_page = field_scene.dialogue_panel();
+        for (std::size_t index = 0U;
+             index < current_page.text_segment_count; ++index) {
+            if (current_page.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto contact_actor_flags =
+        field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
+    const auto contact_notebook_flags =
+        field_scene.notebook_story_flags_for_dump();
+    const auto contact_mode_flags = field_scene.field_mode_flags_for_dump();
+    const auto& contact_page = field_scene.dialogue_panel();
+    const bool contact_opened =
+        contact_updates < 180U && field_scene.dialogue_open() &&
+        contact_page.source_complete && contact_page.option_count == 1U &&
+        contact_page.options[0U].source_label.find("MORE") !=
+            std::string_view::npos &&
+        page_contains("Walking into the room") &&
+        contact_page.portrait_alias ==
+            "dialogue.portraits.aragorn.mitsuhama" &&
+        !field_scene.world_effect_active_for_dump() &&
+        !field_scene.pending_world_effect_for_dump() &&
+        (field_scene.field_world_fact_flags_for_dump() & (1U << 3U)) != 0U &&
+        (contact_mode_flags & 0x3C00U) == 0x2000U &&
+        contact_notebook_flags.has_value() &&
+        (*contact_notebook_flags & 0x30U) == 0U &&
+        contact_actor_flags.has_value() &&
+        (*contact_actor_flags & 0x80U) != 0U &&
+        field_scene.failure().empty() &&
+        std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string(
+                       "field.world_activity.aragorn_contact_opened")) == 1;
+    if (!contact_opened || !save("scene-34-aragorn-contact-actual")) {
+        std::cerr << "Mitsuhama entry QA: A8AE contact did not consume FFE180, "
+                     "apply the recovered FFFC state, and open F4BBC "
+                     "(updates=" << contact_updates << ", dialogue="
+                  << field_scene.dialogue_open() << ", text="
+                  << page_contains("Walking into the room")
+                  << ", portrait=" << contact_page.portrait_alias
+                  << ", world_effect="
+                  << field_scene.world_effect_active_for_dump()
+                  << ", story_flags=0x" << std::hex
+                  << field_scene.field_world_fact_flags_for_dump()
+                  << ", mode_flags=0x" << contact_mode_flags
+                  << ", notebook_flags=0x"
+                  << contact_notebook_flags.value_or(0U) << std::dec
+                  << ", actor_flags=0x"
+                  << static_cast<unsigned>(contact_actor_flags.value_or(0U))
+                  << ", failure=" << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U);
+    for (std::uint16_t settle = 0U;
+         settle < 120U && !page_contains("get you outta' here"); ++settle) {
+        field_scene.advance_frame();
+    }
+    const bool reply_page_matches = field_scene.dialogue_open() &&
+        page_contains("get you outta' here") &&
+        field_scene.dialogue_panel().portrait_alias ==
+            "dialogue.portraits.aragorn.mitsuhama";
+    if (!reply_page_matches || !save("scene-34-aragorn-contact-reply")) {
+        std::cerr << "Mitsuhama entry QA: the second F4BBC text record did not "
+                     "follow ordinary A input (dialogue="
+                  << field_scene.dialogue_open() << ", text="
+                  << page_contains("get you outta' here") << ", failure="
+                  << field_scene.failure() << ")\n";
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U);
+    for (std::uint16_t settle = 0U;
+         settle < 120U && !page_contains("runs from the room"); ++settle) {
+        field_scene.advance_frame();
+    }
+    const bool outcome_page_matches = field_scene.dialogue_open() &&
+        page_contains("runs from the room") &&
+        field_scene.dialogue_panel().portrait_alias ==
+            "dialogue.portraits.aragorn.mitsuhama" &&
+        (field_scene.field_world_fact_flags_for_dump() & (1U << 3U)) != 0U;
+    if (!outcome_page_matches ||
+        !save("scene-34-aragorn-contact-outcome")) {
+        std::cerr << "Mitsuhama entry QA: the final F4BBC text record or "
+                     "dialogue command 0x18 did not resolve (dialogue="
+                  << field_scene.dialogue_open() << ", text="
+                  << page_contains("runs from the room") << ", failure="
+                  << field_scene.failure() << ")\n";
+        return 3;
+    }
+    const auto deactivated_records_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.actor.record_deactivated"));
+    const auto world_activity_actors_before_departure =
+        field_scene.world_activity_script_actor_count_for_dump();
+    const auto modal_returns_before = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.modal_return.transition_completed"));
+    const auto aragorn_source_slot_is_live = [&field_scene,
+                                               &contact_actor_source_slot] {
+        if (!contact_actor_source_slot.has_value()) {
+            return false;
+        }
+        for (std::uint16_t order = 0U; order < 16U; ++order) {
+            if (field_scene.world_activity_script_actor_record_slot_for_dump(
+                    order) == contact_actor_source_slot) {
+                return true;
+            }
+        }
+        return false;
+    };
+    tap_qa_controller_button(field_scene, 0x40U);
+    for (std::uint8_t settle = 0U;
+         settle < 8U && field_scene.dialogue_open(); ++settle) {
+        field_scene.advance_frame();
+    }
+    for (std::uint8_t service = 0U;
+         service < 8U && aragorn_source_slot_is_live(); ++service) {
+        field_scene.advance_frame();
+    }
+    const auto deactivated_records_after = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.actor.record_deactivated"));
+    const auto world_activity_actors_after_departure =
+        field_scene.world_activity_script_actor_count_for_dump();
+    const bool aragorn_record_retired = !aragorn_source_slot_is_live();
+    if (field_scene.dialogue_open() ||
+        field_scene.world_effect_active_for_dump() ||
+        world_activity_actors_before_departure == 0U ||
+        world_activity_actors_after_departure + 1U !=
+            world_activity_actors_before_departure ||
+        !aragorn_record_retired ||
+        deactivated_records_after != deactivated_records_before + 1) {
+        std::cerr << "Mitsuhama entry QA: final A did not close the contact "
+                     "dialogue and clear Aragorn's +0xB0 bit-7 actor through "
+                     "the 0x1DED8/0x1E514 cleanup (dialogue="
+                  << field_scene.dialogue_open() << ", world_effect="
+                  << field_scene.world_effect_active_for_dump()
+                  << ", actors=" << world_activity_actors_before_departure
+                  << "->" << world_activity_actors_after_departure
+                  << ", actor_slot_before="
+                  << (contact_actor_source_slot.has_value()
+                          ? std::to_string(static_cast<unsigned>(
+                                *contact_actor_source_slot))
+                          : std::string("missing"))
+                  << ", actor_slot_still_live="
+                  << aragorn_source_slot_is_live()
+                  << ", deactivations=" << deactivated_records_before << "->"
+                  << deactivated_records_after << ", failure="
+                  << field_scene.failure() << ")\n";
+        return 3;
+    }
+    for (std::uint16_t frame = 0U;
+         frame < 120U &&
+         std::count(source_boundaries.begin(), source_boundaries.end(),
+                    std::string("field.modal_return.transition_completed")) ==
+             modal_returns_before;
+         ++frame) {
+        field_scene.advance_frame();
+    }
+    if (std::count(source_boundaries.begin(), source_boundaries.end(),
+                   std::string("field.modal_return.transition_completed")) !=
+        modal_returns_before + 1) {
+        std::cerr << "Mitsuhama entry QA: modal return did not complete after "
+                     "the contact actor was retired\n";
+        return 3;
+    }
+    if (!save("scene-34-aragorn-contact-closed")) {
+        std::cerr << "Mitsuhama entry QA: post-contact departure capture failed\n";
+        return 3;
+    }
+
     std::cout << "field_scene34_contact_route_probe=passed frames="
               << probe_frames << " end=" << probe_end.x << ','
               << probe_end.y << " scene="

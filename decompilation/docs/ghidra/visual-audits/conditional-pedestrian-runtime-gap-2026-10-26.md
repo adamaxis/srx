@@ -31,8 +31,10 @@ collision `0x0082`, event 2). The resulting `0x20E48` “sturdy door” prompt
 uses selection 2. Debug and Release write matching full-screen
 `scene-34-maglock-introduction.bmp` captures and a frame-by-frame input,
 position, collision, and event trace under
-`scene-34-contact-route-probe/`. The physical movement stops at this lock;
-the passkey branch is now exercised with a QA-seeded live-runner item `0x14`,
+`scene-34-contact-route-probe/`. The ordinary route now continues through the
+unlocked record-90 cell, uses the west lane around the row-24/row-27
+obstruction, and returns east on row 31 to approach A8AE. The passkey branch
+is exercised with a QA-seeded live-runner item `0x14`,
 quality 2, and ordinary A after the prompt's source 10-frame choice gate. The
 route checks the result page and `0x4B` sound through its 30-frame wait, then
 acknowledges it with A and verifies the runner returns to Scene 34 with only
@@ -40,10 +42,11 @@ record 90's collision-map cell changing from `0x82` to `0x81`; the seeded item
 and quality remain in the runner inventory. Debug/Release captures include the
 passkey action/result/wait pages, field return, `passkey-action.tsv`, and
 `passkey-map-delta.tsv`; the BMPs have matching hashes. This covers the
-quality-2 success branch only. Electronics, insufficient passkey quality, and
-the remaining route to Aragorn have not been exercised. The A8AE dialogue QA
-still injects proximity to test `0xECCC`, the
-Lua `0x53C90` graph, and the three `0xF4BBC` pages. Other live marker
+quality-2 success branch only. Electronics and insufficient passkey quality
+have not been exercised. Ordinary input reaches the live A8AE actor at
+`(0x1D00,0x4100)` within the ROM `+/-0x40` proximity window. A presses advance
+all three `0xF4BBC` pages, and the source cleanup retires Aragorn's actor
+record. Other live marker
 producers and the random-candidate path through an accepted initializer-5
 offer remain open. Section 41 has no route-matched visual check.
 
@@ -270,14 +273,14 @@ connected: the field runtime forwards the source list and selected ECCC handler
 to Lua, which chooses the contact graph only for list `0xA8AE` with FFE180
 priority. The graph consumes FFE180, sets FFFC1E bit 3, clears FFFC30 bits
 10-12 and sets bit 13, clears FFFC38 bits 4-5, then presents the three records
-from `0xF4BBC` with portrait profile `0x121E08`. Debug/Release QA injects player
-proximity at the extracted actor coordinates, advances all three pages with A,
+from `0xF4BBC` with portrait profile `0x121E08`. Debug/Release QA walks through
+the unlocked record-90 cell to the actor, advances all three pages with A,
 checks the flags and actor one-shot bit, and writes
 `scene-34-aragorn-contact-{actual,reply,outcome}.bmp`; the opening-page images
-have matching SHA-256 hashes. The approach injection is a test seam, not proof
-of a traversable route to the actor. Ordinary input now reaches the record-90
-event-2 maglock after crossing record 92; neither passage through that lock nor
-the remaining walk to A8AE is established. The `0x1E45E` FFE183 clear is
+have matching SHA-256 hashes. At contact, the player is at `(0x1D26,0x40CE)`
+and the actor at `(0x1D00,0x4100)`. Cleanup removes Aragorn's source slot and
+reduces the active Scene-34 activity count by one while other records remain.
+The `0x1E45E` FFE183 clear is
 connected at the `0x0A92` request callback: Lua returns and clears the choice
 atomically, and the callback passes that byte into the typed 13-record
 `0x1E43C` scan.
@@ -319,10 +322,11 @@ actor-record capture identifies the candidate. The same contact sheet shows
 Tarislar City Inn dialogue later in Section 41; it does not show the
 Mitsuhama after-hours page or identify Scene 30/34. The new
 `field-mitsuhama-after-hours-entry-qa/actual.bmp`, `scene-30-entry.bmp`, and
-`scene-34-aragorn-contact-{actual,reply,outcome}.bmp` are internal regression
-captures only. I inspected the entry and contact pages: their extracted text,
-MORE prompts, 56x72 portraits, and three-page sequence are visible; Debug and
-Release contact opening images match byte-for-byte. Neither capture is an
+`scene-34-aragorn-contact-{approach,actual,reply,outcome,closed}.bmp` are
+internal regression captures only. I inspected the contact opening, reply,
+outcome, and closed field frames: the extracted text, MORE prompts, 56x72
+portrait, three-page sequence, and return to the field are visible. All 22
+Scene-34 QA BMPs have matching Debug/Release hashes. These images are not an
 independent Genesis visual match.
 
 ## Next source-backed slice
@@ -331,11 +335,12 @@ The post-page effect is now traced: `0x53C90` calls `0x1DED8`, which scans
 `FF0400..FF0A00` and dispatches active actor records with `+0xB0` bit 7 to
 `0x1E514`; that handler clears the escort and active bits. The Lua action queues
 this source-record cleanup, and the host consumes it before the modal return
-fade. Debug/Release QA checks one retirement and saves a closed Scene-34 BMP.
-This verifies record removal; it does not claim a walking animation or path.
+fade. Debug/Release QA verifies Aragorn's source slot is removed and saves a
+closed Scene-34 BMP. The route captures are internal runtime evidence, not an
+independent Genesis animation or map comparison.
 
-Next, cover the record-90 Electronics outcome and insufficient-passkey branch,
-then continue the Scene-34 route to A8AE without coordinate injection. Cover
+Next, cover the record-90 Electronics outcome and insufficient-passkey branch.
+The ordinary Scene-34 route to A8AE is now established. Cover
 the Electronics results with the live runner's class, skill, inventory, and
 source RNG inputs. Exercise
 the random branch through an accepted raw initializer-5 offer, including offer
