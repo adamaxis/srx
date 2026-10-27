@@ -63,6 +63,25 @@ alternatives or establish the subsequent combat outcome.
 - The Frosty command at `0x2497C` sets FFFC30 bit 23 and FFFC34 bits 4, 13,
   and 21 before displaying the information record at `0x1180D2`.
 
+## Section-41 capture cross-check
+
+I rechecked the independent longplay around the City Inn sequence. At
+`frame_003000.png` (`02:58:40`), the manager's intro panel displays the text
+stored at `0x117CE3` and `0x117D42`, with the manager portrait from profile
+`0x121FB8` and the MORE marker. At `frame_003210.png` (`02:58:47`), the same
+manager presents the service prompt and the three visible A/B/C labels for
+Crash, Leave, and Tabatha. `frame_003420.png` (`02:58:54`) shows the manager's
+Tabatha answer with MORE. This sequence is consistent with the `shale` choice
+in `manager_options`, command `0x16` at `0x218BC`, and prompt `0xF4EA4` / text
+`0x117EC5`; the video does not record the controller event itself.
+
+One text detail remains **[H]**: at original 320x224 resolution, the line
+around “let anybody in … clean up” appears to contain an extra “or” before
+“even.” The US ROM bytes at `0x117F13` and `script-text.json` read “even to
+clean up,” without “or.” The small font makes that word uncertain in this
+frame, so keep the ROM-derived text unchanged until the capture wording is
+settled. This observation does not alter the verified choice-to-page route.
+
 Generated text keys for the service, room, package variants, Tabatha dialogue
 and aftermath, Frosty, and menu labels live in
 `assets/dialogue/script-text.json`. The profile images at `0x121FB8` and
@@ -163,9 +182,9 @@ key.
   counterparts have matching SHA-256 hashes. The independent longplay frames
   are in `video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/`
   under `section_41_source_10620-10815/`; the targeted frames are `003000`,
-  `003225`, `003390`, `003600`, `003780`, and `003900`. The longplay confirms
-  those presentation states; it does not cover every payment or post-attack
-  branch.
+  `003210`, `003225`, `003390`, `003420`, `003600`, `003780`, and `003900`.
+  The longplay confirms those presentation states; it does not cover every
+  payment or post-attack branch.
 
 The City Inn's 30-nuyen offer is a fixed source price; the outcome varies with
 the runner's wallet and the service's story gate, not the archetype/race
