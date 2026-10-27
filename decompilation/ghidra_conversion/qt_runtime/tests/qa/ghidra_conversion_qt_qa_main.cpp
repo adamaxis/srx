@@ -27177,6 +27177,341 @@ int run_field_wylie_gala_inn_qa(
     return 0;
 }
 
+int run_field_council_island_inn_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::string_view route,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Council Island Inn QA: could not clear captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Council Island Inn QA: could not create captures: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    const bool package_positive = route == "package-positive";
+    const bool package_negative = route == "package-negative";
+    const bool decline_intro = route == "decline-inn";
+    const bool decline_room = route == "decline-room";
+    const bool insufficient = route == "insufficient";
+    const bool paid_exact = route == "paid-exact";
+    const bool paid_excess = route == "paid-excess";
+    if (!package_positive && !package_negative && !decline_intro &&
+        !decline_room && !insufficient && !paid_exact && !paid_excess) {
+        std::cerr << "Council Island Inn QA: unknown route " << route << '\n';
+        return 3;
+    }
+
+    constexpr std::size_t kRecord = 92U;
+    constexpr std::uint16_t kCollision = 0x00C0U;
+    constexpr std::uint8_t kEvent = 0U;
+    constexpr std::uint16_t kStartX = 0x4400U;
+    constexpr std::uint16_t kStartY = 0x2600U;
+    field_scene.set_field_entity_world_position_for_dump(kStartX, kStartY);
+    field_scene.set_field_camera_world_position_for_dump(0x3A00U, 0x1F00U);
+    const auto& rectangles = field_scene.state()
+                                 .field_scene_buffers.source_metadata
+                                 .terrain_collision_rectangles;
+    if (field_scene.field_scene_reference_for_dump() != 4U ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        rectangles.size() <= kRecord ||
+        rectangles[kRecord].left != 0x0440U ||
+        rectangles[kRecord].right != 0x045FU ||
+        rectangles[kRecord].top != 0x0220U ||
+        rectangles[kRecord].bottom != 0x023FU ||
+        rectangles[kRecord].value != kCollision) {
+        std::cerr << "Council Island Inn QA: Scene-4 checkpoint or ROM "
+                     "record 92 does not match\n";
+        return 3;
+    }
+
+    // ROM 0x1F7CE selects its package pages from signed FFF0D5 before the
+    // default room offer. Zero exercises the doorway's ordinary 40-nuyen
+    // choices; ROM 0x21458 establishes the exact wallet boundary.
+    const auto wallet_before = insufficient ? 39U
+        : (paid_exact ? 40U : 100U);
+    field_scene.set_field_funds_for_dump(wallet_before);
+    field_scene.set_field_exit_alternate_result_for_dump(
+        package_positive ? 1 : (package_negative ? -1 : 0));
+
+    const auto render = [&field_scene] { return render_qa_field(field_scene); };
+    const auto save = [&](const std::string_view name,
+                          const std::optional<bool> expect_field_hud) {
+        const auto image = render();
+        if (image.size() != QSize(kSceneWidth, kSceneHeight) ||
+            (expect_field_hud.has_value() &&
+             field_hud_chrome_survives(image, asset_root) !=
+                 *expect_field_hud) ||
+            (field_scene.dialogue_open() &&
+             (!image_has_green_ink(image, 80, 8, 160, 120) ||
+              (field_scene.dialogue_panel().option_count != 0U &&
+               !image_has_green_ink(image, 8, 144, 304, 56)))) ||
+            !image.save(QString::fromStdWString(
+                (output / (std::string(name) + ".bmp")).wstring()))) {
+            std::cerr << "Council Island Inn QA: full-frame or dialogue-pixel "
+                         "check failed for "
+                      << name << '\n';
+            return false;
+        }
+        return true;
+    };
+    if (!save("spawn", true)) return 3;
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into record 92
+        field_scene.advance_frame();
+        if (field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.dialogue_open() ||
+            field_scene.hotel_menu_open() ||
+            field_scene.field_scene_reference_for_dump() != 4U) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto expected_collision = static_cast<std::uint16_t>(
+        0xFF00U | kCollision);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        field_scene.field_terrain_collision_code_for_dump() !=
+            expected_collision ||
+        field_scene.field_projected_code_for_dump() != expected_collision ||
+        field_scene.field_mode_event_code_for_dump() != kEvent ||
+        !field_scene.field_interaction_transition_active_for_dump() ||
+        !save("doorway-contact", std::nullopt)) {
+        std::cerr << "Council Island Inn QA: ordinary Up did not reach "
+                     "record 92/event 0 (ticks=" << movement_ticks
+                  << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ")\n";
+        return 3;
+    }
+
+    for (std::uint8_t settle = 0U;
+         settle < 120U && !field_scene.dialogue_open() &&
+         !field_scene.hotel_menu_open() &&
+         field_scene.field_scene_reference_for_dump() == 4U;
+         ++settle) {
+        field_scene.advance_frame();
+    }
+    const auto contains = [&field_scene](const std::string_view needle) {
+        const auto& panel = field_scene.dialogue_panel();
+        for (std::size_t index = 0U; index < panel.text_segment_count; ++index) {
+            if (panel.text_segments[index].find(needle) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    const auto& entry = field_scene.dialogue_panel();
+    const auto prompt_opened = std::count(
+        source_boundaries.begin(), source_boundaries.end(),
+        std::string("field.location.exit_prompt_opened"));
+    const bool default_prompt = entry.option_count == 2U &&
+        entry.options[0U].source_label.find("place to crash") !=
+            std::string_view::npos &&
+        entry.options[1U].source_label.find("talk to you later") !=
+            std::string_view::npos;
+    if (!field_scene.dialogue_open() ||
+        field_scene.field_scene_reference_for_dump() != 4U ||
+        !entry.source_complete || prompt_opened != 1 ||
+        !save("actual", std::nullopt)) {
+        std::cerr << "Council Island Inn QA: record 92 did not resolve its "
+                     "same-map ROM prompt/result (dialogue="
+                  << field_scene.dialogue_open() << ", opened="
+                  << prompt_opened << ", source_complete="
+                  << entry.source_complete << ", scene="
+                  << field_scene.field_scene_reference_for_dump() << ")\n";
+        return 3;
+    }
+
+    if (package_positive || package_negative) {
+        const bool expected_package_text = package_positive
+            ? (contains("well-dressed elf") && contains("gives you the payment"))
+            : (contains("tell the proprietor") && contains("finds it"));
+        if (!expected_package_text || default_prompt || entry.option_count != 0U ||
+            field_scene.field_funds_for_dump() !=
+                std::optional<std::uint32_t>{wallet_before}) {
+            std::cerr << "Council Island Inn QA: signed FFF0D5="
+                      << (package_positive ? "+1" : "-1")
+                      << " selected the wrong package page or charged funds\n";
+            return 3;
+        }
+        tap_qa_controller_button(field_scene, 0x40U); // acknowledge result
+        if (field_scene.dialogue_open() || field_scene.hotel_menu_open() ||
+            field_scene.field_scene_reference_for_dump() != 4U ||
+            !save("result-closed", std::nullopt)) {
+            std::cerr << "Council Island Inn QA: signed package result did not "
+                         "close on Scene 4\n";
+            return 3;
+        }
+    } else {
+        if (!contains("Salutations, weary traveler!") || !default_prompt ||
+            !save("actual", std::nullopt)) {
+            std::cerr << "Council Island Inn QA: zero FFF0D5 did not show the "
+                         "default Crash/Leave prompt\n";
+            return 3;
+        }
+
+        if (decline_intro) {
+            tap_qa_controller_button(field_scene, 0x10U); // B: Leave.
+            const bool dialogue_remains = field_scene.dialogue_open();
+            const bool hotel_open = field_scene.hotel_menu_open();
+            const auto scene_after = field_scene.field_scene_reference_for_dump();
+            const auto funds_after = field_scene.field_funds_for_dump();
+            const bool declined_saved = save("declined", std::nullopt);
+            if (dialogue_remains || hotel_open || scene_after != 4U ||
+                funds_after != std::optional<std::uint32_t>{wallet_before} ||
+                !declined_saved) {
+                std::cerr << "Council Island Inn QA: Leave at the entry prompt "
+                             "did not remain on Scene 4 (dialogue="
+                          << dialogue_remains << ", hotel=" << hotel_open
+                          << ", scene=" << scene_after << ", funds="
+                          << funds_after.value_or(0U) << ", captured="
+                          << declined_saved << ")\n";
+                return 3;
+            }
+        } else {
+            tap_qa_controller_button(field_scene, 0x40U); // Crash.
+            const auto& payment = field_scene.dialogue_panel();
+            const bool pay_choice = payment.option_count == 2U &&
+                payment.options[0U].source_label.find("I'll pay") !=
+                    std::string_view::npos &&
+                payment.options[1U].source_label.find("talk to you later") !=
+                    std::string_view::npos;
+            if (!field_scene.dialogue_open() ||
+                !contains("40 nuyen, payable in advance") || !pay_choice ||
+                !save("room-payment", std::nullopt)) {
+                std::cerr << "Council Island Inn QA: Crash did not open the "
+                             "ROM 40-nuyen Pay/Leave page\n";
+                return 3;
+            }
+
+            if (decline_room) {
+                tap_qa_controller_button(field_scene, 0x10U); // B: Leave.
+                const bool dialogue_remains = field_scene.dialogue_open();
+                const bool hotel_open = field_scene.hotel_menu_open();
+                const auto scene_after =
+                    field_scene.field_scene_reference_for_dump();
+                const auto funds_after = field_scene.field_funds_for_dump();
+                const bool declined_saved = save("declined", std::nullopt);
+                if (dialogue_remains || hotel_open || scene_after != 4U ||
+                    funds_after !=
+                        std::optional<std::uint32_t>{wallet_before} ||
+                    !declined_saved) {
+                    std::cerr << "Council Island Inn QA: Leave at the payment "
+                                 "prompt did not remain on Scene 4 (dialogue="
+                              << dialogue_remains << ", hotel=" << hotel_open
+                              << ", scene=" << scene_after << ", funds="
+                              << funds_after.value_or(0U) << ", captured="
+                              << declined_saved << ")\n";
+                    return 3;
+                }
+            } else {
+                tap_qa_controller_button(field_scene, 0x40U); // Pay.
+                const auto expected_funds = insufficient
+                    ? wallet_before : wallet_before - 40U;
+                if (!field_scene.dialogue_open() ||
+                    field_scene.field_scene_reference_for_dump() != 4U ||
+                    field_scene.field_funds_for_dump() !=
+                        std::optional<std::uint32_t>{expected_funds} ||
+                    !(insufficient ? contains("low on creds")
+                                   : contains("Hope you brought")) ||
+                    !save(insufficient ? "room-insufficient" : "room-paid",
+                          std::nullopt)) {
+                    std::cerr << "Council Island Inn QA: charge_40 result or "
+                                 "wallet balance did not match route " << route
+                              << " (wallet="
+                              << field_scene.field_funds_for_dump().value_or(0U)
+                              << ")\n";
+                    return 3;
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // acknowledge
+                if (insufficient) {
+                    if (field_scene.dialogue_open() ||
+                        field_scene.hotel_menu_open() ||
+                        field_scene.field_scene_reference_for_dump() != 4U ||
+                        !save("result-closed", true)) {
+                        std::cerr << "Council Island Inn QA: insufficient "
+                                     "funds opened Hotel Options or left Scene 4\n";
+                        return 3;
+                    }
+                } else {
+                    if (field_scene.dialogue_open() ||
+                        !field_scene.hotel_menu_open() ||
+                        field_scene.field_scene_reference_for_dump() != 4U ||
+                        field_scene.hotel_menu_phase() !=
+                            HotelMenuPhase::entity_status) {
+                        std::cerr << "Council Island Inn QA: successful room "
+                                     "payment did not enter same-map Hotel status\n";
+                        return 3;
+                    }
+                    for (int frame = 0; frame < 3; ++frame) {
+                        field_scene.advance_frame();
+                    }
+                    const auto status = render();
+                    if (status.size() != QSize(kSceneWidth, kSceneHeight) ||
+                        !image_has_green_ink(status, 64, 72, 192, 72) ||
+                        !status.save(QString::fromStdWString(
+                            (output / "hotel-status.bmp").wstring()))) {
+                        std::cerr << "Council Island Inn QA: Hotel status "
+                                     "capture failed\n";
+                        return 3;
+                    }
+                    tap_qa_controller_button(field_scene, 0x40U);
+                    for (int frame = 0; frame < 3; ++frame) {
+                        field_scene.advance_frame();
+                    }
+                    const auto options = render();
+                    if (!field_scene.hotel_menu_open() ||
+                        field_scene.hotel_menu_phase() != HotelMenuPhase::options ||
+                        field_scene.hotel_option_selection() != 0U ||
+                        options.size() != QSize(kSceneWidth, kSceneHeight) ||
+                        !image_has_green_ink(options, 80, 72, 160, 32) ||
+                        !options.save(QString::fromStdWString(
+                            (output / "hotel-options.bmp").wstring()))) {
+                        std::cerr << "Council Island Inn QA: status did not "
+                                     "continue to same-map Hotel Options\n";
+                        return 3;
+                    }
+                }
+            }
+        }
+    }
+
+    std::ofstream trace(output / "route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "scene\trecord\tevent\troute\tstart_x\tstart_y\t"
+             "movement_ticks\twallet_before\twallet_after\n"
+          << "4\t92\t0\t" << route << '\t' << kStartX << '\t' << kStartY
+          << '\t' << movement_ticks << '\t' << wallet_before << '\t'
+          << field_scene.field_funds_for_dump().value_or(0U) << '\n';
+    trace.close();
+    if (!trace) return 3;
+    std::cout << "field_council_island_inn_qa=passed route=" << route
+              << " scene=4 record=92 event=0 wallet_before=" << wallet_before
+              << " wallet_after="
+              << field_scene.field_funds_for_dump().value_or(0U)
+              << " artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 enum class ClubPenumbraMakoQaPath {
     qualifying,
     doorman_later,
@@ -33727,6 +34062,9 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_wylie_gala_inn_qa_path;
         std::optional<std::filesystem::path>
+            field_council_island_inn_qa_path;
+        std::string field_council_island_inn_qa_route = "paid-exact";
+        std::optional<std::filesystem::path>
             field_penumbra_mako_qa_path;
         std::optional<std::filesystem::path>
             field_penumbra_reputation_rejection_qa_path;
@@ -34212,6 +34550,14 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_wylie_gala_inn_qa_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-council-island-inn-qa" &&
+                index + 2 < argc) {
+                field_smoke = true;
+                field_council_island_inn_qa_path =
+                    std::filesystem::path(argv[++index]);
+                field_council_island_inn_qa_route = argv[++index];
             }
             if (std::string(argv[index]) ==
                     "--field-penumbra-mako-qa" &&
@@ -35990,6 +36336,7 @@ int main(int argc, char** argv) {
                 field_matrix_cyber_info_qa_path.has_value() ||
                 field_matrix_traversal_entry_qa_path.has_value() ||
                 field_wylie_gala_inn_qa_path.has_value() ||
+                field_council_island_inn_qa_path.has_value() ||
                 field_penumbra_mako_qa_path.has_value() ||
                 field_penumbra_reputation_rejection_qa_path.has_value() ||
                 field_penumbra_doorman_later_qa_path.has_value() ||
@@ -36028,6 +36375,8 @@ int main(int argc, char** argv) {
                     ? field_scene.bootstrap_for_scene_dump(
                           smoke_state, static_cast<std::uint16_t>(
                               srx::FieldAlarmRomLayout::FIRST_LIST_SCENE))
+                    : field_council_island_inn_qa_path.has_value()
+                    ? field_scene.bootstrap_for_scene_dump(smoke_state, 4U)
                     : ((field_wylie_gala_inn_qa_path.has_value() ||
                  field_penumbra_mako_qa_path.has_value() ||
                  field_penumbra_reputation_rejection_qa_path.has_value() ||
@@ -39570,6 +39919,13 @@ int main(int argc, char** argv) {
                     field_scene, asset_root,
                     *field_wylie_gala_inn_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_council_island_inn_qa_path.has_value()) {
+                return run_field_council_island_inn_qa(
+                    field_scene, asset_root,
+                    *field_council_island_inn_qa_path,
+                    field_council_island_inn_qa_route,
+                    field_source_boundaries);
             }
             if (field_penumbra_mako_qa_path.has_value()) {
                 return run_field_penumbra_mako_qa(

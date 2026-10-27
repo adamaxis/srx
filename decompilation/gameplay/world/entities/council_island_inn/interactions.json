@@ -16,8 +16,20 @@
         "returnAnchor": "collision_probe_lead",
         "returnFacing": "face_away_from_entry"
       },
+      "tasks": {
+        "fieldExitPrompt": {
+          "module": "council_island_inn",
+          "function": "present_field_exit_prompt"
+        }
+      },
+      "locationContext": {
+        "type": "building",
+        "id": "council_island_inn",
+        "textProfile": "council_island_inn",
+        "speakerId": "council_island_inn_narrator"
+      },
       "provenance": {
-        "evidence": "ROM scene 4 record 92 at 0X15BDCE; event-table row 0 at 0x15B95E selects numeric field scene 13. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+        "evidence": "ROM scene 4 record 92 at 0x15BDCE has event code 0 and bounds 0x0440..0x045F / 0x0220..0x023F. Handler 0x1F7CE intercepts mode 4/event 0 before the event-table row 0 destination. It presents the 40-nuyen room prompt and enters Hotel Options only after successful payment. ROM 0xBC36/0xBD34 records the collision-probe lead return point; 0x2F32 restores the source scene."
       }
     }
   ]

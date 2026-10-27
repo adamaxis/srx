@@ -1419,6 +1419,21 @@
       "name": "Narration",
       "portrait_alias": "none",
       "text_profile": "penumbra.wylies_gala_inn"
+    },
+    "council_island_inn_narrator": {
+      "events": {
+        "room_insufficient": {
+          "continuation_key": "",
+          "title_key": "shared.hotel.room.insufficient"
+        },
+        "room_paid": {
+          "continuation_key": "",
+          "title_key": "shared.hotel.room.paid"
+        }
+      },
+      "name": "Narration",
+      "portrait_alias": "none",
+      "text_profile": "council_island_inn"
     }
   },
   "schemaVersion": 1

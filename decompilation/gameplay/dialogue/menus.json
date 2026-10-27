@@ -1400,6 +1400,20 @@
         }
       }
     },
+    "council_island_inn": {
+      "inn_service": {
+        "choice_label_keys": {
+          "crash": "wylie.gala_inn.option.crash",
+          "leave": "wylie.gala_inn.option.leave"
+        }
+      },
+      "room_payment": {
+        "choice_label_keys": {
+          "leave": "wylie.gala_inn.option.leave",
+          "pay": "wylie.gala_inn.option.pay"
+        }
+      }
+    },
     "salish.owlfeather": {
       "brother_more": {
         "choice_label_keys": {

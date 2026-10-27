@@ -805,6 +805,22 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_wylie_gala_inn_qa
                  --field-wylie-gala-inn-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-wylie-gala-inn-qa")
 
+# Exercise every Scene-4 Council Island Inn doorway branch with ordinary
+# controller input: signed package results, both Leave edges, and balances
+# below, at, and above the ROM's 40-nuyen payment threshold.
+foreach(_council_inn_route IN ITEMS
+        package-positive package-negative decline-inn decline-room
+        insufficient paid-exact paid-excess)
+    string(REPLACE "-" "_" _council_inn_route_id
+           "${_council_inn_route}")
+    add_shadowrun_qt_qa_case(
+        shadowrun_ghidra_conversion_qt_field_council_island_inn_${_council_inn_route_id}_qa
+        --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+        --field-council-island-inn-qa
+        "${CMAKE_CURRENT_BINARY_DIR}/field-council-island-inn-qa/${_council_inn_route}"
+        "${_council_inn_route}")
+endforeach()
+
 # Walk into Club Penumbra and follow the qualifying Mako activity through
 # Scene 17's four actor transitions and delayed result callback.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_mako_qa
