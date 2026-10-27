@@ -547,6 +547,63 @@ portrait, three-page sequence, and return to the field are visible. All 22
 Scene-34 QA BMPs have matching Debug/Release hashes. These images are not an
 independent Genesis visual match.
 
+## Section 36 Mitsuhama map and moving sprite review
+
+Independent capture: `video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_36_source_9120-9420/frame_008340.png`.
+The 320x224 viewport registers to both `mode-32.bmp` and `mode-33.bmp` at map
+offset `(388,161)`. A grayscale `TM_CCORR_NORMED` comparison of the left
+268x224 pixels, masking the sidebar from x=260 and the figure at x=34..63,
+y=38..81, scores 0.97534. The two map assets have the same SHA-256
+(`2bd7ef348da583943d1f7be8ce278a08f3b7ea7aefab51c2ea41896833ca9687`), so
+this image cannot distinguish Scene 32 from Scene 33.
+
+ROM `0x5A62` projects an actor from its world position relative to camera
+words `FFDDC6/FFDDC8`, shifts by four, and adds the 128-pixel viewport center.
+Using the map registration and the visible figure's foot area gives an
+approximate map position `(436,238)` at frame 8340. This is a screen-derived
+position, not a live RAM readout. The source rows for either scene put the
+three `0xA800` pedestrian choices at `(0x0500,0x1F00)`,
+`(0x2500,0x4F00)`, and `(0x3A00,0x1500)` in 16.4 world coordinates, or map
+pixels `(80,496)`, `(592,1264)`, and `(928,336)`. The default list at
+`0x1DBBE8` has two `corp_guard_k05_item06` rows at `(0x0400,0x2700)`, or
+`(64,624)`. These are source initial positions; the frame's different
+position does not rule out an actor that has moved since spawn.
+
+The image does not expose the live selector gates. At `0xA800`, a set `FFE180`
+story marker wins when its active effect index is 4; otherwise `FFE182` takes
+priority over the randomized pedestrian branch. That branch requires
+`FFFBED==5` and `FFDF40==2`, records a fresh `FFE183` choice from 1 or 2, then
+checks `FFE12C==FFF0C8` and `FFFC3C==0` before publishing. `0x43B6` drains
+that pending list before the scene defaults. The source table has a third
+candidate row, but a fresh random draw does not select it; a nonzero preset
+`FFE183` can still index it. None of these RAM values can be read from this
+video frame.
+
+The same red/brown figure appears to move through the registered map in nearby
+captures. Approximate screen centers and resulting map coordinates are:
+
+| Longplay frame | Map offset | Match | Figure screen center | Approximate map position |
+|---|---:|---:|---:|---:|
+| `frame_008300.png` | `(262,138)` | `0.97151` | `(115,95)` | `(377,233)` |
+| `frame_008340.png` | `(388,161)` | `0.98817` | `(49,61)` | `(437,222)` |
+| `frame_008370.png` | `(449,74)` | `0.95782` | `(141,109)` | `(590,183)` |
+| `frame_008400.png` | `(546,20)` | `0.98338` | `(117,100)` | `(663,120)` |
+| `frame_008430.png` | `(666,39)` | `0.95367` | `(112,100)` | `(778,139)` |
+| `frame_008460.png` | `(720,1)` | `0.96946` | `(170,89)` | `(890,90)` |
+
+These nearby-frame offsets use the same broad mask, with the sidebar and center
+of the viewport excluded; figure centers are visual estimates from the
+independent frames. The frame-8340 focused mask described above scores 0.97534
+at the same offset. [C] The map
+and moving figure are present in the capture. [H] The figure's colors and pose
+look closer to the extracted `pedestrian_k0b_none00` idle art than to the
+yellow-and-black `corp_guard_k05_item06` art, but the compressed video does
+not identify its actor record or party membership. Movement also means the
+current position cannot be compared directly with the A800 initial positions
+to prove which source path created it. Keep the A800 identity and pedestrian
+producer question open; no runtime behavior or hill status changes from this
+frame audit.
+
 ## Next source-backed slice
 
 The post-page effect is now traced: `0x53C90` calls `0x1DED8`, which scans

@@ -882,7 +882,11 @@ generated-offer BMPs for initializers 5, 11, and 12 under
 `qt_runtime/field-pedestrian-scenes-qa/johnson-offer-*`; these remain internal
 runtime captures. The 46 candidate entries still use resource-scene reentry;
 the matrix checks physical Johnson offer acceptance but does not travel to all
-46 candidate scenes. A separate Mitsuhama route drives the lift to Scene 34
+46 candidate scenes. Independent Section 36 longplay frames register to the
+shared Scene-32/33 Mitsuhama map, and a moving red/brown figure resembles the
+pedestrian art; its actor record and party membership remain unconfirmed. See
+the [Section 36 visual audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md#section-36-mitsuhama-map-and-moving-sprite-review).
+A separate Mitsuhama route drives the lift to Scene 34
 for the A8AE story actor. The transition now installs the
 destination mode before actor population,
 matching the `0x167AE` to `0xA800` source order. The same
