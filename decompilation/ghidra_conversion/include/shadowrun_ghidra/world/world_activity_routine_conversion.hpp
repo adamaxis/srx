@@ -114,15 +114,21 @@ WorldActivityResult run_world_activity_routine(
     WorldActivityRoutineState& state,
     const WorldActivityRoutineCallbacks& callbacks = {});
 
-struct WorldActivityStartState {
-    std::uint16_t timer_frames = 0; // FFE11C
-    std::uint32_t activity_pointer = 0; // FFE104
+enum class WorldActivityCallbackKind {
+    none,
+    extraction_result, // ROM 0x1E49C installs callback 0x1F16A
 };
 
-// ROM 0x1E2EC: MOVE.W #0x3C into FFE11C, then copy FFDD2C into FFE104.
+struct WorldActivityStartState {
+    std::uint16_t timer_frames = 0; // FFE11C
+    WorldActivityCallbackKind callback = WorldActivityCallbackKind::none;
+};
+
+// ROM 0x1E2EC starts FFE11C and publishes the already-resolved callback as
+// FFE104. The host stores its typed continuation rather than a code pointer.
 void begin_world_activity(
     WorldActivityStartState& state,
-    std::uint32_t descriptor);
+    WorldActivityCallbackKind callback);
 
 struct WorldActivityTimeoutState {
     std::uint16_t scene_id = 0; // FFDDC4
@@ -137,8 +143,6 @@ struct WorldActivityTimeoutState {
 bool schedule_world_activity_timeout(WorldActivityTimeoutState& state);
 
 constexpr std::size_t kWorldActivityRequestSlotCount = 13;
-constexpr std::uint32_t kWorldActivityRequestDescriptor = 0x0001F16AU;
-
 struct WorldActivityRequestSlot {
     std::uint8_t flags_byte = 0; // +0x10
     std::uint8_t route_flags = 0; // +0xB0
@@ -155,7 +159,7 @@ struct WorldActivityRoutineRequestState {
 
 // ROM 0x1E43C: CLR FFE180/82/84/87. FFE183==0 RTS. Else CLR FFE183, scan
 // 13 slots at FF0400 for +0x10 bit 0 and +0xB0 bit 7, write FFE181 0 or
-// 0xFF, publish 0x1F16A into FFDD2C, BRA 0x1E2EC.
+// 0xFF, publish the typed extraction-result callback, and start its timer.
 bool handle_world_activity_request(
     WorldActivityRoutineRequestState& state,
     const std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>&

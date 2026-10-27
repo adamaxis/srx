@@ -28,6 +28,7 @@ enum class MovementModeTransitionContinuation {
     event_28_world_activity, // source continuation 0x58DB2
     event_27_world_activity, // source continuation 0x53D5A
     projected_terrain_event, // source continuation 0x20C90
+    world_activity_extraction_result, // source callback 0x1F16A
     maglock_door_interaction, // source continuation 0x20E48
     building_security_terminal, // source continuation 0x20EC2
     event_25_world_activity, // source continuation 0x53EFA

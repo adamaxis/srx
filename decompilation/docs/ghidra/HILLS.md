@@ -996,11 +996,21 @@ after its 31-frame host lockout; neutral and low-byte input leave the page open.
 Both physical cases keep FFE183 through the page and consume it only at the
 `0x1E45E` QA seam. All 93 generated artifacts match between Debug and Release
 by SHA-256. The bounded ROM census finds only a direct `FFDF42` read at
-`0x0A68` and clear at `0x0A9E`; dynamic aliases remain unresolved. Separately,
+`0x0A68` and clear at `0x0A9E`; dynamic aliases remain unresolved. The typed
+host callback at `0x1F16A` now dispatches on the next eligible coordinator
+pass, keeps its `FFE11C` countdown separate from `FFE166`, retires the success
+actor records, and opens Lua-owned success/failure result pages. Debug/Release
+`shadowrun_ghidra_world_activity_routine` and
+`shadowrun_gameplay_script_runtime_qa` cover the request, both pages, the MORE
+continuation, run-offer state, and the target-gated FFFBFB cap. The direct
+`FFDF42` request producer remains unknown. There is no callback `actual.bmp` or
+route-matched independent Genesis comparison yet, so this callback remains
+partial. Separately,
 the `FFDF3E`/`FFDF40` transition path to `0x1E43C` is traced and mode-2 gate
 reentry is covered by the coordinator test. The body of `0x1F16A` is decoded as
-actor-found Wasp pickup pages or a no-record contract-cancellation page, but
-its native result callback remains open. The physical A800 routes still use
+actor-found Wasp pickup pages or a no-record contract-cancellation page, and
+its typed host result callback and Lua pages are now covered by focused tests.
+The physical A800 routes still use
 the `0x1E45E` QA seam and do not claim automatic activity continuation. These
 captures are internal regression artifacts, not independent Genesis
 comparisons; other physical A800 candidates and the direct request producer

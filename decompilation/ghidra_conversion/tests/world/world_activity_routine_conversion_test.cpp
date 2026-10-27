@@ -424,9 +424,11 @@ int main() {
     }
 
     WorldActivityStartState started{};
-    begin_world_activity(started, 0x00053EE2U);
+    begin_world_activity(
+        started, WorldActivityCallbackKind::extraction_result);
     if (!expect(started.timer_frames == 0x3CU &&
-                started.activity_pointer == 0x00053EE2U)) {
+                started.callback ==
+                    WorldActivityCallbackKind::extraction_result)) {
         return 8;
     }
 
@@ -456,14 +458,16 @@ int main() {
     }
 
     WorldActivityRoutineRequestState idle{0U, 0x11U, 1U, 2U, 3U, 4U};
-    WorldActivityStartState idle_activity{1U, 2U};
+    WorldActivityStartState idle_activity{
+        1U, WorldActivityCallbackKind::none};
     std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount> slots{};
     slots[0] = {1U, 0x80U};
     if (!expect(!handle_world_activity_request(idle, slots, idle_activity) &&
                 idle.clear_80 == 0U && idle.clear_82 == 0U &&
                 idle.clear_84 == 0U && idle.clear_87 == 0U &&
                 idle.found_marker == 0x11U &&
-                idle_activity.timer_frames == 1U)) {
+                idle_activity.timer_frames == 1U &&
+                idle_activity.callback == WorldActivityCallbackKind::none)) {
         return 13;
     }
 
@@ -475,8 +479,8 @@ int main() {
     if (!expect(handle_world_activity_request(missing, slots, missing_activity) &&
                 missing.request_flag == 0U && missing.found_marker == 0xFFU &&
                 missing_activity.timer_frames == 0x3CU &&
-                missing_activity.activity_pointer ==
-                    kWorldActivityRequestDescriptor)) {
+                missing_activity.callback ==
+                    WorldActivityCallbackKind::extraction_result)) {
         return 14;
     }
 
@@ -486,8 +490,8 @@ int main() {
     slots[5] = {0x03U, 0x80U};
     if (!expect(handle_world_activity_request(found, slots, found_activity) &&
                 found.found_marker == 0U &&
-                found_activity.activity_pointer ==
-                    kWorldActivityRequestDescriptor)) {
+                found_activity.callback ==
+                    WorldActivityCallbackKind::extraction_result)) {
         return 15;
     }
 

@@ -454,12 +454,23 @@ function Registry.party_wipe_failure_state(world_activity_scene_reset)
 end
 
 -- ROM 0x1E68C resets FFFBEC and clears the run-status byte at FFFC1C.
-function Registry.clear_active_offer_after_party_wipe()
+local function clear_active_offer_and_pending_return()
     local cleared = Registry.active_offer ~= nil or
         Registry._pending_johnson_return ~= nil
     Registry.active_offer = nil
     Registry._pending_johnson_return = nil
     return cleared
+end
+
+function Registry.clear_active_offer_for_world_activity_failure()
+    -- ROM 0x1F16A's no-record branch calls 0x1E68C, which resets FFFBEC and
+    -- FFFC1C. Keep that run-state transition in the Lua registry as well.
+    return clear_active_offer_and_pending_return()
+end
+
+function Registry.clear_active_offer_after_party_wipe()
+    -- Party-wipe recovery reaches the same 0x1E68C reset routine.
+    return clear_active_offer_and_pending_return()
 end
 
 function Registry.active_run_id()

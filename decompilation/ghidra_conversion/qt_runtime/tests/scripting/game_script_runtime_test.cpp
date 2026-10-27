@@ -357,6 +357,10 @@ bool verify_package_delivery_field_events(
         "package run did not collect at origin, pay once at destination, and clear");
 }
 
+bool verify_world_activity_extraction_result_pages(
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts,
+    bool escalation_expected);
+
 bool verify_accepted_employee_offer_variant_reaches_a800(
     const std::filesystem::path& script_directory,
     const std::filesystem::path& dialogue_text,
@@ -503,7 +507,7 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
     const bool activity_started = handle_world_activity_request(
         request_state, request_slots, activity);
 
-    return expect(
+    const bool request_path_resolved = expect(
         selection.has_value() &&
             selection->kind ==
                 ScriptConditionalActorSelectionKind::random_pedestrian &&
@@ -516,10 +520,120 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
                 std::optional<std::uint8_t>{a800_roll + 1U} &&
             activity_started && request_state.request_flag == 0U &&
             request_state.found_marker == 0U &&
-            activity.activity_pointer == kWorldActivityRequestDescriptor &&
+            activity.callback ==
+                WorldActivityCallbackKind::extraction_result &&
             activity.timer_frames == 0x3CU,
         "accepted Employee Recruitment variant did not flow through A800 "
         "into the typed 0x1E43C request");
+    return request_path_resolved &&
+           verify_world_activity_extraction_result_pages(
+               scripts, expected_initializer == 12U);
+}
+
+bool verify_world_activity_extraction_result_pages(
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts,
+    const bool escalation_expected) {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    scripts.set_location_context(
+        "field_map", "employee_recruitment_contact",
+        "big-rhino.mortimer_reed", "mortimer_reed");
+    const auto complete_escalation_prelude =
+        [&scripts, escalation_expected](ScriptTaskStep& task,
+                                        const std::string_view current_counter) {
+            if (!escalation_expected) {
+                return expect(
+                    task.operation.has_value() &&
+                        task.operation->type ==
+                            ScriptNativeOperation::Type::ui_say,
+                    "non-Renraku extraction target advanced FFFBFB");
+            }
+            if (!expect(task.operation.has_value() &&
+                            task.operation->type ==
+                                ScriptNativeOperation::Type::service_call &&
+                            task.operation->service_id ==
+                                "story.byte_get_fffbfb",
+                        "Renraku type-5 extraction skipped the FFFBFB gate")) {
+                return false;
+            }
+            task = scripts.complete_native_service_result(
+                "value_" + std::string(current_counter));
+            if (!expect(task.operation.has_value() &&
+                            task.operation->type ==
+                                ScriptNativeOperation::Type::service_call &&
+                            task.operation->service_id ==
+                                "story.byte_set_fffbfb_8",
+                        "Renraku extraction did not clamp FFFBFB at eight")) {
+                return false;
+            }
+            task = scripts.complete_native_service_result("applied");
+            return expect(task.operation.has_value() &&
+                              task.operation->type ==
+                                  ScriptNativeOperation::Type::ui_say,
+                          "extraction result did not resume after FFFBFB");
+        };
+
+    auto task = scripts.start_task(
+        "field_world_activity_results", "present_extraction_success");
+    if (!complete_escalation_prelude(task, "7") ||
+        !expect(task.operation->dialogue.has_value() &&
+                    task.operation->dialogue->continuation_key ==
+                        "shared.more" &&
+                    task.operation->dialogue->speaker_id == "mortimer_reed" &&
+                    task.operation->dialogue->text_profile ==
+                        "big-rhino.mortimer_reed" &&
+                    task.operation->dialogue->inline_text ==
+                        "<As you exit the building a Northrup PRC-42 Wasp "
+                        "descends to land in front of you.\n\nThe typically "
+                        "one seated copter has been modified to include a "
+                        "second.>",
+                "extraction success did not present source page 0xF3A91 with MORE")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.operation.has_value() &&
+                    task.operation->type == ScriptNativeOperation::Type::ui_say &&
+                    task.operation->dialogue.has_value() &&
+                    task.operation->dialogue->continuation_key.empty() &&
+                    task.operation->dialogue->inline_text ==
+                        "<The rigger pilot straps in your man, gives you the "
+                        "thumbs-up, and sleekly disappears into the sky.\n\nYou "
+                        "calmly, so as not to attract attention, stroll off to "
+                        "collect your payment.>",
+                "extraction success did not continue to source page 0xF3B2D")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    if (!expect(task.status == ScriptTaskStep::Status::completed &&
+                    scripts.active_run_source_initializer().has_value(),
+                "successful extraction did not retain the active offer")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+
+    task = scripts.start_task(
+        "field_world_activity_results", "present_extraction_failure");
+    if (!complete_escalation_prelude(task, "8") ||
+        !expect(task.operation->dialogue.has_value() &&
+                    task.operation->dialogue->continuation_key.empty() &&
+                    task.operation->dialogue->inline_text ==
+                        "<You see a rigger pilot, your pick-up man, swing his "
+                        "copter in for a landing.\n\nA look of disappointment "
+                        "touches his face as he nullifies your contract on his "
+                        "console.\n\nA run that gets fragged all to drek isn't "
+                        "going to help your rep much!>",
+                "missing extraction record did not present source page 0xF3BE3") ||
+        !expect(!scripts.active_run_source_initializer().has_value(),
+                "failed extraction did not clear the accepted offer")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    task = scripts.complete_native_operation(true);
+    return expect(task.status == ScriptTaskStep::Status::completed &&
+                      !scripts.active_run_source_initializer().has_value(),
+                  "extraction cancellation page did not return cleanly");
 }
 
 bool verify_employee_recruitment_pedestrian_request(
@@ -647,7 +761,8 @@ bool verify_employee_recruitment_pedestrian_request(
             selection->choice_changed && consumed_choice ==
                 std::optional<std::uint8_t>{2U} && activity_started &&
             request_state.request_flag == 0U && request_state.found_marker == 0U &&
-            activity.activity_pointer == kWorldActivityRequestDescriptor &&
+            activity.callback ==
+                WorldActivityCallbackKind::extraction_result &&
             activity.timer_frames == 0x3CU,
         "accepted raw initializer 5 did not flow through A800 into 0x1E43C");
     const bool two_site_variant_reaches_request =

@@ -7061,7 +7061,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.handle_world_activity_request =
         [this](integration::FieldRuntimeCoordinatorState& runtime) {
-            // ROM 0x1E45E consumes FFE183 before it scans actor records. Keep
+            // ROM 0x1E43C consumes FFE183 before it scans actor records. Keep
             // Lua authoritative and publish only that consumed byte to the
             // typed routine model for this source pass.
             const auto conditional_choice =
@@ -7088,12 +7088,21 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     world_activity_request_state_, request_slots,
                     world_activity_request_start_state_);
             if (activity_started) {
-                runtime.world_activity_countdown =
-                    world_activity_request_start_state_.timer_frames;
-                begin_world_activity(
-                    field_world_activity_state_,
-                    static_cast<std::uint16_t>(
-                        world_activity_request_start_state_.activity_pointer));
+                if (world_activity_request_start_state_.callback !=
+                    WorldActivityCallbackKind::extraction_result) {
+                    source_boundary(
+                        "field.world_activity.request_callback_unresolved");
+                    return;
+                }
+                // ROM 0x1E2EC starts FFE11C independently of the FFE166
+                // coordinator gate. FFE104 is dispatched on the next eligible
+                // field pass; it does not wait for the 60-frame timer.
+                begin_world_activity(field_world_activity_state_, 0U);
+                world_frame_logic_state_.resource_countdown =
+                    field_world_activity_state_.timeout;
+                record_field_activity_start(
+                    MovementModeTransitionContinuation::
+                        world_activity_extraction_result);
                 source_boundary("field.world_activity.request_started");
             }
         };
@@ -7356,7 +7365,9 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
     field_runtime_callbacks_.run_pending_field_scene_handler = [this] {
         const auto continuation = field_activity_continuation_;
         if (continuation != MovementModeTransitionContinuation::
-                                mode_table_world_activity) {
+                                mode_table_world_activity &&
+            continuation != MovementModeTransitionContinuation::
+                                world_activity_extraction_result) {
             field_activity_continuation_ =
                 MovementModeTransitionContinuation::none;
         }
@@ -7398,6 +7409,50 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     "field.activity.mode_table_handler_0x53ee2_prompt_opened");
                 return integration::PendingFieldSceneHandlerResult::resumed_field;
             }
+        }
+        if (continuation == MovementModeTransitionContinuation::
+                                world_activity_extraction_result) {
+            const bool extraction_succeeded =
+                world_activity_request_state_.found_marker == 0U;
+            std::string_view task;
+            if (extraction_succeeded) {
+                // ROM 0x1F16A sets FFFC1C bit 7, then 0x1DED8 clears FFFC3C
+                // and retires the first seven +0xB0.7 actor records.
+                field_movement_transition_state_.world_effect_control_bit =
+                    true;
+                field_world_effect_player_spawn_actor_template_.reset();
+                if (!retire_dialogue_escort_records()) {
+                    source_boundary(
+                        "field.activity.extraction_actor_cleanup_unresolved");
+                    return integration::PendingFieldSceneHandlerResult::
+                        unresolved;
+                }
+                task = "present_extraction_success";
+            } else {
+                // ROM 0x1E68C clears the complete FFFC1C word; bit 7 is its
+                // currently typed host mirror. Lua clears the active offer.
+                field_movement_transition_state_.world_effect_control_bit =
+                    false;
+                task = "present_extraction_failure";
+            }
+            game_scripts_.set_location_context(
+                "field_map", "employee_recruitment_contact",
+                "big-rhino.mortimer_reed", "mortimer_reed");
+            if (!field_dialogue_.open_gameplay_task(
+                    "field_world_activity_results", task)) {
+                source_boundary(
+                    extraction_succeeded
+                        ? "field.activity.extraction_success_prompt_unresolved"
+                        : "field.activity.extraction_failure_prompt_unresolved");
+                return integration::PendingFieldSceneHandlerResult::unresolved;
+            }
+            field_activity_continuation_ =
+                MovementModeTransitionContinuation::none;
+            source_boundary(
+                extraction_succeeded
+                    ? "field.activity.extraction_success_prompt_opened"
+                    : "field.activity.extraction_failure_prompt_opened");
+            return integration::PendingFieldSceneHandlerResult::resumed_field;
         }
         if (continuation == MovementModeTransitionContinuation::
                                 projected_terrain_event) {
@@ -10101,6 +10156,8 @@ void FieldSceneRuntime::record_field_activity_start(
                            mode_table_world_activity ||
         continuation == MovementModeTransitionContinuation::
                            projected_terrain_event ||
+        continuation == MovementModeTransitionContinuation::
+                           world_activity_extraction_result ||
         continuation == MovementModeTransitionContinuation::
                            guard_spotted_field_event) {
         field_runtime_state_.pending_field_scene_handler = true;

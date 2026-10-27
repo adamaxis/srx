@@ -877,9 +877,11 @@ The typed coordinator maps the prepared-scene gate at `0x0992` to its
 world-activity request and field-scene initialization callbacks. The
 `shadowrun_ghidra_field_runtime_coordinator` CTest now explicitly covers mode 2
 with `field_scene_gate=2`, as well as the existing generic gate-1 case. This
-covers the coordinator branch; it does not port the downstream `0x1F16A`
-result callback, whose prompt and actor-retirement behavior remain open in the
-host.
+covers the coordinator branch. The downstream `0x1F16A` result callback is now
+connected through a typed `WorldActivityCallbackKind::extraction_result`
+continuation and Lua result tasks; focused tests cover both result branches.
+This callback integration does not identify which physical A800 contact starts
+the automatic route.
 The direct `FFDF42` producer is still unknown, and both physical A800 cases
 consume the retained choice through the `0x1E45E` test seam rather than proving
 that a pedestrian contact reaches this automatic route.
@@ -890,8 +892,8 @@ waypoint traces, the 46-row candidate matrix, and the Scene-40 guard route.
 I inspected
 the Scene-38 page and restored-field frames; these are regression artifacts,
 not independent Genesis evidence. Scene-entry travel and physical contact for
-other A800 candidates, the direct FFDF42 producer, native `0x1F16A`
-result-callback behavior, and a route-matched Genesis comparison remain open.
+other A800 candidates, the direct FFDF42 producer, and a route-matched Genesis
+comparison remain open.
 The FFDF3E/FFDF40 coordinator call path is traced above, but the current A800
 physical routes do not demonstrate that they trigger it. The A800 hill remains
 partial.
@@ -920,8 +922,8 @@ This is a bounded result, not proof that the ROM has no direct producer. A
 dynamically computed pointer or unresolved indirect call could still alias the
 request word; the current export does not identify such a path. The separate
 `FFDF3E` + `FFDF40` call into `0x1E43C` is traced above and does not depend on a
-nonzero `FFDF42`; the direct request producer and the `0x1F16A` callback's host
-integration remain open. The callback body itself is summarized below.
+nonzero `FFDF42`; the direct request producer remains open. The callback body
+and its typed host integration are summarized below.
 
 ## ROM callback at `0x1F16A`: extraction result
 
@@ -948,6 +950,21 @@ next prompt descriptor, while the `0xFFFFFFFF` first-option sentinel takes the
 one-page input wait. The text bytes terminate at `0xFF`; `0x80` becomes a line
 break, matching the offline field-text reader.
 
-This recovers the result callback's branch and display sequence from ROM. The
-`FFDF42` producer is still unknown, so the host does not yet invoke this path
-automatically; neither branch has a route-matched independent Genesis capture.
+The host connects this callback as a typed pending field-scene continuation.
+The request path starts `FFE11C`'s 60-frame timeout separately from the
+`FFE166` coordinator gate, then dispatches the callback on the next eligible
+field pass rather than waiting for that timeout. On success, the host mirrors
+the `FFFC1C` effect-control bit and retires the existing seven-slot actor
+records before Lua presents the two pages. On failure, Lua clears the accepted
+run offer and presents the cancellation page. The Lua result task advances
+`FFFBFB` only for run types 4/5 targeting area/event 5/6, through the shared
+source-capped counter helper.
+
+Debug and Release `shadowrun_ghidra_world_activity_routine` and
+`shadowrun_gameplay_script_runtime_qa` cover the typed request result, the
+success/failure pages, the MORE continuation, active-offer retention/clearing,
+and the Renraku-only counter gate at values 7 and 8. These tests do not produce
+an `actual.bmp` for either callback page and do not prove a physical contact
+automatically reaches the request. The direct `FFDF42` producer, a
+route-matched independent Genesis capture, and the full callback hill's image
+dump remain open; this callback remains partial under the hill rule.

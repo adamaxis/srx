@@ -244,9 +244,9 @@ WorldActivityResult run_world_activity_routine(
 
 void begin_world_activity(
     WorldActivityStartState& state,
-    const std::uint32_t descriptor) {
+    const WorldActivityCallbackKind callback) {
     state.timer_frames = 0x3CU;
-    state.activity_pointer = descriptor;
+    state.callback = callback;
 }
 
 bool schedule_world_activity_timeout(WorldActivityTimeoutState& state) {
@@ -281,7 +281,8 @@ bool handle_world_activity_request(
             break;
         }
     }
-    begin_world_activity(activity, kWorldActivityRequestDescriptor);
+    begin_world_activity(
+        activity, WorldActivityCallbackKind::extraction_result);
     return true;
 }
 
