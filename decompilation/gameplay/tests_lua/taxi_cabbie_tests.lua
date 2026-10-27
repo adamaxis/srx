@@ -186,20 +186,29 @@ check(Cabbie.present() == nil and speech_was(visa_refusal, "visa_required") and
       #visa_refusal.prompts == 1,
     "Salish fare is refused when the visa flag is clear")
 
-local fare_comments = {
-    { Taxi.Region.DOWNTOWN_SEATTLE, 20, "Null perspiration, chum." },
-    { Taxi.Region.PUYALLUP_BARRENS, 40,
+local fare_offers = {
+    { Taxi.Region.DOWNTOWN_SEATTLE, "Downtown Seattle", 20,
+      "Null perspiration, chum." },
+    { Taxi.Region.PUYALLUP_BARRENS, "Puyallup Barrens", 40,
       "That's a little out of my way, chummer." },
-    { Taxi.Region.COUNCIL_ISLAND, 75,
+    { Taxi.Region.REDMOND_BARRENS, "Redmond Barrens", 40,
       "That's a little out of my way, chummer." },
-    { Taxi.Region.SALISH_SHIDHE, 100,
+    { Taxi.Region.PENUMBRA_DISTRICT, "Penumbra District", 20,
+      "Null perspiration, chum." },
+    { Taxi.Region.COUNCIL_ISLAND, "Council Island", 75,
+      "That's a little out of my way, chummer." },
+    { Taxi.Region.RENRAKU_ARCOLOGY, "Renraku Arcology", 20,
+      "Null perspiration, chum." },
+    { Taxi.Region.SALISH_SHIDHE, "Salish-Shidhe", 100,
       "That's a little out of my way, chummer." },
 }
-for _, expected in ipairs(fare_comments) do
-    local region, fare, comment = table.unpack(expected)
+for _, expected in ipairs(fare_offers) do
+    local region, name, fare, comment = table.unpack(expected)
     local offer = fixture({
         destination = region,
-        current_region = Taxi.Region.REDMOND_BARRENS,
+        current_region = region == Taxi.Region.REDMOND_BARRENS
+            and Taxi.Region.PUYALLUP_BARRENS
+            or Taxi.Region.REDMOND_BARRENS,
         story_flag = true,
         visa = region == Taxi.Region.SALISH_SHIDHE,
         funds = 1000,
@@ -207,9 +216,15 @@ for _, expected in ipairs(fare_comments) do
     })
     check(Cabbie.present() == nil and #offer.prompts == 2,
         "fare offer appears after Yes")
-    check(offer.prompts[2].text:find(comment, 1, true) ~= nil and
-          offer.prompts[2].text:find(tostring(fare) .. "$", 1, true) ~= nil,
-        "fare quote uses the source comment and record amount for " .. region)
+    local expected_text = table.concat({
+        "Ya' say ya' wanna get to",
+        name .. "?",
+        comment,
+        "It'll cost ya' " .. tostring(fare) .. "$ to get",
+        "there.  How 'bout it?",
+    }, "|")
+    check(offer.prompts[2].text == expected_text,
+        "fare quote preserves source line boundaries for " .. name)
 end
 check(Taxi.fare_comment(50) == "Rough neighborhood, pal!",
     "retains the ROM's 50-nuyen fare-comment branch")

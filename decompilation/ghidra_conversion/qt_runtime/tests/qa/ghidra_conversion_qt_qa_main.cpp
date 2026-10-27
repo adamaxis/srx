@@ -46748,6 +46748,24 @@ int main(int argc, char** argv) {
                                  "the fare offer\n";
                     return 3;
                 }
+                constexpr std::array<std::string_view, 5>
+                    kPuyallupFareTextSegments{{
+                        "Ya' say ya' wanna get to",
+                        "Puyallup Barrens?",
+                        "That's a little out of my way, chummer.",
+                        "It'll cost ya' 40$ to get",
+                        "there.  How 'bout it?",
+                    }};
+                const auto& fare_panel = field_scene.dialogue_panel();
+                if (fare_panel.text_segment_count !=
+                        kPuyallupFareTextSegments.size() ||
+                    !std::equal(kPuyallupFareTextSegments.begin(),
+                                kPuyallupFareTextSegments.end(),
+                                fare_panel.text_segments.begin())) {
+                    std::cerr << "field taxi dump: Puyallup fare text did "
+                                 "not preserve the ROM line groups\n";
+                    return 3;
+                }
                 const auto fare_offer = capture_field_scene();
                 const auto taxi_portrait = QImage(QString::fromStdWString(
                     (asset_root / "dialogue" / "portraits" /

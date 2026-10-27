@@ -257,7 +257,9 @@ the offline importer now produces `dialogue.portraits.taxi.cabbie`, and the
 Qt speaker uses it. Focused taxi QA selects Puyallup in ROM cursor order,
 checks the portrait pixels at `(16,32)`, writes
 `field-taxi-fare-offer-actual.bmp`, and declines without charge or travel; it
-then completes the paid Downtown route. The hill remains partial while the
+then completes the paid Downtown route. The fare-page assertion checks the
+five ROM-derived text groups, including the forced break after `get` at
+`0xFE32C`. The hill remains partial while the
 other fare branches lack independent captures. See the [taxi fare prompt
 capture audit](visual-audits/taxi-fare-prompt-capture-2026-10-27.md).
 

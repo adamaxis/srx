@@ -1,8 +1,10 @@
 # Taxi fare prompt capture audit
 
-**Status:** one fare and accepted-ride sequence is visually matched to the ROM
-destination record and Lua branch. The taxi cabbie portrait binding is still
-unresolved, and this capture does not expose the wallet or source scene ID.
+**Status:** the Puyallup fare prompt and accepted-ride sequence are matched to
+the ROM destination record, fare text, and Lua branch. Focused Debug/Release Qt
+QA verifies its portrait binding and five text groups; visual inspection
+matches those details to the independent capture. The capture does not expose
+the wallet or source scene ID; other fare-gate outcomes remain open.
 
 ## Independent capture
 
@@ -29,6 +31,12 @@ Puyallup Barrens. Its record starts at `0xD4482`; the inline name is
 `Puyallup Barrens` and the fare byte at `0xD449F` is `0x28` (40 decimal). The
 current `data.taxi_destinations.lua` row carries that region and amount into
 `taxi_cabbie.lua::fare_offer_text`.
+
+The dialogue source has explicit row boundaries: `0xFE2B8` ends the opening
+line, `0xFE2EA` contains the selected 40-nuyen comment, and `0xFE311` begins
+the fare line. Byte `0x80` at `0xFE32C` separates `get` from `there.`. The Lua
+offer preserves those five groups, and the focused Qt QA checks the displayed
+segments against the captured Puyallup quote.
 
 The fare wording also joins source data rather than a fixed screen label:
 the `0x207B0` fare-comment path selects the 20-nuyen, 50-nuyen, or other-fare
@@ -70,7 +78,8 @@ insufficient funds, paid travel, and visa consumption. The focused Debug/Release
 Qt taxi QA now also reproduces the Puyallup fare page, exercises the B-button
 decline with unchanged funds and location, and continues through the paid
 Downtown trip. The generated fare image is internal regression evidence; the
-independent Genesis frame remains the visual authority.
+independent Genesis frame remains the visual authority. QA checks the five
+source-derived fare text groups before saving the image.
 
 ## Portrait match and limits
 

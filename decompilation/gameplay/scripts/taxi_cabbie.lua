@@ -12,8 +12,12 @@ local ARMBAND_FACT = "group_item_flag_bit_" .. E.GroupItemBit.ORK_ARMBAND
 function M.fare_offer_text(region)
     local destination = assert(Taxi.regions[region],
         "taxi offer needs a known destination region")
+    -- ROM text at 0xFE2B8, 0xFE2EA, and 0xFE311 is emitted as separate
+    -- source lines; 0xFE32C forces the break after "get". Keep those line
+    -- boundaries so the destination, fare comment, and fare remain in their
+    -- original rows instead of flowing together in the shared panel wrapper.
     return string.format(
-        "Ya' say ya' wanna get to %s? %s It'll cost ya' %d$ to get||there.  How 'bout it?",
+        "Ya' say ya' wanna get to|%s?|%s|It'll cost ya' %d$ to get|there.  How 'bout it?",
         destination.name, Taxi.fare_comment(destination.fare),
         destination.fare)
 end
