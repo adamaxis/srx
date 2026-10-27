@@ -467,9 +467,14 @@ bool FieldSceneRuntime::seed_run_target_for_dump(
 
 bool FieldSceneRuntime::seed_current_run_for_dump(
     const std::uint8_t source_run_type,
-    const bool matrix_max_payment) {
+    const bool matrix_max_payment,
+    const std::optional<std::uint8_t> employee_source_initializer) {
     if (!ready_ || source_run_type > 6U ||
-        (matrix_max_payment && source_run_type != 6U)) {
+        (matrix_max_payment && source_run_type != 6U) ||
+        (employee_source_initializer.has_value() &&
+         (source_run_type != 5U || matrix_max_payment ||
+          (*employee_source_initializer != 11U &&
+           *employee_source_initializer != 12U)))) {
         return false;
     }
 
@@ -508,6 +513,40 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         "return_to_johnson_after_the_recruitment",
         "complete_the_source_matrix_objective"};
 
+    auto context = matrix_max_payment
+        ? std::uint8_t{4U}
+        : kContexts[type];
+    auto initializer = matrix_max_payment
+        ? std::uint8_t{8U}
+        : kInitializers[type];
+    auto progress_delta = matrix_max_payment
+        ? std::int64_t{5}
+        : kProgressDeltas[type];
+    auto base_payment = matrix_max_payment
+        ? std::int64_t{6100}
+        : kBasePayments[type];
+    auto negotiation_scale = matrix_max_payment
+        ? std::int64_t{10}
+        : kNegotiationScales[type];
+    // ROM F3EBC context 1 zero-based slot 4 is initializer 11 (delta 4,
+    // 900 base, scale 5); context 4 zero-based slot 4 is initializer 12
+    // (delta 6, 3500 base, scale 15). These accepted QA rows exercise field
+    // publication.
+    if (employee_source_initializer == std::optional<std::uint8_t>{11U}) {
+        context = 1U;
+        initializer = 11U;
+        progress_delta = 4;
+        base_payment = 900;
+        negotiation_scale = 5;
+    } else if (employee_source_initializer ==
+               std::optional<std::uint8_t>{12U}) {
+        context = 4U;
+        initializer = 12U;
+        progress_delta = 6;
+        base_payment = 3500;
+        negotiation_scale = 15;
+    }
+
     const auto scalar = [](auto value) {
         PersistentValue result{};
         result.value = value;
@@ -535,26 +574,19 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         // First site in the source two-site package-recovery pool.
         route_fields.emplace("target", location(1, 2));
     } else if (source_run_type == 5U) {
-        // First site in the shared four-site employee-recruitment pool.
-        route_fields.emplace("target", location(0, 5));
+        if (initializer == 11U) {
+            // First target in the context-1 two-site source pool.
+            route_fields.emplace("target", location(1, 2));
+        } else if (initializer == 12U) {
+            // The fixed Renraku target selected by the context-4 row.
+            route_fields.emplace("target", location(5, 6));
+        } else {
+            // First site in the shared four-site employee-recruitment pool.
+            route_fields.emplace("target", location(0, 5));
+        }
     }
     const PersistentValue route{std::move(route_fields)};
 
-    const auto context = matrix_max_payment
-        ? std::uint8_t{4U}
-        : kContexts[type];
-    const auto source_initializer = matrix_max_payment
-        ? std::uint8_t{8U}
-        : kInitializers[type];
-    const auto progress_delta = matrix_max_payment
-        ? std::int64_t{5}
-        : kProgressDeltas[type];
-    const auto base_payment = matrix_max_payment
-        ? std::int64_t{6100}
-        : kBasePayments[type];
-    const auto negotiation_scale = matrix_max_payment
-        ? std::int64_t{10}
-        : kNegotiationScales[type];
     const std::int64_t negotiation_skill = matrix_max_payment
         ? 12
         : (source_run_type == 0U ? 0 : 3);
@@ -576,9 +608,8 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         {"completion_condition",
          scalar(std::string(kCompletionConditions[type]))},
         {"runner_progress_delta", scalar(progress_delta)},
-        {"source_initializer",
-         scalar(static_cast<std::int64_t>(source_initializer))},
-        {"source_offer_type", scalar(static_cast<std::int64_t>(source_initializer))},
+        {"source_initializer", scalar(static_cast<std::int64_t>(initializer))},
+        {"source_offer_type", scalar(static_cast<std::int64_t>(initializer))},
         {"source_offer_context", scalar(static_cast<std::int64_t>(context))},
         {"source_run_type", scalar(static_cast<std::int64_t>(source_run_type))},
         {"context", scalar(static_cast<std::int64_t>(context))},

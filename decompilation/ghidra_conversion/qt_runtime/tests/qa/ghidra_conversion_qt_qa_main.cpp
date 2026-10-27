@@ -18741,6 +18741,8 @@ int run_field_pedestrian_scenes_qa(
     // bound-2 sample can select only choices 1 and 2. Exercise every reachable
     // scene/choice through the ordinary actor publisher, including source
     // position, heading override, final spawn flag, actor slot, and visibility.
+    // Scene 22 also exercises both accepted initializer variants at that same
+    // actor boundary; the other matrix cases retain initializer 5.
     const auto candidate_manifest_path = output / "conditional-candidates.tsv";
     std::ofstream candidate_manifest(candidate_manifest_path,
                                      std::ios::trunc);
@@ -18749,7 +18751,8 @@ int run_field_pedestrian_scenes_qa(
         return 3;
     }
     candidate_manifest
-        << "scene_id\tchoice\tlist_offset\tposition_offset\tworld_x\tworld_y"
+        << "scene_id\tchoice\tsource_initializer\tlist_offset\tposition_offset"
+           "\tworld_x\tworld_y"
            "\theading_word\tspawn_flags\tactor_slot\tvisible\n";
     std::size_t candidate_cases = 0U;
     for (std::uint16_t scene = 0x15U; scene <= 0x2BU; ++scene) {
@@ -18790,9 +18793,18 @@ int run_field_pedestrian_scenes_qa(
                           << ": " << field_scene.failure() << '\n';
                 return 3;
             }
-            if (!field_scene.seed_current_run_for_dump(5U)) {
-                std::cerr << "Pedestrian scenes QA: accepted initializer-5 "
-                             "source row could not be installed for "
+            const std::uint8_t source_initializer =
+                scene == 0x16U && choice == 1U ? 11U
+                : scene == 0x16U && choice == 2U ? 12U
+                                                 : 5U;
+            if (!field_scene.seed_current_run_for_dump(
+                    5U, false, source_initializer == 5U
+                        ? std::nullopt
+                        : std::optional<std::uint8_t>{source_initializer})) {
+                std::cerr << "Pedestrian scenes QA: accepted Employee "
+                             "Recruitment initializer "
+                          << static_cast<unsigned>(source_initializer)
+                          << " could not be installed for "
                           << scene << ':' << static_cast<unsigned>(choice)
                           << '\n';
                 return 3;
@@ -18839,7 +18851,8 @@ int run_field_pedestrian_scenes_qa(
             const bool source_gates_match =
                 field_scene.field_scene_reference_for_dump() == scene &&
                 field_scene.field_interaction_mode_for_dump() == 2U &&
-                active_initializer == std::optional<std::uint8_t>{5U} &&
+                active_initializer ==
+                    std::optional<std::uint8_t>{source_initializer} &&
                 field_scene.active_effect_index_for_dump() ==
                     std::optional<std::uint16_t>{0U} &&
                 field_scene.selected_effect_index_for_dump() ==
@@ -18890,9 +18903,14 @@ int run_field_pedestrian_scenes_qa(
             }
 
             const auto image = render_qa_field(field_scene);
-            const auto bitmap = output /
-                ("scene-" + std::to_string(scene) + "-choice-" +
-                 std::to_string(choice) + "-actual.bmp");
+            auto bitmap_name =
+                "scene-" + std::to_string(scene) + "-choice-" +
+                std::to_string(choice);
+            if (source_initializer != 5U) {
+                bitmap_name += "-initializer-" +
+                    std::to_string(source_initializer);
+            }
+            const auto bitmap = output / (bitmap_name + "-actual.bmp");
             if (image.isNull() ||
                 !image.save(QString::fromStdWString(bitmap.wstring()))) {
                 std::cerr << "Pedestrian scenes QA: could not save "
@@ -18900,7 +18918,9 @@ int run_field_pedestrian_scenes_qa(
                 return 3;
             }
             candidate_manifest << scene << '\t'
-                               << static_cast<unsigned>(choice) << "\t0x"
+                               << static_cast<unsigned>(choice) << '\t'
+                               << static_cast<unsigned>(source_initializer)
+                               << "\t0x"
                                << std::hex << expected->list_offset << "\t0x"
                                << expected->position_offset << "\t0x"
                                << expected->world_x << "\t0x"
@@ -18930,7 +18950,7 @@ int run_field_pedestrian_scenes_qa(
         return 3;
     }
     std::cout << "field_pedestrian_random_candidate_matrix_qa=passed scenes=23 "
-                 "choices=1,2 cases="
+                 "choices=1,2 initializers=5,11,12 cases="
               << candidate_cases << " actuals="
               << output.string() << " manifest="
               << candidate_manifest_path.string() << '\n';

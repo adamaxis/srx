@@ -226,10 +226,11 @@ callback now calls Lua's atomic FFE183 consume before the typed `0x1E43C` scan.
 Lua's other resets remain connected to the modeled `0x2A32`/`0x2A44` and
 type-5 `0xC684` paths. Debug/Release script QA follows accepted Johnson offers
 with initializers 5, 11, and 12 through A800 and the typed request scan. Field
-QA still seeds initializer 5 to verify a visible Scene-21 randomized
-candidate; carrying the naturally accepted run through field entry and actor
-publication remains open. Independent Genesis identification and the physical
-Scene-34 lift-to-A8AE route remain open.
+QA uses validated accepted-state fixtures: initializer 5 for the other matrix
+entries and initializers 11/12 for Scene 22 choices 1/2. Carrying the
+naturally accepted registry state through field entry and actor publication
+remains open. Independent Genesis identification and the physical Scene-34
+lift-to-A8AE route remain open.
 
 Independent longplay contact sheets contain map frames with pedestrian-like
 actors (for example around `02:58:10` in Section 41), but those frames do not

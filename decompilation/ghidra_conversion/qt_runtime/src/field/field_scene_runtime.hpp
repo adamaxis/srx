@@ -507,7 +507,10 @@ public:
                                   std::uint8_t map_id,
                                   std::uint8_t event_id);
     bool seed_current_run_for_dump(std::uint8_t source_run_type,
-                                   bool matrix_max_payment = false);
+                                   bool matrix_max_payment = false,
+                                   std::optional<std::uint8_t>
+                                       employee_source_initializer =
+                                           std::nullopt);
     std::optional<std::uint8_t>
     active_run_source_initializer_for_dump() {
         return game_scripts_.active_run_source_initializer();

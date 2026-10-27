@@ -49,10 +49,11 @@ all three `0xF4BBC` pages, and the source cleanup retires Aragorn's actor
 record. The direct marker setters and `FFE120` producer census are traced
 below. Gameplay-script QA now follows accepted Employee Recruitment offers
 from their Johnson work menus through the normalized `0xA800` choice and the
-typed `0x1E43C` request. Field QA still seeds initializer 5 to verify actor
-projection in Scene 21; entering that scene through the natural field route
-with the accepted offer remains open. Section 41 has no route-matched visual
-check.
+typed `0x1E43C` request. Field QA uses validated accepted-state fixtures to
+check actor projection: initializer 5 in Scene 21 and initializers 11/12 for
+the two reachable choices in Scene 22. Entering either scene through the
+natural field route with the live accepted offer remains open. Section 41 has
+no route-matched visual check.
 
 ## ROM path confirmed from the US image
 
@@ -350,14 +351,14 @@ atomically, and the callback passes that byte into the typed 13-record
 Gameplay-script QA follows Matchstick's work menu to accepted initializers 5
 and 11, and Caleb's Icarus work menu to accepted initializer 12. For each it
 passes the retained active source ID through A800, samples a reachable choice,
-consumes it once, and starts the typed request. Field pedestrian QA still
-seeds an accepted initializer-5 source row, enters Scene 21 with equal indices
-and no pending spawn, and verifies one visible slot-3 candidate at a ROM
-choice-1 or choice-2 position; it writes
-`scene-21-random-pedestrian-actual.bmp`. Natural offer-to-selector coverage
-and field actor projection now meet at the Lua request boundary, but the
-accepted registry state is not yet carried through a natural field entry to
-the rendered actor. No independent Genesis capture identifies this candidate,
+consumes it once, and starts the typed request. Field pedestrian QA covers
+initializer 5 across the candidate matrix except Scene 22: its choice 1/2
+projections use accepted-state fixtures for initializers 11/12. Scene 21 still
+writes `scene-21-choice-{1,2}-actual.bmp`; the manifest records each source
+initializer. Natural offer-to-selector coverage and field actor projection
+meet at the Lua request boundary, but the accepted registry state is not yet
+carried through natural field entry to the rendered actor. No independent
+Genesis capture identifies this candidate,
 Scene 34, the A8AE actor, or the contact conversation;
 the BMPs remain internal runtime regression evidence only.
 
@@ -463,9 +464,9 @@ independent Genesis animation or map comparison.
 Next, cover the record-90 Electronics outcome and insufficient-passkey branch.
 The ordinary Scene-34 route to A8AE is now established. Cover
 the Electronics results with the live runner's class, skill, inventory, and
-source RNG inputs. Carry accepted raw initializers 5/11/12 through field-scene
-actor projection, including player-spawn pending, index mismatch, and choice
-persistence across a child-scene transition. Then match a real capture to the
-selected scene and live actor record; the current internal BMPs are regression
-artifacts, not an independent visual oracle. The pedestrian population hill
-remains partial.
+source RNG inputs. Carry the naturally accepted registry state through field
+entry and actor projection, then exercise player-spawn pending, index mismatch,
+and choice persistence across a child-scene transition. Then match a real
+capture to the selected scene and live actor record; the current internal BMPs
+are regression artifacts, not an independent visual oracle. The pedestrian
+population hill remains partial.
