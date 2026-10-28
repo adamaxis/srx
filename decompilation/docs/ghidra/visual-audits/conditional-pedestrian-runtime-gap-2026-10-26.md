@@ -194,6 +194,33 @@ independent Genesis comparison. Continuous travel from normal Scene-26 entry,
 normal Johnson generation of the map/event pair, the automatic `0x1E43C`
 request path, and independent Genesis comparison remain open.
 
+### Scene-22 A800 choice 1 contact
+
+The isolated `shadowrun_ghidra_conversion_qt_field_scene22_a800_initializer11_contact_qa`
+starts with raw run initializer 11, which the source normalizer maps to
+`FFFBED=5`; the destination mode is `FFDF40=2`. The selected A800 row is list
+`0x1EDF26`, position record `0x1EDF3E`, coordinates `(0x0300,0x0700)`, heading
+`0x4000`, spawn flags `0x08`, and actor slot 3. The route starts from the QA
+resource-reentry checkpoint `(4906,1156)`, not a traced normal Scene-22 entry,
+then reaches the candidate with 154 ordinary directional inputs.
+
+Contact opens the source-backed Mortimer Reed page with portrait
+`dialogue.portraits.mortimer.reed`, no options, and text “Hey! There you are.
+Let’s go. My new employer is waiting.” After the ROM `0x1F3C4` 30-VBlank input
+wait, C dismisses the page. The runner returns to Scene 22 while the candidate
+actor remains active, its `+0xB0.7` escort flag is set, and the typed
+`FFE110` player-spawn transfer is retained. The callback's mode-5 `FFFC1C`
+bit-0 state and the selected choice are checked at the `0x1E45E` QA seam; this
+does not execute the unresolved `FFDF42` / `0x1E43C` automatic request path.
+
+The fresh-runtime CTest is separate from the 46-case matrix because its
+retained contact state otherwise affects a later candidate case. Debug and
+Release CTests pass, and all 11 route, candidate, and full-frame artifacts
+match by SHA-256. I inspected the entry, contact page, and closed field frames.
+These are internal Qt captures, not independent Genesis evidence. The supplied
+`au/e8_karma_spend` recording is Scene 2/event 2 and does not show this
+Scene-22 contact route; a route-matched Genesis capture remains open.
+
 ## ROM path confirmed from the US image
 
 The ROM image at `decompilation/input/shadowrun_genesis_us.bin` is 2 MiB, so

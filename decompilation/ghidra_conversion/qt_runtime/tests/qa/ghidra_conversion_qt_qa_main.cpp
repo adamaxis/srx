@@ -21133,7 +21133,8 @@ int run_field_pedestrian_scenes_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output,
     const shadowrun::ghidra_conversion::integration::StartupIntegrationState&
-        startup_state) {
+        startup_state,
+    const bool contact_case_only) {
     std::error_code directory_error;
     std::filesystem::remove_all(output, directory_error);
     if (directory_error) {
@@ -21193,6 +21194,9 @@ int run_field_pedestrian_scenes_qa(
             return 3;
         }
         for (std::uint8_t choice = 1U; choice <= 2U; ++choice) {
+            if (contact_case_only && (scene != 22U || choice != 1U)) {
+                continue;
+            }
             const auto expected = std::find_if(
                 candidates->begin(), candidates->end(),
                 [choice](const auto& row) { return row.choice == choice; });
@@ -21417,18 +21421,22 @@ int run_field_pedestrian_scenes_qa(
             }
             // ROM 0xED60 starts generic pedestrian activity from ordinary
             // actor-pair contact; 0x1E43C/0x1E45E is the separate FFE183
-            // request scan. Exercise Scene-38's choice-1 and Scene-30's
-            // choice-2 contacts through ordinary input.
+            // request scan. Keep the initializer-11 Scene-22 contact in a
+            // fresh runtime: this QA closes the page at the 0x1E45E seam and
+            // does not dispatch the separate FFDF42/0x1E43C request route.
             const bool physically_contacted_candidate =
+                (contact_case_only && scene == 22U && choice == 1U) ||
                 (scene == 38U && choice == 1U) ||
                 (scene == 30U && choice == 2U);
             if (physically_contacted_candidate) {
                 const auto dismissal_port_byte =
                     scene == 38U ? std::uint8_t{0x10U}
-                                 : std::uint8_t{0x40U};
+                    : contact_case_only ? std::uint8_t{0x20U}
+                                        : std::uint8_t{0x40U};
                 const auto dismissal_label =
                     scene == 38U ? std::string_view{"B"}
-                                 : std::string_view{"A"};
+                    : contact_case_only ? std::string_view{"C"}
+                                        : std::string_view{"A"};
                 if (!verify_random_pedestrian_contact_qa(
                         field_scene, output, scene, choice,
                         source_initializer, dismissal_port_byte,
@@ -21450,10 +21458,19 @@ int run_field_pedestrian_scenes_qa(
         }
     }
     candidate_manifest.close();
-    if (!candidate_manifest || candidate_cases != 46U) {
-        std::cerr << "Pedestrian scenes QA: expected all 46 reachable "
-                     "scene/choice combinations\n";
+    const auto expected_candidate_cases = contact_case_only ? 1U : 46U;
+    if (!candidate_manifest || candidate_cases != expected_candidate_cases) {
+        std::cerr << "Pedestrian scenes QA: expected "
+                  << expected_candidate_cases
+                  << " reachable scene/choice combinations, got "
+                  << candidate_cases << '\n';
         return 3;
+    }
+    if (contact_case_only) {
+        std::cout << "field_pedestrian_contact_qa=passed scene=22 choice=1 "
+                     "initializer=11 dismissal=C artifacts="
+                  << output.string() << '\n';
+        return 0;
     }
     std::cout << "field_pedestrian_random_candidate_matrix_qa=passed scenes=23 "
                  "choices=1,2 initializers=5,11,12 cases="
@@ -35357,6 +35374,7 @@ int main(int argc, char** argv) {
             field_region_map_pedestrians_qa_path;
         std::optional<std::filesystem::path>
             field_pedestrian_scenes_qa_path;
+        bool field_pedestrian_contact_qa_only = false;
         std::optional<std::filesystem::path>
             field_mitsuhama_after_hours_entry_qa_path;
         MitsuhamaAfterHoursEntryQaPath field_mitsuhama_after_hours_entry_qa_mode =
@@ -36273,6 +36291,14 @@ int main(int argc, char** argv) {
                     "--field-pedestrian-scenes-qa" &&
                 index + 1 < argc) {
                 field_smoke = true;
+                field_pedestrian_scenes_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-pedestrian-contact-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_pedestrian_contact_qa_only = true;
                 field_pedestrian_scenes_qa_path =
                     std::filesystem::path(argv[++index]);
             }
@@ -42070,7 +42096,7 @@ int main(int argc, char** argv) {
             if (field_pedestrian_scenes_qa_path.has_value()) {
                 return run_field_pedestrian_scenes_qa(
                     field_scene, *field_pedestrian_scenes_qa_path,
-                    smoke_state);
+                    smoke_state, field_pedestrian_contact_qa_only);
             }
             if (field_scene2_motel_street_collision_qa_path.has_value()) {
                 return run_field_scene2_motel_street_collision_qa(

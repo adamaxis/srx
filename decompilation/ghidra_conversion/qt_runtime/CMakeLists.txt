@@ -1298,6 +1298,15 @@ add_shadowrun_qt_qa_case(
     --field-pedestrian-scenes-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-pedestrian-scenes-qa")
 
+# Verify the normalized initializer-11 A800 contact in an isolated runtime.
+# The contact harness intentionally stops at the 0x1E45E test seam instead of
+# claiming automatic FFDF42/0x1E43C continuation.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_scene22_a800_initializer11_contact_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-pedestrian-contact-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-scene22-a800-initializer11-contact-qa")
+
 # Walk through Mitsuhama's Scene-3 record 95 with the source story and lead
 # facts, inspect the 0xF4BB4 entry page, then resume event-table row 3 to Scene 30.
 add_shadowrun_qt_qa_case(
