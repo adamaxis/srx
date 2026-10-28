@@ -140,7 +140,13 @@ function Inn.present_field_exit_prompt()
             "Of course, payment is required in advance.",
         }, "||"),
         choices)
-    if choice == "crash" then return room_offer() end
+    if choice == "crash" then
+        -- The ordinary 0x1F65A field prompt shares the same 30-nuyen room
+        -- transaction as the indexed service, but starts at the payment
+        -- choice because the manager's offer was already presented above.
+        return DialogueGraph.run(
+            "tarislar_city_inn.field_exit_room_offer")
+    end
     if choice == "frosty" then return frosty_information() end
     return leave()
 end

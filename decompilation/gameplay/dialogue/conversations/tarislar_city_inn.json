@@ -243,6 +243,64 @@
           "outcome": { "type": "continue_in_place" }
         }
       }
+    },
+    "tarislar_city_inn.field_exit_room_offer": {
+      "entryNode": "room_payment",
+      "speakerId": "tarislar_city_inn_manager",
+      "textProfile": "tarislar.city_inn",
+      "provenance": {
+        "romAddresses": ["0x1F65A", "0xF4910", "0x21A4E", "0x1F3C4", "0xCF38"],
+        "scope": "ordinary_field_exit_room_payment_and_hotel_options"
+      },
+      "nodes": {
+        "room_payment": {
+          "type": "choice",
+          "speakerId": "tarislar_city_inn_manager",
+          "menuId": "room_payment",
+          "inputContract": "buttons_abc",
+          "choices": [
+            { "id": "pay", "next": "charge_room" },
+            { "id": "decline", "next": "farewell" }
+          ]
+        },
+        "charge_room": {
+          "type": "action",
+          "actionId": "building.charge_amount",
+          "arguments": { "amount": 30 },
+          "results": {
+            "paid": "room_paid",
+            "insufficient": "room_insufficient"
+          },
+          "evidence": "The ordinary Scene 1/event 1 prompt sets FFF10D to 30 before the room payment choice; the shared payment helper debits the wallet and branches on the result."
+        },
+        "room_paid": {
+          "type": "page",
+          "eventId": "room_paid",
+          "next": "hotel_options"
+        },
+        "room_insufficient": {
+          "type": "page",
+          "eventId": "room_insufficient",
+          "next": "stay_on_map"
+        },
+        "hotel_options": {
+          "type": "terminal",
+          "outcome": {
+            "type": "open_service",
+            "serviceId": "hotel.options",
+            "returnPolicy": "origin"
+          }
+        },
+        "farewell": {
+          "type": "page",
+          "eventId": "leave",
+          "next": "stay_on_map"
+        },
+        "stay_on_map": {
+          "type": "terminal",
+          "outcome": { "type": "continue_in_place" }
+        }
+      }
     }
   }
 }

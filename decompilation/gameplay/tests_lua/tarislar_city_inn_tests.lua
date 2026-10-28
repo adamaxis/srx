@@ -152,6 +152,15 @@ local function location_task_result(expected, ...)
     return outcome
 end
 
+local function field_exit_result(expected, ...)
+    queue(...)
+    local outcome = Inn.present_field_exit_prompt()
+    assert(type(outcome) == "table" and outcome.type == expected,
+        "unexpected Tarislar field-exit outcome: " .. tostring(outcome))
+    assert(#choices == 0, "unused field-exit choice")
+    return outcome
+end
+
 -- The indexed title-service prerequisites come from scene/event and FFFC1E.
 game.location.id = "another_building"
 queue("more")
@@ -187,6 +196,30 @@ queue()
 assert(Inn.present_field_exit_prompt() == "field_return")
 assert(#speeches == 1 and speeches[1].text:find("roots around", 1, true))
 game.field.alternate_result = 0
+
+-- The ordinary field-exit crash choice reaches the same 30-nuyen room
+-- transaction as the indexed title service. Only a paid result opens Hotel
+-- Options; insufficient funds and declining both stay on the map.
+payment_result = "paid"
+local field_paid_stay = field_exit_result(
+    "open_service", "more", "crash", "pay")
+assert(field_paid_stay.serviceId == "hotel.options" and
+       field_paid_stay.returnPolicy == "origin")
+assert(prompts[3].id == "room_payment" and
+       #prompts[3].choices == 2 and prompts[3].choices[1] == "pay" and
+       prompts[3].choices[2] == "decline")
+assert(#service_calls == 1 and service_calls[1][1] == "building" and
+       service_calls[1][2] == "charge_30")
+assert(speeches[#speeches].event == "room_paid")
+
+payment_result = "insufficient"
+field_exit_result("continue_in_place", "more", "crash", "pay")
+assert(#service_calls == 1 and service_calls[1][2] == "charge_30")
+assert(speeches[#speeches].event == "room_insufficient")
+
+payment_result = "paid"
+field_exit_result("continue_in_place", "more", "crash", "decline")
+assert(#service_calls == 0 and speeches[#speeches].event == "leave")
 
 -- Room payment uses the generic building service and returns the hotel menu
 -- only after a successful 30-nuyen transaction.
