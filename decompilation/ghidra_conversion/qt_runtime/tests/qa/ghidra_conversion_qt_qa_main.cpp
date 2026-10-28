@@ -30204,6 +30204,454 @@ int run_field_penumbra_lone_star_entry_qa(
     return 0;
 }
 
+int run_field_employee_recruitment_target_pedestrian_qa(
+    FieldSceneRuntime& offer_scene,
+    const std::filesystem::path& output,
+    const shadowrun::ghidra_conversion::integration::StartupIntegrationState&
+        startup_state) {
+    std::error_code output_error;
+    std::filesystem::remove_all(output, output_error);
+    if (output_error) {
+        std::cerr << "Employee target pedestrian QA: could not clear output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, output_error);
+    if (output_error) {
+        std::cerr << "Employee target pedestrian QA: could not create output: "
+                  << output_error.message() << '\n';
+        return 3;
+    }
+
+    constexpr std::uint8_t kInitializer = 11U;
+    constexpr std::uint8_t kTargetArea = 3U;
+    constexpr std::uint8_t kTargetEvent = 6U;
+    constexpr std::uint16_t kSourceScene = 3U;
+    constexpr std::uint16_t kDestinationScene = 41U;
+    constexpr std::size_t kTargetRecord = 96U;
+    constexpr std::uint16_t kStartX = 0x7000U;
+    constexpr std::uint16_t kStartY = 0x0700U;
+
+    // Reuse the ordinary Johnson work-menu path: its selection seed chooses
+    // the initializer-11 offer row, while negotiation, target, and client
+    // draws remain in the live Lua run registry.
+    offer_scene.set_field_entity_world_position_for_dump(0x1000U, 0x1000U);
+    if (!offer_scene.reenter_field_scene_for_dump(1U) ||
+        !accept_employee_offer_for_field_pedestrian_qa(
+            offer_scene, kInitializer, output, startup_state)) {
+        std::cerr << "Employee target pedestrian QA: normal initializer-11 "
+                     "offer did not reach the active-run state\n";
+        return 3;
+    }
+
+    QString snapshot_error;
+    const auto accepted_snapshot =
+        offer_scene.capture_game_save_snapshot_for_dump(&snapshot_error);
+    const auto accepted_run_state =
+        offer_scene.save_run_registry_state_for_dump();
+    const auto accepted_funds = offer_scene.field_funds_for_dump();
+    const auto run_registry = accepted_snapshot.has_value()
+        ? accepted_snapshot->value(QStringLiteral("run_registry")).toObject()
+        : QJsonObject{};
+    const auto active_offer =
+        run_registry.value(QStringLiteral("active_offer")).toObject();
+    const auto target = active_offer.value(QStringLiteral("route")).toObject()
+                            .value(QStringLiteral("target")).toObject();
+    const auto target_area = target.value(QStringLiteral("area_id")).toInt(-1);
+    const auto target_event =
+        target.value(QStringLiteral("location_id")).toInt(-1);
+    if (!accepted_snapshot.has_value() ||
+        !accepted_run_state.has_value() ||
+        !accepted_funds.has_value() ||
+        active_offer.value(QStringLiteral("id")).toString() !=
+            QStringLiteral("employee_recruitment") ||
+        active_offer.value(QStringLiteral("source_initializer")).toInt(-1) !=
+            kInitializer ||
+        target_area != kTargetArea || target_event != kTargetEvent ||
+        offer_scene.active_run_source_initializer_for_dump() !=
+            std::optional<std::uint8_t>{kInitializer}) {
+        std::cerr << "Employee target pedestrian QA: accepted offer target "
+                     "did not match the live initializer-11 draw (area="
+                  << target_area << ", event=" << target_event
+                  << ", snapshot=" << accepted_snapshot.has_value()
+                  << ", error='" << snapshot_error.toStdString() << "')\n";
+        return 3;
+    }
+
+    // Keep the live accepted run registry while bootstrapping the target map
+    // with the source field checkpoint. The checkpoint selects the known
+    // approach point; contact and every following transition use normal input.
+    auto target_startup_state = startup_state;
+    if (!target_startup_state.field_session_source_assets.has_value() ||
+        !target_startup_state.joshua_selection.has_value()) {
+        std::cerr << "Employee target pedestrian QA: source field assets or "
+                     "New Game runner are unavailable\n";
+        return 3;
+    }
+    const auto target_scene_input =
+        shadowrun::ghidra_conversion::integration::make_field_scene_input(
+            *target_startup_state.field_session_source_assets, kSourceScene);
+    if (!target_scene_input.has_value()) {
+        std::cerr << "Employee target pedestrian QA: Scene-3 source is "
+                     "unavailable\n";
+        return 3;
+    }
+    SaveFieldRestoreState target_checkpoint{};
+    target_checkpoint.world_mode = kSourceScene;
+    target_checkpoint.camera_x = kStartX;
+    target_checkpoint.camera_y = kStartY;
+    for (std::size_t slot = 0U;
+         slot < target_checkpoint.runner_positions.size(); ++slot) {
+        const auto& spawn =
+            target_scene_input->source_metadata.initial_field_records[slot];
+        target_checkpoint.runner_positions[slot] =
+            RestoredRunnerPosition{spawn.x, spawn.y};
+    }
+    target_checkpoint.runner_positions[0U] =
+        RestoredRunnerPosition{kStartX, kStartY};
+    target_checkpoint.roster.default_record.bytes =
+        target_startup_state.joshua_selection->live_joshua_record;
+    target_checkpoint.active_runner_slot = 0U;
+    target_startup_state.restored_field_state = std::move(target_checkpoint);
+    std::vector<std::string> target_boundaries;
+    FieldSceneRuntime field_scene([&target_boundaries](
+                                      const std::string_view boundary) {
+        target_boundaries.emplace_back(boundary);
+    });
+    if (!field_scene.bootstrap_for_scene_dump(target_startup_state,
+                                               kSourceScene) ||
+        !field_scene.restore_run_registry_state_for_dump(*accepted_run_state)) {
+        std::cerr << "Employee target pedestrian QA: could not restore the "
+                     "accepted run registry on target map 3: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    if (field_scene.active_run_source_initializer_for_dump() !=
+        std::optional<std::uint8_t>{kInitializer}) {
+        std::cerr << "Employee target pedestrian QA: restored run registry "
+                     "lost initializer 11\n";
+        return 3;
+    }
+    field_scene.set_field_funds_for_dump(*accepted_funds);
+    const auto saved_story =
+        accepted_snapshot->value(QStringLiteral("story")).toObject();
+    const auto saved_random_seed = saved_story
+        .value(QStringLiteral("source_random_seed")).toInt(-1);
+    if (saved_random_seed < 0 || saved_random_seed > 0xFFFF) {
+        std::cerr << "Employee target pedestrian QA: accepted offer save has "
+                     "an invalid source random seed\n";
+        return 3;
+    }
+    field_scene.set_source_random_seed_for_dump(
+        static_cast<std::uint16_t>(saved_random_seed));
+    const auto& metadata =
+        field_scene.state().field_scene_buffers.source_metadata;
+    if (field_scene.field_scene_reference_for_dump() != kSourceScene ||
+        field_scene.field_entity_world_position().x != kStartX ||
+        field_scene.field_entity_world_position().y != kStartY ||
+        metadata.terrain_collision_rectangles.size() <= kTargetRecord ||
+        metadata.terrain_collision_rectangles[kTargetRecord].left != 0x0700U ||
+        metadata.terrain_collision_rectangles[kTargetRecord].right != 0x071FU ||
+        metadata.terrain_collision_rectangles[kTargetRecord].top != 0x0040U ||
+        metadata.terrain_collision_rectangles[kTargetRecord].bottom != 0x005FU ||
+        metadata.terrain_collision_rectangles[kTargetRecord].value != 0x00C6U ||
+        !metadata.event_table_available ||
+        metadata.event_mode_table[kTargetEvent] != kDestinationScene) {
+        std::cerr << "Employee target pedestrian QA: Scene-3 checkpoint, "
+                     "ROM record 96, or row-6 destination did not match\n";
+        return 3;
+    }
+
+    const auto save = [&field_scene, &output](const std::string_view name) {
+        const auto image = render_qa_field(field_scene);
+        const auto path = output / (std::string(name) + ".bmp");
+        return image.size() == QSize(kSceneWidth, kSceneHeight) &&
+               image.save(QString::fromStdWString(path.wstring()));
+    };
+    if (!save("target-map-spawn")) {
+        std::cerr << "Employee target pedestrian QA: failed to save map entry\n";
+        return 3;
+    }
+
+    std::uint16_t movement_ticks = 0U;
+    for (; movement_ticks < 80U; ++movement_ticks) {
+        field_scene.set_controller_nibble(0x01U); // ordinary Up into event 6
+        field_scene.advance_frame();
+        if (field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.field_scene_reference_for_dump() != kSourceScene) {
+            ++movement_ticks;
+            break;
+        }
+    }
+    field_scene.set_controller_nibble(0U);
+    const auto expected_collision =
+        static_cast<std::uint16_t>(0xFF00U | 0xC6U);
+    if (movement_ticks == 0U || movement_ticks >= 80U ||
+        field_scene.field_terrain_collision_code_for_dump() !=
+            expected_collision ||
+        field_scene.field_projected_code_for_dump() != expected_collision ||
+        field_scene.field_mode_event_code_for_dump() != kTargetEvent ||
+        !save("target-doorway-contact")) {
+        std::cerr << "Employee target pedestrian QA: ordinary Up did not "
+                     "contact ROM record 96/event 6 (ticks="
+                  << movement_ticks << ", collision=0x" << std::hex
+                  << field_scene.field_terrain_collision_code_for_dump()
+                  << ", projected=0x"
+                  << field_scene.field_projected_code_for_dump() << std::dec
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", scene=" << field_scene.field_scene_reference_for_dump()
+                  << ", mode=" << field_scene.field_interaction_mode_for_dump()
+                  << ", position="
+                  << field_scene.field_entity_world_position().x << ','
+                  << field_scene.field_entity_world_position().y
+                  << ", camera="
+                  << field_scene.state().field_scene_buffers.camera_x << ','
+                  << field_scene.state().field_scene_buffers.camera_y << ")\n";
+        return 3;
+    }
+
+    std::uint16_t entry_wait = 0U;
+    for (; entry_wait < 240U && !field_scene.dialogue_open(); ++entry_wait) {
+        field_scene.advance_frame();
+    }
+    const auto& entry_panel = field_scene.dialogue_panel();
+    const auto contains_entry_text = [&entry_panel](
+                                         const std::string_view text) {
+        for (std::size_t index = 0U;
+             index < entry_panel.text_segment_count; ++index) {
+            if (entry_panel.text_segments[index].find(text) !=
+                std::string_view::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    if (!field_scene.dialogue_open() || entry_wait >= 240U ||
+        entry_panel.option_count != 0U || entry_panel.has_more ||
+        !contains_entry_text("You create a diversion") ||
+        !contains_entry_text("Finding your quarry and escaping") ||
+        !save("employee-target-entry")) {
+        std::cerr << "Employee target pedestrian QA: generated target did "
+                     "not open the ROM target-entry passage (wait="
+                  << entry_wait << ", dialogue=" << field_scene.dialogue_open()
+                  << ", options=" << static_cast<unsigned>(
+                         entry_panel.option_count)
+                  << ", more=" << entry_panel.has_more << ", segments="
+                  << static_cast<unsigned>(entry_panel.text_segment_count)
+                  << ", scene=" << field_scene.field_scene_reference_for_dump()
+                  << ", mode=" << field_scene.field_interaction_mode_for_dump()
+                  << ", event=" << static_cast<unsigned>(
+                         field_scene.field_mode_event_code_for_dump())
+                  << ", transition="
+                  << field_scene.field_transition_pending_for_dump()
+                  << ", interaction_transition="
+                  << field_scene.field_interaction_transition_active_for_dump()
+                  << ", funds="
+                  << field_scene.field_funds_for_dump().has_value()
+                  << ", failure='" << field_scene.failure() << "')\n";
+        for (const auto& boundary : target_boundaries) {
+            if (boundary.find("field.run.") != std::string::npos ||
+                boundary.find("field.exit.") != std::string::npos) {
+                std::cerr << "  boundary " << boundary << '\n';
+            }
+        }
+        for (std::size_t index = 0U;
+             index < entry_panel.text_segment_count; ++index) {
+            std::cerr << "  target text[" << index << "]='"
+                      << entry_panel.text_segments[index] << "'\n";
+        }
+        return 3;
+    }
+
+    std::uint16_t lockout_frames = 0U;
+    for (; lockout_frames < 60U && field_scene.dialogue_input_locked();
+         ++lockout_frames) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    if (!field_scene.dialogue_open() ||
+        field_scene.dialogue_input_locked()) {
+        std::cerr << "Employee target pedestrian QA: target passage did not "
+                     "unlock for controller input (frames=" << lockout_frames
+                  << ")\n";
+        return 3;
+    }
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0x40U); // ordinary A
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    field_scene.advance_frame();
+
+    std::uint16_t settle_frames = 0U;
+    QImage final_image;
+    bool destination_rendered = false;
+    for (; settle_frames < 360U; ++settle_frames) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        if (field_scene.field_scene_reference_for_dump() !=
+                kDestinationScene || field_scene.dialogue_open() ||
+            field_scene.field_transition_pending_for_dump() ||
+            field_scene.field_interaction_transition_active_for_dump() ||
+            field_scene.world_activity_script_actor_count_for_dump() != 1U) {
+            continue;
+        }
+        const auto live_actor =
+            field_scene.world_activity_script_actor_projection_for_dump(0U);
+        final_image = render_qa_field(field_scene);
+        if (live_actor && count_playfield_lit(final_image) >= 100U) {
+            ++settle_frames;
+            destination_rendered = true;
+            break;
+        }
+    }
+
+    const auto selected_choice =
+        field_scene.consume_conditional_actor_selection_choice_for_dump();
+    const auto candidates =
+        field_scene.conditional_actor_candidates_for_dump(kDestinationScene);
+    const shadowrun::ghidra_conversion::scripting::ScriptConditionalActorCandidate*
+        expected = nullptr;
+    if (candidates.has_value() && selected_choice.has_value()) {
+        const auto candidate = std::find_if(
+            candidates->begin(), candidates->end(),
+            [selected_choice](const auto& row) {
+                return row.choice == *selected_choice;
+            });
+        if (candidate != candidates->end()) {
+            expected = &*candidate;
+        }
+    }
+    if (final_image.isNull()) final_image = render_qa_field(field_scene);
+    const auto natural_entry_path = output / "scene-41-natural-entry.bmp";
+    const bool natural_entry_saved =
+        final_image.size() == QSize(kSceneWidth, kSceneHeight) &&
+        final_image.save(QString::fromStdWString(
+            natural_entry_path.wstring()));
+    if (expected != nullptr) {
+        // Keep the natural arrival capture above, then center the QA camera
+        // on the source-selected row so the actor itself can be inspected.
+        const auto camera_x = expected->world_x >= 0x0800U
+            ? static_cast<std::uint16_t>(expected->world_x - 0x0800U)
+            : std::uint16_t{0U};
+        const auto camera_y = expected->world_y >= 0x0800U
+            ? static_cast<std::uint16_t>(expected->world_y - 0x0800U)
+            : std::uint16_t{0U};
+        field_scene.set_field_camera_world_position_for_dump(
+            camera_x, camera_y);
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto actor =
+        field_scene.world_activity_script_actor_projection_for_dump(0U);
+    final_image = render_qa_field(field_scene);
+    const bool actor_matches = candidates.has_value() &&
+        selected_choice.has_value() && *selected_choice >= 1U &&
+        *selected_choice <= 2U && expected != nullptr && actor &&
+        actor->world_position.x == expected->world_x &&
+        actor->world_position.y == expected->world_y &&
+        actor->profile_id == "pedestrian_k0b_none00" &&
+        actor->record_slot ==
+            std::optional<FieldWorldActorSlot>{FieldWorldActorSlot::slot_3} &&
+        actor->list_offset == expected->list_offset &&
+        actor->initial_heading == expected->heading_word &&
+        actor->spawn_state_flags == expected->source_spawn_state_flags &&
+        actor->visible;
+    const auto final_path = output / "scene-41-pedestrian-actual.bmp";
+    const bool final_image_saved =
+        final_image.size() == QSize(kSceneWidth, kSceneHeight) &&
+        final_image.save(QString::fromStdWString(final_path.wstring()));
+    if (field_scene.field_scene_reference_for_dump() != kDestinationScene ||
+        field_scene.world_activity_state_for_dump().scene_id !=
+            kDestinationScene ||
+        field_scene.world_activity_state_for_dump().mode !=
+            WorldActivityMode::resource_activity ||
+        field_scene.dialogue_open() || field_scene.field_interaction_open() ||
+        field_scene.field_transition_pending_for_dump() ||
+        field_scene.field_interaction_transition_active_for_dump() ||
+        field_scene.active_run_source_initializer_for_dump() !=
+            std::optional<std::uint8_t>{kInitializer} ||
+        field_scene.world_activity_script_actor_count_for_dump() != 1U ||
+        !destination_rendered || !actor_matches ||
+        !natural_entry_saved ||
+        final_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        count_playfield_lit(final_image) < 100U ||
+        !final_image_saved) {
+        std::cerr << "Employee target pedestrian QA: target route did not "
+                     "finish in Scene 41 with its selected A800 actor "
+                     "(scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << ", choice="
+                  << (selected_choice.has_value()
+                          ? std::to_string(*selected_choice)
+                          : std::string("missing"))
+                  << ", actor_count="
+                  << field_scene.world_activity_script_actor_count_for_dump()
+                  << ", settle_frames=" << settle_frames << ", actor="
+                  << (actor ? actor->profile_id : std::string("missing"))
+                  << ", actor_matches=" << actor_matches
+                  << ", activity_scene="
+                  << field_scene.world_activity_state_for_dump().scene_id
+                  << ", activity_mode=" << static_cast<unsigned>(
+                         field_scene.world_activity_state_for_dump().mode)
+                  << ", dialogue=" << field_scene.dialogue_open()
+                  << ", interaction=" << field_scene.field_interaction_open()
+                  << ", transition="
+                  << field_scene.field_transition_pending_for_dump()
+                  << ", interaction_transition="
+                  << field_scene.field_interaction_transition_active_for_dump()
+                  << ", image_lit=" << count_playfield_lit(final_image)
+                  << ", image_saved=" << final_image_saved << ", expected=";
+        if (expected != nullptr) {
+            std::cerr << expected->world_x << ',' << expected->world_y
+                      << " list=0x" << std::hex << expected->list_offset
+                      << " heading=0x" << expected->heading_word << std::dec;
+        } else {
+            std::cerr << "missing";
+        }
+        if (actor) {
+            std::cerr << ", actual=" << actor->world_position.x << ','
+                      << actor->world_position.y << " list=0x" << std::hex
+                      << actor->list_offset << " heading=0x"
+                      << actor->initial_heading << " flags=0x"
+                      << static_cast<unsigned>(actor->spawn_state_flags)
+                      << std::dec << ", slot="
+                      << (actor->record_slot.has_value()
+                              ? std::to_string(static_cast<unsigned>(
+                                    *actor->record_slot))
+                              : std::string("missing"))
+                      << ", visible=" << actor->visible;
+        }
+        std::cerr << ", failure='" << field_scene.failure() << "')\n";
+        return 3;
+    }
+
+    std::ofstream trace(output / "normal-target-route.tsv", std::ios::trunc);
+    if (!trace) return 3;
+    trace << "initializer\ttarget_area\ttarget_event\tsource_scene"
+             "\trom_record\tevent\tdestination_scene\tchoice"
+             "\tactor_profile\tactor_list_offset\tactor_x\tactor_y"
+             "\tmovement_ticks\tentry_wait\tlockout_frames\tsettle_frames"
+             "\tmap_transition\n"
+          << static_cast<unsigned>(kInitializer) << '\t'
+          << target_area << '\t' << target_event << '\t' << kSourceScene
+          << '\t' << kTargetRecord << '\t'
+          << static_cast<unsigned>(kTargetEvent) << '\t' << kDestinationScene
+          << '\t' << static_cast<unsigned>(*selected_choice) << '\t'
+          << actor->profile_id << "\t0x" << std::hex << actor->list_offset
+          << "\t0x" << actor->world_position.x << "\t0x"
+          << actor->world_position.y << std::dec << '\t' << movement_ticks
+          << '\t' << entry_wait << '\t' << lockout_frames << '\t'
+          << settle_frames << "\taccepted_run_registry_restore\n";
+    std::cout << "field_employee_recruitment_target_pedestrian_qa=passed "
+                 "initializer=11 target=3,6 record=96 event=6 destination=41 "
+                 "choice=" << static_cast<unsigned>(*selected_choice)
+              << " artifacts=" << output.string() << '\n';
+    return 0;
+}
+
 int run_field_hospital_physical_entry_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -35374,6 +35822,8 @@ int main(int argc, char** argv) {
             field_region_map_pedestrians_qa_path;
         std::optional<std::filesystem::path>
             field_pedestrian_scenes_qa_path;
+        std::optional<std::filesystem::path>
+            field_employee_recruitment_target_pedestrian_qa_path;
         bool field_pedestrian_contact_qa_only = false;
         std::optional<std::filesystem::path>
             field_mitsuhama_after_hours_entry_qa_path;
@@ -36300,6 +36750,13 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_pedestrian_contact_qa_only = true;
                 field_pedestrian_scenes_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-employee-recruitment-target-pedestrian-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_employee_recruitment_target_pedestrian_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -37564,6 +38021,8 @@ int main(int argc, char** argv) {
                 field_scene2_pedestrians_qa_path.has_value() ||
                 field_region_map_pedestrians_qa_path.has_value() ||
                 field_pedestrian_scenes_qa_path.has_value() ||
+                field_employee_recruitment_target_pedestrian_qa_path
+                    .has_value() ||
                 field_mitsuhama_after_hours_entry_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||
                 field_movement_qa_path.has_value() ||
@@ -37608,7 +38067,9 @@ int main(int argc, char** argv) {
                 field_scene.set_field_world_frame_counter_for_dump(0x0200U);
             }
             const auto bootstrapped =
-                field_pedestrian_scenes_qa_path.has_value()
+                (field_pedestrian_scenes_qa_path.has_value() ||
+                 field_employee_recruitment_target_pedestrian_qa_path
+                     .has_value())
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 1U)
                     : field_scene2_pedestrians_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 2U)
@@ -42097,6 +42558,14 @@ int main(int argc, char** argv) {
                 return run_field_pedestrian_scenes_qa(
                     field_scene, *field_pedestrian_scenes_qa_path,
                     smoke_state, field_pedestrian_contact_qa_only);
+            }
+            if (field_employee_recruitment_target_pedestrian_qa_path
+                    .has_value()) {
+                return run_field_employee_recruitment_target_pedestrian_qa(
+                    field_scene,
+                    field_employee_recruitment_target_pedestrian_qa_path
+                        .value(),
+                    smoke_state);
             }
             if (field_scene2_motel_street_collision_qa_path.has_value()) {
                 return run_field_scene2_motel_street_collision_qa(

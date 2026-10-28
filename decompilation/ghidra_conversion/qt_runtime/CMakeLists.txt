@@ -905,6 +905,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_penumbra_lone_star
                  --field-penumbra-lone-star-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-penumbra-lone-star-entry-qa")
 
+# Accept a normal initializer-11 recruitment offer, preserve its generated
+# target, contact its Scene-3 doorway, and verify the target page and A800 actor.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_employee_recruitment_target_pedestrian_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-employee-recruitment-target-pedestrian-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-employee-recruitment-target-pedestrian-qa")
+
 # Seed the ROM's completed Harlequin/Ito/map gates, walk into record 67 with
 # ordinary Up input, accept the Yes prompt, and verify the three travel pages
 # before the route enters scene 54.

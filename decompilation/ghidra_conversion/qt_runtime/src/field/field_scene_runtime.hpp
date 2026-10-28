@@ -539,6 +539,10 @@ public:
     active_run_source_initializer_for_dump() {
         return game_scripts_.active_run_source_initializer();
     }
+    std::optional<scripting::ScriptPersistentValue>
+    save_run_registry_state_for_dump() {
+        return game_scripts_.save_run_registry_state();
+    }
     bool restore_run_registry_state_for_dump(
         const scripting::ScriptPersistentValue& state) {
         return game_scripts_.restore_run_registry_state(state);
