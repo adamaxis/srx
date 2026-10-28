@@ -958,8 +958,9 @@ purchase/install/remove routes are traced.
    selection. Frame 001800 shows the Redmond Barrens selection. The Qt defect
    was reproduced at startup-QA frame 3048: only two vertical sides appeared.
    After the fix, full-screen Qt frames show a closed outline in every phase.
-   The visible map-plate extent still differs from the independent capture;
-   that separate discrepancy remains open.
+   The extracted 208x136 plate registers against independent frames at the
+   ROM-derived `(32,32)` position; the eight frame scores are recorded in the
+   [taxi outline audit](../visual-audits/taxi-window-outline.md#cab-map-plate-registration-follow-up).
 2. **Behavioral state:** typed `post_intro_mode`, `post_intro_phase`, and
    `post_intro_caption_visible` drive the view. ROM 0x134D2 calls 0x13726 for
    mode 4 and mode 2; 0x13726 reads the selected record through 0xD445D and
@@ -973,9 +974,10 @@ purchase/install/remove routes are traced.
    renderer used hyphens for the six multi-part names, which failed lookup;
    only `left` and `right` resolved. It now uses the catalog's dot-separated
    aliases. The border remains composed from the extracted source tiles. The
-   separate 208x136 map plate is still drawn at (46,14); its visible extent
-   does not match the independent capture, so its crop/ownership is not
-   changed by this fix.
+   separate 208x136 map plate comes from ROM stream `0xD2A2E` and is drawn at
+   `(32,32)`, matching its name-table origin at `0x2208`; independent-frame
+   registration supports the full extent. The plate remains separate from the
+   cursor border.
 4. **Animation:** ROM 0x13726 renders five outline records and waits for two
    VBlanks per record. ROM 0x134D2 then holds mode 4 for its 0x40 loop and
    mode 2 for its 0x60 loop before the field handoff. A Release full-intro
@@ -990,7 +992,8 @@ purchase/install/remove routes are traced.
    cab-map plate, both captions, the selector, and the first field screen.
    The map scene replaces the airport scene cleanly; Downtown is replaced by
    Redmond without stale caption text; the first field frame has no cab-map
-   outline or text. The map-plate extent discrepancy remains visible.
+   outline or text. The plate registers at the same origin and extent in the
+   independent frames.
 7. **Frame support:** independent frames 001729-001735 show the first cursor
    animation and Downtown hold; frame 001800 shows Redmond and 001810 shows
    black during the handoff. The video does not log controller input, so it

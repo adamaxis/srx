@@ -1,8 +1,9 @@
 # Taxi-window outline audit
 
 **Status:** `TAXI-01` is resolved for the missing top and bottom edges. The
-cab-map plate's visible extent remains a separate open discrepancy; this
-audit does not call the whole cab-map screen visually complete.
+cab-map plate's position and extent also match the sampled independent frames.
+Exact video-to-VBlank phase and the controller event that selected each
+destination remain unverified.
 
 ## Source path and cause
 
@@ -30,8 +31,9 @@ geometry or replacement artwork was invented.
    independent section 02 full-screen frames 001729-001735 show the callout
    closing and shrinking to Downtown Seattle; frame 001800 shows the Redmond
    selection. The fixed Qt images have a closed outline through both mode
-   sequences. The independent map plate has a different visible extent from
-   Qt, which remains open.
+   sequences. Registration of the extracted map plate against eight
+   independent frames places it at the same `(32,32)` origin as Qt; details
+   are recorded below.
 2. **Does the appearance match the behavioral state? — Yes.** The typed
    `post_intro_mode`, `post_intro_phase`, and
    `post_intro_caption_visible` select the current record and caption. QA
@@ -40,8 +42,8 @@ geometry or replacement artwork was invented.
 3. **Are the visuals correct? — Yes for the border tiles and their placement.**
    The renderer now resolves all eight catalog aliases and draws the source
    images. The full-screen pixel checks fail if any tile is missing or does
-   not match its source image at the planned position. The plate extent is
-   outside this fix.
+   not match its source image at the planned position. Independent-frame
+   registration also supports the extracted plate at its ROM-derived position.
 4. **Should it animate? — Yes.** ROM `0x13726` presents five outline sizes at
    two VBlanks each. ROM `0x134D2` holds mode 4 for its `0x40` countdown and
    mode 2 for its `0x60` countdown, then returns to the field path. The full
@@ -53,8 +55,8 @@ geometry or replacement artwork was invented.
    caption; no separate clip or duration is assigned.
 6. **Are related screen parts correct? — Reviewed.** The full-screen pass
    includes the preceding airport text/background, map, captions, selector,
-   and first field screen. The visible map extent still differs from the
-   independent capture and remains an open issue.
+   and first field screen. The extracted plate registers at its ROM-derived
+   position and full extent in the independent frames.
 7. **Do multiple frames support the interpretation? — Yes for the outline;
    input cause is unknown.** Independent frames 001729-001735 and 001800 show
    the callout at several sizes and destinations; frame 001810 shows the
@@ -95,6 +97,39 @@ geometry or replacement artwork was invented.
 selection size and destination.
 **Independently visually checked:** section 02 frames 001729-001735,
 001800, and 001810 support the closed outline, selected map states, and
-handoff classification.
-**Reported defect resolved:** the missing top/bottom edges are fixed. The
-map-plate extent and exact video-to-VBlank alignment remain open.
+handoff classification. The plate registration results below support its
+position and extent.
+**Reported defect resolved:** the missing top/bottom edges are fixed, and the
+reported plate-extent difference is not reproduced. Exact video-to-VBlank
+alignment and controller input remain open.
+
+## Cab-map plate registration follow-up
+
+The US-ROM path at `0x134D2` loads the map stream from `0xD2A2E` into the
+Plane-B name table beginning at VRAM address `0x2208`. With the plane base at
+`0x2000` and 64 tile cells per row, that is row 4, column 4: screen position
+`(32,32)` at zero scroll. The offline graphics extractor writes that source
+resource as `assets/intro/cab-map.bmp`; its dimensions are 208x136 pixels
+(26x17 tiles). The Qt presenter draws the full asset at the same source-derived
+position.
+
+I registered the grayscale plate asset against each independent 320x224
+section-02 screenshot using full-frame normalized cross-correlation. The
+maximum location is `(32,32)` in all eight sampled frames:
+
+| Independent frame | Peak score |
+| --- | ---: |
+| `001729` | 0.99136 |
+| `001730` | 0.98627 |
+| `001731` | 0.98557 |
+| `001732` | 0.99004 |
+| `001733` | 0.99214 |
+| `001734` | 0.96411 |
+| `001735` | 0.96412 |
+| `001800` | 0.96557 |
+
+The later frames include cursor/caption overlays, and all reference frames are
+compressed video captures. These scores support the plate's origin and full
+extent; they do not establish pixel identity or VBlank phase. The old extent
+discrepancy came from visual comparison and is superseded by this registration
+and the ROM placement trace.

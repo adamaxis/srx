@@ -51,10 +51,12 @@ four D-pad aliases, wraparound, direction/confirm order, simultaneous
 opposite direction groups, C reselect, Start exit, and combined-button
 priority. The field taxi screenshot
 remains a host-rendered regression capture; the independent video confirms
-selected states but has no controller log. The separate cab-map plate extent
-discrepancy remains open.
+selected states but has no controller log. The cab-map plate independently
+registers at its ROM-derived `(32,32)` position and full 208x136 extent; see the
+[plate registration follow-up](taxi-window-outline.md#cab-map-plate-registration-follow-up).
 
 The C-button action reuses the shared runner-switch service and remains a
-host-state check rather than an independently captured Genesis state. The map
-plate extent discrepancy and independent gameplay frames with logged inputs
-remain open, so visual fidelity remains partial.
+host-state check rather than an independently captured Genesis state. The
+plate extent is no longer an open discrepancy. Independent gameplay frames
+with logged inputs and exact video-to-VBlank alignment remain unavailable, so
+the interaction timing is still partial.
