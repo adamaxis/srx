@@ -2025,3 +2025,44 @@ result routine. The source condition that keeps `FFF10C` clear on the
 story-contact route is still unproven, so the physical callback path and
 automatic result route remain open. The generic `0x1F146` path has no such
 edge because it clears the flag before entering `0x1F246`.
+
+### A800 callback flag source-order follow-up (2026-10-28)
+
+**[C]** The raw US-ROM main loop distinguishes a stale menu flag from the
+flag value at a normal field callback. When `FFDF40` is zero and the field
+variant selector does not take its transition branch, `0x0075E` calls the
+field-exit orchestrator `0x1F5CA` at `0x009A6`. That orchestrator clears
+`FFF10C` at `0x1F5EC` before its world-effect and indexed-service dispatch;
+its early `0xC64C` exit clears the same byte at `0xC658`. The normal loop then
+services actors at `0x0A8EA` and reaches the pending `FFE104` callback at
+`0x0B26..0x0B42`. Thus a flag left by an earlier field-menu visit is cleared
+before the next ordinary A800 callback dispatch.
+
+The alternate paths do not dispatch `FFE104` in that same pass. A nonzero
+`FFDF40` branches from `0x0998` to the world-activity path; a carry from the
+field-variant selector branches to `0x0A54`. Both routes proceed through the
+scene transition and loop back to `0x08C0`, ahead of the `0x0B26` callback
+dispatch. The next ordinary field pass reaches `0x1F5CA` first.
+
+The matrix UI writer at `0x1831E` can bypass its own clear at `0x1868E` on a
+confirmed mode-transition branch: `0x185D8..0x185E2` calls `0x26A00` and jumps
+to the footer at `0x18694`. `0x26A00` sets `FFF0B1`, and the immediate callers
+of the matrix loop return on that marker. The field-loop ordering above
+protects the next ordinary callback pass if control returns through that
+loop. A second call to the matrix session is at `0xE48E`. Its return sequence
+tests `FFF0B1` at `0xE494`; when set, the branch at `0xE49A` goes to `0xE4C0`,
+which clears `FFF0B1` and returns. The containing code has no function entry
+or direct caller in the exported call-site map, so the next caller after that
+return is unlocated. The current trace does not establish whether an eligible
+`0x0B3C` callback can run before the next `0x1F5CA` clear. The `0x1831E` route
+is therefore bounded but not enough to prove the A800 invariant.
+
+The other nonzero store at `0x2089E` remains unresolved. Linear disassembly
+shows a short routine ending at `0x208A6`, but `functions.tsv` has no function
+entry there and `call-sites.tsv` has no direct caller. The two raw occurrences
+of the longword `0x00020882` are inside the `0x1218xx` data region; they do not
+identify a code caller. Until the routine's indirect entry and its position
+relative to the `0x1F5CA` clear and `0x0B3C` callback are recovered, the global
+`FFF10C` invariant remains open. Neither the unknown `0x2089E` routine nor the
+matrix entry at `0xE48E` is enough to claim an A800 re-entry, but the
+same-pass ordering has not been closed either.

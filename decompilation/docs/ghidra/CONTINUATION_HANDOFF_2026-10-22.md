@@ -1217,3 +1217,22 @@ Willpower 7 plus pool 12). These remain conditional arithmetic bounds; party
 permutations do not prove recruitment or offer reachability. The details are
 recorded in `visual-audits/magic-defense-party-composition-audit-2026-10-23.md`
 and `field-map-trigger-profile.md`. No tests were run; no push was made.
+
+## 2026-10-28 A800 callback flag source-order follow-up
+
+The field loop calls `0x1F5CA` before normal actor service and the pending
+`FFE104` callback dispatch. Its normal path clears `FFF10C` at `0x1F5EC`; the
+early `0xC64C` path clears it at `0xC658`. Field-mode/scene-transition paths
+that skip `0x1F5CA` also skip the `0x0B26..0x0B42` callback dispatch in that
+pass. The matrix writer at `0x1831E` can bypass its local clear on the
+`0x26A00` transition branch. The separate call at `0xE48E` returns to code
+that checks `FFF0B1` at `0xE494` and clears it at `0xE4C0` before returning;
+the containing code's caller remains unlocated. It is not established whether
+a pending callback can dispatch before the next ordinary `0x1F5CA` clear.
+
+The remaining nonzero writer at `0x2089E` is still unscoped: the linear
+disassembly has no corresponding function entry or direct caller in the
+exported call-site list. Keep the global flag invariant open until its
+indirect entry and the matrix return path relative to the `0x1F5CA` clear
+and `0x0B3C` callback are identified. The A800 hill
+remains partial; no tests were run and no push was made.
