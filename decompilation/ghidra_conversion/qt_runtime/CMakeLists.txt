@@ -921,6 +921,14 @@ add_shadowrun_qt_qa_case(
     --field-employee-recruitment-ares-pedestrian-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-employee-recruitment-ares-pedestrian-qa")
 
+# Accept initializer 12's fixed Renraku target, contact its Scene-5 doorway,
+# and assert the selected Scene-35 A800 outcome against its live ROM gates.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_employee_recruitment_renraku_pedestrian_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-employee-recruitment-renraku-pedestrian-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-employee-recruitment-renraku-pedestrian-qa")
+
 # Seed the ROM's completed Harlequin/Ito/map gates, walk into record 67 with
 # ordinary Up input, accept the Yes prompt, and verify the three travel pages
 # before the route enters scene 54.

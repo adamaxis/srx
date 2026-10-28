@@ -30210,7 +30210,8 @@ int run_field_employee_recruitment_target_pedestrian_qa(
     const std::filesystem::path& output,
     const shadowrun::ghidra_conversion::integration::StartupIntegrationState&
         startup_state,
-    const bool ares_target) {
+    const bool ares_target,
+    const bool renraku_target) {
     std::error_code output_error;
     std::filesystem::remove_all(output, output_error);
     if (output_error) {
@@ -30226,6 +30227,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
     }
 
     struct TargetRoute {
+        std::uint8_t initializer;
         std::uint8_t target_area;
         std::uint8_t target_event;
         std::uint16_t source_scene;
@@ -30244,25 +30246,29 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         std::uint16_t offer_selection_seed;
         std::string_view name;
     };
-    constexpr std::uint8_t kInitializer = 11U;
     const TargetRoute route = ares_target
-        ? TargetRoute{1U, 2U, 1U, 26U, 71U, 0x5100U, 0x2500U,
+        ? TargetRoute{11U, 1U, 2U, 1U, 26U, 71U, 0x5100U, 0x2500U,
                       0x0500U, 0x051FU, 0x0220U, 0x023FU, 0x00C2U,
                       0x1EDCCEU, 0x2D00U, 0x2300U, 28U, "Ares"}
-        : TargetRoute{3U, 6U, 3U, 41U, 96U, 0x7000U, 0x0700U,
+        : renraku_target
+        ? TargetRoute{12U, 5U, 6U, 5U, 35U, 46U, 0x2700U, 0x1000U,
+                      0x0260U, 0x027FU, 0x00A0U, 0x00BFU, 0x00C6U,
+                      0U, 0U, 0U, 4U, "Renraku"}
+        : TargetRoute{11U, 3U, 6U, 3U, 41U, 96U, 0x7000U, 0x0700U,
                       0x0700U, 0x071FU, 0x0040U, 0x005FU, 0x00C6U,
                       0x1EE1F6U, 0x1500U, 0x0E80U, 4U, "Lone Star"};
 
-    // Reuse the ordinary Johnson work-menu path. Both source selection seeds
-    // choose initializer 11; seed 28 selects its first target after the live
-    // negotiation draw, while all later draws remain in the Lua run registry.
+    // Reuse the ordinary Johnson work-menu path. The per-route source
+    // selection seed selects the configured offer row; negotiation, target,
+    // and client draws remain live in the Lua run registry.
     offer_scene.set_field_entity_world_position_for_dump(0x1000U, 0x1000U);
     if (!offer_scene.reenter_field_scene_for_dump(1U) ||
         !accept_employee_offer_for_field_pedestrian_qa(
-            offer_scene, kInitializer, output, startup_state,
+            offer_scene, route.initializer, output, startup_state,
             route.offer_selection_seed)) {
-        std::cerr << "Employee target pedestrian QA: normal initializer-11 "
-                     "offer did not reach the active-run state\n";
+        std::cerr << "Employee target pedestrian QA: normal initializer-"
+                  << static_cast<unsigned>(route.initializer)
+                  << " offer did not reach the active-run state\n";
         return 3;
     }
 
@@ -30288,13 +30294,14 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         active_offer.value(QStringLiteral("id")).toString() !=
             QStringLiteral("employee_recruitment") ||
         active_offer.value(QStringLiteral("source_initializer")).toInt(-1) !=
-            kInitializer ||
+            route.initializer ||
         target_area != route.target_area ||
         target_event != route.target_event ||
         offer_scene.active_run_source_initializer_for_dump() !=
-            std::optional<std::uint8_t>{kInitializer}) {
+            std::optional<std::uint8_t>{route.initializer}) {
         std::cerr << "Employee target pedestrian QA: accepted offer target "
-                     "did not match the live initializer-11 draw (area="
+                     "did not match the live initializer-"
+                  << static_cast<unsigned>(route.initializer) << " draw (area="
                   << target_area << ", event=" << target_event
                   << ", snapshot=" << accepted_snapshot.has_value()
                   << ", error='" << snapshot_error.toStdString() << "')\n";
@@ -30352,9 +30359,10 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         return 3;
     }
     if (field_scene.active_run_source_initializer_for_dump() !=
-        std::optional<std::uint8_t>{kInitializer}) {
+        std::optional<std::uint8_t>{route.initializer}) {
         std::cerr << "Employee target pedestrian QA: restored run registry "
-                     "lost initializer 11\n";
+                     "lost initializer "
+                  << static_cast<unsigned>(route.initializer) << '\n';
         return 3;
     }
     field_scene.set_field_funds_for_dump(*accepted_funds);
@@ -30371,30 +30379,53 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         static_cast<std::uint16_t>(saved_random_seed));
     const auto& metadata =
         field_scene.state().field_scene_buffers.source_metadata;
+    const auto checkpoint_collision =
+        field_scene.probe_field_collision_for_dump(route.start_x,
+                                                   route.start_y);
+    const auto* collision_record = route.collision_record <
+            metadata.terrain_collision_rectangles.size()
+        ? &metadata.terrain_collision_rectangles[route.collision_record]
+        : nullptr;
+    const bool event_destination_available = metadata.event_table_available &&
+        route.target_event < metadata.event_mode_table.size();
+    const auto event_destination = event_destination_available
+        ? static_cast<int>(metadata.event_mode_table[route.target_event])
+        : -1;
+    const bool collision_record_matches = collision_record != nullptr &&
+        collision_record->left == route.collision_left &&
+        collision_record->right == route.collision_right &&
+        collision_record->top == route.collision_top &&
+        collision_record->bottom == route.collision_bottom &&
+        collision_record->value == route.collision_code;
     if (field_scene.field_scene_reference_for_dump() != route.source_scene ||
         field_scene.field_entity_world_position().x != route.start_x ||
         field_scene.field_entity_world_position().y != route.start_y ||
-        field_scene.probe_field_collision_for_dump(route.start_x,
-                                                   route.start_y) != 0 ||
-        metadata.terrain_collision_rectangles.size() <=
-            route.collision_record ||
-        metadata.terrain_collision_rectangles[route.collision_record].left !=
-            route.collision_left ||
-        metadata.terrain_collision_rectangles[route.collision_record].right !=
-            route.collision_right ||
-        metadata.terrain_collision_rectangles[route.collision_record].top !=
-            route.collision_top ||
-        metadata.terrain_collision_rectangles[route.collision_record].bottom !=
-            route.collision_bottom ||
-        metadata.terrain_collision_rectangles[route.collision_record].value !=
-            route.collision_code ||
-        !metadata.event_table_available ||
-        metadata.event_mode_table[route.target_event] !=
-            route.destination_scene) {
+        checkpoint_collision != 0 || !collision_record_matches ||
+        !event_destination_available ||
+        event_destination != route.destination_scene) {
         std::cerr << "Employee target pedestrian QA: source Scene "
                   << route.source_scene << " checkpoint, ROM record "
                   << route.collision_record << ", or event-table destination "
-                     "did not match\n";
+                     "did not match (position="
+                  << field_scene.field_entity_world_position().x << ','
+                  << field_scene.field_entity_world_position().y
+                  << ", collision_probe=0x" << std::hex
+                  << checkpoint_collision << std::dec
+                  << ", collision_record_count="
+                  << metadata.terrain_collision_rectangles.size();
+        if (collision_record != nullptr) {
+            std::cerr << ", actual_record=" << collision_record->left << ','
+                      << collision_record->right << ','
+                      << collision_record->top << ','
+                      << collision_record->bottom << ", value=0x"
+                      << std::hex << static_cast<unsigned>(
+                             collision_record->value)
+                      << std::dec;
+        } else {
+            std::cerr << ", actual_record=missing";
+        }
+        std::cerr << ", event_table=" << metadata.event_table_available
+                  << ", destination=" << event_destination << ")\n";
         return 3;
     }
 
@@ -30408,14 +30439,20 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         std::cerr << "Employee target pedestrian QA: failed to save map entry\n";
         return 3;
     }
-    if (ares_target) {
+    if (ares_target || renraku_target) {
+        const auto grid_path = output /
+            (ares_target ? "ares-doorway-approach-collision-grid.tsv"
+                         : "renraku-doorway-approach-collision-grid.tsv");
         std::ofstream collision_grid(
-            output / "ares-doorway-approach-collision-grid.tsv",
-            std::ios::trunc);
+            grid_path, std::ios::trunc);
         if (!collision_grid) return 3;
         collision_grid << "world_x\tworld_y\tprobe_result\n";
-        for (std::uint16_t y = 0x2000U; y <= 0x2800U; y += 0x0100U) {
-            for (std::uint16_t x = 0x4800U; x <= 0x5600U; x += 0x0100U) {
+        const auto grid_left = static_cast<std::uint16_t>(route.start_x - 0x0800U);
+        const auto grid_right = static_cast<std::uint16_t>(route.start_x + 0x0800U);
+        const auto grid_top = static_cast<std::uint16_t>(route.start_y - 0x0800U);
+        const auto grid_bottom = static_cast<std::uint16_t>(route.start_y + 0x0800U);
+        for (std::uint16_t y = grid_top; y <= grid_bottom; y += 0x0100U) {
+            for (std::uint16_t x = grid_left; x <= grid_right; x += 0x0100U) {
                 collision_grid << "0x" << std::hex << x << "\t0x" << y
                                << "\t" << std::dec
                                << field_scene.probe_field_collision_for_dump(
@@ -30543,10 +30580,38 @@ int run_field_employee_recruitment_target_pedestrian_qa(
     std::uint16_t settle_frames = 0U;
     QImage final_image;
     bool destination_rendered = false;
-    const std::size_t expected_actor_count = ares_target ? 0U : 1U;
+    std::size_t expected_actor_count = ares_target ? 0U : 1U;
+    bool renraku_gate_resolved = false;
     for (; settle_frames < 360U; ++settle_frames) {
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
+        if (renraku_target &&
+            field_scene.field_scene_reference_for_dump() ==
+                route.destination_scene && !field_scene.dialogue_open() &&
+            !field_scene.field_transition_pending_for_dump() &&
+            !field_scene.field_interaction_transition_active_for_dump()) {
+            const auto active_index =
+                field_scene.active_effect_index_for_dump();
+            const auto selected_index =
+                field_scene.selected_effect_index_for_dump();
+            if (!active_index.has_value() || !selected_index.has_value()) {
+                continue;
+            }
+            const bool run_and_mode_gates_pass =
+                field_scene.active_run_source_initializer_for_dump() ==
+                    std::optional<std::uint8_t>{12U} &&
+                field_scene.world_activity_state_for_dump().mode ==
+                    WorldActivityMode::resource_activity;
+            const bool index_and_transfer_gates_pass =
+                run_and_mode_gates_pass &&
+                active_index == selected_index &&
+                !field_scene.world_effect_active_for_dump() &&
+                !field_scene.pending_world_effect_for_dump() &&
+                !field_scene.world_activity_transfer_actor_template_present_for_dump() &&
+                !field_scene.world_effect_player_spawn_pending_for_dump();
+            expected_actor_count = index_and_transfer_gates_pass ? 1U : 0U;
+            renraku_gate_resolved = true;
+        }
         if (field_scene.field_scene_reference_for_dump() !=
                 route.destination_scene || field_scene.dialogue_open() ||
             field_scene.field_transition_pending_for_dump() ||
@@ -30596,7 +30661,9 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         final_image.size() == QSize(kSceneWidth, kSceneHeight) &&
         final_image.save(QString::fromStdWString(
             natural_entry_path.wstring()));
-    if (expected != nullptr && !ares_target) {
+    const auto actor_at_natural_entry =
+        field_scene.world_activity_script_actor_projection_for_dump(0U);
+    if (expected != nullptr && !ares_target && actor_at_natural_entry) {
         // Keep the natural arrival capture above, then center the QA camera
         // on the source-selected row so the actor itself can be inspected.
         const auto camera_x = expected->world_x >= 0x0800U
@@ -30623,24 +30690,50 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         active_effect_index == std::optional<std::uint16_t>{0U} &&
         selected_effect_index == std::optional<std::uint16_t>{1U} &&
         !field_scene.world_effect_active_for_dump() &&
+        !field_scene.pending_world_effect_for_dump() &&
         !field_scene.world_activity_transfer_actor_template_present_for_dump();
-    const bool candidate_outcome_matches = ares_target
-        ? candidate_gates_suppress_actor
-        : candidates.has_value() &&
+    const bool selected_candidate_row_valid = candidates.has_value() &&
         selected_choice.has_value() && *selected_choice >= 1U &&
-        *selected_choice <= 2U && expected != nullptr &&
-        expected->list_offset == route.candidate_list_offset &&
-        expected->world_x == route.candidate_x &&
-        expected->world_y == route.candidate_y && actor &&
+        *selected_choice <= 2U && expected != nullptr;
+    const bool candidate_a800_gates_pass =
+        field_scene.active_run_source_initializer_for_dump() ==
+            std::optional<std::uint8_t>{12U} &&
+        field_scene.world_activity_state_for_dump().mode ==
+            WorldActivityMode::resource_activity &&
+        active_effect_index.has_value() && selected_effect_index.has_value() &&
+        active_effect_index == selected_effect_index &&
+        !field_scene.world_effect_active_for_dump() &&
+        !field_scene.pending_world_effect_for_dump() &&
+        !field_scene.world_activity_transfer_actor_template_present_for_dump() &&
+        !field_scene.world_effect_player_spawn_pending_for_dump();
+    const bool actor_matches_selected_row = selected_candidate_row_valid && actor &&
         actor->world_position.x == expected->world_x &&
         actor->world_position.y == expected->world_y &&
-        actor->profile_id == "pedestrian_k0b_none00" &&
         actor->record_slot ==
             std::optional<FieldWorldActorSlot>{FieldWorldActorSlot::slot_3} &&
         actor->list_offset == expected->list_offset &&
         actor->initial_heading == expected->heading_word &&
         actor->spawn_state_flags == expected->source_spawn_state_flags &&
         actor->visible;
+    const bool selected_row_matches_route = route.candidate_list_offset == 0U ||
+        (expected != nullptr &&
+         expected->list_offset == route.candidate_list_offset &&
+         expected->world_x == route.candidate_x &&
+         expected->world_y == route.candidate_y);
+    const bool actor_matches = actor_matches_selected_row &&
+        selected_row_matches_route &&
+        actor->profile_id == "pedestrian_k0b_none00";
+    const bool renraku_candidate_outcome_matches = renraku_target &&
+        renraku_gate_resolved && selected_candidate_row_valid &&
+        ((candidate_a800_gates_pass && actor_matches_selected_row &&
+          field_scene.world_activity_script_actor_count_for_dump() == 1U) ||
+         (!candidate_a800_gates_pass && !actor &&
+          field_scene.world_activity_script_actor_count_for_dump() == 0U));
+    const bool candidate_outcome_matches = ares_target
+        ? candidate_gates_suppress_actor
+        : renraku_target ? renraku_candidate_outcome_matches
+        : selected_candidate_row_valid &&
+        actor_matches;
     const auto final_path = output / (scene_prefix + "-pedestrian-actual.bmp");
     const bool final_image_saved =
         final_image.size() == QSize(kSceneWidth, kSceneHeight) &&
@@ -30655,7 +30748,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         field_scene.field_transition_pending_for_dump() ||
         field_scene.field_interaction_transition_active_for_dump() ||
         field_scene.active_run_source_initializer_for_dump() !=
-            std::optional<std::uint8_t>{kInitializer} ||
+            std::optional<std::uint8_t>{route.initializer} ||
         field_scene.world_activity_script_actor_count_for_dump() !=
             expected_actor_count ||
         !destination_rendered || !candidate_outcome_matches ||
@@ -30732,11 +30825,13 @@ int run_field_employee_recruitment_target_pedestrian_qa(
              "\trom_record\tevent\tdestination_scene\tchoice"
              "\tactor_profile\tactor_list_offset\tactor_x\tactor_y"
              "\tactive_effect_index\tselected_effect_index"
-             "\ttransfer_template_present\tcandidate_list_offset"
+             "\tworld_effect_active\tpending_world_effect"
+             "\tplayer_spawn_pending\ttransfer_template_present"
+             "\tworld_activity_mode\tactor_count\tcandidate_list_offset"
              "\tcandidate_x\tcandidate_y"
              "\tmovement_ticks\tentry_wait\tlockout_frames\tsettle_frames"
              "\tmap_transition\n"
-          << static_cast<unsigned>(kInitializer) << '\t'
+          << static_cast<unsigned>(route.initializer) << '\t'
           << route.offer_selection_seed << '\t' << saved_random_seed << '\t'
           << target_area << '\t' << target_event << '\t'
           << route.source_scene << '\t' << route.collision_record << '\t'
@@ -30762,9 +30857,14 @@ int run_field_employee_recruitment_target_pedestrian_qa(
     } else {
         trace << "none";
     }
-    trace << '\t'
+    trace << '\t' << field_scene.world_effect_active_for_dump() << '\t'
+          << field_scene.pending_world_effect_for_dump() << '\t'
+          << field_scene.world_effect_player_spawn_pending_for_dump() << '\t'
           << field_scene.world_activity_transfer_actor_template_present_for_dump()
-          << '\t';
+          << '\t' << static_cast<unsigned>(
+                 field_scene.world_activity_state_for_dump().mode)
+          << '\t'
+          << field_scene.world_activity_script_actor_count_for_dump() << '\t';
     if (expected != nullptr) {
         trace << "0x" << std::hex << expected->list_offset << "\t0x"
               << expected->world_x << "\t0x" << expected->world_y << std::dec;
@@ -30775,7 +30875,8 @@ int run_field_employee_recruitment_target_pedestrian_qa(
           << '\t' << entry_wait << '\t' << lockout_frames << '\t'
           << settle_frames << "\taccepted_run_registry_restore\n";
     std::cout << "field_employee_recruitment_target_pedestrian_qa=passed "
-                 "initializer=11 target="
+                 "initializer="
+              << static_cast<unsigned>(route.initializer) << " target="
               << static_cast<unsigned>(route.target_area) << ','
               << static_cast<unsigned>(route.target_event)
               << " record=" << route.collision_record << " destination="
@@ -35960,6 +36061,8 @@ int main(int argc, char** argv) {
             field_employee_recruitment_target_pedestrian_qa_path;
         std::optional<std::filesystem::path>
             field_employee_recruitment_ares_pedestrian_qa_path;
+        std::optional<std::filesystem::path>
+            field_employee_recruitment_renraku_pedestrian_qa_path;
         bool field_pedestrian_contact_qa_only = false;
         std::optional<std::filesystem::path>
             field_mitsuhama_after_hours_entry_qa_path;
@@ -36900,6 +37003,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_employee_recruitment_ares_pedestrian_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-employee-recruitment-renraku-pedestrian-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_employee_recruitment_renraku_pedestrian_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -38168,6 +38278,8 @@ int main(int argc, char** argv) {
                     .has_value() ||
                 field_employee_recruitment_ares_pedestrian_qa_path
                     .has_value() ||
+                field_employee_recruitment_renraku_pedestrian_qa_path
+                    .has_value() ||
                 field_mitsuhama_after_hours_entry_qa_path.has_value() ||
                 field_scene2_motel_street_collision_qa_path.has_value() ||
                 field_movement_qa_path.has_value() ||
@@ -38216,6 +38328,8 @@ int main(int argc, char** argv) {
                  field_employee_recruitment_target_pedestrian_qa_path
                      .has_value() ||
                  field_employee_recruitment_ares_pedestrian_qa_path
+                     .has_value() ||
+                 field_employee_recruitment_renraku_pedestrian_qa_path
                      .has_value())
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 1U)
                     : field_scene2_pedestrians_qa_path.has_value()
@@ -42712,14 +42826,22 @@ int main(int argc, char** argv) {
                     field_scene,
                     field_employee_recruitment_target_pedestrian_qa_path
                         .value(),
-                    smoke_state, false);
+                    smoke_state, false, false);
             }
             if (field_employee_recruitment_ares_pedestrian_qa_path
                     .has_value()) {
                 return run_field_employee_recruitment_target_pedestrian_qa(
                     field_scene,
                     field_employee_recruitment_ares_pedestrian_qa_path.value(),
-                    smoke_state, true);
+                    smoke_state, true, false);
+            }
+            if (field_employee_recruitment_renraku_pedestrian_qa_path
+                    .has_value()) {
+                return run_field_employee_recruitment_target_pedestrian_qa(
+                    field_scene,
+                    field_employee_recruitment_renraku_pedestrian_qa_path
+                        .value(),
+                    smoke_state, false, true);
             }
             if (field_scene2_motel_street_collision_qa_path.has_value()) {
                 return run_field_scene2_motel_street_collision_qa(
