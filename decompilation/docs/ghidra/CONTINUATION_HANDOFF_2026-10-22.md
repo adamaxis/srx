@@ -1191,10 +1191,13 @@ push was made. `LUNA_HANDOFF.md` remains untouched and untracked.
 
 ## 2026-10-28 Agira Power Focus offer and Magic Defense bounds
 
-Raw US ROM command dispatch at `0x12CCB4` maps `0xEB` to `0x24A1E` and `0xEC`
-to `0x24A56`. Prompt-shaped record `0x10D708` contains option labels at
-`0x104234`, `0x104256`, and `0x105101`, followed by commands `0xEB`/`0xEC` and
-continuation `0x10D740`, matching the shared prompt layout at `0x1F3C4`.
+Raw US ROM data at `0x10D708` points to a one-title record at `0x10D70C` with
+offer text `0x10DBAD` and choice strings `0x104234`, `0x104256`, and `0x105101`
+(Combat Armor, Power Focus, and decline). Its following command values are
+`0xEB`, `0xEC`, and continuation `0x10D740`; dispatch table `0x12CCB4` maps
+`0xEB`/`0xEC` to `0x24A1E`/`0x24A56`. The offer copy says the Power Focus costs
+80,000 nuyen. The `0x1F3C4` renderer and caller for this one-title record have
+not been established, so exact presentation and reachability remain open.
 Command `0xEB` offers Heavy Combat Armor for 30,000 nuyen; command `0xEC`
 requires Mage/Shaman class, an inventory slot, and 80,000 nuyen, then writes
 Power Focus item `0x18` at phase 4. The ROM Vid-Phone callback `0x22CE8`

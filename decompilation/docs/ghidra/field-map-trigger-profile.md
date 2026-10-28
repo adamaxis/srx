@@ -569,13 +569,16 @@ contacts, eleven service flows use the reusable JSON conversation graph with
 Lua action adapters. Faradouchi and Agira have call-scoped pledge graphs with
 the ROM's Reputation and rival-faction gates. The menu
 is rooted at `0x1096F4`, with Firepower and Contacts nodes at `0x109750` and
-`0x109780`. A source pass found an Agira-adjacent prompt record at `0x10D708`
-with commands `0xEB`/`0xEC`, which dispatch to the 30,000-nuyen Heavy Combat
-Armor handler `0x24A1E` and the 80,000-nuyen phase-4 Power Focus handler
-`0x24A56`. The Vid-Phone callback `0x22CE8` selects only `0x10D698`,
+`0x109780`. ROM data at `0x10D708` points to a one-title record at `0x10D70C`
+whose strings name Combat Armor, Power Focus, and a decline choice; its offer
+copy describes the Power Focus at 80,000 nuyen. The following commands `0xEB`
+and `0xEC` dispatch to the 30,000-nuyen Heavy Combat Armor handler `0x24A1E`
+and the 80,000-nuyen phase-4 Power Focus handler `0x24A56`. The renderer and
+caller for this record are not established. The Vid-Phone callback `0x22CE8`
+selects only `0x10D698`,
 `0x10D6A0`, or `0x10D6A8`, while accepted command `0x7F` returns `0x10D6C0`;
 the route from the recorded contact flow to `0x10D708` is still unproven. This
-prompt is an acquisition candidate, not a connected Services menu yet.
+record is an acquisition candidate, not a connected Services menu yet.
 Cyberspace checks deck,
 MPCP, and datajack facts before showing Enter Passcode / System Search / Exit;
 known passcodes enter their selected system, while System Search follows the

@@ -63,17 +63,21 @@ Samurai at Body 11 plus two other casters contributing 6. The Dwarf Rat Shaman
 can reach Willpower 7 while remaining an eligible caster, giving a Mana bound
 of 16 with pool 9.
 
-The raw ROM also contains an Agira-adjacent offer prompt at `0x10D708`. Under
-the shared prompt layout at `0x1F3C4`, its three labels are at `0x104234`,
-`0x104256`, and `0x105101`; command slots `0xEB` and `0xEC` are at `0x10D71C`
-and `0x10D720`. The dispatch table at `0x12CCB4` maps these commands to
-`0x24A1E` and `0x24A56`. Command `0xEC` checks that the active class is Mage or
-Shaman, requires a free inventory slot and 80,000 nuyen, then writes item
-`0x18` with phase 4. It therefore yields a per-caster contribution of 4 at
-Sorcery 12. If all three ready party records can legally acquire or hold that
-phase, the conditional bounds are Physical 20 (Orc Bear Shaman Body 8 plus
-pool 12) and Mana 19 (Dwarf Rat Shaman Willpower 7 plus pool 12). The Troll
-Samurai case has only two other party records to contribute, for Physical 19.
+Raw ROM data at `0x10D708` points to a record at `0x10D70C`. That record points
+to offer text at `0x10DBAD` and choice strings at `0x104234`, `0x104256`, and
+`0x105101`. The choice strings read "I'd like to buy the Combat Armor,"
+"I'd like to buy the Power Focus," and "Neg on that, chum." The following
+longwords at `0x10D71C`, `0x10D720`, and `0x10D724` are commands `0xEB`,
+`0xEC`, and continuation `0x10D740`. Dispatch table `0x12CCB4` maps the
+commands to `0x24A1E` and `0x24A56`. The shared `0x1F3C4` prompt renderer's
+direct use of this one-title record has not been established, so its exact
+screen presentation remains open. Command `0xEC` checks that the active class
+is Mage or Shaman, requires a free inventory slot and 80,000 nuyen, then writes
+item `0x18` with phase 4. It therefore yields a per-caster contribution of 4 at Sorcery 12. If
+all three ready party records can legally acquire or hold that phase, the
+conditional bounds are Physical 20 (Orc Bear Shaman Body 8 plus pool 12) and
+Mana 19 (Dwarf Rat Shaman Willpower 7 plus pool 12). The Troll Samurai case
+has only two other party records to contribute, for Physical 19.
 
 This is not yet a confirmed Agira purchase route. The Vid-Phone callback at
 `0x22CE8` returns prompts `0x10D698`, `0x10D6A0`, or `0x10D6A8`; accepted
