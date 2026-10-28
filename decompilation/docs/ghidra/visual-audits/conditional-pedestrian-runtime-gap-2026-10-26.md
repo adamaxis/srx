@@ -1031,6 +1031,16 @@ connected through a typed `WorldActivityCallbackKind::extraction_result`
 continuation and Lua result tasks; focused tests cover both result branches.
 This callback integration does not identify which physical A800 contact starts
 the automatic route.
+
+The active host also has no production writer for
+`FieldRuntimeCoordinatorState::world_activity_requested`: the member starts
+false, `advance_field_runtime_frame` only reads and clears it, and its focused
+coordinator test seeds it directly. The same-named Lua actor decision is
+handled separately in `FieldSceneRuntime` by scheduling the typed
+`0x1DBAA`-equivalent timeout (`FFDF84/FFDF86`); it does not set the coordinator
+member. Thus the coordinator branch is tested in isolation, while the live
+producer for the ROM `FFDF42` request and an automatic A800 continuation remain
+unconnected.
 The direct `FFDF42` producer is still unknown, and both physical A800 cases
 consume the retained choice through the `0x1E45E` test seam rather than proving
 that a pedestrian contact reaches this automatic route.
