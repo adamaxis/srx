@@ -4444,7 +4444,8 @@ int run_field_scene26_event1_physical_entry_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries,
     std::string_view johnson_run_target = {},
-    bool continue_after_run_entry = false);
+    bool continue_after_run_entry = false,
+    std::uint16_t source_random_seed_at_event_contact = 0U);
 
 int run_scene26_table_collision_qa(
     FieldSceneRuntime& field_scene,
@@ -5425,6 +5426,392 @@ int run_field_scene26_maglock_descriptor_route_qa(
         std::cerr << "Scene-26 descriptor route QA: current collision map "
                      "could not be captured before the D8 route\n";
         return 3;
+    }
+
+    if (contact_a800_candidate && a800_choice == 2U) {
+        // Scene-26 choice 2 is behind the third source A2 gate, record 120 at
+        // ROM 0x1D9E1E (normalized bounds 0x400..0x41F, 0x2E0..0x2FF).
+        // The two-gate route above is not enough to reach that candidate.
+        // Follow clear cells from the static-profile checkpoint to the east
+        // side of record 120, then use the ordinary field lock and passkey
+        // inputs before walking to the candidate.
+        const auto walk_collision_segment = [&](
+            const std::uint8_t nibble, const std::string_view stage,
+            const std::string_view input, const auto& reached,
+            const std::uint16_t max_ticks)
+            -> std::optional<std::uint16_t> {
+            std::uint16_t ticks = 0U;
+            while (!reached() && ticks < max_ticks) {
+                field_scene.set_controller_nibble(nibble);
+                field_scene.advance_frame();
+                ++frame;
+                ++ticks;
+                if (field_scene.field_scene_reference_for_dump() != kScene ||
+                    field_scene.field_interaction_open() ||
+                    field_scene.dialogue_open() ||
+                    field_scene.field_mode_text_open_for_dump() ||
+                    field_scene.shop_menu_open() ||
+                    field_scene.elevator_selector_open_for_dump()) {
+                    return std::nullopt;
+                }
+                if (ticks % 30U == 0U || reached()) {
+                    if (!capture(stage, input)) {
+                        return std::nullopt;
+                    }
+                }
+            }
+            return reached() ? std::optional<std::uint16_t>{ticks}
+                             : std::nullopt;
+        };
+        const auto reach_east_gate_lane = walk_collision_segment(
+            0x08U, "choice2-record120-east-lane", "dpad-right",
+            [&] {
+                return field_scene.field_entity_world_position().x >=
+                       0x2100U;
+            },
+            120U);
+        const auto reach_south_corridor = reach_east_gate_lane
+            ? walk_collision_segment(
+                  0x02U, "choice2-record120-south-corridor", "dpad-down",
+                  [&] {
+                      return field_scene.field_entity_world_position().y >=
+                             0x1B00U;
+                  },
+                  140U)
+            : std::nullopt;
+        const auto reach_gate_east_column = reach_south_corridor
+            ? walk_collision_segment(
+                  0x08U, "choice2-record120-east-column", "dpad-right",
+                  [&] {
+                      return field_scene.field_entity_world_position().x >=
+                             0x4300U;
+                  },
+                  400U)
+            : std::nullopt;
+        const auto reach_gate_east_contact_lane = reach_gate_east_column
+            ? walk_collision_segment(
+                  0x02U, "choice2-record120-contact-lane", "dpad-down",
+                  [&] {
+                      return field_scene.field_entity_world_position().y >=
+                             0x2F00U;
+                  },
+                  300U)
+            : std::nullopt;
+        if (!reach_east_gate_lane || !reach_south_corridor ||
+            !reach_gate_east_column || !reach_gate_east_contact_lane) {
+            const auto position = field_scene.field_entity_world_position();
+            std::cerr << "Scene-26 A800 choice-2 QA: collision route to "
+                         "record 120 did not reach its east-side contact lane "
+                         "(position="
+                      << position.x << ',' << position.y << ")\n";
+            return 3;
+        }
+        field_scene.set_controller_nibble(0U);
+        if (!capture("choice2-record120-east-side", "neutral") ||
+            !save("choice2-record120-east-side")) {
+            return 3;
+        }
+
+        field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+        field_scene.set_terrain_probe_trace_enabled_for_dump(true);
+        std::uint16_t record120_contact_ticks = 0U;
+        while (record120_contact_ticks < 32U &&
+               !field_scene.field_interaction_open()) {
+            if (!tick_dpad(0x04U, "choice2-record120-contact",
+                           "dpad-left") ||
+                field_scene.elevator_selector_open_for_dump()) {
+                return 3;
+            }
+            ++record120_contact_ticks;
+        }
+        field_scene.set_controller_nibble(0U);
+        const auto record120_position =
+            field_scene.field_entity_world_position();
+        const auto record120_probe_trace =
+            field_scene.terrain_probe_trace_for_dump();
+        field_scene.set_terrain_probe_trace_enabled_for_dump(false);
+        const auto& record120_movement =
+            field_scene.last_field_movement_transition_for_dump();
+        const auto& record120_panel = field_scene.field_interaction_panel();
+        const auto normalized_gate_x =
+            static_cast<std::uint16_t>(record120_position.x >> 4U);
+        const auto normalized_gate_y =
+            static_cast<std::uint16_t>(record120_position.y >> 4U);
+        const bool record120_prompt =
+            field_scene.field_scene_reference_for_dump() == kScene &&
+            field_scene.field_interaction_mode_for_dump() == 2U &&
+            field_scene.field_activity_selection_for_dump() ==
+                kMaglockSelection &&
+            field_scene.field_interaction_open() &&
+            record120_panel.source_complete &&
+            record120_panel.actor_kind == DialoguePanelActorKind::none &&
+            record120_panel.option_count == 1U &&
+            record120_panel.text_segment_count != 0U &&
+            record120_panel.text_segments[0].find("sturdy door") !=
+                std::string_view::npos &&
+            record120_panel.options[0U].source_label.find("MORE") !=
+                std::string_view::npos &&
+            record120_movement.event_code == kMaglockEvent &&
+            record120_movement.negative_probe_count >= 2U &&
+            record120_movement.continuation ==
+                MovementModeTransitionContinuation::
+                    maglock_door_interaction &&
+            record120_movement.kind ==
+                EntityMovementModeTransitionResultKind::
+                    field_dialogue_started &&
+            normalized_gate_x == 0x042DU &&
+            normalized_gate_y == 0x02F6U;
+        // ROM record 120 spans normalized x=0x400..0x41F, y=0x2E0..0x2FF
+        // (0x1D9E1E). The blocked westward candidate at (0x42B,0x2F8)
+        // samples its upper-left terrain point (0x41F,0x2F1), map index
+        // 0x5E0. Keep that source probe in the artifact and assert it selected
+        // record 120's A2 tile before accepting the interaction as this gate.
+        const auto record120_gate_probe = std::find_if(
+            record120_probe_trace.cbegin(), record120_probe_trace.cend(),
+            [](const auto& probe) {
+                return probe.normalized_x == 0x042BU &&
+                       probe.normalized_y == 0x02F8U &&
+                       probe.corner_x[0U] == 0x041FU &&
+                       probe.corner_y[0U] == 0x02F1U &&
+                       probe.terrain_bytes[0U] == kMaglockCollision &&
+                       probe.selected_tile_index == 0x05E0U &&
+                       static_cast<std::uint8_t>(
+                           probe.raw_terrain_code) == kMaglockCollision;
+            });
+        std::ofstream record120_probe_file(
+            output / "choice2-record120-collision-probe.tsv",
+            std::ios::trunc);
+        if (!record120_probe_file) {
+            return 3;
+        }
+        record120_probe_file
+            << "candidate_x\tcandidate_y\tnormalized_x\tnormalized_y"
+               "\tcorner0_x\tcorner0_y\ttile_index\traw_collision"
+               "\tcollision_result\tterrain0\n";
+        for (const auto& probe : record120_probe_trace) {
+            record120_probe_file
+                << probe.candidate_x_fixed << '\t'
+                << probe.candidate_y_fixed << '\t' << probe.normalized_x
+                << '\t' << probe.normalized_y << '\t' << probe.corner_x[0U]
+                << '\t' << probe.corner_y[0U] << '\t'
+                << probe.selected_tile_index << '\t'
+                << probe.raw_terrain_code << '\t' << probe.collision_result
+                << '\t' << static_cast<unsigned>(probe.terrain_bytes[0U])
+                << '\n';
+        }
+        if (!record120_prompt ||
+            record120_gate_probe == record120_probe_trace.cend() ||
+            !capture("choice2-record120-maglock-introduction", "neutral") ||
+            !save("choice2-record120-maglock-introduction")) {
+            std::cerr << "Scene-26 A800 choice-2 QA: record 120 did not open "
+                         "the source A2 lock prompt (event="
+                      << static_cast<unsigned>(field_collision_event_value(
+                             record120_movement.event_code))
+                      << ", position=" << normalized_gate_x << ','
+                      << normalized_gate_y << ", selection="
+                      << static_cast<unsigned>(
+                             field_scene.field_activity_selection_for_dump())
+                      << ")\n";
+            return 3;
+        }
+
+        // ROM prompt entry holds its 0x0A-frame input gate before accepting
+        // the first option. Keep the prompt and audio stable through that
+        // source interval before pressing ordinary A.
+        const auto record120_intro_image = render();
+        for (std::uint8_t wait_tick = 1U; wait_tick <= 10U; ++wait_tick) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            ++frame;
+            if ((wait_tick == 1U || wait_tick == 10U) &&
+                !capture("choice2-record120-maglock-input-gate", "neutral")) {
+                return 3;
+            }
+            if (render() != record120_intro_image ||
+                !field_scene.field_interaction_open() ||
+                field_scene.field_activity_selection_for_dump() !=
+                    kMaglockSelection ||
+                field_scene.field_mode_text_open_for_dump() ||
+                field_scene.shop_menu_open()) {
+                std::cerr << "Scene-26 A800 choice-2 QA: record-120 prompt "
+                             "changed during its source 10-frame input gate\n";
+                return 3;
+            }
+        }
+
+        const auto record120_collision_map_before =
+            field_scene.state().field_scene_buffers.source_metadata
+                .terrain_collision_map;
+        const auto record120_audio_before = field_audio_events.size();
+        field_scene.set_controller_port_byte(0x40U);
+        field_scene.advance_frame();
+        ++frame;
+        if (!capture("choice2-record120-passkey-action", "a")) {
+            return 3;
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        if (!capture("choice2-record120-passkey-result", "neutral")) {
+            return 3;
+        }
+        const auto record120_result_image = render();
+        const auto& record120_result_panel =
+            field_scene.field_interaction_panel();
+        const bool record120_result_text =
+            record120_result_panel.text_segment_count >= 3U &&
+            record120_result_panel.text_segments[0].find("Maglock Passkey") !=
+                std::string_view::npos &&
+            record120_result_panel.text_segments[2].find(
+                "door has been disabled") != std::string_view::npos;
+        const bool record120_result_saved =
+            save("choice2-record120-passkey-result");
+        if (!field_scene.field_interaction_open() ||
+            !record120_result_panel.open ||
+            !record120_result_panel.source_complete ||
+            record120_result_panel.kind !=
+                DialoguePanelKind::information_page ||
+            record120_result_panel.actor_kind !=
+                DialoguePanelActorKind::none ||
+            record120_result_panel.option_count != 0U ||
+            !record120_result_text ||
+            field_scene.field_activity_selection_for_dump() != 0xFFU ||
+            field_audio_events.size() != record120_audio_before + 1U ||
+            field_audio_events.back() != 0x4BU ||
+            record120_result_image == render(true) ||
+            !record120_result_saved) {
+            std::cerr << "Scene-26 A800 choice-2 QA: A did not run the "
+                         "record-120 passkey action (panel="
+                      << record120_result_panel.open << ", source_complete="
+                      << record120_result_panel.source_complete
+                      << ", kind=" << static_cast<unsigned>(
+                             record120_result_panel.kind)
+                      << ", actor=" << static_cast<unsigned>(
+                             record120_result_panel.actor_kind)
+                      << ", options=" << static_cast<unsigned>(
+                             record120_result_panel.option_count)
+                      << ", segments=" << static_cast<unsigned>(
+                             record120_result_panel.text_segment_count)
+                      << ", selection=" << static_cast<unsigned>(
+                             field_scene.field_activity_selection_for_dump())
+                      << ", audio=" << record120_audio_before << "->"
+                      << field_audio_events.size() << ", image_is_underlay="
+                      << (record120_result_image == render(true))
+                      << ", saved=" << record120_result_saved;
+            for (std::uint8_t segment = 0U;
+                 segment < record120_result_panel.text_segment_count;
+                 ++segment) {
+                std::cerr << ", text" << static_cast<unsigned>(segment)
+                          << "=\""
+                          << record120_result_panel.text_segments[segment]
+                          << '"';
+            }
+            std::cerr << ")\n";
+            return 3;
+        }
+        for (std::uint8_t wait_tick = 1U; wait_tick <= 30U; ++wait_tick) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+            ++frame;
+            if (wait_tick == 1U || wait_tick == 15U || wait_tick == 30U) {
+                if (!capture("choice2-record120-passkey-result-wait",
+                             "neutral")) {
+                    return 3;
+                }
+            }
+            if (render() != record120_result_image ||
+                !field_scene.field_interaction_open()) {
+                std::cerr << "Scene-26 A800 choice-2 QA: record-120 result "
+                             "changed during the source wait\n";
+                return 3;
+            }
+        }
+        field_scene.set_controller_port_byte(0x40U);
+        field_scene.advance_frame();
+        ++frame;
+        if (!capture("choice2-record120-result-acknowledged", "a") ||
+            field_scene.field_modal_return_transition_frames_for_dump() !=
+                60U ||
+            field_scene.field_palette_fade_steps_for_dump() != 9U) {
+            std::cerr << "Scene-26 A800 choice-2 QA: record-120 result did "
+                         "not begin its source return fade\n";
+            return 3;
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        ++frame;
+        if (!capture("choice2-record120-field-return", "neutral")) {
+            return 3;
+        }
+        field_scene.advance_frame();
+        ++frame;
+        if (!capture("choice2-record120-event-state-settled", "neutral") ||
+            !finish_modal_return_transition(
+                "choice2-record120-field-fade")) {
+            std::cerr << "Scene-26 A800 choice-2 QA: record-120 return fade "
+                         "did not restore a clean field\n";
+            return 3;
+        }
+        const auto& record120_collision_map_after =
+            field_scene.state().field_scene_buffers.source_metadata
+                .terrain_collision_map;
+        constexpr std::size_t kRecord120MapIndex = 0x05E0U;
+        std::vector<std::tuple<std::size_t, std::uint8_t, std::uint8_t>>
+            record120_collision_map_changes;
+        const auto record120_map_count = std::min(
+            record120_collision_map_before.size(),
+            record120_collision_map_after.size());
+        for (std::size_t index = 0U; index < record120_map_count; ++index) {
+            if (record120_collision_map_before[index] !=
+                record120_collision_map_after[index]) {
+                record120_collision_map_changes.emplace_back(
+                    index, record120_collision_map_before[index],
+                    record120_collision_map_after[index]);
+            }
+        }
+        const auto record120_return_position =
+            field_scene.field_entity_world_position();
+        const auto normalized_return_x =
+            static_cast<std::uint16_t>(record120_return_position.x >> 4U);
+        const auto normalized_return_y =
+            static_cast<std::uint16_t>(record120_return_position.y >> 4U);
+        if (record120_collision_map_before.size() <= kRecord120MapIndex ||
+            record120_collision_map_after.size() <= kRecord120MapIndex ||
+            record120_collision_map_before[kRecord120MapIndex] !=
+                kMaglockCollision ||
+            record120_collision_map_after[kRecord120MapIndex] != 0x00A1U ||
+            record120_collision_map_before.size() !=
+                record120_collision_map_after.size() ||
+            record120_collision_map_changes.size() != 1U ||
+            std::get<0>(record120_collision_map_changes.front()) !=
+                kRecord120MapIndex ||
+            field_audio_events.size() != record120_audio_before + 1U ||
+            !field_scene.field_entity_visible_for_dump() ||
+            normalized_return_x != 0x042DU ||
+            normalized_return_y != 0x02F6U ||
+            field_scene.field_interaction_open() ||
+            field_scene.dialogue_open() ||
+            field_scene.field_mode_text_open_for_dump() ||
+            field_scene.shop_menu_open() ||
+            !save("choice2-record120-field-after-passkey") ||
+            !save("choice2-record120-field-after-passkey-only", true)) {
+            std::cerr << "Scene-26 A800 choice-2 QA: passkey did not open "
+                         "only the source record-120 A2 cell\n";
+            return 3;
+        }
+        std::ofstream record120_delta(
+            output / "choice2-record120-collision-map-delta.tsv",
+            std::ios::trunc);
+        if (!record120_delta) {
+            return 3;
+        }
+        record120_delta << "map_index\tbefore\tafter\n";
+        for (const auto& [index, before, after] :
+             record120_collision_map_changes) {
+            record120_delta << index << "\t0x" << std::hex
+                            << static_cast<unsigned>(before) << "\t0x"
+                            << static_cast<unsigned>(after) << std::dec << '\n';
+        }
     }
 
     if (contact_a800_candidate) {
@@ -10788,7 +11175,8 @@ int run_field_scene26_event1_physical_entry_qa(
     const std::vector<std::uint16_t>& field_audio_events,
     const std::vector<std::string>& source_boundaries,
     const std::string_view johnson_run_target,
-    const bool continue_after_run_entry) {
+    const bool continue_after_run_entry,
+    const std::uint16_t source_random_seed_at_event_contact) {
     // The real runtime seeds from its own startup entropy. Pin the source PRNG
     // only for this screenshot route so Debug and Release capture the same
     // resource variant.
@@ -11067,12 +11455,13 @@ int run_field_scene26_event1_physical_entry_qa(
         return 3;
     }
     write_state("scene2-event1-contact");
-    // The scene-26 resource floor is rolled on the transition below. Re-pin
-    // the PRNG at the contact so the variant does not depend on how many
-    // walk frames (and draws) the approach took; that count changed when
-    // the runner step became 30 units (f6b950a9). Fixture only.
-    constexpr std::uint16_t kScene26FloorVariantSeed = 0U;
-    field_scene.set_source_random_seed_for_dump(kScene26FloorVariantSeed);
+    // The scene-26 resource floor and the A800 candidate are rolled on the
+    // transition below. Re-pin the shared source PRNG at event contact so
+    // neither result depends on how many walk frames the approach took; that
+    // count changed when the runner step became 30 units (f6b950a9). Fixture
+    // only.
+    field_scene.set_source_random_seed_for_dump(
+        source_random_seed_at_event_contact);
 
     if (johnson_run_target.empty()) {
         // Without a type-4/5 run targeting 2/1, ROM 0x1F830 handles the
@@ -20166,10 +20555,10 @@ bool verify_random_pedestrian_contact_qa(
             while (route_waypoint < route_points.size() &&
                    absolute_delta(
                        runner_position.x,
-                       route_points[route_waypoint].x) <= 0x30U &&
+                       route_points[route_waypoint].x) <= kGridStep &&
                    absolute_delta(
                        runner_position.y,
-                       route_points[route_waypoint].y) <= 0x30U) {
+                       route_points[route_waypoint].y) <= kGridStep) {
                 ++route_waypoint;
             }
             const auto target = route_waypoint < route_points.size()
@@ -20623,7 +21012,17 @@ int run_field_scene26_a800_contact_route_qa(
     const std::filesystem::path& asset_root,
     const std::filesystem::path& output,
     const std::vector<std::uint16_t>& field_audio_events,
-    const std::vector<std::string>& source_boundaries) {
+    const std::vector<std::string>& source_boundaries,
+    const std::uint8_t a800_choice) {
+    if (a800_choice != 1U && a800_choice != 2U) {
+        std::cerr << "Scene-26 A800 contact QA: choice must be 1 or 2\n";
+        return 2;
+    }
+    // The source route samples the A800 bound-2 choice, advances the shared
+    // seed once, then samples a bound-3 effect index. Seeds 0 and 5 select
+    // choices 1 and 2 while keeping that effect index at active index 0.
+    const auto source_random_seed_at_event_contact =
+        a800_choice == 1U ? 0x0000U : 0x0005U;
     // Use the ROM +0x11.UNSEEN gate to keep unsupported random-event dialogue
     // handlers from interrupting either long physical route under audit.
     auto& contact_runner = field_scene.active_runner_record();
@@ -20631,21 +21030,60 @@ int run_field_scene26_a800_contact_route_qa(
     contact_runner.flags = static_cast<std::uint16_t>(
         contact_runner.flags | srx::v(srx::ActorStatusEx::UNSEEN));
     const auto entry_output = output / "scene2-event1-entry";
-    if (run_field_scene26_event1_physical_entry_qa(
+    struct SourceRandomTraceRow {
+        int kind = 0;
+        std::uint16_t bound = 0U;
+        std::int32_t result = 0;
+        std::uint16_t seed_after = 0U;
+    };
+    std::vector<SourceRandomTraceRow> source_random_trace;
+    shadowrun::ghidra_conversion::set_source_random_observer(
+        [&source_random_trace](const int kind, const std::uint16_t bound,
+                               const std::int32_t result,
+                               const std::uint16_t seed_after) {
+            source_random_trace.push_back(
+                {kind, bound, result, seed_after});
+        });
+    const auto entry_result = run_field_scene26_event1_physical_entry_qa(
             field_scene, asset_root, entry_output, field_audio_events,
-            source_boundaries, "employee_recruitment", true) != 0) {
+            source_boundaries, "employee_recruitment", true,
+            source_random_seed_at_event_contact);
+    shadowrun::ghidra_conversion::set_source_random_observer({});
+    std::ofstream random_trace(entry_output / "source-random.tsv",
+                               std::ios::trunc);
+    if (!random_trace) {
+        std::cerr << "Scene-26 A800 contact QA: could not write source RNG "
+                     "trace\n";
+        contact_runner.flags = saved_runner_flags;
+        return 3;
+    }
+    if (entry_result != 0) {
+        contact_runner.flags = saved_runner_flags;
+        return entry_result;
+    }
+    random_trace << "sequence\tkind\tbound\tresult\tseed_after\n";
+    for (std::size_t index = 0U; index < source_random_trace.size(); ++index) {
+        const auto& row = source_random_trace[index];
+        random_trace << index << '\t' << row.kind << '\t' << row.bound
+                     << '\t' << row.result << "\t0x" << std::hex
+                     << row.seed_after << std::dec << '\n';
+    }
+    if (!random_trace) {
+        std::cerr << "Scene-26 A800 contact QA: failed writing source RNG "
+                     "trace\n";
         contact_runner.flags = saved_runner_flags;
         return 3;
     }
 
-    constexpr std::uint8_t kChoice = 1U;
     const auto candidates =
         field_scene.conditional_actor_candidates_for_dump(26U);
     const auto actor =
         field_scene.world_activity_script_actor_projection_for_dump(0U);
     const auto candidate = candidates.has_value()
         ? std::find_if(candidates->begin(), candidates->end(),
-                       [](const auto& row) { return row.choice == kChoice; })
+                       [a800_choice](const auto& row) {
+                           return row.choice == a800_choice;
+                       })
         : std::vector<shadowrun::ghidra_conversion::scripting::
               ScriptConditionalActorCandidate>::const_iterator{};
     if (!candidates.has_value() || candidate == candidates->end() ||
@@ -20660,8 +21098,9 @@ int run_field_scene26_a800_contact_route_qa(
         field_scene.field_interaction_mode_for_dump() != 2U ||
         field_scene.active_effect_index_for_dump() !=
             field_scene.selected_effect_index_for_dump()) {
-        std::cerr << "Scene-26 A800 contact QA: source-routed choice 1 was "
-                     "not active before the profile checkpoint\n";
+        std::cerr << "Scene-26 A800 contact QA: source-routed choice "
+                  << static_cast<unsigned>(a800_choice)
+                  << " was not active before the profile checkpoint\n";
         contact_runner.flags = saved_runner_flags;
         return 3;
     }
@@ -20669,6 +21108,9 @@ int run_field_scene26_a800_contact_route_qa(
     // The contact route uses Scene 26's ROM static profile position as an
     // explicit QA checkpoint. Candidate allocation above was checked after
     // ordinary Scene-2 event-1 travel in the same live runtime.
+    // Return later guard and animation draws to the choice-1 route baseline;
+    // the A800 choice is already retained in the live actor record.
+    field_scene.set_source_random_seed_for_dump(0x0DABU);
     field_scene.set_field_entity_world_position_for_dump(0x0A00U, 0x0500U);
     field_scene.set_field_camera_world_position_for_dump(0x0200U, 0x0000U);
     field_scene.set_field_entity_heading_for_dump(0x0000U);
@@ -20682,7 +21124,7 @@ int run_field_scene26_a800_contact_route_qa(
     }
     const auto route_result = run_field_scene26_maglock_descriptor_route_qa(
         field_scene, asset_root, output / "candidate-contact",
-        field_audio_events, source_boundaries, true, kChoice);
+        field_audio_events, source_boundaries, true, a800_choice);
     contact_runner.flags = saved_runner_flags;
     return route_result;
 }
@@ -34869,6 +35311,7 @@ int main(int argc, char** argv) {
             field_scene26_event1_entry_qa_path;
         std::optional<std::filesystem::path>
             field_scene26_a800_contact_qa_path;
+        std::uint8_t field_scene26_a800_contact_choice = 1U;
         std::optional<std::filesystem::path>
             field_little_chiba_hospital_qa_path;
         std::optional<std::filesystem::path>
@@ -35557,6 +36000,17 @@ int main(int argc, char** argv) {
                 field_smoke = true;
                 field_scene26_a800_contact_qa_path =
                     std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene26-a800-choice" &&
+                index + 1 < argc) {
+                const auto choice = std::stoul(argv[++index], nullptr, 10);
+                if (choice != 1UL && choice != 2UL) {
+                    std::cerr << "Scene-26 A800 contact QA: choice must be 1 or 2\n";
+                    return 2;
+                }
+                field_scene26_a800_contact_choice =
+                    static_cast<std::uint8_t>(choice);
             }
             if (std::string(argv[index]) ==
                     "--field-scene26-johnson-run-entry-qa" &&
@@ -41219,7 +41673,8 @@ int main(int argc, char** argv) {
                 return run_field_scene26_a800_contact_route_qa(
                     field_scene, asset_root,
                     *field_scene26_a800_contact_qa_path,
-                    field_audio_events, field_source_boundaries);
+                    field_audio_events, field_source_boundaries,
+                    field_scene26_a800_contact_choice);
             }
             if (field_scene26_event1_entry_qa_path.has_value()) {
                 const auto entry_result =

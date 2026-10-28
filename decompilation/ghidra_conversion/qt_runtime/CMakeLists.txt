@@ -1029,6 +1029,14 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene26_a800_conta
                  --field-scene26-a800-contact-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-scene26-a800-contact-qa")
 
+# Exercise the other reachable 0x0D3A bound-2 result from the same physical
+# Scene-2 event-1 route, then follow its Scene-26 candidate contact path.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene26_a800_choice2_contact_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-scene26-a800-contact-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-scene26-a800-choice2-contact-qa"
+                 --field-scene26-a800-choice 2)
+
 # A ROM-valid type-5 run targeting Little Chiba shows its diversion passage
 # before resuming the same event-table transition into resource scene 26.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_scene26_johnson_run_entry_qa

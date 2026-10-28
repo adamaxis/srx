@@ -932,6 +932,16 @@ the normal Scene-26 resource-entry position to this candidate, normal offer
 generation for the selected map/event pair, or the automatic `0x1E43C` request
 route. Those paths and independent Genesis comparison remain open.
 
+Scene-26 A800 choice 2 now has its own physical-contact CTest. It follows the
+Scene-2 event-1 entry, selects list `0x1EDCCE` at `(0x2D00,0x2300)`, crosses
+the additional record-120 A2 gate at `0x1D9E1E`, and verifies its map cell
+`0x5E0` changes to A1 before reaching the Mortimer Reed contact page. Debug and
+Release choice-1, choice-2, and pedestrian-scenes tests pass; 19 selected
+captures and traces match across configurations. This route still uses the
+static-profile Scene-26 checkpoint and the `+0x11.UNSEEN` encounter fixture.
+Normal entry-to-candidate travel, automatic `0x1E43C` continuation, and
+independent Genesis comparison remain open, so the A800 hill stays partial.
+
 A separate Mitsuhama route drives the lift to Scene 34
 for the A8AE story actor. The transition now installs the
 destination mode before actor population,

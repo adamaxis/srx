@@ -160,6 +160,40 @@ appearance when the runner reaches it. The QA-only target override, contact
 route, normal Johnson target generation for this pair, and independent
 Genesis comparison remain open.
 
+### Scene-26 A800 choice 2: third passkey gate and physical contact
+
+The separate `shadowrun_ghidra_conversion_qt_field_scene26_a800_choice2_contact_qa`
+now follows the normal Scene-2 event-1 entry and selects the second reachable
+A800 row. At the event-contact random reset, source seed `5` produces the
+bound-2 choice result `1` (choice 2); the following raw advance and bound-3
+result `0` satisfy the active-effect gate. The candidate is list `0x1EDCCE`,
+position record `0x1EDCE6`, `(0x2D00,0x2300)`, heading `0x6000`, actor slot 3.
+The accepted Johnson target is still a QA-only map-2/event-1 override, and the
+route still uses the documented static-profile checkpoint `(0x0A00,0x0500)`
+with the ROM `+0x11.UNSEEN` encounter guard set for the long walk.
+
+After the two previously audited passkey doors, ordinary D-pad movement
+reaches the third A2 lock: Scene-26 collision record 120 at ROM `0x1D9E1E`,
+normalized bounds x `0x400..0x41F` and y `0x2E0..0x2FF`. The blocked candidate
+at `(0x42B,0x2F8)` samples `(0x41F,0x2F1)` from its upper-left probe, selecting
+map index `0x5E0`. The prompt shows the source “sturdy door” text and `<MORE>`.
+After the prompt's 10-frame input gate, ordinary A displays the Maglock
+Passkey success result and requests sound `0x4B`; the page stays stable for its
+30-frame acknowledgement interval. A then returns through the 60-frame fade.
+The collision-map diff contains only index `0x5E0`, changing `0xA2` to `0xA1`.
+
+The same field scene then walks to choice 2 in 313 ordinary movement frames.
+Contact opens the no-options Mortimer Reed page, sets actor `+0xB0.7`, retains
+the typed `FFE110` transfer, and the A dismissal returns to a clean field with
+the actor still active. Debug and Release CTests pass for both choice 1 and
+choice 2, as does the broader pedestrian-scenes CTest. The 19 selected
+candidate, collision-probe, route, and full-screen BMP artifacts match by
+SHA-256 across configurations. I inspected the lock prompt, passkey result,
+contact page, and clean field return; these are internal Qt captures, not an
+independent Genesis comparison. Continuous travel from normal Scene-26 entry,
+normal Johnson generation of the map/event pair, the automatic `0x1E43C`
+request path, and independent Genesis comparison remain open.
+
 ## ROM path confirmed from the US image
 
 The ROM image at `decompilation/input/shadowrun_genesis_us.bin` is 2 MiB, so
