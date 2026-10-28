@@ -1188,3 +1188,29 @@ result path, and independent Genesis comparison remain open. Updated the
 conditional pedestrian audit, HILLS index, and `decompiled-function-status.tsv`.
 This was read-only source analysis plus documentation; no tests were run and no
 push was made. `LUNA_HANDOFF.md` remains untouched and untracked.
+
+## 2026-10-28 Agira Power Focus offer and Magic Defense bounds
+
+Raw US ROM command dispatch at `0x12CCB4` maps `0xEB` to `0x24A1E` and `0xEC`
+to `0x24A56`. Prompt-shaped record `0x10D708` contains option labels at
+`0x104234`, `0x104256`, and `0x105101`, followed by commands `0xEB`/`0xEC` and
+continuation `0x10D740`, matching the shared prompt layout at `0x1F3C4`.
+Command `0xEB` offers Heavy Combat Armor for 30,000 nuyen; command `0xEC`
+requires Mage/Shaman class, an inventory slot, and 80,000 nuyen, then writes
+Power Focus item `0x18` at phase 4. The ROM Vid-Phone callback `0x22CE8`
+returns `0x10D698`, `0x10D6A0`, or `0x10D6A8`; acceptance command `0x7F` at
+`0x22D18` returns `0x10D6C0`. No aligned literal pointer to `0x10D708` was
+found, so the contact-to-offer route remains open.
+
+This corrects the Magic Defense audit's incompatible phase-2 example: Troll
+Body 11 cannot be combined with three caster contributions because the Troll
+source profile is Samurai. The active pointer selector at `0x0397A`/`0x03998`
+cycles `FFFC04` only through `0xFF0100`..`0xFF0300`, the three records summed by
+`0x1047E`. With phase 2, the profile-compatible three-slot bounds are Physical
+17 and Mana 16. If the Agira phase-4 offer is reachable and all three ready
+records can carry that focus, the bounds become Physical 20 (Orc Bear Shaman
+Body 8 plus pool 12) and Mana 19 (Dwarf Rat Shaman
+Willpower 7 plus pool 12). These remain conditional arithmetic bounds; party
+permutations do not prove recruitment or offer reachability. The details are
+recorded in `visual-audits/magic-defense-party-composition-audit-2026-10-23.md`
+and `field-map-trigger-profile.md`. No tests were run; no push was made.

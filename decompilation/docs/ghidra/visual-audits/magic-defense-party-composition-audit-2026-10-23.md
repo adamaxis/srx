@@ -51,13 +51,39 @@ range; those bounds are separate from this Defense pool.
 
 The attribute/skill audit traces Sorcery training for Mage/Shaman from rank 0
 through 12 and rejects rank 13; its ROM race table caps Body at 11 for Troll
-and Willpower at 7 for Dwarf. The known Power Focus service at `0x22C46`
-writes item `0x18` at phase 2. With those traced limits, each caster
-contributes at most 3 (`(12 + 2) / 4`), so three casters yield pool 9; using
-the raw race ceilings gives Physical 20 or Mana 16. This is a bounded scenario
-for that traced grant, not a global cap claim: every possible item-phase or
-restored-save writer has not been traced. The byte sweep below stays clearly
-separate from legal progression bounds.
+and Willpower at 7 for Dwarf. The active-record selector at `0x0397A`/`0x03998`
+sets and advances `FFFC04` through `0xFF0100`, `0xFF0200`, and `0xFF0300`,
+the same three records scanned by `0x1047E`. Gregory's Power Focus service at
+`0x22C46` writes item `0x18` at phase 2. For the 13 source profiles in this
+audit, the phase-2 bound is 3 per ready caster (`(12 + 2) / 4`) and a
+three-caster pool of 9. Profile compatibility matters: the Troll profile is
+Samurai, so it cannot supply that pool. The maximum Physical value across those class/race
+ceilings is 17: either the Orc Bear Shaman at Body 8 plus pool 9, or the Troll
+Samurai at Body 11 plus two other casters contributing 6. The Dwarf Rat Shaman
+can reach Willpower 7 while remaining an eligible caster, giving a Mana bound
+of 16 with pool 9.
+
+The raw ROM also contains an Agira-adjacent offer prompt at `0x10D708`. Under
+the shared prompt layout at `0x1F3C4`, its three labels are at `0x104234`,
+`0x104256`, and `0x105101`; command slots `0xEB` and `0xEC` are at `0x10D71C`
+and `0x10D720`. The dispatch table at `0x12CCB4` maps these commands to
+`0x24A1E` and `0x24A56`. Command `0xEC` checks that the active class is Mage or
+Shaman, requires a free inventory slot and 80,000 nuyen, then writes item
+`0x18` with phase 4. It therefore yields a per-caster contribution of 4 at
+Sorcery 12. If all three ready party records can legally acquire or hold that
+phase, the conditional bounds are Physical 20 (Orc Bear Shaman Body 8 plus
+pool 12) and Mana 19 (Dwarf Rat Shaman Willpower 7 plus pool 12). The Troll
+Samurai case has only two other party records to contribute, for Physical 19.
+
+This is not yet a confirmed Agira purchase route. The Vid-Phone callback at
+`0x22CE8` returns prompts `0x10D698`, `0x10D6A0`, or `0x10D6A8`; accepted
+command `0x7F` at `0x22D18` returns `0x10D6C0`. None directly selects
+`0x10D708`, and no aligned literal pointer to that prompt was found in the
+ROM. A computed or shared continuation remains possible, so the phase-4
+scenario is conditional. Party permutations in the CTest remain arithmetic
+inputs rather than proof of recruitment reachability, and other item-phase or
+restored-save writers have not been traced. The byte sweep below stays separate
+from these profile and acquisition bounds.
 
 ## Permutation coverage
 
