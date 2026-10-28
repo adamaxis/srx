@@ -541,6 +541,96 @@ for source_order = 0, 2 do
     end
 end
 
+-- Exercise every extracted +0xE0 route pair for the six regional maps. ROM
+-- 0x142F4 advances the four-byte cursor at each reached point; 0x142F6 clears
+-- it at the zero-X terminator and resumes from the actor's initial pair.
+-- Route counts are the independently recorded ROM list counts, while the
+-- extracted coordinates supply the actual source target values.
+local regional_pedestrian_routes = {
+    { scene = 0, list = 0xD5538, counts = { 19, 13, 9 } },
+    { scene = 1, list = 0x17D660, counts = { 10, 4, 7 } },
+    { scene = 2, list = 0x172D1C, counts = { 11, 7, 3 } },
+    { scene = 3, list = 0x18A73A, counts = { 8, 2, 7 } },
+    { scene = 4, list = 0x15B998, counts = { 17, 11, 7 } },
+    { scene = 5, list = 0x679F0, counts = { 8, 5, 2 } },
+}
+local regional_route_steps = 0
+for _, region in ipairs(regional_pedestrian_routes) do
+    local source_rows = WaypointLists[region.list]
+    check(type(source_rows) == "table",
+          string.format("scene %d has ROM pedestrian waypoint list %06X",
+                        region.scene, region.list))
+    for source_order = 0, 2 do
+        local route = source_rows and source_rows[source_order]
+        local expected_points = region.counts[source_order + 1]
+        local valid_route = route ~= nil and route.initial ~= nil and
+            type(route.initial.x) == "number" and
+            type(route.initial.y) == "number" and
+            type(route.points) == "table" and
+            #route.points == expected_points and
+            route.group_leader == true
+        check(valid_route,
+              string.format("scene %d pedestrian %d has %d source waypoints",
+                            region.scene, source_order, expected_points))
+        if valid_route then
+            local route_context = context({
+                entity_kind = E.SpriteType.PEDESTRIAN,
+                source_record_flags = E.ActorStatus.ACTIVE,
+                source_spawn_state_flags = pedestrian,
+                source_actor_slot = source_order + 3,
+                source_actor_list_offset = region.list,
+                source_actor_source_order = source_order,
+                source_world_x = route.initial.x,
+                source_world_y = route.initial.y,
+            })
+            route_context.measure_destination = function(target_x, target_y)
+                if target_x ~= route_context.source_world_x or
+                   target_y ~= route_context.source_world_y then
+                    return nil
+                end
+                return { heading = 0, distance = 0, step_cost = 0 }
+            end
+
+            local pedestrian_state = state({
+                source_spawn_state_flags = pedestrian,
+            })
+            local arrived_at = route.initial
+            for step = 1, expected_points + 2 do
+                route_context.source_world_x = arrived_at.x
+                route_context.source_world_y = arrived_at.y
+                pedestrian_state.behavior_timer = 0
+
+                local expected_target
+                local expected_cursor
+                if step <= expected_points then
+                    expected_target = route.points[step]
+                    expected_cursor = step * E.AiTuning.PATROL_WAYPOINT_STRIDE
+                elseif step == expected_points + 1 then
+                    expected_target = route.initial
+                    expected_cursor = E.AiTuning.PATROL_INITIAL_CURSOR
+                else
+                    expected_target = route.points[1]
+                    expected_cursor = E.AiTuning.PATROL_WAYPOINT_STRIDE
+                end
+
+                check(R.think(pedestrian_state, route_context) and
+                      pedestrian_state.ai_route_target_x ==
+                          expected_target.x and
+                      pedestrian_state.ai_route_target_y ==
+                          expected_target.y and
+                      pedestrian_state.ai_waypoint_index == expected_cursor,
+                      string.format(
+                          "scene %d pedestrian %d route step %d follows ROM cursor",
+                          region.scene, source_order, step))
+                arrived_at = expected_target
+                regional_route_steps = regional_route_steps + 1
+            end
+        end
+    end
+end
+check(regional_route_steps == 186,
+      "all 18 regional pedestrian routes include each waypoint and wrap");
+
 local collision = game.movement.collision
 game.movement.collision = function() return 0, 0 end
 local function formation_case(actor_slot, leader_slot, leader_heading,

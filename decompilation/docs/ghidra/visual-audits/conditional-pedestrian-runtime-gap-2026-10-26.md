@@ -926,8 +926,13 @@ screenshots are byte-identical across configurations. I inspected the six
 screenshots; each shows the expected region-map artwork and a visible pedestrian
 near the source actor route. They are internal runtime captures, not independent
 Genesis comparisons. This confirms the source list/model/runtime path covers
-all six regional maps, while exact patrol waypoint cadence, collision behavior
-for every segment, and actor identity in the independent captures remain open.
+all six regional maps. The pure-Lua `ai_think_tests` now advances all 18
+regional pedestrian records through every extracted target, the zero-X wrap
+back to each spawn pair, and the first target after wrap; the 186 reached-point
+transitions pass. That checks waypoint selection and cursor progression at
+source-coordinate arrivals, not travel time or collision along each segment.
+Exact patrol waypoint cadence, collision behavior for every segment, and actor
+identity in the independent captures remain open.
 
 ## Next source-backed slice
 
