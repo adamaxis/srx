@@ -1804,6 +1804,39 @@ or source-clock telemetry, so `FFDF84`, the pass count, and the sprite's exact
 source identity remain unconfirmed. The compressed masked pose matches do not
 support a new animation-cadence claim.
 
+### Early Section-41 Scene-5 route checkpoint (2026-10-28)
+
+**[C]** I extended the Scene-5 registration earlier in the same independent
+longplay sequence. Matching the left 272x224 gameplay viewport against
+`mode-5.bmp` with grayscale normalized cross-correlation locates the map at
+the offsets below. A masked BGR search in the screen corridor implied by the
+ROM route's X=1208 coordinate matches the third, right-hand figure to the
+extracted kind-11 walk art:
+
+| Capture frame | Map offset | Map score | Matched template | Sprite upper-left | Sprite score | Approx. map X |
+|---:|---:|---:|---|---:|---:|---:|
+| 2125 | `(968,782)` | 0.93075 | kind 11, walk dir 4/frame 3 | `(235,102)` | 0.8891 | 1211 |
+| 2130 | `(990,782)` | 0.92441 | kind 11, walk dir 4/frame 3 | `(213,102)` | 0.8902 | 1211 |
+| 2135 | `(1010,782)` | 0.92494 | kind 11, walk dir 4/frame 0 | `(194,101)` | 0.8766 | 1212 |
+
+The approximate map X uses the established eight-pixel foot-center offset.
+Across these ten 30-fps capture intervals, camera X advances 42 pixels while
+the sprite shifts left 41 pixels on screen, leaving its registered map X
+within four pixels of the route's X=1208 line. The ROM record at `0x67A00`
+points to route data `0x67A30`, whose first pair is `(1208,544)` and next
+point is `(1208,920)`; the following point turns west to `(416,920)`. The
+matching location is consistent with that route's vertical leg or turn. It
+precedes the already sampled frames `002140` through `002170`, where the same
+route candidate is registered moving west.
+
+**[I]** This adds a route-positioned kind-11 art match before the previously
+documented westward samples and is consistent with the source waypoint path.
+The footage has no actor-record or RAM telemetry, and this check estimates
+only X; it does not confirm the waypoint's Y, the exact turn frame, or the
+live source-order identity. Treat the visual continuity and route identity as
+a strong candidate, not proof of a specific actor record. It does not change
+the source-derived movement-rate or animation-cadence conclusions above.
+
 ## A800 contact and FFDF42 request separation (2026-10-28)
 
 **[C]** The generic A800 actor-contact path and the main-loop
