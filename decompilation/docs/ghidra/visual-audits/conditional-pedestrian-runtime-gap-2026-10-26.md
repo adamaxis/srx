@@ -1714,6 +1714,57 @@ Lone-Star dialogue in the same section is not linked to this sprite. This
 match supports the regional default-list path and says nothing about the
 separate A800 selector used by resource scenes 21-43.
 
+### Scene-2 pedestrian source-step timing check (2026-10-28)
+
+**[C]** The matched source-order-0 route at `0x172D1C` starts at
+`(0x3480,0x2200)` = `(840,544)` map pixels and selects `(0x2800,0x2200)` =
+`(640,544)` as its first waypoint. Its ordered override is `+0x9E=0x20`;
+the ordinary actor initializer sets `+0x10=0x05`. The horizontal distance
+stored by `0x145A2` in `+0xC8` is `0xC80`. `0xA8EA` visits each active record
+once per actor-service pass and calls its selected `+0x3A` continuation at
+`0xAAB0`; `0x145A2` installs `0xB574` there for this route.
+`0xB574` approaches the stored heading and reaches `0xBADE` for the movement
+step. With `FFDF84=0`, the pedestrian branch selects vector table `0xBE62`
+(`0xB5EA..0xB624`); since stored `+0xC8=0xC80` is at least `0x460`,
+`0xB6E4` leaves that table selected. Its cardinal components are 10 source
+coordinate units, or `10/16 = 0.625` map pixels per service pass. The value
+is retained for this leg; `+0xC8` is the distance measured when the waypoint
+was selected, not the remaining distance recomputed on every movement pass.
+
+The Lua route model selects the same 10-unit vector for a pedestrian with
+`+0x10` bit 1 clear when the stored route distance is at least `0x460` and
+`FFDF84` is zero. `advance_default_field_actors()` runs from the field
+entity-service callback, while `advance_default_field_actor_animations()` runs
+separately at the render-pass tail. This keeps waypoint decisions and movement
+on the behavior heartbeat, and animation on the render heartbeat.
+
+The render cadence follows a separate ROM clock. Kind 11's looping walk list at
+`0x8DE0` has four frames. The `0x44BC` initializer copies base record
+`0x7361A`, whose `+0x1A` accumulator is zero and `+0x1C` period is `0x1000`.
+After the walk selector is chosen, `0x600E` reads the step value at `+0xCA`;
+`0x6092..0x60AA` scales 10 by `0x1C`, writing increment `0x0118` to `+0x18`.
+Each `0x4618` render pass calls `0x5FDC`, which adds that increment and
+subtracts the period when crossed, so the four-pose list advances after 14 or
+15 render passes depending on the carried accumulator. The Lua renderer uses
+the same `+0xCA`-derived increment and `0x1000` period.
+
+**[I]** In the independent Section-9 capture, the registered foot moves from
+approximately map X 720 to 698 across 18 intervals of the 30-fps dump. If the
+ordinary field loop takes one actor-service pass per 60-Hz VBlank and
+`FFDF84` remains zero, the source step predicts `18 * 2 * 10/16 = 22.5` pixels
+west; the measured displacement is about 22 pixels. This is consistent with
+the source step for the visible route. The recording has no RAM or capture
+clock telemetry, so it does not establish the live record, `FFDF84` value, or
+exact number of source passes represented by each dumped image. The existing
+route tests check waypoint selection and wrap; they do not independently assert
+this per-pass movement rate. Its best masked sprite matches also change from
+walk frame 1 to 3 and then 0 at the sampled times. Six render passes elapse
+between 30-fps capture images under the same one-pass-per-VBlank assumption;
+the observed pose changes are compatible with a 14/15-pass source animation
+period, but the capture does not identify the live accumulator phase. This
+does not verify a full animation loop. Other regional routes and
+collision-blocked steps remain open.
+
 ## A800 contact and FFDF42 request separation (2026-10-28)
 
 **[C]** The generic A800 actor-contact path and the main-loop
