@@ -1984,3 +1984,19 @@ flow. The earlier literal-address census still leaves computed or indirect
 `FFDF42` writers unresolved. Physical A800 prompt QA therefore defends the
 contact presentation and return path, not the separate automatic
 `0x1E43C` result callback.
+
+### Focused Debug/Release pedestrian and A800 rerun (2026-10-28)
+
+With `QT_QPA_PLATFORM=offscreen`, `SRX_HEADLESS=1`, and dummy audio, the
+`pedestrian|a800|gameplay_script_runtime_qa` CTest filter ran 14 tests in each
+configuration. Both passed. The selection includes the 13,824-case Lua
+selector matrix, seven Employee Recruitment pedestrian routes, Scene-26 A800
+contact and choice-2 routes, Scene-2 and region-map pedestrian QA, the
+46-position pedestrian sweep, and Scene-22 initializer-11 contact.
+
+Across the matching pedestrian/A800 directories under each Qt runtime output,
+the current Debug and Release artifact sets contain 1,485 files apiece. Their
+relative paths and SHA-256 hashes match exactly. This is internal regression
+parity, not independent Genesis evidence. The computed/indirect `FFDF42`
+producer, physical automatic `0x1E43C` result route, and verified-ROM visual
+comparison remain open; the hill stays partial.

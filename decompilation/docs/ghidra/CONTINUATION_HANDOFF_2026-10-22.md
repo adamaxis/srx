@@ -1153,3 +1153,18 @@ HILLS index, `decompiled-function-status.tsv`, and
 `visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md` record this
 bounded finding. `LUNA_HANDOFF.md` remains unmodified and untracked. No push was
 made.
+
+## 2026-10-28 Pedestrian/A800 Debug/Release verification
+
+The headless CTest filter `pedestrian|a800|gameplay_script_runtime_qa` ran 14
+tests in both Qt configurations. Debug and Release passed the 13,824-case Lua
+selector matrix, seven Employee Recruitment pedestrian routes, Scene-26 A800
+contact and choice-2 routes, Scene-2 and region-map pedestrian QA, the
+46-position sweep, and Scene-22 initializer-11 contact. The matching pedestrian/
+A800 Qt runtime output directories contain 1,485 files per build; every
+relative path and SHA-256 hash matches across configurations.
+
+This confirms internal regression parity only. The computed/indirect
+`FFDF42` producer, physical automatic `0x1E43C` result route, and verified-ROM
+visual comparison remain open. `LUNA_HANDOFF.md` remains untouched and
+untracked. No push was made.

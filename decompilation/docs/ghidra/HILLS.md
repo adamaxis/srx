@@ -967,6 +967,10 @@ Only the aligned absolute-long request test/clear operands exist; the remaining
 byte-pair hit at odd offset `0x1896C3` crosses data words `0x00DF`/`0x424F`.
 Computed/indirect writes and the physical automatic callback path remain open.
 
+The focused offscreen Debug/Release pedestrian/A800 rerun passed all 14 tests;
+the matching output directories contain 1,485 files per build with identical
+paths and SHA-256 hashes. These are internal regression artifacts only.
+
 The field runtime now calls the selector
 with the accepted offer's raw FFFBED byte, FFDF40, both effect markers, the
 boolean zero/nonzero FFFC3C gate, and typed FFE12C/FFF0C8 words. Resource
