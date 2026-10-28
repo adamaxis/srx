@@ -1508,3 +1508,33 @@ inspected, including the Scene-30 matched-index actor image. These are internal
 Qt captures, not independent Genesis comparisons. The full four-row pool now
 has physical target-pair coverage; continuous travel, the remaining A800 gate
 permutations, and independent Genesis comparison remain open.
+
+## Section-37 Penumbra population screen (2026-10-28)
+
+I screened the independent longplay frames in
+`video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_37_source_9420-9720/`
+against the ROM-derived regional maps. Frames 2340 and 2400 match `mode-3.bmp`
+at map offsets `(972,642)` and `(1212,642)`, with normalized grayscale
+correlations `0.9581` and `0.9643`. The surrounding sequence also matches
+Scene 3 at frame 2280 `(808,662)`, frame 2460 `(1400,766)`, frame 2520
+`(1640,616)`, and frame 2550 `(1742,614)`; scores range from `0.8250` to
+`0.8816` outside the two strongest matches. These are screen-to-map
+registrations, not actor telemetry.
+
+The capture visibly contains a red/brown figure near screen center and a blue
+figure near the left edge in the 2340/2400 pair; two portrait panels are also
+visible in the HUD. Approximate map positions from the strongest registrations
+are `(1084,748)` and `(992,692)` at frame 2340, then `(1309,764)` and
+`(1221,694)` at frame 2400. Both figures move east in map coordinates over
+that interval. The ROM default list at `0x18A73A` contains three pedestrian
+records with route lists `0x18A76E`, `0x18A786`, and `0x18A794`. Their
+horizontal route segments near `y=776..784` run west; the other eastbound
+segments are near `y=224`. The measured pair therefore does not provide a
+route-and-direction match to those default pedestrians.
+
+**[H]** The two field figures are compatible with the two visible party
+portraits, but the recording has no actor-slot or input log. This sequence
+does not identify an ambient pedestrian, A800 candidate, or generated actor,
+and does not establish that Scene 3 lacks other walkers. Keep the Scene-3
+independent population comparison open; the source lists remain confirmed,
+while this particular footage is not a route-level pedestrian match.
