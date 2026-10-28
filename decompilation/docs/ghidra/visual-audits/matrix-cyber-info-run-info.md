@@ -265,6 +265,26 @@ same SHA-256 (`BC1A6275E8CFD91B59896C7C3D05670DA4B1692B1C5A76D7D2A80C9F3E7C1C05`
 I inspected the full 320x224 Release capture beside independent frame `004920`,
 which shows the matching Attack 3 detail view and intact bottom toolbar.
 
+## CyberInfo input and shared palette cadence (2026-10-27)
+
+ROM `0x18AA6` starts the selector at `FFF0DC=0`. Each pass at `0x18ACC`
+waits, samples input, calls the shared palette routine `0x196F2` at
+`0x18ADE`, then tests controls. Up (`FFDD22` bit 8) is checked before Down
+(bit 9); both update the selector through `0xC376` with maximum row 1. That
+helper wraps below row 0 to row 1 and above row 1 to row 0, drawing the cursor
+from `$C4AC` with an `0x80`-byte row stride. A, B, and C are checked next
+(`FFDD22` bits 14, 12, and 13) and all open the selected child: row 0 draws
+Deck Stats at `0x18B5C`, row 1 draws Run Info at `0x18C28`. Start (bit 15)
+calls `0x1882E` to restore the selected program detail and returns.
+
+`CyberInfo.input` follows the same direction/action/Start order. The parent
+passes its `deck_palette` state to CyberInfo, and `Cyberdeck.child_returned`
+keeps the typed Deck Stats or Run Info result on the selected parent surface.
+The source and host both advance the palette once per selector pass; this
+confirms call-count behavior, not a wall-clock frame duration. The available
+numbered video is sampled at 30 fps, so its palette phase does not settle the
+timing between ROM VBlanks and host updates.
+
 ## Deck Stats longplay screen search (2026-10-27)
 
 I inspected independent Section 15 frames `004200`, `004210`, `004220`,

@@ -46,6 +46,11 @@ other numeric states and empty-cell message are checked against ROM data. The
 `004220`, `004230`, `004237`, and `004920` show main-grid states, not the
 `0x18B5C` Deck Stats child. A short page between samples could be missed; the
 exact panel comparison remains open. See the [CyberInfo and Deck Stats audit](visual-audits/matrix-cyber-info-run-info.md).
+The same audit traces `0x18AA6` input priority through `0xC376`: Up before
+Down, A/B/C to the selected child, and Start back to the selected program.
+The Lua route carries the parent's shared palette counter into CyberInfo and
+preserves the child result on return. Source and host calls align; exact timing
+against ROM VBlanks remains open.
 The Storage screen at ROM `0x18D1A` keeps that parent row, program grid, and
 footer while drawing the source panel and live capacity. View at `0x18F5E`
 walks occupied records from slot 4 down to 0, drawing each ROM filename,
