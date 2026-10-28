@@ -181,12 +181,31 @@ the border first appears at 8733; the opening text is complete by 8736. The
 later one-page input wait therefore does not explain the preceding black
 interval.
 
-[H] The remaining black interval may be time spent in the pre-render asset
-path or a property of the supplied capture cadence; no captured countdown
-identifies its cause. The unknown capture identity prevents assigning that
-interval to the US-ROM route or using it to change native timing.
-[H] The capture's missing emulator/build identity limits this to a mapping of
-its supplied RAM and images, not proof that it came from the US ROM.
+[C] The US-ROM caller at `0x1F246` orders title-font load (`0x0C0C2`), menu
+asset transfer (`0x10984`), mode-resource preparation (`0x1F292`), and then
+the mode-text prompt (`0x1F3C4`). In `0x1F292`, ROM instructions at
+`0x1F2B6..0x1F2C4` set `A1=0xFFBF40`, take the profile stream pointer into
+`A3`, set the VDP destination command to `0x57A0`, and call `0x1530`. The
+decoder writes bytes to `(A1,D6.w)`, masks `D6` with `0x07FF`, and sends the
+same bytes to VDP data; this gives the call a 2 KiB output ring at
+`0xFFBF40..0xFFC73F`. In the supplied RAM snapshots `FFF0AF=0`, so the
+post-decode path takes `0x1F2D4` and renders the following sprite stream with
+`0x1728`; it does not take the alternate `0x1F38A`/`0x1F34A` branch.
+
+[C] From frames 8719 through 8734, the snapshots show changes across all
+2048 offsets of `0xFFBF40..0xFFC73F` while `FFDF88` remains at `0x20C6`.
+The images stay black through 8732, first show the panel border at 8733, and
+the wait counter resumes at `0x20C8` on 8735. This places a source-bound
+graphics decode/upload in the extra black interval and makes mode-resource
+preparation the best-supported explanation for the supplied sequence's long
+hold. The buffer is still changing in the snapshots at the display edge, so
+the exact image/RAM sampling phase is unresolved.
+
+[H] The recording has no ROM hash, emulator/build identity, or capture method.
+The RAM-to-ROM match supports this route interpretation but does not establish
+that the recording came from a verified US-ROM run or prove its presentation
+timing. Keep the 40-frame black hold as a capture observation; the native QA's
+five black frames remain host behavior, not verified Genesis timing.
 
 ## Portrait extraction correction
 
