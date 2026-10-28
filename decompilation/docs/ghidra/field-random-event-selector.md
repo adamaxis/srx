@@ -283,6 +283,37 @@ be caught and fired upon. This is distinct from the undercover-woman prompt:
 the doctor calls a uniformed patrol, while the woman branch reveals an agent
 already posing as a law official.
 
+### Independent Section-11 visual sequence (2026-10-28)
+
+The longplay folder is
+`video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_11_source_1620-1920/`.
+The gameplay viewport before and after the dialogue registers against the
+ROM-derived `field/maps/mode-2.bmp`, strongly selecting scene 2 over scene 5:
+
+| Frame | Map match | Visible state |
+|---|---:|---|
+| `frame_000510.png` | mode 2: 0.95190 at `(954,400)`; mode 5: 0.23890 | Field view before the event. |
+| `frame_000600.png` | mode 2: 0.93313 at `(1206,668)`; mode 5: 0.38340 | Field view just before the opening dialogue. |
+| `frame_000618.png`–`frame_000889.png` | — | Stable opening page describes the collapsed haggard man, the doctor, and the escaped patient; it asks the player to help for 50 nuyen. The speaker portrait and `< MORE >` are visible. |
+| `frame_000930.png` | — | The choice page shows A `Attack!`, B the threat to leave the patient alone, and C `Help them.` |
+| `frame_000990.png`–`frame_001200.png` | — | The result page says the group works for an asylum, shows credentials, pays 50, and takes the patient. |
+| `frame_001224.png`–`frame_001261.png` | — | Thirty-eight consecutive identical full-black frames in the 30-fps extract. |
+| `frame_001290.png` | mode 2: 0.95564 at `(1200,732)`; mode 5: 0.32948 | Field view resumes on the same mode-2 map. |
+
+The map match plus the opening page supports linking the clip to selector
+handler `0x20FA2` in scene 2, whose MORE path at `0x23BB4` presents the three
+choices. The credentials result is consistent with the Threaten payout branch;
+the fixed 50-nuyen reward matches the displayed amount and does not use a
+runner's race, class, or Negotiation. **[H]** The recording has no controller
+or RAM log, so it does not expose the selected button, the selector sum, or
+the actual wallet delta. The other Help, Attack, patrol, and combat outcomes
+remain distinct ROM branches and are not visually covered by this sequence.
+
+The result screen's text and portrait remain legible across the sampled hold,
+but some extracted frames have small glyph-pixel dropouts. The video supports
+the page order and broad fade/black/return; it does not settle source-frame
+cadence, speaker-profile identity, or event audio.
+
 **Secretary / building badge check (`0x21082`, scenes 21-29 and 41-43; sums
 2-3 and 8).** The opening dialogue at `0x121414` reaches command `0xDC` and
 handler `0x246AA`. It checks `FFFC22` bit 10, which this dialogue identifies
