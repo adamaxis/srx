@@ -1260,11 +1260,10 @@ offer moves that offer, including its target, into the active-run slot in
 visual evidence.
 
 The Scene-26 contact route above still forces `(2,1)` (Little Chiba), which is
-not in either standard target pool. One normal target now has a continuous
-accepted-offer-to-doorway trace and then a separate target-map checkpoint into
-its A800 candidate. The checkpoint boundary means the QA does not yet prove
-Johnson-to-Penumbra street travel or the complete travel transition in one
-runtime session.
+not in either standard target pool. Two normal initializer-11 targets now have
+accepted-offer-to-doorway traces followed by target-map checkpoints into their
+conditional resource scenes. The checkpoint boundary means these QAs do not
+prove continuous Johnson-to-target street travel in one runtime session.
 
 ## Initializer-11 Lone Star target into Scene 41 (2026-10-27)
 
@@ -1297,7 +1296,49 @@ The QA emits `target-map-spawn.bmp`, `target-doorway-contact.bmp`,
 `normal-target-route.tsv` under each Debug/Release QA artifact directory. Their
 hashes match between configurations. These are internal Qt regression
 artifacts, not an independent Genesis comparison. The tested route adds one
-normal target pair only; initializer-11 `(1,2)`, all initializer-5 pairs,
-initializer-12 `(5,6)`, the remaining A800 mode/story/index/effect gates,
-continuous street travel, and a route-matched independent Genesis capture
+normal target pair and verifies the Scene-41 pedestrian spawn. The Ares route
+below covers initializer-11 `(1,2)` but its mismatched effect indices correctly
+suppress the Scene-26 candidate. The four initializer-5 pairs,
+initializer-12 `(5,6)`, other A800 mode/story/index/effect permutations,
+continuous street travel, and route-matched independent Genesis captures
 remain open.
+
+## Initializer-11 Ares target into Scene 26 (2026-10-27)
+
+The Ares CTest follows the ordinary Julius work menu and accepts the live
+initializer-11 offer with target `(1,2)`. Offer-selection seed 28 selects the
+initializer-11 row and leaves negotiation, target, and client draws live. The
+accepted run registry, funds, and source RNG state are carried into a fresh
+Scene-1 runtime at checkpoint `(0x5100,0x2500)`; continuous travel from the
+Johnson office to Puyallup remains outside this QA.
+
+Scene-1 collision record 71 at `0x17D9CA` covers
+`(0x0500..0x051F,0x0220..0x023F)` with event `0xC2`. The recorded collision
+grid shows the approach cell clear. Four ordinary Up updates reach the trigger;
+event-table row 2 at `0x17D622` routes to Scene 26. The active run pair matches
+the current Scene-1/event-2 facts, so the same ROM target-entry passage opens.
+After its 17-frame page wait, ordinary A is accepted after the 31-frame
+lockout.
+
+The Scene-26 resource pass samples A800 candidate choice 2, row
+`pedestrian_k0b_none00` at list `0x1EDCCE`, position `(0x2D00,0x2300)`. It
+does not publish an actor: the live selected effect index is `FFE12C=1`, while
+the active index is `FFF0C8=0`. ROM `0xA800` retains the sampled `FFE183`
+choice, then rejects the random candidate branch when those words differ. The
+typed runtime also reports no active world effect and no `FFFC3C` transfer
+template, matching the no-actor result. The QA asserts the retained candidate
+choice and these gate values, and captures the natural Scene-26 arrival with
+zero conditional pedestrian actors. This records the source-gated absence; it
+does not force a candidate to appear.
+
+Debug and Release pass
+`shadowrun_ghidra_conversion_qt_field_employee_recruitment_ares_pedestrian_qa`.
+All 11 files under
+`qt_runtime/field-employee-recruitment-ares-pedestrian-qa/`, including the
+doorway collision grid and route TSV, have matching hashes between builds.
+The inspected entry page and no-actor scene are internal Qt captures, not
+independent Genesis visuals. Together with the Lone Star route above, both
+initializer-11 target pairs have now been generated and contacted; the four
+initializer-5 target pairs, initializer-12 `(5,6)`, continuous street travel,
+the other A800 gate permutations, and route-matched independent Genesis
+captures remain open.
