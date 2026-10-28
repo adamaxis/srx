@@ -3499,6 +3499,76 @@ int main() {
         }
     }
 
+    // Sweep every subset of the eight ROM edge bits (D-pad, B/C/A/Start).
+    // Pair each fresh edge with the same held byte after first exercising the
+    // corresponding held-only input and releasing it. This checks every
+    // physically reachable button subset and proves the selector reads edges.
+    taxi_arguments.taxi_current_region = 2U;
+    for (std::uint16_t button_mask = 0U; button_mask < 0x0100U;
+         ++button_mask) {
+        const auto closed_before_taxi_mask = closed_count;
+        const auto taxi_destination_before_mask = taxi_destination;
+        const auto reselect_before_mask = reselect_count;
+        check(runtime.open_menu_route(kTaxiSelector, taxi_arguments),
+              "taxi selector opens for the controller-mask sweep", failures);
+        settle_taxi_outline();
+
+        runtime.advance_menu_route(button_mask);
+        route = runtime.menu_route_snapshot();
+        check(route.open && route.row == 2U && route.top_selection == 2U &&
+                  taxi_destination == taxi_destination_before_mask &&
+                  reselect_count == reselect_before_mask,
+              "taxi ignores every held-only controller mask", failures);
+        runtime.advance_menu_route(0U); // Release before generating fresh edges.
+
+        auto expected_row = std::uint8_t{2U};
+        if ((button_mask & 0x09U) != 0U) { // Up or Right decrements.
+            expected_row = static_cast<std::uint8_t>((expected_row + 6U) % 7U);
+        }
+        if ((button_mask & 0x06U) != 0U) { // Left or Down increments afterward.
+            expected_row = static_cast<std::uint8_t>((expected_row + 1U) % 7U);
+        }
+        const auto expected_destination = kTaxiCursorToRegion[expected_row];
+        const bool has_ab = (button_mask & 0x50U) != 0U;
+        const bool has_c = (button_mask & 0x20U) != 0U;
+        const bool has_start = (button_mask & 0x80U) != 0U;
+        const bool expect_close = has_ab || has_start;
+        const bool expect_reselect = has_c && !has_ab;
+        const auto fresh_press = static_cast<std::uint16_t>(
+            (button_mask << 8U) | button_mask);
+        runtime.advance_menu_route(fresh_press);
+        route = runtime.menu_route_snapshot();
+
+        check(reselect_count == reselect_before_mask +
+                                     (expect_reselect ? 1 : 0),
+              "taxi C edge follows A/B priority in every input mask",
+              failures);
+        if (has_ab) {
+            check(!route.open && taxi_destination == expected_destination,
+                  "taxi A/B edge confirms the post-direction destination",
+                  failures);
+        } else {
+            check(taxi_destination == taxi_destination_before_mask,
+                  "taxi C/Start/direction edge does not request cabbie",
+                  failures);
+        }
+        if (expect_close) {
+            check(!route.open,
+                  "taxi A/B and Start close in every combined input mask",
+                  failures);
+        } else {
+            check(route.open && route.row == expected_row &&
+                      route.top_selection == expected_destination,
+                  "taxi directions and C preserve ROM branch order",
+                  failures);
+            settle_taxi_outline();
+            runtime.advance_menu_route(0x8000U); // Close before next mask.
+        }
+        check(!runtime.menu_route_snapshot().open &&
+                  closed_count == closed_before_taxi_mask + 1,
+              "taxi controller-mask route closes exactly once", failures);
+    }
+
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     // The Section 15 longplay shows an unknown System 15/node 13 SPU with
     // the ROM-selected mode-3 center effect during Active Alert. Render that

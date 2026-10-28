@@ -45,9 +45,11 @@ without opening the A/B cabbie dialogue.
 
 The embedded `gameplay_script_menu_route` CTest exercises all 49
 current-region/destination pairs and confirms each destination with A and B.
-It also checks all four D-pad aliases, wraparound, held-only input rejection,
-direction/confirm order, simultaneous opposite direction groups, C reselect,
-Start exit, and combined-button priority. The field taxi screenshot
+It also sweeps all 256 subsets of the eight controller edge bits, pairing each
+fresh-press subset with its held-only mask before release. The sweep checks all
+four D-pad aliases, wraparound, direction/confirm order, simultaneous
+opposite direction groups, C reselect, Start exit, and combined-button
+priority. The field taxi screenshot
 remains a host-rendered regression capture; the independent video confirms
 selected states but has no controller log. The separate cab-map plate extent
 discrepancy remains open.
