@@ -193,6 +193,86 @@ bool numeric_visual_patch_matches(
     return true;
 }
 
+bool numeric_visual_change_matches(
+    const QImage& scene, const QImage& reference, const QImage& font,
+    const int origin_x, const int origin_y,
+    const std::uint32_t reference_value, const std::uint32_t value,
+    const QColor& tint) {
+    const auto reference_glyphs =
+        shadowrun::ghidra_conversion::qt_runtime::render_numeric_visual(
+            font, reference_value, false, tint);
+    const auto value_glyphs =
+        shadowrun::ghidra_conversion::qt_runtime::render_numeric_visual(
+            font, value, false, tint);
+    if (scene.isNull() || reference.isNull() ||
+        reference_glyphs.isNull() || value_glyphs.isNull() ||
+        scene.size() != reference.size() || origin_x < 0 || origin_y < 0 ||
+        origin_x + value_glyphs.width() > scene.width() ||
+        origin_y + value_glyphs.height() > scene.height()) {
+        return false;
+    }
+
+    const auto channel_matches = [](
+        const int actual, const int reference_pixel,
+        const int reference_source, const int reference_alpha,
+        const int value_source, const int value_alpha) {
+        const int remaining_reference_alpha = 255 - reference_alpha;
+        if (remaining_reference_alpha == 0) {
+            return false;
+        }
+        const int background_numerator =
+            reference_pixel * 255 - reference_source * reference_alpha;
+        const int background = std::clamp(
+            (background_numerator + remaining_reference_alpha / 2) /
+                remaining_reference_alpha,
+            0, 255);
+        const int expected =
+            (value_source * value_alpha +
+             background * (255 - value_alpha) + 127) /
+            255;
+        return std::abs(actual - expected) <= 1;
+    };
+
+    for (int y = 0; y < value_glyphs.height(); ++y) {
+        for (int x = 0; x < value_glyphs.width(); ++x) {
+            const auto reference_glyph =
+                x < reference_glyphs.width()
+                    ? reference_glyphs.pixelColor(x, y)
+                    : QColor(0, 0, 0, 0);
+            const auto value_glyph = value_glyphs.pixelColor(x, y);
+            const auto reference_pixel =
+                reference.pixelColor(origin_x + x, origin_y + y);
+            const auto scene_pixel =
+                scene.pixelColor(origin_x + x, origin_y + y);
+            if (!channel_matches(
+                    scene_pixel.red(), reference_pixel.red(),
+                    reference_glyph.red(), reference_glyph.alpha(),
+                    value_glyph.red(), value_glyph.alpha()) ||
+                !channel_matches(
+                    scene_pixel.green(), reference_pixel.green(),
+                    reference_glyph.green(), reference_glyph.alpha(),
+                    value_glyph.green(), value_glyph.alpha()) ||
+                !channel_matches(
+                    scene_pixel.blue(), reference_pixel.blue(),
+                    reference_glyph.blue(), reference_glyph.alpha(),
+                    value_glyph.blue(), value_glyph.alpha())) {
+                std::cerr << "numeric visual transition " << reference_value
+                          << " -> " << value << " differs at "
+                          << origin_x + x << ',' << origin_y + y
+                          << " ref=" << reference_pixel.red() << ','
+                          << reference_pixel.green() << ','
+                          << reference_pixel.blue() << " actual="
+                          << scene_pixel.red() << ',' << scene_pixel.green()
+                          << ',' << scene_pixel.blue() << " alpha="
+                          << reference_glyph.alpha() << "->"
+                          << value_glyph.alpha() << '\n';
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 std::string centered_source_menu_caption(const std::string_view label) {
     constexpr std::size_t kCaptionWidth = 17U;
     std::string caption(kCaptionWidth, ' ');
@@ -47308,6 +47388,198 @@ int main(int argc, char** argv) {
                             hotel_return.isNull()) {
                             return profile_failure(
                                 "Start did not return the profile test to Hotel Options");
+                        }
+                    }
+
+                    // The supplied capture uses Joshua's ROM Human/Shaman
+                    // preset with live Karma 20. Keep that runtime value
+                    // distinct from the zero Karma byte in the ROM preset.
+                    {
+                        LiveRunnerRecord capture_source{};
+                        const auto source_address =
+                            kJoshuaRecordTable + 2U * kRecordStride;
+                        std::copy_n(
+                            rom_bytes.begin() + static_cast<std::ptrdiff_t>(
+                                                   source_address),
+                            capture_source.bytes.size(),
+                            capture_source.bytes.begin());
+                        auto capture_profile =
+                            read_runner_record_fields(capture_source);
+                        if (capture_profile.species_index != 0U ||
+                            capture_profile.archetype_index != 1U ||
+                            capture_profile.attributes[0U] != 2U ||
+                            capture_profile.auxiliary[2U] != 0U) {
+                            return profile_failure(
+                                "the Joshua Human/Shaman ROM preset no longer provides Body 2 with zero preset Karma");
+                        }
+                        capture_profile.auxiliary[2U] = 20U;
+                        field_scene.active_runner_record() = capture_profile;
+                        field_scene.refresh_field_hud_for_dump();
+                        press_profile_button(0x40U);
+                        if (!field_scene.hotel_karma_screen_open() ||
+                            field_scene.hotel_karma_screen()
+                                    .state().cursor.column != 0U ||
+                            field_scene.hotel_karma_screen()
+                                    .state().cursor.row != 0U) {
+                            return profile_failure(
+                                "capture-state fixture did not enter Hotel Karma focused on Body");
+                        }
+                        for (int load_frame = 0;
+                             field_scene.hotel_karma_screen_loading() &&
+                             load_frame < 64;
+                             ++load_frame) {
+                            field_scene.advance_frame();
+                        }
+                        const auto capture_preview =
+                            field_scene.hotel_karma_screen().preview(
+                                field_scene.active_runner_record());
+                        field_scene.active_runner_record().auxiliary[2U] = 0U;
+                        const auto zero_karma_frame =
+                            render_qa_field(field_scene);
+                        field_scene.active_runner_record().auxiliary[2U] =
+                            20U;
+                        const auto preview_frame = capture(
+                            output_directory /
+                            "capture-human-shaman/body2-karma20-preview.bmp");
+                        const auto capture_body_pixels =
+                            numeric_visual_patch_matches(
+                                preview_frame, green_font, 136, 56, 2U,
+                                color_tint);
+                        const auto capture_next_pixels =
+                            numeric_visual_patch_matches(
+                                preview_frame, purple_font, 160, 200, 3U,
+                                std::nullopt);
+                        const auto capture_cost_pixels =
+                            numeric_visual_patch_matches(
+                                preview_frame, purple_font, 248, 200, 3U,
+                                std::nullopt);
+                        const auto capture_karma_pixels =
+                            !zero_karma_frame.isNull() &&
+                            numeric_visual_change_matches(
+                                preview_frame, zero_karma_frame, green_font,
+                                120, 160, 0U, 20U, *color_tint);
+                        if (field_scene.hotel_karma_screen_loading() ||
+                            capture_preview.status !=
+                                AttributeSkillUpgradeStatus::available ||
+                            capture_preview.current_value != 2U ||
+                            capture_preview.next_value != 3U ||
+                            capture_preview.karma_cost != 3U ||
+                            !capture_body_pixels || !capture_karma_pixels ||
+                            !capture_next_pixels || !capture_cost_pixels) {
+                            std::cerr << "capture-state preview status="
+                                      << status_name(capture_preview.status)
+                                      << " current=" << static_cast<unsigned>(
+                                             capture_preview.current_value)
+                                      << " next=" << static_cast<unsigned>(
+                                             capture_preview.next_value)
+                                      << " cost="
+                                      << capture_preview.karma_cost
+                                      << " loading="
+                                      << field_scene
+                                             .hotel_karma_screen_loading()
+                                      << " upgrade_mode="
+                                      << field_scene.hotel_karma_screen()
+                                             .allows_karma_upgrades()
+                                      << " pixels=" << capture_body_pixels
+                                      << capture_karma_pixels
+                                      << capture_next_pixels
+                                      << capture_cost_pixels << '\n';
+                            return profile_failure(
+                                "Human/Shaman Body 2 with live Karma 20 did not display Body 3 at cost 3");
+                        }
+
+                        const auto capture_before_prompt =
+                            field_scene.active_runner_record();
+                        hold_profile_button(0x40U, 4U);
+                        const auto held_prompt = capture(
+                            output_directory /
+                            "capture-human-shaman/body2-karma20-held-a.bmp");
+                        if (!field_scene.hotel_karma_screen()
+                                 .upgrade_prompt_open() ||
+                            field_scene.hotel_karma_screen()
+                                .upgrade_prompt_selection() != 0U ||
+                            field_scene.active_runner_record().attributes !=
+                                capture_before_prompt.attributes ||
+                            field_scene.active_runner_record().auxiliary !=
+                                capture_before_prompt.auxiliary ||
+                            held_prompt.isNull() ||
+                            !image_region_differs(preview_frame, held_prompt,
+                                                  96, 168, 120, 32) ||
+                            image_region_differs(preview_frame, held_prompt,
+                                                 120, 160, 16, 8) ||
+                            !numeric_visual_patch_matches(
+                                held_prompt, green_font, 136, 56, 2U,
+                                color_tint) ||
+                            !capture_karma_pixels) {
+                            return profile_failure(
+                                "the captured four-frame A hold did not open the default-Yes prompt without changing Body 2 or Karma 20");
+                        }
+
+                        press_profile_button(0x40U);
+                        const auto applied_frame = capture(
+                            output_directory /
+                            "capture-human-shaman/body3-karma17-applied.bmp");
+                        const auto& applied_profile =
+                            field_scene.active_runner_record();
+                        const auto next_preview =
+                            field_scene.hotel_karma_screen().preview(
+                                applied_profile);
+                        const auto applied_karma_pixels =
+                            numeric_visual_change_matches(
+                                applied_frame, zero_karma_frame, green_font,
+                                120, 160, 0U, 17U, *color_tint);
+                        const auto applied_body_pixels =
+                            numeric_visual_patch_matches(
+                                applied_frame, green_font, 136, 56, 3U,
+                                color_tint);
+                        const auto applied_next_pixels =
+                            numeric_visual_patch_matches(
+                                applied_frame, purple_font, 160, 200, 4U,
+                                std::nullopt);
+                        const auto applied_cost_pixels =
+                            numeric_visual_patch_matches(
+                                applied_frame, purple_font, 248, 200, 4U,
+                                std::nullopt);
+                        if (field_scene.hotel_karma_screen()
+                                .upgrade_prompt_open() ||
+                            applied_profile.attributes[0U] != 3U ||
+                            applied_profile.auxiliary[2U] != 17U ||
+                            !applied_karma_pixels ||
+                            !image_region_differs(preview_frame, applied_frame,
+                                                  120, 160, 16, 8) ||
+                            next_preview.status !=
+                                AttributeSkillUpgradeStatus::available ||
+                            next_preview.next_value != 4U ||
+                            next_preview.karma_cost != 4U ||
+                            !applied_body_pixels || !applied_next_pixels ||
+                            !applied_cost_pixels) {
+                            std::cerr << "capture-state applied body="
+                                      << static_cast<unsigned>(
+                                             applied_profile.attributes[0U])
+                                      << " karma=" << static_cast<unsigned>(
+                                             applied_profile.auxiliary[2U])
+                                      << " prompt=" << field_scene
+                                             .hotel_karma_screen()
+                                             .upgrade_prompt_open()
+                                      << " preview="
+                                      << status_name(next_preview.status)
+                                      << '/' << static_cast<unsigned>(
+                                             next_preview.next_value)
+                                      << '/' << next_preview.karma_cost
+                                      << " pixels=" << applied_body_pixels
+                                      << applied_karma_pixels
+                                      << applied_next_pixels
+                                      << applied_cost_pixels << '\n';
+                            return profile_failure(
+                                "a fresh A press did not spend 3 Karma and recalculate the Human Body preview");
+                        }
+                        press_profile_button(0x80U);
+                        if (field_scene.hotel_karma_screen_open() ||
+                            !field_scene.hotel_menu_open() ||
+                            field_scene.hotel_menu_phase() !=
+                                HotelMenuPhase::options) {
+                            return profile_failure(
+                                "Start did not close the capture-state Karma page");
                         }
                     }
 
