@@ -137,6 +137,38 @@ fade/black transitions, not exact 60-Hz timing. Audio, the live run flags,
 decline-path visuals, exact payout/progress writes, and the Halloweener page's
 source text/handler remain open.
 
+### Offer prompt input and response branches (2026-10-28)
+
+**[C]** The raw dispatch table at `0x12CCB4` maps action 10 to `0x214F6`,
+action 11 to `0x2155E`, and action 50 to `0x2156C`. The payment renderer at
+`0x214F6` formats the negotiated and base amounts, returns prompt record
+`0x1058CC`, and sets `FFF10C=0xFF` to reuse the already prepared offer panel.
+That record's words are `0x103A0E`, `0x103A13`, zero, then actions 50, 11,
+and a third C action value whose corresponding zero option pointer disables
+it. In the shared prompt at `0x1F3C4`, the nonzero second text pointer enables
+B; the zero third pointer disables C. A has no matching option-pointer gate,
+so both A and B are available on this page.
+
+The loop reads rising-edge controller bits from `FFDD22` (`0x195C` stores
+current held bits in the low byte and newly pressed edges in the high byte).
+It checks A (`0x4000`) before B (`0x1000`) and C (`0x2000`), so simultaneous
+A+B resolves to A; B+C resolves to B. The third option is disabled for this
+record. Directions and Start are not examined here, and a held button without
+a new press edge does not select an action.
+
+**[C]** A selects action 50 / `0x2156C`; for this type-2 offer, that handler
+returns response record `0x1058E8` without directly changing the run globals.
+The record displays the `0x105F81` response, beginning “Mr. Johnson logs the
+run on his pocket secretary,” and ends with the friendly continuation visible
+in independent Section-11 frame `000120`. B selects action 11 / `0x2155E`,
+which calls `0x1E68C` to set `FFFBEC=-1` and clear `FFFC1C`, then returns
+response record `0x1058E0`; its `0x105F32` text begins “Whatever you say, my
+friend.” The Section-11 video follows the A response visually, but has no
+controller log, so it does not prove which button was pressed. No independent
+decline capture is identified. This closes the offer page's A/B prompt and
+response-record mapping; it does not link the earlier Halloweener doorway to
+type 2 or establish the accepted offer's later active-run settlement.
+
 ## Nine-question visual check
 
 1. **Does it look correct? - Partial.** Independent frame `002100` shows the

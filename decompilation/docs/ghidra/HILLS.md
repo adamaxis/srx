@@ -1730,5 +1730,10 @@ Section-11 frames `000075..000105` show 40 and 55, legal when the live rank is
 at least 3. The video has no live RAM/RNG record, so it does not identify the
 exact skill rank or roll. The ROM range and all thirteen profiles are
 recorded in the [package-run origin and delivery audit](visual-audits/package-run-origin-delivery.md).
-The offer screen remains partial while its exact source-text/handler route and
-active-run outcome are unlinked.
+The offer response path is mapped, while the original Halloweener source page
+and active-run outcome remain unlinked. The A/B input path is now mapped: A returns
+the Mr. Johnson response without a direct type-2 run-global write; B resets
+the world-effect globals and returns the decline response. Section-11 frame
+`000120` visually follows the A response, but there is no controller log or
+independent decline frame. The earlier Halloweener doorway-to-type-2 link and
+the accepted run's later settlement remain open.
