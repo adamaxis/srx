@@ -1719,10 +1719,14 @@ separate A800 selector used by resource scenes 21-43.
 **[C]** The matched source-order-0 route at `0x172D1C` starts at
 `(0x3480,0x2200)` = `(840,544)` map pixels and selects `(0x2800,0x2200)` =
 `(640,544)` as its first waypoint. Its ordered override is `+0x9E=0x20`;
-the ordinary actor initializer sets `+0x10=0x05`. The horizontal distance
-stored by `0x145A2` in `+0xC8` is `0xC80`. `0xA8EA` visits each active record
-once per actor-service pass and calls its selected `+0x3A` continuation at
-`0xAAB0`; `0x145A2` installs `0xB574` there for this route.
+the template word is root-tagged `0x801D6988`. The list spawner at
+`0x449A..0x449E` initializes `+0x10` to `0x05` and then sets bit 5 for this
+tag, so the live byte is `0x25`; bit 1 remains clear. I checked all 75
+default-actor rows with waypoint data against their ROM list words, and all
+75 have this root tag. The horizontal distance stored by `0x145A2` in `+0xC8`
+is `0xC80`. `0xA8EA` visits each active record once per actor-service pass and
+calls its selected `+0x3A` continuation at `0xAAB0`; `0x145A2` installs
+`0xB574` there for this route.
 `0xB574` approaches the stored heading and reaches `0xBADE` for the movement
 step. With `FFDF84=0`, the pedestrian branch selects vector table `0xBE62`
 (`0xB5EA..0xB624`); since stored `+0xC8=0xC80` is at least `0x460`,
@@ -1731,12 +1735,18 @@ coordinate units, or `10/16 = 0.625` map pixels per service pass. The value
 is retained for this leg; `+0xC8` is the distance measured when the waypoint
 was selected, not the remaining distance recomputed on every movement pass.
 
-The Lua route model selects the same 10-unit vector for a pedestrian with
-`+0x10` bit 1 clear when the stored route distance is at least `0x460` and
-`FFDF84` is zero. `advance_default_field_actors()` runs from the field
-entity-service callback, while `advance_default_field_actor_animations()` runs
-separately at the render-pass tail. This keeps waypoint decisions and movement
-on the behavior heartbeat, and animation on the render heartbeat.
+The active runtime carries the route fact as typed
+`source_actor_has_waypoint_data`, separate from `source_record_flags`: the
+default-actor initializer currently seeds that generic byte as `0x05`, while
+the ROM byte for this tagged route is `0x25`. Lua receives the typed route fact
+and selects the same 10-unit vector for a pedestrian with `+0x10` bit 1 clear
+when the stored route distance is at least `0x460` and `FFDF84` is zero. This
+trace found no lost waypoint branch in that path; the generic flag byte is not
+a byte-for-byte mirror of the ROM record. `advance_default_field_actors()`
+runs from the field entity-service callback, while
+`advance_default_field_actor_animations()` runs separately at the render-pass
+tail. This keeps waypoint decisions and movement on the behavior heartbeat,
+and animation on the render heartbeat.
 
 The render cadence follows a separate ROM clock. Kind 11's looping walk list at
 `0x8DE0` has four frames. The `0x44BC` initializer copies base record
