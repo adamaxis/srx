@@ -170,6 +170,21 @@ frames do not buy, and a distinct A press after release applies one Body
 increment and Karma debit. Debug and Release each pass; all 489 profile BMPs
 and the `profile-cells.tsv` manifest match by SHA-256.
 
+### Human/Shaman value cross-check against the supplied frame
+
+**[C]** Capture frame `e_09040.png` identifies Joshua as Human/Shaman and shows
+Body 2 with the preview `Upgrade to 3`, `Cost 3`. The ROM preset record at
+`0x72B1A` has Body 2 at `+0x77` (the next three stat bytes are `4,1,2`). The
+source-backed profile permutation row for `joshua-gator-shaman`, column 0,
+cursor row 0, independently records current 2, next 3, cost 3, and writes
+`joshua-gator-shaman/actual.bmp`.
+
+**[H]** This is a class/race-specific value and page-layout match between the
+supplied capture and the native profile audit. The external frame shows Karma
+20 while the profile permutation fixture shows Karma 0, and the archive does
+not identify its ROM or emulator build. It supports the displayed Body
+preview/cost for this preset, not exact whole-frame fidelity.
+
 The supplied Stoker, manager, room-offer, paid-message, Hotel Options, and
 Karma frames resemble their corresponding native QA screens at the page and
 layout level. Their differing runner state and unrecorded source identity

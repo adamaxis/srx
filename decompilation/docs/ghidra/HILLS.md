@@ -715,7 +715,10 @@ purchase. Debug/Release pass with 492 matching profile BMPs and a matching
 manifest. Keep the visual hill partial: the user-supplied
 `decompilation/ghidra_conversion/build/research/au/e8_karma_spend/` shows Human/Shaman, Body 2, Karma 20, the default-Yes
 prompt, and the held A sequence, but lacks ROM/emulator identity and does not
-show a later release-and-press or purchase result. The Mage Only/insufficient
+show a later release-and-press or purchase result. Its frame-9040 Body 2 to 3,
+cost-3 display matches the ROM Human/Shaman preset at `0x72B1A` and the native
+profile permutation; the host fixture has Karma 0 while the capture has 20, so
+this is a value-level check. The Mage Only/insufficient
 message shares pixels with the selected description in the host capture.
 
 Magic has two user-type-specific presentations per the user's visual
