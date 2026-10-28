@@ -1225,24 +1225,49 @@ The field loop calls `0x1F5CA` before normal actor service and the pending
 early `0xC64C` path clears it at `0xC658`. Field-mode/scene-transition paths
 that skip `0x1F5CA` also skip the `0x0B26..0x0B42` callback dispatch in that
 pass. The matrix writer at `0x1831E` can bypass its local clear on the
-`0x26A00` transition branch. The separate call at `0xE48E` returns to code
-that checks `FFF0B1` at `0xE494` and clears it at `0xE4C0` before returning;
-the containing code's caller remains unlocated. It is not established whether
-a pending callback can dispatch before the next ordinary `0x1F5CA` clear.
+`0x26A00` transition branch. The shared Matrix entry at `0xE48E` returns to
+`0xE40C`, which tests `FFF0B1` at `0xE494` and clears it at `0xE4C0`.
 
-The remaining nonzero writer at `0x2089E` is still unscoped: the linear
-disassembly has no function entry or direct caller in the exported call-site
-list. A raw even-address opcode-pattern scan found no absolute-long/PC-relative
-`JSR`/`JMP` encoding or `BRA`/`BSR`/`Bcc` branch target to `0x20882`; its
-only exact 32-bit address matches are at `0x1218E4` and `0x121918` in a
-data-like region, where neither is identified as a code pointer.
-Indirect entry remains possible. The callback-install arm of the field effect
-selector (`0x1E166`/`0x59986`) was checked across scenes `0x15..0x2B`
-and every sum index 0..10: categories `09..0D` select callbacks from
-`0x20FBA` through `0x2115C`, not `0x20882`. The zero-result coordinate-spawn
-route does not publish A6 to `FFE104`; forwarded effects and other indirect
-paths remain open. Keep the global flag invariant open until those paths and
-the matrix return order relative to `0x1F5CA`/`0x0B3C` are traced. The A800
+The traced field-callback route installs `0xDB26` at `0x0B86E`, publishes it
+to `FFE104` through `0x1E2E0`, and can reach the Matrix menu through action
+tables at `0xC16EE` and `0xC1668`/`0xC1726`. After Matrix returns, the menu
+returns to `0xDB26`; the field dispatcher clears `FFE104` at `0x0B52`, advances
+the transition at `0x0B9C`, and loops to `0x08C0`. It does not dispatch another
+`FFE104` callback in that pass. If the next iteration skips `0x1F5CA`, it also
+skips that callback dispatch. Thus the traced route reaches its next eligible
+callback only after a fresh `0x1F5CA` clear.
+
+A second menu route exists in ROM: the menu loop at `0xC2A6` dispatches the
+`0xC1400` table containing `0x599DA`; its `0x1D90C0` table selects `0x59A9A`,
+which tail-jumps to Matrix entry `0xE47A` at `0x59B16`. No direct call, jump,
+or branch target to `0xC2A6` was found; its other exact-address uses are
+drawing or sprite data. Keep this menu route's runtime entry open rather than
+assuming it can run during a field callback. The physical A800 story callback
+and its relation to `FFDF42`/`0x1E43C` also remain open.
+
+The full exact-byte scan finds seven `MOVE.B #$FF, FFF10C` stores:
+`0x1831E`, `0x2089E`, `0x20E48`, `0x2130E`, `0x21554`, `0x2286A`, and
+`0x23E38`. Five are menu action handlers in the table rooted at `0x12CCB4`.
+Entry `0x12CCEC` selects `0x2076A`; its bit-5-clear path at `0x207B0` reaches
+the `0x2089E` store by fall-through. Entries `0x12CCC0`, `0x12CCDC`,
+`0x12CE50`, `0x12CF70`, and `0x12CF74` select handlers that reach the other
+four menu stores. `0x1F58A` calls the selected handler, then returns to
+`0x1F3C4`, which clears `FFF10C` at `0x1F3CE`. The nearby entry `0x12CCF0`
+selects `0x208A8`, a separate handler. The `0x20E48` writer is installed at
+`FFDD2C` by `0x0B984` and immediately calls `0x1F246`; that service invokes
+the selected A1 continuation and clears the flag at `0x1F272`.
+
+The raw scan finds no direct call, jump, or branch target to the interior
+instruction `0x20882`, but its entry is recovered through `0x12CCEC` to
+`0x2076A`. The only exact 32-bit occurrences of `00 02 08 82` outside code are
+at `0x1218E4` and `0x121918` in a data-like region. The callback-install arm
+of the field effect selector (`0x1E166`/`0x59986`) was checked across scenes
+`0x15..0x2B` and every sum index 0..10: categories `09..0D` select callbacks
+from `0x20FBA` through `0x2115C`, none of which is `0x20882`. The zero-result
+coordinate-spawn route does not publish A6 to `FFE104`; forwarded effects and
+other indirect paths remain open. The traced `0xDB26` callback route has no
+same-pass Matrix re-dispatch, but the wider caller of the separate `0x599DA`
+Main Menu route and the physical A800 story callback remain open. The A800
 hill remains partial; no tests were run and no push was made.
 
 ## 2026-10-28 e8_karma_spend doorway mapping

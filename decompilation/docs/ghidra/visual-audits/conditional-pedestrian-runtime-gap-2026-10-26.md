@@ -2021,10 +2021,14 @@ No explicit zeroing of this flag appears in the `0xECCC` contact dispatch.
 This identifies the relevant indirect edge in these handlers, but does not
 connect it to `FFDF42` or `0x1E43C`: the indirect target is the active callback
 itself, and neither handler body writes the request or calls the automatic
-result routine. The source condition that keeps `FFF10C` clear on the
-story-contact route is still unproven, so the physical callback path and
-automatic result route remain open. The generic `0x1F146` path has no such
-edge because it clears the flag before entering `0x1F246`.
+result routine. The field-loop source order below shows that an ordinary
+`FFE104` callback dispatch follows the `0x1F5CA` clear; paths that skip that
+clear also skip the callback dispatch in that pass. Thus this stale-flag edge
+does not occur on the ordinary field callback path. The physical callback
+target and automatic result route remain open, so this does not establish that
+the A800 pedestrian contact caused either story callback. The generic
+`0x1F146` path has no such edge because it clears the flag before entering
+`0x1F246`.
 
 ### A800 callback flag source-order follow-up (2026-10-28)
 
@@ -2047,35 +2051,80 @@ dispatch. The next ordinary field pass reaches `0x1F5CA` first.
 The matrix UI writer at `0x1831E` can bypass its own clear at `0x1868E` on a
 confirmed mode-transition branch: `0x185D8..0x185E2` calls `0x26A00` and jumps
 to the footer at `0x18694`. `0x26A00` sets `FFF0B1`, and the immediate callers
-of the matrix loop return on that marker. The field-loop ordering above
-protects the next ordinary callback pass if control returns through that
-loop. A second call to the matrix session is at `0xE48E`. Its return sequence
-tests `FFF0B1` at `0xE494`; when set, the branch at `0xE49A` goes to `0xE4C0`,
-which clears `FFF0B1` and returns. The containing code has no function entry
-or direct caller in the exported call-site map, so the next caller after that
-return is unlocated. The current trace does not establish whether an eligible
-`0x0B3C` callback can run before the next `0x1F5CA` clear. The `0x1831E` route
-is therefore bounded but not enough to prove the A800 invariant.
+of the matrix loop return on that marker. The shared Matrix entry at `0xE48E`
+is called from `0xE40C`; its return tests `FFF0B1` at `0xE494`, then clears it
+at `0xE4C0` before returning through the menu action.
 
-The other nonzero store at `0x2089E` remains unresolved. Linear disassembly
-shows a short routine ending at `0x208A6`, but `functions.tsv` has no function
-entry there and `call-sites.tsv` has no direct caller. The two raw occurrences
-of the longword `0x00020882` are inside the `0x1218xx` data region; they do not
-identify a code caller. Until the routine's indirect entry and its position
-relative to the `0x1F5CA` clear and `0x0B3C` callback are recovered, the global
-`FFF10C` invariant remains open. Neither the unknown `0x2089E` routine nor the
-matrix entry at `0xE48E` is enough to claim an A800 re-entry, but the
-same-pass ordering has not been closed either.
+One field-callback route to this menu is traceable. `0x0B86E` installs
+`0xDB26` in `FFDD2C` and calls `0x1E2E0`, whose publication path copies the
+callback to `FFE104` at `0x1E2F4`. The `0xDB26` callback can reach the menu
+dispatcher at `0xDEBA` and the `0xC16EE` action table, which selects `0xE40C`;
+the other Cyberspace action tables at `0xC1668`/`0xC1726` select `0xDEE8`,
+`0xE034`, or `0xE1E6`, whose Matrix branches also converge on `0xE47A` and
+the session call at `0xE48E`. After Matrix returns, these menu handlers return
+to `0xDB26`. The field dispatcher then clears `FFE104` at `0x0B52`, advances
+the field transition at `0x0B9C`, and loops to `0x08C0`; it does not dispatch
+`FFE104` again in that pass. If `FFDF40` or the field-variant carry path
+diverts the next iteration, that path also skips the callback dispatcher.
+The next eligible dispatch therefore follows a fresh `0x1F5CA` clear.
+
+A second menu path is present in ROM: the menu loop at `0xC2A6` dispatches
+the `0xC1400` action table, which contains `0x599DA`; that handler's table at
+`0x1D90C0` selects `0x59A9A`, which tail-jumps to `0xE47A` at `0x59B16`.
+However, a raw scan found no direct call, jump, or branch target to `0xC2A6`.
+Its other exact-address occurrences are used as drawing or sprite data, not
+identified as code pointers. Keep this menu route's runtime entry open rather
+than assuming it can run during a field callback. The traced `0xDB26`
+field-callback route does not re-dispatch an actor callback before the next
+source clear.
+
+**[C]** A full exact-byte scan of the US ROM finds seven `MOVE.B #$FF, FFF10C`
+stores: `0x1831E`, `0x2089E`, `0x20E48`, `0x2130E`, `0x21554`, `0x2286A`, and
+`0x23E38`. The matrix writer at `0x1831E` is covered above. Five writers are
+menu action handlers in the table rooted at `0x12CCB4`:
+
+- `0x12CCEC` selects `0x2076A`; when bit 5 of `FF018F` is clear, this handler
+  follows its `0x207B0` path through `0x20882` and writes `FFF10C` at
+  `0x2089E`. Its bit-set branches return without reaching the store.
+- `0x12CCC0`, `0x12CCDC`, `0x12CE50`, `0x12CF70`, and `0x12CF74` select
+  `0x21226`, `0x214F6`, `0x227F8`, `0x23D32`, and `0x23D4E`. The `0x21226`
+  handler branches into `0x21246`, which reaches the `0x2130E` store; the
+  other handlers reach `0x21554`, `0x2286A`, or `0x23E38`.
+
+Dispatcher `0x1F58A` calls the selected handler and branches back to
+`0x1F3C4`; that prompt loop tests and clears `FFF10C` at `0x1F3C4`/`0x1F3CE`
+before continuing. All five menu action stores therefore have a consuming
+menu-loop path. The nearby entry `0x12CCF0` selects the separate handler at
+`0x208A8`; it is not the entry for the `0x2089E` store.
+
+The `0x20E48` writer is installed in `FFDD2C` by `0x0B984`. It sets A1 to one
+of its local continuation handlers and immediately calls `0x1F246`; that
+service tests `FFF10C`, invokes the selected A1 handler, then clears the flag
+at `0x1F272`. This is another locally consumed store, not evidence by itself
+of a pending `FFE104` callback re-entry.
+
+The `0x2089E` store is an interior instruction in the `0x2076A` menu handler,
+not an independent function entry. A raw scan finds no direct call, jump, or
+branch target to `0x20882`; the action table instead points to `0x2076A`, whose
+linear `0x207B0` path reaches it. The two raw occurrences of the longword
+`0x00020882` are inside the `0x1218xx` data region and are not code pointers.
+The Matrix return chain through the field callback `0xDB26` is traced and has
+no same-pass `FFE104` re-dispatch. The wider caller of the separate `0x599DA`
+Main Menu route remains unlocated, and the physical A800 story-contact path
+and its relation to `FFDF42`/`0x1E43C` remain open.
 
 **[C]** A raw even-address opcode-pattern scan of the 2 MiB US ROM finds no
-absolute-long or PC-relative `JSR`/`JMP` encoding targeting `0x20882`, and no
-`BRA`/`BSR`/`Bcc` branch encoding whose target resolves there. The only exact
-32-bit occurrences of `00 02 08 82` are at `0x1218E4` and `0x121918` in a
-data-like region; neither is identified as a code pointer. This leaves a
-dynamically computed or table-mediated indirect entry possible, but does not
-prove one. Keep the writer's reachability open.
+absolute-long or PC-relative `JSR`/`JMP` encoding targeting the interior
+instruction `0x20882`, and no `BRA`/`BSR`/`Bcc` branch encoding whose target
+resolves there. The exact 32-bit occurrences of `00 02 08 82` are at
+`0x1218E4` and `0x121918` in a data-like region; neither is a code pointer.
+The indirect entry is instead the menu-table pointer at `0x12CCEC` to
+`0x2076A`; its `0x207B0` path reaches `0x20882` by fall-through. The field
+effect selector trace remains a separate negative result: categories `09..0D`
+select callbacks from `0x20FBA` through `0x2115C`, none of which is `0x20882`.
 
-**[C]** The field effect selector is one possible callback path to check. After its state and cadence gates, `0x1E166` calls `0x59986`; the
+**[C]** The field effect selector candidate path is now checked. After its
+state and cadence gates, `0x1E166` calls `0x59986`; the
 selector makes two bound-5 PRNG calls, sums them, maps the current scene byte
 `FFFBF8` through `0x3312`, then uses the resulting category and sum index in
 the enable bytes at `0x1D70E4` and pointer rows at `0x1D7174`. For A800 scenes
