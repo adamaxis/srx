@@ -167,9 +167,10 @@ M.catalog = {
         menu_result = -1,
         title_key = service_title("ares_weapon_emporium"),
         text_keys = field_shop_text_keys(),
-        -- ROM 0x56DC4 selects the mode-1 rows at 0x1AAC86 (cursor 0),
-        -- 0x1AADBF (cursor 1), and 0x1AAD77 (cursor 2). The title rows at
-        -- 0x1AA8AF label those groups Weapons, Armor, and Equipment.
+        -- ROM 0x587DA renders mode-1 rows from 0x1AAC86 (cursor 0), 0x1AADBF
+        -- (cursor 1), or 0x1AAD77 (cursor 2); 0x56DC4 dispatches the chosen
+        -- action. The title rows at 0x1AA8AF label them Weapons, Armor, and
+        -- Equipment.
         groups = field_action_groups({
                 offer(0x01),
                 offer(0x02),
