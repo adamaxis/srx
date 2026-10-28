@@ -39,7 +39,7 @@ ROM-positioned `Empty / Utility Slot` response for eight uninstalled programs.
 That pass found and fixed the empty-slot heading's one-tile left shift from
 `0xE39B7`; the first glyph now starts at `(200,64)` from `$C42C`. Independent
 Genesis comparison is available for the Attack 3 state at frame `004220`; the
-other numeric states and empty-cell message are checked against ROM data. The
+other numeric states and empty-cell message are checked against ROM data.
 The 2026-10-28 Deck Stats search checked all 324,461 numbered longplay frames
 at 30 fps against the ROM-positioned `MPCP` and `Load/IO Spd` text rows. The
 strongest combined mask score is 0.2757 on a Stoker dialogue page; Section 15's
@@ -53,12 +53,15 @@ Down, A/B/C to the selected child, and Start back to the selected program.
 ROM entry `0x182F4` clears the shared `FFF10A` palette timer; `0x196F2`
 rotates CRAM line 1 entries 8-11 immediately on its first call and every five
 VBlank passes thereafter, for a steady 20-pass four-phase cycle. CyberInfo
-inherits that counter. The parent cursor, child dispatch, selector, and
-Deck Stats/Run Info draw paths make no local sound-event request; the field
-caller separately sends audio command-frame 4 on entry, and event `0x18` is
-confined to conditional Pull Plug consequences. The host state matches the
-source tick schedule. Independent CyberInfo video/audio timing comparison
-remains open.
+inherits that counter. Section 15 Attack-3 frames `004215..004224` independently
+show the four phases in order, with each classified phase lasting two or three
+30-fps samples, consistent with one palette change per five VBlank passes.
+Exact phase offset and 60-Hz alignment remain open; the footage does not show
+the CyberInfo child. The parent cursor, child dispatch, selector, and Deck
+Stats/Run Info draw paths make no local sound-event request; the field caller
+separately sends audio command-frame 4 on entry, and event `0x18` is confined
+to conditional Pull Plug consequences. No independent sound timing comparison
+is available.
 The same parent loop resolves simultaneous Up/Down/Left/Right input in that
 order, directions before buttons, A before B before C, and commands before
 Start. The Lua cursor helper already matches the direction order; `Cyberdeck.input`

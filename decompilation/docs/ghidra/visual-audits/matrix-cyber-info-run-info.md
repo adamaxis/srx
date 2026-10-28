@@ -301,9 +301,18 @@ first tick, and advances again every five ticks. `Cyberdeck.input` and
 `CyberInfo.input` tick the same state, and the child receives the parent's
 palette object. This matches the ROM's phase-change count and child continuity.
 The ROM trace establishes a palette cycle, not a separate text-cursor blink
-timer. The numbered longplay is sampled at 30 fps and does not show the
-CyberInfo child, so it does not independently establish palette-phase pixels
-or host-to-VBlank wall-clock alignment.
+timer. I compared the numbered longplay's Section 15 Attack-3 sequence against
+the four host palette captures, using the 904 pixels that change between the
+four phases. For each video frame I assigned the nearest of the four captured
+phase images by mean RGB error over those pixels. Frames `004215..004216` rank
+as phase 2, `004217..004219` as phase 3, `004220..004222` as phase 0, and
+`004223..004224` as phase 1. I inspected representative full frames at
+`004215`, `004217`, `004219`, `004220`, and `004223`; each shows the same
+Attack-3 detail state while the palette phase changes. The two-to-three
+30-fps-frame dwell per phase is consistent with the ROM's five-VBlank interval.
+This independently supports the visible phase order and cadence, but not an
+exact 60-Hz alignment or absolute phase offset. The footage does not show the
+CyberInfo child, and compression prevents an exact palette-pixel comparison.
 
 The Cyberdeck and CyberInfo movement and child-dispatch paths contain no
 `0x530D2`/`0x530DE` sound-event request: parent cursor changes at
