@@ -80,13 +80,16 @@ give the command view a spending path it does not have.
   with cost/increase both 3. The recording has no applied upgrade. [C] At frame
   9080, `FFDD22=0x4040` and `FFF0DC=0`; at 9081, `FFDD22=0x0040`. ROM `0x19F2`
   maps A to controller bit 6, and `0x195C` stores current buttons in the low
-  byte and new press edges in the high byte. The snapshots therefore show an A
-  edge with the prompt visible at 9080; the `inputs.txt` onset at 9081 is one
-  image later. [H] If the capture uses the US-ROM route, `0xD53C` returns on
-  that edge and `0xD3EA` should write Body 3 and Karma 17. The unchanged record
-  conflicts with that source path; the missing ROM/build identity prevents
-  assigning the discrepancy to the port. Treat the recording as an external
-  visual comparison, not verified Genesis footage. The expanded local copy
+  byte and new press edges in the high byte. The RAM edge at 9080 precedes the
+  input-log onset at 9081 by one image. [C] The ROM's grid loop checks A at
+  `0xD31E` and calls the prompt at `0xD426`; `0xD53C` then waits at `0xD570`,
+  samples at `0xD57C`, and checks for a new A edge at `0xD5B4`. With A still
+  held, `0x195C` produces no second high-byte edge, so the prompt remains on
+  Yes until a later release-and-press. The captured unchanged Body/Karma and
+  visible prompt through frame 9160 are consistent with that source path; the
+  earlier interpretation that this was a purchase edge is withdrawn. The
+  missing ROM/build identity still prevents treating the recording as verified
+  US Genesis footage. Keep it as an external visual comparison. The expanded local copy
   (`frames/`, `inputs.txt`, `ram.npy`, `audio.wav`) is under
   `decompilation/ghidra_conversion/build/research/au/e8_karma_spend/`.
 

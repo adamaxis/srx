@@ -109,12 +109,16 @@ remain 2 and 20, while the displayed cost and increase remain 3. No upgrade
 is applied in this capture. [C] At frame 9080, `FFDD22=0x4040` and
 `FFF0DC=0`; at 9081, `FFDD22=0x0040`. ROM `0x19F2` maps A to controller bit 6,
 and `0x195C` stores current buttons in the low byte and new press edges in the
-high byte. The snapshots therefore show an A edge with the prompt visible at
-9080; the `inputs.txt` onset at 9081 is one image later. [H] If the capture
-uses the US-ROM route, `0xD53C` returns on that edge and `0xD3EA` should write
-Body 3 and Karma 17. The unchanged record conflicts with that source path; the
-missing ROM/build identity prevents assigning the discrepancy to the port. It
-shows neither a checkout nor a field return.
+high byte. The RAM edge at 9080 precedes the input-log onset at 9081 by one
+image. [C] The source call order explains why this need not be a confirm:
+the ROM grid loop checks the A edge at `0xD31E` and calls `0xD53C` at `0xD426`.
+The prompt then waits at `0xD570`, samples at `0xD57C`, and checks for a new A
+edge at `0xD5B4`. The continued hold has no new edge, so the prompt stays on
+Yes and the record remains unchanged. The visible prompt at
+9080/9081 and through 9160 is consistent with the US-ROM input path. This
+replaces the earlier conclusion that the capture conflicts with that path.
+The missing ROM/build identity still prevents treating it as verified US
+Genesis footage. It shows neither a checkout nor a field return.
 
 ## Doorway and Karma input audit of the expanded capture (2026-10-27)
 
@@ -145,22 +149,26 @@ identical. This matches `0xD01C`: Left at column zero leaves the selected
 Body cell unchanged.
 
 The A input logged at 9081 appears as `FFDD22 = 0x4040` at frame 9080, with
-`FFF0DC = 0` (default Yes). Body and Karma remain 2 and 20, and the same image
-and live 0x100-byte runner record persist through frame 9160. In the ROM,
-`0x195C` publishes A's new-press edge in the high byte, `0xD53C` returns on
-that edge, and the accepted Yes path reaches the write at `0xD3EA`; that path
-would raise Body to 3 and spend 3 Karma. The supplied capture's unchanged
-record conflicts with that path. Without a ROM hash or emulator identity,
-this remains a discrepancy in the supplied recording, not a demonstrated
-defect in the active conversion.
+`FFF0DC = 0` (default Yes); at 9081, the low held byte remains `0x40` while the
+high new-press byte is clear. Body and Karma remain 2 and 20, and the prompt
+stays visible through frame 9160. In the source path, `0xD01C` consumes the
+grid A edge at `0xD31E` to call `0xD53C` at `0xD426`; the prompt routine then
+waits and samples at `0xD570/0xD57C` and checks new A at `0xD5B4`. Since
+`0x195C` publishes only newly pressed buttons in the high byte, continuing to
+hold A does not accept Yes. A release followed by a distinct A press is
+required to reach the write at `0xD3EA`. The unchanged record and
+persistent prompt therefore fit the source behavior. The capture's missing ROM
+hash or emulator identity still limits it to an external comparison, not
+verified US Genesis footage.
 
 The Hotel profile QA now repeats all four direction boundaries for each of
 the thirteen ROM profiles and checks the full 320x224 frame, cursor, preview,
 race/class, attributes, skills, auxiliary/Karma, cyberware flags, and status
-message after each rejected direction. Its purchase
-confirmation holds A for four frames, matching the supplied input duration,
-and requires one Body increment and one Karma debit. Debug and Release pass;
-their 476 BMPs and profile manifest match by SHA-256.
+message after each rejected direction. Its supplied-capture input path holds
+A for four frames from the grid: that edge opens the default-Yes prompt, held
+frames do not buy, and a distinct A press after release applies one Body
+increment and Karma debit. Debug and Release each pass; all 489 profile BMPs
+and the `profile-cells.tsv` manifest match by SHA-256.
 
 The supplied Stoker, manager, room-offer, paid-message, Hotel Options, and
 Karma frames resemble their corresponding native QA screens at the page and
