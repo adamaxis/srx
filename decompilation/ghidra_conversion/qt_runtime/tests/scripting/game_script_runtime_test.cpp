@@ -30,6 +30,246 @@ bool expect(const bool condition, const char* message) {
     return condition;
 }
 
+bool verify_conditional_actor_selector_permutations(
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts) {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    struct EffectIndexPair {
+        std::optional<std::uint16_t> active;
+        std::optional<std::uint16_t> selected;
+    };
+    constexpr std::array<std::optional<std::uint8_t>, 8> kInitializers{{
+        std::nullopt, std::uint8_t{0U}, std::uint8_t{4U}, std::uint8_t{5U},
+        std::uint8_t{9U}, std::uint8_t{10U}, std::uint8_t{11U},
+        std::uint8_t{12U},
+    }};
+    constexpr std::array<std::uint16_t, 4> kWorldModes{{
+        0U, 1U, 2U, 0x0102U,
+    }};
+    constexpr std::array<EffectIndexPair, 9> kEffectIndexPairs{{
+        {std::nullopt, std::nullopt},
+        {std::nullopt, std::uint16_t{0U}},
+        {std::uint16_t{0U}, std::nullopt},
+        {std::uint16_t{0U}, std::uint16_t{0U}},
+        {std::uint16_t{0U}, std::uint16_t{1U}},
+        {std::uint16_t{4U}, std::uint16_t{4U}},
+        {std::uint16_t{4U}, std::uint16_t{0U}},
+        {std::uint16_t{0x0100U}, std::uint16_t{0x0100U}},
+        {std::uint16_t{0x0100U}, std::uint16_t{0U}},
+    }};
+    constexpr std::array<bool, 2> kBooleans{{false, true}};
+    constexpr std::array<std::uint8_t, 3> kRetainedChoices{{0U, 1U, 2U}};
+    constexpr std::array<std::uint16_t, 2> kRandomRolls{{0U, 1U}};
+
+    const auto candidates = scripts.conditional_actor_candidates_for_scene(
+        0x15U);
+    if (!expect(candidates.has_value() && candidates->size() == 3U,
+                "A800 permutation fixture lacks the Scene-21 source rows")) {
+        return false;
+    }
+    std::array<std::uint32_t, 2> choice_list_offsets{};
+    for (std::uint8_t choice = 1U; choice <= 2U; ++choice) {
+        const auto row = std::find_if(
+            candidates->begin(), candidates->end(),
+            [choice](const auto& candidate) {
+                return candidate.choice == choice;
+            });
+        if (row == candidates->end()) {
+            return expect(false,
+                          "A800 permutation fixture lacks a reachable row");
+        }
+        choice_list_offsets[choice - 1U] = row->list_offset;
+    }
+
+    std::size_t random_calls = 0U;
+    std::size_t invalid_random_bounds = 0U;
+    const auto random_service = [&](const std::uint16_t roll) {
+        return ScriptActorRandomBound{
+            [&random_calls, &invalid_random_bounds, roll](
+                const std::uint16_t bound) -> std::optional<std::uint16_t> {
+                ++random_calls;
+                if (bound != 2U) {
+                    ++invalid_random_bounds;
+                    return std::nullopt;
+                }
+                return roll;
+            }};
+    };
+
+    std::size_t permutation_count = 0U;
+    for (const bool world_effect_active : kBooleans) {
+        for (const bool pending_world_effect : kBooleans) {
+            for (const auto initializer : kInitializers) {
+                for (const auto world_mode : kWorldModes) {
+                    for (const auto effect_indices : kEffectIndexPairs) {
+                        for (const bool player_spawn_pending : kBooleans) {
+                            for (const auto retained_choice :
+                                 kRetainedChoices) {
+                                for (const auto random_roll : kRandomRolls) {
+                                    if (!scripts
+                                             .reset_conditional_actor_selection()) {
+                                        return expect(
+                                            false,
+                                            "A800 permutation reset failed");
+                                    }
+
+                                    if (retained_choice != 0U) {
+                                        ScriptConditionalActorSelectionContext
+                                            seed_context{};
+                                        seed_context
+                                            .active_offer_source_initializer =
+                                            5U;
+                                        seed_context.world_mode = 2U;
+                                        seed_context.active_effect_index = 0U;
+                                        seed_context.selected_effect_index = 1U;
+                                        const auto seeded =
+                                            scripts.resolve_conditional_actor_selection(
+                                                0x15U, seed_context,
+                                                random_service(
+                                                    static_cast<std::uint16_t>(
+                                                        retained_choice - 1U)));
+                                        if (!seeded.has_value() ||
+                                            seeded->kind !=
+                                                ScriptConditionalActorSelectionKind::none ||
+                                            seeded->selection_choice !=
+                                                retained_choice ||
+                                            !seeded->choice_changed) {
+                                            std::cerr
+                                                << "A800 permutation could not seed retained choice "
+                                                << static_cast<unsigned>(
+                                                       retained_choice)
+                                                << '\n';
+                                            return false;
+                                        }
+                                    }
+
+                                    ScriptConditionalActorSelectionContext
+                                        context{};
+                                    context.world_effect_active =
+                                        world_effect_active;
+                                    context.pending_world_effect =
+                                        pending_world_effect;
+                                    context.active_offer_source_initializer =
+                                        initializer;
+                                    context.world_mode = world_mode;
+                                    context.active_effect_index =
+                                        effect_indices.active;
+                                    context.selected_effect_index =
+                                        effect_indices.selected;
+                                    context.player_spawn_pending =
+                                        player_spawn_pending;
+
+                                    const auto calls_before = random_calls;
+                                    const auto selection =
+                                        scripts.resolve_conditional_actor_selection(
+                                            0x15U, context,
+                                            random_service(random_roll));
+
+                                    const bool initializer_passes =
+                                        initializer ==
+                                            std::optional<std::uint8_t>{5U} ||
+                                        initializer ==
+                                            std::optional<std::uint8_t>{11U} ||
+                                        initializer ==
+                                            std::optional<std::uint8_t>{12U};
+                                    const bool should_sample =
+                                        !world_effect_active &&
+                                        !pending_world_effect &&
+                                        initializer_passes && world_mode == 2U &&
+                                        retained_choice == 0U;
+                                    const auto expected_choice = should_sample
+                                        ? static_cast<std::uint8_t>(random_roll + 1U)
+                                        : retained_choice;
+
+                                    auto expected_kind =
+                                        ScriptConditionalActorSelectionKind::none;
+                                    std::uint32_t expected_list_offset = 0U;
+                                    if (world_effect_active) {
+                                        if (effect_indices.active ==
+                                            std::optional<std::uint16_t>{4U}) {
+                                            expected_kind =
+                                                ScriptConditionalActorSelectionKind::story_contact;
+                                            expected_list_offset = 0xA8AEU;
+                                        }
+                                    } else if (pending_world_effect) {
+                                        expected_kind =
+                                            ScriptConditionalActorSelectionKind::pending_world_activity;
+                                        expected_list_offset = 0xA8CCU;
+                                    } else if (initializer_passes &&
+                                               world_mode == 2U &&
+                                               effect_indices.active.has_value() &&
+                                               effect_indices.active ==
+                                                   effect_indices.selected &&
+                                               !player_spawn_pending) {
+                                        expected_kind =
+                                            ScriptConditionalActorSelectionKind::random_pedestrian;
+                                        expected_list_offset =
+                                            choice_list_offsets[expected_choice -
+                                                                1U];
+                                    }
+
+                                    const auto expected_test_random_calls =
+                                        should_sample ? 1U : 0U;
+                                    ++permutation_count;
+                                    if (!selection.has_value() ||
+                                        selection->kind != expected_kind ||
+                                        selection->list_offset !=
+                                            expected_list_offset ||
+                                        selection->selection_choice !=
+                                            expected_choice ||
+                                        selection->choice_changed !=
+                                            should_sample ||
+                                        random_calls - calls_before !=
+                                            expected_test_random_calls ||
+                                        invalid_random_bounds != 0U) {
+                                        std::cerr
+                                            << "A800 source-gate permutation failed: active="
+                                            << world_effect_active
+                                            << " pending="
+                                            << pending_world_effect
+                                            << " initializer="
+                                            << (initializer.has_value()
+                                                    ? std::to_string(
+                                                          *initializer)
+                                                    : "nil")
+                                            << " mode=" << world_mode
+                                            << " active-index="
+                                            << (effect_indices.active.has_value()
+                                                    ? std::to_string(
+                                                          *effect_indices.active)
+                                                    : "nil")
+                                            << " selected-index="
+                                            << (effect_indices.selected.has_value()
+                                                    ? std::to_string(
+                                                          *effect_indices.selected)
+                                                    : "nil")
+                                            << " player-spawn="
+                                            << player_spawn_pending
+                                            << " retained-choice="
+                                            << static_cast<unsigned>(
+                                                   retained_choice)
+                                            << " roll=" << random_roll << '\n';
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (!scripts.reset_conditional_actor_selection()) {
+        return expect(false, "A800 permutation final reset failed");
+    }
+    std::cout << "a800_source_gate_permutations=" << permutation_count
+              << " random_calls=" << random_calls << '\n';
+    return expect(permutation_count == 13'824U &&
+                      invalid_random_bounds == 0U,
+                  "A800 source-gate permutation count mismatch");
+}
+
 bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                                const std::filesystem::path& dialogue_text) {
     using namespace shadowrun::ghidra_conversion::scripting;
@@ -1042,6 +1282,10 @@ int main() {
                     std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
                         "dialogue" / "script-text.json"),
                 "gameplay Lua package did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    if (!verify_conditional_actor_selector_permutations(scripts)) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

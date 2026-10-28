@@ -478,6 +478,17 @@ untouched offer-record byte.
 | Random branch reaches `FFE12C != FFF0C8` or `FFFC3C != 0` | Choice may already have been sampled and stored. | Select no list; retain the choice. |
 | Both markers clear; initializer/mode gates pass; floor words equal; `FFFC3C == 0` | Index the scene table using the stored `FFE183` choice. | Select one candidate list; reachable choices are 1 and 2. |
 
+The Debug and Release `shadowrun_gameplay_script_runtime_qa` now enumerate
+13,824 combinations through Lua's decision function. The sweep crosses both
+effect markers, raw initializer values `nil`, 0, 4, 5, 9, 10, 11, and 12,
+`FFDF40` values 0, 1, 2, and `0x0102`, nine absent/equal/mismatched 16-bit
+effect-index pairs, both `FFFC3C` states, retained choices 0/1/2, and both
+bound-2 rolls. It asserts branch precedence and list identity, checks that only
+normalized employee initializer 5 reaches the random branch, and verifies
+whether the choice is sampled, retained after late rejection, or left untouched
+by the higher-priority story lists. This is selector-state coverage; the
+separate field QA supplies the scene-entry, actor-allocation, and contact paths.
+
 The selected pending list is drained before the scene default list at `0x43B6`,
 so a candidate consumes an ordinary actor slot first. Keep all three table rows
 for provenance, but treat row 3 as unreachable under the ROM's valid
