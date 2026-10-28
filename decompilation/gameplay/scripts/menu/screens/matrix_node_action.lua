@@ -399,6 +399,9 @@ end
 -- value. Keep the same order: draw the current node, then let the event
 -- replace it with its notice if FFF0A8 crosses the random threshold.
 local function rebuild_node_view(st, ctx)
+    -- ROM 0x5482C clears FFF0DC on every outer node-menu redraw. Action
+    -- results and failed gates both return through this redraw.
+    st.row = 0
     refresh(st)
     ctx.redraw(R.FULL)
     show_random_alert(st, ctx)

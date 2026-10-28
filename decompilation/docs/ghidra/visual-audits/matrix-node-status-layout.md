@@ -32,8 +32,10 @@ not paint over the alert band or difficulty.
 
 ## Verification
 
-- Debug CTest: `shadowrun_ghidra_gameplay_script_menu_route` passes.
+- Debug and Release CTest: `shadowrun_ghidra_gameplay_script_menu_route` passes.
 - Dump: `build/conversion/qt/debug/qt_runtime/matrix-node-action-route-qa/node-entry-screen.bmp`.
+- Debug/Release `lockout-return.bmp` frames match by SHA-256 and show the
+  source-reset `Leave Node` cursor after Lockout dismissal.
 - The complete 320x224 dump was inspected. Title, file class, band plus
   difficulty, and the action choices occupy distinct rows; the old compact
   stack under the top-left title is gone.
@@ -54,6 +56,32 @@ not paint over the alert band or difficulty.
   incorrect ASCII `>` marker. Debug and Release captures are pixel-identical,
   and the focused route CTest passes in both configurations. This remains a
   visual cross-check against compressed video, not a raw-pixel golden.
+
+## Independent Section-18 Lockout return
+
+In the independent longplay, `section_17_source_3420-3720/frame_008999.png`
+ends on `Data Routing / Sub-Processor Unit / Green-3` with `Leave Node`.
+`section_18_source_3720-4020/frame_000000.png` and `frame_000030.png` show
+the four-line Lockout response. The I/O Port action pointers at ROM
+`0x1665FE` are `0x53704` (Leave Node) and `0x5561E` (Lockout); the latter
+uses the text stream at `0x1669A2`. Its ROM bytes contain the same
+`AFFIRMATIVE / NODE ACCESS LOCKED / OVERRIDE SEQUENCE / DISABLED` lines shown
+in the capture. At frame `000060`, the `Terminal Input/Output Port / Green-3`
+menu has returned with `Leave Node` selected above `Lockout`.
+
+ROM `0x54962..0x54968` returns from the selected handler, increments the
+action count, and enters the outer redraw at `0x546CC`; the failed-gate path
+at `0x54902..0x5492A` also returns through that redraw. The node menu clears
+`FFF0DC` at `0x5482C`, so the source cursor is row zero after either result.
+The Lua route now resets its typed row before rebuilding the node view, and
+the route QA asserts `Leave Node` is selected after dismissing Lockout. It also
+writes `lockout-return.bmp` for full-frame inspection.
+
+The sequence is consistent with returning from a Lockout message to the
+source I/O Port menu. This recording has no input log, RAM snapshot, or ROM
+identity, so it does not identify the exact input edge or establish the
+message's frame duration. The Debug/Release artifact is internal regression
+evidence; this hill remains partial.
 
 Status: partial. The full Matrix viewport and other node/status combinations
 remain open.

@@ -1629,6 +1629,7 @@ int main() {
           "write failed Matrix action message image artifact", failures);
 #endif
     runtime.advance_menu_route(0x4000U); // ROM D94 any-edge wait.
+    runtime.advance_menu_route(0x0200U); // The redraw selects row zero again.
     forced_roll_successes = 2;
     runtime.advance_menu_route(0x4000U); // Retry Cancel Alert successfully.
     route = runtime.menu_route_snapshot();
@@ -1684,9 +1685,8 @@ int main() {
     runtime.advance_menu_route(0x4000U); // ROM D94 any-edge wait.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kMatrixNodeAction && route.top_title == "CPU" &&
-              route.top_option_labels.size() == 3U,
+              route.top_option_labels.size() == 3U && route.top_row == 0,
           "Cancel Alert message returns to the same node action list", failures);
-    runtime.advance_menu_route(0x0100U); // Select Go To Node.
     runtime.advance_menu_route(0x4000U); // Go To Node, with shared action gate.
     check(runtime.menu_route_snapshot().top_title == "Go To Node",
           "CPU Go To Node enters destination selection", failures);
@@ -1753,8 +1753,29 @@ int main() {
           "write Lockout message image artifact", failures);
 #endif
     runtime.advance_menu_route(0x4000U); // ROM D94 any-edge wait.
-    runtime.advance_menu_route(0x0100U); // Leave Node from the I/O Port.
-    runtime.advance_menu_route(0x4000U);
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "I/O Port" && route.top_row == 0 &&
+              route.top_option_labels ==
+                  std::vector<std::string>{"Leave Node", "Lockout"},
+          "Lockout return redraw resets the I/O Port cursor to Leave Node",
+          failures);
+#ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
+    QImage lockout_return_actual(320, 224, QImage::Format_ARGB32);
+    lockout_return_actual.fill(QColor(255, 0, 255));
+    QPainter lockout_return_painter(&lockout_return_actual);
+    const bool lockout_return_painted = paint_matrix_node_action_panel(
+        lockout_return_painter, lockout_font, node_background_for(route),
+        node_cursor_for(route), route);
+    lockout_return_painter.end();
+    check(lockout_return_painted,
+          "Lockout return node reaches the Qt panel presenter", failures);
+    const auto lockout_return_artifact = std::filesystem::path(
+        SHADOWRUN_MATRIX_NODE_ACTION_ARTIFACT_DIR) / "lockout-return.bmp";
+    check(lockout_return_actual.save(QString::fromStdString(
+              lockout_return_artifact.string()), "BMP"),
+          "write Lockout return screen image artifact", failures);
+#endif
+    runtime.advance_menu_route(0x4000U); // Leave Node is selected by default.
     runtime.advance_menu_route(0x4000U); // Follow the first link back to CPU.
     route = runtime.menu_route_snapshot();
     check(route.top_title == "CPU" && route.top_matrix_node == 4,
@@ -1820,7 +1841,7 @@ int main() {
           "Turn Off Node message returns to the same slave-module node",
           failures);
 
-    runtime.advance_menu_route(0x0100U); // Select Leave Node.
+    // The outer node redraw clears the selected Turn Off Node row.
     runtime.advance_menu_route(0x4000U); // Open its ROM links.
     runtime.advance_menu_route(0x4000U); // Enter the first linked datastore.
     route = runtime.menu_route_snapshot();
@@ -1981,6 +2002,7 @@ int main() {
     check(runtime.menu_route_snapshot().top_title == "Datastore",
           "canceled download returns to the same datastore", failures);
 
+    runtime.advance_menu_route(0x0200U); // Redraw reset to Leave Node; select Transfer Data.
     runtime.advance_menu_route(0x4000U); // Retry Transfer Data; Yes is default.
     for (int frame = 0; frame < 94; ++frame) {
         runtime.advance_menu_route(0U);
@@ -2004,6 +2026,7 @@ int main() {
 
     matrix_world_state.run = ScriptMatrixRunState{0, 0, 0, 0, 1, 0};
     matrix_search_miss = true;
+    runtime.advance_menu_route(0x0200U); // Select Transfer Data after the redraw reset.
     runtime.advance_menu_route(0x4000U); // Search again with a forced miss.
     for (int frame = 0; frame < 94; ++frame) {
         runtime.advance_menu_route(0U);
@@ -2021,6 +2044,7 @@ int main() {
     runtime.advance_menu_route(0x2000U);
 
     matrix_deck.storage = 20U; // The first 20 Mp file consumes all storage.
+    runtime.advance_menu_route(0x0200U); // Select Transfer Data after the redraw reset.
     runtime.advance_menu_route(0x4000U);
     for (int frame = 0; frame < 94; ++frame) {
         runtime.advance_menu_route(0U);
@@ -2037,7 +2061,6 @@ int main() {
 #endif
     matrix_deck.storage = 1000U;
     runtime.advance_menu_route(0x2000U);
-    runtime.advance_menu_route(0x0100U); // Restore the Leave Node row.
     check(runtime.menu_route_snapshot().top_row == 0,
           "returning from Transfer Data restores node action selection",
           failures);
@@ -2077,6 +2100,7 @@ int main() {
 
     matrix_world_state.run = ScriptMatrixRunState{-1, 9, -1, 30, 1, 0};
     const auto upload_rng_count = random_bounds.size();
+    runtime.advance_menu_route(0x0200U); // Select Transfer Data after the redraw reset.
     runtime.advance_menu_route(0x4000U);
     route = runtime.menu_route_snapshot();
     check(route.top_title == "Matrix Message" &&
@@ -2091,7 +2115,6 @@ int main() {
     save_transfer_frame("transfer-upload-complete.bmp", route);
 #endif
     runtime.advance_menu_route(0x2000U);
-    runtime.advance_menu_route(0x0100U); // Restore the Leave Node row.
 
     matrix_world_state.run = ScriptMatrixRunState{-1, 9, 0, 30, 1, 0};
     forced_roll_successes = 2;
@@ -2141,8 +2164,6 @@ int main() {
     save_erase_message("erase-objective-message.bmp");
 #endif
     runtime.advance_menu_route(0x4000U); // ROM D94 wait returns to datastore.
-    runtime.advance_menu_route(0x0100U); // Leave Node.
-    runtime.advance_menu_route(0x0100U);
     runtime.advance_menu_route(0x4000U); // Open Leave Node links.
     runtime.advance_menu_route(0x0800U); // Choose the second link to Slave Module.
     runtime.advance_menu_route(0x4000U);
@@ -2173,8 +2194,6 @@ int main() {
     save_erase_message("erase-file-message.bmp");
 #endif
     runtime.advance_menu_route(0x4000U); // ROM D94 wait returns to datastore.
-    runtime.advance_menu_route(0x0100U); // Leave Node.
-    runtime.advance_menu_route(0x0100U);
     runtime.advance_menu_route(0x4000U); // Open Leave Node links.
     runtime.advance_menu_route(0x0800U); // Choose Slave Module.
     runtime.advance_menu_route(0x4000U);
@@ -2598,8 +2617,10 @@ int main() {
     for (int frame = 0; frame < 26; ++frame) runtime.advance_menu_route(0U);
     runtime.advance_menu_route(0x4000U); // Dismiss active-alert notice.
     matrix_alert_roll_value = 0xFFFF;
-    runtime.advance_menu_route(0x0100U); // Select Leave Node.
-    runtime.advance_menu_route(0x4000U); // Open the ROM link list.
+    route = runtime.menu_route_snapshot();
+    check(route.top_title == "I/O Port" && route.top_row == 0,
+          "post-action alert returns to the source-reset first row", failures);
+    runtime.advance_menu_route(0x4000U); // Leave Node is selected by default.
     runtime.advance_menu_route(0x4000U); // Return to CPU.
     check(runtime.menu_route_snapshot().top_title == "CPU",
           "Matrix link traversal resumes after the alert notice", failures);
@@ -2862,8 +2883,9 @@ int main() {
           "overload QA reaches the active alert state", failures);
     for (int frame = 0; frame < 26; ++frame) runtime.advance_menu_route(0U);
     runtime.advance_menu_route(0x4000U); // Dismiss active alert.
-    // The selected Lockout row is preserved across the alert message.
+    // The ROM redraw after each action leaves Leave Node selected.
     const auto sounds_before_overload = sounds.size();
+    runtime.advance_menu_route(0x0200U); // Select Lockout from row zero.
     runtime.advance_menu_route(0x4000U); // Successful action increments attempts.
     runtime.advance_menu_route(0x4000U); // Dismiss: this roll overloads.
     route = runtime.menu_route_snapshot();
