@@ -3976,7 +3976,15 @@ void FieldSceneRuntime::advance_default_field_actors(
                                ActorServiceFlag::targets_world_actor_group);
                 });
             actor.ai_target_valid = has_candidate_in_source_pool;
-            context.movement_allowed = has_candidate_in_source_pool;
+            // ROM 0x1392A sends +0xB0.7 escorts directly to 0x14508, which
+            // targets the Joshua record at FFFC04 and does not consult the
+            // ordinary actor-target pool. Keep that formation route's typed
+            // movement services available even when its pool is empty.
+            const bool escort_formation_route = actor_flag_is_set(
+                actor.source_behavior_flags,
+                ActorBehaviorFlag::high_effect_route);
+            context.movement_allowed = has_candidate_in_source_pool ||
+                                       escort_formation_route;
 
             context.movement_services_available =
                 context.movement_allowed;

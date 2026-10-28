@@ -20863,6 +20863,168 @@ bool verify_random_pedestrian_contact_qa(
                   << " for the 0x1E45E request seam\n";
         return false;
     }
+
+    if (scene_id == 26U && choice == 2U) {
+        // ROM 0xECCC sets +0xB0.7 on contact. The next behavior service takes
+        // 0x1392A -> 0x14508 -> 0x1450E and routes this slot-3 escort around
+        // Joshua at the source 0xE0 formation radius. Exercise that transition
+        // in the live field runtime after the contact page closes.
+        const auto escort_start =
+            field_scene.world_activity_script_actor_position_for_dump(0U);
+        const auto runner_start = field_scene.field_entity_world_position();
+        constexpr std::array<std::uint8_t, 4> kDirections{{
+            0x04U, 0x08U, 0x01U, 0x02U}};
+        std::optional<std::uint8_t> open_direction;
+        std::uint16_t direction_probe_frames = 0U;
+        for (const auto direction : kDirections) {
+            for (std::uint8_t frame = 0U; frame < 8U; ++frame) {
+                field_scene.set_controller_nibble(direction);
+                field_scene.advance_frame();
+                ++direction_probe_frames;
+                const auto runner = field_scene.field_entity_world_position();
+                if (runner.x != runner_start.x ||
+                    runner.y != runner_start.y) {
+                    open_direction = direction;
+                    break;
+                }
+            }
+            if (open_direction.has_value()) {
+                break;
+            }
+        }
+        if (!open_direction.has_value()) {
+            field_scene.set_controller_nibble(0U);
+            std::cerr << "Pedestrian scenes QA: Joshua had no open direction "
+                         "after the Scene-26 escort contact\n";
+            return false;
+        }
+        // ROM 0x14516 places the formation point at radius 0xE0 and
+        // 0x1460E keeps the actor in place while its route cost is below
+        // 0x1E0. Move Joshua at least 0x400 from this close-contact setup so
+        // the assertion exercises an actual route step, not an arrived route.
+        const auto departure_start = field_scene.field_entity_world_position();
+        std::uint16_t departure_frames = 0U;
+        std::uint8_t departure_direction = *open_direction;
+        constexpr std::int32_t kDepartureDistance = 0x0400;
+        constexpr std::uint16_t kMaximumDepartureFrames = 192U;
+        constexpr std::uint16_t kBlockedDirectionFrames = 32U;
+        bool runner_departed = false;
+        for (const auto direction : kDirections) {
+            departure_direction = direction;
+            std::uint16_t blocked_frames = 0U;
+            auto previous = field_scene.field_entity_world_position();
+            for (std::uint16_t frame = 0U;
+                 frame < kMaximumDepartureFrames; ++frame) {
+                field_scene.set_controller_nibble(direction);
+                field_scene.advance_frame();
+                ++departure_frames;
+                const auto current = field_scene.field_entity_world_position();
+                const auto delta_x = signed_delta(current.x, departure_start.x);
+                const auto delta_y = signed_delta(current.y, departure_start.y);
+                const auto magnitude_x = delta_x < 0 ? -delta_x : delta_x;
+                const auto magnitude_y = delta_y < 0 ? -delta_y : delta_y;
+                if (std::max(magnitude_x, magnitude_y) >=
+                    kDepartureDistance) {
+                    runner_departed = true;
+                    break;
+                }
+                if (current.x == previous.x && current.y == previous.y) {
+                    ++blocked_frames;
+                    if (blocked_frames >= kBlockedDirectionFrames) {
+                        break;
+                    }
+                } else {
+                    blocked_frames = 0U;
+                    previous = current;
+                }
+            }
+            if (runner_departed) {
+                break;
+            }
+        }
+        field_scene.set_controller_nibble(0U);
+        for (std::uint16_t frame = 0U; frame < 240U; ++frame) {
+            field_scene.advance_frame();
+        }
+        const auto escort_end =
+            field_scene.world_activity_script_actor_position_for_dump(0U);
+        const auto escort_flags =
+            field_scene.world_activity_script_actor_behavior_flags_for_dump(0U);
+        const auto runner_end = field_scene.field_entity_world_position();
+        const auto final_delta_x = signed_delta(runner_end.x, departure_start.x);
+        const auto final_delta_y = signed_delta(runner_end.y, departure_start.y);
+        const auto final_magnitude_x =
+            final_delta_x < 0 ? -final_delta_x : final_delta_x;
+        const auto final_magnitude_y =
+            final_delta_y < 0 ? -final_delta_y : final_delta_y;
+        const bool runner_departed_past_arrival_range =
+            std::max(final_magnitude_x, final_magnitude_y) >=
+            kDepartureDistance;
+        const auto follow_image = render_qa_field(field_scene);
+        const auto follow_bitmap =
+            output / "scene-26-random-contact-choice-2-escort-follow.bmp";
+        std::ofstream follow_trace(
+            output / "scene-26-random-contact-choice-2-escort-follow.tsv",
+            std::ios::trunc);
+        if (!escort_start || !escort_end || !escort_flags ||
+            (*escort_flags & kEscortFlag) == 0U ||
+            (escort_start->x == escort_end->x &&
+             escort_start->y == escort_end->y) ||
+            (runner_start.x == runner_end.x &&
+             runner_start.y == runner_end.y) ||
+            !runner_departed_past_arrival_range ||
+            field_scene.world_activity_script_actor_count_for_dump() != 1U ||
+            field_scene.field_scene_reference_for_dump() != scene_id ||
+            !field_scene.failure().empty() || follow_image.isNull() ||
+            !follow_image.save(QString::fromStdWString(
+                follow_bitmap.wstring())) || !follow_trace) {
+            std::cerr << "Pedestrian scenes QA: Scene-26 A800 escort did not "
+                         "move with Joshua after contact (actor_start="
+                      << (escort_start
+                              ? std::to_string(escort_start->x) + "," +
+                                    std::to_string(escort_start->y)
+                              : std::string("missing"))
+                      << ", actor_end="
+                      << (escort_end
+                              ? std::to_string(escort_end->x) + "," +
+                                    std::to_string(escort_end->y)
+                              : std::string("missing"))
+                      << ", runner_start=" << runner_start.x << ','
+                      << runner_start.y << ", runner_end=" << runner_end.x
+                      << ',' << runner_end.y << ", escort_flags=0x"
+                      << std::hex << static_cast<unsigned>(
+                             escort_flags.value_or(0U))
+                      << std::dec << ", departure_frames="
+                      << departure_frames << ", departure_direction=0x"
+                      << std::hex << static_cast<unsigned>(departure_direction)
+                      << std::dec << ", failure='"
+                      << field_scene.failure()
+                      << "')\n";
+            return false;
+        }
+        follow_trace
+            << "scene\tlist_offset\tposition_offset\tactor_start_x"
+               "\tactor_start_y\trunner_start_x\trunner_start_y"
+               "\tdirection\tprobe_frames\tdeparture_frames"
+               "\tactor_end_x\tactor_end_y"
+               "\trunner_end_x\trunner_end_y\tescort_flags\n"
+            << scene_id << "\t0x" << std::hex << contact_position->x
+            << "\t0x" << contact_position->y << "\t0x"
+            << escort_start->x << "\t0x" << escort_start->y << "\t0x"
+            << runner_start.x << "\t0x" << runner_start.y << "\t0x"
+            << static_cast<unsigned>(departure_direction) << std::dec << '\t'
+            << direction_probe_frames << '\t' << departure_frames << "\t0x"
+            << std::hex
+            << escort_end->x << "\t0x" << escort_end->y << "\t0x"
+            << runner_end.x << "\t0x" << runner_end.y << "\t0x"
+            << static_cast<unsigned>(*escort_flags) << '\n';
+        if (!follow_trace) {
+            std::cerr << "Pedestrian scenes QA: could not write the "
+                         "escort-follow trace\n";
+            return false;
+        }
+    }
+
     std::cout << "field_pedestrian_random_contact_qa=passed scene="
               << scene_id << " choice="
               << static_cast<unsigned>(choice) << ' '
