@@ -14540,10 +14540,15 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
     const auto& menu_state = menu.state();
     const auto& selected = selected_attribute_skill_cell(
         grid, menu_state.cursor);
-    if (selected.label_index <
-        field_menu_text_.attribute_skill_descriptions.size()) {
+    const bool upgrade_prompt_open = menu.allows_karma_upgrades() &&
+                                     menu.upgrade_prompt_open();
+    if (!upgrade_prompt_open &&
+        selected.label_index <
+            field_menu_text_.attribute_skill_descriptions.size()) {
         // 0xC1B70 description, three 8-px rows from (24,168) [C: emulator
-        // run3 8600 rows 168/176/184].
+        // run3 8600 rows 168/176/184]. ROM 0xD31E's A path redraws the
+        // four-row plane-A panel at $CA86 before opening the 0xD53C prompt,
+        // clearing these rows while leaving the upgrade preview at y=200.
         draw_tinted_field_text(
             painter, 24, 168,
             field_menu_text_.attribute_skill_descriptions[selected.label_index],
@@ -14591,11 +14596,10 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
         break;
     }
 
-    if (menu.allows_karma_upgrades() && menu.upgrade_prompt_open()) {
-        // ROM 0xD53C writes prompt text at $CB18/$CAB2 and then waits. The
-        // host leaves selected details underneath; the supplied replay clears
-        // them, but its ROM/build identity is unknown, so that redraw remains
-        // under audit.
+    if (upgrade_prompt_open) {
+        // ROM 0xD31E redraws Plane A at $CA86 (four rows x 34 columns via
+        // 0x12C5A/0x11C0), then 0xD53C writes at $CB18/$CAB2. Keep the y=200
+        // preview, which lies below the redraw, and omit the cleared detail.
         draw_hotel_menu_text(
             painter, 96, 176, field_menu_text_.attributes_upgrade_prompt,
             HotelMenuPaletteLine::checkout);

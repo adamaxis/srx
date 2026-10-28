@@ -223,24 +223,26 @@ route, Hotel route, and page-distinction CTests. Their 492 Hotel profile BMPs
 match by SHA-256. The Hotel visual hill remains partial pending an identified
 Genesis capture.
 
-## 2026-10-28 confirmation-prompt redraw comparison (open)
+## 2026-10-28 confirmation-prompt lower-panel redraw
 
-The user-supplied frames show a second presentation difference. In
-`e_09040.png`, the selected Body detail occupies `(24..95,168..191)`. In
-`e_09080.png`, after the default-Yes prompt opens, that same region is black.
-A pixel scan finds 408 nonblack pixels before the prompt and zero after it.
-The matching native frames
-`capture-human-shaman/body2-karma20-preview.bmp` and
-`capture-human-shaman/body2-karma20-held-a.bmp` retain 408 nonblack pixels in
-that region in both states. The prompt and the stat/Karma state agree; the
-lower-left detail clearing does not.
+The prompt's caller redraw explains why the lower-left description disappears.
+On a fresh A edge, ROM `0xD31E` enters the upgrade branch at `0xD33A`; `0xD34E`
+sets plane-A destination `$CA86`, row counter `3`, and column counter `$21`,
+then calls `0x12C5A` (`0x11C0`). The writer lays the repeated panel tile across
+34 columns for four rows, advancing each row by `$80` bytes. With plane A at
+`$C000` and 64 words per row, `$CA86` is column 3, row 21: `(24,168)`. This
+redraw covers the three description rows at y=168, 176, and 184 before
+`0xD426` calls `0xD53C`. The prompt routine then writes the prompt at `$CB18`
+and the Yes/No choices at `$CAB2`; its wait/input loop begins at `0xD570`.
+The y=200 upgrade preview lies below the four-row redraw and remains visible.
 
-Raw ROM at `0xD426` calls `0xD53C`. The `0xD53C` sequence loads the prompt text
-at `0xC217D`, writes from plane-A word `$CB18`, then loads the Yes/No text at
-`0xE387E` and writes from `$CAB2` before entering its wait loop at `0xD570`.
-The supplied replay has no ROM hash, emulator identity, or capture method, and
-the recorded frames alone cannot establish that this lower-panel clear is US
-ROM behavior. Keep the current host overlay unverified; settle it with an
-identified capture or a complete source trace for the caller's redraw and VDP
-state before changing the panel composition. The existing route QA checks the
-prompt, selection, input edges, and mutation, but does not assert this region.
+This source order matches the supplied `e8_karma_spend` frames: a pixel scan of
+`e_09040.png` finds 408 nonblack pixels at `(24..95,168..191)`, while
+`e_09080.png` has zero there. The `(64..287,200..207)` preview area is pixel
+identical between the two frames. The matching native before-prompt capture
+previously kept the 408 detail pixels; the presenter now omits only that
+description while the prompt is open and retains the y=200 preview. Hotel route
+and all-profile QA assert the cleared rows, unchanged preview, prompt selection,
+and non-mutating hold. The replay still has no ROM hash, emulator identity, or
+capture method, so its agreement is corroborative rather than independent US
+Genesis proof.

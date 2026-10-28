@@ -46410,8 +46410,11 @@ int main(int argc, char** argv) {
                     output / "karma-spend" / "prompt-yes.bmp");
                 if (!image_region_has_color(karma_prompt_yes, 96, 168,
                                             120, 32,
-                                            QColor(109, 73, 146))) {
-                    std::cerr << "field Hotel QA: prompt text or choices are missing\n";
+                                            QColor(109, 73, 146)) ||
+                    image_has_green_ink(karma_prompt_yes, 24, 168, 72, 24) ||
+                    image_region_differs(karma_spend, karma_prompt_yes,
+                                         64, 200, 224, 8)) {
+                    std::cerr << "field Hotel QA: prompt redraw did not clear its detail rows, retain the preview, and show the choices\n";
                     return 3;
                 }
                 press_button(0x02U); // Down selects No.
@@ -47429,6 +47432,8 @@ int main(int argc, char** argv) {
                         cursor_column = 1U;
                         press_profile_button(0x04U);
                         cursor_column = 0U;
+                        const auto preview_before_prompt =
+                            render_qa_field(field_scene);
                         press_profile_button(0x10U); // B also opens the upgrade prompt.
                         if (!field_scene.hotel_karma_screen()
                                  .upgrade_prompt_open() ||
@@ -47451,10 +47456,14 @@ int main(int argc, char** argv) {
                             !field_scene.hotel_karma_screen()
                                  .upgrade_prompt_open() ||
                             prompt_yes.isNull() || prompt_no.isNull() ||
+                            image_has_green_ink(prompt_yes, 24, 168, 72, 24) ||
+                            image_region_differs(preview_before_prompt,
+                                                 prompt_yes,
+                                                 64, 200, 224, 8) ||
                             !image_region_differs(prompt_yes, prompt_no,
                                                   96, 168, 120, 32)) {
                             return profile_failure(
-                                "Down did not visibly move the confirmation selector from Yes to No");
+                                "prompt redraw, retained upgrade preview, or Down-to-No cursor did not match the ROM rows");
                         }
                         const auto transaction_before_decline =
                             field_scene.active_runner_record();
@@ -47484,6 +47493,10 @@ int main(int argc, char** argv) {
                                 transaction_before_decline.attributes ||
                             field_scene.active_runner_record().auxiliary[2U] !=
                                 body_cost || held_a_prompt.isNull() ||
+                            image_has_green_ink(held_a_prompt, 24, 168, 72, 24) ||
+                            image_region_differs(preview_before_prompt,
+                                                 held_a_prompt,
+                                                 64, 200, 224, 8) ||
                             image_region_differs(prompt_yes, held_a_prompt,
                                                  96, 168, 120, 32)) {
                             return profile_failure(
@@ -47685,6 +47698,9 @@ int main(int argc, char** argv) {
                             field_scene.active_runner_record().auxiliary !=
                                 capture_before_prompt.auxiliary ||
                             held_prompt.isNull() ||
+                            image_has_green_ink(held_prompt, 24, 168, 72, 24) ||
+                            image_region_differs(preview_frame, held_prompt,
+                                                 64, 200, 224, 8) ||
                             !image_region_differs(preview_frame, held_prompt,
                                                   96, 168, 120, 32) ||
                             image_region_differs(preview_frame, held_prompt,
