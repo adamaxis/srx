@@ -3,12 +3,6 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
-HotelCheckoutSelection move_checkout_selection(
-    const HotelCheckoutSelection selection, const std::int8_t step) {
-    return static_cast<HotelCheckoutSelection>(move_wrapped_menu_cursor(
-        static_cast<std::uint8_t>(selection), step, 1U));
-}
-
 void service_hotel_options_frame(const HotelOptionsMenuCallbacks& callbacks,
                                  HotelOptionsInputFrame& input) {
     if (callbacks.wait_for_vblank) {
@@ -42,27 +36,6 @@ void service_checkout_frame(const HotelCheckoutPromptCallbacks& callbacks,
 }
 
 } // namespace
-
-std::optional<HotelCheckoutResult> apply_hotel_checkout_input(
-    HotelCheckoutPromptState& state,
-    const HotelOptionsInputFrame& input) noexcept {
-    if (input.move_up) {
-        state.selection = move_checkout_selection(state.selection, -1);
-    } else if (input.move_down) {
-        state.selection = move_checkout_selection(state.selection, 1);
-    }
-    if (input.move_up || input.move_down) {
-        // ROM 0xDAA8..0xDAEE redraws the cursor and jumps back to the wait;
-        // the A/B/C checks at 0xDAF0..0xDB10 are skipped for this sample.
-        return std::nullopt;
-    }
-    if (!input.confirm && !input.alternate_confirm && !input.action) {
-        return std::nullopt;
-    }
-    return state.selection == HotelCheckoutSelection::yes
-               ? HotelCheckoutResult::checked_out
-               : HotelCheckoutResult::stay_at_hotel;
-}
 
 HotelOptionsMenuResult run_hotel_options_menu(
     HotelOptionsMenuState& state,
@@ -168,15 +141,17 @@ HotelCheckoutResult run_hotel_checkout_prompt(
         HotelOptionsInputFrame input{};
         service_checkout_frame(callbacks, input);
 
-        const auto previous_selection = state.selection;
-        const auto result = apply_hotel_checkout_input(state, input);
-        if (state.selection != previous_selection) {
+        const auto transition = callbacks.advance_checkout_input
+            ? callbacks.advance_checkout_input(state.selection, input)
+            : HotelCheckoutInputTransition{state.selection};
+        state.selection = transition.selection;
+        if (transition.selection_moved) {
             if (callbacks.render_cursor) {
                 callbacks.render_cursor(state.selection);
             }
         }
-        if (result.has_value()) {
-            return *result;
+        if (transition.result.has_value()) {
+            return *transition.result;
         }
     }
 }

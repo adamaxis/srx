@@ -2,6 +2,7 @@
 -- option and the controller transition that consumes each typed input sample.
 local Hotel = {}
 local options_selection = 0
+local checkout_selection = 1
 
 function Hotel.options()
     return { "karma_screen", "check_out" }, "hotel.options.title", {
@@ -19,6 +20,7 @@ end
 
 function Hotel.reset_options()
     options_selection = 0
+    checkout_selection = 1
     return { options_selection }
 end
 
@@ -45,11 +47,46 @@ function Hotel.advance_options(events)
 
     local result = moved and 1 or 0
     if (events & 0x4000) ~= 0 then
-        result = options_selection == 0 and 3 or 2
+        if options_selection == 0 then
+            result = 3
+        else
+            checkout_selection = 1
+            result = 2
+        end
     elseif (events & 0x2000) ~= 0 then
         result = 4
     end
     return { result, options_selection, moved and 1 or 0 }
+end
+
+-- ROM 0xDAA8..0xDAEE consumes an Up/Down sample by moving the two-row
+-- cursor and returning to the wait. A/B/C confirmation at 0xDAF0..0xDB10 is
+-- reached only on a direction-free sample. Yes is row 0; No is row 1 and the
+-- initial choice. Left, Right, and Start have no branch here.
+-- Results: event code (0 waiting, 1 moved, 2 stay, 3 checked out), selected
+-- row (0 Yes, 1 No), and whether the cursor moved.
+function Hotel.advance_checkout(events)
+    if type(events) ~= "number" or events % 1 ~= 0 or
+       events < 0 or events > 0xFFFF then
+        error("Hotel Check Out needs a 16-bit controller event word")
+    end
+
+    local moved = false
+    if (events & 0x0100) ~= 0 then
+        checkout_selection = (checkout_selection + 1) & 1
+        moved = true
+    elseif (events & 0x0200) ~= 0 then
+        checkout_selection = (checkout_selection + 1) & 1
+        moved = true
+    end
+
+    local result = moved and 1 or 0
+    if not moved and
+       ((events & 0x4000) ~= 0 or (events & 0x1000) ~= 0 or
+        (events & 0x2000) ~= 0) then
+        result = checkout_selection == 0 and 3 or 2
+    end
+    return { result, checkout_selection, moved and 1 or 0 }
 end
 
 function Hotel.text_keys()

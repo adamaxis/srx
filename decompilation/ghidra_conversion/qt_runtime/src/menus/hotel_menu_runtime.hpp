@@ -79,6 +79,8 @@ public:
     HotelMenuEvent advance_controller_events(std::uint16_t events);
     HotelMenuEvent apply_lua_options_result(HotelMenuEvent event,
                                             HotelOption selection);
+    HotelMenuEvent apply_lua_checkout_result(
+        HotelMenuEvent event, HotelCheckoutSelection selection);
     using SidebarPainter = std::function<void(QPainter&)>;
 
     void set_presentation_timing(std::uint32_t status_text_delay_frames,
@@ -101,7 +103,7 @@ public:
         return option_selection_;
     }
     HotelCheckoutSelection checkout_selection() const noexcept {
-        return checkout_state_.selection;
+        return checkout_selection_;
     }
     const std::array<bool, kHotelEntityStatusRecordCount>&
     medical_attention_rows() const noexcept {
@@ -117,7 +119,7 @@ private:
 
     HotelMenuPhase phase_ = HotelMenuPhase::closed;
     HotelOption option_selection_ = HotelOption::karma_screen;
-    HotelCheckoutPromptState checkout_state_{};
+    HotelCheckoutSelection checkout_selection_ = HotelCheckoutSelection::no;
     std::array<bool, kHotelEntityStatusRecordCount>
         medical_attention_rows_{};
     std::array<std::string, kHotelEntityStatusRecordCount> entity_names_{};

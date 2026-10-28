@@ -107,6 +107,17 @@ struct HotelCheckoutPromptState {
     HotelCheckoutSelection selection = HotelCheckoutSelection::no;
 };
 
+enum class HotelCheckoutResult {
+    stay_at_hotel,
+    checked_out,
+};
+
+struct HotelCheckoutInputTransition {
+    HotelCheckoutSelection selection = HotelCheckoutSelection::no;
+    bool selection_moved = false;
+    std::optional<HotelCheckoutResult> result;
+};
+
 struct HotelCheckoutPromptCallbacks {
     // ROM 0xDA6A first writes the prompt grid, then renders the question and
     // Yes/No choice text before placing the cursor at No.
@@ -119,20 +130,12 @@ struct HotelCheckoutPromptCallbacks {
     std::function<void()> latch_controller_events;
     std::function<HotelOptionsInputFrame()> sample_controller_input;
     std::function<void()> advance_random_grid_effect;
-};
 
-enum class HotelCheckoutResult {
-    stay_at_hotel,
-    checked_out,
+    // Lua owns the two-row selection and consumes the latched input sample.
+    std::function<HotelCheckoutInputTransition(
+        HotelCheckoutSelection, const HotelOptionsInputFrame&)>
+        advance_checkout_input;
 };
-
-// Apply one already-latched source input sample. ROM 0xDAA8..0xDAEE consumes
-// an Up/Down sample before it can reach the 0xDAF0..0xDB10 A/B/C checks, so a
-// directional edge cannot confirm until a later sample. No/Yes wrap as a
-// two-row cursor.
-std::optional<HotelCheckoutResult> apply_hotel_checkout_input(
-    HotelCheckoutPromptState& state,
-    const HotelOptionsInputFrame& input) noexcept;
 
 // ROM 0xDA6A: ask "Do you wish to check out?". The source initializes the
 // selection to No, wraps the two choices, and treats controller bits 0x0E,

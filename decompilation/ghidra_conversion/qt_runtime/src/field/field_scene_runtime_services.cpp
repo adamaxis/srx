@@ -1665,6 +1665,29 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         result = hotel_menu_.apply_lua_options_result(
             kLuaEvents[static_cast<std::size_t>(decision->front())],
             static_cast<HotelOption>(decision->at(1U)));
+    } else if (hotel_menu_.phase() == HotelMenuPhase::checkout) {
+        const auto decision = game_scripts_.call_integers(
+            "hotel", "advance_checkout",
+            {static_cast<std::int64_t>(events)});
+        if (!decision.has_value() || decision->size() != 3U ||
+            decision->at(0U) < 0 || decision->at(0U) > 3 ||
+            decision->at(1U) < 0 || decision->at(1U) > 1 ||
+            decision->at(2U) < 0 || decision->at(2U) > 1) {
+            failure_ = game_scripts_.failure().empty()
+                ? "Lua Hotel Check Out input result is invalid"
+                : game_scripts_.failure();
+            source_boundary("field.hotel.checkout_script_input_failed");
+            return HotelMenuEvent::waiting;
+        }
+        constexpr std::array<HotelMenuEvent, 4> kLuaEvents{{
+            HotelMenuEvent::waiting,
+            HotelMenuEvent::selection_moved,
+            HotelMenuEvent::stayed_at_hotel,
+            HotelMenuEvent::checked_out,
+        }};
+        result = hotel_menu_.apply_lua_checkout_result(
+            kLuaEvents[static_cast<std::size_t>(decision->front())],
+            static_cast<HotelCheckoutSelection>(decision->at(1U)));
     } else {
         result = hotel_menu_.advance_controller_events(events);
     }

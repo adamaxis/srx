@@ -24,6 +24,12 @@ std::optional<std::vector<std::int64_t>> advance_options(
                                  {static_cast<std::int64_t>(events)});
 }
 
+std::optional<std::vector<std::int64_t>> advance_checkout(
+    GameScriptRuntime& scripts, const std::uint16_t events) {
+    return scripts.call_integers("hotel", "advance_checkout",
+                                 {static_cast<std::int64_t>(events)});
+}
+
 bool reset_options(GameScriptRuntime& scripts) {
     const auto reset = scripts.call_integers("hotel", "reset_options", {});
     return reset.has_value() && reset->size() == 1U && reset->front() == 0;
@@ -134,7 +140,7 @@ bool check_status_acknowledgement_masks() {
     return true;
 }
 
-bool check_checkout_masks() {
+bool check_checkout_masks(GameScriptRuntime& scripts) {
     // ROM 0xDA6A starts on No. Direction branches at 0xDABE..0xDAEE move the
     // cursor and loop before A/B/C confirmation at 0xDAF0..0xDB10.
     // Left, Right, and Start have no branch.
@@ -149,12 +155,48 @@ bool check_checkout_masks() {
             const bool c = (mask & 0x40U) != 0U;
             const bool start = (mask & 0x80U) != 0U;
 
-            HotelCheckoutPromptState state{};
-            state.selection = static_cast<HotelCheckoutSelection>(initial);
+            if (!reset_options(scripts)) {
+                std::cerr << "Hotel Check Out Lua reset failed\n";
+                return false;
+            }
+            if (initial == 0U) {
+                const auto moved = advance_checkout(scripts, 0x0100U);
+                if (!moved.has_value() || moved->size() != 3U ||
+                    moved->at(0U) != 1 || moved->at(1U) != 0 ||
+                    moved->at(2U) != 1) {
+                    std::cerr << "Hotel Check Out Lua initial Yes row failed\n";
+                    return false;
+                }
+            }
             const auto expected_selection = (up || down)
                 ? static_cast<HotelCheckoutSelection>(1U - initial)
                 : static_cast<HotelCheckoutSelection>(initial);
             const bool direction_consumes_sample = up || down;
+            const std::int64_t expected_event =
+                direction_consumes_sample ? 1
+                : (a || b || c)
+                    ? expected_selection == HotelCheckoutSelection::yes ? 3 : 2
+                    : 0;
+            const auto decision = advance_checkout(
+                scripts, event_word(mask));
+            if (!decision.has_value() || decision->size() != 3U) {
+                std::cerr << "Hotel Check Out Lua input call failed: "
+                          << scripts.failure() << '\n';
+                return false;
+            }
+            const auto expected_selection_value =
+                static_cast<std::int64_t>(expected_selection);
+            if (decision->at(0U) != expected_event ||
+                decision->at(1U) != expected_selection_value ||
+                decision->at(2U) != (direction_consumes_sample ? 1 : 0)) {
+                std::cerr << "Hotel Check Out mask failed: row="
+                          << static_cast<unsigned>(initial)
+                          << " mask=" << static_cast<unsigned>(mask)
+                          << " Left=" << left << " Right=" << right
+                          << " Start=" << start << '\n';
+                return false;
+            }
+
             const std::optional<HotelCheckoutResult> expected_result =
                 (!direction_consumes_sample && (a || b || c))
                     ? std::optional<HotelCheckoutResult>{
@@ -162,17 +204,13 @@ bool check_checkout_masks() {
                               ? HotelCheckoutResult::checked_out
                               : HotelCheckoutResult::stay_at_hotel}
                     : std::nullopt;
-
-            const auto result = apply_hotel_checkout_input(
-                state, HotelOptionsInputFrame{up, down, a, b, c,
-                                              left, right, start});
-            if (state.selection != expected_selection ||
-                result != expected_result) {
-                std::cerr << "Hotel Check Out mask failed: row="
-                          << static_cast<unsigned>(initial)
-                          << " mask=" << static_cast<unsigned>(mask)
-                          << " Left=" << left << " Right=" << right
-                          << " Start=" << start << '\n';
+            if ((expected_event == 0 || expected_event == 1) !=
+                    !expected_result.has_value() ||
+                (expected_event == 2 &&
+                 expected_result != HotelCheckoutResult::stay_at_hotel) ||
+                (expected_event == 3 &&
+                 expected_result != HotelCheckoutResult::checked_out)) {
+                std::cerr << "Hotel Check Out expected event mapping failed\n";
                 return false;
             }
         }
@@ -215,23 +253,73 @@ bool check_checkout_edge_latch_sequence(GameScriptRuntime& scripts) {
         return false;
     }
 
-    if (runtime.advance_controller_events(0x4100U) !=
+    const auto direction_with_confirm = advance_checkout(scripts, 0x4100U);
+    if (!direction_with_confirm.has_value() ||
+        direction_with_confirm->size() != 3U ||
+        direction_with_confirm->at(0U) != 1 ||
+        direction_with_confirm->at(1U) != 0 ||
+        direction_with_confirm->at(2U) != 1 ||
+        runtime.apply_lua_checkout_result(
+            HotelMenuEvent::selection_moved, HotelCheckoutSelection::yes) !=
             HotelMenuEvent::selection_moved ||
         runtime.checkout_selection() != HotelCheckoutSelection::yes ||
         runtime.phase() != HotelMenuPhase::checkout) {
         std::cerr << "Hotel checkout direction+confirm did not defer\n";
         return false;
     }
-    if (runtime.advance_controller_events(0x0041U) != HotelMenuEvent::waiting ||
+    const auto held = advance_checkout(scripts, 0x0041U);
+    if (!held.has_value() || held->size() != 3U || held->at(0U) != 0 ||
+        held->at(1U) != 0 || held->at(2U) != 0 ||
+        runtime.apply_lua_checkout_result(HotelMenuEvent::waiting,
+                                          HotelCheckoutSelection::yes) !=
+            HotelMenuEvent::waiting ||
         runtime.checkout_selection() != HotelCheckoutSelection::yes ||
         runtime.phase() != HotelMenuPhase::checkout) {
         std::cerr << "Hotel checkout treated held buttons as fresh edges\n";
         return false;
     }
-    if (runtime.advance_controller_events(0x4000U) !=
+    const auto checkout_confirm = advance_checkout(scripts, 0x4000U);
+    if (!checkout_confirm.has_value() || checkout_confirm->size() != 3U ||
+        checkout_confirm->at(0U) != 3 || checkout_confirm->at(1U) != 0 ||
+        checkout_confirm->at(2U) != 0 ||
+        runtime.apply_lua_checkout_result(
+            HotelMenuEvent::checked_out, HotelCheckoutSelection::yes) !=
             HotelMenuEvent::checked_out ||
         runtime.phase() != HotelMenuPhase::closed) {
         std::cerr << "Hotel checkout did not accept a fresh direction-free A\n";
+        return false;
+    }
+
+    HotelMenuRuntime stayed_runtime;
+    std::array<RunnerRecordFields, 3> stayed_records{};
+    stayed_runtime.open(stayed_records, names, 0U);
+    if (stayed_runtime.advance_controller_events(0x0100U) !=
+            HotelMenuEvent::status_acknowledged ||
+        !reset_options(scripts)) {
+        std::cerr << "Hotel checkout decline setup failed\n";
+        return false;
+    }
+    const auto down_to_checkout = advance_options(scripts, 0x0200U);
+    const auto open_checkout = advance_options(scripts, 0x4000U);
+    if (!down_to_checkout.has_value() || down_to_checkout->size() != 3U ||
+        down_to_checkout->at(0U) != 1 ||
+        !open_checkout.has_value() || open_checkout->size() != 3U ||
+        open_checkout->at(0U) != 2 ||
+        stayed_runtime.apply_lua_options_result(
+            HotelMenuEvent::checkout_opened, HotelOption::check_out) !=
+            HotelMenuEvent::checkout_opened) {
+        std::cerr << "Hotel checkout decline did not enter the prompt\n";
+        return false;
+    }
+    const auto default_no = advance_checkout(scripts, 0x4000U);
+    if (!default_no.has_value() || default_no->size() != 3U ||
+        default_no->at(0U) != 2 || default_no->at(1U) != 1 ||
+        stayed_runtime.apply_lua_checkout_result(
+            HotelMenuEvent::stayed_at_hotel, HotelCheckoutSelection::no) !=
+            HotelMenuEvent::stayed_at_hotel ||
+        stayed_runtime.phase() != HotelMenuPhase::options ||
+        stayed_runtime.option_selection() != HotelOption::karma_screen) {
+        std::cerr << "Hotel Check Out default-No did not return to Options\n";
         return false;
     }
     return true;
@@ -328,7 +416,7 @@ int main() {
         return 1;
     }
     if (!check_masks(scripts) || !check_status_acknowledgement_masks() ||
-        !check_checkout_masks() ||
+        !check_checkout_masks(scripts) ||
         !check_checkout_edge_latch_sequence(scripts) ||
         !check_dispatch_order(scripts)) {
         return 1;

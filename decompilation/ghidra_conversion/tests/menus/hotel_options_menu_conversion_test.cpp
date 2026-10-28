@@ -15,24 +15,6 @@ bool expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
-    HotelCheckoutPromptState input_checkout_state{};
-    const auto direction_with_confirm_checkout_input =
-        apply_hotel_checkout_input(
-            input_checkout_state,
-            HotelOptionsInputFrame{true, true, true, true, true});
-    if (!expect(input_checkout_state.selection == HotelCheckoutSelection::yes &&
-                !direction_with_confirm_checkout_input.has_value())) {
-        return 5;
-    }
-    HotelCheckoutPromptState default_no_state{};
-    const auto default_no_input = apply_hotel_checkout_input(
-        default_no_state, HotelOptionsInputFrame{false, false, false, true,
-                                                 false});
-    if (!expect(default_no_state.selection == HotelCheckoutSelection::no &&
-                default_no_input == HotelCheckoutResult::stay_at_hotel)) {
-        return 6;
-    }
-
     std::deque<HotelOptionsInputFrame> hotel_frames{
         {false, true, true, false, false},
     };
@@ -128,6 +110,18 @@ int main() {
     };
     checkout_callbacks.advance_random_grid_effect =
         [&] { checkout_order.emplace_back("random"); };
+    std::size_t checkout_input_count = 0U;
+    checkout_callbacks.advance_checkout_input =
+        [&](const HotelCheckoutSelection, const HotelOptionsInputFrame&) {
+            ++checkout_input_count;
+            if (checkout_input_count == 1U) {
+                return HotelCheckoutInputTransition{
+                    HotelCheckoutSelection::yes, true, std::nullopt};
+            }
+            return HotelCheckoutInputTransition{
+                HotelCheckoutSelection::yes, false,
+                HotelCheckoutResult::checked_out};
+        };
 
     if (!expect(run_hotel_checkout_prompt(checkout_state, checkout_callbacks) ==
                     HotelCheckoutResult::checked_out &&
@@ -153,6 +147,21 @@ int main() {
         stay_frames.pop_front();
         return frame;
     };
+    std::size_t stay_input_count = 0U;
+    stay_callbacks.advance_checkout_input =
+        [&](const HotelCheckoutSelection, const HotelOptionsInputFrame&) {
+            ++stay_input_count;
+            if (stay_input_count < 3U) {
+                const auto selection = stay_input_count == 1U
+                    ? HotelCheckoutSelection::yes
+                    : HotelCheckoutSelection::no;
+                return HotelCheckoutInputTransition{selection, true,
+                                                    std::nullopt};
+            }
+            return HotelCheckoutInputTransition{
+                HotelCheckoutSelection::no, false,
+                HotelCheckoutResult::stay_at_hotel};
+        };
     if (!expect(run_hotel_checkout_prompt(stay_state, stay_callbacks) ==
                     HotelCheckoutResult::stay_at_hotel &&
                 stay_state.selection == HotelCheckoutSelection::no)) {

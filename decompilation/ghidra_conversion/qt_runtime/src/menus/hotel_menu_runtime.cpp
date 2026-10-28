@@ -36,7 +36,7 @@ void HotelMenuRuntime::open(
     const std::array<std::string, 3>& names,
     const std::size_t active_runner_slot) {
     option_selection_ = HotelOption::karma_screen;
-    checkout_state_ = HotelCheckoutPromptState{};
+    checkout_selection_ = HotelCheckoutSelection::no;
     medical_attention_rows_.fill(false);
     entity_names_ = names;
     medical_attention_count_ = 0U;
@@ -147,7 +147,7 @@ void HotelMenuRuntime::close() noexcept {
     open_frames_ = 0U;
     page_hold_frames_ = 0U;
     option_selection_ = HotelOption::karma_screen;
-    checkout_state_ = HotelCheckoutPromptState{};
+    checkout_selection_ = HotelCheckoutSelection::no;
     medical_attention_rows_.fill(false);
     entity_names_ = {};
     medical_attention_count_ = 0U;
@@ -214,27 +214,11 @@ HotelMenuEvent HotelMenuRuntime::advance_controller_events(
         return HotelMenuEvent::status_acknowledged;
     }
 
-    const auto input = hotel_input_from_events(events);
-    if (phase_ == HotelMenuPhase::options) {
+    if (phase_ == HotelMenuPhase::options ||
+        phase_ == HotelMenuPhase::checkout) {
         return HotelMenuEvent::waiting;
     }
-
-    const auto previous_selection = checkout_state_.selection;
-    const auto result = apply_hotel_checkout_input(checkout_state_, input);
-    if (!result.has_value()) {
-        return checkout_state_.selection != previous_selection
-                   ? HotelMenuEvent::selection_moved
-                   : HotelMenuEvent::waiting;
-    }
-    if (*result == HotelCheckoutResult::stay_at_hotel) {
-        phase_ = HotelMenuPhase::options;
-        option_selection_ = HotelOption::karma_screen;
-        reset_page_effect();
-        present_phase_after(options_redraw_frames_);
-        return HotelMenuEvent::stayed_at_hotel;
-    }
-    close();
-    return HotelMenuEvent::checked_out;
+    return HotelMenuEvent::waiting;
 }
 
 HotelMenuEvent HotelMenuRuntime::apply_lua_options_result(
@@ -249,7 +233,7 @@ HotelMenuEvent HotelMenuRuntime::apply_lua_options_result(
         if (selection != HotelOption::check_out) {
             return HotelMenuEvent::waiting;
         }
-        checkout_state_ = HotelCheckoutPromptState{};
+        checkout_selection_ = HotelCheckoutSelection::no;
         phase_ = HotelMenuPhase::checkout;
         reset_page_effect();
         present_phase_after(0U);
@@ -259,6 +243,38 @@ HotelMenuEvent HotelMenuRuntime::apply_lua_options_result(
         event == HotelMenuEvent::karma_screen_opened ||
         event == HotelMenuEvent::mode_action ||
         event == HotelMenuEvent::waiting) {
+        return event;
+    }
+    return HotelMenuEvent::waiting;
+}
+
+HotelMenuEvent HotelMenuRuntime::apply_lua_checkout_result(
+    const HotelMenuEvent event, const HotelCheckoutSelection selection) {
+    if (phase_ != HotelMenuPhase::checkout ||
+        (selection != HotelCheckoutSelection::yes &&
+         selection != HotelCheckoutSelection::no)) {
+        return HotelMenuEvent::waiting;
+    }
+    checkout_selection_ = selection;
+    if (event == HotelMenuEvent::selection_moved ||
+        event == HotelMenuEvent::waiting) {
+        return event;
+    }
+    if (event == HotelMenuEvent::stayed_at_hotel) {
+        if (selection != HotelCheckoutSelection::no) {
+            return HotelMenuEvent::waiting;
+        }
+        phase_ = HotelMenuPhase::options;
+        option_selection_ = HotelOption::karma_screen;
+        reset_page_effect();
+        present_phase_after(options_redraw_frames_);
+        return event;
+    }
+    if (event == HotelMenuEvent::checked_out) {
+        if (selection != HotelCheckoutSelection::yes) {
+            return HotelMenuEvent::waiting;
+        }
+        close();
         return event;
     }
     return HotelMenuEvent::waiting;
@@ -380,7 +396,7 @@ void HotelMenuRuntime::paint(
         painter.drawImage(
             // C3B2 doubles FFF0DC for this cursor table because FFF0FC is
             // clear. The No row is two text rows below Yes (E387E).
-            104, 96 + static_cast<int>(checkout_state_.selection) * 16,
+            104, 96 + static_cast<int>(checkout_selection_) * 16,
             checkout_cursor);
     }
 }
