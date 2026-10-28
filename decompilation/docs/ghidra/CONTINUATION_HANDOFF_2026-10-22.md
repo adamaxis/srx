@@ -1236,3 +1236,17 @@ exported call-site list. Keep the global flag invariant open until its
 indirect entry and the matrix return path relative to the `0x1F5CA` clear
 and `0x0B3C` callback are identified. The A800 hill
 remains partial; no tests were run and no push was made.
+
+## 2026-10-28 e8_karma_spend doorway mapping
+
+The supplied `e8_karma_spend` capture is expanded under
+`decompilation/ghidra_conversion/build/research/au/e8_karma_spend/`; it has 620
+numbered frames plus `inputs.txt`, `ram.npy`, and `audio.wav`. Its input log
+records Up at frame 8641; frames show the runner at the Stoker door around
+8680, full black from 8693 through 8732, the panel border at 8733, and opening
+text by 8736. RAM bytes `FFFBF8/FFFBF9=0x02/0x02` and ROM collision record 91
+at `0x173138` map the sequence to Scene 2/event 2 Stoker dialogue, not a motel
+interior load. The detailed source and frame correlation is in
+`visual-audits/stoker-room-to-hotel-karma-route.md` and
+`visual-audits/motel-doorway-scene-entry.md`. The capture has no ROM/emulator
+identity, so it remains corroborative. No tests were run; no push was made.
