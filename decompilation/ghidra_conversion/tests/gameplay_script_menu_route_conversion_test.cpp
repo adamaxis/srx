@@ -2209,6 +2209,110 @@ int main() {
               deck_enter_count == 2,
           "Start enters the Cyberdeck with ROM detail labels and preserves the selected node",
           failures);
+    // Exhaust FFDD22's eight independent edge bits at the CyberInfo cell.
+    // ROM 0x1833C..0x1866C gives Up/Down/Left/Right priority, then A/B/C,
+    // then Start; this catches combined command-plus-Start regressions.
+    constexpr std::array<std::uint16_t, 8> kDeckInputEdges{{
+        0x0100U, 0x0200U, 0x0400U, 0x0800U,
+        0x4000U, 0x1000U, 0x2000U, 0x8000U}};
+    int deck_column = 0;
+    int deck_row = 0;
+    for (unsigned mask = 0U; mask <= 0xFFU; ++mask) {
+        while (deck_row != 3) {
+            runtime.advance_menu_route(0x0100U);
+            deck_row = (deck_row + 3) & 3;
+        }
+        while (deck_column != 0) {
+            runtime.advance_menu_route(0x0400U);
+            deck_column = (deck_column + 3) & 3;
+        }
+
+        std::uint16_t events = 0U;
+        for (unsigned bit = 0U; bit < kDeckInputEdges.size(); ++bit) {
+            if ((mask & (1U << bit)) != 0U) {
+                events |= kDeckInputEdges[bit];
+            }
+        }
+        const auto prior_deck_mode = deck_mode;
+        auto expected_screen = kCyberdeck;
+        std::optional<int> expected_mode;
+        bool expected_exit = false;
+        if ((events & 0x0100U) != 0U) {
+            deck_row = (deck_row + 3) & 3;
+        } else if ((events & 0x0200U) != 0U) {
+            deck_row = (deck_row + 1) & 3;
+        } else if ((events & 0x0400U) != 0U) {
+            deck_column = (deck_column + 3) & 3;
+        } else if ((events & 0x0800U) != 0U) {
+            deck_column = (deck_column + 1) & 3;
+        } else if ((events & 0x4000U) != 0U) {
+            expected_mode = -1;
+            expected_screen = kDeckCyberInfo;
+        } else if ((events & 0x1000U) != 0U) {
+            expected_mode = 0;
+            expected_screen = kDeckCyberInfo;
+        } else if ((events & 0x2000U) != 0U) {
+            expected_mode = 1;
+            expected_screen = kDeckCyberInfo;
+        } else if ((events & 0x8000U) != 0U) {
+            expected_screen = kMatrixNodeAction;
+            expected_exit = true;
+        }
+
+        const auto leaves_before = deck_leave_count;
+        runtime.advance_menu_route(events);
+        route = runtime.menu_route_snapshot();
+        bool input_state_matches = route.top_screen == expected_screen;
+        if (expected_screen == kCyberdeck) {
+            input_state_matches = input_state_matches &&
+                route.top_column == deck_column && route.top_row == deck_row;
+        } else if (expected_screen == kDeckCyberInfo) {
+            input_state_matches = input_state_matches &&
+                route.top_matrix_deck_parent_column == 0 &&
+                route.top_matrix_deck_parent_row == 3;
+        }
+        const auto expected_deck_mode = expected_mode.has_value()
+            ? *expected_mode
+            : prior_deck_mode;
+        const auto mask_label =
+            std::string("Cyberdeck FFDD22 priority mask ") +
+            std::to_string(mask);
+        check(input_state_matches && deck_mode == expected_deck_mode &&
+                  (!expected_exit || deck_leave_count == leaves_before + 1),
+              mask_label.c_str(), failures);
+
+        if (expected_screen == kDeckCyberInfo) {
+            runtime.advance_menu_route(0x8000U);
+            route = runtime.menu_route_snapshot();
+            check(route.top_screen == kCyberdeck && route.top_column == 0 &&
+                      route.top_row == 3,
+                  (std::string("CyberInfo Start returns to selected parent after mask ") +
+                   std::to_string(mask)).c_str(),
+                  failures);
+        } else if (expected_exit) {
+            runtime.advance_menu_route(0x8000U);
+            route = runtime.menu_route_snapshot();
+            check(route.top_screen == kCyberdeck,
+                  (std::string("Start re-enters deck after mask ") +
+                   std::to_string(mask)).c_str(),
+                  failures);
+            deck_column = 0;
+            deck_row = 0;
+        }
+    }
+    while (deck_row != 0) {
+        runtime.advance_menu_route(0x0200U);
+        deck_row = (deck_row + 1) & 3;
+    }
+    while (deck_column != 0) {
+        runtime.advance_menu_route(0x0400U);
+        deck_column = (deck_column + 3) & 3;
+    }
+    route = runtime.menu_route_snapshot();
+    check(route.top_screen == kCyberdeck && route.top_column == 0 &&
+              route.top_row == 0,
+          "restore initial deck cursor after FFDD22 mask sweep", failures);
+    const auto matrix_route_deck_leave_baseline = deck_leave_count;
     runtime.advance_menu_route(0x0100U); // Up wraps to Map row 3.
     runtime.advance_menu_route(0x0800U);
     runtime.advance_menu_route(0x0800U); // Column 2: Map.
@@ -2355,7 +2459,7 @@ int main() {
     runtime.advance_menu_route(0x8000U); // Return to node-action loop.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kMatrixNodeAction && route.top_matrix_node == 1 &&
-              deck_leave_count == 1,
+              deck_leave_count == matrix_route_deck_leave_baseline + 1,
           "deck return resumes the same Lua Matrix node", failures);
     runtime.advance_menu_route(0x8000U); // Re-enter the deck loop.
     runtime.advance_menu_route(0x0100U); // Up wraps to row 3.
@@ -2366,7 +2470,8 @@ int main() {
     runtime.advance_menu_route(0x4000U); // Confirm source retreat action.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kMatrixNodeAction && route.top_matrix_node == 4 &&
-              route.top_matrix_previous_node == 1 && deck_leave_count == 2,
+              route.top_matrix_previous_node == 1 &&
+              deck_leave_count == matrix_route_deck_leave_baseline + 2,
           "confirmed retreat returns to the prior node-action loop", failures);
     runtime.advance_menu_route(0x8000U); // Re-enter deck to pull the plug.
     for (int row = 0; row < 3; ++row) runtime.advance_menu_route(0x0200U);
@@ -2383,7 +2488,8 @@ int main() {
               route.top_matrix_logout_visual.has_value() &&
               route.top_matrix_logout_visual->phase ==
                   ScriptMatrixLogoutVisualPhase::FADE &&
-              deck_leave_count == 2 && closed_count == 4,
+              deck_leave_count == matrix_route_deck_leave_baseline + 2 &&
+              closed_count == 4,
           "Pull Plug starts its source logout sequence before leaving the deck",
           failures);
     for (int frame = 0; frame < 9; ++frame) {
@@ -2418,7 +2524,8 @@ int main() {
     route = runtime.menu_route_snapshot();
     check(route.open && route.top_screen == kCommand &&
               route.page == kCommandPagePocketSecretary &&
-              deck_leave_count == 3 && closed_count == 4,
+              deck_leave_count == matrix_route_deck_leave_baseline + 3 &&
+              closed_count == 4,
           "Pull Plug rebuilds Command after its 64-frame source logout",
           failures);
     runtime.advance_menu_route(0x4000U); // Reopen Pocket Secretary.
