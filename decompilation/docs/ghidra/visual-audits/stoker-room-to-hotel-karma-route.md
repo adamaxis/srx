@@ -236,15 +236,52 @@ or capture method, so the 40 black images remain an observation and do not
 establish the original game's exact displayed-frame timing. See the detailed
 [doorway transition trace](motel-doorway-scene-entry.md#supplemental-recording-reviewed-2026-10-27).
 
+## Independent Section-11 hotel and Karma sequence (2026-10-28)
+
+The same longplay folder used by the package-route audit contains a later
+Stoker and Hotel visit:
+`video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_11_source_1620-1920/`.
+The sampled 320x224 frames show the sequence below. They provide real-game
+visual evidence for this path, but no controller log or RAM snapshot.
+
+| Frame | Visible state and ROM link |
+|---|---|
+| `002430` | Stoker's Coffin Motel description and manager portrait. This matches the scene-2/event-2 Stoker content reached from record 91 at `0x173138`; the video does not expose the active scene/event bytes. |
+| `002460` | Manager dialogue and the “place to crash” / “talk later” choices. |
+| `002490` | A room is offered for 20 nuyen, with “Easy money, chummer. I'll pay.” selected. ROM command `0x06` reaches payment handler `0x21458`. The wallet debit is not visible in this capture. |
+| `002520` | The paid-room message (“Hope you brought your own towels… Enjoy your stay.”) matches the page selected by the room-payment path at `0xF5AB8`. |
+| `002550` | The Hotel status page displays “A steaming mug of soykaf would be just wiz about now,” matching the extracted `hotel.status.recovery.2..4` text. |
+| `002580` | Hotel Options appears with “Karma Screen” selected over “Check Out,” matching the `0xCF38` options handoff. |
+| `002610` | The Hotel Karma grid shows Body 3 and an unaccepted preview of 4 at cost 4, with Karma 11. |
+| `002640` | Willpower 5 is selected; the preview is 6 at cost 6, and Karma remains 11. |
+| `002670` | Willpower displays 6, Karma is 5, and the page reports the maximum level. Human Willpower's ceiling is 6 in the race table at `0xC22A6`; `0xD3EA`'s purchase path and `0xD82A` preview rules explain the visible `5 -> 6` and `11 -> 5` changes as one accepted purchase. |
+| `002700` | Throwing remains 0 with a preview of 1 at cost 2 and Karma 5; this is a visible preview, not evidence of a second purchase. |
+
+The transaction is strongly source-consistent, although the footage does not
+show the input edge or live record bytes. Body stays at 3 and Karma stays at
+11 after its cost-4 preview, while the later Willpower and Karma values
+change by exactly the rank/cost amounts. The final Throwing preview leaves
+Karma unchanged. See the [Attributes/Skills profile audit](attributes-skills-profile-permutation-audit-2026-10-23.md)
+for the complete profile and race-ceiling tables. The Section-11 Joshua
+Shaman has progressed values that differ from the ROM starter template; the
+capture does not show how the earlier changes occurred.
+
+The matching native checkpoints are `paid-dialogue/actual.bmp`,
+`options/actual.bmp`, and `karma-spend/actual.bmp` under the Release
+`qt_runtime/field-hotel-qa/` output. They share the page structure and menu
+text; their seeded Samurai/profile values differ, so they are not pixel-equal
+screenshots of the longplay state. This is a cross-route visual comparison,
+not a claim that the native renderer has been proven against every original
+pixel.
+
 ## Nine-question visual review
 
-1. **Does it look correct? — Unknown against the Genesis game.** The supplied
-   independent section 03 footage supports the Stoker doorway/fade/panel
-   family, including frames 000028..000055 and 000080..000082. The supplied
-   `e8_karma_spend.zip` adds Hotel status, options, and Karma pages, but has no
-   ROM or emulator identity. It supports broad layout comparison, not verified
-   Genesis pixel fidelity. The native screens are internally legible and
-   consistently laid out, but their exact original appearance remains open.
+1. **Does it look correct? — Partial.** Independent section 03 footage
+   supports the Stoker doorway/fade/panel family. Section 11 shows the room
+   offer, paid message, Hotel status/options, and a Karma purchase sequence
+   whose displayed stat and Karma changes match ROM rules. These frames
+   support the page presentation and behavior, while exact profile-specific
+   pixel fidelity remains open.
 2. **Does the visible look match behavioral state? — Yes for the tested
    route.** Ordinary input selects collision `0xFFC2`/event 2, the first-visit
    manager offers rent, leave, and Michael's package, payment changes the
@@ -252,13 +289,11 @@ establish the original game's exact displayed-frame timing. See the detailed
    dismissal opens Hotel status, A enters Hotel options and the distinct
    spending page, and the confirmed upgrade changes Body/Karma to 2/48.
    `physical-route.tsv` records the route states and input milestones.
-3. **Are the visuals themselves correct? — Unknown against independent
-   Genesis pixels.** The source-derived full-page redraw, text colors,
-   selection cursor, cost/result details, and output dimensions are checked by
-    the Qt route assertions. The supplied external sequence resembles the
-    corresponding Hotel pages, but uses a different runner state and does not
-    identify its ROM/emulator build. Exact original pixel placement and palette
-    remain unverified.
+3. **Are the visuals themselves correct? — Partial.** Section-11 frames show
+   the same Hotel options, dialogue, and Karma-page structure as the native
+   checkpoints, including the selected row and cost/result text. The longplay
+   runner state differs from the seeded native QA profile, so this review
+   does not claim a pixel-equal full-screen comparison for the same values.
 4. **Does it animate as expected? — Yes for the traced native cadence.** The
    Hotel status/options and checkout wait loops call `0xE660` once per update;
    Debug and Release check 30 updates, stable text, and change confined to the
@@ -285,28 +320,27 @@ establish the original game's exact displayed-frame timing. See the detailed
    returned field. The Hotel screen removes the field HUD; the Karma page does
    not retain Hotel controls; return restores the field. Other unrelated
    scene defects are not closed by this route.
-7. **Do multiple frames support the interpretation? — Partial.** The native
-   capture includes separate input moments, idle frames, page changes, the
-   full fade-to-black/field-return interval, and the later command overview.
-   Independent section 03 frames support the Stoker doorway and
-   dialogue appearance, but contain no Hotel menu visit or controller log.
-   The separate supplied sequence covers Hotel status/options and the Karma
-   preview/prompt, without a confirmed purchase or checkout; its source
-   identity is unknown.
+7. **Do multiple frames support the interpretation? — Yes for the native
+   route; partial in the independent longplay.** The native capture includes
+   separate input moments, idle frames, page changes, the full
+   fade-to-black/field-return interval, and the later command overview.
+   Section 11 independently shows room offer/payment, Hotel status/options,
+   a Willpower preview, a matching stat/Karma change, and a later Throwing
+   preview. It has no controller log or RAM record and does not show checkout.
 8. **Does the new UI replace the old UI cleanly? — Yes in the tested route.**
    Hotel status replaces the field/HUD; options replace status; the Karma
    spending page contains no old Hotel options; Hotel options are redrawn on
    child return; checkout removes the option rows; and the field-only redraw
    equals the immediate and 30-frame returned full-screen images. No old
    buttons or graphics remain over the next page.
-9. **Was the whole time window reviewed? — Yes for this route.** The sequence
-   begins at initialized New Game field spawn and runs continuously at one
-   image per controller/update frame through checkout, field return, and the
-   command-overview open/close sequence. All 414 full-screen images were
-   reviewed in chronological contact sheets; frames 0218, 0233, 0235, 0317,
-   0318, 0321, 0381, and 0411..0413 were inspected at native size. The
-   QA process reached the stable field state and exited normally. This scope
-   starts after New Game initialization; it is not a full boot/title capture.
+9. **Was the whole time window reviewed? — Yes for the native QA route;
+   partial for the longplay.** The QA sequence begins at initialized New Game
+   field spawn and runs continuously at one image per controller/update frame
+   through checkout, field return, and command-overview open/close. All 414
+   full-screen images were reviewed in chronological contact sheets; frames
+   0218, 0233, 0235, 0317, 0318, 0321, 0381, and 0411..0413 were inspected at
+   native size. Section-11 longplay states were sampled at the named frames
+   above; this turn did not review every frame in that independent sequence.
 
 ## Verification outcome
 
@@ -343,9 +377,10 @@ establish the original game's exact displayed-frame timing. See the detailed
   field reveal, command overview, and clean return were inspected at full
   resolution. The text-binding change leaves the output pixels unchanged.
 - **Independently visually checked:** section 03 supports the Stoker doorway
-  and dialogue panel. The supplied external recording adds Hotel-page visual
-  comparisons, but its source identity is unknown and it does not establish
-  Genesis pixel fidelity.
-- **Reported defect resolved:** no new independent Hotel appearance claim is
-  made. The native route is connected and internally verified; exact Hotel
-  visual fidelity remains open.
+  and dialogue panel. Section 11 adds a room offer/payment, Hotel Options, and
+  a source-consistent Human/Shaman Willpower purchase. The separate
+  `e8_karma_spend.zip` still has no ROM/emulator identity and is used only for
+  its own input/RAM correlation.
+- **Reported defect resolved:** no code defect was reported or changed in this
+  audit. It adds independent source-to-visual evidence; exact Hotel pixel
+  fidelity and the independent route's input state remain open.

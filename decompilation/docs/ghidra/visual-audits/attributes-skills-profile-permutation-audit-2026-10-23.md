@@ -168,13 +168,29 @@ the accepted purchase. Throwing is a generic skill at rank 0, so the next
 rank costs twice the next rank (2). Its selected description also matches
 the ROM label/description tables.
 
+The preceding Section-11 frames show a source-consistent purchase sequence:
+at `frame_002610.png`, Body is 3 and the unaccepted preview is 4 at cost 4,
+with Karma 11; at `frame_002640.png`, Willpower is 5 and the preview is 6 at
+cost 6, still with Karma 11. At `frame_002670.png`, Willpower is 6, Karma is
+5, and the page says the maximum level has been reached. Human Willpower's
+ROM ceiling is 6, and the source cost for raising it from 5 to 6 is 6 Karma.
+The visible `11 -> 5` Karma and `5 -> 6` Willpower changes therefore match
+one accepted purchase. `frame_002700.png` then shows Throwing 0 with a preview
+of 1 at cost 2 and Karma still 5; it records a preview, not a second purchase.
+The video has no controller log or live RAM dump, so acceptance is inferred
+from the changed screen values and their exact source arithmetic.
+
 The Joshua Gator Shaman starter record at `0x72B1A` is Human/Shaman and has
 the same twelve visible skill ranks, but its raw attributes are
 `2, 4, 1, 2, 3, 4, 3, 6`, and its Karma byte `+0x8D` is 0. The frame therefore
 shows a live screen state that differs from the starter values in Body,
-Willpower, Essence, and Karma. The screenshot has no record/RAM dump, so it
-does not establish when or how those differences arose. This is one
-independent visual example, not proof of every profile or upgrade permutation.
+Willpower, Essence, and Karma. The sampled hotel route accounts for a
+source-consistent Willpower change from 5 to 6 and Karma spend from 11 to 5;
+the earlier Willpower increase from the starter's 4 to 5, Body change from 2
+to 3, Essence difference from 3 to 6, and Karma earnings remain unexplained.
+The screenshot has no record/RAM dump to identify when or how those earlier
+differences arose. This is one independent visual example, not proof of every
+profile or upgrade permutation.
 
 - **Code changed:** recruited-record extraction now includes only the ten ROM
   templates before the zero-kind sentinel. The unused two save positions stay
@@ -186,10 +202,11 @@ independent visual example, not proof of every profile or upgrade permutation.
 - **Qt screen behavior covered:** all 13 profile headers, all 260 visible
   profile/cell combinations, their numeric glyphs and source offsets, every
   cursor cell, the command view's read-only exit, and clean field return.
-- **Independent visual evidence:** one longplay Attributes/Skills spending
-  frame matches the Human/Shaman header, the ROM-backed skill labels and
-  description, and the Throwing rank-0 to rank-1 cost preview. Its differing
-  live attribute/Karma values are not linked to a RAM capture.
+- **Independent visual evidence:** Section 11 shows the Human/Shaman page,
+  its ROM-backed skill labels and description, a Willpower purchase whose
+  visible `5 -> 6` / Karma `11 -> 5` changes match the race cap and cost rule,
+  and a later Throwing rank-0 to rank-1 preview. No controller log or RAM
+  capture links those changes to the underlying live record.
 - **Still partial visually:** the independent video does not cover all class
   and race presets, cursor permutations, rejected purchases, or the view-only
   command-menu variant. Other routines that consume attribute/skill values
