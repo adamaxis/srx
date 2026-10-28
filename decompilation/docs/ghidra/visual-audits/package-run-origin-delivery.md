@@ -74,22 +74,57 @@ offer text and later Little Chiba payment page support a package-route reading,
 but an exact origin-dialogue pointer or a capture with live ROM state is still
 needed to close the source link.
 
-### The displayed payment and Joshua's profile
+### The displayed payment across runner presets (2026-10-28)
 
-Context-zero offer row 4 is the six-byte record at `0xF3ED4`:
-initializer 2 (package delivery), progress delta 1, base 40, and negotiation
-scale 1 (raw bytes `02 01 00 28 00 01`). `0x1E69C` reads the first runner's
-Negotiation field at `FF018C` and computes `base + 5 * roll`, with the roll
-below `scale * Negotiation + 1`. The offer path sends base and negotiated
-amounts through the grouped-decimal formatter `0xC216` at `0x21526`/`0x2153C`.
-The independent Section-06 frame `002550` identifies the longplay runner as
-Joshua Gator Shaman; ROM profile `0x72B1A` has Negotiation 3 at `+0x8C`.
-Those inputs make 55 a source-consistent display: `40 + 5 * 3 = 55`, within
-the four possible rolls `0..3`. The frame does not show RAM or RNG state, so
-the profile-to-offer join and roll 3 are derived from the two screenshots and
-ROM data, not directly observed state. Race and class have no direct term in
-the payment calculation; the active profile's Negotiation value supplies the
-relevant difference.
+**[C]** Context-zero offer row 4 at `0xF3ED4` is the six-byte record
+`02 01 00 28 00 01`: package-run initializer 2, progress delta 1, base payment
+40, and Negotiation scale 1. At `0x1E69C`, the first random draw selects one of
+eight offer rows for the current context. After the selected row is known, ROM
+reads the first runner's live Negotiation byte at `FF018C` (`FF0100 + 0x8C`),
+multiplies it by the row's scale, adds one, and passes that bound to `0xD3A`.
+The random helper advances its 16-bit seed at `0xD44`, multiplies the seed by
+the requested bound, and returns the high word. Its result is therefore in
+`0..(scale * Negotiation)`. ROM multiplies that result by five and adds the
+base at `0x1E704..0x1E70C`, storing the negotiated amount at `FFFBF4` and the
+unmodified base at `FFF0C0`. `0x21526` formats `FFFBF4` at `$C51E`; `0x2153C`
+formats `FFF0C0` at `$C1C0`.
+
+The raw starter records produce these rank-dependent outcomes for that row.
+Race and class identify the preset, but neither is read by the payment
+calculation; the live `+0x8C` Negotiation rank controls the range.
+
+| Source profile / ROM | Race / class | Negotiation `+0x8C` | Possible negotiated amounts |
+|---|---|---:|---|
+| Joshua Samurai `0x7291A` | Human / Samurai | 1 | 40, 45 |
+| Joshua Decker `0x72A1A` | Human / Decker | 2 | 40, 45, 50 |
+| Joshua Gator Shaman `0x72B1A` | Human / Shaman | 3 | 40, 45, 50, 55 |
+| Rat Shaman `0x72C1A` | Dwarf / Shaman | 1 | 40, 45 |
+| Troll Samurai `0x72D1A` | Troll / Samurai | 0 | 40 |
+| Human Mage `0x72E1A` | Human / Mage | 2 | 40, 45, 50 |
+| Dwarf Decker `0x72F1A` | Dwarf / Decker | 0 | 40 |
+| Bear Shaman `0x7301A` | Orc / Shaman | 0 | 40 |
+| Elf Decker `0x7311A` | Elf / Decker | 0 | 40 |
+| Human Samurai `0x7321A` | Human / Samurai | 4 | 40, 45, 50, 55, 60 |
+| Elf Mage `0x7331A` | Elf / Mage | 4 | 40, 45, 50, 55, 60 |
+| Elf Decker `0x7341A` | Elf / Decker | 0 | 40 |
+| Human Samurai `0x7351A` | Human / Samurai | 0 | 40 |
+
+These are preset-start values, not fixed class/race payments. The Hotel Karma
+skill route can raise Negotiation to rank 12 for every class; Sorcery is the
+only class-restricted skill. At live rank 12, this offer can display any
+five-unit step from 40 through 100. The fixed-width random helper establishes
+the possible range, not a probability claim about each outcome for a particular
+seed.
+
+**[C]** Section-11 frames `000075..000105` show base 40 and negotiated 55. A
+roll of 3 produces 55, so the screen is source-consistent for a live Negotiation
+rank of at least 3. Section-06 frame `002550` identifies a Joshua Gator Shaman
+presentation, and the ROM starter at `0x72B1A` begins with Negotiation 3; the
+user-supplied `e8_karma_spend` snapshots also show live `+0x8C=3` in their
+separate recording. **[H]** None of those artifacts supplies RAM from the
+Section-11 offer frames, so its exact live skill rank and RNG result remain
+unobserved. The value 55 is valid for the rank-3 starter, but the recording
+alone cannot establish that this was the active profile state at that moment.
 
 During frames around `000070`–`000090`, individual green glyph pixels vary
 between extracted frames while the same page and choices remain. The ROM path

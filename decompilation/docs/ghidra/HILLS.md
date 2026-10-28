@@ -1718,3 +1718,17 @@ Genesis evidence. Normal Electronic Kit acquisition and independent visuals
 remain open; the hill stays partial.
 See the
 [conditional pedestrian and Scene-34 runtime audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md).
+
+## Package-run offer payment by Negotiation preset (partial, 2026-10-28)
+
+The context-zero package offer row at `0xF3ED4` displays base 40 and computes
+`40 + 5 * roll`, where `roll` ranges from zero through the first runner's live
+Negotiation rank at `+0x8C` (scale 1). The 13 ROM starter records have
+different possible negotiated amounts from 40 through 60, according to their
+preset rank; any class can train the skill to 12, allowing 40 through 100.
+Section-11 frames `000075..000105` show 40 and 55, legal when the live rank is
+at least 3. The video has no live RAM/RNG record, so it does not identify the
+exact skill rank or roll. The ROM range and all thirteen profiles are
+recorded in the [package-run origin and delivery audit](visual-audits/package-run-origin-delivery.md).
+The offer screen remains partial while its exact source-text/handler route and
+active-run outcome are unlinked.
