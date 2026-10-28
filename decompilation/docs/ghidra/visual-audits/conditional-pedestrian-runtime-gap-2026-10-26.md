@@ -999,6 +999,45 @@ actor-service behavior. A later write to the role/target or an unclassified
 actor source remains possible; the footage has no live record or input
 telemetry.
 
+### Story-list kind-11 pursuit candidate
+
+The direct `FFE120` census above includes a second population path that shares
+the same kind-11 template but has different movement flags from the A800
+rows. ROM `0x1F57C` dispatches dialogue command values through the table at
+`0x12CCB4`; command `0x59` at `0x12CE18` reaches `0x22452`, and command `0x5A`
+at `0x12CE1C` reaches `0x224B4`. The first command compares `FF018B` with 6,
+then requires `FFFC1E` bit 15 set and bit 16 clear before writing
+`FFE120=0x1E5C4` at `0x2247C`. The second calls `0x21A4E` with `D1=0x96`
+(150 nuyen), then checks the same story bits before writing the list at
+`0x224EC`. Both paths prepare resources with profile `0x121E2C` and return
+descriptor `0x110B22`; its text at `0x1130F9` describes pushing into a club
+where Ito and corporate types are meeting. This is a story-gated encounter
+producer, not evidence of a general street spawner.
+
+**[C]** The fourth row of list `0x1E5C4`, source record `0x1E5FA`, uses
+template `0x1D6988` and position list `0x1E622`. Its initial 16.4 coordinates
+`(0x1280,0x0580)` convert to map pixels `(296,88)`; the next X word is zero,
+so it has no patrol waypoints. Its ordered overrides end with `+0x9E=0x40`
+(and also write `+0x2E=0xC0`). This flag produces different behavior from the
+A800 candidate's final `+0x9E=0x08`: in the normal `FFDF84==0`, `+0x0C==0`
+branch, ROM `0x142AE..0x142BE` tests `+0x9E` bit 6 and redirects to
+`0x1450E` with the active runner pointer from `FFFC04`; the resulting target
+is then advanced by `0x13D0C`. The source list therefore can move this
+pedestrian toward the runner without any patrol points. Empty waypoints alone
+do not imply a stationary actor.
+
+The confirmed producer's dialogue describes a club/Ito encounter, while the
+Section-36 capture is registered to the shared Scene-32/33 Mitsuhama map.
+The list's `0x43B6` consumer has no scene check, but no transition from the
+`0x22452`/`0x224B4` route into Scene 32 or 33 has been traced. The story actor
+starts at `(296,88)`, 102 map pixels west and 145 pixels north of the first
+matched Section-36 pedestrian position `(398,233)`. A pursuit could produce
+that displacement before the first visible sample, but neither the image nor
+the source list proves that it did. **[H]** This is a movement-compatible
+kind-11 story actor candidate, not an identification of the Section-36
+sprite. The actor remains unassigned without frame-linked RAM/input data or a
+source route into Scene 32/33.
+
 ## Regional default pedestrian population and route coverage
 
 The source scene profiles and extracted area manifests distinguish the six
