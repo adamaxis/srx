@@ -98,6 +98,13 @@ hash, emulator/build identity, or capture method, so it is useful for matching
 screens to its own RAM/input trace but is not independently verified Genesis
 footage.
 
+[C] The frames pinpoint the reported fade around 8690: `e_08670.png` shows
+Joshua at the Scene-2 doorway, `e_08690.png` is black while RAM remains
+`FFFBF8/FFFBF9 = 0x02/0x02`, and `e_08740.png` shows Stoker's opening dialogue
+with that pair unchanged. This is the Scene-2/event-2 Stoker interaction from
+collision record 91 at `0x173138` and the field-exit route at `0x1F65A`; Hotel
+services appear without loading a separate motel interior scene.
+
 The input log records Up at frame 8641 followed by A presses at 8751, 8767,
 8807, 8847, 8891, 9001, and 9081. The visible sequence reaches the Stoker
 door, room offer and payment, Hotel status/options, and the Karma child. At
