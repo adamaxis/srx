@@ -39,7 +39,13 @@ ROM-positioned `Empty / Utility Slot` response for eight uninstalled programs.
 That pass found and fixed the empty-slot heading's one-tile left shift from
 `0xE39B7`; the first glyph now starts at `(200,64)` from `$C42C`. Independent
 Genesis comparison is available for the Attack 3 state at frame `004220`; the
-other numeric states and empty-cell message are checked against ROM data.
+other numeric states and empty-cell message are checked against ROM data. The
+2026-10-27 Deck Stats screen search sampled the numbered longplay dumps at
+2 Hz and found no strong match for the source-positioned `MPCP` and
+`Load/IO Spd` labels. Spot-checked Section 15 frames `004200`, `004210`,
+`004220`, `004230`, `004237`, and `004920` show main-grid states, not the
+`0x18B5C` Deck Stats child. A short page between samples could be missed; the
+exact panel comparison remains open. See the [CyberInfo and Deck Stats audit](visual-audits/matrix-cyber-info-run-info.md).
 The Storage screen at ROM `0x18D1A` keeps that parent row, program grid, and
 footer while drawing the source panel and live capacity. View at `0x18F5E`
 walks occupied records from slot 4 down to 0, drawing each ROM filename,

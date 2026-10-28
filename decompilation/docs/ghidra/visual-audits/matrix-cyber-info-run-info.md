@@ -265,6 +265,25 @@ same SHA-256 (`BC1A6275E8CFD91B59896C7C3D05670DA4B1692B1C5A76D7D2A80C9F3E7C1C05`
 I inspected the full 320x224 Release capture beside independent frame `004920`,
 which shows the matching Attack 3 detail view and intact bottom toolbar.
 
+## Deck Stats longplay screen search (2026-10-27)
+
+I inspected independent Section 15 frames `004200`, `004210`, `004220`,
+`004230`, `004237`, and `004920` at native size. They show the main Cyberdeck
+grid: an empty utility slot, Attack 3, and Medic 1. They do not show the
+CyberInfo selector or the Deck Stats child selected from it. The Attack and
+Medic details belong to the `0x18326`/`0x1882E` program-selection path; Deck
+Stats is the separate `0x18AA6` selector and `0x18B5C` child.
+
+I also sampled every fifteenth image (2 Hz) across the 324,461 numbered
+320x224 frames in the early and rest longplay dumps, checking the green
+`MPCP` and `Load/IO Spd` labels at their Deck Stats positions. No sample
+produced a strong match for the full label set. This is a screen-search aid,
+not proof that the screen never appears: a page shown for less than half a
+second between samples, or a differently cropped/compressed view, could be
+missed. The exact Deck Stats panel therefore remains without an independent
+Genesis comparison. The source-positioned `deck-stats.bmp` remains a host QA
+capture, not a substitute for that reference.
+
 ## Verification
 
 - `shadowrun_ghidra_gameplay_script_menu_route` and
