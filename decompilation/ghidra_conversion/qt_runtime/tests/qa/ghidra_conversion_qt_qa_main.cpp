@@ -51602,9 +51602,30 @@ int main(int argc, char** argv) {
                 }
                 field_scene.set_controller_port_byte(0x80U);
                 field_scene.advance_frame();
+                if (field_scene.dialogue_open() ||
+                    field_scene.command_overview_open() ||
+                    field_scene.field_scene_reference_for_dump() !=
+                        kRedmondRegion ||
+                    capture_field_scene() != field_before_taxi) {
+                    std::cerr << "field taxi dump: Start did not exit the "
+                                 "selector cleanly without opening the "
+                                 "A/B cabbie response\n";
+                    return 3;
+                }
+                field_scene.set_controller_port_byte(0U);
+                if (!field_scene.open_taxi_selector_for_dump(
+                        kRedmondRegion)) {
+                    std::cerr << "field taxi dump: selector did not reopen "
+                                 "for the A/B current-region response\n";
+                    return 3;
+                }
+                for (int frame = 0; frame < 12; ++frame) {
+                    field_scene.advance_frame();
+                }
+                tap_qa_controller_button(field_scene, 0x40U); // A: cabbie.
                 if (!field_scene.dialogue_open()) {
-                    std::cerr << "field taxi dump: confirming the current "
-                                 "region did not show the cabbie response\n";
+                    std::cerr << "field taxi dump: A did not open the "
+                                 "already-there cabbie response\n";
                     return 3;
                 }
                 tap_qa_controller_button(field_scene, 0x40U); // Dismiss.
@@ -51624,7 +51645,7 @@ int main(int argc, char** argv) {
 
                 // Follow the independent capture's Puyallup choice through
                 // the fare page, then choose No. ROM 0x1362E increments on
-                // held Left; the 0xD445D row order reaches Puyallup after
+                // the Left edge; the 0xD445D row order reaches Puyallup after
                 // four left inputs from Redmond.
                 if (!field_scene.open_taxi_selector_for_dump(
                         kRedmondRegion)) {

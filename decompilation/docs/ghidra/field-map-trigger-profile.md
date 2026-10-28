@@ -639,8 +639,8 @@ cursor mappings, draws the extracted cab-map/cursor assets, and fades into the
 selected field scene after confirmation. The taxi route QA checks the settled
 screen, clean return on the current region, and a completed Downtown scene-0
 arrival after fade-in. The [field taxi selector input audit](visual-audits/taxi-selector-input-audit-2026-10-28.md)
-traces the held D-pad directions and confirms every current-region/destination
-pair through A, B, and Start. Vid-Phone page/call screens and Matrix script screens
+traces edge-triggered D-pad input, confirms every current-region/destination
+pair through A/B, and covers C and Start branches. Vid-Phone page/call screens and Matrix script screens
 have focused route tests and 320x224 dumps; the phone runtime checks both
 Sharkey passage destinations and item outcomes. Separate ordinary-input QA
 physically reaches the Scene-0 terminal-to-Vid-Phone route, the Scene-21
