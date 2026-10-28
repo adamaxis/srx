@@ -17,9 +17,10 @@ The six raisable attributes are stored at `+0x77..+0x7C`. Race index `+0x9A`
 selects six maximum bytes from the raw ROM table at `0xC22A6` (five races by six
 attributes). The next value is `current + 1`; attribute Karma cost equals that
 next value. There is no lower-bound rejection in the source: a zero attribute
-can rise to one for one Karma. Essence `+0x7D` and Magic display `+0x7E` are
-not upgradeable by this page. The focused Essence detail reads `+0x7E` and
-`+0x8E`, while focused Magic reads its resource value at `+0x7F`.
+can rise to one for one Karma. The grid's Essence value is `+0x7E/+0x8E`, and
+its Magic value is `+0x7F`; neither label is upgradeable. Byte `+0x7D` is not
+drawn as either menu value. The focused Essence detail reads `+0x7E` and
+`+0x8E`, while focused Magic reads `+0x7F`.
 
 Skills are stored at `+0x80..+0x85` and `+0x87..+0x8C`; `+0x86` is skipped.
 Class index `+0x9B` blocks Sorcery `+0x80` when it is 2 or greater (Samurai and

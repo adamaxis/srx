@@ -24,8 +24,10 @@ enum class RunnerAssetOperationResult {
 using WeaponMagazineCapacityLookup =
     std::function<std::optional<std::uint8_t>(std::uint8_t item_code)>;
 
-// ROM 0x0D82A reads these values from the active live record while building
-// the Attributes/Skills view. Drawing text remains a separate concern.
+// The Attributes/Skills model retains the contiguous raw bytes at +0x77..+0x7E.
+// ROM 0x0D82A uses the first six as upgrade candidates and rejects indices
+// 6/7; the visible Essence/Magic values are separately read from +0x7E/+0x8E
+// and +0x7F by the screen's numeric draw/detail paths.
 struct AttributeSkillValues {
     std::uint8_t race_index = 0;
     std::uint8_t species_index = 0;

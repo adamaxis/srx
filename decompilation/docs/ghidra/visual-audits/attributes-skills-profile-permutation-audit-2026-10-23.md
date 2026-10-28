@@ -7,17 +7,31 @@ preview and purchase, cursor/input permutations, and recruited-template bounds
 
 ## ROM-to-screen mapping
 
-ROM `0xD82A` redraws a two-column, ten-row grid. The upper four rows display
-eight record bytes from `+0x77..+0x7E`; the lower six rows display twelve skills
-from `+0x80..+0x85` and `+0x87..+0x8C`. The label order comes from the 20-entry
-`0xC1A2A` table and its descriptions from `0xC1B70`. The currently selected
-runner's Karma is the byte at `+0x8D`.
+ROM `0xD82A` redraws a two-column, ten-row grid. The upper four rows have eight
+labels, but their numeric values are not a contiguous eight-byte slice. ROM
+`0xD1AA` draws the six core attributes from `+0x77..+0x7C`, then draws Essence
+from `+0x7E` and `+0x8E`, and Magic from `+0x7F`. The intervening `+0x7D` byte
+is read by the draw sequence but overwritten in `D1` before the decimal writer
+is called, so it is not drawn as a grid value. The lower six rows display
+twelve skills from `+0x80..+0x85` and `+0x87..+0x8C`. The label order comes from
+the 20-entry `0xC1A2A` table and its descriptions from `0xC1B70`. The currently
+selected runner's Karma is the byte at `+0x8D`.
 
-The first six displayed attributes are Body, Quickness, Strength, Charisma,
-Intelligence, and Willpower. Essence and Magic occupy `+0x7D/+0x7E` and are
-visible in the grid, but `0xD82A` does not offer their upgrade preview. The
-separate `+0x7F` Magic resource/cap participates in magic behavior and is not a
-ninth grid attribute. `+0x86` is skipped between the two six-skill regions.
+The six core labels are Body, Quickness, Strength, Charisma, Intelligence, and
+Willpower. The Essence label displays the live Essence pair `+0x7E/+0x8E`; the
+Magic label displays `+0x7F`, which also participates in Magic behavior. The
+`+0x7D` byte is not a displayed attribute. `0xD82A` does not offer upgrade
+previews for either Essence or Magic; its selected-cell candidate path is
+bounded to the six core attributes. `+0x86` is skipped between the two
+six-skill regions.
+
+The instruction sequence makes the special binding explicit. `0xD1AA..0xD1D8`
+calls the decimal writer for `+0x77..+0x7C`. `0xD1DC` loads `+0x7D`, but
+`0xD1E0` replaces that byte in `D1` before the next call, which writes `+0x7E`;
+`0xD1E8` writes `+0x7F`, and `0xD1FE..0xD20C` separately writes `+0x8E` for
+Essence. The selected-detail path at `0xD5DC` independently maps label index 6
+to `+0x7E/+0x8E` and label index 7 to `+0x7F`. At `0xD82A`, the candidate index
+is rejected at `>= 6` before a race ceiling or upgrade calculation is used.
 
 `0xD01C` makes the command-menu page view-only (`FFF116 < 0`); its A/B action
 returns without mutating Karma or a stat. Hotel Options enters the spending
@@ -29,26 +43,45 @@ next value only after acceptance.
 
 ## Source profiles
 
-The table below records the eight values drawn in the upper grid for all
-selectable Joshua presets and all ten named recruited runner records. Values
-are read from the raw ROM records; the three Joshua records begin at `0x7291A`,
-and the ten recruits begin at `0x72C1A`.
+The table below records all six core values and the separate Essence/Magic
+sources for the upper grid, alongside `+0x7D` for field-layout context. It
+covers all selectable Joshua presets and all ten named recruited runner
+records. Values are read from the raw ROM records; the three Joshua records
+begin at `0x7291A`, and the ten recruits begin at `0x72C1A`.
 
-| Profile / ROM | Race / class | Body, Quickness, Strength, Charisma, Intelligence, Willpower, Essence, Magic | Magic resource `+0x7F` / spell table `+0xA0` |
-|---|---|---|---|
-| Joshua Samurai `0x7291A` | Human / Samurai | 4, 3, 4, 1, 2, 4, 3, 5 | 0 / 0 |
-| Joshua Decker `0x72A1A` | Human / Decker | 2, 5, 2, 2, 4, 3, 4, 5 | 0 / 0 |
-| Joshua Gator Shaman `0x72B1A` | Human / Shaman | 2, 4, 1, 2, 3, 4, 3, 6 | 6 / 4 |
-| Rat Shaman `0x72C1A` | Dwarf / Shaman | 4, 2, 3, 1, 3, 4, 2, 6 | 6 / 0 |
-| Troll Samurai `0x72D1A` | Troll / Samurai | 7, 2, 5, 1, 2, 3, 2, 6 | 0 / 0 |
-| Human Mage `0x72E1A` | Human / Mage | 2, 3, 2, 2, 3, 4, 3, 6 | 6 / 1 |
-| Dwarf Decker `0x72F1A` | Dwarf / Decker | 4, 3, 3, 2, 4, 3, 3, 5 | 0 / 0 |
-| Bear Shaman `0x7301A` | Orc / Shaman | 6, 3, 4, 1, 3, 5, 3, 6 | 6 / 2 |
-| Elf Decker `0x7311A` | Elf / Decker | 3, 5, 3, 3, 6, 4, 5, 3 | 0 / 0 |
-| Human Samurai `0x7321A` | Human / Samurai | 5, 5, 6, 3, 5, 4, 5, 2 | 0 / 0 |
-| Elf Mage `0x7331A` | Elf / Mage | 3, 5, 3, 5, 5, 5, 5, 6 | 6 / 3 |
-| Elf Decker `0x7341A` | Elf / Decker | 1, 7, 3, 5, 6, 6, 6, 2 | 0 / 0 |
-| Human Samurai `0x7351A` | Human / Samurai | 5, 6, 5, 3, 6, 5, 6, 0 | 0 / 0 |
+| Profile / ROM | Race / class | Body, Quickness, Strength, Charisma, Intelligence, Willpower | `+0x7D` (not drawn) | Essence `+0x7E/+0x8E` | Magic `+0x7F` | Spell table `+0xA0` |
+|---|---|---|---:|---:|---:|---:|
+| Joshua Samurai `0x7291A` | Human / Samurai | 4, 3, 4, 1, 2, 4 | 3 | 5.9 | 0 | 0 |
+| Joshua Decker `0x72A1A` | Human / Decker | 2, 5, 2, 2, 4, 3 | 4 | 5.8 | 0 | 0 |
+| Joshua Gator Shaman `0x72B1A` | Human / Shaman | 2, 4, 1, 2, 3, 4 | 3 | 6.0 | 6 | 4 |
+| Rat Shaman `0x72C1A` | Dwarf / Shaman | 4, 2, 3, 1, 3, 4 | 2 | 6.0 | 6 | 0 |
+| Troll Samurai `0x72D1A` | Troll / Samurai | 7, 2, 5, 1, 2, 3 | 2 | 6.0 | 0 | 0 |
+| Human Mage `0x72E1A` | Human / Mage | 2, 3, 2, 2, 3, 4 | 3 | 6.0 | 6 | 1 |
+| Dwarf Decker `0x72F1A` | Dwarf / Decker | 4, 3, 3, 2, 4, 3 | 3 | 5.8 | 0 | 0 |
+| Bear Shaman `0x7301A` | Orc / Shaman | 6, 3, 4, 1, 3, 5 | 3 | 6.0 | 6 | 2 |
+| Elf Decker `0x7311A` | Elf / Decker | 3, 5, 3, 3, 6, 4 | 5 | 3.7 | 0 | 0 |
+| Human Samurai `0x7321A` | Human / Samurai | 5, 5, 6, 3, 5, 4 | 5 | 2.9 | 0 | 0 |
+| Elf Mage `0x7331A` | Elf / Mage | 3, 5, 3, 5, 5, 5 | 5 | 6.0 | 6 | 3 |
+| Elf Decker `0x7341A` | Elf / Decker | 1, 7, 3, 5, 6, 6 | 6 | 2.3 | 0 | 0 |
+| Human Samurai `0x7351A` | Human / Samurai | 5, 6, 5, 3, 6, 5 | 6 | 0.1 | 0 | 0 |
+
+The native grid retains contiguous raw-field metadata for its eight upper
+labels. For label indices 6 and 7 that metadata points at `+0x7D` and `+0x7E`,
+but those cells are non-upgradeable and those bytes are not the visible
+Essence/Magic numbers. The ROM suppresses indices 6 and 7 before an upgrade
+value is read; the presenter and selected-detail conversion use the separate
+live fields above.
+
+### 2026-10-28 source-field correction and supplied-frame cross-check
+
+The supplied `e8_karma_spend` frame `e_09040.png` identifies the Human/Shaman
+runner. Its paired snapshot points at live record `0xFF0100` and reports
+`+0x7D=3`, Essence `+0x7E/+0x8E = 6.0`, and Magic `+0x7F=6`. The frame visibly
+shows Essence `6.0` and Magic `6`, matching the ROM draw path and RAM. An
+earlier reading treated `+0x7D/+0x7E` as Essence/Magic and described this as an
+unexplained mismatch; that mapping was wrong. The archive has no ROM hash or
+emulator/build identity, so this is corroborating paired-frame evidence, not
+an independent Genesis fidelity claim.
 
 The twelve skills displayed in the same profile order are Sorcery, Firearms,
 Pistols, SMGs, Shotguns, Melee Combat, Throwing, Computer, Biotech,
@@ -181,16 +214,17 @@ The video has no controller log or live RAM dump, so acceptance is inferred
 from the changed screen values and their exact source arithmetic.
 
 The Joshua Gator Shaman starter record at `0x72B1A` is Human/Shaman and has
-the same twelve visible skill ranks, but its raw attributes are
-`2, 4, 1, 2, 3, 4, 3, 6`, and its Karma byte `+0x8D` is 0. The frame therefore
-shows a live screen state that differs from the starter values in Body,
-Willpower, Essence, and Karma. The sampled hotel route accounts for a
-source-consistent Willpower change from 5 to 6 and Karma spend from 11 to 5;
-the earlier Willpower increase from the starter's 4 to 5, Body change from 2
-to 3, Essence difference from 3 to 6, and Karma earnings remain unexplained.
-The screenshot has no record/RAM dump to identify when or how those earlier
-differences arose. This is one independent visual example, not proof of every
-profile or upgrade permutation.
+the same twelve visible skill ranks. Its six core values are
+`2, 4, 1, 2, 3, 4`; `+0x7D` is 3 but is not drawn; Essence is `6.0` from
+`+0x7E/+0x8E`; Magic is 6 from `+0x7F`; and starter Karma at `+0x8D` is 0.
+The Section-11 screen shows Body 3, Willpower 6, Essence 6, Magic 6, and Karma
+5. The sampled Hotel sequence accounts for the final Willpower change from 5
+to 6 and Karma spend from 11 to 5. The earlier Willpower increase from 4 to 5,
+Body change from 2 to 3, and Karma earnings remain unexplained. The previous
+claim of an Essence change from 3 to 6 came from mistaking the undrawn `+0x7D`
+byte for Essence. The video has no controller log or live RAM dump to identify
+when or how the earlier Body, Willpower, and Karma changes arose. This is one
+independent visual example, not proof of every profile or upgrade permutation.
 
 - **Code changed:** recruited-record extraction now includes only the ten ROM
   templates before the zero-kind sentinel. The unused two save positions stay

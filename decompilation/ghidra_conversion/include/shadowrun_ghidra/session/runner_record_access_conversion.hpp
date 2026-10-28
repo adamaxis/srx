@@ -11,6 +11,9 @@
 namespace shadowrun::ghidra_conversion {
 
 constexpr std::size_t kRunnerRecordInventorySlots = 8U;
+// Source bytes +0x77..+0x7E are retained as one contiguous array for record
+// compatibility. Only indices 0..5 are core attributes; index 6 is +0x7D
+// (not drawn on the Attributes/Skills grid), and index 7 is Essence tens.
 constexpr std::size_t kRunnerRecordAttributeCount = 8U;
 constexpr std::size_t kRunnerRecordSkillCount = 12U;
 constexpr std::size_t kRunnerRecordAuxiliaryCount = 4U;

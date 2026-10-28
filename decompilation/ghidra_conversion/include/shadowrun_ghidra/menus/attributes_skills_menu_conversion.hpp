@@ -60,10 +60,13 @@ struct AttributeSkillCursor {
 
 struct AttributeSkillCell {
     AttributeSkillSection section = AttributeSkillSection::attribute;
-    // Index into the source C1A2A label table: eight attributes followed by
-    // twelve skills.
+    // Index into the source C1A2A label table: eight upper-grid labels
+    // followed by twelve skills. The final two labels have special display
+    // fields: Essence uses +0x7E/+0x8E and Magic uses +0x7F.
     std::uint8_t label_index = 0;
-    // Index in RunnerRecordFields::attributes or ::skills.
+    // Index in RunnerRecordFields::attributes or ::skills. For upper label
+    // indices 6 and 7, this is raw selector metadata, not the displayed
+    // numeric value; both cells are non-upgradeable.
     std::uint8_t value_index = 0;
     // Source byte offset in the live 0x100-byte runner record.
     std::uint16_t record_offset = 0;
@@ -81,10 +84,12 @@ struct AttributeSkillMenuState {
     AttributeSkillCursor cursor{};
 };
 
-// ROM 0x0D82A lays out the active record as two columns of ten rows. The
-// first four rows read +0x77..+0x7E; the lower six rows read +0x80..+0x85
-// in the left column and +0x87..+0x8C in the right column. Label indices
-// follow the same source order in the C1A2A pointer table.
+// ROM 0x0D82A lays out two columns of ten rows. Its six upgradeable attribute
+// candidates use +0x77..+0x7C; indices 6 and 7 are rejected before preview.
+// The visible upper-grid values use the separate 0x0D1AA/0x0D5DC mapping:
+// six core fields, Essence +0x7E/+0x8E, and Magic +0x7F. The lower six rows
+// use +0x80..+0x85 in the left column and +0x87..+0x8C in the right column.
+// Labels follow the 0xC1A2A pointer table.
 AttributeSkillGrid build_attributes_and_skills_grid(
     const AttributeSkillMenuState& state);
 
