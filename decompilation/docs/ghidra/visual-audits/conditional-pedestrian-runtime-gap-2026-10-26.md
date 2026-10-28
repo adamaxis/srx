@@ -909,6 +909,64 @@ producer unresolved; the capture shows a pedestrian-art match, not a confirmed
 ambient-pedestrian spawn or a source-path match. No runtime behavior changed;
 the population hill remains partial.
 
+### Adjacent-frame kind-11 movement track (2026-10-28)
+
+A focused recheck follows that small sprite through 17 samples from
+`frame_008330.png` to `frame_008362.png`, two capture frames apart. Each 272x224
+gameplay crop was aligned to the shared Scene-32/33 map with grayscale
+`TM_CCORR_NORMED`; the fixed mask removes the sidebar and the earlier target
+area. A masked BGR `TM_CCORR_NORMED` search then compares the left-side actor
+area against the extracted idle/walk frames of ROM kind-11 template
+`0x1D6988`. Map offsets and template matches stay spatially continuous, with
+map scores `0.9377..0.9858` and sprite scores `0.9252..0.9498`:
+
+**[C]** In all 17 samples, one left-side sprite matches the extracted kind-11
+pedestrian walk art. **[I]** The repeated pose progression and smooth projected
+foot path support a single actor moving east across the sequence. The actor
+search uses crop `x=0..109`, `y=25..144` and masks black template pixels; foot
+estimates use each matched frame's visible bottom-center.
+
+| Longplay frame | Map offset / score | Sprite origin | Best walk frame / score | Approximate map foot |
+|---:|---:|---:|---|---:|
+| 008330 | `(368,134)` / 0.9837 | `(22,76)` | dir 2/6, frame 1 / 0.9301 | `(398,233)` |
+| 008332 | `(371,137)` / 0.9858 | `(25,73)` | dir 2/6, frame 1 / 0.9387 | `(405,233)` |
+| 008334 | `(376,143)` / 0.9851 | `(30,67)` | dir 2/6, frame 2 / 0.9252 | `(416,234)` |
+| 008336 | `(378,147)` / 0.9800 | `(34,63)` | dir 2/6, frame 2 / 0.9266 | `(422,234)` |
+| 008338 | `(381,153)` / 0.9805 | `(37,57)` | dir 2/6, frame 3 / 0.9476 | `(426,234)` |
+| 008340 | `(388,161)` / 0.9750 | `(39,49)` | dir 2/6, frame 3 / 0.9498 | `(435,234)` |
+| 008342 | `(396,161)` / 0.9667 | `(36,49)` | dir 2/6, frame 0 / 0.9392 | `(444,234)` |
+| 008344 | `(402,161)` / 0.9605 | `(35,49)` | dir 2/6, frame 0 / 0.9412 | `(449,234)` |
+| 008346 | `(412,161)` / 0.9481 | `(37,49)` | dir 2/6, frame 1 / 0.9460 | `(458,233)` |
+| 008348 | `(420,157)` / 0.9425 | `(36,53)` | dir 2/6, frame 1 / 0.9355 | `(464,233)` |
+| 008350 | `(426,154)` / 0.9385 | `(36,56)` | dir 2/6, frame 1 / 0.9303 | `(470,233)` |
+| 008352 | `(432,146)` / 0.9377 | `(40,64)` | dir 2/6, frame 2 / 0.9401 | `(482,234)` |
+| 008354 | `(432,138)` / 0.9378 | `(48,72)` | dir 2/6, frame 3 / 0.9352 | `(488,234)` |
+| 008356 | `(432,132)` / 0.9381 | `(53,78)` | dir 2/6, frame 3 / 0.9428 | `(493,234)` |
+| 008358 | `(432,122)` / 0.9411 | `(56,86)` | dir 2/6, frame 3 / 0.9338 | `(496,232)` |
+| 008360 | `(432,114)` / 0.9453 | `(53,97)` | dir 2/6, frame 0 / 0.9255 | `(497,235)` |
+| 008362 | `(432,108)` / 0.9484 | `(54,103)` | dir 2/6, frame 0 / 0.9276 | `(498,235)` |
+
+The source projection path at `0x5A62` relates map/camera position to sprite
+placement. These screen-derived foot estimates move about 100 map pixels in
+positive X while staying within Y 232..235. The kind-11 direction-2 and
+direction-6 images are pixel-identical, so the capture does not reveal facing.
+The search switches to a different, lower-scoring sprite at frame `008364`; the
+track stops at `008362` rather than joining that hit to this actor. The older
+six-sample central-mover series remains mixed and is not reused as this track.
+
+This establishes that the independent sequence contains a continuously moving
+sprite whose art matches the ROM pedestrian template. The measured path band
+does not match the Scene-32/33 default guard patrols at map Y 624/1168 or the
+A800 candidate initial coordinates `(80,496)`, `(592,1264)`, and `(928,336)`.
+Those source records and lists are confirmed by `0x1DBBFC` and the Scene-32/33
+A800 rows at `0x1EDE72`, `0x1EDE90`, and `0x1EDEAE`; their position pairs are
+`0x1EDE8A`, `0x1EDEA8`, and `0x1EDEC6`. They do not identify this live sprite.
+**[H]** Another story or computed actor path, or a later action retargeting a
+candidate, remains possible. With no frame-linked RAM or input log, this track
+does not prove its actor record or a general pedestrian spawner. It supersedes
+the earlier per-frame-only conclusion for this one sprite; the population hill
+remains partial.
+
 ## Regional default pedestrian population and route coverage
 
 The source scene profiles and extracted area manifests distinguish the six
