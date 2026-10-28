@@ -165,9 +165,26 @@ an increase of exactly 18 waits, then remains `0x20C6` through frame 8734.
 The images are fully black from frames 8693 through 8732 and first show the
 panel border at 8733. This maps the 18-wait mode-entry service into the
 captured transition, but it does not account for the additional black images
-after the counter reaches 18 waits. [H] Those remaining images may reflect
-later mode-entry work or capture cadence; the unknown capture identity prevents
-assigning them to the US-ROM route without another trace.
+after the counter reaches 18 waits.
+
+[C] The US ROM bytes at `0x1F246` encode this caller order: title-font loading
+(`0x0C0C2`), menu-asset transfer (`0x10984`), resource preparation
+(`0x1F292`), then the text prompt (`0x1F3C4`). The one-page sentinel path in
+`0x1F3C4` renders its title before branching at `0x1F40E` to `0x1F592`; that
+branch sets `D5=0x1E`, calls the `0x0C24` VBlank loop, and only then waits for a
+controller event at `0x0D94`. The loop begins with `0x00BD2`, which increments
+`FFDF88`, then executes `DBF D5`; the inclusive count gives 31 wait calls,
+matching the host's 31-frame closing-page lockout. In the supplied snapshots
+the coordinator bytes `FFDF00..FFE1FF`, including `FFDF88`, remain unchanged
+from frame 8718 through 8734. `FFDF88` resumes at `0x20C8` on frame 8735, after
+the border first appears at 8733; the opening text is complete by 8736. The
+later one-page input wait therefore does not explain the preceding black
+interval.
+
+[H] The remaining black interval may be time spent in the pre-render asset
+path or a property of the supplied capture cadence; no captured countdown
+identifies its cause. The unknown capture identity prevents assigning that
+interval to the US-ROM route or using it to change native timing.
 [H] The capture's missing emulator/build identity limits this to a mapping of
 its supplied RAM and images, not proof that it came from the US ROM.
 
