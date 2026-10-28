@@ -16257,11 +16257,15 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 return;
             }
             if (pocket_secretary_.notebook.no_current_run_wait) {
+                // ROM 0xC0DA advances one 8-pixel row per 0x80 control byte.
+                // The two controls at 0xC5715..0xC5716 place the third line
+                // from 0xC5717 at y=72, leaving y=64 blank.
+                constexpr int kNotebookNoRunLineY[] = {48, 56, 72};
                 for (std::size_t line = 0;
                      line < field_menu_text_.notebook_no_run_lines.size();
                      ++line) {
                     draw_command_overview_text(
-                        painter, 48, 48 + static_cast<int>(line) * 8,
+                        painter, 48, kNotebookNoRunLineY[line],
                         field_menu_text_.notebook_no_run_lines[line]);
                 }
                 return;

@@ -315,8 +315,9 @@ do
     end
     local last_line = raw_json_value(
         "pocket_secretary.notebook.no_run.option.last_line")
-    check(last_line == "\\n     Get a job!!",
-          "Current Run text retains its blank line before Get a job [C]")
+    -- ROM 0xC5715..0xC5716 row advances live in the native page layout.
+    check(last_line == "     Get a job!!",
+          "Current Run text keeps the third line content [C]")
     local cyberdeck_last_line = raw_json_value(
         "pocket_secretary.cyberdeck.option.look_for_deck")
     -- ROM 0xE43F1..0xE43F2 row advances are represented by native layout.
