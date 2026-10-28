@@ -968,8 +968,10 @@ its estimated map X moves from 398 to 498 while Y stays 232..235. This is
 separate from the kind-3 central runner track. Its route does not match the
 known default or alarm guard routes. The decoded default, alarm, and dynamic
 activity records for both shared-map scenes use guard art; their known kind-11
-A800 candidates have no patrol route. No RAM/input log identifies the live
-actor or producer. This is path-level visual evidence of a moving
+A800 candidates have no patrol route and their ordered overrides leave final
+`+0x9E=0x08`, so the ROM actor service returns before its pedestrian-flee
+branch. No RAM/input log identifies the live actor or producer. This is
+path-level visual evidence of a moving
 pedestrian-art actor, not proof of a general spawner. See
 the [Section 36 visual audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md#section-36-mitsuhama-map-and-moving-sprite-review).
 A separate Scene-2 event-1 route now reaches Scene 26 through collision record

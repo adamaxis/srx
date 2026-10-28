@@ -978,16 +978,25 @@ dynamic-activity, and conditional-candidate lists narrows the path question:
 | Default scene list | `0x1DBBE8`, positions at `0x1DBBFC` | Two kind-5 corp guards share the rectangle `(64,624) -> (64,1168) -> (928,1168) -> (928,624) -> (64,624)`. |
 | Scene alarm effect | Scene profiles `0x1DBA94` and `0x1DC130` select list `0x1DBB10` | Four kind-5 corp-guard rows use position lists `0x1DBB34`, `0x1DBB4A`, and `0x1DBB5C`. The latter two cover map bands Y 80..160 and 720..1056; `0x1DBB34` is the default guard rectangle. The associated source checks are at `0x1DFC4` and `0x1E04A`. |
 | Dynamic activity selections | Selection cells `0x1D7304` and `0x1D731C`; lists `0x1D6EF8`, `0x1D6EF4`, and `0x1E20A` | The Scene-32/33 decoded rows are kind-5 `guard1` or corp guards; none uses the kind-11 pedestrian template. |
-| Conditional A800 list | `0x1EDE72`, `0x1EDE90`, and `0x1EDEAE` | Three kind-11 candidates start at `(80,496)`, `(592,1264)`, and `(928,336)`. Their position lists end after the initial pair. The fresh random branch selects choice 1 or 2; the third table row is not selected by that draw. |
+| Conditional A800 list | `0x1EDE72`, `0x1EDE90`, and `0x1EDEAE` | Three kind-11 candidates start at `(80,496)`, `(592,1264)`, and `(928,336)`. Their position lists end after the initial pair. Each ordered override sequence ends with `+0x9E=0x08`. The fresh random branch selects choice 1 or 2; the third table row is not selected by that draw. |
 
 The default and alarm records therefore do not match the observed Y band
 232..235, and the dynamic activity rows use guard art. Among these decoded
-lists, the A800 rows are the only kind-11 records. Their zero-X route
-terminators make the movement service select the start coordinate again;
-without another source action changing a live target, that target is already
-reached and no walk continuation is installed. This table census does not
-identify the moving sprite. It leaves an indirect/computed actor path or a
-later target change open; the footage still lacks live record and input
+lists, the A800 rows are the only kind-11 records. ROM `0x44BC` applies each
+override pair as a byte write at `0x4608..0x4610` when the record's `+8`
+marker is 2. For these candidates the first `+0x9E=0x20` write is later
+overwritten by `+0x9E=0x08`. This is distinct from the rendered kind-11 sprite
+identity. The normal pedestrian flee branch
+at `0x13904` first returns when `+0x9E` bit 3 is set (`0x1393C..0x13946`);
+only then does it test pedestrian bit 5 and nonzero `FFDF84` at
+`0x1394A..0x1395A`. That latter branch calls `0x13E8C/0x13E9E` to set the flee
+target before `0x145A2` moves toward it. The A800 records' final role byte
+takes the earlier return, so they cannot flee through this source path. Their
+zero-X route terminators also select the initial coordinate again, which is
+already reached when no other source action changes the target. Thus none of
+the decoded A800 rows explains this moving track through its ordinary route or
+actor-service behavior. A later write to the role/target or an unclassified
+actor source remains possible; the footage has no live record or input
 telemetry.
 
 ## Regional default pedestrian population and route coverage
