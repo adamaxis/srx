@@ -966,9 +966,11 @@ shared Scene-32/33 Mitsuhama map and show multiple sprites. A focused track
 matches one sprite to the kind-11 pedestrian art through frames 8330..8362:
 its estimated map X moves from 398 to 498 while Y stays 232..235. This is
 separate from the kind-3 central runner track. Its route does not match the
-known default guard patrols or A800 initial coordinates, and no RAM/input log
-identifies the live actor or producer. It is path-level visual evidence of a
-moving pedestrian-art actor, not proof of a general spawner. See
+known default or alarm guard routes. The decoded default, alarm, and dynamic
+activity records for both shared-map scenes use guard art; their known kind-11
+A800 candidates have no patrol route. No RAM/input log identifies the live
+actor or producer. This is path-level visual evidence of a moving
+pedestrian-art actor, not proof of a general spawner. See
 the [Section 36 visual audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md#section-36-mitsuhama-map-and-moving-sprite-review).
 A separate Scene-2 event-1 route now reaches Scene 26 through collision record
 93 (`0x17314C`) and event-table row 1 (`0x172CDD`). Its Debug/Release QA

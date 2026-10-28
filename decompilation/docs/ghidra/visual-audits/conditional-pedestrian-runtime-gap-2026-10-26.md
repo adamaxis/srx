@@ -967,6 +967,29 @@ does not prove its actor record or a general pedestrian spawner. It supersedes
 the earlier per-frame-only conclusion for this one sprite; the population hill
 remains partial.
 
+### Scene-32/33 actor-source inventory
+
+The map asset is shared by Scenes 32 and 33, and the decoded source rows use
+the same actor tables in both cases. A ROM check of the known default, alarm,
+dynamic-activity, and conditional-candidate lists narrows the path question:
+
+| Source path | ROM data | Relevant actor and position evidence |
+|---|---|---|
+| Default scene list | `0x1DBBE8`, positions at `0x1DBBFC` | Two kind-5 corp guards share the rectangle `(64,624) -> (64,1168) -> (928,1168) -> (928,624) -> (64,624)`. |
+| Scene alarm effect | Scene profiles `0x1DBA94` and `0x1DC130` select list `0x1DBB10` | Four kind-5 corp-guard rows use position lists `0x1DBB34`, `0x1DBB4A`, and `0x1DBB5C`. The latter two cover map bands Y 80..160 and 720..1056; `0x1DBB34` is the default guard rectangle. The associated source checks are at `0x1DFC4` and `0x1E04A`. |
+| Dynamic activity selections | Selection cells `0x1D7304` and `0x1D731C`; lists `0x1D6EF8`, `0x1D6EF4`, and `0x1E20A` | The Scene-32/33 decoded rows are kind-5 `guard1` or corp guards; none uses the kind-11 pedestrian template. |
+| Conditional A800 list | `0x1EDE72`, `0x1EDE90`, and `0x1EDEAE` | Three kind-11 candidates start at `(80,496)`, `(592,1264)`, and `(928,336)`. Their position lists end after the initial pair. The fresh random branch selects choice 1 or 2; the third table row is not selected by that draw. |
+
+The default and alarm records therefore do not match the observed Y band
+232..235, and the dynamic activity rows use guard art. Among these decoded
+lists, the A800 rows are the only kind-11 records. Their zero-X route
+terminators make the movement service select the start coordinate again;
+without another source action changing a live target, that target is already
+reached and no walk continuation is installed. This table census does not
+identify the moving sprite. It leaves an indirect/computed actor path or a
+later target change open; the footage still lacks live record and input
+telemetry.
+
 ## Regional default pedestrian population and route coverage
 
 The source scene profiles and extracted area manifests distinguish the six
