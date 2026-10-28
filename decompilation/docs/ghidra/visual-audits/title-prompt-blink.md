@@ -1,6 +1,6 @@
 # Title Push Start Blink Audit
 
-Date: 2026-10-06
+Date: 2026-10-06 (full-sequence review updated 2026-10-28)
 Scope: `TITLE-01` only. The Start-to-options transition remains a separate
 open goal (`TITLE-02`).
 
@@ -68,6 +68,32 @@ active and retains the separate copyright rows.
    rebuilds each full frame, leaving no prompt glyphs behind. Copyright rows
    and the rest of the title remain drawn. No stale controls or graphics are
    layered under a replacement UI.
+
+## Full independent blink sequence (2026-10-28)
+
+[C] I scanned all 1,680 numbered 320x224 images in Section 01. The check uses
+the prompt region `(130,160)..(209,175)` and counts pixels whose RGB channels
+all exceed 200; more than 50 such pixels classifies a fully bright prompt.
+The visible examples contain 111..143 white pixels, while ordinary blank
+samples contain 0..1. The first above-threshold prompt frame is `000502`; the
+recording has no VBlank index to align that number to the ROM counter.
+
+The first visible interval is frames `000502..000518` (17 images), followed by
+five blank images `000519..000523`. From `000524` through `001611`, the capture
+contains exactly 34 complete 32-image cycles: 27 visible images and five
+blank images per cycle. This is the expected sampling of the ROM's initial
+34-update visible run and recurring 54-visible/10-blank schedule when the
+30-fps dump samples roughly every second 60-Hz update. It is cadence
+corroboration, not an exact VBlank-phase measurement.
+
+The last visible cycle is interrupted by the title exit: the prompt remains
+bright through `001636`, the title then darkens, and frames `001643..001669`
+are fully black. The Start Options shell appears at `001670..001671`, followed
+by its heading, choices, and selector at `001672..001679`. The bright-pixel
+threshold drops during the fade, so those tail frames are not counted as a
+blink's blank phase. The recording has no controller log; see the separate
+[Start-to-Options transition audit](title-start-transition.md) for the ROM
+transition path and the limits on mapping its exact input edge.
 
 ## Verification
 
