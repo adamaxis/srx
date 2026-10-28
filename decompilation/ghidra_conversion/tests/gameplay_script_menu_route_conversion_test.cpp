@@ -3116,6 +3116,64 @@ int main() {
               has_deck_stats_ink(160, 144, 128),
           "Deck Stats text occupies ROM model and value-row positions",
           failures);
+    const auto matches_matrix_glyph_sequence =
+        [&deck_stats_actual, &map_font](const int x, const int y,
+                                        const std::string& text) {
+            for (std::size_t index = 0U; index < text.size(); ++index) {
+                const auto code =
+                    static_cast<unsigned char>(text[index]);
+                if (code < 0x20U || code > 0x7EU) return false;
+                const auto glyph = static_cast<int>(code - 0x20U);
+                const auto source_x = (glyph % 16) * 8;
+                const auto source_y = (glyph / 16) * 8;
+                for (int dy = 0; dy < 8; ++dy) {
+                    for (int dx = 0; dx < 8; ++dx) {
+                        const auto actual_color = deck_stats_actual.pixelColor(
+                            x + static_cast<int>(index) * 8 + dx, y + dy);
+                        const auto source_color = map_font.pixelColor(
+                            source_x + dx, source_y + dy);
+                        if (actual_color.rgb() != source_color.rgb()) {
+                            std::cerr << "Deck Stats glyph mismatch: text='"
+                                      << text << "' glyph=" << index
+                                      << " char='" << text[index]
+                                      << "' at ("
+                                      << x + static_cast<int>(index) * 8
+                                      << ',' << y << ") pixel=" << dx << ','
+                                      << dy << " actual="
+                                      << actual_color.name(QColor::HexRgb)
+                                             .toStdString()
+                                      << " source="
+                                      << source_color.name(QColor::HexRgb)
+                                             .toStdString()
+                                      << "\n";
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        };
+    bool deck_stats_numbers_match = deck_stats_painted &&
+        matches_matrix_glyph_sequence(184, 24, "Cyber Shack") &&
+        matches_matrix_glyph_sequence(184, 32, "PCD-500") &&
+        matches_matrix_glyph_sequence(288, 72, "Mp") &&
+        matches_matrix_glyph_sequence(288, 80, "Mp") &&
+        matches_matrix_glyph_sequence(288, 88, "Mp");
+    const std::array<int, 10> deck_stats_value_rows{
+        48, 56, 72, 80, 88, 104, 120, 128, 136, 144};
+    const std::array<std::string, 10> expected_deck_stats_numbers{
+        "6", "3", "128", "1,000", "2", "2", "2", "2", "2", "5"};
+    for (std::size_t index = 0U;
+         deck_stats_numbers_match &&
+         index < expected_deck_stats_numbers.size(); ++index) {
+        const auto& text = expected_deck_stats_numbers[index];
+        const auto x = 280 - static_cast<int>(text.size() - 1U) * 8;
+        deck_stats_numbers_match = matches_matrix_glyph_sequence(
+            x, deck_stats_value_rows[index], text);
+    }
+    check(deck_stats_numbers_match,
+          "Deck Stats shows each source record value at its ROM right edge with grouped thousands",
+          failures);
     const std::filesystem::path deck_stats_artifact_dir(
         SHADOWRUN_MATRIX_CYBER_INFO_ARTIFACT_DIR);
     std::filesystem::create_directories(deck_stats_artifact_dir);

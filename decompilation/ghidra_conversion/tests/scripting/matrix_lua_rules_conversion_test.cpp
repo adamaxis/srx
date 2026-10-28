@@ -1212,11 +1212,12 @@ do
         pad.A, pad.B, pad.C, pad.START,
     }
     local record = {
-        model = 3, mpcp = 4, hardening = 3, memory = 15, storage = 80,
-        load_io = 10, response = 5, persona = { [0] = 2, [1] = 3,
-                                               [2] = 4, [3] = 1 },
+        model = 3, mpcp = 6, hardening = 3, memory = 128, storage = 1000,
+        load_io = 10, response = 5, persona = { [0] = 2, [1] = 7,
+                                                [2] = 4, [3] = 1 },
         ratings = {}, active = {},
     }
+    local expected_values = { 6, 3, 128, 1000, 10, 5, 2, 7, 4, 1 }
     local host = {
         deck_record = function() return record end,
         deck_slots = function() return {} end,
@@ -1264,10 +1265,10 @@ do
                     eq(stats.manufacturer, "Fuchi",
                        label .. " Deck Stats manufacturer")
                     eq(stats.model, "Cyber-7", label .. " Deck Stats model")
-                    eq(stats.values[1], 4, label .. " Deck Stats MPCP")
-                    eq(stats.values[5], 10, label .. " Deck Stats Load/IO")
-                    eq(stats.values[10], 1,
-                       label .. " Deck Stats final Persona rating")
+                    for index, value in ipairs(expected_values) do
+                        eq(stats.values[index], value,
+                           label .. " Deck Stats live field " .. index)
+                    end
                 else
                     local run_info = result.result.matrix_run_info
                     eq(run_info.kind, "no_run",
@@ -1285,6 +1286,32 @@ do
             else
                 eq(result, nil, label .. " unrelated or empty input stays")
             end
+        end
+    end
+
+    -- 0x1AB100 is the default hardware label; 0x1AB118.. contains the five
+    -- indexed maker/model pairs. The numeric values remain live record fields.
+    local models = {
+        { -1, "Allegiance", "Alpha" },
+        { 0, "Cyber Shack", "PCD-500" },
+        { 1, "Fuchi", "Cyber-5" },
+        { 2, "SEGA", "CTY-360" },
+        { 3, "Fuchi", "Cyber-7" },
+        { 4, "Fairlight", "Excalibur" },
+    }
+    for _, model in ipairs(models) do
+        record.model = model[1]
+        local screen = CyberInfo.new({
+            deck_parent_col = 0, deck_parent_row = 3,
+        })
+        local result = CyberInfo.input(screen, pad.A, context)
+        local label = ("Deck Stats model %d"):format(model[1])
+        local stats = result.result.matrix_deck_stats
+        eq(stats.manufacturer, model[2], label .. " ROM manufacturer")
+        eq(stats.model, model[3], label .. " ROM model")
+        for index, value in ipairs(expected_values) do
+            eq(stats.values[index], value,
+               label .. " live numeric field " .. index)
         end
     end
 end

@@ -21,6 +21,10 @@ Release route CTests write matching 320x224 `actual.bmp`, `no-run.bmp`, and
 maker/model at `$C1AE` and grouped values at `$C346`, `$C3C6`, `$C4C6`, `$C546`,
 `$C5C6`, `$C6C6`, `$C7C6`, `$C846`, `$C8C6`, and `$C946`; its source-position
 test writes `deck-stats.bmp`. These checks validate the traced text layers.
+The 2026-10-28 glyph audit verifies all ten live numeric cells and all six
+maker/model rows; the presenter clears the dotted label cells that ROM
+`0xC216` replaces, while preserving the `Mp` suffix. Debug and Release pass.
+The Deck Stats panel still lacks an independent Genesis comparison.
 The CyberInfo selector also now follows the exact padded stream at `0xE3886`:
 title at `(192,48)`, bracketed separator at `(176,56)`, choices at `(192,72)`
 and `(192,88)`, and cursor base `$C4AC`. The full CyberInfo frame is captured

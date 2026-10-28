@@ -624,16 +624,32 @@ bool paint_matrix_deck_stats_text(
     draw_text(184, 32, stats.model);
 
     // The ROM text stream at 0xE3902 starts with a 12-glyph header rule and
-    // then writes the complete dotted labels. Decimal glyphs replace the
-    // final dot cells from the right edge of each value field.
+    // then writes the complete dotted labels. Calls at 0x18BA2..0x18C16
+    // replace whole name-table cells with decimal glyphs, so omit any label
+    // glyph in those cells before drawing the transparent host font.
     draw_text(160, 40, std::string("  [") + std::string(12U, '\\'));
     constexpr std::array<int, 10> label_y{
         48, 56, 72, 80, 88, 104, 120, 128, 136, 144};
     for (std::size_t index = 0; index < stats.labels.size(); ++index) {
-        draw_text(160, label_y[index], stats.labels[index]);
         const auto value = grouped_decimal(stats.values[index]);
-        draw_text(280 - static_cast<int>(value.size() - 1U) * 8,
-                  label_y[index], value);
+        const auto value_x =
+            280 - static_cast<int>(value.size() - 1U) * 8;
+        const auto value_right =
+            value_x + static_cast<int>(value.size()) * 8;
+        std::string visible_label;
+        visible_label.reserve(stats.labels[index].size());
+        for (std::size_t character = 0U;
+             character < stats.labels[index].size(); ++character) {
+            const auto character_x =
+                160 + static_cast<int>(character) * 8;
+            if (character_x >= value_x && character_x < value_right) {
+                visible_label.push_back(' ');
+                continue;
+            }
+            visible_label.push_back(stats.labels[index][character]);
+        }
+        draw_text(160, label_y[index], visible_label);
+        draw_text(value_x, label_y[index], value);
     }
 
     painter.restore();

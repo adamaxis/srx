@@ -117,6 +117,29 @@ label row, and the numeric origins. This verifies the source-position text
 layer; it does not establish full CyberInfo panel art or independent Genesis
 pixel fidelity.
 
+### Deck Stats numeric-cell overwrite audit (2026-10-28)
+
+The exact glyph check exposed a host compositing defect. ROM `0x18B76..0x18C26`
+reads the active record at `FFFBBE` and calls `0xC216` for each field at its
+right-edge plane address. That writer places a complete decimal glyph cell in
+the name table, replacing the dotted template cell; it does not blend the
+number over the old dot. The Qt font has transparent background pixels, so
+drawing the number over the whole dotted label left some dots visible inside
+the number glyphs. The presenter now leaves those label cell positions blank
+before drawing each value and retains the source `Mp` suffix at its original
+cells.
+
+The Lua route test sends all ten numeric fields directly from the active
+record (`FFFBBE..FFFBC9`) and sweeps all six maker/model cases: the default
+signed model `-1` and IDs `0..4` from `0x1AB100`/`0x1AB118`. Its test record
+uses MPCP 6, Hardening 3, Memory 128, Storage 1000, Load/IO 10, Response 5,
+and Persona ratings 2/7/4/1. The Qt route test compares every pixel of each
+rendered 8x8 maker, model, and numeric glyph against the extracted font; it
+checks comma grouping and all ten ROM value origins. Debug and Release route
+tests pass. This closes the host text-cell overlap, while the exact Deck Stats
+panel still has no matching independent Genesis frame; the 320x224 BMP is a
+host QA artifact, not a visual golden.
+
 ## Cyberdeck chrome palette and layout
 
 ROM `0x181F8` copies the common palette at `0xE2E3A` into the palette buffer,
