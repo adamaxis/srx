@@ -1811,13 +1811,14 @@ longplay sequence. Matching the left 272x224 gameplay viewport against
 `mode-5.bmp` with grayscale normalized cross-correlation locates the map at
 the offsets below. A masked BGR search in the screen corridor implied by the
 ROM route's X=1208 coordinate matches the third, right-hand figure to the
-extracted kind-11 walk art:
+named `pedestrian_k0b_none00` walk assets. The Scene-5 default-list record at
+`0x67A00` points to the matching ROM kind-11 template `0x1D6988`:
 
 | Capture frame | Map offset | Map score | Matched template | Sprite upper-left | Sprite score | Approx. map X |
 |---:|---:|---:|---|---:|---:|---:|
-| 2125 | `(968,782)` | 0.93075 | kind 11, walk dir 4/frame 3 | `(235,102)` | 0.8891 | 1211 |
-| 2130 | `(990,782)` | 0.92441 | kind 11, walk dir 4/frame 3 | `(213,102)` | 0.8902 | 1211 |
-| 2135 | `(1010,782)` | 0.92494 | kind 11, walk dir 4/frame 0 | `(194,101)` | 0.8766 | 1212 |
+| 2125 | `(968,782)` | 0.93075 | dir 4/frame 3 | `(235,102)` | 0.9486 | 1211 |
+| 2130 | `(990,782)` | 0.92441 | dir 4/frame 3 | `(213,102)` | 0.9498 | 1211 |
+| 2135 | `(1010,782)` | 0.92494 | dir 4/frame 0 | `(194,101)` | 0.9406 | 1212 |
 
 The approximate map X uses the established eight-pixel foot-center offset.
 Across these ten 30-fps capture intervals, camera X advances 42 pixels while
