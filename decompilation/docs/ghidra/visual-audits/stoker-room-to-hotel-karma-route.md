@@ -185,6 +185,24 @@ supplied capture and the native profile audit. The external frame shows Karma
 not identify its ROM or emulator build. It supports the displayed Body
 preview/cost for this preset, not exact whole-frame fidelity.
 
+### Karma grid and held-confirm visual sequence
+
+**[C]** Pixel hashes of the supplied PNGs show one unchanged full-frame state
+from frames 9040 through 9079, a prompt transition at frame 9080, then one
+unchanged prompt state from frames 9080 through 9160. The Left press logged at
+9041 leaves the upper-left Body selection unchanged. The A edge opens the
+default-Yes prompt; its continuing hold produces no visible cursor, bezel, or
+text blink during the 81-frame prompt interval.
+
+The ROM path matches those states: the grid loop at `0xD31E` dispatches A to
+`0xD426`, then `0xD53C` draws the prompt once and clears `FFF0DC` to select
+Yes. Its `0xD570` loop waits for VBlank, latches and samples input, moves the
+cursor only for Up/Down edges, and checks a fresh A edge at `0xD5B4`. The held
+A no longer has a high-byte press edge after the grid action opened the prompt,
+so Body and Karma remain unchanged. This is a visual and input-path match for
+the captured hold, not a verified US-ROM timing reference: the package has no
+ROM or emulator identity.
+
 The supplied Stoker, manager, room-offer, paid-message, Hotel Options, and
 Karma frames resemble their corresponding native QA screens at the page and
 layout level. Their differing runner state and unrecorded source identity
