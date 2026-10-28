@@ -40,12 +40,14 @@ That pass found and fixed the empty-slot heading's one-tile left shift from
 `0xE39B7`; the first glyph now starts at `(200,64)` from `$C42C`. Independent
 Genesis comparison is available for the Attack 3 state at frame `004220`; the
 other numeric states and empty-cell message are checked against ROM data. The
-2026-10-27 Deck Stats screen search sampled the numbered longplay dumps at
-2 Hz and found no strong match for the source-positioned `MPCP` and
-`Load/IO Spd` labels. Spot-checked Section 15 frames `004200`, `004210`,
-`004220`, `004230`, `004237`, and `004920` show main-grid states, not the
-`0x18B5C` Deck Stats child. A short page between samples could be missed; the
-exact panel comparison remains open. See the [CyberInfo and Deck Stats audit](visual-audits/matrix-cyber-info-run-info.md).
+The 2026-10-28 Deck Stats search checked all 324,461 numbered longplay frames
+at 30 fps against the ROM-positioned `MPCP` and `Load/IO Spd` text rows. The
+strongest combined mask score is 0.2757 on a Stoker dialogue page; Section 15's
+highest score is 0.2076 on the `Jack Out` detail page. A known Cyberdeck frame
+scores 0.0747 and the host Deck Stats capture scores 1.0000 as a positive
+control. No frame strongly matches both rows, so the exact `0x18B5C` Deck Stats
+page still lacks an independent Genesis comparison. See the
+[CyberInfo and Deck Stats audit](visual-audits/matrix-cyber-info-run-info.md).
 The same audit traces `0x18AA6` input priority through `0xC376`: Up before
 Down, A/B/C to the selected child, and Start back to the selected program.
 ROM entry `0x182F4` clears the shared `FFF10A` palette timer; `0x196F2`

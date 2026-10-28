@@ -345,7 +345,7 @@ button mode, child entry and return, and Start-only deck exit. This exercises
 the parent input state machine; it does not provide a Genesis visual golden or
 close the larger Matrix hill.
 
-## Deck Stats longplay screen search (2026-10-27)
+## Deck Stats longplay screen search (2026-10-28)
 
 I inspected independent Section 15 frames `004200`, `004210`, `004220`,
 `004230`, `004237`, and `004920` at native size. They show the main Cyberdeck
@@ -354,15 +354,23 @@ CyberInfo selector or the Deck Stats child selected from it. The Attack and
 Medic details belong to the `0x18326`/`0x1882E` program-selection path; Deck
 Stats is the separate `0x18AA6` selector and `0x18B5C` child.
 
-I also sampled every fifteenth image (2 Hz) across the 324,461 numbered
-320x224 frames in the early and rest longplay dumps, checking the green
-`MPCP` and `Load/IO Spd` labels at their Deck Stats positions. No sample
-produced a strong match for the full label set. This is a screen-search aid,
-not proof that the screen never appears: a page shown for less than half a
-second between samples, or a differently cropped/compressed view, could be
-missed. The exact Deck Stats panel therefore remains without an independent
-Genesis comparison. The source-positioned `deck-stats.bmp` remains a host QA
-capture, not a substitute for that reference.
+I then searched all 324,461 numbered 320x224 frames across the early and rest
+longplay dumps at 30 fps. The search compared green-pixel masks for the
+`MPCP` row at `(160,48)` through `(272,56)` and the `Load/IO Spd` prefix at
+`(160,88)` through `(248,96)`, using the ROM-positioned host capture only as a
+text-shape search template. The combined mask has 301 expected green pixels.
+The host capture scores 1.0000 against itself; the known Cyberdeck frame
+`004220` scores 0.0747.
+
+The strongest video candidate scores 0.2757 in Section 03 frames
+`002189..002218`. I inspected frame `002189` at native size: it is Stoker
+dialogue, and the match is unrelated green text. Section 15's highest
+candidate is frame `005390` at 0.2076; it shows the `Jack Out` program detail,
+not Deck Stats. No frame strongly matches both source-positioned label rows.
+This full-rate search closes the earlier sampling gap, but its template score
+is a screening result, not a visual golden. The exact Deck Stats panel remains
+without an independent Genesis comparison; `deck-stats.bmp` remains a host QA
+capture and cannot substitute for that reference.
 
 ## Verification
 
