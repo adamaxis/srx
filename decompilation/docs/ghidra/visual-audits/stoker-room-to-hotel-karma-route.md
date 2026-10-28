@@ -236,6 +236,36 @@ or capture method, so the 40 black images remain an observation and do not
 establish the original game's exact displayed-frame timing. See the detailed
 [doorway transition trace](motel-doorway-scene-entry.md#supplemental-recording-reviewed-2026-10-27).
 
+### Hotel Options idle cursor and bezel in the supplied capture (2026-10-28)
+
+**[C]** The supplied `e8_karma_spend` input log has no input between the
+four-frame A hold at 8891 and the next logged A hold at 9001. Across the fifty
+320x224 captures `e_08950.png` through `e_08999.png`, pixel hashes show one
+unchanged options-panel state: `Hotel Options`, the selected `Karma Screen`
+arrow and label, and `Check Out` remain identical. The full frames have 33
+distinct images because the only changed pixels are in the lower bezel; all
+397 pixels that differ from frame 8950 lie within `(44,202)..(226,214)`.
+There are 36 changed adjacent-frame steps and 13 repeats in this sample.
+RAM snapshots keep `FFF0DC=0` (Karma Screen selected) and `FFDD22=0` (no
+controller state) throughout frames 8950..8999. `FFDF88` advances from
+`0x219B` to `0x21CC`, an observed 49-count increase across the 49 intervals.
+Frame 9000 already shows the transition and the RAM input word is `0x4040`,
+so it is excluded from the idle-screen pixel comparison; the external input
+log places the A hold at 9001.
+
+The ROM path accounts for the separation. `0xCF38` prepares the Hotel Options
+display; `0xCF6C` clears `FFF0DC`, `0xCF7E` draws the cursor through `0xC376`,
+and the loop at `0xCF82` waits for VBlank. `0xCF94` then calls `0xE660`,
+which selects a random display-grid pattern and writes it through `0x1232`.
+The `0xCF98..0xCFCE` direction checks redraw the cursor only after directional
+input, while A dispatches the selected option at `0xCFD2`. The stable label
+and arrow with changes confined to the bezel agree with these distinct paths.
+
+**[H]** This is a capture-to-source consistency check, not a Genesis timing
+reference: the archive has no verified ROM or emulator identity. The RAM
+counter and image cadence do not establish the source VBlank rate, and the
+recording does not provide frame-synchronized sound evidence.
+
 ## Independent Section-11 hotel and Karma sequence (2026-10-28)
 
 The same longplay folder used by the package-route audit contains a later
