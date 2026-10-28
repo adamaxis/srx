@@ -30,8 +30,9 @@ struct EquipmentCombatInput {
     std::uint8_t selected_inventory_slot = 0;
     // Record +0x90: installed cyberware bits.
     std::uint16_t cyberware_flags = 0;
-    // Record +0x11 bit 5, consumed by ROM 0x55E62 before its item-0x27
-    // phase scan.
+    // Record +0x11 bit 5 for the shared 0x55E62 combat-roll helper. The
+    // command-menu bar path calls that helper with D5.w but does not use its
+    // result for the displayed Defense accumulator in D6.w.
     std::uint8_t action_flags = 0;
     // Global +0xFFF0D0. Values below two use the selector-action gate;
     // values two and above enable the special equipped-state path.

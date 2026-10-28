@@ -105,6 +105,14 @@ are internal Qt captures; independent Genesis evidence is still open. See the
 
 ## Outcome
 
+The October 28 source-register audit corrected one earlier bar assumption:
+the `0x12CEE` call to `0x55E62` modifies `D5.w`, then the menu overwrites
+`D5.w` for its cyberware-bit scan; the displayed Defense value stays in
+`D6.w`. Command-menu Defense therefore ignores flag bit 5 and item `0x27`,
+even though the shared helper changes a live combat roll. The typed bar model
+and its source oracle now follow that split. See the [combat-bar register
+audit](equipment-combat-bar-profile-permutation-audit-2026-10-23.md#source-correction-defense-action-modifier-does-not-reach-the-menu-bar-2026-10-28).
+
 - **Code changed:** Lua `menu.route`, `screens.command`, and `screens.posture`
   own command navigation and posture focus. C++ passes the live spell action
   inputs into the special combat-bar calculation and paints the D4EA0 spell

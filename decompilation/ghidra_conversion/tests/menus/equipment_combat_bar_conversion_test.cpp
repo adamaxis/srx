@@ -415,7 +415,8 @@ int main() {
     input.selected_inventory_slot = 2U;
     input.active_item_code = 2U;
     const auto flagged_defense = compute_equipment_combat_bars(input);
-    if (flagged_defense.defense_value != 3U) {
+    if (flagged_defense.defense_value != 5U ||
+        apply_equipment_defense_action_modifier(input, 5U) != 3U) {
         return 7;
     }
 
@@ -442,8 +443,9 @@ int main() {
         }
     }
 
-    // The first item-0x27 slot is used, while +0x11 bit 5 takes priority
-    // over every item phase and subtracts two directly.
+    // 0x55E62's helper still adjusts a live combat roll in D5. The command
+    // bar caller keeps its Defense value in D6 and discards the helper's D5
+    // result before the cyberware scan, so neither modifier changes the bar.
     defense_source_case.cyberware_flags = 0U;
     defense_source_case.inventory_item_codes[0] = 0x27U;
     defense_source_case.inventory_phase_bytes[0] = 8U;
@@ -451,12 +453,16 @@ int main() {
     defense_source_case.inventory_phase_bytes[1] = 2U;
     auto item_phase_defense =
         compute_equipment_combat_bars(defense_source_case);
-    if (item_phase_defense.defense_value != 10U) {
+    if (item_phase_defense.defense_value != 14U ||
+        apply_equipment_defense_action_modifier(defense_source_case, 14U) !=
+            10U) {
         return 33;
     }
     defense_source_case.action_flags = 0x20U;
     item_phase_defense = compute_equipment_combat_bars(defense_source_case);
-    if (item_phase_defense.defense_value != 12U) {
+    if (item_phase_defense.defense_value != 14U ||
+        apply_equipment_defense_action_modifier(defense_source_case, 14U) !=
+            12U) {
         return 34;
     }
 

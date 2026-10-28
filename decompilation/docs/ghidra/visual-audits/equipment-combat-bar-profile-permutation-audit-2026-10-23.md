@@ -3,14 +3,17 @@
 Date: 2026-10-23  
 ROM: US Genesis Shadowrun  
 Scope: command-overview Atk/Def bars across runner presets, posture, action
-selection, spell force, equipment phases, flags, and cyberware
+selection, spell force, equipment phases, and cyberware; separate combat-roll
+flag/item modifiers
 
 ## ROM-to-screen path
 
 ROM `0x12CEE` updates the command-overview Attack and Defense strips. Its
 ordinary path calls `0x55ED6` for the command average, `0x55F20` for posture,
-`0x12C74` for action-specific skill selection, and `0x55E62` for the Defense
-action modifier. The live runner fields are exposed to the calculation through
+and `0x12C74` for action-specific skill selection. It also calls `0x55E62`
+from its Defense branch, but a register trace shows that this call does not
+change the displayed Defense value; see the source correction below. The live
+runner fields are exposed to the calculation through
 `EquipmentCombatInput`; `FieldSceneRuntime::refresh_command_overview_combat_bars`
 projects the active typed runner record and the presenter draws the selected
 named `attack-bar-N.bmp` and `defense-bar-N.bmp` assets at (144,104) and
@@ -44,11 +47,44 @@ selected spell's effect result.
 
 For Defense, a zero command average returns after Attack and does not write a
 Defense strip. Otherwise the remaining posture share is added to Body using
-the source low-byte operation. `+0x11` bit 5 subtracts two and takes priority
-over the first item-code-`0x27` phase reduction. The cyberware scan checks
-bits 9, 10, and 11 in order and stops at the first set bit, adding 1, 2, or 3;
-no set bit adds nothing. A zero value selects bar row 0; other values select
-value minus one.
+the source low-byte operation. The visible value then receives the first-set
+cyberware bonus from bits 9, 10, or 11, adding 1, 2, or 3; no set bit adds
+nothing. A zero value selects bar row 0; other values select value minus one.
+Although the code calls `0x55E62`, its flag/item reduction is not part of this
+display calculation.
+
+## Source correction: defense action modifier does not reach the menu bar (2026-10-28)
+
+**[C]** The two calls from the posture-menu controller at `0x11ACE` and
+`0x11ADA` pass `D0=0` for Attack and `D0=-1` for Defense. On the Defense pass,
+`0x12E36..0x12E3E` writes the posture-adjusted command value to `D6.w` and adds
+Body to `D6`'s low byte. The call at `0x12E42` enters `0x55E62`, whose source
+instructions at `0x55E62..0x55E86` subtract from `D5.w`: flag `+0x11` bit 5
+subtracts 2, otherwise the first inventory item `0x27` subtracts half its
+phase. The menu caller then replaces `D5` with bit index 9 at `0x12E54` and
+uses it only for the cyberware scan. The displayed row pointer at
+`0x12E7A..0x12E88` is computed from `D6`; there is no transfer from the
+modified `D5` value. Thus the shared helper call is a no-op for the menu's
+visible Defense strip.
+
+The same helper is live in combat resolution: `0x55CC8` calls it after placing
+the defense roll in `D5`, and `0x55CCC` branches on that result. This keeps the
+combat modifier distinct from the command-menu display rule.
+
+The typed menu-bar calculation previously applied the flag/item reduction to
+its Defense value. It now follows the ROM register flow and applies only the
+low-byte Body addition and first cyberware bonus. Its focused checks still
+exercise `0x55E62` separately as a combat-roll helper, while asserting that
+flag bit 5 and item `0x27` do not alter the command-menu bar. The independent
+Section-06 bar capture shows an unmodified Gator Shaman state and cannot
+distinguish these branches; an independent Genesis command-menu frame with
+flag bit 5 or item `0x27` remains unavailable.
+
+The three Joshua presets and ten recruited profiles at ROM `0x7291A` and
+`0x72C1A` all have `+0x11` bit 5 clear and none starts with inventory item
+`0x27`. Therefore the existing source-profile/posture screenshots corroborate
+their preset-derived bars but cannot cover this modifier branch. The new helper
+test separates the synthetic combat-roll cases from the menu-bar expectation.
 
 The negative `+0x56` display path also changes the title/detail source.
 `0x111E8` indexes D4EA0 spell text instead of D4540 item text, and `0x12EAE`
@@ -93,11 +129,12 @@ and [Magic spell audit](magic-spell-action-permutation-audit-2026-10-23.md)
 record the full preset skills, caster tables, and race attribute ceilings at
 `0xC22A6`.
 
-The focused flag/equipment checks also cover all eight combinations of
-cyberware bits 9 through 11, flag-bit-5 priority, first item-code-`0x27`
-selection, low-byte Body wrap, zero-average early return, and distinct lower
-mode action gates. These targeted cases do not enumerate every possible
-equipment change or every byte value accepted by all action callers.
+The focused bar checks cover all eight combinations of cyberware bits 9
+through 11, low-byte Body wrap, zero-average early return, and distinct lower
+mode action gates. Separate helper checks cover flag-bit-5 priority and the
+first item-code-`0x27` combat-roll reduction. They do not alter the menu-bar
+value. These targeted cases do not enumerate every possible equipment change
+or every byte value accepted by all action callers.
 
 The new independent `0x12C74` merge sweep checks all 256 action-code bytes,
 every four-skill tuple with legal ranks 0 through 12 plus rank 13, the first
@@ -406,8 +443,9 @@ they do not show Mana Storm or Forces 1, 2, or 4. The hill stays partial.
   the [Wire-Masters audit](wire-masters-mode7-cyberware.md).
 - **ROM behavior checked:** 13 full source profiles across five postures;
   all five caster tables, all 21 listed spells, 52 force states, and all five
-  postures; cyberware priority, defense flags/items, byte wrap, zero average,
-  spell phase, totem selection, source labels, and force display. The separate
+  postures; cyberware priority, distinct combat-roll flag/item modifiers,
+  byte wrap, zero average, spell phase, totem selection, source labels, and
+  force display. The separate
   action-skill matrix checks 147,517,440 combinations over every action byte,
   legal skill-rank tuple, the first-invalid-rank boundary, and merge values.
 - **Debug verification:** `shadowrun_ghidra_equipment_combat_bar`,

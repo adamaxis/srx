@@ -100,7 +100,8 @@ std::uint16_t apply_defense_action_modifier_impl(
     const EquipmentCombatInput& input,
     std::uint16_t value) {
     // ROM 0x55E62: the entity flag wins over the item-0x27 scan. Both are
-    // word subtractions, and the source returns immediately after a match.
+    // word subtractions on the live D5 combat roll, and the source returns
+    // immediately after a match. The 0x12CEE menu caller does not consume D5.
     if ((input.action_flags & 0x20U) != 0U) {
         return static_cast<std::uint16_t>(value - 2U);
     }
@@ -275,8 +276,10 @@ EquipmentCombatBarResult compute_equipment_combat_bars(
     // than widening this source operation to an unrestricted host word sum.
     defense_value = static_cast<std::uint8_t>(
         defense_value + input.attributes[0]);
-    defense_value = apply_equipment_defense_action_modifier(
-        input, defense_value);
+    // ROM 0x12CEE calls 0x55E62 here, but that helper changes D5.w while the
+    // displayed Defense accumulator remains in D6.w. The caller replaces D5
+    // with the cyberware bit index at 0x12E54, so the helper's D5 result never
+    // reaches this bar. The same helper has a live D5 roll in combat callers.
     result.defense_value = static_cast<std::uint16_t>(
         defense_value + cyberware_defense_bonus(input.cyberware_flags));
     result.defense_bar = defense_bar_index(result.defense_value);

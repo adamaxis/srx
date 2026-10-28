@@ -59,9 +59,11 @@ counter pixels. The combat page checks the three weapon-code skill bands from
 `0x12C74`: codes 1..7 compare skill bytes `+0x81/+0x82`, 8..10 compare
 `+0x81/+0x83`, and 11..12 compare `+0x81/+0x84`. At Full Defense the test
 independently calculates the selected skill value (minimum one) and checks the
-named Atk/Def bars. The Defense expectation continues to include the source
-attribute average, Body, item `0x27` phase or flag priority, and the first
-applicable cyberware bit.
+named Atk/Def bars. The Defense expectation includes the source command average, Body, and the
+first applicable cyberware bit. Although `0x12CEE` calls `0x55E62`, the helper
+changes `D5.w` and the caller overwrites `D5` before rendering the row; item
+`0x27` and flag bit 5 do not change the displayed bar. They remain combat-roll
+modifiers.
 
 ## Screens and evidence limits
 

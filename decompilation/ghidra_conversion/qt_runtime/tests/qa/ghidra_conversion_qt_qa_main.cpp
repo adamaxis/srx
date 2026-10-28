@@ -56016,26 +56016,13 @@ int main(int argc, char** argv) {
                         selected_skill == 0U ? 1U : selected_skill);
 
                     // At Full Defense, 0x12E3E adds Body with byte wrap.
-                    // 0x55E62 gives flag bit 5 priority over the first
-                    // item-0x27 phase; 0x12E52 accepts only the first set
-                    // cyberware bit in the 9..11 scan.
+                    // The 0x12CEE call to 0x55E62 changes D5, but the visible
+                    // Defense value is in D6; 0x12E54 replaces D5 with the
+                    // cyberware bit index. Only the first set bit in 9..11
+                    // contributes to the displayed value.
                     auto defense = static_cast<std::uint8_t>(
                         average + runner.attributes[0U]);
                     std::uint16_t defense_word = defense;
-                    if ((runner.flags & 0x20U) != 0U) {
-                        defense_word = static_cast<std::uint16_t>(
-                            defense_word - 2U);
-                    } else {
-                        for (std::size_t slot = 0U;
-                             slot < runner.inventory_item_codes.size(); ++slot) {
-                            if (runner.inventory_item_codes[slot] == 0x27U) {
-                                defense_word = static_cast<std::uint16_t>(
-                                    defense_word -
-                                    (runner.inventory_phase_bytes[slot] >> 1U));
-                                break;
-                            }
-                        }
-                    }
                     for (unsigned bit = 9U; bit <= 11U; ++bit) {
                         if ((runner.cyberware_flags &
                              (std::uint16_t{1U} << bit)) != 0U) {

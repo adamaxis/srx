@@ -27,13 +27,15 @@ page summary reads the active `+0x76` row. The tested ROM values are:
 | `0x31` | 6 | 6 / 4 |
 | `0x32` | 7 | 8 / 6 |
 
-The Off/Def display uses a separate source path. `0x12CEE` reaches the
-`0x55E62` action modifier; that path checks action flag bit 5 or the first
-inventory item-code-`0x27` phase. It does not read equipped armor `+0x76`.
-The combat hit path at `0x55948` does use the target's `+0x76` to choose the
-D4D50 primary or secondary modifier, then applies the action defense modifier.
-The Qt audit checks the calculated Atk/Def values and named bar pixels after
-each armor action, so the display remains tied to its actual inputs.
+The Off/Def display uses a separate source path and does not read equipped
+armor `+0x76`. `0x12CEE` calls `0x55E62`, but its Defense accumulator is in
+`D6.w`; the helper changes `D5.w`, which the caller replaces with a cyberware
+bit index before selecting the displayed row. The flag/item reduction therefore
+does not reach the menu bar. The combat hit path at `0x55948` does use the
+target's `+0x76` to choose the D4D50 primary or secondary modifier, then applies
+the action defense modifier to a live combat roll in `D5.w`. The Qt armor audit
+checks the calculated Atk/Def values and named bar pixels after each armor
+action, so the display remains tied to its actual inputs.
 
 One other numeric transition occurs before the menu opens: the field refresh
 path `0x39F2 -> 0x38FA -> 0x36FC` clamps an active weapon's `+0x4E` rounds to
