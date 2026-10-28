@@ -913,6 +913,14 @@ add_shadowrun_qt_qa_case(
     --field-employee-recruitment-target-pedestrian-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-employee-recruitment-target-pedestrian-qa")
 
+# Exercise the other normal initializer-11 target through its Scene-1 doorway
+# and into the Scene-26 A800 candidate list.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_employee_recruitment_ares_pedestrian_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-employee-recruitment-ares-pedestrian-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-employee-recruitment-ares-pedestrian-qa")
+
 # Seed the ROM's completed Harlequin/Ito/map gates, walk into record 67 with
 # ordinary Up input, accept the Yes prompt, and verify the three travel pages
 # before the route enters scene 54.

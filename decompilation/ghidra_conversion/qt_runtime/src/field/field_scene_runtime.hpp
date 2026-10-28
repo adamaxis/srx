@@ -454,6 +454,10 @@ public:
     bool world_effect_player_spawn_pending_for_dump() const noexcept {
         return has_pending_world_effect_player_spawn();
     }
+    bool world_activity_transfer_actor_template_present_for_dump()
+        const noexcept {
+        return field_world_activity_transfer_actor_template_.has_value();
+    }
     std::optional<std::string>
     world_effect_player_spawn_profile_for_dump() const {
         if (!field_world_effect_player_spawn_actor_template_.has_value()) {
