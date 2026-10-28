@@ -14,9 +14,8 @@ Primary source: `input/shadowrun_genesis_us.bin`, entry `0x54B34`.
 - Every path calls alarm-off `0x1E09A`, sets field security `FFE170 = FF`,
   and sets maglocks `FFE17F = FF`.
 - It redraws the node grid, renders text stream `0x166A44` at VDP address
-  `$C518`, then prints the value 3 at `$C722`. The `0xC24` wait uses `D5=$3C`
-  (60 frames); the loop updates the digit 3, 2, 1, 0, waiting 60 frames on
-  each value.
+  `$C518`, then prints the value 3 at `$C722`. The `0xC24` wait uses `D5=$3C`;
+  its `DBF` loop performs 61 VBlank waits for each digit 3, 2, 1, and 0.
 - It then calls fade `0x18776` and Matrix logout `0x26A00`.
 
 The logout routine uploads five 8x8 patterns from ROM `0x15BE02` to the
@@ -60,7 +59,7 @@ raw records remain a boundary.
 
 The live debug-menu route enters system 0, follows its first link to CPU, runs
 Crash System through the shared action gate, and advances the countdown once
-per VBlank. After the final 60-frame zero, it runs the five-step fade at two
+per VBlank. After the final 61-frame zero, it runs the five-step fade at two
 VBlanks per step, then paints the ROM's line-art sequence during the 54-frame
 display handoff before logging out. Lua publishes the phase and line bounds;
 Qt presents the native layout and the extracted center-tile pixels. The panel
@@ -68,7 +67,7 @@ rebuild clears the previous actions and selector before drawing the shutdown
 screen, and the fade overlay also covers the special countdown renderer.
 
 Debug and Release `shadowrun_ghidra_gameplay_script_menu_route` CTests check
-that each value remains visible for 60 frames and save:
+that each value remains visible for 61 frames and save:
 
 - `matrix-node-action-route-qa/shutdown-countdown-3.bmp`
 - `matrix-node-action-route-qa/shutdown-countdown-2.bmp`

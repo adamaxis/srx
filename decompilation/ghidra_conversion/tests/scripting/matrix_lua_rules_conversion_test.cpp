@@ -588,9 +588,9 @@ eq(active_spu_state.alert, MX.ACTIVE,
     "ROM random-alert event runs after the world-entry handoff")
 eq(active_spu_state.world_effect_gate_negative, false,
     "0x54A8E raises FFF0A0 without changing the FFDF84 gate")
-eq(alert_screen.message_delay_frames, 25,
-    "ROM alert notice starts its 25-VBlank wait after entry")
-for _ = 1, 25 do MatrixNodeAction.input(alert_screen, 0, alert_context) end
+eq(alert_screen.message_delay_frames, 26,
+    "ROM alert notice starts its 26-VBlank wait after entry")
+for _ = 1, 26 do MatrixNodeAction.input(alert_screen, 0, alert_context) end
 MatrixNodeAction.input(alert_screen, E.Pad.A, alert_context)
 for _ = 1, 14 do MatrixNodeAction.input(alert_screen, 0, alert_context) end
 eq(Session.traversal_view(active_spu_state).world_effect_phase, 4,
@@ -892,7 +892,7 @@ eq(crash_field.security_off, true, "Crash System disables security")
 eq(crash_field.maglocks_off, true, "Crash System disengages maglocks")
 eq(alarm_actors[1].flags9e, 0x06, "alarm-off arms actors whose +0x9E bit 1 was set")
 eq(alarm_actors[2].flags9e, 0x04, "alarm-off preserves unrelated actor flags")
-eq(crash_result.step, 60, "Crash System waits one source second per count")
+eq(crash_result.step, 61, "Crash System wait uses D5=$3C plus the DBF pass")
 eq(crash_result.stop_sfx, 0x30, "Crash System stops the source alarm effect")
 local partial_run = { state = -1, objective = 0, fc28 = 1, fc1c = 0 }
 Actions.crash_system(partial_run, {})
