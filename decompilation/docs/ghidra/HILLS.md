@@ -746,9 +746,9 @@ partial.
 The shared Hotel Options parent loop now has a separate input permutation
 audit. ROM `0xCF98..0xCFFA` moves one row for Up/Down, dispatches A before the
 C/action service, ignores B and has no Start exit; the new Debug/Release CTest
-checks all 32 Up/Down/A/B/C masks from both rows and the handler order under
-combined input. Independent Section-11 frame `002580` and the host
-`field-hotel-qa/options/actual.bmp` agree on the title, option order, and
+checks all 256 Up/Down/Left/Right/A/B/C/Start masks from both rows and the
+handler order under combined input. Independent Section-11 frame `002580` and
+the host `field-hotel-qa/options/actual.bmp` agree on the title, option order, and
 default Karma selection. The longplay does not show the other input paths, so
 the Hotel hill remains partial. See the
 [Hotel Options input permutation audit](visual-audits/hotel-options-input-permutation-audit-2026-10-28.md).

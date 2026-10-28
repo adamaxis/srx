@@ -23,7 +23,10 @@ HotelOptionsInputFrame hotel_input_from_events(const std::uint16_t events) {
         (events & 0x0200U) != 0U,
         (events & 0x4000U) != 0U,
         (events & 0x1000U) != 0U,
-        (events & 0x2000U) != 0U};
+        (events & 0x2000U) != 0U,
+        (events & 0x0400U) != 0U,
+        (events & 0x0800U) != 0U,
+        (events & 0x8000U) != 0U};
 }
 
 } // namespace

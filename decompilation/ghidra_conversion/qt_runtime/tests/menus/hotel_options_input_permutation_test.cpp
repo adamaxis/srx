@@ -13,19 +13,24 @@ using namespace shadowrun::ghidra_conversion;
 bool check_masks() {
     // ROM 0xCF98..0xCFC6 checks Up before Down, then bit 0x0E (A).
     // The B bit (0x0C) is not checked in this loop; C (0x0D) is checked only
-    // afterward at 0xCFEA as the mode-action event.
+    // afterward at 0xCFEA as the mode-action event. Left (0x0A), Right
+    // (0x0B), and Start (0x0F) have no branch in this menu loop.
     for (std::uint8_t initial = 0U; initial < 2U; ++initial) {
-        for (std::uint8_t mask = 0U; mask < 32U; ++mask) {
+        for (std::uint16_t mask = 0U; mask < 256U; ++mask) {
             const bool up = (mask & 0x01U) != 0U;
             const bool down = (mask & 0x02U) != 0U;
-            const bool a = (mask & 0x04U) != 0U;
-            const bool b = (mask & 0x08U) != 0U;
-            const bool c = (mask & 0x10U) != 0U;
+            const bool left = (mask & 0x04U) != 0U;
+            const bool right = (mask & 0x08U) != 0U;
+            const bool a = (mask & 0x10U) != 0U;
+            const bool b = (mask & 0x20U) != 0U;
+            const bool c = (mask & 0x40U) != 0U;
+            const bool start = (mask & 0x80U) != 0U;
 
             HotelOptionsMenuState state{};
             state.selection = static_cast<HotelOption>(initial);
             const auto transition = apply_hotel_options_input(
-                state, HotelOptionsInputFrame{up, down, a, b, c});
+                state, HotelOptionsInputFrame{up, down, a, b, c,
+                                              left, right, start});
 
             const auto expected_selection = (up || down)
                 ? static_cast<HotelOption>(1U - initial)
@@ -36,7 +41,9 @@ bool check_masks() {
                 std::cerr << "Hotel Options mask failed: row="
                           << static_cast<unsigned>(initial)
                           << " mask=" << static_cast<unsigned>(mask)
-                          << " B=" << b << '\n';
+                          << " B=" << b << " Left=" << left
+                          << " Right=" << right << " Start=" << start
+                          << '\n';
                 return false;
             }
         }
@@ -49,9 +56,9 @@ bool check_dispatch_order() {
     // action service. Finally Up+Down+A+C moves once (Up has source priority)
     // and A dispatches the newly selected Karma row before C can run.
     std::deque<HotelOptionsInputFrame> frames{
-        {false, false, false, true, false},
+        {false, false, false, true, false, true, true, true},
         {false, true, false, false, true},
-        {true, true, true, true, true},
+        {true, true, true, true, true, true, true, true},
     };
     std::vector<HotelOption> rendered_cursors;
     std::size_t action_calls = 0U;

@@ -19,6 +19,9 @@ struct HotelOptionsInputFrame {
     bool confirm = false; // source controller bit 0x0E
     bool alternate_confirm = false; // source controller bit 0x0C
     bool action = false;  // source controller bit 0x0D
+    bool move_left = false; // source controller bit 0x0A; unused by this menu
+    bool move_right = false; // source controller bit 0x0B; unused by this menu
+    bool start = false; // source controller bit 0x0F; unused by this menu
 };
 
 enum class HotelMenuHandlerOutcome {

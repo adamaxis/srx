@@ -24,10 +24,11 @@ exactly one cursor step occurs.
 
 ## Exhaustive transition coverage
 
-`shadowrun_ghidra_hotel_options_input_permutation` checks all 32 combinations
-of Up, Down, A, B, and C from both cursor rows (64 row/mask states), including
-simultaneous direction and confirmation/action edges. It also runs the menu
-loop through B-only, Down+C, and Up+Down+A+C samples. This confirms B is
+`shadowrun_ghidra_hotel_options_input_permutation` checks all 256 combinations
+of Up, Down, Left, Right, A, B, C, and Start from both cursor rows (512
+row/mask states), including simultaneous direction and confirmation/action
+edges. It also runs the menu loop through B/Left/Right/Start-only, Down+C, and
+Up+Down+A+B+C+Left+Right+Start samples. This confirms B/Left/Right/Start are
 ignored, C invokes the mode-action callback after movement, and A dispatches
 the row selected by that same sample before C can run. The existing
 `shadowrun_ghidra_conversion_qt_field_hotel_qa` supplies the full-screen route

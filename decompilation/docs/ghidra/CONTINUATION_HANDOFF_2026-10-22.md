@@ -1071,8 +1071,9 @@ ROM/emulator identity remains unknown.
 
 The shared Hotel Options loop was audited next. ROM `0xCF98..0xCFFA` processes
 Up/Down, A, then C/action; Up wins over Down, A dispatches before C, B and
-Start have no branch. A new CTest checks all 32 Up/Down/A/B/C combinations from
-both cursor rows and a B-only / Down+C / Up+Down+A+C menu sequence. The
+Start have no branch. A new CTest checks all 256 Up/Down/Left/Right/A/B/C/Start
+combinations from both cursor rows and a B/Left/Right/Start-only, Down+C, and
+Up+Down+A+B+C+Left+Right+Start menu sequence (512 row/mask states total). The
 independent Section-11 frame `002580` and host `field-hotel-qa/options/actual.bmp`
 agree on the title, option order, and default Karma row; the other actions are
 source-backed tests, not independent visual claims. The Hotel hill remains
