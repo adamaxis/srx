@@ -1544,19 +1544,45 @@ while this particular footage is not a route-level pedestrian match.
 **[C]** The independent longplay frame sequence at
 `video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_09_source_1020-1320/`
 shows a small walking sprite separate from the screen-centered runner at
-frames 1800 through 1818. Each field crop matches the ROM-derived Scene-2 map
-(`mode-2.bmp`) at correlations `0.974..0.981`. Masked matching against the
-extracted `pedestrian_k0b_none00` walk frames places the small sprite's
-upper-left X from `66` to `42`; the best matches are walk direction 2, frames
-1, 3, and 0, with scores `0.739..0.758` in the compressed capture.
+frames 1800 through 1818. A fresh registration of the left 272x224 viewport
+against ROM-derived Scene-2 `mode-2.bmp`, using grayscale normalized
+cross-correlation (`TM_CCORR_NORMED`), places it at the offsets below. Masked
+matching against the extracted `pedestrian_k0b_none00` walk frames yields the
+corresponding sprite positions and scores:
+
+| Capture frame | Map offset | Map score | Matched walk frame | Sprite upper-left | Sprite score |
+|---:|---:|---:|---|---:|---:|
+| 1800 | `(646,440)` | 0.96908 | dir 2/6, frame 1 | `(66,77)` | 0.75577 |
+| 1803 | `(646,452)` | 0.96921 | dir 2/6, frame 1 | `(63,65)` | 0.74898 |
+| 1806 | `(646,464)` | 0.96804 | dir 2/6, frame 1 | `(60,53)` | 0.73883 |
+| 1809 | `(646,476)` | 0.96663 | dir 2/6, frame 3 | `(57,41)` | 0.74813 |
+| 1812 | `(646,488)` | 0.96756 | dir 2/6, frame 3 | `(53,29)` | 0.75643 |
+| 1815 | `(646,500)` | 0.96285 | dir 2/6, frame 0 | `(49,18)` | 0.75103 |
+| 1818 | `(648,512)` | 0.96590 | dir 2/6, frame 0 | `(42,6)` | 0.75267 |
+
+The extracted direction-2 and direction-6 images for frames 0, 1, and 3 are
+pixel-identical, so the sprite match does not determine its facing direction.
 
 **[C]** The corresponding registered foot positions move from approximately
 map `(720,543)` at frame 1800 to `(698,544)` at frame 1818. The raw US-ROM
 bytes at `0x172D1C` identify source-order 0 as template `0x1D6988` and point to
 position data `0x172D58`. That data begins with spawn `(0x3480,0x2200)` =
 `(840,544)` map pixels, followed by waypoint `(0x2800,0x2200)` = `(640,544)`.
-The captured sprite moves west along that horizontal source segment, with its
-registered Y remaining within one map pixel of the ROM route.
+The map offset's Y rises 72 pixels across the sequence while the matched
+sprite's screen Y falls by 71 pixels; after the extracted frame's foot offset,
+its registered Y remains within about one map pixel of the ROM route. Its map
+X moves west along the source segment. The larger central figure is spatially
+separate; its actor identity is not inferred here.
+
+The source connection is the ordinary default-list path: `0x44BC` seeds the
+actor's live and target positions from the route's initial pair and retains
+the route pointer; `0x142AE` loads the next `+0xE0` pair for an actor with the
+route flag when its current target is reached; `0x145A2` prepares movement
+toward that target, and `0x5A62` projects world coordinates against the camera
+for drawing. The route pointer and coordinate pairs above were checked in the
+US ROM; the exported disassembly is a control-flow cross-check. The video
+sampling supports the position and art match, but does not reveal the live
+actor record or source movement/animation counters.
 
 **[H]** This is a strong route-and-art candidate for the ordinary Scene-2
 default pedestrian, likely source order 0; the video has no actor-record or
