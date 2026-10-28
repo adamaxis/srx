@@ -199,6 +199,27 @@ both the source initializer and canonical handler ID.
   alive flag. The separate actor lifecycle may affect other state; trace that
   before adding an alive requirement to Lua.
 
+### Section-10 longplay candidate (2026-10-28)
+
+**[C]** In `video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_10_source_1320-1620/`,
+frames `frame_000000.png`, `frame_000015.png`, and `frame_000030.png` register against the ROM-derived
+`mode-2.bmp` at normalized-correlation scores `0.95417`, `0.96548`, and
+`0.95993`, with map offsets `(842,1088)`, `(902,1088)`, and `(960,1086)`. A
+small separate sprite changes position relative to the advancing player
+across those field frames. Frames `frame_000060.png` and `frame_000090.png` show the page
+“Thanks for the escort, chummer. Here're the creds for a run well done. I'll
+be sure to tell all my friends about your services.” Frame `frame_000120.png` is black;
+`frame_000150.png` returns to the field map.
+
+**[H]** This is a bodyguard-client return candidate: ROM selector table
+`0xF3E56` points type 1 to handler `0x1EF2C`; its code loads the actor list
+`0x1D657C` at `0x1EF7E`, calls the shared follow-actor spawn at `0x1E4AC`
+from `0x1EF84`, and clears high effect slots at `0x1EFE4` on the destination
+path. The visual text and moving actor fit that behavior, but the video has no
+RAM or controller log to identify the active run tuple, handler state, or live
+actor record. Treat it as appearance and sequence evidence only; it does not
+settle the client's source identity or the safe-arrival condition.
+
 ## Package delivery
 
 - The selected origin tuple arms delivery. A later match to the selected
