@@ -191,6 +191,17 @@ target_compile_definitions(shadowrun_gameplay_script_runtime_test PRIVATE
 add_test(NAME shadowrun_gameplay_script_runtime_qa
          COMMAND shadowrun_gameplay_script_runtime_test)
 
+find_program(SHADOWRUN_LUA_EXECUTABLE NAMES lua5.4 lua54 lua)
+if(SHADOWRUN_LUA_EXECUTABLE)
+    add_test(NAME shadowrun_gameplay_actor_ai_rules_qa
+        COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"
+            "${CMAKE_SOURCE_DIR}/../.."
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/ai_think_tests.lua")
+    set_tests_properties(shadowrun_gameplay_actor_ai_rules_qa PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../..")
+endif()
+
 add_executable(shadowrun_vid_phone_script_test
     tests/scripting/vid_phone_script_test.cpp)
 target_link_libraries(shadowrun_vid_phone_script_test
@@ -2342,6 +2353,11 @@ foreach(SHADOWRUN_GHIDRA_ENTITY_TEST IN ITEMS
     target_link_libraries(
         shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test
         PRIVATE shadowrun_ghidra_conversion_modules)
+    if(SHADOWRUN_GHIDRA_ENTITY_TEST STREQUAL "movement_metric")
+        target_compile_definitions(
+            shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test
+            PRIVATE SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_SOURCE_DIR}/../assets")
+    endif()
     add_test(NAME shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}
              COMMAND shadowrun_ghidra_${SHADOWRUN_GHIDRA_ENTITY_TEST}_test)
 endforeach()

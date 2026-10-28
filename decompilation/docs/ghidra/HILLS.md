@@ -1667,6 +1667,22 @@ other; they are internal runtime captures, not a Genesis visual match. Other
 default-list routes, collision behavior, and general NPC targeting remain
 open.
 
+## Default route heading selector (partial, 2026-10-28)
+
+ROM `0x145A2` installs `0xB574` for route movement; `0xB5BE` and the `0xC062`
+walk-pose path at `0xB6CC` truncate headings regardless of `+0x10.THINK`.
+Default actors start with `+0x10=0x05`, so route provenance must also select
+that rule. Scene `0x23` corp guard order 1, list `0x1DC380`, route
+`0x1DC3D6`, measures its first segment as heading `0xF000` at `0x15D3C`;
+truncation selects direction 7 while the former rounded selector selected 0.
+Lua now routes actors with waypoint data through B574's selector. The new
+`shadowrun_gameplay_actor_ai_rules_qa` checks the movement step in Debug and
+Release, and `shadowrun_ghidra_movement_metric` recomputes every edge from the
+extracted default-route manifests. It asserts 379 edges, 19 rounded-versus-
+truncated differences, and all ten distinct affected headings. The larger
+actor hill remains partial: this test does not cover a complete Scene-35 route,
+all waypoint collision branches, or an independent Genesis visual.
+
 ## Scene-34 record-90 Electronics no-skill branch (partial, 2026-10-27)
 
 The physical Scene-3/30/34 route now covers ordinary New Game Samurai input at

@@ -414,11 +414,13 @@ local function walk_direction_from_heading(heading)
 end
 
 local function movement_octant_selector(context)
-    -- Enemy B574 movement and the B6BA-B6DE C062 walk selector truncate the
-    -- heading regardless of +0x10 bit 1 (THINK). The controller/player BABC
-    -- path keeps its existing flag-gated selector when the actor is not
-    -- dynamic.
+    -- 0x142AE selects a tagged actor's next waypoint and 0x145A2 installs the
+    -- B574 continuation. Its generic B5BE movement selector and B6BA-B6DE
+    -- C062 walk selector truncate for routed default actors too: 0x44BC gives
+    -- them +0x10=0x05, so THINK alone cannot identify that path. The player
+    -- BABC path keeps its existing flag-gated rounded selector.
     if context.dynamic_world_encounter_actor == true or
+       context.source_actor_has_waypoint_data == true or
        (movement_record_flags(context) & ActorStatus.THINK) ~= 0 then
         return walk_direction_from_heading
     end

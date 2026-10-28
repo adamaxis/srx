@@ -447,6 +447,37 @@ advances the selected actor animation. Waypoint choice, movement policy, and
 the behavior/render split therefore all need to reach Lua; a compositor-only
 waypoint table would not move an actor.
 
+### Routed actor heading selection (2026-10-28)
+
+ROM `0x145A2` installs continuation `0xB574` after measuring a route target.
+For non-kind-`0x0D` actors, `0xB5B4..0xB5C4` selects movement from `+0x2E`
+with `ROL.W #3` / `ANDI.W #7`; after movement, `0xB6BA..0xB6DE` selects the
+`0xC062` walk pose from `+0x2E` or `+0x36` with the same truncation. Neither
+selection checks `+0x10.THINK`. The `0x44BC` default actor template initializes
+`+0x10=0x05`, so THINK-clear default guards and pedestrians still use B574
+when a waypoint route is active.
+
+Scene `0x23` (35), corp guard source order 1, has position list `0x1DC3D6` in
+profile list `0x1DC380`. Its first segment runs from `(0x6080,0x4C80)` toward
+`(0x4C00,0x1A80)`. The ROM metric at `0x15D3C` returns heading `0xF000` and
+distance `0x3C40`. B574 truncates `0xF000` to direction 7; the rounded BABC
+selector would choose direction 0. The Lua movement selector now includes the
+typed `source_actor_has_waypoint_data` fact, preserving the existing rounded
+player/controller branch while applying the B574 selector to routed default
+actors.
+
+The Lua `ai_think_tests` asserts the accepted movement step and C062 selector
+for this live `+0x10=0x05` route shape. A sweep of all 379 directed default
+route edges finds 19 cases where rounding changes the octant, across ten
+distinct `0x15D3C` headings. The movement-metric CTest checks all ten heading
+shapes against ROM-derived route coordinates, then recomputes every edge from
+the two extracted default-route manifests and asserts the 379/19/10 census.
+The Lua CTest asserts each truncated selector value. Both pass in Debug and
+Release when Lua is available.
+This closes the rounded-versus-truncated selector gap for extracted route
+actors; per-edge collision behavior, complete scene movement, and independent
+Genesis visuals remain open.
+
 The ROM coordinate pairs decoded from the profile-selected position pointers
 are:
 

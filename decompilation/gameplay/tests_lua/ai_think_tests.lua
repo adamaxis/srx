@@ -781,6 +781,47 @@ movement_heading_case(0x1000, 0, true,
 movement_heading_case(0xF000, 0, false,
     "non-dynamic controller heading keeps the rounded BABC direction [C]")
 
+-- Scene 0x23 source order 1 follows 0x1DC3D6 from (0x6080,0x4C80)
+-- toward (0x4C00,0x1A80). ROM 0x15D3C measures 0xF000; 0x145A2 installs
+-- B574, whose generic B5BE and C062 selectors truncate that heading to 7.
+-- Its 0x44BC-published +0x10 is 0x05, so THINK is clear even though it is a
+-- routed actor. [C: ROM route/template tables and disassembly]
+local route_actor_context = movement_fixture(false)
+route_actor_context.entity_kind = E.SpriteType.CORP_GUARD
+route_actor_context.source_actor_has_waypoint_data = true
+route_actor_context.source_record_flags = E.ActorStatus.ACTIVE | 0x04
+route_actor_context.movement_entity_flags = E.ActorStatus.ACTIVE | 0x04
+route_actor_context.source_spawn_state_flags = E.ActorFlag.REINFORCEMENT
+route_actor_context.combatant = { command_attribute_78 = 19 }
+local route_actor_state = {
+    movement_heading = 0xF000,
+    movement_current_heading = 0xF000,
+    movement_route_distance = 0x3C40,
+}
+local route_actor_step = R.advance_entity_movement(
+    route_actor_context, route_actor_state)
+check(route_actor_step ~= nil and route_actor_step.outcome == "accepted" and
+      route_actor_state.direction == 7 and
+      route_actor_step.direction_animation == E.ActorPose.WALK +
+          E.ActorAnimation.DIRECTION_SELECTOR_STEP * 7 and
+      R.movement_direction_from_heading(route_actor_context, 0xF000) == 7,
+      "Scene-35 default route guard B574/C062 truncates measured 0xF000 to direction 7 [C]")
+
+-- The six regional profiles and Scene 35 contain 19 of 379 waypoint edges
+-- whose 0x15D3C result crosses the old BABC rounding boundary. These ten
+-- distinct measured headings cover every affected selector value. [C]
+local route_heading_cases = {
+    { 0x1300, 0 }, { 0x5200, 2 }, { 0x5300, 2 }, { 0x5600, 2 },
+    { 0x7000, 3 }, { 0x7900, 3 }, { 0xB500, 5 }, { 0xBB00, 5 },
+    { 0xF000, 7 }, { 0xFE00, 7 },
+}
+for _, route_case in ipairs(route_heading_cases) do
+    check(R.movement_direction_from_heading(
+              route_actor_context, route_case[1]) == route_case[2],
+          string.format("default routed B574 heading 0x%04X truncates to %d [C]",
+                        route_case[1], route_case[2]))
+end
+
 local heartbeat_actor_id = "playtest13_dynamic_hellhound"
 local heartbeat_target = {
     id = "party.runner.0",
