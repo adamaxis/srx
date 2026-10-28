@@ -280,10 +280,45 @@ calls `0x1882E` to restore the selected program detail and returns.
 `CyberInfo.input` follows the same direction/action/Start order. The parent
 passes its `deck_palette` state to CyberInfo, and `Cyberdeck.child_returned`
 keeps the typed Deck Stats or Run Info result on the selected parent surface.
-The source and host both advance the palette once per selector pass; this
-confirms call-count behavior, not a wall-clock frame duration. The available
-numbered video is sampled at 30 fps, so its palette phase does not settle the
-timing between ROM VBlanks and host updates.
+The source and host both call the palette service once per selector pass. The
+ROM's phase-change interval and the sound requests around these actions are
+traced in the next section.
+
+## Cyberdeck palette cadence and CyberInfo sound requests (2026-10-27)
+
+The Cyberdeck entry at `0x182F4` clears `FFF10A`. Its parent loop waits for a
+VBlank at `0x18326`, then calls `0x196F2`; CyberInfo does the same at `0x18ACC`
+and `0x18ADE`. On the first call the timer decrements from zero to `0xFF`,
+resets to 4, and rotates the four words at `$FFD8AE` through `$FFD8B4`. These
+are palette-buffer entries 8-11 on CRAM line 1. Later rotations occur every
+five VBlank passes; after the initial immediate update, the steady four-phase
+cycle spans 20 passes. The routine marks the palette buffer dirty through
+`FFEF14` bit 0. CyberInfo does not reset `FFF10A`; it carries the parent
+palette counter through both child pages and back to the deck.
+
+Lua's `menu.deck_palette` starts with countdown 0, advances immediately on its
+first tick, and advances again every five ticks. `Cyberdeck.input` and
+`CyberInfo.input` tick the same state, and the child receives the parent's
+palette object. This matches the ROM's phase-change count and child continuity.
+The ROM trace establishes a palette cycle, not a separate text-cursor blink
+timer. The numbered longplay is sampled at 30 fps and does not show the
+CyberInfo child, so it does not independently establish palette-phase pixels
+or host-to-VBlank wall-clock alignment.
+
+The Cyberdeck and CyberInfo movement and child-dispatch paths contain no
+`0x530D2`/`0x530DE` sound-event request: parent cursor changes at
+`0x1833C`-`0x18418`, the indirect CyberInfo dispatch through `$E2DFE` at
+`0x185FC`-`0x18610`, and the selector plus Deck Stats/Run Info drawing paths
+at `0x18AA6`-`0x18D18` do not request a menu SFX. The field caller does issue
+audio command-frame 4 through `0x530EA` at `0x1B156`-`0x1B15A` before entering
+the Cyberdeck loop; that is a separate mode-entry audio command, not a sound
+request attached to a cursor or child action. A second caller, the Matrix
+node-action path at `0x549BA`, enters the same loop without a preceding local
+sound-event request. The `0x18` requests at `0x18580` and `0x185C8` belong to
+conditional Pull Plug consequences, outside the CyberInfo navigation path.
+The corresponding Lua cursor and CyberInfo actions also make no `ctx.sound`
+request. No audible-duration or independent video sound claim follows from
+these call-site findings.
 
 ## Deck Stats longplay screen search (2026-10-27)
 

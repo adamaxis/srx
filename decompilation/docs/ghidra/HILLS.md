@@ -48,9 +48,15 @@ other numeric states and empty-cell message are checked against ROM data. The
 exact panel comparison remains open. See the [CyberInfo and Deck Stats audit](visual-audits/matrix-cyber-info-run-info.md).
 The same audit traces `0x18AA6` input priority through `0xC376`: Up before
 Down, A/B/C to the selected child, and Start back to the selected program.
-The Lua route carries the parent's shared palette counter into CyberInfo and
-preserves the child result on return. Source and host calls align; exact timing
-against ROM VBlanks remains open.
+ROM entry `0x182F4` clears the shared `FFF10A` palette timer; `0x196F2`
+rotates CRAM line 1 entries 8-11 immediately on its first call and every five
+VBlank passes thereafter, for a steady 20-pass four-phase cycle. CyberInfo
+inherits that counter. The parent cursor, child dispatch, selector, and
+Deck Stats/Run Info draw paths make no local sound-event request; the field
+caller separately sends audio command-frame 4 on entry, and event `0x18` is
+confined to conditional Pull Plug consequences. The host state matches the
+source tick schedule. Independent CyberInfo video/audio timing comparison
+remains open.
 The Storage screen at ROM `0x18D1A` keeps that parent row, program grid, and
 footer while drawing the source panel and live capacity. View at `0x18F5E`
 walks occupied records from slot 4 down to 0, drawing each ROM filename,
