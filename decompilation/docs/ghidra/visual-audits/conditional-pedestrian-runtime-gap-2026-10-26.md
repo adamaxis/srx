@@ -1003,6 +1003,17 @@ request path that does not require `FFDF42`: at `0x095E`, the field loop tests
 `0x1E43C` at `0x0A92`, calls `0x2F32` at `0x0A98`, and clears `FFDF42` at
 `0x0A9E`. This path bypasses the ordinary `FFDF42` test at `0x0A68`.
 
+The generic A800 contact callback does not itself provide the missing direct
+request write. ROM `0xED6A` installs `0x1F146` in `FFDD2C`. The callback bytes
+at `0x1F146..0x1F169` set `FFFC1C` bit 0, load the text pointer `0xFDE3E` and
+speaker profile `0x121FF4`, clear `FFF10C`, call the shared mode-exit/text
+service at `0x1F246`, and return. There is no `FFDF42` operand in that body.
+A full-ROM scan finds only two literal `00 FF DF 42` operands: the main-loop
+test at `0x0A68` and its clear at `0x0A9E`. This rules out the contact callback
+as a direct absolute-address writer; a computed or indirect write elsewhere
+remains possible. The displayed contact page and the `0x1E43C` request handler
+are therefore still separate steps in the traced path.
+
 The preceding world-frame code also traces one way to raise `FFDF3E`:
 `0x0B7B8` calls `0x1651E` at `0x0BA7C`; its carry result initializes the
 `FFDF3A`/`FFDF3C` fade at `0x0BA86..0x0BA8E`. The ordinary service calls
