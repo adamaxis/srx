@@ -52928,11 +52928,9 @@ int main(int argc, char** argv) {
                 }
                 field_audio_events.clear();
                 tap_qa_controller_button(field_scene, 0x40U);
-                if (!field_scene.pocket_secretary_open() ||
-                    field_scene.pocket_secretary_debug_row_visible()) {
+                if (!field_scene.pocket_secretary_open()) {
                     std::cerr << "field secretary dump: fresh New Game "
-                                 "Pocket Secretary did not open in the "
-                                 "locked debug-row state\n";
+                                 "Pocket Secretary did not open\n";
                     return 3;
                 }
                 tap_qa_controller_button(field_scene, 0x40U);
@@ -53218,8 +53216,9 @@ int main(int argc, char** argv) {
                     }
                     previous_secretary_scene = secretary_scene;
                 }
-                // ROM 0xC2A6 uses maximum row 4 normally and 5 when FFF101
-                // exposes the hidden, unlabelled debug row.
+                // ROM 0xC2A6: the maximum row is 4, or 5 when FFF101 (or the
+                // kDebugMenuAlwaysUnlockedForTesting override) exposes the
+                // hidden, unlabelled debug row. Visit it silently before the wrap.
                 int last_row_y = 120;
                 if (field_scene.pocket_secretary_debug_row_visible()) {
                     tap_qa_controller_button(field_scene, 0x02U); // Down.

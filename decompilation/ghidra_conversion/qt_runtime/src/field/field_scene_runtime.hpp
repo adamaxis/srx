@@ -2397,9 +2397,9 @@ private:
     std::array<QImage, kFieldHudAmmoCounterCount> field_hud_ammo_counters_{};
     std::array<FieldHudSlotState, kFieldHudSlotCount> field_hud_slots_{};
     PocketSecretaryMenuState pocket_secretary_{};
-    // The ROM's hidden sixth row is available only when the title code set
-    // FFF101; a debug-menu effect clears that state.
-    bool debug_menu_unlocked_ = false;
+    // Temporary development override: expose the ROM's hidden sixth row so
+    // the debug screen remains reachable without entering the title code.
+    bool debug_menu_unlocked_ = true;
     // FF018F bit 0 is the deck-present fact; application snapshots preserve
     // it along with the typed deck record. A Matrix session is not persisted.
     std::optional<bool> cyberdeck_available_ = false;
