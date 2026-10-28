@@ -1,10 +1,11 @@
 # Package run origin and delivery event
 
 Status: **partial**. The run logic is connected to the field-exit
-orchestrator's first dispatch stage, but there is no full-screen capture of an
-accepted run continuing through both selected map events. The script-runtime
-test proves event matching and once-only payout; it does not prove that whole
-playthrough.
+orchestrator's first dispatch stage. Section 11 of the longplay now provides
+an independent offer, payment prompt, apparent acceptance, and return-to-map
+sequence; it does not follow the accepted run through both selected map
+events. The script-runtime test proves event matching and once-only payout;
+it does not prove that whole playthrough.
 
 ## ROM trace and host behavior
 
@@ -23,6 +24,55 @@ playthrough.
   The Qt adapter now calls Lua at the `0x1EEDC` dispatch stage, applies the
   typed alternate result/active flag, then applies the payout and progress
   bytes. It does not add a panel, sprite, animation, or audio request.
+
+## Independent Section-11 offer sequence
+
+The longplay folder is
+`video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_11_source_1620-1920/`.
+These 320x224 frames show the type-2 package offer and its presentation path:
+
+| Frame(s) | Independent visual evidence |
+|---|---|
+| `frame_000000.png`–`frame_000055.png` | The first page stays pixel-identical in the extracted 30-fps frames. It says to meet the Halloweeners in Redmond, collect a package, take it to Little Chiba, and expect payment upon safe delivery. The dialog shell, speaker portrait, and `< MORE >` prompt are visible. |
+| `frame_000075.png`–`frame_000105.png` | The payment page shows base 40 and negotiated 55 with the game's dollar glyph, plus the A/Yes and B/No choices. Frames `000087`–`000101` are pixel-identical. |
+| `frame_000120.png` | The next page says Mr. Johnson records the run on the Pocket Secretary and downloads its information. This supports an affirmative path; the capture has no controller log to prove which input selected it. |
+| `frame_000134.png`–`frame_000142.png` | The dialog and field image darken. Frames `000143`–`000175` are full-frame black in the extracted video. |
+| `frame_000176.png`–`frame_000180.png` | The field view returns from dark to full brightness. Frame `000180.png` matches the visible Jump House layout in the ROM-derived `assets/field/maps/mode-13.bmp`. |
+
+The return-map match and ROM field records connect the final image to Scene 13:
+the mode-13 map profile is based at `0x1B3C06`, while event-30 records at
+`0x1B3CF8`/`0x1B3D02` route through `0xB7B8` to the Johnson handler at
+`0x20990`. This visual match identifies the location; it does not expose the
+run-active RAM fields or prove that the player later visits either selected
+contract tuple.
+
+### The displayed payment and Joshua's profile
+
+Context-zero offer row 4 is the six-byte record at `0xF3ED4`:
+initializer 2 (package delivery), progress delta 1, base 40, and negotiation
+scale 1 (raw bytes `02 01 00 28 00 01`). `0x1E69C` reads the first runner's
+Negotiation field at `FF018C` and computes `base + 5 * roll`, with the roll
+below `scale * Negotiation + 1`. The offer path sends base and negotiated
+amounts through the grouped-decimal formatter `0xC216` at `0x21526`/`0x2153C`.
+The independent Section-06 frame `002550` identifies the longplay runner as
+Joshua Gator Shaman; ROM profile `0x72B1A` has Negotiation 3 at `+0x8C`.
+Those inputs make 55 a source-consistent display: `40 + 5 * 3 = 55`, within
+the four possible rolls `0..3`. The frame does not show RAM or RNG state, so
+the profile-to-offer join and roll 3 are derived from the two screenshots and
+ROM data, not directly observed state. Race and class have no direct term in
+the payment calculation; the active profile's Negotiation value supplies the
+relevant difference.
+
+During frames around `000070`–`000090`, individual green glyph pixels vary
+between extracted frames while the same page and choices remain. The ROM path
+at `0x1F3C4` renders wrapped text through `0xC134`/`0xC168`, then enters the
+VBlank/input wait at `0x1F502` and samples the controller at `0x1F51A`; no
+source blink counter has been identified for these glyphs. Treat the partial
+glyph dropout as **[H]** capture/compression or sampling behavior, not a
+confirmed in-game text animation. The 30-fps
+extract supports the order and broad fade/black/return sequence, not exact
+60-Hz timing. Audio, the live run flags, decline-path visuals, and the later
+pickup/delivery/result sequence remain open.
 
 ## Nine-question visual check
 
