@@ -44,3 +44,27 @@ sheet: `spark_sheet.py`. Output (not committed): `shadowrun/out/hit_spark_compar
 - Not checked: the exact pixel offset of each frame's origin against the ROM. That
   needs a non-occluded spot (open floor with no high-priority tiles); the s5 crops
   roughly agree but are partly covered.
+
+## Independent longplay search
+
+A full-rate template search checked 19,860 numbered 320x224 frames from sections
+04, 06, 07, and 25 of
+`video analysis/long_gameplay_video_early_sections_ffmpeg_30fps_320x224/` and
+`video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/`. The ROM-derived
+BMP masks were used only to find candidate frames; the longplay frames remain
+the independent visual source.
+
+One plausible burst appears in section 25, frames 001133-001143. In the active
+field-combat scene, a brief red/white flash sits between the two actors. At the
+same location, the best mask matches progress through spark stages 1, 2, and 3:
+frames 001135-001136, 001137-001138, and 001139-001140 respectively. There is
+also a possible stage-0 match at frame 001133. The stage-1 through stage-3
+matches remain near `(137,95)` in the frame, with small position differences as
+the shape grows.
+
+This is a candidate visual correspondence, not a pixel-exact confirmation. Red
+target brackets overlap the effect area and contribute to the mask score; the
+video is sampled at 30 fps, and there is no controller or event log to associate
+the flash with a specific ROM hit or actor. The capture does not settle the
+origin offset, source-tick phase, hidden frames, or the stage-4 ring. Keep those
+questions open; the function remains partial.
