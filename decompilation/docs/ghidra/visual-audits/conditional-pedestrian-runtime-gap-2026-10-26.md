@@ -1298,10 +1298,10 @@ hashes match between configurations. These are internal Qt regression
 artifacts, not an independent Genesis comparison. The tested route adds one
 normal target pair and verifies the Scene-41 pedestrian spawn. The Ares route
 below covers initializer-11 `(1,2)` but its mismatched effect indices correctly
-suppress the Scene-26 candidate. The four initializer-5 pairs,
-initializer-12 `(5,6)`, other A800 mode/story/index/effect permutations,
-continuous street travel, and route-matched independent Genesis captures
-remain open.
+suppress the Scene-26 candidate. The Renraku route below covers initializer-12
+`(5,6)`. The four initializer-5 pairs, other A800 mode/story/index/effect
+permutations, continuous street travel, and route-matched independent Genesis
+captures remain open.
 
 ## Initializer-11 Ares target into Scene 26 (2026-10-27)
 
@@ -1338,7 +1338,41 @@ All 11 files under
 doorway collision grid and route TSV, have matching hashes between builds.
 The inspected entry page and no-actor scene are internal Qt captures, not
 independent Genesis visuals. Together with the Lone Star route above, both
-initializer-11 target pairs have now been generated and contacted; the four
-initializer-5 target pairs, initializer-12 `(5,6)`, continuous street travel,
-the other A800 gate permutations, and route-matched independent Genesis
-captures remain open.
+initializer-11 target pairs have now been generated and contacted. The
+initializer-12 `(5,6)` route is recorded below; the four initializer-5 target
+pairs, continuous street travel, the other A800 gate permutations, and
+route-matched independent Genesis captures remain open.
+
+## Initializer-12 Renraku target into Scene 35 (2026-10-27)
+
+The Renraku CTest accepts the ordinary Icarus work-menu offer from initializer
+12. Offer-selection seed 4 chooses its fixed `(5,6)` target; later negotiation,
+target, and client RNG draws stay live. The accepted run registry, funds, and
+source random seed are carried into a fresh Scene-5 runtime at checkpoint
+`(0x2700,0x1000)`. This is the same explicit QA seam used by the two
+initializer-11 cases, not continuous street travel from the Johnson office.
+
+Scene-5 collision record 46 at `0x067C36` covers
+`(0x0260..0x027F,0x00A0..0x00BF)` with event `0xC6`. The checkpoint is clear;
+23 ordinary Up updates contact the doorway, and event-table row 6 at
+`0x0679CC` routes to Scene 35. The target-entry passage opens and dismisses
+after its 17-frame presentation wait and 31-frame input lockout.
+
+Scene 35 enters the ROM `0xA800` random-pedestrian path: initializer 12 maps to
+`FFFBED=5`, and the resource activity uses mode `FFDF40=2`. The selector
+samples candidate choice 1, list `0x1EE034`, position `(0x0400,0x0980)`. It
+does not publish the row: the live selected index is `FFE12C=4`, while the
+active index is `FFF0C8=0`. Both effect markers are clear and `FFFC3C` has no
+transfer template, so the unequal indices reject the actor while retaining
+the sampled choice. The QA checks that gate-derived no-actor outcome rather
+than forcing a pedestrian into Scene 35.
+
+Debug and Release pass
+`shadowrun_ghidra_conversion_qt_field_employee_recruitment_renraku_pedestrian_qa`.
+All 11 output files, including the natural Scene-35 capture, collision grid,
+and route TSV, have matching hashes between configurations. The field and
+target screenshots are internal Qt captures; no route-matched independent
+Genesis frame is available. The three normal initializer-11/12 target pairs
+are now contacted, while the four initializer-5 pairs, remaining A800
+gate-state combinations, continuous street travel, and independent Genesis
+comparison remain open.
