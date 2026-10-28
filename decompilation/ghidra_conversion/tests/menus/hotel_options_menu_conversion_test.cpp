@@ -25,12 +25,12 @@ int main() {
         return 4;
     }
     HotelCheckoutPromptState input_checkout_state{};
-    const auto simultaneous_checkout_input = apply_hotel_checkout_input(
-        input_checkout_state, HotelOptionsInputFrame{true, true, true, true,
-                                                     true});
+    const auto direction_with_confirm_checkout_input =
+        apply_hotel_checkout_input(
+            input_checkout_state,
+            HotelOptionsInputFrame{true, true, true, true, true});
     if (!expect(input_checkout_state.selection == HotelCheckoutSelection::yes &&
-                simultaneous_checkout_input ==
-                    HotelCheckoutResult::checked_out)) {
+                !direction_with_confirm_checkout_input.has_value())) {
         return 5;
     }
     HotelCheckoutPromptState default_no_state{};
@@ -140,7 +140,8 @@ int main() {
     HotelCheckoutPromptState stay_state{};
     std::deque<HotelOptionsInputFrame> stay_frames{
         {false, true, false, false, false},
-        {false, true, false, false, true},
+        {false, true, false, false, false},
+        {false, false, false, false, true},
     };
     HotelCheckoutPromptCallbacks stay_callbacks{};
     stay_callbacks.sample_controller_input = [&] {

@@ -47952,7 +47952,7 @@ int main(int argc, char** argv) {
                 press_button(0x01U); // Up selects Yes.
                 if (
                     field_scene.hotel_checkout_selection() != 0U) {
-                    std::cerr << "field Hotel QA: same-frame move/confirm order or checkout wrap is incorrect\n";
+                    std::cerr << "field Hotel QA: checkout cursor movement or two-row wrap is incorrect\n";
                     return 3;
                 }
                 mark_route("checkout-yes", "Up");

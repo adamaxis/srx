@@ -96,6 +96,90 @@ bool check_status_acknowledgement_masks() {
     return true;
 }
 
+bool check_checkout_masks() {
+    // ROM 0xDA6A starts on No. Direction branches at 0xDABE..0xDAEE move the
+    // cursor and loop before A/B/C confirmation at 0xDAF0..0xDB10.
+    // Left, Right, and Start have no branch.
+    for (std::uint8_t initial = 0U; initial < 2U; ++initial) {
+        for (std::uint16_t mask = 0U; mask < 256U; ++mask) {
+            const bool up = (mask & 0x01U) != 0U;
+            const bool down = (mask & 0x02U) != 0U;
+            const bool left = (mask & 0x04U) != 0U;
+            const bool right = (mask & 0x08U) != 0U;
+            const bool a = (mask & 0x10U) != 0U;
+            const bool b = (mask & 0x20U) != 0U;
+            const bool c = (mask & 0x40U) != 0U;
+            const bool start = (mask & 0x80U) != 0U;
+
+            HotelCheckoutPromptState state{};
+            state.selection = static_cast<HotelCheckoutSelection>(initial);
+            const auto expected_selection = (up || down)
+                ? static_cast<HotelCheckoutSelection>(1U - initial)
+                : static_cast<HotelCheckoutSelection>(initial);
+            const bool direction_consumes_sample = up || down;
+            const std::optional<HotelCheckoutResult> expected_result =
+                (!direction_consumes_sample && (a || b || c))
+                    ? std::optional<HotelCheckoutResult>{
+                          expected_selection == HotelCheckoutSelection::yes
+                              ? HotelCheckoutResult::checked_out
+                              : HotelCheckoutResult::stay_at_hotel}
+                    : std::nullopt;
+
+            const auto result = apply_hotel_checkout_input(
+                state, HotelOptionsInputFrame{up, down, a, b, c,
+                                              left, right, start});
+            if (state.selection != expected_selection ||
+                result != expected_result) {
+                std::cerr << "Hotel Check Out mask failed: row="
+                          << static_cast<unsigned>(initial)
+                          << " mask=" << static_cast<unsigned>(mask)
+                          << " Left=" << left << " Right=" << right
+                          << " Start=" << start << '\n';
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool check_checkout_edge_latch_sequence() {
+    HotelMenuRuntime runtime;
+    std::array<RunnerRecordFields, 3> records{};
+    const std::array<std::string, 3> names{"Joshua", "David", "Jack"};
+    runtime.open(records, names, 0U);
+    if (runtime.advance_controller_events(0x0100U) !=
+            HotelMenuEvent::status_acknowledged ||
+        runtime.advance_controller_events(0x0200U) !=
+            HotelMenuEvent::selection_moved ||
+        runtime.advance_controller_events(0x4000U) !=
+            HotelMenuEvent::checkout_opened ||
+        runtime.checkout_selection() != HotelCheckoutSelection::no) {
+        std::cerr << "Hotel checkout edge-latch setup failed\n";
+        return false;
+    }
+
+    if (runtime.advance_controller_events(0x4100U) !=
+            HotelMenuEvent::selection_moved ||
+        runtime.checkout_selection() != HotelCheckoutSelection::yes ||
+        runtime.phase() != HotelMenuPhase::checkout) {
+        std::cerr << "Hotel checkout direction+confirm did not defer\n";
+        return false;
+    }
+    if (runtime.advance_controller_events(0x0041U) != HotelMenuEvent::waiting ||
+        runtime.checkout_selection() != HotelCheckoutSelection::yes ||
+        runtime.phase() != HotelMenuPhase::checkout) {
+        std::cerr << "Hotel checkout treated held buttons as fresh edges\n";
+        return false;
+    }
+    if (runtime.advance_controller_events(0x4000U) !=
+            HotelMenuEvent::checked_out ||
+        runtime.phase() != HotelMenuPhase::closed) {
+        std::cerr << "Hotel checkout did not accept a fresh direction-free A\n";
+        return false;
+    }
+    return true;
+}
+
 bool check_dispatch_order() {
     // First, B is ignored. Next, Down+C moves to Check Out and invokes the
     // action service. Finally Up+Down+A+C moves once (Up has source priority)
@@ -151,6 +235,7 @@ bool check_dispatch_order() {
 
 int main() {
     if (!check_masks() || !check_status_acknowledgement_masks() ||
+        !check_checkout_masks() || !check_checkout_edge_latch_sequence() ||
         !check_dispatch_order()) {
         return 1;
     }

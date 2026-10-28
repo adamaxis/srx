@@ -30,6 +30,16 @@ the low byte alone do not. The capture stays in Scene 2/event 2 through this
 page, but its unknown ROM/emulator identity makes it corroborating evidence,
 not an independent Genesis reference.
 
+Selecting Check Out dispatches to `0xDA6A`, which initializes the two-row
+prompt at No. ROM `0xDABE..0xDAEE` checks Up before Down; either direction
+updates the cursor and jumps back to the wait loop. Only a sample with no
+direction reaches the A/B/C checks at `0xDAF0..0xDB10`. Thus a direction plus
+confirm moves but does not confirm in that sample; confirmation needs a later
+direction-free sample with a fresh A/B/C edge. Left, Right, and Start have no
+branch in this child. Yes returns through the Hotel exit path, while No returns
+to Hotel Options. The typed conversion expresses those outcomes directly
+rather than copying the source stack unwind.
+
 ## Exhaustive transition coverage
 
 `shadowrun_ghidra_hotel_options_input_permutation` checks all 256 combinations
@@ -39,11 +49,17 @@ edges. It separately exercises all 256 high-byte edge masks on the preceding
 Hotel status page: mask zero remains on status, every nonzero mask opens
 options at Karma Screen, and low-byte held buttons without a new edge do not
 advance. This checks the status transition mapping, not the wait's VBlank or
-bezel cadence. It also runs the options loop through B/Left/Right/Start-only,
-Down+C, and Up+Down+A+B+C+Left+Right+Start samples. This confirms
-B/Left/Right/Start are ignored in the parent options loop, C invokes the
-mode-action callback after movement, and A dispatches the row selected by that
-same sample before C can run. The existing
+bezel cadence. Checkout coverage separately checks all 256 input masks from
+both Yes and No rows (512 row/mask states): Up/Down consumes the sample and
+skips A/B/C, which can confirm the selected row on a later direction-free
+sample with a fresh A/B/C edge. A runtime sequence also holds Up+A in the
+current-button low byte after the deferred move and verifies that only a
+released, fresh direction-free A edge checks out. Left/Right/Start are
+ignored. The combined option-loop samples still check B/Left/Right/Start-only,
+Down+C, and
+Up+Down+A+B+C+Left+Right+Start. The parent loop ignores B/Left/Right/Start,
+C invokes the mode-action callback after movement, and A dispatches the row
+selected by that sample before C can run. The existing
 `shadowrun_ghidra_conversion_qt_field_hotel_qa` supplies the full-screen route
 coverage for Karma, Check Out, No/Yes, and clean field return.
 
@@ -66,7 +82,7 @@ capture evidence only.
 The input permutation test validates source-ordered menu transitions. It does
 not prove the status wait's VBlank cadence, random bezel sequence, or Genesis
 timing for every input mask. No independent longplay segment shows the B, C,
-simultaneous-input, Karma
-return, or checkout permutations. The Hotel hill remains partial. This audit
+simultaneous-input, Karma return, or checkout permutations; no independent
+checkout frame is identified. The Hotel hill remains partial. This audit
 does not replace the source/architecture review of the existing C++ Hotel
 controller described in the project instructions.

@@ -73,6 +73,11 @@ std::optional<HotelCheckoutResult> apply_hotel_checkout_input(
     } else if (input.move_down) {
         state.selection = move_checkout_selection(state.selection, 1);
     }
+    if (input.move_up || input.move_down) {
+        // ROM 0xDAA8..0xDAEE redraws the cursor and jumps back to the wait;
+        // the A/B/C checks at 0xDAF0..0xDB10 are skipped for this sample.
+        return std::nullopt;
+    }
     if (!input.confirm && !input.alternate_confirm && !input.action) {
         return std::nullopt;
     }

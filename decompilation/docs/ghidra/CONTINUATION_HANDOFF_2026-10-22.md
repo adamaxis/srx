@@ -1075,25 +1075,34 @@ Start have no branch. The input-permutation CTest checks all 256
 Up/Down/Left/Right/A/B/C/Start combinations from both cursor rows (512
 row/mask states total), all 256 fresh high-byte edge masks on the preceding
 Hotel status page, and the low-byte-held-buttons/no-new-edge case. It also
-checks B/Left/Right/Start-only, Down+C, and Up+Down+A+B+C+Left+Right+Start
-menu samples. ROM `0xF312` waits for any fresh high-byte edge after servicing
-the status page; the test covers the controller transition mapping, not its
-VBlank or bezel cadence. The
+checks all 256 Up/Down/Left/Right/A/B/C/Start masks from both checkout rows
+(512 row/mask states), including the source direction branch that skips
+same-sample A/B/C confirmation and ignores Left/Right/Start. A runtime
+edge-latch probe verifies held Up+A does not confirm, and a fresh direction-
+free A after release checks out. The parent also checks
+B/Left/Right/Start-only, Down+C, and
+Up+Down+A+B+C+Left+Right+Start menu samples. ROM `0xF312` waits for any fresh
+high-byte edge after servicing the status page; the test covers the controller
+transition mapping, not its VBlank or bezel cadence. The
 independent Section-11 frame `002580` and host `field-hotel-qa/options/actual.bmp`
 agree on the title, option order, and default Karma row; the other actions are
 source-backed tests, not independent visual claims. The Hotel hill remains
 partial.
 
-Debug and Release builds of `shadowrun_ghidra_hotel_options_input_permutation_test`
-passed, and focused CTest passed in both configurations for
-`shadowrun_ghidra_hotel_options_input_permutation`. Its executable is placed in
-the build root so the linked Qt runtime DLLs resolve when CTest launches it.
-The prior Hotel route QA also passed in both configurations. Hotel Options
+The raw US-ROM loop at `0xDABE..0xDB10` exposed and corrected a checkout-input
+ordering mismatch: Up/Down branches redraw the cursor and return to the wait,
+so same-sample A/B/C is skipped. Debug and Release builds and focused CTest
+passed for `shadowrun_ghidra_hotel_options_menu`,
+`shadowrun_ghidra_hotel_options_input_permutation`, and
+`shadowrun_ghidra_conversion_qt_field_hotel_qa`. The input-permutation
+executable is placed in the build root so its linked Qt runtime DLLs resolve
+when CTest launches it. Hotel Options
 `actual.bmp` SHA-256 matches across builds:
 `59AE4A17AD5039081BE21F9F04C27323BDCC63E9EDAAD7AE2925D6C913A6C485`.
 
-Changed paths: Qt CMake/test registration and the new input-permutation test;
-`visual-audits/hotel-options-input-permutation-audit-2026-10-28.md`,
+Changed paths: Qt CMake/test registration and input-permutation test; Hotel
+checkout conversion header/source and unit test; Qt Hotel QA diagnostic; the
+new `visual-audits/hotel-options-input-permutation-audit-2026-10-28.md`,
 `HILLS.md`, `decompiled-function-status.tsv`, and
 `visual-analysis/qt-visual-audit.tsv`. `LUNA_HANDOFF.md` remains unmodified and
 untracked. No push was made.

@@ -124,8 +124,10 @@ enum class HotelCheckoutResult {
     checked_out,
 };
 
-// Apply one already-latched source input sample. Movement happens before the
-// ROM 0xDAF0/0xDAFC confirmation test, and No/Yes wrap as a two-row cursor.
+// Apply one already-latched source input sample. ROM 0xDAA8..0xDAEE consumes
+// an Up/Down sample before it can reach the 0xDAF0..0xDB10 A/B/C checks, so a
+// directional edge cannot confirm until a later sample. No/Yes wrap as a
+// two-row cursor.
 std::optional<HotelCheckoutResult> apply_hotel_checkout_input(
     HotelCheckoutPromptState& state,
     const HotelOptionsInputFrame& input) noexcept;
