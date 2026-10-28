@@ -1193,6 +1193,14 @@ the `0x1E45E` QA seam and do not claim automatic activity continuation. These
 captures are internal regression artifacts, not independent Genesis
 comparisons; other physical A800 candidates and the direct request producer
 remain open.
+The generic `0x1F146` contact clears `FFF10C` before `0x1F246`. The special
+story callbacks `0x53C90` and `0x54402` preserve A1 and do not clear it; if it
+is nonzero, `0x1F246` calls the same callback again before clearing it at
+`0x1F272` (`0x54402` would repeat its +2-per-runner Karma update). The
+`0xECCC` contact path does not establish why the flag is zero, so this
+conditional edge remains an open source-state caveat. It supplies no
+`FFDF42` write or `0x1E43C` transfer; the automatic physical route remains
+open.
 See the
 `conditional-pedestrian-runtime-gap-2026-10-26.md` audit. The independent
 Section-41 longplay now provides route-level matches for the default

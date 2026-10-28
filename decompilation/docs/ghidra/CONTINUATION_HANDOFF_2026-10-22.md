@@ -1168,3 +1168,23 @@ This confirms internal regression parity only. The computed/indirect
 `FFDF42` producer, physical automatic `0x1E43C` result route, and verified-ROM
 visual comparison remain open. `LUNA_HANDOFF.md` remains untouched and
 untracked. No push was made.
+
+## 2026-10-28 Conditional A800 callback FFF10C edge
+
+Raw US ROM confirms generic A800 callback `0x1F146` clears `FFF10C` at
+`0x1F15A` before calling `0x1F246`. Special callbacks `0x53C90` and `0x54402`
+call `0x1F246` without clearing the flag. Field dispatcher `0x0B3C` loads
+`FFE104` into A1; `0x1F246` saves/restores A1 at `0x1F248`/`0x1F262`, tests
+`FFF10C` at `0x1F264`, conditionally calls A1 at `0x1F26E`, and clears the flag
+at `0x1F272`. The special handlers preserve A1 (including `0x54402`'s call
+to `0x59C34`), so a nonzero flag re-enters the same handler before the clear;
+`0x54402` would repeat its +2-per-runner Karma update. `0xECCC` does not clear
+the flag on contact. This conditional callback-state invariant is not proven.
+
+The edge does not supply an `FFDF42` write or `0x1E43C` transfer: the indirect
+target on these paths is the active handler itself. The generic callback path
+is explicitly clear. The direct/computed `FFDF42` producer, automatic physical
+result path, and independent Genesis comparison remain open. Updated the
+conditional pedestrian audit, HILLS index, and `decompiled-function-status.tsv`.
+This was read-only source analysis plus documentation; no tests were run and no
+push was made. `LUNA_HANDOFF.md` remains untouched and untracked.

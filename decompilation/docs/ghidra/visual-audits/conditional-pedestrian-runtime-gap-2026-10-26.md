@@ -2000,3 +2000,28 @@ relative paths and SHA-256 hashes match exactly. This is internal regression
 parity, not independent Genesis evidence. The computed/indirect `FFDF42`
 producer, physical automatic `0x1E43C` result route, and verified-ROM visual
 comparison remain open; the hill stays partial.
+
+### Conditional story callback's FFF10C edge (2026-10-28)
+
+**[C]** The generic callback at `0x1F146` clears `FFF10C` at `0x1F15A`
+before calling `0x1F246`. The two A800 story callbacks do not. Raw US ROM
+`0x53C90..0x53CE8` sets A0/A5 and calls `0x1F246`, then `0x1DED8`;
+`0x54402..0x5447C` first calls `0x59C34` (which only updates the three
+runner bytes), sets its story/Karma state, then calls the same services.
+Neither callback clears `FFF10C` or overwrites A1 before `0x1F246`.
+
+At field dispatcher `0x0B3C`, A1 is loaded from `FFE104` before the indirect
+call. `0x1F246` saves that A1 at `0x1F248`, restores it at `0x1F262`, tests
+`FFF10C` at `0x1F264`, and conditionally executes `JSR (A1)` at `0x1F26E`;
+the clear is later at `0x1F272`. `0x59C34` preserves A1, so on either story
+callback a nonzero flag re-enters that same callback before reaching the
+clear. In the `0x54402` case that would repeat its +2-per-runner Karma update.
+No explicit zeroing of this flag appears in the `0xECCC` contact dispatch.
+
+This identifies the relevant indirect edge in these handlers, but does not
+connect it to `FFDF42` or `0x1E43C`: the indirect target is the active callback
+itself, and neither handler body writes the request or calls the automatic
+result routine. The source condition that keeps `FFF10C` clear on the
+story-contact route is still unproven, so the physical callback path and
+automatic result route remain open. The generic `0x1F146` path has no such
+edge because it clears the flag before entering `0x1F246`.
