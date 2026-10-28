@@ -21265,6 +21265,200 @@ int run_field_pedestrian_scenes_qa(
         return 3;
     }
 
+    if (!contact_case_only) {
+        struct ModeOneActorCase {
+            std::uint16_t scene;
+            std::uint8_t event_code;
+            std::int8_t story_flag_bit;
+            bool story_flag_value;
+            std::uint8_t primary_marker;
+            std::uint8_t secondary_marker;
+            std::uint32_t expected_list;
+            const char* expected_profile;
+            std::uint16_t expected_x;
+            std::uint16_t expected_y;
+            std::uint16_t expected_heading;
+            const char* artifact_name;
+        };
+        // ROM 0x1684C/0x16884 selects mode one. The expected pointers follow
+        // 0x16FD4, marker exclusions use 0xEEFE+1 at 0x168EE-0x16900, and
+        // Scene 13/15's story gates are FFFC1E bits 19/29 at 0x168CE-0x168EA.
+        constexpr std::array<ModeOneActorCase, 18U> kModeOneCases{{
+            {10U, 6U, -1, false, 0xFFU, 0xFFU, 0x17018U,
+             "lone11_k09_item03", 0x0700U, 0x0500U, 0x4000U,
+             "scene-10-event-06-list-17018"},
+            {10U, 6U, -1, false, 3U, 0xFFU, 0U, "", 0U, 0U, 0U,
+             "scene-10-marker-03-blocked"},
+            {10U, 0U, -1, false, 0xFFU, 0xFFU, 0x17034U,
+             "lone11_k0a_item03", 0x0700U, 0x0500U, 0x4000U,
+             "scene-10-default-list-17034"},
+            {10U, 0U, -1, false, 0xFFU, 5U, 0U, "", 0U, 0U, 0U,
+             "scene-10-marker-05-blocked"},
+            {11U, 0U, -1, false, 0xFFU, 0xFFU, 0x17050U,
+             "lone11_k04_item03", 0x0B00U, 0x0300U, 0xC000U,
+             "scene-11-list-17050"},
+            {11U, 0U, -1, false, 0xFFU, 2U, 0U, "", 0U, 0U, 0U,
+             "scene-11-marker-02-blocked"},
+            {12U, 0U, -1, false, 0xFFU, 0xFFU, 0U, "", 0U, 0U, 0U,
+             "scene-12-null-list"},
+            {13U, 0U, 19, false, 0xFFU, 0xFFU, 0U, "", 0U, 0U, 0U,
+             "scene-13-flag-19-clear"},
+            {13U, 0U, 19, true, 0xFFU, 0xFFU, 0x1706CU,
+             "lone11_k0a_item03", 0x1100U, 0x0300U, 0xC000U,
+             "scene-13-flag-19-set-list-1706c"},
+            {13U, 0U, 19, true, 7U, 0xFFU, 0U, "", 0U, 0U, 0U,
+             "scene-13-marker-07-blocked"},
+            {14U, 0U, -1, false, 0xFFU, 0xFFU, 0x17088U,
+             "lone11_k0b_item03", 0x0300U, 0x0680U, 0U,
+             "scene-14-list-17088"},
+            {15U, 0U, 29, false, 0xFFU, 0xFFU, 0U, "", 0U, 0U, 0U,
+             "scene-15-flag-29-clear"},
+            {15U, 0U, 29, true, 0xFFU, 0xFFU, 0x170A2U,
+             "lone11_k03_item03", 0x0380U, 0x0A80U, 0U,
+             "scene-15-flag-29-set-list-170a2"},
+            {15U, 0U, 29, true, 0xFFU, 10U, 0U, "", 0U, 0U, 0U,
+             "scene-15-marker-10-blocked"},
+            {16U, 0U, -1, false, 0xFFU, 0xFFU, 0x170BCU,
+             "lone11_k09_item03", 0x0B00U, 0x0300U, 0xC000U,
+             "scene-16-list-170bc"},
+            {17U, 0U, -1, false, 0xFFU, 0xFFU, 0x170D8U,
+             "lone11_k06_item03", 0x0F00U, 0x0500U, 0xC000U,
+             "scene-17-list-170d8"},
+            {18U, 0U, -1, false, 0xFFU, 0xFFU, 0x170F4U,
+             "lone11_k06_item03", 0x0300U, 0x0680U, 0U,
+             "scene-18-list-170f4"},
+            {19U, 0U, -1, false, 0xFFU, 0xFFU, 0x16FFCU,
+             "lone11_k0b_item03", 0x1100U, 0x0700U, 0x4000U,
+             "scene-19-list-16ffc"},
+        }};
+        const auto mode_one_output = output / "mode-one-activity-actors";
+        std::filesystem::create_directories(mode_one_output, directory_error);
+        if (directory_error) {
+            std::cerr << "Pedestrian scenes QA: could not create mode-one "
+                         "artifact directory: "
+                      << directory_error.message() << '\n';
+            return 3;
+        }
+        std::ofstream mode_one_manifest(
+            mode_one_output / "mode-one-actor-lists.tsv", std::ios::trunc);
+        if (!mode_one_manifest) {
+            std::cerr << "Pedestrian scenes QA: could not write mode-one "
+                         "actor manifest\n";
+            return 3;
+        }
+        mode_one_manifest
+            << "scene_id\tmode\tevent_code\tworld_flags\tprimary_marker"
+               "\tsecondary_marker\tlist_offset\tprofile\tworld_x\tworld_y"
+               "\theading\tactor_slot\tartifact\n";
+        for (const auto& test_case : kModeOneCases) {
+            field_scene.set_field_entity_world_position_for_dump(
+                0x1000U, 0x1000U);
+            if (!field_scene.reenter_field_scene_for_dump(1U)) {
+                std::cerr << "Pedestrian scenes QA: could not stage mode-one "
+                             "actor case: " << test_case.artifact_name
+                          << ": " << field_scene.failure() << '\n';
+                return 3;
+            }
+            field_scene.set_story_flag_for_dump(19U, false);
+            field_scene.set_story_flag_for_dump(29U, false);
+            if (test_case.story_flag_bit >= 0 &&
+                !field_scene.set_story_flag_for_dump(
+                    static_cast<std::uint8_t>(test_case.story_flag_bit),
+                    test_case.story_flag_value)) {
+                std::cerr << "Pedestrian scenes QA: invalid mode-one story "
+                             "flag case\n";
+                return 3;
+            }
+            field_scene.set_compact_runner_markers_for_dump(
+                test_case.primary_marker, test_case.secondary_marker);
+            field_scene.set_field_mode_event_code_for_dump(
+                test_case.event_code);
+            if (!field_scene.reenter_field_scene_for_dump(test_case.scene)) {
+                std::cerr << "Pedestrian scenes QA: mode-one Scene "
+                          << test_case.scene << " entry failed: "
+                          << field_scene.failure() << '\n';
+                return 3;
+            }
+            const auto actor = field_scene
+                .world_activity_script_actor_projection_for_dump(0U);
+            const bool actor_matches = test_case.expected_list == 0U
+                ? field_scene.world_activity_script_actor_count_for_dump() == 0U &&
+                      !actor
+                : field_scene.field_scene_reference_for_dump() ==
+                          test_case.scene &&
+                      field_scene.field_interaction_mode_for_dump() == 1U &&
+                      field_scene.world_activity_script_actor_count_for_dump() ==
+                          1U &&
+                      actor && actor->list_offset == test_case.expected_list &&
+                      actor->profile_id == test_case.expected_profile &&
+                      actor->world_position.x == test_case.expected_x &&
+                      actor->world_position.y == test_case.expected_y &&
+                      actor->initial_heading == test_case.expected_heading &&
+                      actor->record_slot == std::optional<FieldWorldActorSlot>{
+                          FieldWorldActorSlot::slot_3};
+            if (!actor_matches ||
+                field_scene.field_mode_event_code_for_dump() !=
+                    test_case.event_code) {
+                std::cerr << "Pedestrian scenes QA: mode-one selector mismatch "
+                          << test_case.artifact_name << " scene="
+                          << test_case.scene << " mode="
+                          << field_scene.field_interaction_mode_for_dump()
+                          << " actor_count="
+                          << field_scene.world_activity_script_actor_count_for_dump()
+                          << " expected_list=0x" << std::hex
+                          << test_case.expected_list << " event="
+                          << static_cast<unsigned>(test_case.event_code)
+                          << " actual_list=0x"
+                          << (actor ? actor->list_offset : 0U) << std::dec
+                          << " failure=" << field_scene.failure() << '\n';
+                return 3;
+            }
+            if (actor) {
+                const auto camera_x = test_case.expected_x >= 0x0800U
+                    ? static_cast<std::uint16_t>(test_case.expected_x - 0x0800U)
+                    : std::uint16_t{0U};
+                const auto camera_y = test_case.expected_y >= 0x0800U
+                    ? static_cast<std::uint16_t>(test_case.expected_y - 0x0800U)
+                    : std::uint16_t{0U};
+                field_scene.set_field_camera_world_position_for_dump(
+                    camera_x, camera_y);
+            }
+            const auto image = render_qa_field(field_scene);
+            const auto image_path = mode_one_output /
+                (std::string(test_case.artifact_name) + ".bmp");
+            if (image.isNull() ||
+                !image.save(QString::fromStdWString(image_path.wstring()))) {
+                std::cerr << "Pedestrian scenes QA: could not save mode-one "
+                             "actor image " << image_path << '\n';
+                return 3;
+            }
+            mode_one_manifest
+                << test_case.scene << '\t'
+                << field_scene.field_interaction_mode_for_dump() << '\t'
+                << static_cast<unsigned>(test_case.event_code) << "\t0x"
+                << std::hex << field_scene.field_world_fact_flags_for_dump()
+                << "\t0x" << static_cast<unsigned>(
+                       test_case.primary_marker)
+                << "\t0x" << static_cast<unsigned>(
+                       test_case.secondary_marker)
+                << "\t0x" << (actor ? actor->list_offset : 0U) << std::dec
+                << '\t' << (actor ? actor->profile_id : std::string{"-"})
+                << '\t' << (actor ? actor->world_position.x : 0U)
+                << '\t' << (actor ? actor->world_position.y : 0U)
+                << '\t' << (actor ? actor->initial_heading : 0U)
+                << '\t' << (actor && actor->record_slot.has_value()
+                                ? static_cast<unsigned>(*actor->record_slot)
+                                : 0U)
+                << '\t' << image_path.filename().string() << '\n';
+        }
+        mode_one_manifest.close();
+        if (!mode_one_manifest) {
+            std::cerr << "Pedestrian scenes QA: mode-one manifest write "
+                         "failed\n";
+            return 3;
+        }
+    }
+
     // ROM 0xA800 has three rows per scene in 0x15..0x2B, but the 0x0D3A
     // bound-2 sample can select only choices 1 and 2. Exercise every reachable
     // scene/choice through the ordinary actor publisher, including source

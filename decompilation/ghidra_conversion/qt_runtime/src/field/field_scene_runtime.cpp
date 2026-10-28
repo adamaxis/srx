@@ -2813,6 +2813,13 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
     }
     field_dynamic_actor_artwork_.try_emplace(
         pedestrian_template->sprite_stem, field_default_actor_artwork_[1U]);
+    // ROM list 0x17088 names the kind-11, palette-3 actor as
+    // actor-kind-11-palette-3, while the extracted host art for that same
+    // source kind/palette is the default pedestrian profile. Alias the
+    // generic list key to the already loaded palette-matched art so the
+    // selected actor keeps its own Lua behavior profile and ROM placement.
+    field_dynamic_actor_artwork_.try_emplace(
+        "actor-kind-11-palette-3", field_default_actor_artwork_[1U]);
     return true;
 }
 
@@ -2953,6 +2960,15 @@ void FieldSceneRuntime::initialize_default_field_actors(
         facts.world_effect_active = field_world_effect_active_;
         facts.pending_world_effect = field_pending_world_effect_;
         facts.world_mode = field_movement_transition_state_.world_mode;
+        facts.mode_event_code =
+            field_movement_transition_state_.mode_event_code;
+        facts.world_flags = field_exit_world_flags_;
+        facts.primary_runner_marker =
+            field_party_roster_.primary_compact_marker();
+        facts.secondary_runner_marker =
+            field_party_roster_.secondary_compact_marker();
+        facts.pending_actor_list =
+            !pending_world_activity_script_actors_.empty();
         facts.active_effect_index = field_active_effect_index_;
         facts.selected_effect_index = field_selected_effect_index_;
         facts.player_spawn_pending = has_pending_world_effect_player_spawn();
@@ -3008,6 +3024,16 @@ void FieldSceneRuntime::initialize_default_field_actors(
                                 ScriptConditionalActorSelectionKind::story_contact
                             ? "field.conditional_actor.story_contact_list_unresolved"
                             : "field.conditional_actor.pending_list_unresolved");
+                    break;
+                }
+                case ScriptConditionalActorSelectionKind::mode_one_world_activity: {
+                    auto actors =
+                        game_scripts_.world_activity_actors_for_source_list(
+                            scene_reference, selection->list_offset);
+                    field_world_activity_transfer_actor_template_.reset();
+                    queue_pending_actor_list(
+                        std::move(actors),
+                        "field.mode_one_activity.actor_list_unresolved");
                     break;
                 }
                 case ScriptConditionalActorSelectionKind::random_pedestrian: {

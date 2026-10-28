@@ -833,6 +833,9 @@ public:
     std::uint8_t field_mode_event_code_for_dump() const noexcept {
         return field_movement_transition_state_.mode_event_code;
     }
+    void set_field_mode_event_code_for_dump(std::uint8_t event_code) noexcept {
+        field_movement_transition_state_.mode_event_code = event_code;
+    }
     std::uint16_t field_interaction_mode_for_dump() const noexcept {
         return field_movement_transition_state_.world_mode;
     }

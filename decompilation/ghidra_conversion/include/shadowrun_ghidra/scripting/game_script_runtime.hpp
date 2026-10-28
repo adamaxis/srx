@@ -1185,6 +1185,11 @@ struct ScriptConditionalActorSelectionContext {
     bool pending_world_effect = false;
     std::optional<std::uint8_t> active_offer_source_initializer;
     std::uint16_t world_mode = 0;
+    std::uint8_t mode_event_code = 0;
+    std::uint32_t world_flags = 0;
+    std::uint8_t primary_runner_marker = 0xFFU;
+    std::uint8_t secondary_runner_marker = 0xFFU;
+    bool pending_actor_list = false;
     std::optional<std::uint16_t> active_effect_index;
     std::optional<std::uint16_t> selected_effect_index;
     bool player_spawn_pending = false;
@@ -1195,6 +1200,7 @@ enum class ScriptConditionalActorSelectionKind : std::uint8_t {
     story_contact,
     pending_world_activity,
     random_pedestrian,
+    mode_one_world_activity,
 };
 
 struct ScriptConditionalActorSelection {

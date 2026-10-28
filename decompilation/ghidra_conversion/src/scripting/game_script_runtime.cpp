@@ -6751,7 +6751,7 @@ GameScriptRuntime::resolve_conditional_actor_selection(
     }
     lua_remove(state, -2);
     lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
-    lua_createtable(state, 0, 8);
+    lua_createtable(state, 0, 13);
     lua_pushboolean(state, context.world_effect_active);
     lua_setfield(state, -2, "world_effect_active");
     lua_pushboolean(state, context.pending_world_effect);
@@ -6764,6 +6764,16 @@ GameScriptRuntime::resolve_conditional_actor_selection(
     lua_setfield(state, -2, "active_offer_source_initializer");
     lua_pushinteger(state, context.world_mode);
     lua_setfield(state, -2, "world_mode");
+    lua_pushinteger(state, context.mode_event_code);
+    lua_setfield(state, -2, "mode_event_code");
+    lua_pushinteger(state, context.world_flags);
+    lua_setfield(state, -2, "world_flags");
+    lua_pushinteger(state, context.primary_runner_marker);
+    lua_setfield(state, -2, "primary_runner_marker");
+    lua_pushinteger(state, context.secondary_runner_marker);
+    lua_setfield(state, -2, "secondary_runner_marker");
+    lua_pushboolean(state, context.pending_actor_list);
+    lua_setfield(state, -2, "pending_actor_list");
     if (context.active_effect_index.has_value()) {
         lua_pushinteger(state, *context.active_effect_index);
     } else {
@@ -6824,6 +6834,9 @@ GameScriptRuntime::resolve_conditional_actor_selection(
             ScriptConditionalActorSelectionKind::pending_world_activity;
     } else if (kind == "random_pedestrian") {
         decision.kind = ScriptConditionalActorSelectionKind::random_pedestrian;
+    } else if (kind == "mode_one_world_activity") {
+        decision.kind =
+            ScriptConditionalActorSelectionKind::mode_one_world_activity;
     } else {
         return fail("conditional actor selector returned an unknown decision");
     }

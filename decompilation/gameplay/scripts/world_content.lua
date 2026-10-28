@@ -5,6 +5,8 @@
 local World = {}
 local conditional_actor_selection_choice = 0
 local E = require("enums")
+local mode_one_activity_actor_lists =
+    require("data.mode_one_activity_actor_lists")
 
 local function content()
     local data = game.modules.world_content_data
@@ -432,10 +434,37 @@ local function field_initializer_after_source_dispatch(initializer)
     return initializer
 end
 
--- Lua-owned decision and FFE183 state for the A800 pending-list precedence
--- and pedestrian branch. The choice remains here between source passes and
--- returns even when a late index/spawn gate fails; source clear points call
--- reset_conditional_actor_selection rather than keeping a second host copy.
+local function mode_one_activity_actor_list(scene_id, facts)
+    if facts.world_mode ~= 1 or facts.pending_actor_list then
+        return 0
+    end
+    local rows = mode_one_activity_actor_lists[scene_id]
+    if type(rows) ~= "table" then
+        return 0
+    end
+    for _, row in ipairs(rows) do
+        local event_matches =
+            (row.event_code == nil or
+             facts.mode_event_code == row.event_code) and
+            (row.event_code_not == nil or
+             facts.mode_event_code ~= row.event_code_not)
+        local world_flag_matches = row.required_world_flag == nil or
+            (facts.world_flags & (1 << row.required_world_flag)) ~= 0
+        if event_matches and world_flag_matches and
+           facts.primary_runner_marker ~= row.runner_marker and
+           facts.secondary_runner_marker ~= row.runner_marker then
+            return row.list_offset
+        end
+    end
+    return 0
+end
+
+-- Lua owns the mode-one scene list gate and the A800 pending-list precedence
+-- and pedestrian branch. The A800 choice remains here between source passes
+-- and returns even when a late index/spawn gate fails; source clear points
+-- call reset_conditional_actor_selection rather than keeping a second host
+-- copy. Mode one only chooses its extracted list; C++ publishes its typed
+-- actor descriptor through the shared field actor path.
 function World.resolve_conditional_actor_selection(
     scene_id, facts, random_below)
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
@@ -444,6 +473,21 @@ function World.resolve_conditional_actor_selection(
        type(facts.pending_world_effect) ~= "boolean" or
        type(facts.world_mode) ~= "number" or facts.world_mode % 1 ~= 0 or
        facts.world_mode < 0 or facts.world_mode > 0xFFFF or
+       type(facts.mode_event_code) ~= "number" or
+       facts.mode_event_code % 1 ~= 0 or facts.mode_event_code < 0 or
+       facts.mode_event_code > 0xFF or
+       type(facts.world_flags) ~= "number" or
+       facts.world_flags % 1 ~= 0 or facts.world_flags < 0 or
+       facts.world_flags > 0xFFFFFFFF or
+       type(facts.primary_runner_marker) ~= "number" or
+       facts.primary_runner_marker % 1 ~= 0 or
+       facts.primary_runner_marker < 0 or
+       facts.primary_runner_marker > 0xFF or
+       type(facts.secondary_runner_marker) ~= "number" or
+       facts.secondary_runner_marker % 1 ~= 0 or
+       facts.secondary_runner_marker < 0 or
+       facts.secondary_runner_marker > 0xFF or
+       type(facts.pending_actor_list) ~= "boolean" or
        type(facts.player_spawn_pending) ~= "boolean" or
        type(random_below) ~= "function" then
         error("conditional actor selection facts are invalid")
@@ -475,6 +519,12 @@ function World.resolve_conditional_actor_selection(
         }
     end
 
+    -- ROM 0x16854 branches past all later scene-list selection when FFE120
+    -- already names a pending actor list.
+    if facts.pending_actor_list then
+        return result("none", 0)
+    end
+
     -- 0xA800 returns from this higher-priority branch unless FFF0C8, the
     -- active effect index, is 4; FFE182 and the random branch are skipped.
     if facts.world_effect_active then
@@ -485,6 +535,17 @@ function World.resolve_conditional_actor_selection(
     end
     if facts.pending_world_effect then
         return result("pending_world_activity", 0xA8CC)
+    end
+
+    -- 0x1684C sets FFDF40=1, then reads the FFFBF9/FFFC1E/compact-marker
+    -- gates before queuing a 0x16FD4 source list in FFE120. It exits early
+    -- when another source already owns that pending-list pointer.
+    if facts.world_mode == 1 then
+        local list_offset = mode_one_activity_actor_list(scene_id, facts)
+        if list_offset ~= 0 then
+            return result("mode_one_world_activity", list_offset)
+        end
+        return result("none", 0)
     end
 
     -- The host passes the active offer's raw initializer. ROM 0x1E69C runs

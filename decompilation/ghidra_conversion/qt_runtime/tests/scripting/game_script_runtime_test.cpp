@@ -270,6 +270,105 @@ bool verify_conditional_actor_selector_permutations(
                   "A800 source-gate permutation count mismatch");
 }
 
+bool verify_mode_one_activity_actor_lists(
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts) {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    struct Case {
+        std::uint16_t scene;
+        std::uint8_t event_code;
+        std::uint32_t world_flags;
+        std::uint8_t primary_marker;
+        std::uint8_t secondary_marker;
+        bool pending_actor_list;
+        std::uint16_t world_mode;
+        std::uint32_t expected_list;
+    };
+    // US ROM 0x1684C uses 0xEEFE plus one for the runner-marker exclusion,
+    // 0x16FD4 for scenes 11-19, and the two direct scene-10 pointers at
+    // 0x16912/0x16928. Story gates are FFFC1E bits 19/29 at 0x168CE-0x168EA.
+    constexpr std::array<Case, 22U> kCases{{
+        {10U, 6U, 0U, 0xFFU, 0xFFU, false, 1U, 0x17018U},
+        {10U, 6U, 0U, 3U, 0xFFU, false, 1U, 0U},
+        {10U, 6U, 0U, 0xFFU, 3U, false, 1U, 0U},
+        {10U, 5U, 0U, 0xFFU, 0xFFU, false, 1U, 0x17034U},
+        {10U, 5U, 0U, 5U, 0xFFU, false, 1U, 0U},
+        {11U, 0U, 0U, 0xFFU, 0xFFU, false, 1U, 0x17050U},
+        {11U, 0U, 0U, 2U, 0xFFU, false, 1U, 0U},
+        {12U, 0U, 0U, 0xFFU, 0xFFU, false, 1U, 0U},
+        {13U, 0U, 0U, 0xFFU, 0xFFU, false, 1U, 0U},
+        {13U, 0U, (1U << 19U), 0xFFU, 0xFFU, false, 1U, 0x1706CU},
+        {13U, 0U, (1U << 19U), 7U, 0xFFU, false, 1U, 0U},
+        {14U, 0U, 0U, 0xFFU, 0xFFU, false, 1U, 0x17088U},
+        {15U, 0U, 0U, 0xFFU, 0xFFU, false, 1U, 0U},
+        {15U, 0U, (1U << 29U), 0xFFU, 0xFFU, false, 1U, 0x170A2U},
+        {15U, 0U, (1U << 29U), 0xFFU, 10U, false, 1U, 0U},
+        {16U, 0U, 0U, 0xFFU, 0xFFU, false, 1U, 0x170BCU},
+        {17U, 0U, 0U, 0xFFU, 0xFFU, false, 1U, 0x170D8U},
+        {18U, 0U, 0U, 0xFFU, 0xFFU, false, 1U, 0x170F4U},
+        {19U, 0U, 0U, 0xFFU, 0xFFU, false, 1U, 0x16FFCU},
+        {13U, 0U, (1U << 19U), 0xFFU, 0xFFU, true, 1U, 0U},
+        {13U, 0U, (1U << 19U), 0xFFU, 0xFFU, false, 2U, 0U},
+        {9U, 0U, 0U, 0xFFU, 0xFFU, false, 1U, 0U},
+    }};
+    std::size_t random_calls = 0U;
+    const ScriptActorRandomBound no_random = [&random_calls](
+        const std::uint16_t) -> std::optional<std::uint16_t> {
+        ++random_calls;
+        return std::nullopt;
+    };
+
+    for (const auto& test_case : kCases) {
+        ScriptConditionalActorSelectionContext facts{};
+        facts.world_mode = test_case.world_mode;
+        facts.mode_event_code = test_case.event_code;
+        facts.world_flags = test_case.world_flags;
+        facts.primary_runner_marker = test_case.primary_marker;
+        facts.secondary_runner_marker = test_case.secondary_marker;
+        facts.pending_actor_list = test_case.pending_actor_list;
+        const auto selection = scripts.resolve_conditional_actor_selection(
+            test_case.scene, facts, no_random);
+        const auto expected_kind = test_case.expected_list == 0U
+            ? ScriptConditionalActorSelectionKind::none
+            : ScriptConditionalActorSelectionKind::mode_one_world_activity;
+        if (!expect(selection.has_value() &&
+                        selection->kind == expected_kind &&
+                        selection->list_offset == test_case.expected_list &&
+                        !selection->choice_changed,
+                    "0x1684C mode-one actor-list gate mismatch")) {
+            std::cerr << "scene=" << test_case.scene
+                      << " event=" << static_cast<unsigned>(
+                             test_case.event_code)
+                      << " flags=0x" << std::hex << test_case.world_flags
+                      << " markers=" << static_cast<unsigned>(
+                             test_case.primary_marker)
+                      << ',' << static_cast<unsigned>(
+                             test_case.secondary_marker)
+                      << " pending=" << test_case.pending_actor_list
+                      << " mode=" << test_case.world_mode
+                      << " expected_list=0x" << test_case.expected_list
+                      << " failure=" << scripts.failure() << std::dec << '\n';
+            return false;
+        }
+        if (test_case.expected_list != 0U) {
+            const auto actors = scripts.world_activity_actors_for_source_list(
+                test_case.scene, test_case.expected_list);
+            if (!expect(actors.has_value() && actors->size() == 1U &&
+                            actors->front().list_offset ==
+                                test_case.expected_list,
+                        "0x16FD4 selected list lacks its extracted actor")) {
+                std::cerr << "scene=" << test_case.scene
+                          << " list=0x" << std::hex
+                          << test_case.expected_list << " failure="
+                          << scripts.failure() << std::dec << '\n';
+                return false;
+            }
+        }
+    }
+    return expect(random_calls == 0U,
+                  "0x1684C mode-one selector consumed source randomness");
+}
+
 bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                                const std::filesystem::path& dialogue_text) {
     using namespace shadowrun::ghidra_conversion::scripting;
@@ -1286,6 +1385,10 @@ int main() {
         return 1;
     }
     if (!verify_conditional_actor_selector_permutations(scripts)) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    if (!verify_mode_one_activity_actor_lists(scripts)) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
