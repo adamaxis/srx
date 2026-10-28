@@ -929,6 +929,14 @@ add_shadowrun_qt_qa_case(
     --field-employee-recruitment-renraku-pedestrian-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-employee-recruitment-renraku-pedestrian-qa")
 
+# Accept initializer 5's ordinary Mitsuhama offer, contact Scene 0 record 47,
+# and resolve the Scene-30 pedestrian from the live A800 source gates.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_employee_recruitment_initializer5_mitsuhama_pedestrian_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-employee-recruitment-initializer5-mitsuhama-pedestrian-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-employee-recruitment-initializer5-mitsuhama-pedestrian-qa")
+
 # Seed the ROM's completed Harlequin/Ito/map gates, walk into record 67 with
 # ordinary Up input, accept the Yes prompt, and verify the three travel pages
 # before the route enters scene 54.

@@ -1080,6 +1080,7 @@ the Scene-38 page and restored-field frames; these are regression artifacts,
 not independent Genesis evidence. Scene-entry travel and physical contact for
 other A800 candidates, the direct FFDF42 producer, and a route-matched Genesis
 comparison remain open.
+
 The FFDF3E/FFDF40 coordinator call path is traced above, but the current A800
 physical routes do not demonstrate that they trigger it. The A800 hill remains
 partial.
@@ -1299,9 +1300,9 @@ artifacts, not an independent Genesis comparison. The tested route adds one
 normal target pair and verifies the Scene-41 pedestrian spawn. The Ares route
 below covers initializer-11 `(1,2)` but its mismatched effect indices correctly
 suppress the Scene-26 candidate. The Renraku route below covers initializer-12
-`(5,6)`. The four initializer-5 pairs, other A800 mode/story/index/effect
-permutations, continuous street travel, and route-matched independent Genesis
-captures remain open.
+`(5,6)`. The three remaining initializer-5 pairs, other A800
+mode/story/index/effect permutations, continuous street travel, and
+route-matched independent Genesis captures remain open.
 
 ## Initializer-11 Ares target into Scene 26 (2026-10-27)
 
@@ -1339,9 +1340,9 @@ doorway collision grid and route TSV, have matching hashes between builds.
 The inspected entry page and no-actor scene are internal Qt captures, not
 independent Genesis visuals. Together with the Lone Star route above, both
 initializer-11 target pairs have now been generated and contacted. The
-initializer-12 `(5,6)` route is recorded below; the four initializer-5 target
-pairs, continuous street travel, the other A800 gate permutations, and
-route-matched independent Genesis captures remain open.
+initializer-12 `(5,6)` route is recorded below; the three remaining
+initializer-5 target pairs, continuous street travel, the other A800 gate
+permutations, and route-matched independent Genesis captures remain open.
 
 ## Initializer-12 Renraku target into Scene 35 (2026-10-27)
 
@@ -1373,6 +1374,41 @@ All 11 output files, including the natural Scene-35 capture, collision grid,
 and route TSV, have matching hashes between configurations. The field and
 target screenshots are internal Qt captures; no route-matched independent
 Genesis frame is available. The three normal initializer-11/12 target pairs
-are now contacted, while the four initializer-5 pairs, remaining A800
-gate-state combinations, continuous street travel, and independent Genesis
-comparison remain open.
+are now contacted, while the three remaining initializer-5 pairs, remaining
+A800 gate-state combinations, continuous street travel, and independent
+Genesis comparison remain open.
+
+## Initializer-5 Mitsuhama target into Scene 30 (2026-10-27)
+
+The new `shadowrun_ghidra_conversion_qt_field_employee_recruitment_initializer5_mitsuhama_pedestrian_qa`
+accepts the ordinary initializer-5 offer selected with source seed 2. The
+generated run target is `(0,4)`, matching the second row in ROM's four-site
+pool at `0xF3E6E` and the named `four_site` Lua pool. The QA retains the
+accepted run registry, funds, and source random seed while bootstrapping a
+fresh Scene-0 runtime at `(0x1100,0x2B00)`; this checkpoint is an explicit test
+seam rather than continuous travel from Johnson.
+
+Ordinary Up input contacts Scene-0 collision record 47 at `0x0D57B4`, bounds
+`x=0x0100..0x011F`, `y=0x0280..0x029F`, event `0xC4`. Event-table row 4 at
+`0x0D54B6` selects resource Scene 30. The target-entry passage appears, then
+ordinary A dismisses it after the 17-frame presentation wait and 31-frame
+input lockout.
+
+The Scene-30 resource entry normalizes initializer 5 to `FFFBED=5`, uses mode
+`FFDF40=2`, and samples choice 2. It selects list `0x1EDDDC` and position
+record `0x1EDDF4`, placing `pedestrian_k0b_none00` at `(0x0900,0x0B00)` in
+slot 3. The active and selected effect indices are both 0; world-effect,
+pending-effect, and player-spawn-pending facts are clear. After the candidate
+is selected, the runtime retains its typed actor descriptor for later contact,
+so the final diagnostic reports `transfer_template_present=1`. That output
+descriptor is separate from the player-spawn-pending input used by the Lua
+A800 gate and must not be re-read as the pre-selection FFFC3C condition.
+
+Debug and Release pass this route plus the existing initializer-11 Lone Star
+and Ares tests and initializer-12 Renraku test. All 11 output files for the
+new route, including eight full-screen BMPs and three TSV manifests, have
+matching SHA-256 hashes across configurations. The inspected screenshots are
+internal Qt captures; there is no route-matched independent Genesis capture.
+The three remaining initializer-5 target pairs, continuous street travel,
+remaining A800 gate permutations, and independent Genesis comparison remain
+open.
