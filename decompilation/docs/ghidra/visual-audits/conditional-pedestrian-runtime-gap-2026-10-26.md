@@ -830,6 +830,18 @@ from the source waypoint direction support treating it as party movement, not
 as evidence of a pedestrian following this segment; the capture does not
 identify the exact live actor record.
 
+I also checked the earlier Scene-0 frame `001200` against the extracted actor
+art. Its central red figure matches kind-3 palette-3 walk poses at score
+`0.8921` near screen `(114,123)`; the adjacent `001210` figure matches a kind-3
+walk pose at `0.8971` near `(131,100)`. The map registrations move from
+`(678,736)` to `(698,725)`, so the template upper-left's map-X estimate
+advances about 37 pixels east across ten 30-fps samples. The matching runner
+art comes from the kind-3 template at `0x7291A`, not the kind-11 pedestrian
+template at `0x1D6988`. This supports the earlier camera-followed-party interpretation
+for the central figure; it does not identify the live party slot. The smaller
+blue figure remains unclassified here, and this pair is not counted as proof
+of an ordinary pedestrian spawn.
+
 ## Section 36 Mitsuhama map and moving sprite review
 
 Independent capture: `video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_36_source_9120-9420/frame_008340.png`.
