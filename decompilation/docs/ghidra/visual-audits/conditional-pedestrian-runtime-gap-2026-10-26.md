@@ -1218,3 +1218,52 @@ entry to the candidate: it checkpoints the runner at the static profile before
 opening the two gates. Normal generation of the target map/event pair, physical
 automatic `0x1E43C` processing after contact, the direct `FFDF42` producer, and
 a route-matched Genesis capture remain open.
+
+## Normal Employee Recruitment targets that reach A800 scenes (2026-10-27)
+
+The US ROM bytes at `0xF3E6E` are `00 05 00 04 03 02 03 03`, four ordered
+`(area,event)` pairs. Bytes at `0xF3E76` are `01 02 03 06`, the two-site
+pool. The source initializer dispatch at `0x1E69C` normalizes Employee
+Recruitment variants 11 and 12 to the `FFFBED=5` value consumed by A800;
+initializer 11 chooses the two-site pool, while initializer 12's `0x1E7D0`
+handler uses the fixed Renraku pair `(5,6)`. The runtime's named table in
+`gameplay/scripts/run_support.lua` retains those same values and names.
+
+The field event tables route every pair in these pools to a resource scene in
+the A800 range `0x15..0x2B`:
+
+| Source initializer | Target pair | ROM field route | A800 destination |
+|---|---|---|---:|
+| 5 | `(0,5)` Fuchi | Scene 0 record 46, event-table row 5 at `0x0D54B7` = `0x15` | 21 |
+| 5 | `(0,4)` Mitsuhama | Scene 0 record 47, row 4 at `0x0D54B6` = `0x1E` | 30 |
+| 5 | `(3,2)` Fuchi | Scene 3 record 97, row 2 at `0x18A6FE` = `0x15` | 21 |
+| 5 | `(3,3)` Mitsuhama | Scene 3 event-table row 3 at `0x18A6FF` = `0x1E` | 30 |
+| 11 | `(1,2)` Ares | Scene 1 record 71, row 2 at `0x17D622` = `0x1A` | 26 |
+| 11 | `(3,6)` Lone Star | Scene 3 record 96, row 6 at `0x18A702` = `0x29` | 41 |
+| 12 | `(5,6)` Renraku | Scene 5 record 46, row 6 at `0x0679CC` = `0x23` | 35 |
+
+The target-entry handler compares the active run pair with the current
+`FFFBF8/FFFBF9` map/event pair before the event-table destination continues.
+ROM `0x1EDB88` supplies an A800 candidate row for each of scenes 21, 26, 30,
+35, and 41. This establishes that the ordinary Employee Recruitment pools
+can lead into conditional-pedestrian scenes; the remaining A800 mode, story,
+index, and effect-marker gates still apply on entry.
+
+The existing deterministic Johnson captures show examples of normal pool
+selection: initializer 5 displays `(0,4)` Mitsuhama, initializer 11 displays
+`(3,6)` Lone Star, and initializer 12 displays `(5,6)` Renraku in
+`johnson-offer-{5,11,12}-generated-offer.bmp`. The route manifest records
+selection seeds 2/4/4; those seeds choose the source offer row, while the
+negotiation, target, and client draws remain live. Accepting the generated
+offer moves that offer, including its target, into the active-run slot in
+`run_registry.lua`. These captures are internal Qt artifacts, not Genesis
+visual evidence.
+
+The Scene-26 contact route above still forces `(2,1)` (Little Chiba), which is
+not in either standard target pool. The current Scene-21/30/35/41 candidate
+matrix checks actor selection after QA scene re-entry; it does not yet connect
+an accepted normal target pair to its physical field doorway and destination
+candidate. Next route coverage should preserve the generated target in its
+trace, contact its matching field event with ordinary controls, verify the
+entry passage and destination scene, then audit the A800 gates and pedestrian
+allocation in that same run.
