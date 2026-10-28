@@ -109,6 +109,14 @@ both the source initializer and canonical handler ID.
 - Gang targets and descriptions use `0xF3E7A` and `0xF36FA`. Recovery and
   recruitment use the four-site, two-site, or fixed Renraku target records in
   `0xF3E6E`/`0xF3E76`; client and presentation rolls remain in Lua state.
+- The Employee Recruitment generated-offer text is audited across all seven
+  source target tuples and all twelve client names. The Johnson offer screenshot
+  exposed an extra period before the client separator (`Seattle., Jorge`): ROM
+  `0x1E91A` changes the selected `0xF1E58` area's terminal period to a comma.
+  The offer presenter now matches that rule, and the text matrix asserts all 84
+  target/client combinations. See the [Employee Recruitment offer text
+  audit](employee-recruitment-offer-text-audit-2026-10-28.md); this does not
+  complete the Recruitment hill or provide independent Genesis pixel proof.
 - The type-3 handler at `0x1F086` compares the field area/event with the
   selected offer target. On a match it selects one of the three source actor
   lists (`0x1D6D4A`, `0x1D6D5E`, or `0x1D6D72`) and resource profiles, then

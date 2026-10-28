@@ -27,9 +27,12 @@ function EmployeeRecruitment.present_offer()
     local offer = game.runs.registry.current_offer
     assert(offer ~= nil and offer.id == "employee_recruitment")
     local target = offer.route.target
+    -- ROM 0x1E91A replaces the selected F1E58 area's terminal period with a
+    -- comma before appending the employee name.
+    local area_suffix = target.area_suffix:gsub("%.$", ",", 1)
     game.ui.say_text(
         "An employee of " .. target.location_name ..
-        " " .. target.area_suffix .. ", " .. offer.employee_name ..
+        " " .. area_suffix .. " " .. offer.employee_name ..
         ", wishes for a change in career.|" ..
         "Unfortunately, his current employer frowns upon this.||" ..
         "Assist my client with his professional growth and return here " ..

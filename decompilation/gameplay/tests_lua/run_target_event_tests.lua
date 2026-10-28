@@ -23,7 +23,13 @@ end
 
 local presented
 game = {
-    runs = { registry = { active_offer = active_offer } },
+    runs = { registry = {
+        active_offer = active_offer,
+        resolve_current_offer = function(choice)
+            assert(choice == "yes")
+            return "accepted:" .. choice
+        end,
+    } },
     modules = {
         run_support = {
             amount_in_reserved_field = function(amount, width)
@@ -50,6 +56,53 @@ assert(presented.text ==
     "<You create a diversion and slip into the office building.>\n\n" ..
     "Now comes the hard part.\n\n" ..
     "Finding your quarry and escaping with everyone intact!>")
+
+-- Audit the complete Employee Recruitment target/client text matrix. ROM
+-- 0x1E91A changes the selected area's terminal period to a comma before the
+-- client name; all source initializer pools and all twelve F35A6 clients
+-- must use that punctuation in the actual Johnson offer presenter.
+local recruitment_target_pools = {
+    RunSupport.run_target_pools.four_site,
+    RunSupport.run_target_pools.two_site,
+    { RunSupport.run_target_pools.renraku },
+}
+local recruitment_offer_cases = 0
+for _, target_pool in ipairs(recruitment_target_pools) do
+    for _, target_record in ipairs(target_pool) do
+        local location_name =
+            RunSupport.location_names[target_record.area_id][target_record.location_id]
+        local area_suffix = RunSupport.area_suffixes[target_record.area_id]
+        assert(location_name ~= nil and area_suffix ~= nil)
+        local displayed_area = area_suffix:gsub("%.$", ",", 1)
+        for _, employee_name in ipairs(RunSupport.client_names) do
+            game.runs.registry.current_offer = {
+                id = "employee_recruitment",
+                route = { target = {
+                    location_name = location_name,
+                    area_suffix = area_suffix,
+                } },
+                employee_name = employee_name,
+            }
+            assert(EmployeeRecruitment.present_offer() == "accepted:yes")
+            local expected = "An employee of " .. location_name .. " " ..
+                displayed_area .. " " .. employee_name ..
+                ", wishes for a change in career.|" ..
+                "Unfortunately, his current employer frowns upon this.||" ..
+                "Assist my client with his professional growth and return here " ..
+                "to receive full compensation for your services."
+            assert(presented ~= nil and presented.continuation == false)
+            assert(presented.text == expected,
+                string.format("wrong recruitment text for %s / %s: %q",
+                    location_name, employee_name,
+                    presented and presented.text or "<no text>"))
+            assert(not presented.text:find("%.,"),
+                "recruitment area label retained both its period and comma")
+            recruitment_offer_cases = recruitment_offer_cases + 1
+        end
+    end
+end
+assert(recruitment_offer_cases == 84,
+    "recruitment text matrix did not cover all target/client combinations")
 
 local recovery_offer = {
     id = "package_recovery",
