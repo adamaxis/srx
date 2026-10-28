@@ -191,3 +191,34 @@ give the command view a spending path it does not have.
   command A action requests event `0x24`, the child input is silent, and the
   full command rebuild on return requests event `0x25`.
 - **Independent Genesis verification:** unavailable for these exact pages.
+
+## 2026-10-28 current-Karma display coordinate audit
+
+Raw US ROM bytes at `0xDA2C..0xDA47` load the active runner record, add
+`0x8D`, read the current Karma byte, load plane-A word `$CA1E`, and call the
+decimal writer at `0xC216`. Plane A begins at `$C000`; each name-table entry is
+two bytes and each row has 64 entries. Thus `($CA1E-$C000)/2 = 0x50F`, row 20,
+column 15: the last digit's cell at `(120,160)`. The source formatter emits
+least-significant digits first and decrements its destination by one word per
+write, so the host must right-align the full number at x=128.
+
+The shared Qt presenter previously left-aligned current Karma at `(120,160)`,
+moving multi-digit values one 8-pixel cell right and drawing the final glyph
+over the panel border. It now uses the source cell as a right-edge anchor. This
+applies to both the command-menu status view and Hotel's spending view.
+
+The supplied replay frame `e_09040.png` and corrected Release frame
+`capture-human-shaman/body2-karma20-preview.bmp` both place the thresholded
+green Karma glyphs within x=113..125 at y=160..167 (46 pixels under the same
+green-channel threshold); neither has green ink at x>=128. The older native
+frame had the digits eight pixels too far right. The replay has no ROM hash,
+emulator identity, or capture method, so this confirms a useful external layout
+comparison, not verified Genesis fidelity. Palette expansion still differs.
+
+The focused Qt profile QA now checks the right-edge anchor for all thirteen
+raw runner presets and checks the captured live-Karma transitions 0->20 and
+0->17, while the held-A prompt keeps 20 unchanged. Debug and Release passed the
+Hotel profile permutation, command-menu profile permutation, Attributes/Skills
+route, Hotel route, and page-distinction CTests. Their 492 Hotel profile BMPs
+match by SHA-256. The Hotel visual hill remains partial pending an identified
+Genesis capture.

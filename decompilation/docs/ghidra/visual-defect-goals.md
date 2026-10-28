@@ -832,8 +832,12 @@ unverified. The supplied longplay contains no matching Attributes/Skills page.
 
 **Status:** conversion hill defended internally. `KARMA-COLOR` is not
 reproduced against the ROM-derived palette; `KARMA-DETAIL` is implemented and
-covered by source-rule and pixel QA. Both stay visually unverified until a
-matching independent Genesis page sequence is available.
+covered by source-rule and pixel QA. The shared current-Karma value was also
+corrected to the ROM's right edge at x=128: `0xDA2C..0xDA47` reads runner
+`+0x8D` and writes digits from `$CA1E` through `0xC216`. Debug/Release profile
+QA checks all thirteen raw presets. The supplied Hotel replay has the matching
+glyph placement but no ROM/emulator identity; both pages stay visually
+unverified until identified Genesis footage is available.
 
 ### MENU-03 — Clips child and posture selector (`CLIPS-REDRAW`, `POSTURE-FOCUS`)
 

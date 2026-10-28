@@ -707,7 +707,7 @@ The Hotel-specific [profile and preview audit](visual-audits/hotel-upgrade-profi
 physically opens the spending child for all thirteen raw runner profiles,
 checks all 260 cursor/profile states, the thirty race-stat ceilings, zero and
 rank-12 boundaries, and an insufficient/decline/confirm transaction for every
-profile. Its 398 Debug/Release full-screen frames match by SHA-256. The later
+profile. Its 478 Debug/Release full-screen frames match by SHA-256. The later
 field integration permutation also covers the captured four-frame A hold:
 the ROM grid edge at `0xD31E` calls the prompt at `0xD426`; held A frames do not
 create a second edge in `0x195C`, so a distinct A after release is required to
@@ -720,6 +720,13 @@ cost-3 display matches the ROM Human/Shaman preset at `0x72B1A` and the native
 profile permutation; the host fixture has Karma 0 while the capture has 20, so
 this is a value-level check. The Mage Only/insufficient
 message shares pixels with the selected description in the host capture.
+The shared `0xD82A` grid now anchors current Karma to the ROM draw at
+`0xDA2C..0xDA47`: record `+0x8D`, destination `$CA1E`, formatter `0xC216`.
+That word maps to `(120,160)`, so the native number is right-aligned at x=128.
+The external `e_09040.png` and corrected host frame have the same thresholded
+green-ink bounds, x=113..125; Debug/Release profile artifacts match across all
+492 BMPs. The capture identity remains unknown, so the visual hill stays
+partial.
 
 Magic has two user-type-specific presentations per the user's visual
 reference: magic users get the yellow advanced breakdown, while non-magic

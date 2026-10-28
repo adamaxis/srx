@@ -14527,9 +14527,15 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
         detail_values, {cursor.column, cursor.row}, 0x4000U,
         detail_callbacks);
 
+    // ROM 0xDA2C loads the active record, 0xDA32 adds +0x8D, and 0xDA3A
+    // reads Karma. 0xDA3C loads plane-A word $CA1E and 0xDA42 calls the
+    // right-to-left decimal writer at 0xC216. With plane A based at $C000 and
+    // 64 cells per row, $CA1E is row 20, column 15 (x=120, y=160): the final
+    // digit's cell. Keep that cell at the right edge of the host number.
     draw_command_overview_number(
-        painter, command_overview_font_, 120, 160,
-        static_cast<unsigned>(record.auxiliary[2U]));
+        painter, command_overview_font_, 128, 160,
+        static_cast<unsigned>(record.auxiliary[2U]),
+        NumericVisualAlignment::right);
 
     const auto& menu_state = menu.state();
     const auto& selected = selected_attribute_skill_cell(

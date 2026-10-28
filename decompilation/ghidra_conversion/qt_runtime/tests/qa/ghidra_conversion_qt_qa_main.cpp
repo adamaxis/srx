@@ -30,6 +30,9 @@
 
 namespace {
 
+using NumericVisualAlignment =
+    shadowrun::ghidra_conversion::qt_runtime::NumericVisualAlignment;
+
 bool source_menu_caption_matches(const QImage& scene, const QImage& font,
                                 const int origin_x, const int origin_y,
                                 const std::string_view text,
@@ -167,12 +170,18 @@ bool source_menu_direct_asset_text_matches(
 bool numeric_visual_patch_matches(
     const QImage& scene, const QImage& font, const int origin_x,
     const int origin_y, const std::uint32_t value,
-    const std::optional<QColor> tint) {
+    const std::optional<QColor> tint,
+    const NumericVisualAlignment alignment = NumericVisualAlignment::left) {
     const auto visual =
         shadowrun::ghidra_conversion::qt_runtime::render_numeric_visual(
             font, value, false, tint);
-    if (visual.isNull() || origin_x < 0 || origin_y < 0 ||
-        origin_x + visual.width() > scene.width() ||
+    if (visual.isNull()) {
+        return false;
+    }
+    const int left = alignment == NumericVisualAlignment::right
+                         ? origin_x - visual.width()
+                         : origin_x;
+    if (left < 0 || origin_y < 0 || left + visual.width() > scene.width() ||
         origin_y + visual.height() > scene.height()) {
         return false;
     }
@@ -184,7 +193,7 @@ bool numeric_visual_patch_matches(
     const auto expected_rgb = expected.convertToFormat(QImage::Format_RGB32);
     for (int y = 0; y < expected_rgb.height(); ++y) {
         for (int x = 0; x < expected_rgb.width(); ++x) {
-            if (scene.pixel(origin_x + x, origin_y + y) !=
+            if (scene.pixel(left + x, origin_y + y) !=
                 expected_rgb.pixel(x, y)) {
                 return false;
             }
@@ -197,7 +206,8 @@ bool numeric_visual_change_matches(
     const QImage& scene, const QImage& reference, const QImage& font,
     const int origin_x, const int origin_y,
     const std::uint32_t reference_value, const std::uint32_t value,
-    const QColor& tint) {
+    const QColor& tint,
+    const NumericVisualAlignment alignment = NumericVisualAlignment::left) {
     const auto reference_glyphs =
         shadowrun::ghidra_conversion::qt_runtime::render_numeric_visual(
             font, reference_value, false, tint);
@@ -206,9 +216,24 @@ bool numeric_visual_change_matches(
             font, value, false, tint);
     if (scene.isNull() || reference.isNull() ||
         reference_glyphs.isNull() || value_glyphs.isNull() ||
-        scene.size() != reference.size() || origin_x < 0 || origin_y < 0 ||
-        origin_x + value_glyphs.width() > scene.width() ||
-        origin_y + value_glyphs.height() > scene.height()) {
+        scene.size() != reference.size() || origin_y < 0 ||
+        origin_y + std::max(reference_glyphs.height(),
+                            value_glyphs.height()) > scene.height()) {
+        return false;
+    }
+
+    const auto aligned_left = [origin_x, alignment](const int width) {
+        return alignment == NumericVisualAlignment::right
+                   ? origin_x - width
+                   : origin_x;
+    };
+    const int reference_left = aligned_left(reference_glyphs.width());
+    const int value_left = aligned_left(value_glyphs.width());
+    const int first_x = std::min(reference_left, value_left);
+    const int past_last_x = std::max(
+        reference_left + reference_glyphs.width(),
+        value_left + value_glyphs.width());
+    if (first_x < 0 || past_last_x > scene.width()) {
         return false;
     }
 
@@ -233,17 +258,27 @@ bool numeric_visual_change_matches(
         return std::abs(actual - expected) <= 1;
     };
 
-    for (int y = 0; y < value_glyphs.height(); ++y) {
-        for (int x = 0; x < value_glyphs.width(); ++x) {
+    for (int y = 0; y < std::max(reference_glyphs.height(),
+                                  value_glyphs.height());
+         ++y) {
+        for (int screen_x = first_x; screen_x < past_last_x; ++screen_x) {
+            const int reference_glyph_x = screen_x - reference_left;
+            const int value_glyph_x = screen_x - value_left;
             const auto reference_glyph =
-                x < reference_glyphs.width()
-                    ? reference_glyphs.pixelColor(x, y)
+                reference_glyph_x >= 0 &&
+                        reference_glyph_x < reference_glyphs.width() &&
+                        y < reference_glyphs.height()
+                    ? reference_glyphs.pixelColor(reference_glyph_x, y)
                     : QColor(0, 0, 0, 0);
-            const auto value_glyph = value_glyphs.pixelColor(x, y);
+            const auto value_glyph =
+                value_glyph_x >= 0 && value_glyph_x < value_glyphs.width() &&
+                        y < value_glyphs.height()
+                    ? value_glyphs.pixelColor(value_glyph_x, y)
+                    : QColor(0, 0, 0, 0);
             const auto reference_pixel =
-                reference.pixelColor(origin_x + x, origin_y + y);
+                reference.pixelColor(screen_x, origin_y + y);
             const auto scene_pixel =
-                scene.pixelColor(origin_x + x, origin_y + y);
+                scene.pixelColor(screen_x, origin_y + y);
             if (!channel_matches(
                     scene_pixel.red(), reference_pixel.red(),
                     reference_glyph.red(), reference_glyph.alpha(),
@@ -258,7 +293,7 @@ bool numeric_visual_change_matches(
                     value_glyph.blue(), value_glyph.alpha())) {
                 std::cerr << "numeric visual transition " << reference_value
                           << " -> " << value << " differs at "
-                          << origin_x + x << ',' << origin_y + y
+                          << screen_x << ',' << origin_y + y
                           << " ref=" << reference_pixel.red() << ','
                           << reference_pixel.green() << ','
                           << reference_pixel.blue() << " actual="
@@ -46747,10 +46782,14 @@ int main(int argc, char** argv) {
                             source_menu_caption_matches(
                                 image, green_font, 128, 32,
                                 class_names[record.archetype_index]);
+                        // ROM 0xDA3C supplies $CA1E to the right-to-left
+                        // decimal writer at 0xC216: row 20, column 15 of the
+                        // $C000 plane-A table, with right edge x=128.
                         if (!green_header ||
                             !numeric_visual_patch_matches(
-                                image, green_font, 120, 160,
-                                record.auxiliary[2U], color_tint)) {
+                                image, green_font, 128, 160,
+                                record.auxiliary[2U], color_tint,
+                                NumericVisualAlignment::right)) {
                             reason = "race/class header or live +0x8D Karma display did not match the profile";
                             return false;
                         }
@@ -47465,8 +47504,8 @@ int main(int argc, char** argv) {
                                 body_current + 1U, color_tint);
                         const auto applied_karma_pixels =
                             numeric_visual_patch_matches(
-                                applied_frame, green_font, 120, 160, 0U,
-                                color_tint);
+                                applied_frame, green_font, 128, 160, 0U,
+                                color_tint, NumericVisualAlignment::right);
                         const auto applied_preview_pixels =
                             expected_after.status ==
                                     AttributeSkillUpgradeStatus::available
@@ -47599,7 +47638,8 @@ int main(int argc, char** argv) {
                             !zero_karma_frame.isNull() &&
                             numeric_visual_change_matches(
                                 preview_frame, zero_karma_frame, green_font,
-                                120, 160, 0U, 20U, *color_tint);
+                                128, 160, 0U, 20U, *color_tint,
+                                NumericVisualAlignment::right);
                         if (field_scene.hotel_karma_screen_loading() ||
                             capture_preview.status !=
                                 AttributeSkillUpgradeStatus::available ||
@@ -47648,7 +47688,7 @@ int main(int argc, char** argv) {
                             !image_region_differs(preview_frame, held_prompt,
                                                   96, 168, 120, 32) ||
                             image_region_differs(preview_frame, held_prompt,
-                                                 120, 160, 16, 8) ||
+                                                 112, 160, 16, 8) ||
                             !numeric_visual_patch_matches(
                                 held_prompt, green_font, 136, 56, 2U,
                                 color_tint) ||
@@ -47669,7 +47709,8 @@ int main(int argc, char** argv) {
                         const auto applied_karma_pixels =
                             numeric_visual_change_matches(
                                 applied_frame, zero_karma_frame, green_font,
-                                120, 160, 0U, 17U, *color_tint);
+                                128, 160, 0U, 17U, *color_tint,
+                                NumericVisualAlignment::right);
                         const auto applied_body_pixels =
                             numeric_visual_patch_matches(
                                 applied_frame, green_font, 136, 56, 3U,
@@ -47688,7 +47729,7 @@ int main(int argc, char** argv) {
                             applied_profile.auxiliary[2U] != 17U ||
                             !applied_karma_pixels ||
                             !image_region_differs(preview_frame, applied_frame,
-                                                  120, 160, 16, 8) ||
+                                                  112, 160, 16, 8) ||
                             next_preview.status !=
                                 AttributeSkillUpgradeStatus::available ||
                             next_preview.next_value != 4U ||
