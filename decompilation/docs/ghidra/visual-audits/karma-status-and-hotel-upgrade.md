@@ -246,3 +246,24 @@ and all-profile QA assert the cleared rows, unchanged preview, prompt selection,
 and non-mutating hold. The replay still has no ROM hash, emulator identity, or
 capture method, so its agreement is corroborative rather than independent US
 Genesis proof.
+
+## 2026-10-28 Hotel upgrade confirmation input permutations
+
+**[C]** `0xD53C` clears `FFF0DC` before drawing the confirmation prompt, so the
+cursor starts on Yes (`0`) and No is (`1`). Each prompt pass waits and samples
+at `0xD570..0xD57C`. Up (`FFDD22` bit 8) is checked before Down (bit 9); either
+uses `0xC376` to wrap the two-row selection, then starts another input pass.
+Thus Up wins a combined Up+Down edge, and either direction is processed before
+a confirm edge in the same sample; the confirm then needs a fresh press edge.
+The confirm tests are A (bit 14), B (bit 12), and C (bit 13); each returns
+from the prompt. Left, Right, and Start are not tested in this loop and leave
+it waiting.
+
+The caller at `0xD42E` checks the stored Yes/No selection, not which confirm
+button returned. A nonzero No selection returns to the grid without changing
+the runner; zero commits the prepared Karma balance and selected stat. Thus A,
+B, and C have the same confirm result for the highlighted row. On the supplied
+recording, frame `09080` shows the default Yes cursor and RAM `FFDD22=0x4040`;
+at `09081` it is `0x0040` while A remains held. The edge at `09080` opens the
+prompt; its first input sample has no second A edge. The prompt remains visible
+and Body/Karma remain unchanged through frame `09160`, matching the ROM path.

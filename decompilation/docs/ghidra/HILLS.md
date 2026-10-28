@@ -722,7 +722,11 @@ profile. Its 478 Debug/Release full-screen frames match by SHA-256. The later
 field integration permutation also covers the captured four-frame A hold:
 the ROM grid edge at `0xD31E` calls the prompt at `0xD426`; held A frames do not
 create a second edge in `0x195C`, so a distinct A after release is required to
-purchase. Debug/Release pass with 492 matching profile BMPs and a matching
+purchase. Prompt input at `0xD53C` processes Up, Down, then A/B/C; direction
+edges win over confirms, and a confirm edge combined with movement is lost
+until a fresh press. All three confirm buttons return the highlighted choice;
+`0xD42E` commits only when `FFF0DC=0` (Yes). Left, Right, and Start are ignored.
+Debug/Release pass with 492 matching profile BMPs and a matching
 manifest. Keep the visual hill partial: the user-supplied
 `decompilation/ghidra_conversion/build/research/au/e8_karma_spend/` shows Human/Shaman, Body 2, Karma 20, the default-Yes
 prompt, and the held A sequence, but lacks ROM/emulator identity and does not
