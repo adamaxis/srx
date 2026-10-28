@@ -15,15 +15,6 @@ bool expect(const bool condition) {
 int main() {
     using namespace shadowrun::ghidra_conversion;
 
-    HotelOptionsMenuState input_state{};
-    const auto simultaneous_options_input = apply_hotel_options_input(
-        input_state, HotelOptionsInputFrame{true, true, true, true, true});
-    if (!expect(input_state.selection == HotelOption::check_out &&
-                simultaneous_options_input.selection_moved &&
-                simultaneous_options_input.confirmed &&
-                simultaneous_options_input.action)) {
-        return 4;
-    }
     HotelCheckoutPromptState input_checkout_state{};
     const auto direction_with_confirm_checkout_input =
         apply_hotel_checkout_input(
@@ -48,6 +39,19 @@ int main() {
     std::vector<std::string> hotel_order;
     HotelOptionsMenuState hotel_state{};
     HotelOptionsMenuCallbacks hotel_callbacks{};
+    hotel_callbacks.advance_options_input = [](
+        const HotelOption current, const HotelOptionsInputFrame& input) {
+        auto selection = current;
+        if (input.move_up || input.move_down) {
+            selection = current == HotelOption::karma_screen
+                ? HotelOption::check_out
+                : HotelOption::karma_screen;
+        }
+        const bool confirmed = input.confirm;
+        return HotelOptionsInputTransition{
+            selection, input.move_up || input.move_down, confirmed,
+            input.action};
+    };
     hotel_callbacks.reset_mode_display_buffers =
         [&] { hotel_order.emplace_back("reset"); };
     hotel_callbacks.prepare_hotel_options_display =

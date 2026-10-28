@@ -36,15 +36,11 @@ struct HotelOptionsMenuState {
 };
 
 struct HotelOptionsInputTransition {
+    HotelOption selection = HotelOption::karma_screen;
     bool selection_moved = false;
     bool confirmed = false;
     bool action = false;
 };
-
-// Apply one already-latched source input sample. ROM 0xCF98 checks Up before
-// Down; confirmation and action remain visible in the same sampled frame.
-HotelOptionsInputTransition apply_hotel_options_input(
-    HotelOptionsMenuState& state, const HotelOptionsInputFrame& input) noexcept;
 
 struct HotelOptionsMenuCallbacks {
     // ROM 0xCF3E, 0xCFFE, and 0xEF08. The entity-status service is kept as a
@@ -65,6 +61,12 @@ struct HotelOptionsMenuCallbacks {
     std::function<void()> latch_controller_events;
     std::function<HotelOptionsInputFrame()> sample_controller_input;
     std::function<void()> advance_random_grid_effect;
+
+    // Lua consumes the latched input and returns the authoritative selection
+    // and transition. The native loop stores only the cursor projection used
+    // by its renderer and dispatches the resulting typed action.
+    std::function<HotelOptionsInputTransition(
+        HotelOption, const HotelOptionsInputFrame&)> advance_options_input;
 
     // The pointer table at 0xC14C8 dispatches Karma Screen to 0xD024. That
     // address enters the existing Attributes/Skills/Cyberware routine after

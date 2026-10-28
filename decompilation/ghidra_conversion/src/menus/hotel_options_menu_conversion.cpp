@@ -3,12 +3,6 @@
 namespace shadowrun::ghidra_conversion {
 namespace {
 
-HotelOption move_hotel_option(const HotelOption selection,
-                              const std::int8_t step) {
-    return static_cast<HotelOption>(move_wrapped_menu_cursor(
-        static_cast<std::uint8_t>(selection), step, 1U));
-}
-
 HotelCheckoutSelection move_checkout_selection(
     const HotelCheckoutSelection selection, const std::int8_t step) {
     return static_cast<HotelCheckoutSelection>(move_wrapped_menu_cursor(
@@ -48,22 +42,6 @@ void service_checkout_frame(const HotelCheckoutPromptCallbacks& callbacks,
 }
 
 } // namespace
-
-HotelOptionsInputTransition apply_hotel_options_input(
-    HotelOptionsMenuState& state,
-    const HotelOptionsInputFrame& input) noexcept {
-    HotelOptionsInputTransition transition{};
-    if (input.move_up) {
-        state.selection = move_hotel_option(state.selection, -1);
-        transition.selection_moved = true;
-    } else if (input.move_down) {
-        state.selection = move_hotel_option(state.selection, 1);
-        transition.selection_moved = true;
-    }
-    transition.confirmed = input.confirm;
-    transition.action = input.action;
-    return transition;
-}
 
 std::optional<HotelCheckoutResult> apply_hotel_checkout_input(
     HotelCheckoutPromptState& state,
@@ -125,9 +103,10 @@ HotelOptionsMenuResult run_hotel_options_menu(
             HotelOptionsInputFrame input{};
             service_hotel_options_frame(callbacks, input);
 
-            // ROM 0xCF98 checks Up before Down and still proceeds to the
-            // confirm/action checks in the same sampled frame.
-            const auto transition = apply_hotel_options_input(state, input);
+            const auto transition = callbacks.advance_options_input
+                ? callbacks.advance_options_input(state.selection, input)
+                : HotelOptionsInputTransition{state.selection};
+            state.selection = transition.selection;
             if (transition.selection_moved) {
                 if (callbacks.render_cursor) {
                     callbacks.render_cursor(state.selection);

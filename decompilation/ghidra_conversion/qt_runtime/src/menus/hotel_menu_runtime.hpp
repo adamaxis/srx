@@ -77,6 +77,8 @@ public:
     void close() noexcept;
     void advance_animation(std::uint16_t& random_seed);
     HotelMenuEvent advance_controller_events(std::uint16_t events);
+    HotelMenuEvent apply_lua_options_result(HotelMenuEvent event,
+                                            HotelOption selection);
     using SidebarPainter = std::function<void(QPainter&)>;
 
     void set_presentation_timing(std::uint32_t status_text_delay_frames,
@@ -96,7 +98,7 @@ public:
     bool open() const noexcept { return phase_ != HotelMenuPhase::closed; }
     HotelMenuPhase phase() const noexcept { return phase_; }
     HotelOption option_selection() const noexcept {
-        return options_state_.selection;
+        return option_selection_;
     }
     HotelCheckoutSelection checkout_selection() const noexcept {
         return checkout_state_.selection;
@@ -114,7 +116,7 @@ private:
                            const std::array<QImage, 7>& patterns) const;
 
     HotelMenuPhase phase_ = HotelMenuPhase::closed;
-    HotelOptionsMenuState options_state_{};
+    HotelOption option_selection_ = HotelOption::karma_screen;
     HotelCheckoutPromptState checkout_state_{};
     std::array<bool, kHotelEntityStatusRecordCount>
         medical_attention_rows_{};

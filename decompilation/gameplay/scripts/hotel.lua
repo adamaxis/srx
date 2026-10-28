@@ -1,6 +1,7 @@
--- The native Hotel presenter owns layout, focus, and controller cadence.
--- Lua supplies the stable choices used by its options and checkout pages.
+-- Qt owns pixel placement and VBlank collection. Lua owns the selected Hotel
+-- option and the controller transition that consumes each typed input sample.
 local Hotel = {}
+local options_selection = 0
 
 function Hotel.options()
     return { "karma_screen", "check_out" }, "hotel.options.title", {
@@ -14,6 +15,41 @@ function Hotel.checkout()
         "hotel.option.checkout_yes",
         "hotel.option.checkout_no",
     }
+end
+
+function Hotel.reset_options()
+    options_selection = 0
+    return { options_selection }
+end
+
+-- ROM 0xCF98 checks Up before Down, then 0xCFD2 dispatches A using the new
+-- selection. C is checked afterward at 0xCFEA; B, Left, Right, and Start do
+-- not change this menu. Event bits are the host's latched 16-bit input word.
+-- Results: event code (0 waiting, 1 moved, 2 checkout, 3 Karma, 4 action),
+-- selected row (0 or 1), and whether a direction moved the cursor. Direction
+-- and confirm can occur in one source sample, so retain both facts.
+function Hotel.advance_options(events)
+    if type(events) ~= "number" or events % 1 ~= 0 or
+       events < 0 or events > 0xFFFF then
+        error("Hotel Options needs a 16-bit controller event word")
+    end
+
+    local moved = false
+    if (events & 0x0100) ~= 0 then
+        options_selection = (options_selection + 1) & 1
+        moved = true
+    elseif (events & 0x0200) ~= 0 then
+        options_selection = (options_selection + 1) & 1
+        moved = true
+    end
+
+    local result = moved and 1 or 0
+    if (events & 0x4000) ~= 0 then
+        result = options_selection == 0 and 3 or 2
+    elseif (events & 0x2000) ~= 0 then
+        result = 4
+    end
+    return { result, options_selection, moved and 1 or 0 }
 end
 
 function Hotel.text_keys()

@@ -927,6 +927,16 @@ void FieldSceneRuntime::begin_hotel_menu() {
     if (!ready_) {
         return;
     }
+    const auto hotel_menu_reset =
+        game_scripts_.call_integers("hotel", "reset_options", {});
+    if (!hotel_menu_reset.has_value() || hotel_menu_reset->size() != 1U ||
+        hotel_menu_reset->front() != 0) {
+        failure_ = game_scripts_.failure().empty()
+            ? "Lua Hotel Options state could not be initialized"
+            : game_scripts_.failure();
+        source_boundary("field.hotel.options_script_reset_failed");
+        return;
+    }
     std::array<std::string, FieldPartyRosterRuntime::kSlotCount> names{};
     for (std::size_t slot = 0; slot < names.size(); ++slot) {
         names[slot] = field_party_roster_.name(slot);
@@ -1630,7 +1640,34 @@ bool FieldSceneRuntime::load_item_menu_content() {
 
 HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
     const std::uint16_t events) {
-    const auto result = hotel_menu_.advance_controller_events(events);
+    HotelMenuEvent result = HotelMenuEvent::waiting;
+    if (hotel_menu_.phase() == HotelMenuPhase::options) {
+        const auto decision = game_scripts_.call_integers(
+            "hotel", "advance_options",
+            {static_cast<std::int64_t>(events)});
+        if (!decision.has_value() || decision->size() != 3U ||
+            decision->at(0U) < 0 || decision->at(0U) > 4 ||
+            decision->at(1U) < 0 || decision->at(1U) > 1 ||
+            decision->at(2U) < 0 || decision->at(2U) > 1) {
+            failure_ = game_scripts_.failure().empty()
+                ? "Lua Hotel Options input result is invalid"
+                : game_scripts_.failure();
+            source_boundary("field.hotel.options_script_input_failed");
+            return HotelMenuEvent::waiting;
+        }
+        constexpr std::array<HotelMenuEvent, 5> kLuaEvents{{
+            HotelMenuEvent::waiting,
+            HotelMenuEvent::selection_moved,
+            HotelMenuEvent::checkout_opened,
+            HotelMenuEvent::karma_screen_opened,
+            HotelMenuEvent::mode_action,
+        }};
+        result = hotel_menu_.apply_lua_options_result(
+            kLuaEvents[static_cast<std::size_t>(decision->front())],
+            static_cast<HotelOption>(decision->at(1U)));
+    } else {
+        result = hotel_menu_.advance_controller_events(events);
+    }
     switch (result) {
     case HotelMenuEvent::waiting:
         break;
@@ -1645,6 +1682,14 @@ HotelMenuEvent FieldSceneRuntime::process_hotel_menu_events(
         source_boundary("field.hotel.checkout.opened");
         break;
     case HotelMenuEvent::stayed_at_hotel:
+        if (const auto reset = game_scripts_.call_integers(
+                "hotel", "reset_options", {});
+            !reset.has_value() || reset->size() != 1U || reset->front() != 0) {
+            failure_ = game_scripts_.failure().empty()
+                ? "Lua Hotel Options state could not reset after checkout decline"
+                : game_scripts_.failure();
+            source_boundary("field.hotel.options_script_reset_failed");
+        }
         source_boundary("field.hotel.checkout.stayed");
         break;
     case HotelMenuEvent::checked_out:

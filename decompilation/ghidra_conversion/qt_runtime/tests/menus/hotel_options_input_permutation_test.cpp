@@ -1,52 +1,90 @@
 #include "shadowrun_ghidra/menus/hotel_options_menu_conversion.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "hotel_menu_runtime.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <filesystem>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace {
 
 using namespace shadowrun::ghidra_conversion;
+using namespace shadowrun::ghidra_conversion::scripting;
 using namespace shadowrun::ghidra_conversion::qt_runtime;
 
-bool check_masks() {
-    // ROM 0xCF98..0xCFC6 checks Up before Down, then bit 0x0E (A).
-    // The B bit (0x0C) is not checked in this loop; C (0x0D) is checked only
-    // afterward at 0xCFEA as the mode-action event. Left (0x0A), Right
-    // (0x0B), and Start (0x0F) have no branch in this menu loop.
+std::optional<std::vector<std::int64_t>> advance_options(
+    GameScriptRuntime& scripts, const std::uint16_t events) {
+    return scripts.call_integers("hotel", "advance_options",
+                                 {static_cast<std::int64_t>(events)});
+}
+
+bool reset_options(GameScriptRuntime& scripts) {
+    const auto reset = scripts.call_integers("hotel", "reset_options", {});
+    return reset.has_value() && reset->size() == 1U && reset->front() == 0;
+}
+
+std::uint16_t event_word(const std::uint16_t mask) {
+    std::uint16_t events = 0U;
+    if ((mask & 0x01U) != 0U) events |= 0x0100U;
+    if ((mask & 0x02U) != 0U) events |= 0x0200U;
+    if ((mask & 0x04U) != 0U) events |= 0x0400U;
+    if ((mask & 0x08U) != 0U) events |= 0x0800U;
+    if ((mask & 0x10U) != 0U) events |= 0x4000U;
+    if ((mask & 0x20U) != 0U) events |= 0x1000U;
+    if ((mask & 0x40U) != 0U) events |= 0x2000U;
+    if ((mask & 0x80U) != 0U) events |= 0x8000U;
+    return events;
+}
+
+bool check_masks(GameScriptRuntime& scripts) {
+    // ROM 0xCF98..0xCFC6 checks Up before Down, then A. C is checked after
+    // confirmation at 0xCFEA. B, Left, Right, and Start have no branch.
     for (std::uint8_t initial = 0U; initial < 2U; ++initial) {
         for (std::uint16_t mask = 0U; mask < 256U; ++mask) {
             const bool up = (mask & 0x01U) != 0U;
             const bool down = (mask & 0x02U) != 0U;
-            const bool left = (mask & 0x04U) != 0U;
-            const bool right = (mask & 0x08U) != 0U;
             const bool a = (mask & 0x10U) != 0U;
-            const bool b = (mask & 0x20U) != 0U;
             const bool c = (mask & 0x40U) != 0U;
-            const bool start = (mask & 0x80U) != 0U;
 
-            HotelOptionsMenuState state{};
-            state.selection = static_cast<HotelOption>(initial);
-            const auto transition = apply_hotel_options_input(
-                state, HotelOptionsInputFrame{up, down, a, b, c,
-                                              left, right, start});
+            if (!reset_options(scripts)) {
+                std::cerr << "Hotel Options Lua reset failed\n";
+                return false;
+            }
+            if (initial != 0U) {
+                const auto moved = advance_options(scripts, 0x0200U);
+                if (!moved.has_value() || moved->size() != 3U ||
+                    moved->at(0U) != 1 || moved->at(1U) != 1 ||
+                    moved->at(2U) != 1) {
+                    std::cerr << "Hotel Options Lua initial row failed\n";
+                    return false;
+                }
+            }
+            const auto decision = advance_options(
+                scripts, event_word(mask));
+            if (!decision.has_value() || decision->size() != 3U) {
+                std::cerr << "Hotel Options Lua input call failed: "
+                          << scripts.failure() << '\n';
+                return false;
+            }
 
             const auto expected_selection = (up || down)
-                ? static_cast<HotelOption>(1U - initial)
-                : static_cast<HotelOption>(initial);
-            if (state.selection != expected_selection ||
-                transition.selection_moved != (up || down) ||
-                transition.confirmed != a || transition.action != c) {
+                ? static_cast<std::int64_t>(1U - initial)
+                : static_cast<std::int64_t>(initial);
+            const auto expected_event = a
+                ? (expected_selection == 0 ? 3 : 2)
+                : c ? 4 : (up || down) ? 1 : 0;
+            if (decision->at(1U) != expected_selection ||
+                decision->at(0U) != expected_event ||
+                decision->at(2U) != (up || down ? 1 : 0)) {
                 std::cerr << "Hotel Options mask failed: row="
                           << static_cast<unsigned>(initial)
                           << " mask=" << static_cast<unsigned>(mask)
-                          << " B=" << b << " Left=" << left
-                          << " Right=" << right << " Start=" << start
                           << '\n';
                 return false;
             }
@@ -142,16 +180,35 @@ bool check_checkout_masks() {
     return true;
 }
 
-bool check_checkout_edge_latch_sequence() {
+bool check_checkout_edge_latch_sequence(GameScriptRuntime& scripts) {
     HotelMenuRuntime runtime;
     std::array<RunnerRecordFields, 3> records{};
     const std::array<std::string, 3> names{"Joshua", "David", "Jack"};
     runtime.open(records, names, 0U);
+    if (!reset_options(scripts)) {
+        std::cerr << "Hotel Lua Options reset failed before checkout path\n";
+        return false;
+    }
     if (runtime.advance_controller_events(0x0100U) !=
-            HotelMenuEvent::status_acknowledged ||
-        runtime.advance_controller_events(0x0200U) !=
-            HotelMenuEvent::selection_moved ||
-        runtime.advance_controller_events(0x4000U) !=
+            HotelMenuEvent::status_acknowledged) {
+        std::cerr << "Hotel checkout edge-latch status setup failed\n";
+        return false;
+    }
+    const auto down = advance_options(scripts, 0x0200U);
+    if (!down.has_value() || down->size() != 3U || down->at(0U) != 1 ||
+        down->at(1U) != 1 || down->at(2U) != 1 ||
+        runtime.apply_lua_options_result(HotelMenuEvent::selection_moved,
+                                         HotelOption::check_out) !=
+            HotelMenuEvent::selection_moved) {
+        std::cerr << "Hotel Options Lua did not select checkout\n";
+        return false;
+    }
+    const auto confirm = advance_options(scripts, 0x4000U);
+    if (!confirm.has_value() || confirm->size() != 3U ||
+        confirm->at(0U) != 2 || confirm->at(1U) != 1 ||
+        confirm->at(2U) != 0 ||
+        runtime.apply_lua_options_result(HotelMenuEvent::checkout_opened,
+                                         HotelOption::check_out) !=
             HotelMenuEvent::checkout_opened ||
         runtime.checkout_selection() != HotelCheckoutSelection::no) {
         std::cerr << "Hotel checkout edge-latch setup failed\n";
@@ -180,7 +237,7 @@ bool check_checkout_edge_latch_sequence() {
     return true;
 }
 
-bool check_dispatch_order() {
+bool check_dispatch_order(GameScriptRuntime& scripts) {
     // First, B is ignored. Next, Down+C moves to Check Out and invokes the
     // action service. Finally Up+Down+A+C moves once (Up has source priority)
     // and A dispatches the newly selected Karma row before C can run.
@@ -196,6 +253,33 @@ bool check_dispatch_order() {
 
     HotelOptionsMenuState state{};
     HotelOptionsMenuCallbacks callbacks{};
+    if (!reset_options(scripts)) {
+        return false;
+    }
+    callbacks.advance_options_input = [&scripts](
+        const HotelOption, const HotelOptionsInputFrame& input) {
+        std::uint16_t mask = 0U;
+        if (input.move_up) mask |= 0x01U;
+        if (input.move_down) mask |= 0x02U;
+        if (input.move_left) mask |= 0x04U;
+        if (input.move_right) mask |= 0x08U;
+        if (input.confirm) mask |= 0x10U;
+        if (input.alternate_confirm) mask |= 0x20U;
+        if (input.action) mask |= 0x40U;
+        if (input.start) mask |= 0x80U;
+        const auto decision = advance_options(scripts, event_word(mask));
+        if (!decision.has_value() || decision->size() != 3U ||
+            decision->at(0U) < 0 || decision->at(0U) > 4 ||
+            decision->at(1U) < 0 || decision->at(1U) > 1) {
+            return HotelOptionsInputTransition{};
+        }
+        const auto code = decision->at(0U);
+        return HotelOptionsInputTransition{
+            static_cast<HotelOption>(decision->at(1U)),
+            decision->at(2U) == 1,
+            code == 2 || code == 3,
+            code == 4};
+    };
     callbacks.render_cursor = [&](const HotelOption selection) {
         rendered_cursors.push_back(selection);
     };
@@ -234,9 +318,19 @@ bool check_dispatch_order() {
 } // namespace
 
 int main() {
-    if (!check_masks() || !check_status_acknowledgement_masks() ||
-        !check_checkout_masks() || !check_checkout_edge_latch_sequence() ||
-        !check_dispatch_order()) {
+    GameScriptRuntime scripts;
+    const auto script_root = std::filesystem::path(
+        SHADOWRUN_GAMEPLAY_SCRIPT_ROOT);
+    const auto dialogue_text = std::filesystem::path(
+        SHADOWRUN_GHIDRA_ASSET_ROOT) / "dialogue" / "script-text.json";
+    if (!scripts.load_package(script_root, dialogue_text)) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    if (!check_masks(scripts) || !check_status_acknowledgement_masks() ||
+        !check_checkout_masks() ||
+        !check_checkout_edge_latch_sequence(scripts) ||
+        !check_dispatch_order(scripts)) {
         return 1;
     }
     return 0;

@@ -107,13 +107,20 @@ target_include_directories(shadowrun_ghidra_hotel_options_input_permutation_test
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/../include"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/menus")
+target_compile_definitions(shadowrun_ghidra_hotel_options_input_permutation_test
+    PRIVATE
+        SHADOWRUN_GAMEPLAY_SCRIPT_ROOT="${CMAKE_SOURCE_DIR}/../gameplay/scripts"
+        SHADOWRUN_GHIDRA_ASSET_ROOT="${CMAKE_SOURCE_DIR}/../assets")
 set_target_properties(shadowrun_ghidra_hotel_options_input_permutation_test
     PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
         RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
         RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_link_libraries(shadowrun_ghidra_hotel_options_input_permutation_test
-    PRIVATE shadowrun_ghidra_conversion_modules Qt6::Gui)
+    PRIVATE
+        shadowrun_ghidra_conversion_modules
+        shadowrun_gameplay_script_runtime
+        Qt6::Gui)
 add_test(NAME shadowrun_ghidra_hotel_options_input_permutation
          COMMAND shadowrun_ghidra_hotel_options_input_permutation_test)
 

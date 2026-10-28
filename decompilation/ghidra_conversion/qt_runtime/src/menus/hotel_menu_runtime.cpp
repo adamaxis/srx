@@ -35,7 +35,7 @@ void HotelMenuRuntime::open(
     std::array<RunnerRecordFields, 3>& records,
     const std::array<std::string, 3>& names,
     const std::size_t active_runner_slot) {
-    options_state_ = HotelOptionsMenuState{};
+    option_selection_ = HotelOption::karma_screen;
     checkout_state_ = HotelCheckoutPromptState{};
     medical_attention_rows_.fill(false);
     entity_names_ = names;
@@ -146,7 +146,7 @@ void HotelMenuRuntime::close() noexcept {
     presented_phase_ = phase_;
     open_frames_ = 0U;
     page_hold_frames_ = 0U;
-    options_state_ = HotelOptionsMenuState{};
+    option_selection_ = HotelOption::karma_screen;
     checkout_state_ = HotelCheckoutPromptState{};
     medical_attention_rows_.fill(false);
     entity_names_ = {};
@@ -208,7 +208,7 @@ HotelMenuEvent HotelMenuRuntime::advance_controller_events(
             return HotelMenuEvent::waiting;
         }
         phase_ = HotelMenuPhase::options;
-        options_state_ = HotelOptionsMenuState{};
+        option_selection_ = HotelOption::karma_screen;
         reset_page_effect();
         present_phase_after(options_redraw_frames_);
         return HotelMenuEvent::status_acknowledged;
@@ -216,23 +216,7 @@ HotelMenuEvent HotelMenuRuntime::advance_controller_events(
 
     const auto input = hotel_input_from_events(events);
     if (phase_ == HotelMenuPhase::options) {
-        const auto transition =
-            apply_hotel_options_input(options_state_, input);
-        if (transition.confirmed) {
-            if (options_state_.selection == HotelOption::check_out) {
-                checkout_state_ = HotelCheckoutPromptState{};
-                phase_ = HotelMenuPhase::checkout;
-                reset_page_effect();
-                present_phase_after(0U);
-                return HotelMenuEvent::checkout_opened;
-            }
-            return HotelMenuEvent::karma_screen_opened;
-        }
-        if (transition.action) {
-            return HotelMenuEvent::mode_action;
-        }
-        return transition.selection_moved ? HotelMenuEvent::selection_moved
-                                          : HotelMenuEvent::waiting;
+        return HotelMenuEvent::waiting;
     }
 
     const auto previous_selection = checkout_state_.selection;
@@ -244,13 +228,40 @@ HotelMenuEvent HotelMenuRuntime::advance_controller_events(
     }
     if (*result == HotelCheckoutResult::stay_at_hotel) {
         phase_ = HotelMenuPhase::options;
-        options_state_ = HotelOptionsMenuState{};
+        option_selection_ = HotelOption::karma_screen;
         reset_page_effect();
         present_phase_after(options_redraw_frames_);
         return HotelMenuEvent::stayed_at_hotel;
     }
     close();
     return HotelMenuEvent::checked_out;
+}
+
+HotelMenuEvent HotelMenuRuntime::apply_lua_options_result(
+    const HotelMenuEvent event, const HotelOption selection) {
+    if (phase_ != HotelMenuPhase::options ||
+        (selection != HotelOption::karma_screen &&
+         selection != HotelOption::check_out)) {
+        return HotelMenuEvent::waiting;
+    }
+    option_selection_ = selection;
+    if (event == HotelMenuEvent::checkout_opened) {
+        if (selection != HotelOption::check_out) {
+            return HotelMenuEvent::waiting;
+        }
+        checkout_state_ = HotelCheckoutPromptState{};
+        phase_ = HotelMenuPhase::checkout;
+        reset_page_effect();
+        present_phase_after(0U);
+        return event;
+    }
+    if (event == HotelMenuEvent::selection_moved ||
+        event == HotelMenuEvent::karma_screen_opened ||
+        event == HotelMenuEvent::mode_action ||
+        event == HotelMenuEvent::waiting) {
+        return event;
+    }
+    return HotelMenuEvent::waiting;
 }
 
 void HotelMenuRuntime::paint_random_grid(
@@ -348,7 +359,7 @@ void HotelMenuRuntime::paint(
                       content.options[row].label,
                       HotelMenuPaletteLine::status_and_options);
         }
-        const auto row = static_cast<int>(options_state_.selection);
+        const auto row = static_cast<int>(option_selection_);
         if (!options_cursor.isNull()) {
             painter.drawImage(72, 72 + row * 16, options_cursor);
         }
