@@ -180,17 +180,29 @@ and the `profile-cells.tsv` manifest match by SHA-256.
 ### Human/Shaman value cross-check against the supplied frame
 
 **[C]** Capture frame `e_09040.png` identifies Joshua as Human/Shaman and shows
-Body 2 with the preview `Upgrade to 3`, `Cost 3`. The ROM preset record at
-`0x72B1A` has Body 2 at `+0x77` (the next three stat bytes are `4,1,2`). The
-source-backed profile permutation row for `joshua-gator-shaman`, column 0,
-cursor row 0, independently records current 2, next 3, cost 3, and writes
-`joshua-gator-shaman/actual.bmp`.
+Body 2 with `Upgrade to 3`, `Cost 3`. The ROM preset at `0x72B1A` has species
+0 (Human), class 1 (Shaman), Body 2 at `+0x77`, and preset Karma 0 at `+0x8D`;
+the next three stat bytes are `4,1,2`. The capture's current-runner pointer
+`FFFC04=0x00FF0100` resolves to record `0xFF0100`, where Body is 2 and runtime
+Karma is 20. ROM table `0xC22A6` gives Human Body maximum 6. Lua's source rule
+at `gameplay/scripts/karma.lua` permits the next Body value 3 and charges that
+next value, so the visible cost is 3. The Shaman class does not change this
+Body cost; it gates caster-only skill upgrades elsewhere in the same rule.
 
-**[H]** This is a class/race-specific value and page-layout match between the
-supplied capture and the native profile audit. The external frame shows Karma
-20 while the profile permutation fixture shows Karma 0, and the archive does
-not identify its ROM or emulator build. It supports the displayed Body
-preview/cost for this preset, not exact whole-frame fidelity.
+The existing profile-permutation QA output includes the exact current state at
+`capture-human-shaman/body2-karma20-preview.bmp` and
+`capture-human-shaman/body2-karma20-held-a.bmp`. At 320x224, the first differs
+from `e_09040.png` at 28,001 pixels (mean absolute RGB-channel delta 3.02); the
+second differs from `e_09080.png` at 27,235 pixels (mean delta 3.33). Only 534
+and 808 pixels respectively differ by more than 16 in any channel. The page
+geometry, selected Body row, preview, and default-Yes prompt line up; the color
+values are close but not pixel-identical.
+
+**[H]** This comparison uses a native fixture with the same Human/Shaman,
+Body 2, and Karma 20 state rather than the earlier Karma-0 profile frame. It
+supports the displayed value and page layout. The archive still has no ROM or
+emulator identity, so the color comparison is useful external evidence but
+cannot establish exact Genesis appearance.
 
 ### Karma grid and held-confirm visual sequence
 
@@ -235,6 +247,12 @@ than an identified idle timer. The supplied archive has no ROM/build identity
 or capture method, so the 40 black images remain an observation and do not
 establish the original game's exact displayed-frame timing. See the detailed
 [doorway transition trace](motel-doorway-scene-entry.md#supplemental-recording-reviewed-2026-10-27).
+
+The doorway-to-dialogue, full Hotel route, exact-state profile permutation,
+and command-versus-Hotel screen distinction CTests passed in both Debug and
+Release on 2026-10-28. This confirms the current port enters the Scene-2/event-2
+Stoker service and reaches the Hotel pages; the older handoff note that the
+runner reaches the door but does not enter is stale for this checkout.
 
 ### Hotel Options idle cursor and bezel in the supplied capture (2026-10-28)
 
