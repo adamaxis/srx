@@ -320,6 +320,24 @@ The corresponding Lua cursor and CyberInfo actions also make no `ctx.sound`
 request. No audible-duration or independent video sound claim follows from
 these call-site findings.
 
+## Cyberdeck simultaneous action priority (2026-10-27)
+
+The parent loop at `0x18326` checks the four D-pad edges first. It then checks
+A at `0x1841A`, B at `0x18630`, C at `0x18648`, and Start at `0x18660`. Thus,
+when a single `FFDD22` edge word contains a command button and Start, the
+command branch wins; simultaneous A/B/C edges resolve A before B before C.
+The `E.Pad` values preserve these edges as separate bits (`A=0x4000`,
+`B=0x1000`, `C=0x2000`, `Start=0x8000`).
+
+`Cyberdeck.input` already resolved simultaneous A/B/C in that source order,
+but checked Start before decoding those buttons. It therefore left the deck
+on a combined command-plus-Start edge where ROM dispatches the selected
+program, CyberInfo, Storage, or Map child. Start is now handled only when no
+A/B/C edge is present, matching the ROM's priority while preserving the
+single-Start exit. The CyberInfo child already checks A/B/C before Start.
+This slice has source/code review only; its combined-edge route still needs
+focused Debug/Release QA, and it does not close the Matrix hill.
+
 ## Deck Stats longplay screen search (2026-10-27)
 
 I inspected independent Section 15 frames `004200`, `004210`, `004220`,

@@ -240,9 +240,10 @@ function M.input(st, events, ctx)
         ctx.redraw(slot_art_changed and R.FULL or R.SUBMENU)
         return
     end
-    if events & P.START ~= 0 then return leave(st, ctx) end
     local btn = events & P.A ~= 0 and P.A or events & P.B ~= 0 and P.B or events & P.C ~= 0 and P.C
     if not btn then
+        -- ROM 0x18660 checks Start after A/B/C at 0x1841A/0x18630/0x18648.
+        if events & P.START ~= 0 then return leave(st, ctx) end
         if slot_art_changed then ctx.redraw(R.FULL) end
         return
     end
