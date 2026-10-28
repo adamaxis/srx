@@ -1236,10 +1236,14 @@ list. A raw even-address opcode-pattern scan found no absolute-long/PC-relative
 `JSR`/`JMP` encoding or `BRA`/`BSR`/`Bcc` branch target to `0x20882`; its
 only exact 32-bit address matches are at `0x1218E4` and `0x121918` in a
 data-like region, where neither is identified as a code pointer.
-Indirect entry remains possible. Keep the global flag invariant open until its
-entry and the matrix return path relative to the `0x1F5CA` clear and `0x0B3C`
-callback are traced. The A800 hill remains partial; no tests were run and no
-push was made.
+Indirect entry remains possible. The callback-install arm of the field effect
+selector (`0x1E166`/`0x59986`) was checked across scenes `0x15..0x2B`
+and every sum index 0..10: categories `09..0D` select callbacks from
+`0x20FBA` through `0x2115C`, not `0x20882`. The zero-result coordinate-spawn
+route does not publish A6 to `FFE104`; forwarded effects and other indirect
+paths remain open. Keep the global flag invariant open until those paths and
+the matrix return order relative to `0x1F5CA`/`0x0B3C` are traced. The A800
+hill remains partial; no tests were run and no push was made.
 
 ## 2026-10-28 e8_karma_spend doorway mapping
 

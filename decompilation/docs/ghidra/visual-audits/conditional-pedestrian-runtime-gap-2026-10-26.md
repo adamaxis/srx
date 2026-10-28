@@ -2074,3 +2074,19 @@ absolute-long or PC-relative `JSR`/`JMP` encoding targeting `0x20882`, and no
 data-like region; neither is identified as a code pointer. This leaves a
 dynamically computed or table-mediated indirect entry possible, but does not
 prove one. Keep the writer's reachability open.
+
+**[C]** The field effect selector is one possible callback path to check. After its state and cadence gates, `0x1E166` calls `0x59986`; the
+selector makes two bound-5 PRNG calls, sums them, maps the current scene byte
+`FFFBF8` through `0x3312`, then uses the resulting category and sum index in
+the enable bytes at `0x1D70E4` and pointer rows at `0x1D7174`. For A800 scenes
+`0x15..0x2B`, those categories are `09` (`15..19`), `0A` (`1A..1D`), `0B`
+(`1E..22`), `0C` (`23..28`), and `0D` (`29..2B`). Across sum indices 0..10,
+all enabled entries select callbacks from `0x20FBA`, `0x20FD4`, `0x20FEC`,
+`0x21004`, `0x21036`, `0x21050`, `0x2106A`, `0x21082`, `0x2109A`, `0x210B4`,
+`0x210CC`, `0x210E4`, `0x210FC`, and `0x2115C`; none selects `0x20882`.
+The caller tests the selector's nonzero result at `0x1E1EC` and only then
+copies A6 to `FFDD2C` at `0x1E1F2`; `0x1E2E0` can publish that pointer to
+`FFE104`. A zero result takes the candidate/spawn route at `0x1E1FC` and
+`0x1E216` without installing A6 as the pending callback. This excludes the
+selector's callback-install arm as the `0x20882` entry for scenes `0x15..0x2B`;
+forwarded effects and other indirect dispatchers remain separate open paths.
