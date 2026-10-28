@@ -1775,6 +1775,35 @@ period, but the capture does not identify the live accumulator phase. This
 does not verify a full animation loop. Other regional routes and
 collision-blocked steps remain open.
 
+### Scene-5 pedestrian source-step timing check (2026-10-28)
+
+**[C]** The Scene-5 default list at `0x679F0` has a second tagged record at
+`0x67A00`: its template is `0x801D6988` and its position list is `0x67A30`.
+The ROM pairs start `(0x4B80,0x2200)` = `(1208,544)` with waypoint
+`(0x4B80,0x3980)` = `(1208,920)`, then waypoint `(0x1A00,0x3980)` =
+`(416,920)`. On reaching the first waypoint, the westward leg is
+`0x3180` source coordinate units. The root tag sets `+0x10` bit 5 after the
+base `0x05` initialization, leaving bit 1 clear. With `FFDF84=0`, the source
+movement branch therefore selects the 10-unit cardinal vector from `0xBE62`;
+the stored `+0xC8=0x3180` is above the `0x460` threshold.
+
+In independent Section-41 longplay frames `002140`, `002150`, `002160`, and
+`002170`, the gameplay-map registrations give camera X offsets 1028, 1070,
+1110, and 1148. A masked match against the extracted kind-11 walk art places
+the same west-facing sprite near screen X 170, 114, 62, and 12. Using the
+sprite's eight-pixel foot-center offset gives approximate map X values 1206,
+1192, 1180, and 1168. Across 30 intervals at 30 fps, the registered sprite
+moves about 38 pixels west. If the field provides one service pass per
+60-Hz VBlank and `FFDF84` stays zero, the source step predicts
+`30 * 2 * 10/16 = 37.5` pixels west. This second route is consistent with
+the same per-pass movement rate found in Scene 2.
+
+**[I]** The match supports the Scene-5 route candidate and the movement-rate
+inference; it does not identify the live actor record. The capture has no RAM
+or source-clock telemetry, so `FFDF84`, the pass count, and the sprite's exact
+source identity remain unconfirmed. The compressed masked pose matches do not
+support a new animation-cadence claim.
+
 ## A800 contact and FFDF42 request separation (2026-10-28)
 
 **[C]** The generic A800 actor-contact path and the main-loop
