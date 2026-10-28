@@ -185,9 +185,16 @@ at `0x31EC` and clears carry, allowing that orchestrator call. The supplied
 RAM counter `FFDF88` advances by exactly 18 waits from frame 8697 to 8718,
 matching `0x53126`'s six three-VBlank groups. It stays at `0x20C6` through
 frame 8734 while the image remains black through 8732 and the panel starts at
-8733. The mode-entry service is therefore tied to this capture's transition,
-but the later black frames remain unexplained and the capture has no ROM/build
-identity. See the detailed [doorway transition trace](motel-doorway-scene-entry.md#supplemental-recording-reviewed-2026-10-27).
+8733. The next source path at `0x1F246` loads the title-font stream, the nine
+menu grids, the mode-specific profile-pattern stream, then its sprite stream
+and text prompt. The captured RAM ring change from frames 8732 to 8735 is
+bounded to the first 1,952 bytes, matching the Stoker pattern stream header
+`0x079F + 1`; the frames reveal the border, portrait, then text in that same
+order. This connects the later interval to source-ordered resource work rather
+than an identified idle timer. The supplied archive has no ROM/build identity
+or capture method, so the 40 black images remain an observation and do not
+establish the original game's exact displayed-frame timing. See the detailed
+[doorway transition trace](motel-doorway-scene-entry.md#supplemental-recording-reviewed-2026-10-27).
 
 ## Nine-question visual review
 

@@ -201,6 +201,43 @@ preparation the best-supported explanation for the supplied sequence's long
 hold. The buffer is still changing in the snapshots at the display edge, so
 the exact image/RAM sampling phase is unresolved.
 
+### Mode-entry stream and reveal-stage correlation (2026-10-27)
+
+**[C]** ROM `0x1F246` performs three source-stream uploads before the
+Stoker text prompt. `0x0C0C2` decodes the title-font stream at `0x0C1064` to
+the `0xFFBF40` work ring with VDP command `0xB560`. `0x10984` calls
+`0x10918`, which clears the display planes, waits for VBlank, then decodes
+the menu stream at `0x0CAB0C` to the same work ring with command `0x1E20`;
+the caller writes nine static grids after that upload (the optional tenth is
+skipped because the supplied RAM has `FFF0AF=0`). For the captured Scene-2 /
+event-2 route, `0x1F292` then selects the profile tuple at `0x121FA0`: profile
+`0x121CFC`, pattern stream `0x1287C6`, and sprite stream `0x122420`. It decodes
+the pattern stream with command `0x57A0`, renders the 7x9 sprite stream through
+`0x1728`, then `0x1F3C4` lays out the Stoker text.
+
+The three ROM stream headers are respectively `0x0A9F`, `0x3C5F`, and
+`0x079F`. In `0x1530`, the header is consumed as a DBF output count, so these
+calls write 2,720 title-font bytes, 15,456 menu-resource bytes, and 1,952
+profile-pattern bytes. The decoder writes each output byte to
+`(A1,D6.w)`, advances `D6`, wraps it with `0x07FF`, writes the paired data to
+VDP, and masks interrupts with `SR=0x2700` until the stream completes. The
+decoder contains no VBlank wait of its own; `FFDF88` therefore counts the
+explicit wait routine, not every displayed refresh during synchronous asset
+work.
+
+The ordered work matches the observed reveal stages: frame 8733 first shows
+the shared panel border, frame 8735 shows Stoker's portrait, and frame 8736
+shows the text and `< MORE >`. The RAM snapshots provide a particularly
+specific check for the final profile-pattern decode: comparing the 2 KiB
+`0xFFBF40..0xFFC73F` ring at frames 8732 and 8735, only offsets `0..1951`
+change; the final 96 offsets remain identical. Of the 1,952 written offsets,
+1,896 end with a different byte value and 56 match their prior value. This
+span matches the profile stream's `0x079F + 1` output count, and the portrait
+appears after that stream and its sprite renderer run. This ties the supplied
+RAM and image sequence to the source's border, portrait, and text stages; it
+does not establish a verified ROM build or an exact source displayed-frame
+duration.
+
 [H] The recording has no ROM hash, emulator/build identity, or capture method.
 The RAM-to-ROM match supports this route interpretation but does not establish
 that the recording came from a verified US-ROM run or prove its presentation
