@@ -1231,11 +1231,15 @@ the containing code's caller remains unlocated. It is not established whether
 a pending callback can dispatch before the next ordinary `0x1F5CA` clear.
 
 The remaining nonzero writer at `0x2089E` is still unscoped: the linear
-disassembly has no corresponding function entry or direct caller in the
-exported call-site list. Keep the global flag invariant open until its
-indirect entry and the matrix return path relative to the `0x1F5CA` clear
-and `0x0B3C` callback are identified. The A800 hill
-remains partial; no tests were run and no push was made.
+disassembly has no function entry or direct caller in the exported call-site
+list. A raw even-address opcode-pattern scan found no absolute-long/PC-relative
+`JSR`/`JMP` encoding or `BRA`/`BSR`/`Bcc` branch target to `0x20882`; its
+only exact 32-bit address matches are at `0x1218E4` and `0x121918` in a
+data-like region, where neither is identified as a code pointer.
+Indirect entry remains possible. Keep the global flag invariant open until its
+entry and the matrix return path relative to the `0x1F5CA` clear and `0x0B3C`
+callback are traced. The A800 hill remains partial; no tests were run and no
+push was made.
 
 ## 2026-10-28 e8_karma_spend doorway mapping
 

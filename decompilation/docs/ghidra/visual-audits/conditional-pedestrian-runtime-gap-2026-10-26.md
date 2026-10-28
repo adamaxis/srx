@@ -2066,3 +2066,11 @@ relative to the `0x1F5CA` clear and `0x0B3C` callback are recovered, the global
 `FFF10C` invariant remains open. Neither the unknown `0x2089E` routine nor the
 matrix entry at `0xE48E` is enough to claim an A800 re-entry, but the
 same-pass ordering has not been closed either.
+
+**[C]** A raw even-address opcode-pattern scan of the 2 MiB US ROM finds no
+absolute-long or PC-relative `JSR`/`JMP` encoding targeting `0x20882`, and no
+`BRA`/`BSR`/`Bcc` branch encoding whose target resolves there. The only exact
+32-bit occurrences of `00 02 08 82` are at `0x1218E4` and `0x121918` in a
+data-like region; neither is identified as a code pointer. This leaves a
+dynamically computed or table-mediated indirect entry possible, but does not
+prove one. Keep the writer's reachability open.
