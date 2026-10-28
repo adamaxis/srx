@@ -1,11 +1,14 @@
 # Package run origin and delivery event
 
 Status: **partial**. The run logic is connected to the field-exit
-orchestrator's first dispatch stage. Section 11 of the longplay now provides
-an independent offer, payment prompt, apparent acceptance, and return-to-map
-sequence; it does not follow the accepted run through both selected map
-events. The script-runtime test proves event matching and once-only payout;
-it does not prove that whole playthrough.
+orchestrator's first dispatch stage. Section 11 shows the offer, payment
+prompt, apparent acceptance, a Halloweener package-handoff candidate, and the
+Little Chiba package-payment page. The text and ROM location tables align with
+the selected origin/destination, but the footage has no controller or RAM
+telemetry. In particular, the exact handler and live run state behind the
+Halloweener page and the actual wallet/progress writes remain unverified. The
+script-runtime test proves event matching and once-only payout; it does not
+prove that whole playthrough.
 
 ## ROM trace and host behavior
 
@@ -39,12 +42,36 @@ These 320x224 frames show the type-2 package offer and its presentation path:
 | `frame_000134.png`–`frame_000142.png` | The dialog and field image darken. Frames `000143`–`000175` are full-frame black in the extracted video. |
 | `frame_000176.png`–`frame_000180.png` | The field view returns from dark to full brightness. Frame `000180.png` matches the visible Jump House layout in the ROM-derived `assets/field/maps/mode-13.bmp`. |
 
-The return-map match and ROM field records connect the final image to Scene 13:
+The later frame `000180` and ROM field records connect that image to Scene 13:
 the mode-13 map profile is based at `0x1B3C06`, while event-30 records at
 `0x1B3CF8`/`0x1B3D02` route through `0xB7B8` to the Johnson handler at
 `0x20990`. This visual match identifies the location; it does not expose the
 run-active RAM fields or prove that the player later visits either selected
-contract tuple.
+contract tuple. The later Halloweener and Little Chiba pages correlate with
+the two locations named by the offer, but still do not reveal the active tuple
+or run-handler state.
+
+### Later pickup and delivery sequence
+
+The same Section-11 extraction continues beyond the initial 180-frame offer
+sequence. These later frames show the two named locations' package-related
+pages, with a large gameplay interval between them:
+
+| Frame | Observation and source link |
+|---|---|
+| `frame_001500.png` / `frame_001560.png` | The portrait is a Halloweener. The text says the player is the “mule” sent for them, gives them the package, and tells them to sit. The context-zero offer names “see the Halloweeners,” which maps through the source location table to area 2/location 9; Scene 2 record 94 at `0x173156` publishes event 9. The footage does not show the current tuple, and the exact text/handler has not been matched to a ROM text descriptor. Treat this as a pickup candidate, not proof of the type-2 branch. |
+| `frame_001650.png` / `frame_001710.png` / `frame_001800.png` | Black follows the dialogue, then field gameplay resumes. This sequence gives order only; 30-fps extraction does not resolve the source's 60-Hz timing. |
+| `frame_002100.png` | The Little Chiba salesman accepts the package and hands over a credstick. The prose exactly matches the extracted `field.mode.little_chiba.package_payment` asset from ROM stream `0x117718`. ROM event 1 at Scene 2 record 93 (`0x17314C`) selects resource scene 26; the mode-exit selector at `0x1F830` selects the payment page when `FFF0D5` is positive. This is strong page-to-source correspondence, but the capture does not expose the active tuple, `FFF0D5`, or the wallet delta. |
+| `frame_002400.png` | Full-frame black follows the payment page. The amount credited and progress-byte writes are not on screen. |
+| `frame_003300.png` | The field view visually matches the ROM-derived Jump House `mode-13.bmp`. It appears later in this long gameplay sequence; ordinary travel, active-run return behavior, and the exact transition are not distinguishable from the video alone. |
+
+The Halloweener origin page is not the currently converted type-3 gang-entry
+passage at `0xFE0DE` (“Slot off, frag-face!!!”). Scene 2/event 9 can enter that
+type-3 path for a gang-contract offer, so the screenshot's different “mule”
+dialogue cannot be assigned to that handler by location alone. The package
+offer text and later Little Chiba payment page support a package-route reading,
+but an exact origin-dialogue pointer or a capture with live ROM state is still
+needed to close the source link.
 
 ### The displayed payment and Joshua's profile
 
@@ -69,18 +96,17 @@ at `0x1F3C4` renders wrapped text through `0xC134`/`0xC168`, then enters the
 VBlank/input wait at `0x1F502` and samples the controller at `0x1F51A`; no
 source blink counter has been identified for these glyphs. Treat the partial
 glyph dropout as **[H]** capture/compression or sampling behavior, not a
-confirmed in-game text animation. The 30-fps
-extract supports the order and broad fade/black/return sequence, not exact
-60-Hz timing. Audio, the live run flags, decline-path visuals, and the later
-pickup/delivery/result sequence remain open.
+confirmed in-game text animation. The 30-fps extract supports order and broad
+fade/black transitions, not exact 60-Hz timing. Audio, the live run flags,
+decline-path visuals, exact payout/progress writes, and the Halloweener page's
+source text/handler remain open.
 
 ## Nine-question visual check
 
-1. **Does it look correct? - Unknown for the event result screens.** No
-   event-result screen is captured yet. The existing package offer layout is
-   supported by independent section-03 frames 003000, 003150, 003300, and
-   003450; those show the selected package route, payment prompt, and accepted
-   confirmation.
+1. **Does it look correct? - Partial.** Independent frame `002100` shows the
+   Little Chiba package-payment page and matches the extracted text and
+   source-selected positive-result page. No visible wallet/Karma value
+   confirms the actual payout.
 2. **Does the visible look match behavioral state? - Partial.** The runtime
    test checks wrong-location, destination-before-pickup, origin, an
    intermediate tuple, destination, and duplicate destination. It confirms
@@ -106,18 +132,19 @@ pickup/delivery/result sequence remain open.
    `field-stoker-collision-to-dialogue-qa/actual.bmp` were reviewed after the
    callback moved. The screens show no new controls or stale overlay. These
    all four Debug/Release pairs are byte-identical by SHA-256. These routes have no active package offer, so they do not cover the event result.
-7. **Do multiple frames support the interpretation? - Partial.** Independent
-   frames 001350/001365/001380 support the field-map layer; 003000/003150/
-   003300/003450 support the package-offer dialog sequence. No supplied frame
-   was identified for the player visiting the selected pickup and destination
-   as one run.
-8. **Does new UI replace old UI cleanly? - Yes for this change.** The event
-   callback draws no UI and creates no overlapping controls. A captured
-   pickup/delivery transition is still needed to check the following generic
-   field prompt after `FFF0D5` changes.
-9. **Was the whole affected time window reviewed? - No.** The selected run
-   offer through pickup, delivery, payout, and the first stable field frame
-   has not been captured continuously. Keep this hill partial.
+7. **Do multiple frames support the interpretation? - Partial.** Section 11
+   shows the offer naming Halloweeners and Little Chiba, a later Halloweener
+   package-handoff candidate, and the exact Little Chiba payment page. The
+   extracted video has no controller or RAM record tying those later pages to
+   the accepted offer's live state.
+8. **Does new UI replace old UI cleanly? - Partial.** The captured Little
+   Chiba payment page replaces the previous field view. The sampled black
+   frame after it establishes a clear transition, but the subsequent route
+   and post-payout state are not identified.
+9. **Was the whole affected time window reviewed? - No.** The supplied 30-fps
+   sequence includes candidate pickup and delivery pages, but the complete
+   route, input branches, stable post-payout field state, and source state
+   changes have not been recovered. Keep this hill partial.
 
 ## Internal verification
 
