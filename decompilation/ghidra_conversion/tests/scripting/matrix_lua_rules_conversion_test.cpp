@@ -1011,6 +1011,196 @@ eq(child.args.deck_palette, deck_screen.deck_palette,
 eq(child.args.matrix_state, deck_screen.matrix_state,
    "deck child shares the active Matrix session")
 
+-- Exercise all eight FFDD22 edge bits from every grid cell, in both the
+-- field deck and the online Matrix deck. ROM 0x1833C..0x18418 gives direction
+-- priority Up/Down/Left/Right; 0x1841A, 0x18630, 0x18648 then give A/B/C
+-- priority before the Start exit at 0x18660. The 0x1842E dispatch opens a
+-- program child for rows 0..2, CyberInfo/Storage/Map for utility columns 0..2,
+-- and gates Map/Pull Plug on the online marker.
+do
+    local pad = E.Pad
+    local edge_bits = {
+        pad.UP, pad.DOWN, pad.LEFT, pad.RIGHT,
+        pad.A, pad.B, pad.C, pad.START,
+    }
+    local function run_deck_mask_matrix(
+        online, matrix_state, return_to_node_action)
+        local input = { mode = "unchanged", left_mode = nil }
+        local context = {
+            game = {
+                set_deck_mode = function(mode) input.mode = mode end,
+                deck_leave = function(mode) input.left_mode = mode end,
+                deck_record = function()
+                    return { ratings = {}, active = {}, load_io = 0,
+                             memory = 0 }
+                end,
+                deck_slots = function() return {} end,
+                matrix_node = function()
+                    return { ic_condition = 0, ic_code = 0,
+                             ic_rating = 0, ic_rating2 = 0 }
+                end,
+                alert = function() return MX.NONE end,
+                world_effect_gate_negative = function() return false end,
+                map_seen = function() return 0 end,
+                in_combat = function() return false end,
+                matrix_online = function() return false end,
+            },
+            redraw = function() end,
+        }
+
+        for cell = 0, 15 do
+            local col, row = cell % 4, cell // 4
+            for mask = 0, 0xFF do
+                local events = 0
+                for bit = 1, #edge_bits do
+                    if (mask & (1 << (bit - 1))) ~= 0 then
+                        events = events | edge_bits[bit]
+                    end
+                end
+
+                local screen = Cyberdeck.new({
+                    matrix_session = online,
+                    matrix_state = matrix_state,
+                    return_to_node_action = return_to_node_action == true,
+                })
+                screen.col, screen.row = col, row
+                screen.saved = E.MatrixModeResult.ATTACK
+                input.mode, input.left_mode = "unchanged", nil
+                if online then
+                    matrix_state.mode = E.MatrixModeResult.BALANCED
+                end
+
+                local expected_col, expected_row = col, row
+                local moved = false
+                if (events & pad.UP) ~= 0 then
+                    expected_row, moved = (row + 3) & 3, true
+                elseif (events & pad.DOWN) ~= 0 then
+                    expected_row, moved = (row + 1) & 3, true
+                elseif (events & pad.LEFT) ~= 0 then
+                    expected_col, moved = (col + 3) & 3, true
+                elseif (events & pad.RIGHT) ~= 0 then
+                    expected_col, moved = (col + 1) & 3, true
+                end
+
+                local button
+                if (events & pad.A) ~= 0 then
+                    button = pad.A
+                elseif (events & pad.B) ~= 0 then
+                    button = pad.B
+                elseif (events & pad.C) ~= 0 then
+                    button = pad.C
+                end
+
+                local label = ("Cyberdeck %s cell %02d mask %02X"):format(
+                    online and "online" or "field", cell, mask)
+                local result = Cyberdeck.input(screen, events, context)
+                eq(screen.col, expected_col, label .. " cursor column")
+                eq(screen.row, expected_row, label .. " cursor row")
+
+                if moved then
+                    eq(result, nil,
+                       label .. " directions precede buttons and Start")
+                    eq(input.mode, "unchanged",
+                       label .. " movement preserves the selected deck mode")
+                    if online then
+                        eq(matrix_state.mode, E.MatrixModeResult.BALANCED,
+                           label .. " movement preserves Matrix mode")
+                    end
+                elseif button ~= nil then
+                    local deck_mode = button == pad.A and
+                        E.MatrixDeckMode.ATTACK or button == pad.B and
+                        E.MatrixDeckMode.BALANCED or E.MatrixDeckMode.DEFENSE
+                    local matrix_mode = button == pad.A and
+                        E.MatrixModeResult.ATTACK or button == pad.B and
+                        E.MatrixModeResult.BALANCED or E.MatrixModeResult.DEFENSE
+                    eq(input.mode, deck_mode, label .. " button mode")
+                    if online then
+                        eq(matrix_state.mode, matrix_mode,
+                           label .. " published Matrix mode")
+                    end
+
+                    local expected_screen
+                    if row < 3 then
+                        expected_screen = E.MenuScreen.DECK_PROGRAM
+                    elseif col == 0 then
+                        expected_screen = E.MenuScreen.DECK_CYBERINFO
+                    elseif col == 1 then
+                        expected_screen = E.MenuScreen.DECK_STORAGE
+                    elseif col == 2 and online then
+                        expected_screen = E.MenuScreen.DECK_MAP
+                    elseif col == 3 and online then
+                        expected_screen = E.MenuScreen.PULL_PLUG
+                    end
+                    eq(result and result.transition,
+                       expected_screen and E.MenuTransition.PUSH or nil,
+                       label .. " child transition gate")
+                    eq(result and result.screen, expected_screen,
+                       label .. " child screen")
+                    if expected_screen == E.MenuScreen.DECK_PROGRAM then
+                        eq(result.args.col, col,
+                           label .. " program child column")
+                        eq(result.args.row, row,
+                           label .. " program child row")
+                        eq(result.args.deck_parent_col, col,
+                           label .. " program return column")
+                        eq(result.args.deck_parent_row, row,
+                           label .. " program return row")
+                    elseif expected_screen == E.MenuScreen.PULL_PLUG then
+                        eq(result.args.black_ic, false,
+                           label .. " Pull Plug black-IC state")
+                    elseif expected_screen ~= nil then
+                        eq(result.args.deck_parent_col, col,
+                           label .. " utility return column")
+                        eq(result.args.deck_parent_row, row,
+                           label .. " utility return row")
+                    end
+                elseif (events & pad.START) ~= 0 then
+                    eq(input.mode, "unchanged",
+                       label .. " Start does not select an action mode")
+                    eq(input.left_mode, E.MatrixModeResult.ATTACK,
+                       label .. " Start restores the saved Matrix mode")
+                    if online then
+                        if return_to_node_action then
+                            eq(result.transition, E.MenuTransition.POP,
+                               label .. " nested Start returns to node actions")
+                            eq(result.result.matrix_resumed, true,
+                               label .. " nested Start resumes the parent")
+                        else
+                            eq(result.transition, E.MenuTransition.REPLACE,
+                               label .. " entry Start returns to node actions")
+                            eq(result.screen, E.MenuScreen.MATRIX_NODE_ACTION,
+                               label .. " entry Start destination")
+                        end
+                        eq(matrix_state.mode, E.MatrixModeResult.ATTACK,
+                           label .. " online Start restores Matrix mode")
+                    else
+                        eq(result.transition, E.MenuTransition.POP,
+                           label .. " field Start exits the deck")
+                    end
+                else
+                    eq(result, nil, label .. " idle stays on the grid")
+                    eq(input.mode, "unchanged",
+                       label .. " idle preserves the selected mode")
+                    if online then
+                        eq(matrix_state.mode, E.MatrixModeResult.BALANCED,
+                           label .. " idle preserves Matrix mode")
+                    end
+                end
+            end
+        end
+    end
+
+    -- Earlier navigation fixtures leave their last Matrix singleton active;
+    -- clear it so this first pass genuinely exercises the offline field deck.
+    Session.finish(Session.current_state())
+    run_deck_mask_matrix(false, nil, false)
+    local session_started, mask_matrix_session = Session.begin(0)
+    eq(session_started, true, "online Cyberdeck mask fixture starts")
+    run_deck_mask_matrix(true, mask_matrix_session, true)
+    run_deck_mask_matrix(true, mask_matrix_session, false)
+    Session.finish(mask_matrix_session)
+end
+
 -- IC visibility, layered types, and alert bonuses follow the ROM tables.
 local node = { ic_condition = 10, ic_code = 7, ic_rating = 3, ic_rating2 = 5 }
 eq(MX.ic_type(node, 0, false, 0), MX.UNSEEN, "unseen node")

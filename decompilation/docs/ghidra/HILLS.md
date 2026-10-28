@@ -66,12 +66,14 @@ The same parent loop resolves simultaneous Up/Down/Left/Right input in that
 order, directions before buttons, A before B before C, and commands before
 Start. The Lua cursor helper already matches the direction order; `Cyberdeck.input`
 now matches the command/Start priority, so combined command-plus-Start input
-dispatches the command while Start alone leaves the deck. This change has
-ROM/code review plus a 256-mask sweep through the live route at the CyberInfo
-cell; `shadowrun_ghidra_gameplay_script_menu_route` passes in Debug and
-Release. The test checks cursor state, selected mode, child entry/return, and
-Start-only exit. The Cyberdeck/Matrix hill remains partial pending broader
-input and independent visual coverage.
+dispatches the command while Start alone leaves the deck. ROM/code review is
+backed by a 256-mask live-route sweep at the CyberInfo cell and a 12,288-case
+rules sweep across all 16 cells for offline field entry, online Matrix entry,
+and return from a node-action parent. `shadowrun_ghidra_gameplay_script_menu_route`
+and `shadowrun_ghidra_matrix_lua_rules` pass in Debug and Release. The checks
+cover cursor state, mode, child dispatch and online gates, parent-cell return
+arguments, and both online Start return paths. The Cyberdeck/Matrix hill
+remains partial pending independent visual coverage and the rest of traversal.
 The Storage screen at ROM `0x18D1A` keeps that parent row, program grid, and
 footer while drawing the source panel and live capacity. View at `0x18F5E`
 walks occupied records from slot 4 down to 0, drawing each ROM filename,

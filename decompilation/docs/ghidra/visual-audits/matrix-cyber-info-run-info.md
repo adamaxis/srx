@@ -347,12 +347,16 @@ on a combined command-plus-Start edge where ROM dispatches the selected
 program, CyberInfo, Storage, or Map child. Start is now handled only when no
 A/B/C edge is present, matching the ROM's priority while preserving the
 single-Start exit. The CyberInfo child already checks A/B/C before Start.
-`shadowrun_ghidra_gameplay_script_menu_route` now sends all 256 combinations
-of the eight D-pad/A/B/C/Start edge bits through the live Lua route at the
-CyberInfo cell. Debug and Release pass, checking cursor destination, selected
-button mode, child entry and return, and Start-only deck exit. This exercises
-the parent input state machine; it does not provide a Genesis visual golden or
-close the larger Matrix hill.
+`shadowrun_ghidra_gameplay_script_menu_route` sends all 256 combinations of
+the eight D-pad/A/B/C/Start edge bits through the live Lua route at the
+CyberInfo cell. The Matrix Lua rules test now also runs those 256 masks at all
+16 cells in three parent contexts: the offline field deck, the first online
+Matrix deck, and the deck opened from an active node-action screen. That is
+12,288 cell/mask/context cases. Debug and Release pass, checking cursor
+destination, simultaneous-input priority, selected mode, child dispatch and
+gates, parent-cell return arguments, and both online Start return paths. This
+tests the parent input state machine; it does not provide a Genesis visual
+golden or close the larger Matrix hill.
 
 ## Deck Stats longplay screen search (2026-10-28)
 
