@@ -319,8 +319,9 @@ do
           "Current Run text retains its blank line before Get a job [C]")
     local cyberdeck_last_line = raw_json_value(
         "pocket_secretary.cyberdeck.option.look_for_deck")
-    check(cyberdeck_last_line == "\\n Keep looking.",
-          "Cyberdeck no-deck text retains its ROM blank line [C]")
+    -- ROM 0xE43F1..0xE43F2 row advances are represented by native layout.
+    check(cyberdeck_last_line == " Keep looking.",
+          "Cyberdeck no-deck text keeps the third line content [C]")
     local dismiss_separator = raw_json_value(
         "pocket_secretary.dismiss.text.option.separator") or ""
     local encoded_slash_count = select(2, dismiss_separator:gsub("\\", ""))

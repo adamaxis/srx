@@ -16370,12 +16370,17 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         if (pocket_secretary_.cyberdeck_unavailable_wait) {
             // 0x18150 calls C3E6 before writing this response at C40E, which
             // replaces the parent menu plane contents until the wait ends.
+            // ROM 0xC0DA advances one 8-pixel row per 0x80 control byte:
+            // 0xE43D1 and 0xE43E2 are one row apart, while 0xE43F3 follows
+            // both controls at 0xE43F1..0xE43F2. Keep that blank row as
+            // explicit layout rather than embedding it in the text asset.
+            constexpr int kCyberdeckUnavailableLineY[] = {64, 72, 88};
             for (std::size_t line = 0;
                  line < field_menu_text_
                            .pocket_secretary_cyberdeck_unavailable_lines.size();
                  ++line) {
                 draw_command_overview_text(
-                    painter, 56, 64 + static_cast<int>(line) * 8,
+                    painter, 56, kCyberdeckUnavailableLineY[line],
                     field_menu_text_
                         .pocket_secretary_cyberdeck_unavailable_lines[line]);
             }

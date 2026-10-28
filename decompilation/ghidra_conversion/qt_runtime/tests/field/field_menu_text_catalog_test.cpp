@@ -390,7 +390,7 @@ int main() {
         text.catalog.pocket_secretary_cyberdeck_unavailable_lines !=
             std::array<std::string, kCyberdeckUnavailableLineCount>{
                 " You do not have", "  a cyberdeck!!",
-                "\n Keep looking."} ||
+                " Keep looking."} ||
         text.catalog.pocket_secretary_group_item_names !=
             expected_group_item_names ||
         text.catalog.pocket_secretary_group_items_empty_lines !=
