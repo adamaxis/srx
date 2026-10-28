@@ -264,7 +264,14 @@ establish the original game's exact displayed-frame timing. See the detailed
    field-exit audio hook and any associated playback duration remain
    unresolved. The runtime QA checks that the Karma child and checkout add no
    audio events after the event log is cleared; this does not establish that
-   earlier dialogue or Hotel entry is silent.
+   earlier dialogue or Hotel entry is silent. The supplied `audio.wav` is
+   stereo 16-bit PCM at 44.1 kHz with 457,022 samples per channel. Nonzero PCM
+   ends at sample 126,763 (2.874 seconds); samples 126,764 through 457,021
+   are exactly zero, while the numbered images continue through
+   `e_09160.png`. The archive provides no audio/video synchronization or
+   capture metadata, so this cannot distinguish a game-side audio stop from a
+   truncated or silence-padded audio capture. It does not establish the exact
+   onset of a menu sound or that the later Hotel pages are silent.
 6. **Are the other visible parts of the screen also correct? — Reviewed.**
    The full 320x224 sequence covers the field/HUD, doorway transition, shared
    dialogue panel, Hotel status/options, Karma prompt/result, checkout, and
