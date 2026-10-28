@@ -322,12 +322,15 @@ these call-site findings.
 
 ## Cyberdeck simultaneous action priority (2026-10-27)
 
-The parent loop at `0x18326` checks the four D-pad edges first. It then checks
-A at `0x1841A`, B at `0x18630`, C at `0x18648`, and Start at `0x18660`. Thus,
-when a single `FFDD22` edge word contains a command button and Start, the
-command branch wins; simultaneous A/B/C edges resolve A before B before C.
-The `E.Pad` values preserve these edges as separate bits (`A=0x4000`,
-`B=0x1000`, `C=0x2000`, `Start=0x8000`).
+The parent loop at `0x18326` checks Up, Down, Left, then Right (bits 8-11) and
+returns to the loop after the first direction, so a direction beats every
+button edge in that `FFDD22` word. It then checks A at `0x1841A`, B at
+`0x18630`, C at `0x18648`, and Start at `0x18660`. When a word contains
+multiple command buttons, the first in that order wins; when it contains a
+command button and Start, the command branch wins. `MX.step_deck_cursor`
+already uses the same Up/Down/Left/Right priority. The `E.Pad` values preserve
+these input edges as separate bits (`A=0x4000`, `B=0x1000`, `C=0x2000`,
+`Start=0x8000`).
 
 `Cyberdeck.input` already resolved simultaneous A/B/C in that source order,
 but checked Start before decoding those buttons. It therefore left the deck

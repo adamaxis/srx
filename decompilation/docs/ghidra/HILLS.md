@@ -57,11 +57,13 @@ caller separately sends audio command-frame 4 on entry, and event `0x18` is
 confined to conditional Pull Plug consequences. The host state matches the
 source tick schedule. Independent CyberInfo video/audio timing comparison
 remains open.
-The same parent loop resolves simultaneous direction/button input before
-Start, and A before B before C. `Cyberdeck.input` now follows that priority:
-combined command-plus-Start input dispatches the command; Start alone still
-leaves the deck. The change has ROM/code review but needs focused Debug/Release
-QA before it can contribute to the hill.
+The same parent loop resolves simultaneous Up/Down/Left/Right input in that
+order, directions before buttons, A before B before C, and commands before
+Start. The Lua cursor helper already matches the direction order; `Cyberdeck.input`
+now matches the command/Start priority, so combined command-plus-Start input
+dispatches the command while Start alone leaves the deck. This change has
+ROM/code review but needs focused Debug/Release QA before it can contribute
+to the hill.
 The Storage screen at ROM `0x18D1A` keeps that parent row, program grid, and
 footer while drawing the source panel and live capacity. View at `0x18F5E`
 walks occupied records from slot 4 down to 0, drawing each ROM filename,
