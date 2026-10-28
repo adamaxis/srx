@@ -97,15 +97,23 @@ target_link_libraries(shadowrun_frame_debug_server_test
 add_test(NAME shadowrun_frame_debug_server
          COMMAND shadowrun_frame_debug_server_test)
 
-# Exhaustive controller-mask audit for the source Hotel Options loop. This
-# conversion-only test exercises all edge combinations without constructing
-# the Qt window or starting audio.
+# Exhaustive controller-mask audit for the source Hotel status/Options path.
+# This headless test exercises the runtime controller without constructing the
+# Qt window or starting audio.
 add_executable(shadowrun_ghidra_hotel_options_input_permutation_test
-    tests/menus/hotel_options_input_permutation_test.cpp)
+    tests/menus/hotel_options_input_permutation_test.cpp
+    src/menus/hotel_menu_runtime.cpp)
 target_include_directories(shadowrun_ghidra_hotel_options_input_permutation_test
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/menus")
+set_target_properties(shadowrun_ghidra_hotel_options_input_permutation_test
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}")
 target_link_libraries(shadowrun_ghidra_hotel_options_input_permutation_test
-    PRIVATE shadowrun_ghidra_conversion_modules)
+    PRIVATE shadowrun_ghidra_conversion_modules Qt6::Gui)
 add_test(NAME shadowrun_ghidra_hotel_options_input_permutation
          COMMAND shadowrun_ghidra_hotel_options_input_permutation_test)
 

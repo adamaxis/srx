@@ -743,11 +743,13 @@ green-ink bounds, x=113..125; Debug/Release profile artifacts match across all
 492 BMPs. The capture identity remains unknown, so the visual hill stays
 partial.
 
-The shared Hotel Options parent loop now has a separate input permutation
-audit. ROM `0xCF98..0xCFFA` moves one row for Up/Down, dispatches A before the
+The shared Hotel status-to-Options path now has a separate input permutation
+audit. ROM `0xF312` waits for any fresh edge before the Hotel Options loop at
+`0xCF98..0xCFFA` moves one row for Up/Down and dispatches A before the
 C/action service, ignores B and has no Start exit; the new Debug/Release CTest
-checks all 256 Up/Down/Left/Right/A/B/C/Start masks from both rows and the
-handler order under combined input. Independent Section-11 frame `002580` and
+checks all 256 Up/Down/Left/Right/A/B/C/Start masks from both rows, all 256
+status-page edge masks, and handler order under combined input. Independent
+Section-11 frame `002580` and
 the host `field-hotel-qa/options/actual.bmp` agree on the title, option order, and
 default Karma selection. The longplay does not show the other input paths, so
 the Hotel hill remains partial. See the

@@ -1071,19 +1071,25 @@ ROM/emulator identity remains unknown.
 
 The shared Hotel Options loop was audited next. ROM `0xCF98..0xCFFA` processes
 Up/Down, A, then C/action; Up wins over Down, A dispatches before C, B and
-Start have no branch. A new CTest checks all 256 Up/Down/Left/Right/A/B/C/Start
-combinations from both cursor rows and a B/Left/Right/Start-only, Down+C, and
-Up+Down+A+B+C+Left+Right+Start menu sequence (512 row/mask states total). The
+Start have no branch. The input-permutation CTest checks all 256
+Up/Down/Left/Right/A/B/C/Start combinations from both cursor rows (512
+row/mask states total), all 256 fresh high-byte edge masks on the preceding
+Hotel status page, and the low-byte-held-buttons/no-new-edge case. It also
+checks B/Left/Right/Start-only, Down+C, and Up+Down+A+B+C+Left+Right+Start
+menu samples. ROM `0xF312` waits for any fresh high-byte edge after servicing
+the status page; the test covers the controller transition mapping, not its
+VBlank or bezel cadence. The
 independent Section-11 frame `002580` and host `field-hotel-qa/options/actual.bmp`
 agree on the title, option order, and default Karma row; the other actions are
 source-backed tests, not independent visual claims. The Hotel hill remains
 partial.
 
 Debug and Release builds of `shadowrun_ghidra_hotel_options_input_permutation_test`
-and `shadowrun_ghidra_conversion_qt_qa` passed. Focused CTest passed in both
-configurations for `shadowrun_ghidra_hotel_options_input_permutation` and
-`shadowrun_ghidra_conversion_qt_field_hotel_qa`. Hotel Options `actual.bmp`
-SHA-256 matches across builds:
+passed, and focused CTest passed in both configurations for
+`shadowrun_ghidra_hotel_options_input_permutation`. Its executable is placed in
+the build root so the linked Qt runtime DLLs resolve when CTest launches it.
+The prior Hotel route QA also passed in both configurations. Hotel Options
+`actual.bmp` SHA-256 matches across builds:
 `59AE4A17AD5039081BE21F9F04C27323BDCC63E9EDAAD7AE2925D6C913A6C485`.
 
 Changed paths: Qt CMake/test registration and the new input-permutation test;

@@ -1,14 +1,18 @@
 #include "shadowrun_ghidra/menus/hotel_options_menu_conversion.hpp"
+#include "hotel_menu_runtime.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <iostream>
+#include <string>
 #include <vector>
 
 namespace {
 
 using namespace shadowrun::ghidra_conversion;
+using namespace shadowrun::ghidra_conversion::qt_runtime;
 
 bool check_masks() {
     // ROM 0xCF98..0xCFC6 checks Up before Down, then bit 0x0E (A).
@@ -47,6 +51,47 @@ bool check_masks() {
                 return false;
             }
         }
+    }
+    return true;
+}
+
+bool check_status_acknowledgement_masks() {
+    const std::array<std::string, 3> names{"Joshua", "David", "Jack"};
+    for (std::uint16_t mask = 0U; mask < 256U; ++mask) {
+        HotelMenuRuntime runtime;
+        std::array<RunnerRecordFields, 3> records{};
+        runtime.open(records, names, 0U);
+        if (runtime.phase() != HotelMenuPhase::entity_status) {
+            std::cerr << "Hotel status mask setup failed\n";
+            return false;
+        }
+
+        // ROM 0xF312 acknowledges status from any FFDD22 high-byte edge.
+        const auto events = static_cast<std::uint16_t>(mask << 8U);
+        const auto result = runtime.advance_controller_events(events);
+        const auto expected = mask == 0U ? HotelMenuEvent::waiting
+                                         : HotelMenuEvent::status_acknowledged;
+        const auto expected_phase = mask == 0U
+            ? HotelMenuPhase::entity_status : HotelMenuPhase::options;
+        const bool wrong_initial_selection =
+            mask != 0U &&
+            runtime.option_selection() != HotelOption::karma_screen;
+        if (result != expected || runtime.phase() != expected_phase ||
+            wrong_initial_selection) {
+            std::cerr << "Hotel status acknowledgement mask failed: "
+                      << mask << '\n';
+            return false;
+        }
+    }
+
+    HotelMenuRuntime held_runtime;
+    std::array<RunnerRecordFields, 3> held_records{};
+    held_runtime.open(held_records, names, 0U);
+    if (held_runtime.advance_controller_events(0x00FFU) !=
+            HotelMenuEvent::waiting ||
+        held_runtime.phase() != HotelMenuPhase::entity_status) {
+        std::cerr << "Hotel status treated held buttons as a fresh edge\n";
+        return false;
     }
     return true;
 }
@@ -105,7 +150,8 @@ bool check_dispatch_order() {
 } // namespace
 
 int main() {
-    if (!check_masks() || !check_dispatch_order()) {
+    if (!check_masks() || !check_status_acknowledgement_masks() ||
+        !check_dispatch_order()) {
         return 1;
     }
     return 0;
