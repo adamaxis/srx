@@ -872,7 +872,10 @@ about `(720,543)` to `(698,544)`, along Scene 2 source order 0's ROM segment
 `(840,544)->(640,544)` at `0x172D58`. The actor-record ID remains unverified;
 the later Lone Star dialogue is not linked to this sprite. Section-37 frames
 2340/2400 map to Scene 3 but their two visible figures do not match the
-default pedestrian route direction. Both capture reviews are recorded in the
+default pedestrian route direction. A six-frame Scene-1 recheck also rejects
+the center figure that briefly overlaps source order 2's `x=1408` segment: its
+map X moves from about 1411 to 1327 while two runner portraits remain visible.
+The actor identity is not proven. All capture reviews are recorded in the
 [pedestrian audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md).
 
 The separate Debug/Release

@@ -808,7 +808,27 @@ source-order 2's `(1408,784)` to `(1408,952)` route, but by frame `002730` it
 is at approximately `(1353,700)`, off that route. Its screen position stays
 near center while the map offset changes from `(1285,708)` to `(1227,588)`,
 which is consistent with the tracked party; the first frame alone would have
-been a false positive.
+been a false positive. I checked the intervening Scene-1 frames every ten
+captures through frame `002750` against `mode-1.bmp`:
+
+| Frame | Map offset | Match | Approximate center figure map X |
+|---:|---:|---:|---:|
+| `002700` | `(1285,708)` | 0.97842 | 1411 |
+| `002710` | `(1285,670)` | 0.95595 | 1411 |
+| `002720` | `(1267,628)` | 0.94525 | 1393 |
+| `002730` | `(1227,588)` | 0.92172 | 1353 |
+| `002740` | `(1219,550)` | 0.91589 | 1345 |
+| `002750` | `(1201,508)` | 0.95255 | 1327 |
+
+Offsets are full 272x224 grayscale `TM_CCORR_NORMED` matches; the figure's
+screen center is visually estimated near x=126. The ROM route at position list
+`0x17D694` reaches the vertical segment `(1408,784)->(1408,952)`. Although
+frame `002700` falls near that segment, the center figure then moves away in
+map X while remaining near screen center. Both runner portrait panels are
+visible in this sequence. **[I]** Its camera-relative track and movement away
+from the source waypoint direction support treating it as party movement, not
+as evidence of a pedestrian following this segment; the capture does not
+identify the exact live actor record.
 
 ## Section 36 Mitsuhama map and moving sprite review
 
