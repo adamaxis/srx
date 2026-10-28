@@ -1260,10 +1260,44 @@ offer moves that offer, including its target, into the active-run slot in
 visual evidence.
 
 The Scene-26 contact route above still forces `(2,1)` (Little Chiba), which is
-not in either standard target pool. The current Scene-21/30/35/41 candidate
-matrix checks actor selection after QA scene re-entry; it does not yet connect
-an accepted normal target pair to its physical field doorway and destination
-candidate. Next route coverage should preserve the generated target in its
-trace, contact its matching field event with ordinary controls, verify the
-entry passage and destination scene, then audit the A800 gates and pedestrian
-allocation in that same run.
+not in either standard target pool. One normal target now has a continuous
+accepted-offer-to-doorway trace and then a separate target-map checkpoint into
+its A800 candidate. The checkpoint boundary means the QA does not yet prove
+Johnson-to-Penumbra street travel or the complete travel transition in one
+runtime session.
+
+## Initializer-11 Lone Star target into Scene 41 (2026-10-27)
+
+`shadowrun_ghidra_conversion_qt_field_employee_recruitment_target_pedestrian_qa`
+uses the ordinary Johnson work-menu acceptance path for initializer 11 and
+reads the generated route from the active run registry. The accepted target is
+`(3,6)`, matching the ROM pool bytes at `0xF3E76` and the Scene-3 event route
+table. It carries the live run registry, funds, and source random seed into a
+fresh Scene-3 runtime initialized at a documented field checkpoint; this is an
+explicit QA seam, not a simulation of travel from Johnson to Penumbra.
+
+The Scene-3 source collision record 96 at `0x18AB96` is at
+`(0x0700..0x071F, 0x0040..0x005F)` with event code `0xC6`. Ordinary Up input
+contacts it and event row 6 at `0x18A702` routes to Scene 41. The target-entry
+handler compares the active run target against `FFFBF8/FFFBF9`; the entry page
+contains “You create a diversion” and “Finding your quarry and escaping.” The
+test dismisses it through ordinary A input after the source 31-frame input
+lockout.
+
+Scene 41 allocates one conditional A800 actor from candidate choice 1,
+`pedestrian_k0b_none00`, list offset `0x1EE1F6`, position `(0x1500,0x0E80)`,
+slot 3, with source flags `0x08`. The capture records natural Scene-41 arrival
+separately: the actor is outside the initial viewport, so the final pedestrian
+image pans the QA camera to show the already selected actor. This framed image
+does not claim the actor is naturally visible on arrival.
+
+The QA emits `target-map-spawn.bmp`, `target-doorway-contact.bmp`,
+`employee-target-entry.bmp`, `scene-41-natural-entry.bmp`,
+`scene-41-pedestrian-actual.bmp`, three Johnson offer captures, and
+`normal-target-route.tsv` under each Debug/Release QA artifact directory. Their
+hashes match between configurations. These are internal Qt regression
+artifacts, not an independent Genesis comparison. The tested route adds one
+normal target pair only; initializer-11 `(1,2)`, all initializer-5 pairs,
+initializer-12 `(5,6)`, the remaining A800 mode/story/index/effect gates,
+continuous street travel, and a route-matched independent Genesis capture
+remain open.
