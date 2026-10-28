@@ -128,11 +128,15 @@ the field approach, fade, prompt, category page, and field return; see
   `field/mode-entry/ares-sprite.bmp` (56x72). The longplay confirms it in the
   generic mode-text prompt's left well; it is not the shop's background or
   complete screen composition.
-- Offers: `0x56DC4` chooses one of three action tables. Source action indices
-  0, 1, and 2 map to weapons, other items, and armor at `0x1AAC9E`, `0x1AADD7`,
-  and `0x1AAD8F`. Direct US-ROM reads confirm zero-based action row types
-  `01,02,06,04,05,0D,0E`, `45,0F,10,11`, and `2E,2D` respectively. `0xFF` in
-  byte 0 ends each offer list. `type + 1` selects the one-based item record.
+- Offers: `0x587DA` selects the offer-table family from the category cursor
+  `FFF0D0`. For Ares service index 1 in `FFF0B6`, cursor values 0, 1, and 2
+  resolve to `0x1AAC9E` (weapons), `0x1AADD7` (armor), and `0x1AAD8F` (other
+  items). The ROM branches through bases `0x1AAC86`, `0x1AADBF`, and
+  `0x1AAD77`, then adds `0x18` per service index. `0x56DC4` dispatches the
+  selected action. Direct US-ROM reads confirm first-byte item types
+  `01,02,06,04,05,0D,0E`, `2E,2D`, and `45,0F,10,11` in that category order;
+  `0xFF` in byte 0 ends each offer list. `type + 1` selects the one-based item
+  record.
   Those rows are represented as Lua-defined typed records. `0x586CA` sends
   selected ordinary offers through `0x130C0`, whose source detail class
   distinguishes firearm `ammo` from item `uses`. The single `items.lua`
@@ -156,8 +160,14 @@ the field approach, fade, prompt, category page, and field return; see
 
 1. **Does it look correct?** The intro at 01:39:43 shows the Ares logo, green
    mode text, and empty lower well. The shop at 01:39:45 shows its title,
-   two-line service label, stock row, service tabs, and right HUD. Native intro
-   and category dumps were reviewed beside those independent longplay frames.
+   two-line service label, stock row, service tabs, and right HUD. A second
+   independent sample in Section 10, local frame `006300` at source time
+   25:30 (`video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_10_source_1320-1620/frame_006300.png`),
+   shows the `Available Armor` category and a displayed balance of 1,090.
+   This adds visual evidence for category cursor 1 and balance rendering; the
+   capture has no RAM or controller log to establish a wallet transition.
+   Native intro and category dumps were reviewed beside the independent
+   longplay frames.
    The native QA fixture has Joshua's archetype-0 portrait and 20 nuyen, while
    the reference save shows another portrait and 7,923; those state values are
    not presented as a pixel match.

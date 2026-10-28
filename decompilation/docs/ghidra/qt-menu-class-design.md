@@ -128,9 +128,10 @@ duration.
 
 The Ares Weapon Emporium route is scene 2/event 11 through `0x1FA78`: it sets
 menu mode 1 and result -1, runs the shared mode-exit services, then enters the
-`0x56AC0` field service loop. The three source offer groups are the 8-row
-records at `0x1AAC9E`, `0x1AADD7`, and `0x1AAD8F`; `0x56DC4` dispatches the
-selected group and cursor. Ordinary purchases use the 50-row item catalog and
+`0x56AC0` field service loop. Category cursors 0/1/2 select the three source
+offer groups at `0x1AAC9E` (weapons), `0x1AADD7` (armor), and `0x1AAD8F`
+(other items); `0x587DA` renders the selected group and `0x56DC4` dispatches
+its action. Ordinary purchases use the 50-row item catalog and
 `0x5794E`/`0x57A44`; Ares sales use the shared `0x56F4A` removal path and its
 half-price quote with the mode-1 runner surcharge. `0x57B8C` owns the common
 Yes/No confirmation.

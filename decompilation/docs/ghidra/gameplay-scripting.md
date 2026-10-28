@@ -516,8 +516,10 @@ without an independent game capture.
 
 - ROM scene-2 descriptor/collision profile: `0x172DAA`, with Stoker record 91
   at `0x173138` and the scene event table at `0x172CDC`.
-- Ares shop stock: three-byte ROM records at `0x1AAC9E` (weapons), `0x1AAD8F`
-  (other items), and `0x1AADD7` (armor); the category dispatch is at `0x56DC4`.
+- Ares shop stock: category cursor 0/1/2 selects three-byte ROM records at
+  `0x1AAC9E` (weapons), `0x1AADD7` (armor), and `0x1AAD8F` (other items).
+  `0x587DA` selects the rendered group; `0x56DC4` dispatches the selected
+  action.
 - New Game opening state and field handoff:
   `export/SCRATCHPAD.md`, section
   `The startup distinction is explicit in the conversion source`.
