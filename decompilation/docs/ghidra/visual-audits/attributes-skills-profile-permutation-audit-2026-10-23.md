@@ -152,10 +152,29 @@ per-cell Qt dump covers all 20 cursor selections for that source profile. The
 new profile-screen set shows the different race/class headers and numeric
 presets for all thirteen source records. The Hotel `karma-spend/actual.bmp`
 shows Body increasing from one to two at cost two with Karma 50; that matches
-the `0xD82A` preview and `0xD3EA` cost/write rules. All of these are host
-captures, not independent Genesis references. The supplied longplay sections
-have no matching Attributes/Skills view-only or Hotel spending screen, so
-exact Genesis pixels remain unverified.
+the `0xD82A` preview and `0xD3EA` cost/write rules. Those captures are host
+screens.
+
+Independent Section-11 frame
+`video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_11_source_1620-1920/frame_002700.png`
+shows an Attributes/Skills spending page headed “Joshua / Human Shaman.” It
+displays Body 3, Quickness 4, Strength 1, Charisma 2, Intelligence 3,
+Willpower 6, Essence 6, and Magic 6; Sorcery 3, Firearms 2, Pistols 0, SMGs 0,
+Shotguns 0, Melee Combat 1, Throwing 0, Computer 0, Biotech 0, Electronics 0,
+Reputation 1, and Negotiation 3; Karma is 5. Throwing is selected, and the
+preview reads “Upgrade to 1 Cost 2.” This is source-consistent: `0xD82A` reads
+the selected live record and displays its purchase preview; `0xD3EA` applies
+the accepted purchase. Throwing is a generic skill at rank 0, so the next
+rank costs twice the next rank (2). Its selected description also matches
+the ROM label/description tables.
+
+The Joshua Gator Shaman starter record at `0x72B1A` is Human/Shaman and has
+the same twelve visible skill ranks, but its raw attributes are
+`2, 4, 1, 2, 3, 4, 3, 6`, and its Karma byte `+0x8D` is 0. The frame therefore
+shows a live screen state that differs from the starter values in Body,
+Willpower, Essence, and Karma. The screenshot has no record/RAM dump, so it
+does not establish when or how those differences arose. This is one
+independent visual example, not proof of every profile or upgrade permutation.
 
 - **Code changed:** recruited-record extraction now includes only the ten ROM
   templates before the zero-kind sentinel. The unused two save positions stay
@@ -167,9 +186,14 @@ exact Genesis pixels remain unverified.
 - **Qt screen behavior covered:** all 13 profile headers, all 260 visible
   profile/cell combinations, their numeric glyphs and source offsets, every
   cursor cell, the command view's read-only exit, and clean field return.
-- **Still partial visually:** the Qt frames were inspected against the ROM
-  field mapping, but the supplied independent video has no matching screen.
-  Other routines that consume attribute/skill values need their own audits.
+- **Independent visual evidence:** one longplay Attributes/Skills spending
+  frame matches the Human/Shaman header, the ROM-backed skill labels and
+  description, and the Throwing rank-0 to rank-1 cost preview. Its differing
+  live attribute/Karma values are not linked to a RAM capture.
+- **Still partial visually:** the independent video does not cover all class
+  and race presets, cursor permutations, rejected purchases, or the view-only
+  command-menu variant. Other routines that consume attribute/skill values
+  need their own audits.
 
 See [the Karma page distinction audit](karma-status-and-hotel-upgrade.md),
 [the archetype profile audit](archetype-profile-permutation-audit-2026-10-23.md),
