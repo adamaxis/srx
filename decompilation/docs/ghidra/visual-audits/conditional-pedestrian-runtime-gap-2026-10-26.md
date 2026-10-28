@@ -1538,3 +1538,29 @@ does not identify an ambient pedestrian, A800 candidate, or generated actor,
 and does not establish that Scene 3 lacks other walkers. Keep the Scene-3
 independent population comparison open; the source lists remain confirmed,
 while this particular footage is not a route-level pedestrian match.
+
+## Section-9 Scene-2 pedestrian route candidate (2026-10-28)
+
+**[C]** The independent longplay frame sequence at
+`video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_09_source_1020-1320/`
+shows a small walking sprite separate from the screen-centered runner at
+frames 1800 through 1818. Each field crop matches the ROM-derived Scene-2 map
+(`mode-2.bmp`) at correlations `0.974..0.981`. Masked matching against the
+extracted `pedestrian_k0b_none00` walk frames places the small sprite's
+upper-left X from `66` to `42`; the best matches are walk direction 2, frames
+1, 3, and 0, with scores `0.739..0.758` in the compressed capture.
+
+**[C]** The corresponding registered foot positions move from approximately
+map `(720,543)` at frame 1800 to `(698,544)` at frame 1818. The raw US-ROM
+bytes at `0x172D1C` identify source-order 0 as template `0x1D6988` and point to
+position data `0x172D58`. That data begins with spawn `(0x3480,0x2200)` =
+`(840,544)` map pixels, followed by waypoint `(0x2800,0x2200)` = `(640,544)`.
+The captured sprite moves west along that horizontal source segment, with its
+registered Y remaining within one map pixel of the ROM route.
+
+**[H]** This is a strong route-and-art candidate for the ordinary Scene-2
+default pedestrian, likely source order 0; the video has no actor-record or
+input telemetry, so it cannot prove the live record identity. The later
+Lone-Star dialogue in the same section is not linked to this sprite. This
+match supports the regional default-list path and says nothing about the
+separate A800 selector used by resource scenes 21-43.

@@ -866,6 +866,15 @@ asserts Scene-5 order 1's `(0x4B80,0x2200)` start and movement toward waypoint
 [conditional pedestrian runtime
 audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md).
 
+Independent Section-9 frames 1800-1818 provide a second route-level candidate:
+a small sprite matching the extracted pedestrian walk frames moves west from
+about `(720,543)` to `(698,544)`, along Scene 2 source order 0's ROM segment
+`(840,544)->(640,544)` at `0x172D58`. The actor-record ID remains unverified;
+the later Lone Star dialogue is not linked to this sprite. Section-37 frames
+2340/2400 map to Scene 3 but their two visible figures do not match the
+default pedestrian route direction. Both capture reviews are recorded in the
+[pedestrian audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md).
+
 The separate Debug/Release
 `shadowrun_ghidra_conversion_qt_field_region_map_pedestrians_qa` now checks
 all three default pedestrians after QA scene reentry on each of the six
