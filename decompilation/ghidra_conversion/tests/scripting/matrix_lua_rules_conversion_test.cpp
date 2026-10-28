@@ -1201,6 +1201,94 @@ do
     Session.finish(mask_matrix_session)
 end
 
+-- Audit every CyberInfo selector input combination at both ROM choices.
+-- ROM 0x18ACC checks Up before Down, then A/B/C at 0x18B18..0x18B38,
+-- and Start at 0x18B4A; Left/Right are ignored by this two-row screen.
+do
+    local CyberInfo = require("menu.screens.deck_screens").CyberInfo
+    local pad = E.Pad
+    local edge_bits = {
+        pad.UP, pad.DOWN, pad.LEFT, pad.RIGHT,
+        pad.A, pad.B, pad.C, pad.START,
+    }
+    local record = {
+        model = 3, mpcp = 4, hardening = 3, memory = 15, storage = 80,
+        load_io = 10, response = 5, persona = { [0] = 2, [1] = 3,
+                                               [2] = 4, [3] = 1 },
+        ratings = {}, active = {},
+    }
+    local host = {
+        deck_record = function() return record end,
+        deck_slots = function() return {} end,
+        matrix_online = function() return false end,
+        set_deck_mode = function() end,
+    }
+    local context = { game = host, redraw = function() end }
+    Session.finish(Session.current_state())
+
+    for initial_row = 0, 1 do
+        for mask = 0, 0xFF do
+            local events = 0
+            for bit = 1, #edge_bits do
+                if (mask & (1 << (bit - 1))) ~= 0 then
+                    events = events | edge_bits[bit]
+                end
+            end
+            local screen = CyberInfo.new({
+                deck_parent_col = 0, deck_parent_row = 3,
+            })
+            screen.row = initial_row
+            local vertical = (events & (pad.UP | pad.DOWN)) ~= 0
+            local command = not vertical and
+                            (events & (pad.A | pad.B | pad.C)) ~= 0
+            local start = not vertical and not command and
+                          (events & pad.START) ~= 0
+            local expected_row = vertical and 1 - initial_row or initial_row
+            local label = ("CyberInfo row %d mask %02X"):format(
+                initial_row, mask)
+            local result = CyberInfo.input(screen, events, context)
+
+            eq(screen.row, expected_row, label .. " selector row")
+            eq(screen.deck_parent_col, 0, label .. " parent column")
+            eq(screen.deck_parent_row, 3, label .. " parent row")
+            eq(screen.deck_palette_phase, 1,
+               label .. " advances the shared ROM palette on first input")
+            if vertical then
+                eq(result, nil,
+                   label .. " vertical cursor input precedes every action")
+            elseif command then
+                eq(result.transition, E.MenuTransition.POP,
+                   label .. " A/B/C confirms the selected child")
+                if initial_row == 0 then
+                    local stats = result.result.matrix_deck_stats
+                    eq(stats.manufacturer, "Fuchi",
+                       label .. " Deck Stats manufacturer")
+                    eq(stats.model, "Cyber-7", label .. " Deck Stats model")
+                    eq(stats.values[1], 4, label .. " Deck Stats MPCP")
+                    eq(stats.values[5], 10, label .. " Deck Stats Load/IO")
+                    eq(stats.values[10], 1,
+                       label .. " Deck Stats final Persona rating")
+                else
+                    local run_info = result.result.matrix_run_info
+                    eq(run_info.kind, "no_run",
+                       label .. " Run Info follows the no-run RAM branch")
+                    eq(run_info.message, "You are not on|a matrix run!!",
+                       label .. " Run Info text")
+                end
+            elseif start then
+                eq(result.transition, E.MenuTransition.POP,
+                   label .. " Start returns to the parent deck")
+                eq(result.result.matrix_deck_stats, nil,
+                   label .. " Start does not publish Deck Stats")
+                eq(result.result.matrix_run_info, nil,
+                   label .. " Start does not publish Run Info")
+            else
+                eq(result, nil, label .. " unrelated or empty input stays")
+            end
+        end
+    end
+end
+
 -- IC visibility, layered types, and alert bonuses follow the ROM tables.
 local node = { ic_condition = 10, ic_code = 7, ic_rating = 3, ic_rating2 = 5 }
 eq(MX.ic_type(node, 0, false, 0), MX.UNSEEN, "unseen node")

@@ -284,6 +284,25 @@ The source and host both call the palette service once per selector pass. The
 ROM's phase-change interval and the sound requests around these actions are
 traced in the next section.
 
+## CyberInfo edge-mask permutations (2026-10-28)
+
+I traced the source control path from the ROM bytes at `0x18ACC`: bit 8 Up is
+tested before bit 9 Down, and either direction calls the wrapped row cursor
+then restarts the selector pass. Left and Right are not read here. The child
+actions at `0x18B18` test A, B, and C before Start at `0x18B4A`; the selected
+row sends those three confirm buttons to Deck Stats (`0x18B5C`) or Run Info
+(`0x18C28`).
+
+`shadowrun_ghidra_matrix_lua_rules` now passes all 256 combinations of the
+eight D-pad/A/B/C/Start edge bits from each selector row. Across 512 cases it
+checks direction priority over actions, one-row wrap, ignored horizontal
+edges, both child payloads, Start-only return, unrelated-input stay, retained
+parent cell, and the first shared-palette tick. The
+`shadowrun_ghidra_gameplay_script_menu_route` test separately checks Run Info's
+signed `FFF0E3` negative, zero, and positive branches. Both tests pass in Debug
+and Release. The selector and Deck Stats still lack an independent Genesis
+frame; these state and text-layer checks do not establish visual fidelity.
+
 ## Cyberdeck palette cadence and CyberInfo sound requests (2026-10-27)
 
 The Cyberdeck entry at `0x182F4` clears `FFF10A`. Its parent loop waits for a

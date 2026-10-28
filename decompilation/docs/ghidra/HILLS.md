@@ -74,6 +74,11 @@ and `shadowrun_ghidra_matrix_lua_rules` pass in Debug and Release. The checks
 cover cursor state, mode, child dispatch and online gates, parent-cell return
 arguments, and both online Start return paths. The Cyberdeck/Matrix hill
 remains partial pending independent visual coverage and the rest of traversal.
+CyberInfo's two-row selector now has a separate 512-case all-mask check in
+`shadowrun_ghidra_matrix_lua_rules`, covering both rows and every D-pad/A/B/C/
+Start combination. The live route test also covers signed no-run, active-run,
+and completed-run Run Info presentations. Debug and Release pass; CyberInfo and
+Deck Stats still have no matching independent Genesis frame.
 The Storage screen at ROM `0x18D1A` keeps that parent row, program grid, and
 footer while drawing the source panel and live capacity. View at `0x18F5E`
 walks occupied records from slot 4 down to 0, drawing each ROM filename,
