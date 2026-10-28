@@ -937,6 +937,30 @@ add_shadowrun_qt_qa_case(
     --field-employee-recruitment-initializer5-mitsuhama-pedestrian-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-employee-recruitment-initializer5-mitsuhama-pedestrian-qa")
 
+# Cover initializer 5's first four-site pool row through Scene 0 record 46,
+# retaining the Scene-21 choice-1 candidate through its late index rejection.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_employee_recruitment_initializer5_fuchi_scene0_pedestrian_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-employee-recruitment-initializer5-fuchi-scene0-pedestrian-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-employee-recruitment-initializer5-fuchi-scene0-pedestrian-qa")
+
+# Cover initializer 5's third four-site pool row through Scene 3 record 97,
+# retaining the Scene-21 choice-2 candidate through its late index rejection.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_employee_recruitment_initializer5_fuchi_scene3_pedestrian_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-employee-recruitment-initializer5-fuchi-scene3-pedestrian-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-employee-recruitment-initializer5-fuchi-scene3-pedestrian-qa")
+
+# Cover initializer 5's final four-site pool row through Scene 3 record 95,
+# retaining the Scene-30 choice-1 candidate through its late index rejection.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_employee_recruitment_initializer5_mitsuhama_scene3_pedestrian_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-employee-recruitment-initializer5-mitsuhama-scene3-pedestrian-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-employee-recruitment-initializer5-mitsuhama-scene3-pedestrian-qa")
+
 # Seed the ROM's completed Harlequin/Ito/map gates, walk into record 67 with
 # ordinary Up input, accept the Yes prompt, and verify the three travel pages
 # before the route enters scene 54.

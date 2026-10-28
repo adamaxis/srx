@@ -1450,6 +1450,45 @@ and Ares tests and initializer-12 Renraku test. All 11 output files for the
 new route, including eight full-screen BMPs and three TSV manifests, have
 matching SHA-256 hashes across configurations. The inspected screenshots are
 internal Qt captures; there is no route-matched independent Genesis capture.
-The three remaining initializer-5 target pairs, continuous street travel,
-remaining A800 gate permutations, and independent Genesis comparison remain
-open.
+The three remaining initializer-5 target pairs are covered below. Continuous
+street travel, remaining A800 gate permutations, and independent Genesis
+comparison remain open.
+
+## Remaining initializer-5 targets from the four-site pool (2026-10-27)
+
+ROM `0xF3E6E` supplies the initializer-5 four-site target pool
+`[(0,5),(0,4),(3,2),(3,3)]`. The existing initializer-5 Mitsuhama route covers
+`(0,4)`. Three new physical-entry QAs accept each remaining pair through the
+ordinary Johnson work-menu path, carry the accepted run registry, funds, and
+source random seed into a fresh source-scene runtime at an explicit checkpoint,
+walk into the mapped collision record with ordinary Up, dismiss the target
+passage with A, and resume the imported event-table route. The checkpoints are
+QA seams; they do not claim continuous street travel from Johnson.
+
+| Generated target | Physical route from ROM trigger manifest | A800 candidate and live outcome |
+|---|---|---|
+| `(0,5)` Fuchi; seed 539; post-offer seed 23623 | Scene 0 record 46 at `0x0D57AA`, bounds `x=0x06A0..0x06BF`, `y=0x0060..0x007F`, collision/event `0xC5`/5; row 5 at `0x0D54B7` selects Scene 21 (`0x15`). Checkpoint `(0x6B00,0x0900)`. | Choice 1 retains list `0x1EDECC`, position `(0x2800,0x0580)`. `FFF0C8=0`, `FFE12C=3`; the mismatched indices suppress the actor while retaining the sampled choice. |
+| `(3,2)` Fuchi; seed 41; post-offer seed 22901 | Scene 3 record 97 at `0x18ABA0`, bounds `x=0x0080..0x009F`, `y=0x0140..0x015F`, collision/event `0xC2`/2; row 2 at `0x18A6FE` selects Scene 21. Checkpoint `(0x0800,0x1700)`. | Choice 2 retains list `0x1EDEEA`, position `(0x4700,0x2D80)`. `FFF0C8=0`, `FFE12C=3`; the mismatched indices suppress the actor while retaining the sampled choice. |
+| `(3,3)` Mitsuhama; seed 430; post-offer seed 37546 | Scene 3 record 95 at `0x18AB8C`, bounds `x=0x02C0..0x02DF`, `y=0x00A0..0x00BF`, collision/event `0xC3`/3; row 3 at `0x18A6FF` selects Scene 30 (`0x1E`). Checkpoint `(0x2D00,0x0F00)`. | Choice 1 retains list `0x1EDDBE`, position `(0x2300,0x3400)`. `FFF0C8=0`, `FFE12C=3`; the mismatched indices suppress the actor while retaining the sampled choice. |
+
+In all three routes the `0xA800` activity selector reaches its random branch:
+the run normalizes to `FFFBED=5`, `FFDF40=2`, both world-effect markers are
+clear, and the player-spawn-pending gate is clear. It samples `FFE183` before
+the later effect-index comparison rejects publication. The tests assert the
+exact retained choice row and position even when the gate suppresses the actor.
+This distinguishes candidate selection from an actor actually entering slot
+3. The existing `(0,4)` Scene-30 route covers the complementary live match,
+`FFF0C8=FFE12C=0`, and publishes choice 2 from list `0x1EDDDC` at
+`(0x0900,0x0B00)`.
+
+All seven normal Recruitment target-route CTests pass in Debug and Release.
+Each of the three new routes emits 11 files; names and SHA-256 hashes match
+between builds. The route loop waits for the existing host modal-return fade
+counter to reach zero before saving its destination frame; the TSV's
+`settle_frames=59` is a host presentation count, not a ROM timing claim. The
+`begin_field_modal_return_transition` code labels this 60-frame fade-in a host
+presentation choice. Full-frame target-entry and destination images were
+inspected, including the Scene-30 matched-index actor image. These are internal
+Qt captures, not independent Genesis comparisons. The full four-row pool now
+has physical target-pair coverage; continuous travel, the remaining A800 gate
+permutations, and independent Genesis comparison remain open.
