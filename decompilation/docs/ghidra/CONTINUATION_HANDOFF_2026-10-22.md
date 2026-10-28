@@ -1058,3 +1058,35 @@ typed positive page. The Pocket Secretary hill remains partial.
 `decompilation/docs/ghidra/visual-analysis/qt-visual-audit.tsv`, and this
 handoff. Preserve all other pre-existing dirty and untracked paths; do not
 stage files.
+
+## 2026-10-28 Hotel Options input permutation audit
+
+The Grok-supplied `decompilation/ghidra_conversion/LUNA_HANDOFF.md` has been
+reviewed; its repo/branch/push directions do not supersede the active project
+instructions or the user's local-only commit request. Its Hotel doorway item
+is stale for this checkout: the expanded `au/e8_karma_spend` RAM and image
+sequence maps to Scene 2/event 2 at record 91 (`0x173138`) and reaches the
+Stoker service; it does not load a separate motel interior. The recording's
+ROM/emulator identity remains unknown.
+
+The shared Hotel Options loop was audited next. ROM `0xCF98..0xCFFA` processes
+Up/Down, A, then C/action; Up wins over Down, A dispatches before C, B and
+Start have no branch. A new CTest checks all 32 Up/Down/A/B/C combinations from
+both cursor rows and a B-only / Down+C / Up+Down+A+C menu sequence. The
+independent Section-11 frame `002580` and host `field-hotel-qa/options/actual.bmp`
+agree on the title, option order, and default Karma row; the other actions are
+source-backed tests, not independent visual claims. The Hotel hill remains
+partial.
+
+Debug and Release builds of `shadowrun_ghidra_hotel_options_input_permutation_test`
+and `shadowrun_ghidra_conversion_qt_qa` passed. Focused CTest passed in both
+configurations for `shadowrun_ghidra_hotel_options_input_permutation` and
+`shadowrun_ghidra_conversion_qt_field_hotel_qa`. Hotel Options `actual.bmp`
+SHA-256 matches across builds:
+`59AE4A17AD5039081BE21F9F04C27323BDCC63E9EDAAD7AE2925D6C913A6C485`.
+
+Changed paths: Qt CMake/test registration and the new input-permutation test;
+`visual-audits/hotel-options-input-permutation-audit-2026-10-28.md`,
+`HILLS.md`, `decompiled-function-status.tsv`, and
+`visual-analysis/qt-visual-audit.tsv`. `LUNA_HANDOFF.md` remains unmodified and
+untracked. No push was made.

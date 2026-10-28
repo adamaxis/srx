@@ -97,6 +97,18 @@ target_link_libraries(shadowrun_frame_debug_server_test
 add_test(NAME shadowrun_frame_debug_server
          COMMAND shadowrun_frame_debug_server_test)
 
+# Exhaustive controller-mask audit for the source Hotel Options loop. This
+# conversion-only test exercises all edge combinations without constructing
+# the Qt window or starting audio.
+add_executable(shadowrun_ghidra_hotel_options_input_permutation_test
+    tests/menus/hotel_options_input_permutation_test.cpp)
+target_include_directories(shadowrun_ghidra_hotel_options_input_permutation_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_link_libraries(shadowrun_ghidra_hotel_options_input_permutation_test
+    PRIVATE shadowrun_ghidra_conversion_modules)
+add_test(NAME shadowrun_ghidra_hotel_options_input_permutation
+         COMMAND shadowrun_ghidra_hotel_options_input_permutation_test)
+
 # This is the runnable Qt host for the converted source contracts. It is a
 # child of the root Ghidra project, not the archived native-port project.
 # It deliberately does not link shadowrun_port, shadowrun_native,
