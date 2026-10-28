@@ -1106,3 +1106,31 @@ new `visual-audits/hotel-options-input-permutation-audit-2026-10-28.md`,
 `HILLS.md`, `decompiled-function-status.tsv`, and
 `visual-analysis/qt-visual-audit.tsv`. `LUNA_HANDOFF.md` remains unmodified and
 untracked. No push was made.
+
+## 2026-10-28 Field movement D-pad input-table audit
+
+The raw US ROM word table at `0x19D2` has 16 D-pad nibbles. Indices 1, 2, 4,
+5, 6, 8, 9, and 10 map to headings `0000`, `8000`, `C000`, `E000`, `A000`,
+`4000`, `2000`, and `6000`; the other eight entries are `FFFF` and request no
+heading. `game_script_runtime_test.cpp` now checks all 16 through the Lua
+player heartbeat. Qt field movement QA drives all eight valid headings; the
+right/left cases include cadence loops and the other six capture alignment,
+facing/selector, held, and released states.
+
+Debug/Release `shadowrun_gameplay_script_runtime_qa` and
+`shadowrun_ghidra_conversion_qt_field_movement_qa` passed with the runtime test
+fixture using the stable `field_player_runner` identity. Both movement QA runs
+write 55 full-screen BMPs, including 30 directional-route frames; all 55 hashes
+match across builds. The debug and release test environment was headless with
+`QT_QPA_PLATFORM=offscreen`, `SRX_HEADLESS=1`, and dummy audio.
+
+Independent Section-04 frames `000900..000921` show moving field poses but do
+not record controller state. They support the actor art/layout, not exact
+heading or movement cadence. The movement hill remains partial; the user's
+stuck-obstacle sequence, broader terrain recovery, and matching Genesis
+controller trace remain open.
+
+Changed paths: `qt_runtime/tests/scripting/game_script_runtime_test.cpp`,
+`visual-audits/field-movement-animation.md`, `HILLS.md`, and
+`visual-analysis/qt-visual-audit.tsv`. `LUNA_HANDOFF.md` remains the sole
+untracked path and was not modified. No push was made.

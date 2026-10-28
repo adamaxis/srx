@@ -472,6 +472,14 @@ Stoker exit defect is fixed, while general stuck-obstacle paths and independent
 Genesis controller evidence remain open. See
 [`visual-audits/field-movement-animation.md`](visual-audits/field-movement-animation.md).
 
+The raw-ROM controller word table at `0x19D2` has 16 D-pad nibbles: eight
+valid single/adjacent inputs and eight `0xFFFF` no-heading entries. Lua runtime
+QA checks all 16; the Qt field route drives all eight valid headings through
+the live update and checks facing, selector, and release. Debug and Release
+now emit the same 55 movement BMPs, including 30 direction-route frames.
+Independent Section-04 frames show moving field poses but do not expose input
+state, so exact Genesis direction/cadence comparison remains open.
+
 Puyallup's Tarislar Garden Apartments route is partial. Scene 1 record
 67/event 7 defaults to scene 13. The first-authorized service-21 branch now
 uses a JSON graph for the ROM arrival and penthouse pages before the shared

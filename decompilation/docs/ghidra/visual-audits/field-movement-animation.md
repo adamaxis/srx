@@ -126,8 +126,17 @@ additional `320x224` BMPs cover idle, first held update, aligned, held, and
 released states for all six directions. All were reviewed as full-screen
 captures; map scrolling, actor placement, and the shared HUD remain coherent,
 with no dialogue, menu, or stale UI over the field. These six new route captures
-were verified in Release; the earlier right/left captures remain byte-matched
-between Debug and Release.
+were verified in both Debug and Release. All 30 directional-route images and
+all 55 field-movement BMPs now match between builds by SHA-256.
+
+A focused Lua runtime check now exhausts all 16 nibbles in the ROM word table
+at `0x19D2`. Entries 1, 2, 4, 5, 6, 8, 9, and 10 map to the eight valid
+headings; no input and the opposing or three/four-direction combinations map
+to `0xFFFF`, which produces no movement request. The physical Qt route covers
+all eight valid headings, including diagonal facing, selected sprite family,
+and directional idle on release. Debug and Release
+`gameplay_script_runtime_qa` pass the 16-entry mapping check; separate Debug
+and Release `field_movement_qa` captures cover all eight valid headings.
 
 `shadowrun_graphics` and `shadowrun_graphics_catalog` pass in Debug and Release.
 Their checks verify the eight C062 directional selectors, marker `4`,

@@ -6893,6 +6893,42 @@ int main() {
         return 16;
     }
 
+    // The raw US ROM's 16-word controller table at 0x19D2 maps only the
+    // eight single/adjacent D-pad combinations to headings.  No-input,
+    // opposing directions, and three/four-direction combinations are 0xFFFF.
+    constexpr std::array<std::uint16_t, 16> rom_controller_headings{{
+        0xFFFFU, 0x0000U, 0x8000U, 0xFFFFU,
+        0xC000U, 0xE000U, 0xA000U, 0xFFFFU,
+        0x4000U, 0x2000U, 0x6000U, 0xFFFFU,
+        0xFFFFU, 0xFFFFU, 0xFFFFU, 0xFFFFU,
+    }};
+    for (std::uint8_t nibble = 0U; nibble < rom_controller_headings.size();
+         ++nibble) {
+        ScriptActorBehaviorContext input_case{};
+        input_case.profile_id = "field_runner_k03_none00";
+        input_case.entity_kind = 3U;
+        input_case.instance_id = "field_player_runner";
+        input_case.spawn = false;
+        input_case.movement_allowed = true;
+        input_case.controller_nibble = nibble;
+        input_case.controller_heading_table = rom_controller_headings;
+        const auto actual = scripts.actor_heartbeat(input_case);
+        const auto expected = rom_controller_headings[nibble] == 0xFFFFU
+            ? std::optional<std::uint16_t>{}
+            : std::optional<std::uint16_t>{rom_controller_headings[nibble]};
+        if (!actual.has_value() || actual->movement_heading != expected) {
+            std::cerr << "Lua player controller nibble mismatch: nibble="
+                      << static_cast<unsigned>(nibble) << " expected=";
+            if (expected.has_value()) {
+                std::cerr << "0x" << std::hex << *expected << std::dec;
+            } else {
+                std::cerr << "no heading";
+            }
+            std::cerr << '\n' << scripts.failure() << '\n';
+            return 116;
+        }
+    }
+
     player_movement.phase = ScriptActorHeartbeatPhase::render;
     player_movement.initial_heading = 0x4000U;
     player_movement.animation_mode = ScriptActorAnimationMode::walking;
