@@ -807,6 +807,34 @@ check(route_actor_step ~= nil and route_actor_step.outcome == "accepted" and
       R.movement_direction_from_heading(route_actor_context, 0xF000) == 7,
       "Scene-35 default route guard B574/C062 truncates measured 0xF000 to direction 7 [C]")
 
+-- Regional pedestrian records have +0x10 THINK clear, carry a source waypoint
+-- distance in +0xC8, and use the B6E4 distance table. Exercise every threshold
+-- boundary, including the >=0x460 return to the ordinary 10-unit vector. [C]
+local regional_pedestrian_speed_cases = {
+    { 0x00FF, 8 }, { 0x0100, 10 }, { 0x01FF, 10 },
+    { 0x0200, 15 }, { 0x035F, 15 }, { 0x0360, 20 },
+    { 0x045F, 20 }, { 0x0460, 10 },
+}
+for _, speed_case in ipairs(regional_pedestrian_speed_cases) do
+    local speed_context = movement_fixture(false)
+    speed_context.entity_kind = E.SpriteType.PEDESTRIAN
+    speed_context.source_actor_has_waypoint_data = true
+    speed_context.source_record_flags = E.ActorStatus.ACTIVE | 0x04
+    speed_context.movement_entity_flags = E.ActorStatus.ACTIVE | 0x04
+    speed_context.source_spawn_state_flags = pedestrian
+    speed_context.combatant = { command_attribute_78 = 1 }
+    local speed_state = {
+        movement_heading = 0x4000,
+        movement_current_heading = 0x4000,
+        movement_route_distance = speed_case[1],
+    }
+    local speed_step = R.advance_entity_movement(speed_context, speed_state)
+    check(speed_step ~= nil and speed_step.outcome == "accepted" and
+          speed_state.animation_timing_word == speed_case[2],
+          string.format("regional pedestrian B6E4 distance 0x%04X selects %d-unit vector [C]",
+                        speed_case[1], speed_case[2]))
+end
+
 -- The six regional profiles and Scene 35 contain 19 of 379 waypoint edges
 -- whose 0x15D3C result crosses the old BABC rounding boundary. These ten
 -- distinct measured headings cover every affected selector value. [C]

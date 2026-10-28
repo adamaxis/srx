@@ -272,6 +272,57 @@ int main() {
                 differing_route_headings.size() == 10U)) {
         return 32;
     }
+
+    // The six regional pedestrian profiles use the same 0x15D3C distance
+    // result to choose the 0xB6E4 movement table. Waypoint TSV order zero is
+    // the repeated spawn pair; skip it, then include the zero-X wrap back to
+    // each route's initial coordinate. [C]
+    std::array<std::size_t, 5> regional_pedestrian_distance_bands{};
+    std::size_t regional_pedestrian_route_legs = 0U;
+    for (const auto& [key, initial] : route_initials) {
+        if (key.first > 5U) {
+            continue;
+        }
+        const auto route = route_waypoints.find(key);
+        if (!expect(route != route_waypoints.end())) {
+            return 33;
+        }
+        auto previous = initial;
+        for (const auto& [order, point] : route->second) {
+            if (order == 0U) {
+                if (!expect(point == initial)) {
+                    return 34;
+                }
+                continue;
+            }
+            const auto distance = measure_relative_heading_and_distance(
+                previous.first, previous.second, point.first, point.second)
+                                      .distance;
+            const auto band = distance < 0x0100U ? 0U
+                : distance < 0x0200U ? 1U
+                : distance < 0x0360U ? 2U
+                : distance < 0x0460U ? 3U
+                                     : 4U;
+            ++regional_pedestrian_distance_bands[band];
+            ++regional_pedestrian_route_legs;
+            previous = point;
+        }
+        const auto wrap_distance = measure_relative_heading_and_distance(
+            previous.first, previous.second, initial.first, initial.second)
+                                      .distance;
+        const auto wrap_band = wrap_distance < 0x0100U ? 0U
+            : wrap_distance < 0x0200U ? 1U
+            : wrap_distance < 0x0360U ? 2U
+            : wrap_distance < 0x0460U ? 3U
+                                      : 4U;
+        ++regional_pedestrian_distance_bands[wrap_band];
+        ++regional_pedestrian_route_legs;
+    }
+    if (!expect(regional_pedestrian_route_legs == 168U &&
+                regional_pedestrian_distance_bands ==
+                    std::array<std::size_t, 5>{0U, 0U, 8U, 0U, 160U})) {
+        return 35;
+    }
     const auto quantized = measure_heading_and_distance(-64, -63);
     if (!expect(quantized.heading == 0xDF00U && quantized.distance == 95U)) {
         return 12;

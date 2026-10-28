@@ -1096,6 +1096,60 @@ source-coordinate arrivals, not travel time or collision along each segment.
 Exact patrol waypoint cadence, collision behavior for every segment, and actor
 identity in the independent captures remain open.
 
+### Regional pedestrian route-speed census (2026-10-28)
+
+**[C]** The ROM route meter at `0x15D3C` writes the major absolute coordinate
+delta plus half the minor delta to `+0xC8`. The default-list initializer at
+`0x44BC` starts `+0x10` at `0x05`; the extracted `+0x9E=0x20` override sets
+its route bit, leaving THINK (`+0x10` bit 1) clear. The routed movement path
+therefore reaches `0xB6E4`. The raw US-ROM instructions at `0xB6E4..0xB72E`
+read `+0xC8`, compare unsigned cutoffs in descending order, and select these
+eight-direction vector tables by their cardinal component:
+
+| Stored `+0xC8` distance | ROM table | Cardinal component |
+|---:|---:|---:|
+| `< 0x0100` | `0xBDD2` | 8 |
+| `0x0100..0x01FF` | `0xBDB2` | 10 |
+| `0x0200..0x035F` | `0xBD92` | 15 |
+| `0x0360..0x045F` | `0xBD72` | 20 |
+| `>= 0x0460` | `0xBE62` base table | 10 |
+
+`0xB61A..0xB624` selects the `0xBE62` base table for a tagged route while
+`FFDF84` is zero; `0xB66C..0xB676` then calls the distance selector for actors
+whose THINK bit is clear. The table bytes in the US ROM confirm the listed
+cardinal components.
+
+I computed the source meter for each directed segment in the six regional
+pedestrian lists, including the final zero-X wrap from the last waypoint to
+the initial coordinate. The TSV's order-0 row repeats that initial coordinate
+and contributes no movement leg. Across 168 real route legs, the distance
+bands are:
+
+| Region scene | 8 units (`<0100`) | 10 units (`0100..01FF` or `>=0460`) | 15 units (`0200..035F`) | 20 units (`0360..045F`) |
+|---:|---:|---:|---:|---:|
+| 0 Downtown | 0 | 38 | 6 | 0 |
+| 1 Puyallup | 0 | 24 | 0 | 0 |
+| 2 Barrens | 0 | 22 | 2 | 0 |
+| 3 Penumbra | 0 | 20 | 0 | 0 |
+| 4 Council Island | 0 | 38 | 0 | 0 |
+| 5 Renraku | 0 | 18 | 0 | 0 |
+| **Total** | **0** | **160** | **8** | **0** |
+
+The 8-unit and 20-unit branches are not reached by these region routes. The
+Lua movement QA now checks every B6E4 boundary, including the high-distance
+fallback to 10. The C++ movement-metric QA measures all 168 regional segments
+with the typed `0x15D3C` conversion and asserts the source-derived band counts.
+These tests cover route-distance selection and vector-size selection; they do
+not exercise collision-blocked segments or an entire route in the live Qt
+runtime.
+
+**[I]** The independent Scene-2 and Scene-5 samples document long routes whose
+stored distances select the 10-unit vector. No independent longplay sample yet
+tracks one of the eight Scene-0/Scene-2 segments selecting 15 units, so the
+medium-distance speed remains source- and runtime-tested but not visually
+corroborated. The extra Section-37 video sampling above does not identify a
+regional pedestrian record.
+
 ## Next source-backed slice
 
 The post-page effect is now traced: `0x53C90` calls `0x1DED8`, which scans
