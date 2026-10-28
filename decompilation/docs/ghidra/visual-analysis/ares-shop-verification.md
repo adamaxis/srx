@@ -147,6 +147,12 @@ the field approach, fade, prompt, category page, and field return; see
   12, 11, 15, 6, and 10, followed by Scatter and Concussion grenades with six
   uses each. Grenades are not assigned firearm magazines. The right HUD count
   remains the active runner's loaded rounds.
+- Balance: `0xC406` reads the longword at `FFFBFE` (`0xC424`) and passes it to
+  the grouped-decimal formatter `0xC216`. The purchase path compares its
+  adjusted cost to the same wallet at `0x579C6` and subtracts the confirmed
+  price at `0x57A3C`. The displayed number therefore follows the live wallet;
+  the Section-10 image has no RAM snapshot to verify its visible 1,090 against
+  that field.
 - Purchase: `0x5794E` applies a selected offer; `0x57A44` reads its full word
   base cost from `0xD4540 + type * 0x30 + 0x22`; `0x57A6E` applies the mode and
   runner adjustment; `0x57B8C` confirms before inventory or funds mutate.
@@ -165,7 +171,8 @@ the field approach, fade, prompt, category page, and field return; see
    25:30 (`video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_10_source_1320-1620/frame_006300.png`),
    shows the `Available Armor` category and a displayed balance of 1,090.
    This adds visual evidence for category cursor 1 and balance rendering; the
-   capture has no RAM or controller log to establish a wallet transition.
+   capture has no RAM or controller log to confirm the `FFFBFE` value or a
+   wallet transition.
    Native intro and category dumps were reviewed beside the independent
    longplay frames.
    The native QA fixture has Joshua's archetype-0 portrait and 20 nuyen, while
