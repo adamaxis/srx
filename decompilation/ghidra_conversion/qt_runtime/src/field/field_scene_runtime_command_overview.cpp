@@ -999,8 +999,7 @@ void FieldSceneRuntime::begin_pocket_secretary() {
     if (!command_overview_.open()) {
         return;
     }
-    // ROM 0xC2A6 normally uses FFF101 to choose four or five labeled rows.
-    // The temporary test override exposes its sixth, unlabeled debug row.
+    // ROM 0xC2A6 uses FFF101 to expose the sixth, unlabeled debug row.
     initialize_pocket_secretary_menu(
         pocket_secretary_, debug_menu_unlocked_,
         {[this] { source_boundary("field.pocket_secretary.transfer_menu_assets"); },

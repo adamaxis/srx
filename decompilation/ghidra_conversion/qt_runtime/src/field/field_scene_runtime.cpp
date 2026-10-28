@@ -202,10 +202,6 @@ QImage flipped_image(const QImage& image, const Qt::Orientations orientations) {
                           orientations.testFlag(Qt::Vertical));
 #endif
 }
-// Keep the ROM's FFF101 debug-menu branch exposed during development. Set to
-// false to return to the title-code-only unlock rule.
-constexpr bool kDebugMenuAlwaysUnlockedForTesting = true;
-
 // ROM 0x5A94/0x5ABE: +0x0C is the projected Y, cleared outside the window.
 bool caster_projection_active(const std::uint16_t world_x,
                               const std::uint16_t world_y,
@@ -8533,9 +8529,9 @@ void FieldSceneRuntime::configure_field_menu_route() {
         return true;
     };
     bindings.game.consume_debug_unlock = [this] {
-        debug_menu_unlocked_ = kDebugMenuAlwaysUnlockedForTesting;
-        pocket_secretary_.maximum_selection =
-            debug_menu_unlocked_ ? 5U : 4U;
+        // ROM 0x59A64 clears FFF101 after selecting a debug-menu effect.
+        debug_menu_unlocked_ = false;
+        pocket_secretary_.maximum_selection = 4U;
     };
     bindings.game.set_contact_flags = [this](const std::uint32_t flags) {
         // ROM 0x59C48 is debug-menu Contacts handler table entry 6 at
@@ -8880,8 +8876,7 @@ bool FieldSceneRuntime::bootstrap(
     field_asset_catalog_.reset();
     world_frame_state_ = WorldFrameState{};
     viewport_state_ = FieldViewportState{};
-    debug_menu_unlocked_ = kDebugMenuAlwaysUnlockedForTesting ||
-                           startup_state.title_debug_menu_unlocked;
+    debug_menu_unlocked_ = startup_state.title_debug_menu_unlocked;
 
     if (!startup_state.field_session_source_assets.has_value()) {
         failure_ = "field-session source records are unavailable";
