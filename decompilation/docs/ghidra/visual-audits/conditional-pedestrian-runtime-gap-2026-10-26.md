@@ -1412,6 +1412,20 @@ request word; the current export does not identify such a path. The separate
 nonzero `FFDF42`; the direct request producer remains open. The callback body
 and its typed host integration are summarized below.
 
+### Absolute-short alias check
+
+The 68000 can also encode an absolute-short memory operand. On the Genesis
+24-bit address bus, the signed word `0xDF42` would alias `0xFFDF42`. A second
+raw-ROM scan finds the `DF 42` byte pair at `0x0A6C`, `0x0AA2`, and
+`0x1896C3`. The first two are the low words inside the known absolute-long
+operands beginning at `0x0A6A` and `0x0AA0`. The only additional occurrence
+starts at odd offset `0x1896C3`, so it cannot be a word-aligned 68000 extension
+word; its surrounding aligned data words are `0x00DF` and `0x424F`. There is
+therefore no additional direct absolute-short reference to `FFDF42`. This
+narrows the direct-operand census but does not resolve a pointer-computed or
+indirect writer, so the automatic request producer remains an explicit source
+boundary.
+
 ## ROM callback at `0x1F16A`: extraction result
 
 **[C]** ROM `0x1E43C` installs `0x1F16A` at `0x1E49C` as the pending field

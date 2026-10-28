@@ -1134,3 +1134,22 @@ Changed paths: `qt_runtime/tests/scripting/game_script_runtime_test.cpp`,
 `visual-audits/field-movement-animation.md`, `HILLS.md`, and
 `visual-analysis/qt-visual-audit.tsv`. `LUNA_HANDOFF.md` remains the sole
 untracked path and was not modified. No push was made.
+
+## 2026-10-28 Conditional pedestrian FFDF42 absolute-short audit
+
+The raw US ROM absolute-long scan still finds exactly two `00 FF DF 42`
+operands: the request test at `0x0A68` and zero-clear at `0x0A9E`. I also
+checked the 68000 absolute-short alias: signed word `0xDF42` would address
+`0xFFDF42` on the Genesis 24-bit bus. The only extra `DF 42` byte pair is at
+odd file offset `0x1896C3`; its aligned neighboring words are `0x00DF` and
+`0x424F`, so it cannot be an instruction extension word. This closes the
+direct absolute-long and absolute-short operand census, but computed/indirect
+writes remain possible and untraced. The FFDF42 producer, physical automatic
+`0x1E43C` route, and independent Genesis comparison remain open.
+
+Analysis was read-only against `decompilation/input/shadowrun_genesis_us.bin`;
+the CTest/build suites were not rerun because no code changed. The handoff,
+HILLS index, `decompiled-function-status.tsv`, and
+`visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md` record this
+bounded finding. `LUNA_HANDOFF.md` remains unmodified and untracked. No push was
+made.

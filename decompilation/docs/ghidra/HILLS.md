@@ -960,7 +960,14 @@ comparisons, and selection of reachable choices 1 and 2 while retaining all
 three table rows. Lua owns the choice; the field runtime calls its reset at the
 modeled `0x2A32`/`0x2A44` and type-5 `0xC684` clears. The `0x1E45E` clear is
 connected through `0x0A92` to the typed 13-record reset at `0x1E43C` and is
-covered by focused Debug/Release QA. The field runtime now calls the selector
+covered by focused Debug/Release QA.
+
+The raw-ROM `FFDF42` census also checked the absolute-short alias `0xDF42`.
+Only the aligned absolute-long request test/clear operands exist; the remaining
+byte-pair hit at odd offset `0x1896C3` crosses data words `0x00DF`/`0x424F`.
+Computed/indirect writes and the physical automatic callback path remain open.
+
+The field runtime now calls the selector
 with the accepted offer's raw FFFBED byte, FFDF40, both effect markers, the
 boolean zero/nonzero FFFC3C gate, and typed FFE12C/FFF0C8 words. Resource
 initialization captures the selected index, and elevator
