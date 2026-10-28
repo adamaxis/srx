@@ -222,3 +222,25 @@ Hotel profile permutation, command-menu profile permutation, Attributes/Skills
 route, Hotel route, and page-distinction CTests. Their 492 Hotel profile BMPs
 match by SHA-256. The Hotel visual hill remains partial pending an identified
 Genesis capture.
+
+## 2026-10-28 confirmation-prompt redraw comparison (open)
+
+The user-supplied frames show a second presentation difference. In
+`e_09040.png`, the selected Body detail occupies `(24..95,168..191)`. In
+`e_09080.png`, after the default-Yes prompt opens, that same region is black.
+A pixel scan finds 408 nonblack pixels before the prompt and zero after it.
+The matching native frames
+`capture-human-shaman/body2-karma20-preview.bmp` and
+`capture-human-shaman/body2-karma20-held-a.bmp` retain 408 nonblack pixels in
+that region in both states. The prompt and the stat/Karma state agree; the
+lower-left detail clearing does not.
+
+Raw ROM at `0xD426` calls `0xD53C`. The `0xD53C` sequence loads the prompt text
+at `0xC217D`, writes from plane-A word `$CB18`, then loads the Yes/No text at
+`0xE387E` and writes from `$CAB2` before entering its wait loop at `0xD570`.
+The supplied replay has no ROM hash, emulator identity, or capture method, and
+the recorded frames alone cannot establish that this lower-panel clear is US
+ROM behavior. Keep the current host overlay unverified; settle it with an
+identified capture or a complete source trace for the caller's redraw and VDP
+state before changing the panel composition. The existing route QA checks the
+prompt, selection, input edges, and mutation, but does not assert this region.

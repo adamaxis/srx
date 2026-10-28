@@ -14592,9 +14592,10 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
     }
 
     if (menu.allows_karma_upgrades() && menu.upgrade_prompt_open()) {
-        // D53C writes its choice text at CAb2 and the cursor at CAAE.
-        // Keep the existing Attributes/Skills detail beneath this nested
-        // prompt, matching the source's partial redraw of the lower panel.
+        // ROM 0xD53C writes prompt text at $CB18/$CAB2 and then waits. The
+        // host leaves selected details underneath; the supplied replay clears
+        // them, but its ROM/build identity is unknown, so that redraw remains
+        // under audit.
         draw_hotel_menu_text(
             painter, 96, 176, field_menu_text_.attributes_upgrade_prompt,
             HotelMenuPaletteLine::checkout);
