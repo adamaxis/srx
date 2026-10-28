@@ -47209,18 +47209,28 @@ int main(int argc, char** argv) {
                             return profile_failure(
                                 "B on No did not cancel without changing the runner or Karma");
                         }
-                        press_profile_button(0x40U); // A reopens Yes.
+                        // Match the supplied Karma replay's four-frame A
+                        // hold from the grid. Its first edge opens the default-
+                        // Yes prompt; the held frames are not a second press.
+                        hold_profile_button(0x40U, 4U);
+                        const auto held_a_prompt = capture(
+                            profile_directory / "prompt-a-held.bmp");
                         if (!field_scene.hotel_karma_screen()
                                  .upgrade_prompt_open() ||
                             field_scene.hotel_karma_screen()
-                                .upgrade_prompt_selection() != 0U) {
+                                .upgrade_prompt_selection() != 0U ||
+                            field_scene.active_runner_record().attributes !=
+                                transaction_before_decline.attributes ||
+                            field_scene.active_runner_record().auxiliary[2U] !=
+                                body_cost || held_a_prompt.isNull() ||
+                            image_region_differs(prompt_yes, held_a_prompt,
+                                                 96, 168, 120, 32)) {
                             return profile_failure(
-                                "A did not reopen the confirmation with Yes selected");
+                                "a held A edge from the grid did not leave the default-Yes prompt and runner unchanged");
                         }
-                        // Match the supplied Karma replay's four-frame A
-                        // hold. ROM 0x195C emits one new-press edge, so this
-                        // must buy exactly once while A remains held.
-                        hold_profile_button(0x40U, 4U);
+                        // Release occurred at the end of the hold; a distinct
+                        // A edge now accepts Yes and applies one transaction.
+                        press_profile_button(0x40U);
                         const auto applied_frame = capture(
                             profile_directory / "upgrade-applied.bmp");
                         const auto& applied_record =
