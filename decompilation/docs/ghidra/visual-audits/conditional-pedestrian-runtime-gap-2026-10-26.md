@@ -1623,3 +1623,31 @@ input telemetry, so it cannot prove the live record identity. The later
 Lone-Star dialogue in the same section is not linked to this sprite. This
 match supports the regional default-list path and says nothing about the
 separate A800 selector used by resource scenes 21-43.
+
+## A800 contact and FFDF42 request separation (2026-10-28)
+
+**[C]** The generic A800 actor-contact path and the main-loop
+`0x1E43C` request are separate ROM transitions. At `0xED3C..0xEDB2`, a
+contactable record whose `+0x9E` bit 3 and `+0x10` bit 1 pass the actor/player
+checks is marked at `+0xB0` bit 7. `0xED60` copies `FFE110` to `FFFC3C`, and
+`0xED6A` selects callback `0x1F146` in `FFDD2C`. The `FFE180` and `FFE182`
+story markers can replace that callback with `0x53C90` or `0x54402`; otherwise
+`0xEDAC` calls `0x1E2EC`.
+
+`0x1E2EC` writes 60 to the `FFE11C` timeout and copies the selected `FFDD2C`
+callback into `FFE104`. The field loop's separate callback dispatcher at
+`0x0B26..0x0B5E` invokes `FFE104` on an eligible pass, clears it after return
+except for its explicit `0x5BAC4` continuation, and restores the active actor
+pointer. In the generic case, `0x1F146` sets `FFFC1C` bit 0 and enters the
+shared no-options text path at `0x1F246` / `0x1F3C4`. This explains the
+physical candidate-contact prompt covered by the Scene-26 and Scene-22 routes.
+
+The automatic result path remains distinct: the ordinary request branch tests
+`FFDF42` at `0x0A68` and calls `0x1E43C` at `0x0A92`; the fade/coordinator
+branch checks `FFDF3E` at `0x095E`, then nonzero `FFDF40` at `0x0992`, before
+joining at `0x0A72`. No transfer from the A800 contact's `0x1E2EC` callback
+setup into either `0x1E43C` caller is present in the traced direct control
+flow. The earlier literal-address census still leaves computed or indirect
+`FFDF42` writers unresolved. Physical A800 prompt QA therefore defends the
+contact presentation and return path, not the separate automatic
+`0x1E43C` result callback.
