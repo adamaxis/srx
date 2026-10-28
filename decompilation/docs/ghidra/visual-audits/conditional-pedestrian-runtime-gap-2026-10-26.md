@@ -758,6 +758,47 @@ portrait, three-page sequence, and return to the field are visible. All 22
 Scene-34 QA BMPs have matching Debug/Release hashes. These images are not an
 independent Genesis visual match.
 
+### Scene-0 Downtown pedestrian route review (2026-10-27)
+
+I checked the lower brown walker in the independent Section-41 frames against
+the Scene-0 map and default actor routes. Each 272x224 gameplay crop was
+registered to `mode-0.bmp` with grayscale normalized cross-correlation; the
+walker screen X positions are visual estimates, so the resulting map X values
+are approximate:
+
+| Longplay frame | Map offset | Walker screen X | Approximate map X |
+|---:|---:|---:|---:|
+| `001320` | `(1129,622)` | 262 | 1391 |
+| `001330` | `(1167,622)` | 236 | 1403 |
+| `001340` | `(1209,622)` | 206 | 1415 |
+| `001350` | `(1249,622)` | 178 | 1427 |
+| `001360` | `(1287,622)` | 152 | 1439 |
+| `001370` | `(1329,622)` | 121 | 1450 |
+
+Across these 50 dumped images the map camera advances east by about 200 map
+pixels, while the walker advances east by about 59 pixels in map coordinates;
+its road position stays near the `y=800` band. This agrees with the horizontal
+`(1304,800)` to `(1600,800)` segment in Scene-0's default list at `0xD5538`.
+All three `pedestrian_k0b_none00` route records share that segment: source
+orders 0, 1, and 2 use position lists `0xD556C`, `0xD5584`, and `0xD5594`,
+respectively. **[C]** The segment is directly present in those ROM-derived
+coordinate lists. **[I]** The independently captured lower walker is moving
+along that segment, separate from the faster screen-centered figures whose
+movement is consistent with the camera-followed party. It is a route-level
+match for the ordinary Scene-0 population, separate from the stationary A800
+contact candidates.
+
+The frames have no input or actor-record telemetry. The shared route segment
+does not identify which of the three source records produced this walker, and
+the visual match does not establish its exact frame cadence or collision
+state. I also excluded the red/brown figure near center in Scene-1 frame
+`002700` from the pedestrian count. It is at approximately `(1411,817)`, near
+source-order 2's `(1408,784)` to `(1408,952)` route, but by frame `002730` it
+is at approximately `(1353,700)`, off that route. Its screen position stays
+near center while the map offset changes from `(1285,708)` to `(1227,588)`,
+which is consistent with the tracked party; the first frame alone would have
+been a false positive.
+
 ## Section 36 Mitsuhama map and moving sprite review
 
 Independent capture: `video analysis/long_gameplay_video_rest_ffmpeg_30fps_320x224/section_36_source_9120-9420/frame_008340.png`.
