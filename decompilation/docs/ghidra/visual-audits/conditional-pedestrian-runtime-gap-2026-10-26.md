@@ -862,10 +862,12 @@ candidate row, but a fresh random draw does not select it; a nonzero preset
 `FFE183` can still index it. None of these RAM values can be read from this
 video frame.
 
-The same red/brown figure appears to move through the registered map in nearby
-captures. Approximate screen centers and resulting map coordinates are:
+The initial broad match treated a red/brown sprite crop as one moving figure
+across these nearby captures. The adjacent-frame review below rejects that
+continuity assumption; retain these as per-frame detections only. Their
+approximate screen centers and map-coordinate estimates are:
 
-| Longplay frame | Map offset | Match | Figure screen center | Approximate map position |
+| Longplay frame | Map offset | Match | Detected sprite center | Per-frame map estimate |
 |---|---:|---:|---:|---:|
 | `frame_008300.png` | `(262,138)` | `0.97151` | `(115,95)` | `(377,233)` |
 | `frame_008340.png` | `(388,161)` | `0.98817` | `(49,61)` | `(437,222)` |
@@ -875,26 +877,37 @@ captures. Approximate screen centers and resulting map coordinates are:
 | `frame_008460.png` | `(720,1)` | `0.96946` | `(170,89)` | `(890,90)` |
 
 These nearby-frame offsets use the same broad mask, with the sidebar and center
-of the viewport excluded; figure centers are visual estimates from the
-independent frames. The frame-8340 focused map mask described above scores
-0.97534 at the same offset. A separate BGR `TM_CCORR_NORMED` search, masking
-black pixels in the ROM-derived sprite assets, matches the figure crop
-`x=32..77, y=30..91` to `pedestrian_k0b_none00` idle/walk direction 2 or 6,
-frame 3, at `(39,49)` with score `0.9498`; the next kind-11 sprite match scores
-`0.9281`. **[C]** The captured sprite is a close visual match for the extracted
-kind-11 pedestrian art. **[C]** Five of the six estimated screen centers
-cluster within `x=112..170`, `y=89..109`; frame `008340` is the outlier at
-approximately `(49,61)`. Another small figure is visible near `(46,129)` in
-frame `008370`. **[H]** The clustered positions are compatible with a
-camera-followed controlled runner, and the second figure is compatible with a
-party member or another actor. Neither observation identifies the
-red-brown figure's actor record or party membership. The art match establishes
-only that it uses the same visual family as the extracted kind-11 pedestrian.
-Movement also means its current position cannot be compared directly with an
-A800 initial position to prove which source path created it. Keep the A800
-identity and pedestrian producer question open; this footage does not prove
-that the red-brown figure is an ambient pedestrian, and no runtime behavior or
-hill status changes from this frame audit.
+of the viewport excluded; the listed centers are visual estimates. A follow-up
+inspection of adjacent full frames `008330` through `008380` shows several
+sprites at once. The earlier six-center series does not track one identified
+sprite: frame `008340`'s outlier is a different visible body from the central
+mover in most other samples. Do not use the derived six-point map series as one
+actor's route.
+
+A masked BGR `TM_CCORR_NORMED` search against the ROM-derived idle/walk assets
+separates the two visual hits. In frame `008340`, the small sprite at
+`(39,49)` matches `pedestrian_k0b_none00` idle direction 2 or 6 at `0.9498`;
+the best kind-3 palette-3 runner match at that location is `0.7146`. For the
+central mover in the other sampled frames, the best local matches are kind-3
+palette-3 runner poses: frame `008300` walk direction 2/frame 2 at `0.8408`,
+`008370` walk direction 1/frame 2 at `0.8880`, `008400` walk direction
+2/frame 1 at `0.8870`, `008430` idle direction 2 at `0.8944`, and `008460`
+walk direction 2/frame 3 at `0.8824`. These are local masked-template scores,
+not actor-record identifications; the matching art is extracted from the
+kind-3 template at ROM `0x7291A` and the kind-11 template at `0x1D6988`.
+
+**[C]** Frame `008340` contains a sprite visually matching the kind-11
+pedestrian art. **[H]** Its source record, party membership, and producer remain
+unknown. The central mover's better repeated kind-3 match supports a controlled
+runner or party-runner interpretation, but the capture has no RAM or input
+telemetry. The source Scene-32/33 default rows are kind-5 guards on the patrol
+at `0x1DBBFC`; their route band does not match the small frame-`008340` sprite's
+estimated position. The conditional A800 rows for these scenes have only an
+initial coordinate before the zero-X terminator, so this sequence does not
+show one of those candidates walking its source route. Keep the sprite's
+producer unresolved; the capture shows a pedestrian-art match, not a confirmed
+ambient-pedestrian spawn or a source-path match. No runtime behavior changed;
+the population hill remains partial.
 
 ## Regional default pedestrian population and route coverage
 

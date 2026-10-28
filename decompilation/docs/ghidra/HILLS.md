@@ -955,8 +955,11 @@ generated-offer BMPs for initializers 5, 11, and 12 under
 runtime captures. The 46 candidate entries still use resource-scene reentry;
 the matrix checks physical Johnson offer acceptance but does not travel to all
 46 candidate scenes. Independent Section 36 longplay frames register to the
-shared Scene-32/33 Mitsuhama map, and a moving red/brown figure resembles the
-pedestrian art; its actor record and party membership remain unconfirmed. See
+shared Scene-32/33 Mitsuhama map and show multiple sprites. One frame-8340
+sprite matches kind-11 pedestrian art; the central mover in other samples
+matches kind-3 runner art better. The previous six-point single-figure route
+interpretation was retracted; the pedestrian-looking sprite's record and
+producer remain unconfirmed. See
 the [Section 36 visual audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md#section-36-mitsuhama-map-and-moving-sprite-review).
 A separate Scene-2 event-1 route now reaches Scene 26 through collision record
 93 (`0x17314C`) and event-table row 1 (`0x172CDD`). Its Debug/Release QA
