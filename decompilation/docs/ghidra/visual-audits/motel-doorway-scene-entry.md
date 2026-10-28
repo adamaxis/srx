@@ -36,8 +36,10 @@ supersedes earlier sections that describe a Lua quest hook or custom
   `0xB574`.
 - Heading-zero movement runs through the standard walk animation, `0xBADE`
   step, terrain probes, and `0xB7B8` collision dispatcher. It reaches record
-  91 at `0x173138`, whose bounds are `(0x3C0..0x3DF, 0x280..0x29F)` and value
-  `0xC2`. No controller input drives this approach. The movement collision
+  91 at `0x173138`, whose five big-endian words are
+  `0x03C0, 0x03DF, 0x0280, 0x029F, 0x00C2`. The bounds are
+  `(0x3C0..0x3DF, 0x280..0x29F)`; the final property/event word is at `+8`.
+  No controller input drives this approach. The movement collision
   margin publishes raw `FFDF64 = 0xFFC2`; the low five bits become event 2.
   The route is mode 2/event 2 and the QA records contact at `(0x3CE, 0x2A5)`,
   within the source rectangle's expanded margin.
@@ -152,11 +154,14 @@ through `0x0C24`/`0x00BD2`, for 18 explicit VBlank waits. `0x00BD2` increments
 frames 8541..9160. In the doorway interval, RAM bytes `FFFBF8` and `FFFBF9`
 are both `0x02` (word `0x0202`) from frame 8641 through 9160. ROM
 `0x03084..0x0308A` copies the low byte of the current scene from `FFDDC4` into
-`FFFBF8`; the scene/event pair is consumed by the route selector at `0x1F086`
-(also documented in [field-map script routing](field-map-script-routing.md)).
+`FFFBF8`. The explicit scene-2/event-2 branch at `0x1F65A` selects Stoker's
+arrival record `0xF4AA0`; separately, `0x1F086` compares the current pair to
+the selected active-run destination (see
+[field-map script routing](field-map-script-routing.md)).
 The supplied snapshot therefore maps to scene 2/event 2 through the doorway,
-fade, and Stoker panel. Scene-2 terrain record 91 at `0x173138` has value
-`0xC2`; its low five bits select event 2, matching the observed interaction.
+fade, and Stoker panel. Terrain record 91 at `0x173138` is the five-word row
+`03C0 03DF 0280 029F 00C2`; its event/property word at `+8` has low five bits
+2, matching the RAM pair and the observed interaction.
 [C] The fade state is also visible in the snapshots: at frame 8680,
 `FFDF3A=0xFF` and `FFDF3C=0x000F`; the countdown reaches zero at frame 8695,
 then `FFDF3E=0xFFFF` at frame 8696. At frame 8697 the completion flag is clear,
