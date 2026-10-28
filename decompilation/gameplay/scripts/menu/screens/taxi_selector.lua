@@ -4,7 +4,7 @@ local E = require("enums")
 local Taxi = require("data.taxi_destinations")
 local M = { window = E.WindowPlane.OFF }
 local P, R, T = E.Pad, E.MenuRegion, E.MenuTransition
-local CONFIRM = P.A | P.B
+local CONFIRM = P.HELD_A | P.HELD_B | P.HELD_START
 local ANIMATION_FRAMES = 10
 
 local function wrap(value, delta)
@@ -46,7 +46,11 @@ function M.input(st, events, ctx)
         end
         return
     end
-    if events & (P.UP | P.LEFT) ~= 0 then
+    -- ROM 0x134D2 samples FFDD22 after the outline draw. The loop at
+    -- 0x1360C/0x1362E reads its held low byte: Up/Right decrement the cursor;
+    -- Down/Left increment it. These are held controls, not edge-only menu
+    -- navigation events.
+    if events & (P.HELD_UP | P.HELD_RIGHT) ~= 0 then
         st.row = wrap(st.row, -1)
         st.selection = Taxi.cursor_to_region[st.row + 1]
         st.page = 0
@@ -55,7 +59,7 @@ function M.input(st, events, ctx)
         ctx.redraw(R.FULL)
         return
     end
-    if events & (P.DOWN | P.RIGHT) ~= 0 then
+    if events & (P.HELD_DOWN | P.HELD_LEFT) ~= 0 then
         st.row = wrap(st.row, 1)
         st.selection = Taxi.cursor_to_region[st.row + 1]
         st.page = 0
@@ -64,9 +68,9 @@ function M.input(st, events, ctx)
         ctx.redraw(R.FULL)
         return
     end
-    -- ROM 0x134D2 routes Start through 0x10AF0 and then finalizes the
-    -- selected mode. A/B use 0x20714's mode-exit page; both paths can travel.
-    if events & P.START == 0 and events & CONFIRM == 0 then return end
+    -- ROM 0x134D2 routes Start through 0x10AF0; A/B use 0x20714. Both
+    -- branches continue through the selected destination transition.
+    if events & CONFIRM == 0 then return end
 
     local region = Taxi.cursor_to_region[st.row + 1]
     -- ROM 0x20714 runs the cabbie dialogue before 0x136B6 can travel [C].

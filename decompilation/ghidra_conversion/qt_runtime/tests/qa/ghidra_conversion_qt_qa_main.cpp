@@ -51623,8 +51623,9 @@ int main(int argc, char** argv) {
                 field_scene.set_controller_port_byte(0U);
 
                 // Follow the independent capture's Puyallup choice through
-                // the fare page, then choose No. The 0xD445D row order from
-                // Redmond reaches Puyallup after three left inputs.
+                // the fare page, then choose No. ROM 0x1362E increments on
+                // held Left; the 0xD445D row order reaches Puyallup after
+                // four left inputs from Redmond.
                 if (!field_scene.open_taxi_selector_for_dump(
                         kRedmondRegion)) {
                     std::cerr << "field taxi dump: selector did not reopen "
@@ -51634,7 +51635,7 @@ int main(int argc, char** argv) {
                 for (int frame = 0; frame < 12; ++frame) {
                     field_scene.advance_frame();
                 }
-                for (int left = 0; left < 3; ++left) {
+                for (int left = 0; left < 4; ++left) {
                     tap_qa_controller_button(field_scene, 0x04U);
                     for (int frame = 0; frame < 12; ++frame) {
                         field_scene.advance_frame();
@@ -51742,8 +51743,9 @@ int main(int argc, char** argv) {
                 }
                 field_scene.set_controller_port_byte(0U);
 
-                // Now choose Downtown through its ROM cursor order, accept
-                // both cabbie prompts, and complete the destination fade.
+                // Now choose Downtown through its ROM cursor order. Down
+                // increments twice from Redmond to Downtown; accept both
+                // cabbie prompts and complete the destination fade.
                 if (!field_scene.open_taxi_selector_for_dump(
                         kRedmondRegion)) {
                     std::cerr << "field taxi dump: selector did not reopen "
@@ -51753,11 +51755,11 @@ int main(int argc, char** argv) {
                 for (int frame = 0; frame < 12; ++frame) {
                     field_scene.advance_frame();
                 }
-                tap_qa_controller_button(field_scene, 0x08U); // Right: row 3.
+                tap_qa_controller_button(field_scene, 0x02U); // Down: row 3.
                 for (int frame = 0; frame < 12; ++frame) {
                     field_scene.advance_frame();
                 }
-                tap_qa_controller_button(field_scene, 0x08U); // Right: Downtown.
+                tap_qa_controller_button(field_scene, 0x02U); // Down: Downtown.
                 for (int frame = 0; frame < 12; ++frame) {
                     field_scene.advance_frame();
                 }

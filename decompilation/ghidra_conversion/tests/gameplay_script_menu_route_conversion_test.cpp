@@ -3345,18 +3345,32 @@ int main() {
     check(route.top_caption_visible == std::optional<bool>{true},
           "taxi destination caption appears after the full ten-frame outline",
           failures);
-    runtime.advance_menu_route(0x0800U); // Right: mode 5, Renraku Arcology.
+    // ROM 0x1360C reads held FFDD22 bits: Up/Right decrement the row.
+    // A high-byte Right edge without its low-byte held state is not consumed.
+    runtime.advance_menu_route(0x0800U);
     route = runtime.menu_route_snapshot();
-    check(route.row == 3 && route.top_selection == 5 &&
+    check(route.row == 2 && route.top_selection == 2,
+          "taxi selector ignores a released Right edge after its draw wait",
+          failures);
+    runtime.advance_menu_route(0x0008U); // Held Right: Redmond -> Council Island.
+    route = runtime.menu_route_snapshot();
+    check(route.row == 1 && route.top_selection == 4 &&
               route.top_page == 0 &&
               route.top_caption_visible == std::optional<bool>{false},
-          "taxi cursor maps through the ROM's cursor-to-region table",
+          "taxi Right follows the ROM decrement branch and destination table",
           failures);
     for (int frame = 0; frame < 10; ++frame) {
         runtime.advance_menu_route(0U);
     }
-    runtime.advance_menu_route(0x4000U); // A: request the cabbie dialogue.
-    check(!runtime.menu_route_snapshot().open && taxi_destination == 5 &&
+    runtime.advance_menu_route(0x0004U); // Held Left reverses Right.
+    route = runtime.menu_route_snapshot();
+    check(route.row == 2 && route.top_selection == 2,
+          "taxi Left follows the ROM increment branch", failures);
+    for (int frame = 0; frame < 10; ++frame) {
+        runtime.advance_menu_route(0U);
+    }
+    runtime.advance_menu_route(0x0040U); // Held A: request cabbie dialogue.
+    check(!runtime.menu_route_snapshot().open && taxi_destination == 2 &&
               closed_count == 10,
           "taxi confirm requests cabbie dialogue for the selected region",
           failures);
@@ -3366,11 +3380,85 @@ int main() {
     for (int frame = 0; frame < 10; ++frame) {
         runtime.advance_menu_route(0U);
     }
-    runtime.advance_menu_route(0x8000U); // Start: request a cabbie dialogue.
+    runtime.advance_menu_route(0x0080U); // Held Start: request the cabbie.
     check(!runtime.menu_route_snapshot().open && taxi_destination == 2 &&
               closed_count == 11,
           "taxi Start requests the current region's cabbie dialogue",
           failures);
+
+    // ROM 0xD4456 initializes the cursor for the current region; 0xD445D
+    // maps cursor rows back to destinations. Exercise every current/destination
+    // pair and the four held D-pad controls, then confirm each destination via
+    // A, B, and Start (0x1360C..0x136DC / 0x20714).
+    constexpr std::array<std::uint8_t, 7> kTaxiCursorToRegion{{
+        6U, 4U, 2U, 5U, 0U, 3U, 1U}};
+    constexpr std::array<std::uint8_t, 7> kTaxiRegionToCursor{{
+        4U, 6U, 2U, 5U, 1U, 3U, 0U}};
+    constexpr std::array<std::uint16_t, 3> kTaxiConfirmButtons{{
+        0x0040U, 0x0010U, 0x0080U}}; // held A, B, Start
+    const auto settle_taxi_outline = [&runtime] {
+        for (int frame = 0; frame < 10; ++frame) {
+            runtime.advance_menu_route(0U);
+        }
+    };
+    for (std::uint8_t current_region = 0U; current_region < 7U;
+         ++current_region) {
+        for (std::uint8_t destination_region = 0U; destination_region < 7U;
+             ++destination_region) {
+            for (std::size_t confirm_index = 0U;
+                 confirm_index < kTaxiConfirmButtons.size();
+                 ++confirm_index) {
+                taxi_arguments.taxi_current_region = current_region;
+                const auto closed_before_taxi_matrix = closed_count;
+                check(runtime.open_menu_route(kTaxiSelector, taxi_arguments),
+                      "taxi selector opens for region matrix", failures);
+                route = runtime.menu_route_snapshot();
+                check(route.row == kTaxiRegionToCursor[current_region] &&
+                          route.top_selection == current_region,
+                      "taxi initial cursor matches ROM current-region table",
+                      failures);
+                settle_taxi_outline();
+
+                auto row = kTaxiRegionToCursor[current_region];
+                const auto target_row =
+                    kTaxiRegionToCursor[destination_region];
+                while (row != target_row) {
+                    const auto decrement_steps = static_cast<std::uint8_t>(
+                        (row + 7U - target_row) % 7U);
+                    const auto increment_steps = static_cast<std::uint8_t>(
+                        (target_row + 7U - row) % 7U);
+                    const bool decrement =
+                        decrement_steps < increment_steps;
+                    const bool use_first_alias =
+                        ((current_region + destination_region + row) & 1U) ==
+                        0U;
+                    const auto held_button = decrement
+                        ? (use_first_alias ? std::uint16_t{0x0001U}
+                                           : std::uint16_t{0x0008U})
+                        : (use_first_alias ? std::uint16_t{0x0002U}
+                                           : std::uint16_t{0x0004U});
+                    runtime.advance_menu_route(held_button);
+                    row = decrement
+                        ? static_cast<std::uint8_t>((row + 6U) % 7U)
+                        : static_cast<std::uint8_t>((row + 1U) % 7U);
+                    route = runtime.menu_route_snapshot();
+                    check(route.row == row &&
+                              route.top_selection == kTaxiCursorToRegion[row],
+                          "taxi held direction follows the ROM row table",
+                          failures);
+                    settle_taxi_outline();
+                }
+
+                runtime.advance_menu_route(
+                    kTaxiConfirmButtons[confirm_index]);
+                check(!runtime.menu_route_snapshot().open &&
+                          taxi_destination == destination_region &&
+                          closed_count == closed_before_taxi_matrix + 1,
+                      "taxi A/B/Start confirms every mapped destination",
+                      failures);
+            }
+        }
+    }
 
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     // The Section 15 longplay shows an unknown System 15/node 13 SPU with
