@@ -44522,6 +44522,76 @@ int main(int argc, char** argv) {
                         ((*field_player_action_dump_path) /
                          (std::string(name) + ".bmp")).wstring()));
                 };
+                const auto unarmed_melee_path =
+                    *field_player_action_dump_path / "unarmed-melee";
+                std::filesystem::create_directories(unarmed_melee_path);
+                // ROM 0xAD86 selects the unarmed 0xB1DC branch by action
+                // code zero; it installs C0A2 and mode-1 delay without an
+                // equipped-inventory-slot condition.
+                std::vector<std::uint16_t> unarmed_melee_audio;
+                qt_runtime::FieldSceneRuntime unarmed_melee_scene(
+                    [](const std::string_view) {},
+                    [&unarmed_melee_audio](const std::uint16_t event) {
+                        unarmed_melee_audio.push_back(event);
+                    });
+                if (!unarmed_melee_scene.bootstrap(smoke_state)) {
+                    std::cerr << "field player action dump: unarmed-melee field bootstrap failed: "
+                              << unarmed_melee_scene.failure() << '\n';
+                    return 3;
+                }
+                unarmed_melee_scene.set_source_random_seed_for_dump(0U);
+                auto& unarmed_melee_runner =
+                    unarmed_melee_scene.active_runner_record();
+                unarmed_melee_runner.flags = static_cast<std::uint16_t>(
+                    unarmed_melee_runner.flags | 0x0300U);
+                unarmed_melee_runner.equipped_inventory_slot = -1;
+                unarmed_melee_runner.equipped_item_code = 0U;
+                unarmed_melee_runner.animation_action_gate = -1;
+                const auto unarmed_rounds_before =
+                    unarmed_melee_runner.ammo_rounds;
+                const auto unarmed_clips_before =
+                    unarmed_melee_runner.ammo_clips;
+                unarmed_melee_scene.set_controller_port_byte(0x40U);
+                unarmed_melee_scene.advance_frame();
+                const auto unarmed_melee_frame =
+                    render_qa_field(unarmed_melee_scene);
+                const auto unarmed_attack_selector =
+                    unarmed_melee_scene.field_entity_attack_selector_for_dump();
+                const auto unarmed_melee_frame_path =
+                    unarmed_melee_path / "actual.bmp";
+                if (!unarmed_melee_scene.field_entity_attack_pose_for_dump() ||
+                    unarmed_attack_selector < 0x00C0U ||
+                    unarmed_attack_selector > 0x00DCU ||
+                    (unarmed_attack_selector & 0x0003U) != 0U ||
+                    unarmed_melee_audio !=
+                        std::vector<std::uint16_t>{0x004CU} ||
+                    unarmed_melee_runner.ammo_rounds !=
+                        unarmed_rounds_before ||
+                    unarmed_melee_runner.ammo_clips != unarmed_clips_before ||
+                    !unarmed_melee_frame.save(QString::fromStdWString(
+                        unarmed_melee_frame_path.wstring()))) {
+                    std::cerr << "field player action dump: unarmed A input did not select the source C0A2 strike, preserve ammunition state, and request event 0x4C\n";
+                    return 3;
+                }
+                unarmed_melee_scene.set_controller_port_byte(0U);
+                std::size_t unarmed_pose_updates = 0U;
+                while (unarmed_melee_scene.field_entity_attack_pose_for_dump() &&
+                       unarmed_pose_updates < 256U) {
+                    unarmed_melee_scene.advance_frame();
+                    ++unarmed_pose_updates;
+                }
+                const auto unarmed_melee_return =
+                    render_qa_field(unarmed_melee_scene);
+                if (unarmed_melee_scene.field_entity_attack_pose_for_dump() ||
+                    unarmed_pose_updates == 0U ||
+                    unarmed_melee_scene.field_entity_animation_selector_for_dump() >
+                        0x001CU ||
+                    !unarmed_melee_return.save(QString::fromStdWString(
+                        (unarmed_melee_path / "field-return.bmp").wstring()))) {
+                    std::cerr << "field player action dump: unarmed C0A2 strike did not hold through and return after its source action-delay gate\n";
+                    return 3;
+                }
+
                 const auto ammo_counter_matches_for_slot =
                     [&](const QImage& image, const int rounds,
                         const std::size_t slot) {

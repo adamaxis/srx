@@ -1829,3 +1829,14 @@ the world-effect globals and returns the decline response. Section-11 frame
 `000120` visually follows the A response, but there is no controller log or
 independent decline frame. The earlier Halloweener doorway-to-type-2 link and
 the accepted run's later settlement remain open.
+
+### Unarmed player strike route (2026-10-28)
+
+The live action gate now follows ROM `0xAD86` for an unarmed runner whose
+inventory slot is `-1` and action code is zero. Ordinary A input selects the
+directional C0A2 pose through `0xB1DC`, requests event `0x4C`, preserves the
+ammo/reserve fields, and holds the pose until its mode-1 action delay expires.
+`shadowrun_ghidra_conversion_qt_field_player_action_qa` checks the route in
+Debug and Release and writes `qt_runtime/field-player-action-qa/unarmed-melee/`
+`{actual.bmp,field-return.bmp}`. These native captures verify the implemented
+route, not independent Genesis appearance; player melee damage remains open.

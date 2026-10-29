@@ -487,10 +487,11 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_action_qa
                  --field-action-dump
                  "${CMAKE_CURRENT_BINARY_DIR}/field-action-qa")
 
-# Empty magazines reload through the live FieldSceneRuntime A-button path.
-# The current weapon supplies its own capacity while the runner-wide clip
-# reserve decreases; this dump is internal route evidence, not an independent
-# Genesis visual reference.
+# Empty magazines reload and code-zero unarmed strikes run through the live
+# FieldSceneRuntime A-button path. The current weapon supplies its own
+# capacity while the runner-wide clip reserve decreases; the strike route
+# checks its C0A2 pose and mode-1 return. These dumps are internal route
+# evidence, not an independent Genesis visual reference.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_player_action_qa
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-player-action-dump

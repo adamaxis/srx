@@ -10890,9 +10890,10 @@ FieldSceneRuntime::heartbeat_field_player(
                                          runner.equipped_item_code) ==
                 FieldCombatActionKind::magic_spell;
         // ROM 0xAD86 -> 0xB1DC: non-negative +0x56 and +0x57 == 0.
+        // The unarmed live record has action code zero and no inventory slot;
+        // slot presence is not part of the ROM's melee gate.
         actor_context.player_melee_available =
             (runner.flags & 0x0300U) == 0x0300U &&
-            runner.equipped_inventory_slot >= 0 &&
             runner.equipped_item_code == 0U;
         actor_context.target_heading_audio_alternate =
             (field_random_seed_ & 0x8000U) != 0U;
