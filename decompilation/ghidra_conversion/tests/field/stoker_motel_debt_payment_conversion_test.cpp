@@ -12,7 +12,7 @@ int main() {
     state.runner_feature_flags = 0x02U;
     state.followup_state.story_flags = 0x80000000U;
     state.followup_state.referral_flags = 0x80U;
-    state.runner_source_bytes = {0xFFU, 0x00U, 0x7FU};
+    state.party_karma = {0xFFU, 0x00U, 0x7FU};
 
     const auto paid = resolve_stoker_motel_debt_payment(state);
     assert(paid.result == StokerMotelDebtPaymentResult::debt_paid);
@@ -24,9 +24,9 @@ int main() {
     assert(state.runner_feature_flags == 0x03U);
     assert(state.followup_state.story_flags == 0x8000001CU);
     assert(state.followup_state.referral_flags == 0x80U);
-    assert(state.runner_source_bytes[0] == 0x00U);
-    assert(state.runner_source_bytes[1] == 0x01U);
-    assert(state.runner_source_bytes[2] == 0x80U);
+    assert(state.party_karma[0] == 0x00U);
+    assert(state.party_karma[1] == 0x01U);
+    assert(state.party_karma[2] == 0x80U);
     assert(paid.michael_package_sequence_follows);
 
     StokerMotelDebtPaymentState unpaid{};
@@ -50,8 +50,8 @@ int main() {
     assert(state.runner_feature_flags == 0x03U);
     assert(state.world_flags == 0x80400000U);
     assert(state.followup_state.story_flags == 0x8000001CU);
-    assert(state.runner_source_bytes[0] == 0x01U);
-    assert(state.runner_source_bytes[1] == 0x02U);
-    assert(state.runner_source_bytes[2] == 0x81U);
+    assert(state.party_karma[0] == 0x01U);
+    assert(state.party_karma[1] == 0x02U);
+    assert(state.party_karma[2] == 0x81U);
     return 0;
 }

@@ -111,8 +111,9 @@ uses ordinary Up input to reach the gate event, then follows the Elders, Lady
 Gillian, and Frosty choices through command `0x49`. It captures all three
 pages, verifies that an idle poll leaves the first page pixel-identical, and
 advances the page wait with C, Down, then Start. It checks the same-context
-return, story bit 30, FFFC34 bits 4/5, and the runner source-byte triplet
-`+3`. The source loop accepts any new high-byte controller event; this route
+return, story bit 30, FFFC34 bits 4/5, and the party-wide Karma award `+3`
+(ROM `0x59C34`, live-record `+0x8D`). The source loop accepts any new
+high-byte controller event; this route
 check covers an action, a direction, and Start, while simultaneous-byte and
 per-button input masks are not individually swept. The fare physical-entry QA
 starts from a fresh Scene-9 checkpoint, reaches the same record with ordinary

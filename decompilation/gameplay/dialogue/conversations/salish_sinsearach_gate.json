@@ -274,22 +274,22 @@
           "type": "action",
           "actionId": "field.set_mode_effect_flag",
           "arguments": { "flagBit": 5, "value": true },
-          "next": "frosty_command_49_runner_triplet",
+          "next": "frosty_command_49_karma_award",
           "evidence": "ROM command 0x49 at 0x220EA sets FFFC34 bit 5 before calling 0x5D130."
         },
-        "frosty_command_49_runner_triplet": {
+        "frosty_command_49_karma_award": {
           "type": "action",
-          "actionId": "runner.adjust_source_byte_triplet",
+          "actionId": "party.award_karma",
           "arguments": { "amount": 3 },
           "results": {
             "applied": "frosty_harlequin_story_pages",
-            "service_unavailable": "frosty_runner_state_boundary"
+            "service_unavailable": "frosty_party_state_boundary"
           },
-          "evidence": "ROM helper 0x5D130 sets D0=3 and calls 0x59C34, which adds that byte to the three source runner fields."
+          "evidence": "ROM helper 0x5D130 sets D0=3 and calls 0x59C34, which adds three Karma to each runner's +0x8D value; 0x0D3EA reads +0x8D as Karma."
         },
-        "frosty_runner_state_boundary": {
+        "frosty_party_state_boundary": {
           "type": "source_boundary",
-          "reason": "The ROM runner triplet is always present; the typed runner-state service is unavailable in this invocation, so the command sequence cannot continue safely."
+          "reason": "The party roster is unavailable, so the Karma award cannot be applied safely."
         },
         "guard_return_offer": {
           "type": "choice",

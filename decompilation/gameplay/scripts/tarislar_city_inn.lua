@@ -44,12 +44,13 @@ local function frosty_information()
 end
 
 local function apply_tabatha_acceptance()
-    -- ROM command 0x14 at 0x21862 increments the source runner-byte triplet,
-    -- sets FFFC30 bits 2/4/5/6/8, FFFC34 bits 2/4, and FFFC27 bits 2/4.
+    -- ROM command 0x14 at 0x21862 calls 0x59C34 to award each runner one
+    -- Karma at live-record +0x8D, then sets FFFC30 bits 2/4/5/6/8,
+    -- FFFC34 bits 2/4, and FFFC27 bits 2/4.
     -- The host deliberately leaves saved Notebook/referral words unresolved
     -- until their load path is modeled. Check every guarded story store before
-    -- the runner service can mutate the Karma triplet, so a partial acceptance
-    -- never writes only part of command 0x14's state.
+    -- the party service can award Karma, so acceptance never writes only part
+    -- of command 0x14's state.
     for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
         if game.state["notebook_tip_flag_bit_" .. bit] == nil then
             return "service_unavailable"
@@ -61,7 +62,7 @@ local function apply_tabatha_acceptance()
         end
     end
 
-    if game.services.call("runner", "adjust_source_byte_triplet_1") ~=
+    if game.services.call("party", "award_karma_1") ~=
        "applied" then
         return "service_unavailable"
     end
@@ -88,8 +89,8 @@ function Inn.present_indexed_title_service()
     -- ROM 0x53A78 publishes indexed title service 1 in FFDD64 before calling
     -- 0x53B16. The intro, manager options, and paid-stay branch are represented
     -- by the reusable JSON graph. Its page and choice permutations follow the
-    -- ROM prompt records; the runner source-byte-triplet update is a narrow
-    -- registered host action, and the post-attack encounter remains a boundary.
+    -- ROM prompt records; the award updates each runner's Karma through the
+    -- party service, and the post-attack encounter remains a boundary.
     return DialogueGraph.run(
         "tarislar_city_inn.paid_stay_and_shale_service", {
             ["tarislar_city_inn.apply_tabatha_acceptance"] = function()

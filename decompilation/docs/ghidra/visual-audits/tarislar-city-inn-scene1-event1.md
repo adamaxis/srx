@@ -34,13 +34,13 @@ alternatives or establish the subsequent combat outcome.
   exterior map.
 - Selecting Tabatha runs command `0x16` at `0x218BC`, marking active story
   trigger 1 in FFFC1E. The conversation starts at `0xF4EA4`; after she agrees
-  to receive the runner, command `0x14` at `0x21862` calls `0x59C34` to add one
-  to each live runner's source byte at `FF018D`, `FF028D`, and `FF038D`. It
-  also sets FFFC30 bits 2/4/5/6/8, FFFC34 bits 2/4, and FFFC27 bits 2/4.
-  It loads profile `0x121F7C` for the apartment and later Shale pages. The Lua
-  action checks that the FFFC30 and FFFC27 stores are resolved before asking
-  the host to increment the three runner bytes; an unavailable save state
-  stops at a boundary without a partial acceptance update.
+  to receive the runner, command `0x14` at `0x21862` calls `0x59C34` to award
+  one Karma to each runner (live-record `+0x8D`, visible at `0x0D3EA`). It also
+  sets FFFC30 bits 2/4/5/6/8, FFFC34 bits 2/4, and FFFC27 bits 2/4. It loads
+  profile `0x121F7C` for the apartment and later Shale pages. The Lua action
+  checks that the FFFC30 and FFFC27 stores are resolved before asking the
+  host's party service to award Karma; an unavailable save state stops at a
+  boundary without a partial acceptance update.
 - The ROM page records `0xF4EA4`, `0xF4EB8`, and `0xF4ECC` point to text at
   `0x117EC5`, `0x117F78`, and `0x118060`. The second page explicitly says the
   vid-phone screen remains blank. The independent encounter shows the manager
@@ -99,20 +99,21 @@ prompt task. Each row carries a typed location context and the Inn manager profi
 `field_exit_prompt` tasks. `GameScriptRuntime` validates and returns the task
 record; `FieldSceneRuntime` sets the location/field context and opens the Lua
 task through `FieldDialogueRuntime`. The shared host accepts the 30-nuyen
-building transaction and the runner source-byte-triple adjustment. The Inn's
+building transaction and the named party Karma award. The Inn's
 indexed task now runs `conversations/tarislar_city_inn.json`: the named room
 charge action yields paid/insufficient edges, and the paid terminal requests
 `hotel.options` with return policy `origin`. `FieldSceneRuntime` dispatches
 that named host service and also recognizes the shared `hospital.options` ID.
 Story facts for the Inn's three ROM flag groups use the existing typed native
 accessors. Tabatha's source prompt pages and all Caleb/Errascoe choice
-permutations now live in the JSON graph. Before the runner-byte service can
-change Karma, the action checks that each FFFC30 tip and FFFC27 referral bit it
+permutations now live in the JSON graph. Before the party service awards Karma,
+the action checks that each FFFC30 tip and FFFC27 referral bit it
 will write is resolved. Page-level speaker profiles follow
 the ROM changes from the Inn manager to Tabatha, the Renraku team, Tabatha,
 and David. Continuation pages use the source-derived input delay; the final
-Holopix page uses the 30-frame any-button presentation contract. The runner
-byte-triplet adjustment remains a narrow Lua action.
+Holopix page uses the 30-frame any-button presentation contract. Lua requests
+the semantic `party.award_karma` action; the host updates each runner's named
+Karma field while ROM addresses remain provenance.
 
 The generic dialogue menu resolver now receives whether a prompt carries
 inline title text. It resolves the stable choice labels while leaving the
@@ -129,7 +130,7 @@ key.
   the refusal page's MORE continuation, profile changes across the aftermath,
   the 30-frame Holopix page, and the typed same-map return. It also verifies
   command `0x14` stops before any acceptance mutation when saved FFFC30/FFFC27
-  state is unresolved or the runner-byte service is unavailable.
+  state is unresolved or the party Karma service is unavailable.
 - `shadowrun_gameplay_script_runtime_qa` validates the loaded entity route and
   Lua task through the typed C++ route parser.
 - `shadowrun_ghidra_field_dialogue_runtime` exercises the source panels,

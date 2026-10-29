@@ -1169,7 +1169,6 @@ struct ScriptFieldEncounterActor {
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t physical_meter = 0;
     std::uint8_t action_delay_modifier = 0;
-    std::string ordered_overrides;
     ScriptCombatantFacts combatant;
 };
 
@@ -1292,7 +1291,6 @@ struct ScriptWorldActivityActor {
     std::uint16_t world_x = 0;
     std::uint16_t world_y = 0;
     std::uint16_t heading = 0;
-    std::string ordered_overrides;
     std::uint8_t source_spawn_state_flags = 0;
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t source_behavior_flags = 0;

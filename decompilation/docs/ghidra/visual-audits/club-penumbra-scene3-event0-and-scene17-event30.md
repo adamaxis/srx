@@ -66,7 +66,8 @@ wait directly for `FFDF86` to expire. All four extracted rows have the source
 does not contain a template named Mako.
 
 The callback adds 2 to `FFFBFA` and clamps it at 8, adds 2 to the three
-runner bytes at `FF018D`, `FF028D`, and `FF038D`, sets `FFFC1E` bit 11, clears
+Karma at live-record `+0x8D` for all three runners (`FF018D`, `FF028D`, and
+`FF038D`), sets `FFFC1E` bit 11, clears
 `FFFC30` bits 20 and 21 and sets bit 24, then clears `FFFC38` bit 17. It also
 increments `FFFBFB` up to 8 through `0x1F1E0`. Finally it runs the shared mode
 exit service with resources `0x122000` and descriptor `0xF4CA8` (text

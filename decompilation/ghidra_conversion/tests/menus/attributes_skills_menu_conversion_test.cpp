@@ -83,7 +83,7 @@ int main() {
     RunnerRecordFields upgrade{};
     upgrade.species_index = 4U;
     upgrade.attributes[0] = 3U;
-    upgrade.auxiliary[2] = 10U;
+    upgrade.karma = 10U;
     const auto attribute_preview =
         preview_attribute_skill_upgrade(upgrade, {0U, 0U});
     if (!expect(attribute_preview.status ==
@@ -94,7 +94,7 @@ int main() {
                     AttributeSkillUpgradeResult::confirmation_required &&
                 apply_attribute_skill_upgrade(upgrade, {0U, 0U}, true) ==
                     AttributeSkillUpgradeResult::upgraded &&
-                upgrade.attributes[0] == 4U && upgrade.auxiliary[2] == 6U)) {
+                upgrade.attributes[0] == 4U && upgrade.karma == 6U)) {
         return 9;
     }
 
@@ -109,7 +109,7 @@ int main() {
     skill_upgrade.archetype_index = 1U;
     skill_upgrade.skills[1] = 3U;
     skill_upgrade.skills[2] = 0U;
-    skill_upgrade.auxiliary[2] = 6U;
+    skill_upgrade.karma = 6U;
     const auto skill_preview =
         preview_attribute_skill_upgrade(skill_upgrade, {0U, 6U});
     if (!expect(skill_preview.status ==
@@ -118,7 +118,7 @@ int main() {
                 skill_preview.karma_cost == 6U &&
                 apply_attribute_skill_upgrade(skill_upgrade, {0U, 6U}, true) ==
                     AttributeSkillUpgradeResult::upgraded &&
-                skill_upgrade.skills[2] == 4U && skill_upgrade.auxiliary[2] == 0U)) {
+                skill_upgrade.skills[2] == 4U && skill_upgrade.karma == 0U)) {
         return 11;
     }
 
@@ -142,7 +142,7 @@ int main() {
     RunnerRecordFields render_record{};
     render_record.species_index = 0U;
     render_record.attributes[0] = 3U;
-    render_record.auxiliary[2] = 10U;
+    render_record.karma = 10U;
     std::vector<int> render_events;
     AttributeSkillRenderCallbacks render_callbacks{};
     render_callbacks.clear_upgrade_error_marker =

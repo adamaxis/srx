@@ -250,7 +250,7 @@ local action_registry = DialogueActions.new_default_registry()
 game.state.story_flag_bit_2 = false
 StoryFlags.begin_trigger(2)
 local succeeded, result = action_registry:execute(
-    "runner.adjust_source_byte_triplet", { amount = 1 })
+    "party.award_karma", { amount = 1 })
 assert(succeeded and result == "applied")
 succeeded, result = action_registry:execute(
     "story.apply_dialogue_command", { commandId = 0x17 })
@@ -259,7 +259,7 @@ assert(succeeded and result == nil and game.state.story_flag_bit_2 == true)
 game.state.story_flag_bit_4 = false
 StoryFlags.begin_trigger(4)
 succeeded, result = action_registry:execute(
-    "runner.adjust_source_byte_triplet", { amount = 2 })
+    "party.award_karma", { amount = 2 })
 assert(succeeded and result == "applied")
 succeeded, result = action_registry:execute(
     "story.apply_dialogue_command", { commandId = 0x19 })

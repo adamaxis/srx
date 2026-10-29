@@ -2021,8 +2021,9 @@ comparison remain open; the hill stays partial.
 **[C]** The generic callback at `0x1F146` clears `FFF10C` at `0x1F15A`
 before calling `0x1F246`. The two A800 story callbacks do not. Raw US ROM
 `0x53C90..0x53CE8` sets A0/A5 and calls `0x1F246`, then `0x1DED8`;
-`0x54402..0x5447C` first calls `0x59C34` (which only updates the three
-runner bytes), sets its story/Karma state, then calls the same services.
+`0x54402..0x5447C` first calls `0x59C34` (awarding party Karma at each
+runner's live-record `+0x8D`), sets its story/Karma state, then calls the same
+services.
 Neither callback clears `FFF10C` or overwrites A1 before `0x1F246`.
 
 At field dispatcher `0x0B3C`, A1 is loaded from `FFE104` before the indirect

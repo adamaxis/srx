@@ -1359,12 +1359,23 @@ public:
         notebook_referral_flags_ = flags;
     }
     std::optional<std::array<std::uint8_t, 3>>
-    runner_source_byte_triplet_for_dump() const noexcept {
-        return field_entity_action_phase_roll_counters_;
+    party_karma_for_dump() const noexcept {
+        if (!field_party_roster_.available()) {
+            return std::nullopt;
+        }
+        std::array<std::uint8_t, 3> values{};
+        const auto& records = field_party_roster_.records();
+        for (std::size_t index = 0U; index < values.size(); ++index) {
+            values[index] = records[index].karma;
+        }
+        return values;
     }
-    void seed_runner_source_byte_triplet_for_qa(
-        std::array<std::uint8_t, 3> source_bytes) noexcept {
-        field_entity_action_phase_roll_counters_ = source_bytes;
+    void seed_party_karma_for_qa(
+        const std::array<std::uint8_t, 3>& values) noexcept {
+        auto& records = field_party_roster_.records();
+        for (std::size_t index = 0U; index < values.size(); ++index) {
+            records[index].karma = values[index];
+        }
     }
     bool set_notebook_contact_flags_for_dump(std::uint32_t flags) noexcept {
         if (!notebook_contacts_flags_.has_value()) return false;
@@ -2077,7 +2088,6 @@ private:
         std::array<std::uint8_t, 4> movement_sample_state{};
         std::uint16_t movement_terrain_collision_code = 0U;
         bool movement_state_initialized = false;
-        std::string ordered_overrides;
         std::uint8_t initial_behavior_delay = 0;
         std::uint8_t animation_direction = 0;
         std::string animation_id = "idle";
@@ -2818,8 +2828,6 @@ private:
     // zero. The loaded-save adapter does not restore them, so paid writes stay
     // explicit for that path.
     std::optional<std::uint8_t> field_runner_feature_flags_{0U}; // FF018F
-    std::optional<std::array<std::uint8_t, 3>>
-        field_entity_action_phase_roll_counters_{std::array<std::uint8_t, 3>{}};
     std::string field_shop_route_pending_service_id_;
     FieldEntityPresentation field_entity_{};
     std::string failure_;

@@ -319,7 +319,7 @@ No screenshot-based scene-name claim should be made from the extracted map
 alone. The map has not been aligned to scene 9 coordinates. The Sinsearach
 route is source-connected and Lua-modeled; focused physical-input QA now
 enters Scene-9 record 230, and the CLI writes full-frame actual.bmp captures.
-Its command-0x49 bit and runner-triplet effects are modeled, and the three
+Its command-0x49 bit and +3 Karma award are modeled, and the three
 pages selected for the shared 0x5D1F6 routine have a typed cinematic catalog
 entry. The ordered page loop and controller wait are traced; named profile
 art, native presenter, and typed host return are implemented (see the

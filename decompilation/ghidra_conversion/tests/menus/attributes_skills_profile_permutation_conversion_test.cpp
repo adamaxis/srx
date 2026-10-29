@@ -524,7 +524,7 @@ int main() {
             for (unsigned current = 0U; current <= maximum + 1U; ++current) {
                 RunnerRecordFields record{};
                 record.species_index = static_cast<std::uint8_t>(species);
-                record.auxiliary[2U] = 0xFFU;
+                record.karma = 0xFFU;
                 record.attributes[attribute] =
                     static_cast<std::uint8_t>(current);
                 const auto preview = preview_attribute_skill_upgrade(
@@ -533,10 +533,10 @@ int main() {
                 if (current < maximum) {
                     const auto cost = static_cast<std::uint8_t>(current + 1U);
                     auto underfunded = record;
-                    underfunded.auxiliary[2U] =
+                    underfunded.karma =
                         static_cast<std::uint8_t>(cost - 1U);
                     auto confirm = record;
-                    confirm.auxiliary[2U] = cost;
+                    confirm.karma = cost;
                     if (preview.status !=
                             AttributeSkillUpgradeStatus::available ||
                         preview.current_value != current ||
@@ -560,7 +560,7 @@ int main() {
                              static_cast<std::uint8_t>(row)},
                             true) != AttributeSkillUpgradeResult::upgraded ||
                         confirm.attributes[attribute] != cost ||
-                        confirm.auxiliary[2U] != 0U) {
+                        confirm.karma != 0U) {
                         return fail("race maximum lower-bound/upgrade transaction mismatch")
                                    ? 0
                                    : 15;

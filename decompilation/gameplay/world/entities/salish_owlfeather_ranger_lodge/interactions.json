@@ -83,7 +83,7 @@
         "speakerId": "david_owlfeather"
       },
       "provenance": {
-        "evidence": "ROM service 4 at 0x53CEA branches at 0x53D5A when FFFC1E bit 3 is set and bit 4 is clear in scene 6/event 0. It adjusts the runner triplet by 2, clears FFFC30 bits 8/9/10/13, sets bit 14, opens F4BA0 with profile 0x121E14, then marks the active trigger and sets D6=-1."
+        "evidence": "ROM service 4 at 0x53CEA branches at 0x53D5A when FFFC1E bit 3 is set and bit 4 is clear in scene 6/event 0. It awards 2 Karma to each runner through 0x59C34 (+0x8D), clears FFFC30 bits 8/9/10/13, sets bit 14, opens F4BA0 with profile 0x121E14, then marks the active trigger and sets D6=-1."
       }
     },
     {

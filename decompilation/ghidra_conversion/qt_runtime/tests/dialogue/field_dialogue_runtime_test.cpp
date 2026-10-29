@@ -138,7 +138,7 @@ int main() {
     std::uint32_t mortimer_contact_funds = 1500U;
     std::size_t mortimer_contact_purchase_calls = 0U;
     std::uint32_t inn_funds = 30U;
-    std::size_t inn_source_triplet_updates = 0U;
+    std::size_t inn_karma_awards = 0U;
     std::array<std::string_view, 6> run_random_services{{
         "random.bounded_8", "runner.negotiation_skill",
         "random.bounded_4", "random.bounded_10", "random.bounded_12",
@@ -319,7 +319,7 @@ int main() {
          &julius_contact_funds, &julius_contact_purchase_calls,
          &julius_contact_phase,
          &mortimer_contact_funds, &mortimer_contact_purchase_calls,
-         &inn_funds, &inn_source_triplet_updates,
+         &inn_funds, &inn_karma_awards,
          &room_payment_funds, &room_payment_outcome,
          &run_random_services, &run_random_results, &run_random_call](
             const std::string_view service_id) -> std::optional<std::string> {
@@ -354,8 +354,8 @@ int main() {
                 inn_funds -= 30U;
                 return "paid";
             }
-            if (service_id == "runner.adjust_source_byte_triplet_1") {
-                ++inn_source_triplet_updates;
+            if (service_id == "party.award_karma_1") {
+                ++inn_karma_awards;
                 return "applied";
             }
             const auto finder_fee = [](std::uint32_t& funds,
@@ -852,7 +852,7 @@ int main() {
         !expect(advance_inn_dialogue(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(capture_tarislar_inn("tabatha-apartment-choice")) ||
-        !expect(inn_source_triplet_updates == 1U) ||
+        !expect(inn_karma_awards == 1U) ||
         !expect(advance_inn_dialogue(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
         !expect(advance_inn_dialogue(0x4000U) ==
@@ -2330,7 +2330,7 @@ int main() {
     debt_payment_state.world_flags = 0U;
     debt_payment_state.effect_marker = 0U;
     debt_payment_state.runner_feature_flags = 0x40U;
-    debt_payment_state.runner_source_bytes = {0xFFU, 0x00U, 0x7FU};
+    debt_payment_state.party_karma = {0xFFU, 0x00U, 0x7FU};
     debt_payment_state.followup_state = followup_state;
     gameplay_scripts.set_story_state({{"story_flag_bit_0", false}});
     if (!expect(runtime.open_stoker_interaction_for_dump()) ||
@@ -2347,7 +2347,7 @@ int main() {
         !expect(gameplay_scripts.story_state().at("story_flag_bit_0")) ||
         !expect(debt_payment_state.world_flags == 0x01U) ||
         !expect(debt_payment_state.runner_feature_flags == 0x41U) ||
-        !expect(debt_payment_state.runner_source_bytes ==
+        !expect(debt_payment_state.party_karma ==
                 std::array<std::uint8_t, 3>{0x00U, 0x01U, 0x80U}) ||
         !expect(debt_payment_state.followup_state.story_flags == 0x1CU) ||
         !expect([&runtime]() {

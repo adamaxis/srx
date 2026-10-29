@@ -25,10 +25,10 @@ void reset_runner_status_triplet(
     }
 }
 
-void adjust_runner_source_byte_triplet(
-    std::array<std::uint8_t, 3>& source_bytes, const std::uint8_t delta) {
-    for (auto& source_byte : source_bytes) {
-        source_byte = static_cast<std::uint8_t>(source_byte + delta);
+void award_party_karma(std::array<std::uint8_t, 3>& party_karma,
+                       const std::uint8_t amount) {
+    for (auto& karma : party_karma) {
+        karma = static_cast<std::uint8_t>(karma + amount);
     }
 }
 

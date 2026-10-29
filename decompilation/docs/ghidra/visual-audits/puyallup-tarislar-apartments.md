@@ -65,8 +65,9 @@ catalog's source policy explicitly authorizes a correction.
   `0x24DFE` selects the bit-9 readiness page. MORE dispatches command `0x44`
   at `0x21FD0`, which sets story bit 30 and opens `0xF57F8`. The Lua JSON
   graph now follows the guard, Lady Gillian, and Frosty pages up to
-  command `0x49`, applying its FFFC34 bit-4 clear, bit-5 set, and runner
-  source-byte triplet `+3`. Helper `0x5D130` writes FFF0BE=9, selects the
+  command `0x49`, applying its FFFC34 bit-4 clear, bit-5 set, and +3 Karma
+  award to each runner (`0x59C34`, live-record `+0x8D`). Helper `0x5D130`
+  writes FFF0BE=9, selects the
   three-page table at `0x0F5870` and resources at `0x1FE690`, then calls the
   shared story-page routine `0x5D1F6`. The cinematic catalog records the
   Harlequin, Thon, and Tarislar pages with a source-context return policy.

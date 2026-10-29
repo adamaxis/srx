@@ -31,7 +31,7 @@ capture of the scene remain open.
   runner counters stay unchanged.
 - With bit 10 set, the same entity link selects `johnson.interaction` and
   Caleb's location profile. ROM `0x20A78..0x20AA4` sets FFFC27 bits 4 and 7
-  and applies `+2` to each of the three runner source-byte records on first
+  and awards `+2` Karma to each of the three runners on first
   contact. Lua records those bits as the access/contact and first-visit facts,
   presents the two first-meeting pages, then opens the three-choice root.
   Repeat visits use the regular opening; the source post-run gate selects the
@@ -44,7 +44,7 @@ capture of the scene remain open.
 - `shadowrun_ghidra_conversion_qt_field_icarus_caleb_entry_qa` starts south of
   the ROM rectangle, sets the known access fact and New Game FFFC27/counter
   values, then uses ordinary Up input. It verifies the first page, Caleb's
-  continuation, three-choice root, FFFC27 bits 4/7, and all three source-byte
+  continuation, three-choice root, FFFC27 bits 4/7, and all three Karma values
   counters at +2. Debug and Release capture the complete 320x224 pages and
   root under `qt_runtime/field-icarus-caleb-entry-qa/`; matching file hashes
   confirm deterministic host output. I inspected the full Debug and Release

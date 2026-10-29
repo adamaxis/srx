@@ -133,11 +133,11 @@ local function register_core_actions(registry)
         return true
     end)
 
-    registry:register("runner.adjust_source_byte_triplet", function(arguments)
+    registry:register("party.award_karma", function(arguments)
         assert(is_integer(arguments.amount, 1, 0xFF),
-            "runner.adjust_source_byte_triplet needs amount 1..255")
+            "party.award_karma needs an amount from 1 to 255")
         local result = game.services.call(
-            "runner", "adjust_source_byte_triplet_" ..
+            "party", "award_karma_" ..
                 tostring(arguments.amount))
         return result == "applied" and "applied" or "service_unavailable"
     end)

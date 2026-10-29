@@ -69,7 +69,8 @@ assert(actors[1].id == "world_activity:13:3:0" and
        actors[1].sprite == "actor-kind-10-palette-1" and
        actors[1].x == 0x1100 and actors[1].y == 0x0300 and
        actors[1].heading == 0xC000 and actors[1].action_code == 3 and
-       actors[1].ordered_overrides == "0x2E=0xC0,0x9E=0x10",
+       actors[1].ordered_overrides == nil and
+       actors[1].actor_facts.roles ~= nil,
        "selector lookup lost the typed host actor facts")
 local pending = World.world_activity_actors_for_list_id(
     20, "scene_20_ilene_pending_list")
@@ -80,8 +81,8 @@ assert(#pending == 1 and
        pending[1].name == "lone11" and pending[1].entity_kind == 10 and
        pending[1].x == 0x0E80 and pending[1].y == 0x0700 and
        pending[1].heading == 0x8000 and
-       pending[1].ordered_overrides ==
-           "0x9E=0x20,0x2E=0x80,0x9E=0x8",
+       pending[1].ordered_overrides == nil and
+       pending[1].actor_facts.roles ~= nil,
        "activity-id lookup did not preserve the pending Ilene actor")
 assert(#World.world_activity_actors_for_list_id(
            20, "scene_47_strike_team") == 0,

@@ -53,7 +53,6 @@ local function actor_row(source_order, sequence_id, placement_rule)
         palette_line = 2,
         sprite_stem = "corp_guard_k05_item06",
         activity_probe_enabled = false,
-        ordered_overrides = "-",
         placement_rule = placement_rule or
             "open screen-edge candidates based on the current viewport and terrain",
         physical_meter = 10,

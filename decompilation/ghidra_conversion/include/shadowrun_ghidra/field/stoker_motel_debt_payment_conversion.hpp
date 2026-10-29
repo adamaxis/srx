@@ -39,9 +39,9 @@ struct StokerMotelDebtPaymentState {
     // already converted Jump House referral command at 0x213E2.
     StokerMotelFollowupState followup_state{};
 
-    // Source FF018D, FF028D, and FF038D. 0x59C34 adds one to all three
-    // source bytes with byte-sized wraparound after the debt is paid.
-    std::array<std::uint8_t, 3> runner_source_bytes{};
+    // Each party member's current Karma. ROM 0x59C34 awards one point to all
+    // three runners after the debt is paid.
+    std::array<std::uint8_t, 3> party_karma{};
 };
 
 struct StokerMotelDebtPaymentOutcome {

@@ -16,7 +16,7 @@ constexpr std::size_t kRunnerRecordInventorySlots = 8U;
 // (not drawn on the Attributes/Skills grid), and index 7 is Essence tens.
 constexpr std::size_t kRunnerRecordAttributeCount = 8U;
 constexpr std::size_t kRunnerRecordSkillCount = 12U;
-constexpr std::size_t kRunnerRecordAuxiliaryCount = 4U;
+constexpr std::size_t kRunnerRecordAuxiliaryCount = 3U;
 
 // ROM 0x1E69C reads the first live runner's +0x8C skill byte when it
 // calculates a Johnson offer's negotiation roll. This is the last entry in
@@ -108,9 +108,12 @@ struct RunnerRecordFields {
         inventory_phase_bytes{};
     std::array<std::uint8_t, kRunnerRecordAttributeCount> attributes{};
     std::array<std::uint8_t, kRunnerRecordSkillCount> skills{};
-    // Auxiliary source bytes include +0x7F (Magic/Essence cap), +0x86,
-    // +0x8D (displayed Karma), and +0x8E (the ones digit of Essence).
+    // These remaining fields are kept opaque until their consumers are
+    // identified. The confirmed +0x8D value has its own `karma` field.
     std::array<std::uint8_t, kRunnerRecordAuxiliaryCount> auxiliary{};
+    // The Karma screen reads live-record +0x8D, and ROM 0x59C34 awards the
+    // supplied amount to that value in each of the three runner records.
+    std::uint8_t karma = 0;
 
     // Source 0x57F80/0x57F90 and 0x5735A/0x57362 treat +0x7E and +0x8E as
     // the tens and ones digits of the live cyberware Essence value. These
@@ -120,13 +123,13 @@ struct RunnerRecordFields {
         return attributes[7U];
     }
     std::uint8_t cyberware_essence_ones() const noexcept {
-        return auxiliary[3U];
+        return auxiliary[2U];
     }
     void set_cyberware_essence_tens(const std::uint8_t value) noexcept {
         attributes[7U] = value;
     }
     void set_cyberware_essence_ones(const std::uint8_t value) noexcept {
-        auxiliary[3U] = value;
+        auxiliary[2U] = value;
     }
 };
 

@@ -557,16 +557,6 @@ std::optional<QJsonObject> FieldSceneRuntime::capture_game_save_snapshot(
                  notebook_shadowrunner_flags_.has_value()
                      ? QJsonValue(*notebook_shadowrunner_flags_)
                      : QJsonValue(QJsonValue::Null));
-    if (field_entity_action_phase_roll_counters_.has_value()) {
-        QJsonArray counters;
-        for (const auto value : *field_entity_action_phase_roll_counters_) {
-            counters.append(value);
-        }
-        story.insert(QStringLiteral("action_phase_roll_counters"), counters);
-    } else {
-        story.insert(QStringLiteral("action_phase_roll_counters"),
-                     QJsonValue(QJsonValue::Null));
-    }
     story.insert(QStringLiteral("world_frame_counter"),
                  field_world_frame_counter_);
     story.insert(QStringLiteral("world_encounter_sequence"),
@@ -645,7 +635,6 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         std::optional<std::uint16_t> shadowrunner_flags;
         std::optional<std::uint8_t> heat_level;
         std::optional<std::uint8_t> strike_team_counter;
-        std::optional<std::array<std::uint8_t, 3>> action_phase_roll_counters;
         std::uint16_t world_frame_counter = 0U;
         std::uint32_t world_encounter_sequence = 0U;
         std::uint16_t source_random_seed = 0U;
@@ -939,17 +928,6 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         }
         restored.tip_flags[index] = static_cast<std::uint32_t>(parsed);
     }
-    const auto phase_counters =
-        story.value(QStringLiteral("action_phase_roll_counters"));
-    if (phase_counters.isNull()) {
-        restored.action_phase_roll_counters.reset();
-    } else {
-        QJsonObject wrapper;
-        wrapper.insert(QStringLiteral("values"), phase_counters);
-        std::array<std::uint8_t, 3> values{};
-        if (!read_save_byte_array(wrapper, "values", values, error)) return false;
-        restored.action_phase_roll_counters = values;
-    }
     if (!read_save_integer(story, "world_frame_counter", 0, 0xFFFF,
                            numeric, error)) return false;
     restored.world_frame_counter = static_cast<std::uint16_t>(numeric);
@@ -1036,8 +1014,6 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
     notebook_shadowrunner_flags_ = restored.shadowrunner_flags;
     field_heat_level_ = restored.heat_level;
     field_strike_team_counter_ = restored.strike_team_counter;
-    field_entity_action_phase_roll_counters_ =
-        restored.action_phase_roll_counters;
     field_world_frame_counter_ = restored.world_frame_counter;
     field_world_encounter_sequence_ = restored.world_encounter_sequence;
     field_random_seed_ = restored.source_random_seed;

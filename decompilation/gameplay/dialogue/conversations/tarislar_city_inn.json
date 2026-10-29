@@ -114,7 +114,7 @@
             "applied": "tabatha_arrival",
             "service_unavailable": "tabatha_state_boundary"
           },
-          "evidence": "ROM command 0x14 at 0x21862 updates the live runner source-byte triplet and story flags before record 0xF4EE0."
+          "evidence": "ROM command 0x14 at 0x21862 calls 0x59C34 to award one Karma to each runner (+0x8D), then updates story flags before record 0xF4EE0."
         },
         "tabatha_arrival": {
           "type": "choice",
@@ -236,7 +236,7 @@
         },
         "tabatha_state_boundary": {
           "type": "source_boundary",
-          "reason": "ROM command 0x14 at 0x21862 requires a resolved runner source-byte triplet and FFFC30/FFFC27 story state; this session does not provide all of them."
+          "reason": "ROM command 0x14 at 0x21862 requires resolved party Karma and FFFC30/FFFC27 story state; this session does not provide all of them."
         },
         "stay_on_map": {
           "type": "terminal",

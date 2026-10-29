@@ -48,9 +48,9 @@ int main() {
         }
     }
 
-    std::array<std::uint8_t, 3> source_bytes{{0x00U, 0x7FU, 0xFFU}};
-    adjust_runner_source_byte_triplet(source_bytes, 0x82U);
-    if (source_bytes != std::array<std::uint8_t, 3>{{0x82U, 0x01U, 0x81U}}) {
+    std::array<std::uint8_t, 3> party_karma{{0x00U, 0x7FU, 0xFFU}};
+    award_party_karma(party_karma, 0x82U);
+    if (party_karma != std::array<std::uint8_t, 3>{{0x82U, 0x01U, 0x81U}}) {
         return 4;
     }
     return 0;

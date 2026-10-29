@@ -7658,9 +7658,6 @@ GameScriptRuntime::world_activity_actors_for_selector(
                                           world_y), "world position y") &&
             valid_fact(read_field_integer(state, row_index, "heading",
                                           0xFFFFU, heading), "heading") &&
-            valid_fact(read_field_text(state, row_index, "ordered_overrides",
-                                       actor.ordered_overrides, 512U),
-                       "ordered actor traits") &&
             valid_fact(read_actor_role_facts(state, row_index, actor_roles),
                        "actor roles") &&
             valid_fact(read_actor_interaction_facts(
@@ -8075,8 +8072,6 @@ GameScriptRuntime::resolve_field_encounter_impl(
                                    "action_delay_modifier", 12U,
                                    action_delay_modifier) &&
                 action_delay_modifier % 4U == 0U &&
-                read_field_text(state, actor_index, "ordered_overrides",
-                                actor.ordered_overrides, 512U) &&
                 read_optional_field_u32(state, actor_index, "spawn_x",
                                         0xFFFFU, run_target_spawn_x) &&
                 read_optional_field_u32(state, actor_index, "spawn_y",

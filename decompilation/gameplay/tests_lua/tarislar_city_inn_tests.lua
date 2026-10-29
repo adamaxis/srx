@@ -17,7 +17,7 @@ local prompts = {}
 local speeches = {}
 local service_calls = {}
 local payment_result = "paid"
-local triplet_result = "applied"
+local karma_award_result = "applied"
 local script_text_file = assert(io.open(
     "decompilation/assets/dialogue/script-text.json", "rb"))
 local script_text_catalog = Json.decode(script_text_file:read("*a"))
@@ -118,9 +118,9 @@ game = {
             if domain == "building" and operation == "charge_30" then
                 return payment_result
             end
-            if domain == "runner" and
-               operation == "adjust_source_byte_triplet_1" then
-                return triplet_result
+            if domain == "party" and
+               operation == "award_karma_1" then
+                return karma_award_result
             end
             return nil
         end,
@@ -246,11 +246,11 @@ assert(speeches[#speeches].event == "leave")
 
 -- The ROM prompt chain is represented as JSON pages and menus. Command 0x16
 -- marks the active trigger before the first page; command 0x14's typed source
--- triplet call and story masks happen only after Tabatha agrees to receive
+-- Karma award and story masks happen only after Tabatha agrees to receive
 -- the runner.
 game.state.story_flag_bit_1 = false
 game.state.story_trigger_active_1 = nil
-triplet_result = "applied"
+karma_award_result = "applied"
 seed_tabatha_acceptance_flags()
 local refusal_route = location_task_result("continue_in_place",
     "more", "shale", "more", "more", "more", "about_michael", "more",
@@ -266,8 +266,8 @@ assert(game.state.field_mode_effect_flag_bit_2 == true)
 assert(game.state.field_mode_effect_flag_bit_4 == true)
 assert(game.state.mr_johnsons_flag_bit_2 == true)
 assert(game.state.mr_johnsons_flag_bit_4 == true)
-assert(service_calls[1][1] == "runner" and
-       service_calls[1][2] == "adjust_source_byte_triplet_1")
+assert(service_calls[1][1] == "party" and
+       service_calls[1][2] == "award_karma_1")
 assert(#speeches == 10 and speeches[1].event == "entry" and
        speeches[2].event == "shale_intro_0" and
        speeches[3].event == "shale_intro_1" and
@@ -315,7 +315,7 @@ assert(Inn.present_indexed_title_service() == "denied",
 game.state.story_flag_bit_1 = false
 game.state.story_flag_bit_30 = false
 game.state.story_flag_bit_13 = false
-triplet_result = "applied"
+karma_award_result = "applied"
 seed_tabatha_acceptance_flags()
 location_task_result("continue_in_place",
     "more", "shale", "more", "more", "more", "about_michael", "more",
@@ -342,7 +342,7 @@ for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
 end
 game.state.mr_johnsons_flag_bit_2 = nil
 game.state.mr_johnsons_flag_bit_4 = nil
-triplet_result = "applied"
+karma_award_result = "applied"
 local unresolved_story_state = location_task_result("source_boundary",
     "more", "shale", "more", "more", "more")
 assert(unresolved_story_state.reason:find("0x21862", 1, true))
@@ -354,7 +354,7 @@ assert(#service_calls == 0 and
 -- acceptance flags untouched.
 game.state.story_flag_bit_1 = false
 seed_tabatha_acceptance_flags()
-triplet_result = "unavailable"
+karma_award_result = "unavailable"
 local state_boundary = location_task_result("source_boundary",
     "more", "shale", "more", "more", "more")
 assert(state_boundary.reason:find("0x21862", 1, true))

@@ -66,19 +66,19 @@
           "choices": [
             { "id": "lands", "next": "topic_lands" },
             { "id": "council", "next": "council_more" },
-            { "id": "brother", "next": "adjust_runner_triplet_1" }
+            { "id": "brother", "next": "award_party_karma_1" }
           ],
           "evidence": "Dialogue root 0xF4B68 presents Lands, Council Island, and Michael's brother in that button order."
         },
-        "adjust_runner_triplet_1": {
+        "award_party_karma_1": {
           "type": "action",
-          "actionId": "runner.adjust_source_byte_triplet",
+          "actionId": "party.award_karma",
           "arguments": { "amount": 1 },
           "results": {
             "applied": "mark_brother_contact",
-            "service_unavailable": "runner_state_boundary"
+            "service_unavailable": "party_state_boundary"
           },
-          "evidence": "Choice C reaches command 0x17, which calls 0x59C34 with D0=1 before marking the active story trigger."
+          "evidence": "Choice C reaches command 0x17, which awards one Karma to each runner through 0x59C34 before marking the active story trigger; 0x0D3EA reads +0x8D as Karma."
         },
         "mark_brother_contact": {
           "type": "action",
@@ -160,18 +160,18 @@
           "type": "action",
           "actionId": "story.begin_trigger",
           "arguments": { "triggerId": 4 },
-          "next": "adjust_runner_triplet_2",
+          "next": "award_party_karma_2",
           "evidence": "The indexed trigger loop stores service index 4 in FFDD64 before 0x53CEA."
         },
-        "adjust_runner_triplet_2": {
+        "award_party_karma_2": {
           "type": "action",
-          "actionId": "runner.adjust_source_byte_triplet",
+          "actionId": "party.award_karma",
           "arguments": { "amount": 2 },
           "results": {
             "applied": "return_clear_effect_8",
-            "service_unavailable": "runner_state_boundary"
+            "service_unavailable": "party_state_boundary"
           },
-          "evidence": "Service 4 calls 0x59C34 with D0=2 before opening 0xF4BA0; its prompt text is shared with service 3 at 0xF7190."
+          "evidence": "Service 4 awards two Karma to each runner through 0x59C34 before opening 0xF4BA0; 0x0D3EA reads the +0x8D Karma value. Its prompt text is shared with service 3 at 0xF7190."
         },
         "return_clear_effect_8": {
           "type": "action",
@@ -360,9 +360,9 @@
           "outcome": { "type": "continue_in_place" }
         },
 
-        "runner_state_boundary": {
+        "party_state_boundary": {
           "type": "source_boundary",
-          "reason": "The ROM counter adjustment at 0x59C34 requires restored runner source-byte triplet state from the host service."
+          "reason": "The party roster is unavailable, so the Karma award cannot be applied safely."
         },
         "dialogue_command_boundary": {
           "type": "source_boundary",

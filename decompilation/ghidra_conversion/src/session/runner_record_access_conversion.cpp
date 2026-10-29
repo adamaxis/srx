@@ -30,7 +30,7 @@ void write_be32(LiveRunnerRecord& record, const std::size_t offset,
 }
 
 constexpr std::array<std::size_t, kRunnerRecordAuxiliaryCount>
-    kAuxiliaryOffsets{{0x7FU, 0x86U, 0x8DU, 0x8EU}};
+    kAuxiliaryOffsets{{0x7FU, 0x86U, 0x8EU}};
 
 } // namespace
 
@@ -88,6 +88,7 @@ RunnerRecordFields read_runner_record_fields(const LiveRunnerRecord& record) {
          ++index) {
         fields.auxiliary[index] = record.bytes[kAuxiliaryOffsets[index]];
     }
+    fields.karma = record.bytes[0x8DU];
     return fields;
 }
 
@@ -146,6 +147,7 @@ void write_runner_record_fields(const RunnerRecordFields& fields,
          ++index) {
         destination.bytes[kAuxiliaryOffsets[index]] = fields.auxiliary[index];
     }
+    destination.bytes[0x8DU] = fields.karma;
 }
 
 std::optional<std::int16_t> lookup_runner_animation_delta(

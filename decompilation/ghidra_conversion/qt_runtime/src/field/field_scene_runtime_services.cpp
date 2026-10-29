@@ -835,8 +835,8 @@ bool FieldSceneRuntime::open_field_location_dialogue(
             }
             *field_funds_ += run_return->reward_nuyen;
             for (auto& runner : field_party_roster_.records()) {
-                runner.auxiliary[2] = static_cast<std::uint8_t>(
-                    runner.auxiliary[2] +
+                runner.karma = static_cast<std::uint8_t>(
+                    runner.karma +
                     run_return->runner_progress_delta);
             }
             if (group_item_flags_.has_value()) {

@@ -63,7 +63,6 @@ local function actor_from_row(row)
         palette_line = row.palette_line,
         sprite_stem = row.sprite_stem,
         activity_probe_enabled = row.activity_probe_enabled,
-        ordered_overrides = row.ordered_overrides,
         action_delay_modifier = row.action_delay_modifier,
         combatant = {
             actor_facts = {

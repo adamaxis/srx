@@ -87,7 +87,7 @@ AttributeSkillRenderResult render_attributes_and_skills(
     const bool selection_data_available,
     const AttributeSkillRenderCallbacks& callbacks) {
     AttributeSkillRenderResult result{};
-    result.karma_available = record.auxiliary[2U];
+    result.karma_available = record.karma;
 
     if (callbacks.clear_upgrade_error_marker) {
         callbacks.clear_upgrade_error_marker();
@@ -449,15 +449,15 @@ AttributeSkillUpgradeResult apply_attribute_skill_upgrade(
         break;
     }
 
-    if (record.auxiliary[2U] < preview.karma_cost) {
+    if (record.karma < preview.karma_cost) {
         return AttributeSkillUpgradeResult::insufficient_karma;
     }
     if (!confirmed) {
         return AttributeSkillUpgradeResult::confirmation_required;
     }
 
-    record.auxiliary[2U] = static_cast<std::uint8_t>(
-        record.auxiliary[2U] - preview.karma_cost);
+    record.karma = static_cast<std::uint8_t>(
+        record.karma - preview.karma_cost);
     if (preview.section == AttributeSkillSection::attribute) {
         record.attributes[preview.value_index] = preview.next_value;
     } else {

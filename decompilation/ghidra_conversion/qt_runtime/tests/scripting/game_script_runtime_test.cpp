@@ -2124,8 +2124,6 @@ int main() {
                 ilene_gate_actors->front().world_x == 0x1100U &&
                 ilene_gate_actors->front().world_y == 0x0300U &&
                 ilene_gate_actors->front().heading == 0xC000U &&
-                ilene_gate_actors->front().ordered_overrides ==
-                    "0x2E=0xC0,0x9E=0x10" &&
                 ilene_gate_actors->front().source_spawn_state_flags == 0x10U &&
                 ilene_gate_actors->front().source_interaction_flags == 0U &&
                 ilene_gate_actors->front().physical_meter == 10U &&
@@ -2167,8 +2165,6 @@ int main() {
                 ilene_pending_list->front().world_x == 0x0E80U &&
                 ilene_pending_list->front().world_y == 0x0700U &&
                 ilene_pending_list->front().heading == 0x8000U &&
-                ilene_pending_list->front().ordered_overrides ==
-                    "0x9E=0x20,0x2E=0x80,0x9E=0x8" &&
                 ilene_pending_list->front().source_spawn_state_flags ==
                     0x08U &&
                 ilene_selected_pending_list ==
@@ -3144,7 +3140,7 @@ int main() {
                     caleb_first_meeting.operation->type ==
                         ScriptNativeOperation::Type::service_call &&
                     caleb_first_meeting.operation->service_id ==
-                        "runner.adjust_source_byte_triplet_2",
+                        "party.award_karma_2",
                 "Caleb first visit did not apply the ROM +2 runner progress effect")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
@@ -12628,7 +12624,7 @@ int main() {
                     owlfeather_task.operation->type ==
                         ScriptNativeOperation::Type::service_call &&
                     owlfeather_task.operation->service_id ==
-                        "runner.adjust_source_byte_triplet_1",
+                        "party.award_karma_1",
                 "Owlfeather's command 0x17 omitted the D0=1 runner adjustment")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -12740,7 +12736,7 @@ int main() {
                     owlfeather_task.operation->type ==
                         ScriptNativeOperation::Type::service_call &&
                     owlfeather_task.operation->service_id ==
-                        "runner.adjust_source_byte_triplet_2",
+                        "party.award_karma_2",
                 "Owlfeather's return follow-up did not request the D0=2 runner adjustment")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -14988,7 +14984,7 @@ int main() {
                     sinsearach_gate.operation->type ==
                         ScriptNativeOperation::Type::service_call &&
                     sinsearach_gate.operation->service_id ==
-                        "runner.adjust_source_byte_triplet_3" &&
+                        "party.award_karma_3" &&
                     !scripts.story_state().at("field_mode_effect_flag_bit_4") &&
                     scripts.story_state().at("field_mode_effect_flag_bit_5"),
                 "Sinsearach command 0x49 omitted FFFC34 writes or the +3 runner service")) {

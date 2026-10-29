@@ -513,7 +513,7 @@ nodes, and ROM provenance. Nodes are limited to reusable forms:
 Graph node IDs are content IDs, never source addresses. A source command may
 appear as provenance on the edge/action that represents it. Effects are named
 operations (`apply_dialogue_command`, `charge_building_amount`,
-`award_party_karma`, `adjust_runner_triplet`, `set_story_fact`) with typed
+`party.award_karma`, `set_story_fact`) with typed
 parameters; JSON cannot call arbitrary Lua functions. Complex quest policy
 stays in named Lua actions and is unit-testable without the presenter.
 

@@ -733,9 +733,10 @@ FieldSceneRuntime::FieldSceneRuntime(
         const bool paid_branch = *field_funds_ >= kDebt;
         if (paid_branch &&
             (!field_runner_feature_flags_.has_value() ||
-             !field_entity_action_phase_roll_counters_.has_value())) {
+             !field_party_roster_.available())) {
             // The successful source branch also updates FF018F and the three
-            // reaction counters. Those stay unresolved for restored saves.
+            // runners' Karma. Both values must be part of the restored host
+            // state before accepting the payment.
             return std::nullopt;
         }
 
@@ -757,9 +758,11 @@ FieldSceneRuntime::FieldSceneRuntime(
         payment_state.followup_state.story_flags = notebook_tip_flags_[0];
         payment_state.followup_state.referral_flags =
             *notebook_referral_flags_;
-        payment_state.runner_source_bytes =
-            field_entity_action_phase_roll_counters_.value_or(
-                std::array<std::uint8_t, 3>{});
+        for (std::size_t index = 0U;
+             index < FieldPartyRosterRuntime::kSlotCount; ++index) {
+            payment_state.party_karma[index] =
+                field_party_roster_.records()[index].karma;
+        }
         const auto outcome =
             resolve_stoker_motel_debt_payment(payment_state);
         field_funds_ = payment_state.funds;
@@ -767,8 +770,11 @@ FieldSceneRuntime::FieldSceneRuntime(
             field_exit_world_flags_ = payment_state.world_flags;
             field_runner_feature_flags_ =
                 payment_state.runner_feature_flags;
-            field_entity_action_phase_roll_counters_ =
-                payment_state.runner_source_bytes;
+            for (std::size_t index = 0U;
+                 index < FieldPartyRosterRuntime::kSlotCount; ++index) {
+                field_party_roster_.records()[index].karma =
+                    payment_state.party_karma[index];
+            }
             cyberdeck_available_ =
                 (payment_state.runner_feature_flags & 0x01U) != 0U;
         }
@@ -863,9 +869,17 @@ FieldSceneRuntime::FieldSceneRuntime(
                     amount > 0xFFU || !field_party_roster_.available()) {
                     return std::nullopt;
                 }
-                for (auto& runner : field_party_roster_.records()) {
-                    runner.auxiliary[2U] = static_cast<std::uint8_t>(
-                        runner.auxiliary[2U] + amount);
+                auto& records = field_party_roster_.records();
+                std::array<std::uint8_t, 3U> party_karma{};
+                for (std::size_t index = 0U; index < party_karma.size();
+                     ++index) {
+                    party_karma[index] = records[index].karma;
+                }
+                award_party_karma(
+                    party_karma, static_cast<std::uint8_t>(amount));
+                for (std::size_t index = 0U; index < party_karma.size();
+                     ++index) {
+                    records[index].karma = party_karma[index];
                 }
                 return "applied";
             }
@@ -1031,28 +1045,6 @@ FieldSceneRuntime::FieldSceneRuntime(
                 this->source_boundary("field.world_activity." +
                                       std::string(rest) + "_list_queued");
                 return "queued";
-            }
-            constexpr std::string_view kRunnerTripletPrefix =
-                "runner.adjust_source_byte_triplet_";
-            if (service_id.rfind(kRunnerTripletPrefix, 0U) == 0U) {
-                const auto delta_text = service_id.substr(
-                    kRunnerTripletPrefix.size());
-                unsigned delta = 0U;
-                const auto parsed = std::from_chars(
-                    delta_text.data(), delta_text.data() + delta_text.size(),
-                    delta);
-                if (delta_text.empty() || parsed.ec != std::errc{} ||
-                    parsed.ptr != delta_text.data() + delta_text.size() ||
-                    delta > 0xFFU ||
-                    !field_entity_action_phase_roll_counters_.has_value()) {
-                    return std::nullopt;
-                }
-                auto source_bytes =
-                    *field_entity_action_phase_roll_counters_;
-                adjust_runner_source_byte_triplet(
-                    source_bytes, static_cast<std::uint8_t>(delta));
-                field_entity_action_phase_roll_counters_ = source_bytes;
-                return "applied";
             }
             constexpr std::string_view kBuildingChargePrefix =
                 "building.charge_";
@@ -1359,8 +1351,8 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 }
                 *field_funds_ += run_event->reward_nuyen;
                 for (auto& runner : field_party_roster_.records()) {
-                    runner.auxiliary[2] = static_cast<std::uint8_t>(
-                        runner.auxiliary[2] +
+                    runner.karma = static_cast<std::uint8_t>(
+                        runner.karma +
                         run_event->runner_progress_delta);
                 }
                 field_entity_animation_.redraw_requested = true;
@@ -2014,7 +2006,6 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             actor.template_offset = parse_number(fields[12], 0);
             actor.position_offset = parse_number(fields[13], 0);
             actor.list_offset = parse_number(fields[14], 0);
-            actor.ordered_overrides = fields[15];
             const auto physical_meter = parse_number(fields[16], 10);
             if (physical_meter > 0xFFU) {
                 failure_ = "default actor physical meter exceeds one byte";
@@ -3935,7 +3926,6 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         actor.physical_meter = source_actor.physical_meter;
         actor.action_delay_modifier = source_actor.action_delay_modifier;
         actor.sprite_stem = source_actor.sprite_stem;
-        actor.ordered_overrides = source_actor.ordered_overrides;
         actor.source_record_flags = static_cast<std::uint8_t>(
             actor_flag_mask(ActorServiceFlag::active) |
             actor_flag_mask(ActorServiceFlag::unresolved_service_bit_2) |
@@ -6308,7 +6298,6 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             std::distance(field_world_effect_slots_occupied_.begin(),
                           effect_slot));
         actor.temporary_world_encounter = true;
-        actor.ordered_overrides = source_actor.ordered_overrides;
         actor.initial_behavior_delay = source_positions_complete
             ? 0U
             : (outcome.scene_id == 0x37U
@@ -9099,7 +9088,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
             member.stun = record.behavior_meter;
             member.magic_resource = record.auxiliary[0];
             member.archetype = record.archetype_index;
-            member.karma = record.auxiliary[2];
+            member.karma = record.karma;
             member.magic_force = record.magic_force;
             member.posture = record.posture;
             member.magic_table_index = record.magic_table_index;
@@ -9215,7 +9204,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
             record.delay_meter = member.physical;
             record.behavior_meter = member.stun;
             record.auxiliary[0] = member.magic_resource;
-            record.auxiliary[2] = member.karma;
+            record.karma = member.karma;
             record.archetype_index = member.archetype;
             record.magic_force = member.magic_force;
             record.posture = member.posture;
@@ -9665,11 +9654,6 @@ bool FieldSceneRuntime::bootstrap(
     field_runner_feature_flags_ =
         restored_field_state == nullptr
             ? std::optional<std::uint8_t>{0U}
-            : std::nullopt;
-    field_entity_action_phase_roll_counters_ =
-        restored_field_state == nullptr
-            ? std::optional<std::array<std::uint8_t, 3>>{
-                  std::array<std::uint8_t, 3>{}}
             : std::nullopt;
     // ROM 0x00C2C clears FFF0CE during full initialization; the warm-reset
     // short-clear path preserves it. A loaded save does not expose this byte.
@@ -15323,7 +15307,7 @@ void FieldSceneRuntime::paint_attributes_skills_menu(
     // digit's cell. Keep that cell at the right edge of the host number.
     draw_command_overview_number(
         painter, command_overview_font_, 128, 160,
-        static_cast<unsigned>(record.auxiliary[2U]),
+        static_cast<unsigned>(record.karma),
         NumericVisualAlignment::right);
 
     const auto& menu_state = menu.state();

@@ -298,6 +298,7 @@ QJsonObject runner_record_to_json(const RunnerRecordFields& record) {
     SAVE_NUMBER(cyberware_flags);
     SAVE_NUMBER(action_profile_modifier_flags);
     SAVE_NUMBER(magic_table_index);
+    SAVE_NUMBER(karma);
 #undef SAVE_NUMBER
     object.insert(QStringLiteral("inventory_item_codes"),
                   byte_array(record.inventory_item_codes));
@@ -357,14 +358,57 @@ bool runner_record_from_json(const QJsonObject& object,
     READ_NUMBER(cyberware_flags, std::uint16_t);
     READ_NUMBER(action_profile_modifier_flags, std::uint8_t);
     READ_NUMBER(magic_table_index, std::uint16_t);
+    if (object.contains(QStringLiteral("karma"))) {
+        READ_NUMBER(karma, std::uint8_t);
+    }
 #undef READ_NUMBER
     if (!read_byte_array(object, "inventory_item_codes",
                          parsed.inventory_item_codes, error) ||
         !read_byte_array(object, "inventory_phase_bytes",
                          parsed.inventory_phase_bytes, error) ||
         !read_byte_array(object, "attributes", parsed.attributes, error) ||
-        !read_byte_array(object, "skills", parsed.skills, error) ||
-        !read_byte_array(object, "auxiliary", parsed.auxiliary, error)) {
+        !read_byte_array(object, "skills", parsed.skills, error)) {
+        return false;
+    }
+    const auto auxiliary_value = object.value(QStringLiteral("auxiliary"));
+    if (!auxiliary_value.isArray()) {
+        if (error != nullptr) {
+            *error = QStringLiteral("Save field 'auxiliary' is missing or invalid.");
+        }
+        return false;
+    }
+    const auto auxiliary = auxiliary_value.toArray();
+    if (static_cast<std::size_t>(auxiliary.size()) ==
+        kRunnerRecordAuxiliaryCount) {
+        if (!read_byte_array(object, "auxiliary", parsed.auxiliary, error)) {
+            return false;
+        }
+        if (!object.contains(QStringLiteral("karma"))) {
+            if (error != nullptr) {
+                *error = QStringLiteral("Save field 'karma' is missing.");
+            }
+            return false;
+        }
+    } else if (auxiliary.size() == 4) {
+        // Migrate the older save shape where Karma shared the auxiliary byte
+        // array. The named field is now authoritative in new snapshots.
+        QJsonObject legacy_auxiliary_object;
+        legacy_auxiliary_object.insert(QStringLiteral("legacy_auxiliary"),
+                                       auxiliary);
+        std::array<std::uint8_t, 4U> legacy_auxiliary{};
+        if (!read_byte_array(legacy_auxiliary_object, "legacy_auxiliary",
+                             legacy_auxiliary, error)) {
+            return false;
+        }
+        parsed.auxiliary = {legacy_auxiliary[0U], legacy_auxiliary[1U],
+                            legacy_auxiliary[3U]};
+        if (!object.contains(QStringLiteral("karma"))) {
+            parsed.karma = legacy_auxiliary[2U];
+        }
+    } else {
+        if (error != nullptr) {
+            *error = QStringLiteral("Save field 'auxiliary' has the wrong length.");
+        }
         return false;
     }
     record = parsed;

@@ -693,9 +693,9 @@ Scene 12 record 11/event 30 now routes by FFFC1E bit 10: clear presents the
 bodyguard page; set opens Caleb Brightmore through the shared Lua Johnson
 system. Debug/Release physical-input tests enter with ordinary Up through both
 FFFC1E bit-10 branches: the clear gate shows the bodyguard rejection without
-changing visit flags or counters; the set gate checks Caleb's two
-first-meeting pages, three-choice root, FFFC27 contact/visit bits, and +2
-source-byte triplet. Both write full 320x224 captures including `actual.bmp`.
+changing visit flags or Karma; the set gate checks Caleb's two first-meeting
+pages, three-choice root, FFFC27 contact/visit bits, and +2 Karma for each
+runner. Both write full 320x224 captures including `actual.bmp`.
 Caleb's information/contact outcomes and context-4 run settlement remain open,
 and no independent Genesis encounter frame is available. See the
 [`Icarus Descending audit`](visual-audits/icarus-descending-scene12.md).
@@ -807,8 +807,8 @@ Tabatha re-entry, David's 30-frame Holopix, and same-map return. The 101 route
 BMPs match across Debug/Release; selected full 320x224 states were inspected.
 ROM text records were regenerated into `assets/dialogue/script-text.json`.
 Command `0x14` checks that its Notebook/referral stores are resolved before the
-runner-byte service can mutate Karma, avoiding partial acceptance state on an
-incomplete save. The post-attack commands switch profiles and prompt roots;
+party service awards Karma, avoiding partial acceptance state on an incomplete
+save. The post-attack commands switch profiles and prompt roots;
 they do not establish the attack's combat outcome. There is no independent
 Genesis capture for the room-payment or post-attack variants. The supplied
 longplay confirms the intro, manager's three-choice menu, Tabatha's blank
@@ -1597,7 +1597,7 @@ Group Item bit 5, then returns D6=-1 rather than taking the generic scene-13
 event-table route. The Lua dialogue graph connects the Elders choice through
 command `0x34`, Lady Gillian's bit-9 Frosty referral, and command `0x44`'s
 bit-30 effect and opening pages. It applies command `0x49`'s FFFC34 bit-4
-clear and bit-5 set, plus a runner source-byte triplet `+3`. ROM helper
+clear and bit-5 set, plus +3 Karma for each runner. ROM helper
 `0x5D130` writes FFF0BE=9, selects the three-page table at `0x0F5870` with
 resources at `0x1FE690`, and calls the shared story-page routine `0x5D1F6`.
 The catalog records those pages, named profile art, source text layout, and

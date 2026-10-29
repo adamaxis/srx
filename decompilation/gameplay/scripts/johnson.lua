@@ -20,15 +20,15 @@ local function present_location_intro(profile, entry_seen_before)
        game.state[profile.first_visit_fact] ~= false then
         return false
     end
-    if profile.first_visit_runner_progress_delta ~= nil then
-        local delta = profile.first_visit_runner_progress_delta
-        assert(type(delta) == "number" and delta >= 0 and delta <= 0xFF and
-               delta % 1 == 0,
-            "Johnson first-visit progress delta must be a byte")
+    if profile.first_visit_karma_award ~= nil then
+        local amount = profile.first_visit_karma_award
+        assert(type(amount) == "number" and amount >= 1 and amount <= 0xFF and
+               amount % 1 == 0,
+            "Johnson first-visit Karma award must be an integer amount")
         assert(game.services.call(
-            "runner", "adjust_source_byte_triplet_" .. tostring(delta)) ==
+            "party", "award_karma_" .. tostring(amount)) ==
                 "applied",
-            "Johnson first-visit source progress could not be applied")
+            "Johnson first-visit Karma award could not be applied")
     end
     for _, event_id in ipairs(profile.first_visit_events) do
         game.ui.say(event_id)

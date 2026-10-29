@@ -9150,7 +9150,7 @@ int run_field_scene20_physical_entry_qa(
             field_scene.field_party_records_for_dump();
         std::array<std::uint8_t, 3> karma_before{};
         for (std::size_t slot = 0U; slot < karma_before.size(); ++slot) {
-            karma_before[slot] = karma_before_records[slot].auxiliary[2U];
+            karma_before[slot] = karma_before_records[slot].karma;
         }
         if (!actor_activity_flags.has_value() ||
             (*actor_activity_flags & 0x80U) != 0U ||
@@ -9178,7 +9178,7 @@ int run_field_scene20_physical_entry_qa(
                        far_records.begin(),
                        [](const std::uint8_t before,
                           const RunnerRecordFields& after) {
-                           return before == after.auxiliary[2U];
+                           return before == after.karma;
                        });
         if (field_scene.dialogue_open() ||
             !field_scene.pending_world_effect_for_dump() ||
@@ -9221,7 +9221,7 @@ int run_field_scene20_physical_entry_qa(
             karma_before.begin(), karma_before.end(), contact_records.begin(),
             [](const std::uint8_t before, const RunnerRecordFields& after) {
                 return static_cast<std::uint8_t>(before + 2U) ==
-                       after.auxiliary[2U];
+                       after.karma;
             });
         constexpr auto kFieldModeBit31 = std::uint32_t{1U} << 31U;
         constexpr auto kFieldModeEffectBit0 = std::uint32_t{1U} << 0U;
@@ -9287,7 +9287,7 @@ int run_field_scene20_physical_entry_qa(
             after_close_records.begin(),
             [](const std::uint8_t before, const RunnerRecordFields& after) {
                 return static_cast<std::uint8_t>(before + 2U) ==
-                       after.auxiliary[2U];
+                       after.karma;
             });
         if (field_scene.dialogue_open() || !karma_applied_once ||
             !after_close_actor_flags.has_value() ||
@@ -25659,7 +25659,7 @@ int run_field_icarus_entry_qa(
     // startup supplies zero before event 30 writes Caleb's contact bits.
     field_scene.seed_notebook_referral_flags_for_qa(0U);
     // ROM New Game also zeroes the three FF018D/FF028D/FF038D counters.
-    field_scene.seed_runner_source_byte_triplet_for_qa({0U, 0U, 0U});
+    field_scene.seed_party_karma_for_qa({0U, 0U, 0U});
 
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
     const auto save = [&](const std::string_view name) {
@@ -25708,7 +25708,7 @@ int run_field_icarus_entry_qa(
     if (!access_granted) {
         const auto flags = field_scene.notebook_referral_flags_for_dump();
         const auto counters =
-            field_scene.runner_source_byte_triplet_for_dump();
+            field_scene.party_karma_for_dump();
         if (movement_ticks == 0U || movement_ticks >= 90U ||
             field_scene.field_scene_reference_for_dump() != 12U ||
             !field_scene.dialogue_open() ||
@@ -25794,7 +25794,7 @@ int run_field_icarus_entry_qa(
         field_scene.dialogue_panel().option_count != 3U ||
         field_scene.notebook_referral_flags_for_dump() !=
             std::optional<std::uint8_t>{0x90U} ||
-        field_scene.runner_source_byte_triplet_for_dump() !=
+        field_scene.party_karma_for_dump() !=
             std::optional<std::array<std::uint8_t, 3>>{{2U, 2U, 2U}} ||
         !save("johnson-root") || !save("actual")) {
         std::cerr << "Icarus Caleb QA: first-meeting conversation did not "
@@ -27879,7 +27879,7 @@ int run_field_redmond_vigore_search_qa(
     std::vector<std::uint8_t> karma_before;
     karma_before.reserve(records_before.size());
     for (const auto& record : records_before) {
-        karma_before.push_back(record.auxiliary[2U]);
+        karma_before.push_back(record.karma);
     }
     constexpr std::uint8_t kUpNibble = 0x01U;
     field_scene.seed_vigore_search_for_dump();
@@ -28092,7 +28092,7 @@ int run_field_redmond_vigore_search_qa(
         !std::equal(records_after.begin(), records_after.end(),
                     karma_before.begin(), [](const auto& record,
                                              const std::uint8_t karma) {
-                        return record.auxiliary[2U] ==
+                        return record.karma ==
                                static_cast<std::uint8_t>(karma + 2U);
                     }) ||
         field_audio_events.size() != audio_before ||
@@ -28227,7 +28227,7 @@ int run_field_tarislar_first_entry_qa(
     std::vector<std::uint8_t> karma_before;
     karma_before.reserve(karma_before_records.size());
     for (const auto& record : karma_before_records) {
-        karma_before.push_back(record.auxiliary[2U]);
+        karma_before.push_back(record.karma);
     }
     const auto audio_before = field_audio_events.size();
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
@@ -28242,7 +28242,7 @@ int run_field_tarislar_first_entry_qa(
         const auto& records = field_scene.field_party_records_for_dump();
         const auto delta = !records.empty() && !karma_before.empty()
             ? static_cast<unsigned>(static_cast<std::uint8_t>(
-                  records.front().auxiliary[2U] - karma_before.front()))
+                  records.front().karma - karma_before.front()))
             : 0U;
         trace << phase << '\t' << frame << '\t'
               << static_cast<unsigned>(input) << '\t'
@@ -28298,7 +28298,7 @@ int run_field_tarislar_first_entry_qa(
     for (std::size_t i = 0U;
          party_reward_matches && i < rewarded_records.size(); ++i) {
         party_reward_matches = static_cast<std::uint8_t>(
-            rewarded_records[i].auxiliary[2U] - karma_before[i]) == 2U;
+            rewarded_records[i].karma - karma_before[i]) == 2U;
     }
     constexpr std::array<std::string_view, 9U> prompt_snippets{{
         "Tarlisar Garden Apartments", "Passing even more armed elves",
@@ -28522,7 +28522,7 @@ int run_field_tarislar_city_inn_qa(
         // The source new-game path writes zero Karma to the three live runner
         // records. This restored-position QA checkpoint otherwise omits that
         // mutable party byte state.
-        field_scene.seed_runner_source_byte_triplet_for_qa({0U, 0U, 0U});
+        field_scene.seed_party_karma_for_qa({0U, 0U, 0U});
         // Fresh New Game leaves FFFC30 bit 0 set and the remaining Notebook
         // tip bits clear, while FFFC27 starts clear. The restored-position
         // checkpoint does not include either flag store.
@@ -28658,12 +28658,12 @@ int run_field_tarislar_city_inn_qa(
                                  route == "tabatha_caleb_thanks";
         const bool thanks_choice = route == "tabatha_caleb_thanks" ||
                                    route == "tabatha_errascoe_thanks";
-        const auto source_triplet_before =
-            field_scene.runner_source_byte_triplet_for_dump();
-        if (source_triplet_before !=
+        const auto karma_before =
+            field_scene.party_karma_for_dump();
+        if (karma_before !=
             std::optional<std::array<std::uint8_t, 3>>{{0U, 0U, 0U}}) {
-            std::cerr << "Tarislar City Inn QA: fresh New Game source-byte "
-                         "triplet did not start at zero\n";
+            std::cerr << "Tarislar City Inn QA: fresh New Game party Karma "
+                         "did not start at zero\n";
             return 3;
         }
 
@@ -28712,8 +28712,8 @@ int run_field_tarislar_city_inn_qa(
 
         tap_qa_controller_button(field_scene, 0x40U);
         const auto& arrival = field_scene.dialogue_panel();
-        const auto source_triplet_after =
-            field_scene.runner_source_byte_triplet_for_dump();
+        const auto karma_after =
+            field_scene.party_karma_for_dump();
         const bool arrival_saved = save("tabatha-apartment-choice", false);
         if (!field_scene.dialogue_open() ||
             arrival.actor_name != "Tabatha Shale" ||
@@ -28721,11 +28721,11 @@ int run_field_tarislar_city_inn_qa(
             arrival.option_count != 1U ||
             arrival.options[0U].source_label.find("Michael's last Shadowrun") ==
                 std::string_view::npos ||
-            source_triplet_after !=
+            karma_after !=
                 std::optional<std::array<std::uint8_t, 3>>{{1U, 1U, 1U}} ||
             !arrival_saved) {
             std::cerr << "Tarislar City Inn QA: agreement did not apply the "
-                         "source-byte triplet and Tabatha apartment choice"
+                     "party Karma award and Tabatha apartment choice"
                       << " (dialogue=" << field_scene.dialogue_open()
                       << ", actor=" << arrival.actor_name
                       << ", portrait=" << arrival.portrait_alias
@@ -28740,13 +28740,13 @@ int run_field_tarislar_city_inn_qa(
                       << field_scene.field_mode_text_open_for_dump()
                       << ", source_boundary="
                       << arrival.source_boundary_reason
-                      << ", triplet=";
-            if (source_triplet_after.has_value()) {
-                std::cerr << static_cast<unsigned>((*source_triplet_after)[0U])
+                      << ", party_karma=";
+            if (karma_after.has_value()) {
+                std::cerr << static_cast<unsigned>((*karma_after)[0U])
                           << ','
-                          << static_cast<unsigned>((*source_triplet_after)[1U])
+                          << static_cast<unsigned>((*karma_after)[1U])
                           << ','
-                          << static_cast<unsigned>((*source_triplet_after)[2U]);
+                          << static_cast<unsigned>((*karma_after)[2U]);
             } else {
                 std::cerr << "unknown";
             }
@@ -28990,7 +28990,7 @@ int run_field_tarislar_city_inn_qa(
         std::ofstream trace(output / "route.tsv", std::ios::trunc);
         if (!trace) return 3;
         trace << "route\trecord\tevent\tmovement_ticks\tfirst_topic\t"
-                 "second_topic\tfinal_choice\ttriplet_before\ttriplet_after\t"
+                 "second_topic\tfinal_choice\tkarma_before\tkarma_after\t"
                  "scene\tfunds_before\tfunds_after\n"
               << route << "\t68\t1\t" << movement_ticks << '\t'
               << (caleb_first ? "caleb" : "errascoe") << '\t'
@@ -29004,7 +29004,7 @@ int run_field_tarislar_city_inn_qa(
                   << " topic_order=" << (caleb_first ? "caleb-errascoe"
                                                         : "errascoe-caleb")
                   << " final_choice=" << (thanks_choice ? "thanks" : "recruit")
-                  << " triplet=0,0,0-to-1,1,1 scene=1 "
+                  << " party_karma=0,0,0-to-1,1,1 scene=1 "
                      "artifacts=" << output.string() << '\n';
         return 0;
     }
@@ -29910,7 +29910,7 @@ int run_field_penumbra_mako_qa(
         return 3;
     }
     const auto initial_karma =
-        field_scene.active_runner_record().auxiliary[2U];
+        field_scene.active_runner_record().karma;
 
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
     const auto save = [&asset_root, &output, &render](
@@ -30323,7 +30323,7 @@ int run_field_penumbra_mako_qa(
         (field_scene.field_mode_flags_for_dump() & (1U << 24U)) == 0U ||
         (field_scene.field_mode_flags_for_dump() &
          ((1U << 20U) | (1U << 21U))) != 0U ||
-        field_scene.active_runner_record().auxiliary[2U] !=
+        field_scene.active_runner_record().karma !=
             static_cast<std::uint8_t>(initial_karma + 2U) ||
         field_scene.field_funds_for_dump() !=
             std::optional<std::uint32_t>{0U} ||
@@ -33558,7 +33558,7 @@ int run_field_sinsearach_gate_physical_entry_qa(
     }
     if (!field_scene.set_story_flag_for_dump(30U, false)) return 3;
     field_scene.set_group_item_flags_for_dump(0U);
-    field_scene.seed_runner_source_byte_triplet_for_qa({1U, 2U, 3U});
+    field_scene.seed_party_karma_for_qa({1U, 2U, 3U});
 
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
     const auto save = [&field_scene, &asset_root, &output, &render](
@@ -33727,8 +33727,8 @@ int run_field_sinsearach_gate_physical_entry_qa(
                      "source answer\n";
         return 3;
     }
-    const auto runner_triplet_before =
-        field_scene.runner_source_byte_triplet_for_dump();
+    const auto karma_before =
+        field_scene.party_karma_for_dump();
     // Keep the confirming A press held across the cinematic's first frame.
     // The prompt consumes the edge; ROM 0x0D94's next sample must see only
     // the held low byte, leaving the first full-screen page visible.
@@ -33864,17 +33864,17 @@ int run_field_sinsearach_gate_physical_entry_qa(
     const auto completed = std::string(
         "field.dialogue.cinematic.completed:"
         "salish.sinsearach.frosty_harlequin_exposition");
-    const auto runner_triplet_after =
-        field_scene.runner_source_byte_triplet_for_dump();
+    const auto karma_after =
+        field_scene.party_karma_for_dump();
     if (field_scene.dialogue_open() ||
         field_scene.field_scene_reference_for_dump() != 9U ||
         return_frames == 0U || !returned ||
         (field_scene.field_world_fact_flags_for_dump() & (1U << 30U)) == 0U ||
         (field_scene.field_mode_effect_flags_for_dump() & (1U << 4U)) != 0U ||
         (field_scene.field_mode_effect_flags_for_dump() & (1U << 5U)) == 0U ||
-        !runner_triplet_before.has_value() || !runner_triplet_after.has_value() ||
-        *runner_triplet_before != std::array<std::uint8_t, 3U>{1U, 2U, 3U} ||
-        *runner_triplet_after != std::array<std::uint8_t, 3U>{4U, 5U, 6U} ||
+        !karma_before.has_value() || !karma_after.has_value() ||
+        *karma_before != std::array<std::uint8_t, 3U>{1U, 2U, 3U} ||
+        *karma_after != std::array<std::uint8_t, 3U>{4U, 5U, 6U} ||
         std::count(source_boundaries.begin(), source_boundaries.end(), completed) !=
             1) {
         std::cerr << "Sinsearach gate QA: command 0x49 story pages or typed "
@@ -34729,8 +34729,8 @@ int run_field_owlfeather_physical_entry_qa(
         field_scene.set_compact_runner_markers_for_dump(0xFFU, 0xFFU);
     }
     // The positional checkpoint is restored-state data; seed the source's
-    // New Game zero triplet so command 0x17 can apply its runner adjustment.
-    field_scene.seed_runner_source_byte_triplet_for_qa({0U, 0U, 0U});
+    // New Game zero Karma so command 0x17 can award each party member.
+    field_scene.seed_party_karma_for_qa({0U, 0U, 0U});
 
     const auto render = [&field_scene] { return render_qa_field(field_scene); };
     const auto save = [&](const std::string_view name,
@@ -36025,7 +36025,7 @@ int run_field_tarislar_guarded_entry_qa(
     std::vector<std::uint8_t> karma_before;
     karma_before.reserve(party_before.size());
     for (const auto& record : party_before) {
-        karma_before.push_back(record.auxiliary[2U]);
+        karma_before.push_back(record.karma);
     }
     const auto audio_before = field_audio_events.size();
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
@@ -36242,7 +36242,7 @@ int run_field_tarislar_guarded_entry_qa(
     const auto& party_after = field_scene.field_party_records_for_dump();
     bool karma_unchanged = party_after.size() == karma_before.size();
     for (std::size_t i = 0U; karma_unchanged && i < party_after.size(); ++i) {
-        karma_unchanged = party_after[i].auxiliary[2U] == karma_before[i];
+        karma_unchanged = party_after[i].karma == karma_before[i];
     }
     const auto denied_transition = std::count(
         source_boundaries.begin(), source_boundaries.end(),
@@ -47152,7 +47152,7 @@ int main(int argc, char** argv) {
                 field_scene.active_runner_record().delay_meter = 2U;
                 field_scene.active_runner_record().behavior_meter = 0U;
                 field_scene.active_runner_record().attributes[0U] = 1U;
-                field_scene.active_runner_record().auxiliary[2U] = 50U;
+                field_scene.active_runner_record().karma = 50U;
                 field_scene.active_runner_record().cyberware_flags =
                     static_cast<std::uint16_t>((1U << 6U) | (1U << 8U) |
                                                (1U << 9U) | (1U << 11U));
@@ -47565,7 +47565,7 @@ int main(int argc, char** argv) {
                 press_button(0x40U); // A confirms Body +1 and spends Karma.
                 if (field_scene.hotel_karma_screen().upgrade_prompt_open() ||
                     field_scene.active_runner_record().attributes[0U] != 2U ||
-                    field_scene.active_runner_record().auxiliary[2U] != 48U ||
+                    field_scene.active_runner_record().karma != 48U ||
                     capture(output / "karma-spend" / "upgrade-applied.bmp")
                         .isNull()) {
                     std::cerr << "field Hotel QA: Yes did not spend Karma and increase Body\n";
@@ -47915,7 +47915,7 @@ int main(int argc, char** argv) {
                         if (!green_header ||
                             !numeric_visual_patch_matches(
                                 image, green_font, 128, 160,
-                                record.auxiliary[2U], color_tint,
+                                record.karma, color_tint,
                                 NumericVisualAlignment::right)) {
                             reason = "race/class header or live +0x8D Karma display did not match the profile";
                             return false;
@@ -48023,7 +48023,7 @@ int main(int argc, char** argv) {
                                                 color_tint) &&
                                             numeric_visual_patch_matches(
                                                 image, green_font, 288, 72,
-                                                record.auxiliary[3U],
+                                                record.cyberware_essence_ones(),
                                                 color_tint);
                                     } else {
                                         // The focused Magic detail is +0x7F;
@@ -48050,7 +48050,7 @@ int main(int argc, char** argv) {
                                            (label_index == 6U &&
                                             !numeric_visual_patch_matches(
                                                 image, green_font, 288, 72,
-                                                record.auxiliary[3U],
+                                                record.cyberware_essence_ones(),
                                                 base_tint))) {
                                     reason = "unselected grid label/value pixels did not match the live ROM profile";
                                     return false;
@@ -48092,7 +48092,7 @@ int main(int argc, char** argv) {
                                  << '\t' << status_name(expected.status) << '\t'
                                  << static_cast<unsigned>(expected.next_value)
                                  << '\t' << expected.karma_cost << '\t'
-                                 << static_cast<unsigned>(record.auxiliary[2U])
+                                 << static_cast<unsigned>(record.karma)
                                   << '\t'
                                   << frame_path.lexically_relative(
                                          output_directory).string()
@@ -48519,7 +48519,7 @@ int main(int argc, char** argv) {
                             return profile_failure(
                                 "a source Body profile unexpectedly starts at its race maximum");
                         }
-                        field_scene.active_runner_record().auxiliary[2U] =
+                        field_scene.active_runner_record().karma =
                             static_cast<std::uint8_t>(body_cost - 1U);
                         move_profile_cursor(0U, 0U);
                         // Force a live detail redraw after the QA-only Karma
@@ -48540,8 +48540,8 @@ int main(int argc, char** argv) {
                                 .upgrade_prompt_open() ||
                             field_scene.active_runner_record().attributes !=
                                 insufficient_before.attributes ||
-                            field_scene.active_runner_record().auxiliary[2U] !=
-                                insufficient_before.auxiliary[2U] ||
+                            field_scene.active_runner_record().karma !=
+                                insufficient_before.karma ||
                             insufficient_frame.isNull() ||
                             !image_region_has_color(
                                 insufficient_frame, 72, 176, 160, 16,
@@ -48550,7 +48550,7 @@ int main(int argc, char** argv) {
                                 "the insufficient-Karma path did not preserve +0x77/+0x8D and display its message");
                         }
 
-                        field_scene.active_runner_record().auxiliary[2U] =
+                        field_scene.active_runner_record().karma =
                             body_cost;
                         press_profile_button(0x08U);
                         cursor_column = 1U;
@@ -48565,7 +48565,7 @@ int main(int argc, char** argv) {
                                 .upgrade_prompt_selection() != 0U ||
                             field_scene.active_runner_record().attributes[0U] !=
                                 body_current ||
-                            field_scene.active_runner_record().auxiliary[2U] !=
+                            field_scene.active_runner_record().karma !=
                                 body_cost) {
                             return profile_failure(
                                 "exact-funds A did not open the default-Yes prompt without writing early");
@@ -48598,7 +48598,7 @@ int main(int argc, char** argv) {
                                 .upgrade_prompt_open() ||
                             field_scene.active_runner_record().attributes !=
                                 transaction_before_decline.attributes ||
-                            field_scene.active_runner_record().auxiliary[2U] !=
+                            field_scene.active_runner_record().karma !=
                                 body_cost || declined_frame.isNull()) {
                             return profile_failure(
                                 "B on No did not cancel without changing the runner or Karma");
@@ -48615,7 +48615,7 @@ int main(int argc, char** argv) {
                                 .upgrade_prompt_selection() != 0U ||
                             field_scene.active_runner_record().attributes !=
                                 transaction_before_decline.attributes ||
-                            field_scene.active_runner_record().auxiliary[2U] !=
+                            field_scene.active_runner_record().karma !=
                                 body_cost || held_a_prompt.isNull() ||
                             image_has_green_ink(held_a_prompt, 24, 168, 72, 24) ||
                             image_region_differs(preview_before_prompt,
@@ -48663,7 +48663,7 @@ int main(int argc, char** argv) {
                         if (field_scene.hotel_karma_screen()
                                 .upgrade_prompt_open() ||
                             applied_record.attributes[0U] != body_current + 1U ||
-                            applied_record.auxiliary[2U] != 0U ||
+                            applied_record.karma != 0U ||
                             applied_record.skills != profile.skills ||
                             applied_record.species_index !=
                                 profile.species_index ||
@@ -48677,7 +48677,7 @@ int main(int argc, char** argv) {
                                       << " body=" << static_cast<unsigned>(
                                              applied_record.attributes[0U])
                                       << " karma=" << static_cast<unsigned>(
-                                             applied_record.auxiliary[2U])
+                                             applied_record.karma)
                                       << " prompt=" << field_scene
                                              .hotel_karma_screen()
                                              .upgrade_prompt_open()
@@ -48726,11 +48726,11 @@ int main(int argc, char** argv) {
                         if (capture_profile.species_index != 0U ||
                             capture_profile.archetype_index != 1U ||
                             capture_profile.attributes[0U] != 2U ||
-                            capture_profile.auxiliary[2U] != 0U) {
+                            capture_profile.karma != 0U) {
                             return profile_failure(
                                 "the Joshua Human/Shaman ROM preset no longer provides Body 2 with zero preset Karma");
                         }
-                        capture_profile.auxiliary[2U] = 20U;
+                        capture_profile.karma = 20U;
                         field_scene.active_runner_record() = capture_profile;
                         field_scene.refresh_field_hud_for_dump();
                         press_profile_button(0x40U);
@@ -48751,10 +48751,10 @@ int main(int argc, char** argv) {
                         const auto capture_preview =
                             field_scene.hotel_karma_screen().preview(
                                 field_scene.active_runner_record());
-                        field_scene.active_runner_record().auxiliary[2U] = 0U;
+                        field_scene.active_runner_record().karma = 0U;
                         const auto zero_karma_frame =
                             render_qa_field(field_scene);
-                        field_scene.active_runner_record().auxiliary[2U] =
+                        field_scene.active_runner_record().karma =
                             20U;
                         const auto preview_frame = capture(
                             output_directory /
@@ -48866,7 +48866,7 @@ int main(int argc, char** argv) {
                         if (field_scene.hotel_karma_screen()
                                 .upgrade_prompt_open() ||
                             applied_profile.attributes[0U] != 3U ||
-                            applied_profile.auxiliary[2U] != 17U ||
+                            applied_profile.karma != 17U ||
                             !applied_karma_pixels ||
                             !image_region_differs(preview_frame, applied_frame,
                                                   112, 160, 16, 8) ||
@@ -48880,7 +48880,7 @@ int main(int argc, char** argv) {
                                       << static_cast<unsigned>(
                                              applied_profile.attributes[0U])
                                       << " karma=" << static_cast<unsigned>(
-                                             applied_profile.auxiliary[2U])
+                                             applied_profile.karma)
                                       << " prompt=" << field_scene
                                              .hotel_karma_screen()
                                              .upgrade_prompt_open()
@@ -53386,7 +53386,7 @@ int main(int argc, char** argv) {
                 // the same fixture can exercise both prompt choices. Seed it
                 // before command entry so derived combat bars agree too.
                 field_scene.active_runner_record().attributes[0U] = 1U;
-                field_scene.active_runner_record().auxiliary[2U] = 50U;
+                field_scene.active_runner_record().karma = 50U;
                 // Exercise the first-match detail branches with two installed
                 // Quickness and Body upgrades each. The lower set bits must
                 // win, matching ROM 0xD732 and 0xD7A0.

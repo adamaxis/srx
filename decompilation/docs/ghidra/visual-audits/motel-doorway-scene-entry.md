@@ -365,7 +365,7 @@ their own ROM-first and multi-frame audit before being called correct.
   controller input, publishes event 2, and opens the first Stoker page. A
   enters the three-choice Michael-package offer; C opens the debt question; A
   pays through command `0x05` on the QA-seeded wallet, which applies the source
-  `FFFC1E`, `FF018F`, runner-byte, and `FFFC30` mutations before showing the
+  `FFFC1E`, `FF018F`, party Karma, and `FFFC30` mutations before showing the
   handoff page. A returns to the clean field. Typed story state selects the
   same package offer on an unpaid repeat and ordinary motel service after the
   debt and package flags are both complete. Physical repeat-entry movement

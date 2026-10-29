@@ -38,9 +38,8 @@ StokerMotelDebtPaymentOutcome resolve_stoker_motel_debt_payment(
         state.world_flags, static_cast<std::int32_t>(state.effect_marker));
     state.funds += kStokerPaymentCredit;
 
-    // 0x59C34 is already a typed shared conversion of the source triplet
-    // update used by this command.
-    adjust_runner_source_byte_triplet(state.runner_source_bytes, 1U);
+    // 0x59C34 awards one Karma point to each of the three runners.
+    award_party_karma(state.party_karma, 1U);
 
     // 0x21428 sets bit zero of the runner feature/status byte at FF018F.
     state.runner_feature_flags = static_cast<std::uint8_t>(

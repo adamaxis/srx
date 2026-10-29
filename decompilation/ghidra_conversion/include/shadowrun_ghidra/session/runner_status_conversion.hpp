@@ -26,10 +26,10 @@ void reset_runner_status_triplet(
     const RunnerStatusPreparationBoundary& prepare_record = {},
     const RunnerStatusFinalizeBoundary& finalize_record = {});
 
-// ROM 0x59C34: add the caller's byte to the same source field in all three
-// runner records. The source uses add.b, so unsigned eight-bit wraparound is
-// intentional here.
-void adjust_runner_source_byte_triplet(
-    std::array<std::uint8_t, 3>& source_bytes, std::uint8_t delta);
+// ROM 0x59C34 awards Karma to each runner; the source value is live-record
+// +0x8D, which the Karma screen reads at 0x0D3EA. Preserve the game's
+// unsigned eight-bit Karma range without exposing record layout to callers.
+void award_party_karma(std::array<std::uint8_t, 3>& party_karma,
+                      std::uint8_t amount);
 
 } // namespace shadowrun::ghidra_conversion
