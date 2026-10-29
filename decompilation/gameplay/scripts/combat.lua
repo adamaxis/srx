@@ -288,38 +288,17 @@ local function dynamic_status_modifier(difficulty, attacker, linked, context)
         return difficulty
     end
 
-    local profiles = context.action_profile_modifiers
-    local profile_index = context.linked_action_profile_index
-    if type(profile_index) ~= "number" and type(linked) == "table" then
-        profile_index = linked.linked_action_profile_index
-    end
-    if type(profile_index) ~= "number" or profile_index % 1 ~= 0 or
-       profile_index < 0 or type(profiles) ~= "table" or
-       profile_index >= #profiles then
-        return nil
-    end
-    profile_index = profile_index + 1
-    local profile = profiles[profile_index]
+    local profiles = type(linked) == "table" and
+        linked.dynamic_action_profile or nil
+    local profile = type(profiles) == "table" and
+        profiles[primary and "primary" or "secondary"] or nil
     if type(profile) ~= "table" then
         return nil
     end
 
-    local roll_count
-    local roll_difficulty
-    if primary then
-        roll_count = profile.primary_roll_count
-        roll_difficulty = profile.primary_difficulty
-    else
-        roll_count = profile.secondary_roll_count
-        roll_difficulty = profile.secondary_difficulty
-    end
-
-    -- The host resolves the source row's signed selector into an attribute
-    -- name before this rule runs. At ROM 0x557C4, a negative selector selects
-    -- +0x7C (Willpower); D4EA0 rows 5 and 12 are both negative.
-    local attributes = context.action_profile_attributes
-    local attribute_name = type(attributes) == "table" and
-        attributes[primary and 1 or 2] or nil
+    local roll_count = profile.roll_count
+    local roll_difficulty = profile.difficulty
+    local attribute_name = profile.attribute
     if attribute_name ~= E.ActorAttribute.BODY and
        attribute_name ~= E.ActorAttribute.WILLPOWER then
         return nil
@@ -456,6 +435,21 @@ local function copy_combatant(record)
                 policies[action_id] = policy_copy
             end
             copy[key] = policies
+        elseif key == "action_profile_options" then
+            copy[key] = {
+                primary = value.primary == true,
+                secondary = value.secondary == true,
+            }
+        elseif key == "dynamic_action_profile" then
+            local profiles = {}
+            for profile_name, profile in pairs(value) do
+                local profile_copy = {}
+                for name, item in pairs(profile) do
+                    profile_copy[name] = item
+                end
+                profiles[profile_name] = profile_copy
+            end
+            copy[key] = profiles
         elseif key == "inventory" then
             local inventory = {}
             for index, item in ipairs(value) do

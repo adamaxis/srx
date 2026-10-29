@@ -1095,8 +1095,9 @@ struct ScriptCombatantFacts {
     std::uint8_t armor_index = 0;
     std::uint8_t equipped_action_code = 0;
     ScriptCombatActionProfileOptions action_profile_options;
-    // 0xFFFF means the source +0xD8 linked-record relationship has not been
-    // supplied; never substitute an unrelated runner menu-table index.
+    // Host-side selector from the linked source record (+0xD8 -> +0xA0,
+    // 0x55786). The Lua adapter resolves it to named profile values; 0xFFFF
+    // means the relationship is unavailable.
     std::uint16_t linked_action_profile_index = 0xFFFFU;
     // Host-side source-record adapter only. Lua receives the ordered,
     // item-specific `inventory` view from combat_inventory.hpp.
@@ -1898,6 +1899,8 @@ struct ScriptActorBehaviorContext {
     std::vector<ScriptActorTargetCandidate> world_target_selection_candidates;
     ScriptActorRandomBound ai_random_bound;
     std::optional<ScriptCombatantFacts> combatant;
+    // Host-side source data. The Lua adapter sends only the selected profile
+    // values and resolved attributes to each combatant.
     std::array<ScriptActionProfileModifierPair, 5>
         action_profile_modifiers{};
     // Resolved attribute names for the two +0xDF dynamic-profile branches.

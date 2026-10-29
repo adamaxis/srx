@@ -50,7 +50,6 @@ local function strike_fixture(target_meter)
         entity_kind = E.SpriteType.HELL_HOUND,
         dynamic_world_encounter_actor = true,
         movement_allowed = true,
-        action_profile_modifiers = {},
         ai_random_bound = function() return 0 end,
         combatant = combatant(E.ActorPool.OTHERS, 10),
         action_timing = { quickness = 0, intelligence = 0, modifier = 0 },

@@ -10849,7 +10849,7 @@ GameScriptRuntime::actor_heartbeat(
     }
     lua_setfield(state, -2, "world_effect_slot_occupancy");
     bool semantic_inventory_valid = true;
-    const auto push_combatant = [state, &semantic_inventory_valid](
+    const auto push_combatant = [state, &semantic_inventory_valid, &context](
         const ScriptCombatantFacts& combatant) {
         lua_createtable(state, 0, 22);
         const auto table_index = lua_absindex(state, -1);
@@ -10963,8 +10963,40 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushboolean(state, combatant.action_profile_options.secondary);
         lua_setfield(state, profile_options_index, "secondary");
         lua_setfield(state, table_index, "action_profile_options");
-        set_integer("linked_action_profile_index",
-                    combatant.linked_action_profile_index);
+        // Resolve the source-linked profile on the host. Lua receives the
+        // selected roll rules and attribute meaning, never the +0xA0 row index.
+        const auto profile_index = static_cast<std::size_t>(
+            combatant.linked_action_profile_index);
+        if (profile_index < context.action_profile_modifiers.size()) {
+            const auto& profile =
+                context.action_profile_modifiers[profile_index];
+            lua_createtable(state, 0, 2);
+            const auto profiles_index = lua_absindex(state, -1);
+            const auto push_profile = [state, profiles_index](
+                                          const char* name,
+                                          const std::uint8_t roll_count,
+                                          const std::uint8_t difficulty,
+                                          const std::string_view attribute) {
+                if (attribute != "body" && attribute != "willpower") {
+                    return;
+                }
+                lua_createtable(state, 0, 3);
+                lua_pushinteger(state, roll_count);
+                lua_setfield(state, -2, "roll_count");
+                lua_pushinteger(state, difficulty);
+                lua_setfield(state, -2, "difficulty");
+                lua_pushlstring(state, attribute.data(), attribute.size());
+                lua_setfield(state, -2, "attribute");
+                lua_setfield(state, profiles_index, name);
+            };
+            push_profile("primary", profile.primary_roll_count,
+                         profile.primary_difficulty,
+                         context.action_profile_attributes[0]);
+            push_profile("secondary", profile.secondary_roll_count,
+                         profile.secondary_difficulty,
+                         context.action_profile_attributes[1]);
+            lua_setfield(state, table_index, "dynamic_action_profile");
+        }
         if (!push_combat_inventory(state, combatant.item_codes,
                                    combatant.item_phases)) {
             semantic_inventory_valid = false;
@@ -10998,34 +11030,6 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "combatant");
-    lua_createtable(state,
-                    static_cast<int>(context.action_profile_modifiers.size()),
-                    0);
-    for (std::size_t index = 0U;
-         index < context.action_profile_modifiers.size(); ++index) {
-        const auto& profile = context.action_profile_modifiers[index];
-        lua_createtable(state, 0, 4);
-        lua_pushinteger(state, profile.primary_roll_count);
-        lua_setfield(state, -2, "primary_roll_count");
-        lua_pushinteger(state, profile.primary_difficulty);
-        lua_setfield(state, -2, "primary_difficulty");
-        lua_pushinteger(state, profile.secondary_roll_count);
-        lua_setfield(state, -2, "secondary_roll_count");
-        lua_pushinteger(state, profile.secondary_difficulty);
-        lua_setfield(state, -2, "secondary_difficulty");
-        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
-    }
-    lua_setfield(state, -2, "action_profile_modifiers");
-    lua_createtable(state,
-                    static_cast<int>(context.action_profile_attributes.size()),
-                    0);
-    for (std::size_t index = 0U;
-         index < context.action_profile_attributes.size(); ++index) {
-        const auto attribute = context.action_profile_attributes[index];
-        lua_pushlstring(state, attribute.data(), attribute.size());
-        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
-    }
-    lua_setfield(state, -2, "action_profile_attributes");
     lua_pushboolean(state, context.combat_meter_service_blocked);
     lua_setfield(state, -2, "combat_meter_service_blocked");
     lua_pushboolean(state, context.target_selection_latched);

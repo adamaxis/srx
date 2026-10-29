@@ -103,5 +103,70 @@ for species, maxima in pairs(Karma.ATTRIBUTE_MAXIMA) do
     end
 end
 
+local function reaction_combatant(strength)
+    return {
+        record_type = 3,
+        physical_meter = 10,
+        mental_meter = 10,
+        posture_reduction_percent = 0,
+        cyberware = {},
+        combat_traits = {
+            ignores_cover_condition_penalty = false,
+            adds_two_condition_difficulty = false,
+            is_special_spell_target = false,
+            takes_fixed_meter_damage = false,
+            qualifies_for_party_support_bonus = false,
+            is_ghoul_bounty_target = false,
+        },
+        action_profile_options = { primary = false, secondary = false },
+        attributes = {
+            body = 2,
+            quickness = 2,
+            strength = strength,
+            intelligence = 2,
+            willpower = 2,
+        },
+        skills = { melee_combat = 1 },
+        actor_facts = {
+            lifecycle = { active = true },
+            interaction = {
+                no_coverage_difficulty_bonus = false,
+                defense_difficulty_reduction = false,
+            },
+        },
+        inventory = {},
+    }
+end
+
+local function reaction_with_profile(use_profile)
+    local attacker = reaction_combatant(5)
+    attacker.action_profile_options.primary = use_profile
+    local defender = reaction_combatant(0)
+    if use_profile then
+        defender.dynamic_action_profile = {
+            primary = {
+                roll_count = 3,
+                difficulty = 1,
+                attribute = E.ActorAttribute.BODY,
+            },
+        }
+    end
+    local target = { id = "profile_target", combatant = defender }
+    return Combat.resolve_reaction({
+        combatant = attacker,
+        ai_target_candidates = {},
+        ai_random_bound = function(bound)
+            if bound ~= 6 then return nil end
+            return 3 -- face 4 passes difficulty 4 and fails difficulty 5.
+        end,
+    }, target)
+end
+
+local baseline_reaction = reaction_with_profile(false)
+local profile_reaction = reaction_with_profile(true)
+check(baseline_reaction ~= nil and baseline_reaction.mental_meter == 8 and
+      profile_reaction == nil,
+      "linked named profile data was not applied to the primary action rule")
+
 print(string.format("combat_skill_policy_tests: %d/%d passed", passed, total))
 if passed ~= total then os.exit(1) end
