@@ -1280,6 +1280,9 @@ void FieldSceneRuntime::advance_field_actor_animation() {
     if (field_entity_.active) {
         const auto previous_frame = field_entity_animation_.frame;
         const auto previous_animation = field_entity_animation_id_;
+        const auto previous_direction = field_entity_.direction;
+        const auto previous_animation_selector =
+            field_entity_animation_selector_;
         const auto decision = heartbeat_field_player(
             scripting::ScriptActorHeartbeatPhase::render);
         if (!decision.has_value()) {
@@ -1289,6 +1292,15 @@ void FieldSceneRuntime::advance_field_actor_animation() {
             field_entity_.direction = decision->direction;
             field_entity_animation_.frame = decision->animation_frame;
             field_entity_animation_id_ = decision->animation_id;
+            // Keep the source-facing QA value derived from semantic render
+            // state. The presenter draws by animation ID and direction.
+            if (decision->animation_id == "idle" ||
+                decision->animation_id == "walk") {
+                field_entity_animation_selector_ =
+                    select_field_entity_animation_selector(
+                        decision->direction,
+                        decision->animation_id == "walk");
+            }
             field_entity_.spell_effect_visible =
                 decision->spell_effect_visible;
             field_entity_.spell_effect_id = decision->spell_effect_id;
@@ -1406,7 +1418,10 @@ void FieldSceneRuntime::advance_field_actor_animation() {
             }
             field_entity_animation_.redraw_requested =
                 previous_frame != field_entity_animation_.frame ||
-                previous_animation != field_entity_animation_id_;
+                previous_animation != field_entity_animation_id_ ||
+                previous_direction != field_entity_.direction ||
+                previous_animation_selector !=
+                    field_entity_animation_selector_;
         }
     }
 }
