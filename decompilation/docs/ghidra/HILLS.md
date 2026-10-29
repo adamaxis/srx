@@ -1716,6 +1716,24 @@ other; they are internal runtime captures, not a Genesis visual match. Other
 default-list routes, collision behavior, and general NPC targeting remain
 open.
 
+## Scene-54 default Yakuza actors (partial, 2026-10-28)
+
+The Scene-54 default actor list at ROM `0x1E994C` contains six hostile kind-8
+Yakuza Weenr rows, with source positions at `0x1E99B0..0x1E99CE` and template
+`0x1D66EE`. Initializer `0x44BC` copies the template action bytes; the template
+bytes at `+0x06..+0x09` are `30 00 00 0A`, supplying 48 ammunition and item 10.
+The field runtime now keeps these rows in source order and sends the supported
+Yakuza profile through the existing Lua actor targeting, action, and animation
+behavior. Debug/Release
+`shadowrun_ghidra_conversion_qt_field_default_yakuza_actors_qa` checks all six
+record slots and positions, the resolved profile, item/ammunition facts, a
+party-runner target, and writes `scene54-spawn.bmp` plus `actual.bmp`.
+Debug/Release `actual.bmp` hashes match. This focused case does not yet assert
+a successful weapon spawn or damage result, and these internal captures are
+not an independent Genesis visual comparison. Scene-55 Thon remains inactive
+until its incomplete host pose set is resolved; its source slot and random
+advance remain reserved. The broader default-actor hill remains partial.
+
 ## Default route heading selector (partial, 2026-10-28)
 
 ROM `0x145A2` installs `0xB574` for route movement; `0xB5BE` and the `0xC062`

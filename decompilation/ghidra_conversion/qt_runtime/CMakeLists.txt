@@ -1376,6 +1376,14 @@ add_shadowrun_qt_qa_case(
     --field-scene2-pedestrians-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-scene2-pedestrians-qa")
 
+# Load Scene 54's six default-list Yakuza through their source combat profile,
+# then verify the source action facts, record allocation, target path, and BMP.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_default_yakuza_actors_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-default-yakuza-actors-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-default-yakuza-actors-qa")
+
 # Check the three default pedestrian patrols and source-position visibility on
 # every regional map, using a fresh field runtime separate from other QA paths.
 add_shadowrun_qt_qa_case(

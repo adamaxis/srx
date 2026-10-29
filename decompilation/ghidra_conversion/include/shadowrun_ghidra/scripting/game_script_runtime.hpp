@@ -1553,9 +1553,10 @@ struct ScriptActorBehaviorContext {
     ScriptMovementCollisionQuery movement_collision;
     ScriptMovementRouteLookup movement_route_lookup;
     ScriptMovementCollisionRecovery movement_collision_recovery;
-    // Dynamic field encounters carry their source entity coordinates and the
-    // measured target facts from the native geometry query. Lua chooses the
-    // behavior; the host does not infer a target from screen proximity.
+    // Dynamic combat profiles carry source entity coordinates and measured
+    // target facts from the native geometry query. Lua chooses behavior; the
+    // host does not infer a target from screen proximity. This includes
+    // source-default actors that use an extracted dynamic combat profile.
     bool dynamic_world_encounter_actor = false;
     // ROM default-list template facts. Lua decides whether these identify a
     // pedestrian with a usable +0xE0/+0xE4 route.

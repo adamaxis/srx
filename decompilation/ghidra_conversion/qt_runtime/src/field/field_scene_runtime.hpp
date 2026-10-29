@@ -2021,6 +2021,9 @@ private:
         std::uint8_t source_action_slot = 0;
         std::uint8_t source_action_ammo = 0;
         std::uint8_t source_action_counter = 0;
+        // Source-default profiles that use the dynamic combat behavior path
+        // while retaining their default-list record identity and lifetime.
+        bool source_default_dynamic_profile = false;
         std::uint16_t source_animation_selector = 0;
         std::optional<scripting::ScriptActorItemSpawnResult>
             source_item_spawn_result;
@@ -2098,6 +2101,18 @@ private:
         std::array<std::vector<QImage>, 8> hurt_images{};
         std::array<std::vector<int>, 8> hurt_origin_x{};
         std::array<std::vector<int>, 8> hurt_origin_y{};
+    };
+
+    struct DynamicActorSourceProfileFacts {
+        std::string profile_id;
+        std::uint32_t template_offset = 0;
+        std::uint16_t entity_kind = 0;
+        scripting::ScriptActorActionKind action_kind =
+            scripting::ScriptActorActionKind::none;
+        std::uint8_t action_code = 0;
+        std::uint8_t source_action_slot = 0;
+        std::uint8_t source_action_ammo = 0;
+        std::uint8_t source_action_counter = 0;
     };
 
     struct CreatureEffectArtwork {
@@ -2506,6 +2521,8 @@ private:
     std::array<DefaultActorArtwork, 2> field_default_actor_artwork_{};
     std::unordered_map<std::string, DefaultActorArtwork>
         field_dynamic_actor_artwork_;
+    std::unordered_map<std::string, DynamicActorSourceProfileFacts>
+        field_dynamic_actor_profile_facts_;
     std::vector<std::array<QImage, 4>>
         field_target_marker_images_by_scene_;
     std::vector<std::array<CreatureEffectArtwork, 8>>

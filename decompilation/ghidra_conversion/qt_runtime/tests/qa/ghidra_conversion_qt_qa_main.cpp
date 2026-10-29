@@ -19479,6 +19479,113 @@ int run_field_scene2_pedestrians_qa(
     return 0;
 }
 
+int run_field_default_yakuza_actors_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    std::error_code directory_error;
+    std::filesystem::remove_all(output, directory_error);
+    if (directory_error) {
+        std::cerr << "Default Yakuza QA: could not clear output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, directory_error);
+    if (directory_error) {
+        std::cerr << "Default Yakuza QA: could not create output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+
+    // ROM list 0x1E994C contains six kind-8 rows, positions at 0x1E99B0..CE,
+    // all using template 0x1D66EE with HOSTILE (+0x9E=0x40) [C].
+    constexpr std::array<SceneRunnerPosition, 6> kSourcePositions{{
+        {1960U, 18176U}, {3680U, 19200U}, {3640U, 14592U},
+        {1960U, 13056U}, {2800U, 8576U}, {880U, 9096U},
+    }};
+    constexpr std::array<FieldWorldActorSlot, 6> kSourceSlots{{
+        FieldWorldActorSlot::slot_3, FieldWorldActorSlot::slot_4,
+        FieldWorldActorSlot::slot_5, FieldWorldActorSlot::slot_6,
+        FieldWorldActorSlot::slot_7, FieldWorldActorSlot::slot_8,
+    }};
+    field_scene.set_field_entity_world_position_for_dump(0x0800U, 0x4700U);
+    if (!field_scene.reenter_field_scene_for_dump(54U)) {
+        std::cerr << "Default Yakuza QA: Scene 54 entry failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_field_camera_world_position_for_dump(0U, 0x3F00U);
+
+    const auto positions =
+        field_scene.active_default_actor_positions_for_dump();
+    bool source_rows_match = positions.size() == kSourcePositions.size();
+    for (std::size_t source_order = 0U;
+         source_order < kSourcePositions.size(); ++source_order) {
+        source_rows_match = source_rows_match &&
+            positions.size() > source_order &&
+            positions[source_order].x == kSourcePositions[source_order].x &&
+            positions[source_order].y == kSourcePositions[source_order].y &&
+            field_scene.default_actor_record_slot_for_dump(
+                static_cast<std::uint16_t>(source_order)) ==
+                kSourceSlots[source_order] &&
+            field_scene.default_actor_script_profile_for_dump(
+                static_cast<std::uint16_t>(source_order)) ==
+                std::optional<std::string>{"yakuza_weenr_k08_item0a"} &&
+            field_scene.default_actor_source_action_ammo_for_dump(
+                static_cast<std::uint16_t>(source_order)) ==
+                std::optional<std::uint8_t>{48U};
+    }
+    const auto spawn = render_qa_field(field_scene);
+    if (!source_rows_match ||
+        field_scene.default_actor_count_for_dump() != 6U ||
+        field_scene.visible_default_actor_count_for_dump() == 0U ||
+        field_scene.default_actor_ai_package_for_dump(0U) !=
+            std::optional<std::string>{
+                "world_actor.kind_8.source_target_motion"} ||
+        field_scene.default_actor_weapon_item_for_dump(0U) !=
+            std::optional<std::uint8_t>{10U} ||
+        spawn.isNull() ||
+        !spawn.save(QString::fromStdWString(
+            (output / "scene54-spawn.bmp").wstring())) ) {
+        std::cerr << "Default Yakuza QA: source rows, combat profile, action "
+                     "facts, or initial rendering did not resolve count="
+                  << field_scene.default_actor_count_for_dump()
+                  << " visible="
+                  << field_scene.visible_default_actor_count_for_dump()
+                  << " scene="
+                  << field_scene.field_scene_reference_for_dump()
+                  << " positions=" << positions.size()
+                  << " failure=" << field_scene.failure() << '\n';
+        for (const auto& position : positions) {
+            std::cerr << " active (" << position.x << ',' << position.y
+                      << ')';
+        }
+        std::cerr << '\n';
+        return 3;
+    }
+
+    for (std::size_t frame = 0U; frame < 60U; ++frame) {
+        field_scene.advance_frame();
+    }
+    const auto target = field_scene.default_actor_ai_target_id_for_dump(0U);
+    const auto actual = render_qa_field(field_scene);
+    if (!target.has_value() || target->rfind("party.runner.", 0U) != 0U ||
+        field_scene.default_actor_has_ai_target_pool_for_dump(0U) !=
+            std::optional<bool>{true} || actual.isNull() ||
+        !actual.save(QString::fromStdWString(
+            (output / "actual.bmp").wstring()))) {
+        std::cerr << "Default Yakuza QA: visible hostile actor did not keep its "
+                     "runner target path target="
+                  << (target.has_value() ? *target : "<none>")
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    std::cout << "field_default_yakuza_actors_qa=passed scene=54 "
+              << "list=0x1E994C template=0x1D66EE actors=6 "
+              << "item=10 ammo=48 target=" << *target
+              << " actual=" << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
 int run_field_region_map_pedestrians_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output) {
@@ -36587,6 +36694,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_scene2_pedestrians_qa_path;
         std::optional<std::filesystem::path>
+            field_default_yakuza_actors_qa_path;
+        std::optional<std::filesystem::path>
             field_region_map_pedestrians_qa_path;
         std::optional<std::filesystem::path>
             field_pedestrian_scenes_qa_path;
@@ -37508,6 +37617,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_scene2_pedestrians_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-default-yakuza-actors-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_default_yakuza_actors_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -38841,6 +38957,7 @@ int main(int argc, char** argv) {
             }
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_pedestrians_qa_path.has_value() ||
+                field_default_yakuza_actors_qa_path.has_value() ||
                 field_region_map_pedestrians_qa_path.has_value() ||
                 field_pedestrian_scenes_qa_path.has_value() ||
                 field_employee_recruitment_target_pedestrian_qa_path
@@ -38910,6 +39027,8 @@ int main(int argc, char** argv) {
                      .has_value())
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 1U)
                     : field_scene2_pedestrians_qa_path.has_value()
+                    ? field_scene.bootstrap_for_scene_dump(smoke_state, 2U)
+                    : field_default_yakuza_actors_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 2U)
                     : field_region_map_pedestrians_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 1U)
@@ -43387,6 +43506,10 @@ int main(int argc, char** argv) {
             if (field_scene2_pedestrians_qa_path.has_value()) {
                 return run_field_scene2_pedestrians_qa(
                     field_scene, *field_scene2_pedestrians_qa_path);
+            }
+            if (field_default_yakuza_actors_qa_path.has_value()) {
+                return run_field_default_yakuza_actors_qa(
+                    field_scene, *field_default_yakuza_actors_qa_path);
             }
             if (field_region_map_pedestrians_qa_path.has_value()) {
                 return run_field_region_map_pedestrians_qa(
