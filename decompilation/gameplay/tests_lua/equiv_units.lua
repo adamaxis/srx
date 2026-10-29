@@ -150,9 +150,9 @@ local function normalize_reference_projectile(v, seen)
   for _, child in pairs(v) do normalize_reference_projectile(child, seen) end
 end
 local function canonical_animation_state(st, pose)
-  st.entity_kind = E.SpriteType.CORP_GUARD
+  st.visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD
   st.direction = 0
-  return REG.Animator.list(st.entity_kind, pose, st.direction)
+  return REG.Animator.list(st.visual_profile_id, pose, st.direction)
 end
 local SHAPE = {
   advance_dynamic_actor_walk_animation = function(st, ctx)
@@ -185,20 +185,20 @@ local SHAPE = {
   end,
   begin_dynamic_target_action = function(st, ctx)
     ctx.dynamic_world_encounter_actor = true; st.action_delay = -R(1, 10); st.target_motion_effect_active = false
-    ctx.entity_kind = E.SpriteType.CORP_GUARD; st.entity_kind = E.SpriteType.CORP_GUARD
+    ctx.visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD; st.visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD
     st.movement_current_heading = 0x1000; ctx.initial_heading = 0x1000
   end,
   projectile_movement_snapshot = function(st, ctx) ctx.projectile_movement = projectile_source() end,
   projectile_heartbeat = function(st, ctx) ctx.projectile_movement = projectile_source(); st.attack_seed_resolved = R(2) == 1 end,
   begin_received_hit_reaction = function(st, ctx)
     ctx.dynamic_world_encounter_actor = true
-    ctx.entity_kind = E.SpriteType.CORP_GUARD; st.entity_kind = E.SpriteType.CORP_GUARD
+    ctx.visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD; st.visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD
     st.incoming_hit = { action_result = R(0, 255), damage = R(0, 5), source = "a1",
       physical_meter = R(0, 5), mental_meter = R(0, 5), down = R(3) == 1 }
   end,
   begin_dynamic_item_action = function(st, ctx)
     ctx.dynamic_world_encounter_actor = true; ctx.action_kind = "item"; ctx.action_code = R(1, 15); ctx.action_item_id = Items.catalog[ctx.action_code].id; st.action_delay = -R(1, 5)
-    ctx.entity_kind = E.SpriteType.CORP_GUARD; st.entity_kind = E.SpriteType.CORP_GUARD
+    ctx.visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD; st.visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD
     ctx.source_item_spawn_result = "spawned"; ctx.action_line_clear = R(4) ~= 1
   end,
   begin_spell_cast = function(st, ctx)

@@ -1,5 +1,6 @@
 -- harness.lua: shared serializer, typed service mocks and context generator (extracted from equiv_heartbeat.lua)
 local ROOT = os.getenv("SHADOWRUN_ROOT") or "."
+local VisualProfile = require("enums").ActorVisualProfile
 -- The original monolith is the pre-split reference (bfa3908); the live actor_ai.lua is a shim to actor.init.
 local ORIG = os.getenv("SHADOWRUN_ORIG_ACTOR_AI") or (ROOT .. "/decompilation/gameplay/tests_lua/reference/actor_ai_bfa3908.lua")
 local function ser(v, seen, depth)
@@ -136,6 +137,30 @@ local SpellIdByActionCode = {
   [10] = "mana_storm", [11] = "rockskin", [12] = "heal_wounds",
   [13] = "confusion", [14] = "barrier",
 }
+local VisualProfileBySourceKind = {
+  [1] = VisualProfile.HIT_SPARK,
+  [3] = VisualProfile.FIELD_RUNNER,
+  [4] = VisualProfile.ORK_BANDERSNATCH,
+  [5] = VisualProfile.HUMAN_GUARD,
+  [6] = VisualProfile.ELVEN_MAGE,
+  [7] = VisualProfile.GHOUL_EYE_FIVER,
+  [8] = VisualProfile.YAKUZA_WEENR,
+  [9] = VisualProfile.VAMPIRE_GATOR_SHAMAN,
+  [10] = VisualProfile.LONE_STAR_MAGE,
+  [11] = VisualProfile.PEDESTRIAN_RAT_SHAMAN,
+  [12] = VisualProfile.HELL_HOUND,
+  [13] = VisualProfile.GARGOYLE,
+  [14] = VisualProfile.WENDIGO,
+  [15] = VisualProfile.THON,
+}
+local VisualProfileIds = {
+  VisualProfile.FIELD_RUNNER, VisualProfile.ORK_BANDERSNATCH,
+  VisualProfile.HUMAN_GUARD, VisualProfile.ELVEN_MAGE,
+  VisualProfile.GHOUL_EYE_FIVER, VisualProfile.YAKUZA_WEENR,
+  VisualProfile.VAMPIRE_GATOR_SHAMAN, VisualProfile.LONE_STAR_MAGE,
+  VisualProfile.PEDESTRIAN_RAT_SHAMAN, VisualProfile.HELL_HOUND,
+  VisualProfile.GARGOYLE, VisualProfile.WENDIGO, VisualProfile.THON,
+}
 local function context(actor)
   local ammunition_remaining = R(0, 30)
   local pid = pick(pids)
@@ -145,7 +170,8 @@ local function context(actor)
   local action_code = ac and tonumber(ac, 16) or 0
   return {
     actor_id = actor, profile_id = pid, dynamic_world_encounter_actor = dyn,
-    entity_kind = ek and tonumber(ek, 16) or num(), action_kind = ak or "none", action_code = action_code,
+    visual_profile_id = ek and VisualProfileBySourceKind[tonumber(ek, 16)]
+        or pick(VisualProfileIds), action_kind = ak or "none", action_code = action_code,
     action_spell_id = ak == "spell" and SpellIdByActionCode[action_code] or nil,
     phase = pick({ "behavior", "render", "behavior" }), spawn = R(6) == 1,
     initial_heading = num(), entry_delay = R(0, 16), entry_animation_frame_count = R(1, 8),

@@ -7,7 +7,7 @@ local u16 = I.u16
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local ActorPose = E.ActorPose
-local SpriteType = R.SpriteType   -- from actor/tables.lua
+local VisualProfile = R.VisualProfile -- from actor/tables.lua
 local fixed_fraction_scale = R.fixed_fraction_scale   -- from actor/tables.lua
 local fixed_integer_shift = R.fixed_integer_shift   -- from actor/tables.lua
 local fixed_long_mask = R.fixed_long_mask   -- from actor/tables.lua
@@ -326,7 +326,7 @@ local function resolve_source_target_motion(context, state, target)
     local distance = target.distance & AiTuning.WORD_MAX
     local accepted = false
 
-    if context.entity_kind == SpriteType.HELL_HOUND then
+    if context.visual_profile_id == VisualProfile.HELL_HOUND then
         -- ROM 0x14D04: inside 0x300, nonnegative +0xDC accepts the target
         -- heading; negative +0xDC first needs a free effect slot and then
         -- replaces both +0x2E and +0x34. From 0x300 through 0x5FF both
@@ -345,8 +345,8 @@ local function resolve_source_target_motion(context, state, target)
             state.movement_current_heading = heading
             accepted = true
         end
-    elseif context.entity_kind == SpriteType.GARGOYLE or
-           context.entity_kind == SpriteType.WENDIGO then
+    elseif context.visual_profile_id == VisualProfile.GARGOYLE or
+           context.visual_profile_id == VisualProfile.WENDIGO then
         -- 0x14C7C calls 0x15C84, whose 0x15C58 range test measures the
         -- linked record's actual coordinates and accepts only distance <
         -- 0x200. The preceding 0x14C56 projection result is not consumed by
@@ -356,7 +356,7 @@ local function resolve_source_target_motion(context, state, target)
         -- actor continues its route on this behavior pass. [C: 0x14C7C,
         -- 0x15C58, 0x5FDC]
         if distance < 0x200 then
-            if context.entity_kind == SpriteType.GARGOYLE and
+            if context.visual_profile_id == VisualProfile.GARGOYLE and
                context.ai_animation_frame == 2 then
                 state.animation_progress = 1.0
             else
@@ -461,7 +461,7 @@ local function creature_movement_offsets(context, state)
     local activity = context.world_activity_active == true
     local step
 
-    if context.entity_kind == SpriteType.GARGOYLE then
+    if context.visual_profile_id == VisualProfile.GARGOYLE then
         -- 0xB574: frame +0x1E == 2 uses 0xBE42. Other frames use 0xBE22.
         -- Both branches join 0xB678.
         step = context.ai_animation_frame == 2 and 36 or 0
@@ -631,7 +631,7 @@ local function advance_entity_movement(context, state)
     movement_state.clear_pending_event = false
     if context.dynamic_world_encounter_actor == true then
         movement_state.collision_extent =
-            context.entity_kind == SpriteType.GARGOYLE and
+            context.visual_profile_id == VisualProfile.GARGOYLE and
             context.ai_animation_frame == 2 and -20 or 0
     else
         movement_state.collision_extent = -12

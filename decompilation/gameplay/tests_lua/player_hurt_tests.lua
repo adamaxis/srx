@@ -119,7 +119,7 @@ local function player_context(phase, spawn)
     return {
         actor_id = hurt_recipient_id,
         profile_id = "field_runner_k03_none00",
-        entity_kind = E.SpriteType.FIELD_RUNNER,
+        visual_profile_id = E.ActorVisualProfile.FIELD_RUNNER,
         action_kind = "none",
         action_code = 0,
         phase = phase,

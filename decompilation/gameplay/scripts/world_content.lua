@@ -248,7 +248,7 @@ local function world_activity_actor_descriptors(scene_id, list_id)
                 activity_probe_enabled = row.activity_probe_enabled,
                 name = row.actor_name,
                 profile_id = row.profile_id,
-                entity_kind = row.entity_kind,
+                visual_profile_id = row.visual_profile_id,
                 palette_line = row.palette_line,
                 sprite = row.sprite_stem,
                 x = row.world_x,

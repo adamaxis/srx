@@ -349,6 +349,34 @@ bool verify_spell_death_pose_exception_translation() {
         "spell death pose source kind did not become the named host fact");
 }
 
+bool verify_actor_visual_profile_translation() {
+    using shadowrun::ghidra_conversion::scripting::
+        script_actor_visual_profile_id_from_source_type;
+    using shadowrun::ghidra_conversion::scripting::
+        script_source_type_from_actor_visual_profile_id;
+    const auto profile = [](const std::uint16_t source_type) {
+        return script_actor_visual_profile_id_from_source_type(source_type);
+    };
+    const auto hell_hound = profile(12U);
+    const auto hit_spark = profile(1U);
+    const bool source_to_named = expect(
+        hell_hound.has_value() && *hell_hound == "hell_hound" &&
+            hit_spark.has_value() && *hit_spark == "hit_spark" &&
+            profile(4U) == "ork_bandersnatch" &&
+            profile(15U) == "thon" && !profile(0U).has_value() &&
+            !profile(2U).has_value() && !profile(16U).has_value(),
+        "source sprite selectors did not resolve to named actor profiles");
+    const bool named_to_source = expect(
+        script_source_type_from_actor_visual_profile_id("hell_hound") ==
+                12U &&
+            script_source_type_from_actor_visual_profile_id(
+                "pedestrian_rat_shaman") == 11U &&
+            !script_source_type_from_actor_visual_profile_id(
+                 "source_type_12").has_value(),
+        "named actor profiles did not resolve back to native source records");
+    return source_to_named && named_to_source;
+}
+
 bool verify_action_profile_option_translation() {
     using namespace shadowrun::ghidra_conversion::scripting;
     // ROM 0x55786 tests +0xDF bit 0; 0x557EE/0x55804 test bit 1. Every byte
@@ -2076,6 +2104,7 @@ int main() {
         !verify_combat_cyberware_translation() ||
         !verify_combat_profile_trait_translation() ||
         !verify_spell_death_pose_exception_translation() ||
+        !verify_actor_visual_profile_translation() ||
         !verify_action_profile_option_translation() ||
         !verify_posture_reduction_percent_translation() ||
         !verify_mode_one_semantic_fact_translation()) {
@@ -8876,7 +8905,6 @@ int main() {
         // Scene-55 default-list actors enter the same source-profile resolver
         // used by dynamic templates, while retaining their ordinary pool slot.
         caster.dynamic_world_encounter_actor = true;
-        caster.source_actor_template_kind = 15U;
         caster.source_actor_has_waypoint_data = true;
         caster.source_actor_slot = 0U;
         caster.source_world_x = 0x0A00U;

@@ -2,6 +2,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
 local World = require("world_content")
+local E = require("enums")
 
 game = {
     modules = {
@@ -15,7 +16,7 @@ game = {
                     pending_world_effect_requirement = "unspecified",
                     source_order = 0,
                     actor_name = "lone11",
-                    entity_kind = 10,
+                    visual_profile_id = E.ActorVisualProfile.LONE_STAR_MAGE,
                     palette_line = 1,
                     sprite_stem = "actor-kind-10-palette-1",
                     world_x = 0x1100,
@@ -43,7 +44,7 @@ game = {
                     pending_world_effect_requirement = "pending",
                     source_order = 0,
                     actor_name = "lone11",
-                    entity_kind = 10,
+                    visual_profile_id = E.ActorVisualProfile.LONE_STAR_MAGE,
                     profile_id = "lone11_k0a_item03",
                     palette_line = 1,
                     sprite_stem = "actor-kind-10-palette-1",
@@ -65,7 +66,8 @@ local actors = World.world_activity_actors_for_list_id(
 assert(#actors == 1, "selector lookup returned the wrong actor count")
 assert(actors[1].id == "world_activity:13:scene_13_ilene_gate_script:0" and
        actors[1].name == "lone11" and
-       actors[1].entity_kind == 10 and actors[1].palette_line == 1 and
+       actors[1].visual_profile_id == E.ActorVisualProfile.LONE_STAR_MAGE and
+       actors[1].palette_line == 1 and
        actors[1].sprite == "actor-kind-10-palette-1" and
        actors[1].x == 0x1100 and actors[1].y == 0x0300 and
        actors[1].heading == 0xC000 and actors[1].action_code == 3 and
@@ -79,7 +81,8 @@ assert(#pending == 1 and
        pending[1].id ==
            "world_activity:20:scene_20_ilene_pending_list:0" and
        pending[1].activity_kind == "event_driven" and
-       pending[1].name == "lone11" and pending[1].entity_kind == 10 and
+       pending[1].name == "lone11" and
+       pending[1].visual_profile_id == E.ActorVisualProfile.LONE_STAR_MAGE and
        pending[1].x == 0x0E80 and pending[1].y == 0x0700 and
        pending[1].heading == 0x8000 and
        pending[1].ordered_overrides == nil and

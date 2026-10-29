@@ -15,22 +15,23 @@ local function check(c, m) total = total + 1; if c then pass = pass + 1 else pri
 -- runner death 0x7664 (8 frames, +0x200), THON death 0x7884 (1, +0x80),
 -- runner hurt 0x77F8 (2, +0x300), and spell deaths 0x75E8/0x75C0
 -- (10/9, +0x280); 0x5FDC/0x600E uses a 0x1000 threshold [C].
-check(A.list(3, A.Clip.WALK).frame_count == 4 and
-      A.list(3, A.Clip.WALK).looping, "runner walk loops 4")
-check(A.list(E.SpriteType.GARGOYLE, A.Clip.WALK).frame_count == 5,
+check(A.list(E.ActorVisualProfile.FIELD_RUNNER, A.Clip.WALK).frame_count == 4 and
+      A.list(E.ActorVisualProfile.FIELD_RUNNER, A.Clip.WALK).looping,
+      "runner walk loops 4")
+check(A.list(E.ActorVisualProfile.GARGOYLE, A.Clip.WALK).frame_count == 5,
       "gargoyle walk 5")
-check(A.list(E.SpriteType.THON, A.Clip.DEATH).frame_duration_updates == 32 and
-      A.list(E.SpriteType.THON, A.Clip.DEATH).frame_count == 1,
+check(A.list(E.ActorVisualProfile.THON, A.Clip.DEATH).frame_duration_updates == 32 and
+      A.list(E.ActorVisualProfile.THON, A.Clip.DEATH).frame_count == 1,
       "THON death duration")
-check(A.list(3, A.Clip.DEATH).frame_count == 8 and
-      A.list(3, A.Clip.DEATH).frame_duration_updates == 8,
+check(A.list(E.ActorVisualProfile.FIELD_RUNNER, A.Clip.DEATH).frame_count == 8 and
+      A.list(E.ActorVisualProfile.FIELD_RUNNER, A.Clip.DEATH).frame_duration_updates == 8,
       "runner death duration")
-check(A.list(5, A.Clip.SPELL_DEATH_E0).frame_count == 10 and
-      A.list(5, A.Clip.SPELL_DEATH_E4).frame_count == 9,
+check(A.list(E.ActorVisualProfile.HUMAN_GUARD, A.Clip.SPELL_DEATH_E0).frame_count == 10 and
+      A.list(E.ActorVisualProfile.HUMAN_GUARD, A.Clip.SPELL_DEATH_E4).frame_count == 9,
       "E0/E4 humanoid frame counts")
-check(A.list(E.SpriteType.GARGOYLE, A.Clip.SPELL).frame_count == 2,
+check(A.list(E.ActorVisualProfile.GARGOYLE, A.Clip.SPELL).frame_count == 2,
       "gargoyle spell art list has two frames")
-local imported_hurt = A.list(3, A.Clip.HURT)
+local imported_hurt = A.list(E.ActorVisualProfile.FIELD_RUNNER, A.Clip.HURT)
 check(imported_hurt.rate == nil and imported_hurt.count == nil and
       imported_hurt.frame_duration_updates > 0,
       "runtime list has no ROM rate or selector count fields")
@@ -81,7 +82,7 @@ check(runner_walk.animation_frame == 1 and
       "runner advances one frame and retains normalized fractional phase")
 
 local creature_walk = {
-    entity_kind = E.SpriteType.CORP_GUARD, direction = 0,
+    visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD, direction = 0,
     animation_frame = 0, animation_progress = 0,
     animation_cadence_profile = "moving_actor_walk",
     movement_distance_per_update = 9,
@@ -96,7 +97,7 @@ check(creature_walk.animation_frame == 1 and
       "dynamic actor walk retains host progress across updates")
 
 local gargoyle_idle = {
-    entity_kind = E.SpriteType.GARGOYLE, direction = 0,
+    visual_profile_id = E.ActorVisualProfile.GARGOYLE, direction = 0,
     animation_frame = 0, animation_progress = 0,
     animation_cadence_profile = "gargoyle_walk",
     movement_distance_per_update = 9,
@@ -246,15 +247,19 @@ end
 check(same, "runner idle/walk matches source frame cadence with normalized state")
 
 -- Death clips select frame count and duration from the actor's visual family.
-local death = R.death_list({ entity_kind = 15 })
+local death = R.death_list({ visual_profile_id = E.ActorVisualProfile.THON })
 check(death.frame_duration_updates == 32 and death.frame_count == 1,
       "THON down duration")
-death = R.death_list({ entity_kind = 5,
+death = R.death_list({ visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD,
                        spell_death_variant = "spell_death_e0" })
 check(death.frame_duration_updates == 6.4 and death.frame_count == 10,
       "E0 list host duration")
-check(A.hurt_audio(5) == A.LISTS.audio.hurt_by_kind[5] and
-      A.down_audio(12) == A.LISTS.audio.down_by_kind[12],
+check(A.hurt_audio(E.ActorVisualProfile.HUMAN_GUARD) ==
+          A.LISTS.audio.hurt_by_visual_profile[
+              E.ActorVisualProfile.HUMAN_GUARD] and
+      A.down_audio(E.ActorVisualProfile.HELL_HOUND) ==
+          A.LISTS.audio.down_by_visual_profile[
+              E.ActorVisualProfile.HELL_HOUND],
       "hurt and down cues come from the generated ROM tables")
 print(string.format("animator tests: %d/%d passed", pass, total))
 if pass ~= total then os.exit(1) end

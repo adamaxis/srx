@@ -50,7 +50,7 @@ local function actor_row(source_order, sequence_id, placement_rule)
             },
             interaction = {},
         },
-        entity_kind = E.SpriteType.CORP_GUARD,
+        visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD,
         palette_line = 2,
         sprite_stem = "corp_guard_k05_item06",
         activity_probe_enabled = false,

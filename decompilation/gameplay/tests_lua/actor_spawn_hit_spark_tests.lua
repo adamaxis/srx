@@ -48,7 +48,7 @@ end
 local function strike_fixture(target_meter)
     game.actors = {}
     local context = {
-        entity_kind = E.SpriteType.HELL_HOUND,
+        visual_profile_id = E.ActorVisualProfile.HELL_HOUND,
         dynamic_world_encounter_actor = true,
         movement_allowed = true,
         ai_random_bound = function() return 0 end,
@@ -57,7 +57,7 @@ local function strike_fixture(target_meter)
         world_effect_slot_occupancy = {},
     }
     local state = {
-        entity_kind = E.SpriteType.HELL_HOUND,
+        visual_profile_id = E.ActorVisualProfile.HELL_HOUND,
         action_delay = -1,
         target_motion_effect_active = false,
         movement_current_heading = 0,

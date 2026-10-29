@@ -37,12 +37,14 @@ function Animator.list(kind, clip, direction)
     return list.by_dir[direction + 1]
 end
 
-function Animator.hurt_audio(kind)
-    return LISTS.audio and LISTS.audio.hurt_by_kind[kind] or nil
+function Animator.hurt_audio(visual_profile_id)
+    return LISTS.audio and
+        LISTS.audio.hurt_by_visual_profile[visual_profile_id] or nil
 end
 
-function Animator.down_audio(kind)
-    return LISTS.audio and LISTS.audio.down_by_kind[kind] or nil
+function Animator.down_audio(visual_profile_id)
+    return LISTS.audio and
+        LISTS.audio.down_by_visual_profile[visual_profile_id] or nil
 end
 
 -- Finite character clips use an ordinary duration measured in animation

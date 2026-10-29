@@ -55,7 +55,7 @@ local function actor_from_row(row)
         placement_rule = row.placement_rule,
         actor_name = row.actor_name,
         profile_id = row.profile_id,
-        entity_kind = row.entity_kind,
+        visual_profile_id = row.visual_profile_id,
         action_kind = row.action_kind,
         action_code = row.action_code,
         actor_facts = row.actor_facts,

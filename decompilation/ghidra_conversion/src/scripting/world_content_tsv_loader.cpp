@@ -351,6 +351,9 @@ std::string_view lua_column_name(
     if (tsv_column == "combat_posture") {
         return "posture_reduction_percent";
     }
+    if (tsv_column == "entity_kind") {
+        return "visual_profile_id";
+    }
     return tsv_column;
 }
 
@@ -575,6 +578,30 @@ bool push_record(lua_State* state, const TsvDocument& document,
                 lua_pop(state, 1);
                 return false;
             }
+        } else if (column == "entity_kind") {
+            // Source actor records store this selector in +0x0E. Resolve it
+            // during import; gameplay Lua receives a named visual profile.
+            lua_Integer source_type = 0;
+            if (!parse_integer(value, source_type) || source_type < 0 ||
+                source_type > 0xFFFF) {
+                failure = source_path.string() + ": row " +
+                          std::to_string(row_number) + " column " + column +
+                          " is not a valid actor profile selector";
+                lua_pop(state, 1);
+                return false;
+            }
+            const auto visual_profile =
+                script_actor_visual_profile_id_from_source_type(
+                    static_cast<std::uint16_t>(source_type));
+            if (!visual_profile.has_value()) {
+                failure = source_path.string() + ": row " +
+                          std::to_string(row_number) + " column " + column +
+                          " has no named actor visual profile";
+                lua_pop(state, 1);
+                return false;
+            }
+            lua_pushlstring(state, visual_profile->data(),
+                            visual_profile->size());
         } else if (column == "combat_posture") {
             std::uint8_t source_posture = 0U;
             if (!read_source_byte(document, row, column, source_path,

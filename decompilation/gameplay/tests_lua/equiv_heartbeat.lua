@@ -6,6 +6,7 @@ local ROOT = os.getenv("SHADOWRUN_ROOT") or "."
 local ORIG = os.getenv("SHADOWRUN_ORIG_ACTOR_AI") or (ROOT .. "/decompilation/gameplay/tests_lua/reference/actor_ai_bfa3908.lua")
 local TRIALS = tonumber(arg[1]) or 2000
 local SEED = tonumber(arg[2]) or 1
+local VisualProfile = require("enums").ActorVisualProfile
 
 local function ser(v, seen, depth)
   seen = seen or {}; depth = depth or 0
@@ -146,6 +147,34 @@ local SpellIdByActionCode = {
   [10] = "mana_storm", [11] = "rockskin", [12] = "heal_wounds",
   [13] = "confusion", [14] = "barrier",
 }
+local VisualProfileBySourceKind = {
+  [1] = VisualProfile.HIT_SPARK,
+  [3] = VisualProfile.FIELD_RUNNER,
+  [4] = VisualProfile.ORK_BANDERSNATCH,
+  [5] = VisualProfile.HUMAN_GUARD,
+  [6] = VisualProfile.ELVEN_MAGE,
+  [7] = VisualProfile.GHOUL_EYE_FIVER,
+  [8] = VisualProfile.YAKUZA_WEENR,
+  [9] = VisualProfile.VAMPIRE_GATOR_SHAMAN,
+  [10] = VisualProfile.LONE_STAR_MAGE,
+  [11] = VisualProfile.PEDESTRIAN_RAT_SHAMAN,
+  [12] = VisualProfile.HELL_HOUND,
+  [13] = VisualProfile.GARGOYLE,
+  [14] = VisualProfile.WENDIGO,
+  [15] = VisualProfile.THON,
+}
+local SourceKindByVisualProfile = {}
+for source_kind, visual_profile in pairs(VisualProfileBySourceKind) do
+  SourceKindByVisualProfile[visual_profile] = source_kind
+end
+local VisualProfileIds = {
+  VisualProfile.FIELD_RUNNER, VisualProfile.ORK_BANDERSNATCH,
+  VisualProfile.HUMAN_GUARD, VisualProfile.ELVEN_MAGE,
+  VisualProfile.GHOUL_EYE_FIVER, VisualProfile.YAKUZA_WEENR,
+  VisualProfile.VAMPIRE_GATOR_SHAMAN, VisualProfile.LONE_STAR_MAGE,
+  VisualProfile.PEDESTRIAN_RAT_SHAMAN, VisualProfile.HELL_HOUND,
+  VisualProfile.GARGOYLE, VisualProfile.WENDIGO, VisualProfile.THON,
+}
 local function context(actor)
   local ammunition_remaining = R(0, 30)
   local actor_behavior = pick(actor_behavior_profiles)
@@ -159,7 +188,8 @@ local function context(actor)
       SpellIdByActionCode[action_code] or nil
   return {
     actor_id = actor, profile_id = pid, dynamic_world_encounter_actor = dyn,
-    entity_kind = ek and tonumber(ek, 16) or num(), action_kind = ak or "none", action_code = action_code,
+    visual_profile_id = ek and VisualProfileBySourceKind[tonumber(ek, 16)]
+        or pick(VisualProfileIds), action_kind = ak or "none", action_code = action_code,
     action_item_id = action_item and action_item.id or nil,
     action_spell_id = action_spell_id,
     phase = pick({ "behavior", "render", "behavior" }), spawn = R(6) == 1,
@@ -233,6 +263,8 @@ local function legacy_posture_from_behavior_profile(profile)
 end
 local function legacy_context_for_reference(context)
   local legacy = deepcopy(context)
+  legacy.entity_kind = SourceKindByVisualProfile[context.visual_profile_id]
+  legacy.visual_profile_id = nil
   -- The frozen pre-port reference still consumes +0x4D. Keep that old
   -- representation inside the differential harness only.
   local profile = context.actor_behavior_profile
@@ -254,6 +286,11 @@ local function legacy_context_for_reference(context)
 end
 local function serialize_context_for_parity(context)
   local comparable = deepcopy(context)
+  if comparable.visual_profile_id == nil then
+    comparable.visual_profile_id =
+      VisualProfileBySourceKind[comparable.entity_kind]
+  end
+  comparable.entity_kind = nil
   if type(comparable.actor_behavior_profile) == "table" then
     comparable.source_actor_posture = legacy_posture_from_behavior_profile(
       comparable.actor_behavior_profile)
@@ -277,6 +314,11 @@ local function serialize_actor_states_for_parity(actors)
   local comparable = deepcopy(actors)
   for _, state in pairs(comparable) do
     if type(state) == "table" then
+      if state.visual_profile_id == nil then
+        state.visual_profile_id =
+          VisualProfileBySourceKind[state.entity_kind]
+      end
+      state.entity_kind = nil
       if type(state.action_timing) ~= "table" and
          type(state.delay_primary_attribute) == "number" then
         state.action_timing = {
@@ -326,7 +368,7 @@ for trial = 1, TRIALS do
     for k, v in pairs(base) do ctx[k] = v end
     local fk = {} for k in pairs(fresh) do fk[#fk + 1] = k end table.sort(fk)
     for _, k in ipairs(fk) do local v = fresh[k]
-      if k ~= "profile_id" and k ~= "entity_kind" and k ~= "action_kind" and k ~= "action_code" and
+      if k ~= "profile_id" and k ~= "visual_profile_id" and k ~= "action_kind" and k ~= "action_code" and
          k ~= "dynamic_world_encounter_actor" and k ~= "actor_id" and R(100) <= 25 then ctx[k] = v end
     end
     ctx.spawn = base.spawn or R(200) == 1

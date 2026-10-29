@@ -8,7 +8,7 @@ local Animator = R.Animator   -- from actor/animator.lua
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local PlayerHurt = E.PlayerHurt
-local SpriteType = R.SpriteType   -- from actor/tables.lua
+local VisualProfile = R.VisualProfile -- from actor/tables.lua
 local ProjectileAnimationClips =
     require("data.weapon_projectile_animation_clips")
 
@@ -147,7 +147,7 @@ local function death_list(state)
         and Animator.Clip.SPELL_DEATH_E0 or
         (state.spell_death_variant == "spell_death_e4"
             and Animator.Clip.SPELL_DEATH_E4 or Animator.Clip.DEATH)
-    local list = Animator.list(state.entity_kind, clip, state.direction)
+    local list = Animator.list(state.visual_profile_id, clip, state.direction)
     return list
 end
 
@@ -155,7 +155,7 @@ end
 -- duration. Lua stores its frame and completion as gameplay state; the host
 -- maps that completion to the auxiliary record's terminal marker [C].
 local function hit_spark_list()
-    return Animator.list(SpriteType.HIT_SPARK, Animator.Clip.HIT_SPARK)
+    return Animator.list(VisualProfile.HIT_SPARK, Animator.Clip.HIT_SPARK)
 end
 
 local function advance_hit_spark_animation(state, context)
@@ -190,7 +190,7 @@ local function advance_entry_animation(state)
        state.transition_frame_list_finished then
         return
     end
-    local list = Animator.list(state.entity_kind, Animator.Clip.DEATH,
+    local list = Animator.list(state.visual_profile_id, Animator.Clip.DEATH,
                                state.direction)
     if list == nil or list.looping then
         return
@@ -222,7 +222,7 @@ end
 -- 0xAFF2 hit with +0x4C == 0, 0xAA4C service with +0x4C or +0x9C == 0,
 -- 0xE4BA kill_leader. It is never selected at spawn.
 local function begin_down_reaction(state)
-    local down_audio_event = Animator.down_audio(state.entity_kind)
+    local down_audio_event = Animator.down_audio(state.visual_profile_id)
     if type(down_audio_event) ~= "number" then
         return nil
     end
@@ -284,7 +284,7 @@ local function begin_received_hit_reaction(state, context)
     end
     if hit.physical_meter == 0 and hit.spell_death_variant ~= nil and
        not state.actor_facts.lifecycle.ai_runner and
-       context.entity_kind ~= SpriteType.HELL_HOUND then
+       context.visual_profile_id ~= VisualProfile.HELL_HOUND then
         -- 0xB0AC/0xB0E4 (spell death): pose E.ActorPose.SPELL_DEATH_E0/E4,
         -- continuation 0xB0D4/0xB10C, no +0x10 b4 and no cue. 0xA9A6 then
         -- runs 0xAB02 and 0x1E514 when the list finishes. The selected kind's
@@ -307,9 +307,9 @@ local function begin_received_hit_reaction(state, context)
         -- (0xB0AC/0xB0E4 send +0x10 b3 records and kind 0xC here too.)
         return begin_down_reaction(state)
     end
-    local list = Animator.list(state.entity_kind, Animator.Clip.HURT,
+    local list = Animator.list(state.visual_profile_id, Animator.Clip.HURT,
                                state.direction)
-    local hurt_audio_event = Animator.hurt_audio(state.entity_kind)
+    local hurt_audio_event = Animator.hurt_audio(state.visual_profile_id)
     if list == nil or list.looping or
        type(hurt_audio_event) ~= "number" then
         return nil
@@ -398,7 +398,7 @@ local function finish_player_hurt_reaction(state, context)
 end
 
 local function advance_dynamic_actor_walk_animation(state)
-    local list = Animator.list(state.entity_kind, Animator.Clip.WALK,
+    local list = Animator.list(state.visual_profile_id, Animator.Clip.WALK,
                                state.direction)
     if list == nil or not list.looping then
         return false
@@ -416,7 +416,7 @@ local function advance_dynamic_actor_walk_animation(state)
 end
 
 local function advance_dynamic_actor_idle_animation(state)
-    local list = Animator.list(state.entity_kind, Animator.Clip.IDLE,
+    local list = Animator.list(state.visual_profile_id, Animator.Clip.IDLE,
                                state.direction)
     if list == nil or not list.looping then
         return true
@@ -436,7 +436,7 @@ local function advance_dynamic_actor_action_animation(state)
     if state.animation_id ~= "action" or state.action_animation_complete then
         return true
     end
-    local list = Animator.list(state.entity_kind, Animator.Clip.ACTION,
+    local list = Animator.list(state.visual_profile_id, Animator.Clip.ACTION,
                                state.direction)
     if list == nil or list.looping then
         return false
@@ -451,7 +451,7 @@ local function advance_dynamic_actor_item_action_animation(state)
     if state.animation_id ~= "weapon" or state.item_action_complete then
         return true
     end
-    local list = Animator.list(state.entity_kind, Animator.Clip.ITEM,
+    local list = Animator.list(state.visual_profile_id, Animator.Clip.ITEM,
                                state.direction)
     if list == nil or list.looping then
         return false
@@ -463,7 +463,7 @@ local function advance_dynamic_actor_item_action_animation(state)
 end
 
 local function advance_player_finite_clip(state, clip)
-    local list = Animator.list(SpriteType.FIELD_RUNNER, clip, state.direction)
+    local list = Animator.list(VisualProfile.FIELD_RUNNER, clip, state.direction)
     if list == nil or list.looping then
         return false
     end
@@ -547,7 +547,7 @@ local function advance_player_animation(state, context)
 
     -- Kind 3 idle/walk lists loop, so 0x6092 times them from +0xCA = 0x28
     -- (C002+4 via 0xBABC/0xBADE): 0x28 * 0x10 = 0x280 [C].
-    local kind = SpriteType.FIELD_RUNNER -- 3
+    local visual_profile_id = VisualProfile.FIELD_RUNNER
     if state.animation_id ~= nil and state.animation_id ~= "idle" and
        state.animation_id ~= "walk" then
         -- A one-shot clip has its own duration and cannot leave fractional
@@ -557,12 +557,12 @@ local function advance_player_animation(state, context)
     if context.animation_mode == "walking" then
         state.animation_id = "walk"
         Animator.advance_loop_clip(state,
-            Animator.list(kind, Animator.Clip.WALK, state.direction).frame_count,
+            Animator.list(visual_profile_id, Animator.Clip.WALK, state.direction).frame_count,
             Animator.PLAYER_WALK_PROGRESS_PER_UPDATE)
     else
         state.animation_id = "idle"
         Animator.advance_loop_clip(state,
-            Animator.list(kind, Animator.Clip.IDLE, state.direction).frame_count,
+            Animator.list(visual_profile_id, Animator.Clip.IDLE, state.direction).frame_count,
             Animator.PLAYER_WALK_PROGRESS_PER_UPDATE)
     end
 end

@@ -34,7 +34,7 @@ local ActionKind = {
 }
 
 local E = require("enums")
-local SpriteType = E.SpriteType
+local VisualProfile = E.ActorVisualProfile
 -- Named approach bands from the world-actor route table. ROM 0x13D84
 -- selects these intervals through the host-derived band; Lua does not index
 -- the source's nine-entry table by a record value. Distances are world units.
@@ -48,30 +48,30 @@ local source_close_range_threshold = 0x01e0
 local profiles = {
     ["corp_guard_k05_item06"] = {
         package_id = "corp_security.max_power_heavy_pistol",
-        entity_kind = SpriteType.CORP_GUARD,
+        visual_profile_id = VisualProfile.HUMAN_GUARD,
         action_kind = ActionKind.item,
     },
     ["pedestrian_k0b_none00"] = {
         package_id = "pedestrian.no_active_action",
-        entity_kind = SpriteType.PEDESTRIAN,
+        visual_profile_id = VisualProfile.PEDESTRIAN_RAT_SHAMAN,
         action_kind = ActionKind.none,
     },
     ["field_runner_k03_none00"] = {
         package_id = "runner.field_controlled",
-        entity_kind = SpriteType.FIELD_RUNNER,
+        visual_profile_id = VisualProfile.FIELD_RUNNER,
         action_kind = ActionKind.none,
         controls_movement = true,
     },
     ["hell_hound_k0c_none00"] = {
         package_id = "creature.hell_hound.source_target_motion",
-        entity_kind = SpriteType.HELL_HOUND,
+        visual_profile_id = VisualProfile.HELL_HOUND,
         action_kind = ActionKind.none,
         controls_movement = true,
         dynamic_encounter_only = true,
     },
     ["gargoyle_k0d_none00"] = {
         package_id = "creature.gargoyle.source_target_motion",
-        entity_kind = SpriteType.GARGOYLE,
+        visual_profile_id = VisualProfile.GARGOYLE,
         action_kind = ActionKind.none,
         controls_movement = true,
         animation_cadence_profile = "gargoyle_walk",
@@ -79,7 +79,7 @@ local profiles = {
     },
     ["wendigo_k0e_none00"] = {
         package_id = "creature.wendigo.source_target_motion",
-        entity_kind = SpriteType.WENDIGO,
+        visual_profile_id = VisualProfile.WENDIGO,
         action_kind = ActionKind.none,
         controls_movement = true,
         dynamic_encounter_only = true,
@@ -106,7 +106,7 @@ for profile_id, profile in pairs(profiles) do
                source_profile.action_kind == profile.action_kind,
            "actor profile differs from source record: " .. profile_id)
     profile.source_profile = source_profile
-    profile.entity_kind = source_profile.sprite_type
+    profile.visual_profile_id = source_profile.visual_profile_id
     profile.weapon_item_id = source_profile.weapon
     profile.controls_movement = source_profile.controls_movement
     profile.projectile_animation = source_profile.projectile
@@ -121,7 +121,7 @@ R.fixed_long_mask = fixed_long_mask
 R.fixed_integer_shift = fixed_integer_shift
 R.fixed_fraction_scale = fixed_fraction_scale
 R.ActionKind = ActionKind
-R.SpriteType = SpriteType
+R.VisualProfile = VisualProfile
 R.ActorApproachDistanceBounds = ActorApproachDistanceBounds
 R.target_motion_reacquire_updates = target_motion_reacquire_updates
 R.source_close_range_threshold = source_close_range_threshold

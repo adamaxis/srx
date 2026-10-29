@@ -3662,7 +3662,6 @@ void FieldSceneRuntime::initialize_default_field_actors(
             actor.source_default_dynamic_profile;
         context.source_default_item_action_profile =
             actor.source_default_item_action_profile;
-        context.source_actor_template_kind = actor.entity_kind;
         context.source_actor_has_waypoint_data =
             actor.source_actor_has_waypoint_data;
         context.movement_scene_id = scene_reference;
@@ -4287,7 +4286,6 @@ void FieldSceneRuntime::advance_default_field_actors(
                 : actor.initial_heading,
             false,
         };
-        context.source_actor_template_kind = actor.entity_kind;
         context.source_actor_has_waypoint_data =
             actor.source_actor_has_waypoint_data;
         context.source_think_suppressed = field_think_token_claimed_;
@@ -5540,7 +5538,6 @@ bool FieldSceneRuntime::retire_dialogue_escort_records() {
             actor.world_activity_script_actor;
         context.world_activity_script_actor =
             actor.world_activity_script_actor;
-        context.source_actor_template_kind = actor.entity_kind;
         context.source_record_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
         context.has_live_actor_record = true;
@@ -12528,7 +12525,6 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 context.live_field_actor = true;
             }
         }
-        context.source_actor_template_kind = actor.entity_kind;
         context.source_actor_has_waypoint_data =
             actor.source_actor_has_waypoint_data;
         context.combatant = actor.combatant;

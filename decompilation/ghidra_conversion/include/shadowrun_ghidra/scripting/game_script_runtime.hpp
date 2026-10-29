@@ -1377,6 +1377,14 @@ ScriptCombatTraits script_combat_traits_from_source_values(
 // copies the template's first word to +0x0E. Resolve that sprite type here [C].
 bool script_sprite_type_blocks_spell_death_pose(
     std::uint16_t source_sprite_type) noexcept;
+// Convert source sprite selectors to named content profiles before they reach
+// gameplay Lua. Selector values remain an importer/runtime adapter detail.
+std::optional<std::string_view>
+script_actor_visual_profile_id_from_source_type(
+    std::uint16_t source_sprite_type) noexcept;
+std::optional<std::uint16_t>
+script_source_type_from_actor_visual_profile_id(
+    std::string_view visual_profile_id) noexcept;
 // ROM +0xDF bits 0/1 choose the primary/secondary dynamic action profile [C].
 ScriptCombatActionProfileOptions
 script_combat_action_profile_options_from_source_flags(
@@ -1774,6 +1782,8 @@ struct ScriptActorActionTiming {
 // consumes the returned presentation/action snapshot.
 struct ScriptActorBehaviorContext {
     std::string_view profile_id;
+    // Native-only source selector. actor_heartbeat translates it to a named
+    // visual_profile_id and never serializes this integer to Lua.
     std::uint16_t entity_kind = 0;
     ScriptActorActionKind action_kind = ScriptActorActionKind::none;
     std::uint8_t action_code = 0;
@@ -1837,9 +1847,8 @@ struct ScriptActorBehaviorContext {
     // Narrowly validates item-action results for routed default-list actors
     // that keep their static profile policy.
     bool source_default_item_action_profile = false;
-    // ROM default-list template facts. Lua decides whether these identify a
-    // pedestrian with a usable +0xE0/+0xE4 route.
-    std::optional<std::uint16_t> source_actor_template_kind;
+    // Lua receives the resolved waypoint capability, not the template's
+    // source sprite selector.
     bool source_actor_has_waypoint_data = false;
     // ROM world-activity script lists may create non-encounter actors in the
     // same runtime pool. Keep that provenance explicit for Lua profile rules.

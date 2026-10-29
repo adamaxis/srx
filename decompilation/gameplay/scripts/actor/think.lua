@@ -155,7 +155,7 @@ local function think_gate(state, context)
     local facts = state.actor_facts
     local world_active = context.world_activity_active == true
 
-    if context.entity_kind == E.SpriteType.THON then
+    if context.visual_profile_id == E.ActorVisualProfile.THON then
         return thon_period_path(state, context)
     end
     -- 0x1392A -> 0x14508 -> 0x1450E uses the controlled runner's record [C].

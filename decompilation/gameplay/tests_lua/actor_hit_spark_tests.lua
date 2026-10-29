@@ -23,14 +23,14 @@ local R = require("actor.registry")
 local function fixture(meter_changed)
     game.hit_spark_test_meter_changed = meter_changed
     local state = {
-        entity_kind = E.SpriteType.CORP_GUARD,
+        visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD,
         action_delay = -1,
         movement_current_heading = 0,
         target_motion_effect_active = false,
     }
     local context = {
         dynamic_world_encounter_actor = true,
-        entity_kind = E.SpriteType.CORP_GUARD,
+        visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD,
         phase = "behavior",
         initial_heading = 0,
         target_heading_audio_alternate = false,

@@ -7055,6 +7055,45 @@ bool script_sprite_type_blocks_spell_death_pose(
     return source_sprite_type == kThonSpriteType;
 }
 
+std::optional<std::string_view>
+script_actor_visual_profile_id_from_source_type(
+    const std::uint16_t source_sprite_type) noexcept {
+    // The US actor template's first word is copied to live +0x0E by 0x44BC;
+    // the animation service uses that selector to choose 0x62AC lists. Resolve
+    // it once here to stable content IDs, so Lua never indexes by that word.
+    switch (source_sprite_type) {
+    case 1U: return "hit_spark";
+    case 3U: return "field_runner";
+    case 4U: return "ork_bandersnatch";
+    case 5U: return "human_guard";
+    case 6U: return "elven_mage";
+    case 7U: return "ghoul_eye_fiver";
+    case 8U: return "yakuza_weenr";
+    case 9U: return "vampire_gator_shaman";
+    case 10U: return "lone_star_mage";
+    case 11U: return "pedestrian_rat_shaman";
+    case 12U: return "hell_hound";
+    case 13U: return "gargoyle";
+    case 14U: return "wendigo";
+    case 15U: return "thon";
+    default: return std::nullopt;
+    }
+}
+
+std::optional<std::uint16_t>
+script_source_type_from_actor_visual_profile_id(
+    const std::string_view visual_profile_id) noexcept {
+    for (std::uint16_t source_type = 1U; source_type <= 15U;
+         ++source_type) {
+        const auto profile =
+            script_actor_visual_profile_id_from_source_type(source_type);
+        if (profile.has_value() && *profile == visual_profile_id) {
+            return source_type;
+        }
+    }
+    return std::nullopt;
+}
+
 ScriptCombatActionProfileOptions
 script_combat_action_profile_options_from_source_flags(
     const std::uint8_t source_flags) noexcept {
@@ -8457,7 +8496,7 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
         const auto row_index = lua_absindex(state, -1);
         ScriptWorldActivityActor actor{};
         std::uint32_t source_order = 0U;
-        std::uint32_t entity_kind = 0U;
+        std::string visual_profile_id;
         std::uint32_t palette_line = 0U;
         std::uint32_t action_code = 0U;
         std::uint32_t world_x = 0U;
@@ -8507,8 +8546,11 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
             valid_fact(read_field_string(state, row_index, "profile_id",
                                          actor.profile_id), "actor profile") &&
             valid_fact(valid_identifier(actor.profile_id), "actor profile") &&
-            valid_fact(read_field_integer(state, row_index, "entity_kind",
-                                          15U, entity_kind), "entity kind") &&
+            valid_fact(read_field_string(state, row_index,
+                                         "visual_profile_id",
+                                         visual_profile_id) &&
+                           valid_identifier(visual_profile_id),
+                       "visual profile") &&
             valid_fact(read_field_string(state, row_index, "sprite",
                                          actor.sprite_stem), "sprite id") &&
             valid_fact(valid_identifier(actor.sprite_stem), "sprite id") &&
@@ -8542,6 +8584,13 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
             return fail("world-content actor descriptor has invalid " +
                         invalid_fact);
         }
+        const auto source_sprite_type =
+            script_source_type_from_actor_visual_profile_id(
+                visual_profile_id);
+        if (!source_sprite_type.has_value()) {
+            return fail(
+                "world-content actor descriptor has an unknown visual profile");
+        }
         if (action_kind == "none") {
             actor.action_kind = ScriptActorActionKind::none;
         } else if (action_kind == "item") {
@@ -8567,7 +8616,7 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
         actor.activity_id = actor.list_id;
         actor.source_order = static_cast<std::uint16_t>(source_order);
         actor.activity_probe_enabled = activity_probe_enabled;
-        actor.entity_kind = static_cast<std::uint16_t>(entity_kind);
+        actor.entity_kind = *source_sprite_type;
         actor.combatant.blocks_spell_death_pose =
             script_sprite_type_blocks_spell_death_pose(actor.entity_kind);
         actor.action_code = static_cast<std::uint8_t>(action_code);
@@ -8883,7 +8932,7 @@ GameScriptRuntime::resolve_field_encounter_impl(
             const auto actor_index = lua_absindex(state, -1);
             ScriptFieldEncounterActor actor{};
             std::uint32_t source_order = 0U;
-            std::uint32_t entity_kind = 0U;
+            std::string visual_profile_id;
             std::uint32_t action_code = 0U;
             ActorRoleFacts actor_roles;
             ActorInteractionFacts actor_interaction;
@@ -8907,8 +8956,9 @@ GameScriptRuntime::resolve_field_encounter_impl(
                 read_field_string(state, actor_index, "profile_id",
                                   actor.profile_id) &&
                 valid_identifier(actor.profile_id) &&
-                read_field_integer(state, actor_index, "entity_kind", 15U,
-                                   entity_kind) &&
+                read_field_string(state, actor_index, "visual_profile_id",
+                                  visual_profile_id) &&
+                valid_identifier(visual_profile_id) &&
                 read_field_string(state, actor_index, "action_kind",
                                   action_kind) &&
                 read_field_integer(state, actor_index, "action_code", 255U,
@@ -9074,7 +9124,14 @@ GameScriptRuntime::resolve_field_encounter_impl(
                 actor.run_target_spawn_y = static_cast<std::uint16_t>(
                     *run_target_spawn_y);
             }
-            actor.entity_kind = static_cast<std::uint16_t>(entity_kind);
+            const auto source_sprite_type =
+                script_source_type_from_actor_visual_profile_id(
+                    visual_profile_id);
+            if (!source_sprite_type.has_value()) {
+                return fail(
+                    "dynamic world encounter has an unknown visual profile");
+            }
+            actor.entity_kind = *source_sprite_type;
             actor.combatant.blocks_spell_death_pose =
                 script_sprite_type_blocks_spell_death_pose(actor.entity_kind);
             actor.action_code = static_cast<std::uint8_t>(action_code);
@@ -10631,14 +10688,17 @@ GameScriptRuntime::actor_heartbeat(
     lua_pushlstring(state, context.profile_id.data(),
                     context.profile_id.size());
     lua_setfield(state, -2, "profile_id");
-    lua_pushinteger(state, context.entity_kind);
-    lua_setfield(state, -2, "entity_kind");
-    if (context.source_actor_template_kind.has_value()) {
-        lua_pushinteger(state, *context.source_actor_template_kind);
+    const auto visual_profile_id = context.profile_id == "weapon_projectile"
+        ? std::optional<std::string_view>{"weapon_projectile"}
+        : script_actor_visual_profile_id_from_source_type(
+              context.entity_kind);
+    if (visual_profile_id.has_value()) {
+        lua_pushlstring(state, visual_profile_id->data(),
+                        visual_profile_id->size());
     } else {
         lua_pushnil(state);
     }
-    lua_setfield(state, -2, "source_actor_template_kind");
+    lua_setfield(state, -2, "visual_profile_id");
     lua_pushboolean(state, context.source_actor_has_waypoint_data);
     lua_setfield(state, -2, "source_actor_has_waypoint_data");
     lua_pushlstring(state, action_kind.data(), action_kind.size());

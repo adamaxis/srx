@@ -335,6 +335,12 @@ int main() {
         dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
             lua_isboolean(state, -1) != 0;
         lua_pop(state, 1);
+        lua_getfield(state, row, "visual_profile_id");
+        dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
+            lua_isstring(state, -1) != 0 && lua_tostring(state, -1)[0] != '\0';
+        lua_pop(state, 1);
+        dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
+            field_is_nil(state, row, "entity_kind");
         for (const auto* field : {"primary_action_profile_enabled",
                                   "secondary_action_profile_enabled"}) {
             lua_getfield(state, row, field);

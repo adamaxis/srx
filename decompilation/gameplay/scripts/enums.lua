@@ -91,9 +91,24 @@ E.ActionDelayModifier = {
     FACTOR_BONUS_12 = 12,
 }
 
-E.SpriteType  = { FIELD_RUNNER = 3, CORP_GUARD = 5, GHOUL = 7, PEDESTRIAN = 11, HELL_HOUND = 12, GARGOYLE = 13,
-                  WENDIGO = 14, THON = 15 }   -- +0x0E [C: 7,12,13,15 from our trace; 3,5,11,14 names from pre-module actor_ai.lua:40-46]
-E.SpriteType.HIT_SPARK = 0x01 -- child +0x0E at 0xB2C2 [C]
+-- Stable host presentation-profile IDs. Source sprite selectors are translated
+-- in the native adapter and never become Lua actor state.
+E.ActorVisualProfile = {
+    FIELD_RUNNER = "field_runner",
+    ORK_BANDERSNATCH = "ork_bandersnatch",
+    HUMAN_GUARD = "human_guard",
+    ELVEN_MAGE = "elven_mage",
+    GHOUL_EYE_FIVER = "ghoul_eye_fiver",
+    YAKUZA_WEENR = "yakuza_weenr",
+    VAMPIRE_GATOR_SHAMAN = "vampire_gator_shaman",
+    LONE_STAR_MAGE = "lone_star_mage",
+    PEDESTRIAN_RAT_SHAMAN = "pedestrian_rat_shaman",
+    HELL_HOUND = "hell_hound",
+    GARGOYLE = "gargoyle",
+    WENDIGO = "wendigo",
+    THON = "thon",
+    HIT_SPARK = "hit_spark",
+}
 -- Frame count/rate come from data/actor_anim_lists.lua kind 1 (list 0x7330).
 E.HitSpark = {
     SELECTOR = 0x0004, -- child +0x16 at 0xB2BC [C]

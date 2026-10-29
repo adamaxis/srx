@@ -346,7 +346,7 @@ local function begin_dynamic_item_action(state, context, target)
         return false
     end
     local direction = R.direction_from_heading(heading)
-    local animation = Animator.list(state.entity_kind, Animator.Clip.ITEM,
+    local animation = Animator.list(state.visual_profile_id, Animator.Clip.ITEM,
                                     direction)
     if animation == nil or animation.looping ~= false then
         return false
@@ -584,7 +584,7 @@ function R.begin_player_melee(state, context)
         return nil
     end
     state.combat_action_requested = false
-    local swing = context.entity_kind == 0x0C and SoundId.MELEE_SWING_ALT
+    local swing = context.visual_profile_id == E.ActorVisualProfile.HELL_HOUND and SoundId.MELEE_SWING_ALT
         or SoundId.MELEE_SWING
     local target = type(context.ai_target_candidates) == "table" and
         context.ai_target_candidates[1] or nil
@@ -849,7 +849,7 @@ local function begin_dynamic_target_action(state, context, target)
     end
     heading = u16(heading)
     local direction = R.direction_from_heading(heading)
-    local animation = Animator.list(state.entity_kind,
+    local animation = Animator.list(state.visual_profile_id,
                                     Animator.Clip.ACTION, direction)
     if animation == nil or animation.looping ~= false then
         return nil
@@ -891,7 +891,7 @@ local function begin_dynamic_target_action(state, context, target)
     end
     local heading_event = context.target_heading_audio_alternate
         and SoundId.TARGET_HEADING_ALT or SoundId.TARGET_HEADING
-    local action_audio_event = state.entity_kind == E.SpriteType.HELL_HOUND
+    local action_audio_event = state.visual_profile_id == E.ActorVisualProfile.HELL_HOUND
         and SoundId.MELEE_SWING_ALT or SoundId.MELEE_SWING
     return action_audio_event, heading_event
 end

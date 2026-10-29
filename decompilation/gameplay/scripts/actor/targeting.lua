@@ -13,6 +13,21 @@ local ActorProfileCatalog = require("data.actor_profiles")
 local ProjectileAnimationClips =
     require("data.weapon_projectile_animation_clips")
 local source_close_range_threshold = R.source_close_range_threshold   -- from actor/tables.lua
+local VisualProfile = E.ActorVisualProfile
+local DynamicEncounterVisualProfiles = {
+    [VisualProfile.ORK_BANDERSNATCH] = true,
+    [VisualProfile.HUMAN_GUARD] = true,
+    [VisualProfile.ELVEN_MAGE] = true,
+    [VisualProfile.GHOUL_EYE_FIVER] = true,
+    [VisualProfile.YAKUZA_WEENR] = true,
+    [VisualProfile.VAMPIRE_GATOR_SHAMAN] = true,
+    [VisualProfile.LONE_STAR_MAGE] = true,
+    [VisualProfile.PEDESTRIAN_RAT_SHAMAN] = true,
+    [VisualProfile.HELL_HOUND] = true,
+    [VisualProfile.GARGOYLE] = true,
+    [VisualProfile.WENDIGO] = true,
+    [VisualProfile.THON] = true,
+}
 
 local function copy_actor_facts(facts)
     facts = type(facts) == "table" and facts or {}
@@ -116,10 +131,10 @@ end
 
 local function dynamic_encounter_profile(context)
     if context.dynamic_world_encounter_actor ~= true or
-       type(context.entity_kind) ~= "number" then
+       type(context.visual_profile_id) ~= "string" then
         return nil
     end
-    local entity_kind = context.entity_kind
+    local visual_profile_id = context.visual_profile_id
     local action_kind = context.action_kind
     local action_id
     if action_kind == ActionKind.item then
@@ -129,11 +144,12 @@ local function dynamic_encounter_profile(context)
     elseif action_kind ~= ActionKind.none then
         return nil
     end
-    local minimum_entity_kind = context.world_activity_script_actor == true
-        and 3 or 4
-    if entity_kind < minimum_entity_kind or
-       entity_kind > E.SpriteType.THON or
-       (entity_kind == E.SpriteType.THON and
+    local world_activity_runner =
+        context.world_activity_script_actor == true and
+        visual_profile_id == VisualProfile.FIELD_RUNNER
+    if (not DynamicEncounterVisualProfiles[visual_profile_id] and
+        not world_activity_runner) or
+       (visual_profile_id == VisualProfile.THON and
         (action_kind ~= ActionKind.spell or
          action_id ~= "flame_dart")) or
        action_kind ~= context.action_kind or
@@ -143,11 +159,11 @@ local function dynamic_encounter_profile(context)
         return nil
     end
     local source_actor_profile = ActorProfileCatalog.dynamic(
-        entity_kind, action_kind, action_id)
+        visual_profile_id, action_kind, action_id)
     return {
-        package_id = "world_actor.kind_" .. tostring(entity_kind) ..
+        package_id = "world_actor." .. visual_profile_id ..
                      ".source_target_motion",
-        entity_kind = source_actor_profile.sprite_type,
+        visual_profile_id = source_actor_profile.visual_profile_id,
         action_kind = source_actor_profile.action_kind,
         action_id = source_actor_profile.action_id,
         weapon_item_id = source_actor_profile.weapon,
@@ -169,7 +185,7 @@ local function source_profile(context)
         not context.actor_facts.lifecycle.active) or
        (not profile.projectile_animation and
         not profile.hit_spark_animation and
-        context.entity_kind ~= profile.entity_kind) or
+        context.visual_profile_id ~= profile.visual_profile_id) or
        context.action_kind ~= profile.action_kind or
        (profile.action_kind == ActionKind.item and
         context.action_item_id ~= profile.weapon_item_id) or
@@ -385,7 +401,7 @@ local function initial_state(context, profile)
     local state = {
         actor_id = context.actor_id,
         profile_id = context.profile_id,
-        entity_kind = context.entity_kind,
+        visual_profile_id = context.visual_profile_id,
         action_kind = context.action_kind,
         action_id = action_id,
         action_item_id = context.action_item_id,
@@ -507,7 +523,7 @@ local function same_actor(state, context, profile)
     local same_action = state.action_kind == context.action_kind and
         state.action_id == action_id
     if state.profile_id == context.profile_id and
-       state.entity_kind == context.entity_kind and
+       state.visual_profile_id == context.visual_profile_id and
        same_action then
         return true
     end
@@ -521,7 +537,7 @@ local function same_actor(state, context, profile)
     if type(pending) ~= "table" or
        pending.profile_prefix ~= context.profile_prefix or
        not pending_action_matches or
-       state.entity_kind ~= context.entity_kind then
+       state.visual_profile_id ~= context.visual_profile_id then
         return false
     end
     state.profile_id = context.profile_id

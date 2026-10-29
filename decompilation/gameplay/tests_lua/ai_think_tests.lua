@@ -47,7 +47,7 @@ end
 
 local function context(overrides)
     local c = {
-        entity_kind = E.SpriteType.CORP_GUARD,
+        visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD,
         actor_facts = actor_facts(),
         source_projection_active = true,
         source_think_suppressed = false,
@@ -178,7 +178,7 @@ check(wounded ~= nil and wounded.id == "party.runner.two",
 local field_actor_context = {
     actor_id = "pedestrian.test",
     profile_id = "pedestrian_k0b_none00",
-    entity_kind = E.SpriteType.PEDESTRIAN,
+    visual_profile_id = E.ActorVisualProfile.PEDESTRIAN_RAT_SHAMAN,
     action_kind = R.ActionKind.none,
     initial_heading = 0x4200,
     entry_delay = 0,
@@ -266,7 +266,7 @@ check(think_path(second_actor, token_context) == "patrol" and
 
 local thon_state = state()
 local thon_context = context({
-    entity_kind = E.SpriteType.THON,
+    visual_profile_id = E.ActorVisualProfile.THON,
     source_thon_period_counter = E.AiTuning.THON_PERIOD,
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
@@ -328,13 +328,13 @@ check(R.linked_target(only_offscreen_context, only_offscreen_state) == nil and
       "0x14446 does not select or retain an off-screen runner [C]")
 
 local strike_context = context({
-    entity_kind = E.SpriteType.GHOUL,
+    visual_profile_id = E.ActorVisualProfile.GHOUL_EYE_FIVER,
     dynamic_world_encounter_actor = true,
     movement_allowed = true,
     initial_heading = 0,
 })
 local strike_state = state({
-    entity_kind = E.SpriteType.GHOUL,
+    visual_profile_id = E.ActorVisualProfile.GHOUL_EYE_FIVER,
     action_delay = -1,
     movement_current_heading = 0,
 })
@@ -355,7 +355,7 @@ check(strike_in_range and strike_result.world_activity_requested == true and
 
 local thon_unknown_state = state()
 check(R.think_gate(thon_unknown_state,
-      context({ entity_kind = E.SpriteType.THON })) == "thon_unresolved" and
+      context({ visual_profile_id = E.ActorVisualProfile.THON })) == "thon_unresolved" and
       thon_unknown_state.ai_think_gap ==
           "thon_global_period_initial_value_unresolved",
       "THON preserves the missing FFE188 initializer as an explicit gap")
@@ -697,7 +697,7 @@ for source_order = 0, 2 do
     if valid then
         local route_context = context({
             actor_id = "field_scene_2_actor_" .. source_order,
-            entity_kind = E.SpriteType.PEDESTRIAN,
+            visual_profile_id = E.ActorVisualProfile.PEDESTRIAN_RAT_SHAMAN,
             actor_facts = { roles = { pedestrian = true } },
             source_world_x = route.initial.x,
             source_world_y = route.initial.y,
@@ -747,7 +747,7 @@ for _, region in ipairs(regional_pedestrian_routes) do
         if valid_route then
             local route_context = context({
                 actor_id = actor_id,
-                entity_kind = E.SpriteType.PEDESTRIAN,
+                visual_profile_id = E.ActorVisualProfile.PEDESTRIAN_RAT_SHAMAN,
                 actor_facts = { roles = { pedestrian = true } },
                 source_world_x = route.initial.x,
                 source_world_y = route.initial.y,
@@ -894,8 +894,8 @@ end
 local function movement_fixture(dynamic_actor)
     return {
         dynamic_world_encounter_actor = dynamic_actor,
-        entity_kind = dynamic_actor and E.SpriteType.CORP_GUARD
-            or E.SpriteType.FIELD_RUNNER,
+        visual_profile_id = dynamic_actor and E.ActorVisualProfile.HUMAN_GUARD
+            or E.ActorVisualProfile.FIELD_RUNNER,
         actor_facts = actor_facts({
             lifecycle = { active = true, thinking_enabled = false },
             roles = { hostile = dynamic_actor == true },
@@ -963,7 +963,7 @@ movement_heading_case(0xF000, 0, false,
 -- Its 0x44BC-published +0x10 is 0x05, so THINK is clear even though it is a
 -- routed actor. [C: ROM route/template tables and disassembly]
 local route_actor_context = movement_fixture(false)
-route_actor_context.entity_kind = E.SpriteType.CORP_GUARD
+route_actor_context.visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD
 route_actor_context.source_actor_has_waypoint_data = true
 route_actor_context.actor_facts.roles.reinforcement = true
 route_actor_context.movement_actor_facts.lifecycle.active = true
@@ -992,7 +992,7 @@ local regional_pedestrian_speed_cases = {
 }
 for _, speed_case in ipairs(regional_pedestrian_speed_cases) do
     local speed_context = movement_fixture(false)
-    speed_context.entity_kind = E.SpriteType.PEDESTRIAN
+    speed_context.visual_profile_id = E.ActorVisualProfile.PEDESTRIAN_RAT_SHAMAN
     speed_context.source_actor_has_waypoint_data = true
     speed_context.actor_facts.roles.pedestrian = true
     speed_context.movement_actor_facts.lifecycle.active = true
@@ -1036,7 +1036,7 @@ local heartbeat_target = {
 local heartbeat_context = movement_fixture(true)
 heartbeat_context.actor_id = heartbeat_actor_id
 heartbeat_context.profile_id = "hell_hound_k0c_none00"
-heartbeat_context.entity_kind = E.SpriteType.HELL_HOUND
+heartbeat_context.visual_profile_id = E.ActorVisualProfile.HELL_HOUND
 heartbeat_context.action_kind = "none"
 heartbeat_context.action_code = E.ItemId.NONE
 heartbeat_context.phase = "behavior"

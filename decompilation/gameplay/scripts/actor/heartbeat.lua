@@ -6,7 +6,7 @@ local I = require("lib.int68k")
 local u16, s16 = I.u16, I.s16
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
-local SpriteType = E.SpriteType
+local VisualProfile = E.ActorVisualProfile
 
 -- ROM 0x1E514 clears the escort relationship and deactivates the actor. The
 -- host clears its typed template marker and retires the live record slot.
@@ -189,7 +189,7 @@ function ActorAI.heartbeat(context)
                 -- record leaves the field after its death list.
                 -- 0xA9A6: a finished 0xB0D4/0xB10C spell-death list does the
                 -- same for every kind.
-                if context.entity_kind == SpriteType.WENDIGO or
+                if context.visual_profile_id == VisualProfile.WENDIGO or
                    state.spell_death then
                     deactivate_record(state)
                 end
@@ -201,7 +201,7 @@ function ActorAI.heartbeat(context)
                state.animation_id == "hurt" then
                 state.movement_step = nil
                 local animation = R.Animator.list(
-                    state.entity_kind, R.Animator.Clip.HURT, state.direction)
+                    state.visual_profile_id, R.Animator.Clip.HURT, state.direction)
                 if not R.advance_finite_actor_animation(state, animation) then
                     return nil
                 end
