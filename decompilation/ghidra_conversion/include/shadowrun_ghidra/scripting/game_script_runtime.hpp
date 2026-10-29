@@ -1751,8 +1751,8 @@ struct ScriptActorBehaviorContext {
     bool world_activity_script_actor = false;
     std::optional<std::uint8_t> source_record_slot;
     // ROM actor +0x3E: 0x44BC copies FFDD40 for scene actors and 0x42CC
-    // initializes runner records to 0..2 [C]. Kept separate from the host's
-    // candidate identity field because Lua consumes it as a behavior input.
+    // initializes runner records to 0..2 [C]. Retained for native validation;
+    // Lua receives semantic actor facts instead of this raw value.
     std::optional<std::uint8_t> source_actor_slot;
     // Live actor +0/+4 position, which seeds +0x96/+0x98 at spawn [C].
     std::optional<std::uint16_t> source_world_x;
@@ -1843,6 +1843,9 @@ struct ScriptActorBehaviorContext {
     // Named formation role for actor-follow policy. The host translates live
     // record identity here; Lua does not consume a source record slot for it.
     std::optional<ScriptFormationPosition> formation_position;
+    // The actor has a live field-scene record and can use field movement.
+    // Lua receives this fact instead of inferring record existence from a slot.
+    bool live_field_actor = false;
 };
 
 enum class ScriptTarislarTombOutroStep {

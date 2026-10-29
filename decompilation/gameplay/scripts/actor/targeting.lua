@@ -420,7 +420,7 @@ local function initial_state(context, profile)
         movement_current_heading =
             (profile.controls_movement or
              (profile.source_profile_patrol and
-              type(context.source_actor_slot) == "number")) and
+              context.live_field_actor == true)) and
             context.initial_heading or nil,
         movement_route_distance = nil,
         movement_active = false,

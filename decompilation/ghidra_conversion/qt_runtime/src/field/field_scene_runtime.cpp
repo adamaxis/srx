@@ -3636,6 +3636,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
         if (static_cast<std::size_t>(source_slot) >=
             FieldPartyRosterRuntime::kSlotCount) {
             context.source_actor_slot = source_slot;
+            context.live_field_actor = true;
         }
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
@@ -4272,6 +4273,7 @@ void FieldSceneRuntime::advance_default_field_actors(
                 // ROM 0x1A342 returns pool slots 3..9 in d0; 0x44BC copies
                 // that exact value from FFDD40 to actor +0x3E [C].
                 context.source_actor_slot = source_slot;
+                context.live_field_actor = true;
             }
             context.source_world_x = actor.world_position.x;
             context.source_world_y = actor.world_position.y;
@@ -5487,6 +5489,7 @@ bool FieldSceneRuntime::retire_dialogue_escort_records() {
             *actor.source_record_slot);
         context.source_actor_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
+        context.live_field_actor = true;
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_behavior_flags = actor.source_behavior_flags;
@@ -12476,6 +12479,7 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             if (static_cast<std::size_t>(source_slot) >=
                 FieldPartyRosterRuntime::kSlotCount) {
                 context.source_actor_slot = source_slot;
+                context.live_field_actor = true;
             }
         }
         context.source_actor_template_kind = actor.entity_kind;

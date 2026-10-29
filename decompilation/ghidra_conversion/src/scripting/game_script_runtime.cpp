@@ -10477,14 +10477,11 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "source_record_slot");
-    if (context.source_actor_slot.has_value()) {
-        lua_pushinteger(state, *context.source_actor_slot);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "source_actor_slot");
     push_formation_position(state, "formation_position",
                             context.formation_position);
+    lua_pushboolean(state, context.live_field_actor ||
+                               context.source_actor_slot.has_value());
+    lua_setfield(state, -2, "live_field_actor");
     if (context.source_world_x.has_value()) {
         lua_pushinteger(state, *context.source_world_x);
     } else {

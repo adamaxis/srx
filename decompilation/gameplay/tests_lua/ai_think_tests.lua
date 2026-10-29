@@ -103,6 +103,32 @@ local function think_path(actor, facts)
     return actor.ai_think_path
 end
 
+-- ROM 0x1A342 allocates field actor records and 0x44BC copies their
+-- identity into the actor state [C]. Lua receives live membership as a fact.
+local field_actor_context = {
+    actor_id = "pedestrian.test",
+    profile_id = "pedestrian_k0b_none00",
+    entity_kind = E.SpriteType.PEDESTRIAN,
+    action_kind = R.ActionKind.none,
+    initial_heading = 0x4200,
+    entry_delay = 0,
+    source_actor_has_waypoint_data = true,
+    live_field_actor = true,
+    actor_facts = actor_facts(),
+}
+local field_actor_profile = R.source_profile(field_actor_context)
+local field_actor_state = R.initial_state(
+    field_actor_context, field_actor_profile)
+field_actor_context.actor_id = "pedestrian.detached"
+field_actor_context.live_field_actor = false
+local detached_actor_state = R.initial_state(
+    field_actor_context, R.source_profile(field_actor_context))
+check(field_actor_profile ~= nil and field_actor_state ~= nil and
+      field_actor_state.movement_current_heading == 0x4200 and
+      detached_actor_state ~= nil and
+      detached_actor_state.movement_current_heading == nil,
+      "source patrol movement starts only for a live field actor [C]")
+
 local world_due, runner_due = R.should_rebuild_target_lists(
     E.AiTuning.WORLD_TARGET_LIST_PHASE, 0)
 check(world_due and not runner_due,
