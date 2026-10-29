@@ -15,14 +15,6 @@ E.ActorField = {
     ACTION_DELAY = 0xDC, WAYPOINTS = 0xE0, WP_INDEX = 0xE4,
 }
 E.ActorPool = { STRIDE = 0x100, PARTY = 3, OTHERS = 7, PROJECTILES = 6 }   -- FF0100.., FF0400.., FF0B00.. [C]
--- Run-kill classification uses actor record +0x9B, not the rendered sprite
--- type at +0x0E. The ghoul bounty checks this byte against 0x42 (0x559BC).
-E.ActorRaceOrState = {
-    CONDITION_BONUS_EXEMPT_02 = 0x02, -- raw 0x02: skips the +4 combat condition adjustment [C value, H identity]
-    CONDITION_BONUS_EXEMPT_04 = 0x04, -- raw 0x04: skips the +4 combat condition adjustment [C value, H identity]
-    SPELL_SPECIAL_TARGET = 0x17, -- raw 0x17: 0x55B78 special target path [C]
-    GHOUL_BOUNTY_TARGET = 0x42,
-}
 E.GhoulBounty = { MAX_DEFEATS = 20 } -- FFFBF0 is capped at twenty (0x559BC) [C]
 
 -- +0x9E role/AI flags (doc 20 §2); REINFORCEMENT is set by the alarm spawner 0x1E0B8 [C]
@@ -144,9 +136,6 @@ E.ItemId = {
     RAT_TOTEM = 0x29, GATOR_TOTEM = 0x2A, BEAR_TOTEM = 0x2B,
     ARMOR_VEST = 0x2C, ARMOR_CLOTHING = 0x2D, ARMOR_JACKET = 0x2E, VEST_WITH_PLATES = 0x2F,
     LINED_DUSTER = 0x30, LIGHT_COMBAT_ARMOR = 0x31, HEAVY_COMBAT_ARMOR = 0x32,
-}
-E.CombatTargetClass = {
-    DIFFICULTY_PLUS_TWO = 0x16, -- raw 0x16: condition modifier adds two [C value, H class identity]
 }
 E.CombatTuning = {
     DEFAULT_ACTION_DIFFICULTY = 4, -- 0x55B16 initial threshold [C]

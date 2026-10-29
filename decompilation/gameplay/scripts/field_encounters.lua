@@ -68,7 +68,7 @@ local function actor_from_row(row)
             actor_facts = {
                 interaction = row.actor_facts.interaction,
             },
-            cyberware_flags = row.combat_cyberware_flags,
+            cyberware = row.combat_cyberware,
             physical_meter = row.physical_meter,
             mental_meter = row.combat_mental_meter,
             posture_reduction_percent = row.posture_reduction_percent,
@@ -88,8 +88,7 @@ local function actor_from_row(row)
                 melee_combat = row.combat_melee_combat,
             },
             armor_index = row.combat_armor_index,
-            race_or_state = row.combat_race_or_state,
-            class_code = row.combat_class_code,
+            combat_traits = row.combat_traits,
             equipped_action_code = row.action_code,
             action_result = 0,
             action_profile_modifier_flags = row.combat_modifier_flags_df,

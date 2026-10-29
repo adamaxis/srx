@@ -252,6 +252,42 @@ bool read_source_byte(const TsvDocument& document,
     return true;
 }
 
+bool read_source_signed_byte(const TsvDocument& document,
+                             const std::vector<std::string>& row,
+                             const std::string_view column,
+                             const std::filesystem::path& source_path,
+                             const std::size_t row_number,
+                             std::int8_t& result, std::string& failure) {
+    lua_Integer parsed = 0;
+    if (!parse_integer(value_at(document, row, column), parsed) ||
+        parsed < -128 || parsed > 127) {
+        failure = source_path.string() + ": row " +
+                  std::to_string(row_number) + " column " +
+                  std::string(column) + " is not a signed source byte";
+        return false;
+    }
+    result = static_cast<std::int8_t>(parsed);
+    return true;
+}
+
+bool read_source_word(const TsvDocument& document,
+                     const std::vector<std::string>& row,
+                     const std::string_view column,
+                     const std::filesystem::path& source_path,
+                     const std::size_t row_number, std::uint16_t& result,
+                     std::string& failure) {
+    lua_Integer parsed = 0;
+    if (!parse_integer(value_at(document, row, column), parsed) ||
+        parsed < 0 || parsed > 0xFFFF) {
+        failure = source_path.string() + ": row " +
+                  std::to_string(row_number) + " column " +
+                  std::string(column) + " is not a source word";
+        return false;
+    }
+    result = static_cast<std::uint16_t>(parsed);
+    return true;
+}
+
 bool push_weapon_action_policies(
     lua_State* state, const TsvDocument& document,
     const std::vector<std::string>& row,
@@ -400,6 +436,45 @@ bool push_record(lua_State* state, const TsvDocument& document,
             column.rfind("combat_item_phase_", 0U) == 0U) {
             continue;
         }
+        if (column == "combat_class_code") {
+            continue;
+        }
+        if (column == "combat_race_or_state") {
+            std::int8_t race_or_state = 0;
+            std::uint8_t class_code = 0U;
+            if (!read_source_signed_byte(document, row, column, source_path,
+                                         row_number, race_or_state, failure) ||
+                !read_source_byte(document, row, "combat_class_code",
+                                  source_path, row_number, class_code,
+                                  failure)) {
+                lua_pop(state, 1);
+                return false;
+            }
+            const auto traits = script_combat_traits_from_source_values(
+                race_or_state, class_code);
+            lua_createtable(state, 0, 6);
+            const auto traits_index = lua_absindex(state, -1);
+            const auto set_trait = [state, traits_index](
+                                       const char* field,
+                                       const bool enabled) {
+                lua_pushboolean(state, enabled);
+                lua_setfield(state, traits_index, field);
+            };
+            set_trait("ignores_cover_condition_penalty",
+                      traits.ignores_cover_condition_penalty);
+            set_trait("adds_two_condition_difficulty",
+                      traits.adds_two_condition_difficulty);
+            set_trait("is_special_spell_target",
+                      traits.is_special_spell_target);
+            set_trait("takes_fixed_meter_damage",
+                      traits.takes_fixed_meter_damage);
+            set_trait("qualifies_for_party_support_bonus",
+                      traits.qualifies_for_party_support_bonus);
+            set_trait("is_ghoul_bounty_target",
+                      traits.is_ghoul_bounty_target);
+            lua_setfield(state, table_index, "combat_traits");
+            continue;
+        }
         if (column.rfind("combat_action_phase_", 0U) == 0U) {
             if (column == "combat_action_phase_7f") {
                 std::uint8_t magic_cap = 0U;
@@ -411,6 +486,33 @@ bool push_record(lua_State* state, const TsvDocument& document,
                 lua_pushinteger(state, magic_cap);
                 lua_setfield(state, table_index, "combat_magic_cap");
             }
+            continue;
+        }
+        if (column == "combat_cyberware_flags") {
+            std::uint16_t source_flags = 0U;
+            if (!read_source_word(document, row, column, source_path,
+                                  row_number, source_flags, failure)) {
+                lua_pop(state, 1);
+                return false;
+            }
+            const auto cyberware =
+                script_combat_cyberware_from_source_flags(source_flags);
+            lua_createtable(state, 0, 6);
+            const auto cyberware_index = lua_absindex(state, -1);
+            const auto set_flag = [state, cyberware_index](
+                                      const char* field, const bool enabled) {
+                lua_pushboolean(state, enabled);
+                lua_setfield(state, cyberware_index, field);
+            };
+            set_flag("cybereyes", cyberware.cybereyes);
+            set_flag("hand_razors", cyberware.hand_razors);
+            set_flag("spurs", cyberware.spurs);
+            set_flag("smartlink", cyberware.smartlink);
+            lua_pushinteger(state, cyberware.melee_strength_bonus);
+            lua_setfield(state, cyberware_index, "melee_strength_bonus");
+            lua_pushinteger(state, cyberware.melee_defense_bonus);
+            lua_setfield(state, cyberware_index, "melee_defense_bonus");
+            lua_setfield(state, table_index, "combat_cyberware");
             continue;
         }
         const auto value = value_at(document, row, column);

@@ -190,10 +190,6 @@ int main() {
         return 9;
     }
 
-    constexpr auto ghoul_race_or_state = static_cast<std::int8_t>(
-        srx::v(srx::ActorRaceOrState::GHOUL_BOUNTY_TARGET));
-    constexpr auto other_race_or_state = static_cast<std::int8_t>(
-        srx::v(srx::ActorRaceOrState::GHOUL_BOUNTY_TARGET) - 1);
     const auto no_kills = scripts.resolve_active_run_johnson_return(
         "jump_house");
     if (!expect(no_kills.has_value() &&
@@ -207,9 +203,9 @@ int main() {
         return 10;
     }
     const auto other = scripts.resolve_active_run_actor_defeat(
-        ScriptActorDefeatFacts{other_race_or_state});
+        ScriptActorDefeatFacts{false});
     const auto first_ghoul = scripts.resolve_active_run_actor_defeat(
-        ScriptActorDefeatFacts{ghoul_race_or_state});
+        ScriptActorDefeatFacts{true});
     if (!expect(other.has_value() &&
                     other->action == ScriptRunActorDefeatAction::no_action &&
                     other->objective_progress == 0U &&
@@ -223,7 +219,7 @@ int main() {
 
     const auto saved = scripts.save_run_registry_state();
     const auto second_ghoul = scripts.resolve_active_run_actor_defeat(
-        ScriptActorDefeatFacts{ghoul_race_or_state});
+        ScriptActorDefeatFacts{true});
     if (!expect(saved.has_value() &&
                     scripts.validate_run_registry_state(*saved) &&
                     second_ghoul.has_value() &&
@@ -238,7 +234,7 @@ int main() {
         srx::v(srx::GhoulBounty::MAX_DEFEATS));
     for (std::uint8_t count = 2U; count <= max_defeats; ++count) {
         const auto decision = scripts.resolve_active_run_actor_defeat(
-            ScriptActorDefeatFacts{ghoul_race_or_state});
+            ScriptActorDefeatFacts{true});
         if (!expect(decision.has_value() &&
                         decision->action ==
                             ScriptRunActorDefeatAction::objective_advanced &&
@@ -248,7 +244,7 @@ int main() {
         }
     }
     const auto beyond_cap = scripts.resolve_active_run_actor_defeat(
-        ScriptActorDefeatFacts{ghoul_race_or_state});
+        ScriptActorDefeatFacts{true});
     if (!expect(beyond_cap.has_value() &&
                     beyond_cap->action == ScriptRunActorDefeatAction::no_action &&
                     beyond_cap->objective_progress == max_defeats,

@@ -1236,7 +1236,7 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
         target->combatant.physical_meter != 0U &&
         update.physical_meter == 0U;
     const scripting::ScriptActorDefeatFacts defeat_facts{
-        target->combatant.race_or_state};
+        target->combatant.traits.is_ghoul_bounty_target};
 
     target->combatant.physical_meter = update.physical_meter;
     target->combatant.mental_meter = update.mental_meter;

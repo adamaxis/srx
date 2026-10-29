@@ -31,7 +31,15 @@ local function combatant(firearms, pistols, maxima, posture)
         physical_meter = 10,
         mental_meter = 10,
         posture_reduction_percent = posture * 25,
-        cyberware_flags = 0,
+        cyberware = {},
+        combat_traits = {
+            ignores_cover_condition_penalty = false,
+            adds_two_condition_difficulty = false,
+            is_special_spell_target = false,
+            takes_fixed_meter_damage = false,
+            qualifies_for_party_support_bonus = true,
+            is_ghoul_bounty_target = false,
+        },
         action_profile_modifier_flags = 0,
         attributes = {
             body = 0,

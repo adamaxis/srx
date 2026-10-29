@@ -357,7 +357,8 @@ scripting::ScriptCombatantFacts script_combatant_facts(
     facts.record_type = record.record_type;
     facts.source_flags = static_cast<std::uint8_t>(record.flags >> 8U);
     facts.interaction_flags = static_cast<std::uint8_t>(record.flags);
-    facts.cyberware_flags = record.cyberware_flags;
+    facts.cyberware = scripting::script_combat_cyberware_from_source_flags(
+        record.cyberware_flags);
     facts.physical_meter = record.delay_meter;
     facts.mental_meter = record.behavior_meter;
     facts.source_posture = record.posture;
@@ -369,8 +370,9 @@ scripting::ScriptCombatantFacts script_combatant_facts(
         record.skills[3], record.skills[4], record.skills[5]};
     facts.auxiliary_roll_bonus = record.magic_force;
     facts.armor_index = record.equipped_armor_index;
-    facts.race_or_state = static_cast<std::int8_t>(record.species_index);
-    facts.class_code = record.archetype_index;
+    facts.traits = scripting::script_combat_traits_from_source_values(
+        static_cast<std::int8_t>(record.species_index),
+        record.archetype_index);
     facts.equipped_action_code = record.equipped_item_code;
     facts.action_profile_modifier_flags =
         record.action_profile_modifier_flags;
@@ -2082,7 +2084,9 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             actor.combatant.interaction_flags =
                 actor.source_interaction_flags;
             actor.combatant.mental_meter = parse_byte_field(19U);
-            actor.combatant.cyberware_flags = parse_word_field(20U);
+            actor.combatant.cyberware =
+                scripting::script_combat_cyberware_from_source_flags(
+                    parse_word_field(20U));
             actor.combatant.source_posture = parse_byte_field(21U);
             actor.combatant.attributes = scripting::ScriptCombatAttributes{
                 parse_byte_field(22U), parse_byte_field(23U),
@@ -2091,8 +2095,9 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             actor.combatant.skills.sorcery = parse_byte_field(28U);
             actor.combatant.skills.melee_combat = parse_byte_field(27U);
             actor.combatant.armor_index = parse_byte_field(29U);
-            actor.combatant.race_or_state = parse_signed_byte_field(30U);
-            actor.combatant.class_code = parse_byte_field(31U);
+            actor.combatant.traits =
+                scripting::script_combat_traits_from_source_values(
+                    parse_signed_byte_field(30U), parse_byte_field(31U));
             actor.combatant.action_profile_modifier_flags =
                 parse_byte_field(32U);
             for (std::size_t index = 0U;

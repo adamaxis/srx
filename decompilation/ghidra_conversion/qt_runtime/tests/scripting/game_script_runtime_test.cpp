@@ -244,6 +244,81 @@ bool verify_posture_reduction_percent_translation() {
         "invalid posture reduction percentage was accepted");
 }
 
+bool verify_combat_cyberware_translation() {
+    using namespace shadowrun::ghidra_conversion::scripting;
+    // ROM 0x55718..0x55726 and 0x55740..0x5574E read the named eye/link
+    // capabilities. ROM 0x55D2C..0x55D86 selects the first bit in 5..8 as
+    // melee strength bonus; 0x55DA2..0x55DBC selects spurs/razors and the
+    // first bit in 9..11 as melee defense bonus. [C]
+    for (std::uint32_t raw_flags = 0U; raw_flags <= 0xFFFFU; ++raw_flags) {
+        const auto source_flags = static_cast<std::uint16_t>(raw_flags);
+        ScriptCombatCyberware expected{};
+        expected.cybereyes = (source_flags & 0x0002U) != 0U;
+        expected.hand_razors = (source_flags & 0x0004U) != 0U;
+        expected.spurs = (source_flags & 0x0008U) != 0U;
+        expected.smartlink = (source_flags & 0x0010U) != 0U;
+        for (std::uint8_t offset = 0U; offset < 4U; ++offset) {
+            if ((source_flags & (std::uint16_t{1U} << (5U + offset))) != 0U) {
+                expected.melee_strength_bonus =
+                    static_cast<std::uint8_t>(offset + 1U);
+                break;
+            }
+        }
+        for (std::uint8_t offset = 0U; offset < 3U; ++offset) {
+            if ((source_flags & (std::uint16_t{1U} << (9U + offset))) != 0U) {
+                expected.melee_defense_bonus =
+                    static_cast<std::uint8_t>(offset + 1U);
+                break;
+            }
+        }
+        const auto actual =
+            script_combat_cyberware_from_source_flags(source_flags);
+        if (actual.cybereyes != expected.cybereyes ||
+            actual.hand_razors != expected.hand_razors ||
+            actual.spurs != expected.spurs ||
+            actual.smartlink != expected.smartlink ||
+            actual.melee_strength_bonus != expected.melee_strength_bonus ||
+            actual.melee_defense_bonus != expected.melee_defense_bonus) {
+            std::cerr << "combat cyberware translation mismatch for source flags "
+                      << raw_flags << '\n';
+            return false;
+        }
+    }
+    return true;
+}
+
+bool verify_combat_profile_trait_translation() {
+    using namespace shadowrun::ghidra_conversion::scripting;
+    // Combat keeps the exact selector outcomes, but the Lua contract receives
+    // named rules. Exhaust every signed +0x9B race/state and unsigned +0x9B
+    // class selector to guard the adapter against category drift. [C]
+    for (int race = -128; race <= 127; ++race) {
+        for (unsigned int class_code = 0U; class_code <= 0xFFU;
+             ++class_code) {
+            const auto race_value = static_cast<std::int8_t>(race);
+            const auto class_value = static_cast<std::uint8_t>(class_code);
+            const auto traits = script_combat_traits_from_source_values(
+                race_value, class_value);
+            const bool signed_class_at_most_one =
+                class_code <= 1U || class_code >= 0x80U;
+            if (traits.ignores_cover_condition_penalty !=
+                    (race == 2 || race == 4) ||
+                traits.adds_two_condition_difficulty !=
+                    (class_code == 0x16U) ||
+                traits.is_special_spell_target != (race == 0x17) ||
+                traits.takes_fixed_meter_damage != (race < 0) ||
+                traits.qualifies_for_party_support_bonus !=
+                    signed_class_at_most_one ||
+                traits.is_ghoul_bounty_target != (race == 0x42)) {
+                std::cerr << "combat profile trait translation mismatch for race "
+                          << race << " and class " << class_code << '\n';
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 bool verify_mode_one_semantic_fact_translation() {
     using namespace shadowrun::ghidra_conversion::scripting;
     const std::array<std::pair<std::uint8_t,
@@ -1949,6 +2024,8 @@ int main() {
         !verify_semantic_combat_inventory_translation() ||
         !verify_field_scene_mode_translation() ||
         !verify_actor_behavior_profile_translation() ||
+        !verify_combat_cyberware_translation() ||
+        !verify_combat_profile_trait_translation() ||
         !verify_posture_reduction_percent_translation() ||
         !verify_mode_one_semantic_fact_translation()) {
         return 1;
@@ -6099,7 +6176,7 @@ int main() {
     spell_caster.source_posture = 4U;
     spell_caster.attributes.willpower = 8U;
     spell_caster.skills.sorcery = 8U;
-    spell_caster.race_or_state = 4;
+    spell_caster.traits = script_combat_traits_from_source_values(4, 0U);
     spell_caster.equipped_action_code = 1U;
     spell_caster.magic_cap = 20U;
     spell_caster.item_codes[0] = 6U;
@@ -7154,15 +7231,15 @@ int main() {
     catalog_attacker.source_flags = 0x25U;
     catalog_attacker.physical_meter = 10U;
     catalog_attacker.mental_meter = 10U;
-    catalog_attacker.cyberware_flags = 0x0008U;
+    catalog_attacker.cyberware.spurs = true;
     catalog_attacker.attributes.body = 2U;
     catalog_attacker.attributes.quickness = 4U;
     catalog_attacker.attributes.strength = 1U;
     catalog_attacker.attributes.intelligence = 4U;
     catalog_attacker.attributes.willpower = 4U;
     catalog_attacker.skills.melee_combat = 3U;
-    catalog_attacker.race_or_state = 4;
-    catalog_attacker.class_code = 7U;
+    catalog_attacker.traits =
+        script_combat_traits_from_source_values(4, 7U);
     catalog_attacker.equipped_action_code = 1U;
     ScriptCombatantFacts catalog_defender{};
     catalog_defender.record_type = 0U;
@@ -7176,7 +7253,8 @@ int main() {
     catalog_defender.attributes.intelligence = 4U;
     catalog_defender.attributes.willpower = 4U;
     catalog_defender.armor_index = 0U;
-    catalog_defender.class_code = 0U;
+    catalog_defender.traits =
+        script_combat_traits_from_source_values(0, 0U);
     catalog_defender.equipped_action_code = 0U;
     const auto drive_catalog_decision =
         [&](const CatalogProfile& row)
@@ -7399,15 +7477,15 @@ int main() {
     attacker_facts.source_flags = 0x25U;
     attacker_facts.physical_meter = 10U;
     attacker_facts.mental_meter = 10U;
-    attacker_facts.cyberware_flags = 0x0008U;
+    attacker_facts.cyberware.spurs = true;
     attacker_facts.attributes.body = 2U;
     attacker_facts.attributes.quickness = 4U;
     attacker_facts.attributes.strength = 1U;
     attacker_facts.attributes.intelligence = 4U;
     attacker_facts.attributes.willpower = 4U;
     attacker_facts.skills.melee_combat = 3U;
-    attacker_facts.race_or_state = 4;
-    attacker_facts.class_code = 7U;
+    attacker_facts.traits =
+        script_combat_traits_from_source_values(4, 7U);
     attacker_facts.equipped_action_code = 1U;
     combat_probe_context.combatant = attacker_facts;
     ScriptCombatantFacts target_facts{};
@@ -7422,7 +7500,8 @@ int main() {
     target_facts.attributes.intelligence = 4U;
     target_facts.attributes.willpower = 4U;
     target_facts.armor_index = 0U;
-    target_facts.class_code = 0U;
+    target_facts.traits =
+        script_combat_traits_from_source_values(0, 0U);
     target_facts.equipped_action_code = 0U;
     ScriptActorTargetCandidate combat_target{
         "party.runner.0", 0x1800U, 0x1800U, 0x2000U,
@@ -8644,14 +8723,14 @@ int main() {
             facts.attributes.quickness = 4U;
             facts.attributes.intelligence = 3U;
             facts.attributes.willpower = 3U;
-            facts.class_code = 2U;
+            facts.traits = script_combat_traits_from_source_values(0, 2U);
         } else if (profile_id == "pedestrian_k0b_none00") {
             // ROM template facts in default-actors.tsv: 2/1 and 2/2.
             facts.attributes.body = 2U;
             facts.attributes.quickness = 1U;
             facts.attributes.intelligence = 2U;
             facts.attributes.willpower = 2U;
-            facts.class_code = 19U;
+            facts.traits = script_combat_traits_from_source_values(0, 19U);
         } else if (profile_id == "thon_k0f_spell01") {
             // Scene-55 ROM template 0x1EDB00 / default-actors.tsv supplies
             // Thon's live spell-combat bytes, including skill 5 and item-18
@@ -8668,8 +8747,7 @@ int main() {
             facts.skills.melee_combat = 8U;
             facts.skills.sorcery = 8U;
             facts.armor_index = 7U;
-            facts.race_or_state = -1;
-            facts.class_code = 0U;
+            facts.traits = script_combat_traits_from_source_values(-1, 0U);
             facts.equipped_action_code = 1U;
             facts.item_codes[0] = 50U;
             facts.magic_cap = 6U;

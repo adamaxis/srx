@@ -856,7 +856,7 @@ struct ScriptRunFieldEventDecision {
 };
 
 struct ScriptActorDefeatFacts {
-    std::int8_t race_or_state = 0; // live actor record +0x9B
+    bool is_ghoul_bounty_target = false;
 };
 
 enum class ScriptRunActorDefeatAction : std::uint8_t {
@@ -1041,6 +1041,31 @@ struct ScriptCombatSkills {
     std::uint8_t melee_combat = 0;
 };
 
+// Combat-facing abilities decoded from the runner/actor cyberware word.
+// Source bit positions stay in the host adapter; gameplay scripts receive
+// named capabilities and the bonuses those capabilities provide.
+struct ScriptCombatCyberware {
+    bool cybereyes = false;
+    bool hand_razors = false;
+    bool spurs = false;
+    bool smartlink = false;
+    std::uint8_t melee_strength_bonus = 0;
+    std::uint8_t melee_defense_bonus = 0;
+};
+
+// Combat rules derived from source profile fields. Lua receives the behavior
+// each rule needs, not race/state and class selector bytes.
+struct ScriptCombatTraits {
+    bool ignores_cover_condition_penalty = false;
+    bool adds_two_condition_difficulty = false;
+    bool is_special_spell_target = false;
+    bool takes_fixed_meter_damage = false;
+    // The host's zero-initialized source class selector is class 0, which
+    // passes the signed class < 2 check in 0x1047E.
+    bool qualifies_for_party_support_bonus = true;
+    bool is_ghoul_bounty_target = false;
+};
+
 // Source-derived facts consumed by the ROM close-target reaction path
 // (0x55C76). Scripts receive semantic actor state, never a byte-addressed
 // Genesis record.
@@ -1048,20 +1073,19 @@ struct ScriptCombatantFacts {
     std::uint16_t record_type = 0;
     std::uint8_t source_flags = 0; // live +0x10
     std::uint8_t interaction_flags = 0; // live +0x11
-    std::uint16_t cyberware_flags = 0;
+    ScriptCombatCyberware cyberware;
     std::uint8_t physical_meter = 0;
     std::uint8_t mental_meter = 0;
     // Live actor +0x4D. The source value stays native; Lua receives the
     // posture adjustment percentage used by its combat rules.
     std::uint8_t source_posture = 0;
+    ScriptCombatTraits traits;
     ScriptCombatAttributes attributes;
     ScriptCombatSkills skills;
     // ROM 0x1033E adds live +0x9D to the initial action trial count.
     std::uint8_t auxiliary_roll_bonus = 0;
     std::uint8_t action_result = 0; // live +0x9F
     std::uint8_t armor_index = 0;
-    std::int8_t race_or_state = 0;
-    std::uint8_t class_code = 0;
     std::uint8_t equipped_action_code = 0;
     std::uint8_t action_profile_modifier_flags = 0; // live +0xDF
     // 0xFFFF means the source +0xD8 linked-record relationship has not been
@@ -1328,6 +1352,13 @@ struct ScriptActorBehaviorProfile {
 ScriptActorBehaviorProfile
 script_actor_behavior_profile_from_source_posture(
     std::uint8_t source_posture) noexcept;
+ScriptCombatCyberware script_combat_cyberware_from_source_flags(
+    std::uint16_t source_flags) noexcept;
+// +0x9B race/state and class selectors are decoded at the host boundary.
+// ROM 0x55740 uses exact +0x9B values for condition modifiers, 0x55B78 has
+// the 0x17 spell-target branch, and 0x559BC consumes the ghoul selector [C].
+ScriptCombatTraits script_combat_traits_from_source_values(
+    std::int8_t race_or_state, std::uint8_t class_code) noexcept;
 std::uint16_t script_posture_reduction_percent_from_source_value(
     std::uint8_t source_posture) noexcept;
 std::optional<std::uint8_t>

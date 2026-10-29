@@ -55,9 +55,15 @@ local function caster()
         },
         magic_cap = 20,
         action_profile_modifier_flags = 0,
-        race_or_state = 4,
-        class_code = 0,
-        cyberware_flags = 0,
+        combat_traits = {
+            ignores_cover_condition_penalty = true,
+            adds_two_condition_difficulty = false,
+            is_special_spell_target = false,
+            takes_fixed_meter_damage = false,
+            qualifies_for_party_support_bonus = true,
+            is_ghoul_bounty_target = false,
+        },
+        cyberware = {},
         inventory = {},
     }
 end

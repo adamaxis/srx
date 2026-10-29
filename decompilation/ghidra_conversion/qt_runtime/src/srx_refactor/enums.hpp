@@ -100,12 +100,6 @@ enum class ActorPose : std::int64_t {
     SPELL_DEATH_E4 = 0xE4,
     DEATH = 0xE8,
 };
-enum class ActorRaceOrState : std::int64_t {
-    CONDITION_BONUS_EXEMPT_02 = 0x2,
-    CONDITION_BONUS_EXEMPT_04 = 0x4,
-    SPELL_SPECIAL_TARGET = 0x17,
-    GHOUL_BOUNTY_TARGET = 0x42,
-};
 enum class ActorStatus : std::int64_t {
     NONE = 0x0,
     ACTIVE = 0x1,
@@ -221,9 +215,6 @@ enum class CombatPhase : std::int64_t {
     ATTACK_ANIM = 0x1,
     APPROACH = 0x2,
     HOLD = 0x3,
-};
-enum class CombatTargetClass : std::int64_t {
-    DIFFICULTY_PLUS_TWO = 0x16,
 };
 enum class CombatTuning : std::int64_t {
     DEFAULT_ACTION_VALUE = 0x2,

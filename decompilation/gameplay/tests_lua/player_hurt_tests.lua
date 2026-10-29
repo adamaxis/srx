@@ -44,18 +44,24 @@ local function combatant(record_type)
             sorcery = 0, firearms = 0, pistols = 0, smgs = 0,
             shotguns = 0, melee_combat = 1,
         },
-        race_or_state = 4,
-        class_code = 0,
+        combat_traits = {
+            ignores_cover_condition_penalty = true,
+            adds_two_condition_difficulty = false,
+            is_special_spell_target = false,
+            takes_fixed_meter_damage = false,
+            qualifies_for_party_support_bonus = true,
+            is_ghoul_bounty_target = false,
+        },
         armor_index = 0,
         equipped_action_code = 1,
-        cyberware_flags = 0,
+        cyberware = {},
         action_profile_modifier_flags = 0,
         inventory = {},
     }
 end
 
 local attacker = combatant(E.ActorPool.PARTY)
-attacker.race_or_state = 4
+attacker.combat_traits.ignores_cover_condition_penalty = true
 local bound_calls = 0
 local function random_sixes_then_ones(bound)
     if bound ~= 6 then return nil end

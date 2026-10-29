@@ -22,7 +22,7 @@ end
 
 function GhoulBounty.resolve_actor_defeat(offer, facts)
     local count = offer.ghoul_kill_count or 0
-    if facts.race_or_state ~= E.ActorRaceOrState.GHOUL_BOUNTY_TARGET or
+    if not facts.is_ghoul_bounty_target or
        count >= E.GhoulBounty.MAX_DEFEATS then
         return { action = "no_action", objective_progress = count }
     end

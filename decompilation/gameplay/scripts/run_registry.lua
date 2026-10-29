@@ -275,10 +275,8 @@ end
 
 function Registry.resolve_actor_defeat(facts)
     assert(type(facts) == "table" and
-           type(facts.race_or_state) == "number" and
-           facts.race_or_state % 1 == 0 and
-           facts.race_or_state >= -128 and facts.race_or_state <= 127,
-        "actor-defeat facts have an invalid race/state byte")
+           type(facts.is_ghoul_bounty_target) == "boolean",
+        "actor-defeat facts have invalid target classification")
 
     local offer = Registry.active_offer
     if offer == nil then

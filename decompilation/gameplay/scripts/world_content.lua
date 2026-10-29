@@ -265,7 +265,7 @@ local function world_activity_actor_descriptors(scene_id, list_id)
                     },
                     physical_meter = row.physical_meter,
                     mental_meter = row.combat_mental_meter,
-                    cyberware_flags = row.combat_cyberware_flags,
+                    cyberware = row.combat_cyberware,
                     posture_reduction_percent = row.posture_reduction_percent,
                     attributes = {
                         body = row.combat_body,
@@ -283,8 +283,7 @@ local function world_activity_actor_descriptors(scene_id, list_id)
                         melee_combat = row.combat_melee_combat,
                     },
                     armor_index = row.combat_armor_index,
-                    race_or_state = row.combat_race_or_state,
-                    class_code = row.combat_class_code,
+                    combat_traits = row.combat_traits,
                     action_profile_modifier_flags =
                         row.combat_modifier_flags_df,
                     equipped_action_code = row.action_code,

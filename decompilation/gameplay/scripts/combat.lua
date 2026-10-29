@@ -3,7 +3,6 @@
 -- 0x55C76 trial sequence and returns the resulting meter snapshot.
 local Combat = {}
 local E = require("enums")
-local ActorPool = E.ActorPool
 local SpellEffectKind = E.SpellEffectKind
 local SpellTuning = E.SpellTuning
 local SoundId = E.SoundId
@@ -58,6 +57,10 @@ end
 
 local function inventory_items(record)
     return type(record.inventory) == "table" and record.inventory or {}
+end
+
+local function combat_cyberware(record)
+    return type(record.cyberware) == "table" and record.cyberware or {}
 end
 
 local function inventory_item_at(record, slot)
@@ -184,15 +187,6 @@ local function spell_residual(force, roll_count, spell)
     return spell.base_effect - adjusted
 end
 
-local function first_cyberware_modifier(flags, first_bit, bit_count)
-    for offset = 0, bit_count - 1 do
-        if (flags & (1 << (first_bit + offset))) ~= 0 then
-            return offset + 1
-        end
-    end
-    return 0
-end
-
 local function thresholded_rolls(count, difficulty, random_bound)
     if type(random_bound) ~= "function" then
         return nil
@@ -222,17 +216,17 @@ local function thresholded_rolls(count, difficulty, random_bound)
 end
 
 local function condition_modifier(difficulty, attacker, target)
-    local has_cyberware =
-        (attacker.cyberware_flags & E.CyberwareMask.CYBEREYES) ~= 0
+    local has_cyberware = combat_cyberware(attacker).cybereyes == true
     if has_cyberware then
         difficulty = difficulty - 1
     end
-    if target.class_code == E.CombatTargetClass.DIFFICULTY_PLUS_TWO then
+    local attacker_traits = attacker.combat_traits
+    local target_traits = target.combat_traits
+    if target_traits.adds_two_condition_difficulty then
         return difficulty + 2
     end
     if has_cyberware or
-       attacker.race_or_state == E.ActorRaceOrState.CONDITION_BONUS_EXEMPT_04 or
-       attacker.race_or_state == E.ActorRaceOrState.CONDITION_BONUS_EXEMPT_02 or
+       attacker_traits.ignores_cover_condition_penalty or
        not target.actor_facts.interaction.no_coverage_difficulty_bonus then
         return difficulty
     end
@@ -245,7 +239,7 @@ local function unlinked_spell_condition_modifier(difficulty, attacker)
     -- callback (see 0xA8EA/0xAAA6), so those bytes are not a stable defender
     -- profile. Keep the attacker-side cyberware reduction and do not invent
     -- a self target [H].
-    if (attacker.cyberware_flags & 0x0002) ~= 0 then
+    if combat_cyberware(attacker).cybereyes == true then
         return difficulty - 1
     end
     return difficulty
@@ -271,7 +265,7 @@ local function ready_party_bonus(context)
         local record = candidate.combatant
         if not candidate.world_activity_actor and type(record) == "table" and
            record.actor_facts.lifecycle.active and
-           signed_byte(record.class_code) <= 1 then
+           record.combat_traits.qualifies_for_party_support_bonus then
             local item18 = item18_skill_value(record)
             bonus = bonus + math.floor(item18 / 4)
             if (item18 % 4) >= 3 then
@@ -416,7 +410,8 @@ local function adjusted_meters(record, physical, damage, context)
         return physical_meter, mental_meter
     end
 
-    local delta = record.race_or_state < 0 and -1 or -damage
+    local delta = record.combat_traits.takes_fixed_meter_damage and
+        -1 or -damage
     if physical then
         local updated = add_source_byte(physical_meter, delta)
         physical_meter = signed_byte(updated) > 0 and updated or 0
@@ -441,7 +436,8 @@ local function copy_combatant(record)
                 end
             end
             copy[key] = facts
-        elseif key == "attributes" or key == "skills" then
+        elseif key == "attributes" or key == "skills" or
+               key == "cyberware" or key == "combat_traits" then
             local values = {}
             for name, number in pairs(value) do
                 values[name] = number
@@ -482,7 +478,7 @@ end
 
 local function publish_player_hurt_event(target, defender, physical_meter,
                                          mental_meter)
-    if defender.record_type >= ActorPool.PARTY or
+    if defender.record_type >= E.ActorPool.PARTY or
        type(target) ~= "table" or type(target.id) ~= "string" or
        target.id == "" then
         return
@@ -855,7 +851,7 @@ function Combat.resolve_spell_impact(context, pending, target)
     if (spell.spell_id == "flame_dart" or
         spell.spell_id == "flame_bolt" or
         spell.spell_id == "hellblast") and
-       defender.race_or_state == E.ActorRaceOrState.SPELL_SPECIAL_TARGET then
+       defender.combat_traits.is_special_spell_target then
         result.outcome = "source_special_target_path"
         result.target_trial_count = 12
         result.difficulty = 2
@@ -1082,11 +1078,11 @@ function Combat.resolve_reaction(context, target)
     end
 
     local final_difficulty = attacker.attributes.strength +
-        first_cyberware_modifier(attacker.cyberware_flags, 5, 4)
+        (combat_cyberware(attacker).melee_strength_bonus or 0)
     local final_count = add_source_byte_to_word(
         second_count, defender.attributes.body)
-    final_count = final_count + first_cyberware_modifier(
-        defender.cyberware_flags, 9, 3)
+    final_count = final_count +
+        (combat_cyberware(defender).melee_defense_bonus or 0)
     final_difficulty = math.max(final_difficulty, 2)
     local final_successes = thresholded_rolls(
         final_count, final_difficulty, context.ai_random_bound)
@@ -1098,10 +1094,9 @@ function Combat.resolve_reaction(context, target)
         return nil
     end
 
-    local direct_physical =
-        (attacker.cyberware_flags & E.CyberwareMask.SPURS) ~= 0
+    local direct_physical = combat_cyberware(attacker).spurs == true
     local physical_penalty =
-        (attacker.cyberware_flags & E.CyberwareMask.HAND_RAZORS) ~= 0
+        combat_cyberware(attacker).hand_razors == true
     if not direct_physical and physical_penalty then
         remaining = subtract_source_byte(remaining, 2)
         if signed_byte(remaining) <= 0 then
@@ -1155,7 +1150,7 @@ local function weapon_action_eligibility(difficulty, attacker, policy)
     if not policy.benefits_from_targeting_assist then
         return difficulty
     end
-    if (attacker.cyberware_flags & E.CyberwareMask.SMARTLINK) ~= 0 then
+    if combat_cyberware(attacker).smartlink == true then
         return difficulty - 2
     end
     if find_inventory_item(attacker, Item.SMART_GOGGLES, true) ~= nil then
@@ -1189,13 +1184,19 @@ function Combat.resolve_weapon_attack_seed(context)
         return nil
     end
     local empty_child = {
-        class_code = 0,
+        combat_traits = {
+            ignores_cover_condition_penalty = false,
+            adds_two_condition_difficulty = false,
+            is_special_spell_target = false,
+            takes_fixed_meter_damage = false,
+            qualifies_for_party_support_bonus = false,
+            is_ghoul_bounty_target = false,
+        },
         actor_facts = { interaction = {
             no_coverage_difficulty_bonus = false,
             defense_difficulty_reduction = false,
         }},
-        cyberware_flags = 0,
-        race_or_state = 0,
+        cyberware = {},
     }
     local average = command_average(attacker)
     local reduced = posture_reduction(
@@ -1239,15 +1240,6 @@ local function primary_armor_modifier(target)
     return target.armor_index == 0 and 0 or nil
 end
 
-local function first_target_cyberware_modifier(flags)
-    for offset = 0, 2 do
-        if (flags & (1 << (9 + offset))) ~= 0 then
-            return offset + 1
-        end
-    end
-    return 0
-end
-
 local function resolve_weapon_action_value(context, projectile,
                                            target, source_action)
     local average = command_average(target)
@@ -1256,7 +1248,7 @@ local function resolve_weapon_action_value(context, projectile,
     local trial_count = add_source_byte_to_word(
         average - reduction, target.attributes.body)
     trial_count = trial_count +
-        first_target_cyberware_modifier(target.cyberware_flags)
+        (combat_cyberware(target).melee_defense_bonus or 0)
     local difficulty = dynamic_status_modifier(
         source_action.difficulty, target, nil, context)
     if difficulty == nil then

@@ -8,7 +8,14 @@ local R = require("actor.registry")
 local function combatant(record_type, physical_meter)
     return {
         record_type = record_type,
-        class_code = 0,
+        combat_traits = {
+            ignores_cover_condition_penalty = false,
+            adds_two_condition_difficulty = false,
+            is_special_spell_target = false,
+            takes_fixed_meter_damage = false,
+            qualifies_for_party_support_bonus = true,
+            is_ghoul_bounty_target = false,
+        },
         actor_facts = {
             lifecycle = { active = true, thinking_enabled = false,
                 ai_runner = false, downed = false, group_leader = false,
@@ -23,8 +30,7 @@ local function combatant(record_type, physical_meter)
         action_profile_modifier_flags = 0,
         physical_meter = physical_meter,
         mental_meter = physical_meter,
-        race_or_state = 0,
-        cyberware_flags = 0,
+        cyberware = {},
         posture_reduction_percent = 0,
         attributes = {
             body = 1, quickness = 0, strength = 0,

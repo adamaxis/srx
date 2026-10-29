@@ -1385,6 +1385,68 @@ bool read_field_boolean(lua_State* state, const int table_index,
     return valid;
 }
 
+bool read_combat_cyberware(lua_State* state, const int combatant_index,
+                           ScriptCombatCyberware& cyberware) {
+    lua_getfield(state, combatant_index, "cyberware");
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        return false;
+    }
+    const auto cyberware_index = lua_absindex(state, -1);
+    std::uint32_t melee_strength_bonus = 0U;
+    std::uint32_t melee_defense_bonus = 0U;
+    const bool valid =
+        read_field_boolean(state, cyberware_index, "cybereyes",
+                           cyberware.cybereyes) &&
+        read_field_boolean(state, cyberware_index, "hand_razors",
+                           cyberware.hand_razors) &&
+        read_field_boolean(state, cyberware_index, "spurs",
+                           cyberware.spurs) &&
+        read_field_boolean(state, cyberware_index, "smartlink",
+                           cyberware.smartlink) &&
+        read_field_integer(state, cyberware_index, "melee_strength_bonus",
+                           4U, melee_strength_bonus) &&
+        read_field_integer(state, cyberware_index, "melee_defense_bonus",
+                           3U, melee_defense_bonus);
+    lua_pop(state, 1);
+    if (!valid) {
+        return false;
+    }
+    cyberware.melee_strength_bonus =
+        static_cast<std::uint8_t>(melee_strength_bonus);
+    cyberware.melee_defense_bonus =
+        static_cast<std::uint8_t>(melee_defense_bonus);
+    return true;
+}
+
+bool read_combat_traits(lua_State* state, const int combatant_index,
+                        ScriptCombatTraits& traits) {
+    lua_getfield(state, combatant_index, "combat_traits");
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        return false;
+    }
+    const auto traits_index = lua_absindex(state, -1);
+    const bool valid =
+        read_field_boolean(state, traits_index,
+                           "ignores_cover_condition_penalty",
+                           traits.ignores_cover_condition_penalty) &&
+        read_field_boolean(state, traits_index,
+                           "adds_two_condition_difficulty",
+                           traits.adds_two_condition_difficulty) &&
+        read_field_boolean(state, traits_index, "is_special_spell_target",
+                           traits.is_special_spell_target) &&
+        read_field_boolean(state, traits_index, "takes_fixed_meter_damage",
+                           traits.takes_fixed_meter_damage) &&
+        read_field_boolean(state, traits_index,
+                           "qualifies_for_party_support_bonus",
+                           traits.qualifies_for_party_support_bonus) &&
+        read_field_boolean(state, traits_index, "is_ghoul_bounty_target",
+                           traits.is_ghoul_bounty_target);
+    lua_pop(state, 1);
+    return valid;
+}
+
 bool read_field_signed_integer(lua_State* state, const int table_index,
                                const char* field, const int minimum,
                                const int maximum, int& value) {
@@ -6901,6 +6963,58 @@ script_actor_behavior_profile_from_source_posture(
     return profile;
 }
 
+ScriptCombatCyberware script_combat_cyberware_from_source_flags(
+    const std::uint16_t source_flags) noexcept {
+    // ROM 0x55718/0x55740 checks +0x90 bits 4/1; 0x55D2C..0x55D86 selects
+    // the first bit in 5..8 as a melee-strength bonus; 0x55D66..0x55D86
+    // selects the first bit in 9..11 as a melee-defense bonus; and
+    // 0x55DA2..0x55DBC checks bits 3/2 for spurs/razors. Decode the packed
+    // source word here so Lua receives only named capabilities and effects.
+    // [C]
+    ScriptCombatCyberware cyberware{};
+    cyberware.cybereyes = (source_flags & 0x0002U) != 0U;
+    cyberware.hand_razors = (source_flags & 0x0004U) != 0U;
+    cyberware.spurs = (source_flags & 0x0008U) != 0U;
+    cyberware.smartlink = (source_flags & 0x0010U) != 0U;
+    for (std::uint8_t offset = 0U; offset < 4U; ++offset) {
+        if ((source_flags & (std::uint16_t{1U} << (5U + offset))) != 0U) {
+            cyberware.melee_strength_bonus =
+                static_cast<std::uint8_t>(offset + 1U);
+            break;
+        }
+    }
+    for (std::uint8_t offset = 0U; offset < 3U; ++offset) {
+        if ((source_flags & (std::uint16_t{1U} << (9U + offset))) != 0U) {
+            cyberware.melee_defense_bonus =
+                static_cast<std::uint8_t>(offset + 1U);
+            break;
+        }
+    }
+    return cyberware;
+}
+
+ScriptCombatTraits script_combat_traits_from_source_values(
+    const std::int8_t race_or_state,
+    const std::uint8_t class_code) noexcept {
+    // These predicates retain the observed source branches while keeping the
+    // selector values out of Lua: +0x9B == 2/4 bypasses the coverage penalty
+    // at 0x55740; class 0x16 adds two there; +0x9B == 0x17 takes the special
+    // spell path at 0x55B78; signed-negative +0x9B takes the one-point meter
+    // path in 0x559BC; signed class < 2 qualifies for the party scan at
+    // 0x1047E. [C values and branch outcomes]
+    const auto signed_class = class_code < 0x80U
+                                  ? static_cast<int>(class_code)
+                                  : static_cast<int>(class_code) - 0x100;
+    return {
+        race_or_state == 0x02 || race_or_state == 0x04,
+        class_code == 0x16U,
+        race_or_state == 0x17,
+        race_or_state < 0,
+        signed_class <= 1,
+        race_or_state == 0x42,
+    };
+}
+
 std::uint16_t script_posture_reduction_percent_from_source_value(
     const std::uint8_t source_posture) noexcept {
     // [C] ROM 0x55F20 applies 25 percent per posture step with integer
@@ -7166,8 +7280,8 @@ GameScriptRuntime::resolve_active_run_actor_defeat(
     }
     lua_remove(state, -2);
     lua_createtable(state, 0, 1);
-    lua_pushinteger(state, facts.race_or_state);
-    lua_setfield(state, -2, "race_or_state");
+    lua_pushboolean(state, facts.is_ghoul_bounty_target);
+    lua_setfield(state, -2, "is_ghoul_bounty_target");
     if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
         return fail("run_registry actor-defeat resolver failed: " +
                     stack_error(state));
@@ -8432,17 +8546,6 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
                 destination = static_cast<std::uint8_t>(value);
                 return true;
             };
-        const auto read_combatant_word =
-            [state, combatant_index](const char* field,
-                                     std::uint16_t& destination) {
-                std::uint32_t value = 0U;
-                if (!read_field_integer(state, combatant_index, field, 0xFFFFU,
-                                        value)) {
-                    return false;
-                }
-                destination = static_cast<std::uint16_t>(value);
-                return true;
-            };
         const auto read_combatant_fact =
             [state, combatant_index](const char* group, const char* field,
                                      std::uint8_t& destination) {
@@ -8465,13 +8568,14 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
             };
         auto& combatant = actor.combatant;
         ActorInteractionFacts combatant_interaction;
-        std::uint8_t race_or_state = 0U;
         const bool combatant_scalars_valid =
             read_actor_interaction_facts(state, combatant_index,
                                          combatant_interaction) &&
             read_combatant_byte("physical_meter", combatant.physical_meter) &&
             read_combatant_byte("mental_meter", combatant.mental_meter) &&
-            read_combatant_word("cyberware_flags", combatant.cyberware_flags) &&
+            read_combat_cyberware(state, combatant_index,
+                                  combatant.cyberware) &&
+            read_combat_traits(state, combatant_index, combatant.traits) &&
             read_source_posture_from_lua_percent(
                 state, combatant_index, "posture_reduction_percent",
                 combatant.source_posture) &&
@@ -8498,8 +8602,6 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
             read_combatant_fact("skills", "melee_combat",
                                 combatant.skills.melee_combat) &&
             read_combatant_byte("armor_index", combatant.armor_index) &&
-            read_combatant_byte("race_or_state", race_or_state) &&
-            read_combatant_byte("class_code", combatant.class_code) &&
             read_combatant_byte("action_profile_modifier_flags",
                                 combatant.action_profile_modifier_flags) &&
             read_combatant_byte("auxiliary_roll_bonus",
@@ -8508,7 +8610,6 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
         if (!combatant_scalars_valid) {
             return fail("world-content actor combat facts are invalid");
         }
-        combatant.race_or_state = static_cast<std::int8_t>(race_or_state);
         if (!read_combat_inventory(state, combatant_index,
                                    combatant.item_codes,
                                    combatant.item_phases) ||
@@ -8782,7 +8883,6 @@ GameScriptRuntime::resolve_field_encounter_impl(
             } else {
                 const auto combat_index = lua_absindex(state, -1);
                 std::uint32_t combat_value = 0U;
-                int signed_combat_value = 0;
                 const auto read_combat_byte = [&](const char* field,
                                                   std::uint8_t& value) {
                     if (!read_field_integer(state, combat_index, field,
@@ -8810,12 +8910,15 @@ GameScriptRuntime::resolve_field_encounter_impl(
                     value = static_cast<std::uint8_t>(combat_value);
                     return true;
                 };
-                std::uint32_t cyberware_flags = 0U;
                 std::uint32_t profile_index = 0U;
                 ActorInteractionFacts combat_interaction;
                 bool valid_combatant =
                     read_actor_interaction_facts(state, combat_index,
                                                  combat_interaction) &&
+                    read_combat_cyberware(state, combat_index,
+                                          actor.combatant.cyberware) &&
+                    read_combat_traits(state, combat_index,
+                                       actor.combatant.traits) &&
                     read_combat_byte("physical_meter",
                                      actor.combatant.physical_meter) &&
                     read_combat_byte("mental_meter",
@@ -8851,28 +8954,16 @@ GameScriptRuntime::resolve_field_encounter_impl(
                                      actor.combatant.magic_cap) &&
                     read_combat_byte("armor_index",
                                      actor.combatant.armor_index) &&
-                    read_combat_byte("class_code",
-                                     actor.combatant.class_code) &&
                     read_combat_byte("equipped_action_code",
                                      actor.combatant.equipped_action_code) &&
                     read_combat_byte("action_profile_modifier_flags",
                                      actor.combatant.action_profile_modifier_flags) &&
-                    read_field_signed_integer(
-                        state, combat_index, "race_or_state", -128, 127,
-                        signed_combat_value) &&
-                    read_field_integer(state, combat_index,
-                                       "cyberware_flags", 0xFFFFU,
-                                       cyberware_flags) &&
                     read_field_integer(state, combat_index,
                                        "linked_action_profile_index",
                                        0xFFFFU, profile_index);
                 if (valid_combatant) {
                     actor.combatant.interaction_flags =
                         interaction_to_source(combat_interaction);
-                    actor.combatant.race_or_state =
-                        static_cast<std::int8_t>(signed_combat_value);
-                    actor.combatant.cyberware_flags =
-                        static_cast<std::uint16_t>(cyberware_flags);
                     actor.combatant.linked_action_profile_index =
                         static_cast<std::uint16_t>(profile_index);
                     valid_combatant =
@@ -10743,14 +10834,33 @@ GameScriptRuntime::actor_heartbeat(
         push_actor_facts(state, combatant.source_flags,
                          combatant.interaction_flags, 0U, 0U);
         lua_setfield(state, table_index, "actor_facts");
-        set_integer("cyberware_flags", combatant.cyberware_flags);
+        lua_createtable(state, 0, 6);
+        const auto cyberware_index = lua_absindex(state, -1);
+        const auto set_cyberware_flag = [state, cyberware_index](
+                                            const char* field,
+                                            const bool enabled) {
+            lua_pushboolean(state, enabled);
+            lua_setfield(state, cyberware_index, field);
+        };
+        set_cyberware_flag("cybereyes", combatant.cyberware.cybereyes);
+        set_cyberware_flag("hand_razors",
+                           combatant.cyberware.hand_razors);
+        set_cyberware_flag("spurs", combatant.cyberware.spurs);
+        set_cyberware_flag("smartlink", combatant.cyberware.smartlink);
+        lua_pushinteger(state,
+                        combatant.cyberware.melee_strength_bonus);
+        lua_setfield(state, cyberware_index, "melee_strength_bonus");
+        lua_pushinteger(state,
+                        combatant.cyberware.melee_defense_bonus);
+        lua_setfield(state, cyberware_index, "melee_defense_bonus");
+        lua_setfield(state, table_index, "cyberware");
         set_integer("physical_meter", combatant.physical_meter);
         set_integer("mental_meter", combatant.mental_meter);
         set_integer(
             "posture_reduction_percent",
             script_posture_reduction_percent_from_source_value(
                 combatant.source_posture));
-        lua_createtable(state, 0, 5);
+        lua_createtable(state, 0, 6);
         const auto attributes_index = lua_absindex(state, -1);
         const auto set_attribute = [state, attributes_index](
                                        const char* field,
@@ -10788,8 +10898,26 @@ GameScriptRuntime::actor_heartbeat(
         set_integer("action_result", combatant.action_result);
         set_integer("magic_cap", combatant.magic_cap);
         set_integer("armor_index", combatant.armor_index);
-        set_integer("race_or_state", combatant.race_or_state);
-        set_integer("class_code", combatant.class_code);
+        lua_createtable(state, 0, 6);
+        const auto traits_index = lua_absindex(state, -1);
+        const auto set_trait = [state, traits_index](const char* field,
+                                                    const bool value) {
+            lua_pushboolean(state, value);
+            lua_setfield(state, traits_index, field);
+        };
+        set_trait("ignores_cover_condition_penalty",
+                  combatant.traits.ignores_cover_condition_penalty);
+        set_trait("adds_two_condition_difficulty",
+                  combatant.traits.adds_two_condition_difficulty);
+        set_trait("is_special_spell_target",
+                  combatant.traits.is_special_spell_target);
+        set_trait("takes_fixed_meter_damage",
+                  combatant.traits.takes_fixed_meter_damage);
+        set_trait("qualifies_for_party_support_bonus",
+                  combatant.traits.qualifies_for_party_support_bonus);
+        set_trait("is_ghoul_bounty_target",
+                  combatant.traits.is_ghoul_bounty_target);
+        lua_setfield(state, table_index, "combat_traits");
         set_integer("equipped_action_code",
                     combatant.equipped_action_code);
         const auto equipped_action_id = script_item_id_from_source_code(
