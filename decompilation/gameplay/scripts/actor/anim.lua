@@ -285,7 +285,7 @@ local function begin_received_hit_reaction(state, context)
     if hit.physical_meter == 0 and hit.spell_death_variant ~= nil and
        not state.actor_facts.lifecycle.ai_runner and
        context.visual_profile_id ~= VisualProfile.HELL_HOUND then
-        -- 0xB0AC/0xB0E4 (spell death): pose E.ActorPose.SPELL_DEATH_E0/E4,
+        -- 0xB0AC/0xB0E4 (spell death): finite spell-death clip,
         -- continuation 0xB0D4/0xB10C, no +0x10 b4 and no cue. 0xA9A6 then
         -- runs 0xAB02 and 0x1E514 when the list finishes. The selected kind's
         -- single undirected list supplies its own art and cadence [C: 0x62AC].

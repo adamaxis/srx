@@ -198,7 +198,7 @@ local function context(actor)
     ai_target_candidates = maybe(function() return list(cand, 4) end),
     world_target_selection_candidates = maybe(function() return list(cand, 3) end),
     projectile_combat_targets = maybe(function() return list(cand, 3) end),
-    movement_state = mstate(), movement_offsets = offsets(), movement_idle_selectors = list(function() return R(0, 7) end, 4),
+    movement_state = mstate(), movement_offsets = offsets(),
     controller_heading_table = (function() local t = {} for i = 1, 16 do t[i] = num() end return t end)(),
     world_effect_slot_occupancy = list(bool, 8),
     movement_scene_id = num(), movement_allowed = bool(), controller_nibble = R(0, 15),
@@ -281,6 +281,10 @@ local function legacy_context_for_reference(context)
   legacy.source_action_slot = 0
   legacy.source_action_ammo = legacy.ammunition_remaining or 0
   legacy.source_action_counter = 0
+  legacy.movement_idle_selectors = {}
+  for direction = 0, 7 do
+    legacy.movement_idle_selectors[direction + 1] = direction * 4
+  end
   legacy.ammunition_remaining = nil
   return legacy
 end
@@ -291,6 +295,7 @@ local function serialize_context_for_parity(context)
       VisualProfileBySourceKind[comparable.entity_kind]
   end
   comparable.entity_kind = nil
+  comparable.movement_idle_selectors = nil
   if type(comparable.actor_behavior_profile) == "table" then
     comparable.source_actor_posture = legacy_posture_from_behavior_profile(
       comparable.actor_behavior_profile)
@@ -314,6 +319,11 @@ local function serialize_actor_states_for_parity(actors)
   local comparable = deepcopy(actors)
   for _, state in pairs(comparable) do
     if type(state) == "table" then
+      if type(state.movement_step) == "table" then
+        -- The old reference returns a packed pose selector beside semantic
+        -- direction/animation state. It is a source implementation detail.
+        state.movement_step.direction_animation = nil
+      end
       if state.visual_profile_id == nil then
         state.visual_profile_id =
           VisualProfileBySourceKind[state.entity_kind]
@@ -338,6 +348,14 @@ local function serialize_actor_states_for_parity(actors)
       state.source_action_ammo = nil
       state.source_action_counter = nil
     end
+  end
+  return ser(comparable)
+end
+local function serialize_result_for_parity(result)
+  local comparable = deepcopy(result)
+  if type(comparable) == "table" and
+     type(comparable.movement_step) == "table" then
+    comparable.movement_step.direction_animation = nil
   end
   return ser(comparable)
 end
@@ -385,12 +403,12 @@ for trial = 1, TRIALS do
     if okA and rA ~= nil then nonnil = nonnil + 1 end
     if not okA then errs = errs + 1 end
     local partsA = {
-      tostring(okA), okA and ser(rA) or norm_err(rA),
+      tostring(okA), okA and serialize_result_for_parity(rA) or norm_err(rA),
       serialize_context_for_parity(cA),
       serialize_actor_states_for_parity(gameA.actors), table.concat(logA, ";"),
     }
     local partsB = {
-      tostring(okB), okB and ser(rB) or norm_err(rB),
+      tostring(okB), okB and serialize_result_for_parity(rB) or norm_err(rB),
       serialize_context_for_parity(cB),
       serialize_actor_states_for_parity(gameB.actors), table.concat(logB, ";"),
     }

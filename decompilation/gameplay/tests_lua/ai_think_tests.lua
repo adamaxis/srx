@@ -882,15 +882,8 @@ check(collision_calls == 2 and reverse_x == 8351 and reverse_y == 9058 and
       "0x14564 negates a blocked formation offset and probes the reverse [C]")
 game.movement.collision = collision
 
--- ROM 0xB574 and 0xB6BA-0xB6DE truncate dynamic-enemy walk headings for
--- movement and C062 selection even when +0x10.THINK is clear. The player
--- BABC selector remains on its existing rounded path.
-local walk_selector_offsets = {}
-for direction = 0, 7 do
-    walk_selector_offsets[direction + 1] =
-        direction * E.ActorAnimation.DIRECTION_SELECTOR_STEP
-end
-
+-- ROM 0xB574 and 0xB6BA-0xB6DE truncate dynamic-enemy walk headings even
+-- when +0x10.THINK is clear. The player BABC heading path remains rounded.
 local function movement_fixture(dynamic_actor)
     return {
         dynamic_world_encounter_actor = dynamic_actor,
@@ -906,7 +899,6 @@ local function movement_fixture(dynamic_actor)
         source_projection_active = true,
         world_activity_active = false,
         movement_services_available = true,
-        movement_idle_selectors = walk_selector_offsets,
         movement_offsets = {
             { 0, -1 }, { 1, -1 }, { 1, 0 }, { 1, 1 },
             { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 },
@@ -939,11 +931,10 @@ local function movement_heading_case(heading, expected_direction,
         movement_current_heading = heading,
     }
     local step = R.advance_entity_movement(movement_context, actor_state)
-    local expected_selector = E.ActorPose.WALK +
-        E.ActorAnimation.DIRECTION_SELECTOR_STEP * expected_direction
     check(step ~= nil and step.outcome == "accepted" and
           actor_state.direction == expected_direction and
-          step.direction_animation == expected_selector and
+          actor_state.animation_id == "walk" and
+          step.direction_animation == nil and
           R.movement_direction_from_heading(movement_context, heading) ==
               expected_direction,
           description)
@@ -977,8 +968,8 @@ local route_actor_step = R.advance_entity_movement(
     route_actor_context, route_actor_state)
 check(route_actor_step ~= nil and route_actor_step.outcome == "accepted" and
       route_actor_state.direction == 7 and
-      route_actor_step.direction_animation == E.ActorPose.WALK +
-          E.ActorAnimation.DIRECTION_SELECTOR_STEP * 7 and
+      route_actor_state.animation_id == "walk" and
+      route_actor_step.direction_animation == nil and
       R.movement_direction_from_heading(route_actor_context, 0xF000) == 7,
       "Scene-35 default route guard B574/C062 truncates measured 0xF000 to direction 7 [C]")
 
@@ -1068,9 +1059,9 @@ local heartbeat_result = ActorAI.heartbeat(heartbeat_context)
 R.think = source_think
 check(heartbeat_result ~= nil and heartbeat_result.direction == 7 and
       heartbeat_state.movement_step ~= nil and
-      heartbeat_state.movement_step.direction_animation ==
-          E.ActorPose.WALK + E.ActorAnimation.DIRECTION_SELECTOR_STEP * 7,
-      "dynamic enemy heartbeat preserves truncated direction 7 / C062 selector 0x3C [C]")
+      heartbeat_state.animation_id == "walk" and
+      heartbeat_state.movement_step.direction_animation == nil,
+      "dynamic enemy heartbeat preserves semantic walking state and truncated direction 7 [C]")
 
 game.movement.collision = collision
 

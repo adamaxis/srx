@@ -13,6 +13,8 @@ _G.game = gameA; local A = dofile(H.ORIG)
 _G.game = gameB; require("actor.init"); local REG = require("actor.registry")
 local E = require("enums")
 local Items = require("items")
+-- The frozen differential reference still models the old source selector.
+local LEGACY_ITEM_POSE_SELECTOR = 0x40
 local SpellIdByActionCode = {
   [1] = "flame_dart", [2] = "flame_bolt", [3] = "hellblast",
   [4] = "invisibility", [5] = "sleep", [6] = "stink",
@@ -178,7 +180,7 @@ local SHAPE = {
     st.item_action_frame_count = list.frame_count
     st.item_action_increment = 0x80
     st.item_action_threshold = 0x1000
-    st.source_animation_selector = E.ActorPose.ITEM
+    st.source_animation_selector = LEGACY_ITEM_POSE_SELECTOR
     st.animation_frame = 0
     st.animation_accumulator = 0
     st.item_action_complete = false

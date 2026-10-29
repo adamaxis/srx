@@ -1695,9 +1695,10 @@ struct ScriptActorMovementStep {
         reset,
     };
 
+    // The parent behavior decision carries the semantic animation ID and
+    // facing. The host resolves those to presentation assets after movement.
     Outcome outcome = Outcome::accepted;
     ScriptMovementStepState state{};
-    std::uint16_t direction_animation = 0;
 };
 
 struct ScriptActorTargetListRebuildFacts {
@@ -1828,7 +1829,6 @@ struct ScriptActorBehaviorContext {
     ScriptProjectileCollisionSearch projectile_collision_search;
     bool movement_services_available = false;
     std::array<ScriptMovementOffset, 8> movement_offsets{};
-    std::array<std::uint16_t, 8> movement_idle_selectors{};
     ScriptMovementStepState movement_state{};
     std::uint8_t movement_entity_flags = 0;
     bool walk_fast_enabled = false;

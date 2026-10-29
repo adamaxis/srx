@@ -4,20 +4,25 @@ local rom = assert(io.open(assert(arg[1], "rom path"), "rb")):read("a")
 local function W(a) return (string.unpack(">I2", rom, a + 1)) end
 local function L(a) return (string.unpack(">I4", rom, a + 1)) end
 local E = require("enums")
-local Pose = E.ActorPose
 local ActorVisualProfile = E.ActorVisualProfile
 local SoundId = E.SoundId
+-- Source pose-list offsets used only by this offline ROM importer.
+local SourcePose = {
+    IDLE = 0x00, WALK = 0x20, ITEM = 0x40, HURT = 0x60,
+    SPELL = 0x80, WEAPON = 0xA0, ACTION = 0xC0,
+    SPELL_DEATH_E0 = 0xE0, SPELL_DEATH_E4 = 0xE4, DEATH = 0xE8,
+}
 local POSES = {
-    { "idle", "IDLE", Pose.IDLE },
-    { "walk", "WALK", Pose.WALK },
-    { "item_action", "ITEM", Pose.ITEM },
-    { "hurt", "HURT", Pose.HURT },
-    { "spell", "SPELL", Pose.SPELL },
-    { "weapon", "WEAPON", Pose.WEAPON },
-    { "action", "ACTION", Pose.ACTION },
-    { "spell_death_e0", "SPELL_DEATH_E0", Pose.SPELL_DEATH_E0 },
-    { "spell_death_e4", "SPELL_DEATH_E4", Pose.SPELL_DEATH_E4 },
-    { "death", "DEATH", Pose.DEATH },
+    { "idle", "IDLE", SourcePose.IDLE },
+    { "walk", "WALK", SourcePose.WALK },
+    { "item_action", "ITEM", SourcePose.ITEM },
+    { "hurt", "HURT", SourcePose.HURT },
+    { "spell", "SPELL", SourcePose.SPELL },
+    { "weapon", "WEAPON", SourcePose.WEAPON },
+    { "action", "ACTION", SourcePose.ACTION },
+    { "spell_death_e0", "SPELL_DEATH_E0", SourcePose.SPELL_DEATH_E0 },
+    { "spell_death_e4", "SPELL_DEATH_E4", SourcePose.SPELL_DEATH_E4 },
+    { "death", "DEATH", SourcePose.DEATH },
 }
 -- Resolve the ROM's actor +0x0E list selector while importing animation
 -- assets. Runtime Lua consumes these stable profile IDs only.
@@ -66,8 +71,8 @@ for kind = 3, 15 do
     p(string.format('    ["%s"] = {  -- table 0x%X', visual_profile, pt))
     for _, pose in ipairs(POSES) do
         local clip_id, name, base = pose[1], pose[2], pose[3]
-        local dirs = (base == Pose.SPELL_DEATH_E0 or
-                      base == Pose.SPELL_DEATH_E4) and 1 or 8
+        local dirs = (base == SourcePose.SPELL_DEATH_E0 or
+                      base == SourcePose.SPELL_DEATH_E4) and 1 or 8
         local rows, same = {}, true
         for d = 0, dirs - 1 do
             local lp = L(pt + base + d * 4)

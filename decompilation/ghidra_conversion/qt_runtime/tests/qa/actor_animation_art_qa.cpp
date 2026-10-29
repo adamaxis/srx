@@ -1,4 +1,4 @@
-#include "enums.hpp"
+#include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 
 #include <QImage>
 
@@ -181,9 +181,9 @@ bool initialize_lua(lua_State* state,
 
     constexpr char kLuaHelpers[] =
         "local Animator = require('actor.animator')\n"
-        "function __actor_anim_frame_count(kind, pose, direction)\n"
-        "  local list = Animator.list(kind, pose, direction)\n"
-        "  return list and list.count or -1\n"
+        "function __actor_anim_frame_count(profile_id, clip, direction)\n"
+        "  local list = Animator.list(profile_id, clip, direction)\n"
+        "  return list and list.frame_count or -1\n"
         "end\n";
     if (luaL_dostring(state, kLuaHelpers) != LUA_OK) {
         std::cerr << "actor animation art QA: cannot load Lua Animator: "
@@ -194,12 +194,13 @@ bool initialize_lua(lua_State* state,
 }
 
 int lua_frame_count(lua_State* state,
-                    const std::uint16_t kind,
-                    const srx::ActorPose pose,
+                    const std::string_view visual_profile_id,
+                    const std::string_view clip,
                     const std::optional<std::uint8_t> direction) {
     lua_getglobal(state, "__actor_anim_frame_count");
-    lua_pushinteger(state, kind);
-    lua_pushinteger(state, static_cast<lua_Integer>(pose));
+    lua_pushlstring(state, visual_profile_id.data(),
+                    visual_profile_id.size());
+    lua_pushlstring(state, clip.data(), clip.size());
     if (direction.has_value()) {
         lua_pushinteger(state, *direction);
     } else {
@@ -255,14 +256,15 @@ bool verify_loaded_frames(const AssetRows& rows,
 
 bool verify_spell_frames(lua_State* state,
                          const AssetRows& rows,
-                         const std::uint16_t kind,
+                         const std::string_view visual_profile_id,
                          const std::string& prefix) {
+    bool passed = true;
     for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
         const auto count = lua_frame_count(
-            state, kind, srx::ActorPose::SPELL, direction);
+            state, visual_profile_id, "spell", direction);
         const auto family = "spell.dir." + std::to_string(direction);
         if (!verify_loaded_frames(rows, prefix, family, count)) {
-            return false;
+            passed = false;
         }
     }
     for (std::uint8_t direction = 0U; direction < 8U; ++direction) {
@@ -273,10 +275,10 @@ bool verify_spell_frames(lua_State* state,
         if (rows.find(legacy_alias) != rows.end()) {
             std::cerr << "actor animation art QA: stale single-image spell alias "
                       << legacy_alias << '\n';
-            return false;
+            passed = false;
         }
     }
-    return true;
+    return passed;
 }
 
 }  // namespace
@@ -315,22 +317,37 @@ int main() {
     bool passed = !actor_sources.empty();
     for (const auto& [kind, palette, stem] : actor_sources) {
         (void)palette;
+        const auto visual_profile_id =
+            shadowrun::ghidra_conversion::scripting::
+                script_actor_visual_profile_id_from_source_type(kind);
+        if (!visual_profile_id.has_value()) {
+            std::cerr << "actor animation art QA: no semantic visual profile "
+                         "for imported actor source "
+                      << kind << '\n';
+            passed = false;
+            continue;
+        }
         std::string prefix = "field.entities.actors.";
         for (const char character : stem) {
             prefix.push_back(character == '-' ? '.' : character);
         }
         covered_kinds.insert(kind);
-        if (!verify_spell_frames(state, rows, kind, prefix) ||
-            !verify_loaded_frames(
+        bool source_passed = verify_spell_frames(
+            state, rows, *visual_profile_id, prefix);
+        if (!verify_loaded_frames(
                 rows, prefix, "spell.death.e0",
-                lua_frame_count(state, kind,
-                                srx::ActorPose::SPELL_DEATH_E0, std::nullopt)) ||
-            !verify_loaded_frames(
+                lua_frame_count(state, *visual_profile_id,
+                                "spell_death_e0", std::nullopt))) {
+            source_passed = false;
+        }
+        if (!verify_loaded_frames(
                 rows, prefix, "spell.death.e4",
-                lua_frame_count(state, kind,
-                                srx::ActorPose::SPELL_DEATH_E4, std::nullopt))) {
+                lua_frame_count(state, *visual_profile_id,
+                                "spell_death_e4", std::nullopt))) {
+            source_passed = false;
+        }
+        if (!source_passed) {
             passed = false;
-            break;
         }
     }
     for (std::uint16_t kind = 3U; kind <= 15U; ++kind) {

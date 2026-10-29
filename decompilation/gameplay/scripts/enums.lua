@@ -19,7 +19,6 @@ E.PlayerHurt = {
     SOUND_DELAY = 8,            -- 0xAFF2 stores +0xCE; 0xB07E counts it down [C]
 }
 E.ActorAnimation = {
-    DIRECTION_SELECTOR_STEP = 0x04, -- C072/C0A2/C0B2 direction tables advance by one word [C]
     FRAME_INCREMENT = 0x0200, -- 0x5FDC advances C0A2/C0B2 +0x1A by 0x0200 [C]
     FRAME_PERIOD = 0x1000, -- C0A2/C0B2 +0x1C period consumed by 0x5FDC/0x600E [C]
 } -- ROM 0xB1DC strike and 0xB330 runner-down selectors [C]
@@ -117,12 +116,6 @@ E.HitSpark = {
     RANGE_LIMIT = 0x0200, -- linked strike range gate at 0x15C58 [C]
     FINISHED_SELECTOR_BIT = 0x8000, -- finite selector bit set by 0x600E [C]
 }
--- Pose bases selected from actor +0x16 by the actor animation service [C: 0x600E].
-E.ActorPose = { IDLE = 0x00, WALK = 0x20, ITEM = 0x40, HURT = 0x60,
-                SPELL = 0x80, WEAPON = 0xA0, ACTION = 0xC0,
-                SPELL_DEATH_E0 = 0xE0, SPELL_DEATH_E4 = 0xE4,
-                DEATH = 0xE8 } -- spell-death selected at 0xB0AC/0xB0E4 [C]
-
 -- Item codes (= +0x57 for weapons, = inventory byte); records 0xD4540 + 0x30*(code-1) (doc 08) [C]
 E.ItemId = {
     NONE = 0x00, STREETLINE_SPECIAL = 0x01, MODEL_101T = 0x02, AMERICAN_L36 = 0x03, SECURITY_500 = 0x04,

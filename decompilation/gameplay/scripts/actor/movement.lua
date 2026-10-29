@@ -6,7 +6,6 @@ local I = require("lib.int68k")
 local u16 = I.u16
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
-local ActorPose = E.ActorPose
 local VisualProfile = R.VisualProfile -- from actor/tables.lua
 local fixed_fraction_scale = R.fixed_fraction_scale   -- from actor/tables.lua
 local fixed_integer_shift = R.fixed_integer_shift   -- from actor/tables.lua
@@ -601,7 +600,6 @@ local function reset_blocked_movement(context, state, movement_state)
     return {
         outcome = "reset",
         state = movement_state,
-        direction_animation = context.movement_idle_selectors[direction + 1],
     }
 end
 
@@ -653,8 +651,6 @@ local function advance_entity_movement(context, state)
         return {
             outcome = "accepted",
             state = movement_state,
-            direction_animation = ActorPose.WALK +
-                context.movement_idle_selectors[initial_direction + 1],
         }
     end
 
@@ -678,8 +674,6 @@ local function advance_entity_movement(context, state)
             return {
                 outcome = "accepted",
                 state = movement_state,
-                direction_animation = ActorPose.WALK +
-                    context.movement_idle_selectors[fallback_direction + 1],
             }
         end
     end
@@ -712,8 +706,6 @@ local function advance_entity_movement(context, state)
             return {
                 outcome = "accepted",
                 state = movement_state,
-                direction_animation = ActorPose.WALK +
-                    context.movement_idle_selectors[fallback_direction + 1],
             }
         end
         local reset = reset_blocked_movement(
@@ -754,8 +746,6 @@ local function advance_entity_movement(context, state)
     return {
         outcome = "accepted",
         state = movement_state,
-        direction_animation = ActorPose.WALK +
-            context.movement_idle_selectors[selected_direction + 1],
     }
 end
 

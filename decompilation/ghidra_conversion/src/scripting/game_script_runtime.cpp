@@ -11363,13 +11363,6 @@ GameScriptRuntime::actor_heartbeat(
         lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
     }
     lua_setfield(state, -2, "movement_offsets");
-    lua_createtable(state, 8, 0);
-    for (std::size_t index = 0; index < context.movement_idle_selectors.size();
-         ++index) {
-        lua_pushinteger(state, context.movement_idle_selectors[index]);
-        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
-    }
-    lua_setfield(state, -2, "movement_idle_selectors");
     lua_createtable(state, 0, 13);
     lua_pushinteger(state, context.movement_state.position_x);
     lua_setfield(state, -2, "position_x");
@@ -12794,12 +12787,6 @@ GameScriptRuntime::actor_heartbeat(
             static_cast<std::int16_t>(lua_tointeger(state, -1));
         lua_pop(state, 1);
         lua_pop(state, 1);
-        if (!read_field_integer(state, movement_table, "direction_animation",
-                                0xFFFFU, movement_value)) {
-            return fail("actor_ai.heartbeat omitted movement animation selector");
-        }
-        movement_step.direction_animation =
-            static_cast<std::uint16_t>(movement_value);
         decision.movement_step = movement_step;
     }
     lua_pop(state, 1);

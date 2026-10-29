@@ -8544,10 +8544,6 @@ int main() {
             {0, -18}, {18, -18}, {18, 0}, {18, 18},
             {0, 18}, {-18, 18}, {-18, 0}, {-18, -18},
         }};
-        context.movement_idle_selectors = {{
-            0x20U, 0x21U, 0x22U, 0x23U,
-            0x24U, 0x25U, 0x26U, 0x27U,
-        }};
         context.movement_collision =
             [](const std::uint16_t, const std::uint16_t) {
                 return ScriptMovementCollisionResult{0, 0U};
@@ -9859,10 +9855,6 @@ int main() {
             {10, 0}, {0, 10}, {20, 0}, {0, 20},
             {-10, 0}, {0, -10}, {-20, 0}, {0, -20},
         }};
-        context.movement_idle_selectors = {{
-            0x20U, 0x21U, 0x22U, 0x23U,
-            0x24U, 0x25U, 0x26U, 0x27U,
-        }};
         context.movement_collision_recovery =
             [](const std::uint16_t, const std::uint16_t,
                const std::int16_t, const std::uint8_t) {
@@ -9996,9 +9988,10 @@ int main() {
                 reset_step->movement_step->state.route_flags == 0x01U &&
                 reset_step->movement_step->state.mark_reset_after_block &&
                 reset_step->movement_step->state.route_status == -1 &&
-                reset_step->movement_step->direction_animation == 0x22U &&
-                clear_step->movement_step->direction_animation == 0x40U &&
-                route_step->movement_step->direction_animation == 0x42U &&
+                reset_step->animation_id == "idle" &&
+                reset_step->direction == 2U &&
+                clear_step->animation_id == "walk" &&
+                route_step->animation_id == "walk" &&
                 reset_collision_queries == 4U,
             "Lua movement policy did not preserve event retry state or resolve clear, route, slide, and reset cases")) {
         std::cerr << scripts.failure() << '\n';

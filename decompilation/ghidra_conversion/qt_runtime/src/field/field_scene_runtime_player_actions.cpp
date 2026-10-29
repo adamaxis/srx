@@ -709,11 +709,20 @@ void FieldSceneRuntime::advance_field_movement() {
         script_state.terrain_collision_code;
     field_movement_behavior_record_.route_flags = script_state.route_flags;
 
-    if (movement_step.direction_animation !=
-        field_entity_animation_selector_) {
+    if (actor_decision->animation_id != "walk" &&
+        actor_decision->animation_id != "idle") {
+        failure_ = "Lua player movement returned a non-movement animation";
+        source_boundary("field.player.lua_movement_animation_invalid");
+        return;
+    }
+    const auto animation_selector =
+        select_field_entity_animation_selector(
+            actor_decision->direction,
+            actor_decision->animation_id == "walk");
+    if (animation_selector != field_entity_animation_selector_) {
         field_entity_animation_.redraw_requested = true;
     }
-    field_entity_animation_selector_ = movement_step.direction_animation;
+    field_entity_animation_selector_ = animation_selector;
 
     if (movement_step.outcome ==
         scripting::ScriptActorMovementStep::Outcome::reset) {

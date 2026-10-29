@@ -4652,8 +4652,6 @@ void FieldSceneRuntime::advance_default_field_actors(
                             field_movement_direction_offsets_[index].x,
                             field_movement_direction_offsets_[index].y};
                 }
-                context.movement_idle_selectors =
-                    kFieldIdleAnimationSelectors;
                 context.movement_entity_flags = actor.source_record_flags;
                 context.movement_collision_mode =
                     field_movement_transition_state_.world_mode;
@@ -11588,8 +11586,6 @@ FieldSceneRuntime::heartbeat_field_player(
                     field_movement_direction_offsets_[index].x,
                     field_movement_direction_offsets_[index].y};
         }
-        actor_context.movement_idle_selectors =
-            kFieldIdleAnimationSelectors;
         actor_context.movement_entity_flags = field_entity_behavior_flags_;
         actor_context.movement_transition_active = false;
         actor_context.movement_scene_id =

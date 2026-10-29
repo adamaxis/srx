@@ -80,10 +80,6 @@ using field_scene_detail::magic_action_record_from_runner;
 void FieldSceneRuntime::provide_source_profile_patrol_movement_services(
     scripting::ScriptActorBehaviorContext& context,
     DefaultFieldActorPresentation& actor) {
-    static constexpr std::array<std::uint16_t, 8> kMovementPoseBases{{
-        0x00U, 0x04U, 0x08U, 0x0CU, 0x10U, 0x14U, 0x18U, 0x1CU,
-    }};
-
     context.movement_allowed = true;
     context.movement_services_available = true;
     context.movement_state.position_x = actor.movement_state.position_x;
@@ -105,7 +101,6 @@ void FieldSceneRuntime::provide_source_profile_patrol_movement_services(
             field_movement_direction_offsets_[index].x,
             field_movement_direction_offsets_[index].y};
     }
-    context.movement_idle_selectors = kMovementPoseBases;
     context.movement_entity_flags = actor.source_record_flags;
     context.movement_collision_mode =
         field_movement_transition_state_.world_mode;

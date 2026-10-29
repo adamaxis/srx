@@ -181,7 +181,7 @@ local function context(actor)
     ai_target_candidates = maybe(function() return list(cand, 4) end),
     world_target_selection_candidates = maybe(function() return list(cand, 3) end),
     projectile_combat_targets = maybe(function() return list(cand, 3) end),
-    movement_state = mstate(), movement_offsets = offsets(), movement_idle_selectors = list(function() return R(0, 7) end, 4),
+    movement_state = mstate(), movement_offsets = offsets(),
     controller_heading_table = (function() local t = {} for i = 1, 16 do t[i] = num() end return t end)(),
     world_effect_slot_occupancy = list(bool, 8),
     movement_scene_id = num(), movement_allowed = bool(), controller_nibble = R(0, 15),
