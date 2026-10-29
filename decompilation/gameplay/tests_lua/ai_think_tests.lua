@@ -103,6 +103,34 @@ local function think_path(actor, facts)
     return actor.ai_think_path
 end
 
+local function wounded_candidate(id, party_role, physical_meter,
+                                world_activity_actor)
+    return {
+        id = id,
+        party_member_role = party_role,
+        world_activity_actor = world_activity_actor == true,
+        actor_facts = actor_facts(),
+        combatant = { physical_meter = physical_meter },
+    }
+end
+local party_candidates = {
+    wounded_candidate("party.runner.leader", "leader", 5),
+    wounded_candidate("party.runner.one", "companion_one", 2),
+    wounded_candidate("party.runner.two", "companion_two", 1),
+    wounded_candidate("world.actor", "leader", 0, true),
+}
+local wounded = R.first_wounded_party_runner({
+    ai_target_candidates = party_candidates,
+})
+check(wounded ~= nil and wounded.id == "party.runner.one",
+      "0x13C20 selects the first wounded party role and skips world actors [C]")
+party_candidates[2].combatant.physical_meter = 4
+wounded = R.first_wounded_party_runner({
+    ai_target_candidates = party_candidates,
+})
+check(wounded ~= nil and wounded.id == "party.runner.two",
+      "0x13C20 continues to the next party role when the first is not wounded [C]")
+
 -- ROM 0x1A342 allocates field actor records and 0x44BC copies their
 -- identity into the actor state [C]. Lua receives live membership as a fact.
 local field_actor_context = {

@@ -53,7 +53,7 @@ const char* formation_position_id(
     case ScriptFormationPosition::other:
         return "other";
     }
-    return "other";
+    return "unknown";
 }
 
 void push_formation_position(
@@ -65,6 +65,19 @@ void push_formation_position(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, field);
+}
+
+const char* party_member_role_id(
+    const ScriptPartyMemberRole role) noexcept {
+    switch (role) {
+    case ScriptPartyMemberRole::leader:
+        return "leader";
+    case ScriptPartyMemberRole::companion_one:
+        return "companion_one";
+    case ScriptPartyMemberRole::companion_two:
+        return "companion_two";
+    }
+    return "unknown";
 }
 
 std::optional<std::string_view> script_spell_id_from_action_code(
@@ -10804,6 +10817,14 @@ GameScriptRuntime::actor_heartbeat(
             lua_setfield(state, -2, "source_record_slot");
             push_formation_position(state, "formation_position",
                                     candidate.formation_position);
+            if (candidate.party_member_role.has_value()) {
+                lua_pushstring(
+                    state,
+                    party_member_role_id(*candidate.party_member_role));
+            } else {
+                lua_pushnil(state);
+            }
+            lua_setfield(state, -2, "party_member_role");
             lua_pushinteger(state, candidate.descriptor_class);
             lua_setfield(state, -2, "descriptor_class");
             if (candidate.combatant.has_value()) {

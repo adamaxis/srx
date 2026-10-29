@@ -6072,6 +6072,9 @@ int main() {
         candidate.projected_y_nonzero = true;
         candidate.world_activity_actor = false;
         candidate.source_record_slot = slot;
+        candidate.party_member_role = slot == 1U
+            ? ScriptPartyMemberRole::companion_one
+            : ScriptPartyMemberRole::companion_two;
         candidate.combatant = combatant;
         heal_lane_candidates.push_back(std::move(candidate));
     }

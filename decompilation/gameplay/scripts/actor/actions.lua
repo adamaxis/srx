@@ -266,29 +266,29 @@ local function action_line_clear(context, target)
 end
 
 local function first_wounded_party_runner(context)
-    -- ROM 0x13C20 checks the three runner records in order and selects the
-    -- first present lane whose physical meter is below four. The runtime
-    -- candidate list contains party slots only when their roster marker is
-    -- present; temporary world actors are never heal lanes.
-    local by_slot = {}
+    -- ROM 0x13C20 checks the three runner records in roster order and selects
+    -- the first present member whose physical meter is below four. The host
+    -- supplies named party roles; temporary world actors are not heal lanes.
+    local by_role = {}
     for _, candidate in ipairs(context.ai_target_candidates or {}) do
-        local slot = type(candidate) == "table"
-            and candidate.source_record_slot or nil
         if type(candidate) == "table" and
            candidate.world_activity_actor ~= true and
            type(candidate.actor_facts) == "table" and
            candidate.actor_facts.lifecycle.active == true and
-           type(slot) == "number" and slot >= 0 and slot <= 2 and
+           type(candidate.party_member_role) == "string" and
            type(candidate.combatant) == "table" and
            type(candidate.combatant.physical_meter) == "number" then
-            by_slot[slot] = candidate
+            local role = candidate.party_member_role
+            if by_role[role] == nil then
+                by_role[role] = candidate
+            end
         end
     end
-    for slot = 0, 2 do
-        local candidate = by_slot[slot]
+    for _, role in ipairs({ "leader", "companion_one", "companion_two" }) do
+        local candidate = by_role[role]
         if type(candidate) == "table" and
            candidate.combatant.physical_meter < 4 then
-            return candidate, slot
+            return candidate
         end
     end
     return nil, nil

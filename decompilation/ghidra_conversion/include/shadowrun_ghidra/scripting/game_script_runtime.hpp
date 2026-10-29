@@ -1652,6 +1652,7 @@ struct ScriptActorTargetCandidate {
     // Semantic role used by formation-follow policy. The native field adapter
     // derives this from the actor's live record identity before Lua sees it.
     std::optional<ScriptFormationPosition> formation_position;
+    std::optional<ScriptPartyMemberRole> party_member_role;
 };
 
 using ScriptActorRandomBound =

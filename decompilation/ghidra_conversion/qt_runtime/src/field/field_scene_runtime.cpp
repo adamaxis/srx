@@ -146,6 +146,21 @@ scripting::ScriptFormationPosition formation_position_from_record_slot(
     return scripting::ScriptFormationPosition::other;
 }
 
+std::optional<scripting::ScriptPartyMemberRole> party_role_from_record_slot(
+    const std::uint8_t source_slot) noexcept {
+    // ROM 0x13C20 checks the three party records in roster order [C].
+    switch (source_slot) {
+    case 0U:
+        return scripting::ScriptPartyMemberRole::leader;
+    case 1U:
+        return scripting::ScriptPartyMemberRole::companion_one;
+    case 2U:
+        return scripting::ScriptPartyMemberRole::companion_two;
+    default:
+        return std::nullopt;
+    }
+}
+
 void set_script_ammunition_facts(
     scripting::ScriptActorBehaviorContext& context,
     const std::uint16_t ammunition_remaining) {
@@ -4436,6 +4451,8 @@ void FieldSceneRuntime::advance_default_field_actors(
                     candidate.formation_position =
                         formation_position_from_record_slot(
                             source_record_slot);
+                    candidate.party_member_role =
+                        party_role_from_record_slot(source_record_slot);
                     candidate.source_record_heading = source_record_heading;
                     context.ai_target_candidates.push_back(
                         std::move(candidate));
@@ -4741,6 +4758,8 @@ void FieldSceneRuntime::advance_default_field_actors(
                 candidate.source_record_slot = active_runner_slot;
                 candidate.formation_position =
                     formation_position_from_record_slot(active_runner_slot);
+                candidate.party_member_role =
+                    party_role_from_record_slot(active_runner_slot);
                 if (field_entity_.active) {
                     candidate.source_record_heading =
                         field_movement_state_.heading;
