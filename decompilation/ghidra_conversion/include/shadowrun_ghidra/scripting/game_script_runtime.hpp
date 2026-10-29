@@ -1076,7 +1076,12 @@ struct ScriptCombatActionProfileOptions {
 // (0x55C76). Scripts receive semantic actor state, never a byte-addressed
 // Genesis record.
 struct ScriptCombatantFacts {
+    // Host link classification from the live record. The Lua bridge converts
+    // this into is_party_member; scripts never receive the numeric selector.
     std::uint16_t record_type = 0;
+    // ROM 0x51C8 checks live sprite type +0x0E and skips the flame-bolt death
+    // pose for Thon. The field adapter resolves it into this named rule [C].
+    bool blocks_spell_death_pose = false;
     std::uint8_t source_flags = 0; // live +0x10
     std::uint8_t interaction_flags = 0; // live +0x11
     ScriptCombatCyberware cyberware;
@@ -1368,6 +1373,10 @@ ScriptCombatCyberware script_combat_cyberware_from_source_flags(
 // the 0x17 spell-target branch, and 0x559BC consumes the ghoul selector [C].
 ScriptCombatTraits script_combat_traits_from_source_values(
     std::int8_t race_or_state, std::uint8_t class_code) noexcept;
+// ROM 0x51C8 compares live +0x0E with kind 0xF before calling 0xB0AC; 0x44BC
+// copies the template's first word to +0x0E. Resolve that sprite type here [C].
+bool script_sprite_type_blocks_spell_death_pose(
+    std::uint16_t source_sprite_type) noexcept;
 // ROM +0xDF bits 0/1 choose the primary/secondary dynamic action profile [C].
 ScriptCombatActionProfileOptions
 script_combat_action_profile_options_from_source_flags(

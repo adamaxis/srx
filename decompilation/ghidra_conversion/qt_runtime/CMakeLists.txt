@@ -241,6 +241,14 @@ if(SHADOWRUN_LUA_EXECUTABLE)
             "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/animator_tests.lua")
     set_tests_properties(shadowrun_gameplay_actor_animation_state_qa PROPERTIES
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../..")
+    add_test(NAME shadowrun_gameplay_spell_death_pose_qa
+        COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"
+            "${CMAKE_SOURCE_DIR}/../.."
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/spell_death_tests.lua")
+    set_tests_properties(shadowrun_gameplay_spell_death_pose_qa PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../.."
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
     add_test(NAME shadowrun_gameplay_party_down_rules_qa
         COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
             "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"

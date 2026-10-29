@@ -29,7 +29,8 @@ end
 
 local function caster()
     return {
-        record_type = 0,
+        is_party_member = true,
+        blocks_spell_death_pose = false,
         actor_facts = {
             lifecycle = { active = true, thinking_enabled = false,
                 ai_runner = false, downed = false, group_leader = false,

@@ -2114,6 +2114,9 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             actor.combatant.traits =
                 scripting::script_combat_traits_from_source_values(
                     parse_signed_byte_field(30U), parse_byte_field(31U));
+            actor.combatant.blocks_spell_death_pose =
+                scripting::script_sprite_type_blocks_spell_death_pose(
+                    actor.entity_kind);
             actor.combatant.action_profile_options =
                 scripting::script_combat_action_profile_options_from_source_flags(
                     parse_byte_field(32U));

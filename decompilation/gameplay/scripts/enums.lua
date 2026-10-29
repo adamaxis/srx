@@ -3,18 +3,6 @@
 -- Every value cites its ROM address or RAM location. Logic code uses these names, never raw values.
 local E = {}
 
--- Actor record field offsets; record = 0x100 bytes at FF0100 + 0x100*slot [C]
-E.ActorField = {
-    X = 0x00, Y = 0x04, SCREEN_X = 0x0A, SCREEN_Y = 0x0C, SPRITE_TYPE = 0x0E,
-    STATUS = 0x10, STATUS_EX = 0x11, ANIM_TIMER = 0x16, FACING = 0x2E, HEADING = 0x34,
-    STATE_FN = 0x3A, SLOT_ID = 0x3E, PHYSICAL = 0x4C, POSTURE = 0x4D, ROUNDS = 0x4E, CLIPS = 0x4F,
-    WEAPON_SLOT = 0x56, WEAPON_CODE = 0x57, INVENTORY = 0x66, ITEM_EXTRA = 0x6E, CYBER_BITS = 0x90,
-    TARGET_X = 0x96, TARGET_Y = 0x98, SPELL_GATE = 0x9B, STUN = 0x9C, FORCE = 0x9D, ROLE = 0x9E,
-    SPELL_LIST = 0xA0, TARGET = 0xA2, GROUP_LEADER = 0xA8, CHASE = 0xAC, BEHAVIOR = 0xB0, STEER = 0xB1,
-    APPROACH = 0xB5, THINK = 0xB6, STEER_TIMER = 0xB8, WP_POS = 0xBA, PATH = 0xBC, WALK_DIST = 0xC8,
-    ACTION_DELAY = 0xDC, WAYPOINTS = 0xE0, WP_INDEX = 0xE4,
-}
-E.ActorPool = { STRIDE = 0x100, PARTY = 3, OTHERS = 7, PROJECTILES = 6 }   -- FF0100.., FF0400.., FF0B00.. [C]
 E.GhoulBounty = { MAX_DEFEATS = 20 } -- FFFBF0 is capped at twenty (0x559BC) [C]
 
 -- +0x9E role/AI flags (doc 20 §2); REINFORCEMENT is set by the alarm spawner 0x1E0B8 [C]

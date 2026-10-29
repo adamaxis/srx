@@ -6,7 +6,6 @@ local I = require("lib.int68k")
 local u16, s16 = I.u16, I.s16
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
-local ActorPool = E.ActorPool
 local SpriteType = E.SpriteType
 
 -- ROM 0x1E514 clears the escort relationship and deactivates the actor. The
@@ -155,8 +154,7 @@ function ActorAI.heartbeat(context)
     -- encounter membership is not the combat-record boundary.
     if context.dynamic_world_encounter_actor or
        (type(context.combatant) == "table" and
-        type(context.combatant.record_type) == "number" and
-        context.combatant.record_type >= ActorPool.PARTY) then
+        context.combatant.is_party_member == false) then
         local reaction_started = false
         if context.phase == "behavior" and state.incoming_hit ~= nil then
             reaction_audio_event =

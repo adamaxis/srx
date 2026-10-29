@@ -5,9 +5,10 @@ game = { actors = {}, modules = { combat = require("combat"), items = { catalog 
 require("actor.init")
 local R = require("actor.registry")
 
-local function combatant(record_type, physical_meter)
+local function combatant(is_party_member, physical_meter)
     return {
-        record_type = record_type,
+        is_party_member = is_party_member,
+        blocks_spell_death_pose = false,
         combat_traits = {
             ignores_cover_condition_penalty = false,
             adds_two_condition_difficulty = false,
@@ -51,7 +52,7 @@ local function strike_fixture(target_meter)
         dynamic_world_encounter_actor = true,
         movement_allowed = true,
         ai_random_bound = function() return 0 end,
-        combatant = combatant(E.ActorPool.OTHERS, 10),
+        combatant = combatant(false, 10),
         action_timing = { quickness = 0, intelligence = 0, modifier = 0 },
         world_effect_slot_occupancy = {},
     }
@@ -68,7 +69,7 @@ local function strike_fixture(target_meter)
         distance = E.AiTuning.HELL_HOUND_CLOSE_RANGE - 1,
         world_x = 4660,
         world_y = 2748,
-        combatant = combatant(E.ActorPool.PARTY - 1, target_meter),
+        combatant = combatant(true, target_meter),
     }
     R.resolve_source_target_motion(context, state, target)
     return state, target

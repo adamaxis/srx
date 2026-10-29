@@ -19,9 +19,10 @@ local function check(condition, label)
     if condition then passed = passed + 1 else print("FAIL " .. label) end
 end
 
-local function combatant(record_type)
+local function combatant(is_party_member)
     return {
-        record_type = record_type,
+        is_party_member = is_party_member,
+        blocks_spell_death_pose = false,
         actor_facts = {
             lifecycle = { active = true, thinking_enabled = false,
                 ai_runner = false, downed = false, group_leader = false,
@@ -60,7 +61,7 @@ local function combatant(record_type)
     }
 end
 
-local attacker = combatant(E.ActorPool.PARTY)
+local attacker = combatant(true)
 attacker.combat_traits.ignores_cover_condition_penalty = true
 local bound_calls = 0
 local function random_sixes_then_ones(bound)
@@ -79,7 +80,7 @@ end
 local party_target = {
     id = "party.runner.1",
     source_record_slot = 1,
-    combatant = combatant(1),
+    combatant = combatant(true),
 }
 local party_hit = hit(party_target)
 check(party_hit ~= nil and party_hit.changed and
@@ -90,8 +91,7 @@ check(party_hit ~= nil and party_hit.changed and
 
 local world_target = {
     id = "world.actor.3",
-    source_record_slot = E.ActorPool.PARTY,
-    combatant = combatant(E.ActorPool.PARTY),
+    combatant = combatant(false),
 }
 local world_hit = hit(world_target)
 check(world_hit ~= nil and world_hit.changed and

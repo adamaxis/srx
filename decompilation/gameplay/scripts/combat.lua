@@ -20,14 +20,15 @@ local Item = {
 -- ROM 0x490A spell-callback table: the callbacks for action codes 1 (0x521E),
 -- 2 (0x5152), 8 (0x508A) and 9 (0x4FE2) call 0xB0AC / 0xB0E4 instead of
 -- 0xAFF2 when the spell changed the target's +0x4C to zero. 0xB0AC selects
--- pose 0xE0, 0xB0E4 pose 0xE4. Code 2's caller (0x51C8) skips kind 0xF.
+-- pose 0xE0, 0xB0E4 pose 0xE4. Code 2's caller (0x51C8) compares live
+-- +0x0E to 0x000F and skips 0xB0AC [C].
 -- [H: codes are E.SpellType + 1 (code 12 = heal), i.e. flame dart/bolt and
 -- mana zap/blast; the names are not traced.]
 local SpellDeath = {
     flame_dart = { animation_variant = "spell_death_e0" },
     flame_bolt = {
         animation_variant = "spell_death_e0",
-        excluded_kind = E.SpriteType.THON,
+        excluded_actor_fact = "blocks_spell_death_pose",
     },
     mana_zap = { animation_variant = "spell_death_e4" },
     mana_blast = { animation_variant = "spell_death_e4" },
@@ -304,7 +305,7 @@ local function dynamic_status_modifier(difficulty, attacker, linked, context)
         return nil
     end
     local attribute = attacker.attributes[attribute_name]
-    if attacker.record_type < 3 then
+    if attacker.is_party_member then
         attribute = add_source_byte_to_word(
             ready_party_bonus(context), attribute)
     end
@@ -358,7 +359,7 @@ end
 local function adjusted_meters(record, physical, damage, context)
     local physical_meter = record.physical_meter
     local mental_meter = record.mental_meter
-    if record.record_type < 3 then
+    if record.is_party_member then
         if context.combat_meter_service_blocked then
             return physical_meter, mental_meter
         end
@@ -475,7 +476,7 @@ end
 
 local function publish_player_hurt_event(target, defender, physical_meter,
                                          mental_meter)
-    if defender.record_type >= E.ActorPool.PARTY or
+    if defender.is_party_member ~= true or
        type(target) ~= "table" or type(target.id) ~= "string" or
        target.id == "" then
         return
@@ -527,7 +528,7 @@ local function commit_combatant_meters(target, defender, physical_meter,
     state.combatant = copy_combatant(defender)
     state.combatant.physical_meter = physical_meter
     state.combatant.mental_meter = mental_meter
-    if defender.record_type >= 3 then
+    if not defender.is_party_member then
         -- ROM 0xAFF2 runs on the damaged actor after either 0x55C76 or
         -- weapon hit resolution changes a live world actor's meters.
         -- Preserve the event in that actor's Lua state for its next heartbeat.
@@ -536,7 +537,8 @@ local function commit_combatant_meters(target, defender, physical_meter,
             mental_meter = mental_meter,
             spell_death_variant = physical_meter == 0 and
                 spell_death ~= nil and
-                spell_death.excluded_kind ~= defender.record_type and
+                (spell_death.excluded_actor_fact == nil or
+                 defender[spell_death.excluded_actor_fact] ~= true) and
                 spell_death.animation_variant or nil,
         }
     end
@@ -597,7 +599,6 @@ local function resolve_spell_action(context, target, allow_untargeted)
     local result = {
         spell_id = context.action_spell_id,
         target_id = not untargeted and target.id or "",
-        record_type = defender and defender.record_type or attacker.record_type,
         untargeted = untargeted,
         field_effect_kind = SpellEffectKind.NONE,
         action_result = 0,
@@ -618,7 +619,7 @@ local function resolve_spell_action(context, target, allow_untargeted)
     -- later records it resets the active action header to the first carried
     -- item; the field host applies that header after the heartbeat.
     if attacker.mental_meter == 1 then
-        if attacker.record_type >= 3 then
+        if not attacker.is_party_member then
             local first_item = inventory_item_at(attacker, 1)
             result.next_action_kind = first_item == nil and "none" or "item"
             result.next_action_item_id = first_item and first_item.id or nil
@@ -791,7 +792,6 @@ function Combat.resolve_spell_impact(context, pending, target)
     local result = {
         spell_id = pending.spell_id,
         target_id = target.id,
-        record_type = defender.record_type,
         target_trial_count = 0,
         difficulty = 2,
         target_roll_successes = 0,
@@ -860,7 +860,7 @@ function Combat.resolve_spell_impact(context, pending, target)
         return result
     end
     local attribute = defender.attributes[resistance_attribute]
-    if defender.record_type < 3 then
+    if defender.is_party_member then
         attribute = add_source_byte_to_word(
             attribute, ready_party_bonus(context))
     end
@@ -955,7 +955,6 @@ function Combat.resolve_default_bonus_action(context, target)
         context.ai_random_bound)
     local result = {
         target_id = target.id,
-        record_type = defender.record_type,
         physical_meter = defender.physical_meter,
         mental_meter = defender.mental_meter,
         physical = true,
@@ -1105,12 +1104,11 @@ function Combat.resolve_reaction(context, target)
         target, defender, physical_meter, mental_meter)
     return {
         target_id = target.id,
-        record_type = defender.record_type,
         physical_meter = physical_meter,
         mental_meter = mental_meter,
         physical = physical,
         changed = changed,
-        exhausted = changed and defender.record_type >= 3 and
+        exhausted = changed and not defender.is_party_member and
             ((physical and physical_meter == 0) or
              (not physical and mental_meter == 0)),
     }
@@ -1318,7 +1316,6 @@ function Combat.resolve_weapon_hit(context, projectile, target)
         target, defender, physical_meter, mental_meter)
     return {
         target_id = target.id,
-        record_type = defender.record_type,
         physical_meter = physical_meter,
         mental_meter = mental_meter,
         physical = true,

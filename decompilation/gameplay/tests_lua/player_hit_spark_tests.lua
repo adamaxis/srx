@@ -18,9 +18,10 @@ local function check(condition, label)
     if condition then passed = passed + 1 else print("FAIL " .. label) end
 end
 
-local function combatant(record_type)
+local function combatant(is_party_member)
     return {
-        record_type = record_type,
+        is_party_member = is_party_member,
+        blocks_spell_death_pose = false,
         actor_facts = {
             lifecycle = { active = true, thinking_enabled = false,
                 ai_runner = false, downed = false, group_leader = false,
@@ -59,7 +60,7 @@ local function combatant(record_type)
     }
 end
 
-local attacker = combatant(E.ActorPool.PARTY)
+local attacker = combatant(true)
 local random_calls = 0
 local function successful_reaction_roll(bound)
     if bound ~= 6 then return nil end
@@ -84,7 +85,7 @@ local target = {
     },
     world_activity_actor = true,
     has_action = true,
-    combatant = combatant(E.ActorPool.OTHERS),
+    combatant = combatant(false),
 }
 
 local context = {

@@ -105,7 +105,8 @@ end
 
 local function reaction_combatant(strength)
     return {
-        record_type = 3,
+        is_party_member = false,
+        blocks_spell_death_pose = false,
         physical_meter = 10,
         mental_meter = 10,
         posture_reduction_percent = 0,
@@ -186,7 +187,8 @@ local function armor_hit(equipped_armor_id, target_id)
     local target = {
         id = target_id,
         combatant = {
-            record_type = 3,
+            is_party_member = false,
+            blocks_spell_death_pose = false,
             physical_meter = 10,
             mental_meter = 10,
             posture_reduction_percent = 0,

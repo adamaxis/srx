@@ -337,6 +337,18 @@ bool verify_combat_profile_trait_translation() {
     return true;
 }
 
+bool verify_spell_death_pose_exception_translation() {
+    using shadowrun::ghidra_conversion::scripting::
+        script_sprite_type_blocks_spell_death_pose;
+    // ROM 0x51C8 compares sprite type +0x0E to 0xF before 0xB0AC. Lua gets
+    // the named pose rule; the source selector ends at this adapter [C].
+    return expect(
+        script_sprite_type_blocks_spell_death_pose(0x000FU) &&
+            !script_sprite_type_blocks_spell_death_pose(0x000CU) &&
+            !script_sprite_type_blocks_spell_death_pose(0x0005U),
+        "spell death pose source kind did not become the named host fact");
+}
+
 bool verify_action_profile_option_translation() {
     using namespace shadowrun::ghidra_conversion::scripting;
     // ROM 0x55786 tests +0xDF bit 0; 0x557EE/0x55804 test bit 1. Every byte
@@ -2063,6 +2075,7 @@ int main() {
         !verify_actor_behavior_profile_translation() ||
         !verify_combat_cyberware_translation() ||
         !verify_combat_profile_trait_translation() ||
+        !verify_spell_death_pose_exception_translation() ||
         !verify_action_profile_option_translation() ||
         !verify_posture_reduction_percent_translation() ||
         !verify_mode_one_semantic_fact_translation()) {

@@ -7049,6 +7049,12 @@ ScriptCombatTraits script_combat_traits_from_source_values(
     };
 }
 
+bool script_sprite_type_blocks_spell_death_pose(
+    const std::uint16_t source_sprite_type) noexcept {
+    constexpr std::uint16_t kThonSpriteType = 0x000FU;
+    return source_sprite_type == kThonSpriteType;
+}
+
 ScriptCombatActionProfileOptions
 script_combat_action_profile_options_from_source_flags(
     const std::uint8_t source_flags) noexcept {
@@ -8562,6 +8568,8 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
         actor.source_order = static_cast<std::uint16_t>(source_order);
         actor.activity_probe_enabled = activity_probe_enabled;
         actor.entity_kind = static_cast<std::uint16_t>(entity_kind);
+        actor.combatant.blocks_spell_death_pose =
+            script_sprite_type_blocks_spell_death_pose(actor.entity_kind);
         actor.action_code = static_cast<std::uint8_t>(action_code);
         actor.palette_line = static_cast<std::uint8_t>(palette_line);
         actor.world_x = static_cast<std::uint16_t>(world_x);
@@ -9067,6 +9075,8 @@ GameScriptRuntime::resolve_field_encounter_impl(
                     *run_target_spawn_y);
             }
             actor.entity_kind = static_cast<std::uint16_t>(entity_kind);
+            actor.combatant.blocks_spell_death_pose =
+                script_sprite_type_blocks_spell_death_pose(actor.entity_kind);
             actor.action_code = static_cast<std::uint8_t>(action_code);
             actor.source_spawn_state_flags = roles_to_source(actor_roles, 0U);
             actor.source_interaction_flags =
@@ -10879,7 +10889,10 @@ GameScriptRuntime::actor_heartbeat(
             lua_pushinteger(state, value);
             lua_setfield(state, table_index, field);
         };
-        set_integer("record_type", combatant.record_type);
+        lua_pushboolean(state, combatant.record_type < 3U);
+        lua_setfield(state, table_index, "is_party_member");
+        lua_pushboolean(state, combatant.blocks_spell_death_pose);
+        lua_setfield(state, table_index, "blocks_spell_death_pose");
         push_actor_facts(state, combatant.source_flags,
                          combatant.interaction_flags, 0U, 0U);
         lua_setfield(state, table_index, "actor_facts");
@@ -11743,11 +11756,6 @@ GameScriptRuntime::actor_heartbeat(
                                update.target_id)) {
             return fail("actor_ai.heartbeat returned incomplete combat target facts");
         }
-        if (!read_field_integer(state, update_table, "record_type",
-                                0xFFFFU, combat_value)) {
-            return fail("actor_ai.heartbeat returned incomplete combat target facts");
-        }
-        update.record_type = static_cast<std::uint16_t>(combat_value);
         if (!read_field_integer(state, update_table, "physical_meter",
                                 0xFFU, combat_value)) {
             return fail("actor_ai.heartbeat returned an invalid physical meter");
@@ -11765,15 +11773,17 @@ GameScriptRuntime::actor_heartbeat(
             return fail("actor_ai.heartbeat returned invalid combat meter flags");
         }
         const auto target = resolve_combat_target(update.target_id, true);
-        if (!target.has_value() || target->combatant == nullptr ||
-            target->combatant->record_type != update.record_type) {
+        if (!target.has_value() || target->combatant == nullptr) {
             return fail("actor_ai.heartbeat returned an unlinked combat target");
         }
+        update.record_type = target->combatant->record_type;
         update.source_record_slot = target->record_slot;
         const auto* target_combatant = target->combatant;
+        const bool target_is_party_member =
+            target_combatant->record_type < 3U;
         bool target_linked = false;
         if (context.projectile_movement.has_value()) {
-            target_linked = update.record_type < 3U
+            target_linked = target_is_party_member
                 ? update.source_record_slot < 3U
                 : update.source_record_slot >= 3U;
             if (context.profile_id != "weapon_projectile" ||
@@ -11786,10 +11796,10 @@ GameScriptRuntime::actor_heartbeat(
                 (context.dynamic_world_encounter_actor ||
                  context.player_melee_available) &&
                 context.phase == ScriptActorHeartbeatPhase::behavior &&
-                (update.record_type < 3U) != target->world_activity_actor &&
-                ((update.record_type < 3U &&
+                target_is_party_member != target->world_activity_actor &&
+                ((target_is_party_member &&
                   update.source_record_slot < 3U) ||
-                 (update.record_type >= 3U &&
+                 (!target_is_party_member &&
                   update.source_record_slot >= 3U));
             if (!target_linked) {
                 return fail("actor_ai.heartbeat returned an unlinked combat target");
@@ -11840,23 +11850,16 @@ GameScriptRuntime::actor_heartbeat(
         resolution.field_effect_kind =
             static_cast<ScriptActorSpellFieldEffectKind>(
                 field_effect_kind_value);
-        if (!read_field_integer(state, resolution_table, "record_type",
-                                0xFFFFU, resolution_value)) {
-            return fail(
-                "actor_ai.heartbeat returned incomplete spell source facts");
-        }
-        resolution.target_record_type =
-            static_cast<std::uint16_t>(resolution_value);
         const auto action_target = resolve_combat_target(
             resolution.untargeted ? std::string_view(actor_id)
                                   : std::string_view(resolution.target_id),
             true);
-        if (!action_target.has_value() || action_target->combatant == nullptr ||
-            action_target->combatant->record_type !=
-                resolution.target_record_type) {
+        if (!action_target.has_value() || action_target->combatant == nullptr) {
             return fail(
                 "actor_ai.heartbeat returned an unlinked spell target");
         }
+        resolution.target_record_type =
+            action_target->combatant->record_type;
         resolution.target_record_slot = action_target->record_slot;
         if (!read_field_integer(state, resolution_table, "action_result",
                                 0xFFU, resolution_value) ||
@@ -12188,20 +12191,14 @@ GameScriptRuntime::actor_heartbeat(
             return fail(
                 "actor_ai.heartbeat returned incomplete spell effect target facts");
         }
-        if (!read_field_integer(state, resolution_table, "record_type",
-                                0xFFFFU, value)) {
-            return fail(
-                "actor_ai.heartbeat returned incomplete spell effect target facts");
-        }
-        resolution.target_record_type = static_cast<std::uint16_t>(value);
         const auto effect_target =
             resolve_combat_target(resolution.target_id, true);
-        if (!effect_target.has_value() || effect_target->combatant == nullptr ||
-            effect_target->combatant->record_type !=
-                resolution.target_record_type) {
+        if (!effect_target.has_value() || effect_target->combatant == nullptr) {
             return fail(
                 "actor_ai.heartbeat returned an unlinked spell effect target");
         }
+        resolution.target_record_type =
+            effect_target->combatant->record_type;
         resolution.target_record_slot = effect_target->record_slot;
         if (!read_field_integer(state, resolution_table, "target_trial_count",
                                 0xFFU, value)) {
