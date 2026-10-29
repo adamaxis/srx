@@ -6010,6 +6010,44 @@ GameScriptRuntime::resolve_field_location_route(
     return route;
 }
 
+std::optional<std::string> GameScriptRuntime::active_run_id() {
+    auto* state = impl_->state;
+    if (state == nullptr) {
+        impl_->failure =
+            "Lua runtime is unavailable for the active run identity";
+        return std::nullopt;
+    }
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<std::string> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("run_registry")) {
+        return fail("run_registry.lua module is missing");
+    }
+    lua_getfield(state, -1, "active_run_id");
+    if (!lua_isfunction(state, -1)) {
+        return fail("run_registry active run identity is missing");
+    }
+    lua_remove(state, -2);
+    if (lua_pcall(state, 0, 1, 0) != LUA_OK) {
+        return fail("run_registry active run identity failed: " +
+                    stack_error(state));
+    }
+    std::string run_id;
+    if (!read_string(state, -1, run_id)) {
+        return fail("active run identity is not a nonempty string");
+    }
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return run_id == "none"
+        ? std::optional<std::string>{}
+        : std::optional<std::string>{std::move(run_id)};
+}
+
 std::optional<std::uint8_t>
 GameScriptRuntime::active_run_source_initializer() {
     auto* state = impl_->state;
@@ -7127,12 +7165,13 @@ GameScriptRuntime::resolve_conditional_actor_selection(
     lua_setfield(state, -2, "world_effect_active");
     lua_pushboolean(state, context.pending_world_effect);
     lua_setfield(state, -2, "pending_world_effect");
-    if (context.active_offer_source_initializer.has_value()) {
-        lua_pushinteger(state, *context.active_offer_source_initializer);
+    if (context.active_offer_id.has_value()) {
+        lua_pushlstring(state, context.active_offer_id->data(),
+                        context.active_offer_id->size());
     } else {
         lua_pushnil(state);
     }
-    lua_setfield(state, -2, "active_offer_source_initializer");
+    lua_setfield(state, -2, "active_offer_id");
     lua_pushinteger(state, context.world_mode);
     lua_setfield(state, -2, "world_mode");
     lua_pushinteger(state, context.mode_event_code);

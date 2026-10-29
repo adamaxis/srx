@@ -3110,9 +3110,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
         facts.active_effect_index = field_active_effect_index_;
         facts.selected_effect_index = field_selected_effect_index_;
         facts.player_spawn_pending = has_pending_world_effect_player_spawn();
-        facts.active_offer_source_initializer =
-            game_scripts_.active_run_source_initializer();
-        if (!facts.active_offer_source_initializer.has_value() &&
+        facts.active_offer_id = game_scripts_.active_run_id();
+        if (!facts.active_offer_id.has_value() &&
             !game_scripts_.failure().empty()) {
             failure_ = game_scripts_.failure();
             source_boundary(

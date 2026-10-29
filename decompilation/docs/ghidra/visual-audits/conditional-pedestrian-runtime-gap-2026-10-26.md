@@ -1,7 +1,8 @@
 # Conditional pedestrian runtime gap audit
 
-**Status:** `FieldSceneRuntime` calls the Lua `0xA800` selector with the raw
-active run initializer, FFDF40, FFE180/FFE182, a derived presence projection of
+**Status:** `FieldSceneRuntime` calls the Lua `0xA800` selector with the
+canonical active run ID (for example `employee_recruitment`), FFDF40,
+FFE180/FFE182, a derived presence projection of
 the typed FFFC3C actor-template marker, and typed FFE12C / FFF0C8 indices. The
 selected FFE110 actor descriptor is retained in typed state; eligible bit-3
 contact copies that descriptor into FFFC3C, and escort cleanup clears it.
@@ -459,12 +460,12 @@ variants 9 and 10 use those same handlers but write 4 at `0x1E83C` and
 `0x1E7F8`. Thus the selector's `FFFBED==5` gate admits raw offer initializers
 5, 11, and 12, while rejecting 9 and 10.
 
-The Lua run registry retains the raw `source_initializer`. The conditional
-selector now models the `0x1E69C`/`0xF3DC6` normalization before applying the
-`0xA800` gate, so both Employee Recruitment variants reach the same branch as
-initializer 5, while both Package Recovery variants resolve to 4. Candidate
-metadata records this normalization instead of treating `FFFBED` as the
-untouched offer-record byte.
+The run registry retains `source_initializer` as source metadata for the
+offer producer and save boundary. The field selector receives the registry's
+canonical run ID: the offer table maps source handlers 5, 11, and 12 to
+`employee_recruitment`, while 9 and 10 map to `package_recovery`. That semantic
+identity preserves the post-dispatch result of the `0x1E69C`/`0xF3DC6`
+handlers without making Lua's field policy repeat their source byte values.
 
 ### Full `0xA800` selection matrix
 
@@ -473,10 +474,10 @@ untouched offer-record byte.
 | `FFE180 != 0` and `FFF0C8 == 4` | None | Select fixed story-contact list `0xA8AE`; skip `FFE182` and random pedestrians. |
 | `FFE180 != 0` and `FFF0C8 != 4` | None | Select no list; return without checking `FFE182`. |
 | `FFE180 == 0` and `FFE182 != 0` | None | Select fixed list `0xA8CC`; skip random pedestrians. |
-| Both markers clear; `FFFBED != 5` or `FFDF40 != 2` | None | Select no list and do not sample `FFE183`. |
-| Both markers clear; initializer and mode gates pass; `FFE183 == 0` | Sample bound 2 and store 1 or 2 before testing the remaining gates. | The choice persists if a later gate fails. |
+| Both markers clear; active run is not `employee_recruitment` or `FFDF40 != 2` | None | Select no list and do not sample `FFE183`. |
+| Both markers clear; run-identity and mode gates pass; `FFE183 == 0` | Sample bound 2 and store 1 or 2 before testing the remaining gates. | The choice persists if a later gate fails. |
 | Random branch reaches `FFE12C != FFF0C8` or `FFFC3C != 0` | Choice may already have been sampled and stored. | Select no list; retain the choice. |
-| Both markers clear; initializer/mode gates pass; floor words equal; `FFFC3C == 0` | Index the scene table using the stored `FFE183` choice. | Select one candidate list; reachable choices are 1 and 2. |
+| Both markers clear; run-identity/mode gates pass; floor words equal; `FFFC3C == 0` | Index the scene table using the stored `FFE183` choice. | Select one candidate list; reachable choices are 1 and 2. |
 
 The Debug and Release `shadowrun_gameplay_script_runtime_qa` now enumerate
 13,824 combinations through Lua's decision function. The sweep crosses both
@@ -547,13 +548,12 @@ route-matched Genesis capture are still open.
 
 `FieldSceneRuntime::initialize_default_field_actors` now calls
 `GameScriptRuntime::resolve_conditional_actor_selection` after the explicit
-route-owned lists. It passes the active offer's raw initializer, the current
-FFDF40 mode, FFE180/FFE182, a presence projection of the typed FFFC3C template,
-and separate optional 16-bit FFE12C and FFF0C8 values. Lua derives the post-`F3DC6` FFFBED
-value before checking the A800 initializer gate. The one-shot FFE183 choice
-remains Lua-owned. The random
+route-owned lists. It passes the canonical active run ID, current FFDF40 mode,
+FFE180/FFE182, a presence projection of the typed FFFC3C template, and separate
+optional 16-bit FFE12C and FFF0C8 values. Lua checks the run identity and mode
+before sampling. The one-shot FFE183 choice remains Lua-owned. The random
 callback uses the field PRNG's bound sampler, and Lua calls it only after the
-marker, normalized-initializer, and mode gates pass.
+marker, run-identity, and mode gates pass.
 
 Resource initialization records the selected FFE12C index and initial FFF0C8
 word. Elevator entry and completed floor movement update the active floor

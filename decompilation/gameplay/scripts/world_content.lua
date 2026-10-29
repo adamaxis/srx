@@ -422,24 +422,6 @@ function World.consume_conditional_actor_selection_choice()
     return choice
 end
 
-local function field_initializer_after_source_dispatch(initializer)
-    -- ROM 0x1E69C writes the selected F3EBC initializer to FFFBED, then calls
-    -- F3DC6[FFFBED]. The two-site/Renraku package-recovery handlers normalize
-    -- 9/10 to 4, while the employee-recruitment handlers normalize 11/12 to
-    -- 5 before the later 0xA800 field gate reads FFFBED.
-    if initializer == E.RunOfferInitializer.PACKAGE_RECOVERY_TWO_SITE_POOL or
-       initializer == E.RunOfferInitializer.PACKAGE_RECOVERY_RENRAKU then
-        return E.RunOfferInitializer.PACKAGE_RECOVERY
-    end
-    if initializer ==
-            E.RunOfferInitializer.EMPLOYEE_RECRUITMENT_TWO_SITE_POOL or
-       initializer ==
-            E.RunOfferInitializer.EMPLOYEE_RECRUITMENT_RENRAKU then
-        return E.RunOfferInitializer.EMPLOYEE_RECRUITMENT
-    end
-    return initializer
-end
-
 local function mode_one_activity_actor_list(scene_id, facts)
     if facts.world_mode ~= 1 or facts.pending_actor_list then
         return 0
@@ -498,20 +480,17 @@ function World.resolve_conditional_actor_selection(
        type(random_below) ~= "function" then
         error("conditional actor selection facts are invalid")
     end
-    local byte_or_nil = function(value)
-        return value == nil or
-            (type(value) == "number" and value % 1 == 0 and
-             value >= 0 and value <= 0xFF)
-    end
     local word_or_nil = function(value)
         return value == nil or
             (type(value) == "number" and value % 1 == 0 and
              value >= 0 and value <= 0xFFFF)
     end
-    if not byte_or_nil(facts.active_offer_source_initializer) or
+    if (facts.active_offer_id ~= nil and
+        (type(facts.active_offer_id) ~= "string" or
+         facts.active_offer_id == "")) or
        not word_or_nil(facts.active_effect_index) or
        not word_or_nil(facts.selected_effect_index) then
-        error("conditional actor selection has an invalid source word")
+        error("conditional actor selection has invalid gameplay facts")
     end
 
     local choice = conditional_actor_selection_choice
@@ -554,12 +533,10 @@ function World.resolve_conditional_actor_selection(
         return result("none", 0)
     end
 
-    -- The host passes the active offer's raw initializer. ROM 0x1E69C runs
-    -- F3DC6[FFFBED] before the later 0xA800 gate; compare that resulting byte,
-    -- not the raw Lua offer identifier.
-    local field_initializer = field_initializer_after_source_dispatch(
-        facts.active_offer_source_initializer)
-    if field_initializer ~= E.RunOfferInitializer.EMPLOYEE_RECRUITMENT or
+    -- ROM 0x1E69C dispatches the accepted offer through its source handler;
+    -- the run registry has already resolved handler variants to one gameplay
+    -- identity before this field policy runs.
+    if facts.active_offer_id ~= "employee_recruitment" or
        facts.world_mode ~= 2 then
         return result("none", 0)
     end

@@ -38,10 +38,8 @@ bool verify_conditional_actor_selector_permutations(
         std::optional<std::uint16_t> active;
         std::optional<std::uint16_t> selected;
     };
-    constexpr std::array<std::optional<std::uint8_t>, 8> kInitializers{{
-        std::nullopt, std::uint8_t{0U}, std::uint8_t{4U}, std::uint8_t{5U},
-        std::uint8_t{9U}, std::uint8_t{10U}, std::uint8_t{11U},
-        std::uint8_t{12U},
+    constexpr std::array<std::string_view, 4> kOfferIds{{
+        "", "package_recovery", "employee_recruitment", "bodyguard_escort",
     }};
     constexpr std::array<std::uint16_t, 4> kWorldModes{{
         0U, 1U, 2U, 0x0102U,
@@ -99,7 +97,7 @@ bool verify_conditional_actor_selector_permutations(
     std::size_t permutation_count = 0U;
     for (const bool world_effect_active : kBooleans) {
         for (const bool pending_world_effect : kBooleans) {
-            for (const auto initializer : kInitializers) {
+            for (const auto offer_id : kOfferIds) {
                 for (const auto world_mode : kWorldModes) {
                     for (const auto effect_indices : kEffectIndexPairs) {
                         for (const bool player_spawn_pending : kBooleans) {
@@ -116,9 +114,8 @@ bool verify_conditional_actor_selector_permutations(
                                     if (retained_choice != 0U) {
                                         ScriptConditionalActorSelectionContext
                                             seed_context{};
-                                        seed_context
-                                            .active_offer_source_initializer =
-                                            5U;
+                                        seed_context.active_offer_id =
+                                            "employee_recruitment";
                                         seed_context.world_mode = 2U;
                                         seed_context.active_effect_index = 0U;
                                         seed_context.selected_effect_index = 1U;
@@ -149,8 +146,10 @@ bool verify_conditional_actor_selector_permutations(
                                         world_effect_active;
                                     context.pending_world_effect =
                                         pending_world_effect;
-                                    context.active_offer_source_initializer =
-                                        initializer;
+                                    if (!offer_id.empty()) {
+                                        context.active_offer_id =
+                                            std::string(offer_id);
+                                    }
                                     context.world_mode = world_mode;
                                     context.active_effect_index =
                                         effect_indices.active;
@@ -165,17 +164,13 @@ bool verify_conditional_actor_selector_permutations(
                                             0x15U, context,
                                             random_service(random_roll));
 
-                                    const bool initializer_passes =
-                                        initializer ==
-                                            std::optional<std::uint8_t>{5U} ||
-                                        initializer ==
-                                            std::optional<std::uint8_t>{11U} ||
-                                        initializer ==
-                                            std::optional<std::uint8_t>{12U};
+                                    const bool is_employee_recruitment =
+                                        offer_id == "employee_recruitment";
                                     const bool should_sample =
                                         !world_effect_active &&
                                         !pending_world_effect &&
-                                        initializer_passes && world_mode == 2U &&
+                                        is_employee_recruitment &&
+                                        world_mode == 2U &&
                                         retained_choice == 0U;
                                     const auto expected_choice = should_sample
                                         ? static_cast<std::uint8_t>(random_roll + 1U)
@@ -195,7 +190,7 @@ bool verify_conditional_actor_selector_permutations(
                                         expected_kind =
                                             ScriptConditionalActorSelectionKind::pending_world_activity;
                                         expected_list_offset = 0xA8CCU;
-                                    } else if (initializer_passes &&
+                                    } else if (is_employee_recruitment &&
                                                world_mode == 2U &&
                                                effect_indices.active.has_value() &&
                                                effect_indices.active ==
@@ -227,11 +222,10 @@ bool verify_conditional_actor_selector_permutations(
                                             << world_effect_active
                                             << " pending="
                                             << pending_world_effect
-                                            << " initializer="
-                                            << (initializer.has_value()
-                                                    ? std::to_string(
-                                                          *initializer)
-                                                    : "nil")
+                                            << " active-offer="
+                                            << (offer_id.empty()
+                                                    ? "none"
+                                                    : std::string(offer_id))
                                             << " mode=" << world_mode
                                             << " active-index="
                                             << (effect_indices.active.has_value()
@@ -265,7 +259,7 @@ bool verify_conditional_actor_selector_permutations(
     }
     std::cout << "a800_source_gate_permutations=" << permutation_count
               << " random_calls=" << random_calls << '\n';
-    return expect(permutation_count == 13'824U &&
+    return expect(permutation_count == 6'912U &&
                       invalid_random_bounds == 0U,
                   "A800 source-gate permutation count mismatch");
 }
@@ -656,7 +650,9 @@ bool verify_package_delivery_field_events(
     }
     task = scripts.complete_native_operation(true);
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
-                    task.result_id == std::optional<std::string>{"accepted"},
+                    task.result_id == std::optional<std::string>{"accepted"} &&
+                    scripts.active_run_id() ==
+                        std::optional<std::string>{"package_delivery"},
                 "package offer did not become an active run after acceptance")) {
         return false;
     }
@@ -692,6 +688,7 @@ bool verify_package_delivery_field_events(
             scripts.call_string(
                 "run_registry", "last_completed_offer_id") ==
                 std::optional<std::string>{"package_delivery"} &&
+            !scripts.active_run_id().has_value() &&
             !scripts.active_run_source_initializer().has_value(),
         "package run did not collect at origin, pay once at destination, and clear");
 }
@@ -796,17 +793,20 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
     }
     task = scripts.complete_native_operation(true);
     const auto active_initializer = scripts.active_run_source_initializer();
+    const auto active_run_id = scripts.active_run_id();
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
                     task.result_id == std::optional<std::string>{"accepted"} &&
                     active_initializer ==
-                        std::optional<std::uint8_t>{expected_initializer},
+                        std::optional<std::uint8_t>{expected_initializer} &&
+                    active_run_id ==
+                        std::optional<std::string>{"employee_recruitment"},
                 "accepted variant did not preserve its source initializer")) {
         std::cerr << scripts.failure() << '\n';
         return false;
     }
 
     ScriptConditionalActorSelectionContext facts{};
-    facts.active_offer_source_initializer = *active_initializer;
+    facts.active_offer_id = *active_run_id;
     facts.world_mode = 2U;
     facts.active_effect_index = 0U;
     facts.selected_effect_index = 0U;
@@ -1053,16 +1053,19 @@ bool verify_employee_recruitment_pedestrian_request(
     }
     task = scripts.complete_native_operation(true);
     const auto active_initializer = scripts.active_run_source_initializer();
+    const auto active_run_id = scripts.active_run_id();
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
                     task.result_id == std::optional<std::string>{"accepted"} &&
-                    active_initializer == std::optional<std::uint8_t>{5U},
+                    active_initializer == std::optional<std::uint8_t>{5U} &&
+                    active_run_id == std::optional<std::string>{
+                        "employee_recruitment"},
                 "accepted Matchstick offer did not retain raw initializer 5")) {
         std::cerr << scripts.failure() << '\n';
         return false;
     }
 
     ScriptConditionalActorSelectionContext selection_facts{};
-    selection_facts.active_offer_source_initializer = *active_initializer;
+    selection_facts.active_offer_id = *active_run_id;
     selection_facts.world_mode = 2U;
     selection_facts.active_effect_index = 0U;
     selection_facts.selected_effect_index = 0U;
@@ -1637,35 +1640,35 @@ int main() {
 
     ScriptConditionalActorSelectionContext pending_context{};
     pending_context.pending_world_effect = true;
-    pending_context.active_offer_source_initializer = 5U;
+    pending_context.active_offer_id = "employee_recruitment";
     pending_context.world_mode = 2U;
     const auto pending_selection = scripts.resolve_conditional_actor_selection(
         0x15U, pending_context, unexpected_conditional_roll);
 
-    // ROM 0x1E81C/0x1E7D0 normalize both package-recovery variants to FFFBED=4.
-    auto rejected_initializer_context = pending_context;
-    rejected_initializer_context.pending_world_effect = false;
-    rejected_initializer_context.active_offer_source_initializer = 9U;
-    rejected_initializer_context.active_effect_index = 0U;
-    rejected_initializer_context.selected_effect_index = 0U;
-    const auto rejected_initializer_selection =
+    // Run variants arrive as canonical gameplay identities at the selector.
+    auto package_recovery_context = pending_context;
+    package_recovery_context.pending_world_effect = false;
+    package_recovery_context.active_offer_id = "package_recovery";
+    package_recovery_context.active_effect_index = 0U;
+    package_recovery_context.selected_effect_index = 0U;
+    const auto package_recovery_selection =
         scripts.resolve_conditional_actor_selection(
-            0x15U, rejected_initializer_context,
+            0x15U, package_recovery_context,
             unexpected_conditional_roll);
-    auto rejected_variant_context = rejected_initializer_context;
-    rejected_variant_context.active_offer_source_initializer = 10U;
-    const auto rejected_variant_selection =
+    auto other_offer_context = package_recovery_context;
+    other_offer_context.active_offer_id = "bodyguard_escort";
+    const auto other_offer_selection =
         scripts.resolve_conditional_actor_selection(
-            0x15U, rejected_variant_context, unexpected_conditional_roll);
-    auto rejected_mode_context = rejected_initializer_context;
-    rejected_mode_context.active_offer_source_initializer = 5U;
+            0x15U, other_offer_context, unexpected_conditional_roll);
+    auto rejected_mode_context = package_recovery_context;
+    rejected_mode_context.active_offer_id = "employee_recruitment";
     rejected_mode_context.world_mode = 1U;
     const auto rejected_mode_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, rejected_mode_context, unexpected_conditional_roll);
 
     ScriptConditionalActorSelectionContext late_effect_context{};
-    late_effect_context.active_offer_source_initializer = 5U;
+    late_effect_context.active_offer_id = "employee_recruitment";
     late_effect_context.world_mode = 2U;
     late_effect_context.active_effect_index = 4U;
     late_effect_context.selected_effect_index = 3U;
@@ -1714,11 +1717,11 @@ int main() {
         pending_selection->kind ==
             ScriptConditionalActorSelectionKind::pending_world_activity &&
         pending_selection->list_offset == 0xA8CCU &&
-        rejected_initializer_selection.has_value() &&
-        rejected_initializer_selection->kind ==
+        package_recovery_selection.has_value() &&
+        package_recovery_selection->kind ==
             ScriptConditionalActorSelectionKind::none &&
-        rejected_variant_selection.has_value() &&
-        rejected_variant_selection->kind ==
+        other_offer_selection.has_value() &&
+        other_offer_selection->kind ==
             ScriptConditionalActorSelectionKind::none &&
         rejected_mode_selection.has_value() &&
         rejected_mode_selection->kind ==
@@ -1758,65 +1761,6 @@ int main() {
                 "Lua conditional actor selector decision matrix mismatch")) {
         std::cerr << "conditional random calls: "
                   << conditional_random_calls << "; runtime error: "
-                  << scripts.failure() << '\n';
-        return 1;
-    }
-
-    std::size_t normalized_initializer_random_calls = 0U;
-    const auto normalized_initializer_roll =
-        [&normalized_initializer_random_calls](const std::uint16_t roll) {
-            return [roll, &normalized_initializer_random_calls](
-                       const std::uint16_t bound)
-                       -> std::optional<std::uint16_t> {
-                ++normalized_initializer_random_calls;
-                if (bound != 2U) return std::nullopt;
-                return roll;
-            };
-        };
-    const bool employee_two_site_selection_reset =
-        scripts.reset_conditional_actor_selection();
-    auto employee_two_site_context = rejected_initializer_context;
-    employee_two_site_context.active_offer_source_initializer = 11U;
-    const auto employee_two_site_selection =
-        scripts.resolve_conditional_actor_selection(
-            0x15U, employee_two_site_context,
-            normalized_initializer_roll(0U));
-    const bool employee_renraku_selection_reset =
-        scripts.reset_conditional_actor_selection();
-    auto employee_renraku_context = rejected_initializer_context;
-    employee_renraku_context.active_offer_source_initializer = 12U;
-    const auto employee_renraku_selection =
-        scripts.resolve_conditional_actor_selection(
-            0x15U, employee_renraku_context,
-            normalized_initializer_roll(1U));
-    const bool normalized_employee_initializers_select_pedestrians =
-        employee_two_site_selection_reset &&
-        employee_renraku_selection_reset &&
-        employee_two_site_selection.has_value() &&
-        employee_two_site_selection->kind ==
-            ScriptConditionalActorSelectionKind::random_pedestrian &&
-        employee_two_site_selection->selection_choice == 1U &&
-        employee_two_site_selection->choice_changed &&
-        employee_two_site_selection->list_offset ==
-            (first_candidate_scene.has_value() &&
-                     !first_candidate_scene->empty()
-                 ? first_candidate_scene->front().list_offset
-                 : 0U) &&
-        employee_renraku_selection.has_value() &&
-        employee_renraku_selection->kind ==
-            ScriptConditionalActorSelectionKind::random_pedestrian &&
-        employee_renraku_selection->selection_choice == 2U &&
-        employee_renraku_selection->choice_changed &&
-        employee_renraku_selection->list_offset ==
-            (first_candidate_scene.has_value() &&
-                     first_candidate_scene->size() > 1U
-                 ? first_candidate_scene->at(1U).list_offset
-                 : 0U) &&
-        normalized_initializer_random_calls == 2U;
-    if (!expect(normalized_employee_initializers_select_pedestrians,
-                "ROM-normalized employee initializer did not pass A800")) {
-        std::cerr << "normalized initializer random calls: "
-                  << normalized_initializer_random_calls << "; runtime error: "
                   << scripts.failure() << '\n';
         return 1;
     }

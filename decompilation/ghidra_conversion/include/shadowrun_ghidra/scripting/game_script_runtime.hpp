@@ -1185,14 +1185,13 @@ struct ScriptConditionalActorCandidate {
     std::string activation_gate;
 };
 
-// Inputs for the ROM 0xA800 list decision. FFDF40, FFE12C, and FFF0C8 are
-// source words; the latter two are the distinct selected and active effect
-// indices. Lua retains FFE183 between selector calls and exposes source clears
-// through an explicit reset method.
+// Gameplay facts for field actor selection. The active run is identified by
+// its canonical offer ID; Lua owns the retained one-shot pedestrian choice.
+// Floor selection facts remain distinct so late gate checks keep their order.
 struct ScriptConditionalActorSelectionContext {
     bool world_effect_active = false;
     bool pending_world_effect = false;
-    std::optional<std::uint8_t> active_offer_source_initializer;
+    std::optional<std::string> active_offer_id;
     std::uint16_t world_mode = 0;
     std::uint8_t mode_event_code = 0;
     std::uint32_t world_flags = 0;
@@ -1846,6 +1845,7 @@ public:
     dialogue_text_entries() const noexcept;
     std::optional<FieldScriptRoute> resolve_field_location_route(
         const FieldScriptRouteContext& context);
+    std::optional<std::string> active_run_id();
     std::optional<std::uint8_t> active_run_source_initializer();
     std::optional<ScriptRunFieldEventDecision> resolve_active_run_field_event(
         std::uint8_t map_id, std::uint8_t event_id);
