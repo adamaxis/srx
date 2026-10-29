@@ -87,7 +87,7 @@ local function actor_from_row(row)
                 shotguns = row.combat_shotguns,
                 melee_combat = row.combat_melee_combat,
             },
-            armor_index = row.combat_armor_index,
+            equipped_armor_id = row.equipped_armor_id,
             combat_traits = row.combat_traits,
             action_result = 0,
             action_profile_options = {

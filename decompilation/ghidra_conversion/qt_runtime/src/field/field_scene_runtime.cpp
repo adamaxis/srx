@@ -25,6 +25,7 @@
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_status_conversion.hpp"
 #include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
+#include "shadowrun_ghidra/scripting/combat_inventory.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
@@ -369,7 +370,12 @@ scripting::ScriptCombatantFacts script_combatant_facts(
         record.skills[0], record.skills[1], record.skills[2],
         record.skills[3], record.skills[4], record.skills[5]};
     facts.force = record.magic_force;
-    facts.armor_index = record.equipped_armor_index;
+    if (const auto armor_id =
+            scripting::script_armor_item_id_from_source_index(
+                record.equipped_armor_index);
+        armor_id.has_value()) {
+        facts.equipped_armor_id = *armor_id;
+    }
     facts.traits = scripting::script_combat_traits_from_source_values(
         static_cast<std::int8_t>(record.species_index),
         record.archetype_index);
@@ -2095,7 +2101,16 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
                 parse_byte_field(26U)};
             actor.combatant.skills.sorcery = parse_byte_field(28U);
             actor.combatant.skills.melee_combat = parse_byte_field(27U);
-            actor.combatant.armor_index = parse_byte_field(29U);
+            const auto equipped_armor_index = parse_byte_field(29U);
+            const auto equipped_armor_id =
+                scripting::script_armor_item_id_from_source_index(
+                    equipped_armor_index);
+            if (equipped_armor_index != 0U && !equipped_armor_id.has_value()) {
+                throw std::out_of_range(
+                    "default actor has an unknown equipped armor item");
+            }
+            actor.combatant.equipped_armor_id =
+                equipped_armor_id.value_or(std::string_view{});
             actor.combatant.traits =
                 scripting::script_combat_traits_from_source_values(
                     parse_signed_byte_field(30U), parse_byte_field(31U));
@@ -17403,9 +17418,13 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
             }
         };
     const auto draw_armor_summary = [this, &painter](
-                                        const std::uint8_t armor_index) {
-        if (armor_index != 0U && armor_index <= field_menu_text_.armor_labels.size()) {
-            const auto& armor = field_menu_text_.armor_labels[armor_index - 1U];
+                                        const std::string_view armor_item_id) {
+        const auto armor_index =
+            scripting::script_armor_source_index_from_item_id(armor_item_id);
+        if (armor_index.has_value() &&
+            *armor_index <= field_menu_text_.armor_labels.size()) {
+            const auto& armor =
+                field_menu_text_.armor_labels[*armor_index - 1U];
             for (std::size_t row = 0; row < armor.size(); ++row) {
                 if (!armor[row].empty()) {
                     draw_command_overview_text(
@@ -17424,7 +17443,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         const scripting::ScriptArmorTemplate* armor = nullptr;
         for (const auto& item : field_menu_text_.items) {
             if (item.definition.armor.has_value() &&
-                item.definition.armor->armor_index == armor_index) {
+                item.definition.armor->item_id == armor_item_id) {
                 armor = &*item.definition.armor;
                 break;
             }
@@ -17583,7 +17602,10 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 command_overview_defense_bars_[
                     command_overview_combat_bars_.defense_bar]);
         }
-        draw_armor_summary(active_runner_record().equipped_armor_index);
+        const auto equipped_armor_id =
+            scripting::script_armor_item_id_from_source_index(
+                active_runner_record().equipped_armor_index);
+        draw_armor_summary(equipped_armor_id.value_or(std::string_view{}));
     } else if (!command_overview_clips_.is_open() &&
                !command_overview_inventory_detail_pending_) {
         const auto slot = view.source_state.secondary_page * 2U +
@@ -17640,8 +17662,7 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
                 // Repaint that panel from typed state rather than placing a
                 // second Wpns/Guns pair beside the selected-item text.
                 if (selected_item.armor.has_value()) {
-                    draw_armor_summary(
-                        selected_item.armor->armor_index);
+                    draw_armor_summary(selected_item.armor->item_id);
                 }
             }
         }

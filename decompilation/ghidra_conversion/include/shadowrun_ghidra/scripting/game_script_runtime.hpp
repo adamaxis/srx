@@ -754,7 +754,6 @@ struct ScriptWeaponTemplate {
 struct ScriptArmorTemplate {
     std::string item_id;
     std::uint8_t item_code = 0;
-    std::uint8_t armor_index = 0;
     std::uint8_t primary_modifier = 0;
     std::uint8_t secondary_modifier = 0;
 };
@@ -1092,7 +1091,9 @@ struct ScriptCombatantFacts {
     // Live +0x9D is the actor's force, used by spell and action rules.
     std::uint8_t force = 0;
     std::uint8_t action_result = 0; // live +0x9F
-    std::uint8_t armor_index = 0;
+    // Resolved item identity; the source +0x76 armor selector stays in the
+    // native record adapter.
+    std::string equipped_armor_id;
     std::uint8_t equipped_action_code = 0;
     ScriptCombatActionProfileOptions action_profile_options;
     // Host-side selector from the linked source record (+0xD8 -> +0xA0,

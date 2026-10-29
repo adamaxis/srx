@@ -75,7 +75,7 @@ local function actor_row(source_order, sequence_id, placement_rule)
         combat_willpower = 0,
         combat_melee_combat = 0,
         combat_sorcery = 0,
-        combat_armor_index = 0,
+        equipped_armor_id = "heavy_combat_armor",
         combat_traits = {
             ignores_cover_condition_penalty = false,
             adds_two_condition_difficulty = false,
@@ -210,6 +210,9 @@ eq(alarm_sequence.actors[1].source_order, 0,
    "alarm actors retain source order")
 eq(alarm_sequence.actors[1].sequence_id, "field_alarm_reinforcements",
    "alarm actor belongs to the named reinforcement sequence")
+eq(alarm_sequence.actors[1].combatant.equipped_armor_id,
+   "heavy_combat_armor",
+   "encounter actor keeps armor as an item identity")
 local alarm_actor_facts = alarm_sequence.actors[1].actor_facts
 eq(alarm_actor_facts.roles.spotted, true,
    "alarm actor template is marked spotted for the common spawn path")

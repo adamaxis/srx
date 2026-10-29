@@ -6,6 +6,7 @@ extern "C" {
 }
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <initializer_list>
 #include <iostream>
@@ -120,6 +121,30 @@ int main() {
     lua_getfield(state, -1, "world_content_data");
     lua_remove(state, -2);
     const int data_table = lua_absindex(state, -1);
+    constexpr std::array<std::string_view, 7U> armor_ids{{
+        "armor_vest", "armor_clothing", "armor_jacket",
+        "vest_with_plates", "lined_duster", "light_combat_armor",
+        "heavy_combat_armor",
+    }};
+    bool found_named_armor = false;
+    const auto row_has_semantic_armor = [&](const int row) {
+        lua_getfield(state, row, "equipped_armor_id");
+        bool valid_armor = lua_isnil(state, -1) != 0;
+        if (lua_type(state, -1) == LUA_TSTRING) {
+            std::size_t length = 0U;
+            const auto* value = lua_tolstring(state, -1, &length);
+            if (value == nullptr) {
+                valid_armor = false;
+            } else {
+                const std::string_view item_id(value, length);
+                valid_armor = std::find(armor_ids.begin(), armor_ids.end(),
+                                        item_id) != armor_ids.end();
+            }
+            found_named_armor = found_named_armor || valid_armor;
+        }
+        lua_pop(state, 1);
+        return valid_armor && field_is_nil(state, row, "combat_armor_index");
+    };
 
     lua_getfield(state, data_table, "world_activity_actor_lists");
     const int actor_list_rows = lua_absindex(state, -1);
@@ -161,7 +186,8 @@ int main() {
         }
         actor_rows_are_semantic = actor_rows_are_semantic &&
             field_is_nil(state, row, "combat_auxiliary_roll_bonus") &&
-            field_is_nil(state, row, "combat_magic_cap");
+            field_is_nil(state, row, "combat_magic_cap") &&
+            row_has_semantic_armor(row);
         for (const auto* field : {"source_record_offset", "tagged_template",
                                   "template_offset", "list_offset",
                                   "position_offset", "source_action_slot",
@@ -218,7 +244,8 @@ int main() {
                             found_probe_disabled &&
                             found_bodyguard_timing_modifier &&
                             found_named_script_activity &&
-                            found_named_pending_requirements,
+                            found_named_pending_requirements &&
+                            found_named_armor,
                         "actor catalog did not replace source pointers with "
                         "semantic identity, named selection conditions, "
                         "timing modifiers, and boolean probe facts");
@@ -313,7 +340,8 @@ int main() {
         }
         dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
             field_is_nil(state, row, "combat_auxiliary_roll_bonus") &&
-            field_is_nil(state, row, "combat_magic_cap");
+            field_is_nil(state, row, "combat_magic_cap") &&
+            row_has_semantic_armor(row);
         lua_getfield(state, row, "action_delay_modifier");
         const auto action_delay_modifier = lua_tointeger(state, -1);
         dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
@@ -362,7 +390,7 @@ int main() {
         lua_pop(state, 1);
     }
     valid = expect(dynamic_actor_rows_are_semantic && found_alarm_sequence &&
-                       found_boris_sequence,
+                       found_boris_sequence && found_named_armor,
                    "dynamic actor catalog leaked source pointers or failed "
                    "to resolve named sequences") && valid;
     lua_pop(state, 1);

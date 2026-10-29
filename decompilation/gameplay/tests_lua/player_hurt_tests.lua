@@ -53,7 +53,6 @@ local function combatant(record_type)
             qualifies_for_party_support_bonus = true,
             is_ghoul_bounty_target = false,
         },
-        armor_index = 0,
         equipped_action_id = "test_weapon",
         cyberware = {},
         action_profile_options = { primary = false, secondary = false },

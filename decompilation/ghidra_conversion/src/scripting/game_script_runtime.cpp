@@ -8628,7 +8628,12 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
                                 combatant.skills.shotguns) &&
             read_combatant_fact("skills", "melee_combat",
                                 combatant.skills.melee_combat) &&
-            read_combatant_byte("armor_index", combatant.armor_index) &&
+            read_optional_field_string(
+                state, combatant_index, "equipped_armor_id",
+                combatant.equipped_armor_id) &&
+            (combatant.equipped_armor_id.empty() ||
+             script_armor_source_index_from_item_id(
+                 combatant.equipped_armor_id).has_value()) &&
             read_combat_action_profile_options(
                 state, combatant_index, combatant.action_profile_options) &&
             read_combatant_byte("force", combatant.force) &&
@@ -8978,8 +8983,12 @@ GameScriptRuntime::resolve_field_encounter_impl(
                     read_combat_byte("force", actor.combatant.force) &&
                     read_combat_byte("spell_trial_cap",
                                      actor.combatant.spell_trial_cap) &&
-                    read_combat_byte("armor_index",
-                                     actor.combatant.armor_index) &&
+                    read_optional_field_string(
+                        state, combat_index, "equipped_armor_id",
+                        actor.combatant.equipped_armor_id) &&
+                    (actor.combatant.equipped_armor_id.empty() ||
+                     script_armor_source_index_from_item_id(
+                         actor.combatant.equipped_armor_id).has_value()) &&
                     read_combat_action_profile_options(
                         state, combat_index,
                         actor.combatant.action_profile_options) &&
@@ -10293,23 +10302,17 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
                 return fail("item armor template must be a record");
             }
             const auto armor_index = lua_absindex(state, -1);
-            std::uint32_t source_armor_index = 0U;
             std::uint32_t primary_modifier = 0U;
             std::uint32_t secondary_modifier = 0U;
             ScriptArmorTemplate armor;
             armor.item_id = item.id;
             armor.item_code = item.code;
-            if (!read_field_integer(state, armor_index, "armor_index", 7U,
-                                    source_armor_index) ||
-                source_armor_index == 0U ||
-                !read_field_integer(state, armor_index, "primary_modifier",
+            if (!read_field_integer(state, armor_index, "primary_modifier",
                                     255U, primary_modifier) ||
                 !read_field_integer(state, armor_index, "secondary_modifier",
                                     255U, secondary_modifier)) {
                 return fail("item armor template is incomplete");
             }
-            armor.armor_index =
-                static_cast<std::uint8_t>(source_armor_index);
             armor.primary_modifier =
                 static_cast<std::uint8_t>(primary_modifier);
             armor.secondary_modifier =
@@ -10920,7 +10923,13 @@ GameScriptRuntime::actor_heartbeat(
         set_integer("force", combatant.force);
         set_integer("action_result", combatant.action_result);
         set_integer("spell_trial_cap", combatant.spell_trial_cap);
-        set_integer("armor_index", combatant.armor_index);
+        if (combatant.equipped_armor_id.empty()) {
+            lua_pushnil(state);
+        } else {
+            lua_pushlstring(state, combatant.equipped_armor_id.data(),
+                            combatant.equipped_armor_id.size());
+        }
+        lua_setfield(state, table_index, "equipped_armor_id");
         lua_createtable(state, 0, 6);
         const auto traits_index = lua_absindex(state, -1);
         const auto set_trait = [state, traits_index](const char* field,

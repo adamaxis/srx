@@ -390,7 +390,13 @@ bool push_semantic_inventory(
             lua_pop(state, 1);
             return false;
         }
-        if (item->value_property.empty() && item_value != 0U) {
+        const auto armor_source_index =
+            script_armor_source_index_from_item_id(item->item_id);
+        const bool armor_value_matches_identity =
+            armor_source_index.has_value() &&
+            (item_value == 0U || item_value == *armor_source_index);
+        if (item->value_property.empty() && item_value != 0U &&
+            !armor_value_matches_identity) {
             failure = source_path.string() + ": row " +
                       std::to_string(row_number) + " has an unmapped nonzero "
                       "inventory value for " + std::string(item->item_id);
@@ -437,6 +443,31 @@ bool push_record(lua_State* state, const TsvDocument& document,
             continue;
         }
         if (column == "combat_class_code") {
+            continue;
+        }
+        if (column == "combat_armor_index") {
+            std::uint8_t source_armor_index = 0U;
+            if (!read_source_byte(document, row, column, source_path,
+                                  row_number, source_armor_index, failure)) {
+                lua_pop(state, 1);
+                return false;
+            }
+            if (source_armor_index == 0U) {
+                lua_pushnil(state);
+            } else {
+                const auto armor_id =
+                    script_armor_item_id_from_source_index(
+                        source_armor_index);
+                if (!armor_id.has_value()) {
+                    failure = source_path.string() + ": row " +
+                              std::to_string(row_number) +
+                              " has an unknown equipped armor index";
+                    lua_pop(state, 1);
+                    return false;
+                }
+                lua_pushlstring(state, armor_id->data(), armor_id->size());
+            }
+            lua_setfield(state, table_index, "equipped_armor_id");
             continue;
         }
         if (column == "combat_race_or_state") {

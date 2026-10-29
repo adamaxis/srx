@@ -93,8 +93,8 @@ bool verify_semantic_combat_inventory_translation() {
         std::string_view property;
     };
     // Actor inventory values at +0x66..+0x75 are decoded by item identity:
-    // weapon rounds, consumable uses, focus/talisman modifiers, and armor
-    // index. Lua receives these named item facts rather than parallel bytes.
+    // weapon rounds, consumable uses, focus/talisman modifiers, and equipped
+    // armor identity. Lua receives named item facts rather than source values.
     constexpr std::array<Case, 7U> cases{{
         {8U, 21U, "ak_97", "loaded_rounds"},
         {19U, 10U, "fetish", "uses_remaining"},
@@ -102,7 +102,7 @@ bool verify_semantic_combat_inventory_translation() {
         {29U, 3U, "sleep_focus", "spell_action_bonus"},
         {39U, 4U, "protection_talisman", "rating"},
         {40U, 2U, "combat_sense_spell_lock", "command_bonus"},
-        {47U, 4U, "vest_with_plates", "armor_index"},
+        {47U, 4U, "vest_with_plates", ""},
     }};
     for (const auto& test_case : cases) {
         const auto item = script_combat_inventory_item(
@@ -110,7 +110,8 @@ bool verify_semantic_combat_inventory_translation() {
         if (!item.has_value() || item->slot != 3U ||
             item->item_id != test_case.item_id ||
             item->value_property != test_case.property ||
-            item->value != test_case.value ||
+            item->value != (test_case.property.empty() ? 0U
+                                                       : test_case.value) ||
             script_item_source_code_from_id(test_case.item_id) !=
                 test_case.source_code) {
             std::cerr << "inventory mapping code="
@@ -130,9 +131,26 @@ bool verify_semantic_combat_inventory_translation() {
                           "source inventory state did not become a named item property");
         }
     }
+    constexpr std::array<std::string_view, 7U> armor_ids{{
+        "armor_vest", "armor_clothing", "armor_jacket",
+        "vest_with_plates", "lined_duster", "light_combat_armor",
+        "heavy_combat_armor",
+    }};
+    for (std::size_t index = 0U; index < armor_ids.size(); ++index) {
+        const auto source_index = static_cast<std::uint8_t>(index + 1U);
+        if (script_armor_item_id_from_source_index(source_index) !=
+                armor_ids[index] ||
+            script_armor_source_index_from_item_id(armor_ids[index]) !=
+                source_index) {
+            return expect(false,
+                          "equipped armor selector did not resolve to its item identity");
+        }
+    }
     return expect(!script_combat_inventory_item(1U, 0U, 0U).has_value() &&
                       !script_combat_inventory_item(9U, 1U, 0U).has_value() &&
-                      !script_item_source_code_from_id("not_an_item").has_value(),
+                      !script_item_source_code_from_id("not_an_item").has_value() &&
+                      !script_armor_item_id_from_source_index(0U).has_value() &&
+                      !script_armor_item_id_from_source_index(8U).has_value(),
                   "semantic inventory accepted an invalid source item");
 }
 
@@ -7273,7 +7291,6 @@ int main() {
     catalog_defender.attributes.strength = 1U;
     catalog_defender.attributes.intelligence = 4U;
     catalog_defender.attributes.willpower = 4U;
-    catalog_defender.armor_index = 0U;
     catalog_defender.traits =
         script_combat_traits_from_source_values(0, 0U);
     catalog_defender.equipped_action_code = 0U;
@@ -7520,7 +7537,6 @@ int main() {
     target_facts.attributes.strength = 1U;
     target_facts.attributes.intelligence = 4U;
     target_facts.attributes.willpower = 4U;
-    target_facts.armor_index = 0U;
     target_facts.traits =
         script_combat_traits_from_source_values(0, 0U);
     target_facts.equipped_action_code = 0U;
@@ -8767,7 +8783,7 @@ int main() {
             facts.attributes.willpower = 16U;
             facts.skills.melee_combat = 8U;
             facts.skills.sorcery = 8U;
-            facts.armor_index = 7U;
+            facts.equipped_armor_id = "heavy_combat_armor";
             facts.traits = script_combat_traits_from_source_values(-1, 0U);
             facts.equipped_action_code = 1U;
             facts.item_codes[0] = 50U;
@@ -11820,7 +11836,6 @@ int main() {
                     armor != nullptr &&
                     item.armor->item_id == item.id &&
                     item.armor->item_code == item.code &&
-                    item.armor->armor_index == armor->armor_index &&
                     item.armor->primary_modifier == armor->primary_modifier &&
                     item.armor->secondary_modifier ==
                         armor->secondary_modifier &&

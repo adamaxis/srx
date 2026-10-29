@@ -31,6 +31,11 @@ inline constexpr std::array<std::string_view, 50> kScriptItemIds{{
     "lined_duster", "light_combat_armor", "heavy_combat_armor",
 }};
 
+inline constexpr std::array<std::string_view, 7> kScriptArmorItemIds{{
+    "armor_vest", "armor_clothing", "armor_jacket", "vest_with_plates",
+    "lined_duster", "light_combat_armor", "heavy_combat_armor",
+}};
+
 inline constexpr std::optional<std::string_view>
 script_item_id_from_source_code(const std::uint8_t source_code) {
     return source_code >= 1U && source_code <= kScriptItemIds.size()
@@ -43,6 +48,25 @@ inline constexpr std::optional<std::uint8_t>
 script_item_source_code_from_id(const std::string_view item_id) {
     for (std::size_t index = 0U; index < kScriptItemIds.size(); ++index) {
         if (kScriptItemIds[index] == item_id) {
+            return static_cast<std::uint8_t>(index + 1U);
+        }
+    }
+    return std::nullopt;
+}
+
+inline constexpr std::optional<std::string_view>
+script_armor_item_id_from_source_index(const std::uint8_t source_index) {
+    return source_index >= 1U &&
+                   source_index <= kScriptArmorItemIds.size()
+        ? std::optional<std::string_view>{
+              kScriptArmorItemIds[static_cast<std::size_t>(source_index - 1U)]}
+        : std::nullopt;
+}
+
+inline constexpr std::optional<std::uint8_t>
+script_armor_source_index_from_item_id(const std::string_view item_id) {
+    for (std::size_t index = 0U; index < kScriptArmorItemIds.size(); ++index) {
+        if (kScriptArmorItemIds[index] == item_id) {
             return static_cast<std::uint8_t>(index + 1U);
         }
     }
@@ -71,11 +95,10 @@ script_combat_inventory_item(const std::uint8_t position,
         property = "rating";
     } else if (source_code == 40U) {
         property = "command_bonus";
-    } else if (source_code >= 44U && source_code <= 50U) {
-        property = "armor_index";
     }
     return ScriptCombatInventoryItemView{
-        *item_id, position, property, detail_value};
+        *item_id, position, property,
+        property.empty() ? static_cast<std::uint8_t>(0U) : detail_value};
 }
 
 } // namespace shadowrun::ghidra_conversion::scripting

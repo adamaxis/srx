@@ -21,15 +21,6 @@ local image_family_by_kind = {
     spell_lock = "magic", totem = "magic", armor = "armor",
 }
 
-local armor_item_order = {
-    "armor_vest", "armor_clothing", "armor_jacket", "vest_with_plates",
-    "lined_duster", "light_combat_armor", "heavy_combat_armor",
-}
-local armor_index_by_item_id = {}
-for index, id in ipairs(armor_item_order) do
-    armor_index_by_item_id[id] = index
-end
-
 local function item_image_suffix(asset_index)
     return asset_index < 10 and ("0" .. asset_index) or tostring(asset_index)
 end
@@ -78,10 +69,6 @@ local function define_item(id, asset_index)
     if kind == "firearm" then
         item.weapon = {}
     end
-    if kind == "armor" then
-        item.armor = { armor_index = armor_index_by_item_id[id] }
-    end
-
     local template = SourceWeaponRecords.get(id)
     if template ~= nil then
         assert(template.id == id and
@@ -127,8 +114,7 @@ local function define_item(id, asset_index)
     if kind == "armor" then
         assert(type(definition.armor) == "table",
                "armor item has no modifier definition: " .. id)
-        item.armor.primary_modifier = definition.armor.primary_modifier
-        item.armor.secondary_modifier = definition.armor.secondary_modifier
+        item.armor = definition.armor
     end
     return item
 end

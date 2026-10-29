@@ -168,5 +168,75 @@ check(baseline_reaction ~= nil and baseline_reaction.mental_meter == 8 and
       profile_reaction == nil,
       "linked named profile data was not applied to the primary action rule")
 
+local armor_catalog = {
+    {
+        id = "test_weapon",
+        kind = "firearm",
+        weapon = { source_action = { difficulty = 2, effect_value = 1 } },
+    },
+    {
+        id = "heavy_combat_armor",
+        kind = "armor",
+        armor = { primary_modifier = 8, secondary_modifier = 6 },
+    },
+}
+game.modules.items.catalog = armor_catalog
+
+local function armor_hit(equipped_armor_id, target_id)
+    local target = {
+        id = target_id,
+        combatant = {
+            record_type = 3,
+            physical_meter = 10,
+            mental_meter = 10,
+            posture_reduction_percent = 0,
+            equipped_armor_id = equipped_armor_id,
+            attributes = {
+                body = 1,
+                quickness = 2,
+                strength = 1,
+                intelligence = 2,
+                willpower = 2,
+            },
+            skills = {},
+            cyberware = {},
+            combat_traits = {
+                ignores_cover_condition_penalty = false,
+                adds_two_condition_difficulty = false,
+                is_special_spell_target = false,
+                takes_fixed_meter_damage = false,
+                qualifies_for_party_support_bonus = false,
+                is_ghoul_bounty_target = false,
+            },
+            actor_facts = {
+                lifecycle = {
+                    active = true,
+                    thinking_enabled = true,
+                    ai_runner = false,
+                    downed = false,
+                    group_leader = false,
+                    dead = false,
+                },
+                interaction = {
+                    no_coverage_difficulty_bonus = true,
+                    defense_difficulty_reduction = false,
+                },
+            },
+            inventory = {},
+            action_profile_options = { primary = false, secondary = false },
+        },
+    }
+    return Combat.resolve_weapon_hit({
+        projectile_action_id = "test_weapon",
+        ai_random_bound = function() return 0 end,
+    }, { action_result = 5 }, target)
+end
+
+local unarmored_hit = armor_hit(nil, "unarmored_target")
+local armored_hit = armor_hit("heavy_combat_armor", "armored_target")
+check(unarmored_hit ~= nil and unarmored_hit.physical_meter == 4 and
+      armored_hit ~= nil and armored_hit.physical_meter == 10,
+      "weapon resolution did not select armor modifiers by item identity")
+
 print(string.format("combat_skill_policy_tests: %d/%d passed", passed, total))
 if passed ~= total then os.exit(1) end

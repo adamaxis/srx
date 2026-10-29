@@ -328,7 +328,7 @@ local function secondary_armor_modifier(target)
     for _, item in ipairs(type(items) == "table" and items.catalog or {}) do
         local armor = item.armor
         if type(armor) == "table" and
-           armor.armor_index == target.armor_index then
+           item.id == target.equipped_armor_id then
             return armor.secondary_modifier
         end
     end
@@ -1227,11 +1227,11 @@ local function primary_armor_modifier(target)
     for _, item in ipairs(game.modules.items.catalog or {}) do
         local armor = item.armor
         if type(armor) == "table" and
-           armor.armor_index == target.armor_index then
+           item.id == target.equipped_armor_id then
             return armor.primary_modifier
         end
     end
-    return target.armor_index == 0 and 0 or nil
+    return target.equipped_armor_id == nil and 0 or nil
 end
 
 local function resolve_weapon_action_value(context, projectile,
