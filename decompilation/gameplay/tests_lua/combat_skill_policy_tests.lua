@@ -30,7 +30,7 @@ local function combatant(firearms, pistols, maxima, posture)
     return {
         physical_meter = 10,
         mental_meter = 10,
-        posture = posture,
+        posture_reduction_percent = posture * 25,
         cyberware_flags = 0,
         action_profile_modifier_flags = 0,
         attributes = {

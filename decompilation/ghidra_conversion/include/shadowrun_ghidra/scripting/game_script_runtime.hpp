@@ -1051,7 +1051,9 @@ struct ScriptCombatantFacts {
     std::uint16_t cyberware_flags = 0;
     std::uint8_t physical_meter = 0;
     std::uint8_t mental_meter = 0;
-    std::uint8_t posture = 0;
+    // Live actor +0x4D. The source value stays native; Lua receives the
+    // posture adjustment percentage used by its combat rules.
+    std::uint8_t source_posture = 0;
     ScriptCombatAttributes attributes;
     ScriptCombatSkills skills;
     // ROM 0x1033E adds live +0x9D to the initial action trial count.
@@ -1326,6 +1328,11 @@ struct ScriptActorBehaviorProfile {
 ScriptActorBehaviorProfile
 script_actor_behavior_profile_from_source_posture(
     std::uint8_t source_posture) noexcept;
+std::uint16_t script_posture_reduction_percent_from_source_value(
+    std::uint8_t source_posture) noexcept;
+std::optional<std::uint8_t>
+script_source_posture_from_reduction_percent(
+    std::uint16_t posture_reduction_percent) noexcept;
 
 enum class ScriptSceneTenActivityVariant : std::uint8_t {
     standard,

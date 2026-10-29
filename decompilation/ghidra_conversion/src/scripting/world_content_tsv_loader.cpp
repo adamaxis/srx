@@ -312,6 +312,9 @@ std::string_view lua_column_name(
             return destination;
         }
     }
+    if (tsv_column == "combat_posture") {
+        return "posture_reduction_percent";
+    }
     return tsv_column;
 }
 
@@ -423,6 +426,17 @@ bool push_record(lua_State* state, const TsvDocument& document,
                 lua_pop(state, 1);
                 return false;
             }
+        } else if (column == "combat_posture") {
+            std::uint8_t source_posture = 0U;
+            if (!read_source_byte(document, row, column, source_path,
+                                  row_number, source_posture, failure)) {
+                lua_pop(state, 1);
+                return false;
+            }
+            lua_pushinteger(
+                state,
+                script_posture_reduction_percent_from_source_value(
+                    source_posture));
         } else if (numeric_column(column, optional_numeric_columns)) {
             if (value.empty() || value == "-") {
                 lua_pushnil(state);

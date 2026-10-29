@@ -266,7 +266,7 @@ local function world_activity_actor_descriptors(scene_id, list_id)
                     physical_meter = row.physical_meter,
                     mental_meter = row.combat_mental_meter,
                     cyberware_flags = row.combat_cyberware_flags,
-                    posture = row.combat_posture,
+                    posture_reduction_percent = row.posture_reduction_percent,
                     attributes = {
                         body = row.combat_body,
                         quickness = row.combat_quickness,

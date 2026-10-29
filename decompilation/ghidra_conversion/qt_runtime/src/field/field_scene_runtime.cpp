@@ -360,7 +360,7 @@ scripting::ScriptCombatantFacts script_combatant_facts(
     facts.cyberware_flags = record.cyberware_flags;
     facts.physical_meter = record.delay_meter;
     facts.mental_meter = record.behavior_meter;
-    facts.posture = record.posture;
+    facts.source_posture = record.posture;
     facts.attributes = scripting::ScriptCombatAttributes{
         record.attributes[0], record.attributes[1], record.attributes[2],
         record.attributes[4], record.attributes[5]};
@@ -2083,7 +2083,7 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
                 actor.source_interaction_flags;
             actor.combatant.mental_meter = parse_byte_field(19U);
             actor.combatant.cyberware_flags = parse_word_field(20U);
-            actor.combatant.posture = parse_byte_field(21U);
+            actor.combatant.source_posture = parse_byte_field(21U);
             actor.combatant.attributes = scripting::ScriptCombatAttributes{
                 parse_byte_field(22U), parse_byte_field(23U),
                 parse_byte_field(24U), parse_byte_field(25U),
@@ -3645,7 +3645,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
         context.combatant = actor.combatant;
         context.actor_behavior_profile =
             scripting::script_actor_behavior_profile_from_source_posture(
-                actor.combatant.posture);
+                actor.combatant.source_posture);
         context.source_record_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
         context.has_live_actor_record = true;
@@ -4026,7 +4026,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         context.combatant = actor.combatant;
         context.actor_behavior_profile =
             scripting::script_actor_behavior_profile_from_source_posture(
-                actor.combatant.posture);
+                actor.combatant.source_posture);
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_behavior_flags = actor.source_behavior_flags;
@@ -4281,7 +4281,7 @@ void FieldSceneRuntime::advance_default_field_actors(
         context.combatant = actor.combatant;
         context.actor_behavior_profile =
             scripting::script_actor_behavior_profile_from_source_posture(
-                actor.combatant.posture);
+                actor.combatant.source_posture);
         context.controlled_party_member_id =
             "party.runner." + std::to_string(
                 field_party_roster_.active_slot());
@@ -4310,7 +4310,7 @@ void FieldSceneRuntime::advance_default_field_actors(
             context.physical_condition = actor.physical_meter;
             context.actor_behavior_profile =
                 scripting::script_actor_behavior_profile_from_source_posture(
-                    actor.combatant.posture);
+                    actor.combatant.source_posture);
             set_script_animation_facts(
                 context, actor.animation_id, actor.animation_complete);
             context.source_alarm_active = field_matrix_field_state_.alarm;
@@ -6351,7 +6351,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.combatant.interaction_flags =
             actor.source_interaction_flags;
         // ROM 0x1E25A writes +0x4D=4 after template construction.
-        actor.combatant.posture = static_cast<std::uint8_t>(
+        actor.combatant.source_posture = static_cast<std::uint8_t>(
             srx::v(srx::Posture::FULL_OFFENSE));
         // ROM 0x1E25A sets +0x9E bit 6, preserving template/list flags.
         actor.source_spawn_state_flags = static_cast<std::uint8_t>(
@@ -12510,7 +12510,7 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         context.combatant = actor.combatant;
         context.actor_behavior_profile =
             scripting::script_actor_behavior_profile_from_source_posture(
-                actor.combatant.posture);
+                actor.combatant.source_posture);
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_behavior_flags = actor.source_behavior_flags;

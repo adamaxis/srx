@@ -202,6 +202,10 @@ nine-pair table at `0x13E58`. The native boundary converts that field into a
 named engagement policy and approach band before Lua receives the actor
 context. Script-runtime QA checks all nine source values across the three
 bands; Lua does not index the source posture table.
+When combat rules need the same live field, the host exposes the derived
+`posture_reduction_percent` consumed by Lua. ROM `0x55F20` applies 25 percent
+per posture step with integer division; the host reconstructs +0x4D only when
+it reads actor state back from Lua.
 The production Scene 2 Weenr profile uses flags `0x25`, so its captured route
 does not activate this `+0x10.3` branch. Debug and Release script-runtime,
 encounter, and Hound-effect QA pass; the 12 Scene 2 and 8 Hound full-frame

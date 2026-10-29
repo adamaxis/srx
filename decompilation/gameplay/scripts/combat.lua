@@ -103,8 +103,10 @@ local function command_average(record)
     return value
 end
 
-local function posture_reduction(value, posture)
-    return math.floor((value * posture * 25) / 100)
+-- +0x4D arrives as a host-derived percentage; ROM 0x55F20 applies 25
+-- percent per posture step with integer division [C].
+local function posture_reduction(value, posture_reduction_percent)
+    return math.floor((value * posture_reduction_percent) / 100)
 end
 
 local function item18_skill_value(record)
@@ -637,7 +639,8 @@ local function resolve_spell_action(context, target, allow_untargeted)
     end
 
     local skill = item18_skill_value(attacker)
-    local initial_trials = posture_reduction(skill, attacker.posture)
+    local initial_trials = posture_reduction(
+        skill, attacker.posture_reduction_percent)
     initial_trials = math.min(initial_trials, attacker.magic_cap or 0)
     initial_trials = add_source_byte_to_word(
         initial_trials, attacker.force or
@@ -722,7 +725,8 @@ local function resolve_spell_action(context, target, allow_untargeted)
             attacker.auxiliary_roll_bonus or 0
     end
 
-    local remaining_skill = skill - posture_reduction(skill, attacker.posture)
+    local remaining_skill = skill - posture_reduction(
+        skill, attacker.posture_reduction_percent)
     local effect_trials = (remaining_skill +
         attacker.attributes.willpower) & 0xff
     local residual = spell_residual(
@@ -1022,7 +1026,7 @@ function Combat.resolve_reaction(context, target)
 
     local attacker_average = command_average(attacker)
     local attacker_reduction = posture_reduction(attacker_average,
-                                                  attacker.posture)
+        attacker.posture_reduction_percent)
     local first_count = math.min(attacker_reduction,
                                  attacker.skills.melee_combat) +
                         attacker.skills.melee_combat
@@ -1055,7 +1059,7 @@ function Combat.resolve_reaction(context, target)
 
     local defender_average = command_average(defender)
     local defender_reduction = posture_reduction(defender_average,
-                                                  defender.posture)
+        defender.posture_reduction_percent)
     local second_count = minimum_plus_attribute(
         defender_average - defender_reduction,
         defender.skills.melee_combat,
@@ -1194,7 +1198,8 @@ function Combat.resolve_weapon_attack_seed(context)
         race_or_state = 0,
     }
     local average = command_average(attacker)
-    local reduced = posture_reduction(average, attacker.posture)
+    local reduced = posture_reduction(
+        average, attacker.posture_reduction_percent)
     local trial_count = weapon_action_skill_value(
         attacker, policy.skill_group, reduced)
     if trial_count == nil then
@@ -1246,7 +1251,8 @@ end
 local function resolve_weapon_action_value(context, projectile,
                                            target, source_action)
     local average = command_average(target)
-    local reduction = posture_reduction(average, target.posture)
+    local reduction = posture_reduction(
+        average, target.posture_reduction_percent)
     local trial_count = add_source_byte_to_word(
         average - reduction, target.attributes.body)
     trial_count = trial_count +

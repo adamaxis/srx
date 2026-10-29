@@ -71,7 +71,7 @@ local function actor_from_row(row)
             cyberware_flags = row.combat_cyberware_flags,
             physical_meter = row.physical_meter,
             mental_meter = row.combat_mental_meter,
-            posture = row.combat_posture,
+            posture_reduction_percent = row.posture_reduction_percent,
             attributes = {
                 body = row.combat_body,
                 quickness = row.combat_quickness,

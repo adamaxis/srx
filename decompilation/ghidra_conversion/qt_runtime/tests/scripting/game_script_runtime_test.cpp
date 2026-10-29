@@ -209,6 +209,41 @@ bool verify_actor_behavior_profile_translation() {
     return true;
 }
 
+bool verify_posture_reduction_percent_translation() {
+    using namespace shadowrun::ghidra_conversion::scripting;
+    struct Case {
+        std::uint8_t source_posture;
+        std::uint16_t reduction_percent;
+    };
+    // [C] ROM 0x55F20 applies 25 percent per posture step. Include the full
+    // byte range so the native fact remains arithmetically exact without
+    // exposing the source byte to combat Lua.
+    constexpr std::array<Case, 8U> cases{{
+        {0U, 0U}, {1U, 25U}, {2U, 50U}, {3U, 75U},
+        {4U, 100U}, {5U, 125U}, {8U, 200U}, {0xFFU, 6375U},
+    }};
+    for (const auto& test_case : cases) {
+        const auto reduction_percent =
+            script_posture_reduction_percent_from_source_value(
+                test_case.source_posture);
+        const auto restored_source_posture =
+            script_source_posture_from_reduction_percent(
+                reduction_percent);
+        if (reduction_percent != test_case.reduction_percent ||
+            restored_source_posture !=
+                std::optional<std::uint8_t>{test_case.source_posture}) {
+            std::cerr << "posture reduction conversion mismatch for source posture "
+                      << static_cast<unsigned>(test_case.source_posture)
+                      << '\n';
+            return false;
+        }
+    }
+    return expect(
+        !script_source_posture_from_reduction_percent(1U).has_value() &&
+            !script_source_posture_from_reduction_percent(6400U).has_value(),
+        "invalid posture reduction percentage was accepted");
+}
+
 bool verify_mode_one_semantic_fact_translation() {
     using namespace shadowrun::ghidra_conversion::scripting;
     const std::array<std::pair<std::uint8_t,
@@ -1914,6 +1949,7 @@ int main() {
         !verify_semantic_combat_inventory_translation() ||
         !verify_field_scene_mode_translation() ||
         !verify_actor_behavior_profile_translation() ||
+        !verify_posture_reduction_percent_translation() ||
         !verify_mode_one_semantic_fact_translation()) {
         return 1;
     }
@@ -2475,7 +2511,7 @@ int main() {
                 ilene_gate_actors->front().combatant.attributes.quickness == 3U &&
                 ilene_gate_actors->front().combatant.attributes.intelligence == 2U &&
                 ilene_gate_actors->front().combatant.mental_meter == 10U &&
-                ilene_gate_actors->front().combatant.posture == 2U &&
+                ilene_gate_actors->front().combatant.source_posture == 2U &&
                 ilene_gate_actors->front().combatant.item_codes[0] == 4U &&
                 ilene_gate_actors->front().combatant.item_codes[4] == 44U &&
                 ilene_gate_actors->front().combatant
@@ -6060,7 +6096,7 @@ int main() {
     // Keep the caster out of the ROM's zero-stun down transition while the
     // spell tests exercise 0x1033E and its source-derived combat results.
     spell_caster.mental_meter = 2U;
-    spell_caster.posture = 4U;
+    spell_caster.source_posture = 4U;
     spell_caster.attributes.willpower = 8U;
     spell_caster.skills.sorcery = 8U;
     spell_caster.race_or_state = 4;
@@ -8600,7 +8636,7 @@ int main() {
             srx::ActorStatus::ACTIVE);
         facts.physical_meter = physical_meter;
         facts.mental_meter = 10U;
-        facts.posture = 2U;
+        facts.source_posture = 2U;
         if (profile_id == "corp_guard_k05_item06") {
             // ROM template facts in default-actors.tsv: +0x77/+0x78 and
             // +0x7B/+0x7C are 5/4 and 3/3 for this guard.
@@ -8623,7 +8659,7 @@ int main() {
             facts.record_type = slot;
             facts.physical_meter = physical_meter;
             facts.mental_meter = 10U;
-            facts.posture = 2U;
+            facts.source_posture = 2U;
             facts.attributes.body = 15U;
             facts.attributes.quickness = 10U;
             facts.attributes.strength = 14U;

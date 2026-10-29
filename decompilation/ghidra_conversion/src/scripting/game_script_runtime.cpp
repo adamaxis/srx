@@ -1228,6 +1228,23 @@ bool read_field_integer(lua_State* state, const int table_index,
     return valid;
 }
 
+bool read_source_posture_from_lua_percent(
+    lua_State* state, const int table_index, const char* field,
+    std::uint8_t& source_posture) {
+    std::uint32_t reduction_percent = 0U;
+    if (!read_field_integer(state, table_index, field, 6375U,
+                            reduction_percent)) {
+        return false;
+    }
+    const auto parsed = script_source_posture_from_reduction_percent(
+        static_cast<std::uint16_t>(reduction_percent));
+    if (!parsed.has_value()) {
+        return false;
+    }
+    source_posture = *parsed;
+    return true;
+}
+
 bool read_optional_field_u32(lua_State* state, const int table_index,
                              const char* field, const std::uint32_t maximum,
                              std::optional<std::uint32_t>& value) {
@@ -6884,6 +6901,26 @@ script_actor_behavior_profile_from_source_posture(
     return profile;
 }
 
+std::uint16_t script_posture_reduction_percent_from_source_value(
+    const std::uint8_t source_posture) noexcept {
+    // [C] ROM 0x55F20 applies 25 percent per posture step with integer
+    // division. Send the resulting gameplay percentage to Lua, not +0x4D.
+    return static_cast<std::uint16_t>(source_posture) * 25U;
+}
+
+std::optional<std::uint8_t>
+script_source_posture_from_reduction_percent(
+    const std::uint16_t posture_reduction_percent) noexcept {
+    if (posture_reduction_percent % 25U != 0U) {
+        return std::nullopt;
+    }
+    const auto source_posture = posture_reduction_percent / 25U;
+    if (source_posture > 0xFFU) {
+        return std::nullopt;
+    }
+    return static_cast<std::uint8_t>(source_posture);
+}
+
 ScriptSceneTenActivityVariant
 script_scene_ten_activity_variant_from_source_event(
     const std::uint8_t source_event) noexcept {
@@ -8435,7 +8472,9 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
             read_combatant_byte("physical_meter", combatant.physical_meter) &&
             read_combatant_byte("mental_meter", combatant.mental_meter) &&
             read_combatant_word("cyberware_flags", combatant.cyberware_flags) &&
-            read_combatant_byte("posture", combatant.posture) &&
+            read_source_posture_from_lua_percent(
+                state, combatant_index, "posture_reduction_percent",
+                combatant.source_posture) &&
             read_combatant_fact("attributes", "body",
                                 combatant.attributes.body) &&
             read_combatant_fact("attributes", "quickness",
@@ -8781,7 +8820,9 @@ GameScriptRuntime::resolve_field_encounter_impl(
                                      actor.combatant.physical_meter) &&
                     read_combat_byte("mental_meter",
                                      actor.combatant.mental_meter) &&
-                    read_combat_byte("posture", actor.combatant.posture) &&
+                    read_source_posture_from_lua_percent(
+                        state, combat_index, "posture_reduction_percent",
+                        actor.combatant.source_posture) &&
                     read_combat_fact("attributes", "body",
                                      actor.combatant.attributes.body) &&
                     read_combat_fact("attributes", "quickness",
@@ -10705,7 +10746,10 @@ GameScriptRuntime::actor_heartbeat(
         set_integer("cyberware_flags", combatant.cyberware_flags);
         set_integer("physical_meter", combatant.physical_meter);
         set_integer("mental_meter", combatant.mental_meter);
-        set_integer("posture", combatant.posture);
+        set_integer(
+            "posture_reduction_percent",
+            script_posture_reduction_percent_from_source_value(
+                combatant.source_posture));
         lua_createtable(state, 0, 5);
         const auto attributes_index = lua_absindex(state, -1);
         const auto set_attribute = [state, attributes_index](

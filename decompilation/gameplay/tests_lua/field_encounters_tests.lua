@@ -60,7 +60,7 @@ local function actor_row(source_order, sequence_id, placement_rule)
         action_delay_modifier = 0,
         combat_mental_meter = 0,
         combat_cyberware_flags = 0,
-        combat_posture = E.Posture.NEUTRAL,
+        posture_reduction_percent = E.Posture.NEUTRAL * 25,
         combat_body = 0,
         combat_quickness = 0,
         combat_strength = 0,

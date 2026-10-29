@@ -35,7 +35,7 @@ local function combatant(record_type)
         physical_meter = 10,
         mental_meter = 10,
         force = 0,
-        posture = 0,
+        posture_reduction_percent = 0,
         attributes = {
             body = 0, quickness = 0, strength = 4,
             intelligence = 0, willpower = 0,

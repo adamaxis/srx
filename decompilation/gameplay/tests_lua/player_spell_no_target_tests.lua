@@ -44,7 +44,7 @@ local function caster()
         physical_meter = 10,
         mental_meter = 0,
         force = 4,
-        posture = 2,
+        posture_reduction_percent = 50,
         attributes = {
             body = 12, quickness = 0, strength = 0,
             intelligence = 0, willpower = 12,
