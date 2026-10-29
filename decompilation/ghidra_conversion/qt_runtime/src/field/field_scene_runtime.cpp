@@ -3628,7 +3628,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
         set_script_ammunition_facts(context, actor.ammunition_remaining);
-        context.source_physical_meter = actor.physical_meter;
+        context.physical_condition = actor.physical_meter;
         set_script_animation_facts(
             context, actor.animation_id, actor.animation_complete);
         if (actor.source_default_dynamic_profile ||
@@ -4263,7 +4263,7 @@ void FieldSceneRuntime::advance_default_field_actors(
             context.source_behavior_flags = actor.source_behavior_flags;
             context.source_spawn_state_flags =
                 actor.source_spawn_state_flags;
-            context.source_physical_meter = actor.physical_meter;
+            context.physical_condition = actor.physical_meter;
             context.source_actor_posture = actor.combatant.posture;
             set_script_animation_facts(
                 context, actor.animation_id, actor.animation_complete);
@@ -5475,7 +5475,7 @@ bool FieldSceneRuntime::retire_dialogue_escort_records() {
         set_script_ammunition_facts(context, actor.ammunition_remaining);
         set_script_animation_facts(
             context, actor.animation_id, actor.animation_complete);
-        context.source_physical_meter = actor.physical_meter;
+        context.physical_condition = actor.physical_meter;
         context.movement_scene_id = actor.scene_reference;
         context.combatant = actor.combatant;
         const auto decision = game_scripts_.actor_heartbeat(context);
@@ -6343,7 +6343,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             context.source_record_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
             context.source_record_flags = actor.source_record_flags;
-            context.source_physical_meter = actor.physical_meter;
+            context.physical_condition = actor.physical_meter;
         }
         context.action_profile_modifiers =
             script_action_profile_modifiers(state_.action_selection_profiles);
@@ -8584,8 +8584,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         if (scene_55_outro_arm_requested &&
             world_frame_logic_state_.scene_state == 3U) {
             const auto armed = game_scripts_.advance_tarislar_tomb_outro(
-                current_scene, world_frame_logic_state_.scene_state,
-                std::array<std::string, 6>{}, true);
+                true, {}, true);
             if (!armed.has_value() ||
                 *armed != scripting::ScriptTarislarTombOutroStep::armed) {
                 failure_ = game_scripts_.failure();
@@ -12469,7 +12468,7 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         set_script_animation_facts(
             context, actor.animation_id, actor.animation_complete);
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
-        context.source_physical_meter = actor.physical_meter;
+        context.physical_condition = actor.physical_meter;
         if (dynamic_actor_behavior || actor.source_default_item_action_profile) {
             context.dynamic_world_encounter_actor = dynamic_actor_behavior;
             context.source_default_item_action_profile =

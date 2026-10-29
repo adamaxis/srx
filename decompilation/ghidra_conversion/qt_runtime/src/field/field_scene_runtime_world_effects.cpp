@@ -743,8 +743,10 @@ bool FieldSceneRuntime::repaint_field_map_cell(const std::size_t cell) {
 
 void FieldSceneRuntime::advance_tarislar_tomb_outro() {
     const auto scene_id = state_.field_scene_buffers.scene_reference;
-    std::array<std::string, 6> actor_ids{};
+    std::vector<std::pair<std::uint8_t, std::string>> selected_actors;
     if (scene_id == 55U) {
+        // ROM 0x5D29C scans source records in slots 4..9. Resolve that
+        // selection here; Lua receives stable identities, not slot numbers.
         for (const auto& actor : field_default_actors_) {
             if (!actor.active || actor.scene_reference != scene_id ||
                 !actor.source_record_slot.has_value()) {
@@ -755,18 +757,30 @@ void FieldSceneRuntime::advance_tarislar_tomb_outro() {
             if (slot < 4U || slot > 9U) {
                 continue;
             }
-            auto& actor_id = actor_ids[static_cast<std::size_t>(slot - 4U)];
-            if (!actor_id.empty()) {
-                source_boundary(
-                    "field.scene55.tomb_outro_duplicate_actor_slot");
-                return;
-            }
-            actor_id = actor.actor_instance_id;
+            selected_actors.emplace_back(slot, actor.actor_instance_id);
         }
+    }
+    std::sort(selected_actors.begin(), selected_actors.end(),
+              [](const auto& left, const auto& right) {
+                  return left.first < right.first;
+              });
+    for (std::size_t index = 1U; index < selected_actors.size(); ++index) {
+        if (selected_actors[index - 1U].first == selected_actors[index].first) {
+            source_boundary(
+                "field.scene55.tomb_outro_duplicate_actor_slot");
+            return;
+        }
+    }
+    std::vector<std::string> actor_ids;
+    actor_ids.reserve(selected_actors.size());
+    for (const auto& [slot, actor_id] : selected_actors) {
+        static_cast<void>(slot);
+        actor_ids.push_back(actor_id);
     }
 
     const auto step = game_scripts_.advance_tarislar_tomb_outro(
-        scene_id, world_frame_logic_state_.scene_state, actor_ids, false);
+        scene_id == 55U && world_frame_logic_state_.scene_state == 3U,
+        actor_ids, false);
     if (!step.has_value()) {
         failure_ = game_scripts_.failure();
         source_boundary("field.scene55.tomb_outro_lua_failed");

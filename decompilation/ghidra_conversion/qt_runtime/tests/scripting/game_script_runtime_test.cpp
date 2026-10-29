@@ -4938,27 +4938,43 @@ int main() {
         scripts.actor_heartbeat(scan_inactive_context);
     const auto scan_live_actor = spawn_activity_scan_actor(
         "scene_55_scan_live", 8U, 0x01U, 1U);
-    const std::array<std::string, 6> scene_55_scan_ids{{
+    const std::vector<std::string> scene_55_scan_ids{
         "scene_55_scan_down", "scene_55_scan_dead", "scene_55_scan_zero",
-        "scene_55_scan_inactive", "scene_55_scan_live", ""}};
+        "scene_55_scan_inactive", "scene_55_scan_live"};
     const auto scene_55_scan_result =
         scripts.has_world_scene_effect_target(scene_55_scan_ids);
-    const std::array<std::string, 6> scene_55_no_scan_ids{{
+    // The host sends a semantic candidate set; candidate order carries no
+    // source-record position. A stable ID remains valid anywhere in the list.
+    const std::vector<std::string> scene_55_reordered_ids{
+        "scene_55_scan_live", "scene_55_scan_down",
+        "scene_55_scan_dead", "scene_55_scan_zero",
+        "scene_55_scan_inactive"};
+    const auto scene_55_reordered_result =
+        scripts.has_world_scene_effect_target(scene_55_reordered_ids);
+    const std::vector<std::string> scene_55_no_scan_ids{
         "scene_55_scan_down", "scene_55_scan_dead", "scene_55_scan_zero",
-        "scene_55_scan_inactive", "", ""}};
+        "scene_55_scan_inactive"};
     const auto scene_55_no_scan_result =
         scripts.has_world_scene_effect_target(scene_55_no_scan_ids);
-    const std::array<std::string, 6> scene_55_missing_state_ids{{
-        "scene_55_missing_actor_state", "", "", "", "", ""}};
+    const std::vector<std::string> scene_55_missing_state_ids{
+        "scene_55_missing_actor_state"};
     const auto scene_55_missing_state_result =
         scripts.has_world_scene_effect_target(scene_55_missing_state_ids);
+    const auto outro_armed =
+        scripts.advance_tarislar_tomb_outro(true, {}, true);
+    const auto outro_inactive =
+        scripts.advance_tarislar_tomb_outro(false, {}, false);
     if (!expect(scan_down_actor.has_value() && scan_dead_actor.has_value() &&
                     scan_zero_meter_actor.has_value() &&
                     scan_inactive_spawn.has_value() &&
                     scan_live_actor.has_value() &&
                     scene_55_scan_result == std::optional<bool>{true} &&
+                    scene_55_reordered_result == std::optional<bool>{true} &&
                     scene_55_no_scan_result == std::optional<bool>{false} &&
-                    !scene_55_missing_state_result.has_value(),
+                    !scene_55_missing_state_result.has_value() &&
+                    outro_armed == scripting::ScriptTarislarTombOutroStep::armed &&
+                    outro_inactive ==
+                        scripting::ScriptTarislarTombOutroStep::inactive,
                 "Scene-55 effect actor scan must read active, living actor meters from Lua state")) {
         std::cerr << scripts.failure() << '\n';
         return 19;
@@ -5039,7 +5055,7 @@ int main() {
             srx::ActorStatus::ACTIVE);
         context.source_record_slot = slot;
         context.source_record_flags = active;
-        context.source_physical_meter = physical_meter;
+        context.physical_condition = physical_meter;
         ScriptCombatantFacts facts{};
         facts.record_type = slot;
         facts.source_flags = active;
@@ -8573,7 +8589,7 @@ int main() {
             srx::ActorStatus::ACTIVE);
         context.source_record_slot = slot;
         context.source_record_flags = active;
-        context.source_physical_meter = physical_meter;
+        context.physical_condition = physical_meter;
         context.combatant = make_static_default_combatant(
             profile_id, slot, physical_meter);
         if (pedestrian) {
@@ -8901,7 +8917,7 @@ int main() {
         }
     }
     static_pedestrian_context.combatant = pedestrian_hit_facts;
-    static_pedestrian_context.source_physical_meter =
+    static_pedestrian_context.physical_condition =
         pedestrian_hit_facts.physical_meter;
     static_pedestrian_context.spawn = false;
     static_pedestrian_context.phase =

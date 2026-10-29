@@ -1,6 +1,5 @@
--- Scene-55 ending trigger recovered from the world-scene effect path.
--- Lua owns the progression state; the host supplies the active Scene-55
--- record IDs and queues the typed field-activity continuation on completion.
+-- Scene-55 ending sequence. Lua owns the progression state; the host supplies
+-- eligible actor identities and queues the field continuation on completion.
 local ActorAI = require("actor.heartbeat")
 
 local Scene55OutroPhase = {
@@ -36,14 +35,13 @@ local function advance_effect_animation(state)
     end
 end
 
-function TarislarTombOutro.advance(scene_id, scene_state, actor_ids, arm)
-    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
-       type(scene_state) ~= "number" or scene_state % 1 ~= 0 or
-       type(actor_ids) ~= "table" or type(arm) ~= "boolean" then
+function TarislarTombOutro.advance(active, actor_ids, arm)
+    if type(active) ~= "boolean" or type(actor_ids) ~= "table" or
+       type(arm) ~= "boolean" then
         return nil
     end
 
-    if scene_id ~= 55 or scene_state ~= 3 then
+    if not active then
         sequence = nil
         return "inactive"
     end
@@ -85,8 +83,7 @@ function TarislarTombOutro.advance(scene_id, scene_state, actor_ids, arm)
         return "progressed"
     end
 
-    -- ROM 0x5D29C scans FF0500..FF0A00 on every render pass while this
-    -- effect frame is held. These are typed actor slots 4..9.
+    -- The host has already selected the actors covered by this effect.
     local target_present = ActorAI.has_world_scene_effect_target(actor_ids)
     if type(target_present) ~= "boolean" then
         return "unresolved"

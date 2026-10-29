@@ -390,7 +390,7 @@ local function initial_state(context, profile)
         action_item_id = context.action_item_id,
         actor_facts = copy_actor_facts(context.actor_facts),
         movement_scene_id = context.movement_scene_id,
-        source_physical_meter = context.source_physical_meter,
+        physical_condition = context.physical_condition,
         source_record_slot = context.source_record_slot,
         -- Lua owns the mutable combat meters used by world-activity policy.
         -- The host supplies this record only at spawn and later combat results

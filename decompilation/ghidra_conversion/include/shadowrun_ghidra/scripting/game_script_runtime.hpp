@@ -1824,9 +1824,10 @@ struct ScriptActorBehaviorContext {
     ScriptActorActionLineClear action_line_clear;
     // Source geometry fact service for a Lua-selected world destination.
     ScriptActorDestinationMeasure measure_destination;
-    // Source +0x4C physical meter. Lua retains this separate field for the
-    // Scene-55 ending scan without exposing combatant facts to static actors.
-    std::optional<std::uint8_t> source_physical_meter;
+    // Current physical condition for actors whose combat facts are not
+    // otherwise available. The native adapter widens the source value here;
+    // gameplay scripts consume a condition value, not a memory byte.
+    std::optional<std::int32_t> physical_condition;
 };
 
 enum class ScriptTarislarTombOutroStep {
@@ -2089,18 +2090,15 @@ public:
     std::optional<ScriptActorTargetListRebuildDecision>
     should_rebuild_actor_target_lists(
         const ScriptActorTargetListRebuildFacts& facts);
-    // ROM 0x5D29C checks the six live records at FF0500..FF0A00 on effect
-    // frame 3. These addresses map to typed host slots 4..9 because FF0400
-    // is slot 3. The array is in record order; an empty ID denotes an unused
-    // host slot. Eligibility is read from Lua-owned actor state.
+    // The host selects actors that can be affected by the current scene
+    // effect. Lua checks their stable identities and live gameplay state.
     std::optional<bool> has_world_scene_effect_target(
-        const std::array<std::string, 6>& actor_ids);
-    // Lua owns the Scene-55 outro progression from the 0x1DD94 mode change
-    // through the 0x5D29C actor scan. The host supplies typed actor identities
-    // and receives the point where 0x1E2E0 should queue its 60-frame callback.
+        const std::vector<std::string>& actor_ids);
+    // Lua owns outro progression and receives semantic activity and actor
+    // facts. The host resolves scene/mode details and queues the continuation.
     std::optional<ScriptTarislarTombOutroStep> advance_tarislar_tomb_outro(
-        std::uint16_t scene_id, std::uint8_t scene_state,
-        const std::array<std::string, 6>& actor_ids, bool arm);
+        bool active,
+        const std::vector<std::string>& actor_ids, bool arm);
     void set_actor_heartbeat_observer(
         ScriptActorHeartbeatObserver observer);
     // Kept for the existing script-runtime caller contract. New game-runtime

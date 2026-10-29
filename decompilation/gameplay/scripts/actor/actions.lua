@@ -128,7 +128,7 @@ local function advance_target_marker(state, context)
     else
         meter = combatant and combatant.physical_meter
         if type(meter) ~= "number" then
-            meter = context.source_physical_meter
+            meter = context.physical_condition
         end
     end
     if type(meter) ~= "number" then

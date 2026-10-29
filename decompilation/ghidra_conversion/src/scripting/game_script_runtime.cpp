@@ -10469,12 +10469,12 @@ GameScriptRuntime::actor_heartbeat(
                      context.source_behavior_flags,
                      context.source_spawn_state_flags);
     lua_setfield(state, -2, "actor_facts");
-    if (context.source_physical_meter.has_value()) {
-        lua_pushinteger(state, *context.source_physical_meter);
+    if (context.physical_condition.has_value()) {
+        lua_pushinteger(state, *context.physical_condition);
     } else {
         lua_pushnil(state);
     }
-    lua_setfield(state, -2, "source_physical_meter");
+    lua_setfield(state, -2, "physical_condition");
     if (context.source_actor_posture.has_value()) {
         lua_pushinteger(state, *context.source_actor_posture);
     } else {
@@ -12930,7 +12930,7 @@ GameScriptRuntime::actor_heartbeat(
 }
 
 std::optional<bool> GameScriptRuntime::has_world_scene_effect_target(
-    const std::array<std::string, 6>& actor_ids) {
+    const std::vector<std::string>& actor_ids) {
     auto* state = impl_->state;
     const auto stack_base = state == nullptr ? 0 : lua_gettop(state);
     const auto fail = [this, state, stack_base](const std::string_view reason)
@@ -13507,8 +13507,8 @@ std::optional<std::int16_t> GameScriptRuntime::player_weapon_action_delay(
 
 std::optional<ScriptTarislarTombOutroStep>
 GameScriptRuntime::advance_tarislar_tomb_outro(
-    const std::uint16_t scene_id, const std::uint8_t scene_state,
-    const std::array<std::string, 6>& actor_ids, const bool arm) {
+    const bool active,
+    const std::vector<std::string>& actor_ids, const bool arm) {
     auto* state = impl_->state;
     const auto stack_base = state == nullptr ? 0 : lua_gettop(state);
     const auto fail = [this, state, stack_base](const std::string_view reason)
@@ -13530,8 +13530,7 @@ GameScriptRuntime::advance_tarislar_tomb_outro(
         return fail("tarislar_tomb_outro.advance is missing");
     }
     lua_remove(state, -2);
-    lua_pushinteger(state, scene_id);
-    lua_pushinteger(state, scene_state);
+    lua_pushboolean(state, active);
     lua_createtable(state, static_cast<int>(actor_ids.size()), 0);
     for (std::size_t index = 0U; index < actor_ids.size(); ++index) {
         const auto& actor_id = actor_ids[index];
@@ -13544,7 +13543,7 @@ GameScriptRuntime::advance_tarislar_tomb_outro(
     lua_pushboolean(state, arm);
 
     ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state, 4, 1, 0) != LUA_OK) {
+    if (lua_pcall(state, 3, 1, 0) != LUA_OK) {
         return fail("tarislar_tomb_outro.advance: " + stack_error(state));
     }
     std::size_t step_length = 0U;

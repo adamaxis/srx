@@ -96,8 +96,8 @@ function ActorAI.heartbeat(context)
         -- 0xB330 leaves the downed state set throughout its ordinary reaction.
         state.actor_facts.lifecycle.downed = true
     end
-    state.source_physical_meter = context.source_physical_meter or
-                                  state.source_physical_meter
+    state.physical_condition = context.physical_condition or
+                               state.physical_condition
     state.source_record_slot = context.source_record_slot or
                                state.source_record_slot
     state.movement_scene_id = context.movement_scene_id or
@@ -521,43 +521,37 @@ function ActorAI.heartbeat(context)
     return R.snapshot(state, action, audio_event)
 end
 
--- ROM 0x5D29C scans records FF0500..FF0A00 when the effect animation reaches
--- frame 3. Those addresses map to typed host slots 4..9 (FF0400 is slot 3).
--- Lua evaluates the supplied actors' authoritative service flags and meters.
+-- The host supplies stable IDs for actors eligible for the current scene
+-- effect. Lua owns the decision from each actor's current gameplay state.
 function ActorAI.has_world_scene_effect_target(actor_ids)
     if type(actor_ids) ~= "table" then
         return nil
     end
-    for index = 1, 6 do
-        local actor_id = actor_ids[index]
-        if actor_id ~= nil and actor_id ~= "" then
-            if type(actor_id) ~= "string" then
-                return nil
-            end
-            local state = states[actor_id]
-            local physical_meter = type(state) == "table" and
-                state.source_physical_meter or nil
-            if physical_meter == nil and type(state) == "table" and
-               type(state.combatant) == "table" then
-                physical_meter = state.combatant.physical_meter
-            end
-            if type(state) ~= "table" or
-               state.source_record_slot ~= index + 3 or
-               type(state.actor_facts) ~= "table" or
-               type(state.actor_facts.lifecycle) ~= "table" or
-               type(state.actor_facts.lifecycle.active) ~= "boolean" or
-               type(state.actor_facts.lifecycle.downed) ~= "boolean" or
-               type(state.actor_facts.lifecycle.dead) ~= "boolean" or
-               type(physical_meter) ~= "number" or
-               physical_meter < 0 or physical_meter > 0xff then
-                return nil
-            end
-            local lifecycle = state.actor_facts.lifecycle
-            if lifecycle.active and not lifecycle.downed and
-               not lifecycle.dead and
-               physical_meter ~= 0 then
-                return true
-            end
+    for _, actor_id in ipairs(actor_ids) do
+        if type(actor_id) ~= "string" or actor_id == "" then
+            return nil
+        end
+        local state = states[actor_id]
+        local physical_condition = type(state) == "table" and
+            state.physical_condition or nil
+        if physical_condition == nil and type(state) == "table" and
+           type(state.combatant) == "table" then
+            physical_condition = state.combatant.physical_meter
+        end
+        if type(state) ~= "table" or
+           type(state.actor_facts) ~= "table" or
+           type(state.actor_facts.lifecycle) ~= "table" or
+           type(state.actor_facts.lifecycle.active) ~= "boolean" or
+           type(state.actor_facts.lifecycle.downed) ~= "boolean" or
+           type(state.actor_facts.lifecycle.dead) ~= "boolean" or
+           type(physical_condition) ~= "number" or
+           physical_condition < 0 then
+            return nil
+        end
+        local lifecycle = state.actor_facts.lifecycle
+        if lifecycle.active and not lifecycle.downed and
+           not lifecycle.dead and physical_condition ~= 0 then
+            return true
         end
     end
     return false
