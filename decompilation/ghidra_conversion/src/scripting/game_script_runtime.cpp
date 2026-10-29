@@ -25,6 +25,7 @@ extern "C" {
 #include <set>
 #include <string>
 #include <system_error>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -2332,6 +2333,8 @@ struct GameScriptRuntime::Impl {
     StoryFacts story_facts;
     std::vector<ScriptConditionalActorCandidate> conditional_actor_catalog;
     std::vector<ScriptWorldActivityListBinding> activity_list_bindings;
+    std::unordered_map<std::string, std::uint16_t>
+        action_profile_index_by_actor_profile_id;
     StoryFactReader story_fact_reader;
     StoryFactWriter story_fact_writer;
     std::unordered_map<std::string, std::string> dialogue_texts;
@@ -5758,6 +5761,7 @@ struct GameScriptRuntime::Impl {
         story_facts.clear();
         conditional_actor_catalog.clear();
         activity_list_bindings.clear();
+        action_profile_index_by_actor_profile_id.clear();
         dialogue_texts.clear();
         location_type.clear();
         location_id.clear();
@@ -6169,12 +6173,25 @@ bool GameScriptRuntime::load_package(
     const auto world_directory = script_directory.parent_path() / "world";
     const auto field_asset_directory =
         script_directory.parent_path().parent_path() / "assets" / "field";
+    std::vector<std::pair<std::string, std::uint16_t>> action_profile_bindings;
     if (!detail::load_world_content_tsv(
             impl_->state, impl_->modules_reference, world_directory,
             impl_->failure, field_asset_directory,
             &impl_->conditional_actor_catalog,
-            &impl_->activity_list_bindings)) {
+            &impl_->activity_list_bindings, &action_profile_bindings)) {
         return false;
+    }
+    for (const auto& [profile_id, source_profile_index] :
+         action_profile_bindings) {
+        const auto [entry, inserted] =
+            impl_->action_profile_index_by_actor_profile_id.emplace(
+                profile_id, source_profile_index);
+        if (!inserted && entry->second != source_profile_index) {
+            impl_->failure =
+                "actor profile has conflicting action profile bindings: " +
+                profile_id;
+            return false;
+        }
     }
     const auto gameplay_dialogue_directory = json_content_directory.empty()
         ? script_directory.parent_path() / "dialogue"
@@ -8942,7 +8959,9 @@ GameScriptRuntime::resolve_field_encounter_impl(
                     value = static_cast<std::uint8_t>(combat_value);
                     return true;
                 };
-                std::uint32_t profile_index = 0U;
+                const auto source_profile_binding =
+                    impl_->action_profile_index_by_actor_profile_id.find(
+                        actor.profile_id);
                 ActorInteractionFacts combat_interaction;
                 bool valid_combatant =
                     read_actor_interaction_facts(state, combat_index,
@@ -8992,15 +9011,14 @@ GameScriptRuntime::resolve_field_encounter_impl(
                     read_combat_action_profile_options(
                         state, combat_index,
                         actor.combatant.action_profile_options) &&
-                    read_field_integer(state, combat_index,
-                                       "linked_action_profile_index",
-                                       0xFFFFU, profile_index);
+                    source_profile_binding !=
+                        impl_->action_profile_index_by_actor_profile_id.end();
                 if (valid_combatant) {
                     actor.combatant.interaction_flags =
                         interaction_to_source(combat_interaction);
                     actor.combatant.equipped_action_code = action_code;
                     actor.combatant.linked_action_profile_index =
-                        static_cast<std::uint16_t>(profile_index);
+                        source_profile_binding->second;
                     valid_combatant =
                         read_combat_inventory(
                             state, combat_index,

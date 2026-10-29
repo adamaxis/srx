@@ -107,11 +107,13 @@ int main() {
     std::string failure;
     std::vector<shadowrun::ghidra_conversion::scripting::
         ScriptWorldActivityListBinding> activity_list_bindings;
+    std::vector<std::pair<std::string, std::uint16_t>>
+        action_profile_bindings;
     if (!shadowrun::ghidra_conversion::scripting::detail::
             load_world_content_tsv(
                 state, modules_reference, SHADOWRUN_GAMEPLAY_WORLD_ROOT,
                 failure, SHADOWRUN_FIELD_ASSET_ROOT, nullptr,
-                &activity_list_bindings)) {
+                &activity_list_bindings, &action_profile_bindings)) {
         std::cerr << failure << '\n';
         lua_close(state);
         return 1;
@@ -121,6 +123,19 @@ int main() {
     lua_getfield(state, -1, "world_content_data");
     lua_remove(state, -2);
     const int data_table = lua_absindex(state, -1);
+    const auto vampire_profile_binding = std::find_if(
+        action_profile_bindings.begin(), action_profile_bindings.end(),
+        [](const auto& binding) {
+            return binding.first == "vampire_k09_none00" &&
+                   binding.second == 0U;
+        });
+    const auto unresolved_profile_binding = std::find_if(
+        action_profile_bindings.begin(), action_profile_bindings.end(),
+        [](const auto& binding) { return binding.second == 6U; });
+    bool valid = expect(
+        vampire_profile_binding != action_profile_bindings.end() &&
+            unresolved_profile_binding != action_profile_bindings.end(),
+        "native actor profile bindings were not retained outside Lua");
     constexpr std::array<std::string_view, 7U> armor_ids{{
         "armor_vest", "armor_clothing", "armor_jacket",
         "vest_with_plates", "lined_duster", "light_combat_armor",
@@ -187,6 +202,7 @@ int main() {
         actor_rows_are_semantic = actor_rows_are_semantic &&
             field_is_nil(state, row, "combat_auxiliary_roll_bonus") &&
             field_is_nil(state, row, "combat_magic_cap") &&
+            field_is_nil(state, row, "combat_profile_index_a0") &&
             row_has_semantic_armor(row);
         for (const auto* field : {"source_record_offset", "tagged_template",
                                   "template_offset", "list_offset",
@@ -240,7 +256,7 @@ int main() {
         lua_pop(state, 1);
         lua_pop(state, 1);
     }
-    bool valid = expect(actor_rows_are_semantic && found_probe_enabled &&
+    valid = expect(actor_rows_are_semantic && found_probe_enabled &&
                             found_probe_disabled &&
                             found_bodyguard_timing_modifier &&
                             found_named_script_activity &&
@@ -341,6 +357,7 @@ int main() {
         dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
             field_is_nil(state, row, "combat_auxiliary_roll_bonus") &&
             field_is_nil(state, row, "combat_magic_cap") &&
+            field_is_nil(state, row, "combat_profile_index_a0") &&
             row_has_semantic_armor(row);
         lua_getfield(state, row, "action_delay_modifier");
         const auto action_delay_modifier = lua_tointeger(state, -1);

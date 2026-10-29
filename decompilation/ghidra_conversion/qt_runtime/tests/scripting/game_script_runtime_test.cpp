@@ -2748,6 +2748,21 @@ int main() {
                   << " detail=" << scripts.failure() << '\n';
         return 1;
     }
+    // ROM 0x55828 follows each linked actor's +0xA0 profile selector; the
+    // host restores it from profile_id after Lua returns the selected actors.
+    if (!expect(redmond_creature_sequence->actors.size() == 2U &&
+                    redmond_creature_sequence->actors[0].profile_id ==
+                        "hell_hound_k0c_none00" &&
+                    redmond_creature_sequence->actors[0].combatant.
+                            linked_action_profile_index == 0U &&
+                    redmond_creature_sequence->actors[1].profile_id ==
+                        "vampire_k09_none00" &&
+                    redmond_creature_sequence->actors[1].combatant.
+                            linked_action_profile_index == 0U,
+                "native encounter binding did not restore action profiles by actor identity")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
     if (!expect(
             scene26_security_plate->kind ==
                     ScriptFieldEncounterOutcomeKind::dialogue_event &&

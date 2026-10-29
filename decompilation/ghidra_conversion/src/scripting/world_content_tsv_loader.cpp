@@ -445,6 +445,9 @@ bool push_record(lua_State* state, const TsvDocument& document,
         if (column == "combat_class_code") {
             continue;
         }
+        if (column == "combat_profile_index_a0") {
+            continue;
+        }
         if (column == "combat_armor_index") {
             std::uint8_t source_armor_index = 0U;
             if (!read_source_byte(document, row, column, source_path,
@@ -2142,12 +2145,17 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
                             std::vector<ScriptConditionalActorCandidate>*
                                 conditional_actor_catalog,
                             std::vector<ScriptWorldActivityListBinding>*
-                                activity_list_bindings) {
+                                activity_list_bindings,
+                            std::vector<std::pair<std::string, std::uint16_t>>*
+                                action_profile_bindings) {
     if (conditional_actor_catalog != nullptr) {
         conditional_actor_catalog->clear();
     }
     if (activity_list_bindings != nullptr) {
         activity_list_bindings->clear();
+    }
+    if (action_profile_bindings != nullptr) {
+        action_profile_bindings->clear();
     }
     if (state == nullptr || modules_reference == LUA_NOREF) {
         failure = "Lua runtime is unavailable for world-content TSV files";
@@ -2279,6 +2287,32 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
             if (!read_tsv(path, false, document, failure)) {
                 lua_settop(state, stack_base);
                 return false;
+            }
+            if (action_profile_bindings != nullptr &&
+                std::string_view(source_table.field) ==
+                    "dynamic_world_activity_actors") {
+                for (std::size_t row_index = 0U;
+                     row_index < document.rows.size(); ++row_index) {
+                    const auto& row = document.rows[row_index];
+                    const auto profile_id =
+                        value_at(document, row, "profile_id");
+                    std::uint16_t source_profile_index = 0U;
+                    if (profile_id.empty() ||
+                        !read_source_word(document, row,
+                                          "combat_profile_index_a0", path,
+                                          row_index + 2U,
+                                          source_profile_index, failure)) {
+                        if (failure.empty()) {
+                            failure = path.string() + ": row " +
+                                      std::to_string(row_index + 2U) +
+                                      " has no actor profile identity";
+                        }
+                        lua_settop(state, stack_base);
+                        return false;
+                    }
+                    action_profile_bindings->emplace_back(
+                        std::string(profile_id), source_profile_index);
+                }
             }
             TsvDocument semantic_actor_rows;
             TsvDocument semantic_dynamic_actor_rows;

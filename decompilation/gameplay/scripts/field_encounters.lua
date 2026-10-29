@@ -94,7 +94,6 @@ local function actor_from_row(row)
                 primary = row.primary_action_profile_enabled,
                 secondary = row.secondary_action_profile_enabled,
             },
-            linked_action_profile_index = row.combat_profile_index_a0,
             force = row.force,
             spell_trial_cap = row.spell_trial_cap,
             weapon_action_policies = row.weapon_action_policies,

@@ -86,7 +86,6 @@ local function actor_row(source_order, sequence_id, placement_rule)
         },
         primary_action_profile_enabled = false,
         secondary_action_profile_enabled = false,
-        combat_profile_index_a0 = 0,
         inventory = {},
         combat_action_phase_76 = 0,
         combat_action_phase_77 = 0,
@@ -213,6 +212,8 @@ eq(alarm_sequence.actors[1].sequence_id, "field_alarm_reinforcements",
 eq(alarm_sequence.actors[1].combatant.equipped_armor_id,
    "heavy_combat_armor",
    "encounter actor keeps armor as an item identity")
+eq(alarm_sequence.actors[1].combatant.linked_action_profile_index, nil,
+   "encounter actor does not carry the ROM action-profile row number")
 local alarm_actor_facts = alarm_sequence.actors[1].actor_facts
 eq(alarm_actor_facts.roles.spotted, true,
    "alarm actor template is marked spotted for the common spawn path")
