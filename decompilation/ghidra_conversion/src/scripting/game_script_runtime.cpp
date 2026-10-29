@@ -80,6 +80,17 @@ const char* party_member_role_id(
     return "unknown";
 }
 
+const char* target_selection_policy_id(
+    const ScriptTargetSelectionPolicy policy) noexcept {
+    switch (policy) {
+    case ScriptTargetSelectionPolicy::standard:
+        return "standard";
+    case ScriptTargetSelectionPolicy::marker:
+        return "marker";
+    }
+    return "standard";
+}
+
 std::optional<std::string_view> script_spell_id_from_action_code(
     const std::uint8_t action_code) {
     if (action_code == 0U) {
@@ -10750,31 +10761,13 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "target_marker_reads_stun_meter");
     lua_pushboolean(state, context.target_selection_requested);
     lua_setfield(state, -2, "target_selection_requested");
-    lua_pushboolean(state, context.target_selection_advances_cursor);
-    lua_setfield(state, -2, "target_selection_advances_cursor");
-    lua_pushboolean(state, context.target_selection_special_marker);
-    lua_setfield(state, -2, "target_selection_special_marker");
-    lua_pushinteger(state, context.target_selection_mode);
-    lua_setfield(state, -2, "target_selection_mode");
-    const auto push_optional_target_slot = [state](
-                                                const char* field,
-                                                const std::optional<std::uint8_t>& slot) {
-        if (slot.has_value()) {
-            lua_pushinteger(state, *slot);
-        } else {
-            lua_pushnil(state);
-        }
-        lua_setfield(state, -2, field);
-    };
-    push_optional_target_slot("target_selection_current_slot",
-                              context.target_selection_current_slot);
-    push_optional_target_slot("target_selection_linked_slot",
-                              context.target_selection_linked_slot);
-    push_optional_target_slot("target_selection_owner_slot",
-                              context.target_selection_owner_slot);
+    lua_pushstring(state,
+                   target_selection_policy_id(context.target_selection_policy));
+    lua_setfield(state, -2, "target_selection_policy");
     const auto push_actor_candidates = [state, &push_combatant](
         const char* field,
-        const std::vector<ScriptActorTargetCandidate>& candidates) {
+        const std::vector<ScriptActorTargetCandidate>& candidates,
+        const bool include_source_record_slot) {
         lua_createtable(state, static_cast<int>(candidates.size()), 0);
         for (std::size_t index = 0; index < candidates.size(); ++index) {
             const auto& candidate = candidates[index];
@@ -10813,12 +10806,14 @@ GameScriptRuntime::actor_heartbeat(
             lua_setfield(state, -2, "direct_route_distance");
             lua_pushinteger(state, candidate.perpendicular_route_distance);
             lua_setfield(state, -2, "perpendicular_route_distance");
-            if (candidate.source_record_slot.has_value()) {
-                lua_pushinteger(state, *candidate.source_record_slot);
-            } else {
-                lua_pushnil(state);
+            if (include_source_record_slot) {
+                if (candidate.source_record_slot.has_value()) {
+                    lua_pushinteger(state, *candidate.source_record_slot);
+                } else {
+                    lua_pushnil(state);
+                }
+                lua_setfield(state, -2, "source_record_slot");
             }
-            lua_setfield(state, -2, "source_record_slot");
             push_formation_position(state, "formation_position",
                                     candidate.formation_position);
             if (candidate.party_member_role.has_value()) {
@@ -10829,8 +10824,6 @@ GameScriptRuntime::actor_heartbeat(
                 lua_pushnil(state);
             }
             lua_setfield(state, -2, "party_member_role");
-            lua_pushinteger(state, candidate.descriptor_class);
-            lua_setfield(state, -2, "descriptor_class");
             if (candidate.combatant.has_value()) {
                 push_combatant(*candidate.combatant);
             } else {
@@ -10842,9 +10835,9 @@ GameScriptRuntime::actor_heartbeat(
         lua_setfield(state, -2, field);
     };
     push_actor_candidates("ai_target_candidates",
-                          context.ai_target_candidates);
+                          context.ai_target_candidates, true);
     push_actor_candidates("world_target_selection_candidates",
-                          context.world_target_selection_candidates);
+                          context.world_target_selection_candidates, false);
     lua_createtable(
         state, static_cast<int>(context.projectile_combat_targets.size()), 0);
     for (std::size_t index = 0U;
@@ -11394,7 +11387,6 @@ GameScriptRuntime::actor_heartbeat(
             context.world_target_selection_candidates.end(),
             [&selected_world_actor_id](const auto& candidate) {
                 return candidate.id == selected_world_actor_id &&
-                       candidate.source_record_slot.has_value() &&
                        (candidate.service_flags & 0x01U) != 0U;
             });
         if (!decision.target_selection_processed ||

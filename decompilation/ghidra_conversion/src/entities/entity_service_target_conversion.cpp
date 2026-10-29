@@ -11,15 +11,14 @@ bool is_special_mode(const std::uint8_t mode) {
     return mode == 0x0CU || mode == 0x04U || mode == 0x0BU;
 }
 
-std::optional<std::size_t> release_previous_target(
+void release_previous_target(
     EntityServiceTargetOwner& owner,
     std::vector<EntityServiceTargetRecord>& records) {
-    const auto previous = owner.selected_target;
-    if (previous.has_value() && *previous < records.size()) {
-        records[*previous].selected = false;
+    if (owner.selected_target.has_value() &&
+        *owner.selected_target < records.size()) {
+        records[*owner.selected_target].selected = false;
     }
     owner.selected_target.reset();
-    return previous;
 }
 
 std::optional<std::size_t> normal_candidate_start(
@@ -81,32 +80,52 @@ std::optional<std::size_t> special_candidate_start(
 
 } // namespace
 
+EntityServiceTargetSearchOrder world_entity_service_target_search_order(
+    const EntityServiceTargetOwner& owner,
+    const std::vector<EntityServiceTargetRecord>& records,
+    const bool advance_source_cursor) {
+    const bool special_path = owner.special_marker && is_special_mode(owner.mode);
+    const auto start = special_path
+                           ? special_candidate_start(owner.selected_target,
+                                                     owner, records,
+                                                     advance_source_cursor)
+                           : normal_candidate_start(owner.selected_target,
+                                                    owner, records,
+                                                    advance_source_cursor);
+    EntityServiceTargetSearchOrder result{};
+    result.policy = special_path
+                        ? EntityServiceTargetSelectionPolicy::marker
+                        : EntityServiceTargetSelectionPolicy::standard;
+    if (!start.has_value()) {
+        return result;
+    }
+
+    for (std::size_t offset = 0U; offset < kCandidateCount; ++offset) {
+        const auto index = *start + offset;
+        if (index < records.size()) {
+            result.record_indices.push_back(index);
+        }
+    }
+    return result;
+}
+
 EntityServiceTargetAction select_world_entity_service_target(
     EntityServiceTargetOwner& owner,
     std::vector<EntityServiceTargetRecord>& records,
     const bool advance_source_cursor,
     const EntityServiceTargetCallbacks& callbacks) {
+    const auto search_order = world_entity_service_target_search_order(
+        owner, records, advance_source_cursor);
     // ROM 0x1DC4C releases +0xA2 before selecting either branch. It leaves
     // the old record's +0xAC link untouched.
-    const auto previous_target = release_previous_target(owner, records);
-    const bool special_path = owner.special_marker && is_special_mode(owner.mode);
-    const auto start = special_path
-                           ? special_candidate_start(previous_target, owner, records,
-                                                     advance_source_cursor)
-                           : normal_candidate_start(previous_target, owner, records,
-                                                    advance_source_cursor);
-    if (!start.has_value()) {
+    release_previous_target(owner, records);
+    if (search_order.record_indices.empty()) {
         return EntityServiceTargetAction::no_available_target;
     }
 
-    for (std::size_t offset = 0; offset < kCandidateCount; ++offset) {
-        const auto index = *start + offset;
-        if (index >= records.size()) {
-            // The ROM continues to advance its source address, but the typed
-            // table intentionally represents absent records as unavailable;
-            // it never wraps around to FF0100.
-            continue;
-        }
+    const bool special_path =
+        search_order.policy == EntityServiceTargetSelectionPolicy::marker;
+    for (const auto index : search_order.record_indices) {
         auto& record = records[index];
         const bool available = special_path
                                    ? record.active

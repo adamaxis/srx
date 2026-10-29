@@ -1620,6 +1620,11 @@ enum class ScriptFormationPosition : std::uint8_t {
     other,
 };
 
+enum class ScriptTargetSelectionPolicy : std::uint8_t {
+    standard,
+    marker,
+};
+
 struct ScriptActorTargetCandidate {
     std::string id;
     std::uint16_t world_x = 0;
@@ -1643,7 +1648,6 @@ struct ScriptActorTargetCandidate {
     std::uint16_t direct_route_distance = 0;
     std::uint16_t perpendicular_route_distance = 0;
     std::optional<std::uint8_t> source_record_slot;
-    std::uint8_t descriptor_class = 0;
     std::optional<ScriptCombatantFacts> combatant;
     // ROM 0x141E8 reads the linked record's +0x2E heading before jumping to
     // 0xB39A. `heading` above is the relative bearing used by route policy;
@@ -1806,12 +1810,10 @@ struct ScriptActorBehaviorContext {
     // (unarmed with no hand cyberware, or spell 5) instead of +0x4C.
     bool target_marker_reads_stun_meter = false;
     bool target_selection_requested = false;
-    bool target_selection_advances_cursor = false;
-    bool target_selection_special_marker = false;
-    std::uint8_t target_selection_mode = 0;
-    std::optional<std::uint8_t> target_selection_current_slot;
-    std::optional<std::uint8_t> target_selection_linked_slot;
-    std::optional<std::uint8_t> target_selection_owner_slot;
+    ScriptTargetSelectionPolicy target_selection_policy =
+        ScriptTargetSelectionPolicy::standard;
+    // Candidates arrive in gameplay priority order from the field adapter.
+    // Lua filters their semantic facts and chooses by stable actor ID.
     std::vector<ScriptActorTargetCandidate> ai_target_candidates;
     std::vector<ScriptActorTargetCandidate> world_target_selection_candidates;
     ScriptActorRandomBound ai_random_bound;

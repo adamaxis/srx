@@ -39,6 +39,24 @@ enum class EntityServiceTargetAction {
     no_available_target,
 };
 
+enum class EntityServiceTargetSelectionPolicy {
+    standard,
+    marker,
+};
+
+struct EntityServiceTargetSearchOrder {
+    EntityServiceTargetSelectionPolicy policy =
+        EntityServiceTargetSelectionPolicy::standard;
+    std::vector<std::size_t> record_indices;
+};
+
+// Convert source cursor state into an ordered host-side candidate view. The
+// gameplay script consumes actor identities and facts, not record indices.
+EntityServiceTargetSearchOrder world_entity_service_target_search_order(
+    const EntityServiceTargetOwner& owner,
+    const std::vector<EntityServiceTargetRecord>& records,
+    bool advance_source_cursor);
+
 // ROM 0x1DC4C: release +0xA2, choose the normal or special candidate start,
 // scan at most eight consecutive source records, and publish +0x8009. The
 // caller supplies whether D1 differed from the 0x678CC cursor sentinel; this

@@ -11313,34 +11313,20 @@ FieldSceneRuntime::heartbeat_field_player(
         if (target_selection_pressed) {
             refresh_world_entity_service_targets();
             actor_context.target_selection_requested = true;
-            actor_context.target_selection_advances_cursor = true;
-            actor_context.target_selection_special_marker =
-                field_entity_target_owner_.special_marker;
-            actor_context.target_selection_mode =
-                field_entity_target_owner_.mode;
-            const auto copy_slot = [](const std::optional<std::size_t> slot)
-                -> std::optional<std::uint8_t> {
-                if (!slot.has_value() || *slot > 0xFFU) {
-                    return std::nullopt;
-                }
-                return static_cast<std::uint8_t>(*slot);
-            };
-            actor_context.target_selection_current_slot = copy_slot(
-                field_entity_target_owner_.selected_target);
-            actor_context.target_selection_linked_slot = copy_slot(
-                field_entity_target_owner_.linked_target);
-            actor_context.target_selection_owner_slot = copy_slot(
-                field_entity_target_owner_.owner_record);
-
+            const auto search_order =
+                world_entity_service_target_search_order(
+                    field_entity_target_owner_, field_entity_target_records_,
+                    true);
+            actor_context.target_selection_policy =
+                search_order.policy ==
+                        EntityServiceTargetSelectionPolicy::marker
+                    ? scripting::ScriptTargetSelectionPolicy::marker
+                    : scripting::ScriptTargetSelectionPolicy::standard;
             actor_context.world_target_selection_candidates.reserve(
-                field_entity_target_records_.size());
-            for (std::size_t slot = 0U;
-                 slot < field_entity_target_records_.size(); ++slot) {
+                search_order.record_indices.size());
+            for (const auto slot : search_order.record_indices) {
                 const auto& source = field_entity_target_records_[slot];
                 scripting::ScriptActorTargetCandidate candidate{};
-                candidate.source_record_slot =
-                    static_cast<std::uint8_t>(slot);
-                candidate.descriptor_class = source.descriptor_class;
                 candidate.service_flags = static_cast<std::uint8_t>(
                     (source.active ? 0x01U : 0U) |
                     (source.service_reserved ? 0x10U : 0U) |

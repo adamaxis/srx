@@ -5112,14 +5112,11 @@ int main() {
         scripts.actor_heartbeat(target_marker_animation_context);
 
     const auto target_candidate = [](
-                                       const std::uint8_t slot,
                                        const std::string& actor_id,
                                        const bool active,
                                        const bool projected_y_nonzero) {
         ScriptActorTargetCandidate candidate{};
         candidate.id = actor_id;
-        candidate.source_record_slot = slot;
-        candidate.descriptor_class = slot;
         candidate.service_flags = active ? 0x01U : 0U;
         candidate.projected_y_nonzero = projected_y_nonzero;
         return candidate;
@@ -5128,45 +5125,33 @@ int main() {
         "field_runner_k03_none00", "field_target_selection", 3U,
         ScriptActorActionKind::none, 0U, 0U, true);
     target_selection_context.target_selection_requested = true;
-    target_selection_context.target_selection_advances_cursor = true;
-    target_selection_context.target_selection_current_slot = 4U;
-    for (std::uint8_t slot = 0U; slot < 16U; ++slot) {
-        target_selection_context.world_target_selection_candidates.push_back(
-            target_candidate(slot, "", false, false));
-    }
-    target_selection_context.world_target_selection_candidates[5] =
-        target_candidate(5U, "reserved_actor", true, true);
-    target_selection_context.world_target_selection_candidates[5].service_flags |= 0x10U;
-    target_selection_context.world_target_selection_candidates[6] =
-        target_candidate(6U, "next_actor", true, true);
+    target_selection_context.world_target_selection_candidates.push_back(
+        target_candidate("reserved_actor", true, true));
+    target_selection_context.world_target_selection_candidates.front()
+        .service_flags |= 0x10U;
+    target_selection_context.world_target_selection_candidates.push_back(
+        target_candidate("next_actor", true, true));
     const auto target_selection_next =
         scripts.actor_heartbeat(target_selection_context);
     target_selection_context.spawn = false;
-    target_selection_context.target_selection_current_slot = 9U;
-    target_selection_context.world_target_selection_candidates[3] =
-        target_candidate(3U, "first_actor", true, false);
-    target_selection_context.world_target_selection_candidates[4] =
-        target_candidate(4U, "wrapped_actor", true, true);
-    const auto target_selection_wrap =
+    target_selection_context.world_target_selection_candidates.clear();
+    target_selection_context.world_target_selection_candidates.push_back(
+        target_candidate("first_actor", true, false));
+    target_selection_context.world_target_selection_candidates.push_back(
+        target_candidate("wrapped_actor", true, true));
+    const auto target_selection_skips_ineligible =
         scripts.actor_heartbeat(target_selection_context);
 
     auto special_target_selection_context = actor_context(
         "field_runner_k03_none00", "field_special_target_selection", 3U,
         ScriptActorActionKind::none, 0U, 0U, true);
     special_target_selection_context.target_selection_requested = true;
-    special_target_selection_context.target_selection_advances_cursor = true;
-    special_target_selection_context.target_selection_special_marker = true;
-    special_target_selection_context.target_selection_mode = 0x0cU;
-    special_target_selection_context.target_selection_current_slot = 15U;
-    for (std::uint8_t slot = 0U; slot < 16U; ++slot) {
-        special_target_selection_context.world_target_selection_candidates.push_back(
-            target_candidate(slot, "", false, false));
-    }
-    special_target_selection_context.world_target_selection_candidates[0] =
-        target_candidate(0U, "special_actor", true, false);
+    special_target_selection_context.target_selection_policy =
+        ScriptTargetSelectionPolicy::marker;
+    special_target_selection_context.world_target_selection_candidates.push_back(
+        target_candidate("special_actor", true, false));
     const auto target_selection_special =
         scripts.actor_heartbeat(special_target_selection_context);
-
     auto hound_effect_context = actor_context(
         "hell_hound_k0c_none00", "hell_hound_effect_cadence", 12U,
         ScriptActorActionKind::none, 0U, 0U, true);
@@ -7487,8 +7472,8 @@ int main() {
                 target_selection_next.has_value() &&
                 target_selection_next->target_selection_processed &&
                 target_selection_next->selected_world_actor_id == "next_actor" &&
-                target_selection_wrap.has_value() &&
-                target_selection_wrap->selected_world_actor_id ==
+                target_selection_skips_ineligible.has_value() &&
+                target_selection_skips_ineligible->selected_world_actor_id ==
                     "wrapped_actor" &&
                 target_selection_special.has_value() &&
                 target_selection_special->selected_world_actor_id ==
