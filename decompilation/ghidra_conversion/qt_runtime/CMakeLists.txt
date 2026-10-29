@@ -227,6 +227,13 @@ if(SHADOWRUN_LUA_EXECUTABLE)
             "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/ai_think_tests.lua")
     set_tests_properties(shadowrun_gameplay_actor_ai_rules_qa PROPERTIES
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../..")
+    add_test(NAME shadowrun_gameplay_world_content_policy_qa
+        COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"
+            "${CMAKE_SOURCE_DIR}/../.."
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/world_content_tests.lua")
+    set_tests_properties(shadowrun_gameplay_world_content_policy_qa PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../..")
     add_test(NAME shadowrun_gameplay_actor_animation_state_qa
         COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
             "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"

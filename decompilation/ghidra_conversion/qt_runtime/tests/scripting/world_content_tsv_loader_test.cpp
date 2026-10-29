@@ -5,11 +5,13 @@ extern "C" {
 #include "lua.h"
 }
 
+#include <algorithm>
 #include <cstddef>
 #include <initializer_list>
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -48,6 +50,13 @@ bool field_boolean_is(lua_State* state, const int table_index,
         (lua_toboolean(state, -1) != 0) == expected;
     lua_pop(state, 1);
     return matches;
+}
+
+bool field_is_nil(lua_State* state, const int table_index, const char* field) {
+    lua_getfield(state, table_index, field);
+    const bool is_nil = lua_isnil(state, -1) != 0;
+    lua_pop(state, 1);
+    return is_nil;
 }
 
 bool array_has_id(lua_State* state, const int array_index,
@@ -95,10 +104,13 @@ int main() {
     lua_newtable(state);
     const int modules_reference = luaL_ref(state, LUA_REGISTRYINDEX);
     std::string failure;
+    std::vector<shadowrun::ghidra_conversion::scripting::
+        ScriptWorldActivityListBinding> activity_list_bindings;
     if (!shadowrun::ghidra_conversion::scripting::detail::
             load_world_content_tsv(
                 state, modules_reference, SHADOWRUN_GAMEPLAY_WORLD_ROOT,
-                failure, SHADOWRUN_FIELD_ASSET_ROOT)) {
+                failure, SHADOWRUN_FIELD_ASSET_ROOT, nullptr,
+                &activity_list_bindings)) {
         std::cerr << failure << '\n';
         lua_close(state);
         return 1;
@@ -116,6 +128,8 @@ int main() {
     bool found_probe_enabled = false;
     bool found_probe_disabled = false;
     bool found_bodyguard_timing_modifier = false;
+    bool found_named_script_activity = false;
+    bool found_named_pending_requirements = false;
     for (std::size_t index = 1U; index <= actor_list_count; ++index) {
         lua_rawgeti(state, actor_list_rows, static_cast<lua_Integer>(index));
         const auto row = lua_absindex(state, -1);
@@ -147,6 +161,31 @@ int main() {
             (field_string_is(state, row, "profile_id",
                              "bodyguard_k05_item07") &&
              field_integer_is(state, row, "action_delay_modifier", 4));
+        const bool old_selector_fields_are_absent =
+            field_is_nil(state, row, "script_index") &&
+            field_is_nil(state, row, "world_effect_active_gate") &&
+            field_is_nil(state, row, "pending_world_effect_gate");
+        actor_rows_are_semantic = actor_rows_are_semantic &&
+            old_selector_fields_are_absent;
+        found_named_script_activity = found_named_script_activity ||
+            (field_string_is(state, row, "list_id",
+                             "scene_13_ilene_gate_script") &&
+             field_string_is(state, row, "activity_kind", "scene_script") &&
+             field_string_is(state, row,
+                             "world_effect_active_requirement",
+                             "unspecified") &&
+             field_string_is(state, row,
+                             "pending_world_effect_requirement",
+                             "unspecified"));
+        found_named_pending_requirements =
+            found_named_pending_requirements ||
+            (field_string_is(state, row, "list_id",
+                             "scene_20_ilene_pending_list") &&
+             field_string_is(state, row, "activity_kind", "event_driven") &&
+             field_string_is(state, row,
+                             "world_effect_active_requirement", "inactive") &&
+             field_string_is(state, row,
+                             "pending_world_effect_requirement", "pending"));
         lua_getfield(state, row, "action_delay_modifier");
         const auto action_delay_modifier = lua_tointeger(state, -1);
         actor_rows_are_semantic = actor_rows_are_semantic &&
@@ -157,10 +196,21 @@ int main() {
     }
     bool valid = expect(actor_rows_are_semantic && found_probe_enabled &&
                             found_probe_disabled &&
-                            found_bodyguard_timing_modifier,
+                            found_bodyguard_timing_modifier &&
+                            found_named_script_activity &&
+                            found_named_pending_requirements,
                         "actor catalog did not replace source pointers with "
-                        "semantic identity, timing modifiers, and boolean "
-                        "probe facts");
+                        "semantic identity, named selection conditions, "
+                        "timing modifiers, and boolean probe facts");
+    const auto script_binding = std::find_if(
+        activity_list_bindings.begin(), activity_list_bindings.end(),
+        [](const auto& binding) {
+            return binding.scene_id == 13U && binding.selector == 3U &&
+                binding.list_id == "scene_13_ilene_gate_script";
+        });
+    valid = expect(script_binding != activity_list_bindings.end(),
+                   "native adapter did not resolve its scene selector to a "
+                   "stable activity id") && valid;
     lua_rawgeti(state, actor_list_rows, 1);
     const int first_actor_list_row = lua_absindex(state, -1);
     valid = expect(field_string_is(state, first_actor_list_row, "list_id",

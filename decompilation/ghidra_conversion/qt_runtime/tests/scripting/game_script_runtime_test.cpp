@@ -2401,7 +2401,8 @@ int main() {
                 ilene_gate_actors->front().scene_id == 13U &&
                 ilene_gate_actors->front().list_id ==
                     "scene_13_ilene_gate_script" &&
-                ilene_gate_actors->front().script_index == 3U &&
+                ilene_gate_actors->front().activity_kind ==
+                    ScriptWorldActivityKind::scene_script &&
                 ilene_gate_actors->front().source_order == 0U &&
                 ilene_gate_actors->front().activity_id ==
                     "scene_13_ilene_gate_script" &&
@@ -2444,7 +2445,8 @@ int main() {
                 ilene_pending_list.has_value() &&
                 ilene_pending_list->size() == 1U &&
                 ilene_pending_list->front().scene_id == 20U &&
-                ilene_pending_list->front().script_index == -1 &&
+                ilene_pending_list->front().activity_kind ==
+                    ScriptWorldActivityKind::event_driven &&
                 ilene_pending_list->front().source_order == 0U &&
                 ilene_pending_list->front().activity_id ==
                     "scene_20_ilene_pending_list" &&

@@ -3394,7 +3394,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
                     scripting::ScriptWorldActivityActor actor{};
                     actor.scene_id = scene_reference;
                     actor.activity_id = candidate->candidate_id;
-                    actor.script_index = -1;
+                    actor.activity_kind =
+                        scripting::ScriptWorldActivityKind::event_driven;
                     actor.source_order = 0U;
                     actor.activity_probe_enabled = true;
                     actor.actor_name = candidate->actor_name;

@@ -1365,6 +1365,20 @@ enum class ScriptFieldActorContactAction : std::uint8_t {
     random_pedestrian_contact,
 };
 
+enum class ScriptWorldActivityKind : std::uint8_t {
+    scene_script,
+    event_driven,
+};
+
+// The source selector is resolved to a stable content id at the import
+// boundary. This binding stays in the native adapter and is never exposed to
+// gameplay Lua.
+struct ScriptWorldActivityListBinding {
+    std::uint16_t scene_id = 0;
+    std::uint16_t selector = 0;
+    std::string list_id;
+};
+
 // A source-selected field script list is installed by the world-activity
 // selector and consumed by the next actor-service pass. It remains separate
 // from random-encounter actors because its placement and lifecycle come from
@@ -1375,7 +1389,8 @@ struct ScriptWorldActivityActor {
     // Stable content identity used by gameplay policy. Template and list
     // addresses are resolved to semantic profiles and activity IDs at import.
     std::string activity_id;
-    std::int16_t script_index = 0;
+    ScriptWorldActivityKind activity_kind =
+        ScriptWorldActivityKind::event_driven;
     std::uint16_t source_order = 0;
     bool activity_probe_enabled = false;
     std::string actor_name;
@@ -2150,12 +2165,8 @@ public:
 
 private:
     std::optional<std::vector<ScriptWorldActivityActor>>
-    world_activity_actors_for_selector(std::uint16_t scene_id,
-                                       std::string_view selector_field,
-                                       std::uint32_t selector_value,
-                                       std::uint32_t selector_maximum,
-                                       std::string_view lua_function,
-                                       std::string_view selector_text = {});
+    world_activity_actors_for_list_id_impl(std::uint16_t scene_id,
+                                           std::string_view list_id);
     std::optional<ScriptFieldEncounterOutcome>
     resolve_field_encounter_impl(std::uint16_t scene_id,
                                  std::uint8_t first_roll,

@@ -230,32 +230,20 @@ function World.actor_spawns_in_scene(scene_id)
     return records_in_scene("actor_spawns", scene_id)
 end
 
--- Return selected actors with stable activity identity and named runtime
--- facts. Import resolves all catalog pointers to semantic actor/activity IDs
--- and translates the template tag before Lua sees these rows.
-local function world_activity_actor_descriptors(scene_id, selector_field,
-                                                selector)
+-- Return actors from one named activity list. The import boundary resolves
+-- source selectors and gate encodings before these rows reach gameplay Lua.
+local function world_activity_actor_descriptors(scene_id, list_id)
     local rows = content().world_activity_actor_lists or {}
     local result = {}
     for _, row in ipairs(rows) do
-        local selector_matches = selector_field == "script_index"
-            and row.script_index == selector
-            or selector_field == "list_id"
-                and row.list_id == selector
-        if row.scene == scene_id and selector_matches then
-            local id
-            if row.script_index >= 0 then
-                id = "world_activity:" .. scene_id .. ":" ..
-                    row.script_index .. ":" .. row.source_order
-            else
-                id = "world_activity:" .. scene_id .. ":list:" ..
-                    row.list_id .. ":" .. row.source_order
-            end
+        if row.scene == scene_id and row.list_id == list_id then
+            local id = "world_activity:" .. scene_id .. ":" ..
+                list_id .. ":" .. row.source_order
             result[#result + 1] = {
                 id = id,
                 scene = row.scene,
-                script_index = row.script_index,
                 list_id = row.list_id,
+                activity_kind = row.activity_kind,
                 source_order = row.source_order,
                 activity_probe_enabled = row.activity_probe_enabled,
                 name = row.actor_name,
@@ -315,24 +303,12 @@ local function world_activity_actor_descriptors(scene_id, selector_field,
     return result
 end
 
--- Script selection excludes event-driven lists. Those are retrieved only
--- when their owning route selects a source list offset.
-function World.world_activity_actors_for_script(scene_id, script_index)
-    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
-       type(script_index) ~= "number" or script_index % 1 ~= 0 or
-       script_index < 0 then
-        return {}
-    end
-    return world_activity_actor_descriptors(scene_id, "script_index",
-                                             script_index)
-end
-
 function World.world_activity_actors_for_list_id(scene_id, list_id)
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
        type(list_id) ~= "string" or list_id == "" then
         return {}
     end
-    return world_activity_actor_descriptors(scene_id, "list_id", list_id)
+    return world_activity_actor_descriptors(scene_id, list_id)
 end
 
 -- Expose only the semantic choices the A800 policy needs. Spawn placement,
@@ -570,14 +546,22 @@ function World.pending_world_activity_actor_list_for_scene(
         return nil
     end
     local selected_list_id = nil
+    local function requirement_matches(requirement, actual, active_word,
+                                       inactive_word)
+        if requirement == active_word then
+            return actual
+        end
+        if requirement == inactive_word then
+            return not actual
+        end
+        return false
+    end
     for _, row in ipairs(content().world_activity_actor_lists or {}) do
-        local active_gate = row.world_effect_active_gate
-        local pending_gate = row.pending_world_effect_gate
-        if row.scene == scene_id and row.script_index < 0 and
-           type(active_gate) == "number" and active_gate >= 0 and
-           type(pending_gate) == "number" and pending_gate >= 0 and
-           (active_gate == 1) == world_effect_active and
-           (pending_gate == 1) == pending_world_effect then
+        if row.scene == scene_id and row.activity_kind == "event_driven" and
+           requirement_matches(row.world_effect_active_requirement,
+                               world_effect_active, "active", "inactive") and
+           requirement_matches(row.pending_world_effect_requirement,
+                               pending_world_effect, "pending", "clear") then
             if type(row.list_id) ~= "string" or row.list_id == "" then
                 error("pending world-activity list is missing its activity id")
             end
