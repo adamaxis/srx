@@ -33,7 +33,7 @@ struct NotebookMenuState {
     bool current_run_available = false;
     struct CurrentRunState {
         bool open = false;
-        int source_initializer = -1;
+        std::string offer_variant_id;
         int context = -1;
         int run_type = -1;
         int payment_amount = -1;

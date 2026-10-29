@@ -6,7 +6,7 @@ local Registry = require("run_registry")
 local Support = require("run_support")
 
 local run_modules = { registry = Registry }
-for _, resolved in pairs(OfferData.run_by_initializer) do
+for _, resolved in pairs(OfferData.run_by_variant_id) do
     run_modules[resolved.id] = {
         prepare_offer = function() end,
         resolve_field_event = function() return { action = "no_action" } end,
@@ -27,7 +27,7 @@ local function matrix_state()
 end
 
 local function source_offer(context, row, skill, roll)
-    local resolved = OfferData.run_by_initializer[row.source_initializer]
+    local resolved = OfferData.run_by_variant_id[row.variant_id]
     local bound = row.negotiation_scale * skill + 1
     local offer = {
         id = resolved.id,
@@ -35,8 +35,7 @@ local function source_offer(context, row, skill, roll)
         objective = "source_offer",
         completion_condition = "source_completion",
         runner_progress_delta = row.runner_progress_delta,
-        source_initializer = row.source_initializer,
-        source_offer_type = row.source_initializer,
+        offer_variant_id = row.variant_id,
         source_offer_context = context,
         source_run_type = resolved.type,
         context = context,
@@ -93,12 +92,12 @@ for context = 0, 4 do
             for _, roll in ipairs({ 0, bound - 1 }) do
                 local offer = source_offer(context, row, skill, roll)
                 assert(valid(offer), string.format(
-                    "valid source save rejected: context=%d initializer=%d " ..
+                    "valid source save rejected: context=%d variant=%s " ..
                     "skill=%d roll=%d",
-                    context, row.source_initializer, skill, roll))
+                    context, row.variant_id, skill, roll))
                 checked = checked + 1
                 if context == E.RunOfferContext.JUMP_HOUSE and
-                   row.source_initializer == E.RunOfferInitializer.PACKAGE_DELIVERY and
+                   row.variant_id == "package_delivery" and
                    row.base_payment == 40 and skill == 3 and roll == 3 then
                     courier = offer
                 end
@@ -119,12 +118,12 @@ local mismatched_context = copy_offer(courier)
 mismatched_context.context = E.RunOfferContext.SCENE_18
 mismatched_context.source_offer_context = E.RunOfferContext.SCENE_18
 assert(not valid(mismatched_context),
-    "initializer 2 cannot be restored as an offer from context 1")
+    "a package delivery cannot be restored under another Johnson context")
 
-local mismatched_alias = copy_offer(courier)
-mismatched_alias.source_initializer = E.RunOfferInitializer.GHOUL_BOUNTY
-assert(not valid(mismatched_alias),
-    "source initializer aliases must agree")
+local mismatched_variant = copy_offer(courier)
+mismatched_variant.offer_variant_id = "ghoul_bounty"
+assert(not valid(mismatched_variant),
+    "saved offer variant must agree with the selected context row")
 
 local missing_context = copy_offer(courier)
 missing_context.source_offer_context = nil
@@ -134,7 +133,7 @@ assert(not valid(missing_context),
 local mismatched_run = copy_offer(courier)
 mismatched_run.id = "ghoul_bounty"
 assert(not valid(mismatched_run),
-    "source initializer must dispatch to its canonical Lua run")
+    "offer variant must dispatch to its canonical Lua run")
 
 local wrong_progress = copy_offer(courier)
 wrong_progress.runner_progress_delta = 2
@@ -179,8 +178,7 @@ Registry.active_offer = nil
 Registry.restore_saved_state(accepted_save)
 assert(Registry.active_offer.source_offer_context ==
            E.RunOfferContext.JUMP_HOUSE and
-       Registry.active_offer.source_initializer ==
-           E.RunOfferInitializer.PACKAGE_DELIVERY and
+       Registry.active_offer.offer_variant_id == "package_delivery" and
        Registry.active_offer.payment.base_amount == 40 and
        Registry.active_offer.payment.negotiated_amount == 55 and
        Support.current_run_view(Registry.active_offer).payment_amount == 55,
@@ -188,4 +186,4 @@ assert(Registry.active_offer.source_offer_context ==
 
 print("run registry save validation passed: " .. tostring(checked) ..
     " source row/rank/roll states; accepted Courier 40 -> 55 persisted; " ..
-    "corrupt context, initializer, progression, and payment variants rejected")
+    "corrupt context, offer variant, progression, and payment rejected")

@@ -463,7 +463,7 @@ struct ScriptMatrixLogoutVisual {
 };
 
 struct ScriptNotebookCurrentRunView {
-    int source_initializer = -1;
+    std::string offer_variant_id;
     int context = -1;
     int run_type = -1;
     int payment_amount = -1;
@@ -1873,7 +1873,7 @@ public:
     std::optional<FieldScriptRoute> resolve_field_location_route(
         const FieldScriptRouteContext& context);
     std::optional<std::string> active_run_id();
-    std::optional<std::uint8_t> active_run_source_initializer();
+    std::optional<std::string> active_run_offer_variant_id();
     std::optional<ScriptRunFieldEventDecision> resolve_active_run_field_event(
         std::uint8_t map_id, std::uint8_t event_id);
     std::optional<ScriptRunActorDefeatDecision>

@@ -840,7 +840,7 @@ bool verify_package_delivery_field_events(
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
                     task.result_id ==
                         std::optional<std::string>{"package_delivery"} &&
-                    !scripts.active_run_source_initializer().has_value() &&
+                    !scripts.active_run_offer_variant_id().has_value() &&
                     route.has_value() &&
                     route->at("origin_area") == "area_2" &&
                     route->at("origin_location") == "location_4" &&
@@ -879,9 +879,9 @@ bool verify_package_delivery_field_events(
                 "package offer did not become an active run after acceptance")) {
         return false;
     }
-    if (!expect(scripts.active_run_source_initializer() ==
-                    std::optional<std::uint8_t>{2U},
-                "active run did not preserve its raw FFFBED offer initializer")) {
+    if (!expect(scripts.active_run_offer_variant_id() ==
+                    std::optional<std::string>{"package_delivery"},
+                "active run did not preserve its semantic offer variant")) {
         return false;
     }
 
@@ -912,7 +912,7 @@ bool verify_package_delivery_field_events(
                 "run_registry", "last_completed_offer_id") ==
                 std::optional<std::string>{"package_delivery"} &&
             !scripts.active_run_id().has_value() &&
-            !scripts.active_run_source_initializer().has_value(),
+            !scripts.active_run_offer_variant_id().has_value(),
         "package run did not collect at origin, pay once at destination, and clear");
 }
 
@@ -931,7 +931,7 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
     const std::string_view first_visit_fact,
     const std::string_view expected_payment_bound,
     const std::optional<std::string_view> expected_target_bound,
-    const std::uint8_t expected_initializer,
+    const std::string_view expected_variant_id,
     const std::uint16_t a800_roll) {
     using namespace shadowrun::ghidra_conversion;
     using namespace shadowrun::ghidra_conversion::scripting;
@@ -947,10 +947,8 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
         "building", location_id, text_profile, speaker_id);
     scripts.set_field_mode_context(field_context);
 
-    // ROM F3EBC context 1 zero-based slot 4 is initializer 11; context 4
-    // zero-based slot 4 is initializer 12. The ordinary Johnson work menu
-    // selects each row, then the accepted initializer flows through
-    // 0x1E69C/F3DC6 to A800.
+    // [C] The selected F3EBC rows use distinct employee target pools. The
+    // runtime carries their semantic variant names through A800 policy.
     auto task = scripts.start_task("johnson", "interaction");
     if (!expect(task.operation.has_value() &&
                     task.operation->type ==
@@ -1015,15 +1013,15 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
         return false;
     }
     task = scripts.complete_native_operation(true);
-    const auto active_initializer = scripts.active_run_source_initializer();
+    const auto active_variant_id = scripts.active_run_offer_variant_id();
     const auto active_run_id = scripts.active_run_id();
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
                     task.result_id == std::optional<std::string>{"accepted"} &&
-                    active_initializer ==
-                        std::optional<std::uint8_t>{expected_initializer} &&
+                    active_variant_id ==
+                        std::optional<std::string>{expected_variant_id} &&
                     active_run_id ==
                         std::optional<std::string>{"employee_recruitment"},
-                "accepted variant did not preserve its source initializer")) {
+                "accepted variant did not preserve its semantic identity")) {
         std::cerr << scripts.failure() << '\n';
         return false;
     }
@@ -1084,7 +1082,8 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
         "into the typed 0x1E43C request");
     return request_path_resolved &&
            verify_world_activity_extraction_result_pages(
-               scripts, expected_initializer == 12U);
+               scripts,
+               expected_variant_id == "employee_recruitment_renraku");
 }
 
 bool verify_world_activity_extraction_result_pages(
@@ -1164,7 +1163,7 @@ bool verify_world_activity_extraction_result_pages(
     }
     task = scripts.complete_native_operation(true);
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
-                    scripts.active_run_source_initializer().has_value(),
+                    scripts.active_run_offer_variant_id().has_value(),
                 "successful extraction did not retain the active offer")) {
         std::cerr << scripts.failure() << '\n';
         return false;
@@ -1182,14 +1181,14 @@ bool verify_world_activity_extraction_result_pages(
                         "console.\n\nA run that gets fragged all to drek isn't "
                         "going to help your rep much!>",
                 "missing extraction record did not present source page 0xF3BE3") ||
-        !expect(!scripts.active_run_source_initializer().has_value(),
+        !expect(!scripts.active_run_offer_variant_id().has_value(),
                 "failed extraction did not clear the accepted offer")) {
         std::cerr << scripts.failure() << '\n';
         return false;
     }
     task = scripts.complete_native_operation(true);
     return expect(task.status == ScriptTaskStep::Status::completed &&
-                      !scripts.active_run_source_initializer().has_value(),
+                      !scripts.active_run_offer_variant_id().has_value(),
                   "extraction cancellation page did not return cleanly");
 }
 
@@ -1238,53 +1237,55 @@ bool verify_employee_recruitment_pedestrian_request(
         return false;
     }
 
-    // ROM F3EBC context 1, row 2 is raw initializer 5. Follow its native
+    // [C] The selected F3EBC context-1 row is the base Employee Recruitment
+    // variant. Follow its native
     // negotiation, four-site target, and client draws through the real Lua
     // Johnson/run scripts, then let the script accept its text-only offer.
     task = scripts.complete_native_service_result("roll_2");
     if (!expect(task.operation.has_value() &&
                     task.operation->service_id == "runner.negotiation_skill",
-                "initializer-5 Employee Recruitment skipped Negotiation lookup")) {
+                "base Employee Recruitment skipped Negotiation lookup")) {
         std::cerr << scripts.failure() << '\n';
         return false;
     }
     task = scripts.complete_native_service_result("skill_3");
     if (!expect(task.operation.has_value() &&
                     task.operation->service_id == "random.bounded_16",
-                "initializer-5 Employee Recruitment used the wrong payment bound")) {
+                "base Employee Recruitment used the wrong payment bound")) {
         std::cerr << scripts.failure() << '\n';
         return false;
     }
     task = scripts.complete_native_service_result("roll_0");
     if (!expect(task.operation.has_value() &&
                     task.operation->service_id == "random.bounded_4",
-                "initializer-5 Employee Recruitment did not use its four-site pool")) {
+                "base Employee Recruitment did not use its four-site pool")) {
         std::cerr << scripts.failure() << '\n';
         return false;
     }
     task = scripts.complete_native_service_result("roll_0");
     if (!expect(task.operation.has_value() &&
                     task.operation->service_id == "random.bounded_12",
-                "initializer-5 Employee Recruitment skipped its client-name draw")) {
+                "base Employee Recruitment skipped its client-name draw")) {
         std::cerr << scripts.failure() << '\n';
         return false;
     }
     task = scripts.complete_native_service_result("roll_0");
     if (!expect(task.operation.has_value() &&
                     task.operation->type == ScriptNativeOperation::Type::ui_say,
-                "initializer-5 Employee Recruitment did not present its offer")) {
+                "base Employee Recruitment did not present its offer")) {
         std::cerr << scripts.failure() << '\n';
         return false;
     }
     task = scripts.complete_native_operation(true);
-    const auto active_initializer = scripts.active_run_source_initializer();
+    const auto active_variant_id = scripts.active_run_offer_variant_id();
     const auto active_run_id = scripts.active_run_id();
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
                     task.result_id == std::optional<std::string>{"accepted"} &&
-                    active_initializer == std::optional<std::uint8_t>{5U} &&
+                    active_variant_id == std::optional<std::string>{
+                        "employee_recruitment"} &&
                     active_run_id == std::optional<std::string>{
                         "employee_recruitment"},
-                "accepted Matchstick offer did not retain raw initializer 5")) {
+                "accepted Matchstick offer did not retain its semantic variant")) {
         std::cerr << scripts.failure() << '\n';
         return false;
     }
@@ -1319,21 +1320,22 @@ bool verify_employee_recruitment_pedestrian_request(
             activity.callback ==
                 WorldActivityCallbackKind::extraction_result &&
             activity.timer_frames == 0x3CU,
-        "accepted raw initializer 5 did not flow through A800 into 0x1E43C");
+        "accepted Employee Recruitment did not flow through A800 into 0x1E43C");
     const bool two_site_variant_reaches_request =
         verify_accepted_employee_offer_variant_reaches_a800(
             script_directory, dialogue_text,
             "matchstick_strouther_booth", "matchstick.julius_strouther",
             "julius_strouther", ScriptFieldModeContext{1U, 18U, 0},
             "mr_johnsons_flag_bit_5", "random.bounded_16",
-            std::optional<std::string_view>{"random.bounded_2"}, 11U, 1U);
+            std::optional<std::string_view>{"random.bounded_2"},
+            "employee_recruitment_two_site_pool", 1U);
     const bool renraku_variant_reaches_request =
         verify_accepted_employee_offer_variant_reaches_a800(
             script_directory, dialogue_text, "icarus_descending_booth",
             "icarus-descending.caleb_brightmore", "caleb_brightmore",
             ScriptFieldModeContext{1U, 12U, 30},
             "mr_johnsons_flag_bit_7", "random.bounded_46", std::nullopt,
-            12U, 0U);
+            "employee_recruitment_renraku", 0U);
     return base_initializer_reaches_request &&
         two_site_variant_reaches_request && renraku_variant_reaches_request;
 }

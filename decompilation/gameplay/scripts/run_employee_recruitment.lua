@@ -6,7 +6,7 @@ function EmployeeRecruitment.prepare_offer(context, source_record)
     local support = game.modules.run_support
     local payment = support.negotiate_payment(source_record)
     local target = support.choose_facility_target(
-        source_record.source_initializer)
+        source_record.target_pool_id)
     local client_id = support.bounded_random(#support.client_names)
     local offer = support.new_offer(
         "employee_recruitment",

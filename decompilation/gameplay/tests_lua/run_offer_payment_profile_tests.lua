@@ -91,7 +91,8 @@ for _, context in ipairs(contexts) do
         "source Johnson context must contain eight ROM offer rows")
     for row_index, record in ipairs(rows) do
         source_row_count = source_row_count + 1
-        assert(type(record.source_initializer) == "number")
+        assert(type(record.variant_id) == "string" and
+               OfferData.run_by_variant_id[record.variant_id] ~= nil)
         assert(type(record.runner_progress_delta) == "number")
 
         -- All thirteen ROM runner presets have Negotiation ranks 0-4;

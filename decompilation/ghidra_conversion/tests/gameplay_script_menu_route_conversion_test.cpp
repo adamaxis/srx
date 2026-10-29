@@ -145,7 +145,7 @@ ScriptPersistentValue current_package_run_state() {
     offer.emplace("completion_condition",
                   persistent_string("package_delivered_safely"));
     offer.emplace("runner_progress_delta", persistent_integer(1));
-    offer.emplace("source_offer_type", persistent_integer(2));
+    offer.emplace("offer_variant_id", persistent_string("package_delivery"));
     offer.emplace("source_offer_context", persistent_integer(0));
     offer.emplace("source_run_type", persistent_integer(2));
     offer.emplace("context", persistent_integer(0));
@@ -744,8 +744,59 @@ int main() {
     check(route.top_screen == kNotebook && route.top_row == 0,
           "Notebook no-run response returns to the selected row", failures);
     const auto saved_package_run = current_package_run_state();
+    auto legacy_package_run = saved_package_run;
+    auto* legacy_registry =
+        std::get_if<ScriptPersistentValue::Object>(
+            &legacy_package_run.value);
+    const auto legacy_active_offer = legacy_registry->find("active_offer");
+    auto* legacy_offer = std::get_if<ScriptPersistentValue::Object>(
+        &legacy_active_offer->second.value);
+    legacy_offer->erase("offer_variant_id");
+    legacy_offer->emplace("source_initializer", persistent_integer(2));
+    legacy_offer->emplace("source_offer_type", persistent_integer(2));
+    check(runtime.validate_run_registry_state(legacy_package_run),
+          "validate a legacy save after translating its offer selector",
+          failures);
+    check(runtime.restore_run_registry_state(legacy_package_run),
+          "restore a legacy offer as its semantic gameplay variant", failures);
+    check(runtime.active_run_offer_variant_id() ==
+              std::optional<std::string>{"package_delivery"},
+          "Lua receives the named Courier variant from save migration",
+          failures);
+    const auto migrated_package_run = runtime.save_run_registry_state();
+    bool migrated_save_is_semantic = false;
+    if (migrated_package_run.has_value()) {
+        const auto* migrated_registry =
+            std::get_if<ScriptPersistentValue::Object>(
+                &migrated_package_run->value);
+        if (migrated_registry != nullptr) {
+            const auto migrated_active =
+                migrated_registry->find("active_offer");
+            if (migrated_active != migrated_registry->end()) {
+                const auto* migrated_offer =
+                    std::get_if<ScriptPersistentValue::Object>(
+                        &migrated_active->second.value);
+                if (migrated_offer != nullptr) {
+                    const auto variant =
+                        migrated_offer->find("offer_variant_id");
+                    const auto* variant_id = variant == migrated_offer->end()
+                        ? nullptr
+                        : std::get_if<std::string>(&variant->second.value);
+                    migrated_save_is_semantic = variant_id != nullptr &&
+                        *variant_id == "package_delivery" &&
+                        migrated_offer->find("source_initializer") ==
+                            migrated_offer->end() &&
+                        migrated_offer->find("source_offer_type") ==
+                            migrated_offer->end();
+                }
+            }
+        }
+    }
+    check(migrated_save_is_semantic,
+          "saving a migrated run removes the ROM selector fields",
+          failures);
     check(runtime.restore_run_registry_state(saved_package_run),
-          "restore a source-shaped accepted Courier offer", failures);
+          "restore a semantic accepted Courier offer", failures);
     if (!runtime.failure().empty()) {
         std::cerr << "Current Run test restore error: " << runtime.failure()
                   << '\n';
@@ -754,7 +805,8 @@ int main() {
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kNotebookCurrentRun &&
               route.top_notebook_current_run.has_value() &&
-              route.top_notebook_current_run->source_initializer == 2 &&
+              route.top_notebook_current_run->offer_variant_id ==
+                  "package_delivery" &&
               route.top_notebook_current_run->context == 0 &&
               route.top_notebook_current_run->run_type == 2 &&
               route.top_notebook_current_run->johnson_name ==

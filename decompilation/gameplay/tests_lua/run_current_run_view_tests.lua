@@ -5,11 +5,11 @@ local OfferData = require("data.johnson_run_offers")
 local Catalog = require("data.matrix_run_catalog")
 local Support = require("run_support")
 
-local function offer(initializer, context, run_type, extra)
+local function offer(variant_id, context, run_type, extra)
+    local resolved = OfferData.run_by_variant_id[variant_id]
     local result = {
-        id = OfferData.run_by_initializer[initializer].id,
-        source_initializer = initializer,
-        source_offer_type = initializer,
+        id = resolved.id,
+        offer_variant_id = variant_id,
         source_offer_context = context,
         source_run_type = run_type,
         context = context,
@@ -19,11 +19,11 @@ local function offer(initializer, context, run_type, extra)
     return result
 end
 
-local function view(initializer, context, run_type, extra)
+local function view(variant_id, context, run_type, extra)
     local result = Support.current_run_view(
-        offer(initializer, context, run_type, extra))
+        offer(variant_id, context, run_type, extra))
     assert(result ~= nil, "source offer should produce a Current Run view")
-    assert(result.source_initializer == initializer)
+    assert(result.offer_variant_id == variant_id)
     assert(result.context == context)
     assert(result.run_type == run_type)
     assert(result.payment_amount == 55,
@@ -38,7 +38,7 @@ local function pair(area_id, location_id)
     return { area_id = area_id, location_id = location_id }
 end
 
-local ghoul = view(E.RunOfferInitializer.GHOUL_BOUNTY, 0,
+local ghoul = view("ghoul_bounty", 0,
     E.RunType.GHOUL_BOUNTY, { area_id = 2, ghoul_kill_count = 19 })
 assert(ghoul.johnson_name == "Mr. Gunderson")
 assert(ghoul.run_type_name == "Ghoul Bounty")
@@ -48,12 +48,12 @@ assert(ghoul.body ==
     "They have been preying on the citizens there." ..
     "\n\nKill as many as possible and return here for payment. ",
     string.format("unexpected ghoul text: %q", ghoul.body))
-local ghoul_without_kills = offer(E.RunOfferInitializer.GHOUL_BOUNTY, 0,
+local ghoul_without_kills = offer("ghoul_bounty", 0,
     E.RunType.GHOUL_BOUNTY, { area_id = 2, ghoul_kill_count = 0 })
 assert(Support.current_run_view(ghoul_without_kills).body == ghoul.body,
     "live ghoul count is not part of the detail text")
 
-local escort = view(E.RunOfferInitializer.BODYGUARD_ESCORT, 1,
+local escort = view("bodyguard_escort", 1,
     E.RunType.BODYGUARD_ESCORT,
     { route = {
         origin = pair(2, 6), destination = pair(5, 6), client_id = 7,
@@ -67,7 +67,7 @@ assert(escort.body ==
     "You will be paid by my client upon safe arrival at the specified destination.",
     string.format("unexpected escort text: %q", escort.body))
 
-local courier = view(E.RunOfferInitializer.PACKAGE_DELIVERY, 0,
+local courier = view("package_delivery", 0,
     E.RunType.PACKAGE_DELIVERY,
     { route = {
         origin = pair(2, 2), destination = pair(1, 7),
@@ -79,7 +79,7 @@ assert(courier.body ==
     "in the Puyallup Barrens.  " ..
     "You will be paid upon safe delivery of the package.")
 
-local video_courier = view(E.RunOfferInitializer.PACKAGE_DELIVERY, 0,
+local video_courier = view("package_delivery", 0,
     E.RunType.PACKAGE_DELIVERY,
     { route = {
         origin = pair(2, 11), destination = pair(2, 5),
@@ -96,7 +96,7 @@ assert(table.concat(video_courier.body_lines, "\n") ==
     "package.",
     "Current Run wrap follows the captured Section 03 Courier sequence")
 
-local gang = view(E.RunOfferInitializer.GANG_CONTRACT, 2,
+local gang = view("gang_contract", 2,
     E.RunType.GANG_CONTRACT,
     { variant = 1, route = { target = pair(3, 4) } })
 assert(gang.johnson_name == "Mortimer Reed")
@@ -107,14 +107,14 @@ assert(gang.body ==
     "Needless to say, this makes me uneasy.\n\n" ..
     "\"Discuss\" this matter with them and return here to collect your fee.")
 for variant = 0, #Support.gang_contract_texts - 1 do
-    local current = view(E.RunOfferInitializer.GANG_CONTRACT, 2,
+    local current = view("gang_contract", 2,
         E.RunType.GANG_CONTRACT,
         { variant = variant, route = { target = pair(2, 9) } })
     assert(#current.body_lines <= 16,
         "gang variant must fit the source detail text panel")
 end
 
-local recovery = view(E.RunOfferInitializer.PACKAGE_RECOVERY, 3,
+local recovery = view("package_recovery", 3,
     E.RunType.PACKAGE_RECOVERY,
     { route = { target = pair(0, 6) } })
 assert(recovery.johnson_name == "Vigore and Jarl")
@@ -125,7 +125,7 @@ assert(recovery.body ==
     "I will then pay you for your services.",
     string.format("unexpected recovery text: %q", recovery.body))
 
-local extraction = view(E.RunOfferInitializer.EMPLOYEE_RECRUITMENT, 4,
+local extraction = view("employee_recruitment", 4,
     E.RunType.EMPLOYEE_RECRUITMENT,
     { client_id = 0, route = { target = pair(3, 5) } })
 assert(extraction.johnson_name == "Caleb Brightmore")
@@ -138,7 +138,7 @@ assert(extraction.body ==
 local matrix_index = 2
 local matrix_objective = Catalog.objectives[matrix_index + 1]
 local matrix_system = matrix_objective.systems[1]
-local matrix = view(E.RunOfferInitializer.MATRIX_SIMPLE, 2,
+local matrix = view("matrix_simple", 2,
     E.RunType.MATRIX_OBJECTIVE, {
         objective_index = matrix_index,
         target_system_id = matrix_system,
@@ -151,7 +151,7 @@ assert(matrix.body == Catalog.systems[matrix_system] .. " " ..
 for index = 0, #Catalog.objectives - 1 do
     local objective = Catalog.objectives[index + 1]
     local system_id = objective.systems[1]
-    local current = view(E.RunOfferInitializer.MATRIX_SIMPLE, 0,
+    local current = view("matrix_simple", 0,
         E.RunType.MATRIX_OBJECTIVE, {
             objective_index = index,
             target_system_id = system_id,
@@ -166,28 +166,28 @@ for index = 0, #Catalog.objectives - 1 do
     end
 end
 
-local expected_initializers = {
-    [0] = E.RunType.GHOUL_BOUNTY,
-    [1] = E.RunType.BODYGUARD_ESCORT,
-    [2] = E.RunType.PACKAGE_DELIVERY,
-    [3] = E.RunType.GANG_CONTRACT,
-    [4] = E.RunType.PACKAGE_RECOVERY,
-    [5] = E.RunType.EMPLOYEE_RECRUITMENT,
-    [6] = E.RunType.MATRIX_OBJECTIVE,
-    [7] = E.RunType.MATRIX_OBJECTIVE,
-    [8] = E.RunType.MATRIX_OBJECTIVE,
-    [9] = E.RunType.PACKAGE_RECOVERY,
-    [10] = E.RunType.PACKAGE_RECOVERY,
-    [11] = E.RunType.EMPLOYEE_RECRUITMENT,
-    [12] = E.RunType.EMPLOYEE_RECRUITMENT,
+local expected_variants = {
+    ghoul_bounty = E.RunType.GHOUL_BOUNTY,
+    bodyguard_escort = E.RunType.BODYGUARD_ESCORT,
+    package_delivery = E.RunType.PACKAGE_DELIVERY,
+    gang_contract = E.RunType.GANG_CONTRACT,
+    package_recovery = E.RunType.PACKAGE_RECOVERY,
+    employee_recruitment = E.RunType.EMPLOYEE_RECRUITMENT,
+    matrix_simple = E.RunType.MATRIX_OBJECTIVE,
+    matrix_moderate = E.RunType.MATRIX_OBJECTIVE,
+    matrix_expert = E.RunType.MATRIX_OBJECTIVE,
+    package_recovery_two_site_pool = E.RunType.PACKAGE_RECOVERY,
+    package_recovery_renraku = E.RunType.PACKAGE_RECOVERY,
+    employee_recruitment_two_site_pool = E.RunType.EMPLOYEE_RECRUITMENT,
+    employee_recruitment_renraku = E.RunType.EMPLOYEE_RECRUITMENT,
 }
-local initializer_contexts = {}
+local variant_contexts = {}
 for context, rows in pairs(OfferData.contexts) do
     for _, row in ipairs(rows) do
-        initializer_contexts[row.source_initializer] = context
+        variant_contexts[row.variant_id] = context
     end
 end
-local function fixture_for(initializer, context, run_type)
+local function fixture_for(variant_id, context, run_type)
     if run_type == E.RunType.GHOUL_BOUNTY then
         return { area_id = 2 }
     elseif run_type == E.RunType.BODYGUARD_ESCORT or
@@ -201,11 +201,11 @@ local function fixture_for(initializer, context, run_type)
     elseif run_type == E.RunType.PACKAGE_RECOVERY or
            run_type == E.RunType.EMPLOYEE_RECRUITMENT then
         local pool = Support.run_target_pools.four_site
-        if initializer == E.RunOfferInitializer.PACKAGE_RECOVERY_TWO_SITE_POOL or
-           initializer == E.RunOfferInitializer.EMPLOYEE_RECRUITMENT_TWO_SITE_POOL then
+        if variant_id == "package_recovery_two_site_pool" or
+           variant_id == "employee_recruitment_two_site_pool" then
             pool = Support.run_target_pools.two_site
-        elseif initializer == E.RunOfferInitializer.PACKAGE_RECOVERY_RENRAKU or
-               initializer == E.RunOfferInitializer.EMPLOYEE_RECRUITMENT_RENRAKU then
+        elseif variant_id == "package_recovery_renraku" or
+               variant_id == "employee_recruitment_renraku" then
             pool = { Support.run_target_pools.renraku }
         end
         local target = pool[1]
@@ -222,15 +222,15 @@ local function fixture_for(initializer, context, run_type)
     end
 end
 
-local initializer_count = 0
-for initializer, run_type in pairs(expected_initializers) do
-    local context = assert(initializer_contexts[initializer])
-    local current = view(initializer, context, run_type,
-        fixture_for(initializer, context, run_type))
-    assert(current.source_initializer == initializer)
-    initializer_count = initializer_count + 1
+local variant_count = 0
+for variant_id, run_type in pairs(expected_variants) do
+    local context = assert(variant_contexts[variant_id])
+    local current = view(variant_id, context, run_type,
+        fixture_for(variant_id, context, run_type))
+    assert(current.offer_variant_id == variant_id)
+    variant_count = variant_count + 1
 end
-assert(initializer_count == 13, "all thirteen source initializer IDs are tested")
+assert(variant_count == 13, "all thirteen source offer variants are tested")
 
 local function each_contract_route(context, callback)
     if context == E.RunOfferContext.JUMP_HOUSE then
@@ -267,7 +267,7 @@ for context = E.RunOfferContext.JUMP_HOUSE,
               E.RunOfferContext.ICARUS_DESCENDING do
     each_contract_route(context, function(route_context, origin, destination)
         local courier_view = Support.current_run_view(offer(
-            E.RunOfferInitializer.PACKAGE_DELIVERY, route_context,
+            "package_delivery", route_context,
             E.RunType.PACKAGE_DELIVERY,
             { route = { origin = origin, destination = destination } }))
         assert(courier_view ~= nil)
@@ -282,7 +282,7 @@ for context = E.RunOfferContext.JUMP_HOUSE,
 
         for client_id = 0, #Support.client_names - 1 do
             local bodyguard_view = Support.current_run_view(offer(
-                E.RunOfferInitializer.BODYGUARD_ESCORT, route_context,
+                "bodyguard_escort", route_context,
                 E.RunType.BODYGUARD_ESCORT,
                 { route = { origin = origin, destination = destination,
                             client_id = client_id } }))
@@ -301,7 +301,7 @@ for context = E.RunOfferContext.JUMP_HOUSE,
 end
 assert(route_cases == 12090, "every legal source route pair is covered")
 
-local bad = offer(E.RunOfferInitializer.PACKAGE_DELIVERY, 0,
+local bad = offer("package_delivery", 0,
     E.RunType.PACKAGE_DELIVERY, {
         route = { origin = pair(2, 2), destination = pair(2, 2) },
     })
@@ -313,8 +313,8 @@ assert(Support.current_run_view(bad) == nil,
 bad.payment.negotiated_amount = 55
 bad.source_run_type = E.RunType.GANG_CONTRACT
 assert(Support.current_run_view(bad) == nil,
-    "the source initializer and canonical run type must agree")
+    "the semantic offer variant and canonical run type must agree")
 
-print("current run views passed: 13 initializers, 24 Matrix objectives, " ..
+print("current run views passed: 13 offer variants, 24 Matrix objectives, " ..
       tostring(route_cases) .. " route pairs and " ..
       tostring(route_cases * #Support.client_names) .. " escort client routes")

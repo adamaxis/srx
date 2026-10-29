@@ -467,25 +467,29 @@ bool FieldSceneRuntime::seed_run_target_for_dump(
 bool FieldSceneRuntime::seed_current_run_for_dump(
     const std::uint8_t source_run_type,
     const bool matrix_max_payment,
-    const std::optional<std::uint8_t> employee_source_initializer) {
+    const std::optional<std::string_view> employee_offer_variant_id) {
     if (!ready_ || source_run_type > 6U ||
         (matrix_max_payment && source_run_type != 6U) ||
-        (employee_source_initializer.has_value() &&
+        (employee_offer_variant_id.has_value() &&
          (source_run_type != 5U || matrix_max_payment ||
-          (*employee_source_initializer != 11U &&
-           *employee_source_initializer != 12U)))) {
+          (*employee_offer_variant_id !=
+               "employee_recruitment_two_site_pool" &&
+           *employee_offer_variant_id !=
+               "employee_recruitment_renraku")))) {
         return false;
     }
 
     using PersistentValue = scripting::ScriptPersistentValue;
     const auto type = static_cast<std::size_t>(source_run_type);
     // Each case is an accepted offer row from the ROM context table. The
-    // values below keep the QA seed tied to real initializer/context/payment
+    // values below keep the QA seed tied to real variant/context/payment
     // combinations while presenting each of the seven shared detail handlers.
     static constexpr std::array<std::uint8_t, 7> kContexts{
         0U, 1U, 0U, 2U, 3U, 1U, 2U};
-    static constexpr std::array<std::uint8_t, 7> kInitializers{
-        0U, 1U, 2U, 3U, 9U, 5U, 6U};
+    static constexpr std::array<std::string_view, 7> kVariants{
+        "ghoul_bounty", "bodyguard_escort", "package_delivery",
+        "gang_contract", "package_recovery_two_site_pool",
+        "employee_recruitment", "matrix_simple"};
     static constexpr std::array<std::int64_t, 7> kProgressDeltas{
         1, 1, 1, 2, 3, 2, 2};
     static constexpr std::array<std::int64_t, 7> kBasePayments{
@@ -515,9 +519,9 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
     auto context = matrix_max_payment
         ? std::uint8_t{4U}
         : kContexts[type];
-    auto initializer = matrix_max_payment
-        ? std::uint8_t{8U}
-        : kInitializers[type];
+    auto variant_id = matrix_max_payment
+        ? std::string_view{"matrix_expert"}
+        : kVariants[type];
     auto progress_delta = matrix_max_payment
         ? std::int64_t{5}
         : kProgressDeltas[type];
@@ -527,20 +531,20 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
     auto negotiation_scale = matrix_max_payment
         ? std::int64_t{10}
         : kNegotiationScales[type];
-    // ROM F3EBC context 1 zero-based slot 4 is initializer 11 (delta 4,
-    // 900 base, scale 5); context 4 zero-based slot 4 is initializer 12
-    // (delta 6, 3500 base, scale 15). These accepted QA rows exercise field
-    // publication.
-    if (employee_source_initializer == std::optional<std::uint8_t>{11U}) {
+    // [C] ROM F3EBC context 1/slot 4 and context 4/slot 4 are the two
+    // distinct Employee Recruitment target-pool variants exercised below.
+    // The QA bridge carries those named gameplay variants into Lua.
+    if (employee_offer_variant_id == std::optional<std::string_view>{
+            "employee_recruitment_two_site_pool"}) {
         context = 1U;
-        initializer = 11U;
+        variant_id = "employee_recruitment_two_site_pool";
         progress_delta = 4;
         base_payment = 900;
         negotiation_scale = 5;
-    } else if (employee_source_initializer ==
-               std::optional<std::uint8_t>{12U}) {
+    } else if (employee_offer_variant_id == std::optional<std::string_view>{
+                   "employee_recruitment_renraku"}) {
         context = 4U;
-        initializer = 12U;
+        variant_id = "employee_recruitment_renraku";
         progress_delta = 6;
         base_payment = 3500;
         negotiation_scale = 15;
@@ -573,10 +577,10 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         // First site in the source two-site package-recovery pool.
         route_fields.emplace("target", location(1, 2));
     } else if (source_run_type == 5U) {
-        if (initializer == 11U) {
+        if (variant_id == "employee_recruitment_two_site_pool") {
             // First target in the context-1 two-site source pool.
             route_fields.emplace("target", location(1, 2));
-        } else if (initializer == 12U) {
+        } else if (variant_id == "employee_recruitment_renraku") {
             // The fixed Renraku target selected by the context-4 row.
             route_fields.emplace("target", location(5, 6));
         } else {
@@ -607,8 +611,7 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         {"completion_condition",
          scalar(std::string(kCompletionConditions[type]))},
         {"runner_progress_delta", scalar(progress_delta)},
-        {"source_initializer", scalar(static_cast<std::int64_t>(initializer))},
-        {"source_offer_type", scalar(static_cast<std::int64_t>(initializer))},
+        {"offer_variant_id", scalar(std::string(variant_id))},
         {"source_offer_context", scalar(static_cast<std::int64_t>(context))},
         {"source_run_type", scalar(static_cast<std::int64_t>(source_run_type))},
         {"context", scalar(static_cast<std::int64_t>(context))},

@@ -114,7 +114,7 @@ Support.gang_contract_targets = {
 }
 
 -- ROM F3E6E (four-site pool), F3E76 (two-site pool), and the fixed 5/6
--- Renraku tuple used by initializers 10 and 12.
+-- Renraku tuple imported for the two named Renraku variants.
 Support.run_target_pools = {
     four_site = {
         { area_id = 0, location_id = 5 },
@@ -337,9 +337,9 @@ end
 -- Current Run handlers at 0x1E72C/0x1EE64 and their C134 copy parameters.
 function Support.current_run_view(offer)
     if type(offer) ~= "table" then return nil end
-    local initializer = offer.source_offer_type or offer.source_initializer
-    local resolved = type(initializer) == "number" and
-        OfferData.run_by_initializer[initializer] or nil
+    local variant_id = offer.offer_variant_id
+    local resolved = type(variant_id) == "string" and
+        OfferData.run_by_variant_id[variant_id] or nil
     if resolved == nil or offer.source_run_type ~= resolved.type then
         return nil
     end
@@ -356,7 +356,7 @@ function Support.current_run_view(offer)
     local body = source_run_body(offer, resolved.type)
     if body == nil or body == "" then return nil end
     return {
-        source_initializer = initializer,
+        offer_variant_id = variant_id,
         context = context,
         run_type = resolved.type,
         johnson_label = "JOHNSON:",
@@ -475,7 +475,7 @@ end
 
 function Support.choose_ghoul_area(context)
     -- ROM 0x1E744 fixes the opening contract to area 2; other contexts use
-    -- the four-area random pool from that initializer.
+    -- the four-area random pool from that handler.
     if context == E.RunOfferContext.JUMP_HOUSE then return 2 end
     return Support.bounded_random(4)
 end
@@ -502,16 +502,20 @@ local function choose_target(pool)
     return named_target(pool[index + 1])
 end
 
-function Support.choose_facility_target(source_initializer)
-    local I = E.RunOfferInitializer
-    if source_initializer == I.PACKAGE_RECOVERY_RENRAKU or
-       source_initializer == I.EMPLOYEE_RECRUITMENT_RENRAKU then
-        return named_target(Support.run_target_pools.renraku)
-    elseif source_initializer == I.PACKAGE_RECOVERY_TWO_SITE_POOL or
-           source_initializer == I.EMPLOYEE_RECRUITMENT_TWO_SITE_POOL then
-        return choose_target(Support.run_target_pools.two_site)
+function Support.choose_facility_target(target_pool_id)
+    assert(type(target_pool_id) == "string",
+        "facility offer needs a semantic target pool")
+    local pool = Support.run_target_pools[target_pool_id]
+    assert(type(pool) == "table",
+        "facility offer selected an unknown target pool")
+    if target_pool_id == "renraku" then
+        assert(type(pool.area_id) == "number" and
+               type(pool.location_id) == "number",
+            "fixed facility offer needs a named target location")
+        return named_target(pool)
     end
-    return choose_target(Support.run_target_pools.four_site)
+    assert(#pool > 0, "facility offer selected an empty target pool")
+    return choose_target(pool)
 end
 
 function Support.present_run_acceptance(offer, label)

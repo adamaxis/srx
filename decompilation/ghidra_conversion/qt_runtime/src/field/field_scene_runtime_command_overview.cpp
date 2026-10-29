@@ -204,7 +204,7 @@ void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
         const auto& source_view =
             *route_state.top_notebook_current_run;
         auto& current_run = notebook.current_run;
-        current_run.source_initializer = source_view.source_initializer;
+        current_run.offer_variant_id = source_view.offer_variant_id;
         current_run.context = source_view.context;
         current_run.run_type = source_view.run_type;
         current_run.payment_amount = source_view.payment_amount;

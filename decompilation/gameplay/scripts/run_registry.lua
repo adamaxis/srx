@@ -116,25 +116,26 @@ local function extension_offer_slots()
 end
 
 local function prepare_source_offer(context, source_record)
-    local source_type = source_record.source_initializer
-    local resolved = OfferData.run_by_initializer[source_type]
+    local variant_id = source_record.variant_id
+    local resolved = OfferData.run_by_variant_id[variant_id]
     assert(resolved ~= nil,
-        "ROM offer row has an unknown initializer: " .. tostring(source_type))
+        "offer row has an unknown gameplay variant: " .. tostring(variant_id))
     local run = game.runs[resolved.id]
     assert(type(run) == "table" and type(run.prepare_offer) == "function",
-        "ROM offer initializer has no Lua implementation: " .. resolved.id)
+        "offer variant has no Lua implementation: " .. resolved.id)
     Registry.current_offer = nil
     Registry._last_offer_result = nil
     local run_id = run.prepare_offer(context, source_record)
     local offer = Registry.current_offer
     assert(run_id == resolved.id and type(offer) == "table" and
            offer.id == resolved.id,
-        "run initializer failed to publish its Lua offer state")
+        "run handler failed to publish its Lua offer state")
     offer.context = context
-    offer.source_initializer = source_type
-    offer.source_offer_type = source_type
+    offer.offer_variant_id = variant_id
     offer.source_offer_context = context
     offer.source_run_type = resolved.type
+    offer.target_pool_id = source_record.target_pool_id
+    offer.matrix_band_id = source_record.matrix_band_id
     return run_id
 end
 
@@ -477,10 +478,10 @@ function Registry.active_run_id()
     return Registry.active_offer and Registry.active_offer.id or "none"
 end
 
--- ROM FFFBED keeps the selected source offer initializer, including variants
--- that share one normalized Lua run implementation.
-function Registry.active_source_initializer()
-    return Registry.active_offer and Registry.active_offer.source_initializer
+-- [C] The ROM retains its selected handler in FFFBED. Lua keeps the equivalent
+-- named gameplay variant, including target-pool and Matrix-band differences.
+function Registry.active_offer_variant_id()
+    return Registry.active_offer and Registry.active_offer.offer_variant_id
 end
 
 function Registry.active_completion_condition()
@@ -593,22 +594,18 @@ function Registry.validate_saved_state(state)
 
     -- The saved page and Johnson-return context are derived from the same
     -- accepted ROM offer. Validate the joined row rather than trusting a
-    -- separately saved initializer, context, progress, or payment tuple.
+    -- separately saved variant, context, progress, or payment tuple.
     local function valid_source_offer(offer)
-        local initializer = offer.source_offer_type or
-            offer.source_initializer
-        local has_source_metadata = initializer ~= nil or
+        local variant_id = offer.offer_variant_id
+        local has_source_metadata = variant_id ~= nil or
             offer.source_offer_context ~= nil or
             offer.source_run_type ~= nil
         if not has_source_metadata then return true end
-        if not integer_between(initializer, 0, 0xFF) or
-           (offer.source_offer_type ~= nil and
-            offer.source_initializer ~= nil and
-            offer.source_offer_type ~= offer.source_initializer) then
+        if type(variant_id) ~= "string" or variant_id == "" then
             return false
         end
 
-        local resolved = OfferData.run_by_initializer[initializer]
+        local resolved = OfferData.run_by_variant_id[variant_id]
         local context = offer.source_offer_context
         if resolved == nil or
            not integer_between(context, 0, 0xFF) or
@@ -630,7 +627,7 @@ function Registry.validate_saved_state(state)
         end
 
         for _, source_record in ipairs(OfferData.contexts[context]) do
-            if source_record.source_initializer == initializer and
+            if source_record.variant_id == variant_id and
                source_record.base_payment == payment.base_amount and
                source_record.runner_progress_delta ==
                    offer.runner_progress_delta then

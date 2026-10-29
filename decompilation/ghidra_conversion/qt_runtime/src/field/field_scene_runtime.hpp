@@ -544,14 +544,13 @@ public:
                                   std::uint8_t event_id);
     bool seed_current_run_for_dump(std::uint8_t source_run_type,
                                    bool matrix_max_payment = false,
-                                   std::optional<std::uint8_t>
-                                       employee_source_initializer =
+                                   std::optional<std::string_view>
+                                       employee_offer_variant_id =
                                            std::nullopt);
     bool seed_employee_recruitment_run_target_for_dump(
         std::uint8_t map_id, std::uint8_t event_id);
-    std::optional<std::uint8_t>
-    active_run_source_initializer_for_dump() {
-        return game_scripts_.active_run_source_initializer();
+    std::optional<std::string> active_run_offer_variant_id_for_dump() {
+        return game_scripts_.active_run_offer_variant_id();
     }
     std::optional<scripting::ScriptPersistentValue>
     save_run_registry_state_for_dump() {

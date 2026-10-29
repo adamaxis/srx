@@ -417,18 +417,6 @@ E.PartyWipeArrival = {
         -- 0x2B24 raw (0x66F0,0x2310), aligned by 0x2B90 [C]
     },
 }
--- Source initializer IDs in F3DC6. Several source variants share one
--- canonical run handler and differ only in how their route is selected [C].
-E.RunOfferInitializer = {
-    GHOUL_BOUNTY = 0, BODYGUARD_ESCORT = 1, PACKAGE_DELIVERY = 2,
-    GANG_CONTRACT = 3, PACKAGE_RECOVERY = 4,
-    EMPLOYEE_RECRUITMENT = 5, MATRIX_SIMPLE = 6,
-    MATRIX_MODERATE = 7, MATRIX_EXPERT = 8,
-    PACKAGE_RECOVERY_TWO_SITE_POOL = 9,
-    PACKAGE_RECOVERY_RENRAKU = 10,
-    EMPLOYEE_RECRUITMENT_TWO_SITE_POOL = 11,
-    EMPLOYEE_RECRUITMENT_RENRAKU = 12,
-}
 -- The Johnson event handler at 0x20990 selects FFF0AE from its active scene.
 E.RunOfferContext = {
     JUMP_HOUSE = 0, SCENE_18 = 1, BIG_RHINO = 2,

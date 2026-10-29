@@ -735,21 +735,6 @@ enum class RunOfferContext : std::int64_t {
     WANDERER = 0x3,
     ICARUS_DESCENDING = 0x4,
 };
-enum class RunOfferInitializer : std::int64_t {
-    GHOUL_BOUNTY = 0x0,
-    BODYGUARD_ESCORT = 0x1,
-    PACKAGE_DELIVERY = 0x2,
-    GANG_CONTRACT = 0x3,
-    PACKAGE_RECOVERY = 0x4,
-    EMPLOYEE_RECRUITMENT = 0x5,
-    MATRIX_SIMPLE = 0x6,
-    MATRIX_MODERATE = 0x7,
-    MATRIX_EXPERT = 0x8,
-    PACKAGE_RECOVERY_TWO_SITE_POOL = 0x9,
-    PACKAGE_RECOVERY_RENRAKU = 0xA,
-    EMPLOYEE_RECRUITMENT_TWO_SITE_POOL = 0xB,
-    EMPLOYEE_RECRUITMENT_RENRAKU = 0xC,
-};
 enum class RunType : std::int64_t {
     GHOUL_BOUNTY = 0x0,
     BODYGUARD_ESCORT = 0x1,

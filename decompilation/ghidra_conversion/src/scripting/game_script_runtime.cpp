@@ -11,6 +11,7 @@ extern "C" {
 #include "lualib.h"
 }
 
+#include <array>
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -30,6 +31,104 @@ namespace {
 
 // E.ActorStatus.DOWN (0x10): actor record +0x10 bit 4, set at 0xB356 [C].
 constexpr std::uint8_t kActorStatusDown = 0x10U;
+
+// Older saves stored the byte selected from ROM's F3EBC offer row under
+// source_initializer/source_offer_type. Decode it here and pass only the
+// named gameplay variant into Lua. [C] The row selector indexes the callback
+// table at 0xF3DC6.
+std::optional<std::string_view> legacy_run_offer_variant_id(
+    const std::int64_t selector) noexcept {
+    static constexpr std::array<std::string_view, 13> kVariants{
+        "ghoul_bounty", "bodyguard_escort", "package_delivery",
+        "gang_contract", "package_recovery", "employee_recruitment",
+        "matrix_simple", "matrix_moderate", "matrix_expert",
+        "package_recovery_two_site_pool", "package_recovery_renraku",
+        "employee_recruitment_two_site_pool",
+        "employee_recruitment_renraku"};
+    if (selector < 0 || selector >=
+            static_cast<std::int64_t>(kVariants.size())) {
+        return std::nullopt;
+    }
+    return kVariants[static_cast<std::size_t>(selector)];
+}
+
+bool normalize_saved_offer_variant(
+    ScriptPersistentValue& value, std::string& failure) {
+    auto* offer = std::get_if<ScriptPersistentValue::Object>(&value.value);
+    if (offer == nullptr) return true;
+
+    const auto source_initializer = offer->find("source_initializer");
+    const auto source_offer_type = offer->find("source_offer_type");
+    const bool has_legacy_selector = source_initializer != offer->end() ||
+                                     source_offer_type != offer->end();
+    std::optional<std::int64_t> selector;
+    for (const auto* field : {&source_initializer, &source_offer_type}) {
+        if (*field == offer->end()) continue;
+        const auto* integer =
+            std::get_if<std::int64_t>(&(*field)->second.value);
+        if (integer == nullptr ||
+            (selector.has_value() && *selector != *integer)) {
+            failure = "saved offer has inconsistent legacy source selectors";
+            return false;
+        }
+        selector = *integer;
+    }
+
+    const auto variant_field = offer->find("offer_variant_id");
+    if (variant_field != offer->end()) {
+        const auto* variant =
+            std::get_if<std::string>(&variant_field->second.value);
+        if (variant == nullptr || variant->empty()) {
+            failure = "saved offer has an invalid semantic variant";
+            return false;
+        }
+        if (selector.has_value()) {
+            const auto decoded = legacy_run_offer_variant_id(*selector);
+            if (!decoded.has_value() || *decoded != *variant) {
+                failure = "saved offer variant conflicts with legacy source data";
+                return false;
+            }
+        }
+    } else if (has_legacy_selector) {
+        if (!selector.has_value()) {
+            failure = "saved offer has no usable legacy source selector";
+            return false;
+        }
+        const auto decoded = legacy_run_offer_variant_id(*selector);
+        if (!decoded.has_value()) {
+            failure = "saved offer source selector is outside the imported table";
+            return false;
+        }
+        ScriptPersistentValue variant{};
+        variant.value = std::string(*decoded);
+        offer->emplace("offer_variant_id", std::move(variant));
+    }
+
+    offer->erase("source_initializer");
+    offer->erase("source_offer_type");
+    return true;
+}
+
+bool normalize_saved_run_offer_variants(
+    const ScriptPersistentValue& saved_state,
+    ScriptPersistentValue& normalized, std::string& failure) {
+    normalized = saved_state;
+    auto* registry =
+        std::get_if<ScriptPersistentValue::Object>(&normalized.value);
+    if (registry == nullptr) return true;
+    for (const auto field_name : {"current_offer", "active_offer",
+                                  "last_completed_offer"}) {
+        const auto offer = registry->find(field_name);
+        if (offer == registry->end() ||
+            std::holds_alternative<std::monostate>(offer->second.value)) {
+            continue;
+        }
+        if (!normalize_saved_offer_variant(offer->second, failure)) {
+            return false;
+        }
+    }
+    return true;
+}
 
 // The live field model still meets ROM records at the host boundary, but Lua
 // receives the meaning of these bits as named facts. Unknown bits remain in
@@ -2631,8 +2730,10 @@ struct GameScriptRuntime::Impl {
                     if (lua_istable(state, -1)) {
                         const auto view_index = lua_absindex(state, -1);
                         ScriptNotebookCurrentRunView view;
-                        const auto initializer = read_optional(
-                            view_index, "source_initializer");
+                        const bool variant_valid = read_field_string(
+                            state, view_index, "offer_variant_id",
+                            view.offer_variant_id) &&
+                            valid_identifier(view.offer_variant_id);
                         const auto context = read_optional(
                             view_index, "context");
                         const auto run_type = read_optional(
@@ -2660,8 +2761,7 @@ struct GameScriptRuntime::Impl {
                             read_field_string(state, view_index,
                                               "currency_symbol",
                                               view.currency_symbol);
-                        if (initializer.has_value() &&
-                            *initializer >= 0 && *initializer <= 12 &&
+                        if (variant_valid &&
                             context.has_value() && *context >= 0 &&
                             *context <= 4 && run_type.has_value() &&
                             *run_type >= 0 && *run_type <= 6 &&
@@ -2669,7 +2769,6 @@ struct GameScriptRuntime::Impl {
                             *payment <= 0xFFFF && labels_valid &&
                             body_lines.has_value() &&
                             !body_lines->empty()) {
-                            view.source_initializer = *initializer;
                             view.context = *context;
                             view.run_type = *run_type;
                             view.payment_amount = *payment;
@@ -6255,17 +6354,17 @@ std::optional<std::string> GameScriptRuntime::active_run_id() {
         : std::optional<std::string>{std::move(run_id)};
 }
 
-std::optional<std::uint8_t>
-GameScriptRuntime::active_run_source_initializer() {
+std::optional<std::string>
+GameScriptRuntime::active_run_offer_variant_id() {
     auto* state = impl_->state;
     if (state == nullptr) {
         impl_->failure =
-            "Lua runtime is unavailable for the active run initializer";
+            "Lua runtime is unavailable for the active run variant";
         return std::nullopt;
     }
     const auto stack_base = lua_gettop(state);
     const auto fail = [this, state, stack_base](const std::string_view reason)
-        -> std::optional<std::uint8_t> {
+        -> std::optional<std::string> {
         lua_settop(state, stack_base);
         impl_->failure = std::string(reason);
         return std::nullopt;
@@ -6273,13 +6372,13 @@ GameScriptRuntime::active_run_source_initializer() {
     if (!impl_->push_module("run_registry")) {
         return fail("run_registry.lua module is missing");
     }
-    lua_getfield(state, -1, "active_source_initializer");
+    lua_getfield(state, -1, "active_offer_variant_id");
     if (!lua_isfunction(state, -1)) {
-        return fail("run_registry active source initializer is missing");
+        return fail("run_registry active offer variant is missing");
     }
     lua_remove(state, -2);
     if (lua_pcall(state, 0, 1, 0) != LUA_OK) {
-        return fail("run_registry active source initializer failed: " +
+        return fail("run_registry active offer variant failed: " +
                     stack_error(state));
     }
     if (lua_isnil(state, -1)) {
@@ -6287,14 +6386,15 @@ GameScriptRuntime::active_run_source_initializer() {
         impl_->failure.clear();
         return std::nullopt;
     }
-    std::uint32_t initializer = 0U;
-    if (!read_integer(state, -1, 0xFFU, initializer)) {
-        return fail("active source offer initializer is outside byte range");
+    std::string variant_id;
+    if (!read_string(state, -1, variant_id) ||
+        !valid_identifier(variant_id)) {
+        return fail("active source offer variant is invalid");
     }
 
     lua_settop(state, stack_base);
     impl_->failure.clear();
-    return static_cast<std::uint8_t>(initializer);
+    return variant_id;
 }
 
 std::optional<ScriptRunFieldEventDecision>
@@ -6637,6 +6737,13 @@ GameScriptRuntime::save_run_registry_state() {
 
 bool GameScriptRuntime::validate_run_registry_state(
     const ScriptPersistentValue& saved_state) {
+    ScriptPersistentValue normalized_state;
+    std::string normalization_failure;
+    if (!normalize_saved_run_offer_variants(
+            saved_state, normalized_state, normalization_failure)) {
+        impl_->failure = std::move(normalization_failure);
+        return false;
+    }
     auto* state = impl_->state;
     if (state == nullptr) {
         impl_->failure = "Lua runtime is unavailable for run-state restores";
@@ -6657,7 +6764,7 @@ bool GameScriptRuntime::validate_run_registry_state(
     }
     lua_remove(state, -2);
     std::size_t nodes = 0U;
-    if (!push_persistent_value(state, saved_state, nodes, 0U)) {
+    if (!push_persistent_value(state, normalized_state, nodes, 0U)) {
         return fail("saved run state is not JSON-compatible");
     }
     if (lua_pcall(state, 1, 2, 0) != LUA_OK) {
@@ -6683,7 +6790,14 @@ bool GameScriptRuntime::validate_run_registry_state(
 
 bool GameScriptRuntime::restore_run_registry_state(
     const ScriptPersistentValue& saved_state) {
-    if (!validate_run_registry_state(saved_state)) return false;
+    ScriptPersistentValue normalized_state;
+    std::string normalization_failure;
+    if (!normalize_saved_run_offer_variants(
+            saved_state, normalized_state, normalization_failure)) {
+        impl_->failure = std::move(normalization_failure);
+        return false;
+    }
+    if (!validate_run_registry_state(normalized_state)) return false;
     auto* state = impl_->state;
     const auto stack_base = lua_gettop(state);
     const auto fail = [this, state, stack_base](const std::string& reason) {
@@ -6700,7 +6814,7 @@ bool GameScriptRuntime::restore_run_registry_state(
     }
     lua_remove(state, -2);
     std::size_t nodes = 0U;
-    if (!push_persistent_value(state, saved_state, nodes, 0U)) {
+    if (!push_persistent_value(state, normalized_state, nodes, 0U)) {
         return fail("saved run state is not JSON-compatible");
     }
     if (lua_pcall(state, 1, 0, 0) != LUA_OK) {

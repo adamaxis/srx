@@ -7,7 +7,7 @@ function PackageRecovery.prepare_offer(context, source_record)
     local support = game.modules.run_support
     local payment = support.negotiate_payment(source_record)
     local target = support.choose_facility_target(
-        source_record.source_initializer)
+        source_record.target_pool_id)
     local variant = support.bounded_random(12)
     local offer = support.new_offer(
         "package_recovery",

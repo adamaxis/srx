@@ -1797,7 +1797,7 @@ Registry.active_offer = {
     runner_progress_delta = 2,
     context = E.RunOfferContext.BIG_RHINO,
     source_offer_context = E.RunOfferContext.BIG_RHINO,
-    source_initializer = E.RunOfferInitializer.MATRIX_SIMPLE,
+    offer_variant_id = "matrix_simple",
     payment = {
         base_amount = 425, negotiated_amount = 425, negotiation_skill = 0,
         negotiation_bound = 1, negotiation_roll = 0,
@@ -1831,8 +1831,9 @@ local invalid_runs = Registry.validate_saved_state(saved_runs)
 eq(invalid_runs, false,
     "saved Matrix objective rejects a target outside the ROM system catalog")
 
--- All five ROM offer contexts contain eight records at F3EBC. The typed Lua
--- table retains initializer, progress, payment, and negotiation fields.
+-- All five ROM offer contexts contain eight six-byte records at F3EBC. The
+-- native Lua model retains named variants, progress, payment, and negotiation
+-- fields; the source initializer byte stays at the extraction boundary.
 local OfferData = require("data.johnson_run_offers")
 -- dialogue.lua asserts the authored JSON catalogs in game.content.
 do
@@ -1853,24 +1854,39 @@ end
 local Dialogue = require("dialogue")
 local expected_context_rows = {
     [0] = {
-        {0,1,10,3}, {1,1,45,1}, {2,1,35,1}, {1,1,50,1},
-        {2,1,40,1}, {1,1,55,1}, {2,1,45,1}, {0,1,20,2},
+        {"ghoul_bounty",1,10,3}, {"bodyguard_escort",1,45,1},
+        {"package_delivery",1,35,1}, {"bodyguard_escort",1,50,1},
+        {"package_delivery",1,40,1}, {"bodyguard_escort",1,55,1},
+        {"package_delivery",1,45,1}, {"ghoul_bounty",1,20,2},
     },
     [1] = {
-        {7,3,2600,4}, {1,1,200,2}, {5,2,500,5}, {4,2,600,5},
-        {11,4,900,5}, {9,4,1000,5}, {2,1,180,2}, {3,2,160,3},
+        {"matrix_moderate",3,2600,4}, {"bodyguard_escort",1,200,2},
+        {"employee_recruitment",2,500,5}, {"package_recovery",2,600,5},
+        {"employee_recruitment_two_site_pool",4,900,5},
+        {"package_recovery_two_site_pool",4,1000,5},
+        {"package_delivery",1,180,2}, {"gang_contract",2,160,3},
     },
     [2] = {
-        {6,2,425,1}, {3,2,190,2}, {2,1,180,1}, {0,1,40,1},
-        {4,2,550,4}, {5,2,450,4}, {1,1,200,1}, {2,1,190,1},
+        {"matrix_simple",2,425,1}, {"gang_contract",2,190,2},
+        {"package_delivery",1,180,1}, {"ghoul_bounty",1,40,1},
+        {"package_recovery",2,550,4}, {"employee_recruitment",2,450,4},
+        {"bodyguard_escort",1,200,1}, {"package_delivery",1,190,1},
     },
     [3] = {
-        {3,1,230,1}, {7,2,3000,2}, {8,4,6350,5}, {2,0,250,1},
-        {9,3,1700,4}, {10,5,4500,10}, {12,5,4000,10}, {6,1,500,1},
+        {"gang_contract",1,230,1}, {"matrix_moderate",2,3000,2},
+        {"matrix_expert",4,6350,5}, {"package_delivery",0,250,1},
+        {"package_recovery_two_site_pool",3,1700,4},
+        {"package_recovery_renraku",5,4500,10},
+        {"employee_recruitment_renraku",5,4000,10},
+        {"matrix_simple",1,500,1},
     },
     [4] = {
-        {7,3,2550,5}, {8,5,6000,10}, {11,4,1200,5}, {9,4,1400,5},
-        {12,6,3500,15}, {10,6,3850,15}, {8,5,6100,10}, {7,4,2750,5},
+        {"matrix_moderate",3,2550,5}, {"matrix_expert",5,6000,10},
+        {"employee_recruitment_two_site_pool",4,1200,5},
+        {"package_recovery_two_site_pool",4,1400,5},
+        {"employee_recruitment_renraku",6,3500,15},
+        {"package_recovery_renraku",6,3850,15},
+        {"matrix_expert",5,6100,10}, {"matrix_moderate",4,2750,5},
     },
 }
 for context = 0, 4 do
@@ -1879,7 +1895,7 @@ for context = 0, 4 do
     for index = 1, 8 do
         local row = rows[index]
         local expected = expected_context_rows[context][index]
-        eq(row.source_initializer, expected[1], "source initializer row")
+        eq(row.variant_id, expected[1], "semantic offer variant row")
         eq(row.runner_progress_delta, expected[2], "progress row")
         eq(row.base_payment, expected[3], "base payment row")
         eq(row.negotiation_scale, expected[4], "negotiation scale row")
@@ -1918,8 +1934,8 @@ game = {
 local selected_run = Registry.prepare_offer_for_context(E.RunOfferContext.WANDERER)
 local matrix_offer = Registry.current_offer
 eq(selected_run, "matrix_objective", "context selects Matrix Lua module")
-eq(matrix_offer.source_offer_type, E.RunOfferInitializer.MATRIX_SIMPLE,
-    "offer retains its source initializer variant")
+eq(matrix_offer.offer_variant_id, "matrix_simple",
+    "offer retains its semantic Matrix variant")
 eq(matrix_offer.source_run_type, E.RunType.MATRIX_OBJECTIVE,
     "offer retains the canonical run type")
 eq(matrix_offer.source_offer_context, E.RunOfferContext.WANDERER,
@@ -1964,8 +1980,8 @@ end
 
 local gang_id, gang_offer = prepare_context_row(1, { 7, 0, 0, 0 })
 eq(gang_id, "gang_contract", "gang source initializer loads its own module")
-eq(gang_offer.source_offer_type, E.RunOfferInitializer.GANG_CONTRACT,
-    "gang offer retains source initializer")
+eq(gang_offer.offer_variant_id, "gang_contract",
+    "gang offer retains semantic variant")
 eq(gang_offer.route.target.area_id, 1,
     "gang target is selected from the ROM three-site list")
 eq(gang_offer.route.target.location_id, 9,
@@ -1980,9 +1996,8 @@ Registry.resolve_current_offer("no")
 local recovery_id, recovery_offer = prepare_context_row(3, { 4, 0, 0, 0 })
 eq(recovery_id, "package_recovery",
     "two-site package recovery loads its own module")
-eq(recovery_offer.source_offer_type,
-    E.RunOfferInitializer.PACKAGE_RECOVERY_TWO_SITE_POOL,
-    "recovery preserves its two-site initializer variant")
+eq(recovery_offer.offer_variant_id, "package_recovery_two_site_pool",
+    "recovery preserves its two-site target-pool choice")
 eq(recovery_offer.route.target.area_id, 1,
     "recovery target uses the ROM two-site pool")
 eq(recovery_offer.route.target.location_id, 2,
@@ -1992,9 +2007,8 @@ Registry.resolve_current_offer("no")
 local employee_id, employee_offer = prepare_context_row(3, { 6, 0, 0 })
 eq(employee_id, "employee_recruitment",
     "Renraku employee recovery loads its own module")
-eq(employee_offer.source_offer_type,
-    E.RunOfferInitializer.EMPLOYEE_RECRUITMENT_RENRAKU,
-    "employee offer preserves its fixed-site initializer")
+eq(employee_offer.offer_variant_id, "employee_recruitment_renraku",
+    "employee offer preserves its fixed-site variant")
 eq(employee_offer.route.target.area_id, 5,
     "employee offer uses the ROM fixed Renraku area")
 eq(employee_offer.route.target.location_id, 6,
