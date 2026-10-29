@@ -646,6 +646,97 @@ bool row_integer(const TsvDocument& document,
     return false;
 }
 
+using ActivityListKey = std::pair<lua_Integer, lua_Integer>;
+using ActivityListIds = std::map<ActivityListKey, std::string>;
+
+bool collect_activity_list_ids(
+    const TsvDocument& document, const std::filesystem::path& path,
+    ActivityListIds& activity_ids, std::string& failure) {
+    for (std::size_t index = 0U; index < document.rows.size(); ++index) {
+        const auto& row = document.rows[index];
+        lua_Integer scene_id = 0;
+        lua_Integer list_offset = 0;
+        if (!row_integer(document, row, "scene", scene_id, path, index + 2U,
+                         failure) ||
+            !row_integer(document, row, "list_offset", list_offset, path,
+                         index + 2U, failure) ||
+            scene_id < 0 || scene_id > srx::v(srx::Scene::LAST_ID) ||
+            list_offset < 0 || list_offset > 0x1FFFFF) {
+            if (failure.empty()) {
+                failure = path.string() + ": row " +
+                    std::to_string(index + 2U) +
+                    " has an activity-list key outside source bounds";
+            }
+            return false;
+        }
+        const auto activity_id = row_string(document, row, "list_id");
+        if (activity_id.empty() || activity_id.size() > 128U) {
+            failure = path.string() + ": row " +
+                std::to_string(index + 2U) +
+                " has no stable activity id";
+            return false;
+        }
+        const ActivityListKey key{scene_id, list_offset};
+        const auto [found, inserted] =
+            activity_ids.emplace(key, activity_id);
+        if (!inserted && found->second != activity_id) {
+            failure = path.string() + ": scene/list pair maps to multiple "
+                      "activity ids";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool make_semantic_alarm_profiles(
+    const TsvDocument& source, const std::filesystem::path& path,
+    const ActivityListIds& activity_ids, TsvDocument& semantic,
+    std::string& failure) {
+    semantic.columns = {
+        "scene_id", "reinforcement_activity_id", "region_count"};
+    for (std::size_t column = 0U; column < semantic.columns.size(); ++column) {
+        semantic.column_indexes.emplace(semantic.columns[column], column);
+    }
+    semantic.rows.reserve(source.rows.size());
+    for (std::size_t index = 0U; index < source.rows.size(); ++index) {
+        const auto& row = source.rows[index];
+        lua_Integer scene_id = 0;
+        lua_Integer list_offset = 0;
+        lua_Integer region_count = 0;
+        if (!row_integer(source, row, "scene_id", scene_id, path,
+                         index + 2U, failure) ||
+            !row_integer(source, row, "reinforcement_list_address",
+                         list_offset, path, index + 2U, failure) ||
+            !row_integer(source, row, "region_count", region_count, path,
+                         index + 2U, failure) ||
+            scene_id < 0 || scene_id > srx::v(srx::Scene::LAST_ID) ||
+            list_offset < 0 || list_offset > 0x1FFFFF ||
+            region_count < 0 || region_count > 256) {
+            if (failure.empty()) {
+                failure = path.string() + ": row " +
+                    std::to_string(index + 2U) +
+                    " has invalid alarm profile fields";
+            }
+            return false;
+        }
+        std::string activity_id;
+        if (list_offset != 0) {
+            const auto found = activity_ids.find({scene_id, list_offset});
+            if (found == activity_ids.end()) {
+                failure = path.string() + ": row " +
+                    std::to_string(index + 2U) +
+                    " alarm list has no extracted activity id";
+                return false;
+            }
+            activity_id = found->second;
+        }
+        semantic.rows.push_back({
+            std::to_string(scene_id), std::move(activity_id),
+            std::to_string(region_count)});
+    }
+    return true;
+}
+
 std::vector<std::string> split_flags(std::string_view value) {
     std::vector<std::string> flags;
     while (!value.empty()) {
@@ -1129,10 +1220,15 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "world_x", "world_y", "heading_word", "direction",
               "source_spawn_state_flags"}},
         }};
+        ActivityListIds activity_ids;
         for (const auto& source_table : source_tables) {
             TsvDocument document;
             const auto path = field_asset_directory / source_table.relative_path;
             if (!read_tsv(path, false, document, failure) ||
+                (std::string_view(source_table.field) ==
+                     "world_activity_actor_lists" &&
+                 !collect_activity_list_ids(document, path, activity_ids,
+                                            failure)) ||
                 !push_rows(state, document, source_table.numeric_columns,
                            path, failure, {},
                            source_table.optional_numeric_columns)) {
@@ -1145,11 +1241,17 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
         const auto profile_path =
             field_asset_directory / "field-alarm-profiles.tsv";
         TsvDocument alarm_profiles;
+        TsvDocument semantic_alarm_profiles;
+        // TSV pointers are extraction provenance. Resolve the reinforcement
+        // list against the extracted actor catalog here, before Lua receives
+        // the scene's semantic activity ID and region count.
         if (!read_tsv(profile_path, true, alarm_profiles, failure) ||
+            !make_semantic_alarm_profiles(
+                alarm_profiles, profile_path, activity_ids,
+                semantic_alarm_profiles, failure) ||
             !push_scene_indexed_rows(
-                state, alarm_profiles,
-                {"scene_id", "effect_profile_address", "region_list_address",
-                 "reinforcement_list_address", "region_count"},
+                state, semantic_alarm_profiles,
+                {"scene_id", "region_count"},
                 profile_path, failure, false)) {
             lua_settop(state, stack_base);
             return false;
@@ -1162,8 +1264,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
         if (!read_tsv(regions_path, true, alarm_regions, failure) ||
             !push_scene_indexed_rows(
                 state, alarm_regions,
-                {"scene_id", "record_address", "x_min", "x_max", "y_min",
-                 "y_max"},
+                {"scene_id", "x_min", "x_max", "y_min", "y_max"},
                 regions_path, failure, true)) {
             lua_settop(state, stack_base);
             return false;

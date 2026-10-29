@@ -6,6 +6,7 @@ extern "C" {
 }
 
 #include <cstddef>
+#include <initializer_list>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -88,7 +89,7 @@ int main() {
     if (!shadowrun::ghidra_conversion::scripting::detail::
             load_world_content_tsv(
                 state, modules_reference, SHADOWRUN_GAMEPLAY_WORLD_ROOT,
-                failure)) {
+                failure, SHADOWRUN_FIELD_ASSET_ROOT)) {
         std::cerr << failure << '\n';
         lua_close(state);
         return 1;
@@ -99,12 +100,49 @@ int main() {
     lua_remove(state, -2);
     const int data_table = lua_absindex(state, -1);
 
+    lua_getfield(state, data_table, "field_alarm_profiles");
+    lua_rawgeti(state, -1, 21);
+    const int scene_21_alarm_profile = lua_absindex(state, -1);
+    // [C] The ROM profile at 0x1D7444 names reinforcement list 0x1D7460;
+    // the runtime exposes its extracted activity identity, not those pointers.
+    bool valid =
+        expect(field_string_is(state, scene_21_alarm_profile,
+                               "reinforcement_activity_id",
+                               "field_alarm_scene_21") &&
+                   field_integer_is(state, scene_21_alarm_profile,
+                                    "region_count", 4),
+               "Scene 21 alarm profile was not resolved to semantic data");
+    for (const auto* field : {"effect_profile_address", "region_list_address",
+                              "reinforcement_list_address"}) {
+        lua_getfield(state, scene_21_alarm_profile, field);
+        valid = expect(lua_isnil(state, -1),
+                       "source addresses leaked into Lua alarm profile data") &&
+                valid;
+        lua_pop(state, 1);
+    }
+    lua_pop(state, 2);
+
+    lua_getfield(state, data_table, "field_alarm_regions");
+    lua_rawgeti(state, -1, 21);
+    const int scene_21_alarm_regions = lua_absindex(state, -1);
+    lua_rawgeti(state, scene_21_alarm_regions, 1);
+    const int first_alarm_region = lua_absindex(state, -1);
+    valid = expect(lua_rawlen(state, scene_21_alarm_regions) == 4U &&
+                       field_integer_is(state, first_alarm_region, "x_min", 32) &&
+                       field_integer_is(state, first_alarm_region, "y_max", 479),
+                   "Scene 21 alarm regions did not retain their world bounds") &&
+            valid;
+    lua_getfield(state, first_alarm_region, "record_address");
+    valid = expect(lua_isnil(state, -1),
+                   "source record address leaked into Lua alarm regions") &&
+            valid;
+    lua_pop(state, 4);
+
     lua_getfield(state, data_table, "entities");
     const int entities = lua_absindex(state, -1);
     lua_getfield(state, entities, "stoker_coffin_motel");
     const int stoker = lua_absindex(state, -1);
-    bool valid =
-        expect(field_string_is(state, stoker, "name",
+    valid = expect(field_string_is(state, stoker, "name",
                                "Stoker's Coffin Motel"),
                "entity.tsv was not loaded into the runtime data table");
 

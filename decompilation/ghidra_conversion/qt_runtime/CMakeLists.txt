@@ -320,7 +320,8 @@ target_include_directories(shadowrun_world_content_tsv_loader_test
 target_link_libraries(shadowrun_world_content_tsv_loader_test
     PRIVATE shadowrun_gameplay_script_runtime)
 target_compile_definitions(shadowrun_world_content_tsv_loader_test PRIVATE
-    SHADOWRUN_GAMEPLAY_WORLD_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/world")
+    SHADOWRUN_GAMEPLAY_WORLD_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../gameplay/world"
+    SHADOWRUN_FIELD_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../../assets/field")
 add_test(NAME shadowrun_world_content_tsv_loader_qa
          COMMAND shadowrun_world_content_tsv_loader_test)
 

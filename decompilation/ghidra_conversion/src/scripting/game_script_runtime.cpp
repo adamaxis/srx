@@ -8431,69 +8431,14 @@ GameScriptRuntime::field_alarm_profile(const std::uint16_t scene_id) {
     }
     const auto profile_table = lua_absindex(state, -1);
     ScriptFieldAlarmProfile profile;
-    std::optional<std::uint32_t> list_address;
-    if (!read_optional_field_u32(
-            state, profile_table, "reinforcement_list_address",
-            static_cast<std::uint32_t>(srx::FieldAlarm::LIST_ADDRESS_MAX),
-            list_address)) {
-        return fail("field alarm profile has an invalid reinforcement list");
+    std::string activity_id;
+    if (!read_optional_field_string(state, profile_table,
+                                    "reinforcement_activity_id",
+                                    activity_id) ||
+        (!activity_id.empty() && !valid_identifier(activity_id))) {
+        return fail("field alarm profile has an invalid activity id");
     }
-    if (list_address.has_value()) {
-        lua_getfield(state, content_table, "world_activity_actor_lists");
-        if (!lua_istable(state, -1)) {
-            return fail(
-                "world-content activity actor lists are missing for alarm profile");
-        }
-        const auto actor_lists_table = lua_absindex(state, -1);
-        const auto actor_list_count = lua_rawlen(state, actor_lists_table);
-        std::optional<std::string> activity_id;
-        for (std::size_t index = 0U; index < actor_list_count; ++index) {
-            lua_rawgeti(state, actor_lists_table,
-                        static_cast<lua_Integer>(index + 1U));
-            if (!lua_istable(state, -1)) {
-                return fail(
-                    "world-content activity actor list contains a bad row");
-            }
-            const auto actor_row = lua_absindex(state, -1);
-            std::uint32_t row_scene = 0U;
-            if (!read_field_integer(state, actor_row, "scene", 55U,
-                                    row_scene)) {
-                return fail(
-                    "world-content activity actor has an invalid scene");
-            }
-            if (row_scene == scene_id) {
-                std::uint32_t row_list_offset = 0U;
-                if (!read_field_integer(
-                        state, actor_row, "list_offset",
-                        static_cast<std::uint32_t>(
-                            srx::FieldAlarm::LIST_ADDRESS_MAX),
-                        row_list_offset)) {
-                    return fail(
-                        "world-content activity actor has an invalid source list");
-                }
-                if (row_list_offset == *list_address) {
-                    std::string row_activity_id;
-                    if (!read_field_string(state, actor_row, "list_id",
-                                           row_activity_id) ||
-                        !valid_identifier(row_activity_id)) {
-                        return fail(
-                            "world-content activity actor has an invalid activity id");
-                    }
-                    if (activity_id.has_value() &&
-                        *activity_id != row_activity_id) {
-                        return fail(
-                            "alarm source list maps to multiple activity ids");
-                    }
-                    activity_id = std::move(row_activity_id);
-                }
-            }
-            lua_pop(state, 1);
-        }
-        lua_pop(state, 1);
-        if (!activity_id.has_value()) {
-            return fail(
-                "alarm source list has no semantic activity identity");
-        }
+    if (!activity_id.empty()) {
         profile.reinforcement_activity_id = std::move(activity_id);
     }
     std::optional<std::uint32_t> expected_region_count;
