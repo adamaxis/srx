@@ -89,9 +89,11 @@ local function actor_from_row(row)
             },
             armor_index = row.combat_armor_index,
             combat_traits = row.combat_traits,
-            equipped_action_code = row.action_code,
             action_result = 0,
-            action_profile_modifier_flags = row.combat_modifier_flags_df,
+            action_profile_options = {
+                primary = row.primary_action_profile_enabled,
+                secondary = row.secondary_action_profile_enabled,
+            },
             linked_action_profile_index = row.combat_profile_index_a0,
             auxiliary_roll_bonus = row.combat_auxiliary_roll_bonus,
             magic_cap = row.combat_magic_cap,

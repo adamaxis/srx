@@ -1447,6 +1447,23 @@ bool read_combat_traits(lua_State* state, const int combatant_index,
     return valid;
 }
 
+bool read_combat_action_profile_options(
+    lua_State* state, const int combatant_index,
+    ScriptCombatActionProfileOptions& options) {
+    lua_getfield(state, combatant_index, "action_profile_options");
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        return false;
+    }
+    const auto options_index = lua_absindex(state, -1);
+    const bool valid =
+        read_field_boolean(state, options_index, "primary", options.primary) &&
+        read_field_boolean(state, options_index, "secondary",
+                           options.secondary);
+    lua_pop(state, 1);
+    return valid;
+}
+
 bool read_field_signed_integer(lua_State* state, const int table_index,
                                const char* field, const int minimum,
                                const int maximum, int& value) {
@@ -7015,6 +7032,16 @@ ScriptCombatTraits script_combat_traits_from_source_values(
     };
 }
 
+ScriptCombatActionProfileOptions
+script_combat_action_profile_options_from_source_flags(
+    const std::uint8_t source_flags) noexcept {
+    // The source decision reads +0xDF bit 0 for the primary profile, and bit 1
+    // for the secondary profile. Decode those choices before Lua sees them.
+    // The flag values are independently named in combat.lua's prior policy.
+    return {(source_flags & 0x01U) != 0U,
+            (source_flags & 0x02U) != 0U};
+}
+
 std::uint16_t script_posture_reduction_percent_from_source_value(
     const std::uint8_t source_posture) noexcept {
     // [C] ROM 0x55F20 applies 25 percent per posture step with integer
@@ -8602,8 +8629,8 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
             read_combatant_fact("skills", "melee_combat",
                                 combatant.skills.melee_combat) &&
             read_combatant_byte("armor_index", combatant.armor_index) &&
-            read_combatant_byte("action_profile_modifier_flags",
-                                combatant.action_profile_modifier_flags) &&
+            read_combat_action_profile_options(
+                state, combatant_index, combatant.action_profile_options) &&
             read_combatant_byte("auxiliary_roll_bonus",
                                 combatant.auxiliary_roll_bonus) &&
             read_combatant_byte("magic_cap", combatant.magic_cap);
@@ -8954,16 +8981,16 @@ GameScriptRuntime::resolve_field_encounter_impl(
                                      actor.combatant.magic_cap) &&
                     read_combat_byte("armor_index",
                                      actor.combatant.armor_index) &&
-                    read_combat_byte("equipped_action_code",
-                                     actor.combatant.equipped_action_code) &&
-                    read_combat_byte("action_profile_modifier_flags",
-                                     actor.combatant.action_profile_modifier_flags) &&
+                    read_combat_action_profile_options(
+                        state, combat_index,
+                        actor.combatant.action_profile_options) &&
                     read_field_integer(state, combat_index,
                                        "linked_action_profile_index",
                                        0xFFFFU, profile_index);
                 if (valid_combatant) {
                     actor.combatant.interaction_flags =
                         interaction_to_source(combat_interaction);
+                    actor.combatant.equipped_action_code = action_code;
                     actor.combatant.linked_action_profile_index =
                         static_cast<std::uint16_t>(profile_index);
                     valid_combatant =
@@ -10920,8 +10947,6 @@ GameScriptRuntime::actor_heartbeat(
         set_trait("is_ghoul_bounty_target",
                   combatant.traits.is_ghoul_bounty_target);
         lua_setfield(state, table_index, "combat_traits");
-        set_integer("equipped_action_code",
-                    combatant.equipped_action_code);
         const auto equipped_action_id = script_item_id_from_source_code(
             combatant.equipped_action_code);
         if (equipped_action_id.has_value()) {
@@ -10931,8 +10956,13 @@ GameScriptRuntime::actor_heartbeat(
             lua_pushnil(state);
         }
         lua_setfield(state, table_index, "equipped_action_id");
-        set_integer("action_profile_modifier_flags",
-                    combatant.action_profile_modifier_flags);
+        lua_createtable(state, 0, 2);
+        const auto profile_options_index = lua_absindex(state, -1);
+        lua_pushboolean(state, combatant.action_profile_options.primary);
+        lua_setfield(state, profile_options_index, "primary");
+        lua_pushboolean(state, combatant.action_profile_options.secondary);
+        lua_setfield(state, profile_options_index, "secondary");
+        lua_setfield(state, table_index, "action_profile_options");
         set_integer("linked_action_profile_index",
                     combatant.linked_action_profile_index);
         if (!push_combat_inventory(state, combatant.item_codes,

@@ -1066,6 +1066,13 @@ struct ScriptCombatTraits {
     bool is_ghoul_bounty_target = false;
 };
 
+// Named combat profile choices decoded from the source actor record. Runtime
+// scripts receive these choices rather than the packed +0xDF bit field.
+struct ScriptCombatActionProfileOptions {
+    bool primary = false;
+    bool secondary = false;
+};
+
 // Source-derived facts consumed by the ROM close-target reaction path
 // (0x55C76). Scripts receive semantic actor state, never a byte-addressed
 // Genesis record.
@@ -1087,7 +1094,7 @@ struct ScriptCombatantFacts {
     std::uint8_t action_result = 0; // live +0x9F
     std::uint8_t armor_index = 0;
     std::uint8_t equipped_action_code = 0;
-    std::uint8_t action_profile_modifier_flags = 0; // live +0xDF
+    ScriptCombatActionProfileOptions action_profile_options;
     // 0xFFFF means the source +0xD8 linked-record relationship has not been
     // supplied; never substitute an unrelated runner menu-table index.
     std::uint16_t linked_action_profile_index = 0xFFFFU;
@@ -1359,6 +1366,10 @@ ScriptCombatCyberware script_combat_cyberware_from_source_flags(
 // the 0x17 spell-target branch, and 0x559BC consumes the ghoul selector [C].
 ScriptCombatTraits script_combat_traits_from_source_values(
     std::int8_t race_or_state, std::uint8_t class_code) noexcept;
+// ROM +0xDF bits 0/1 choose the primary/secondary dynamic action profile [C].
+ScriptCombatActionProfileOptions
+script_combat_action_profile_options_from_source_flags(
+    std::uint8_t source_flags) noexcept;
 std::uint16_t script_posture_reduction_percent_from_source_value(
     std::uint8_t source_posture) noexcept;
 std::optional<std::uint8_t>

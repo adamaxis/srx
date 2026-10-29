@@ -40,7 +40,7 @@ local function combatant(firearms, pistols, maxima, posture)
             qualifies_for_party_support_bonus = true,
             is_ghoul_bounty_target = false,
         },
-        action_profile_modifier_flags = 0,
+        action_profile_options = { primary = false, secondary = false },
         attributes = {
             body = 0,
             quickness = maxima[2],

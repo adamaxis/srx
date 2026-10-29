@@ -54,7 +54,7 @@ local function caster()
             shotguns = 0, melee_combat = 0,
         },
         magic_cap = 20,
-        action_profile_modifier_flags = 0,
+        action_profile_options = { primary = false, secondary = false },
         combat_traits = {
             ignores_cover_condition_penalty = true,
             adds_two_condition_difficulty = false,

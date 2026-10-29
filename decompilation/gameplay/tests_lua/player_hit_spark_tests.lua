@@ -53,9 +53,9 @@ local function combatant(record_type)
             is_ghoul_bounty_target = false,
         },
         armor_index = 0,
-        equipped_action_code = 1,
+        equipped_action_id = "test_weapon",
         cyberware = {},
-        action_profile_modifier_flags = 0,
+        action_profile_options = { primary = false, secondary = false },
         inventory = {},
     }
 end

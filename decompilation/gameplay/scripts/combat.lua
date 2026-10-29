@@ -277,10 +277,13 @@ local function ready_party_bonus(context)
 end
 
 local function dynamic_status_modifier(difficulty, attacker, linked, context)
-    local flags = attacker.action_profile_modifier_flags
-    local primary = (flags & E.CombatActionProfileFlag.PRIMARY) ~= 0
-    local secondary = not primary and
-        (flags & E.CombatActionProfileFlag.SECONDARY) ~= 0
+    -- ROM 0x55786/0x557EE/0x55804 selects the two action-profile paths;
+    -- the host has already translated +0xDF into these named choices.
+    local options = type(attacker.action_profile_options) == "table" and
+        attacker.action_profile_options or {}
+    local primary = options.primary == true
+    local secondary_requested = options.secondary == true
+    local secondary = not primary and secondary_requested
     if not primary and not secondary then
         return difficulty
     end
@@ -335,7 +338,7 @@ local function dynamic_status_modifier(difficulty, attacker, linked, context)
     if remaining <= 0 then
         return difficulty
     end
-    if (flags & E.CombatActionProfileFlag.SECONDARY) ~= 0 then
+    if secondary_requested then
         remaining = math.floor(remaining / 2)
     end
     return difficulty + remaining

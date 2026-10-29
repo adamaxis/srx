@@ -27,7 +27,7 @@ local function combatant(record_type, physical_meter)
                 breathing_out = false, unseen = false,
                 no_coverage_difficulty_bonus = false },
         },
-        action_profile_modifier_flags = 0,
+        action_profile_options = { primary = false, secondary = false },
         physical_meter = physical_meter,
         mental_meter = physical_meter,
         cyberware = {},

@@ -202,10 +202,6 @@ enum class Collision : std::int64_t {
     LOW_BITS = 0x1F,
     BLOCKED = 0x7F,
 };
-enum class CombatActionProfileFlag : std::int64_t {
-    PRIMARY = 0x1,
-    SECONDARY = 0x2,
-};
 enum class CombatInteractionFlag : std::int64_t {
     DEFENSE_DIFFICULTY_REDUCTION = 0x20,
     NO_COVERAGE_DIFFICULTY_BONUS = 0x80,

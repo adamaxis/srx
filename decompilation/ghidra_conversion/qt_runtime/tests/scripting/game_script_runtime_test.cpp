@@ -319,6 +319,25 @@ bool verify_combat_profile_trait_translation() {
     return true;
 }
 
+bool verify_action_profile_option_translation() {
+    using namespace shadowrun::ghidra_conversion::scripting;
+    // ROM 0x55786 tests +0xDF bit 0; 0x557EE/0x55804 test bit 1. Every byte
+    // value must become the two named choices seen by Lua. [C]
+    for (std::uint32_t raw_flags = 0U; raw_flags <= 0xFFU; ++raw_flags) {
+        const auto source_flags = static_cast<std::uint8_t>(raw_flags);
+        const auto actual =
+            script_combat_action_profile_options_from_source_flags(
+                source_flags);
+        if (actual.primary != ((raw_flags & 0x01U) != 0U) ||
+            actual.secondary != ((raw_flags & 0x02U) != 0U)) {
+            std::cerr << "action profile option translation mismatch for flags "
+                      << raw_flags << '\n';
+            return false;
+        }
+    }
+    return true;
+}
+
 bool verify_mode_one_semantic_fact_translation() {
     using namespace shadowrun::ghidra_conversion::scripting;
     const std::array<std::pair<std::uint8_t,
@@ -2026,6 +2045,7 @@ int main() {
         !verify_actor_behavior_profile_translation() ||
         !verify_combat_cyberware_translation() ||
         !verify_combat_profile_trait_translation() ||
+        !verify_action_profile_option_translation() ||
         !verify_posture_reduction_percent_translation() ||
         !verify_mode_one_semantic_fact_translation()) {
         return 1;
@@ -9463,7 +9483,7 @@ int main() {
     unresolved_weapon_context.projectile_action =
         ScriptWeaponActionId::warhawk;
     unresolved_weapon_context.projectile_attack_seed_pending = true;
-    shooter_facts.action_profile_modifier_flags = 0x01U;
+    shooter_facts.action_profile_options.primary = true;
     unresolved_weapon_context.combatant = shooter_facts;
     unresolved_weapon_context.ai_random_bound =
         [](const std::uint16_t bound)

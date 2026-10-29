@@ -1076,6 +1076,29 @@ bool action_delay_modifier_from_source_flags(
     return true;
 }
 
+bool append_action_profile_options(
+    const TsvDocument& source, const std::vector<std::string>& source_row,
+    const std::filesystem::path& path, const std::size_t row_number,
+    std::vector<std::string>& runtime_row, std::string& failure) {
+    const auto flags_column =
+        source.column_indexes.find("combat_modifier_flags_df");
+    lua_Integer flags = 0;
+    if (flags_column == source.column_indexes.end() ||
+        flags_column->second >= source_row.size() ||
+        !parse_integer(source_row[flags_column->second], flags) ||
+        flags < 0 || flags > 0xFF) {
+        failure = path.string() + ": row " +
+            std::to_string(row_number) +
+            " has invalid combat action-profile options";
+        return false;
+    }
+    // ROM 0x55786 tests +0xDF bit 0; 0x557EE/0x55804 test bit 1.
+    // Publish those decisions as named content facts, not a packed flag byte.
+    runtime_row.emplace_back((flags & 0x01) != 0 ? "true" : "false");
+    runtime_row.emplace_back((flags & 0x02) != 0 ? "true" : "false");
+    return true;
+}
+
 bool make_semantic_activity_actor_rows(
     const TsvDocument& source, const std::filesystem::path& path,
     TsvDocument& semantic, ActivityScriptIds& script_ids,
@@ -1118,6 +1141,21 @@ bool make_semantic_activity_actor_rows(
     semantic.columns.reserve(source.columns.size());
     for (const auto& source_column : source.columns) {
         if (is_source_only_column(source_column)) {
+            continue;
+        }
+        if (source_column == "combat_modifier_flags_df") {
+            for (const auto runtime_column : {
+                     std::string_view{"primary_action_profile_enabled"},
+                     std::string_view{"secondary_action_profile_enabled"}}) {
+                const auto index = semantic.columns.size();
+                if (!semantic.column_indexes.emplace(runtime_column,
+                                                      index).second) {
+                    failure = path.string() +
+                        ": actor catalog semantic columns contain a duplicate name";
+                    return false;
+                }
+                semantic.columns.emplace_back(runtime_column);
+            }
             continue;
         }
         const auto runtime_column = source_column == "tagged_template"
@@ -1211,6 +1249,14 @@ bool make_semantic_activity_actor_rows(
             if (is_source_only_column(source.columns[column])) {
                 continue;
             }
+            if (source.columns[column] == "combat_modifier_flags_df") {
+                if (!append_action_profile_options(
+                        source, source_row, path, row_index + 2U,
+                        runtime_row, failure)) {
+                    return false;
+                }
+                continue;
+            }
             if (column == tag_column->second) {
                 // Preserve the current host interpretation without exposing
                 // the tagged source pointer to Lua.
@@ -1278,6 +1324,21 @@ bool make_semantic_dynamic_actor_rows(
             source_column == "source_action_slot" ||
             source_column == "source_action_ammo" ||
             source_column == "source_action_counter") {
+            continue;
+        }
+        if (source_column == "combat_modifier_flags_df") {
+            for (const auto runtime_column : {
+                     std::string_view{"primary_action_profile_enabled"},
+                     std::string_view{"secondary_action_profile_enabled"}}) {
+                const auto index = semantic.columns.size();
+                if (!semantic.column_indexes.emplace(runtime_column,
+                                                      index).second) {
+                    failure = path.string() +
+                        ": dynamic actor semantic columns contain a duplicate name";
+                    return false;
+                }
+                semantic.columns.emplace_back(runtime_column);
+            }
             continue;
         }
         const auto runtime_column = source_column == "tagged_template"
@@ -1407,7 +1468,13 @@ bool make_semantic_dynamic_actor_rows(
                 source_column == "source_action_counter") {
                 continue;
             }
-            if (source_column == "scene" &&
+            if (source_column == "combat_modifier_flags_df") {
+                if (!append_action_profile_options(
+                        source, source_row, path, row_index + 2U,
+                        runtime_row, failure)) {
+                    return false;
+                }
+            } else if (source_column == "scene" &&
                 run_target_group_id != "none") {
                 // These imported actors are presented in the native gang
                 // encounter scene. Their source region selector identifies
@@ -2095,7 +2162,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "combat_melee_combat", "combat_sorcery",
               "combat_armor_index",
               "combat_race_or_state", "combat_class_code",
-              "combat_modifier_flags_df", "combat_profile_index_a0",
+              "combat_profile_index_a0",
               "combat_item_code_0", "combat_item_code_1",
               "combat_item_code_2", "combat_item_code_3",
               "combat_item_code_4", "combat_item_code_5",
@@ -2115,7 +2182,8 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "run_target_area", "run_target_event", "run_target_x",
               "run_target_y"},
              {},
-             {"activity_probe_enabled"}},
+             {"activity_probe_enabled", "primary_action_profile_enabled",
+              "secondary_action_profile_enabled"}},
             {"entities/world-activity-actors.tsv",
              "world_activity_actor_lists",
              {"scene", "source_order", "template_offset",
@@ -2129,7 +2197,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "combat_melee_combat", "combat_sorcery",
               "combat_armor_index",
               "combat_race_or_state", "combat_class_code",
-              "combat_modifier_flags_df", "combat_profile_index_a0",
+              "combat_profile_index_a0",
               "combat_item_code_0", "combat_item_code_1",
               "combat_item_code_2", "combat_item_code_3",
               "combat_item_code_4", "combat_item_code_5",
@@ -2146,7 +2214,8 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "combat_firearms", "combat_pistols", "combat_smgs",
               "combat_shotguns",
               "combat_auxiliary_roll_bonus"}, {},
-             {"activity_probe_enabled"}},
+             {"activity_probe_enabled", "primary_action_profile_enabled",
+              "secondary_action_profile_enabled"}},
             {"entities/conditional-actor-candidates.tsv",
              "conditional_actor_candidates",
              {"scene", "choice"}},

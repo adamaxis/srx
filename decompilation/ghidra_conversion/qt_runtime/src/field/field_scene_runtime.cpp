@@ -374,8 +374,9 @@ scripting::ScriptCombatantFacts script_combatant_facts(
         static_cast<std::int8_t>(record.species_index),
         record.archetype_index);
     facts.equipped_action_code = record.equipped_item_code;
-    facts.action_profile_modifier_flags =
-        record.action_profile_modifier_flags;
+    facts.action_profile_options =
+        scripting::script_combat_action_profile_options_from_source_flags(
+            record.action_profile_modifier_flags);
     // 0x55786 follows the actor's +0xD8 record link, then reads that linked
     // record's +0xA0 profile selector. The runner's magic menu table index is
     // unrelated, so leave this explicitly unresolved until the live link is
@@ -2098,8 +2099,9 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             actor.combatant.traits =
                 scripting::script_combat_traits_from_source_values(
                     parse_signed_byte_field(30U), parse_byte_field(31U));
-            actor.combatant.action_profile_modifier_flags =
-                parse_byte_field(32U);
+            actor.combatant.action_profile_options =
+                scripting::script_combat_action_profile_options_from_source_flags(
+                    parse_byte_field(32U));
             for (std::size_t index = 0U;
                  index < actor.combatant.item_codes.size(); ++index) {
                 actor.combatant.item_codes[index] =
