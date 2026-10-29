@@ -392,7 +392,6 @@ local function initial_state(context, profile)
         live_field_actor = context.live_field_actor == true,
         movement_scene_id = context.movement_scene_id,
         physical_condition = context.physical_condition,
-        source_record_slot = context.source_record_slot,
         -- Lua owns the mutable combat meters used by world-activity policy.
         -- The host supplies this record only at spawn and later combat results
         -- replace it through combat.lua.

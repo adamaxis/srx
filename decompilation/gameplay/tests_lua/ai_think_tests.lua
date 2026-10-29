@@ -993,10 +993,12 @@ heartbeat_context.entry_delay = 0
 heartbeat_context.entry_animation_frame_count = 1
 heartbeat_context.movement_allowed = true
 heartbeat_context.source_actor_posture = E.Posture.NEUTRAL
+heartbeat_context.source_record_slot = 7
 heartbeat_context.ai_target_candidates = { heartbeat_target }
 heartbeat_context.ai_random_bound = function() return 0 end
-check(ActorAI.heartbeat(heartbeat_context) ~= nil,
-      "dynamic enemy heartbeat accepts its source movement profile")
+check(ActorAI.heartbeat(heartbeat_context) ~= nil and
+      game.actors[heartbeat_actor_id].source_record_slot == nil,
+      "actor state keeps stable identity without caching the source record position")
 local heartbeat_state = game.actors[heartbeat_actor_id]
 heartbeat_state.transition_complete = true
 heartbeat_state.behavior_timer = 1
