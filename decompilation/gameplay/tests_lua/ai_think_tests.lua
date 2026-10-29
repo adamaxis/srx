@@ -124,8 +124,10 @@ field_actor_context.live_field_actor = false
 local detached_actor_state = R.initial_state(
     field_actor_context, R.source_profile(field_actor_context))
 check(field_actor_profile ~= nil and field_actor_state ~= nil and
+      field_actor_state.live_field_actor == true and
       field_actor_state.movement_current_heading == 0x4200 and
       detached_actor_state ~= nil and
+      detached_actor_state.live_field_actor == false and
       detached_actor_state.movement_current_heading == nil,
       "source patrol movement starts only for a live field actor [C]")
 

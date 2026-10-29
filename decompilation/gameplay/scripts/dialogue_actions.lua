@@ -4,9 +4,6 @@ local DialogueActions = {}
 local Registry = {}
 Registry.__index = Registry
 local StoryFlags = require("story_flags")
-local E = require("enums")
-local ActorPool = E.ActorPool
-local LAST_WORLD_ACTOR_SLOT = 9 -- ROM 0x1DED8 scans FF0400..FF0A00.
 
 local function is_identifier(value)
     return type(value) == "string" and value ~= "" and
@@ -195,12 +192,9 @@ local function register_core_actions(registry)
             "actor.cleanup_escort_records needs the Lua actor registry")
         local cleanup_count = 0
         for _, state in pairs(game.actors) do
-            local slot = type(state) == "table" and
-                state.source_record_slot or nil
             local facts = type(state) == "table" and
                 state.actor_facts or nil
-            if type(slot) == "number" and slot % 1 == 0 and
-               slot >= ActorPool.PARTY and slot <= LAST_WORLD_ACTOR_SLOT and
+            if type(state) == "table" and state.live_field_actor == true and
                type(facts) == "table" and
                facts.lifecycle.active and facts.behavior.escort then
                 state.source_record_cleanup_requested = true

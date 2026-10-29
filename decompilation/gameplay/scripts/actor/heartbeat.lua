@@ -96,6 +96,8 @@ function ActorAI.heartbeat(context)
     end
     state.physical_condition = context.physical_condition or
                                state.physical_condition
+    state.live_field_actor = context.live_field_actor == true or
+                             state.live_field_actor
     state.source_record_slot = context.source_record_slot or
                                state.source_record_slot
     state.movement_scene_id = context.movement_scene_id or

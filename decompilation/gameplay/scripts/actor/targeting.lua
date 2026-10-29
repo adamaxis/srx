@@ -389,6 +389,7 @@ local function initial_state(context, profile)
         action_id = action_id,
         action_item_id = context.action_item_id,
         actor_facts = copy_actor_facts(context.actor_facts),
+        live_field_actor = context.live_field_actor == true,
         movement_scene_id = context.movement_scene_id,
         physical_condition = context.physical_condition,
         source_record_slot = context.source_record_slot,
