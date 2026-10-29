@@ -45,19 +45,51 @@ check(companion_down.lifecycle.downed and
       not companion_down.recovery.party_wipe_imminent,
       "companion downing does not wipe a living leader")
 
--- Wipe: leader revived with floors, hired dismissed, nuyen penalty.
-local w = P.resolve_wipe_flat(1000, 0, 0x11, 0, 3, 0x01, 5, 5, 0x00, 0, 0)
-check(w[1] == 0x01, "leader flags cleared and active")
-check(w[2] == 6 and w[3] == 8, "meter floors 6/8")
-check(w[4] == 1 and w[5] == 0, "active hired dismissed")
-check(w[6] == 875, "nuyen minus 1/8")
-check(w[7] == P.WAKE.LITTLE_CHIBA, "bit0 clear wakes in Little Chiba")
-check(w[8] == 0 and w[9] == 0,
-      "0xC716 clears both hired +0x4C delay meters")
-local cap = P.resolve_wipe_flat(100000, 1, 0x51, 9, 10, 0, 0, 0, 0, 0, 0)
-check(cap[6] == 95000, "penalty capped at 5000")
-check(cap[2] == 9 and cap[3] == 10, "meters above floor kept")
-check(cap[7] == P.WAKE.DOCWAGON, "bit0 set calls DocWagon")
+local function recovery_facts(nuyen, motel_bill_paid, leader, companion_one,
+                              companion_two)
+    return {
+        wallet = { nuyen = nuyen },
+        motel_bill_paid = motel_bill_paid,
+        party = {
+            leader = leader,
+            companion_one = companion_one,
+            companion_two = companion_two,
+        },
+    }
+end
+
+-- ROM 0xC716/C726: revive the leader, floor both meters, dismiss active
+-- companions, clear their physical meters, and apply the wallet penalty.
+local w = P.resolve_party_wipe(recovery_facts(
+    1000, false,
+    { lifecycle = { active = true, downed = true, dead = false },
+      meters = { physical = 0, mental = 3 } },
+    { lifecycle = { active = true, downed = false, dead = false } },
+    { lifecycle = { active = false, downed = false, dead = false } }))
+check(w.leader.lifecycle.active and not w.leader.lifecycle.downed and
+      not w.leader.lifecycle.dead, "leader lifecycle is restored")
+check(w.leader.meters.physical == 6 and w.leader.meters.mental == 8,
+      "leader meter floors 6/8")
+check(w.companions.companion_one.dismissed and
+      not w.companions.companion_two.dismissed,
+      "active companion is dismissed")
+check(w.wallet.nuyen == 875, "nuyen minus 1/8")
+check(w.wake_destination == "little_chiba",
+      "unpaid motel bill selects Little Chiba")
+check(w.companions.companion_one.physical_meter == 0 and
+      w.companions.companion_two.physical_meter == 0,
+      "0xC716 clears both companion physical meters")
+local cap = P.resolve_party_wipe(recovery_facts(
+    100000, true,
+    { lifecycle = { active = true, downed = true, dead = true },
+      meters = { physical = 9, mental = 10 } },
+    { lifecycle = { active = false, downed = false, dead = false } },
+    { lifecycle = { active = false, downed = false, dead = false } }))
+check(cap.wallet.nuyen == 95000, "penalty capped at 5000")
+check(cap.leader.meters.physical == 9 and cap.leader.meters.mental == 10,
+      "meters above floor kept")
+check(cap.wake_destination == "docwagon",
+      "paid motel bill selects DocWagon")
 
 -- 0x391A repeats the source runner walk after the wipe recovery [C]. C++
 -- passes the effective player-record flags, with dismissed slots inactive.

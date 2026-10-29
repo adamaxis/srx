@@ -1612,6 +1612,47 @@ bool verify_party_runner_down_bridge(
                   "companion downing incorrectly recovered a living leader");
 }
 
+bool verify_party_wipe_recovery_bridge(
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts) {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    // ROM 0xC716/C726 restores the leader, dismisses active companions, and
+    // floors the leader's physical and mental meters.
+    ScriptPartyWipeRecoveryContext context{};
+    context.party[0] = {{true, true, false}, 0U, 3U};
+    context.party[1] = {{true, false, false}, 5U, 5U};
+    context.party[2] = {{false, false, false}, 0U, 0U};
+    context.nuyen = 1000U;
+    const auto decision = scripts.party_wipe_recovery(context);
+    if (!expect(decision.has_value() && decision->leader_active &&
+                    !decision->leader_downed && !decision->leader_dead &&
+                    decision->leader_physical_meter == 6U &&
+                    decision->leader_mental_meter == 8U &&
+                    decision->dismiss_companions[0] &&
+                    !decision->dismiss_companions[1] &&
+                    decision->companion_physical_meters[0] == 0U &&
+                    decision->companion_physical_meters[1] == 0U &&
+                    decision->remaining_nuyen == 875U &&
+                    decision->wake_destination ==
+                        ScriptPartyWakeDestination::little_chiba,
+                "party-wipe Lua bridge returned invalid recovery facts")) {
+        return false;
+    }
+
+    context.nuyen = 100000U;
+    context.motel_bill_paid = true;
+    context.party[0].physical_meter = 9U;
+    context.party[0].mental_meter = 10U;
+    const auto capped = scripts.party_wipe_recovery(context);
+    return expect(capped.has_value() &&
+                      capped->remaining_nuyen == 95000U &&
+                      capped->leader_physical_meter == 9U &&
+                      capped->leader_mental_meter == 10U &&
+                      capped->wake_destination ==
+                          ScriptPartyWakeDestination::docwagon,
+                  "party-wipe penalty cap or paid-bill destination changed");
+}
+
 } // namespace
 
 int main() {
@@ -1646,6 +1687,10 @@ int main() {
         return 1;
     }
     if (!verify_party_runner_down_bridge(scripts)) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    if (!verify_party_wipe_recovery_bridge(scripts)) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

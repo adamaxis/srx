@@ -5,14 +5,9 @@ local E = require("enums")
 
 local PartyDown = {}
 
-local ACTIVE = E.RunnerStatus.ACTIVE  -- 0x01
-local DOWN = E.RunnerStatus.DOWN      -- 0x10
-local DEAD = E.RunnerStatus.DEAD      -- 0x40
-
 PartyDown.LEADER_MIN_PHYSICAL = 6     -- 0xC750 [C]
 PartyDown.LEADER_MIN_MENTAL = 8       -- 0xC764 [C]
 PartyDown.NUYEN_PENALTY_CAP = 5000    -- 0xC7AA 0x1388 [C]
-PartyDown.WAKE = E.PartyWipeDestination -- 0xC778 FFFC1E bit0 [C]
 
 -- The source node's first longword is its page text pointer. Its second
 -- longword is 0xFFFFFFFF for each one-page wipe message; 0x1F3C4 then waits
@@ -84,25 +79,54 @@ function PartyDown.enter_runner_down_state(context)
     }
 end
 
--- Flat call: nuyen, story_bit0, then per slot (flags, physical, mental).
--- Returns { leader_flags, leader_physical, leader_mental, dismiss1,
---           dismiss2, nuyen, wake, hired1_delay, hired2_delay }.
-function PartyDown.resolve_wipe_flat(nuyen, story_bit0, f0, p0, m0, f1, _p1,
-                                     _m1, f2, _p2, _m2)
-    -- 0xC716 clears hired +0x4C first, so 0xC802 dismisses every active
-    -- hired runner [C]. The typed +0x4C delay-meter outputs are zeros.
-    local dismiss1 = byte(f1) & ACTIVE ~= 0 and 1 or 0
-    local dismiss2 = byte(f2) & ACTIVE ~= 0 and 1 or 0
-    -- 0xC726: leader clears DEAD/DOWN, sets ACTIVE; meters floor at 6/8.
-    local leader = (byte(f0) & ~(DEAD | DOWN) | ACTIVE) & 0xff
-    local physical = math.max(byte(p0), PartyDown.LEADER_MIN_PHYSICAL)
-    local mental = math.max(byte(m0), PartyDown.LEADER_MIN_MENTAL)
-    -- 0xC7A2: FFFBFE -= min(FFFBFE >> 3, 5000).
-    local funds = math.max(math.tointeger(nuyen or 0), 0)
-    funds = funds - math.min(funds >> 3, PartyDown.NUYEN_PENALTY_CAP)
-    local wake = (story_bit0 ~= 0 and story_bit0 ~= false)
-        and PartyDown.WAKE.DOCWAGON or PartyDown.WAKE.LITTLE_CHIBA
-    return { leader, physical, mental, dismiss1, dismiss2, funds, wake, 0, 0 }
+-- Recovery receives semantic roster and wallet state. The field host applies
+-- the returned lifecycle, meter, dismissal, and travel decisions to its
+-- native systems. ROM 0xC716 dismisses active companions, 0xC726 revives the
+-- leader with meter floors, and 0xC7A2 subtracts one eighth of current Nuyen
+-- up to 5,000; the paid motel bill selects the DocWagon arrival at 0xC778 [C].
+function PartyDown.resolve_party_wipe(context)
+    assert(type(context) == "table" and type(context.party) == "table" and
+           type(context.wallet) == "table",
+           "party_down: missing recovery facts")
+    local leader = context.party.leader
+    local companion_one = context.party.companion_one
+    local companion_two = context.party.companion_two
+    assert(type(leader) == "table" and type(leader.meters) == "table" and
+           type(leader.lifecycle) == "table" and
+           type(companion_one) == "table" and
+           type(companion_one.lifecycle) == "table" and
+           type(companion_two) == "table" and
+           type(companion_two.lifecycle) == "table",
+           "party_down: incomplete recovery facts")
+
+    local funds = math.max(math.tointeger(context.wallet.nuyen or 0), 0)
+    local penalty = math.min(funds >> 3, PartyDown.NUYEN_PENALTY_CAP)
+    return {
+        leader = {
+            lifecycle = { active = true, downed = false, dead = false },
+            meters = {
+                physical = math.max(
+                    math.tointeger(leader.meters.physical or 0),
+                    PartyDown.LEADER_MIN_PHYSICAL),
+                mental = math.max(
+                    math.tointeger(leader.meters.mental or 0),
+                    PartyDown.LEADER_MIN_MENTAL),
+            },
+        },
+        companions = {
+            companion_one = {
+                dismissed = companion_one.lifecycle.active == true,
+                physical_meter = 0,
+            },
+            companion_two = {
+                dismissed = companion_two.lifecycle.active == true,
+                physical_meter = 0,
+            },
+        },
+        wallet = { nuyen = funds - penalty },
+        wake_destination = context.motel_bill_paid == true
+            and "docwagon" or "little_chiba",
+    }
 end
 
 -- ROM 0x391A walks forward from FFFC04, wrapping after a type-2 record. The

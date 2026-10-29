@@ -365,44 +365,73 @@ void FieldSceneRuntime::complete_field_party_wipe() {
     // 0xC716 performs the common recovery after the optional run-failure page [C].
     auto& records = field_party_roster_.records();
     const auto previous_slot = field_party_roster_.active_slot();
-    const auto status = [this, &records](const std::size_t index) {
-        const auto flags =
-            static_cast<std::int64_t>(records[index].flags >> 8U);
-        return field_party_roster_.slot_active(index)
-            ? flags : (flags & ~std::int64_t{0x01});
-    };
+    scripting::ScriptPartyWipeRecoveryContext recovery_context{};
+    constexpr auto kActiveStatus = static_cast<std::uint8_t>(
+        srx::ActorStatus::ACTIVE);
+    constexpr auto kDownStatus = static_cast<std::uint8_t>(
+        srx::ActorStatus::DOWN);
+    constexpr auto kDeadStatus = static_cast<std::uint8_t>(
+        srx::ActorStatus::DEAD);
+    for (std::size_t member = 0U; member < records.size(); ++member) {
+        const auto lifecycle = static_cast<std::uint8_t>(
+            records[member].flags >> 8U);
+        recovery_context.party[member] = {
+            {field_party_roster_.slot_active(member) &&
+                 (lifecycle & kActiveStatus) != 0U,
+             (lifecycle & kDownStatus) != 0U,
+             (lifecycle & kDeadStatus) != 0U},
+            records[member].delay_meter,
+            records[member].behavior_meter};
+    }
+    recovery_context.nuyen = field_funds_.value_or(0U);
     const auto story = game_scripts_.story_state();
     const auto bit0 = story.find("story_flag_bit_0");
-    const bool docwagon = bit0 != story.end() && bit0->second;
-    const auto wipe = game_scripts_.call_integers(
-        "party_down", "resolve_wipe_flat",
-        {static_cast<std::int64_t>(field_funds_.value_or(0U)),
-         docwagon ? 1 : 0,
-         status(0U), records[0].delay_meter, records[0].behavior_meter,
-         status(1U), records[1].delay_meter, records[1].behavior_meter,
-         status(2U), records[2].delay_meter, records[2].behavior_meter});
-    if (!wipe.has_value() || wipe->size() != 9U) {
+    recovery_context.motel_bill_paid =
+        bit0 != story.end() && bit0->second;
+    const auto recovery = game_scripts_.party_wipe_recovery(recovery_context);
+    if (!recovery.has_value()) {
         failure_ = game_scripts_.failure();
         source_boundary("field.party_wipe.lua_failed");
         return;
     }
-    // ROM 0xC716 clears FF024C and FF034C before 0xC802 dismisses the hired
-    // records. Those +0x4C values are each typed delay meters [C].
-    records[1U].delay_meter = static_cast<std::uint8_t>((*wipe)[7U]);
-    records[2U].delay_meter = static_cast<std::uint8_t>((*wipe)[8U]);
+    // ROM 0xC716 clears both companions' physical meters before 0xC802
+    // dismisses any active companion [C].
     for (std::size_t index = 2U; index >= 1U; --index) {
-        if ((*wipe)[2U + index] != 0 &&
+        const auto companion = index - 1U;
+        records[index].delay_meter =
+            recovery->companion_physical_meters[companion];
+        if (recovery->dismiss_companions[companion] &&
             field_party_roster_.deactivate_party_member(index)) {
             source_boundary("field.party_wipe.hired_runner_dismissed");
         }
     }
+    auto leader_status = static_cast<std::uint8_t>(records[0].flags >> 8U);
+    if (recovery->leader_active) {
+        leader_status = static_cast<std::uint8_t>(
+            leader_status | kActiveStatus);
+    } else {
+        leader_status = static_cast<std::uint8_t>(
+            leader_status & static_cast<std::uint8_t>(~kActiveStatus));
+    }
+    if (recovery->leader_downed) {
+        leader_status = static_cast<std::uint8_t>(leader_status | kDownStatus);
+    } else {
+        leader_status = static_cast<std::uint8_t>(
+            leader_status & static_cast<std::uint8_t>(~kDownStatus));
+    }
+    if (recovery->leader_dead) {
+        leader_status = static_cast<std::uint8_t>(leader_status | kDeadStatus);
+    } else {
+        leader_status = static_cast<std::uint8_t>(
+            leader_status & static_cast<std::uint8_t>(~kDeadStatus));
+    }
     records[0].flags = static_cast<std::uint16_t>(
-        (records[0].flags & 0x00ffU) |
-        (static_cast<std::uint16_t>((*wipe)[0] & 0xff) << 8U));
-    records[0].delay_meter = static_cast<std::uint8_t>((*wipe)[1]);
-    records[0].behavior_meter = static_cast<std::uint8_t>((*wipe)[2]);
+        (records[0].flags & 0x00FFU) |
+        (static_cast<std::uint16_t>(leader_status) << 8U));
+    records[0].delay_meter = recovery->leader_physical_meter;
+    records[0].behavior_meter = recovery->leader_mental_meter;
     if (field_funds_.has_value()) {
-        field_funds_ = static_cast<std::uint32_t>((*wipe)[5]);
+        field_funds_ = recovery->remaining_nuyen;
     }
 
     // 0x391A does a normal roster walk after 0xC716 revives the leader. Lua
@@ -492,8 +521,11 @@ void FieldSceneRuntime::complete_field_party_wipe() {
     source_boundary("field.party_wipe.player_hud_and_projection_refreshed");
     // The source calls 0x38FA for the three player records [C]. The existing
     // host animation heartbeat owns that work [H].
-    source_boundary((*wipe)[6] != 0 ? "field.party_wipe.docwagon"
-                                    : "field.party_wipe.little_chiba");
+    source_boundary(
+        recovery->wake_destination ==
+                scripting::ScriptPartyWakeDestination::docwagon
+            ? "field.party_wipe.docwagon"
+            : "field.party_wipe.little_chiba");
     game_scripts_.set_location_context("field_map", "party_wipe",
                                        "field.world_event", "field_narrator");
     field_party_wipe_dialogue_stage_ = FieldPartyWipeDialogueStage::wake;
@@ -1123,6 +1155,8 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
                 static_cast<scripting::ScriptPartyMemberRole>(slot);
             constexpr auto kActiveStatus = static_cast<std::uint8_t>(
                 srx::ActorStatus::ACTIVE);
+            constexpr auto kDownStatus = static_cast<std::uint8_t>(
+                srx::ActorStatus::DOWN);
             constexpr auto kDeadStatus = static_cast<std::uint8_t>(
                 srx::ActorStatus::DEAD);
             for (std::size_t member = 0U; member < records.size(); ++member) {
@@ -1131,6 +1165,7 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
                 down_context.party[member] = {
                     field_party_roster_.slot_active(member) &&
                         (lifecycle & kActiveStatus) != 0U,
+                    (lifecycle & kDownStatus) != 0U,
                     (lifecycle & kDeadStatus) != 0U};
             }
             const auto down = game_scripts_.party_runner_down(down_context);

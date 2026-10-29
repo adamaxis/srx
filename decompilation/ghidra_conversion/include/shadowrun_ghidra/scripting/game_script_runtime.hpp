@@ -1097,6 +1097,7 @@ enum class ScriptPartyMemberRole : std::uint8_t {
 
 struct ScriptPartyMemberLifecycleFacts {
     bool active = false;
+    bool downed = false;
     bool dead = false;
 };
 
@@ -1108,6 +1109,36 @@ struct ScriptPartyRunnerDownContext {
 struct ScriptPartyRunnerDownDecision {
     bool downed = false;
     bool party_wipe_imminent = false;
+};
+
+enum class ScriptPartyWakeDestination : std::uint8_t {
+    little_chiba,
+    docwagon,
+};
+
+struct ScriptPartyMemberRecoveryFacts {
+    ScriptPartyMemberLifecycleFacts lifecycle;
+    std::uint8_t physical_meter = 0;
+    std::uint8_t mental_meter = 0;
+};
+
+struct ScriptPartyWipeRecoveryContext {
+    std::array<ScriptPartyMemberRecoveryFacts, 3> party{};
+    std::uint32_t nuyen = 0;
+    bool motel_bill_paid = false;
+};
+
+struct ScriptPartyWipeRecoveryDecision {
+    bool leader_active = false;
+    bool leader_downed = false;
+    bool leader_dead = false;
+    std::uint8_t leader_physical_meter = 0;
+    std::uint8_t leader_mental_meter = 0;
+    std::array<bool, 2> dismiss_companions{};
+    std::array<std::uint8_t, 2> companion_physical_meters{};
+    std::uint32_t remaining_nuyen = 0;
+    ScriptPartyWakeDestination wake_destination =
+        ScriptPartyWakeDestination::little_chiba;
 };
 
 enum class ScriptActorSpellFieldEffectKind : std::uint8_t {
@@ -1987,6 +2018,8 @@ public:
         ScriptPlayerDelayPurpose purpose);
     std::optional<ScriptPartyRunnerDownDecision> party_runner_down(
         const ScriptPartyRunnerDownContext& context);
+    std::optional<ScriptPartyWipeRecoveryDecision> party_wipe_recovery(
+        const ScriptPartyWipeRecoveryContext& context);
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
     std::optional<ScriptActorTargetListRebuildDecision>

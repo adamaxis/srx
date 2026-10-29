@@ -12564,9 +12564,11 @@ GameScriptRuntime::party_runner_down(
     lua_setfield(state, -2, "target_role");
     lua_createtable(state, 0, static_cast<int>(context.party.size()));
     for (std::size_t index = 0U; index < context.party.size(); ++index) {
-        lua_createtable(state, 0, 2);
+        lua_createtable(state, 0, 3);
         lua_pushboolean(state, context.party[index].active);
         lua_setfield(state, -2, "active");
+        lua_pushboolean(state, context.party[index].downed);
+        lua_setfield(state, -2, "downed");
         lua_pushboolean(state, context.party[index].dead);
         lua_setfield(state, -2, "dead");
         lua_setfield(state, -2, kRoleIds[index].data());
@@ -12605,6 +12607,179 @@ GameScriptRuntime::party_runner_down(
         return fail("party runner-down recovery result is invalid");
     }
 
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return result;
+}
+
+std::optional<ScriptPartyWipeRecoveryDecision>
+GameScriptRuntime::party_wipe_recovery(
+    const ScriptPartyWipeRecoveryContext& context) {
+    auto* state = impl_->state;
+    const auto stack_base = state == nullptr ? 0 : lua_gettop(state);
+    const auto fail = [this, state, stack_base](
+                          const std::string_view reason)
+        -> std::optional<ScriptPartyWipeRecoveryDecision> {
+        if (state != nullptr) {
+            lua_settop(state, stack_base);
+        }
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (state == nullptr) {
+        return fail("gameplay Lua party recovery state is unavailable");
+    }
+
+    static constexpr std::array<std::string_view, 3> kRoleIds{
+        "leader", "companion_one", "companion_two"};
+    if (!impl_->push_module("party_down")) {
+        return fail("gameplay Lua party_down module is missing");
+    }
+    lua_getfield(state, -1, "resolve_party_wipe");
+    if (!lua_isfunction(state, -1)) {
+        return fail("party_down.resolve_party_wipe is missing");
+    }
+    lua_remove(state, -2);
+
+    lua_createtable(state, 0, 3);
+    lua_createtable(state, 0, static_cast<int>(context.party.size()));
+    for (std::size_t index = 0U; index < context.party.size(); ++index) {
+        lua_createtable(state, 0, 2);
+        lua_createtable(state, 0, 3);
+        lua_pushboolean(state, context.party[index].lifecycle.active);
+        lua_setfield(state, -2, "active");
+        lua_pushboolean(state, context.party[index].lifecycle.downed);
+        lua_setfield(state, -2, "downed");
+        lua_pushboolean(state, context.party[index].lifecycle.dead);
+        lua_setfield(state, -2, "dead");
+        lua_setfield(state, -2, "lifecycle");
+        lua_createtable(state, 0, 2);
+        lua_pushinteger(state, context.party[index].physical_meter);
+        lua_setfield(state, -2, "physical");
+        lua_pushinteger(state, context.party[index].mental_meter);
+        lua_setfield(state, -2, "mental");
+        lua_setfield(state, -2, "meters");
+        lua_setfield(state, -2, kRoleIds[index].data());
+    }
+    lua_setfield(state, -2, "party");
+    lua_createtable(state, 0, 1);
+    lua_pushinteger(state, context.nuyen);
+    lua_setfield(state, -2, "nuyen");
+    lua_setfield(state, -2, "wallet");
+    lua_pushboolean(state, context.motel_bill_paid);
+    lua_setfield(state, -2, "motel_bill_paid");
+
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("party_down.resolve_party_wipe: " + stack_error(state));
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("party_down.resolve_party_wipe returned no decision");
+    }
+    const auto root_index = lua_absindex(state, -1);
+    const auto read_boolean_field = [state](const int table_index,
+                                             const char* field,
+                                             bool& value) {
+        lua_getfield(state, table_index, field);
+        const bool valid = lua_isboolean(state, -1) != 0;
+        if (valid) value = lua_toboolean(state, -1) != 0;
+        lua_pop(state, 1);
+        return valid;
+    };
+    const auto read_meter_field = [state](const int table_index,
+                                           const char* field,
+                                           std::uint8_t& value) {
+        lua_getfield(state, table_index, field);
+        std::uint32_t parsed = 0U;
+        const bool valid = read_integer(state, -1, 0xFFU, parsed);
+        lua_pop(state, 1);
+        if (valid) value = static_cast<std::uint8_t>(parsed);
+        return valid;
+    };
+
+    ScriptPartyWipeRecoveryDecision result{};
+    lua_getfield(state, root_index, "leader");
+    if (!lua_istable(state, -1)) {
+        return fail("party wipe leader result is invalid");
+    }
+    const auto leader_index = lua_absindex(state, -1);
+    lua_getfield(state, leader_index, "lifecycle");
+    if (!lua_istable(state, -1)) {
+        return fail("party wipe leader lifecycle is invalid");
+    }
+    const auto leader_lifecycle_index = lua_absindex(state, -1);
+    if (!read_boolean_field(leader_lifecycle_index, "active",
+                            result.leader_active) ||
+        !read_boolean_field(leader_lifecycle_index, "downed",
+                            result.leader_downed) ||
+        !read_boolean_field(leader_lifecycle_index, "dead",
+                            result.leader_dead)) {
+        return fail("party wipe leader lifecycle facts are invalid");
+    }
+    lua_getfield(state, leader_index, "meters");
+    if (!lua_istable(state, -1)) {
+        return fail("party wipe leader meters are invalid");
+    }
+    const auto leader_meters_index = lua_absindex(state, -1);
+    if (!read_meter_field(leader_meters_index, "physical",
+                          result.leader_physical_meter) ||
+        !read_meter_field(leader_meters_index, "mental",
+                          result.leader_mental_meter)) {
+        return fail("party wipe leader meter values are invalid");
+    }
+
+    lua_getfield(state, root_index, "companions");
+    if (!lua_istable(state, -1)) {
+        return fail("party wipe companion results are invalid");
+    }
+    const auto companions_index = lua_absindex(state, -1);
+    for (std::size_t index = 0U; index < result.dismiss_companions.size();
+         ++index) {
+        const auto role_id = kRoleIds[index + 1U];
+        lua_getfield(state, companions_index, role_id.data());
+        if (!lua_istable(state, -1)) {
+            return fail("party wipe companion result is invalid");
+        }
+        if (!read_boolean_field(-1, "dismissed",
+                                result.dismiss_companions[index]) ||
+            !read_meter_field(-1, "physical_meter",
+                              result.companion_physical_meters[index])) {
+            return fail("party wipe companion decision is invalid");
+        }
+        lua_pop(state, 1);
+    }
+
+    lua_getfield(state, root_index, "wallet");
+    if (!lua_istable(state, -1)) {
+        return fail("party wipe wallet result is invalid");
+    }
+    lua_getfield(state, -1, "nuyen");
+    std::uint32_t remaining_nuyen = 0U;
+    const bool valid_nuyen = read_integer(
+        state, -1, std::numeric_limits<std::uint32_t>::max(),
+        remaining_nuyen);
+    lua_pop(state, 1);
+    if (!valid_nuyen) {
+        return fail("party wipe wallet amount is invalid");
+    }
+    result.remaining_nuyen = remaining_nuyen;
+
+    lua_getfield(state, root_index, "wake_destination");
+    std::string wake_destination;
+    if (!read_string(state, -1, wake_destination)) {
+        return fail("party wipe destination is invalid");
+    }
+    if (wake_destination == "docwagon") {
+        result.wake_destination = ScriptPartyWakeDestination::docwagon;
+    } else if (wake_destination == "little_chiba") {
+        result.wake_destination = ScriptPartyWakeDestination::little_chiba;
+    } else {
+        return fail("party wipe destination is unknown");
+    }
+
+    if (!result.leader_active || result.leader_downed || result.leader_dead) {
+        return fail("party wipe did not restore the leader lifecycle");
+    }
     lua_settop(state, stack_base);
     impl_->failure.clear();
     return result;
