@@ -5064,6 +5064,24 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
     }
 }
 
+std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
+FieldSceneRuntime::current_world_activity_request_slots() const {
+    std::vector<WorldActivityRequestActorRecord> request_actors;
+    const auto scene_reference =
+        state_.field_scene_buffers.scene_reference;
+    for (const auto& actor : field_default_actors_) {
+        if (actor.scene_reference != scene_reference ||
+            !actor.source_record_slot.has_value()) {
+            continue;
+        }
+        request_actors.push_back({
+            static_cast<std::uint8_t>(*actor.source_record_slot),
+            actor.source_record_flags,
+            actor.source_behavior_flags});
+    }
+    return project_world_activity_request_slots(request_actors);
+}
+
 bool FieldSceneRuntime::retire_dialogue_escort_records() {
     for (auto& actor : field_default_actors_) {
         if (!actor.active || !actor.source_record_slot.has_value() ||
@@ -7445,15 +7463,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 return;
             }
             world_activity_request_state_.request_flag = *conditional_choice;
-            std::array<WorldActivityRequestSlot,
-                       kWorldActivityRequestSlotCount> request_slots{};
-            const auto& entities = state_.behavior_entities;
-            for (std::size_t index = 0U;
-                 index < request_slots.size() && index < entities.size(); ++index) {
-                request_slots[index].flags_byte =
-                    entities[index].active ? 0x01U : 0U;
-                request_slots[index].route_flags = entities[index].route_flags;
-            }
+            const auto request_slots = current_world_activity_request_slots();
             const bool activity_started =
                 ::shadowrun::ghidra_conversion::handle_world_activity_request(
                     world_activity_request_state_, request_slots,

@@ -495,5 +495,44 @@ int main() {
         return 15;
     }
 
+    // ROM 0x1E43C scans FF0400..FF1000 (13 records). The sixteen-record
+    // service at 0x0A8EA starts at FF0100, so source slots 3..15 map to scan
+    // indices 0..12; player slot 2 and slot 16 are outside this scan.
+    const std::vector<WorldActivityRequestActorRecord> source_records{
+        {2U, 0x01U, 0x80U},
+        {3U, 0x00U, 0x80U},
+        {9U, 0x01U, 0x80U},
+        {15U, 0x01U, 0x80U},
+        {16U, 0x01U, 0x80U},
+    };
+    const auto projected_slots =
+        project_world_activity_request_slots(source_records);
+    if (!expect(projected_slots[0].flags_byte == 0U &&
+                projected_slots[0].route_flags == 0x80U &&
+                projected_slots[6].flags_byte == 0x01U &&
+                projected_slots[6].route_flags == 0x80U &&
+                projected_slots[12].flags_byte == 0x01U &&
+                projected_slots[12].route_flags == 0x80U)) {
+        return 16;
+    }
+
+    WorldActivityRoutineRequestState projected_found{1U};
+    WorldActivityStartState projected_activity{};
+    if (!expect(handle_world_activity_request(
+                    projected_found, projected_slots, projected_activity) &&
+                projected_found.found_marker == 0U)) {
+        return 17;
+    }
+
+    const auto player_only_slots =
+        project_world_activity_request_slots({{2U, 0x01U, 0x80U}});
+    WorldActivityRoutineRequestState player_only{1U};
+    WorldActivityStartState player_only_activity{};
+    if (!expect(handle_world_activity_request(
+                    player_only, player_only_slots, player_only_activity) &&
+                player_only.found_marker == 0xFFU)) {
+        return 18;
+    }
+
     return 0;
 }

@@ -763,6 +763,8 @@ public:
     // 0x1F16A continuation through the normal field coordinator.
     bool dispatch_world_activity_extraction_result_for_dump(
         bool active_high_effect_actor_found);
+    std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
+    world_activity_request_slots_for_dump() const;
     bool field_world_effect_control_bit_for_dump() const noexcept {
         return field_movement_transition_state_.world_effect_control_bit;
     }
@@ -1762,6 +1764,8 @@ private:
         const ConversionAssetCatalog& catalog);
     void initialize_default_field_actors(std::uint16_t scene_reference);
     void advance_default_field_actors(bool source_target_list_service);
+    std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
+    current_world_activity_request_slots() const;
     void provide_source_profile_patrol_movement_services(
         scripting::ScriptActorBehaviorContext& context,
         DefaultFieldActorPresentation& actor);

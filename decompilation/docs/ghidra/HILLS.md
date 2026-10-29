@@ -968,6 +968,14 @@ Only the aligned absolute-long request test/clear operands exist; the remaining
 byte-pair hit at odd offset `0x1896C3` crosses data words `0x00DF`/`0x424F`.
 Computed/indirect writes and the physical automatic callback path remain open.
 
+The `0x1E43C` request callback now builds its scan from the live current-scene
+actor records. Source slots 3..15 map to its thirteen entries, matching the
+ROM's `FF0400` start relative to the `FF0100` actor service at `0x0A8EA`.
+Focused Debug/Release unit, world-activity, and pedestrian-scene CTests pass;
+the contacted slot-3 escort retains its active and escort bits in the scan
+through dialogue dismissal. The automatic `FFDF42` producer/physical trigger
+is still open; see the [conditional pedestrian runtime audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md#live-actor-projection-for-the-0x1e43c-scan-2026-10-28).
+
 The focused offscreen Debug/Release pedestrian/A800 rerun passed all 14 tests;
 the matching output directories contain 1,485 files per build with identical
 paths and SHA-256 hashes. These are internal regression artifacts only.

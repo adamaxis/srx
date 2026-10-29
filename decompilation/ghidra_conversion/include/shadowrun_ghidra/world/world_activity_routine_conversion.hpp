@@ -148,6 +148,19 @@ struct WorldActivityRequestSlot {
     std::uint8_t route_flags = 0; // +0xB0
 };
 
+struct WorldActivityRequestActorRecord {
+    std::uint8_t source_record_slot = 0; // FF0100-based 0x100-byte slot index
+    std::uint8_t flags_byte = 0; // +0x10
+    std::uint8_t route_flags = 0; // +0xB0
+};
+
+// ROM 0x1E43C starts its thirteen-record scan at FF0400. ROM 0x0A8EA's
+// sixteen-record service starts at FF0100, so this projects source slots
+// 3..15 into request-scan indices 0..12.
+std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
+project_world_activity_request_slots(
+    const std::vector<WorldActivityRequestActorRecord>& actor_records);
+
 struct WorldActivityRoutineRequestState {
     std::uint8_t request_flag = 0; // FFE183
     std::uint8_t found_marker = 0; // FFE181

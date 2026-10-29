@@ -872,11 +872,13 @@ bool FieldSceneRuntime::dispatch_world_activity_extraction_result_for_dump(
     // field-scene handler. This QA seam begins after the A800/contact trigger.
     world_activity_request_state_ = WorldActivityRoutineRequestState{};
     world_activity_request_state_.request_flag = 1U;
-    std::array<WorldActivityRequestSlot,
-               kWorldActivityRequestSlotCount> request_slots{};
+    std::vector<WorldActivityRequestActorRecord> request_actors;
     if (active_high_effect_actor_found) {
-        request_slots[0] = {0x01U, 0x80U};
+        // FF0400 is source slot 3 relative to the full FF0100 record array.
+        request_actors.push_back({3U, 0x01U, 0x80U});
     }
+    const auto request_slots =
+        project_world_activity_request_slots(request_actors);
     world_activity_request_start_state_ = WorldActivityStartState{};
     if (!handle_world_activity_request(
             world_activity_request_state_, request_slots,
@@ -911,6 +913,11 @@ bool FieldSceneRuntime::dispatch_world_activity_extraction_result_for_dump(
         return false;
     }
     return true;
+}
+
+std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
+FieldSceneRuntime::world_activity_request_slots_for_dump() const {
+    return current_world_activity_request_slots();
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 
