@@ -52,7 +52,7 @@ local function context(overrides)
         source_projection_active = true,
         source_think_suppressed = false,
         source_alarm_active = false,
-        source_scene_mode = E.SceneMode.STREET,
+        scene_mode = "street",
         world_activity_active = false,
         world_scene_state = E.EndingState.NONE,
         source_actor_posture = E.Posture.NEUTRAL,
@@ -492,7 +492,7 @@ local function guard_case(overrides, actor_overrides, line_clear)
         actor_facts = { lifecycle = { group_leader = true } },
         source_actor_posture = E.Posture.NEUTRAL,
         source_alarm_active = false,
-        source_scene_mode = E.SceneMode.BUILDING,
+        scene_mode = "building",
         action_line_clear = function() return line_clear ~= false end,
         ai_target_candidates = {
             { id = "party.runner.0", source_record_slot = 0,
@@ -514,7 +514,7 @@ s, c = guard_case()
 check(s.actor_facts.roles.spotted and
       s.field_event_request == E.EventFn.GUARD_SPOTS_YOU,
       "0x13F76 clear line and facing schedules GUARD_SPOTS_YOU in building mode")
-s, c = guard_case({ source_scene_mode = E.SceneMode.STREET })
+s, c = guard_case({ scene_mode = "street" })
 check(s.actor_facts.roles.spotted and
       s.field_event_request == nil,
       "0x13FF6 marks spotted outside building mode without the event")

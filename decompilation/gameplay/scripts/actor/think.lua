@@ -5,7 +5,7 @@ local I = require("lib.int68k")
 local EntityMotion = require("entity_motion")
 local ActorWaypointRoutes = require("data.actor_patrol_routes")
 local u8, u16, s8, s16 = I.u8, I.u16, I.s8, I.s16
-local AiTuning, SceneMode = E.AiTuning, E.SceneMode
+local AiTuning = E.AiTuning
 local ActionKind = R.ActionKind
 
 local function controlled_runner(context)
@@ -142,7 +142,7 @@ local function guard_spots_you(state, context, leader)
         return
     end
 
-    if context.source_scene_mode == SceneMode.BUILDING and
+    if context.scene_mode == "building" and
        not leader.actor_facts.interaction.unseen then
         -- 0x13FCC queues the security message only for a visible leader [C].
         state.field_event_request = E.EventFn.GUARD_SPOTS_YOU

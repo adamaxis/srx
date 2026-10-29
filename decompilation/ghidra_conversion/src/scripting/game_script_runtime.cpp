@@ -91,6 +91,22 @@ const char* target_selection_policy_id(
     return "standard";
 }
 
+const char* field_scene_mode_id(const ScriptFieldSceneMode mode) noexcept {
+    switch (mode) {
+    case ScriptFieldSceneMode::none:
+        return "none";
+    case ScriptFieldSceneMode::street:
+        return "street";
+    case ScriptFieldSceneMode::building:
+        return "building";
+    case ScriptFieldSceneMode::cave:
+        return "cave";
+    case ScriptFieldSceneMode::unknown:
+        return "unknown";
+    }
+    return "unknown";
+}
+
 std::optional<std::string_view> script_spell_id_from_action_code(
     const std::uint8_t action_code) {
     if (action_code == 0U) {
@@ -7978,25 +7994,7 @@ GameScriptRuntime::resolve_conditional_actor_selection(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "active_offer_id");
-    const char* scene_mode = "unknown";
-    switch (context.scene_mode) {
-    case ScriptFieldSceneMode::none:
-        scene_mode = "none";
-        break;
-    case ScriptFieldSceneMode::street:
-        scene_mode = "street";
-        break;
-    case ScriptFieldSceneMode::building:
-        scene_mode = "building";
-        break;
-    case ScriptFieldSceneMode::cave:
-        scene_mode = "cave";
-        break;
-    case ScriptFieldSceneMode::unknown:
-        scene_mode = "unknown";
-        break;
-    }
-    lua_pushstring(state, scene_mode);
+    lua_pushstring(state, field_scene_mode_id(context.scene_mode));
     lua_setfield(state, -2, "scene_mode");
     const char* scene_ten_variant =
         context.scene_ten_activity_variant ==
@@ -10579,7 +10577,12 @@ GameScriptRuntime::actor_heartbeat(
         }
         lua_setfield(state, -2, field);
     };
-    push_optional_actor_integer("source_scene_mode", context.source_scene_mode);
+    if (context.scene_mode.has_value()) {
+        lua_pushstring(state, field_scene_mode_id(*context.scene_mode));
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "scene_mode");
     push_optional_actor_integer("source_camera_x", context.source_camera_x);
     push_optional_actor_integer("source_camera_y", context.source_camera_y);
     push_optional_actor_integer("source_camera_limit_x",

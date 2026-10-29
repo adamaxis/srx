@@ -4306,8 +4306,9 @@ void FieldSceneRuntime::advance_default_field_actors(
             set_script_animation_facts(
                 context, actor.animation_id, actor.animation_complete);
             context.source_alarm_active = field_matrix_field_state_.alarm;
-            context.source_scene_mode =
-                field_movement_transition_state_.world_mode;
+            context.scene_mode =
+                scripting::script_field_scene_mode_from_source_word(
+                    field_movement_transition_state_.world_mode);
             context.world_activity_active =
                 world_frame_logic_state_.world_active != 0U;
             context.world_scene_state = world_frame_logic_state_.scene_state;
@@ -4337,8 +4338,9 @@ void FieldSceneRuntime::advance_default_field_actors(
             context.source_spawn_state_flags =
                 actor.source_spawn_state_flags;
             context.source_alarm_active = field_matrix_field_state_.alarm;
-            context.source_scene_mode =
-                field_movement_transition_state_.world_mode;
+            context.scene_mode =
+                scripting::script_field_scene_mode_from_source_word(
+                    field_movement_transition_state_.world_mode);
             // FFDDC6/FFDDC8 are the live camera origin; profile words +8/+10
             // are FFDDCE/FFDDD0, the scene's far camera bounds [C].
             const auto& field_profile = state_.field_scene_buffers.profile;

@@ -1779,7 +1779,7 @@ struct ScriptActorBehaviorContext {
     // field security fact is known; scene mode and camera/profile bounds are
     // populated from the live field state [C].
     std::optional<bool> source_alarm_active;
-    std::optional<std::uint16_t> source_scene_mode;
+    std::optional<ScriptFieldSceneMode> scene_mode;
     std::optional<std::uint16_t> source_camera_x;
     std::optional<std::uint16_t> source_camera_y;
     std::optional<std::uint16_t> source_camera_limit_x;
