@@ -26,10 +26,13 @@ local Item = {
 -- [H: codes are E.SpellType + 1 (code 12 = heal), i.e. flame dart/bolt and
 -- mana zap/blast; the names are not traced.]
 local SpellDeath = {
-    [1] = { pose = E.ActorPose.SPELL_DEATH_E0 },
-    [2] = { pose = E.ActorPose.SPELL_DEATH_E0, excluded_kind = E.SpriteType.THON },
-    [8] = { pose = E.ActorPose.SPELL_DEATH_E4 },
-    [9] = { pose = E.ActorPose.SPELL_DEATH_E4 },
+    [1] = { animation_variant = "spell_death_e0" },
+    [2] = {
+        animation_variant = "spell_death_e0",
+        excluded_kind = E.SpriteType.THON,
+    },
+    [8] = { animation_variant = "spell_death_e4" },
+    [9] = { animation_variant = "spell_death_e4" },
 }
 
 local function signed_byte(value)
@@ -537,9 +540,10 @@ local function commit_combatant_meters(target, defender, physical_meter,
         state.incoming_hit = {
             physical_meter = physical_meter,
             mental_meter = mental_meter,
-            spell_death_pose = physical_meter == 0 and spell_death ~= nil and
+            spell_death_variant = physical_meter == 0 and
+                spell_death ~= nil and
                 spell_death.excluded_kind ~= defender.record_type and
-                spell_death.pose or nil,
+                spell_death.animation_variant or nil,
         }
     end
     publish_player_hurt_event(

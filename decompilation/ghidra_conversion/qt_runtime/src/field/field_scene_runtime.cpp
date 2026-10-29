@@ -134,6 +134,19 @@ namespace {
 // longest 0x62AC list has 10 frames (0x75E8) [C], so 16 is headroom [H].
 constexpr std::uint8_t kActorArtFrameScanLimit = 16U;
 
+void set_script_animation_facts(
+    scripting::ScriptActorBehaviorContext& context,
+    const std::string_view animation_id, const bool animation_complete) {
+    // ROM 0xA93A lets ordinary C052/C062 poses and completed finite lists
+    // leave the behavior lock. Item spawning at 0x15186 masks the completion
+    // flag and accepts only the ordinary pose range; Lua receives those rules
+    // as gameplay facts, not the packed +0x16 word.
+    const bool ordinary_pose = animation_id == "idle" ||
+                               animation_id == "walk";
+    context.animation_blocks_behavior = !ordinary_pose && !animation_complete;
+    context.can_start_item_action = ordinary_pose;
+}
+
 void make_random_grid_black_transparent(QImage& image) {
     image = image.convertToFormat(QImage::Format_ARGB32);
     for (int y = 0; y < image.height(); ++y) {
@@ -3495,7 +3508,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
         context.source_action_ammo = actor.source_action_ammo;
         context.source_action_counter = actor.source_action_counter;
         context.source_physical_meter = actor.physical_meter;
-        context.source_animation_selector = actor.source_animation_selector;
+        set_script_animation_facts(
+            context, actor.animation_id, actor.animation_complete);
         if (actor.source_default_dynamic_profile ||
             actor.source_default_item_action_profile) {
             context.world_scene_state = world_frame_logic_state_.scene_state;
@@ -3521,14 +3535,17 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
         actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
         actor.action_delay = decision->action_delay;
+        actor.animation_direction = decision->direction;
+        actor.animation_id = decision->animation_id;
+        actor.animation_variant = decision->animation_variant;
+        actor.animation_frame = decision->animation_frame;
+        actor.animation_complete = decision->animation_complete;
         if (actor.source_default_dynamic_profile ||
             actor.source_default_item_action_profile) {
             actor.source_record_flags = decision->source_record_flags;
             actor.source_behavior_flags = decision->source_behavior_flags;
             actor.source_spawn_state_flags =
                 decision->source_spawn_state_flags;
-            actor.source_animation_selector =
-                decision->source_animation_selector;
             actor.combatant.source_flags = actor.source_record_flags;
         }
         if (decision->target_motion_effect_slot_request.has_value()) {
@@ -3715,8 +3732,6 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             advance_source_random_seed(field_random_seed_) & 0x000FU);
         actor.animation_direction = static_cast<std::uint8_t>(
             field_movement_direction_from_heading(actor.initial_heading));
-        actor.source_animation_selector = static_cast<std::uint16_t>(
-            actor.animation_direction * 4U);
         actor.movement_state.position_x = actor.world_position.x;
         actor.movement_state.position_y = actor.world_position.y;
         actor.movement_state.heading = actor.initial_heading;
@@ -3748,7 +3763,8 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         context.source_action_slot = actor.source_action_slot;
         context.source_action_ammo = actor.source_action_ammo;
         context.source_action_counter = actor.source_action_counter;
-        context.source_animation_selector = actor.source_animation_selector;
+        set_script_animation_facts(
+            context, actor.animation_id, actor.animation_complete);
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
         context.source_record_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
@@ -3788,11 +3804,11 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         actor.action_delay = decision->action_delay;
         actor.source_record_flags = decision->source_record_flags;
         actor.source_behavior_flags = decision->source_behavior_flags;
-        actor.source_animation_selector =
-            decision->source_animation_selector;
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
+        actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
+        actor.animation_complete = decision->animation_complete;
         actor.transition_started = decision->transition_started;
         actor.transition_complete = decision->transition_complete;
 
@@ -4013,8 +4029,8 @@ void FieldSceneRuntime::advance_default_field_actors(
                 actor.source_spawn_state_flags;
             context.source_physical_meter = actor.physical_meter;
             context.source_actor_posture = actor.combatant.posture;
-            context.source_animation_selector =
-                actor.source_animation_selector;
+            set_script_animation_facts(
+                context, actor.animation_id, actor.animation_complete);
             context.source_alarm_active = field_matrix_field_state_.alarm;
             context.source_scene_mode =
                 field_movement_transition_state_.world_mode;
@@ -4044,8 +4060,8 @@ void FieldSceneRuntime::advance_default_field_actors(
             context.source_action_slot = actor.source_action_slot;
             context.source_action_ammo = actor.source_action_ammo;
             context.source_action_counter = actor.source_action_counter;
-            context.source_animation_selector =
-                actor.source_animation_selector;
+            set_script_animation_facts(
+                context, actor.animation_id, actor.animation_complete);
             context.source_item_spawn_result =
                 actor.source_item_spawn_result;
             context.source_spawn_state_flags =
@@ -4620,10 +4636,13 @@ void FieldSceneRuntime::advance_default_field_actors(
                 *actor.source_record_slot);
         if (world_combat_record) {
             actor.source_record_flags = decision->source_record_flags;
-            actor.source_animation_selector =
-                decision->source_animation_selector;
             actor.combatant.source_flags = actor.source_record_flags;
         }
+        actor.animation_direction = decision->direction;
+        actor.animation_id = decision->animation_id;
+        actor.animation_variant = decision->animation_variant;
+        actor.animation_frame = decision->animation_frame;
+        actor.animation_complete = decision->animation_complete;
         if (dynamic_actor_behavior || source_default_item_action) {
             actor.source_behavior_flags = decision->source_behavior_flags;
             actor.source_spawn_state_flags =
@@ -5225,7 +5244,8 @@ bool FieldSceneRuntime::retire_dialogue_escort_records() {
         context.source_action_slot = actor.source_action_slot;
         context.source_action_ammo = actor.source_action_ammo;
         context.source_action_counter = actor.source_action_counter;
-        context.source_animation_selector = actor.source_animation_selector;
+        set_script_animation_facts(
+            context, actor.animation_id, actor.animation_complete);
         context.source_physical_meter = actor.physical_meter;
         context.movement_scene_id = actor.scene_reference;
         context.combatant = actor.combatant;
@@ -5319,9 +5339,10 @@ void FieldSceneRuntime::service_source_actor_weapon_action(
         static_cast<std::int16_t>(actor.combatant.record_type)};
     spawn_state.linked_target = SpawnEntityLinkedState{
         target->world_x, target->world_y, 0x01U, false};
-    // +0x16 is the selected source list. C052/C062 are within the ordinary
-    // spawn window; C042, C072, and C082 are greater than 0x3C and are gated.
-    spawn_state.animation_counter = actor.source_animation_selector;
+    // 0x13FFE calls 0x1514E, whose 0x15186..0x15192 gate accepts only the
+    // ordinary C052/C062 poses. Carry that as an animation policy fact.
+    spawn_state.action_animation_available =
+        actor.animation_id == "idle" || actor.animation_id == "walk";
     spawn_state.global_mode = context.world_scene_state;
     spawn_state.entity_flags = actor.source_record_flags;
     if (actor.source_action_slot < actor.combatant.item_phases.size()) {
@@ -5553,21 +5574,16 @@ FieldSceneRuntime::default_actor_sprite_view(
             artwork->hurt_origin_y[direction][frame]};
     }
     if (actor.animation_id == "down") {
-        // The source selector preserves the spell-death list; Lua owns its
-        // frame index [C: 0xB0AC/0xB0E4/0x600E].
-        const auto selector = actor.source_animation_selector;
-        const auto e0 = static_cast<std::uint16_t>(
-            srx::ActorPose::SPELL_DEATH_E0);  // pose base 0xE0 [C]
-        const auto e4 = static_cast<std::uint16_t>(
-            srx::ActorPose::SPELL_DEATH_E4);  // pose base 0xE4 [C]
+        // Spell-death art is selected by the semantic variant returned from
+        // Lua; the ROM callbacks at 0xB0AC/0xB0E4 select distinct lists [C].
         const std::vector<QImage>* images = nullptr;
         const std::vector<int>* origin_x = nullptr;
         const std::vector<int>* origin_y = nullptr;
-        if (selector == e0) {
+        if (actor.animation_variant == "spell_death_e0") {
             images = &artwork->spell_death_e0_images;
             origin_x = &artwork->spell_death_e0_origin_x;
             origin_y = &artwork->spell_death_e0_origin_y;
-        } else if (selector == e4) {
+        } else if (actor.animation_variant == "spell_death_e4") {
             images = &artwork->spell_death_e4_images;
             origin_x = &artwork->spell_death_e4_origin_x;
             origin_y = &artwork->spell_death_e4_origin_y;
@@ -6054,10 +6070,8 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
                    : static_cast<std::uint8_t>(
                          advance_source_random_seed(field_random_seed_) &
                          0x0FU));
-        actor.animation_direction = 0U;
-        actor.source_animation_selector = static_cast<std::uint16_t>(
-            field_movement_direction_from_heading(actor.initial_heading) *
-            4U);
+        actor.animation_direction = static_cast<std::uint8_t>(
+            field_movement_direction_from_heading(actor.initial_heading));
         actor.movement_state.position_x = actor.world_position.x;
         actor.movement_state.position_y = actor.world_position.y;
         actor.movement_state.heading = actor.initial_heading;
@@ -6100,8 +6114,8 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         context.source_action_slot = actor.source_action_slot;
         context.source_action_ammo = actor.source_action_ammo;
         context.source_action_counter = actor.source_action_counter;
-        context.source_animation_selector =
-            actor.source_animation_selector;
+        set_script_animation_facts(
+            context, actor.animation_id, actor.animation_complete);
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
         context.world_activity_active =
             world_frame_logic_state_.world_active != 0U;
@@ -6128,11 +6142,11 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.action_delay = decision->action_delay;
         actor.source_record_flags = decision->source_record_flags;
         actor.source_behavior_flags = decision->source_behavior_flags;
-        actor.source_animation_selector =
-            decision->source_animation_selector;
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
+        actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
+        actor.animation_complete = decision->animation_complete;
         actor.transition_started = decision->transition_started;
         actor.transition_complete = decision->transition_complete;
 
@@ -11488,7 +11502,11 @@ void FieldSceneRuntime::service_player_weapon_action(
     spawn_state.parent.field_0x9d = runner.magic_force;
     spawn_state.equipment = EntityEquipmentState{
         runner.ammo_rounds, static_cast<std::int16_t>(runner.record_type)};
-    spawn_state.animation_counter = field_entity_animation_.frame;
+    // The player route historically supplied its rendered frame index here;
+    // that index is a small host presentation value, not the actor's source
+    // pose word. Player input readiness and the action-delay field above own
+    // this route, so the native action policy leaves this extra gate open.
+    spawn_state.action_animation_available = true;
     spawn_state.global_mode = static_cast<std::uint8_t>(
         field_runtime_state_.field_scene_gate);
     spawn_state.entity_flags = spawn_state.parent.flags;
@@ -12215,7 +12233,8 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_behavior_flags = actor.source_behavior_flags;
-        context.source_animation_selector = actor.source_animation_selector;
+        set_script_animation_facts(
+            context, actor.animation_id, actor.animation_complete);
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
         context.source_physical_meter = actor.physical_meter;
         if (dynamic_actor_behavior || actor.source_default_item_action_profile) {
@@ -12227,8 +12246,8 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             context.source_action_slot = actor.source_action_slot;
             context.source_action_ammo = actor.source_action_ammo;
             context.source_action_counter = actor.source_action_counter;
-            context.source_animation_selector =
-                actor.source_animation_selector;
+            set_script_animation_facts(
+                context, actor.animation_id, actor.animation_complete);
             context.source_item_spawn_result =
                 actor.source_item_spawn_result;
             context.source_spawn_state_flags =
@@ -12373,7 +12392,9 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         }
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
+        actor.animation_variant = decision->animation_variant;
         actor.animation_frame = decision->animation_frame;
+        actor.animation_complete = decision->animation_complete;
         const bool world_combat_record =
             actor.source_record_slot.has_value() &&
             static_cast<std::uint8_t>(*actor.source_record_slot) >=
@@ -12384,8 +12405,6 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 *actor.source_record_slot);
         if (world_combat_record) {
             actor.source_record_flags = decision->source_record_flags;
-            actor.source_animation_selector =
-                decision->source_animation_selector;
             actor.combatant.source_flags = actor.source_record_flags;
         }
         if (dynamic_actor_behavior) {

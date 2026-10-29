@@ -9,7 +9,6 @@ local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
 local ActionKind = R.ActionKind   -- from actor/tables.lua
 local ActionMotionDistanceBounds = R.ActionMotionDistanceBounds   -- from actor/tables.lua
 local EntityMotionDistanceBounds = R.EntityMotionDistanceBounds   -- from actor/tables.lua
-local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
 local profiles = R.profiles   -- from actor/tables.lua
 local ActorProfileCatalog = require("data.actor_profiles")
 local source_close_range_threshold = R.source_close_range_threshold   -- from actor/tables.lua
@@ -381,9 +380,6 @@ local function initial_state(context, profile)
         source_action_slot = context.source_action_slot or 0,
         source_action_ammo = context.source_action_ammo or 0,
         source_action_counter = context.source_action_counter or 0,
-        source_animation_selector = context.source_animation_selector or
-            idle_pose_selectors[
-                direction_from_heading(context.initial_heading) + 1],
         package_id = profile.package_id,
         weapon_item_id = profile.weapon_item_id,
         direction = direction_from_heading(context.initial_heading),

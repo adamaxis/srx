@@ -106,7 +106,7 @@ void prepare_special_spawn_record(SpawnEntityRecordState& record);
 
 enum class EntitySpawnCycleAction {
     global_mode_blocked,
-    animation_window_expired,
+    action_animation_unavailable,
     behavior_gate_blocked,
     ammo_service_unresolved,
     ammo_service_inactive,
@@ -120,7 +120,7 @@ struct EntitySpawnCycleState {
     SpawnEntityParentState parent{};
     EntityEquipmentState equipment{};
     std::optional<SpawnEntityLinkedState> linked_target;
-    std::uint16_t animation_counter = 0;
+    bool action_animation_available = true;
     std::uint8_t global_mode = 0;
     bool collision_gate_active = false;
     // The byte at A0 + 0x10. Bit 1 controls the late-window overflow latch.

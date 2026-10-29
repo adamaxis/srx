@@ -1682,9 +1682,11 @@ struct ScriptActorBehaviorContext {
     std::uint8_t source_action_slot = 0;
     std::uint8_t source_action_ammo = 0;
     std::uint8_t source_action_counter = 0;
-    // Live +0x16 selector. C042 is the directional item-action pose family;
-    // C052/C062 are the idle and movement families.
-    std::uint16_t source_animation_selector = 0;
+    // Animation policy is exposed as game state, not as the source record's
+    // packed pose selector. The host derives these facts from the actor's
+    // current semantic animation state.
+    bool animation_blocks_behavior = false;
+    bool can_start_item_action = true;
     std::optional<ScriptActorItemSpawnResult> source_item_spawn_result;
     // ROM 0x13D84 indexes the world-actor route-distance table with live
     // record +0x4D (the typed combatant posture fact).
@@ -1771,8 +1773,9 @@ struct ScriptActorBehaviorDecision {
     bool think_token_claimed = false; // FFE175 was consumed in this heartbeat [C]
     // Lua returns the shared FFE188 byte after the THON period path [C].
     std::optional<std::uint8_t> source_thon_period_counter;
-    std::uint16_t source_animation_selector = 0;
     std::optional<std::uint16_t> animation_selector;
+    bool animation_complete = false;
+    std::string animation_variant;
     bool combat_action_requested = false;
     bool transition_started = false;
     bool transition_complete = false;

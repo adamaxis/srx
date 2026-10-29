@@ -330,7 +330,7 @@ local function classify_item_dispatch(state, context, target)
     if context.source_projection_active ~= true then
         return "offscreen"
     end
-    if (state.source_animation_selector & 0x07ff) > 0x003c then
+    if context.can_start_item_action ~= true then
         return "item_pose_gated"
     end
     if not action_line_clear(context, target) then
@@ -374,7 +374,6 @@ local function select_c082_directional_pose(state, heading)
     state.direction = direction
     state.animation_id = "spell"
     state.animation_selector = selector
-    state.source_animation_selector = selector
     state.animation_frame = 0
     state.animation_accumulator = 0
     return direction
@@ -423,9 +422,7 @@ local function begin_dynamic_item_action(state, context, target)
     state.animation_accumulator = 0
     state.animation_increment = animation.rate
     state.animation_period = Animator.PERIOD
-    state.source_animation_selector =
-        item_action_pose_selectors[direction + 1]
-    state.animation_selector = state.source_animation_selector
+    state.animation_selector = item_action_pose_selectors[direction + 1]
     state.item_action_complete = false
     state.action_delay = source_action_delay(context, state, 0)
     state.ai_target_engaged = false
@@ -951,7 +948,6 @@ local function begin_dynamic_target_action(state, context, target)
     state.animation_accumulator = 0
     state.direction = direction
     state.animation_selector = Animator.Pose.ACTION + direction * 4
-    state.source_animation_selector = state.animation_selector
     state.animation_increment = animation.rate
     state.animation_period = Animator.PERIOD
     state.action_animation_complete = false

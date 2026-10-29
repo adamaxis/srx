@@ -28,9 +28,7 @@ end
 
 local function thon_period_path(state, context)
     -- ROM 0x13A4C gates on +0x16 before decrementing shared FFE188 [C].
-    local selector = s16(u16(context.source_animation_selector or
-                              state.source_animation_selector or 0))
-    if selector > AiTuning.ANIM_BUSY then
+    if context.animation_blocks_behavior == true then
         return "thon_busy"
     end
 
@@ -234,7 +232,7 @@ local function think_gate(state, context)
     if leader.distance >= AiTuning.WATCH_DIST then
         return "patrol"
     end
-    if (context.source_animation_selector or 0) <= AiTuning.ANIM_BUSY then
+    if context.animation_blocks_behavior ~= true then
         state.watch_heading = u16(leader.heading)
     end
     return "watch"
@@ -265,8 +263,8 @@ local function select_think_path(state, context)
     return state.ai_think_path
 end
 
-local function set_idle(state)
-    if (state.source_animation_selector or 0) > AiTuning.ANIM_BUSY then
+local function set_idle(state, context)
+    if context.animation_blocks_behavior == true then
         return
     end
     state.movement_active = false
@@ -280,7 +278,7 @@ end
 
 local function apply_flee(state, context)
     if context.source_projection_active ~= true then
-        set_idle(state)
+        set_idle(state, context)
         return
     end
     if not state.actor_facts.behavior.fleeing then
@@ -328,12 +326,12 @@ local function apply_flee(state, context)
     state.movement_active = true
 end
 
-local function apply_watch(state)
+local function apply_watch(state, context)
     if type(state.watch_heading) ~= "number" then
         return
     end
     state.movement_current_heading = u16(state.watch_heading)
-    set_idle(state)
+    set_idle(state, context)
 end
 
 local function actor_spawn_record(context)
@@ -349,7 +347,7 @@ local function set_route_target(state, x, y)
     state.ai_route_target_y = u16(y)
 end
 
-local function stop_route(state)
+local function stop_route(state, context)
     -- 0x1460E clears the current walk continuation when the selected point
     -- is within the source arrival metric [C]. The route is cleared here
     -- unconditionally because set_idle returns early while a busy animation
@@ -357,7 +355,7 @@ local function stop_route(state)
     state.movement_active = false
     state.movement_heading = nil
     state.movement_route_distance = nil
-    set_idle(state)
+    set_idle(state, context)
 end
 
 local function measure_route_target(state, context)
@@ -379,13 +377,13 @@ local function measure_route_target(state, context)
     return measured
 end
 
-local function continue_route(state, measured)
+local function continue_route(state, measured, context)
     if measured.step_cost < AiTuning.ARRIVE_DIST then
-        stop_route(state)
+        stop_route(state, context)
         return
     end
     -- 0x145A2 returns before installing a new route while +0x16 is busy [C].
-    if (state.source_animation_selector or 0) > AiTuning.ANIM_BUSY then
+    if context.animation_blocks_behavior == true then
         return
     end
     state.movement_heading = u16(measured.heading)
@@ -489,7 +487,7 @@ local function apply_follow_destination(state, context)
     set_route_target(state, target_x, target_y)
     local measured = measure_route_target(state, context)
     if measured ~= nil then
-        continue_route(state, measured)
+        continue_route(state, measured, context)
     end
 end
 
@@ -512,10 +510,10 @@ local function apply_patrol(state, context)
         return
     end
     if measured.step_cost >= AiTuning.ARRIVE_DIST then
-        continue_route(state, measured)
+        continue_route(state, measured, context)
         return
     end
-    stop_route(state)
+    stop_route(state, context)
 
     local group_leader = type(route) == "table"
         and route.group_leader == true
@@ -597,7 +595,7 @@ local function apply_think_result(state, context, path)
         return true
     elseif path == "thon_idle" then
         -- The 0xB45C idle/stand continuation is represented by set_idle [C].
-        set_idle(state)
+        set_idle(state, context)
         return true
     elseif path == "thon_action" then
         local audio_event = state.ai_think_audio_event
@@ -608,10 +606,10 @@ local function apply_think_result(state, context, path)
         return true
     elseif path == "hold" then
         state.watch_heading = nil
-        set_idle(state)
+        set_idle(state, context)
         return true
     elseif path == "watch" then
-        apply_watch(state)
+        apply_watch(state, context)
         return true
     elseif path == "patrol" then
         apply_patrol(state, context)

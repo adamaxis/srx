@@ -214,7 +214,9 @@ int main() {
     cycle_state.parent = SpawnEntityParentState{
         0x1000U, 0x2000U, 0x4000U, 0x08U, 0x01U, 0x08U, 0x22U};
     cycle_state.equipment = EntityEquipmentState{6U, 2};
-    cycle_state.animation_counter = 0x0010U;
+    // ROM 0x15186..0x15192 accepts the ordinary animation range; native
+    // callers represent that source condition as an explicit gameplay fact.
+    cycle_state.action_animation_available = true;
     cycle_state.global_mode = 2U;
     cycle_state.source_status_flags = 0x02U;
     std::vector<char> cycle_events;
@@ -430,7 +432,8 @@ int main() {
     }
 
     EntitySpawnCycleState expired_state = cycle_state;
-    expired_state.animation_counter = 0x003DU;
+    // This actor is in an animation that does not allow a new item action.
+    expired_state.action_animation_available = false;
     expired_state.entity_flags = 0x02U;
     bool gate_called = false;
     const auto expired = process_entity_spawn_cycle(
@@ -444,7 +447,8 @@ int main() {
         {},
         {},
         {});
-    if (expect(expired.action == EntitySpawnCycleAction::animation_window_expired &&
+    if (expect(expired.action ==
+                   EntitySpawnCycleAction::action_animation_unavailable &&
                expired.overflow_latch_set && !gate_called) != 0) {
         return 17;
     }

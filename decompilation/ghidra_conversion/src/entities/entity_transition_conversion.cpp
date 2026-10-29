@@ -195,8 +195,8 @@ EntitySpawnCycleResult process_entity_spawn_cycle(
         return result;
     }
 
-    if ((state.animation_counter & 0x07FFU) > 0x003CU) {
-        result.action = EntitySpawnCycleAction::animation_window_expired;
+    if (!state.action_animation_available) {
+        result.action = EntitySpawnCycleAction::action_animation_unavailable;
         result.overflow_latch_set = (state.entity_flags & 0x02U) != 0U;
         return result;
     }

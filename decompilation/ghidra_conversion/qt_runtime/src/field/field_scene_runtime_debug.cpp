@@ -1733,26 +1733,6 @@ bool FieldSceneRuntime::schedule_default_actor_world_activity_for_dump(
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint16_t>
-FieldSceneRuntime::default_actor_source_animation_selector_for_dump(
-    const std::uint16_t source_order) const noexcept {
-    const auto scene_reference = state_.field_scene_buffers.scene_reference;
-    const auto actor = std::find_if(
-        field_default_actors_.begin(), field_default_actors_.end(),
-        [scene_reference, source_order](
-            const DefaultFieldActorPresentation& candidate) {
-            return candidate.scene_reference == scene_reference &&
-                   candidate.active && candidate.source_order == source_order;
-        });
-    return actor == field_default_actors_.end()
-               ? std::nullopt
-               : std::optional<std::uint16_t>{
-                     actor->source_animation_selector};
-}
-#endif // SHADOWRUN_QT_QA_DRIVER
-
-
-#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint8_t>
 FieldSceneRuntime::default_actor_physical_meter_for_dump(
     const std::uint16_t source_order) const noexcept {

@@ -3524,7 +3524,7 @@ int run_field_npc_item_action_qa(
         std::cerr << "NPC item-action QA: cannot create trace file\n";
         return 3;
     }
-    trace << "field_frame\tanimation\tframe\tselector\tammo\ttarget_distance"
+    trace << "field_frame\tanimation\tframe\tdirection\tammo\ttarget_distance"
              "\tprojectile_spawn_count\taudio_0x1C_count\n";
     const auto count_boundary = [&source_boundaries](
                                     const std::size_t begin,
@@ -3553,8 +3553,8 @@ int run_field_npc_item_action_qa(
             field_scene.default_actor_animation_id_for_dump(0U);
         const auto animation_frame =
             field_scene.default_actor_animation_frame_for_dump(0U);
-        const auto selector =
-            field_scene.default_actor_source_animation_selector_for_dump(0U);
+        const auto direction =
+            field_scene.default_actor_direction_for_dump(0U);
         const auto ammo =
             field_scene.default_actor_source_action_ammo_for_dump(0U);
         const auto distance =
@@ -3564,8 +3564,8 @@ int run_field_npc_item_action_qa(
                       ? std::to_string(*animation_frame)
                       : "<none>")
               << '\t'
-              << (selector.has_value()
-                      ? std::to_string(*selector)
+              << (direction.has_value()
+                      ? std::to_string(*direction)
                       : "<none>")
               << '\t'
               << (ammo.has_value() ? std::to_string(*ammo) : "<none>")
@@ -3619,10 +3619,10 @@ int run_field_npc_item_action_qa(
     if ((rotated_heading & 0x8000U) != 0U) {
         rotated_heading = static_cast<std::uint16_t>(rotated_heading + 1U);
     }
-    const auto expected_pose_selector = static_cast<std::uint16_t>(
-        0x0040U + (rotated_heading & 0x0007U) * 4U);
-    const auto shot_selector =
-        field_scene.default_actor_source_animation_selector_for_dump(0U);
+    const auto expected_direction = static_cast<std::uint8_t>(
+        rotated_heading & 0x0007U);
+    const auto shot_direction =
+        field_scene.default_actor_direction_for_dump(0U);
     const auto shot_animation =
         field_scene.default_actor_animation_id_for_dump(0U);
     const auto ammo_after =
@@ -3632,21 +3632,20 @@ int run_field_npc_item_action_qa(
     const bool actual_saved = save("actual.bmp", shot_image);
     if (!shot_saved || !actual_saved ||
         shot_animation != std::optional<std::string>{"weapon"} ||
-        !shot_selector.has_value() ||
-        (*shot_selector & 0x7FFFU) != expected_pose_selector ||
+        shot_direction != std::optional<std::uint8_t>{expected_direction} ||
         ammo_after != std::optional<std::uint8_t>{39U} ||
         shot_audio_count != 1U ||
         !field_hud_chrome_survives(shot_image, asset_root)) {
         std::cerr << "NPC item-action QA: spawn did not publish the ROM C042"
-                  << " pose/ammo/audio facts; frame=" << shot_frame
-                  << " selector=";
-        if (shot_selector.has_value()) {
-            std::cerr << "0x" << std::hex << *shot_selector << std::dec;
+                  << " animation/direction/ammo/audio facts; frame="
+                  << shot_frame << " direction=";
+        if (shot_direction.has_value()) {
+            std::cerr << static_cast<unsigned>(*shot_direction);
         } else {
             std::cerr << "<missing>";
         }
-        std::cerr << " expected_selector=0x" << std::hex
-                  << expected_pose_selector << std::dec << " animation="
+        std::cerr << " expected_direction="
+                  << static_cast<unsigned>(expected_direction) << " animation="
                   << shot_animation.value_or("<none>") << " ammo=";
         if (ammo_after.has_value()) {
             std::cerr << static_cast<unsigned>(*ammo_after);
@@ -3680,8 +3679,8 @@ int run_field_npc_item_action_qa(
         field_scene.advance_frame();
         const auto animation =
             field_scene.default_actor_animation_id_for_dump(0U);
-        const auto selector =
-            field_scene.default_actor_source_animation_selector_for_dump(0U);
+        const auto direction =
+            field_scene.default_actor_direction_for_dump(0U);
         const auto animation_frame =
             field_scene.default_actor_animation_frame_for_dump(0U);
         const auto ammo =
@@ -3697,8 +3696,8 @@ int run_field_npc_item_action_qa(
                       ? std::to_string(*animation_frame)
                       : "<none>")
               << '\t'
-              << (selector.has_value()
-                      ? std::to_string(*selector)
+              << (direction.has_value()
+                      ? std::to_string(*direction)
                       : "<none>")
               << '\t'
               << (ammo.has_value() ? std::to_string(*ammo) : "<none>")
@@ -3741,13 +3740,13 @@ int run_field_npc_item_action_qa(
     }
     trace.close();
 
-    std::cout << "field_npc_item_action_qa=passed scene=2 selector=4+4"
+    std::cout << "field_npc_item_action_qa=passed scene=2 animation=weapon"
                   << " profiles=" << *profile << ',' << *profile_1 << ','
                   << *profile_2 << " item=1 ammo=40->"
               << static_cast<unsigned>(*ammo_after)
               << " first_shot_frame=" << shot_frame
-              << " C042_selector=0x" << std::hex << expected_pose_selector
-              << std::dec << " event_0x1C_count=" << shot_audio_count
+              << " direction=" << static_cast<unsigned>(expected_direction)
+              << " event_0x1C_count=" << shot_audio_count
               << " return_animation="
               << first_return_animation.value_or("<still-C042>")
               << " return_frame=" << first_return_frame
@@ -3950,9 +3949,10 @@ int run_field_default_guard_item_action_qa(
         field_scene.set_controller_port_byte(0U);
         field_scene.advance_frame();
     }
-    const auto selector =
-        field_scene.default_actor_source_animation_selector_for_dump(
-            kGuardOrder);
+    const auto direction =
+        field_scene.default_actor_direction_for_dump(kGuardOrder);
+    const auto shot_animation =
+        field_scene.default_actor_animation_id_for_dump(kGuardOrder);
     const auto ammo_after = ammo_at_projectile;
     // ROM 0x1514E selects item 6's 0x51 from 0x15318; 0xB39A installs the
     // directional kind-5 C042 list at 0x8134. [C]
@@ -3963,15 +3963,15 @@ int run_field_default_guard_item_action_qa(
         !weapon_pose_capture_saved || actual.isNull() ||
         !field_hud_chrome_survives(actual, asset_root) ||
         ammo_after != std::optional<std::uint8_t>{17U} ||
-        !selector.has_value() || (*selector & 0x7FFFU) < 0x0040U ||
-        (*selector & 0x7FFFU) > 0x005FU ||
-        ((*selector & 0x0003U) != 0U) || action_audio_count != 1U) {
+        shot_animation != std::optional<std::string>{"weapon"} ||
+        !direction.has_value() || *direction >= 8U ||
+        action_audio_count != 1U) {
         std::cerr << "Default corp-guard item-action QA: item spawn did not "
-                     "publish ammo, C042 pose, and sound; ammo="
+                     "publish item animation, direction, and sound; ammo="
                   << (ammo_after ? std::to_string(*ammo_after) : "<missing>")
-                  << " selector=";
-        if (selector) {
-            std::cerr << "0x" << std::hex << *selector << std::dec;
+                  << " direction=";
+        if (direction) {
+            std::cerr << static_cast<unsigned>(*direction);
         } else {
             std::cerr << "<missing>";
         }
@@ -3991,7 +3991,7 @@ int run_field_default_guard_item_action_qa(
               << static_cast<unsigned>(*ammo_after)
               << " projectile_frame=" << projectile_frame
               << " weapon_pose_frame=" << weapon_pose_frame
-              << " selector=0x" << std::hex << *selector << std::dec
+              << " direction=" << static_cast<unsigned>(*direction)
               << " event_0x51_count=" << action_audio_count
               << " world_activity=QA-seeded actual="
               << (output / "actual.bmp").string() << '\n';
@@ -20054,11 +20054,12 @@ int run_field_scene55_thon_actor_qa(
     const auto target = field_scene.default_actor_ai_target_id_for_dump(0U);
     const auto final_positions =
         field_scene.active_default_actor_positions_for_dump();
-    const auto selector =
-        field_scene.default_actor_source_animation_selector_for_dump(0U);
-    const bool c082_selected = selector.has_value() &&
-        *selector >= 0x80U && *selector <= 0x9CU &&
-        ((*selector - 0x80U) % 4U) == 0U;
+    const auto animation =
+        field_scene.default_actor_animation_id_for_dump(0U);
+    const auto direction = field_scene.default_actor_direction_for_dump(0U);
+    const bool c082_selected =
+        animation == std::optional<std::string>{"spell"} &&
+        direction.has_value() && *direction < 8U;
     const bool thon_position_unchanged =
         final_positions.size() == kSourcePositions.size() &&
         final_positions[0].x == kSourcePositions[0].x &&
@@ -20067,16 +20068,15 @@ int run_field_scene55_thon_actor_qa(
     if (!target.has_value() ||
         target->rfind("party.runner.", 0U) != 0U || !c082_selected ||
         !thon_position_unchanged ||
-        field_scene.default_actor_animation_id_for_dump(0U) !=
-            std::optional<std::string>{"spell"} || actual.isNull() ||
+        actual.isNull() ||
         !actual.save(QString::fromStdWString(
             (output / "actual.bmp").wstring()))) {
         std::cerr << "Scene-55 Thon QA: linked target / stationary C082 spell "
                      "pose did not resolve target="
                   << (target.has_value() ? *target : "<none>")
-                  << " selector="
-                  << (selector.has_value()
-                          ? std::to_string(*selector)
+                  << " direction="
+                  << (direction.has_value()
+                          ? std::to_string(*direction)
                           : "<none>")
                   << " animation="
                   << field_scene.default_actor_animation_id_for_dump(0U)
@@ -20086,8 +20086,8 @@ int run_field_scene55_thon_actor_qa(
     }
     std::cout << "field_scene55_thon_actor_qa=passed list=0x1EDA88 "
               << "template=0x1EDB00 actors=3 target=" << *target
-              << " selector=0x" << std::hex
-              << static_cast<unsigned>(*selector) << std::dec
+              << " animation=" << animation.value_or("<none>")
+              << " direction=" << static_cast<unsigned>(*direction)
               << " actual=" << (output / "actual.bmp").string() << '\n';
     return 0;
 }

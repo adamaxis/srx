@@ -406,9 +406,6 @@ public:
         std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_source_action_counter_for_dump(
         std::uint16_t source_order) const noexcept;
-    std::optional<std::uint16_t>
-    default_actor_source_animation_selector_for_dump(
-        std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_weapon_item_for_dump(
         std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_physical_meter_for_dump(
@@ -2038,7 +2035,6 @@ private:
         // Routed default-list corp guards retain ordinary patrol policy while
         // using their matching ROM item-template action facts.
         bool source_default_item_action_profile = false;
-        std::uint16_t source_animation_selector = 0;
         std::optional<scripting::ScriptActorItemSpawnResult>
             source_item_spawn_result;
         // The static list is rebuilt from its ROM template on scene entry;
@@ -2080,7 +2076,9 @@ private:
         std::uint8_t initial_behavior_delay = 0;
         std::uint8_t animation_direction = 0;
         std::string animation_id = "idle";
+        std::string animation_variant;
         std::uint8_t animation_frame = 0;
+        bool animation_complete = false;
         bool transition_started = false;
         bool transition_complete = false;
         std::string ai_package_id;

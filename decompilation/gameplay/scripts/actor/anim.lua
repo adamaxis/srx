@@ -13,7 +13,6 @@ local ActorAnimation = E.ActorAnimation
 local ActorPose = E.ActorPose
 local SpriteType = R.SpriteType   -- from actor/tables.lua
 local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
-local walk_pose_selectors = R.walk_pose_selectors   -- from actor/tables.lua
 local weapon_projectile_descriptor_increment = R.weapon_projectile_descriptor_increment   -- from actor/tables.lua
 
 local function snapshot(state, action, audio_event, projectile_movement,
@@ -28,11 +27,6 @@ local function snapshot(state, action, audio_event, projectile_movement,
     state.source_thon_period_counter = nil
     if state.animation_id == "idle" then
         state.animation_frame = 0
-        state.source_animation_selector =
-            idle_pose_selectors[state.direction + 1]
-    elseif state.animation_id == "walk" then
-        state.source_animation_selector =
-            walk_pose_selectors[state.direction + 1]
     end
     local combat_meter_update = state.combat_meter_update
     state.combat_meter_update = nil
@@ -48,6 +42,16 @@ local function snapshot(state, action, audio_event, projectile_movement,
         action_code = state.action_code,
         action = action,
         animation = state.animation_id,
+        animation_complete =
+            (state.animation_id == "weapon" and
+             state.item_action_complete == true) or
+            (state.animation_id == "action" and
+             state.action_animation_complete == true) or
+            ((state.animation_id == "hurt" or
+              state.animation_id == "down") and
+             state.damage_reaction_animation_complete == true),
+        animation_variant = state.animation_id == "down" and
+            state.spell_death_variant or "",
         actor_facts = state.actor_facts,
         animation_selector = state.animation_selector,
         direction = state.direction,
@@ -59,7 +63,6 @@ local function snapshot(state, action, audio_event, projectile_movement,
         field_event_request = field_event_request,
         think_token_claimed = think_token_claimed,
         source_thon_period_counter = source_thon_period_counter,
-        source_animation_selector = state.source_animation_selector,
         combat_action_requested = state.combat_action_requested,
         audio_event = audio_event,
         target_heading_audio_event = target_heading_audio_event,
@@ -144,8 +147,12 @@ end
 -- (pose 0xE0/0xE4): finite, timed by that list's own +2 rate for this kind
 -- (0x200 for kinds 3..14, 0x80 for THON) [C 0x62AC]. Returns rate, count.
 local function death_list(state)
+    local pose = state.spell_death_variant == "spell_death_e0"
+        and Animator.Pose.SPELL_DEATH_E0 or
+        (state.spell_death_variant == "spell_death_e4"
+            and Animator.Pose.SPELL_DEATH_E4 or Animator.Pose.DEATH)
     local list = Animator.list(state.entity_kind,
-        state.spell_death_pose or Animator.Pose.DEATH, state.direction)
+        pose, state.direction)
     return list
 end
 
@@ -243,7 +250,7 @@ local function begin_down_reaction(state)
     state.animation_accumulator = 0
     state.animation_id = "down"
     state.animation_selector = Animator.Pose.DEATH + state.direction * 4
-    state.source_animation_selector = state.animation_selector
+    state.spell_death_variant = nil
     state.actor_facts.lifecycle.downed = true
     state.hurt_behavior_timer = 0
     state.movement_active = false
@@ -293,7 +300,7 @@ local function begin_received_hit_reaction(state, context)
     if state.actor_facts.lifecycle.downed then
         return nil
     end
-    if hit.physical_meter == 0 and hit.spell_death_pose ~= nil and
+    if hit.physical_meter == 0 and hit.spell_death_variant ~= nil and
        not state.actor_facts.lifecycle.ai_runner and
        context.entity_kind ~= SpriteType.HELL_HOUND then
         -- 0xB0AC/0xB0E4 (spell death): pose E.ActorPose.SPELL_DEATH_E0/E4,
@@ -306,10 +313,10 @@ local function begin_received_hit_reaction(state, context)
         state.animation_frame = 0
         state.animation_accumulator = 0
         state.animation_id = "down"
-        state.animation_selector = hit.spell_death_pose
-        state.source_animation_selector = hit.spell_death_pose
+        state.spell_death_variant = hit.spell_death_variant
+        state.animation_selector = hit.spell_death_variant == "spell_death_e0"
+            and ActorPose.SPELL_DEATH_E0 or ActorPose.SPELL_DEATH_E4
         state.spell_death = true
-        state.spell_death_pose = hit.spell_death_pose
         state.hurt_behavior_timer = 0
         state.movement_active = false
         return nil
@@ -333,7 +340,7 @@ local function begin_received_hit_reaction(state, context)
     -- 0xAFF2 selects C072 and starts B07E's eight-service countdown.
     state.animation_id = "hurt"
     state.animation_selector = Animator.Pose.HURT + state.direction * 4
-    state.source_animation_selector = state.animation_selector
+    state.spell_death_variant = nil
     state.animation_increment = list.rate
     state.animation_period = Animator.PERIOD
     state.hurt_behavior_timer = 8
@@ -460,8 +467,6 @@ local function advance_dynamic_actor_item_action_animation(state)
     -- C042 list: finite, marks pose bit 15 when done.
     if Animator.step_finite(state, list.count, list.rate,
                             Animator.PERIOD) then
-        state.source_animation_selector =
-            state.source_animation_selector | 0x8000
         state.item_action_complete = true
     end
     return true

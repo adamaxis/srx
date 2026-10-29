@@ -65,9 +65,6 @@ local item_action_pose_selectors = {
 local idle_pose_selectors = {
     0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1C,
 }
-local walk_pose_selectors = {
-    0x20, 0x24, 0x28, 0x2C, 0x30, 0x34, 0x38, 0x3C,
-}
 local ItemAction = {
     max_power_heavy_pistol = 6,
 }
@@ -164,7 +161,6 @@ R.target_motion_reacquire_updates = target_motion_reacquire_updates
 R.source_close_range_threshold = source_close_range_threshold
 R.item_action_pose_selectors = item_action_pose_selectors
 R.idle_pose_selectors = idle_pose_selectors
-R.walk_pose_selectors = walk_pose_selectors
 R.ItemAction = ItemAction
 R.profiles = profiles
 return R

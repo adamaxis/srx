@@ -6192,7 +6192,8 @@ int main() {
         // The Lua route policy opens +0xB0.4 for a close target; the host
         // begins with the ROM record's clear flag and validates the decision.
         context.source_behavior_flags = 0U;
-        context.source_animation_selector = 0U;
+        context.animation_blocks_behavior = false;
+        context.can_start_item_action = true;
         context.initial_action_delay = initial_delay;
         context.movement_allowed = true;
         context.source_projection_active = projection;
@@ -6357,7 +6358,8 @@ int main() {
         context.source_behavior_flags = 0x10U;
         context.source_action_ammo = 10U;
         context.source_action_counter = 0U;
-        context.source_animation_selector = 0U;
+        context.animation_blocks_behavior = false;
+        context.can_start_item_action = true;
         context.initial_action_delay = 0;
         context.movement_allowed = true;
         context.source_projection_active = true;
@@ -6395,7 +6397,7 @@ int main() {
         bool request_seen = false;
         std::string last_item_dispatch = "<none>";
         std::string last_target = "<none>";
-        std::uint16_t last_selector = 0U;
+        std::string last_animation = "<none>";
         std::uint8_t last_flags = 0U;
         for (std::uint16_t pass = 0U; pass < 120U; ++pass) {
             const auto decision = scripts.actor_heartbeat(context);
@@ -6405,7 +6407,7 @@ int main() {
             }
             last_item_dispatch = decision->source_action_dispatch.value_or("<none>");
             last_target = decision->ai_target_id.value_or("<none>");
-            last_selector = decision->source_animation_selector;
+            last_animation = decision->animation_id;
             last_flags = decision->source_behavior_flags;
             if (decision->source_action_dispatch ==
                 std::optional<std::string>{"item_spawn_requested"}) {
@@ -6416,7 +6418,7 @@ int main() {
         if (!request_seen) {
             std::cerr << "item pose request missing: dispatch="
                       << last_item_dispatch << " target=" << last_target
-                      << " selector=0x" << std::hex << last_selector
+                      << " animation=" << last_animation
                       << " flags=0x" << static_cast<unsigned>(last_flags)
                       << std::dec << " ammo="
                       << static_cast<unsigned>(context.source_action_ammo)
@@ -6433,8 +6435,13 @@ int main() {
             std::cerr << "item pose result render failed: " << scripts.failure() << '\n';
             return std::nullopt;
         }
-        context.source_animation_selector =
-            decision->source_animation_selector;
+        context.animation_blocks_behavior =
+            decision->animation_id != "idle" &&
+            decision->animation_id != "walk" &&
+            !decision->animation_complete;
+        context.can_start_item_action =
+            decision->animation_id == "idle" ||
+            decision->animation_id == "walk";
         context.source_behavior_flags = decision->source_behavior_flags;
         if (result == ScriptActorItemSpawnResult::spawned) {
             for (std::uint8_t frame = 0U; frame < 32U; ++frame) {
@@ -6443,8 +6450,13 @@ int main() {
                     std::cerr << "item pose animation render failed: " << scripts.failure() << '\n';
                     return std::nullopt;
                 }
-                context.source_animation_selector =
-                    decision->source_animation_selector;
+                context.animation_blocks_behavior =
+                    decision->animation_id != "idle" &&
+                    decision->animation_id != "walk" &&
+                    !decision->animation_complete;
+                context.can_start_item_action =
+                    decision->animation_id == "idle" ||
+                    decision->animation_id == "walk";
                 context.source_behavior_flags =
                     decision->source_behavior_flags;
             }
@@ -6458,10 +6470,10 @@ int main() {
     const bool item_pose_contract = item_pose_spawned.has_value() &&
         item_pose_spawned->animation_id == "weapon" &&
         item_pose_spawned->animation_frame == 0U &&
-        item_pose_spawned->source_animation_selector == 0x8040U &&
+        item_pose_spawned->animation_complete &&
         item_pose_blocked.has_value() &&
-        item_pose_blocked->animation_id != "weapon" &&
-        item_pose_blocked->source_animation_selector <= 0x003CU;
+        (item_pose_blocked->animation_id == "idle" ||
+         item_pose_blocked->animation_id == "walk");
     if (!expect(item_gate_contract,
                 "Lua item dispatch failed the 0x13FFE source action gates") ||
         !expect(item_pose_contract,
@@ -6488,7 +6500,7 @@ int main() {
             return value.has_value()
                 ? value->animation_id + ":" +
                       std::to_string(value->animation_frame) + ":" +
-                      std::to_string(value->source_animation_selector)
+                      (value->animation_complete ? "complete" : "playing")
                 : std::string{"<none>"};
         };
         std::cerr << "item poses=" << describe_pose(item_pose_spawned)
@@ -8293,7 +8305,8 @@ int main() {
         caster.source_world_x = 0x0A00U;
         caster.source_world_y = 0x0800U;
         caster.source_thon_period_counter = 0U;
-        caster.source_animation_selector = 0U;
+        caster.animation_blocks_behavior = false;
+        caster.can_start_item_action = true;
         caster.source_think_suppressed = false;
         caster.movement_scene_id = 55U;
         caster.combat_meter_service_blocked =
@@ -8368,8 +8381,13 @@ int main() {
                 caster.source_thon_period_counter =
                     decision->source_thon_period_counter;
             }
-            caster.source_animation_selector =
-                decision->source_animation_selector;
+            caster.animation_blocks_behavior =
+                decision->animation_id != "idle" &&
+                decision->animation_id != "walk" &&
+                !decision->animation_complete;
+            caster.can_start_item_action =
+                decision->animation_id == "idle" ||
+                decision->animation_id == "walk";
             if (decision->animation_id == "spell") {
                 trace.cast = decision;
                 break;
@@ -8412,9 +8430,7 @@ int main() {
             "party.runner.0" &&
         thon_success.cast->source_thon_period_counter ==
             std::optional<std::uint8_t>{8U} &&
-        thon_success.cast->source_animation_selector >= 0x80U &&
-        thon_success.cast->source_animation_selector <= 0x9CU &&
-        ((thon_success.cast->source_animation_selector - 0x80U) % 4U) == 0U &&
+        thon_success.cast->direction < 8U &&
         thon_success.cast->spell_action_resolution->roll_attempted &&
         thon_success.cast->spell_action_resolution->effect_started &&
         thon_success.cast->spell_action_resolution->spell_effect_slot ==

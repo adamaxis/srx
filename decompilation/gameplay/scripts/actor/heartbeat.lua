@@ -20,8 +20,6 @@ local states = game.actors
 local pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_slot
 local spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot
 local ActionKind = R.ActionKind   -- from actor/tables.lua
-local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
-local walk_pose_selectors = R.walk_pose_selectors   -- from actor/tables.lua
 
 function ActorAI.should_rebuild_target_lists(frame_counter, encounter_flag)
     return R.should_rebuild_target_lists(frame_counter, encounter_flag)
@@ -110,8 +108,6 @@ function ActorAI.heartbeat(context)
                                state.source_action_ammo
     state.source_action_counter = context.source_action_counter or
                                   state.source_action_counter
-    state.source_animation_selector = context.source_animation_selector or
-                                      state.source_animation_selector
     if context.phase == "behavior" and
        state.source_record_cleanup_requested then
         state.source_record_cleanup_requested = false
@@ -279,8 +275,6 @@ function ActorAI.heartbeat(context)
                     if not R.advance_dynamic_actor_walk_animation(state, context) then
                         return nil
                     end
-                    state.source_animation_selector =
-                        walk_pose_selectors[state.direction + 1]
                 else
                     local facing_heading = state.ai_target_engaged
                         and state.ai_target_heading or
@@ -289,8 +283,6 @@ function ActorAI.heartbeat(context)
                     state.direction = R.direction_from_heading(facing_heading)
                     state.animation_id = "idle"
                     state.animation_frame = 0
-                    state.source_animation_selector =
-                        idle_pose_selectors[state.direction + 1]
                 end
             else
                 R.advance_player_animation(state, context)

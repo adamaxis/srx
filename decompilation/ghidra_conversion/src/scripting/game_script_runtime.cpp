@@ -9948,8 +9948,10 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "source_action_ammo");
     lua_pushinteger(state, context.source_action_counter);
     lua_setfield(state, -2, "source_action_counter");
-    lua_pushinteger(state, context.source_animation_selector);
-    lua_setfield(state, -2, "source_animation_selector");
+    lua_pushboolean(state, context.animation_blocks_behavior);
+    lua_setfield(state, -2, "animation_blocks_behavior");
+    lua_pushboolean(state, context.can_start_item_action);
+    lua_setfield(state, -2, "can_start_item_action");
     if (context.source_item_spawn_result.has_value()) {
         lua_pushstring(
             state,
@@ -10588,18 +10590,21 @@ GameScriptRuntime::actor_heartbeat(
             decision.source_thon_period_counter)) {
         return fail("actor_ai.heartbeat returned an invalid THON period counter");
     }
-    if (!read_field_integer(state, decision_table,
-                            "source_animation_selector", 0xFFFFU,
-                            returned_action_code)) {
-        return fail("actor_ai.heartbeat returned an invalid animation selector");
-    }
-    decision.source_animation_selector =
-        static_cast<std::uint16_t>(returned_action_code);
     if (!read_field_integer(state, decision_table, "frame", 15U,
                             returned_action_code)) {
         return fail("actor_ai.heartbeat returned an invalid animation frame");
     }
     decision.animation_frame = static_cast<std::uint8_t>(returned_action_code);
+    if (!read_field_boolean(state, decision_table, "animation_complete",
+                            decision.animation_complete) ||
+        !read_field_string_allow_empty(
+            state, decision_table, "animation_variant",
+            decision.animation_variant) ||
+        (decision.animation_variant != "" &&
+         decision.animation_variant != "spell_death_e0" &&
+         decision.animation_variant != "spell_death_e4")) {
+        return fail("actor_ai.heartbeat returned invalid semantic animation facts");
+    }
     lua_getfield(state, decision_table, "hit_spark_retired");
     if (lua_type(state, -1) != LUA_TNIL) {
         if (!lua_isboolean(state, -1)) {
@@ -11598,9 +11603,8 @@ GameScriptRuntime::actor_heartbeat(
     }
     if (decision.animation_id == "weapon" &&
         (!source_item_action ||
-         (decision.source_animation_selector & 0x7FFFU) !=
-             static_cast<std::uint16_t>(0x40U + decision.direction * 4U))) {
-        return fail("actor_ai.heartbeat returned an unsupported C042 item-action pose");
+         decision.animation_variant != "")) {
+        return fail("actor_ai.heartbeat returned an unsupported item-action animation");
     }
 
     lua_getfield(state, decision_table, "audio_event");
@@ -12152,7 +12156,7 @@ GameScriptRuntime::actor_heartbeat(
                 context.action_kind != ScriptActorActionKind::item ||
                 context.action_code == 0U || context.action_code > 12U ||
                 context.source_action_ammo == 0U ||
-                (context.source_animation_selector & 0x07FFU) > 0x003CU ||
+                !context.can_start_item_action ||
                 (context.world_scene_state == 0U &&
                  (decision.source_behavior_flags & 0x10U) == 0U) ||
                 context.source_projection_active != true ||
@@ -12164,8 +12168,8 @@ GameScriptRuntime::actor_heartbeat(
                                       context.action_kind)) +
                     ",code=" + std::to_string(context.action_code) +
                     ",ammo=" + std::to_string(context.source_action_ammo) +
-                    ",selector=" + std::to_string(
-                        context.source_animation_selector) +
+                    ",can_start_item_action=" +
+                        (context.can_start_item_action ? "yes" : "no") +
                     ",scene=" + std::to_string(context.world_scene_state) +
                     ",behavior=" + std::to_string(
                         decision.source_behavior_flags) +
