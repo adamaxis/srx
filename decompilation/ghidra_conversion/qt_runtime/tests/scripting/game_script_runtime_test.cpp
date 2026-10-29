@@ -1576,6 +1576,42 @@ bool verify_dialogue_outcome_dispatcher() {
     return true;
 }
 
+bool verify_party_runner_down_bridge(
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts) {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    // ROM 0xB330 marks the affected runner down; 0xABB6 starts recovery only
+    // when the leader and both companion roles are unavailable.
+    ScriptPartyRunnerDownContext alone{};
+    alone.target = ScriptPartyMemberRole::leader;
+    alone.party[0] = {true, false};
+    const auto alone_decision = scripts.party_runner_down(alone);
+    if (!expect(alone_decision.has_value() && alone_decision->downed &&
+                    alone_decision->party_wipe_imminent,
+                "party-down Lua bridge lost the leader recovery transition")) {
+        return false;
+    }
+
+    auto accompanied = alone;
+    accompanied.party[1] = {true, false};
+    const auto accompanied_decision = scripts.party_runner_down(accompanied);
+    if (!expect(accompanied_decision.has_value() &&
+                    accompanied_decision->downed &&
+                    !accompanied_decision->party_wipe_imminent,
+                "active companion did not prevent party recovery")) {
+        return false;
+    }
+
+    auto companion_down = alone;
+    companion_down.target = ScriptPartyMemberRole::companion_one;
+    companion_down.party[1] = {true, false};
+    const auto companion_decision = scripts.party_runner_down(companion_down);
+    return expect(companion_decision.has_value() &&
+                      companion_decision->downed &&
+                      !companion_decision->party_wipe_imminent,
+                  "companion downing incorrectly recovered a living leader");
+}
+
 } // namespace
 
 int main() {
@@ -1606,6 +1642,10 @@ int main() {
                     std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
                         "dialogue" / "script-text.json"),
                 "gameplay Lua package did not load")) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    if (!verify_party_runner_down_bridge(scripts)) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

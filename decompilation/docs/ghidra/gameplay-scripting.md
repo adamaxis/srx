@@ -42,9 +42,12 @@ facts such as `actor_facts.lifecycle.active` and
 adapter merges that change back while preserving unrelated native record bits.
 Do not expose record offsets, packed status bytes, or source slot numbers as
 gameplay state when a stable actor ID or named rule describes the behavior.
-The actor heartbeat and party-menu bridges follow this contract. Older flat
-party-wipe calls and Matrix datastore bitfields still need conversion; do not
-extend those interfaces.
+The actor heartbeat and party-menu bridges follow this contract. The runner-
+down transition also receives named party lifecycle facts and returns a
+named down/recovery decision; the field host owns source-record translation,
+audio selection, and frame timing. The remaining party-wipe recovery and
+roster-refresh calls still use flat source-shaped arguments, and Matrix
+datastore bitfields still need conversion; do not extend those interfaces.
 
 The next capabilities should follow the same shape, added only as they connect
 to real native systems:

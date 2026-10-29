@@ -12525,6 +12525,91 @@ std::optional<bool> GameScriptRuntime::has_world_scene_effect_target(
     return result;
 }
 
+std::optional<ScriptPartyRunnerDownDecision>
+GameScriptRuntime::party_runner_down(
+    const ScriptPartyRunnerDownContext& context) {
+    auto* state = impl_->state;
+    const auto stack_base = state == nullptr ? 0 : lua_gettop(state);
+    const auto fail = [this, state, stack_base](
+                          const std::string_view reason)
+        -> std::optional<ScriptPartyRunnerDownDecision> {
+        if (state != nullptr) {
+            lua_settop(state, stack_base);
+        }
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (state == nullptr) {
+        return fail("gameplay Lua party state is unavailable");
+    }
+
+    static constexpr std::array<std::string_view, 3> kRoleIds{
+        "leader", "companion_one", "companion_two"};
+    const auto target_index = static_cast<std::size_t>(context.target);
+    if (target_index >= kRoleIds.size()) {
+        return fail("party runner-down target role is invalid");
+    }
+    if (!impl_->push_module("party_down")) {
+        return fail("gameplay Lua party_down module is missing");
+    }
+    lua_getfield(state, -1, "enter_runner_down_state");
+    if (!lua_isfunction(state, -1)) {
+        return fail("party_down.enter_runner_down_state is missing");
+    }
+    lua_remove(state, -2);
+
+    lua_createtable(state, 0, 2);
+    lua_pushlstring(state, kRoleIds[target_index].data(),
+                    kRoleIds[target_index].size());
+    lua_setfield(state, -2, "target_role");
+    lua_createtable(state, 0, static_cast<int>(context.party.size()));
+    for (std::size_t index = 0U; index < context.party.size(); ++index) {
+        lua_createtable(state, 0, 2);
+        lua_pushboolean(state, context.party[index].active);
+        lua_setfield(state, -2, "active");
+        lua_pushboolean(state, context.party[index].dead);
+        lua_setfield(state, -2, "dead");
+        lua_setfield(state, -2, kRoleIds[index].data());
+    }
+    lua_setfield(state, -2, "party");
+
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("party_down.enter_runner_down_state: " +
+                    stack_error(state));
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("party_down.enter_runner_down_state returned no decision");
+    }
+
+    const auto read_boolean_field = [state](const int table_index,
+                                             const char* field,
+                                             bool& value) {
+        lua_getfield(state, table_index, field);
+        const bool valid = lua_isboolean(state, -1) != 0;
+        if (valid) value = lua_toboolean(state, -1) != 0;
+        lua_pop(state, 1);
+        return valid;
+    };
+    ScriptPartyRunnerDownDecision result{};
+    lua_getfield(state, -1, "lifecycle");
+    if (!lua_istable(state, -1) ||
+        !read_boolean_field(-1, "downed", result.downed)) {
+        return fail("party runner-down lifecycle result is invalid");
+    }
+    lua_pop(state, 1);
+    lua_getfield(state, -1, "recovery");
+    if (!lua_istable(state, -1) ||
+        !read_boolean_field(-1, "party_wipe_imminent",
+                            result.party_wipe_imminent)) {
+        return fail("party runner-down recovery result is invalid");
+    }
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return result;
+}
+
 std::optional<std::int16_t> GameScriptRuntime::player_weapon_action_delay(
     const std::uint8_t primary_attribute,
     const std::uint8_t secondary_attribute,

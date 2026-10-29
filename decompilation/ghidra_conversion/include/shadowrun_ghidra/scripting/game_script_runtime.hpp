@@ -1089,6 +1089,27 @@ struct ScriptCombatMeterUpdate {
     bool changed = false;
 };
 
+enum class ScriptPartyMemberRole : std::uint8_t {
+    leader,
+    companion_one,
+    companion_two,
+};
+
+struct ScriptPartyMemberLifecycleFacts {
+    bool active = false;
+    bool dead = false;
+};
+
+struct ScriptPartyRunnerDownContext {
+    ScriptPartyMemberRole target = ScriptPartyMemberRole::leader;
+    std::array<ScriptPartyMemberLifecycleFacts, 3> party{};
+};
+
+struct ScriptPartyRunnerDownDecision {
+    bool downed = false;
+    bool party_wipe_imminent = false;
+};
+
 enum class ScriptActorSpellFieldEffectKind : std::uint8_t {
     none,          // 0x00 / return at 0x1584C [C]
     field_barrier, // 0x01 / 0x15830 -> 0x49A2 [C]
@@ -1964,6 +1985,8 @@ public:
         std::uint8_t secondary_attribute,
         std::uint16_t capability_flags, std::uint8_t weapon_code,
         ScriptPlayerDelayPurpose purpose);
+    std::optional<ScriptPartyRunnerDownDecision> party_runner_down(
+        const ScriptPartyRunnerDownContext& context);
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
     std::optional<ScriptActorTargetListRebuildDecision>

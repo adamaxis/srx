@@ -234,6 +234,13 @@ if(SHADOWRUN_LUA_EXECUTABLE)
             "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/animator_tests.lua")
     set_tests_properties(shadowrun_gameplay_actor_animation_state_qa PROPERTIES
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../..")
+    add_test(NAME shadowrun_gameplay_party_down_rules_qa
+        COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"
+            "${CMAKE_SOURCE_DIR}/../.."
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/party_down_tests.lua")
+    set_tests_properties(shadowrun_gameplay_party_down_rules_qa PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../..")
 endif()
 
 add_executable(shadowrun_vid_phone_script_test

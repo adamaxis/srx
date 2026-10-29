@@ -9,9 +9,6 @@ local ACTIVE = E.RunnerStatus.ACTIVE  -- 0x01
 local DOWN = E.RunnerStatus.DOWN      -- 0x10
 local DEAD = E.RunnerStatus.DEAD      -- 0x40
 
-PartyDown.WIPE_COUNTDOWN = 0x3C       -- 0xABF2 FFE166 = 60 frames [C]
-PartyDown.DOWN_SELECTOR_BASE = 0xE8   -- 0xC0B2 words E8..104 [C]
-PartyDown.DOWN_LIST_INCREMENT = 0x200 -- C0B2 list header 0x8008, +0x200 [C]
 PartyDown.LEADER_MIN_PHYSICAL = 6     -- 0xC750 [C]
 PartyDown.LEADER_MIN_MENTAL = 8       -- 0xC764 [C]
 PartyDown.NUYEN_PENALTY_CAP = 5000    -- 0xC7AA 0x1388 [C]
@@ -49,38 +46,41 @@ local RUN_FAILURE_PRESENTATION = {
 local pending_run_failure_event
 local pending_wake_destination
 
--- 0xB05E word table indexed by record +0x0E (kind) [C].
-local DOWN_SOUND = { [0] = 0x40, 0x40, 0x40, 0x2E, 0x2F, 0x2E, 0x58, 0x2E }
-
 local function byte(v) return math.tointeger(v or 0) & 0xff end
 
--- 0xABB6 with the downing record's bit6 set by 0xB330: the leader must be
--- the downing record, and slots 1/2 must be inactive or DEAD [C].
-local function all_down(slot, flags)
-    local function dead(i)
-        local f = flags[i]
-        if i == slot then f = f | DEAD end
-        if i == 0 then return f & DEAD ~= 0 end
-        return f & ACTIVE == 0 or f & DEAD ~= 0
-    end
-    return dead(0) and dead(1) and dead(2)
-end
+-- The field host supplies gameplay facts and applies the returned lifecycle
+-- transition to its native party model. Source flags, animation selectors,
+-- audio IDs, and frame counters stay at their owning host boundaries.
+-- ROM 0xB330 temporarily marks the target dead while 0xABB6 checks whether
+-- the leader and both companion positions are unavailable; it then marks the
+-- target down and arms the recovery delay when that check succeeds [C].
+function PartyDown.enter_runner_down_state(context)
+    assert(type(context) == "table" and type(context.party) == "table",
+           "party_down: missing party facts")
+    local target = context.target_role
+    assert(target == "leader" or target == "companion_one" or
+           target == "companion_two", "party_down: unknown target role")
 
--- Flat call: slot, flags0, flags1, flags2, kind, heading.
--- Returns { new_flags, sound_id, selector, wipe_countdown }.
-function PartyDown.runner_down_flat(slot, f0, f1, f2, kind, heading)
-    slot = math.tointeger(slot)
-    assert(slot and slot >= 0 and slot <= 2, "party_down: slot 0..2")
-    local flags = { [0] = byte(f0), byte(f1), byte(f2) }
-    local wipe = all_down(slot, flags) and PartyDown.WIPE_COUNTDOWN or 0
-    -- 0xB35C: dir = round(+0x2E / 0x2000) & 7.
-    local h = math.tointeger(heading or 0) & 0xffff
-    local d = ((h + 0x1000) >> 13) & 7
+    local party = context.party
+    local leader = party.leader
+    local companion_one = party.companion_one
+    local companion_two = party.companion_two
+    assert(type(leader) == "table" and type(companion_one) == "table" and
+           type(companion_two) == "table",
+           "party_down: incomplete party lifecycle facts")
+
+    local leader_is_dead = leader.dead == true or target == "leader"
+    local function companion_is_unavailable(member, role)
+        return member.active ~= true or member.dead == true or target == role
+    end
+
     return {
-        flags[slot] | DOWN,
-        DOWN_SOUND[math.tointeger(kind or 0) & 7] or 0,
-        PartyDown.DOWN_SELECTOR_BASE + d * 4,
-        wipe,
+        lifecycle = { downed = true },
+        recovery = {
+            party_wipe_imminent = leader_is_dead and
+                companion_is_unavailable(companion_one, "companion_one") and
+                companion_is_unavailable(companion_two, "companion_two"),
+        },
     }
 end
 

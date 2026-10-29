@@ -9,20 +9,41 @@ local function check(cond, label)
     if cond then pass = pass + 1 else print("FAIL " .. label) end
 end
 
--- Leader alone: down sets 0x10, kind 3 sound 0x2E, C0B2 selector, wipe 0x3C.
-local r = P.runner_down_flat(0, 0x01, 0x00, 0x00, 3, 0x4000)
-check(r[1] == 0x11, "leader DOWN flag")
-check(r[2] == 0x2E, "B05E kind 3 sound")
-check(r[3] == 0xE8 + 2 * 4, "C0B2 right selector")
-check(r[4] == 0x3C, "lone leader starts FFE166")
--- 0xB35C rounding: 0x1000 rounds to the next direction, 0xF000 wraps to 0.
-check(P.runner_down_flat(0, 1, 0, 0, 3, 0x1000)[3] == 0xEC, "heading round up")
-check(P.runner_down_flat(0, 1, 0, 0, 3, 0xF000)[3] == 0xE8, "heading wrap")
--- A live hired runner blocks the wipe.
-check(P.runner_down_flat(0, 0x01, 0x01, 0x00, 3, 0)[4] == 0, "live hired blocks wipe")
-check(P.runner_down_flat(0, 0x01, 0x41, 0x00, 3, 0)[4] == 0x3C, "dead hired allows wipe")
--- A hired runner going down never wipes: the leader lacks bit6 [C].
-check(P.runner_down_flat(1, 0x11, 0x01, 0x00, 3, 0)[4] == 0, "hired down no wipe")
+local function party_facts(target_role, companion_one, companion_two)
+    return {
+        target_role = target_role,
+        party = {
+            leader = { active = true, dead = false },
+            companion_one = companion_one,
+            companion_two = companion_two,
+        },
+    }
+end
+
+-- The script receives party lifecycle facts. Audio selection, actor facing,
+-- source flags, and the native countdown are handled outside Lua.
+local alone = P.enter_runner_down_state(party_facts(
+    "leader", { active = false, dead = false },
+    { active = false, dead = false }))
+check(alone.lifecycle.downed, "leader becomes downed")
+check(alone.recovery.party_wipe_imminent,
+      "lone leader starts party recovery")
+local live_companion = P.enter_runner_down_state(party_facts(
+    "leader", { active = true, dead = false },
+    { active = false, dead = false }))
+check(not live_companion.recovery.party_wipe_imminent,
+      "active companion blocks party recovery")
+local dead_companion = P.enter_runner_down_state(party_facts(
+    "leader", { active = true, dead = true },
+    { active = false, dead = false }))
+check(dead_companion.recovery.party_wipe_imminent,
+      "dead companion allows party recovery")
+local companion_down = P.enter_runner_down_state(party_facts(
+    "companion_one", { active = true, dead = false },
+    { active = false, dead = false }))
+check(companion_down.lifecycle.downed and
+      not companion_down.recovery.party_wipe_imminent,
+      "companion downing does not wipe a living leader")
 
 -- Wipe: leader revived with floors, hired dismissed, nuyen penalty.
 local w = P.resolve_wipe_flat(1000, 0, 0x11, 0, 3, 0x01, 5, 5, 0x00, 0, 0)

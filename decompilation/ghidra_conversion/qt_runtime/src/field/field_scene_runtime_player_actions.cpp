@@ -52,12 +52,14 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cmath>
 #include <fstream>
 #include <cstdint>
 #include <filesystem>
 #include <limits>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <cstdio>
@@ -66,6 +68,21 @@
 #include <utility>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
+
+namespace {
+
+// ROM 0xB340..0xB350 indexes the downed-voice cue by actor kind. Keep this
+// imported audio selection at the native audio boundary; Lua receives no
+// actor-kind code or source audio number.
+std::optional<std::uint16_t> runner_down_audio_event(
+    const std::uint16_t actor_kind) {
+    static constexpr std::array<std::uint16_t, 8> kEvents{
+        0x40U, 0x40U, 0x40U, 0x2EU, 0x2FU, 0x2EU, 0x58U, 0x2EU};
+    if (actor_kind >= kEvents.size()) return std::nullopt;
+    return kEvents[actor_kind];
+}
+
+} // namespace
 
 using field_scene_detail::kInitialFieldSceneReference;
 using field_scene_detail::kSceneProfileEntityPositionWord;
@@ -1097,38 +1114,46 @@ bool FieldSceneRuntime::apply_script_combat_meter_update(
         }
         if (update.physical && target.delay_meter == 0U &&
             (target.flags & kRunnerFlagsDown) == 0U) {
-            // ROM 0xAFF2 -> 0xB330: a zero +0x4C downs the runner. Lua owns
-            // the flag, sound, C0B2 selector and the 0xABB6 wipe check.
+            // ROM 0xAFF2 -> 0xB330: a zero +0x4C downs the runner. Translate
+            // the source roster into lifecycle facts for Lua; audio and the
+            // native countdown stay in their owning host systems [C].
             const auto& records = field_party_roster_.records();
-            const auto status = [this, &records](const std::size_t index) {
-                const auto flags =
-                    static_cast<std::int64_t>(records[index].flags >> 8U);
-                return field_party_roster_.slot_active(index)
-                    ? flags : (flags & ~std::int64_t{0x01});
-            };
-            const auto heading = slot == field_party_roster_.active_slot()
-                ? field_movement_state_.heading
-                : std::uint16_t{0U};
-            const auto down = game_scripts_.call_integers(
-                "party_down", "runner_down_flat",
-                {static_cast<std::int64_t>(slot), status(0U), status(1U),
-                 status(2U), static_cast<std::int64_t>(target.kind),
-                 static_cast<std::int64_t>(heading)});
-            if (!down.has_value() || down->size() != 4U) {
+            scripting::ScriptPartyRunnerDownContext down_context{};
+            down_context.target =
+                static_cast<scripting::ScriptPartyMemberRole>(slot);
+            constexpr auto kActiveStatus = static_cast<std::uint8_t>(
+                srx::ActorStatus::ACTIVE);
+            constexpr auto kDeadStatus = static_cast<std::uint8_t>(
+                srx::ActorStatus::DEAD);
+            for (std::size_t member = 0U; member < records.size(); ++member) {
+                const auto lifecycle = static_cast<std::uint8_t>(
+                    records[member].flags >> 8U);
+                down_context.party[member] = {
+                    field_party_roster_.slot_active(member) &&
+                        (lifecycle & kActiveStatus) != 0U,
+                    (lifecycle & kDeadStatus) != 0U};
+            }
+            const auto down = game_scripts_.party_runner_down(down_context);
+            if (!down.has_value()) {
                 failure_ = game_scripts_.failure();
                 report("party_runner_down_failed");
                 return false;
             }
-            target.flags = static_cast<std::uint16_t>(
-                (target.flags & 0x00ffU) |
-                (static_cast<std::uint16_t>((*down)[0] & 0xff) << 8U));
-            if ((*down)[1] != 0 && source_audio_event_callback_) {
-                source_audio_event_callback_(
-                    static_cast<std::uint16_t>((*down)[1]));
+            if (!down->downed) {
+                failure_ =
+                    "party_down.enter_runner_down_state returned no down transition";
+                report("party_runner_down_failed");
+                return false;
             }
-            if ((*down)[3] != 0) {
-                field_party_wipe_countdown_ =
-                    static_cast<std::uint8_t>((*down)[3]);
+            target.flags |= kRunnerFlagsDown;
+            const auto down_audio = runner_down_audio_event(target.kind);
+            if (down_audio.has_value() && source_audio_event_callback_) {
+                source_audio_event_callback_(
+                    *down_audio);
+            }
+            if (down->party_wipe_imminent) {
+                // ROM 0xABF2 arms 60 field passes before party recovery [C].
+                field_party_wipe_countdown_ = 60U;
                 report("party_wipe_countdown_started");
             }
             report("party_runner_down");
