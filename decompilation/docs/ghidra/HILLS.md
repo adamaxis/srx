@@ -1730,9 +1730,26 @@ record slots and positions, the resolved profile, item/ammunition facts, a
 party-runner target, and writes `scene54-spawn.bmp` plus `actual.bmp`.
 Debug/Release `actual.bmp` hashes match. This focused case does not yet assert
 a successful weapon spawn or damage result, and these internal captures are
-not an independent Genesis visual comparison. Scene-55 Thon remains inactive
-until its incomplete host pose set is resolved; its source slot and random
-advance remain reserved. The broader default-actor hill remains partial.
+not an independent Genesis visual comparison. Scene-55 Thon's separate
+default-list path is covered below. The broader default-actor hill remains
+partial.
+
+## Scene-55 default Thon actor (partial, 2026-10-28)
+
+ROM list `0x1EDA88` publishes Thon from template `0x1EDB00` at position record
+`0x1EDAC8`, followed by two Yakuza at `0x1EDABC` and `0x1EDAC2`. Initializer
+`0x44BC` puts the source Thon record in the active actor pool. The field runtime
+now resolves its kind-15 `thon_k0f_spell01` Lua profile and named host poses:
+the seven-piece idle state from `0xA77A` is shared by all eight C052
+selectors, while the directional C082 spell assets follow Thon's target
+heading. Lua's `0x13A4C` period path selects the linked party runner and pose.
+Debug/Release `shadowrun_ghidra_conversion_qt_field_scene55_thon_actor_qa`
+checks all three source rows and record slots, visible actors, Thon's target,
+and C082 selector, then writes `scene55-spawn.bmp` and `actual.bmp` under
+`qt_runtime/field-scene55-thon-actor-qa`. Both builds and the actor-focused
+regression set pass; the inspected captures are internal renderer outputs,
+not independent Genesis images. Spell effect/damage application and other
+Thon spawn paths remain open, so this hill is partial.
 
 ## Default route heading selector (partial, 2026-10-28)
 

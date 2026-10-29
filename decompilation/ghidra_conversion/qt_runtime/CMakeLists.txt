@@ -1384,6 +1384,14 @@ add_shadowrun_qt_qa_case(
     --field-default-yakuza-actors-qa
     "${CMAKE_CURRENT_BINARY_DIR}/field-default-yakuza-actors-qa")
 
+# Spawn Scene 55's default Thon and two Yakuza, then exercise Thon's linked
+# target selection and directional C082 spell pose.
+add_shadowrun_qt_qa_case(
+    shadowrun_ghidra_conversion_qt_field_scene55_thon_actor_qa
+    --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+    --field-scene55-thon-actor-qa
+    "${CMAKE_CURRENT_BINARY_DIR}/field-scene55-thon-actor-qa")
+
 # Check the three default pedestrian patrols and source-position visibility on
 # every regional map, using a fresh field runtime separate from other QA paths.
 add_shadowrun_qt_qa_case(

@@ -2519,6 +2519,7 @@ private:
     bool field_world_effect_player_spawn_qa_override_ = false;
     EffectFadeMarkerState field_effect_fade_marker_{}; // FFDFDA/FFDFDC [C]
     std::array<DefaultActorArtwork, 2> field_default_actor_artwork_{};
+    std::optional<DefaultActorArtwork> field_thon_default_actor_artwork_;
     std::unordered_map<std::string, DefaultActorArtwork>
         field_dynamic_actor_artwork_;
     std::unordered_map<std::string, DynamicActorSourceProfileFacts>

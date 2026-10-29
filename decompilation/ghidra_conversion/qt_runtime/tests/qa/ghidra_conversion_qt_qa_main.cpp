@@ -19586,6 +19586,127 @@ int run_field_default_yakuza_actors_qa(
     return 0;
 }
 
+int run_field_scene55_thon_actor_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output) {
+    std::error_code directory_error;
+    std::filesystem::remove_all(output, directory_error);
+    if (directory_error) {
+        std::cerr << "Scene-55 Thon QA: could not clear output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+    std::filesystem::create_directories(output, directory_error);
+    if (directory_error) {
+        std::cerr << "Scene-55 Thon QA: could not create output: "
+                  << directory_error.message() << '\n';
+        return 3;
+    }
+
+    // ROM default list 0x1EDA88 has Thon at 0x1EDB00 / 0x1EDAC8, followed
+    // by two Yakuza at 0x1D66EE / 0x1EDABC and 0x1EDAC2 [C].
+    constexpr std::array<SceneRunnerPosition, 3> kSourcePositions{{
+        {2560U, 2048U}, {1920U, 2304U}, {3328U, 2304U},
+    }};
+    constexpr std::array<FieldWorldActorSlot, 3> kSourceSlots{{
+        FieldWorldActorSlot::slot_3, FieldWorldActorSlot::slot_4,
+        FieldWorldActorSlot::slot_5,
+    }};
+    field_scene.set_field_entity_world_position_for_dump(0x0800U, 0x0800U);
+    if (!field_scene.reenter_field_scene_for_dump(55U)) {
+        std::cerr << "Scene-55 Thon QA: entry failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_field_camera_world_position_for_dump(0U, 0U);
+
+    const auto positions =
+        field_scene.active_default_actor_positions_for_dump();
+    bool source_rows_match = positions.size() == kSourcePositions.size();
+    for (std::size_t source_order = 0U;
+         source_order < kSourcePositions.size(); ++source_order) {
+        source_rows_match = source_rows_match &&
+            positions.size() > source_order &&
+            positions[source_order].x == kSourcePositions[source_order].x &&
+            positions[source_order].y == kSourcePositions[source_order].y &&
+            field_scene.default_actor_record_slot_for_dump(
+                static_cast<std::uint16_t>(source_order)) ==
+                kSourceSlots[source_order];
+    }
+    const auto initial = render_qa_field(field_scene);
+    if (!source_rows_match ||
+        field_scene.default_actor_count_for_dump() != 3U ||
+        field_scene.visible_default_actor_count_for_dump() != 3U ||
+        field_scene.default_actor_script_profile_for_dump(0U) !=
+            std::optional<std::string>{"thon_k0f_spell01"} ||
+        field_scene.default_actor_ai_package_for_dump(0U) !=
+            std::optional<std::string>{
+                "world_actor.kind_15.source_target_motion"} ||
+        initial.isNull() ||
+        !initial.save(QString::fromStdWString(
+            (output / "scene55-spawn.bmp").wstring()))) {
+        std::cerr << "Scene-55 Thon QA: ROM rows, Thon Lua profile, or "
+                     "initial render did not resolve count="
+                  << field_scene.default_actor_count_for_dump()
+                  << " visible="
+                  << field_scene.visible_default_actor_count_for_dump()
+                  << " profile="
+                  << field_scene.default_actor_script_profile_for_dump(0U)
+                         .value_or("<none>")
+                  << " package="
+                  << field_scene.default_actor_ai_package_for_dump(0U)
+                         .value_or("<none>")
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    // FFE188 starts cleared at scene load and the ROM reloads Thon's shared
+    // eight-tick period at 0x13A66. The 0x13A4C path aims via 0xAE6E and sets
+    // C082 via 0xAF7C/0xAFAE; it does not enter route movement at 0x13D0C [C].
+    for (std::size_t frame = 0U; frame < 60U; ++frame) {
+        field_scene.advance_frame();
+    }
+    const auto target = field_scene.default_actor_ai_target_id_for_dump(0U);
+    const auto final_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    const auto selector =
+        field_scene.default_actor_source_animation_selector_for_dump(0U);
+    const bool c082_selected = selector.has_value() &&
+        *selector >= 0x80U && *selector <= 0x9CU &&
+        ((*selector - 0x80U) % 4U) == 0U;
+    const bool thon_position_unchanged =
+        final_positions.size() == kSourcePositions.size() &&
+        final_positions[0].x == kSourcePositions[0].x &&
+        final_positions[0].y == kSourcePositions[0].y;
+    const auto actual = render_qa_field(field_scene);
+    if (!target.has_value() ||
+        target->rfind("party.runner.", 0U) != 0U || !c082_selected ||
+        !thon_position_unchanged ||
+        field_scene.default_actor_animation_id_for_dump(0U) !=
+            std::optional<std::string>{"spell"} || actual.isNull() ||
+        !actual.save(QString::fromStdWString(
+            (output / "actual.bmp").wstring()))) {
+        std::cerr << "Scene-55 Thon QA: linked target / stationary C082 spell "
+                     "pose did not resolve target="
+                  << (target.has_value() ? *target : "<none>")
+                  << " selector="
+                  << (selector.has_value()
+                          ? std::to_string(*selector)
+                          : "<none>")
+                  << " animation="
+                  << field_scene.default_actor_animation_id_for_dump(0U)
+                         .value_or("<none>")
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+    std::cout << "field_scene55_thon_actor_qa=passed list=0x1EDA88 "
+              << "template=0x1EDB00 actors=3 target=" << *target
+              << " selector=0x" << std::hex
+              << static_cast<unsigned>(*selector) << std::dec
+              << " actual=" << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
 int run_field_region_map_pedestrians_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& output) {
@@ -36696,6 +36817,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_default_yakuza_actors_qa_path;
         std::optional<std::filesystem::path>
+            field_scene55_thon_actor_qa_path;
+        std::optional<std::filesystem::path>
             field_region_map_pedestrians_qa_path;
         std::optional<std::filesystem::path>
             field_pedestrian_scenes_qa_path;
@@ -37624,6 +37747,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_default_yakuza_actors_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-scene55-thon-actor-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_scene55_thon_actor_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -38958,6 +39088,7 @@ int main(int argc, char** argv) {
             if (field_stoker_collision_qa_path.has_value() ||
                 field_scene2_pedestrians_qa_path.has_value() ||
                 field_default_yakuza_actors_qa_path.has_value() ||
+                field_scene55_thon_actor_qa_path.has_value() ||
                 field_region_map_pedestrians_qa_path.has_value() ||
                 field_pedestrian_scenes_qa_path.has_value() ||
                 field_employee_recruitment_target_pedestrian_qa_path
@@ -39029,6 +39160,8 @@ int main(int argc, char** argv) {
                     : field_scene2_pedestrians_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 2U)
                     : field_default_yakuza_actors_qa_path.has_value()
+                    ? field_scene.bootstrap_for_scene_dump(smoke_state, 2U)
+                    : field_scene55_thon_actor_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 2U)
                     : field_region_map_pedestrians_qa_path.has_value()
                     ? field_scene.bootstrap_for_scene_dump(smoke_state, 1U)
@@ -43510,6 +43643,10 @@ int main(int argc, char** argv) {
             if (field_default_yakuza_actors_qa_path.has_value()) {
                 return run_field_default_yakuza_actors_qa(
                     field_scene, *field_default_yakuza_actors_qa_path);
+            }
+            if (field_scene55_thon_actor_qa_path.has_value()) {
+                return run_field_scene55_thon_actor_qa(
+                    field_scene, *field_scene55_thon_actor_qa_path);
             }
             if (field_region_map_pedestrians_qa_path.has_value()) {
                 return run_field_region_map_pedestrians_qa(

@@ -2386,6 +2386,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
 
     field_dynamic_actor_artwork_.clear();
     field_dynamic_actor_profile_facts_.clear();
+    field_thon_default_actor_artwork_.reset();
     std::string line;
     if (!std::getline(input, line) ||
         line != "scene\tcontext_group\trandom_sum\tselection_cell_offset"
@@ -2865,6 +2866,80 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
         field_dynamic_actor_artwork_.emplace(sprite_stem,
                                               std::move(artwork));
     }
+    const auto thon_default = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [](const DefaultFieldActorPresentation& actor) {
+            return actor.scene_reference == 55U &&
+                   actor.source_order == 0U && actor.entity_kind == 15U &&
+                   actor.script_profile_id == "thon_k0f_spell01" &&
+                   actor.action_kind ==
+                       scripting::ScriptActorActionKind::spell &&
+                   actor.initial_action_code == 1U && actor.palette_line == 1U;
+        });
+    if (thon_default != field_default_actors_.end()) {
+        // Scene 55's default list points to Thon at 0x1EDA88/0x1EDB00 [C].
+        // ROM 0xA77A's seven-piece C052 idle state is reached by all eight
+        // direction selectors; C082 uses the eight direction records. Keep
+        // those source-authored poses as named host assets rather than
+        // routing this kind-15 record through the ordinary bitmap decoder.
+        std::string alias_prefix = "field.entities.actors.";
+        alias_prefix += thon_default->sprite_stem;
+        DefaultActorArtwork artwork{};
+        QImage idle_image;
+        int idle_origin_x = 0;
+        int idle_origin_y = 0;
+        if (!load_sprite_image(catalog, alias_prefix + ".idle", idle_image,
+                               idle_origin_x, idle_origin_y)) {
+            return false;
+        }
+        for (std::size_t direction = 0U; direction < 8U; ++direction) {
+            artwork.idle_images[direction] = idle_image;
+            artwork.idle_origin_x[direction] = idle_origin_x;
+            artwork.idle_origin_y[direction] = idle_origin_y;
+            const auto spell_alias = alias_prefix + ".spell.dir." +
+                std::to_string(direction) + ".frame.0";
+            artwork.spell_images[direction].emplace_back();
+            artwork.spell_origin_x[direction].push_back(0);
+            artwork.spell_origin_y[direction].push_back(0);
+            const auto frame_index =
+                artwork.spell_images[direction].size() - 1U;
+            if (!load_sprite_image(
+                    catalog, spell_alias,
+                    artwork.spell_images[direction][frame_index],
+                    artwork.spell_origin_x[direction][frame_index],
+                    artwork.spell_origin_y[direction][frame_index])) {
+                return false;
+            }
+        }
+        const auto load_thon_spell_death =
+            [this, &catalog, &alias_prefix](
+                const std::string_view pose_name,
+                std::vector<QImage>& images,
+                std::vector<int>& origin_x,
+                std::vector<int>& origin_y) {
+                const auto alias = alias_prefix + "." +
+                    std::string(pose_name) + ".frame.0";
+                images.emplace_back();
+                origin_x.push_back(0);
+                origin_y.push_back(0);
+                if (!load_sprite_image(catalog, alias, images.back(),
+                                       origin_x.back(), origin_y.back())) {
+                    return false;
+                }
+                return true;
+            };
+        if (!load_thon_spell_death(
+                "spell.death.e0", artwork.spell_death_e0_images,
+                artwork.spell_death_e0_origin_x,
+                artwork.spell_death_e0_origin_y) ||
+            !load_thon_spell_death(
+                "spell.death.e4", artwork.spell_death_e4_images,
+                artwork.spell_death_e4_origin_x,
+                artwork.spell_death_e4_origin_y)) {
+            return false;
+        }
+        field_thon_default_actor_artwork_ = std::move(artwork);
+    }
     const auto pedestrian_template = std::find_if(
         field_default_actors_.begin(), field_default_actors_.end(),
         [](const DefaultFieldActorPresentation& actor) {
@@ -3280,12 +3355,23 @@ void FieldSceneRuntime::initialize_default_field_actors(
             actor.source_action_counter =
                 dynamic_profile_facts->second.source_action_counter;
         }
+        if (actor.scene_reference == 55U && actor.source_order == 0U &&
+            actor.entity_kind == 15U &&
+            actor.script_profile_id == "thon_k0f_spell01" &&
+            actor.action_kind == scripting::ScriptActorActionKind::spell &&
+            actor.initial_action_code == 1U &&
+            field_thon_default_actor_artwork_.has_value()) {
+            // ROM 0x44BC publishes the default-list record in the ordinary
+            // active actor pool. Its kind-15 action uses the dedicated Thon
+            // period/target path at 0x13A4C, not a fabricated patrol [C].
+            actor.source_default_dynamic_profile = true;
+        }
         if (actor.entity_kind != 5U && actor.entity_kind != 11U &&
             !actor.source_default_dynamic_profile) {
             // Keep this definition's allocated source slot and PRNG advance:
             // unsupported source rows still precede later records in 0x4466.
-            // The Scene-55 Thon profile currently lacks a complete host pose
-            // set, so it remains a source boundary instead of a fake actor.
+            // Unsupported source rows keep their allocated slot and PRNG
+            // advance, but do not become guessed actors.
             if (actor.entity_kind == 8U) {
                 std::ostringstream reason;
                 reason << "default Yakuza source profile facts or artwork are "
@@ -5175,6 +5261,11 @@ FieldSceneRuntime::default_actor_sprite_view(
         (actor.entity_kind == 5U || actor.entity_kind == 11U)) {
         const auto kind_index = actor.entity_kind == 5U ? 0U : 1U;
         artwork = &field_default_actor_artwork_[kind_index];
+    } else if (!actor.temporary_world_encounter &&
+               !actor.world_activity_script_actor &&
+               actor.entity_kind == 15U &&
+               field_thon_default_actor_artwork_.has_value()) {
+        artwork = &*field_thon_default_actor_artwork_;
     } else {
         const auto found = field_dynamic_actor_artwork_.find(
             actor.sprite_stem);

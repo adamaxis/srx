@@ -30,6 +30,7 @@ function M.dynamic(sprite_type, action_kind, action_code)
     return ActorProfile{ id = string.format("dyn_k%02x_%s%02x", sprite_type, action_kind, action_code),
         sprite_type = sprite_type, action_kind = action_kind, action_code = action_code,
         weapon = action_kind == "item" and action_code or nil,
-        controls_movement = true, projectile = false, dynamic_encounter_only = true }
+        controls_movement = sprite_type ~= SpriteType.THON,
+        projectile = false, dynamic_encounter_only = true }
 end
 return M
