@@ -69,9 +69,10 @@ applied after the template copy to these same live offsets. Lua receives these
 facts as named combatant fields; the runtime does not read ROM addresses.
 Script-runtime QA checks the Lonemage template bytes and the Elven Mage's
 overridden `+0x9D` value. This corrects the previously shifted attribute
-mapping. It supplies the inputs for `0x1033E`, but its spell trial, effect,
-residual, and meter branches are not yet connected to the live Lua actor
-heartbeat.
+mapping. These named facts feed the Lua `combat.resolve_spell_action` and
+delayed target-effect path below. The separately reviewed random encounter
+rows still have no spell-action actor; Scene-55's default-list Thon uses its
+kind-15 period path, documented below.
 The default-map NPC profile still does not receive the general branch tree's
 complete `+0x10`, `+0x11`, `+0x4C`, `+0x9E`, and route state. The temporary
 random-world actor path now carries typed `+0x10` service flags and the
@@ -656,6 +657,30 @@ The handler phase pointer tables are `0x58B6` for code 1, `0x589E` for code 2,
 are `0x2000`, `0x2000`, `0x6000`, and `0x4000`. The offline importer resolves
 these source references together with each scene palette and exports stable
 named phase images; runtime rendering does not walk the ROM tables.
+
+### Scene-55 Thon period path
+
+The kind-15 branch at `0x13904` decrements shared `FFE188`; on expiry it reloads
+8, selects the linked actor at `0x14492`, and calls `0xAE6E`. That routine aims
+at the linked record and only falls through to `0x1033E` when its collision
+window probe at `0x14D8E` permits the action; `FFE186 == 3` returns before
+that probe. A failed roll, blocked probe, or closed `FFE186` gate still reaches
+the C082 pose and mode-0 delay through `0xAF7C` or `0xAFAE`.
+After the existing default-list Thon fixture was connected, Lua now uses the
+same typed spell resolver/effect queue documented above for the clear-probe
+case; the target's render heartbeat applies the delayed code-1 `0x521E` result.
+It keeps the cast result's action dispatch explicit for the shared runtime
+validator, and blocked/failed cases do not allocate a target effect.
+
+Debug and Release `shadowrun_gameplay_script_runtime_qa` exercise the Scene-55
+Thon template facts through success plus applied target effect, failed spell
+roll, blocked line, and closed-`FFE186` branches; the last case confirms the
+line probe is skipped. The Debug/Release
+`shadowrun_ghidra_conversion_qt_field_scene55_thon_actor_qa` also checks the
+real field-runtime default-list actor, linked party target, C082 pose, and
+writes `actual.bmp`. These captures are native-runtime regression evidence,
+not independent Genesis comparisons. The distinct `0xAFE0`/`0xAFE2`
+continuations and Thon in other spawn sources remain open.
 
 `0x1597E` scans the ten records in source order. For action code 5 it sets
 `+0xDE=5` and the caster link on each active candidate whose direct route cost

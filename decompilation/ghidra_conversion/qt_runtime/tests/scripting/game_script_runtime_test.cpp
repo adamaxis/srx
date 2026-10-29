@@ -8045,6 +8045,29 @@ int main() {
             facts.command_attribute_7b = 2U;
             facts.command_attribute_7c = 2U;
             facts.class_code = 19U;
+        } else if (profile_id == "thon_k0f_spell01") {
+            // Scene-55 ROM template 0x1EDB00 / default-actors.tsv supplies
+            // Thon's live spell-combat bytes, including skill 5 and item-18
+            // base 8. Keep this fixture source-profile-specific [C].
+            facts.record_type = slot;
+            facts.physical_meter = physical_meter;
+            facts.mental_meter = 10U;
+            facts.posture = 2U;
+            facts.command_attribute_77 = 15U;
+            facts.command_attribute_78 = 10U;
+            facts.command_attribute_79 = 14U;
+            facts.command_attribute_7b = 8U;
+            facts.command_attribute_7c = 16U;
+            facts.command_attribute_85 = 8U;
+            facts.item18_base = 8U;
+            facts.armor_index = 7U;
+            facts.race_or_state = -1;
+            facts.class_code = 0U;
+            facts.equipped_action_code = 1U;
+            facts.item_codes[0] = 50U;
+            facts.action_phase_extension = {
+                7U, 15U, 10U, 14U, 2U, 8U, 16U, 9U, 6U, 6U};
+            facts.action_skills = {5U, 0U, 0U, 0U};
         }
         return facts;
     };
@@ -8073,6 +8096,264 @@ int main() {
         }
         return context;
     };
+
+    struct ThonSpellTrace {
+        std::optional<ScriptActorBehaviorDecision> cast;
+        std::optional<ScriptActorBehaviorDecision> target_effect;
+        std::size_t line_probe_calls = 0U;
+    };
+    const auto drive_thon_spell =
+        [&scripts, &actor_context, &make_static_default_actor_context,
+         &spell_target](const std::string_view actor_id,
+                        const bool line_clear,
+                        const bool force_success,
+                        const bool combat_meter_service_blocked = false) {
+        ThonSpellTrace trace;
+        auto caster = make_static_default_actor_context(
+            actor_id, "thon_k0f_spell01", 15U,
+            ScriptActorActionKind::spell, 1U, 3U, 20U, false);
+        // Scene-55 default-list actors enter the same source-profile resolver
+        // used by dynamic templates, while retaining their ordinary pool slot.
+        caster.dynamic_world_encounter_actor = true;
+        caster.source_actor_template_kind = 15U;
+        caster.source_actor_has_waypoint_data = true;
+        caster.source_actor_slot = 0U;
+        caster.source_actor_list_offset = 0x1EDA88U;
+        caster.source_actor_source_order = 0U;
+        caster.source_world_x = 0x0A00U;
+        caster.source_world_y = 0x0800U;
+        caster.source_thon_period_counter = 0U;
+        caster.source_animation_selector = 0U;
+        caster.source_think_suppressed = false;
+        caster.movement_scene_id = 55U;
+        caster.combat_meter_service_blocked =
+            combat_meter_service_blocked;
+        caster.action_line_clear = [&trace, line_clear](
+                                       const std::uint16_t,
+                                       const std::uint16_t) {
+            ++trace.line_probe_calls;
+            return line_clear;
+        };
+        std::size_t spell_roll_index = 0U;
+        caster.ai_random_bound = [&spell_roll_index, force_success](
+                                     const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+            if (bound == 0U) {
+                return std::nullopt;
+            }
+            if (!force_success) {
+                return 0U;
+            }
+            if (bound != 6U) {
+                return static_cast<std::uint16_t>(bound - 1U);
+            }
+            // Three exploding sixes followed by a five clear ordinary spell
+            // thresholds while keeping each die's rejection loop finite.
+            const auto roll = spell_roll_index++ % 4U == 3U ? 4U : 5U;
+            return static_cast<std::uint16_t>(roll);
+        };
+
+        ScriptActorTargetCandidate runner{};
+        runner.id = "party.runner.0";
+        runner.world_x = 0x0900U;
+        runner.world_y = 0x0800U;
+        runner.heading = 0x2000U;
+        runner.distance = 0x0100U;
+        runner.service_flags = static_cast<std::uint8_t>(
+            srx::ActorStatus::ACTIVE);
+        runner.projected_y_nonzero = true;
+        runner.source_record_slot = 0U;
+        runner.combatant = spell_target;
+        caster.ai_target_candidates.push_back(runner);
+
+        auto target = actor_context(
+            "field_runner_k03_none00", "party.runner.0", 3U,
+            ScriptActorActionKind::none, 0U, 0U, true);
+        target.source_record_slot = 0U;
+        target.source_record_flags = static_cast<std::uint8_t>(
+            srx::ActorStatus::ACTIVE);
+        target.combatant = spell_target;
+        target.movement_scene_id = 55U;
+        target.ai_target_candidates = caster.ai_target_candidates;
+        // Let the caster clear its spell thresholds, then give the runner's
+        // separate resistance roll the lowest face at every difficulty.
+        target.ai_random_bound = [](
+                                     const std::uint16_t bound)
+            -> std::optional<std::uint16_t> {
+            return bound == 0U ? std::nullopt
+                               : std::optional<std::uint16_t>{0U};
+        };
+        if (!scripts.actor_heartbeat(caster).has_value() ||
+            !scripts.actor_heartbeat(target).has_value()) {
+            return trace;
+        }
+
+        caster.spawn = false;
+        for (std::size_t pass = 0U; pass < 3U; ++pass) {
+            const auto decision = scripts.actor_heartbeat(caster);
+            if (!decision.has_value()) {
+                return trace;
+            }
+            if (decision->source_thon_period_counter.has_value()) {
+                caster.source_thon_period_counter =
+                    decision->source_thon_period_counter;
+            }
+            caster.source_animation_selector =
+                decision->source_animation_selector;
+            if (decision->animation_id == "spell") {
+                trace.cast = decision;
+                break;
+            }
+        }
+
+        if (line_clear && force_success && trace.cast.has_value() &&
+            trace.cast->spell_action_resolution.has_value() &&
+            trace.cast->spell_action_resolution->effect_started) {
+            target.spawn = false;
+            target.phase = ScriptActorHeartbeatPhase::render;
+            for (std::size_t frame = 0U; frame < 12U; ++frame) {
+                const auto effect = scripts.actor_heartbeat(target);
+                if (!effect.has_value()) {
+                    return trace;
+                }
+                if (effect->spell_effect_completed) {
+                    trace.target_effect = effect;
+                    break;
+                }
+            }
+        }
+        return trace;
+    };
+    const auto thon_success = drive_thon_spell(
+        "thon_period_spell_success", true, true);
+    const auto thon_failed_roll = drive_thon_spell(
+        "thon_period_spell_failed_roll", true, false);
+    const auto thon_blocked = drive_thon_spell(
+        "thon_period_spell_blocked", false, true);
+    const auto thon_mode_blocked = drive_thon_spell(
+        "thon_period_mode_blocked", true, true, true);
+    const bool thon_success_matches =
+        thon_success.cast.has_value() &&
+        thon_success.cast->spell_action_resolution.has_value() &&
+        thon_success.cast->source_action_dispatch ==
+            std::optional<std::string>{"spell"} &&
+        thon_success.cast->spell_action_resolution->action_code == 1U &&
+        thon_success.cast->spell_action_resolution->target_id ==
+            "party.runner.0" &&
+        thon_success.cast->source_thon_period_counter ==
+            std::optional<std::uint8_t>{8U} &&
+        thon_success.cast->source_animation_selector >= 0x80U &&
+        thon_success.cast->source_animation_selector <= 0x9CU &&
+        ((thon_success.cast->source_animation_selector - 0x80U) % 4U) == 0U &&
+        thon_success.cast->spell_action_resolution->roll_attempted &&
+        thon_success.cast->spell_action_resolution->effect_started &&
+        thon_success.cast->spell_action_resolution->spell_effect_slot ==
+            std::optional<std::uint8_t>{0U} &&
+        thon_success.cast->audio_event == 0x0032U &&
+        thon_success.cast->animation_id == "spell" &&
+        thon_success.cast->action_delay == 0x6AU &&
+        thon_success.line_probe_calls == 1U &&
+        thon_success.target_effect.has_value() &&
+        thon_success.target_effect->spell_effect_completed &&
+        thon_success.target_effect->spell_effect_resolution.has_value() &&
+        thon_success.target_effect->spell_effect_resolution->action_code ==
+            1U &&
+        thon_success.target_effect->spell_effect_resolution->target_id ==
+            "party.runner.0" &&
+        thon_success.target_effect->spell_effect_resolution->outcome ==
+            "effect_applied" &&
+        thon_success.target_effect->spell_effect_resolution->changed;
+    const bool thon_failed_roll_matches =
+        thon_failed_roll.cast.has_value() &&
+        thon_failed_roll.cast->source_action_dispatch ==
+            std::optional<std::string>{"spell"} &&
+        thon_failed_roll.cast->spell_action_resolution.has_value() &&
+        thon_failed_roll.cast->spell_action_resolution->roll_attempted &&
+        thon_failed_roll.cast->spell_action_resolution->action_result == 0U &&
+        !thon_failed_roll.cast->spell_action_resolution->effect_started &&
+        !thon_failed_roll.cast->audio_event.has_value() &&
+        thon_failed_roll.cast->animation_id == "spell" &&
+        thon_failed_roll.line_probe_calls == 1U;
+    const bool thon_blocked_matches =
+        thon_blocked.cast.has_value() &&
+        thon_blocked.cast->source_action_dispatch ==
+            std::optional<std::string>{"spell"} &&
+        !thon_blocked.cast->spell_action_resolution.has_value() &&
+        !thon_blocked.cast->audio_event.has_value() &&
+        thon_blocked.cast->animation_id == "spell" &&
+        thon_blocked.line_probe_calls == 1U;
+    const bool thon_mode_blocked_matches =
+        thon_mode_blocked.cast.has_value() &&
+        thon_mode_blocked.cast->source_action_dispatch ==
+            std::optional<std::string>{"spell"} &&
+        !thon_mode_blocked.cast->spell_action_resolution.has_value() &&
+        !thon_mode_blocked.cast->audio_event.has_value() &&
+        thon_mode_blocked.cast->animation_id == "spell" &&
+        thon_mode_blocked.line_probe_calls == 0U;
+    if (!(thon_success_matches && thon_failed_roll_matches &&
+          thon_blocked_matches && thon_mode_blocked_matches)) {
+        std::cerr << "Thon spell trace: success_decision="
+                  << thon_success.cast.has_value()
+                  << " success_match=" << thon_success_matches
+                  << " success_resolution="
+                  << (thon_success.cast.has_value() &&
+                      thon_success.cast->spell_action_resolution.has_value())
+                  << " success_effect="
+                  << (thon_success.cast.has_value() &&
+                      thon_success.cast->spell_action_resolution.has_value() &&
+                      thon_success.cast->spell_action_resolution->effect_started)
+                  << " success_target_effect="
+                  << thon_success.target_effect.has_value()
+                  << " failed_decision=" << thon_failed_roll.cast.has_value()
+                  << " failed_match=" << thon_failed_roll_matches
+                  << " failed_resolution="
+                  << (thon_failed_roll.cast.has_value() &&
+                      thon_failed_roll.cast->spell_action_resolution.has_value())
+                  << " blocked_decision=" << thon_blocked.cast.has_value()
+                  << " blocked_match=" << thon_blocked_matches
+                  << " blocked_resolution="
+                  << (thon_blocked.cast.has_value() &&
+                      thon_blocked.cast->spell_action_resolution.has_value())
+                  << " mode_gate_match=" << thon_mode_blocked_matches
+                  << " mode_gate_line_probes="
+                  << thon_mode_blocked.line_probe_calls
+                  << " success_audio="
+                  << (thon_success.cast.has_value() &&
+                      thon_success.cast->audio_event.has_value()
+                          ? std::to_string(*thon_success.cast->audio_event)
+                          : std::string{"<none>"})
+                  << " success_delay="
+                  << (thon_success.cast.has_value()
+                          ? std::to_string(thon_success.cast->action_delay)
+                          : std::string{"<none>"})
+                  << " success_spell_pose="
+                  << (thon_success.cast.has_value()
+                      ? thon_success.cast->animation_id : "<none>")
+                  << " effect_changed="
+                  << (thon_success.target_effect.has_value() &&
+                      thon_success.target_effect->spell_effect_resolution.has_value()
+                          ? (thon_success.target_effect->spell_effect_resolution->changed
+                                 ? "true" : "false")
+                          : "<none>")
+                  << " effect_outcome="
+                  << (thon_success.target_effect.has_value() &&
+                      thon_success.target_effect->spell_effect_resolution.has_value()
+                          ? thon_success.target_effect->spell_effect_resolution->outcome
+                          : "<none>")
+                  << " effect_value="
+                  << (thon_success.target_effect.has_value() &&
+                      thon_success.target_effect->spell_effect_resolution.has_value()
+                          ? std::to_string(
+                                thon_success.target_effect->spell_effect_resolution->effect_value)
+                          : "<none>")
+                  << '\n';
+    }
+    if (!expect(thon_success_matches && thon_failed_roll_matches &&
+                    thon_blocked_matches && thon_mode_blocked_matches,
+                "Thon 0x13A4C/0xAE6E did not resolve the spell/effect or preserve its failed, line-blocked, and FFE186-gated branches")) {
+        std::cerr << scripts.failure() << '\n';
+        return 24;
+    }
 
     // ROM 0x44BC copies template +0x04 to live +0x4C and publishes the
     // allocated record slot at +0x3E. Keep the non-dynamic default-list

@@ -60,20 +60,55 @@ local function thon_period_path(state, context)
         state.ai_think_gap = "thon_target_link_unavailable"
         return "thon_unresolved"
     end
-    if type(target.world_x) ~= "number" or type(target.world_y) ~= "number" or
-       type(context.action_line_clear) ~= "function" then
-        state.ai_think_gap = "thon_line_of_sight_unavailable"
-        return "thon_unresolved"
-    end
-    local line_clear = context.action_line_clear(target.world_x, target.world_y)
-    if type(line_clear) ~= "boolean" then
-        state.ai_think_gap = "thon_line_of_sight_unavailable"
-        return "thon_unresolved"
+    -- ROM 0xAE6E exits at its FFE186 == 3 gate before calculating the link
+    -- probe or calling 0x1033E. The caller still installs the C082 pose below.
+    local line_clear = false
+    if context.combat_meter_service_blocked ~= true then
+        if type(target.world_x) ~= "number" or
+           type(target.world_y) ~= "number" or
+           type(context.action_line_clear) ~= "function" then
+            state.ai_think_gap = "thon_line_of_sight_unavailable"
+            return "thon_unresolved"
+        end
+        line_clear = context.action_line_clear(
+            target.world_x, target.world_y)
+        if type(line_clear) ~= "boolean" then
+            state.ai_think_gap = "thon_line_of_sight_unavailable"
+            return "thon_unresolved"
+        end
     end
     if not R.begin_thon_action(state, target, line_clear) then
         state.ai_think_gap = "thon_directional_pose_unavailable"
         return "thon_unresolved"
     end
+
+    -- ROM 0xAE6E calls 0x1033E after its target and collision-window checks;
+    -- 0x13A4C then selects AF7C/AFAE, which reloads +0xDC and installs C082.
+    -- Keep the pose/delay even when the line probe blocks the spell, but only
+    -- resolve dice and reserve a target effect when the probe passes [C].
+    local resolution
+    state.source_action_dispatch = "spell"
+    state.ai_think_audio_event = nil
+    if line_clear then
+        local combat = game.modules.combat
+        if type(combat) == "table" and
+           type(combat.resolve_spell_action) == "function" then
+            resolution = combat.resolve_spell_action(context, target)
+        end
+        if type(resolution) == "table" then
+            state.spell_action_resolution = resolution
+            state.action_result = resolution.action_result
+            if type(resolution.combatant) == "table" then
+                state.combatant = resolution.combatant
+            end
+            if type(resolution.audio_event) == "number" then
+                state.ai_think_audio_event = resolution.audio_event
+            end
+        else
+            state.ai_think_gap = "thon_spell_resolution_unavailable"
+        end
+    end
+    R.begin_spell_cast(state, context, target, resolution)
     return "thon_action"
 end
 
@@ -581,7 +616,9 @@ local function apply_think_result(state, context, path)
         set_idle(state)
         return true
     elseif path == "thon_action" then
-        return true
+        local audio_event = state.ai_think_audio_event
+        state.ai_think_audio_event = nil
+        return true, audio_event
     elseif path == "flee" then
         apply_flee(state, context)
         return true

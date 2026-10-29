@@ -14,7 +14,33 @@ C042 attack pose, applies the source action delay, and resets animation state.
 The C042 pose is a static one-frame list held during that delay; it is not a
 multi-frame weapon swing.
 
-Action codes 13..15 on a nonnegative equipped slot take the separate effect-record path at ROM 0x15646 before 0x1514E; that path calls asset-meter routine 0x36FC, not ammo service 0x38AC. The 0x36FC branch for codes 13..15 decrements the equipped inventory phase byte and clears that slot at zero; it does not change weapon ammo rounds. Magic spells use a separate overlapping one-based code space: ROM 0x14D6A uses the sign of +0x56 to select D4EA0 spell rows instead of D4540 item rows. The Qt action service now classifies the signed equipped slot and code together, and negative-slot spells return before empty-magazine reload or ammo handling. Script-runtime QA drives four spell test profiles through the legal, waiting, offscreen, suppressed, and blocked gates. A legal profile records a `spell` dispatch with the C082 selector, frame 0, and mode-0 delay; it does not execute the `0x1033E` dice path or spawn `0x15830`. The field host now connects the `0x14D8E` line probe, but the reviewed production encounter rows contain no spell-action actor, so that callback has not yet been reached by a live spell actor. Dice resolution, effect spawn, C082 art, cast audio, and an independent cast capture remain open. A nonnegative NPC item slot now reports `item_gated` for codes other than 13..15 and `item_effect` for those three, after the same delay and projection gates. The request does not call `0x1514E`, `0x15646`, `0x55C76`, or the ammo path, and it does not install a C042 or C092 pose. `FFE186` and `+0xB0` bit 4 are not hosted, so the report is not a completed spawn.
+Action codes 13..15 on a nonnegative equipped slot take the separate
+effect-record path at ROM `0x15646` before `0x1514E`; that path calls asset-meter
+routine `0x36FC`, not ammo service `0x38AC`. It decrements the equipped
+inventory phase byte and clears that slot at zero without changing weapon
+rounds. Magic spells use a separate overlapping one-based code space: ROM
+`0x14D6A` uses the sign of `+0x56` to select D4EA0 spell rows instead of D4540
+item rows. The Qt action service classifies the signed equipped slot and code
+together, and negative-slot spells return before empty-magazine reload or ammo
+handling.
+
+The four generic script profiles exercise `0x13FFE` spell-dispatch gates:
+waiting, offscreen, suppressed, and blocked. Those dispatch checks stop at the
+C082 `spell` pose and mode-0 delay. Scene-55 default-list Thon takes the
+separate kind-15 period path at `0x13904`/`0x13A4C`: `0xAE6E` checks `FFE186`
+and the `0x14D8E` collision probe before calling `0x1033E`. That clear-line
+branch now resolves the typed spell result, reserves `0x15830`'s target effect,
+and applies the delayed `0x521E` callback. Debug/Release script QA covers a
+successful applied effect, failed roll, blocked line, and `FFE186 == 3` probe
+skip; Scene-55 field QA checks the live default actor, linked target, C082
+pose, and writes `actual.bmp`. An independent Genesis cast capture and the
+distinct `0xAFE0`/`0xAFE2` continuations remain open.
+
+A nonnegative NPC item slot now reports `item_gated` for codes other than
+13..15 and `item_effect` for those three, after the same delay and projection
+gates. The request does not call `0x1514E`, `0x15646`, `0x55C76`, or the ammo
+path, and it does not install a C042 or C092 pose. Other item-effect branches
+and the `+0xB0` bit-4 gate remain open.
 
 The paired secondary record selects one of sixteen direction lists from
 `0x630C`: selectors `0x00..0x1C` are the regular three-frame (`0x8003`) family,

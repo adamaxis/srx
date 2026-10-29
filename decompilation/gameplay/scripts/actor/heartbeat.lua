@@ -324,7 +324,12 @@ function ActorAI.heartbeat(context)
                         state.entry_delay = state.entry_delay - 1
                     end
                 else
-                    if R.think(state, context) then
+                    local think_handled, think_audio_event =
+                        R.think(state, context)
+                    if think_audio_event ~= nil then
+                        audio_event = think_audio_event
+                    end
+                    if think_handled then
                         if state.ai_deactivate_requested then
                             deactivate_record(state)
                             return R.snapshot(state, "hold", nil)
