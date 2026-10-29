@@ -10937,8 +10937,12 @@ GameScriptRuntime::actor_heartbeat(
                                 context.source_camera_limit_y);
     lua_pushboolean(state, context.world_activity_active);
     lua_setfield(state, -2, "world_activity_active");
-    lua_pushinteger(state, context.world_scene_state);
-    lua_setfield(state, -2, "world_scene_state");
+    // FFE186 stays inside the native field host. Lua receives the behavior
+    // facts used by ROM 0x13996/0x13FFE and 0xAE6E instead of its state byte.
+    lua_pushboolean(state, context.world_scene_state != 0U);
+    lua_setfield(state, -2, "field_sequence_active");
+    lua_pushboolean(state, context.world_scene_state == 3U);
+    lua_setfield(state, -2, "final_battle_active");
     lua_pushinteger(state, context.ai_animation_frame);
     lua_setfield(state, -2, "ai_animation_frame");
     lua_pushboolean(state, context.target_heading_audio_alternate);

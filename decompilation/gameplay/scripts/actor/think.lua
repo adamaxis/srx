@@ -181,7 +181,7 @@ local function think_gate(state, context)
         if not world_active then
             return "patrol"
         end
-        if context.world_scene_state ~= E.EndingState.NONE and
+        if context.field_sequence_active == true and
            not facts.lifecycle.ai_runner and
            context.hold_for_ending_activity == true then
             return "hold"

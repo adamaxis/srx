@@ -54,7 +54,8 @@ local function context(overrides)
         source_alarm_active = false,
         scene_mode = "street",
         world_activity_active = false,
-        world_scene_state = E.EndingState.NONE,
+        field_sequence_active = false,
+        final_battle_active = false,
         actor_behavior_profile = {
             engagement_policy = "patrol", approach_band = "far",
         },
@@ -412,14 +413,14 @@ check(R.think_gate(state(), context({ source_projection_active = false,
       "0x139B4 active offscreen actor follows FFFC04")
 check(R.think_gate(state(), context({ source_projection_active = false,
       world_activity_active = true,
-      world_scene_state = E.EndingState.FINAL_FIGHT,
+      field_sequence_active = true,
       hold_for_ending_activity = true })) == "hold",
       "0x13996 ending-state offscreen actor with the host-derived hold policy enters hold")
 check(R.think_gate(state({ actor_facts = {
           lifecycle = { ai_runner = true },
       } }), context({ source_projection_active = false,
       world_activity_active = true,
-      world_scene_state = E.EndingState.FINAL_FIGHT,
+      field_sequence_active = true,
       hold_for_ending_activity = true,
       actor_facts = { lifecycle = { ai_runner = true } } })) ==
       "follow_leader",
@@ -435,7 +436,7 @@ check(R.think_gate(state(), context({ world_activity_active = true })) ==
       "combat", "0x139CE active FFDF84 takes the existing combat path")
 
 local hold_context = context({ source_projection_active = false,
-    world_activity_active = true, world_scene_state = E.EndingState.FINAL_FIGHT,
+    world_activity_active = true, field_sequence_active = true,
     hold_for_ending_activity = true })
 s = state()
 hold_context.animation_blocks_behavior = false

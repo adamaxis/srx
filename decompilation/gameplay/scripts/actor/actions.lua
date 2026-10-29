@@ -293,7 +293,7 @@ local function classify_item_dispatch(state, context, target)
     if type(target.source_record_heading) ~= "number" then
         return "item_target_heading_unresolved"
     end
-    if context.world_scene_state ~= 0 or
+    if context.field_sequence_active == true or
        state.actor_facts.behavior.in_target_band then
         if state.ammunition_remaining == 0 then
             return "item_empty"
@@ -484,7 +484,7 @@ function R.begin_player_spell_cast(state, context)
        context.combat_input_blocked == true then
         return nil
     end
-    if context.world_scene_state == 3 then
+    if context.final_battle_active == true then
         state.source_action_dispatch = "player_spell_suppressed"
         return nil
     end
@@ -756,7 +756,7 @@ local function advance_spell_effect(state, context)
                 end
             end
             local skip_delayed_callback = pending.spell_id == "flame_bolt" and
-                context.world_scene_state == 3 and
+                context.final_battle_active == true and
                 not caster_is_ai_runner
             if pending.spell_id ~= "sleep" and not skip_delayed_callback and
                type(combat) == "table" and

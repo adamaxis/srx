@@ -81,7 +81,8 @@ local function make_context(action_code)
         combat_confirm_held = true,
         combat_action_ready = true,
         combat_input_blocked = false,
-        world_scene_state = 0,
+        field_sequence_active = false,
+        final_battle_active = false,
         source_record_slot = 0,
         actor_facts = {
             lifecycle = { active = true, thinking_enabled = false,

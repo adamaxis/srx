@@ -182,6 +182,7 @@ local function context(actor)
   local dyn = R(4) == 1
   if dyn then pid = (#kinds_list > 0 and R(2) == 1) and pick(kinds_list) or string.format("x_k%02x_%s%02x", R(4, 14), pick({ "item", "spell", "none" }), R(0, 15)) end
   local ek, ak, ac = pid:match("_k(%x%x)_([a-z]+)(%x%x)$")
+  local world_scene_state = R(0, 0xff)
   local action_code = ac and tonumber(ac, 16) or 0
   local action_item = ak == "item" and Items.catalog[action_code] or nil
   local action_spell_id = ak == "spell" and
@@ -206,7 +207,10 @@ local function context(actor)
     source_projection_active = bool(), source_behavior_flags = num(), movement_entity_flags = num(),
     ai_random_bound = function(n) return (n and n > 0) and ((#actor * 7) % n) or 0 end,
     ai_animation_frame = num(), action_animation_frame_count = R(1, 8), action_animation_audio_event = num(),
-    world_scene_state = { }, walk_animation_frame_count = R(1, 8), target_selection_linked_slot = R(0, 7),
+    world_scene_state = world_scene_state,
+    field_sequence_active = world_scene_state ~= 0,
+    final_battle_active = world_scene_state == 3,
+    walk_animation_frame_count = R(1, 8), target_selection_linked_slot = R(0, 7),
     target_selection_current_slot = R(0, 7), target_selection_advances_cursor = bool(),
     ammunition_remaining = ammunition_remaining,
     hold_for_ending_activity = false,
@@ -394,6 +398,9 @@ for trial = 1, TRIALS do
     ctx.phase = (frame % 2 == 0) and "render" or "behavior"
     if R(10) == 1 then ctx.phase = fresh.phase end
     local cA, cB = legacy_context_for_reference(ctx), deepcopy(ctx)
+    -- The historical monolith consumes the source state. Current Lua gets
+    -- only the derived field-sequence and final-battle behavior facts.
+    cB.world_scene_state = nil
     cB.ai_random_bound, cA.ai_random_bound = ctx.ai_random_bound, ctx.ai_random_bound
     for i = #logA, 1, -1 do logA[i] = nil end
     for i = #logB, 1, -1 do logB[i] = nil end

@@ -77,7 +77,6 @@ E.FieldAlarmRomLayout = {
 }
 E.StateFn   = { IDLE = 0xB45C, WALK = 0xB574, PROJECTILE = 0xAC4E }                 -- +0x3A handlers [C]
 E.CombatPhase = { NONE = 0, ATTACK_ANIM = 1, APPROACH = 2, HOLD = 3 }               -- FFDFE0 [C]
-E.EndingState = { NONE = 0, FINAL_FIGHT = 3 }                                        -- FFE186 [C]
 
 -- Shared 0xABFC / 0xD7EA delay calculation. D0=0 is unchanged, D0=2 doubles,
 -- and every other nonzero D0 is signed-halved; D7EA scans +0x90 bits 12..14

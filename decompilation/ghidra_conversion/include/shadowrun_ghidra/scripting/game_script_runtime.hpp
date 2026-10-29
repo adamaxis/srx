@@ -1834,7 +1834,9 @@ struct ScriptActorBehaviorContext {
     bool walk_fast_enabled = false;
     bool movement_transition_active = false;
     std::uint16_t movement_scene_id = 0;
-    std::uint8_t world_scene_state = 0; // FFE186; delayed spell callback gate
+    // Native-only FFE186 value for source-shaped entity services. The Lua
+    // adapter exposes `field_sequence_active` and `final_battle_active`.
+    std::uint8_t world_scene_state = 0;
     std::uint16_t movement_collision_mode = 0;
     ScriptMovementCollisionQuery movement_collision;
     ScriptMovementRouteLookup movement_route_lookup;
