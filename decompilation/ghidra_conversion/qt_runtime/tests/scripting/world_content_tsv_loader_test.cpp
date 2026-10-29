@@ -196,10 +196,32 @@ int main() {
         dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
             lua_isboolean(state, -1) != 0;
         lua_pop(state, 1);
+        if (index == 1U) {
+            dynamic_actor_rows_are_semantic =
+                dynamic_actor_rows_are_semantic &&
+                field_integer_is(state, row, "combat_body", 4) &&
+                field_integer_is(state, row, "combat_quickness", 8) &&
+                field_integer_is(state, row, "combat_strength", 6) &&
+                field_integer_is(state, row, "combat_intelligence", 2) &&
+                field_integer_is(state, row, "combat_willpower", 2) &&
+                field_integer_is(state, row, "combat_melee_combat", 3) &&
+                field_integer_is(state, row, "combat_sorcery", 0);
+        }
         for (const auto* field : {"selection_cell_offset",
                                   "sequence_list_offset", "tagged_template",
                                   "template_offset", "source_spawn_state_flags",
-                                  "source_interaction_flags"}) {
+                                  "source_interaction_flags",
+                                  "combat_attribute_77",
+                                  "combat_attribute_78",
+                                  "combat_attribute_79",
+                                  "combat_attribute_7b",
+                                  "combat_attribute_7c",
+                                  "combat_attribute_85",
+                                  "combat_item18_base",
+                                  "combat_action_skill_81",
+                                  "combat_action_skill_82",
+                                  "combat_action_skill_83",
+                                  "combat_action_skill_84"}) {
             lua_getfield(state, row, field);
             dynamic_actor_rows_are_semantic =
                 dynamic_actor_rows_are_semantic && lua_isnil(state, -1) != 0;

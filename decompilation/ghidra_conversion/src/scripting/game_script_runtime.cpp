@@ -7727,6 +7727,26 @@ GameScriptRuntime::world_activity_actors_for_selector(
                 destination = static_cast<std::uint16_t>(value);
                 return true;
             };
+        const auto read_combatant_fact =
+            [state, combatant_index](const char* group, const char* field,
+                                     std::uint8_t& destination) {
+                lua_getfield(state, combatant_index, group);
+                if (!lua_istable(state, -1)) {
+                    lua_pop(state, 1);
+                    return false;
+                }
+                const auto group_index = lua_absindex(state, -1);
+                std::uint32_t value = 0U;
+                const bool valid =
+                    read_field_integer(state, group_index, field, 0xFFU,
+                                       value);
+                lua_pop(state, 1);
+                if (!valid) {
+                    return false;
+                }
+                destination = static_cast<std::uint8_t>(value);
+                return true;
+            };
         auto& combatant = actor.combatant;
         ActorInteractionFacts combatant_interaction;
         std::uint8_t race_or_state = 0U;
@@ -7737,19 +7757,28 @@ GameScriptRuntime::world_activity_actors_for_selector(
             read_combatant_byte("mental_meter", combatant.mental_meter) &&
             read_combatant_word("cyberware_flags", combatant.cyberware_flags) &&
             read_combatant_byte("posture", combatant.posture) &&
-            read_combatant_byte("command_attribute_77",
-                                combatant.command_attribute_77) &&
-            read_combatant_byte("command_attribute_78",
-                                combatant.command_attribute_78) &&
-            read_combatant_byte("command_attribute_79",
-                                combatant.command_attribute_79) &&
-            read_combatant_byte("command_attribute_7b",
-                                combatant.command_attribute_7b) &&
-            read_combatant_byte("command_attribute_7c",
-                                combatant.command_attribute_7c) &&
-            read_combatant_byte("command_attribute_85",
-                                combatant.command_attribute_85) &&
-            read_combatant_byte("item18_base", combatant.item18_base) &&
+            read_combatant_fact("attributes", "body",
+                                combatant.attributes.body) &&
+            read_combatant_fact("attributes", "quickness",
+                                combatant.attributes.quickness) &&
+            read_combatant_fact("attributes", "strength",
+                                combatant.attributes.strength) &&
+            read_combatant_fact("attributes", "intelligence",
+                                combatant.attributes.intelligence) &&
+            read_combatant_fact("attributes", "willpower",
+                                combatant.attributes.willpower) &&
+            read_combatant_fact("skills", "sorcery",
+                                combatant.skills.sorcery) &&
+            read_combatant_fact("skills", "firearms",
+                                combatant.skills.firearms) &&
+            read_combatant_fact("skills", "pistols",
+                                combatant.skills.pistols) &&
+            read_combatant_fact("skills", "smgs",
+                                combatant.skills.smgs) &&
+            read_combatant_fact("skills", "shotguns",
+                                combatant.skills.shotguns) &&
+            read_combatant_fact("skills", "melee_combat",
+                                combatant.skills.melee_combat) &&
             read_combatant_byte("armor_index", combatant.armor_index) &&
             read_combatant_byte("race_or_state", race_or_state) &&
             read_combatant_byte("class_code", combatant.class_code) &&
@@ -7790,8 +7819,7 @@ GameScriptRuntime::world_activity_actors_for_selector(
         if (!read_combatant_array("item_codes", combatant.item_codes) ||
             !read_combatant_array("item_phases", combatant.item_phases) ||
             !read_combatant_array("action_phase_extension",
-                                  combatant.action_phase_extension) ||
-            !read_combatant_array("action_skills", combatant.action_skills)) {
+                                  combatant.action_phase_extension)) {
             return fail("world-content actor combat arrays are invalid");
         }
         combatant.interaction_flags =
@@ -8102,6 +8130,24 @@ GameScriptRuntime::resolve_field_encounter_impl(
                     value = static_cast<std::uint8_t>(combat_value);
                     return true;
                 };
+                const auto read_combat_fact = [&](const char* group,
+                                                  const char* field,
+                                                  std::uint8_t& value) {
+                    lua_getfield(state, combat_index, group);
+                    if (!lua_istable(state, -1)) {
+                        lua_pop(state, 1);
+                        return false;
+                    }
+                    const auto group_index = lua_absindex(state, -1);
+                    const bool valid = read_field_integer(
+                        state, group_index, field, 0xFFU, combat_value);
+                    lua_pop(state, 1);
+                    if (!valid) {
+                        return false;
+                    }
+                    value = static_cast<std::uint8_t>(combat_value);
+                    return true;
+                };
                 std::uint32_t cyberware_flags = 0U;
                 std::uint32_t profile_index = 0U;
                 ActorInteractionFacts combat_interaction;
@@ -8113,20 +8159,28 @@ GameScriptRuntime::resolve_field_encounter_impl(
                     read_combat_byte("mental_meter",
                                      actor.combatant.mental_meter) &&
                     read_combat_byte("posture", actor.combatant.posture) &&
-                    read_combat_byte("command_attribute_77",
-                                     actor.combatant.command_attribute_77) &&
-                    read_combat_byte("command_attribute_78",
-                                     actor.combatant.command_attribute_78) &&
-                    read_combat_byte("command_attribute_79",
-                                     actor.combatant.command_attribute_79) &&
-                    read_combat_byte("command_attribute_7b",
-                                     actor.combatant.command_attribute_7b) &&
-                    read_combat_byte("command_attribute_7c",
-                                     actor.combatant.command_attribute_7c) &&
-                    read_combat_byte("command_attribute_85",
-                                     actor.combatant.command_attribute_85) &&
-                    read_combat_byte("item18_base",
-                                     actor.combatant.item18_base) &&
+                    read_combat_fact("attributes", "body",
+                                     actor.combatant.attributes.body) &&
+                    read_combat_fact("attributes", "quickness",
+                                     actor.combatant.attributes.quickness) &&
+                    read_combat_fact("attributes", "strength",
+                                     actor.combatant.attributes.strength) &&
+                    read_combat_fact("attributes", "intelligence",
+                                     actor.combatant.attributes.intelligence) &&
+                    read_combat_fact("attributes", "willpower",
+                                     actor.combatant.attributes.willpower) &&
+                    read_combat_fact("skills", "sorcery",
+                                     actor.combatant.skills.sorcery) &&
+                    read_combat_fact("skills", "firearms",
+                                     actor.combatant.skills.firearms) &&
+                    read_combat_fact("skills", "pistols",
+                                     actor.combatant.skills.pistols) &&
+                    read_combat_fact("skills", "smgs",
+                                     actor.combatant.skills.smgs) &&
+                    read_combat_fact("skills", "shotguns",
+                                     actor.combatant.skills.shotguns) &&
+                    read_combat_fact("skills", "melee_combat",
+                                     actor.combatant.skills.melee_combat) &&
                     read_combat_byte("auxiliary_roll_bonus",
                                      actor.combatant.auxiliary_roll_bonus) &&
                     read_combat_byte("armor_index",
@@ -8183,8 +8237,6 @@ GameScriptRuntime::resolve_field_encounter_impl(
                         return true;
                     };
                     valid_combatant =
-                        read_combat_array("action_skills",
-                                          actor.combatant.action_skills) &&
                         read_combat_array("item_codes",
                                           actor.combatant.item_codes) &&
                         read_combat_array("item_phases",
@@ -9943,7 +9995,7 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "world_effect_slot_occupancy");
     const auto push_combatant = [state](
         const ScriptCombatantFacts& combatant) {
-        lua_createtable(state, 0, 26);
+        lua_createtable(state, 0, 22);
         const auto table_index = lua_absindex(state, -1);
         const auto set_integer = [state, table_index](
                                      const char* field,
@@ -9959,19 +10011,35 @@ GameScriptRuntime::actor_heartbeat(
         set_integer("physical_meter", combatant.physical_meter);
         set_integer("mental_meter", combatant.mental_meter);
         set_integer("posture", combatant.posture);
-        set_integer("command_attribute_77",
-                    combatant.command_attribute_77);
-        set_integer("command_attribute_78",
-                    combatant.command_attribute_78);
-        set_integer("command_attribute_79",
-                    combatant.command_attribute_79);
-        set_integer("command_attribute_7b",
-                    combatant.command_attribute_7b);
-        set_integer("command_attribute_7c",
-                    combatant.command_attribute_7c);
-        set_integer("command_attribute_85",
-                    combatant.command_attribute_85);
-        set_integer("item18_base", combatant.item18_base);
+        lua_createtable(state, 0, 5);
+        const auto attributes_index = lua_absindex(state, -1);
+        const auto set_attribute = [state, attributes_index](
+                                       const char* field,
+                                       const std::uint8_t value) {
+            lua_pushinteger(state, value);
+            lua_setfield(state, attributes_index, field);
+        };
+        set_attribute("body", combatant.attributes.body);
+        set_attribute("quickness", combatant.attributes.quickness);
+        set_attribute("strength", combatant.attributes.strength);
+        set_attribute("intelligence", combatant.attributes.intelligence);
+        set_attribute("willpower", combatant.attributes.willpower);
+        lua_setfield(state, table_index, "attributes");
+        lua_createtable(state, 0, 6);
+        const auto skills_index = lua_absindex(state, -1);
+        const auto set_skill = [state, skills_index](
+                                   const char* field,
+                                   const std::uint8_t value) {
+            lua_pushinteger(state, value);
+            lua_setfield(state, skills_index, field);
+        };
+        set_skill("sorcery", combatant.skills.sorcery);
+        set_skill("firearms", combatant.skills.firearms);
+        set_skill("pistols", combatant.skills.pistols);
+        set_skill("smgs", combatant.skills.smgs);
+        set_skill("shotguns", combatant.skills.shotguns);
+        set_skill("melee_combat", combatant.skills.melee_combat);
+        lua_setfield(state, table_index, "skills");
         set_integer("auxiliary_roll_bonus",
                     combatant.auxiliary_roll_bonus);
         // The same +0x9D byte acts as the caster's force in 0x10660 and
@@ -9990,14 +10058,6 @@ GameScriptRuntime::actor_heartbeat(
                     combatant.action_profile_modifier_flags);
         set_integer("linked_action_profile_index",
                     combatant.linked_action_profile_index);
-        lua_createtable(state,
-                        static_cast<int>(combatant.action_skills.size()), 0);
-        for (std::size_t index = 0U;
-             index < combatant.action_skills.size(); ++index) {
-            lua_pushinteger(state, combatant.action_skills[index]);
-            lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
-        }
-        lua_setfield(state, table_index, "action_skills");
         lua_createtable(state,
                         static_cast<int>(combatant.item_codes.size()), 0);
         for (std::size_t index = 0U; index < combatant.item_codes.size();

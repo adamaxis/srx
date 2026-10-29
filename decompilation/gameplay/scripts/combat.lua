@@ -45,9 +45,9 @@ local function add_source_byte_to_word(value, amount)
 end
 
 local function command_average(record)
-    local total = (record.command_attribute_78 +
-                   record.command_attribute_7b +
-                   record.command_attribute_7c) & 0xff
+    local total = (record.attributes.quickness +
+                   record.attributes.intelligence +
+                   record.attributes.willpower) & 0xff
     local value = total >> 1
     for slot = 1, 8 do
         if record.item_codes[slot] == E.ItemId.COMBAT_SENSE_SPELL_LOCK then
@@ -62,7 +62,7 @@ local function posture_reduction(value, posture)
 end
 
 local function item18_skill_value(record)
-    local value = record.item18_base & 0xff
+    local value = record.skills.sorcery & 0xff
     -- 0x55F02 scans slots 6..0; possession cell 7 is reserved for the
     -- separate special-item modifier path at 0x104F6.
     for slot = 7, 1, -1 do
@@ -222,7 +222,7 @@ local function ready_party_bonus(context)
         if not candidate.world_activity_actor and type(record) == "table" and
            record.actor_facts.lifecycle.active and
            signed_byte(record.class_code) <= 1 then
-            local item18 = record.item18_base
+            local item18 = record.skills.sorcery
             for slot = 7, 1, -1 do
                 if record.item_codes[slot] == E.ItemId.POWER_FOCUS then
                     item18 = (item18 + record.item_phases[slot]) & 0xff
@@ -281,8 +281,8 @@ local function dynamic_status_modifier(difficulty, attacker, linked, context)
     if type(selector) ~= "number" then
         return nil
     end
-    local attribute = selector < 0 and attacker.command_attribute_77 or
-        attacker.command_attribute_7c
+    local attribute = selector < 0 and attacker.attributes.body or
+        attacker.attributes.willpower
     if attacker.record_type < 3 then
         attribute = add_source_byte_to_word(
             ready_party_bonus(context), attribute)
@@ -396,6 +396,12 @@ local function copy_combatant(record)
                 end
             end
             copy[key] = facts
+        elseif key == "attributes" or key == "skills" then
+            local values = {}
+            for name, number in pairs(value) do
+                values[name] = number
+            end
+            copy[key] = values
         elseif type(value) == "table" then
             local array = {}
             for index, item in ipairs(value) do
@@ -667,7 +673,8 @@ local function resolve_spell_action(context, target, allow_untargeted)
     end
 
     local remaining_skill = skill - posture_reduction(skill, attacker.posture)
-    local effect_trials = (remaining_skill + attacker.command_attribute_7c) & 0xff
+    local effect_trials = (remaining_skill +
+        attacker.attributes.willpower) & 0xff
     local residual = spell_residual(
         attacker.force or attacker.auxiliary_roll_bonus or 0,
         effect_trials, spell)
@@ -802,8 +809,8 @@ function Combat.resolve_spell_impact(context, pending, target)
     end
 
     local attribute = spell.attribute_selector < 0
-        and defender.command_attribute_7c
-        or defender.command_attribute_77
+        and defender.attributes.willpower
+        or defender.attributes.body
     if defender.record_type < 3 then
         attribute = add_source_byte_to_word(
             attribute, ready_party_bonus(context))
@@ -891,7 +898,7 @@ function Combat.resolve_default_bonus_action(context, target)
     attacker.auxiliary_roll_bonus =
         E.CombatTuning.DEFAULT_ACTION_TRIAL_COUNT
 
-    local target_trials = defender.command_attribute_77
+    local target_trials = defender.attributes.body
     if type(target.id) ~= "string" or type(target_trials) ~= "number" then
         return nil
     end
@@ -964,8 +971,8 @@ function Combat.resolve_reaction(context, target)
     local attacker_reduction = posture_reduction(attacker_average,
                                                   attacker.posture)
     local first_count = math.min(attacker_reduction,
-                                 attacker.command_attribute_85) +
-                        attacker.command_attribute_85
+                                 attacker.skills.melee_combat) +
+                        attacker.skills.melee_combat
     if first_count == 0 then
         first_count = 1
     end
@@ -998,7 +1005,7 @@ function Combat.resolve_reaction(context, target)
                                                   defender.posture)
     local second_count = minimum_plus_attribute(
         defender_average - defender_reduction,
-        defender.command_attribute_85,
+        defender.skills.melee_combat,
         defender.equipped_action_code == 0)
     local second_difficulty = condition_modifier(4, defender, attacker)
     second_difficulty = dynamic_status_modifier(
@@ -1017,10 +1024,10 @@ function Combat.resolve_reaction(context, target)
         return nil
     end
 
-    local final_difficulty = attacker.command_attribute_79 +
+    local final_difficulty = attacker.attributes.strength +
         first_cyberware_modifier(attacker.cyberware_flags, 5, 4)
     local final_count = add_source_byte_to_word(
-        second_count, defender.command_attribute_77)
+        second_count, defender.attributes.body)
     final_count = final_count + first_cyberware_modifier(
         defender.cyberware_flags, 9, 3)
     final_difficulty = math.max(final_difficulty, 2)
@@ -1070,14 +1077,18 @@ end
 
 local function weapon_action_skill_value(attacker, action_code,
                                          posture_component)
-    local skills = attacker.action_skills
-    if type(skills) ~= "table" or #skills ~= 4 then
+    local skills = attacker.skills
+    if type(skills) ~= "table" or
+       type(skills.firearms) ~= "number" or
+       type(skills.pistols) ~= "number" or
+       type(skills.smgs) ~= "number" or
+       type(skills.shotguns) ~= "number" then
         return nil
     end
-    local selected = skills[1]
-    local candidate = action_code < 8 and skills[2]
-        or action_code < 11 and skills[3]
-        or skills[4]
+    local selected = skills.firearms
+    local candidate = action_code < 8 and skills.pistols
+        or action_code < 11 and skills.smgs
+        or skills.shotguns
     if not source_byte_at_least(selected, candidate) then
         selected = candidate
     end
@@ -1210,7 +1221,7 @@ local function resolve_weapon_action_value(context, projectile,
     local average = command_average(target)
     local reduction = posture_reduction(average, target.posture)
     local trial_count = add_source_byte_to_word(
-        average - reduction, target.command_attribute_77)
+        average - reduction, target.attributes.body)
     trial_count = trial_count +
         first_target_cyberware_modifier(target.cyberware_flags)
     local difficulty = dynamic_status_modifier(

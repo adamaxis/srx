@@ -311,16 +311,13 @@ scripting::ScriptCombatantFacts script_combatant_facts(
     facts.physical_meter = record.delay_meter;
     facts.mental_meter = record.behavior_meter;
     facts.posture = record.posture;
-    facts.command_attribute_77 = record.attributes[0];
-    facts.command_attribute_78 = record.attributes[1];
-    facts.command_attribute_79 = record.attributes[2];
-    facts.command_attribute_7b = record.attributes[4];
-    facts.command_attribute_7c = record.attributes[5];
-    facts.command_attribute_85 = record.skills[5];
-    facts.item18_base = record.skills[0];
+    facts.attributes = scripting::ScriptCombatAttributes{
+        record.attributes[0], record.attributes[1], record.attributes[2],
+        record.attributes[4], record.attributes[5]};
+    facts.skills = scripting::ScriptCombatSkills{
+        record.skills[0], record.skills[1], record.skills[2],
+        record.skills[3], record.skills[4], record.skills[5]};
     facts.auxiliary_roll_bonus = record.magic_force;
-    facts.action_skills = {record.skills[1], record.skills[2],
-                           record.skills[3], record.skills[4]};
     facts.armor_index = record.equipped_armor_index;
     facts.race_or_state = static_cast<std::int8_t>(record.species_index);
     facts.class_code = record.archetype_index;
@@ -2032,13 +2029,12 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
             actor.combatant.mental_meter = parse_byte_field(19U);
             actor.combatant.cyberware_flags = parse_word_field(20U);
             actor.combatant.posture = parse_byte_field(21U);
-            actor.combatant.command_attribute_77 = parse_byte_field(22U);
-            actor.combatant.command_attribute_78 = parse_byte_field(23U);
-            actor.combatant.command_attribute_79 = parse_byte_field(24U);
-            actor.combatant.command_attribute_7b = parse_byte_field(25U);
-            actor.combatant.command_attribute_7c = parse_byte_field(26U);
-            actor.combatant.command_attribute_85 = parse_byte_field(27U);
-            actor.combatant.item18_base = parse_byte_field(28U);
+            actor.combatant.attributes = scripting::ScriptCombatAttributes{
+                parse_byte_field(22U), parse_byte_field(23U),
+                parse_byte_field(24U), parse_byte_field(25U),
+                parse_byte_field(26U)};
+            actor.combatant.skills.sorcery = parse_byte_field(28U);
+            actor.combatant.skills.melee_combat = parse_byte_field(27U);
             actor.combatant.armor_index = parse_byte_field(29U);
             actor.combatant.race_or_state = parse_signed_byte_field(30U);
             actor.combatant.class_code = parse_byte_field(31U);
@@ -2057,11 +2053,10 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
                 actor.combatant.action_phase_extension[index] =
                     parse_byte_field(49U + index);
             }
-            for (std::size_t index = 0U;
-                 index < actor.combatant.action_skills.size(); ++index) {
-                actor.combatant.action_skills[index] =
-                    parse_byte_field(59U + index);
-            }
+            actor.combatant.skills.firearms = parse_byte_field(59U);
+            actor.combatant.skills.pistols = parse_byte_field(60U);
+            actor.combatant.skills.smgs = parse_byte_field(61U);
+            actor.combatant.skills.shotguns = parse_byte_field(62U);
             actor.combatant.auxiliary_roll_bonus =
                 parse_byte_field(63U);
             actor.combatant.linked_action_profile_index = 0xFFFFU;

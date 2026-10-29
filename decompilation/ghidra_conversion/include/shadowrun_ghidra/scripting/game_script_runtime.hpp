@@ -1017,8 +1017,28 @@ struct ScriptFieldAlarmResult {
     std::vector<ScriptFieldAlarmActorFacts> actors;
 };
 
-// Source-derived fields consumed by the ROM close-target reaction path
-// (0x55C76). Scripts receive named combat facts, never a byte-addressed
+// Semantic combat inputs assembled from the live actor/profile record before
+// Lua sees them. Core labels follow the ROM Attributes/Skills catalog
+// (0xD1AA / 0xC1A2A); the source offsets stay at the import boundary.
+struct ScriptCombatAttributes {
+    std::uint8_t body = 0;
+    std::uint8_t quickness = 0;
+    std::uint8_t strength = 0;
+    std::uint8_t intelligence = 0;
+    std::uint8_t willpower = 0;
+};
+
+struct ScriptCombatSkills {
+    std::uint8_t sorcery = 0;
+    std::uint8_t firearms = 0;
+    std::uint8_t pistols = 0;
+    std::uint8_t smgs = 0;
+    std::uint8_t shotguns = 0;
+    std::uint8_t melee_combat = 0;
+};
+
+// Source-derived facts consumed by the ROM close-target reaction path
+// (0x55C76). Scripts receive semantic actor state, never a byte-addressed
 // Genesis record.
 struct ScriptCombatantFacts {
     std::uint16_t record_type = 0;
@@ -1028,17 +1048,11 @@ struct ScriptCombatantFacts {
     std::uint8_t physical_meter = 0;
     std::uint8_t mental_meter = 0;
     std::uint8_t posture = 0;
-    std::uint8_t command_attribute_77 = 0;
-    std::uint8_t command_attribute_78 = 0;
-    std::uint8_t command_attribute_79 = 0;
-    std::uint8_t command_attribute_7b = 0;
-    std::uint8_t command_attribute_7c = 0;
-    std::uint8_t command_attribute_85 = 0;
-    std::uint8_t item18_base = 0;
+    ScriptCombatAttributes attributes;
+    ScriptCombatSkills skills;
     // ROM 0x1033E adds live +0x9D to the initial action trial count.
     std::uint8_t auxiliary_roll_bonus = 0;
     std::uint8_t action_result = 0; // live +0x9F
-    std::array<std::uint8_t, 4> action_skills{}; // live +0x81..+0x84
     std::uint8_t armor_index = 0;
     std::int8_t race_or_state = 0;
     std::uint8_t class_code = 0;

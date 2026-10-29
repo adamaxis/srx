@@ -431,12 +431,15 @@ local function creature_movement_offsets(context, state)
     local lifecycle = actor_lifecycle(context)
     local walk_fast_selected = context.walk_fast_enabled == true and
         lifecycle.thinking_enabled == true
+    local combat_attributes = type(context.combatant) == "table" and
+        context.combatant.attributes or nil
+    local combat_quickness = type(combat_attributes) == "table" and
+        combat_attributes.quickness or nil
     -- Contexts without a live Quickness byte keep the host vector list.
     -- Walk Fast is an earlier ROM branch and does not require Quickness.
     local attribute_speed =
         context.dynamic_world_encounter_actor == true or
-        (type(context.combatant) == "table" and
-         type(context.combatant.command_attribute_78) == "number")
+        type(combat_quickness) == "number"
     if not attribute_speed and not walk_fast_selected then
         return context.movement_offsets
     end
@@ -474,8 +477,7 @@ local function creature_movement_offsets(context, state)
             if activity and high_effect then
                 step = 22
             elseif activity then
-                local quickness = type(context.combatant) == "table" and
-                    context.combatant.command_attribute_78 or nil
+                local quickness = combat_quickness
                 if type(quickness) == "number" then
                     local index = quickness
                     if index >= 128 then

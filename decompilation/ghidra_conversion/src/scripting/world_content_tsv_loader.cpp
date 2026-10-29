@@ -751,6 +751,30 @@ bool collect_activity_list_ids(
     return true;
 }
 
+std::string_view semantic_actor_combat_column(
+    const std::string_view source_column) {
+    static constexpr std::array<std::pair<std::string_view,
+                                          std::string_view>, 11U> aliases{{
+        {"combat_attribute_77", "combat_body"},
+        {"combat_attribute_78", "combat_quickness"},
+        {"combat_attribute_79", "combat_strength"},
+        {"combat_attribute_7b", "combat_intelligence"},
+        {"combat_attribute_7c", "combat_willpower"},
+        {"combat_attribute_85", "combat_melee_combat"},
+        {"combat_item18_base", "combat_sorcery"},
+        {"combat_action_skill_81", "combat_firearms"},
+        {"combat_action_skill_82", "combat_pistols"},
+        {"combat_action_skill_83", "combat_smgs"},
+        {"combat_action_skill_84", "combat_shotguns"},
+    }};
+    for (const auto& [source, semantic] : aliases) {
+        if (source_column == source) {
+            return semantic;
+        }
+    }
+    return source_column;
+}
+
 bool make_semantic_activity_actor_rows(
     const TsvDocument& source, const std::filesystem::path& path,
     TsvDocument& semantic, std::string& failure) {
@@ -771,7 +795,7 @@ bool make_semantic_activity_actor_rows(
         }
         const auto runtime_column = source_column == "tagged_template"
             ? std::string("activity_probe_enabled")
-            : source_column;
+            : std::string(semantic_actor_combat_column(source_column));
         const auto index = semantic.columns.size();
         if (!semantic.column_indexes.emplace(runtime_column, index).second) {
             failure = path.string() +
@@ -857,7 +881,7 @@ bool make_semantic_dynamic_actor_rows(
         }
         const auto runtime_column = source_column == "tagged_template"
             ? std::string("activity_probe_enabled")
-            : source_column;
+            : std::string(semantic_actor_combat_column(source_column));
         const auto index = semantic.columns.size();
         if (!semantic.column_indexes.emplace(runtime_column, index).second) {
             failure = path.string() +
@@ -1563,10 +1587,10 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "delay_primary_attribute", "delay_secondary_attribute",
               "delay_capability_flags", "combat_mental_meter",
               "combat_cyberware_flags", "combat_posture",
-              "combat_attribute_77", "combat_attribute_78",
-              "combat_attribute_79", "combat_attribute_7b",
-              "combat_attribute_7c", "combat_attribute_85",
-              "combat_item18_base", "combat_armor_index",
+              "combat_body", "combat_quickness", "combat_strength",
+              "combat_intelligence", "combat_willpower",
+              "combat_melee_combat", "combat_sorcery",
+              "combat_armor_index",
               "combat_race_or_state", "combat_class_code",
               "combat_modifier_flags_df", "combat_profile_index_a0",
               "combat_item_code_0", "combat_item_code_1",
@@ -1582,8 +1606,8 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "combat_action_phase_7a", "combat_action_phase_7b",
               "combat_action_phase_7c", "combat_action_phase_7d",
               "combat_action_phase_7e", "combat_action_phase_7f",
-              "combat_action_skill_81", "combat_action_skill_82",
-              "combat_action_skill_83", "combat_action_skill_84",
+              "combat_firearms", "combat_pistols", "combat_smgs",
+              "combat_shotguns",
               "combat_auxiliary_roll_bonus", "source_action_slot",
               "source_action_ammo", "source_action_counter",
               "run_target_area", "run_target_event", "run_target_x",
@@ -1602,10 +1626,10 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "delay_primary_attribute", "delay_secondary_attribute",
               "delay_capability_flags", "combat_mental_meter",
               "combat_cyberware_flags", "combat_posture",
-              "combat_attribute_77", "combat_attribute_78",
-              "combat_attribute_79", "combat_attribute_7b",
-              "combat_attribute_7c", "combat_attribute_85",
-              "combat_item18_base", "combat_armor_index",
+              "combat_body", "combat_quickness", "combat_strength",
+              "combat_intelligence", "combat_willpower",
+              "combat_melee_combat", "combat_sorcery",
+              "combat_armor_index",
               "combat_race_or_state", "combat_class_code",
               "combat_modifier_flags_df", "combat_profile_index_a0",
               "combat_item_code_0", "combat_item_code_1",
@@ -1621,8 +1645,8 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "combat_action_phase_7a", "combat_action_phase_7b",
               "combat_action_phase_7c", "combat_action_phase_7d",
               "combat_action_phase_7e", "combat_action_phase_7f",
-              "combat_action_skill_81", "combat_action_skill_82",
-              "combat_action_skill_83", "combat_action_skill_84",
+              "combat_firearms", "combat_pistols", "combat_smgs",
+              "combat_shotguns",
               "combat_auxiliary_roll_bonus"}, {},
              {"activity_probe_enabled"}},
             {"entities/conditional-actor-candidates.tsv",

@@ -31,11 +31,14 @@ local function combatant(record_type, physical_meter)
         race_or_state = 0,
         cyberware_flags = 0,
         posture = 0,
-        command_attribute_77 = 1,
-        command_attribute_78 = 0,
-        command_attribute_7b = 0,
-        command_attribute_7c = 0,
-        command_attribute_85 = 0,
+        attributes = {
+            body = 1, quickness = 0, strength = 0,
+            intelligence = 0, willpower = 0,
+        },
+        skills = {
+            sorcery = 0, firearms = 0, pistols = 0, smgs = 0,
+            shotguns = 0, melee_combat = 0,
+        },
         item_codes = item_codes,
         item_phases = item_phases,
     }

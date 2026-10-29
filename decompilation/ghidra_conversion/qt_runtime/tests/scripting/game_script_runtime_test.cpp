@@ -2035,7 +2035,7 @@ int main() {
                 ilene_gate_actors->front().combatant.item_codes[4] == 44U &&
                 ilene_gate_actors->front().combatant.action_phase_extension[0] ==
                     1U &&
-                ilene_gate_actors->front().combatant.action_skills[1] == 3U &&
+                ilene_gate_actors->front().combatant.skills.pistols == 3U &&
                 absent_scene_script_actors.has_value() &&
                 absent_scene_script_actors->empty() &&
                 ilene_pending_list.has_value() &&
@@ -2204,21 +2204,24 @@ int main() {
                     ScriptActorActionKind::spell &&
                 lone_star_sequence->actors[1].physical_meter == 10U &&
                 lone_star_sequence->actors[1].combatant
-                        .command_attribute_77 == 3U &&
+                        .attributes.body == 3U &&
                 lone_star_sequence->actors[1].combatant
-                        .command_attribute_78 == 5U &&
+                        .attributes.quickness == 5U &&
                 lone_star_sequence->actors[1].combatant
-                        .command_attribute_79 == 2U &&
+                        .attributes.strength == 2U &&
                 lone_star_sequence->actors[1].combatant
-                        .command_attribute_7b == 6U &&
+                        .attributes.intelligence == 6U &&
                 lone_star_sequence->actors[1].combatant
-                        .command_attribute_7c == 6U &&
+                        .attributes.willpower == 6U &&
                 lone_star_sequence->actors[1].combatant
                         .action_phase_extension ==
                     std::array<std::uint8_t, 10>{
                         0U, 3U, 5U, 2U, 5U, 6U, 6U, 5U, 6U, 6U} &&
-                lone_star_sequence->actors[1].combatant.action_skills ==
-                    std::array<std::uint8_t, 4>{2U, 0U, 0U, 0U} &&
+                lone_star_sequence->actors[1].combatant.skills.sorcery == 4U &&
+                lone_star_sequence->actors[1].combatant.skills.firearms == 2U &&
+                lone_star_sequence->actors[1].combatant.skills.pistols == 0U &&
+                lone_star_sequence->actors[1].combatant.skills.smgs == 0U &&
+                lone_star_sequence->actors[1].combatant.skills.shotguns == 0U &&
                 lone_star_sequence->actors[1].combatant
                         .auxiliary_roll_bonus == 2U &&
                 elven_mage_sequence.has_value() &&
@@ -5578,8 +5581,8 @@ int main() {
     // spell tests exercise 0x1033E and its source-derived combat results.
     spell_caster.mental_meter = 2U;
     spell_caster.posture = 4U;
-    spell_caster.command_attribute_7c = 8U;
-    spell_caster.item18_base = 8U;
+    spell_caster.attributes.willpower = 8U;
+    spell_caster.skills.sorcery = 8U;
     spell_caster.race_or_state = 4;
     spell_caster.equipped_action_code = 1U;
     spell_caster.action_phase_extension[9] = 20U;
@@ -5588,7 +5591,7 @@ int main() {
     spell_target.record_type = 0U;
     spell_target.source_flags = 0x01U;
     spell_target.interaction_flags = 0x80U;
-    spell_target.command_attribute_77 = 8U;
+    spell_target.attributes.body = 8U;
     spell_target.physical_meter = 10U;
     spell_target.mental_meter = 10U;
     const auto resolved_spell_cast = drive_spell_refresh(
@@ -6587,12 +6590,12 @@ int main() {
     catalog_attacker.physical_meter = 10U;
     catalog_attacker.mental_meter = 10U;
     catalog_attacker.cyberware_flags = 0x0008U;
-    catalog_attacker.command_attribute_77 = 2U;
-    catalog_attacker.command_attribute_78 = 4U;
-    catalog_attacker.command_attribute_79 = 1U;
-    catalog_attacker.command_attribute_7b = 4U;
-    catalog_attacker.command_attribute_7c = 4U;
-    catalog_attacker.command_attribute_85 = 3U;
+    catalog_attacker.attributes.body = 2U;
+    catalog_attacker.attributes.quickness = 4U;
+    catalog_attacker.attributes.strength = 1U;
+    catalog_attacker.attributes.intelligence = 4U;
+    catalog_attacker.attributes.willpower = 4U;
+    catalog_attacker.skills.melee_combat = 3U;
     catalog_attacker.race_or_state = 4;
     catalog_attacker.class_code = 7U;
     catalog_attacker.equipped_action_code = 1U;
@@ -6602,11 +6605,11 @@ int main() {
     catalog_defender.interaction_flags = 0x80U;
     catalog_defender.physical_meter = 10U;
     catalog_defender.mental_meter = 10U;
-    catalog_defender.command_attribute_77 = 1U;
-    catalog_defender.command_attribute_78 = 4U;
-    catalog_defender.command_attribute_79 = 1U;
-    catalog_defender.command_attribute_7b = 4U;
-    catalog_defender.command_attribute_7c = 4U;
+    catalog_defender.attributes.body = 1U;
+    catalog_defender.attributes.quickness = 4U;
+    catalog_defender.attributes.strength = 1U;
+    catalog_defender.attributes.intelligence = 4U;
+    catalog_defender.attributes.willpower = 4U;
     catalog_defender.armor_index = 0U;
     catalog_defender.class_code = 0U;
     catalog_defender.equipped_action_code = 0U;
@@ -6838,12 +6841,12 @@ int main() {
     attacker_facts.physical_meter = 10U;
     attacker_facts.mental_meter = 10U;
     attacker_facts.cyberware_flags = 0x0008U;
-    attacker_facts.command_attribute_77 = 2U;
-    attacker_facts.command_attribute_78 = 4U;
-    attacker_facts.command_attribute_79 = 1U;
-    attacker_facts.command_attribute_7b = 4U;
-    attacker_facts.command_attribute_7c = 4U;
-    attacker_facts.command_attribute_85 = 3U;
+    attacker_facts.attributes.body = 2U;
+    attacker_facts.attributes.quickness = 4U;
+    attacker_facts.attributes.strength = 1U;
+    attacker_facts.attributes.intelligence = 4U;
+    attacker_facts.attributes.willpower = 4U;
+    attacker_facts.skills.melee_combat = 3U;
     attacker_facts.race_or_state = 4;
     attacker_facts.class_code = 7U;
     attacker_facts.equipped_action_code = 1U;
@@ -6854,11 +6857,11 @@ int main() {
     target_facts.interaction_flags = 0x80U;
     target_facts.physical_meter = 10U;
     target_facts.mental_meter = 10U;
-    target_facts.command_attribute_77 = 1U;
-    target_facts.command_attribute_78 = 4U;
-    target_facts.command_attribute_79 = 1U;
-    target_facts.command_attribute_7b = 4U;
-    target_facts.command_attribute_7c = 4U;
+    target_facts.attributes.body = 1U;
+    target_facts.attributes.quickness = 4U;
+    target_facts.attributes.strength = 1U;
+    target_facts.attributes.intelligence = 4U;
+    target_facts.attributes.willpower = 4U;
     target_facts.armor_index = 0U;
     target_facts.class_code = 0U;
     target_facts.equipped_action_code = 0U;
@@ -7787,20 +7790,23 @@ int main() {
     shooter_facts.source_flags = 0x01U;
     shooter_facts.physical_meter = 8U;
     shooter_facts.mental_meter = 8U;
-    shooter_facts.command_attribute_77 = 4U;
-    shooter_facts.command_attribute_78 = 4U;
-    shooter_facts.command_attribute_7b = 4U;
-    shooter_facts.command_attribute_7c = 4U;
-    shooter_facts.action_skills = {10U, 10U, 10U, 10U};
+    shooter_facts.attributes.body = 4U;
+    shooter_facts.attributes.quickness = 4U;
+    shooter_facts.attributes.intelligence = 4U;
+    shooter_facts.attributes.willpower = 4U;
+    shooter_facts.skills.firearms = 10U;
+    shooter_facts.skills.pistols = 10U;
+    shooter_facts.skills.smgs = 10U;
+    shooter_facts.skills.shotguns = 10U;
     source_weapon_hit_context.combatant = shooter_facts;
     ScriptCombatantFacts victim_facts{};
     victim_facts.record_type = 3U;
     victim_facts.physical_meter = 8U;
     victim_facts.mental_meter = 8U;
-    victim_facts.command_attribute_77 = 4U;
-    victim_facts.command_attribute_78 = 4U;
-    victim_facts.command_attribute_7b = 4U;
-    victim_facts.command_attribute_7c = 4U;
+    victim_facts.attributes.body = 4U;
+    victim_facts.attributes.quickness = 4U;
+    victim_facts.attributes.intelligence = 4U;
+    victim_facts.attributes.willpower = 4U;
     const auto make_encounter_reaction_context =
         [&actor_context](const std::string_view actor_id) {
         auto context = actor_context(
@@ -7960,7 +7966,7 @@ int main() {
     quickness_actor.world_activity_active = true;
     quickness_actor.source_projection_active = true;
     ScriptCombatantFacts quickness_facts{};
-    quickness_facts.command_attribute_78 = 4U;
+    quickness_facts.attributes.quickness = 4U;
     // A live actor: ROM 0xA93A sends +0x4C/+0x9C == 0 straight to 0xB330.
     quickness_facts.physical_meter = 10U;
     quickness_facts.mental_meter = 10U;
@@ -8088,17 +8094,17 @@ int main() {
         if (profile_id == "corp_guard_k05_item06") {
             // ROM template facts in default-actors.tsv: +0x77/+0x78 and
             // +0x7B/+0x7C are 5/4 and 3/3 for this guard.
-            facts.command_attribute_77 = 5U;
-            facts.command_attribute_78 = 4U;
-            facts.command_attribute_7b = 3U;
-            facts.command_attribute_7c = 3U;
+            facts.attributes.body = 5U;
+            facts.attributes.quickness = 4U;
+            facts.attributes.intelligence = 3U;
+            facts.attributes.willpower = 3U;
             facts.class_code = 2U;
         } else if (profile_id == "pedestrian_k0b_none00") {
             // ROM template facts in default-actors.tsv: 2/1 and 2/2.
-            facts.command_attribute_77 = 2U;
-            facts.command_attribute_78 = 1U;
-            facts.command_attribute_7b = 2U;
-            facts.command_attribute_7c = 2U;
+            facts.attributes.body = 2U;
+            facts.attributes.quickness = 1U;
+            facts.attributes.intelligence = 2U;
+            facts.attributes.willpower = 2U;
             facts.class_code = 19U;
         } else if (profile_id == "thon_k0f_spell01") {
             // Scene-55 ROM template 0x1EDB00 / default-actors.tsv supplies
@@ -8108,13 +8114,13 @@ int main() {
             facts.physical_meter = physical_meter;
             facts.mental_meter = 10U;
             facts.posture = 2U;
-            facts.command_attribute_77 = 15U;
-            facts.command_attribute_78 = 10U;
-            facts.command_attribute_79 = 14U;
-            facts.command_attribute_7b = 8U;
-            facts.command_attribute_7c = 16U;
-            facts.command_attribute_85 = 8U;
-            facts.item18_base = 8U;
+            facts.attributes.body = 15U;
+            facts.attributes.quickness = 10U;
+            facts.attributes.strength = 14U;
+            facts.attributes.intelligence = 8U;
+            facts.attributes.willpower = 16U;
+            facts.skills.melee_combat = 8U;
+            facts.skills.sorcery = 8U;
             facts.armor_index = 7U;
             facts.race_or_state = -1;
             facts.class_code = 0U;
@@ -8122,7 +8128,10 @@ int main() {
             facts.item_codes[0] = 50U;
             facts.action_phase_extension = {
                 7U, 15U, 10U, 14U, 2U, 8U, 16U, 9U, 6U, 6U};
-            facts.action_skills = {5U, 0U, 0U, 0U};
+            facts.skills.firearms = 5U;
+            facts.skills.pistols = 0U;
+            facts.skills.smgs = 0U;
+            facts.skills.shotguns = 0U;
         }
         return facts;
     };
@@ -9309,7 +9318,7 @@ int main() {
         context.world_activity_active = activity;
         context.source_projection_active = on_screen;
         ScriptCombatantFacts facts{};
-        facts.command_attribute_78 = quickness;
+        facts.attributes.quickness = quickness;
         context.combatant = facts;
         context.movement_collision = accept_attribute_step;
         context.movement_route_lookup =

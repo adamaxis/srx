@@ -842,7 +842,7 @@ route_actor_context.entity_kind = E.SpriteType.CORP_GUARD
 route_actor_context.source_actor_has_waypoint_data = true
 route_actor_context.actor_facts.roles.reinforcement = true
 route_actor_context.movement_actor_facts.lifecycle.active = true
-route_actor_context.combatant = { command_attribute_78 = 19 }
+route_actor_context.combatant = { attributes = { quickness = 19 } }
 local route_actor_state = {
     movement_heading = 0xF000,
     movement_current_heading = 0xF000,
@@ -871,7 +871,7 @@ for _, speed_case in ipairs(regional_pedestrian_speed_cases) do
     speed_context.source_actor_has_waypoint_data = true
     speed_context.actor_facts.roles.pedestrian = true
     speed_context.movement_actor_facts.lifecycle.active = true
-    speed_context.combatant = { command_attribute_78 = 1 }
+    speed_context.combatant = { attributes = { quickness = 1 } }
     local speed_state = {
         movement_heading = 0x4000,
         movement_current_heading = 0x4000,
