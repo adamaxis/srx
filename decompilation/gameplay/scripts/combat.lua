@@ -1133,10 +1133,6 @@ function Combat.resolve_reaction(context, target)
     }
 end
 
-local function source_byte_at_least(left, right)
-    return (((left - right) & 0xff) & 0x80) == 0
-end
-
 local function weapon_action_skill_value(attacker, skill_group,
                                          posture_component)
     local skills = attacker.skills
@@ -1145,16 +1141,14 @@ local function weapon_action_skill_value(attacker, skill_group,
        type(skills[skill_group]) ~= "number" then
         return nil
     end
-    local selected = skills.firearms
-    local candidate = skills[skill_group]
-    if not source_byte_at_least(selected, candidate) then
-        selected = candidate
-    end
-    local signed_difference = (selected - posture_component) & 0xffff
-    local lower = signed_difference >= 0x8000
-        and selected or posture_component
-    local result = (lower + selected) & 0xffff
-    return result == 0 and 1 or result
+    -- Skill ratings are gameplay levels, not wrapped byte values. ROM 0xD920
+    -- caps trained skills at 12; the untrained specialty branch at 0xD928..
+    -- 0xD99A starts from Firearms + 1, so valid ratings remain at most 13.
+    -- Express the rule directly: use the stronger applicable skill, then
+    -- combine it with the smaller posture contribution.
+    local selected = math.max(skills.firearms, skills[skill_group])
+    local posture_contribution = math.min(selected, posture_component)
+    return math.max(selected + posture_contribution, 1)
 end
 
 local function weapon_action_eligibility(difficulty, attacker, policy)
