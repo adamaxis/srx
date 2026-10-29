@@ -264,10 +264,10 @@ int main() {
                cycle.selected_audio_event == 0x4AU &&
                cycle.special_follow_up &&
                cycle.primary->lifecycle_state == 2U &&
-               cycle.primary->field_0x41 == 2 &&
+               // ROM 0x152FA initializes two follow-ups and 32 travel steps.
+               cycle.primary->additional_shots_remaining == 2U &&
                cycle.primary->saved_position_x == 0x10B0U &&
-               cycle.primary->field_0x89 == 0x20U &&
-               cycle.primary->field_0x8b == 1U &&
+               cycle.primary->remaining_clear_steps == 32U &&
                cycle.secondary->position_x == 0x1180U &&
                cycle.secondary->position_y == 0x1FC0U &&
                cycle.secondary->behavior_defaults.animation_state == 0U &&
@@ -312,6 +312,45 @@ int main() {
                regular_state.equipment.current_ammo == 0U &&
                regular_cycle.selected_audio_event == 0x001EU) != 0) {
         return 18;
+    }
+
+    EntitySpawnCycleState single_shot_state = cycle_state;
+    single_shot_state.parent.field_0x57 = 7U;
+    single_shot_state.source_status_flags = 0U;
+    single_shot_state.equipment.current_ammo = 4U;
+    std::vector<std::uint16_t> single_shot_slots{11U, 12U};
+    const auto single_shot_cycle = process_entity_spawn_cycle(
+        single_shot_state,
+        []() { return true; },
+        [&single_shot_slots]() -> std::optional<std::uint16_t> {
+            if (single_shot_slots.empty()) {
+                return std::nullopt;
+            }
+            const auto slot = single_shot_slots.front();
+            single_shot_slots.erase(single_shot_slots.begin());
+            return slot;
+        },
+        {}, {}, {}, {},
+        [](EntityEquipmentState& equipment,
+           const std::uint8_t source_action_code) {
+            return service_entity_ammo(
+                equipment, source_action_code,
+                weapon_rounds_per_action,
+                [&equipment](const std::int8_t delta) {
+                    const auto adjusted =
+                        static_cast<int>(equipment.current_ammo) + delta;
+                    equipment.current_ammo = static_cast<std::uint8_t>(
+                        adjusted > 0 ? adjusted : 0);
+                });
+        });
+    // ROM 0x151D0 seeds +0x89=0x7F for an ordinary one-shot action.
+    if (expect(single_shot_cycle.action == EntitySpawnCycleAction::spawned &&
+               !single_shot_cycle.special_follow_up &&
+               single_shot_cycle.primary.has_value() &&
+               single_shot_cycle.primary->remaining_clear_steps == 127U &&
+               single_shot_cycle.primary->additional_shots_remaining == 0U &&
+               single_shot_state.equipment.current_ammo == 3U) != 0) {
+        return 29;
     }
 
     EntitySpawnCycleState unavailable_slot_state = cycle_state;

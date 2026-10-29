@@ -1416,8 +1416,8 @@ struct ScriptActorProjectileMovement {
     std::int32_t world_y = 0;
     std::int16_t tile_offset_x = 0;
     std::int16_t tile_offset_y = 0;
-    std::uint8_t retry_counter = 0;
-    std::int8_t linked_action_timer = 0;
+      std::uint32_t remaining_clear_steps = 0;
+      std::uint32_t additional_shots_remaining = 0;
     std::uint16_t heading = 0;
     std::uint16_t saved_position_x = 0;
     std::uint16_t saved_position_y = 0;

@@ -74,9 +74,10 @@ struct SpawnEntityRecordState {
     std::uint8_t lifecycle_state = 0;
     std::uint16_t saved_position_x = 0;
     std::uint16_t saved_position_y = 0;
-    std::uint8_t field_0x89 = 0;
-    std::uint8_t field_0x8b = 0;
-    std::int8_t field_0x41 = 0;
+    // Gameplay meanings recovered from the projectile setup at ROM 0x1514E
+    // and 0x152FA. These values are independent of the source record layout.
+    std::uint32_t remaining_clear_steps = 0;
+    std::uint32_t additional_shots_remaining = 0;
     std::uint32_t continuation_address = 0;
     std::uint8_t source_marker = 0;
     std::uint16_t animation_resource = 0;

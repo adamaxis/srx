@@ -24,9 +24,6 @@ local projectile = {
     movement_probes_per_update = 4,
     impact_sound_event = E.SoundId.PROJECTILE_IMPACT,   -- 0x3C
 }
-local byte_mask = 0xff
-local signed_byte_threshold = 0x80
-local byte_modulus = 0x100
 local fixed_long_mask = 0xffffffff
 local fixed_integer_shift = 16
 local fixed_fraction_scale = 0x100
@@ -156,9 +153,6 @@ end
 -- register this module's definitions
 R.weapon_projectile_descriptor_increment = weapon_projectile_descriptor_increment
 R.projectile = projectile
-R.byte_mask = byte_mask
-R.signed_byte_threshold = signed_byte_threshold
-R.byte_modulus = byte_modulus
 R.fixed_long_mask = fixed_long_mask
 R.fixed_integer_shift = fixed_integer_shift
 R.fixed_fraction_scale = fixed_fraction_scale

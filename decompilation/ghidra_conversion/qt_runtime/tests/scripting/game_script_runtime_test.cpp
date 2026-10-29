@@ -7561,7 +7561,8 @@ int main() {
     moving_projectile.world_x = 10 * 0x10000;
     moving_projectile.world_y = 20 * 0x10000;
     moving_projectile.tile_offset_x = 0x0100;
-    moving_projectile.retry_counter = 20U;
+    // ROM 0x14F64 consumes one travel step per accepted terrain sample.
+    moving_projectile.remaining_clear_steps = 20U;
     std::vector<std::uint16_t> projectile_terrain_x;
     std::uint32_t projectile_collision_count = 0U;
     auto moving_projectile_context = projectile_behavior_context(
@@ -7588,7 +7589,7 @@ int main() {
                 projectile_collision_count == 4U &&
                 moving_projectile_step->projectile_movement->state.world_x ==
                     14 * 0x10000 &&
-                moving_projectile_step->projectile_movement->state.retry_counter ==
+                moving_projectile_step->projectile_movement->state.remaining_clear_steps ==
                     16U &&
                 moving_projectile_step->projectile_movement->state.active &&
                 moving_projectile_step->projectile_movement->outcome ==
@@ -7601,7 +7602,9 @@ int main() {
 
     auto outside_projectile = moving_projectile;
     outside_projectile.tile_offset_x = 2;
-    outside_projectile.retry_counter = 7U;
+    // ROM 0x14F54..0x14F60 takes the blocking branch before decrementing
+    // the travel budget at 0x14F64.
+    outside_projectile.remaining_clear_steps = 7U;
     auto outside_projectile_context = projectile_behavior_context(
         "field_weapon_slot_outside", outside_projectile);
     std::uint32_t outside_collision_count = 0U;
@@ -7627,7 +7630,7 @@ int main() {
                     ScriptActorProjectileAnimationAction::stop &&
                 outside_projectile_step->projectile_movement->state.tile_offset_x ==
                     0 &&
-                outside_projectile_step->projectile_movement->state.retry_counter ==
+                outside_projectile_step->projectile_movement->state.remaining_clear_steps ==
                     7U &&
                 outside_projectile_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::retired &&
@@ -7639,7 +7642,9 @@ int main() {
     }
 
     auto exhausted_projectile = moving_projectile;
-    exhausted_projectile.retry_counter = 0U;
+    // A zero semantic budget represents the ROM's sign transition at
+    // 0x14F64..0x14F68 without exposing the wrapped byte to Lua.
+    exhausted_projectile.remaining_clear_steps = 0U;
     auto exhausted_projectile_context = projectile_behavior_context(
         "field_weapon_slot_exhausted", exhausted_projectile);
     std::uint32_t exhausted_collision_count = 0U;
@@ -7658,8 +7663,8 @@ int main() {
     if (!expect(
             exhausted_projectile_step.has_value() &&
                 exhausted_projectile_step->projectile_movement.has_value() &&
-                exhausted_projectile_step->projectile_movement->state.retry_counter ==
-                    0xFFU &&
+                exhausted_projectile_step->projectile_movement->state.remaining_clear_steps ==
+                    0U &&
                 exhausted_projectile_step->projectile_movement->state.active &&
                 exhausted_projectile_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::stopped &&
@@ -8804,7 +8809,8 @@ int main() {
     auto stopped_projectile = moving_projectile;
     stopped_projectile.waiting_for_animation_end = true;
     stopped_projectile.animation_finished = true;
-    stopped_projectile.linked_action_timer = 0;
+    // ROM 0x14F86 retires after the initial shot when no continuation remains.
+    stopped_projectile.additional_shots_remaining = 0U;
     auto stopped_projectile_context = projectile_behavior_context(
         "field_weapon_slot_stopped", stopped_projectile);
     stopped_projectile_context.projectile_terrain_probe =
@@ -8820,8 +8826,8 @@ int main() {
     if (!expect(
             stopped_projectile_step.has_value() &&
                 stopped_projectile_step->projectile_movement.has_value() &&
-                stopped_projectile_step->projectile_movement->state.linked_action_timer ==
-                    -1 &&
+                stopped_projectile_step->projectile_movement->state.additional_shots_remaining ==
+                    0U &&
                 !stopped_projectile_step->projectile_movement->state.active &&
                 stopped_projectile_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::retired,
@@ -8832,7 +8838,8 @@ int main() {
 
     auto burst_projectile = stopped_projectile;
     burst_projectile.impact_occurred = true;
-    burst_projectile.linked_action_timer = 2;
+    // ROM 0x152FA seeds two follow-up shots; 0x14F86 starts each in order.
+    burst_projectile.additional_shots_remaining = 2U;
     burst_projectile.heading = 0x2000U;
     burst_projectile.saved_position_x = 0x2345U;
     burst_projectile.saved_position_y = 0x3456U;
@@ -8872,7 +8879,7 @@ int main() {
     if (!expect(
             linked_projectile_step.has_value() &&
                 linked_projectile_step->projectile_movement.has_value() &&
-                first_burst.linked_action_timer == 1 &&
+                first_burst.additional_shots_remaining == 1U &&
                 first_burst.active && first_burst.heading == 0x1c00U &&
                 first_burst.world_x ==
                     static_cast<std::int32_t>(0x2345abcdU) &&
@@ -8882,7 +8889,7 @@ int main() {
                     first_burst_source_offsets.horizontal &&
                 first_burst.tile_offset_y ==
                     first_burst_source_offsets.vertical &&
-                first_burst.retry_counter == 0x20U &&
+                first_burst.remaining_clear_steps == 32U &&
                 first_burst.animation_action ==
                     ScriptActorProjectileAnimationAction::restart &&
                 !first_burst.waiting_for_animation_end &&
@@ -8929,7 +8936,7 @@ int main() {
         shadowrun::ghidra_conversion::derive_entity_heading_offsets(0x2400U);
     if (!expect(second_burst_step.has_value() &&
                     second_burst_step->projectile_movement.has_value() &&
-                    second_burst.linked_action_timer == 0 &&
+                    second_burst.additional_shots_remaining == 0U &&
                     second_burst.heading == 0x2400U &&
                     second_burst.tile_offset_x ==
                         second_burst_source_offsets.horizontal &&
@@ -8947,7 +8954,7 @@ int main() {
         std::cerr << "second burst: present=" << second_burst_step.has_value()
                   << " state=" << (second_burst_step.has_value() &&
                          second_burst_step->projectile_movement.has_value())
-                  << " timer=" << static_cast<int>(second_burst.linked_action_timer)
+                  << " additional_shots=" << second_burst.additional_shots_remaining
                   << " heading=0x" << std::hex << second_burst.heading
                   << " offset=" << std::dec << second_burst.tile_offset_x
                   << ',' << second_burst.tile_offset_y
@@ -8972,8 +8979,8 @@ int main() {
         scripts.actor_heartbeat(linked_projectile_context);
     if (!expect(final_burst_step.has_value() &&
                     final_burst_step->projectile_movement.has_value() &&
-                    final_burst_step->projectile_movement->state.linked_action_timer ==
-                        -1 &&
+                    final_burst_step->projectile_movement->state.additional_shots_remaining ==
+                        0U &&
                     !final_burst_step->projectile_movement->state.active &&
                     final_burst_step->projectile_movement->outcome ==
                         ScriptActorProjectileOutcome::retired,
@@ -8984,7 +8991,7 @@ int main() {
 
     auto source_table_sample = stopped_projectile;
     source_table_sample.impact_occurred = true;
-    source_table_sample.linked_action_timer = 2;
+    source_table_sample.additional_shots_remaining = 2U;
     source_table_sample.heading = 0xE200U;
     source_table_sample.saved_position_x = 0x2345U;
     source_table_sample.saved_position_y = 0x3456U;
@@ -9009,7 +9016,7 @@ int main() {
             std::cerr << "table-sample heading=0x" << std::hex << state.heading
                       << " offsets=" << std::dec << state.tile_offset_x << ','
                       << state.tile_offset_y << " active=" << state.active
-                      << " timer=" << static_cast<int>(state.linked_action_timer)
+                      << " additional_shots=" << state.additional_shots_remaining
                       << " outcome=" << static_cast<unsigned>(
                              questioned_source_sample_step->projectile_movement->outcome)
                       << '\n';

@@ -600,11 +600,11 @@ FieldSceneRuntime::field_weapon_primary_heading_offsets_for_dump() const
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint8_t>
-FieldSceneRuntime::field_weapon_primary_retry_count_for_dump() const noexcept {
+std::optional<std::uint32_t>
+FieldSceneRuntime::field_weapon_primary_remaining_clear_steps_for_dump() const noexcept {
     for (const auto& spawn : field_weapon_projectiles_) {
         if (spawn.primary_active) {
-            return spawn.primary_record.field_0x89;
+            return spawn.primary_record.remaining_clear_steps;
         }
     }
     return std::nullopt;

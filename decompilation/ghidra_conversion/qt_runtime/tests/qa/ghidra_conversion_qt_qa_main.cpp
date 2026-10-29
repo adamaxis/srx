@@ -2691,12 +2691,13 @@ int run_field_random_encounter_spawn_qa(
         field_audio_events.begin() +
             static_cast<std::ptrdiff_t>(burst_audio_start),
         field_audio_events.end(), expected_fire_audio_event));
+    // ROM 0x14F86 starts the next ray after reducing the two-shot budget.
     const bool first_followup_timer =
         burst_followup_records.size() > 0U &&
-        burst_followup_records[0].find(":1:heading=") != std::string::npos;
+        burst_followup_records[0].find(":remaining=1:heading=") != std::string::npos;
     const bool second_followup_timer =
         burst_followup_records.size() > 1U &&
-        burst_followup_records[1].find(":0:heading=") != std::string::npos;
+        burst_followup_records[1].find(":remaining=0:heading=") != std::string::npos;
     const bool burst_full_screen_clean =
         std::all_of(burst_followup_frames_saved.begin(),
                     burst_followup_frames_saved.end(),
@@ -45358,7 +45359,7 @@ int main(int argc, char** argv) {
                     << "delay_frame\teffect_count\tselector\tlist_finished\t"
                        "effect_frame\t"
                        "primary_count\tspawn_x\tspawn_y\tprimary_x\tprimary_y\t"
-                       "offset_x\toffset_y\tprimary_retry\t"
+                       "offset_x\toffset_y\tprimary_remaining_clear_steps\t"
                        "full_screen_differs_from_attack\n";
                 bool primary_motion_observed =
                     primary_position_before_delay->x !=
@@ -45386,8 +45387,8 @@ int main(int argc, char** argv) {
                         .field_weapon_primary_count_for_dump();
                     const auto primary_position = weapon_fire_scene
                         .field_weapon_primary_position_for_dump();
-                    const auto primary_retry = weapon_fire_scene
-                        .field_weapon_primary_retry_count_for_dump();
+                    const auto primary_remaining_clear_steps = weapon_fire_scene
+                        .field_weapon_primary_remaining_clear_steps_for_dump();
                     const auto primary_offsets = weapon_fire_scene
                         .field_weapon_primary_heading_offsets_for_dump();
                     const auto delay_name =
@@ -45446,8 +45447,8 @@ int main(int argc, char** argv) {
                                 ? std::to_string(primary_offsets->vertical)
                                 : std::string("none"))
                         << '\t'
-                        << (primary_retry.has_value()
-                                ? std::to_string(*primary_retry)
+                        << (primary_remaining_clear_steps.has_value()
+                                ? std::to_string(*primary_remaining_clear_steps)
                                 : std::string("none"))
                         << '\t' << (differs_from_attack ? 1 : 0) << '\n';
                     // The 0x8003 list is three frames. The render pass marks

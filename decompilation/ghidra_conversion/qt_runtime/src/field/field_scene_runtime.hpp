@@ -1624,8 +1624,8 @@ public:
     field_weapon_primary_heading_offsets_for_dump() const noexcept;
     std::optional<std::uint16_t>
     field_weapon_primary_heading_for_dump() const noexcept;
-    std::optional<std::uint8_t>
-    field_weapon_primary_retry_count_for_dump() const noexcept;
+    std::optional<std::uint32_t>
+    field_weapon_primary_remaining_clear_steps_for_dump() const noexcept;
     std::optional<std::uint16_t>
     field_weapon_projectile_selector_for_dump() const noexcept;
     std::optional<bool>

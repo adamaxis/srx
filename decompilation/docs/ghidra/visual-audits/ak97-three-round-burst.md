@@ -36,6 +36,19 @@ heading turn and ROM `0x150E8` table in `entity_motion.lua`, and obtains a fresh
 attack result through the Lua combat resolver. The field runtime applies that
 state to the live projectile record.
 
+## Native state representation
+
+The active C++ and Lua model expresses the projectile limits as
+`remaining_clear_steps` and `additional_shots_remaining`. The ordinary spawn
+seed `+0x89 = 0x7F` at `0x151D0` becomes 127 allowed steps; the special seed
+`+0x89 = 0x20` and `+0x41 = 2` at `0x152FA` becomes 32 steps and two further
+shots. ROM `0x14F64..0x14F68` decrements the source byte and stops on its signed
+transition; the native model consumes a step while positive and stops when it
+reaches zero. ROM `0x14F86` similarly becomes a count of shots still to start.
+This keeps the same movement and three-shot sequence without byte wrapping in
+Lua. The pre-split differential fixture retains the old arithmetic only behind
+a test adapter that translates between its frozen inputs and gameplay state.
+
 ## Visual and state review
 
 The Release field QA writes whole-screen 320×224 captures under

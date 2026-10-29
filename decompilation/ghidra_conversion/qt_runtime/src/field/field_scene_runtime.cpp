@@ -11890,8 +11890,10 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         projectile_movement.tile_offset_y = primary_record
             ? record.heading_offset_y
             : std::int16_t{0};
-        projectile_movement.retry_counter = record.field_0x89;
-        projectile_movement.linked_action_timer = record.field_0x41;
+        projectile_movement.remaining_clear_steps =
+            record.remaining_clear_steps;
+        projectile_movement.additional_shots_remaining =
+            record.additional_shots_remaining;
         projectile_movement.heading = record.heading;
         projectile_movement.saved_position_x = record.saved_position_x;
         projectile_movement.saved_position_y = record.saved_position_y;
@@ -12018,8 +12020,9 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                    scripting::ScriptActorProjectileAnimationAction::restart) {
             record.animation_resource = 0x0014U; // ROM 0x14F86 [C]
         }
-        record.field_0x89 = movement.retry_counter;
-        record.field_0x41 = movement.linked_action_timer;
+        record.remaining_clear_steps = movement.remaining_clear_steps;
+        record.additional_shots_remaining =
+            movement.additional_shots_remaining;
         record.action_result = movement.action_result;
         const bool attack_seed_refreshed = primary_record &&
             (context.projectile_attack_seed_pending ||
@@ -12097,9 +12100,10 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
             scripting::ScriptActorProjectileOutcome::
                 burst_followup_restarted) {
             source_boundary(
-                "field.combat.weapon_projectile_burst_followup_started:" +
-                std::to_string(static_cast<unsigned>(
-                    movement.linked_action_timer)) +
+                std::string(
+                    "field.combat.weapon_projectile_burst_followup_started:remaining=") +
+                std::to_string(
+                    movement.additional_shots_remaining) +
                 ":heading=" + std::to_string(movement.heading) +
                 ":position=" +
                 std::to_string(word_from_fixed(movement.world_x)) + "," +

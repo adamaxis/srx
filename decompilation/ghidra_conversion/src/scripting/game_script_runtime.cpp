@@ -10042,10 +10042,10 @@ GameScriptRuntime::actor_heartbeat(
         lua_setfield(state, -2, "tile_offset_x");
         lua_pushinteger(state, movement.tile_offset_y);
         lua_setfield(state, -2, "tile_offset_y");
-        lua_pushinteger(state, movement.retry_counter);
-        lua_setfield(state, -2, "retry_counter");
-        lua_pushinteger(state, movement.linked_action_timer);
-        lua_setfield(state, -2, "linked_action_timer");
+        lua_pushinteger(state, movement.remaining_clear_steps);
+        lua_setfield(state, -2, "remaining_clear_steps");
+        lua_pushinteger(state, movement.additional_shots_remaining);
+        lua_setfield(state, -2, "additional_shots_remaining");
         lua_pushinteger(state, movement.heading);
         lua_setfield(state, -2, "heading");
         lua_pushinteger(state, movement.saved_position_x);
@@ -10182,8 +10182,10 @@ GameScriptRuntime::actor_heartbeat(
                 (movement.impact_occurred ? "true" : "false") +
                 ",animation_finished=" +
                 (movement.animation_finished ? "true" : "false") +
-                ",timer=" +
-                std::to_string(static_cast<int>(movement.linked_action_timer)) +
+                ",clear_steps=" +
+                std::to_string(movement.remaining_clear_steps) +
+                ",additional_shots=" +
+                std::to_string(movement.additional_shots_remaining) +
                 "}";
         }
         return fail(std::move(reason));
@@ -11610,19 +11612,20 @@ GameScriptRuntime::actor_heartbeat(
         }
         movement_decision.state.tile_offset_y =
             static_cast<std::int16_t>(signed_value);
-        if (!read_field_integer(state, movement_table, "retry_counter", 0xFFU,
+        if (!read_field_integer(state, movement_table,
+                                "remaining_clear_steps", 127U,
                                 unsigned_value)) {
             return fail(
-                "actor_ai.heartbeat returned invalid projectile retry counter");
+                "actor_ai.heartbeat returned an invalid projectile travel budget");
         }
-        movement_decision.state.retry_counter =
-            static_cast<std::uint8_t>(unsigned_value);
-        if (!read_signed("linked_action_timer", -128, 127, signed_value)) {
+        movement_decision.state.remaining_clear_steps = unsigned_value;
+        if (!read_field_integer(state, movement_table,
+                                "additional_shots_remaining", 2U,
+                                unsigned_value)) {
             return fail(
-                "actor_ai.heartbeat returned invalid projectile action timer");
+                "actor_ai.heartbeat returned an invalid burst continuation count");
         }
-        movement_decision.state.linked_action_timer =
-            static_cast<std::int8_t>(signed_value);
+        movement_decision.state.additional_shots_remaining = unsigned_value;
         if (!read_field_integer(state, movement_table, "heading", 0xFFFFU,
                                 unsigned_value)) {
             return fail(

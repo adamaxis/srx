@@ -173,12 +173,11 @@ void initialize_entity_spawn_record(
 
 void prepare_special_spawn_record(SpawnEntityRecordState& record) {
     record.lifecycle_state = 2U;
-    // ROM 0x152FA seeds the two remaining rays after the initial shot.
-    record.field_0x41 = 2;
+    // ROM 0x152FA gives the initial ray two follow-ups and 32 clear steps.
+    record.additional_shots_remaining = 2U;
+    record.remaining_clear_steps = 32U;
     record.saved_position_x = record.position_x;
     record.saved_position_y = record.position_y;
-    record.field_0x8b = 1U;
-    record.field_0x89 = 0x20U;
 }
 
 EntitySpawnCycleResult process_entity_spawn_cycle(
@@ -246,8 +245,9 @@ EntitySpawnCycleResult process_entity_spawn_cycle(
         state.linked_target,
         prepare_spawn);
     primary.slot_identifier = *primary_slot;
-    primary.field_0x89 = 0x7FU;
-    primary.field_0x8b = 0U;
+    // ROM 0x151D0 seeds 127 accepted clear steps for an ordinary shot.
+    primary.remaining_clear_steps = 127U;
+    primary.additional_shots_remaining = 0U;
 
     result.special_follow_up =
         state.parent.field_0x57 >= 8U && state.parent.field_0x57 <= 10U;

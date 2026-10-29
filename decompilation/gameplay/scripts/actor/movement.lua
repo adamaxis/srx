@@ -3,21 +3,17 @@
 local R = require("actor.registry")
 local E = require("enums")
 local I = require("lib.int68k")
-local u8, u16, s16 = I.u8, I.u16, I.s16
+local u16 = I.u16
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local ActorPose = E.ActorPose
 local SpriteType = R.SpriteType   -- from actor/tables.lua
-local byte_mask = R.byte_mask   -- from actor/tables.lua
-local byte_modulus = R.byte_modulus   -- from actor/tables.lua
 local fixed_fraction_scale = R.fixed_fraction_scale   -- from actor/tables.lua
 local fixed_integer_shift = R.fixed_integer_shift   -- from actor/tables.lua
 local fixed_long_mask = R.fixed_long_mask   -- from actor/tables.lua
 local projectile = R.projectile   -- from actor/tables.lua
-local signed_byte_threshold = R.signed_byte_threshold   -- from actor/tables.lua
 
 -- 68000 helpers now shared via lib/int68k.lua (lua_review #4); names kept for call-site compatibility.
-local signed_byte = I.s8
 local signed_word_from_long = I.s32
 local integer_world_word = I.fixed_int_word
 
@@ -34,11 +30,14 @@ local function projectile_movement_snapshot(context, state)
        type(source.world_y) ~= "number" or
        type(source.tile_offset_x) ~= "number" or
        type(source.tile_offset_y) ~= "number" or
-       type(source.retry_counter) ~= "number" or
-       source.retry_counter < 0 or source.retry_counter > 0xff or
-       type(source.linked_action_timer) ~= "number" or
-       source.linked_action_timer < -128 or
-       source.linked_action_timer > 127 or
+       type(source.remaining_clear_steps) ~= "number" or
+       source.remaining_clear_steps < 0 or source.remaining_clear_steps > 127 or
+       source.remaining_clear_steps ~= math.floor(source.remaining_clear_steps) or
+       type(source.additional_shots_remaining) ~= "number" or
+       source.additional_shots_remaining < 0 or
+       source.additional_shots_remaining > 2 or
+       source.additional_shots_remaining ~=
+           math.floor(source.additional_shots_remaining) or
        type(source.heading) ~= "number" or source.heading < 0 or
        source.heading > AiTuning.WORD_MAX or
        type(source.saved_position_x) ~= "number" or
@@ -60,8 +59,8 @@ local function projectile_movement_snapshot(context, state)
         world_y = source.world_y,
         tile_offset_x = source.tile_offset_x,
         tile_offset_y = source.tile_offset_y,
-        retry_counter = source.retry_counter,
-        linked_action_timer = source.linked_action_timer,
+        remaining_clear_steps = source.remaining_clear_steps,
+        additional_shots_remaining = source.additional_shots_remaining,
         heading = source.heading,
         saved_position_x = source.saved_position_x,
         saved_position_y = source.saved_position_y,
@@ -86,20 +85,21 @@ local function projectile_movement_snapshot(context, state)
 
     if result.waiting_for_animation_end then
         -- ROM 0x14E0A/0x14F1C wait for the stopped record's finite list.
-        -- The linked action pair in 0x14F86 is still an explicit boundary.
+        -- Weapon action-pair resolution in ROM 0x14F86 remains an explicit boundary.
         if result.animation_finished then
-            result.linked_action_timer =
-                signed_byte(result.linked_action_timer - 1)
-            if result.linked_action_timer < 0 then
+            if result.additional_shots_remaining == 0 then
                 result.active = false
                 result.outcome = projectile.outcome.retired
             else
+                result.additional_shots_remaining =
+                    result.additional_shots_remaining - 1
                 -- ROM 0x14F86 starts the next member of the three-round
                 -- weapon burst at the saved spawn coordinate. It rotates the
                 -- heading by -0x400 for the second shot and +0x800 for the
                 -- third, then derives the 0x150E8 movement offsets.
                 result.heading = u16(result.heading +
-                    (result.linked_action_timer ~= 0 and -0x0400 or 0x0800))
+                    (result.additional_shots_remaining > 0 and
+                        -0x0400 or 0x0800))
                 result.world_x = signed_word_from_long(
                     (result.saved_position_x << fixed_integer_shift) |
                     (result.world_x & AiTuning.WORD_MAX))
@@ -117,7 +117,7 @@ local function projectile_movement_snapshot(context, state)
                 end
                 result.tile_offset_x = offsets.horizontal
                 result.tile_offset_y = offsets.vertical
-                result.retry_counter = 0x20
+                result.remaining_clear_steps = 32
                 result.animation_action = "restart"
                 result.waiting_for_animation_end = false
                 result.outcome = projectile.outcome.burst_followup_restarted
@@ -146,9 +146,12 @@ local function projectile_movement_snapshot(context, state)
 
         local terminal = terrain_result ~= 0 and not boundary_active
         if not terminal then
-            result.retry_counter =
-                u8(result.retry_counter - 1)
-            terminal = signed_byte(result.retry_counter) < 0
+            if result.remaining_clear_steps == 0 then
+                terminal = true
+            else
+                result.remaining_clear_steps =
+                    result.remaining_clear_steps - 1
+            end
         end
         if terminal then
             result.impact_occurred = true
@@ -755,7 +758,6 @@ end
 
 
 -- register this module's definitions
-R.signed_byte = signed_byte
 R.signed_word_from_long = signed_word_from_long
 R.integer_world_word = integer_world_word
 R.projectile_movement_snapshot = projectile_movement_snapshot

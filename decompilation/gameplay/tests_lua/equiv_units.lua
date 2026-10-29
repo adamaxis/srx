@@ -65,11 +65,79 @@ end
 -- Targeted generators: shape context/state so specific deep paths are reachable (coverage for spell/item chains,
 -- dynamic target actions, received hits and projectile impacts).
 local function projectile_source()
-  return { role = R(5) == 1 and "secondary" or "primary", active = R(6) ~= 1, flags = pick({ 0x01, 0x09, 0x00, R(0, 0xff) }),
-    record_flags = pick({ 0x01, 0x08, 0x09, 0x00, R(0, 0xff) }), world_x = R(0, 0xffffff), world_y = R(0, 0xffffff),
-    tile_offset_x = R(-2, 2), tile_offset_y = R(-2, 2), retry_counter = R(0, 4), linked_action_timer = R(-2, 3),
+  return { role = R(5) == 1 and "secondary" or "primary", active = R(6) ~= 1,
+    waiting_for_animation_end = R(2) == 1, impact_occurred = R(2) == 1,
+    animation_finished = R(2) == 1, animation_action = "unchanged",
+    world_x = R(0, 0xffffff), world_y = R(0, 0xffffff),
+    tile_offset_x = R(-2, 2), tile_offset_y = R(-2, 2), remaining_clear_steps = R(0, 4), additional_shots_remaining = R(0, 2),
     heading = R(0, 0xffff), saved_position_x = R(0, 0xffff), saved_position_y = R(0, 0xffff),
-    animation_selector = pick({ 0x8000, 0, R(0, 0xffff) }), action_result = R(0, 255) }
+    action_result = R(0, 255) }
+end
+
+-- Keep the frozen pre-split reference in its original source-shaped format.
+-- Only this test adapter translates the new gameplay state to/from the old
+-- counters; production Lua receives neither ROM field nor byte arithmetic.
+local function prepare_reference_projectile(v)
+  if type(v) ~= "table" then return end
+  if type(v.remaining_clear_steps) == "number" and
+     type(v.additional_shots_remaining) == "number" then
+    v.flags = v.active and 0x01 or 0
+    v.record_flags = (v.waiting_for_animation_end and 0x08 or 0) |
+      (v.impact_occurred and 0x01 or 0)
+    v.animation_selector = v.animation_finished and 0x8000 or 0
+    v.retry_counter = v.remaining_clear_steps
+    v.linked_action_timer = v.additional_shots_remaining
+    v.remaining_clear_steps = nil
+    v.additional_shots_remaining = nil
+    v.waiting_for_animation_end = nil
+    v.impact_occurred = nil
+    v.animation_finished = nil
+    v.animation_action = nil
+  end
+end
+local function normalize_reference_projectile(v, seen)
+  if type(v) ~= "table" then return end
+  seen = seen or {}
+  if seen[v] then return end
+  seen[v] = true
+  if type(v.retry_counter) == "number" or
+     type(v.linked_action_timer) == "number" or
+     type(v.flags) == "number" or type(v.record_flags) == "number" or
+     type(v.animation_selector) == "number" then
+    if type(v.flags) == "number" then
+      v.active = (v.flags & 0x01) ~= 0
+      v.flags = nil
+    end
+    if type(v.record_flags) == "number" then
+      v.waiting_for_animation_end = (v.record_flags & 0x08) ~= 0
+      v.impact_occurred = (v.record_flags & 0x01) ~= 0
+      v.record_flags = nil
+    end
+    if type(v.animation_selector) == "number" then
+      v.animation_finished = (v.animation_selector & 0x8000) ~= 0
+      v.animation_selector = nil
+    end
+    if type(v.retry_counter) == "number" then
+      v.remaining_clear_steps = v.retry_counter >= 0x80 and 0 or v.retry_counter
+      v.retry_counter = nil
+    end
+    if type(v.linked_action_timer) == "number" then
+      v.additional_shots_remaining = math.max(0, v.linked_action_timer)
+      v.linked_action_timer = nil
+    end
+    if v.outcome == "burst_followup_restarted" then
+      v.animation_action = "restart"
+    elseif v.role == "primary" and
+        (v.outcome == "stopped" or
+         v.outcome == "hit_resolution_pending" or
+         v.outcome == "linked_followup_pending" or
+         (v.outcome == "retired" and v.animation_finished == false)) then
+      v.animation_action = "stop"
+    elseif v.animation_action == nil then
+      v.animation_action = "unchanged"
+    end
+  end
+  for _, child in pairs(v) do normalize_reference_projectile(child, seen) end
 end
 local function canonical_animation_state(st, pose)
   st.entity_kind = E.SpriteType.CORP_GUARD
@@ -201,8 +269,11 @@ for _, name in ipairs(targets) do
     else
       argsA, argsB = { sA, cA, xA[1], xA[2], xA[3] }, { sB, cB, xB[1], xB[2], xB[3] }
     end
+    prepare_reference_projectile(cA.projectile_movement)
     _G.game = gameA; local ra = table.pack(pcall(fa, table.unpack(argsA, 1, 5)))
     _G.game = gameB; local rb = table.pack(pcall(fb, table.unpack(argsB, 1, 5)))
+    normalize_reference_projectile(ra)
+    normalize_reference_projectile(cA)
     if name == "begin_player_melee" then
       -- ROM 0xB29E..0xB2EA adds this player-only child request after a changed
       -- 0x55C76 meter result. The frozen bfa3908 helper predates that source
