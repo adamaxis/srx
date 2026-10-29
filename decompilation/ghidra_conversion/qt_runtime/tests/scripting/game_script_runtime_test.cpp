@@ -5759,7 +5759,10 @@ int main() {
         auto effect_target_context = actor_context(
             "field_runner_k03_none00", effect_target_actor_id, 3U,
             ScriptActorActionKind::none, 0U, 0U, true);
-        effect_target_context.source_record_slot = 0U;
+        if (active_runner_alias) {
+            effect_target_context.controlled_party_member_id =
+                "party.runner.0";
+        }
         effect_target_context.movement_scene_id = 2U;
         effect_target_context.world_scene_state = world_scene_state;
         effect_target_context.ai_target_candidates =
@@ -5841,20 +5844,25 @@ int main() {
                     context.ai_target_candidates.begin(),
                     context.ai_target_candidates.end(),
                     [&target_resolution](const auto& candidate) {
-                        return candidate.id == target_resolution.target_id &&
-                               candidate.source_record_slot.has_value() &&
-                               *candidate.source_record_slot ==
-                                   target_resolution.target_record_slot;
+                        return candidate.id == target_resolution.target_id;
                     });
                 if (target_candidate != context.ai_target_candidates.end() &&
                     target_candidate->combatant.has_value()) {
                     effect_target_context.instance_id =
                         active_runner_alias &&
-                                target_resolution.target_record_slot == 0U
+                                target_resolution.target_id == "party.runner.0"
                             ? std::string_view{"field_player_runner"}
                             : std::string_view{target_candidate->id};
-                    effect_target_context.source_record_slot =
-                        target_resolution.target_record_slot;
+                    if (active_runner_alias &&
+                        target_resolution.target_id == "party.runner.0") {
+                        effect_target_context.controlled_party_member_id =
+                            target_candidate->id;
+                        effect_target_context.source_record_slot.reset();
+                    } else {
+                        effect_target_context.controlled_party_member_id.clear();
+                        effect_target_context.source_record_slot =
+                            target_resolution.target_record_slot;
+                    }
                     effect_target_context.combatant =
                         *target_candidate->combatant;
                 }
@@ -5902,16 +5910,11 @@ int main() {
                 result.completed_effect.has_value() &&
                 additional_scan_candidates != nullptr) {
                 for (const auto& candidate : *additional_scan_candidates) {
-                    if (!candidate.source_record_slot.has_value()) {
-                        continue;
-                    }
                     auto followup = actor_context(
                         "field_runner_k03_none00", candidate.id, 3U,
                         ScriptActorActionKind::none, 0U, 0U, true);
                     followup.spawn = true;
                     followup.phase = ScriptActorHeartbeatPhase::render;
-                    followup.source_record_slot =
-                        candidate.source_record_slot;
                     followup.movement_scene_id = 2U;
                     followup.world_scene_state = world_scene_state;
                     followup.ai_target_candidates =
@@ -6105,21 +6108,19 @@ int main() {
     std::vector<ScriptActorTargetCandidate> sleep_scan_candidates;
     const auto add_sleep_candidate = [&sleep_scan_candidates](
                                          const std::string& id,
-                                         const std::uint8_t slot,
                                          const std::uint8_t flags,
                                          const std::uint16_t route_cost) {
         ScriptActorTargetCandidate candidate{};
         candidate.id = id;
         candidate.service_flags = flags;
         candidate.direct_route_step_cost = route_cost;
-        candidate.source_record_slot = slot;
         sleep_scan_candidates.push_back(std::move(candidate));
     };
-    add_sleep_candidate("sleep_near", 1U, 0x01U, 0x04FFU);
-    add_sleep_candidate("sleep_at_range_limit", 2U, 0x01U, 0x0500U);
-    add_sleep_candidate("sleep_inactive", 3U, 0x00U, 0x0100U);
-    add_sleep_candidate("sleep_effect_locked", 4U, 0x41U, 0x0100U);
-    add_sleep_candidate("sleep_near_world_actor", 5U, 0x01U, 0x0400U);
+    add_sleep_candidate("sleep_near", 0x01U, 0x04FFU);
+    add_sleep_candidate("sleep_at_range_limit", 0x01U, 0x0500U);
+    add_sleep_candidate("sleep_inactive", 0x00U, 0x0100U);
+    add_sleep_candidate("sleep_effect_locked", 0x41U, 0x0100U);
+    add_sleep_candidate("sleep_near_world_actor", 0x01U, 0x0400U);
     auto sleep_spell_caster = spell_caster;
     sleep_spell_caster.equipped_action_code = 5U;
     const auto sleep_fanout_cast = drive_spell_refresh(

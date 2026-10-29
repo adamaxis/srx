@@ -1828,6 +1828,10 @@ struct ScriptActorBehaviorContext {
     // otherwise available. The native adapter widens the source value here;
     // gameplay scripts consume a condition value, not a memory byte.
     std::optional<std::int32_t> physical_condition;
+    // Identity of the party member currently controlled by the field player.
+    // The host keeps roster placement; Lua uses this actor identity to match
+    // delayed effects and other actor-owned state.
+    std::string controlled_party_member_id;
 };
 
 enum class ScriptTarislarTombOutroStep {

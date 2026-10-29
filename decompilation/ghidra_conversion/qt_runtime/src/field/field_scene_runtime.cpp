@@ -11246,6 +11246,8 @@ FieldSceneRuntime::heartbeat_field_player(
     actor_context.entity_kind = 3U;
     actor_context.action_kind = scripting::ScriptActorActionKind::none;
     actor_context.instance_id = "field_player_runner";
+    actor_context.controlled_party_member_id =
+        "party.runner." + std::to_string(field_party_roster_.active_slot());
     actor_context.walk_fast_enabled = field_walk_fast_enabled_;
     actor_context.source_record_slot = static_cast<std::uint8_t>(
         field_party_roster_.active_slot());

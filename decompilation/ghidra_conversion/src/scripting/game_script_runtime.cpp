@@ -10406,6 +10406,13 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "combat_action_ready");
     lua_pushboolean(state, context.combat_action_available);
     lua_setfield(state, -2, "combat_action_available");
+    if (context.controlled_party_member_id.empty()) {
+        lua_pushnil(state);
+    } else {
+        lua_pushlstring(state, context.controlled_party_member_id.data(),
+                        context.controlled_party_member_id.size());
+    }
+    lua_setfield(state, -2, "controlled_party_member_id");
     lua_pushboolean(state, context.player_spell_available);
     lua_setfield(state, -2, "player_spell_available");
     if (player_spell_id.has_value()) {
@@ -11212,7 +11219,7 @@ GameScriptRuntime::actor_heartbeat(
     }
     if (released_spell_slot.has_value()) {
         if (context.phase != ScriptActorHeartbeatPhase::render ||
-            !context.source_record_slot.has_value()) {
+            context.instance_id.empty() || !context.combatant.has_value()) {
             return fail("actor_ai.heartbeat released a spell effect outside its render pass");
         }
         decision.spell_effect_slot_released =
@@ -11285,9 +11292,7 @@ GameScriptRuntime::actor_heartbeat(
         decision.spell_effect_completed;
     const bool spell_effect_target_context =
         context.phase == ScriptActorHeartbeatPhase::render &&
-        context.source_record_slot.has_value() && context.combatant.has_value() &&
-        (context.dynamic_world_encounter_actor ||
-         context.profile_id == "field_runner_k03_none00");
+        !context.instance_id.empty() && context.combatant.has_value();
     const auto expected_spell_phases =
         spell_phase_count(decision.spell_effect_id);
     const bool invalid_spell_completion = decision.spell_effect_completed &&

@@ -784,9 +784,9 @@ function Combat.resolve_spell_impact(context, pending, target)
        type(pending.action_result) ~= "number" or
        type(pending.target_id) ~= "string" or
        type(target.id) ~= "string" or
+       target.id == "" or
        type(target.source_record_slot) ~= "number" or
-       target.id ~= pending.target_id or
-       target.source_record_slot ~= pending.source_record_slot then
+       target.id ~= pending.target_id then
         return nil
     end
 
