@@ -1300,6 +1300,33 @@ enum class ScriptFieldSceneMode : std::uint8_t {
     unknown,
 };
 
+// Actor behavior and movement tuning are expressed as game concepts. The
+// host derives these facts from the source actor record before calling Lua.
+enum class ScriptActorEngagementPolicy : std::uint8_t {
+    patrol,
+    watch_nearby_runner,
+    engage_within_range,
+    engage,
+};
+
+enum class ScriptActorApproachBand : std::uint8_t {
+    far,
+    medium,
+    close,
+};
+
+struct ScriptActorBehaviorProfile {
+    ScriptActorEngagementPolicy engagement_policy =
+        ScriptActorEngagementPolicy::patrol;
+    std::optional<ScriptActorApproachBand> approach_band;
+};
+
+// ROM 0x13EF4/0x13F36/0x13F52 derive the think policy from actor +0x4D;
+// 0x13D84 uses that field to select a range pair at 0x13E58 [C].
+ScriptActorBehaviorProfile
+script_actor_behavior_profile_from_source_posture(
+    std::uint8_t source_posture) noexcept;
+
 enum class ScriptSceneTenActivityVariant : std::uint8_t {
     standard,
     alternate,
@@ -1792,9 +1819,9 @@ struct ScriptActorBehaviorContext {
     bool animation_blocks_behavior = false;
     bool can_start_item_action = true;
     std::optional<ScriptActorItemSpawnResult> source_item_spawn_result;
-    // ROM 0x13D84 indexes the world-actor route-distance table with live
-    // record +0x4D (the typed combatant posture fact).
-    std::optional<std::uint8_t> source_actor_posture;
+    // ROM posture bytes become a behavior policy and named approach band at
+    // the native boundary; Lua never interprets the source posture value.
+    std::optional<ScriptActorBehaviorProfile> actor_behavior_profile;
     bool world_activity_active = false;
     // ROM 0x14C7C's kind-0xD branch checks animation frame +0x1E here.
     std::int16_t ai_animation_frame = 0;

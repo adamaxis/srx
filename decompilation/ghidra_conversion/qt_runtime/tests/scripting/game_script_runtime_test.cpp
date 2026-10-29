@@ -162,6 +162,53 @@ bool verify_field_scene_mode_translation() {
     return true;
 }
 
+bool verify_actor_behavior_profile_translation() {
+    using namespace shadowrun::ghidra_conversion::scripting;
+    struct Case {
+        std::uint8_t source_posture;
+        ScriptActorEngagementPolicy engagement_policy;
+        std::optional<ScriptActorApproachBand> approach_band;
+    };
+    // [C] ROM 0x13EF4/0x13F36/0x13F52 select patrol, runner-watch,
+    // thresholded-engage, and engage behavior from +0x4D. ROM 0x13D84 indexes
+    // 0x13E58: values 0-2 are far, 3-5 medium, and 6-8 close. Values above 8
+    // retain the >4 combat branch but have no range-table entry.
+    constexpr std::array<Case, 10U> cases{{
+        {0U, ScriptActorEngagementPolicy::patrol,
+         ScriptActorApproachBand::far},
+        {1U, ScriptActorEngagementPolicy::patrol,
+         ScriptActorApproachBand::far},
+        {2U, ScriptActorEngagementPolicy::patrol,
+         ScriptActorApproachBand::far},
+        {3U, ScriptActorEngagementPolicy::watch_nearby_runner,
+         ScriptActorApproachBand::medium},
+        {4U, ScriptActorEngagementPolicy::engage_within_range,
+         ScriptActorApproachBand::medium},
+        {5U, ScriptActorEngagementPolicy::engage,
+         ScriptActorApproachBand::medium},
+        {6U, ScriptActorEngagementPolicy::engage,
+         ScriptActorApproachBand::close},
+        {7U, ScriptActorEngagementPolicy::engage,
+         ScriptActorApproachBand::close},
+        {8U, ScriptActorEngagementPolicy::engage,
+         ScriptActorApproachBand::close},
+        {9U, ScriptActorEngagementPolicy::engage, std::nullopt},
+    }};
+    for (const auto& test_case : cases) {
+        const auto profile =
+            script_actor_behavior_profile_from_source_posture(
+                test_case.source_posture);
+        if (profile.engagement_policy != test_case.engagement_policy ||
+            profile.approach_band != test_case.approach_band) {
+            std::cerr << "actor behavior conversion mismatch for source posture "
+                      << static_cast<unsigned>(test_case.source_posture)
+                      << '\n';
+            return false;
+        }
+    }
+    return true;
+}
+
 bool verify_mode_one_semantic_fact_translation() {
     using namespace shadowrun::ghidra_conversion::scripting;
     const std::array<std::pair<std::uint8_t,
@@ -1866,6 +1913,7 @@ int main() {
     if (!verify_weapon_action_policy_translation() ||
         !verify_semantic_combat_inventory_translation() ||
         !verify_field_scene_mode_translation() ||
+        !verify_actor_behavior_profile_translation() ||
         !verify_mode_one_semantic_fact_translation()) {
         return 1;
     }
@@ -8370,6 +8418,10 @@ int main() {
     };
 
     for (std::uint8_t posture = 0U; posture < 9U; ++posture) {
+        const auto expected_band = posture < 3U
+            ? ScriptActorApproachBand::far
+            : posture < 6U ? ScriptActorApproachBand::medium
+                           : ScriptActorApproachBand::close;
         const std::uint16_t target_distance = posture < 3U ? 0x0700U
             : posture < 6U ? 0x0500U : 0x0300U;
         const auto posture_actor_id =
@@ -8380,7 +8432,8 @@ int main() {
         posture_band_actor.profile_id = "weenr1_k08_none00";
         posture_band_actor.entity_kind = 8U;
         posture_band_actor.source_record_flags = 0x2DU;
-        posture_band_actor.source_actor_posture = posture;
+        posture_band_actor.actor_behavior_profile =
+            script_actor_behavior_profile_from_source_posture(posture);
         // This case exercises the linked-target combat route; FFDF84 is the
         // source combat gate that keeps the patrol selector out of the case [C].
         posture_band_actor.world_activity_active = true;
@@ -8399,8 +8452,9 @@ int main() {
             : std::nullopt;
         if (!expect(
                 posture_band_route.has_value() &&
-                    posture_band_actor.source_actor_posture ==
-                        std::optional<std::uint8_t>{posture} &&
+                    posture_band_actor.actor_behavior_profile.has_value() &&
+                    posture_band_actor.actor_behavior_profile->approach_band ==
+                        std::optional<ScriptActorApproachBand>{expected_band} &&
                     posture_band_actor.source_record_flags == 0x2DU &&
                     posture_band_route->movement_heading == 0x2000U &&
                     posture_band_route->movement_route_distance ==

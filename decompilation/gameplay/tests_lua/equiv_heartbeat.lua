@@ -102,6 +102,14 @@ for id in src:gmatch('"([%w_]+_k%x%x_[a-z]+%x%x)"') do kinds[id] = true end
 math.randomseed(SEED)
 local R = math.random
 local function pick(t) return t[R(#t)] end
+local actor_behavior_profiles = {
+  { engagement_policy = "patrol", approach_band = "far" },
+  { engagement_policy = "watch_nearby_runner", approach_band = "medium" },
+  { engagement_policy = "engage_within_range", approach_band = "medium" },
+  { engagement_policy = "engage", approach_band = "medium" },
+  { engagement_policy = "engage", approach_band = "close" },
+  { engagement_policy = "engage" },
+}
 local function num()
   local k = R(6)
   if k == 1 then return 0 elseif k == 2 then return R(0, 15) elseif k == 3 then return R(0, 0xff)
@@ -140,6 +148,7 @@ local SpellIdByActionCode = {
 }
 local function context(actor)
   local ammunition_remaining = R(0, 30)
+  local actor_behavior = pick(actor_behavior_profiles)
   local pid = pick(pids)
   local dyn = R(4) == 1
   if dyn then pid = (#kinds_list > 0 and R(2) == 1) and pick(kinds_list) or string.format("x_k%02x_%s%02x", R(4, 14), pick({ "item", "spell", "none" }), R(0, 15)) end
@@ -182,7 +191,8 @@ local function context(actor)
     animation_accumulator_override = maybe(num), world_activity_active = bool(), target_selection_special_marker = bool(),
     target_selection_requested = bool(), target_selection_owner_slot = R(0, 7), target_selection_latched = bool(),
     target_heading_audio_alternate = bool(), source_spawn_state_flags = num(),
-    source_item_spawn_result = pick({ "spawned", "failed" }), source_interaction_flags = num(), source_actor_posture = R(0, 7),
+    source_item_spawn_result = pick({ "spawned", "failed" }), source_interaction_flags = num(),
+    actor_behavior_profile = actor_behavior,
     projectile_combat_targets_n = nil, movement_transition_active = bool(), movement_services_available = bool(),
     movement_collision_mode = R(0, 3), initial_action_delay = R(0, 15), combat_meter_service_blocked = bool(),
     action_line_clear = bool(),
@@ -211,8 +221,26 @@ local function modifier_from_flags(flags)
   end
   return 0
 end
+local function legacy_posture_from_behavior_profile(profile)
+  local policy, band = profile.engagement_policy, profile.approach_band
+  if policy == "patrol" and band == "far" then return 0 end
+  if policy == "watch_nearby_runner" and band == "medium" then return 3 end
+  if policy == "engage_within_range" and band == "medium" then return 4 end
+  if policy == "engage" and band == "medium" then return 5 end
+  if policy == "engage" and band == "close" then return 6 end
+  if policy == "engage" and band == nil then return 9 end
+  return nil
+end
 local function legacy_context_for_reference(context)
   local legacy = deepcopy(context)
+  -- The frozen pre-port reference still consumes +0x4D. Keep that old
+  -- representation inside the differential harness only.
+  local profile = context.actor_behavior_profile
+  if type(profile) == "table" then
+    legacy.source_actor_posture =
+      legacy_posture_from_behavior_profile(profile)
+    legacy.actor_behavior_profile = nil
+  end
   local timing = context.action_timing or {}
   legacy.delay_primary_attribute = timing.quickness or 0
   legacy.delay_secondary_attribute = timing.intelligence or 0
@@ -226,6 +254,11 @@ local function legacy_context_for_reference(context)
 end
 local function serialize_context_for_parity(context)
   local comparable = deepcopy(context)
+  if type(comparable.actor_behavior_profile) == "table" then
+    comparable.source_actor_posture = legacy_posture_from_behavior_profile(
+      comparable.actor_behavior_profile)
+    comparable.actor_behavior_profile = nil
+  end
   if comparable.ammunition_remaining == nil then
     comparable.ammunition_remaining = comparable.source_action_ammo or 0
   end

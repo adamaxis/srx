@@ -3643,7 +3643,9 @@ void FieldSceneRuntime::initialize_default_field_actors(
             actor.source_actor_has_waypoint_data;
         context.movement_scene_id = scene_reference;
         context.combatant = actor.combatant;
-        context.source_actor_posture = actor.combatant.posture;
+        context.actor_behavior_profile =
+            scripting::script_actor_behavior_profile_from_source_posture(
+                actor.combatant.posture);
         context.source_record_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
         context.has_live_actor_record = true;
@@ -4022,7 +4024,9 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         context.world_activity_script_actor =
             actor.world_activity_script_actor;
         context.combatant = actor.combatant;
-        context.source_actor_posture = actor.combatant.posture;
+        context.actor_behavior_profile =
+            scripting::script_actor_behavior_profile_from_source_posture(
+                actor.combatant.posture);
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_behavior_flags = actor.source_behavior_flags;
@@ -4275,7 +4279,9 @@ void FieldSceneRuntime::advance_default_field_actors(
         context.combat_meter_service_blocked =
             field_movement_transition_state_.world_mode == 3U;
         context.combatant = actor.combatant;
-        context.source_actor_posture = actor.combatant.posture;
+        context.actor_behavior_profile =
+            scripting::script_actor_behavior_profile_from_source_posture(
+                actor.combatant.posture);
         context.controlled_party_member_id =
             "party.runner." + std::to_string(
                 field_party_roster_.active_slot());
@@ -4302,7 +4308,9 @@ void FieldSceneRuntime::advance_default_field_actors(
             context.source_spawn_state_flags =
                 actor.source_spawn_state_flags;
             context.physical_condition = actor.physical_meter;
-            context.source_actor_posture = actor.combatant.posture;
+            context.actor_behavior_profile =
+                scripting::script_actor_behavior_profile_from_source_posture(
+                    actor.combatant.posture);
             set_script_animation_facts(
                 context, actor.animation_id, actor.animation_complete);
             context.source_alarm_active = field_matrix_field_state_.alarm;
@@ -12500,7 +12508,9 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         context.source_actor_has_waypoint_data =
             actor.source_actor_has_waypoint_data;
         context.combatant = actor.combatant;
-        context.source_actor_posture = actor.combatant.posture;
+        context.actor_behavior_profile =
+            scripting::script_actor_behavior_profile_from_source_posture(
+                actor.combatant.posture);
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_behavior_flags = actor.source_behavior_flags;

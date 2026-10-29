@@ -107,6 +107,34 @@ const char* field_scene_mode_id(const ScriptFieldSceneMode mode) noexcept {
     return "unknown";
 }
 
+const char* actor_engagement_policy_id(
+    const ScriptActorEngagementPolicy policy) noexcept {
+    switch (policy) {
+    case ScriptActorEngagementPolicy::patrol:
+        return "patrol";
+    case ScriptActorEngagementPolicy::watch_nearby_runner:
+        return "watch_nearby_runner";
+    case ScriptActorEngagementPolicy::engage_within_range:
+        return "engage_within_range";
+    case ScriptActorEngagementPolicy::engage:
+        return "engage";
+    }
+    return "engage";
+}
+
+const char* actor_approach_band_id(
+    const ScriptActorApproachBand band) noexcept {
+    switch (band) {
+    case ScriptActorApproachBand::far:
+        return "far";
+    case ScriptActorApproachBand::medium:
+        return "medium";
+    case ScriptActorApproachBand::close:
+        return "close";
+    }
+    return "unknown";
+}
+
 std::optional<std::string_view> script_spell_id_from_action_code(
     const std::uint8_t action_code) {
     if (action_code == 0U) {
@@ -6825,6 +6853,37 @@ ScriptFieldSceneMode script_field_scene_mode_from_source_word(
     }
 }
 
+ScriptActorBehaviorProfile
+script_actor_behavior_profile_from_source_posture(
+    const std::uint8_t source_posture) noexcept {
+    // [C] ROM 0x13EF4 sends 0-2 to patrol, 0x13F52 sends 3 through the
+    // runner-watch branch, 0x13EF4 checks the close threshold for 4, and
+    // 0x13F36 sends values above 4 to combat. ROM 0x13D84 indexes the range
+    // table at 0x13E58: 0-2 far, 3-5 medium, 6-8 close. Values outside that
+    // table keep their think policy but have no inferred movement band.
+    ScriptActorBehaviorProfile profile{};
+    if (source_posture <= 2U) {
+        profile.engagement_policy = ScriptActorEngagementPolicy::patrol;
+        profile.approach_band = ScriptActorApproachBand::far;
+    } else if (source_posture == 3U) {
+        profile.engagement_policy =
+            ScriptActorEngagementPolicy::watch_nearby_runner;
+        profile.approach_band = ScriptActorApproachBand::medium;
+    } else if (source_posture == 4U) {
+        profile.engagement_policy =
+            ScriptActorEngagementPolicy::engage_within_range;
+        profile.approach_band = ScriptActorApproachBand::medium;
+    } else {
+        profile.engagement_policy = ScriptActorEngagementPolicy::engage;
+        if (source_posture <= 5U) {
+            profile.approach_band = ScriptActorApproachBand::medium;
+        } else if (source_posture <= 8U) {
+            profile.approach_band = ScriptActorApproachBand::close;
+        }
+    }
+    return profile;
+}
+
 ScriptSceneTenActivityVariant
 script_scene_ten_activity_variant_from_source_event(
     const std::uint8_t source_event) noexcept {
@@ -10525,12 +10584,25 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "physical_condition");
-    if (context.source_actor_posture.has_value()) {
-        lua_pushinteger(state, *context.source_actor_posture);
+    if (context.actor_behavior_profile.has_value()) {
+        const auto& profile = *context.actor_behavior_profile;
+        lua_createtable(state, 0, 2);
+        lua_pushstring(
+            state,
+            actor_engagement_policy_id(profile.engagement_policy));
+        lua_setfield(state, -2, "engagement_policy");
+        if (profile.approach_band.has_value()) {
+            lua_pushstring(
+                state,
+                actor_approach_band_id(*profile.approach_band));
+        } else {
+            lua_pushnil(state);
+        }
+        lua_setfield(state, -2, "approach_band");
     } else {
         lua_pushnil(state);
     }
-    lua_setfield(state, -2, "source_actor_posture");
+    lua_setfield(state, -2, "actor_behavior_profile");
     lua_pushinteger(state, context.ammunition_remaining);
     lua_setfield(state, -2, "ammunition_remaining");
     lua_pushboolean(state, context.hold_for_ending_activity);

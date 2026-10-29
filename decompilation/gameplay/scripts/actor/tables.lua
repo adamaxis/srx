@@ -35,18 +35,13 @@ local ActionKind = {
 
 local E = require("enums")
 local SpriteType = E.SpriteType
--- Entity approach intervals in the game's world-distance units. Action
--- intervals are attached directly to item/spell definitions after import.
-local EntityMotionDistanceBounds = {
-    { minimum_distance = 0x0640, maximum_distance = 0x0780 },
-    { minimum_distance = 0x0640, maximum_distance = 0x0780 },
-    { minimum_distance = 0x0640, maximum_distance = 0x0780 },
-    { minimum_distance = 0x0460, maximum_distance = 0x05a0 },
-    { minimum_distance = 0x0460, maximum_distance = 0x05a0 },
-    { minimum_distance = 0x0460, maximum_distance = 0x05a0 },
-    { minimum_distance = 0x01e0, maximum_distance = 0x03c0 },
-    { minimum_distance = 0x01e0, maximum_distance = 0x03c0 },
-    { minimum_distance = 0x01e0, maximum_distance = 0x03c0 },
+-- Named approach bands from the world-actor route table. ROM 0x13D84
+-- selects these intervals through the host-derived band; Lua does not index
+-- the source's nine-entry table by a record value. Distances are world units.
+local ActorApproachDistanceBounds = {
+    far = { minimum_distance = 1600, maximum_distance = 1920 },
+    medium = { minimum_distance = 1120, maximum_distance = 1440 },
+    close = { minimum_distance = 480, maximum_distance = 960 },
 }
 local target_motion_reacquire_updates = 6
 local source_close_range_threshold = 0x01e0
@@ -127,7 +122,7 @@ R.fixed_integer_shift = fixed_integer_shift
 R.fixed_fraction_scale = fixed_fraction_scale
 R.ActionKind = ActionKind
 R.SpriteType = SpriteType
-R.EntityMotionDistanceBounds = EntityMotionDistanceBounds
+R.ActorApproachDistanceBounds = ActorApproachDistanceBounds
 R.target_motion_reacquire_updates = target_motion_reacquire_updates
 R.source_close_range_threshold = source_close_range_threshold
 R.profiles = profiles

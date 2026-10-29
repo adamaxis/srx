@@ -55,7 +55,9 @@ local function context(overrides)
         scene_mode = "street",
         world_activity_active = false,
         world_scene_state = E.EndingState.NONE,
-        source_actor_posture = E.Posture.NEUTRAL,
+        actor_behavior_profile = {
+            engagement_policy = "patrol", approach_band = "far",
+        },
         animation_blocks_behavior = false,
         ammunition_remaining = 0,
         hold_for_ending_activity = false,
@@ -102,6 +104,29 @@ local function think_path(actor, facts)
     R.think(actor, facts)
     return actor.ai_think_path
 end
+
+local approach_band_cases = {
+    { band = "far", minimum = 1600, maximum = 1920 },
+    { band = "medium", minimum = 1120, maximum = 1440 },
+    { band = "close", minimum = 480, maximum = 960 },
+}
+for _, band_case in ipairs(approach_band_cases) do
+    local bounds, resolved = R.source_motion_bounds(context({
+        actor_facts = { lifecycle = { ai_runner = true } },
+        actor_behavior_profile = {
+            engagement_policy = "engage", approach_band = band_case.band,
+        },
+    }), state())
+    check(resolved and bounds.minimum_distance == band_case.minimum and
+          bounds.maximum_distance == band_case.maximum,
+          "named " .. band_case.band .. " actor approach band selects its world-unit range")
+end
+local unresolved_bounds, unresolved_band = R.source_motion_bounds(context({
+    actor_facts = { lifecycle = { ai_runner = true } },
+    actor_behavior_profile = { engagement_policy = "engage" },
+}), state())
+check(not unresolved_band and unresolved_bounds == nil,
+      "actor approach without a recovered band leaves the route pending")
 
 local recorded_action_delay = { action_delay = 2 }
 R.advance_source_action_delay(recorded_action_delay, {
@@ -197,7 +222,9 @@ check(R.should_rebuild_target_lists(-1, false) == nil and
       R.should_rebuild_target_lists(0, -1) == nil,
       "target-list rebuild facts reject invalid typed inputs")
 
-local s, c = state(), context({ source_actor_posture = E.Posture.NEUTRAL })
+local s, c = state(), context({ actor_behavior_profile = {
+    engagement_policy = "patrol", approach_band = "far",
+} })
 local due_count = 0
 local first_path
 for pass_index = 1, E.AiTuning.THINK_FRAMES + 1 do
@@ -446,10 +473,14 @@ check(R.think_gate(s, context({ actor_facts = { behavior =
       animation_blocks_behavior = true })) == "hold",
       "0x13E8C offscreen flee route enters 0x13E40")
 
-check(R.think_gate(state(), context({ source_actor_posture = E.Posture.MEDIUM_DEFENSE })) ==
+check(R.think_gate(state(), context({ actor_behavior_profile = {
+      engagement_policy = "patrol", approach_band = "far",
+  } })) ==
       "patrol", "0x13EF4 posture <= 2 selects 0x142AE")
 s = state()
-check(R.think_gate(s, context({ source_actor_posture = E.Posture.FULL_OFFENSE,
+check(R.think_gate(s, context({ actor_behavior_profile = {
+    engagement_policy = "engage_within_range", approach_band = "medium",
+},
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, distance = E.AiTuning.ENGAGE_DIST,
@@ -457,17 +488,22 @@ check(R.think_gate(s, context({ source_actor_posture = E.Posture.FULL_OFFENSE,
     } })) == "patrol" and not s.world_activity_requested,
     "0x13EF4 posture 4 at ENGAGE_DIST does not engage")
 s = state()
-check(R.think_gate(s, context({ source_actor_posture = E.Posture.FULL_OFFENSE,
+check(R.think_gate(s, context({ actor_behavior_profile = {
+    engagement_policy = "engage_within_range", approach_band = "medium",
+},
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, distance = E.AiTuning.ENGAGE_DIST - 1,
           heading = 0x1000, actor_facts = actor_facts() },
     } })) == "combat" and s.world_activity_requested,
     "0x13EF4 posture 4 inside ENGAGE_DIST requests combat")
-check(R.think_gate(state(), context({ source_actor_posture =
-      E.Posture.FULL_OFFENSE + 1 })) == "combat",
+check(R.think_gate(state(), context({ actor_behavior_profile = {
+      engagement_policy = "engage", approach_band = "medium",
+  } })) == "combat",
       "0x13F36 posture above 4 selects combat")
-check(R.think_gate(state(), context({ source_actor_posture = E.Posture.MEDIUM_OFFENSE,
+check(R.think_gate(state(), context({ actor_behavior_profile = {
+      engagement_policy = "watch_nearby_runner", approach_band = "medium",
+  },
       ai_target_candidates = {
           { id = "party.runner.0", source_record_slot = 0,
             world_activity_actor = false, distance = E.AiTuning.WATCH_DIST,
@@ -476,7 +512,9 @@ check(R.think_gate(state(), context({ source_actor_posture = E.Posture.MEDIUM_OF
       "0x13F52 watch distance at WATCH_DIST returns to patrol")
 s = state()
 local watch_context = context({
-    source_actor_posture = E.Posture.MEDIUM_OFFENSE,
+    actor_behavior_profile = {
+        engagement_policy = "watch_nearby_runner", approach_band = "medium",
+    },
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, distance = E.AiTuning.WATCH_DIST - 1,
@@ -486,11 +524,26 @@ local watch_context = context({
 check(R.think(s, watch_context) and s.ai_think_path == "watch" and
       s.movement_current_heading == 0x2000,
       "0x13F68 watch branch faces FFFC04")
+local missing_profile_context = context()
+missing_profile_context.actor_behavior_profile = nil
+local missing_profile_state = state()
+check(R.think_gate(missing_profile_state, missing_profile_context) == "combat" and
+      missing_profile_state.ai_think_gap ==
+          "actor_behavior_profile_unavailable",
+      "actor think keeps an explicit gap when the host profile is unavailable")
+local invalid_profile_state = state()
+check(R.think_gate(invalid_profile_state, context({
+      actor_behavior_profile = { engagement_policy = "unrecognized" },
+  })) == "combat" and
+      invalid_profile_state.ai_think_gap == "actor_behavior_profile_invalid",
+      "actor think does not infer behavior from an unknown policy")
 
 local function guard_case(overrides, actor_overrides, line_clear)
     local gc = context({
         actor_facts = { lifecycle = { group_leader = true } },
-        source_actor_posture = E.Posture.NEUTRAL,
+        actor_behavior_profile = {
+            engagement_policy = "patrol", approach_band = "far",
+        },
         source_alarm_active = false,
         scene_mode = "building",
         action_line_clear = function() return line_clear ~= false end,
@@ -992,7 +1045,9 @@ heartbeat_context.initial_heading = 0xF000
 heartbeat_context.entry_delay = 0
 heartbeat_context.entry_animation_frame_count = 1
 heartbeat_context.movement_allowed = true
-heartbeat_context.source_actor_posture = E.Posture.NEUTRAL
+heartbeat_context.actor_behavior_profile = {
+    engagement_policy = "patrol", approach_band = "far",
+}
 heartbeat_context.source_record_slot = 7
 heartbeat_context.ai_target_candidates = { heartbeat_target }
 heartbeat_context.ai_random_bound = function() return 0 end

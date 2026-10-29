@@ -202,15 +202,20 @@ local function think_gate(state, context)
 
     local leader = controlled_runner(context)
     guard_spots_you(state, context, leader)
-    local posture = context.source_actor_posture
-    if type(posture) ~= "number" then
-        state.ai_think_gap = "actor_posture_unavailable"
+    local profile = context.actor_behavior_profile
+    local engagement_policy = type(profile) == "table" and
+        profile.engagement_policy
+    if type(engagement_policy) ~= "string" then
+        state.ai_think_gap = "actor_behavior_profile_unavailable"
         return "combat"
     end
-    if posture <= E.Posture.NEUTRAL then
+    if engagement_policy == "patrol" then
         return "patrol"
     end
-    if posture == E.Posture.FULL_OFFENSE then
+    if engagement_policy == "engage" then
+        return "combat"
+    end
+    if engagement_policy == "engage_within_range" then
         if type(leader) ~= "table" or type(leader.distance) ~= "number" then
             state.ai_think_gap = "controlled_runner_distance_unavailable"
             return "combat"
@@ -221,7 +226,8 @@ local function think_gate(state, context)
         end
         return "patrol"
     end
-    if posture > E.Posture.FULL_OFFENSE then
+    if engagement_policy ~= "watch_nearby_runner" then
+        state.ai_think_gap = "actor_behavior_profile_invalid"
         return "combat"
     end
     if type(leader) ~= "table" or type(leader.distance) ~= "number" or

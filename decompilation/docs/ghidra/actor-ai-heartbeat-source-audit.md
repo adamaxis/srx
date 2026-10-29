@@ -197,9 +197,11 @@ This is still partial: the complete actor pool and several source action/effect
 continuations are not defended. The profile, kind, action kind/code, and
 combatant facts for dynamic encounters come from the extracted ROM actor rows;
 Lua validates them before applying the generic actor package. The separate
-`+0x10.3` world-actor route now receives the typed live posture fact that the
-ROM reads from actor `+0x4D`: `0x13D84` indexes the nine-pair table at `0x13E58`.
-Script-runtime QA checks all nine posture values across the three source bands.
+`+0x10.3` world-actor route reads actor `+0x4D`: `0x13D84` indexes the
+nine-pair table at `0x13E58`. The native boundary converts that field into a
+named engagement policy and approach band before Lua receives the actor
+context. Script-runtime QA checks all nine source values across the three
+bands; Lua does not index the source posture table.
 The production Scene 2 Weenr profile uses flags `0x25`, so its captured route
 does not activate this `+0x10.3` branch. Debug and Release script-runtime,
 encounter, and Hound-effect QA pass; the 12 Scene 2 and 8 Hound full-frame
@@ -251,7 +253,8 @@ This remains partial. Random-encounter actors use the ordinary common flags,
 so their calm far-range vector and four near-range bands are resolved. While
 `FFDF84` is nonzero the far step follows Quickness, and a bit-3 actor whose
 projected Y is zero uses the 40-unit catch-up. The separate `+0x10.3` posture
-table is also passed to Lua and tested across all nine source values. Debug
+table is translated to a named approach band and tested across all nine source
+values. Debug
 option `0x59C54` sets the typed `FFE168` host fact; Lua now follows the ROM
 `0xB5CA` branch when bit 0 and actor `+0x10.1` are set, selecting the
 40-unit vector while bypassing the normal distance/Quickness table selection.

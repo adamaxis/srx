@@ -59,9 +59,12 @@ The linked-motion route also has a world-actor branch selected by record flag
 `+0x10.3`. ROM `0x13D84` indexes the nine-pair range table at `0x13E58` with
 the live actor posture at `+0x4D`; posture values 0-2 use `0x0640..0x0780`,
 3-5 use `0x0460..0x05A0`, and 6-8 use `0x01E0..0x03C0`. The native bridge
-passes the encounter's typed `combatant.posture` to Lua as
-`source_actor_posture`, and Debug/Release script-runtime QA checks all nine
-posture values selecting their three route bands. Current production Scene 2
+converts that source field into an `actor_behavior_profile` with a named
+engagement policy and `far`/`medium`/`close` approach band. Lua actor routing
+and think policy consume that profile without indexing by the source posture
+number. The three route intervals are named world-unit data.
+Debug/Release script-runtime QA checks all nine source values selecting the
+same three route bands. Current production Scene 2
 Weenrs use flags `0x25`, so the production screenshots do not exercise this
 branch; the test verifies the typed branch and route choices, not an
 independent Genesis encounter trace.

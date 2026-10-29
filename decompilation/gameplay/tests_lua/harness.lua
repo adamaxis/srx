@@ -77,6 +77,20 @@ end
 
 local R = math.random
 local function pick(t) return t[R(#t)] end
+local function actor_behavior_profile()
+  local profiles = {
+    { engagement_policy = "patrol", approach_band = "far" },
+    { engagement_policy = "watch_nearby_runner", approach_band = "medium" },
+    { engagement_policy = "engage_within_range", approach_band = "medium" },
+    { engagement_policy = "engage", approach_band = "medium" },
+    { engagement_policy = "engage", approach_band = "close" },
+    { engagement_policy = "engage" },
+  }
+  local selected = pick(profiles)
+  local result = {}
+  for name, value in pairs(selected) do result[name] = value end
+  return result
+end
 -- profile ids from the source
 local src = io.open(ORIG):read("a")
 local pids = {}
@@ -162,7 +176,8 @@ local function context(actor)
     animation_accumulator_override = maybe(num), world_activity_active = bool(), target_selection_special_marker = bool(),
     target_selection_requested = bool(), target_selection_owner_slot = R(0, 7), target_selection_latched = bool(),
     target_heading_audio_alternate = bool(), source_spawn_state_flags = num(),
-    source_item_spawn_result = pick({ "spawned", "failed" }), source_interaction_flags = num(), source_actor_posture = R(0, 7),
+    source_item_spawn_result = pick({ "spawned", "failed" }), source_interaction_flags = num(),
+    actor_behavior_profile = actor_behavior_profile(),
     projectile_combat_targets_n = nil, movement_transition_active = bool(), movement_services_available = bool(),
     movement_collision_mode = R(0, 3), initial_action_delay = R(0, 15), combat_meter_service_blocked = bool(),
     action_line_clear = bool(),

@@ -7,7 +7,7 @@ local u16, s16 = I.u16, I.s16
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local ActionKind = R.ActionKind   -- from actor/tables.lua
-local EntityMotionDistanceBounds = R.EntityMotionDistanceBounds   -- from actor/tables.lua
+local ActorApproachDistanceBounds = R.ActorApproachDistanceBounds -- from actor/tables.lua
 local profiles = R.profiles   -- from actor/tables.lua
 local ActorProfileCatalog = require("data.actor_profiles")
 local ProjectileAnimationClips =
@@ -276,15 +276,16 @@ end
 
 local function source_motion_bounds(context, state)
     if context.actor_facts.lifecycle.ai_runner == true then
-        -- ROM 0x13D84 indexes the nine-pair table at 0x13E58 with the live
-        -- actor's +0x4D posture. The host supplies that named typed fact.
-        local distance_type = context.source_actor_posture
-        if type(distance_type) == "number" and distance_type % 1 == 0 and
-           distance_type >= 0 and
-           distance_type < #EntityMotionDistanceBounds then
-            return EntityMotionDistanceBounds[distance_type + 1], true
+        -- ROM 0x13D84 selects a distance interval from actor +0x4D; the host
+        -- has already converted that source value to a named approach band.
+        local profile = context.actor_behavior_profile
+        local band = type(profile) == "table" and profile.approach_band
+        local bounds = type(band) == "string" and
+            ActorApproachDistanceBounds[band] or nil
+        if type(bounds) == "table" then
+            return bounds, true
         end
-        -- Do not guess a destination when the source posture is unavailable.
+        -- Do not guess a destination when the host has no source-derived band.
         return nil, false
     end
 
