@@ -6,7 +6,10 @@ local ROOT = os.getenv("SHADOWRUN_ROOT") or "."
 local ORIG = os.getenv("SHADOWRUN_ORIG_ACTOR_AI") or (ROOT .. "/decompilation/gameplay/tests_lua/reference/actor_ai_bfa3908.lua")
 local TRIALS = tonumber(arg[1]) or 2000
 local SEED = tonumber(arg[2]) or 1
-local VisualProfile = require("enums").ActorVisualProfile
+local Enums = require("enums")
+local VisualProfile = Enums.ActorVisualProfile
+local MovementHeading = Enums.MovementHeading
+local MovementDirection = Enums.MovementDirection
 
 local function ser(v, seen, depth)
   seen = seen or {}; depth = depth or 0
@@ -118,6 +121,20 @@ local function num()
 end
 local function maybe(f) if R(5) == 1 then return nil end return f() end
 local function bool() return R(2) == 1 end
+local rom_controller_headings = {
+  0xFFFF, 0x0000, 0x8000, 0xFFFF,
+  0xC000, 0xE000, 0xA000, 0xFFFF,
+  0x4000, 0x2000, 0x6000, 0xFFFF,
+  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+} -- Historical reference input only; ROM table at 0x19D2 [C]
+local rom_controller_directions = {
+  false, MovementDirection.NORTH, MovementDirection.SOUTH, false,
+  MovementDirection.WEST, MovementDirection.SOUTH_WEST,
+  MovementDirection.NORTH_WEST, false,
+  MovementDirection.EAST, MovementDirection.NORTH_EAST,
+  MovementDirection.SOUTH_EAST, false,
+  false, false, false, false,
+}
 local function cand(i)
   return { id = "a" .. R(4), combatant = bool(), has_action = bool(), service_flags = num(), behavior_flags = num(),
            spawn_state_flags = num(), source_record_slot = R(0, 7), world_activity_actor = bool(),
@@ -187,6 +204,13 @@ local function context(actor)
   local action_item = ak == "item" and Items.catalog[action_code] or nil
   local action_spell_id = ak == "spell" and
       SpellIdByActionCode[action_code] or nil
+  local controller_nibble = R(0, 15)
+  local movement_direction_override = maybe(function()
+    return pick({ MovementDirection.NORTH, MovementDirection.NORTH_EAST,
+                  MovementDirection.EAST, MovementDirection.SOUTH_EAST,
+                  MovementDirection.SOUTH, MovementDirection.SOUTH_WEST,
+                  MovementDirection.WEST, MovementDirection.NORTH_WEST })
+  end)
   return {
     actor_id = actor, profile_id = pid, dynamic_world_encounter_actor = dyn,
     visual_profile_id = ek and VisualProfileBySourceKind[tonumber(ek, 16)]
@@ -200,9 +224,11 @@ local function context(actor)
     world_target_selection_candidates = maybe(function() return list(cand, 3) end),
     projectile_combat_targets = maybe(function() return list(cand, 3) end),
     movement_state = mstate(), movement_offsets = offsets(),
-    controller_heading_table = (function() local t = {} for i = 1, 16 do t[i] = num() end return t end)(),
+    controller_heading_table = rom_controller_headings,
     world_effect_slot_occupancy = list(bool, 8),
-    movement_scene_id = num(), movement_allowed = bool(), controller_nibble = R(0, 15),
+    movement_scene_id = num(), movement_allowed = bool(),
+    controller_nibble = controller_nibble,
+    movement_input_direction = rom_controller_directions[controller_nibble + 1] or nil,
     action_animation_threshold = num(), action_animation_increment = num(), target_selection_mode = R(0, 3),
     source_projection_active = bool(), source_behavior_flags = num(), movement_entity_flags = num(),
     ai_random_bound = function(n) return (n and n > 0) and ((#actor * 7) % n) or 0 end,
@@ -215,7 +241,10 @@ local function context(actor)
     ammunition_remaining = ammunition_remaining,
     hold_for_ending_activity = false,
     projectile_attack_seed_pending = bool(), projectile_animation = bool(), projectile_movement = maybe(mstate),
-    movement_heading_override = maybe(num), item_action_threshold = num(), item_action_increment = num(),
+    movement_direction_override = movement_direction_override,
+    movement_heading_override = movement_direction_override and
+        MovementHeading[movement_direction_override] or nil,
+    item_action_threshold = num(), item_action_increment = num(),
     item_action_frame_count = R(1, 8), hurt_audio_event = num(), hurt_animation_threshold = num(),
     hurt_animation_increment = num(), hurt_animation_frame_count = R(1, 8), down_audio_event = num(),
     action_timing = { quickness = R(0, 10), intelligence = R(0, 10),
@@ -267,6 +296,8 @@ local function legacy_posture_from_behavior_profile(profile)
 end
 local function legacy_context_for_reference(context)
   local legacy = deepcopy(context)
+  legacy.movement_heading_override = context.movement_direction_override and
+      MovementHeading[context.movement_direction_override] or nil
   legacy.entity_kind = SourceKindByVisualProfile[context.visual_profile_id]
   legacy.visual_profile_id = nil
   -- The frozen pre-port reference still consumes +0x4D. Keep that old
@@ -300,6 +331,9 @@ local function serialize_context_for_parity(context)
   end
   comparable.entity_kind = nil
   comparable.movement_idle_selectors = nil
+  comparable.controller_nibble = nil
+  comparable.controller_heading_table = nil
+  comparable.movement_heading_override = nil
   if type(comparable.actor_behavior_profile) == "table" then
     comparable.source_actor_posture = legacy_posture_from_behavior_profile(
       comparable.actor_behavior_profile)
@@ -394,10 +428,15 @@ for trial = 1, TRIALS do
          k ~= "dynamic_world_encounter_actor" and k ~= "actor_id" and R(100) <= 25 then ctx[k] = v end
     end
     ctx.spawn = base.spawn or R(200) == 1
+    ctx.movement_input_direction =
+      rom_controller_directions[(ctx.controller_nibble or 0) + 1] or nil
     base.spawn = false
     ctx.phase = (frame % 2 == 0) and "render" or "behavior"
     if R(10) == 1 then ctx.phase = fresh.phase end
     local cA, cB = legacy_context_for_reference(ctx), deepcopy(ctx)
+    cB.controller_nibble = nil
+    cB.controller_heading_table = nil
+    cB.movement_heading_override = nil
     -- The historical monolith consumes the source state. Current Lua gets
     -- only the derived field-sequence and final-battle behavior facts.
     cB.world_scene_state = nil

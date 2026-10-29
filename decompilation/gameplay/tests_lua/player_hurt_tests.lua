@@ -148,7 +148,6 @@ local function player_context(phase, spawn)
                 pedestrian = false, hostile = false },
         },
         movement_allowed = false,
-        controller_nibble = 0,
         combat_action_available = true,
         combat_action_ready = true,
         combat_confirm_held = true,

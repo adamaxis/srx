@@ -13,21 +13,22 @@ std::uint8_t field_movement_direction_from_heading(
     return static_cast<std::uint8_t>(rotated & 0x07U);
 }
 
-FieldMovementInputResult decode_field_movement_input(
-    const std::uint8_t dpad_nibble,
-    const std::array<std::uint16_t, 16>& target_heading_table) {
-    const auto target_heading = target_heading_table[dpad_nibble & 0x0FU];
-    if (target_heading == 0xFFFFU) {
-        return {};
+std::optional<MovementDirection> field_movement_direction_from_input(
+    const std::uint8_t dpad_input) {
+    // Named input combinations recovered from the ROM's 0x19D2 map. This is
+    // an explicit host mapping, so the runtime does not load or index a ROM
+    // word table.
+    switch (dpad_input & 0x0FU) {
+    case 0x01U: return MovementDirection::north;
+    case 0x09U: return MovementDirection::north_east;
+    case 0x08U: return MovementDirection::east;
+    case 0x0AU: return MovementDirection::south_east;
+    case 0x02U: return MovementDirection::south;
+    case 0x06U: return MovementDirection::north_west;
+    case 0x04U: return MovementDirection::west;
+    case 0x05U: return MovementDirection::south_west;
+    default: return std::nullopt;
     }
-
-    const auto direction_ordinal =
-        field_movement_direction_from_heading(target_heading);
-    return FieldMovementInputResult{
-        true,
-        target_heading,
-        direction_ordinal,
-        static_cast<std::uint16_t>(direction_ordinal * 2U)};
 }
 
 } // namespace shadowrun::ghidra_conversion

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shadowrun_ghidra/core/movement_direction.hpp"
 #include "shadowrun_ghidra/field/field_map_event_system_conversion.hpp"
 #include "shadowrun_ghidra/scripting/dialogue_outcome.hpp"
 #include "shadowrun_ghidra/scripting/weapon_action_policy.hpp"
@@ -1811,9 +1812,8 @@ struct ScriptActorBehaviorContext {
     // ROM 0xAD86: non-negative +0x56 with +0x57 == 0 enters the 0xB1DC
     // unarmed strike.
     bool player_melee_available = false;
-    std::uint8_t controller_nibble = 0;
-    std::array<std::uint16_t, 16> controller_heading_table{};
-    std::optional<std::uint16_t> movement_heading_override;
+    std::optional<MovementDirection> movement_input_direction;
+    std::optional<MovementDirection> movement_direction_override;
     ScriptActorHeartbeatPhase phase = ScriptActorHeartbeatPhase::behavior;
     ScriptActorAnimationMode animation_mode =
         ScriptActorAnimationMode::idle;
@@ -2049,7 +2049,7 @@ using ScriptActorHeartbeatObserver =
 
 struct ScriptNativeOperation {
     enum class Type {
-        actor_walk_heading,
+        actor_walk_direction,
         ui_say,
         ui_story_page,
         ui_credits_page,
@@ -2057,9 +2057,9 @@ struct ScriptNativeOperation {
         service_call,
     };
 
-    Type type = Type::actor_walk_heading;
+    Type type = Type::actor_walk_direction;
     std::string actor_id;
-    std::uint8_t heading = 0;
+    MovementDirection direction = MovementDirection::north;
     std::string service_id;
     std::optional<ScriptDialogueRequest> dialogue;
     struct StoryPageRequest {

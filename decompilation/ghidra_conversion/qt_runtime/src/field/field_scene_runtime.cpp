@@ -9790,7 +9790,6 @@ bool FieldSceneRuntime::bootstrap(
         return false;
     }
     field_movement_direction_offsets_ = assets.field_movement_direction_offsets;
-    field_controller_heading_table_ = assets.field_controller_heading_table;
     field_movement_route_sources_ = assets.field_movement_routes;
     for (std::size_t index = 0; index < field_movement_routes_.size();
          ++index) {
@@ -11554,12 +11553,11 @@ FieldSceneRuntime::heartbeat_field_player(
             actor_context.animation_clock_reset_requested = true;
         }
     }
-    actor_context.controller_nibble = field_controller_nibble_;
-    actor_context.controller_heading_table =
-        field_controller_heading_table_;
+    actor_context.movement_input_direction =
+        field_movement_direction_from_input(field_controller_nibble_);
     if (field_opening_auto_walk_.active && !movement_transition_paused) {
-        actor_context.movement_heading_override =
-            field_opening_auto_walk_.target_heading;
+        actor_context.movement_direction_override =
+            field_opening_auto_walk_.target_direction;
     }
     if (phase == scripting::ScriptActorHeartbeatPhase::behavior) {
         auto& movement_state = actor_context.movement_state;

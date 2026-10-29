@@ -56,9 +56,6 @@ constexpr std::size_t kFieldCollisionProbePointCount = 3U;
 constexpr std::size_t kFieldCollisionProbeOffsetBankByteCount =
     kFieldCollisionProbeOffsetBankCount * kFieldCollisionProbePointCount *
     2U * sizeof(std::uint16_t);
-constexpr std::size_t kFieldControllerHeadingTableCount = 16U;
-constexpr std::size_t kFieldControllerHeadingTableByteCount =
-    kFieldControllerHeadingTableCount * sizeof(std::uint16_t);
 constexpr std::size_t kFieldMovementRouteCount = 4U;
 constexpr std::size_t kFieldMovementRouteByteCount =
     kFieldMovementRouteCount * 6U;
@@ -152,9 +149,6 @@ struct FieldSessionSourceAssets {
     // rotating the signed terrain-probe bytes. These are typed signed
     // offsets, not source pointers or runtime address tokens.
     CollisionProbeOffsetBank field_collision_probe_offset_banks{};
-    // ROM 0x019D2, normalized D-pad nibble to target heading.
-    std::array<std::uint16_t, kFieldControllerHeadingTableCount>
-        field_controller_heading_table{};
     // ROM 0xBBF6, the four aligned-heading route descriptors used by
     // 0xBB86. Each descriptor is six host bytes: two collision-sample
     // indexes followed by two big-endian fallback direction slots.

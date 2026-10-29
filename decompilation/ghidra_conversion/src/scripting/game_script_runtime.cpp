@@ -108,6 +108,42 @@ const char* field_scene_mode_id(const ScriptFieldSceneMode mode) noexcept {
     return "unknown";
 }
 
+const char* movement_direction_id(
+    const MovementDirection direction) noexcept {
+    switch (direction) {
+    case MovementDirection::north:
+        return "north";
+    case MovementDirection::north_east:
+        return "north_east";
+    case MovementDirection::east:
+        return "east";
+    case MovementDirection::south_east:
+        return "south_east";
+    case MovementDirection::south:
+        return "south";
+    case MovementDirection::south_west:
+        return "south_west";
+    case MovementDirection::west:
+        return "west";
+    case MovementDirection::north_west:
+        return "north_west";
+    }
+    return "unknown";
+}
+
+std::optional<MovementDirection> movement_direction_from_id(
+    const std::string_view id) noexcept {
+    if (id == "north") return MovementDirection::north;
+    if (id == "north_east") return MovementDirection::north_east;
+    if (id == "east") return MovementDirection::east;
+    if (id == "south_east") return MovementDirection::south_east;
+    if (id == "south") return MovementDirection::south;
+    if (id == "south_west") return MovementDirection::south_west;
+    if (id == "west") return MovementDirection::west;
+    if (id == "north_west") return MovementDirection::north_west;
+    return std::nullopt;
+}
+
 const char* actor_engagement_policy_id(
     const ScriptActorEngagementPolicy policy) noexcept {
     switch (policy) {
@@ -5162,20 +5198,20 @@ struct GameScriptRuntime::Impl {
         }
     }
 
-    static int actor_walk_heading_continuation(
+    static int native_operation_continuation(
         lua_State*, int, lua_KContext) {
         // The host resumes this continuation with the native service result.
         return 1;
     }
 
-    static int actor_walk_heading(lua_State* lua) {
+    static int actor_walk_direction(lua_State* lua) {
         auto* self = from_upvalue(lua);
         if (self == nullptr || self->task_state != lua ||
             self->task_waiting || self->pending_task_operation.has_value() ||
             self->active_native_operation.has_value()) {
             if (self != nullptr) {
                 self->bridge_failure =
-                    "game.actor.walk_heading must run inside an active task";
+                    "game.actor.walk_direction must run inside an active task";
             }
             lua_pushboolean(lua, 0);
             return 1;
@@ -5188,23 +5224,29 @@ struct GameScriptRuntime::Impl {
         const bool valid_actor = actor != nullptr && actor_length == 6U &&
                                  std::string_view(actor, actor_length) ==
                                      "player";
-        const bool valid_heading = lua_isinteger(lua, 2) != 0 &&
-                                   lua_tointeger(lua, 2) >= 0 &&
-                                   lua_tointeger(lua, 2) <= 7;
-        if (!valid_actor || !valid_heading) {
+        std::size_t direction_length = 0U;
+        const auto* direction_text = lua_type(lua, 2) == LUA_TSTRING
+                                         ? lua_tolstring(
+                                               lua, 2, &direction_length)
+                                         : nullptr;
+        const auto direction = direction_text == nullptr
+            ? std::nullopt
+            : movement_direction_from_id(
+                  std::string_view(direction_text, direction_length));
+        if (!valid_actor || !direction.has_value()) {
             self->bridge_failure =
-                "game.actor.walk_heading expects the player and a heading from 0 to 7";
+                "game.actor.walk_direction expects the player and a named field direction";
             lua_pushboolean(lua, 0);
             return 1;
         }
 
         ScriptNativeOperation operation{};
-        operation.type = ScriptNativeOperation::Type::actor_walk_heading;
+        operation.type = ScriptNativeOperation::Type::actor_walk_direction;
         operation.actor_id = "player";
-        operation.heading = static_cast<std::uint8_t>(lua_tointeger(lua, 2));
+        operation.direction = *direction;
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
-        return lua_yieldk(lua, 0, 0, actor_walk_heading_continuation);
+        return lua_yieldk(lua, 0, 0, native_operation_continuation);
     }
 
     static int ui_menu(lua_State* lua) {
@@ -5256,7 +5298,7 @@ struct GameScriptRuntime::Impl {
         operation.menu = std::move(menu);
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
-        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+        return lua_yieldk(lua, 0, 1, native_operation_continuation);
     }
 
     static int ui_prompt_text(lua_State* lua) {
@@ -5299,7 +5341,7 @@ struct GameScriptRuntime::Impl {
         operation.menu = std::move(menu);
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
-        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+        return lua_yieldk(lua, 0, 1, native_operation_continuation);
     }
 
     static int ui_prompt_text_key(lua_State* lua) {
@@ -5365,7 +5407,7 @@ struct GameScriptRuntime::Impl {
         operation.menu = std::move(menu);
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
-        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+        return lua_yieldk(lua, 0, 1, native_operation_continuation);
     }
 
     static int ui_cursor_menu(lua_State* lua) {
@@ -5439,7 +5481,7 @@ struct GameScriptRuntime::Impl {
         operation.menu = std::move(menu);
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
-        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+        return lua_yieldk(lua, 0, 1, native_operation_continuation);
     }
 
     static int ui_say(lua_State* lua) {
@@ -5498,7 +5540,7 @@ struct GameScriptRuntime::Impl {
         operation.dialogue = std::move(dialogue);
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
-        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+        return lua_yieldk(lua, 0, 1, native_operation_continuation);
     }
 
     static int ui_say_text(lua_State* lua) {
@@ -5543,7 +5585,7 @@ struct GameScriptRuntime::Impl {
         operation.dialogue = std::move(dialogue);
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
-        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+        return lua_yieldk(lua, 0, 1, native_operation_continuation);
     }
 
     static int ui_story_page(lua_State* lua) {
@@ -5601,7 +5643,7 @@ struct GameScriptRuntime::Impl {
         operation.story_page = std::move(request);
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
-        return lua_yieldk(lua, 0, 0, actor_walk_heading_continuation);
+        return lua_yieldk(lua, 0, 0, native_operation_continuation);
     }
 
     static int ui_credits_page(lua_State* lua) {
@@ -5637,7 +5679,7 @@ struct GameScriptRuntime::Impl {
         operation.credits_page = std::move(request);
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
-        return lua_yieldk(lua, 0, 0, actor_walk_heading_continuation);
+        return lua_yieldk(lua, 0, 0, native_operation_continuation);
     }
 
     static int services_call(lua_State* lua) {
@@ -5668,7 +5710,7 @@ struct GameScriptRuntime::Impl {
         operation.service_id = domain + "." + action;
         self->pending_task_operation = std::move(operation);
         self->task_waiting = true;
-        return lua_yieldk(lua, 0, 1, actor_walk_heading_continuation);
+        return lua_yieldk(lua, 0, 1, native_operation_continuation);
     }
 
     void release_task() {
@@ -5851,8 +5893,8 @@ struct GameScriptRuntime::Impl {
         lua_setfield(state, -2, "field");
         lua_newtable(state);
         lua_pushlightuserdata(state, this);
-        lua_pushcclosure(state, actor_walk_heading, 1);
-        lua_setfield(state, -2, "walk_heading");
+        lua_pushcclosure(state, actor_walk_direction, 1);
+        lua_setfield(state, -2, "walk_direction");
         lua_setfield(state, -2, "actor");
         lua_newtable(state);
         lua_pushlightuserdata(state, this);
@@ -10805,21 +10847,20 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "player_melee_available");
     lua_pushboolean(state, context.combat_input_blocked);
     lua_setfield(state, -2, "combat_input_blocked");
-    lua_pushinteger(state, context.controller_nibble);
-    lua_setfield(state, -2, "controller_nibble");
-    lua_createtable(state, 16, 0);
-    for (std::size_t index = 0;
-         index < context.controller_heading_table.size(); ++index) {
-        lua_pushinteger(state, context.controller_heading_table[index]);
-        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
-    }
-    lua_setfield(state, -2, "controller_heading_table");
-    if (context.movement_heading_override.has_value()) {
-        lua_pushinteger(state, *context.movement_heading_override);
+    if (context.movement_input_direction.has_value()) {
+        lua_pushstring(
+            state, movement_direction_id(*context.movement_input_direction));
     } else {
         lua_pushnil(state);
     }
-    lua_setfield(state, -2, "movement_heading_override");
+    lua_setfield(state, -2, "movement_input_direction");
+    if (context.movement_direction_override.has_value()) {
+        lua_pushstring(
+            state, movement_direction_id(*context.movement_direction_override));
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "movement_direction_override");
     lua_pushboolean(state, context.dynamic_world_encounter_actor);
     lua_setfield(state, -2, "dynamic_world_encounter_actor");
     lua_pushboolean(state, context.source_default_item_action_profile);
@@ -14209,7 +14250,7 @@ ScriptTaskStep GameScriptRuntime::complete_native_operation(
         impl_->pending_task_operation.has_value() ||
         !impl_->active_native_operation.has_value() ||
         (impl_->active_native_operation->type !=
-             ScriptNativeOperation::Type::actor_walk_heading &&
+             ScriptNativeOperation::Type::actor_walk_direction &&
          impl_->active_native_operation->type !=
              ScriptNativeOperation::Type::ui_say &&
          impl_->active_native_operation->type !=

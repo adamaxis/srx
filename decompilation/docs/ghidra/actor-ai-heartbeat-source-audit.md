@@ -80,9 +80,12 @@ resolved `+0x11` render/selection flags into Lua, plus the ROM entry delay and
 the creature's directional C0B2 frame count. The encounter loader now also
 interprets ordered overrides at `+0x76..+0x85` and `+0x9D`; other override
 fields remain source data until their runtime behavior is traced. The player
-heartbeat receives the normalized controller nibble and source heading table.
-Lua chooses its target heading, advances the current heading with the `0xB530`
-`0x0800`-step rule, and now runs the `0xB77E`/`0xB732`/`0xBADE`/`0xBB86`
+heartbeat now receives a named `MovementDirection` (or no movement intent).
+The host maps the eight accepted input combinations from `0x19D2` before the
+Lua call; the nibble and 16-word source table stay out of Lua and are not
+loaded into the field runtime. Lua applies the direction to the existing
+heading model, advances the current heading with the `0xB530` `0x0800`-step
+rule, and runs the `0xB77E`/`0xB732`/`0xBADE`/`0xBB86`
 movement decision path. It picks the initial candidate, handles preserved
 negative collision recovery, resolves aligned route markers, tries the
 diagonal alternate, updates movement flags, and resets blocked movement using

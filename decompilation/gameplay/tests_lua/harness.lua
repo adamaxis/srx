@@ -1,6 +1,8 @@
 -- harness.lua: shared serializer, typed service mocks and context generator (extracted from equiv_heartbeat.lua)
 local ROOT = os.getenv("SHADOWRUN_ROOT") or "."
-local VisualProfile = require("enums").ActorVisualProfile
+local Enums = require("enums")
+local VisualProfile = Enums.ActorVisualProfile
+local MovementDirection = Enums.MovementDirection
 -- The original monolith is the pre-split reference (bfa3908); the live actor_ai.lua is a shim to actor.init.
 local ORIG = os.getenv("SHADOWRUN_ORIG_ACTOR_AI") or (ROOT .. "/decompilation/gameplay/tests_lua/reference/actor_ai_bfa3908.lua")
 local function ser(v, seen, depth)
@@ -182,9 +184,14 @@ local function context(actor)
     world_target_selection_candidates = maybe(function() return list(cand, 3) end),
     projectile_combat_targets = maybe(function() return list(cand, 3) end),
     movement_state = mstate(), movement_offsets = offsets(),
-    controller_heading_table = (function() local t = {} for i = 1, 16 do t[i] = num() end return t end)(),
+    movement_input_direction = maybe(function()
+      return pick({ MovementDirection.NORTH, MovementDirection.NORTH_EAST,
+                    MovementDirection.EAST, MovementDirection.SOUTH_EAST,
+                    MovementDirection.SOUTH, MovementDirection.SOUTH_WEST,
+                    MovementDirection.WEST, MovementDirection.NORTH_WEST })
+    end),
     world_effect_slot_occupancy = list(bool, 8),
-    movement_scene_id = num(), movement_allowed = bool(), controller_nibble = R(0, 15),
+    movement_scene_id = num(), movement_allowed = bool(),
     action_animation_threshold = num(), action_animation_increment = num(), target_selection_mode = R(0, 3),
     source_projection_active = bool(), source_behavior_flags = num(), movement_entity_flags = num(),
     ai_random_bound = function(n) return (n and n > 0) and ((#actor * 7) % n) or 0 end,
@@ -195,7 +202,12 @@ local function context(actor)
     ammunition_remaining = ammunition_remaining,
     hold_for_ending_activity = false,
     projectile_attack_seed_pending = bool(), projectile_animation = bool(), projectile_movement = maybe(mstate),
-    movement_heading_override = maybe(num), item_action_threshold = num(), item_action_increment = num(),
+    movement_direction_override = maybe(function()
+      return pick({ MovementDirection.NORTH, MovementDirection.NORTH_EAST,
+                    MovementDirection.EAST, MovementDirection.SOUTH_EAST,
+                    MovementDirection.SOUTH, MovementDirection.SOUTH_WEST,
+                    MovementDirection.WEST, MovementDirection.NORTH_WEST })
+    end), item_action_threshold = num(), item_action_increment = num(),
     item_action_frame_count = R(1, 8), hurt_audio_event = num(), hurt_animation_threshold = num(),
     hurt_animation_increment = num(), hurt_animation_frame_count = R(1, 8), down_audio_event = num(),
     combat_input_blocked = bool(), combat_confirm_held = bool(), combat_action_ready = bool(), combat_action_available = bool(),

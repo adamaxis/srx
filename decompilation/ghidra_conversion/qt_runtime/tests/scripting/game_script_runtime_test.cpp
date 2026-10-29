@@ -7754,18 +7754,18 @@ int main() {
     player_movement.initial_heading = 0U;
     player_movement.spawn = true;
     player_movement.movement_allowed = true;
-    player_movement.controller_nibble = 6U;
-    player_movement.controller_heading_table.fill(0xFFFFU);
-    player_movement.controller_heading_table[6] = 0x4000U;
+    player_movement.movement_input_direction =
+        MovementDirection::east;
     const auto player_right = scripts.actor_heartbeat(player_movement);
     player_movement.spawn = false;
-    player_movement.controller_nibble = 7U;
-    player_movement.controller_heading_table[7] = 0x6000U;
-    player_movement.movement_heading_override = 0x2000U;
+    player_movement.movement_input_direction =
+        MovementDirection::south_east;
+    player_movement.movement_direction_override =
+        MovementDirection::north_east;
     const auto player_scripted_heading =
         scripts.actor_heartbeat(player_movement);
-    player_movement.movement_heading_override.reset();
-    player_movement.controller_heading_table[7] = 0xFFFFU;
+    player_movement.movement_direction_override.reset();
+    player_movement.movement_input_direction.reset();
     const auto player_invalid_heading =
         scripts.actor_heartbeat(player_movement);
     player_movement.movement_allowed = false;
@@ -7789,16 +7789,32 @@ int main() {
         return 16;
     }
 
-    // The raw US ROM's 16-word controller table at 0x19D2 maps only the
-    // eight single/adjacent D-pad combinations to headings.  No-input,
-    // opposing directions, and three/four-direction combinations are 0xFFFF.
-    constexpr std::array<std::uint16_t, 16> rom_controller_headings{{
-        0xFFFFU, 0x0000U, 0x8000U, 0xFFFFU,
-        0xC000U, 0xE000U, 0xA000U, 0xFFFFU,
-        0x4000U, 0x2000U, 0x6000U, 0xFFFFU,
-        0xFFFFU, 0xFFFFU, 0xFFFFU, 0xFFFFU,
+    // All sixteen controller combinations from ROM 0x19D2 become either a
+    // named direction or no intent before Lua receives the actor context.
+    constexpr std::array<std::optional<MovementDirection>, 16>
+        rom_controller_directions{{
+        std::nullopt,
+        MovementDirection::north,
+        MovementDirection::south,
+        std::nullopt,
+        MovementDirection::west,
+        MovementDirection::south_west,
+        MovementDirection::north_west,
+        std::nullopt,
+        MovementDirection::east,
+        MovementDirection::north_east,
+        MovementDirection::south_east,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
     }};
-    for (std::uint8_t nibble = 0U; nibble < rom_controller_headings.size();
+    constexpr std::array<std::uint16_t, 8> heading_by_direction{{
+        0x0000U, 0x2000U, 0x4000U, 0x6000U,
+        0x8000U, 0xE000U, 0xC000U, 0xA000U,
+    }};
+    for (std::uint8_t nibble = 0U; nibble < rom_controller_directions.size();
          ++nibble) {
         ScriptActorBehaviorContext input_case{};
         input_case.profile_id = "field_runner_k03_none00";
@@ -7806,14 +7822,16 @@ int main() {
         input_case.instance_id = "field_player_runner";
         input_case.spawn = false;
         input_case.movement_allowed = true;
-        input_case.controller_nibble = nibble;
-        input_case.controller_heading_table = rom_controller_headings;
+        input_case.movement_input_direction =
+            rom_controller_directions[nibble];
         const auto actual = scripts.actor_heartbeat(input_case);
-        const auto expected = rom_controller_headings[nibble] == 0xFFFFU
-            ? std::optional<std::uint16_t>{}
-            : std::optional<std::uint16_t>{rom_controller_headings[nibble]};
+        const auto direction = rom_controller_directions[nibble];
+        const auto expected = direction.has_value()
+            ? std::optional<std::uint16_t>{heading_by_direction[
+                  static_cast<std::size_t>(*direction)]}
+            : std::optional<std::uint16_t>{};
         if (!actual.has_value() || actual->movement_heading != expected) {
-            std::cerr << "Lua player controller nibble mismatch: nibble="
+            std::cerr << "Lua player movement direction mismatch: input="
                       << static_cast<unsigned>(nibble) << " expected=";
             if (expected.has_value()) {
                 std::cerr << "0x" << std::hex << *expected << std::dec;
@@ -7846,7 +7864,8 @@ int main() {
     }
     player_movement.phase = ScriptActorHeartbeatPhase::behavior;
     player_movement.movement_allowed = true;
-    player_movement.controller_nibble = 6U;
+    player_movement.movement_input_direction =
+        MovementDirection::east;
     const auto player_behavior_after_render =
         scripts.actor_heartbeat(player_movement);
     player_movement.combat_action_available = true;
@@ -7856,7 +7875,7 @@ int main() {
     const auto player_combat_moving =
         scripts.actor_heartbeat(player_movement);
     player_movement.movement_allowed = false;
-    player_movement.controller_nibble = 0U;
+    player_movement.movement_input_direction.reset();
     const auto player_combat_stationary =
         scripts.actor_heartbeat(player_movement);
     player_movement.combat_action_ready = false;
@@ -9835,7 +9854,8 @@ int main() {
     const auto player_step_context = [](
                                         const std::string_view actor_id,
                                         const std::uint16_t initial_heading,
-                                        const std::uint16_t target_heading) {
+                                        const MovementDirection
+                                            target_direction) {
         ScriptActorBehaviorContext context{};
         context.profile_id = "field_runner_k03_none00";
         context.entity_kind = 3U;
@@ -9843,9 +9863,7 @@ int main() {
         context.initial_heading = initial_heading;
         context.spawn = true;
         context.movement_allowed = true;
-        context.controller_nibble = 1U;
-        context.controller_heading_table.fill(0xFFFFU);
-        context.controller_heading_table[1] = target_heading;
+        context.movement_input_direction = target_direction;
         context.movement_services_available = true;
         context.movement_state.position_x = 100U;
         context.movement_state.position_y = 100U;
@@ -9866,7 +9884,7 @@ int main() {
     };
 
     auto clear_step_context = player_step_context(
-        "movement_clear", 0U, 0U);
+        "movement_clear", 0U, MovementDirection::north);
     clear_step_context.movement_entity_flags = 0x08U;
     clear_step_context.movement_state.route_flags = 0x23U;
     std::size_t clear_collision_queries = 0U;
@@ -9884,7 +9902,8 @@ int main() {
     const auto clear_step = scripts.actor_heartbeat(clear_step_context);
 
     auto route_step_context = player_step_context(
-        "movement_route_fallback", 0x4000U, 0x4000U);
+        "movement_route_fallback", 0x4000U,
+        MovementDirection::east);
     std::size_t route_collision_queries = 0U;
     std::uint16_t observed_route_key = 0xFFFFU;
     route_step_context.movement_collision =
@@ -9904,7 +9923,8 @@ int main() {
     const auto route_step = scripts.actor_heartbeat(route_step_context);
 
     auto slide_step_context = player_step_context(
-        "movement_diagonal_slide", 0x2000U, 0x2000U);
+        "movement_diagonal_slide", 0x2000U,
+        MovementDirection::north_east);
     std::size_t slide_collision_queries = 0U;
     slide_step_context.movement_collision =
         [&slide_collision_queries](const std::uint16_t x,
@@ -9921,7 +9941,8 @@ int main() {
     const auto slide_step = scripts.actor_heartbeat(slide_step_context);
 
     auto pending_event_context = player_step_context(
-        "movement_pending_world_event", 0U, 0U);
+        "movement_pending_world_event", 0U,
+        MovementDirection::north);
     pending_event_context.movement_entity_flags = 0x02U;
     pending_event_context.movement_state.route_flags = 0U;
     pending_event_context.movement_collision =
@@ -9942,7 +9963,8 @@ int main() {
         scripts.actor_heartbeat(pending_event_context);
 
     auto reset_step_context = player_step_context(
-        "movement_blocked_reset", 0x2000U, 0x4000U);
+        "movement_blocked_reset", 0x2000U,
+        MovementDirection::east);
     std::size_t reset_collision_queries = 0U;
     reset_step_context.movement_collision =
         [&reset_collision_queries](const std::uint16_t x,
@@ -10035,7 +10057,8 @@ int main() {
                                     const std::uint8_t quickness,
                                     const bool activity,
                                     const bool on_screen) {
-        auto context = player_step_context(actor_id, 0x4000U, 0x4000U);
+        auto context = player_step_context(
+            actor_id, 0x4000U, MovementDirection::east);
         context.movement_entity_flags = 0x0FU;
         context.world_activity_active = activity;
         context.source_projection_active = on_screen;
@@ -11967,9 +11990,10 @@ int main() {
                         ScriptTaskStep::Status::awaiting_native_operation &&
                     task.operation.has_value() &&
                     task.operation->type ==
-                        ScriptNativeOperation::Type::actor_walk_heading &&
+                        ScriptNativeOperation::Type::actor_walk_direction &&
                     task.operation->actor_id == "player" &&
-                    task.operation->heading == 0U &&
+                    task.operation->direction ==
+                        MovementDirection::north &&
                     scripts.task_waiting_for_native_operation(),
                 "opening handler did not yield its typed player movement")) {
         std::cerr << scripts.failure() << '\n';
@@ -12311,7 +12335,10 @@ int main() {
     if (!expect(sequence_step.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&
                     sequence_step.operation.has_value() &&
-                    sequence_step.operation->heading == 0U,
+                    sequence_step.operation->type ==
+                        ScriptNativeOperation::Type::actor_walk_direction &&
+                    sequence_step.operation->direction ==
+                        MovementDirection::north,
                 "first sequential actor operation did not yield")) {
         std::cerr << sequence_scripts.failure() << '\n';
         return 14;
@@ -12320,7 +12347,8 @@ int main() {
     if (!expect(sequence_step.status ==
                         ScriptTaskStep::Status::awaiting_native_operation &&
                     sequence_step.operation.has_value() &&
-                    sequence_step.operation->heading == 1U,
+                    sequence_step.operation->direction ==
+                        MovementDirection::north_east,
                 "script did not resume and yield its second actor operation")) {
         std::cerr << sequence_scripts.failure() << '\n';
         return 14;

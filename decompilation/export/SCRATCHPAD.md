@@ -208,28 +208,28 @@ opposing, or unsupported combinations. The valid US-ROM mappings are:
 | `0x9` | `0x2000` | `1` |
 | `0xA` | `0x6000` | `3` |
 
-The offline extractor writes the complete table to
-`assets/records/field/entity-controller-heading-table.bin`, exposed as
-`records.field.entity.controller.heading.table`. The conversion helper keeps
-the source `0xBABC` rotate/add-one rule in
-`field_movement_input_conversion`, returning both the movement ordinal and
-the doubled source slot used by `0xBADE`/`0xB77E`.
+The offline extractor retains the complete `0x19D2` table as source research
+data at `assets/records/field/entity-controller-heading-table.bin`. The field
+runtime does not load that table: it maps accepted D-pad combinations to the
+shared `MovementDirection` type before calling Lua. The separate heading
+normalizer remains available for field geometry and render direction.
 
 ## Converted field input/movement handoff
 
 The separate Qt conversion composition layer now consumes both named movement
 records. Its field-ready path is:
 
-`held Qt D-pad -> 0x195C/0x19D2 target heading -> 0xB530 heading slew ->
+`held Qt D-pad -> named MovementDirection -> field heading -> 0xB530 heading slew ->
 0x0BABC movement ordinal -> 0xBADE step -> 0xB77E vector probe -> 0xB48C
 collision-record wrapper -> 0xE7C8 terrain result -> typed position commit ->
 0x5A62 projection`.
 
 This is a conversion-runtime connection only. It is under
 `qt_runtime/` and has no dependency on the native-port or
-GenesisBus targets. The host input layer maintains a four-bit D-pad mask so
-the source diagonal entries (`0x5`, `0x6`, `0x9`, and `0xA`) remain available;
-neutral and unsupported table entries remain invalid just as in the source.
+GenesisBus targets. The host input layer maintains a four-bit D-pad mask and
+maps the eight supported single/adjacent combinations to named directions.
+Neutral, opposing, and three/four-direction combinations produce no intent,
+matching the source behavior at `0x195C/0x19D2`.
 The source vectors are not duplicated in the Qt layer: the loader supplies
 the typed `MovementOffset[8]` array from the direct record.
 

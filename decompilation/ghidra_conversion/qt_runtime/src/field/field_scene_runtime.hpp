@@ -270,7 +270,7 @@ struct MagicDefenseStripView {
 
 struct FieldOpeningAutoWalkState {
     bool active = false;
-    std::uint16_t target_heading = 0;
+    MovementDirection target_direction = MovementDirection::north;
 };
 
 struct PocketSecretaryMenuContent {
@@ -2673,9 +2673,6 @@ private:
     bool field_combat_input_suppressed_until_release_ = false;
     std::array<MovementOffset, integration::kFieldMovementDirectionCount>
         field_movement_direction_offsets_{};
-    std::array<std::uint16_t,
-               integration::kFieldControllerHeadingTableCount>
-        field_controller_heading_table_{};
     std::array<DirectionalMovementRoute,
                integration::kFieldMovementRouteCount>
         field_movement_routes_{};

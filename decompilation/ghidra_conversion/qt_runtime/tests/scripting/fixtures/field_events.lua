@@ -1,11 +1,11 @@
 local Events = {}
 
 function Events.walk_twice()
-    local first_walk = game.actor.walk_heading("player", 0)
+    local first_walk = game.actor.walk_direction("player", "north")
     if not first_walk then
         return
     end
-    return game.actor.walk_heading("player", 1)
+    return game.actor.walk_direction("player", "north_east")
 end
 
 function Events.service_roundtrip()

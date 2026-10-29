@@ -3,6 +3,7 @@
 -- world_content_data.map_events. This module supplies the handler functions.
 -- Event flow is ordinary sequential Lua and movement is a narrow host service.
 local Events = {}
+local MovementDirection = require("enums").MovementDirection
 
 local event_code = {}
 for value = 0, 31 do
@@ -135,7 +136,7 @@ function Events.resolve_collision(context)
 end
 
 function Events.new_game_opening_walk()
-    return game.actor.walk_heading("player", 0)
+    return game.actor.walk_direction("player", MovementDirection.NORTH)
 end
 
 -- Location content is selected in Lua after the native field dispatcher has

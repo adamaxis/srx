@@ -736,8 +736,8 @@ void FieldSceneRuntime::handle_game_script_task_step(
 
     const auto& operation = *step.operation;
     if (operation.type !=
-            scripting::ScriptNativeOperation::Type::actor_walk_heading ||
-        operation.actor_id != "player" || operation.heading > 7U ||
+            scripting::ScriptNativeOperation::Type::actor_walk_direction ||
+        operation.actor_id != "player" ||
         field_opening_auto_walk_.active) {
         failure_ = "Lua requested an unsupported native actor operation";
         source_boundary("field.map_event.lua_operation_unresolved");
@@ -745,7 +745,7 @@ void FieldSceneRuntime::handle_game_script_task_step(
     }
 
     field_opening_auto_walk_.active = true;
-    field_opening_auto_walk_.target_heading = operation.heading;
+    field_opening_auto_walk_.target_direction = operation.direction;
     source_boundary("field.map_event.new_game_opening_walk_started");
 }
 

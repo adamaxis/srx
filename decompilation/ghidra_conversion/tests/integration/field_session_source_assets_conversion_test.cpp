@@ -237,19 +237,6 @@ int main() {
             }
         }
     }
-    const std::array<std::uint16_t, kFieldControllerHeadingTableCount>
-        expected_heading_table{{
-            0xFFFFU, 0x0000U, 0x8000U, 0xFFFFU,
-            0xC000U, 0xE000U, 0xA000U, 0xFFFFU,
-            0x4000U, 0x2000U, 0x6000U, 0xFFFFU,
-            0xFFFFU, 0xFFFFU, 0xFFFFU, 0xFFFFU}};
-    for (std::size_t index = 0; index < expected_heading_table.size();
-         ++index) {
-        if (source.assets->field_controller_heading_table[index] !=
-            expected_heading_table[index]) {
-            return 15;
-        }
-    }
     const std::array<FieldMovementRouteSourceRecord,
                      kFieldMovementRouteCount>
         expected_routes{{

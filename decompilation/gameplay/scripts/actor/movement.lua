@@ -6,6 +6,7 @@ local I = require("lib.int68k")
 local u16 = I.u16
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local MovementHeading = E.MovementHeading
 local VisualProfile = R.VisualProfile -- from actor/tables.lua
 local fixed_fraction_scale = R.fixed_fraction_scale   -- from actor/tables.lua
 local fixed_integer_shift = R.fixed_integer_shift   -- from actor/tables.lua
@@ -296,21 +297,12 @@ local function requested_movement_heading(context, profile, state)
     if not profile.controls_movement or not context.movement_allowed then
         return nil
     end
-    if context.movement_heading_override ~= nil then
-        return context.movement_heading_override
-    end
-    if type(context.controller_nibble) ~= "number" or
-       context.controller_nibble < 0 or context.controller_nibble > 15 or
-       type(context.controller_heading_table) ~= "table" then
+    local direction = context.movement_direction_override or
+        context.movement_input_direction
+    if type(direction) ~= "string" then
         return nil
     end
-    local heading = context.controller_heading_table[
-        context.controller_nibble + 1]
-    if type(heading) ~= "number" or heading < 0 or
-       heading >= AiTuning.WORD_MAX then
-        return nil
-    end
-    return heading
+    return MovementHeading[direction]
 end
 
 local function resolve_source_target_motion(context, state, target)
