@@ -17,8 +17,6 @@ local function deactivate_record(state)
 end
 local ActorAI = {}
 local states = game.actors
-local pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_slot
-local spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot
 local ActionKind = R.ActionKind   -- from actor/tables.lua
 
 function ActorAI.should_rebuild_target_lists(frame_counter, encounter_flag)
@@ -137,7 +135,8 @@ function ActorAI.heartbeat(context)
 
     local reaction_audio_event
     local player_hurt_started = false
-    if context.actor_id == "field_player_runner" and
+    if type(context.controlled_party_member_id) == "string" and
+       context.controlled_party_member_id ~= "" and
        context.phase == "behavior" then
         player_hurt_started = R.begin_player_hurt_reaction(state, context)
         if not player_hurt_started and state.player_hurt_sound_active then

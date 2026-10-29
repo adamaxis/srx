@@ -344,20 +344,16 @@ local function advance_received_hit_reaction(state, context)
 end
 
 local function begin_player_hurt_reaction(state, context)
-    if context.actor_id ~= "field_player_runner" or
-       context.phase ~= "behavior" or
-       type(context.source_record_slot) ~= "number" or
-       context.source_record_slot % 1 ~= 0 or
-       context.source_record_slot < 0 or
-       context.source_record_slot >= E.ActorPool.PARTY then
+    local actor_id = context.controlled_party_member_id
+    if context.phase ~= "behavior" or
+       type(actor_id) ~= "string" or actor_id == "" then
         return false
     end
-    local pending = game.player_hurt_pending_by_slot
-    if type(pending) ~= "table" or
-       pending[context.source_record_slot] ~= true then
+    local pending = game.player_hurt_pending_by_actor_id
+    if type(pending) ~= "table" or pending[actor_id] ~= true then
         return false
     end
-    pending[context.source_record_slot] = nil
+    pending[actor_id] = nil
     state.player_hurt_pose_active = true
     state.player_hurt_animation_complete_pending = nil
     state.player_hurt_selector_reset_after_render = nil
@@ -373,7 +369,8 @@ local function begin_player_hurt_reaction(state, context)
 end
 
 local function finish_player_hurt_reaction(state, context)
-    if context.actor_id ~= "field_player_runner" or
+    if type(context.controlled_party_member_id) ~= "string" or
+       context.controlled_party_member_id == "" or
        context.phase ~= "behavior" or
        state.player_hurt_animation_complete_pending ~= true then
         return false

@@ -5759,6 +5759,7 @@ int main() {
         auto effect_target_context = actor_context(
             "field_runner_k03_none00", effect_target_actor_id, 3U,
             ScriptActorActionKind::none, 0U, 0U, true);
+        effect_target_context.source_record_slot = 0U;
         if (active_runner_alias) {
             effect_target_context.controlled_party_member_id =
                 "party.runner.0";
@@ -5857,12 +5858,11 @@ int main() {
                         target_resolution.target_id == "party.runner.0") {
                         effect_target_context.controlled_party_member_id =
                             target_candidate->id;
-                        effect_target_context.source_record_slot.reset();
                     } else {
                         effect_target_context.controlled_party_member_id.clear();
-                        effect_target_context.source_record_slot =
-                            target_resolution.target_record_slot;
                     }
+                    effect_target_context.source_record_slot =
+                        target_resolution.target_record_slot;
                     effect_target_context.combatant =
                         *target_candidate->combatant;
                 }
@@ -6188,6 +6188,41 @@ int main() {
         resolved_spell_cast.completed_effect.has_value()
             ? resolved_spell_cast.completed_effect->combat_meter_update
             : std::nullopt;
+    auto unrelated_hurt_event_context = actor_context(
+        "field_runner_k03_none00", "unrelated_hurt_event_consumer", 3U,
+        ScriptActorActionKind::none, 0U, 0U, true);
+    unrelated_hurt_event_context.controlled_party_member_id =
+        "party.runner.1";
+    unrelated_hurt_event_context.source_record_flags = 0x01U;
+    unrelated_hurt_event_context.combatant = spell_target;
+    const auto unrelated_hurt_event_spawn =
+        scripts.actor_heartbeat(unrelated_hurt_event_context);
+    unrelated_hurt_event_context.spawn = false;
+    const auto unrelated_hurt_event =
+        scripts.actor_heartbeat(unrelated_hurt_event_context);
+    const bool unrelated_hurt_event_stays_unmatched =
+        unrelated_hurt_event_spawn.has_value() &&
+        unrelated_hurt_event.has_value() &&
+        unrelated_hurt_event->animation_id != "runner_hurt";
+    auto player_hurt_event_context = actor_context(
+        "field_runner_k03_none00", "player_hurt_event_consumer", 3U,
+        ScriptActorActionKind::none, 0U, 0U, true);
+    player_hurt_event_context.controlled_party_member_id =
+        "party.runner.0";
+    player_hurt_event_context.source_record_flags = 0x01U;
+    player_hurt_event_context.combatant = spell_target;
+    player_hurt_event_context.physical_condition = 10;
+    const auto player_hurt_event_spawn =
+        scripts.actor_heartbeat(player_hurt_event_context);
+    player_hurt_event_context.spawn = false;
+    const auto player_hurt_event_consumed =
+        scripts.actor_heartbeat(player_hurt_event_context);
+    const bool player_hurt_event_uses_actor_identity =
+        unrelated_hurt_event_stays_unmatched &&
+        player_hurt_event_spawn.has_value() &&
+        player_hurt_event_consumed.has_value() &&
+        player_hurt_event_consumed->animation_id == "runner_hurt" &&
+        player_hurt_event_consumed->animation_frame == 0U;
     const std::array<std::uint8_t, 12> expected_spell_phase_trace{
         0U, 0U, 0U, 0U, 0U, 1U, 1U, 2U, 2U, 3U, 3U, 4U};
     const std::array<bool, 12> expected_spell_visibility_trace{
@@ -6421,6 +6456,7 @@ int main() {
         spell_cast_ok(rat_cast) &&
         spell_cast_ok(elven_cast) && elven_line_hit_target &&
         spell_action_roll_resolved && delayed_spell_impact_applied &&
+        player_hurt_event_uses_actor_identity &&
         spell_effect_profile_matches(resolved_spell_cast, 1U, 12U, 4U,
                                      11U) &&
         spell_effect_profile_matches(flame_bolt_cast, 2U, 31U, 6U, 30U) &&
@@ -6469,10 +6505,11 @@ int main() {
         !blocked_terrain.refresh->combat_action_requested &&
         !blocked_terrain.refresh->weapon_item_id.has_value();
     if (!expect(spell_gate_contract,
-                "Lua spell dispatch failed the 0x13FFE gates or the live "
-                "0x1033E roll, target, effect, and audio result")) {
+                "Lua spell dispatch or actor-ID hurt routing failed its "
+                "source gates, target effect, audio, or actor-specific cue")) {
         std::cerr << "spell gates: action=" << spell_action_roll_resolved
                   << " delayed=" << delayed_spell_impact_applied
+                  << " hurt_id=" << player_hurt_event_uses_actor_identity
                   << " pool=" << full_spell_effect_pool_blocks_spawn
                   << " casts=" << spell_cast_ok(lonemage_cast)
                   << spell_cast_ok(gator_cast)

@@ -480,29 +480,25 @@ end
 
 local function publish_player_hurt_event(target, defender, physical_meter,
                                          mental_meter)
-    if defender.record_type >= ActorPool.PARTY then
+    if defender.record_type >= ActorPool.PARTY or
+       type(target) ~= "table" or type(target.id) ~= "string" or
+       target.id == "" then
         return
     end
-    local slot = target.source_record_slot
-    if type(slot) ~= "number" then
-        slot = defender.record_type
-    end
-    if slot % 1 ~= 0 or slot < 0 or slot >= ActorPool.PARTY then
-        return
-    end
-    local pending = game.player_hurt_pending_by_slot
+    local pending = game.player_hurt_pending_by_actor_id
     if type(pending) ~= "table" then
         pending = {}
-        game.player_hurt_pending_by_slot = pending
+        game.player_hurt_pending_by_actor_id = pending
     end
     if physical_meter == 0 then
         -- 0xAFF2 takes the zero-meter record through the C0B2 down path.
-        pending[slot] = nil
+        pending[target.id] = nil
     elseif physical_meter < defender.physical_meter or
            mental_meter < defender.mental_meter then
         -- Party records are the player side of this event. World actors keep
-        -- using their existing incoming_hit event below.
-        pending[slot] = true
+        -- using their existing incoming_hit event below. The host record is
+        -- resolved from this actor ID when it applies the combat result.
+        pending[target.id] = true
     end
 end
 
