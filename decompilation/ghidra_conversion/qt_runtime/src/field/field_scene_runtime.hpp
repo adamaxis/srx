@@ -2792,8 +2792,8 @@ private:
     std::optional<WorldActivityReturnSnapshot>
         world_activity_return_snapshot_;
     bool field_think_token_claimed_ = false; // FFE175, one claim per frame [C]
-    // FFE188: boot RAM clear (0xC3A/0xC58) leaves it 0; bootstrap seeds 0 [C].
-    std::optional<std::uint8_t> field_thon_period_counter_;
+    // Thon's shared action cadence in eligible behavior checks.
+    std::optional<std::uint32_t> field_thon_action_cooldown_remaining_;
     MovementModeTransitionContinuation field_activity_continuation_ =
         MovementModeTransitionContinuation::none;
     // FFE12C selects a floor label on the successful Security Terminal file

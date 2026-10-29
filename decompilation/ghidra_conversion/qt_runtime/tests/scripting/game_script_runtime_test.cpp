@@ -8905,7 +8905,7 @@ int main() {
         caster.source_actor_slot = 0U;
         caster.source_world_x = 0x0A00U;
         caster.source_world_y = 0x0800U;
-        caster.source_thon_period_counter = 0U;
+        caster.thon_action_cooldown_remaining = 0U;
         caster.animation_blocks_behavior = false;
         caster.can_start_item_action = true;
         caster.source_think_suppressed = false;
@@ -8978,9 +8978,9 @@ int main() {
             if (!decision.has_value()) {
                 return trace;
             }
-            if (decision->source_thon_period_counter.has_value()) {
-                caster.source_thon_period_counter =
-                    decision->source_thon_period_counter;
+            if (decision->thon_action_cooldown_remaining.has_value()) {
+                caster.thon_action_cooldown_remaining =
+                    decision->thon_action_cooldown_remaining;
             }
             caster.animation_blocks_behavior =
                 decision->animation_id != "idle" &&
@@ -9021,6 +9021,8 @@ int main() {
         "thon_period_spell_blocked", false, true);
     const auto thon_mode_blocked = drive_thon_spell(
         "thon_period_mode_blocked", true, true, true);
+    // ROM 0x13A66 reloads the shared action interval to eight after it
+    // expires; the runtime exposes that duration as a typed cooldown.
     const bool thon_success_matches =
         thon_success.cast.has_value() &&
         thon_success.cast->spell_action_resolution.has_value() &&
@@ -9030,8 +9032,8 @@ int main() {
             "flame_dart" &&
         thon_success.cast->spell_action_resolution->target_id ==
             "party.runner.0" &&
-        thon_success.cast->source_thon_period_counter ==
-            std::optional<std::uint8_t>{8U} &&
+        thon_success.cast->thon_action_cooldown_remaining ==
+            std::optional<std::uint32_t>{8U} &&
         thon_success.cast->direction < 8U &&
         thon_success.cast->spell_action_resolution->roll_attempted &&
         thon_success.cast->spell_action_resolution->effect_started &&

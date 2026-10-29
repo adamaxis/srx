@@ -1868,9 +1868,8 @@ struct ScriptActorBehaviorContext {
     std::uint8_t source_spawn_state_flags = 0;
     // One field-frame token suppresses later due actor thoughts [C].
     std::optional<bool> source_think_suppressed;
-    // FFE188 is shared by THON records. Its initial value has no explicit
-    // ROM initializer in the recovered trace, so nil preserves that boundary [H].
-    std::optional<std::uint8_t> source_thon_period_counter;
+    // Shared Thon action cooldown, measured in eligible behavior checks.
+    std::optional<std::uint32_t> thon_action_cooldown_remaining;
     // FFE16F / FFDF40 actor-think inputs. Alarm remains optional until the
     // field security fact is known; scene mode and camera/profile bounds are
     // populated from the live field state [C].
@@ -1987,8 +1986,8 @@ struct ScriptActorBehaviorDecision {
     bool world_activity_requested = false;
     std::optional<std::uint32_t> field_event_request;
     bool think_token_claimed = false; // FFE175 was consumed in this heartbeat [C]
-    // Lua returns the shared FFE188 byte after the THON period path [C].
-    std::optional<std::uint8_t> source_thon_period_counter;
+    // Lua returns the updated shared Thon action cooldown in behavior checks.
+    std::optional<std::uint32_t> thon_action_cooldown_remaining;
     bool animation_complete = false;
     std::string animation_variant;
     bool combat_action_requested = false;

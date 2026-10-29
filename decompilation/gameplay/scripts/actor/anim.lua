@@ -17,11 +17,12 @@ local function snapshot(state, action, audio_event, projectile_movement,
     local world_activity_requested = state.world_activity_requested == true
     local field_event_request = state.field_event_request
     local think_token_claimed = state.think_token_claimed == true
-    local source_thon_period_counter = state.source_thon_period_counter
+    local thon_action_cooldown_remaining =
+        state.thon_action_cooldown_remaining
     state.world_activity_requested = false
     state.field_event_request = nil
     state.think_token_claimed = false
-    state.source_thon_period_counter = nil
+    state.thon_action_cooldown_remaining = nil
     if state.animation_id == "idle" then
         state.animation_frame = 0
     end
@@ -61,7 +62,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
         world_activity_requested = world_activity_requested,
         field_event_request = field_event_request,
         think_token_claimed = think_token_claimed,
-        source_thon_period_counter = source_thon_period_counter,
+        thon_action_cooldown_remaining = thon_action_cooldown_remaining,
         combat_action_requested = state.combat_action_requested,
         audio_event = audio_event,
         target_heading_audio_event = target_heading_audio_event,

@@ -4,7 +4,7 @@ local E = require("enums")
 local I = require("lib.int68k")
 local EntityMotion = require("entity_motion")
 local ActorWaypointRoutes = require("data.actor_patrol_routes")
-local u8, u16, s8, s16 = I.u8, I.u16, I.s8, I.s16
+local u16, s16 = I.u16, I.s16
 local AiTuning = E.AiTuning
 local ActionKind = R.ActionKind
 
@@ -26,27 +26,27 @@ local function request_world_activity(state)
     state.world_activity_requested = true
 end
 
-local function thon_period_path(state, context)
-    -- ROM 0x13A4C gates on +0x16 before decrementing shared FFE188 [C].
+local function thon_action_path(state, context)
+    -- The shared cooldown advances on eligible Thon behavior checks. ROM
+    -- 0x13A4C pauses it during an active animation; 0x13A66 reloads an
+    -- eight-check interval [C]. Lua stores checks remaining, not a ROM byte.
     if context.animation_blocks_behavior == true then
         return "thon_busy"
     end
 
-    local period = context.source_thon_period_counter
-    if type(period) ~= "number" then
-        -- FFE188 has no explicit clear or initializer in the ROM trace.
-        state.ai_think_gap = "thon_global_period_initial_value_unresolved"
+    local cooldown = context.thon_action_cooldown_remaining
+    if type(cooldown) ~= "number" or cooldown < 0 then
+        state.ai_think_gap = "thon_action_cooldown_unavailable"
         return "thon_unresolved"
     end
 
-    local decremented = u8(period - 1)
-    state.source_thon_period_counter = decremented
-    if s8(decremented) >= 0 then
+    if cooldown > 0 then
+        state.thon_action_cooldown_remaining = cooldown - 1
         return "thon_idle"
     end
 
-    -- 0x13A66 reloads before 0x14492 picks from FFDFC8 and 0xAE6E aims [C].
-    state.source_thon_period_counter = AiTuning.THON_PERIOD
+    -- Start the next interval before resolving a target, as the source does.
+    state.thon_action_cooldown_remaining = AiTuning.THON_ACTION_INTERVAL
     local target = R.linked_target(context, state)
     if type(target) ~= "table" or type(target.heading) ~= "number" then
         state.ai_think_gap = "thon_target_link_unavailable"
@@ -156,7 +156,7 @@ local function think_gate(state, context)
     local world_active = context.world_activity_active == true
 
     if context.visual_profile_id == E.ActorVisualProfile.THON then
-        return thon_period_path(state, context)
+        return thon_action_path(state, context)
     end
     -- 0x1392A -> 0x14508 -> 0x1450E uses the controlled runner's record [C].
     if facts.behavior.escort then
@@ -250,7 +250,7 @@ local function select_think_path(state, context)
     state.ai_deactivate_requested = false
     state.ai_think_gap = nil
     state.think_token_claimed = false
-    state.source_thon_period_counter = nil
+    state.thon_action_cooldown_remaining = nil
     if state.behavior_timer > 0 then
         state.behavior_timer = state.behavior_timer - 1
         state.ai_think_path = "wait"

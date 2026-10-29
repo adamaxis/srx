@@ -264,10 +264,13 @@ check(think_path(second_actor, token_context) == "patrol" and
       second_actor.think_token_claimed,
       "the suppressed actor retries and claims the token on the next field frame")
 
+-- [C] ROM 0x13A4C pauses Thon's shared cadence during an active animation;
+-- 0x13A66 reloads the interval to eight after it expires. Assert that as a
+-- semantic cooldown rather than reproducing the original byte arithmetic.
 local thon_state = state()
 local thon_context = context({
     visual_profile_id = E.ActorVisualProfile.THON,
-    source_thon_period_counter = E.AiTuning.THON_PERIOD,
+    thon_action_cooldown_remaining = E.AiTuning.THON_ACTION_INTERVAL,
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, projected_y_nonzero = true,
@@ -279,22 +282,23 @@ local thon_context = context({
     action_line_clear = function() return true end,
 })
 local thon_skips = 0
-for _ = 1, E.AiTuning.THON_PERIOD do
+for _ = 1, E.AiTuning.THON_ACTION_INTERVAL do
     local path = R.think_gate(thon_state, thon_context)
     if path == "thon_idle" then
         thon_skips = thon_skips + 1
     end
-    thon_context.source_thon_period_counter =
-        thon_state.source_thon_period_counter
+    thon_context.thon_action_cooldown_remaining =
+        thon_state.thon_action_cooldown_remaining
 end
 local thon_fire_path = R.think_gate(thon_state, thon_context)
-check(thon_skips == E.AiTuning.THON_PERIOD and
+check(thon_skips == E.AiTuning.THON_ACTION_INTERVAL and
       thon_fire_path == "thon_action" and
-      thon_state.source_thon_period_counter == E.AiTuning.THON_PERIOD and
+      thon_state.thon_action_cooldown_remaining ==
+          E.AiTuning.THON_ACTION_INTERVAL and
       thon_state.ai_target_id == "party.runner.0" and
       thon_state.movement_current_heading == 0x1000 and
       thon_state.animation_id == "spell",
-      "THON decrements the shared period eight times, then aims and selects C082")
+      "Thon waits for eight behavior checks, then aims and casts")
 
 local offscreen_runner = {
     id = "party.runner.1",
@@ -357,21 +361,22 @@ local thon_unknown_state = state()
 check(R.think_gate(thon_unknown_state,
       context({ visual_profile_id = E.ActorVisualProfile.THON })) == "thon_unresolved" and
       thon_unknown_state.ai_think_gap ==
-          "thon_global_period_initial_value_unresolved",
-      "THON preserves the missing FFE188 initializer as an explicit gap")
+          "thon_action_cooldown_unavailable",
+      "THON leaves an unavailable action cooldown as an explicit gap")
 
 local thon_busy_state = state()
 local thon_los_calls = 0
 thon_context.animation_blocks_behavior = true
-thon_context.source_thon_period_counter = E.AiTuning.THON_PERIOD
+thon_context.thon_action_cooldown_remaining =
+    E.AiTuning.THON_ACTION_INTERVAL
 thon_context.action_line_clear = function()
     thon_los_calls = thon_los_calls + 1
     return true
 end
 check(R.think_gate(thon_busy_state, thon_context) == "thon_busy" and
-      thon_busy_state.source_thon_period_counter == nil and
+      thon_busy_state.thon_action_cooldown_remaining == nil and
       thon_los_calls == 0,
-      "THON with +0x16 above 0x3C leaves the period and action path untouched")
+      "an active Thon animation pauses its cooldown and action checks")
 
 local escort_path = R.think_gate(state({
     actor_facts = { behavior = { escort = true } },

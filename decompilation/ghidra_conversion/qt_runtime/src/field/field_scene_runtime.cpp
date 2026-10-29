@@ -4286,7 +4286,8 @@ void FieldSceneRuntime::advance_default_field_actors(
         context.source_actor_has_waypoint_data =
             actor.source_actor_has_waypoint_data;
         context.source_think_suppressed = field_think_token_claimed_;
-        context.source_thon_period_counter = field_thon_period_counter_;
+        context.thon_action_cooldown_remaining =
+            field_thon_action_cooldown_remaining_;
         context.walk_fast_enabled = field_walk_fast_enabled_;
         context.target_selection_latched = actor.target_selected;
         context.target_marker_reads_stun_meter =
@@ -4874,9 +4875,9 @@ void FieldSceneRuntime::advance_default_field_actors(
         if (decision->think_token_claimed) {
             field_think_token_claimed_ = true;
         }
-        if (decision->source_thon_period_counter.has_value()) {
-            field_thon_period_counter_ =
-                decision->source_thon_period_counter;
+        if (decision->thon_action_cooldown_remaining.has_value()) {
+            field_thon_action_cooldown_remaining_ =
+                decision->thon_action_cooldown_remaining;
         }
         if (dynamic_actor_behavior || source_default_item_action) {
             actor.source_item_spawn_result.reset();
@@ -9860,9 +9861,8 @@ bool FieldSceneRuntime::bootstrap(
     field_active_route_actor_list_.clear();
     field_world_activity_state_ = WorldActivityState{};
     field_think_token_claimed_ = false;
-    // Boot clears FF0000-FFFF7F (0xC3A) or FF0000-FFF1E7 (0xC58), so
-    // FFE188 starts at zero [C].
-    field_thon_period_counter_ = 0U;
+    // The shared Thon cooldown is ready when the field session starts.
+    field_thon_action_cooldown_remaining_ = 0U;
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     world_activity_routine_state_ = WorldActivityRoutineState{};
     world_activity_request_outcome_.reset();

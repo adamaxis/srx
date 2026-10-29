@@ -10902,12 +10902,12 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "source_think_suppressed");
-    if (context.source_thon_period_counter.has_value()) {
-        lua_pushinteger(state, *context.source_thon_period_counter);
+    if (context.thon_action_cooldown_remaining.has_value()) {
+        lua_pushinteger(state, *context.thon_action_cooldown_remaining);
     } else {
         lua_pushnil(state);
     }
-    lua_setfield(state, -2, "source_thon_period_counter");
+    lua_setfield(state, -2, "thon_action_cooldown_remaining");
     if (context.source_alarm_active.has_value()) {
         lua_pushboolean(state, *context.source_alarm_active ? 1 : 0);
     } else {
@@ -11515,11 +11515,11 @@ GameScriptRuntime::actor_heartbeat(
                             decision.think_token_claimed)) {
         return fail("actor_ai.heartbeat returned an invalid think-token result");
     }
-    if (!read_optional_field_integer(
-            state, decision_table, "source_thon_period_counter",
-            std::numeric_limits<std::uint8_t>::max(),
-            decision.source_thon_period_counter)) {
-        return fail("actor_ai.heartbeat returned an invalid THON period counter");
+    if (!read_optional_field_u32(
+            state, decision_table, "thon_action_cooldown_remaining",
+            std::numeric_limits<std::uint32_t>::max(),
+            decision.thon_action_cooldown_remaining)) {
+        return fail("actor_ai.heartbeat returned an invalid Thon cooldown");
     }
     if (!read_field_integer(state, decision_table, "frame", 15U,
                             returned_value)) {
