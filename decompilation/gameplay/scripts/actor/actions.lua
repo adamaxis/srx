@@ -13,8 +13,6 @@ R.spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot or {}
 local pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_slot
 local spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot
 local HitSpark = E.HitSpark
-local item_action_pose_selectors = R.item_action_pose_selectors   -- from actor/tables.lua
-local spell_pose_selectors = R.spell_pose_selectors   -- from actor/anim.lua
 local Animator = R.Animator   -- from actor/animator.lua
 
 local source_action_delay = Delay.actor_action_delay
@@ -367,13 +365,11 @@ local function select_c082_directional_pose(state, heading)
         return nil
     end
     local direction = R.direction_from_heading(u16(heading))
-    local selector = spell_pose_selectors[direction + 1]
-    if type(selector) ~= "number" then
+    if type(direction) ~= "number" then
         return nil
     end
     state.direction = direction
     state.animation_id = "spell"
-    state.animation_selector = selector
     state.animation_frame = 0
     state.animation_accumulator = 0
     return direction
@@ -423,7 +419,6 @@ local function begin_dynamic_item_action(state, context, target)
     state.animation_elapsed_updates = 0
     state.animation_increment = 0
     state.animation_period = nil
-    state.animation_selector = item_action_pose_selectors[direction + 1]
     state.item_action_complete = false
     state.action_delay = source_action_delay(context, state, 0)
     state.ai_target_engaged = false
@@ -439,7 +434,6 @@ local function begin_spell_cast(state, context, target, resolution)
     local direction = R.direction_from_heading(heading)
     state.direction = direction
     state.animation_id = "spell"
-    state.animation_selector = spell_pose_selectors[direction + 1]
     state.animation_frame = 0
     state.animation_accumulator = 0
     state.animation_increment = 0
@@ -951,7 +945,6 @@ local function begin_dynamic_target_action(state, context, target)
     state.animation_increment = 0
     state.animation_period = nil
     state.direction = direction
-    state.animation_selector = Animator.Pose.ACTION + direction * 4
     state.action_animation_complete = false
     state.action_delay = source_action_delay(context, state, 1)
     -- ROM 0xB25E calls 0x1DBAA once the strike is accepted in range [C].

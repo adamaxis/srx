@@ -59,12 +59,6 @@ local EntityMotionDistanceBounds = {
 }
 local target_motion_reacquire_updates = 6
 local source_close_range_threshold = 0x01e0
-local item_action_pose_selectors = {
-    0x40, 0x44, 0x48, 0x4C, 0x50, 0x54, 0x58, 0x5C,
-}
-local idle_pose_selectors = {
-    0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1C,
-}
 local ItemAction = {
     max_power_heavy_pistol = 6,
 }
@@ -159,8 +153,6 @@ R.ActionMotionDistanceBounds = ActionMotionDistanceBounds
 R.EntityMotionDistanceBounds = EntityMotionDistanceBounds
 R.target_motion_reacquire_updates = target_motion_reacquire_updates
 R.source_close_range_threshold = source_close_range_threshold
-R.item_action_pose_selectors = item_action_pose_selectors
-R.idle_pose_selectors = idle_pose_selectors
 R.ItemAction = ItemAction
 R.profiles = profiles
 return R

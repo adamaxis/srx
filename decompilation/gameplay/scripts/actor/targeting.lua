@@ -516,7 +516,6 @@ local function same_actor(state, context, profile)
     state.weapon_item_id = profile.weapon_item_id
     state.pending_source_action = nil
     state.animation_id = "idle"
-    state.animation_selector = nil
     state.animation_frame = 0
     state.animation_elapsed_updates = 0
     state.animation_accumulator = 0

@@ -11570,10 +11570,7 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat returned an unsupported C0B2 down frame");
     }
     if (decision.animation_id == "runner_hurt" &&
-        (decision.animation_frame > 1U ||
-         !decision.animation_selector.has_value() ||
-         *decision.animation_selector != static_cast<std::uint16_t>(
-             0x0060U + decision.direction * 0x0004U))) {
+        decision.animation_frame > 1U) {
         return fail(
             "actor_ai.heartbeat returned an unsupported C072 hurt pose");
     }
@@ -12208,11 +12205,6 @@ GameScriptRuntime::actor_heartbeat(
         decision.hit_spark_spawn_request = std::move(request);
     }
     lua_pop(state, 1);
-    const auto spell_pose_selector = [](const std::uint16_t selector) {
-        // ROM words at 0xC082: 0x80, 0x84, ... 0x9C.
-        return selector >= 0x0080U && selector <= 0x009CU &&
-               (selector & 0x0003U) == 0U;
-    };
     const bool spell_pose = decision.animation_id == "spell";
     static constexpr std::array<std::uint16_t, 14> kSpellActionAudioEvents{
         0U, 0x0032U, 0x0034U, 0x0034U, 0x0031U, 0x0037U, 0x0038U,
@@ -12242,8 +12234,6 @@ GameScriptRuntime::actor_heartbeat(
         (!context.dynamic_world_encounter_actor ||
          context.action_kind != ScriptActorActionKind::spell ||
          decision.animation_frame != 0U ||
-         !decision.animation_selector.has_value() ||
-         !spell_pose_selector(*decision.animation_selector) ||
          decision.target_heading_audio_event.has_value() ||
          (decision.combat_meter_update.has_value() &&
           !decision.spell_effect_resolution.has_value()) ||

@@ -1,7 +1,6 @@
 -- actor/animator.lua: named clip metadata and host animation timing.
 local R = require("actor.registry")
 local I = require("lib.int68k")
-local E = require("enums")
 local u16 = I.u16
 local LISTS = require("data.actor_anim_lists")
 
@@ -25,7 +24,6 @@ Animator.Clip = {
 -- Legacy source-clock support remains for projectile and movement paths that
 -- have not yet been converted to duration-based animation state.
 Animator.PERIOD = 0x1000
-Animator.Pose = E.ActorPose
 -- 0xBABC moves the controlled runner with vector table 0xC002, whose +4 word
 -- (0x28) 0xBADE copies to +0xCA [C].
 Animator.PLAYER_SPEED = 0x28

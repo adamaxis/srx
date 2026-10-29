@@ -166,11 +166,11 @@ render_context.animation_mode = "idle"
 local hurt_recovered = ActorAI.heartbeat(render_context)
 check(hurt_first ~= nil and hurt_first.animation == "runner_hurt" and
       hurt_first.frame == 0 and
-      hurt_first.animation_selector == E.PlayerHurt.SELECTOR_BASE and
+      hurt_first.animation_selector == nil and
       hurt_last ~= nil and hurt_last.animation == "runner_hurt" and
       hurt_last.frame == E.PlayerHurt.FRAME_COUNT - 1 and
       hurt_finished ~= nil and hurt_finished.animation == "idle" and
-      hurt_finished.animation_selector == 0 and
+      hurt_finished.animation_selector == nil and
       hurt_recovered ~= nil and hurt_recovered.animation == "idle" and
       hurt_recovered.frame == 0,
       "player C072 completes after its finite ROM list and returns to C052")

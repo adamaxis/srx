@@ -5607,8 +5607,7 @@ int main() {
         std::cerr << "spell refresh missing for " << actor_id << '\n';
         return result;
     };
-    const auto spell_cast_ok = [](const SpellRefresh& driven,
-                                  const std::uint16_t selector) {
+    const auto spell_cast_ok = [](const SpellRefresh& driven) {
         const auto& cast = driven.refresh;
         const auto& held = driven.render_hold;
         const auto& next = driven.next_behavior;
@@ -5617,7 +5616,7 @@ int main() {
                *cast->source_action_dispatch == "spell" &&
                cast->animation_id == "spell" &&
                cast->animation_frame == 0U &&
-               cast->animation_selector == selector &&
+               !cast->animation_selector.has_value() &&
                cast->direction == 1U &&
                cast->action_delay == 0x6A &&
                !cast->ai_target_engaged &&
@@ -5630,7 +5629,8 @@ int main() {
                !cast->movement_heading.has_value() &&
                held->animation_id == "spell" &&
                held->animation_frame == 0U &&
-               held->animation_selector == selector &&
+               !held->animation_selector.has_value() &&
+               held->direction == 1U &&
                !held->source_action_dispatch.has_value() &&
                !held->spell_effect_visible &&
                held->spell_effect_action_code == 0U &&
@@ -6067,10 +6067,10 @@ int main() {
         "elven_mage_k06_spell09", "spell_blocked_terrain", 6U, 9U, 0, true,
         spell_line_false);
     const auto spell_gate_contract =
-        spell_cast_ok(lonemage_cast, 0x0084U) &&
-        spell_cast_ok(gator_cast, 0x0084U) &&
-        spell_cast_ok(rat_cast, 0x0084U) &&
-        spell_cast_ok(elven_cast, 0x0084U) && elven_line_hit_target &&
+        spell_cast_ok(lonemage_cast) &&
+        spell_cast_ok(gator_cast) &&
+        spell_cast_ok(rat_cast) &&
+        spell_cast_ok(elven_cast) && elven_line_hit_target &&
         spell_action_roll_resolved && delayed_spell_impact_applied &&
         spell_effect_profile_matches(resolved_spell_cast, 1U, 12U, 4U,
                                      11U) &&
@@ -6125,10 +6125,10 @@ int main() {
         std::cerr << "spell gates: action=" << spell_action_roll_resolved
                   << " delayed=" << delayed_spell_impact_applied
                   << " pool=" << full_spell_effect_pool_blocks_spawn
-                  << " casts=" << spell_cast_ok(lonemage_cast, 0x0084U)
-                  << spell_cast_ok(gator_cast, 0x0084U)
-                  << spell_cast_ok(rat_cast, 0x0084U)
-                  << spell_cast_ok(elven_cast, 0x0084U)
+                  << " casts=" << spell_cast_ok(lonemage_cast)
+                  << spell_cast_ok(gator_cast)
+                  << spell_cast_ok(rat_cast)
+                  << spell_cast_ok(elven_cast)
                   << " visible=" << static_cast<unsigned>(
                          resolved_spell_cast.spell_effect_visible_heartbeats)
                   << " phase=" << static_cast<unsigned>(
@@ -6862,7 +6862,7 @@ int main() {
                 row.profile_id,
                 std::string("catalog_") + row.profile_id, row.entity_kind,
                 row.action_code, 0, true, spell_line_true);
-            row_ok = spell_cast_ok(driven, 0x0084U);
+            row_ok = spell_cast_ok(driven);
             decision = driven.refresh;
         } else {
             decision = drive_catalog_decision(row);
@@ -7247,7 +7247,7 @@ int main() {
     if (!expect(
             player_walk_start.has_value() &&
                 player_walk_start->animation_id == "walk" &&
-                player_walk_start->animation_selector == 0x28U &&
+                !player_walk_start->animation_selector.has_value() &&
                 player_walk_start->direction == 2U &&
                 player_walk_start->animation_frame == 0U &&
                 player_walk_start->animation_accumulator == 0x0280 &&
@@ -7255,8 +7255,8 @@ int main() {
                 player_walk_seventh->animation_frame == 1U &&
                 player_reset_idle.has_value() &&
                 player_reset_idle->animation_id == "idle" &&
+                !player_reset_idle->animation_selector.has_value() &&
                 player_reset_idle->direction == 4U &&
-                player_reset_idle->animation_selector == 0x10U &&
                 player_reset_idle->animation_accumulator == 0x0400 &&
                 player_attack_pose.has_value() &&
                 player_attack_pose->animation_id == "attack" &&
@@ -7427,8 +7427,7 @@ int main() {
     }
     player_strike_render.animation_mode = ScriptActorAnimationMode::cast;
     const auto cast_pose = scripts.actor_heartbeat(player_strike_render);
-    // ROM 0xB330: C0B2 runner-down list, selector 0xE8 + dir*4, holds the
-    // last entry.
+    // The semantic runner-down clip holds its last entry.
     player_strike_render.animation_mode = ScriptActorAnimationMode::runner_down;
     std::optional<ScriptActorBehaviorDecision> down_first;
     std::optional<ScriptActorBehaviorDecision> down_last;
@@ -7443,8 +7442,8 @@ int main() {
             down_first.has_value() &&
                 down_first->animation_id == "runner_down" &&
                 down_first->animation_frame == 0U &&
-                down_first->animation_selector ==
-                    std::optional<std::uint16_t>{0x00F0U} &&
+                !down_first->animation_selector.has_value() &&
+                down_first->direction == 2U &&
                 down_last.has_value() && down_last->animation_frame == 7U,
             "Lua runner_down did not follow the 0xB330 C0B2 list")) {
         std::cerr << scripts.failure() << '\n';
@@ -7470,8 +7469,8 @@ int main() {
             hurt_first.has_value() &&
                 hurt_first->animation_id == "runner_hurt" &&
                 hurt_first->animation_frame == 0U &&
-                hurt_first->animation_selector ==
-                    std::optional<std::uint16_t>{0x0068U} &&
+                !hurt_first->animation_selector.has_value() &&
+                hurt_first->direction == 2U &&
                 hurt_second.has_value() &&
                 hurt_second->animation_frame == 1U &&
                 hurt_held.has_value() && hurt_held->animation_frame == 1U,
@@ -7489,14 +7488,14 @@ int main() {
                 strike_frame_zero.has_value() &&
                 strike_frame_zero->animation_id == "strike" &&
                 strike_frame_zero->animation_frame == 0U &&
-                strike_frame_zero->animation_selector ==
-                    std::optional<std::uint16_t>{0x00C8U} &&
+                !strike_frame_zero->animation_selector.has_value() &&
+                strike_frame_zero->direction == 2U &&
                 !strike_frame_zero->strike_heading.has_value() &&
                 strike_frame_one.has_value() &&
                 strike_frame_one->animation_frame == 1U &&
                 cast_pose.has_value() && cast_pose->animation_id == "cast" &&
-                cast_pose->animation_selector ==
-                    std::optional<std::uint16_t>{0x0088U},
+                !cast_pose->animation_selector.has_value() &&
+                cast_pose->direction == 2U,
             "Lua player strike did not follow 0x15C58 flags or the C0A2 pose")) {
         std::cerr << scripts.failure() << '\n';
         return 108;

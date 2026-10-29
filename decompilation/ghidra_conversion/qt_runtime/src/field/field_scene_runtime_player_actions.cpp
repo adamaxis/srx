@@ -1339,16 +1339,7 @@ void FieldSceneRuntime::advance_field_actor_animation() {
                         "field.player.spell.effect_slot_released");
                 }
             }
-            const auto selector_changed =
-                decision->animation_selector.has_value() &&
-                *decision->animation_selector !=
-                    field_entity_animation_selector_;
-            if (decision->animation_selector.has_value()) {
-                field_entity_animation_selector_ =
-                    *decision->animation_selector;
-            }
             field_entity_animation_.redraw_requested =
-                selector_changed ||
                 previous_frame != field_entity_animation_.frame ||
                 previous_animation != field_entity_animation_id_;
         }

@@ -11241,14 +11241,10 @@ FieldSceneRuntime::heartbeat_field_player(
         } else if (field_entity_attack_pose_active_) {
             actor_context.animation_direction_override =
                 field_entity_attack_direction_;
-        } else if (field_entity_animation_selector_ <= 0x001CU &&
-                   (field_entity_animation_selector_ & 0x0003U) == 0U) {
-            // ROM 0xB442 writes the C052 idle selector from +0x2E but leaves
-            // the separate +0x36 sprite heading untouched. Keep Lua's idle
-            // facing bound to the selected C052 list after that reset.
+        } else if (field_entity_animation_id_ == "idle") {
+            // Keep the semantic idle facing from the last actor decision.
             actor_context.animation_direction_override =
-                static_cast<std::uint8_t>(
-                    field_entity_animation_selector_ / 4U);
+                field_entity_.direction;
         }
         if (field_player_animation_reset_pending_) {
             actor_context.animation_accumulator_override =
@@ -11397,10 +11393,6 @@ FieldSceneRuntime::heartbeat_field_player(
             // pose: it keeps its cue countdown and calls 0xB48C/0xE7C8 only
             // for the collision-state refresh.
             field_entity_animation_id_ = actor_decision->animation_id;
-            if (actor_decision->animation_selector.has_value()) {
-                field_entity_animation_selector_ =
-                    *actor_decision->animation_selector;
-            }
             field_entity_animation_.redraw_requested = true;
         }
         if (phase == scripting::ScriptActorHeartbeatPhase::render &&

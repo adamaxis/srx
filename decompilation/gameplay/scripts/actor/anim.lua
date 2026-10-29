@@ -10,9 +10,7 @@ local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
 local PlayerHurt = E.PlayerHurt
 local HitSpark = E.HitSpark
 local ActorAnimation = E.ActorAnimation
-local ActorPose = E.ActorPose
 local SpriteType = R.SpriteType   -- from actor/tables.lua
-local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
 local weapon_projectile_descriptor_increment = R.weapon_projectile_descriptor_increment   -- from actor/tables.lua
 
 local function snapshot(state, action, audio_event, projectile_movement,
@@ -53,7 +51,10 @@ local function snapshot(state, action, audio_event, projectile_movement,
         animation_variant = state.animation_id == "down" and
             state.spell_death_variant or "",
         actor_facts = state.actor_facts,
-        animation_selector = state.animation_selector,
+        animation_selector =
+            (state.profile_id == "weapon_projectile" or
+             state.profile_id == "field_hit_spark") and
+            state.animation_selector or nil,
         direction = state.direction,
         frame = state.animation_frame,
         animation_accumulator = state.animation_accumulator,
@@ -246,7 +247,6 @@ local function begin_down_reaction(state)
     state.animation_increment = 0
     state.animation_period = nil
     state.animation_id = "down"
-    state.animation_selector = Animator.Pose.DEATH + state.direction * 4
     state.spell_death_variant = nil
     state.actor_facts.lifecycle.downed = true
     state.hurt_behavior_timer = 0
@@ -314,8 +314,6 @@ local function begin_received_hit_reaction(state, context)
         state.animation_period = nil
         state.animation_id = "down"
         state.spell_death_variant = hit.spell_death_variant
-        state.animation_selector = hit.spell_death_variant == "spell_death_e0"
-            and ActorPose.SPELL_DEATH_E0 or ActorPose.SPELL_DEATH_E4
         state.spell_death = true
         state.hurt_behavior_timer = 0
         state.movement_active = false
@@ -342,7 +340,6 @@ local function begin_received_hit_reaction(state, context)
     state.animation_period = nil
     -- 0xAFF2 selects C072 and starts B07E's eight-service countdown.
     state.animation_id = "hurt"
-    state.animation_selector = Animator.Pose.HURT + state.direction * 4
     state.spell_death_variant = nil
     state.hurt_behavior_timer = 8
     state.hurt_audio_event = hurt_audio_event
@@ -387,8 +384,6 @@ local function begin_player_hurt_reaction(state, context)
     state.animation_id = "runner_hurt"
     state.animation_frame = 0
     state.animation_accumulator = 0
-    state.animation_selector = PlayerHurt.SELECTOR_BASE +
-        state.direction * PlayerHurt.SELECTOR_STEP
     state.hurt_behavior_timer = PlayerHurt.SOUND_DELAY
     state.hurt_audio_event = SoundId.DAC_SAMPLE_40
     state.hurt_audio_emitted = false
@@ -410,7 +405,6 @@ local function finish_player_hurt_reaction(state, context)
         -- which selects the matching C052 idle pose. 0xB07E only keeps the
         -- independent eight-service cue; its 0xB48C call is collision work.
         state.animation_id = "idle"
-        state.animation_selector = idle_pose_selectors[state.direction + 1]
         state.animation_frame = 0
         state.animation_accumulator = 0
         state.player_hurt_selector_reset_after_render = true
@@ -434,7 +428,6 @@ local function advance_dynamic_actor_walk_animation(state, context)
     end
     state.animation_increment = increment
     state.animation_period = Animator.PERIOD
-    state.animation_selector = Animator.Pose.WALK + state.direction * 4
     Animator.step_loop(state, list.frame_count, increment, state.animation_period)
     return true
 end
@@ -470,15 +463,8 @@ local function advance_dynamic_actor_item_action_animation(state)
 end
 
 -- ROM 0xC082. AF7C/AFAE index this by the same 0xB36A direction as C0A2.
-local spell_pose_selectors = {
-    0x80, 0x84, 0x88, 0x8C, 0x90, 0x94, 0x98, 0x9C,
-}
-
 local function advance_player_animation(state, context)
     if state.player_hurt_selector_reset_after_render then
-        -- The behavior pass above published C052 to the host. Do not carry
-        -- that finite-reset selector into a later C062 movement decision.
-        state.animation_selector = nil
         state.player_hurt_selector_reset_after_render = nil
     end
     if type(context.animation_accumulator_override) == "number" then
@@ -501,8 +487,6 @@ local function advance_player_animation(state, context)
         end
         state.player_hurt_pose_active = true
         state.animation_id = "runner_hurt"
-        state.animation_selector = PlayerHurt.SELECTOR_BASE +
-            state.direction * PlayerHurt.SELECTOR_STEP
         local accumulated = state.animation_accumulator +
             PlayerHurt.FRAME_INCREMENT
         if accumulated >= PlayerHurt.FRAME_PERIOD then
@@ -521,7 +505,6 @@ local function advance_player_animation(state, context)
     if state.player_hurt_pose_active then
         state.player_hurt_pose_active = nil
         state.player_hurt_animation_complete_pending = nil
-        state.animation_selector = nil
     end
 
     if context.animation_mode == "attack" then
@@ -529,7 +512,6 @@ local function advance_player_animation(state, context)
         -- attack-<dir>.bmp. Its 0x80 cadence only drives pose bit 15, which
         -- the C++ attack-pose timer owns [H: not ported here].
         state.animation_id = "attack"
-        state.animation_selector = nil
         state.animation_frame = 0
         state.animation_accumulator = 0
         return
@@ -542,8 +524,6 @@ local function advance_player_animation(state, context)
             state.animation_accumulator = 0
         end
         state.animation_id = "strike"
-        state.animation_selector = ActorPose.ACTION +
-            state.direction * ActorAnimation.DIRECTION_SELECTOR_STEP
         local accumulated = state.animation_accumulator +
             ActorAnimation.FRAME_INCREMENT
         if accumulated >= ActorAnimation.FRAME_PERIOD then
@@ -564,8 +544,6 @@ local function advance_player_animation(state, context)
             state.animation_accumulator = 0
         end
         state.animation_id = "runner_down"
-        state.animation_selector = ActorPose.DEATH +
-            state.direction * ActorAnimation.DIRECTION_SELECTOR_STEP
         local accumulated = state.animation_accumulator +
             ActorAnimation.FRAME_INCREMENT
         if accumulated >= ActorAnimation.FRAME_PERIOD then
@@ -580,7 +558,6 @@ local function advance_player_animation(state, context)
     if context.animation_mode == "cast" then
         -- ROM 0xAF7C/0xAFAE select C082[dir] (0x80..0x9C), one frame.
         state.animation_id = "cast"
-        state.animation_selector = 0x80 + state.direction * 4
         state.animation_frame = 0
         state.animation_accumulator = 0
         return
@@ -593,12 +570,10 @@ local function advance_player_animation(state, context)
                                     Animator.PLAYER_SPEED)
     if context.animation_mode == "walking" then
         state.animation_id = "walk"
-        state.animation_selector = Animator.Pose.WALK + state.direction * 4
         Animator.step_loop(state,
             Animator.list(kind, Animator.Clip.WALK, state.direction).frame_count, rate)
     else
         state.animation_id = "idle"
-        state.animation_selector = Animator.Pose.IDLE + state.direction * 4
         Animator.step_loop(state,
             Animator.list(kind, Animator.Clip.IDLE, state.direction).frame_count, rate)
     end
@@ -623,5 +598,4 @@ R.advance_dynamic_actor_walk_animation = advance_dynamic_actor_walk_animation
 R.advance_dynamic_actor_action_animation = advance_dynamic_actor_action_animation
 R.advance_dynamic_actor_item_action_animation = advance_dynamic_actor_item_action_animation
 R.advance_player_animation = advance_player_animation
-R.spell_pose_selectors = spell_pose_selectors
 return R
