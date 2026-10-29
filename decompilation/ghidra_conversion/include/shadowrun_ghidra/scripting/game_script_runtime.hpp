@@ -1614,6 +1614,12 @@ struct ScriptActorTargetListRebuildDecision {
     bool rebuild_runner = false;
 };
 
+enum class ScriptFormationPosition : std::uint8_t {
+    primary,
+    secondary,
+    other,
+};
+
 struct ScriptActorTargetCandidate {
     std::string id;
     std::uint16_t world_x = 0;
@@ -1643,6 +1649,9 @@ struct ScriptActorTargetCandidate {
     // 0xB39A. `heading` above is the relative bearing used by route policy;
     // keep the linked record's facing separate for C042 pose selection.
     std::optional<std::uint16_t> source_record_heading;
+    // Semantic role used by formation-follow policy. The native field adapter
+    // derives this from the actor's live record identity before Lua sees it.
+    std::optional<ScriptFormationPosition> formation_position;
 };
 
 using ScriptActorRandomBound =
@@ -1762,7 +1771,6 @@ struct ScriptActorBehaviorContext {
     // populated from the live field state [C].
     std::optional<bool> source_alarm_active;
     std::optional<std::uint16_t> source_scene_mode;
-    std::optional<std::uint8_t> controlled_runner_slot;
     std::optional<std::uint16_t> source_camera_x;
     std::optional<std::uint16_t> source_camera_y;
     std::optional<std::uint16_t> source_camera_limit_x;
@@ -1829,9 +1837,12 @@ struct ScriptActorBehaviorContext {
     // gameplay scripts consume a condition value, not a memory byte.
     std::optional<std::int32_t> physical_condition;
     // Identity of the party member currently controlled by the field player.
-    // The host keeps roster placement; Lua uses this actor identity to match
-    // delayed effects and other actor-owned state.
+    // The host keeps roster placement; Lua uses this actor identity to locate
+    // the controlled actor and key actor-owned state.
     std::string controlled_party_member_id;
+    // Named formation role for actor-follow policy. The host translates live
+    // record identity here; Lua does not consume a source record slot for it.
+    std::optional<ScriptFormationPosition> formation_position;
 };
 
 enum class ScriptTarislarTombOutroStep {

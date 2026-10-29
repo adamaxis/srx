@@ -9,12 +9,12 @@ local AiTuning, SceneMode = E.AiTuning, E.SceneMode
 local ActionKind = R.ActionKind
 
 local function controlled_runner(context)
-    local slot = context.controlled_runner_slot
-    if type(slot) ~= "number" then
+    local actor_id = context.controlled_party_member_id
+    if type(actor_id) ~= "string" or actor_id == "" then
         return nil
     end
     for _, candidate in ipairs(context.ai_target_candidates or {}) do
-        if candidate.source_record_slot == slot and
+        if candidate.id == actor_id and
            candidate.world_activity_actor ~= true then
             return candidate
         end
@@ -432,22 +432,23 @@ end
 
 local function apply_follow_destination(state, context)
     local leader = controlled_runner(context)
-    -- This is the acting record's +0x3E value [C]. Scene actors receive
-    -- FFDD40 here at 0x44BC; runner records initialize 0..2 at 0x42CC.
-    local actor_slot = context.source_actor_slot
+    local function known_formation_position(position)
+        return position == "primary" or position == "secondary" or
+               position == "other"
+    end
     if type(leader) ~= "table" or type(leader.world_x) ~= "number" or
        type(leader.world_y) ~= "number" or
        type(leader.source_record_heading) ~= "number" or
-       type(leader.source_record_slot) ~= "number" or
-       type(actor_slot) ~= "number" then
+       not known_formation_position(leader.formation_position) or
+       not known_formation_position(context.formation_position) then
         state.ai_think_gap = "formation_leader_record_unavailable"
         return
     end
 
     local angle = u16(leader.source_record_heading)
-    if actor_slot == AiTuning.FOLLOW_FIRST_SLOT or
-       (actor_slot == AiTuning.FOLLOW_SECOND_SLOT and
-        leader.source_record_slot == AiTuning.FOLLOW_FIRST_LEADER_SLOT) then
+    if context.formation_position == "primary" or
+       (context.formation_position == "secondary" and
+        leader.formation_position == "primary") then
         angle = u16(angle - AiTuning.FOLLOW_ANGLE_STEP)
     else
         angle = u16(angle + AiTuning.FOLLOW_ANGLE_STEP)

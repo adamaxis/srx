@@ -43,6 +43,30 @@ constexpr std::uint8_t kRunnerClipRemainder = 0x02U;
 constexpr std::uint8_t kRunnerDowned = 0x10U;
 constexpr std::uint8_t kRunnerDead = 0x40U;
 
+const char* formation_position_id(
+    const ScriptFormationPosition position) noexcept {
+    switch (position) {
+    case ScriptFormationPosition::primary:
+        return "primary";
+    case ScriptFormationPosition::secondary:
+        return "secondary";
+    case ScriptFormationPosition::other:
+        return "other";
+    }
+    return "other";
+}
+
+void push_formation_position(
+    lua_State* state, const char* field,
+    const std::optional<ScriptFormationPosition>& position) {
+    if (position.has_value()) {
+        lua_pushstring(state, formation_position_id(*position));
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, field);
+}
+
 std::optional<std::string_view> script_spell_id_from_action_code(
     const std::uint8_t action_code) {
     if (action_code == 0U) {
@@ -10459,6 +10483,8 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "source_actor_slot");
+    push_formation_position(state, "formation_position",
+                            context.formation_position);
     if (context.source_world_x.has_value()) {
         lua_pushinteger(state, *context.source_world_x);
     } else {
@@ -10541,12 +10567,6 @@ GameScriptRuntime::actor_heartbeat(
                                 context.source_camera_limit_x);
     push_optional_actor_integer("source_camera_limit_y",
                                 context.source_camera_limit_y);
-    if (context.controlled_runner_slot.has_value()) {
-        lua_pushinteger(state, *context.controlled_runner_slot);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "controlled_runner_slot");
     lua_pushboolean(state, context.world_activity_active);
     lua_setfield(state, -2, "world_activity_active");
     lua_pushinteger(state, context.world_scene_state);
@@ -10785,6 +10805,8 @@ GameScriptRuntime::actor_heartbeat(
                 lua_pushnil(state);
             }
             lua_setfield(state, -2, "source_record_slot");
+            push_formation_position(state, "formation_position",
+                                    candidate.formation_position);
             lua_pushinteger(state, candidate.descriptor_class);
             lua_setfield(state, -2, "descriptor_class");
             if (candidate.combatant.has_value()) {

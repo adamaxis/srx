@@ -133,6 +133,19 @@ namespace {
 // longest 0x62AC list has 10 frames (0x75E8) [C], so 16 is headroom [H].
 constexpr std::uint8_t kActorArtFrameScanLimit = 16U;
 
+scripting::ScriptFormationPosition formation_position_from_record_slot(
+    const std::uint8_t source_slot) noexcept {
+    // ROM 0x1451E/0x14522 branch on actor +0x3E values 0 and 1; remaining
+    // values take the default side at 0x1452A [C].
+    if (source_slot == 0U) {
+        return scripting::ScriptFormationPosition::primary;
+    }
+    if (source_slot == 1U) {
+        return scripting::ScriptFormationPosition::secondary;
+    }
+    return scripting::ScriptFormationPosition::other;
+}
+
 void set_script_ammunition_facts(
     scripting::ScriptActorBehaviorContext& context,
     const std::uint16_t ammunition_remaining) {
@@ -4245,11 +4258,16 @@ void FieldSceneRuntime::advance_default_field_actors(
             field_movement_transition_state_.world_mode == 3U;
         context.combatant = actor.combatant;
         context.source_actor_posture = actor.combatant.posture;
+        context.controlled_party_member_id =
+            "party.runner." + std::to_string(
+                field_party_roster_.active_slot());
         if (actor.source_record_slot.has_value()) {
             const auto source_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
             context.source_record_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
+            context.formation_position =
+                formation_position_from_record_slot(source_slot);
             if (source_slot >= FieldPartyRosterRuntime::kSlotCount) {
                 // ROM 0x1A342 returns pool slots 3..9 in d0; 0x44BC copies
                 // that exact value from FFDD40 to actor +0x3E [C].
@@ -4270,8 +4288,6 @@ void FieldSceneRuntime::advance_default_field_actors(
             context.source_alarm_active = field_matrix_field_state_.alarm;
             context.source_scene_mode =
                 field_movement_transition_state_.world_mode;
-            context.controlled_runner_slot = static_cast<std::uint8_t>(
-                field_party_roster_.active_slot());
             context.world_activity_active =
                 world_frame_logic_state_.world_active != 0U;
             context.world_scene_state = world_frame_logic_state_.scene_state;
@@ -4303,8 +4319,6 @@ void FieldSceneRuntime::advance_default_field_actors(
             context.source_alarm_active = field_matrix_field_state_.alarm;
             context.source_scene_mode =
                 field_movement_transition_state_.world_mode;
-            context.controlled_runner_slot = static_cast<std::uint8_t>(
-                field_party_roster_.active_slot());
             // FFDDC6/FFDDC8 are the live camera origin; profile words +8/+10
             // are FFDDCE/FFDDD0, the scene's far camera bounds [C].
             const auto& field_profile = state_.field_scene_buffers.profile;
@@ -4417,6 +4431,9 @@ void FieldSceneRuntime::advance_default_field_actors(
                                     0xFFFFU))};
                     candidate.combatant = std::move(combatant);
                     candidate.source_record_slot = source_record_slot;
+                    candidate.formation_position =
+                        formation_position_from_record_slot(
+                            source_record_slot);
                     candidate.source_record_heading = source_record_heading;
                     context.ai_target_candidates.push_back(
                         std::move(candidate));
@@ -4720,6 +4737,8 @@ void FieldSceneRuntime::advance_default_field_actors(
                     runner.flags & 0x00FFU);
                 candidate.world_activity_actor = false;
                 candidate.source_record_slot = active_runner_slot;
+                candidate.formation_position =
+                    formation_position_from_record_slot(active_runner_slot);
                 if (field_entity_.active) {
                     candidate.source_record_heading =
                         field_movement_state_.heading;

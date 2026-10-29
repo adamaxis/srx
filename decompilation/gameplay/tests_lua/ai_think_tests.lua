@@ -59,9 +59,11 @@ local function context(overrides)
         animation_blocks_behavior = false,
         ammunition_remaining = 0,
         hold_for_ending_activity = false,
-        controlled_runner_slot = 0,
+        controlled_party_member_id = "party.runner.0",
+        formation_position = "primary",
         ai_target_candidates = {
             { id = "party.runner.0", source_record_slot = 0,
+              formation_position = "primary",
               world_activity_actor = false, world_x = 0x2000,
               world_y = 0x2400, heading = 0x1000, distance = 0x300,
               projected_y_nonzero = true,
@@ -674,16 +676,18 @@ check(regional_route_steps == 186,
 
 local collision = game.movement.collision
 game.movement.collision = function() return 0, 0 end
-local function formation_case(actor_slot, leader_slot, leader_heading,
+local function formation_case(actor_position, leader_position, leader_heading,
                               expected_x, expected_y, description)
     local route_x, route_y
+    local leader_id = leader_position == "primary"
+        and "party.runner.0" or "party.runner.1"
     local formation_context = context({
-        controlled_runner_slot = leader_slot,
-        source_actor_slot = actor_slot,
+        controlled_party_member_id = leader_id,
+        formation_position = actor_position,
         actor_facts = { behavior = { escort = true } },
         ai_target_candidates = {
-            { id = "party.runner." .. leader_slot,
-              source_record_slot = leader_slot,
+            { id = leader_id,
+              formation_position = leader_position,
               world_activity_actor = false,
               world_x = 8192, world_y = 9216,
               source_record_heading = leader_heading,
@@ -707,21 +711,17 @@ local function formation_case(actor_slot, leader_slot, leader_heading,
           description)
 end
 
-formation_case(E.AiTuning.FOLLOW_FIRST_SLOT,
-    E.AiTuning.FOLLOW_FIRST_LEADER_SLOT, 0, 8033, 9374,
-    "0x1451E slot 0 subtracts 0x6000 from heading 0 and uses radius 0xE0 [C]")
-formation_case(E.AiTuning.FOLLOW_SECOND_SLOT,
-    E.AiTuning.FOLLOW_FIRST_LEADER_SLOT, 0, 8033, 9374,
-    "0x14532 slot 1 subtracts when the leader slot is 0 [C]")
-formation_case(E.AiTuning.FOLLOW_SECOND_SLOT,
-    E.AiTuning.FOLLOW_SECOND_SLOT, 0, 8350, 9374,
-    "0x1452A slot 1 adds 0x6000 when the leader slot is nonzero [C]")
-formation_case(E.AiTuning.FOLLOW_FIRST_SCENE_ACTOR_SLOT,
-    E.AiTuning.FOLLOW_SECOND_SLOT, 0, 8350, 9374,
-    "0x1452A adds 0x6000 for scene actor +0x3E=3 [C]")
-formation_case(E.AiTuning.FOLLOW_FIRST_SLOT,
-    E.AiTuning.FOLLOW_FIRST_LEADER_SLOT, E.AiTuning.QUARTER_TURN, 8033, 9057,
-    "0x1451E rotates a 0x4000 leader heading to the ROM offset [C]")
+formation_case("primary", "primary", 0, 8033, 9374,
+    "0x1451E gives the primary actor the counterclockwise offset [C]")
+formation_case("secondary", "primary", 0, 8033, 9374,
+    "0x14532 gives the secondary actor that offset behind a primary leader [C]")
+formation_case("secondary", "secondary", 0, 8350, 9374,
+    "0x1452A gives the secondary actor the clockwise offset otherwise [C]")
+formation_case("other", "secondary", 0, 8350, 9374,
+    "0x1452A gives other actors the clockwise offset [C]")
+formation_case("primary", "primary", E.AiTuning.QUARTER_TURN,
+    8033, 9057,
+    "0x1451E rotates a quarter-turn leader heading to the primary offset [C]")
 
 local collision_calls = 0
 game.movement.collision = function()
@@ -730,12 +730,11 @@ game.movement.collision = function()
 end
 local reverse_x, reverse_y
 local blocked_context = context({
-    controlled_runner_slot = E.AiTuning.FOLLOW_FIRST_LEADER_SLOT,
-    source_actor_slot = E.AiTuning.FOLLOW_FIRST_SLOT,
+    controlled_party_member_id = "party.runner.0",
+    formation_position = "primary",
     actor_facts = { behavior = { escort = true } },
     ai_target_candidates = {
-        { id = "party.runner." .. E.AiTuning.FOLLOW_FIRST_LEADER_SLOT,
-          source_record_slot = E.AiTuning.FOLLOW_FIRST_LEADER_SLOT,
+        { id = "party.runner.0", formation_position = "primary",
           world_activity_actor = false,
           world_x = 8192, world_y = 9216,
           source_record_heading = 0, heading = 0, distance = 0,
