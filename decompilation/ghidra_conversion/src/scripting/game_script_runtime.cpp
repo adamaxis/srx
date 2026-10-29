@@ -7567,7 +7567,6 @@ GameScriptRuntime::world_activity_actors_for_selector(
         std::uint32_t delay_secondary_attribute = 0U;
         std::uint32_t delay_capability_flags = 0U;
         std::uint32_t list_offset = 0U;
-        std::uint32_t source_record_offset = 0U;
         std::uint32_t tagged_template = 0U;
         std::uint32_t template_offset = 0U;
         std::uint32_t position_offset = 0U;
@@ -7594,8 +7593,6 @@ GameScriptRuntime::world_activity_actors_for_selector(
             (selector_field != "list_offset" ||
              list_offset == selector_value) &&
             (selector_field != "list_id" || row_list_id == selector_text) &&
-            read_field_integer(state, row_index, "source_record_offset",
-                               0x1FFFFFU, source_record_offset) &&
             read_field_integer(state, row_index, "tagged_template",
                                0xFFFFFFFFU, tagged_template) &&
             read_field_integer(state, row_index, "template_offset",
@@ -7663,7 +7660,6 @@ GameScriptRuntime::world_activity_actors_for_selector(
         actor.script_index = static_cast<std::int16_t>(row_script_index);
         actor.source_order = static_cast<std::uint16_t>(source_order);
         actor.list_offset = list_offset;
-        actor.source_record_offset = source_record_offset;
         actor.tagged_template = tagged_template;
         actor.template_offset = template_offset;
         actor.position_offset = position_offset;

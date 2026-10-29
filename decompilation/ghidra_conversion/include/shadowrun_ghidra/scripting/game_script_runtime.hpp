@@ -1276,7 +1276,6 @@ struct ScriptWorldActivityActor {
     std::int16_t script_index = 0;
     std::uint16_t source_order = 0;
     std::uint32_t list_offset = 0;
-    std::uint32_t source_record_offset = 0;
     std::uint32_t tagged_template = 0;
     std::uint32_t template_offset = 0;
     std::uint32_t position_offset = 0;

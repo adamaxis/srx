@@ -100,13 +100,24 @@ int main() {
     lua_remove(state, -2);
     const int data_table = lua_absindex(state, -1);
 
+    lua_getfield(state, data_table, "world_activity_actor_lists");
+    lua_rawgeti(state, -1, 1);
+    const int first_actor_list_row = lua_absindex(state, -1);
+    bool valid = expect(field_string_is(state, first_actor_list_row, "list_id",
+                                        "scene_10_event_6_script"),
+                        "actor catalog lost its semantic activity ID");
+    lua_getfield(state, first_actor_list_row, "source_record_offset");
+    valid = expect(lua_isnil(state, -1),
+                   "ROM actor record address leaked into Lua catalog data") &&
+            valid;
+    lua_pop(state, 3);
+
     lua_getfield(state, data_table, "field_alarm_profiles");
     lua_rawgeti(state, -1, 21);
     const int scene_21_alarm_profile = lua_absindex(state, -1);
     // [C] The ROM profile at 0x1D7444 names reinforcement list 0x1D7460;
     // the runtime exposes its extracted activity identity, not those pointers.
-    bool valid =
-        expect(field_string_is(state, scene_21_alarm_profile,
+    valid = expect(field_string_is(state, scene_21_alarm_profile,
                                "reinforcement_activity_id",
                                "field_alarm_scene_21") &&
                    field_integer_is(state, scene_21_alarm_profile,

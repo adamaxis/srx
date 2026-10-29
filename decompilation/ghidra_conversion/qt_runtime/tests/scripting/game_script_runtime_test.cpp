@@ -2004,7 +2004,8 @@ int main() {
                 ilene_gate_actors->front().script_index == 3U &&
                 ilene_gate_actors->front().source_order == 0U &&
                 ilene_gate_actors->front().list_offset == 0x1706CU &&
-                ilene_gate_actors->front().source_record_offset == 0x1706CU &&
+                ilene_gate_actors->front().activity_id ==
+                    "scene_13_ilene_gate_script" &&
                 ilene_gate_actors->front().tagged_template == 0x800172CAU &&
                 ilene_gate_actors->front().template_offset == 0x172CAU &&
                 ilene_gate_actors->front().position_offset == 0x17082U &&
@@ -2048,8 +2049,6 @@ int main() {
                 ilene_pending_list->front().activity_id ==
                     "scene_20_ilene_pending_list" &&
                 ilene_pending_list->front().list_offset == 0xA8CCU &&
-                ilene_pending_list->front().source_record_offset ==
-                    0xA8CCU &&
                 ilene_pending_list->front().tagged_template ==
                     0x800172CAU &&
                 ilene_pending_list->front().template_offset == 0x172CAU &&

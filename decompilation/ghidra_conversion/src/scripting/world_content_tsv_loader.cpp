@@ -248,14 +248,17 @@ bool push_record(lua_State* state, const TsvDocument& document,
                      std::pair<std::string_view, std::string_view>>& aliases,
                  const std::filesystem::path& source_path,
                  const std::size_t row_number, std::string& failure,
-                 const std::vector<std::string_view>& optional_numeric_columns = {}) {
+                 const std::vector<std::string_view>& optional_numeric_columns = {},
+                 const std::vector<std::string_view>& omitted_columns = {}) {
     lua_createtable(state, 0, static_cast<int>(document.columns.size()));
     const auto table_index = lua_absindex(state, -1);
     for (const auto& column : document.columns) {
         // These source bytes are import evidence. Lua receives named actor
         // traits and interaction rules built below, never the packed byte.
         if (column == "source_spawn_state_flags" ||
-            column == "source_interaction_flags") {
+            column == "source_interaction_flags" ||
+            std::find(omitted_columns.begin(), omitted_columns.end(), column) !=
+                omitted_columns.end()) {
             continue;
         }
         const auto value = value_at(document, row, column);
@@ -370,13 +373,14 @@ bool push_rows(lua_State* state, const TsvDocument& document,
                std::string& failure,
                const std::vector<
                    std::pair<std::string_view, std::string_view>>& aliases = {},
-               const std::vector<std::string_view>& optional_numeric_columns = {}) {
+               const std::vector<std::string_view>& optional_numeric_columns = {},
+               const std::vector<std::string_view>& omitted_columns = {}) {
     lua_createtable(state, static_cast<int>(document.rows.size()), 0);
     const auto array_index = lua_absindex(state, -1);
     for (std::size_t index = 0; index < document.rows.size(); ++index) {
         if (!push_record(state, document, document.rows[index],
                          numeric_columns, aliases, source_path, index + 2U,
-                         failure, optional_numeric_columns)) {
+                         failure, optional_numeric_columns, omitted_columns)) {
             lua_pop(state, 1);
             return false;
         }
@@ -1137,6 +1141,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
             const char* field;
             std::vector<std::string_view> numeric_columns;
             std::vector<std::string_view> optional_numeric_columns;
+            std::vector<std::string_view> omitted_columns{};
         };
         const std::array<SourceTable, 4> source_tables{{
             {"world-activity-outcomes.tsv", "world_activity_outcomes",
@@ -1212,7 +1217,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "combat_action_phase_7e", "combat_action_phase_7f",
               "combat_action_skill_81", "combat_action_skill_82",
               "combat_action_skill_83", "combat_action_skill_84",
-              "combat_auxiliary_roll_bonus"}},
+              "combat_auxiliary_roll_bonus"}, {}, {"source_record_offset"}},
             {"entities/conditional-actor-candidates.tsv",
              "conditional_actor_candidates",
              {"scene", "choice", "entity_kind", "palette_line",
@@ -1231,7 +1236,8 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
                                             failure)) ||
                 !push_rows(state, document, source_table.numeric_columns,
                            path, failure, {},
-                           source_table.optional_numeric_columns)) {
+                           source_table.optional_numeric_columns,
+                           source_table.omitted_columns)) {
                 lua_settop(state, stack_base);
                 return false;
             }
