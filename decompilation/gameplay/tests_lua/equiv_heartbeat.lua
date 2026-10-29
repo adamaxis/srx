@@ -241,15 +241,9 @@ local function serialize_context_for_parity(context)
   return ser(comparable)
 end
 local function serialize_actor_states_for_parity(actors)
-  -- The split runtime caches the raw record slot on each persistent actor so
-  -- typed host slots can be checked against ROM records. The bfa3908 baseline
-  -- consumes source_record_slot from each heartbeat but does not cache it at
-  -- the actor root. Ignore only that root-level metadata extension here;
-  -- returned states, nested state, contexts, and service traces still compare.
   local comparable = deepcopy(actors)
   for _, state in pairs(comparable) do
     if type(state) == "table" then
-      state.source_record_slot = nil
       if type(state.action_timing) ~= "table" and
          type(state.delay_primary_attribute) == "number" then
         state.action_timing = {

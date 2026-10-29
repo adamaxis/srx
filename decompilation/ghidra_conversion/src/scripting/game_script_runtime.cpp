@@ -10495,12 +10495,6 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "source_default_item_action_profile");
     lua_pushboolean(state, context.world_activity_script_actor);
     lua_setfield(state, -2, "world_activity_script_actor");
-    if (context.source_record_slot.has_value()) {
-        lua_pushinteger(state, *context.source_record_slot);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "source_record_slot");
     lua_pushboolean(state, context.has_live_actor_record ||
                                context.live_field_actor ||
                                context.source_record_slot.has_value());
@@ -10766,8 +10760,7 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "target_selection_policy");
     const auto push_actor_candidates = [state, &push_combatant](
         const char* field,
-        const std::vector<ScriptActorTargetCandidate>& candidates,
-        const bool include_source_record_slot) {
+        const std::vector<ScriptActorTargetCandidate>& candidates) {
         lua_createtable(state, static_cast<int>(candidates.size()), 0);
         for (std::size_t index = 0; index < candidates.size(); ++index) {
             const auto& candidate = candidates[index];
@@ -10806,14 +10799,6 @@ GameScriptRuntime::actor_heartbeat(
             lua_setfield(state, -2, "direct_route_distance");
             lua_pushinteger(state, candidate.perpendicular_route_distance);
             lua_setfield(state, -2, "perpendicular_route_distance");
-            if (include_source_record_slot) {
-                if (candidate.source_record_slot.has_value()) {
-                    lua_pushinteger(state, *candidate.source_record_slot);
-                } else {
-                    lua_pushnil(state);
-                }
-                lua_setfield(state, -2, "source_record_slot");
-            }
             push_formation_position(state, "formation_position",
                                     candidate.formation_position);
             if (candidate.party_member_role.has_value()) {
@@ -10835,9 +10820,9 @@ GameScriptRuntime::actor_heartbeat(
         lua_setfield(state, -2, field);
     };
     push_actor_candidates("ai_target_candidates",
-                          context.ai_target_candidates, true);
+                          context.ai_target_candidates);
     push_actor_candidates("world_target_selection_candidates",
-                          context.world_target_selection_candidates, false);
+                          context.world_target_selection_candidates);
     lua_createtable(
         state, static_cast<int>(context.projectile_combat_targets.size()), 0);
     for (std::size_t index = 0U;
@@ -10846,8 +10831,6 @@ GameScriptRuntime::actor_heartbeat(
         lua_createtable(state, 0, 3);
         lua_pushlstring(state, target.id.data(), target.id.size());
         lua_setfield(state, -2, "id");
-        lua_pushinteger(state, target.source_record_slot);
-        lua_setfield(state, -2, "source_record_slot");
         push_combatant(target.combatant);
         lua_setfield(state, -2, "combatant");
         lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
@@ -11401,6 +11384,49 @@ GameScriptRuntime::actor_heartbeat(
         decision.selected_world_actor_id.has_value()) {
         return fail("actor_ai.heartbeat retained a stale selected actor");
     }
+    struct ResolvedCombatTarget {
+        std::uint8_t record_slot = 0;
+        const ScriptCombatantFacts* combatant = nullptr;
+        bool world_activity_actor = false;
+    };
+    const auto resolve_combat_target =
+        [&context, &actor_id](const std::string_view target_id,
+                              const bool allow_caster)
+        -> std::optional<ResolvedCombatTarget> {
+        if (allow_caster && target_id == actor_id &&
+            context.source_record_slot.has_value() &&
+            context.combatant.has_value()) {
+            return ResolvedCombatTarget{
+                *context.source_record_slot, &*context.combatant, false};
+        }
+        if (context.projectile_movement.has_value()) {
+            const auto target = std::find_if(
+                context.projectile_combat_targets.begin(),
+                context.projectile_combat_targets.end(),
+                [target_id](const auto& candidate) {
+                    return candidate.id == target_id;
+                });
+            if (target != context.projectile_combat_targets.end()) {
+                return ResolvedCombatTarget{
+                    target->source_record_slot, &target->combatant, false};
+            }
+            return std::nullopt;
+        }
+        const auto target = std::find_if(
+            context.ai_target_candidates.begin(),
+            context.ai_target_candidates.end(),
+            [target_id](const auto& candidate) {
+                return candidate.id == target_id &&
+                       candidate.source_record_slot.has_value() &&
+                       candidate.combatant.has_value();
+            });
+        if (target == context.ai_target_candidates.end()) {
+            return std::nullopt;
+        }
+        return ResolvedCombatTarget{
+            *target->source_record_slot, &*target->combatant,
+            target->world_activity_actor};
+    };
     lua_getfield(state, decision_table, "combat_meter_update");
     if (lua_type(state, -1) != LUA_TNIL) {
         if (!lua_istable(state, -1)) {
@@ -11410,12 +11436,9 @@ GameScriptRuntime::actor_heartbeat(
         ScriptCombatMeterUpdate update{};
         std::uint32_t combat_value = 0U;
         if (!read_field_string(state, update_table, "target_id",
-                               update.target_id) ||
-            !read_field_integer(state, update_table, "source_record_slot",
-                                0xFFU, combat_value)) {
+                               update.target_id)) {
             return fail("actor_ai.heartbeat returned incomplete combat target facts");
         }
-        update.source_record_slot = static_cast<std::uint8_t>(combat_value);
         if (!read_field_integer(state, update_table, "record_type",
                                 0xFFFFU, combat_value)) {
             return fail("actor_ai.heartbeat returned incomplete combat target facts");
@@ -11437,58 +11460,33 @@ GameScriptRuntime::actor_heartbeat(
                                 update.changed)) {
             return fail("actor_ai.heartbeat returned invalid combat meter flags");
         }
-        const ScriptCombatantFacts* target_combatant = nullptr;
-        bool target_is_world_actor = false;
+        const auto target = resolve_combat_target(update.target_id, true);
+        if (!target.has_value() || target->combatant == nullptr ||
+            target->combatant->record_type != update.record_type) {
+            return fail("actor_ai.heartbeat returned an unlinked combat target");
+        }
+        update.source_record_slot = target->record_slot;
+        const auto* target_combatant = target->combatant;
         bool target_linked = false;
         if (context.projectile_movement.has_value()) {
-            const auto target = std::find_if(
-                context.projectile_combat_targets.begin(),
-                context.projectile_combat_targets.end(),
-                [&update](const auto& candidate) {
-                    return candidate.id == update.target_id &&
-                           candidate.combatant.record_type ==
-                               update.record_type &&
-                           candidate.source_record_slot ==
-                               update.source_record_slot;
-                });
-            if (target != context.projectile_combat_targets.end()) {
-                target_combatant = &target->combatant;
-                target_linked =
-                    update.record_type < 3U
-                        ? update.source_record_slot < 3U
-                        : update.source_record_slot >= 3U;
-            }
+            target_linked = update.record_type < 3U
+                ? update.source_record_slot < 3U
+                : update.source_record_slot >= 3U;
             if (context.profile_id != "weapon_projectile" ||
                 context.phase != ScriptActorHeartbeatPhase::behavior ||
                 target_combatant == nullptr || !target_linked) {
                 return fail("weapon projectile returned an unlinked combat target");
             }
         } else {
-            const auto target = std::find_if(
-                context.ai_target_candidates.begin(),
-                context.ai_target_candidates.end(),
-                [&update](const auto& candidate) {
-                    return candidate.id == update.target_id &&
-                           candidate.source_record_slot.has_value() &&
-                           *candidate.source_record_slot ==
-                               update.source_record_slot &&
-                           candidate.combatant.has_value() &&
-                           candidate.combatant->record_type ==
-                               update.record_type;
-                });
-            if (target != context.ai_target_candidates.end()) {
-                target_combatant = &*target->combatant;
-                target_is_world_actor = target->world_activity_actor;
-                target_linked =
-                    (context.dynamic_world_encounter_actor ||
-                     context.player_melee_available) &&
-                    context.phase == ScriptActorHeartbeatPhase::behavior &&
-                    (update.record_type < 3U) != target_is_world_actor &&
-                    ((update.record_type < 3U &&
-                      update.source_record_slot < 3U) ||
-                     (update.record_type >= 3U &&
-                      update.source_record_slot >= 3U));
-            }
+            target_linked =
+                (context.dynamic_world_encounter_actor ||
+                 context.player_melee_available) &&
+                context.phase == ScriptActorHeartbeatPhase::behavior &&
+                (update.record_type < 3U) != target->world_activity_actor &&
+                ((update.record_type < 3U &&
+                  update.source_record_slot < 3U) ||
+                 (update.record_type >= 3U &&
+                  update.source_record_slot >= 3U));
             if (!target_linked) {
                 return fail("actor_ai.heartbeat returned an unlinked combat target");
             }
@@ -11531,15 +11529,10 @@ GameScriptRuntime::actor_heartbeat(
                                 resolution.untargeted) ||
             !read_field_integer(state, resolution_table,
                                 "field_effect_kind", 1U,
-                                field_effect_kind_value) ||
-            !read_field_integer(state, resolution_table,
-                                "source_record_slot", 0xFFU,
-                                resolution_value)) {
+                                field_effect_kind_value)) {
             return fail(
                 "actor_ai.heartbeat returned incomplete spell target facts");
         }
-        resolution.target_record_slot =
-            static_cast<std::uint8_t>(resolution_value);
         resolution.field_effect_kind =
             static_cast<ScriptActorSpellFieldEffectKind>(
                 field_effect_kind_value);
@@ -11550,6 +11543,17 @@ GameScriptRuntime::actor_heartbeat(
         }
         resolution.target_record_type =
             static_cast<std::uint16_t>(resolution_value);
+        const auto action_target = resolve_combat_target(
+            resolution.untargeted ? std::string_view(actor_id)
+                                  : std::string_view(resolution.target_id),
+            true);
+        if (!action_target.has_value() || action_target->combatant == nullptr ||
+            action_target->combatant->record_type !=
+                resolution.target_record_type) {
+            return fail(
+                "actor_ai.heartbeat returned an unlinked spell target");
+        }
+        resolution.target_record_slot = action_target->record_slot;
         if (!read_field_integer(state, resolution_table, "action_result",
                                 0xFFU, resolution_value) ||
             !read_field_boolean(state, resolution_table, "roll_attempted",
@@ -11876,19 +11880,25 @@ GameScriptRuntime::actor_heartbeat(
         }
         resolution.source_action_code = *source_action_code;
         if (!read_field_string(state, resolution_table, "target_id",
-                               resolution.target_id) ||
-            !read_field_integer(state, resolution_table,
-                                "source_record_slot", 0xFFU, value)) {
+                               resolution.target_id)) {
             return fail(
                 "actor_ai.heartbeat returned incomplete spell effect target facts");
         }
-        resolution.target_record_slot = static_cast<std::uint8_t>(value);
         if (!read_field_integer(state, resolution_table, "record_type",
                                 0xFFFFU, value)) {
             return fail(
                 "actor_ai.heartbeat returned incomplete spell effect target facts");
         }
         resolution.target_record_type = static_cast<std::uint16_t>(value);
+        const auto effect_target =
+            resolve_combat_target(resolution.target_id, true);
+        if (!effect_target.has_value() || effect_target->combatant == nullptr ||
+            effect_target->combatant->record_type !=
+                resolution.target_record_type) {
+            return fail(
+                "actor_ai.heartbeat returned an unlinked spell effect target");
+        }
+        resolution.target_record_slot = effect_target->record_slot;
         if (!read_field_integer(state, resolution_table, "target_trial_count",
                                 0xFFU, value)) {
             return fail(

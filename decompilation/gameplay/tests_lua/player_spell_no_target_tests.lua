@@ -119,8 +119,8 @@ for action_code = E.SpellActionCode.FLAME_DART,
         context.player_spell_id == "barrier"
     check(state.source_action_dispatch == "player_spell" and
           type(result) == "table" and result.untargeted and
-          result.target_id == "" and result.source_record_slot == 0,
-          string.format("action %d enters 0x1033E without fabricating a target",
+          result.target_id == "" and result.source_record_slot == nil,
+          string.format("action %d enters 0x1033E without a target slot",
                         action_code))
     check(result ~= nil and result.roll_attempted and
           result.action_result > 0 and result.effect_requested and

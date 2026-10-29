@@ -773,7 +773,6 @@ local function advance_spell_effect(state, context)
                 }
                 local target = {
                     id = heartbeat_actor_id(context),
-                    source_record_slot = context.source_record_slot,
                     combatant = context.combatant,
                 }
                 state.spell_effect_resolution =

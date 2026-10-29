@@ -582,9 +582,9 @@ local function resolve_spell_action(context, target, allow_untargeted)
        (not untargeted and
         (type(target) ~= "table" or
          type(target.combatant) ~= "table" or
-         type(target.id) ~= "string" or
-         type(target.source_record_slot) ~= "number")) or
-       (untargeted and type(context.source_record_slot) ~= "number") or
+         type(target.id) ~= "string" or target.id == "")) or
+       (untargeted and
+        (type(context.actor_id) ~= "string" or context.actor_id == "")) or
        type(context.ai_random_bound) ~= "function" or
        type(context.action_spell_id) ~= "string" then
         return nil
@@ -602,8 +602,6 @@ local function resolve_spell_action(context, target, allow_untargeted)
     local result = {
         spell_id = context.action_spell_id,
         target_id = not untargeted and target.id or "",
-        source_record_slot = not untargeted and target.source_record_slot or
-            context.source_record_slot,
         record_type = defender and defender.record_type or attacker.record_type,
         untargeted = untargeted,
         field_effect_kind = SpellEffectKind.NONE,
@@ -781,7 +779,6 @@ function Combat.resolve_spell_impact(context, pending, target)
        type(pending.target_id) ~= "string" or
        type(target.id) ~= "string" or
        target.id == "" or
-       type(target.source_record_slot) ~= "number" or
        target.id ~= pending.target_id then
         return nil
     end
@@ -799,7 +796,6 @@ function Combat.resolve_spell_impact(context, pending, target)
     local result = {
         spell_id = pending.spell_id,
         target_id = target.id,
-        source_record_slot = target.source_record_slot,
         record_type = defender.record_type,
         target_trial_count = 0,
         difficulty = 2,
@@ -965,7 +961,6 @@ function Combat.resolve_default_bonus_action(context, target)
         context.ai_random_bound)
     local result = {
         target_id = target.id,
-        source_record_slot = target.source_record_slot,
         record_type = defender.record_type,
         physical_meter = defender.physical_meter,
         mental_meter = defender.mental_meter,
@@ -1117,7 +1112,6 @@ function Combat.resolve_reaction(context, target)
         target, defender, physical_meter, mental_meter)
     return {
         target_id = target.id,
-        source_record_slot = target.source_record_slot,
         record_type = defender.record_type,
         physical_meter = physical_meter,
         mental_meter = mental_meter,
@@ -1309,8 +1303,7 @@ function Combat.resolve_weapon_hit(context, projectile, target)
     if type(context) ~= "table" or type(projectile) ~= "table" or
        type(target) ~= "table" or type(target.combatant) ~= "table" or
        type(context.ai_random_bound) ~= "function" or
-       type(target.id) ~= "string" or
-       type(target.source_record_slot) ~= "number" then
+       type(target.id) ~= "string" or target.id == "" then
         return nil
     end
     local source_action = source_weapon_action(context.projectile_action_id)
@@ -1333,7 +1326,6 @@ function Combat.resolve_weapon_hit(context, projectile, target)
         target, defender, physical_meter, mental_meter)
     return {
         target_id = target.id,
-        source_record_slot = target.source_record_slot,
         record_type = defender.record_type,
         physical_meter = physical_meter,
         mental_meter = mental_meter,

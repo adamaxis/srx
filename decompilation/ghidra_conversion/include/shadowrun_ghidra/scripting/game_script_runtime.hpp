@@ -1245,6 +1245,7 @@ struct ScriptActorSpellEffectResolution {
 
 struct ScriptProjectileCombatTarget {
     std::string id;
+    // Native record link used to apply Lua's ID-keyed combat result.
     std::uint8_t source_record_slot = 0;
     ScriptCombatantFacts combatant;
 };
@@ -1647,6 +1648,8 @@ struct ScriptActorTargetCandidate {
     // 0xB574 uses it to select the actor's per-pass displacement table.
     std::uint16_t direct_route_distance = 0;
     std::uint16_t perpendicular_route_distance = 0;
+    // Native link used by the field adapter when Lua returns this candidate's
+    // stable ID. The bridge does not serialize the source position.
     std::optional<std::uint8_t> source_record_slot;
     std::optional<ScriptCombatantFacts> combatant;
     // ROM 0x141E8 reads the linked record's +0x2E heading before jumping to
@@ -1754,6 +1757,7 @@ struct ScriptActorBehaviorContext {
     // ROM world-activity script lists may create non-encounter actors in the
     // same runtime pool. Keep that provenance explicit for Lua profile rules.
     bool world_activity_script_actor = false;
+    // Native record link for result validation and host-side updates only.
     std::optional<std::uint8_t> source_record_slot;
     // ROM actor +0x3E: 0x44BC copies FFDD40 for scene actors and 0x42CC
     // initializes runner records to 0..2 [C]. Retained for native validation;
