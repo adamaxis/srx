@@ -633,6 +633,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_npc_item_action_qa
                  --field-npc-item-action-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-npc-item-action-qa")
 
+# Exercise the matched default-list corp-guard template through the shared
+# item spawn, ammo, audio, C042 pose, and full-screen renderer paths.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_default_guard_item_action_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-default-guard-item-action-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-default-guard-item-action-qa")
+
 # Force Scene 0's ROM sum-0 encounter list, place its source Hell Hound inside
 # the close-target band, and review the complete screen through phase 4 release.
 add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hound_close_effect_qa

@@ -400,6 +400,10 @@ public:
         std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_source_action_ammo_for_dump(
         std::uint16_t source_order) const noexcept;
+    std::optional<std::uint8_t> default_actor_source_action_slot_for_dump(
+        std::uint16_t source_order) const noexcept;
+    std::optional<std::uint8_t> default_actor_source_action_counter_for_dump(
+        std::uint16_t source_order) const noexcept;
     std::optional<std::uint16_t>
     default_actor_source_animation_selector_for_dump(
         std::uint16_t source_order) const noexcept;
@@ -421,6 +425,8 @@ public:
                !menu_reveal_masks_pending_.empty() || !menu_reveal_masks_.empty();
     }
 #ifdef SHADOWRUN_QT_QA_DRIVER
+    bool schedule_default_actor_world_activity_for_dump(
+        std::uint16_t source_order);
     bool field_alarm_active_for_dump() const noexcept {
         return field_matrix_field_state_.alarm.value_or(false);
     }
@@ -1769,7 +1775,7 @@ private:
     bool retire_dialogue_escort_records();
     void publish_pending_world_activity_script_actors(
         std::uint16_t scene_reference);
-    void service_dynamic_actor_weapon_action(
+    void service_source_actor_weapon_action(
         DefaultFieldActorPresentation& actor,
         const scripting::ScriptActorBehaviorContext& context,
         const scripting::ScriptActorBehaviorDecision& decision);
@@ -2024,6 +2030,9 @@ private:
         // Source-default profiles that use the dynamic combat behavior path
         // while retaining their default-list record identity and lifetime.
         bool source_default_dynamic_profile = false;
+        // Routed default-list corp guards retain ordinary patrol policy while
+        // using their matching ROM item-template action facts.
+        bool source_default_item_action_profile = false;
         std::uint16_t source_animation_selector = 0;
         std::optional<scripting::ScriptActorItemSpawnResult>
             source_item_spawn_result;

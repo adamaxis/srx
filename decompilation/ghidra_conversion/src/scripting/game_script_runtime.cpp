@@ -9205,6 +9205,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "movement_heading_override");
     lua_pushboolean(state, context.dynamic_world_encounter_actor);
     lua_setfield(state, -2, "dynamic_world_encounter_actor");
+    lua_pushboolean(state, context.source_default_item_action_profile);
+    lua_setfield(state, -2, "source_default_item_action_profile");
     lua_pushboolean(state, context.world_activity_script_actor);
     lua_setfield(state, -2, "world_activity_script_actor");
     if (context.source_record_slot.has_value()) {
@@ -10805,8 +10807,9 @@ GameScriptRuntime::actor_heartbeat(
         world_combat_record && decision.animation_id == "hurt";
     const bool dynamic_creature_down =
         world_combat_record && decision.animation_id == "down";
-    const bool dynamic_item_action =
-        context.dynamic_world_encounter_actor &&
+    const bool source_item_action =
+        (context.dynamic_world_encounter_actor ||
+         context.source_default_item_action_profile) &&
         context.action_kind == ScriptActorActionKind::item &&
         decision.animation_id == "weapon";
     if ((decision.animation_id == "walk" ||
@@ -10856,7 +10859,7 @@ GameScriptRuntime::actor_heartbeat(
         }
     }
     if (decision.animation_id == "weapon" &&
-        (!dynamic_item_action ||
+        (!source_item_action ||
          (decision.source_animation_selector & 0x7FFFU) !=
              static_cast<std::uint16_t>(0x40U + decision.direction * 4U))) {
         return fail("actor_ai.heartbeat returned an unsupported C042 item-action pose");
@@ -11334,10 +11337,14 @@ GameScriptRuntime::actor_heartbeat(
              (player_melee_label && context.player_melee_available)) &&
             !context.dynamic_world_encounter_actor &&
             context.phase == ScriptActorHeartbeatPhase::behavior;
+        const bool default_item_action_label_matches =
+            context.source_default_item_action_profile && item_context &&
+            context.phase == ScriptActorHeartbeatPhase::behavior;
         if (player_label_matches) {
             // Field-player 0xAE6E dispatch; validated below.
         } else if (!label_matches ||
-            !context.dynamic_world_encounter_actor ||
+            (!context.dynamic_world_encounter_actor &&
+             !default_item_action_label_matches) ||
             context.phase != ScriptActorHeartbeatPhase::behavior) {
             return fail("actor_ai.heartbeat returned an invalid action dispatch");
         }

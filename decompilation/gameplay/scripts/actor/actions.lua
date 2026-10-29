@@ -23,11 +23,12 @@ local source_action_delay = Delay.actor_action_delay
 
 local function advance_source_action_delay(state, context)
     if context.phase ~= "behavior" or
-       not context.dynamic_world_encounter_actor then
+       (not context.dynamic_world_encounter_actor and
+        type(context.source_record_slot) ~= "number") then
         return
     end
-    -- ROM 0xA8EA decrements active actor +0xDC once before the actor-service
-    -- continuation, while the value is nonnegative.
+    -- ROM 0xA8EA decrements +0xDC for every active source record once before
+    -- the actor-service continuation, while the value is nonnegative.
     if state.action_delay >= 0 then
         state.action_delay = state.action_delay - 1
     end

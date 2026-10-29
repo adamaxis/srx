@@ -1558,6 +1558,9 @@ struct ScriptActorBehaviorContext {
     // host does not infer a target from screen proximity. This includes
     // source-default actors that use an extracted dynamic combat profile.
     bool dynamic_world_encounter_actor = false;
+    // Narrowly validates item-action results for routed default-list actors
+    // that keep their static profile policy.
+    bool source_default_item_action_profile = false;
     // ROM default-list template facts. Lua decides whether these identify a
     // pedestrian with a usable +0xE0/+0xE4 route.
     std::optional<std::uint16_t> source_actor_template_kind;

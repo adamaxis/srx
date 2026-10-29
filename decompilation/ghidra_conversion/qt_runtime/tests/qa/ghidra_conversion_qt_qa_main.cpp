@@ -3757,6 +3757,246 @@ int run_field_npc_item_action_qa(
     return 0;
 }
 
+int run_field_default_guard_item_action_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& asset_root,
+    const std::filesystem::path& output,
+    const std::vector<std::uint16_t>& field_audio_events,
+    const std::vector<std::string>& source_boundaries) {
+    constexpr std::uint16_t kScene = 20U;
+    constexpr std::uint16_t kGuardOrder = 2U;
+    constexpr SceneRunnerPosition kGuardPosition{0x0800U, 0x3500U};
+    constexpr SceneRunnerPosition kRunnerPosition{0x0880U, 0x3500U};
+    constexpr std::size_t kMaximumFrames = 1800U;
+
+    // ROM default list 0x1D91DA routes order 2 through 0x1D925C with template
+    // 0x1D6A1C at (0x0800,0x3500); 0x44BC copies its item/ammo fields. [C]
+
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "Default corp-guard item-action QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(output, error);
+    if (error || !field_scene.seed_current_run_for_dump(0U)) {
+        std::cerr << "Default corp-guard item-action QA: could not prepare "
+                     "the new-run scene state\n";
+        return 3;
+    }
+    field_scene.seed_conditional_actor_effect_facts_for_dump(
+        false, false, 0U, 0U);
+    field_scene.set_world_effect_player_spawn_pending_for_dump(false);
+    field_scene.set_field_entity_world_position_for_dump(0x5000U, 0x7000U);
+    field_scene.set_source_random_seed_for_dump(0U);
+    if (!field_scene.reenter_field_scene_for_dump(kScene)) {
+        std::cerr << "Default corp-guard item-action QA: Scene 20 entry failed: "
+                  << field_scene.failure() << '\n';
+        return 3;
+    }
+    field_scene.set_field_world_frame_counter_for_dump(400U);
+    field_scene.set_source_random_seed_for_dump(0U);
+    field_scene.set_field_entity_world_position_for_dump(
+        kRunnerPosition.x, kRunnerPosition.y);
+    field_scene.set_field_camera_world_position_for_dump(0U, 0x2D00U);
+
+    const auto profile = field_scene.default_actor_script_profile_for_dump(
+        kGuardOrder);
+    const auto slot = field_scene.default_actor_record_slot_for_dump(
+        kGuardOrder);
+    const auto item = field_scene.default_actor_weapon_item_for_dump(
+        kGuardOrder);
+    const auto action_slot =
+        field_scene.default_actor_source_action_slot_for_dump(kGuardOrder);
+    const auto action_counter =
+        field_scene.default_actor_source_action_counter_for_dump(kGuardOrder);
+    const auto ammo_before =
+        field_scene.default_actor_source_action_ammo_for_dump(kGuardOrder);
+    const auto guard_positions =
+        field_scene.active_default_actor_positions_for_dump();
+    const auto ready = render_qa_field(field_scene);
+    const auto save = [&output](const std::string& name,
+                                const QImage& image) {
+        return image.save(QString::fromStdWString(
+            (output / std::filesystem::path(name)).wstring()));
+    };
+    if (field_scene.field_scene_reference_for_dump() != kScene ||
+        profile != std::optional<std::string>{"corp_guard_k05_item06"} ||
+        slot != std::optional<FieldWorldActorSlot>{FieldWorldActorSlot::slot_5} ||
+        item != std::optional<std::uint8_t>{6U} ||
+        action_slot != std::optional<std::uint8_t>{0U} ||
+        action_counter != std::optional<std::uint8_t>{0U} ||
+        ammo_before != std::optional<std::uint8_t>{18U} ||
+        guard_positions.size() <= kGuardOrder ||
+        guard_positions[kGuardOrder].x != kGuardPosition.x ||
+        guard_positions[kGuardOrder].y != kGuardPosition.y ||
+        field_scene.visible_default_actor_count_for_dump() == 0U ||
+        ready.isNull() || !save("guard-ready.bmp", ready) ||
+        !field_hud_chrome_survives(ready, asset_root)) {
+        std::cerr << "Default corp-guard item-action QA: Scene 20 template "
+                     "action facts or initial view differ from ROM data; "
+                  << "profile=" << profile.value_or("<missing>")
+                  << " item=" << (item ? std::to_string(*item) : "<missing>")
+                  << " action_slot="
+                  << (action_slot ? std::to_string(*action_slot) : "<missing>")
+                  << " ammo="
+                  << (ammo_before ? std::to_string(*ammo_before) : "<missing>")
+                  << '\n';
+        return 3;
+    }
+
+    // This QA seeds the source FFDF84/FFDF86 world-activity timeout to enter
+    // the existing combat action window. Guard hostility acquisition remains
+    // a separate behavior path and is not implied by this action-chain check.
+    if (!field_scene.schedule_default_actor_world_activity_for_dump(
+            kGuardOrder) ||
+        field_scene.world_activity_timeout_for_dump().timeout_marker >= 0) {
+        std::cerr << "Default corp-guard item-action QA: source action window "
+                     "could not be seeded\n";
+        return 3;
+    }
+
+    const auto projectile_prefix =
+        std::string{"field.actor.weapon_projectile_spawned:field_scene_20_actor_"} +
+        std::to_string(kGuardOrder);
+    const auto first_boundary = source_boundaries.size();
+    const auto first_audio = field_audio_events.size();
+    std::uint16_t projectile_frame = 0U;
+    for (std::uint16_t frame = 1U; frame <= kMaximumFrames; ++frame) {
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+        const auto spawned = static_cast<std::size_t>(std::count_if(
+            source_boundaries.begin() +
+                static_cast<std::ptrdiff_t>(first_boundary),
+            source_boundaries.end(), [&projectile_prefix](const auto& boundary) {
+                return boundary == projectile_prefix;
+            }));
+        if (spawned != 0U) {
+            projectile_frame = frame;
+            break;
+        }
+    }
+
+    const auto trace_path = output / "guard-item-action-boundaries.tsv";
+    {
+        std::ofstream trace(trace_path, std::ios::binary);
+        trace << "boundary_index\tboundary\n";
+        for (std::size_t index = first_boundary;
+             index < source_boundaries.size(); ++index) {
+            trace << index << '\t' << source_boundaries[index] << '\n';
+        }
+        if (!trace) {
+            std::cerr << "Default corp-guard item-action QA: could not write "
+                      << trace_path.string() << '\n';
+            return 3;
+        }
+    }
+    if (projectile_frame == 0U) {
+        std::cerr << "Default corp-guard item-action QA: no 0x1514E "
+                     "projectile spawn within " << kMaximumFrames
+                  << " frames; target="
+                  << field_scene.default_actor_ai_target_id_for_dump(
+                         kGuardOrder).value_or("<missing>")
+                  << " package="
+                  << field_scene.default_actor_ai_package_for_dump(
+                         kGuardOrder).value_or("<missing>")
+                  << " target_pool=";
+        const auto target_pool =
+            field_scene.default_actor_has_ai_target_pool_for_dump(kGuardOrder);
+        std::cerr << (target_pool ? (*target_pool ? "yes" : "no")
+                                  : "<missing>")
+                  << " transition=";
+        const auto transition_complete =
+            field_scene.default_actor_transition_complete_for_dump(
+                kGuardOrder);
+        std::cerr << (transition_complete
+                          ? (*transition_complete ? "complete" : "pending")
+                          : "<missing>")
+                  << " world_active="
+                  << field_scene.world_frame_logic_for_dump().world_active
+                  << " timeout="
+                  << field_scene.world_activity_timeout_for_dump().timeout_marker
+                  << " distance=";
+        const auto distance =
+            field_scene.default_actor_ai_target_distance_for_dump(kGuardOrder);
+        std::cerr << (distance ? std::to_string(*distance) : "<missing>")
+                  << " ammo=";
+        const auto ammo = field_scene.
+            default_actor_source_action_ammo_for_dump(kGuardOrder);
+        std::cerr << (ammo ? std::to_string(*ammo) : "<missing>")
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    const auto ammo_at_projectile =
+        field_scene.default_actor_source_action_ammo_for_dump(kGuardOrder);
+    bool weapon_pose_seen = false;
+    bool weapon_pose_capture_saved = false;
+    QImage actual = render_qa_field(field_scene);
+    const bool projectile_capture_saved = save("actual.bmp", actual);
+    std::uint16_t weapon_pose_frame = projectile_frame;
+    for (std::uint16_t offset = 0U; offset <= 32U; ++offset) {
+        if (field_scene.default_actor_animation_id_for_dump(kGuardOrder) ==
+            std::optional<std::string>{"weapon"}) {
+            weapon_pose_seen = true;
+            actual = render_qa_field(field_scene);
+            weapon_pose_capture_saved = save("weapon-action-start.bmp", actual);
+            weapon_pose_frame = static_cast<std::uint16_t>(
+                projectile_frame + offset);
+            break;
+        }
+        field_scene.set_controller_port_byte(0U);
+        field_scene.advance_frame();
+    }
+    const auto selector =
+        field_scene.default_actor_source_animation_selector_for_dump(
+            kGuardOrder);
+    const auto ammo_after = ammo_at_projectile;
+    // ROM 0x1514E selects item 6's 0x51 from 0x15318; 0xB39A installs the
+    // directional kind-5 C042 list at 0x8134. [C]
+    const auto action_audio_count = static_cast<std::size_t>(std::count(
+        field_audio_events.begin() + static_cast<std::ptrdiff_t>(first_audio),
+        field_audio_events.end(), 0x0051U));
+    if (!projectile_capture_saved || !weapon_pose_seen ||
+        !weapon_pose_capture_saved || actual.isNull() ||
+        !field_hud_chrome_survives(actual, asset_root) ||
+        ammo_after != std::optional<std::uint8_t>{17U} ||
+        !selector.has_value() || (*selector & 0x7FFFU) < 0x0040U ||
+        (*selector & 0x7FFFU) > 0x005FU ||
+        ((*selector & 0x0003U) != 0U) || action_audio_count != 1U) {
+        std::cerr << "Default corp-guard item-action QA: item spawn did not "
+                     "publish ammo, C042 pose, and sound; ammo="
+                  << (ammo_after ? std::to_string(*ammo_after) : "<missing>")
+                  << " selector=";
+        if (selector) {
+            std::cerr << "0x" << std::hex << *selector << std::dec;
+        } else {
+            std::cerr << "<missing>";
+        }
+        std::cerr << " event_0x51_count=" << action_audio_count
+                  << " scene=" << field_scene.field_scene_reference_for_dump()
+                  << " actors=" << field_scene.default_actor_count_for_dump()
+                  << " animation="
+                  << field_scene.default_actor_animation_id_for_dump(kGuardOrder)
+                         .value_or("<missing>")
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    std::cout << "field_default_guard_item_action_qa=passed scene=20 "
+              << "source_order=" << kGuardOrder << " slot=5 item=6 "
+              << "action_slot=0 counter=0 ammo=18->"
+              << static_cast<unsigned>(*ammo_after)
+              << " projectile_frame=" << projectile_frame
+              << " weapon_pose_frame=" << weapon_pose_frame
+              << " selector=0x" << std::hex << *selector << std::dec
+              << " event_0x51_count=" << action_audio_count
+              << " world_activity=QA-seeded actual="
+              << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
 int run_field_hound_close_effect_qa(
     FieldSceneRuntime& field_scene,
     const StartupIntegrationState& startup_state,
@@ -36771,6 +37011,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_npc_item_action_qa_path;
         std::optional<std::filesystem::path>
+            field_default_guard_item_action_qa_path;
+        std::optional<std::filesystem::path>
             field_hound_close_effect_qa_path;
         std::optional<std::filesystem::path>
             field_spell_effect_qa_path;
@@ -37170,6 +37412,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_npc_item_action_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-default-guard-item-action-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_default_guard_item_action_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -42892,6 +43141,12 @@ int main(int argc, char** argv) {
             if (field_npc_item_action_qa_path.has_value()) {
                 return run_field_npc_item_action_qa(
                     field_scene, asset_root, *field_npc_item_action_qa_path,
+                    field_audio_events, field_source_boundaries);
+            }
+            if (field_default_guard_item_action_qa_path.has_value()) {
+                return run_field_default_guard_item_action_qa(
+                    field_scene, asset_root,
+                    *field_default_guard_item_action_qa_path,
                     field_audio_events, field_source_boundaries);
             }
             if (field_redmond_vigore_search_qa_path.has_value()) {

@@ -640,6 +640,32 @@ split, and open movement/collision branches are recorded in
 No new visual correctness claim is made from the old screenshots, and an
 independent Genesis match is still unavailable.
 
+### Scene-20 default corp-guard item action (partial, 2026-10-28)
+
+ROM list `0x1D91DA` routes Scene-20 order 2 through waypoint list `0x1D925C`
+with corp-guard template `0x1D6A1C` at `(0x0800,0x3500)`. `0x44BC` copies the
+template's item/ammunition fields; `0xA8EA` advances the source action delay;
+`0x13FFE` selects the linked target before the item branch; `0x1514E` spends
+the round and requests the item sound; `0x15318` maps item 6 to event `0x51`;
+`0xB39A` installs the directional C042 pose, whose kind-5 list at `0x8134` is
+finite with one frame and rate `0x80`. [C]
+
+The runtime recognizes only a matched, armed default-list guard profile for
+this added path and leaves its waypoint/patrol profile active. Debug/Release
+`shadowrun_ghidra_conversion_qt_field_default_guard_item_action_qa` verifies
+template item 6, slot 0, ammo 18->17, one projectile spawn, event `0x51`, and
+the directional C042 selector. It writes `guard-ready.bmp`, shot-time
+`actual.bmp`, and `weapon-action-start.bmp` under
+`qt_runtime/field-default-guard-item-action-qa`; the last image is captured
+at the same service frame as the projectile (`projectile_frame=17` and
+`weapon_pose_frame=17` in current Debug/Release runs), so both BMP hashes
+match. They show the host's C042 pose but are internal captures, not an
+independent Genesis match. The test seeds FFDF84/FFDF86 to enter the action
+window, so it does not establish natural guard hostility acquisition. Target
+collision, hit/status/damage, and an independent Genesis firing image/audio
+comparison remain open; this is a partial gameplay path, not a defended
+combat hill.
+
 ## Live-route reachability check
 
 The `0x13` result is a source mode-table result, not an ordinary scene-entry

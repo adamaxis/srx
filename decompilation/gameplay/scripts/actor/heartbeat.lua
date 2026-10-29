@@ -340,7 +340,21 @@ function ActorAI.heartbeat(context)
                         -- Lua's typed patrol/follow destination remains active
                         -- here while the source continuation advances it [C].
                         R.requested_movement_heading(context, profile, state)
-                        local target = R.retained_linked_target(context, state)
+                        local target
+                        if context.action_kind == ActionKind.item or
+                           context.action_kind == ActionKind.spell then
+                            -- ROM 0x13FFE selects the linked source record
+                            -- before dispatch. Routed default-list item actors
+                            -- do not enter the dynamic-movement selector.
+                            target = R.linked_target(context, state)
+                            if type(target) == "table" then
+                                state.ai_target_id = target.id
+                                state.ai_target_heading = target.heading
+                                state.ai_target_distance = target.distance
+                            end
+                        else
+                            target = R.retained_linked_target(context, state)
+                        end
                         if context.action_kind == ActionKind.spell then
                             -- Negative +0x56 never enters 0x14C7C / 0xB1DC.
                             state.ai_target_engaged = false

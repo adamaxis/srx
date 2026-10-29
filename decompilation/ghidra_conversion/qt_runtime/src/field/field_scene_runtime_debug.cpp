@@ -1643,6 +1643,70 @@ FieldSceneRuntime::default_actor_source_action_ammo_for_dump(
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<std::uint8_t>
+FieldSceneRuntime::default_actor_source_action_slot_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active && candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+               ? std::nullopt
+               : std::optional<std::uint8_t>{actor->source_action_slot};
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+std::optional<std::uint8_t>
+FieldSceneRuntime::default_actor_source_action_counter_for_dump(
+    const std::uint16_t source_order) const noexcept {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active && candidate.source_order == source_order;
+        });
+    return actor == field_default_actors_.end()
+               ? std::nullopt
+               : std::optional<std::uint8_t>{actor->source_action_counter};
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
+bool FieldSceneRuntime::schedule_default_actor_world_activity_for_dump(
+    const std::uint16_t source_order) {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    const auto actor = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [scene_reference, source_order](
+            const DefaultFieldActorPresentation& candidate) {
+            return candidate.scene_reference == scene_reference &&
+                   candidate.active && candidate.source_order == source_order &&
+                   candidate.source_default_item_action_profile;
+        });
+    if (actor == field_default_actors_.end() ||
+        !schedule_world_activity_timeout(field_world_activity_timeout_state_)) {
+        return false;
+    }
+    // QA seeds the same FFDF84/FFDF86 window used by the source combat path.
+    world_frame_logic_state_.world_active = static_cast<std::uint16_t>(
+        field_world_activity_timeout_state_.timeout_marker);
+    world_frame_logic_state_.cleanup_countdown = static_cast<std::int16_t>(
+        field_world_activity_timeout_state_.timeout_frames);
+    return true;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint16_t>
 FieldSceneRuntime::default_actor_source_animation_selector_for_dump(
     const std::uint16_t source_order) const noexcept {
