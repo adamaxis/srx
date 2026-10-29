@@ -2008,6 +2008,7 @@ private:
         std::optional<FieldWorldActorSlot> source_record_slot;
         std::uint16_t entity_kind = 0;
         std::string actor_instance_id;
+        std::string world_activity_id;
         std::string script_profile_id;
         scripting::ScriptActorActionKind action_kind =
             scripting::ScriptActorActionKind::none;

@@ -3224,6 +3224,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
 
                     scripting::ScriptWorldActivityActor actor{};
                     actor.scene_id = scene_reference;
+                    actor.activity_id = candidate->candidate_id;
                     actor.script_index = -1;
                     actor.source_order = 0U;
                     actor.list_offset = candidate->list_offset;
@@ -3439,8 +3440,6 @@ void FieldSceneRuntime::initialize_default_field_actors(
         context.source_actor_template_kind = actor.entity_kind;
         context.source_actor_has_waypoint_data =
             actor.source_actor_has_waypoint_data;
-        context.source_actor_list_offset = actor.list_offset;
-        context.source_actor_source_order = actor.source_order;
         context.movement_scene_id = scene_reference;
         context.combatant = actor.combatant;
         context.source_actor_posture = actor.combatant.posture;
@@ -3633,6 +3632,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             std::distance(occupied_actor_slots.begin(), actor_slot) + 3);
         actor.entity_kind = source_actor.entity_kind;
         actor.actor_instance_id = actor_instance_id;
+        actor.world_activity_id = source_actor.activity_id;
         actor.script_profile_id = source_actor.profile_id;
         actor.action_kind = source_actor.action_kind;
         actor.initial_action_code = source_actor.action_code;
@@ -3707,8 +3707,6 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         context.dynamic_world_encounter_actor = true;
         context.world_activity_script_actor =
             actor.world_activity_script_actor;
-        context.source_actor_list_offset = actor.list_offset;
-        context.source_actor_source_order = actor.source_order;
         context.combatant = actor.combatant;
         context.source_actor_posture = actor.combatant.posture;
         context.source_record_flags = actor.source_record_flags;
@@ -3971,10 +3969,6 @@ void FieldSceneRuntime::advance_default_field_actors(
                 // ROM 0x1A342 returns pool slots 3..9 in d0; 0x44BC copies
                 // that exact value from FFDD40 to actor +0x3E [C].
                 context.source_actor_slot = source_slot;
-            }
-            if (actor.list_offset != 0U) {
-                context.source_actor_list_offset = actor.list_offset;
-                context.source_actor_source_order = actor.source_order;
             }
             context.source_world_x = actor.world_position.x;
             context.source_world_y = actor.world_position.y;
@@ -4999,18 +4993,21 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                       const bool pending_effect_handler =
                           world.handler == EntityPairActivityHandler::
                               pending_world_effect_collision;
-                      const auto contact_route = game_scripts_.call_integers(
-                          "world_content", "field_actor_contact_task",
-                          {static_cast<std::int64_t>(scene_reference),
-                           static_cast<std::int64_t>(actor.list_offset),
-                           static_cast<std::int64_t>(actor.source_order),
-                           world_effect_handler ? 1 : 0,
-                           pending_effect_handler ? 1 : 0});
-                      if (!contact_route || contact_route->size() != 2U ||
-                          contact_route->front() < 0 ||
-                          contact_route->front() > 3 ||
-                          contact_route->at(1U) < 0 ||
-                          contact_route->at(1U) > 1) {
+                      auto contact_handler =
+                          scripting::ScriptFieldActorContactHandler::ordinary;
+                      if (world_effect_handler) {
+                          contact_handler = scripting::
+                              ScriptFieldActorContactHandler::world_effect;
+                      } else if (pending_effect_handler) {
+                          contact_handler = scripting::
+                              ScriptFieldActorContactHandler::
+                                  pending_world_effect;
+                      }
+                      const auto contact_task =
+                          game_scripts_.field_actor_contact_task(
+                              scene_reference, actor.actor_instance_id,
+                              actor.world_activity_id, contact_handler);
+                      if (!contact_task.has_value()) {
                           failure_ = game_scripts_.failure().empty()
                               ? "Lua field actor contact route is invalid"
                               : game_scripts_.failure();
@@ -5018,9 +5015,10 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                               "field.world_activity.contact_route_failed");
                           return;
                       }
-                      const auto contact_task = contact_route->front();
-                      if ((contact_task == 1 || contact_task == 2) &&
-                          contact_route->at(1U) == 1) {
+                      if (*contact_task == scripting::
+                              ScriptFieldActorContactAction::aragorn_contact ||
+                          *contact_task == scripting::
+                              ScriptFieldActorContactAction::ilene_activity) {
                           // Lua reports the escort relationship as a semantic
                           // fact. Merge it at the native actor boundary.
                           actor.source_behavior_flags =
@@ -5034,7 +5032,8 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                       begin_world_activity(field_world_activity_state_, 0U);
                       world_frame_logic_state_.resource_countdown =
                           field_world_activity_state_.timeout;
-                      if (contact_task == 0) {
+                      if (*contact_task == scripting::
+                              ScriptFieldActorContactAction::start_activity) {
                           // Ordinary +0x9E bit-3 contacts start the shared
                           // activity and retain their +0xB0 one-shot state;
                           // only the story lists open dialogue here.
@@ -5048,21 +5047,26 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                       std::string_view speaker;
                       std::string_view text_profile = "field.world_event";
                       std::string_view opened_boundary;
-                      if (contact_task == 1) {
+                      if (*contact_task == scripting::
+                              ScriptFieldActorContactAction::aragorn_contact) {
                           module = "salish_owlfeather";
                           task = "present_mitsuhama_contact";
                           location = "mitsuhama_aragorn";
                           speaker = "aragorn_mitsuhama_contact";
                           opened_boundary =
                               "field.world_activity.aragorn_contact_opened";
-                      } else if (contact_task == 2) {
+                      } else if (*contact_task == scripting::
+                                     ScriptFieldActorContactAction::
+                                         ilene_activity) {
                           module = "ilene";
                           task = "complete_scene_20_activity";
                           location = "scene_20_ilene";
                           speaker = "field_narrator";
                           opened_boundary =
                               "field.world_activity.ilene_contact_opened";
-                      } else if (contact_task == 3) {
+                      } else if (*contact_task == scripting::
+                                     ScriptFieldActorContactAction::
+                                         random_pedestrian_contact) {
                           // ROM 0xA800's random-pedestrian gate guarantees
                           // FFFBED=5; its 0x1F146 callback sets FFFC1C bit 0.
                           // Preserve the independent bit-7 scene-reset fact.
@@ -5103,7 +5107,9 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                       // 0x1E43C request scan. The story-contact handlers have
                       // their own 0x1E514 cleanup after their dialogue.
                       field_contact_actor_cleanup_pending_ =
-                          contact_task != 3;
+                          *contact_task != scripting::
+                              ScriptFieldActorContactAction::
+                                  random_pedestrian_contact;
                   }});
              current.activity_flags = current_entity.activity_flags;
              candidate.activity_flags = candidate_entity.activity_flags;
@@ -5179,10 +5185,6 @@ bool FieldSceneRuntime::retire_dialogue_escort_records() {
             *actor.source_record_slot);
         context.source_actor_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
-        if (actor.list_offset != 0U) {
-            context.source_actor_list_offset = actor.list_offset;
-            context.source_actor_source_order = actor.source_order;
-        }
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_behavior_flags = actor.source_behavior_flags;

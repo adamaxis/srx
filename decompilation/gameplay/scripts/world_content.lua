@@ -4,9 +4,9 @@
 -- game.content.entities; this module joins those records for map scripts.
 local World = {}
 local conditional_actor_selection_variant = nil
-local E = require("enums")
 local mode_one_activity_actor_lists =
     require("data.mode_one_activity_actor_lists")
+local field_actor_contacts = require("data.field_actor_contacts")
 local valid_field_scene_modes = {
     none = true,
     street = true,
@@ -563,83 +563,65 @@ function World.resolve_conditional_actor_selection(
     return result("none", "")
 end
 
--- Resolve coordinator-installed lists through their extracted transient
--- marker gates. Lists without typed gates remain owned by their route.
--- ROM 0xECCC consumes the special actor's one-shot contact bit, then selects
--- 0x53C90 for the active FFE180 list or 0x54402 for the pending FFE182 list.
--- The source list comes from the extracted actor row; the host supplies the
--- handler selected by that ordered ROM branch.
+-- [C] ROM 0xED60 selects generic callback 0x1F146, while 0xECCC handles the
+-- higher-priority world-activity branches. The extracted IDs below correspond
+-- to source lists 0xA8AE and 0xA8CC. The host resolves those source branches
+-- and passes their semantic handler here; Lua never consumes those addresses.
 function World.field_actor_contact_task(
-    scene_id, source_list_offset, source_order,
-    world_effect_handler, pending_effect_handler)
+    scene_id, actor_instance_id, activity_id, handler)
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
        scene_id < 0 or scene_id > 55 or
-       type(source_list_offset) ~= "number" or
-       source_list_offset % 1 ~= 0 or source_list_offset < 0 or
-       source_list_offset > 0xFFFFFF or
-       type(source_order) ~= "number" or source_order % 1 ~= 0 or
-       source_order < 0 or source_order > 31 or
-       type(world_effect_handler) ~= "number" or
-       world_effect_handler % 1 ~= 0 or
-       (world_effect_handler ~= 0 and world_effect_handler ~= 1) or
-       type(pending_effect_handler) ~= "number" or
-       pending_effect_handler % 1 ~= 0 or
-       (pending_effect_handler ~= 0 and pending_effect_handler ~= 1) then
-        error("field actor contact needs a source list and typed handler")
-    end
-    if world_effect_handler == 1 then
-        if scene_id == 34 and source_list_offset == 0xA8AE then
-            local escort_marked = World.mark_contact_actor_for_escort_cleanup(
-                scene_id, source_list_offset, source_order)
-            return { escort_marked and 1 or 0, escort_marked and 1 or 0 }
-        end
-        return { 0, 0 }
-    end
-    if pending_effect_handler == 1 then
-        if scene_id == 20 and source_list_offset == 0xA8CC then
-            local escort_marked = World.mark_contact_actor_for_escort_cleanup(
-                scene_id, source_list_offset, source_order)
-            return { escort_marked and 2 or 0, escort_marked and 1 or 0 }
-        end
-        return { 0, 0 }
+       type(actor_instance_id) ~= "string" or actor_instance_id == "" or
+       type(activity_id) ~= "string" or
+       (handler ~= "ordinary" and handler ~= "world_effect" and
+        handler ~= "pending_world_effect") then
+        error("field actor contact needs semantic actor and handler facts")
     end
 
-    -- ROM 0xED60 leaves the generic contact on callback 0x1F146 when neither
-    -- higher-priority effect handler replaces it. A8xx's reachable random
-    -- pedestrian rows all use that callback; identify them from the extracted
-    -- candidate table instead of special-casing a scene or actor name.
-    if source_order == 0 then
-        for _, candidate in ipairs(
-            World.conditional_actor_candidates_for_scene(scene_id)) do
-            if candidate.list_offset == source_list_offset then
-                return { 3, 0 }
-            end
+    local activity_route = field_actor_contacts[activity_id]
+    if activity_route ~= nil then
+        if activity_route.handler ~= handler then
+            return "start_activity"
+        end
+        if activity_route.mark_escort and
+           not World.mark_contact_actor_for_escort_cleanup(
+               scene_id, actor_instance_id) then
+            return "start_activity"
+        end
+        return activity_route.action
+    end
+    if handler ~= "ordinary" then
+        return "start_activity"
+    end
+
+    -- The A800 selector gives reachable random pedestrians a stable
+    -- candidate identity. This handles the ordinary contact callback without
+    -- exposing the candidate's ROM list address to Lua policy.
+    for _, candidate in ipairs(
+        World.conditional_actor_candidates_for_scene(scene_id)) do
+        if candidate.candidate_id == activity_id then
+            return "random_pedestrian_contact"
         end
     end
-    return { 0, 0 }
+    return "start_activity"
 end
 
 function World.mark_contact_actor_for_escort_cleanup(
-    scene_id, source_list_offset, source_order)
+    scene_id, actor_instance_id)
     if type(game.actors) ~= "table" then
         error("contact actor cleanup needs the Lua actor registry")
     end
-    local matched_actor = false
-    for _, state in pairs(game.actors) do
-        if type(state) == "table" and
-           state.movement_scene_id == scene_id and
-           state.source_actor_list_offset == source_list_offset and
-           state.source_actor_source_order == source_order and
-           type(state.source_record_slot) == "number" and
-           state.source_record_slot >= E.ActorPool.PARTY and
-           state.source_record_slot <= 9 and
-           type(state.actor_facts) == "table" and
-           state.actor_facts.lifecycle.active then
-            state.actor_facts.behavior.escort = true
-            matched_actor = true
-        end
+    local state = game.actors[actor_instance_id]
+    if type(state) ~= "table" or
+       state.movement_scene_id ~= scene_id or
+       type(state.actor_facts) ~= "table" or
+       type(state.actor_facts.lifecycle) ~= "table" or
+       state.actor_facts.lifecycle.active ~= true or
+       type(state.actor_facts.behavior) ~= "table" then
+        return false
     end
-    return matched_actor
+    state.actor_facts.behavior.escort = true
+    return true
 end
 
 function World.pending_world_activity_actor_list_for_scene(

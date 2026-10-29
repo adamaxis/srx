@@ -7008,6 +7008,90 @@ GameScriptRuntime::world_activity_actors_for_list_id(
         "world_activity_actors_for_list_id", list_id);
 }
 
+std::optional<ScriptFieldActorContactAction>
+GameScriptRuntime::field_actor_contact_task(
+    const std::uint16_t scene_id,
+    const std::string_view actor_instance_id,
+    const std::string_view activity_id,
+    const ScriptFieldActorContactHandler handler) {
+    auto* state = impl_->state;
+    const bool activity_id_valid = activity_id.size() <= 128U &&
+        std::all_of(activity_id.begin(), activity_id.end(),
+                    [](const char character) {
+                        return (character >= 'a' && character <= 'z') ||
+                               (character >= 'A' && character <= 'Z') ||
+                               (character >= '0' && character <= '9') ||
+                               character == '_' || character == '-' ||
+                               character == '.' || character == ':';
+                    });
+    if (state == nullptr || scene_id > 55U ||
+        !valid_identifier(actor_instance_id) || !activity_id_valid) {
+        impl_->failure = "field actor contact facts are invalid";
+        return std::nullopt;
+    }
+
+    std::string_view handler_id;
+    switch (handler) {
+    case ScriptFieldActorContactHandler::ordinary:
+        handler_id = "ordinary";
+        break;
+    case ScriptFieldActorContactHandler::world_effect:
+        handler_id = "world_effect";
+        break;
+    case ScriptFieldActorContactHandler::pending_world_effect:
+        handler_id = "pending_world_effect";
+        break;
+    default:
+        impl_->failure = "field actor contact handler is unknown";
+        return std::nullopt;
+    }
+
+    const auto stack_base = lua_gettop(state);
+    const auto fail = [this, state, stack_base](const std::string_view reason)
+        -> std::optional<ScriptFieldActorContactAction> {
+        lua_settop(state, stack_base);
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (!impl_->push_module("world_content")) {
+        return fail("gameplay script module is missing: world_content");
+    }
+    lua_getfield(state, -1, "field_actor_contact_task");
+    if (!lua_isfunction(state, -1)) {
+        return fail("world_content.field_actor_contact_task is missing");
+    }
+    lua_remove(state, -2);
+    lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
+    lua_pushlstring(state, actor_instance_id.data(), actor_instance_id.size());
+    lua_pushlstring(state, activity_id.data(), activity_id.size());
+    lua_pushlstring(state, handler_id.data(), handler_id.size());
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 4, 1, 0) != LUA_OK) {
+        return fail("world_content.field_actor_contact_task: " +
+                    stack_error(state));
+    }
+
+    std::string action_id;
+    if (!read_string(state, -1, action_id)) {
+        return fail("field actor contact task must return a semantic action");
+    }
+    ScriptFieldActorContactAction action{};
+    if (action_id == "start_activity") {
+        action = ScriptFieldActorContactAction::start_activity;
+    } else if (action_id == "aragorn_contact") {
+        action = ScriptFieldActorContactAction::aragorn_contact;
+    } else if (action_id == "ilene_activity") {
+        action = ScriptFieldActorContactAction::ilene_activity;
+    } else if (action_id == "random_pedestrian_contact") {
+        action = ScriptFieldActorContactAction::random_pedestrian_contact;
+    } else {
+        return fail("field actor contact task returned an unknown action");
+    }
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return action;
+}
+
 std::optional<std::vector<ScriptConditionalActorCandidate>>
 GameScriptRuntime::conditional_actor_candidates_for_scene(
     const std::uint16_t scene_id) {
@@ -7587,6 +7671,7 @@ GameScriptRuntime::world_activity_actors_for_selector(
         }
         actor.scene_id = scene_id;
         actor.list_id = std::move(row_list_id);
+        actor.activity_id = actor.list_id;
         actor.script_index = static_cast<std::int16_t>(row_script_index);
         actor.source_order = static_cast<std::uint16_t>(source_order);
         actor.list_offset = list_offset;
@@ -9733,18 +9818,6 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "source_actor_slot");
-    if (context.source_actor_list_offset.has_value()) {
-        lua_pushinteger(state, *context.source_actor_list_offset);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "source_actor_list_offset");
-    if (context.source_actor_source_order.has_value()) {
-        lua_pushinteger(state, *context.source_actor_source_order);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "source_actor_source_order");
     if (context.source_world_x.has_value()) {
         lua_pushinteger(state, *context.source_world_x);
     } else {

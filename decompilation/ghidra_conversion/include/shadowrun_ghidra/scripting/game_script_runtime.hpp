@@ -1250,6 +1250,19 @@ struct ScriptConditionalActorSelection {
     std::string list_id;
 };
 
+enum class ScriptFieldActorContactHandler : std::uint8_t {
+    ordinary,
+    world_effect,
+    pending_world_effect,
+};
+
+enum class ScriptFieldActorContactAction : std::uint8_t {
+    start_activity,
+    aragorn_contact,
+    ilene_activity,
+    random_pedestrian_contact,
+};
+
 // A source-selected field script list is installed by the world-activity
 // selector and consumed by the next actor-service pass. It remains separate
 // from random-encounter actors because its placement and lifecycle come from
@@ -1257,6 +1270,9 @@ struct ScriptConditionalActorSelection {
 struct ScriptWorldActivityActor {
     std::uint16_t scene_id = 0;
     std::string list_id;
+    // Stable content identity used by gameplay policy. ROM table addresses
+    // remain host-side extraction provenance and are not sent to Lua actors.
+    std::string activity_id;
     std::int16_t script_index = 0;
     std::uint16_t source_order = 0;
     std::uint32_t list_offset = 0;
@@ -1632,9 +1648,6 @@ struct ScriptActorBehaviorContext {
     // initializes runner records to 0..2 [C]. Kept separate from the host's
     // candidate identity field because Lua consumes it as a behavior input.
     std::optional<std::uint8_t> source_actor_slot;
-    // Source list identity selects the extracted +0xE0 waypoint data [C].
-    std::optional<std::uint32_t> source_actor_list_offset;
-    std::optional<std::uint16_t> source_actor_source_order;
     // Live actor +0/+4 position, which seeds +0x96/+0x98 at spawn [C].
     std::optional<std::uint16_t> source_world_x;
     std::optional<std::uint16_t> source_world_y;
@@ -1915,6 +1928,10 @@ public:
     std::optional<std::vector<ScriptWorldActivityActor>>
     world_activity_actors_for_list_id(std::uint16_t scene_id,
                                      std::string_view list_id);
+    std::optional<ScriptFieldActorContactAction> field_actor_contact_task(
+        std::uint16_t scene_id, std::string_view actor_instance_id,
+        std::string_view activity_id,
+        ScriptFieldActorContactHandler handler);
     std::optional<std::vector<ScriptConditionalActorCandidate>>
     conditional_actor_candidates_for_scene(std::uint16_t scene_id);
     bool reset_conditional_actor_selection();

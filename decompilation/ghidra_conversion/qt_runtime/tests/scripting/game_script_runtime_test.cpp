@@ -1623,7 +1623,6 @@ int main() {
     const auto seed_contact_actor = [&scripts](
         const std::string_view actor_id,
         const std::uint16_t scene_id,
-        const std::uint32_t list_offset,
         const std::string_view profile_id,
         const std::uint16_t entity_kind) {
         ScriptActorBehaviorContext context{};
@@ -1635,36 +1634,36 @@ int main() {
         context.world_activity_script_actor = true;
         context.source_record_slot = 3U;
         context.source_actor_slot = 3U;
-        context.source_actor_list_offset = list_offset;
-        context.source_actor_source_order = 0U;
         context.source_record_flags = 0x01U;
         context.source_spawn_state_flags = 0x08U;
         context.movement_scene_id = scene_id;
         return scripts.actor_heartbeat(context).has_value();
     };
     const bool seeded_aragorn_contact_actor = seed_contact_actor(
-        "qa_aragorn_contact", 34U, 0xA8AEU,
+        "qa_aragorn_contact", 34U,
         "pedestrian_k0b_none00", 11U);
     const bool seeded_ilene_contact_actor = seed_contact_actor(
-        "qa_ilene_contact", 20U, 0xA8CCU,
+        "qa_ilene_contact", 20U,
         "pedestrian_k0b_none00", 11U);
-    // field_actor_contact_task returns a 0/1 escort fact after the Lua state
-    // update; the value is no longer the ROM's +0xB0 bit mask (0x80).
-    const auto aragorn_contact_route = scripts.call_integers(
-        "world_content", "field_actor_contact_task",
-        {34, 0xA8AEU, 0, 1, 0});
-    const auto aragorn_contact_priority_route = scripts.call_integers(
-        "world_content", "field_actor_contact_task",
-        {34, 0xA8AEU, 0, 1, 1});
-    const auto ilene_contact_route = scripts.call_integers(
-        "world_content", "field_actor_contact_task",
-        {20, 0xA8CCU, 0, 0, 1});
-    const auto unrelated_contact_route = scripts.call_integers(
-        "world_content", "field_actor_contact_task",
-        {20, 0xA8CCU, 0, 1, 0});
-    const auto random_pedestrian_contact_route = scripts.call_integers(
-        "world_content", "field_actor_contact_task",
-        {0x15, 0x1EDECCU, 0, 0, 0});
+    // [C] ROM 0xED60's generic 0x1F146 callback and the 0xECCC special
+    // branches retain their outcomes through stable activity IDs and typed
+    // handlers; ROM list addresses and row positions are no longer Lua input.
+    using ContactHandler = ScriptFieldActorContactHandler;
+    using ContactAction = ScriptFieldActorContactAction;
+    const auto aragorn_contact_route = scripts.field_actor_contact_task(
+        34U, "qa_aragorn_contact", "scene_34_story_contact",
+        ContactHandler::world_effect);
+    const auto ilene_contact_route = scripts.field_actor_contact_task(
+        20U, "qa_ilene_contact", "scene_20_ilene_pending_list",
+        ContactHandler::pending_world_effect);
+    const auto unrelated_contact_route = scripts.field_actor_contact_task(
+        20U, "qa_ilene_contact", "scene_20_ilene_pending_list",
+        ContactHandler::world_effect);
+    const auto random_pedestrian_effect_route =
+        scripts.field_actor_contact_task(
+            0x15U, "qa_random_pedestrian",
+            "scene-21-one-of-three:choice:1",
+            ContactHandler::world_effect);
     bool conditional_candidate_table_valid = true;
     std::size_t conditional_candidate_count = 0U;
     for (std::uint16_t scene = 0x15U; scene <= 0x2BU; ++scene) {
@@ -1716,11 +1715,11 @@ int main() {
             if (candidate.choice > 2U) {
                 continue;
             }
-            const auto route = scripts.call_integers(
-                "world_content", "field_actor_contact_task",
-                {scene, static_cast<std::int64_t>(candidate.list_offset),
-                 0, 0, 0});
-            if (!route || *route != std::vector<std::int64_t>{3, 0}) {
+            const auto route = scripts.field_actor_contact_task(
+                scene, "qa_random_pedestrian", candidate.candidate_id,
+                ContactHandler::ordinary);
+            if (!route || *route !=
+                              ContactAction::random_pedestrian_contact) {
                 reachable_random_contact_routes_valid = false;
                 break;
             }
@@ -2045,6 +2044,8 @@ int main() {
                 ilene_pending_list->front().scene_id == 20U &&
                 ilene_pending_list->front().script_index == -1 &&
                 ilene_pending_list->front().source_order == 0U &&
+                ilene_pending_list->front().activity_id ==
+                    "scene_20_ilene_pending_list" &&
                 ilene_pending_list->front().list_offset == 0xA8CCU &&
                 ilene_pending_list->front().source_record_offset ==
                     0xA8CCU &&
@@ -2072,20 +2073,14 @@ int main() {
                 seeded_aragorn_contact_actor &&
                 seeded_ilene_contact_actor &&
                 aragorn_contact_route.has_value() &&
-                *aragorn_contact_route ==
-                    std::vector<std::int64_t>{1, 1} &&
-                aragorn_contact_priority_route.has_value() &&
-                *aragorn_contact_priority_route ==
-                    std::vector<std::int64_t>{1, 1} &&
+                *aragorn_contact_route == ContactAction::aragorn_contact &&
                 ilene_contact_route.has_value() &&
-                *ilene_contact_route ==
-                    std::vector<std::int64_t>{2, 1} &&
+                *ilene_contact_route == ContactAction::ilene_activity &&
                 unrelated_contact_route.has_value() &&
-                *unrelated_contact_route ==
-                    std::vector<std::int64_t>{0, 0} &&
-                random_pedestrian_contact_route.has_value() &&
-                *random_pedestrian_contact_route ==
-                    std::vector<std::int64_t>{3, 0} &&
+                *unrelated_contact_route == ContactAction::start_activity &&
+                random_pedestrian_effect_route.has_value() &&
+                *random_pedestrian_effect_route ==
+                    ContactAction::start_activity &&
                 conditional_candidate_table_valid &&
                 conditional_candidate_count == 69U &&
                 reachable_random_contact_routes_valid &&
@@ -2106,24 +2101,18 @@ int main() {
             "Lua did not return the typed ROM scene actor lists")) {
         const auto print_route = [](
             const std::string_view label,
-            const std::optional<std::vector<std::int64_t>>& route) {
+            const std::optional<ScriptFieldActorContactAction>& route) {
             std::cerr << label << '=';
             if (!route.has_value()) {
                 std::cerr << "<missing>";
             } else {
-                for (std::size_t index = 0U; index < route->size(); ++index) {
-                    if (index != 0U) {
-                        std::cerr << ',';
-                    }
-                    std::cerr << route->at(index);
-                }
+                std::cerr << static_cast<unsigned>(*route);
             }
             std::cerr << ' ';
         };
         std::cerr << "contact actor seeds=" << seeded_aragorn_contact_actor
                   << ',' << seeded_ilene_contact_actor << ' ';
         print_route("aragorn", aragorn_contact_route);
-        print_route("aragorn_priority", aragorn_contact_priority_route);
         print_route("ilene", ilene_contact_route);
         print_route("unrelated", unrelated_contact_route);
         std::cerr << "scene script actor lookup: " << scripts.failure()
@@ -8185,8 +8174,6 @@ int main() {
         caster.source_actor_template_kind = 15U;
         caster.source_actor_has_waypoint_data = true;
         caster.source_actor_slot = 0U;
-        caster.source_actor_list_offset = 0x1EDA88U;
-        caster.source_actor_source_order = 0U;
         caster.source_world_x = 0x0A00U;
         caster.source_world_y = 0x0800U;
         caster.source_thon_period_counter = 0U;

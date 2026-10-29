@@ -104,10 +104,6 @@ function ActorAI.heartbeat(context)
                                state.source_record_slot
     state.movement_scene_id = context.movement_scene_id or
                               state.movement_scene_id
-    state.source_actor_list_offset = context.source_actor_list_offset or
-                                     state.source_actor_list_offset
-    state.source_actor_source_order = context.source_actor_source_order or
-                                     state.source_actor_source_order
     state.source_action_slot = context.source_action_slot or
                                state.source_action_slot
     state.source_action_ammo = context.source_action_ammo or

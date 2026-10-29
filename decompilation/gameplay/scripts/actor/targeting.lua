@@ -370,8 +370,6 @@ local function initial_state(context, profile)
         action_code = context.action_code,
         actor_facts = copy_actor_facts(context.actor_facts),
         movement_scene_id = context.movement_scene_id,
-        source_actor_list_offset = context.source_actor_list_offset,
-        source_actor_source_order = context.source_actor_source_order,
         source_physical_meter = context.source_physical_meter,
         source_record_slot = context.source_record_slot,
         -- Lua owns the mutable combat meters used by world-activity policy.
