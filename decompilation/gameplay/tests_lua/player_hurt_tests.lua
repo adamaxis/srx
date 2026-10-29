@@ -167,8 +167,10 @@ local hurt_recovered = ActorAI.heartbeat(render_context)
 check(hurt_first ~= nil and hurt_first.animation == "runner_hurt" and
       hurt_first.frame == 0 and
       hurt_first.animation_selector == nil and
+      hurt_first.animation_accumulator == nil and
       hurt_last ~= nil and hurt_last.animation == "runner_hurt" and
       hurt_last.frame == E.PlayerHurt.FRAME_COUNT - 1 and
+      hurt_last.animation_accumulator == nil and
       hurt_finished ~= nil and hurt_finished.animation == "idle" and
       hurt_finished.animation_selector == nil and
       hurt_recovered ~= nil and hurt_recovered.animation == "idle" and

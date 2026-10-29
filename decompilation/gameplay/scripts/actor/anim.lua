@@ -1,4 +1,4 @@
--- actor/anim.lua: presentation: snapshots, pose selectors, entry/hit/walk/action animations.
+-- actor/anim.lua: semantic clip selection, snapshots, and animation timing.
 -- Split from the pre-module gameplay/scripts/actor_ai.lua; see docs/ghidra/lua-actor-ai-module-boundaries.md.
 local R = require("actor.registry")
 local E = require("enums")
@@ -9,7 +9,6 @@ local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local PlayerHurt = E.PlayerHurt
 local HitSpark = E.HitSpark
-local ActorAnimation = E.ActorAnimation
 local SpriteType = R.SpriteType   -- from actor/tables.lua
 local weapon_projectile_descriptor_increment = R.weapon_projectile_descriptor_increment   -- from actor/tables.lua
 
@@ -57,7 +56,13 @@ local function snapshot(state, action, audio_event, projectile_movement,
             state.animation_selector or nil,
         direction = state.direction,
         frame = state.animation_frame,
-        animation_accumulator = state.animation_accumulator,
+        -- Only the remaining movement and effect clocks use this legacy host
+        -- field. Finite actor clips expose named frame state and duration.
+        animation_accumulator =
+            (state.animation_id == "idle" or state.animation_id == "walk" or
+             state.animation_id == "projectile" or
+             state.animation_id == "hit_spark") and
+            state.animation_accumulator or nil,
         transition_started = state.transition_started,
         transition_complete = state.transition_complete,
         world_activity_requested = world_activity_requested,
@@ -384,6 +389,7 @@ local function begin_player_hurt_reaction(state, context)
     state.animation_id = "runner_hurt"
     state.animation_frame = 0
     state.animation_accumulator = 0
+    state.animation_elapsed_updates = 0
     state.hurt_behavior_timer = PlayerHurt.SOUND_DELAY
     state.hurt_audio_event = SoundId.DAC_SAMPLE_40
     state.hurt_audio_emitted = false
@@ -407,6 +413,7 @@ local function finish_player_hurt_reaction(state, context)
         state.animation_id = "idle"
         state.animation_frame = 0
         state.animation_accumulator = 0
+        state.animation_elapsed_updates = 0
         state.player_hurt_selector_reset_after_render = true
     end
     return true
@@ -462,12 +469,25 @@ local function advance_dynamic_actor_item_action_animation(state)
     return true
 end
 
+local function advance_player_finite_clip(state, clip)
+    local list = Animator.list(SpriteType.FIELD_RUNNER, clip, state.direction)
+    if list == nil or list.looping then
+        return false
+    end
+    return Animator.advance_finite_clip(state, list)
+end
+
 -- ROM 0xC082. AF7C/AFAE index this by the same 0xB36A direction as C0A2.
 local function advance_player_animation(state, context)
     if state.player_hurt_selector_reset_after_render then
         state.player_hurt_selector_reset_after_render = nil
     end
-    if type(context.animation_accumulator_override) == "number" then
+    local animation_mode = context.animation_mode
+    local looping_animation = animation_mode == "walking" or
+        (animation_mode == "idle" and
+         not state.player_hurt_pose_active)
+    if looping_animation and
+       type(context.animation_accumulator_override) == "number" then
         state.animation_accumulator =
             context.animation_accumulator_override
     end
@@ -483,23 +503,13 @@ local function advance_player_animation(state, context)
     if runner_hurt then
         if state.animation_id ~= "runner_hurt" then
             state.animation_frame = 0
-            state.animation_accumulator = 0
+            state.animation_elapsed_updates = 0
         end
         state.player_hurt_pose_active = true
         state.animation_id = "runner_hurt"
-        local accumulated = state.animation_accumulator +
-            PlayerHurt.FRAME_INCREMENT
-        if accumulated >= PlayerHurt.FRAME_PERIOD then
-            accumulated = accumulated - PlayerHurt.FRAME_PERIOD
-            if state.animation_frame + 1 < PlayerHurt.FRAME_COUNT then
-                state.animation_frame = state.animation_frame + 1
-            else
-                -- The 11th render pass reaches +0x1E=2; 0x600E marks the
-                -- C072 selector complete but still displays its last frame.
-                state.player_hurt_animation_complete_pending = true
-            end
+        if advance_player_finite_clip(state, Animator.Clip.HURT) then
+            state.player_hurt_animation_complete_pending = true
         end
-        state.animation_accumulator = accumulated
         return
     end
     if state.player_hurt_pose_active then
@@ -513,53 +523,36 @@ local function advance_player_animation(state, context)
         -- the C++ attack-pose timer owns [H: not ported here].
         state.animation_id = "attack"
         state.animation_frame = 0
-        state.animation_accumulator = 0
+        state.animation_elapsed_updates = 0
         return
     end
     if context.animation_mode == "strike" then
-        -- ROM 0xB1DC selects C0A2[dir] (0xC0..0xDC). Its finite 0x8002 list
-        -- holds two frames advanced by +0x200 per 0x5FDC pass, then holds.
+        -- C0A2 supplies the runner strike clip. The importer records its
+        -- finite frame duration; gameplay advances the clip by elapsed updates.
         if state.animation_id ~= "strike" then
             state.animation_frame = 0
-            state.animation_accumulator = 0
+            state.animation_elapsed_updates = 0
         end
         state.animation_id = "strike"
-        local accumulated = state.animation_accumulator +
-            ActorAnimation.FRAME_INCREMENT
-        if accumulated >= ActorAnimation.FRAME_PERIOD then
-            accumulated = accumulated - ActorAnimation.FRAME_PERIOD
-            if state.animation_frame < 1 then
-                state.animation_frame = state.animation_frame + 1
-            end
-        end
-        state.animation_accumulator = accumulated
+        advance_player_finite_clip(state, Animator.Clip.ACTION)
         return
     end
     if context.animation_mode == "runner_down" then
-        -- ROM 0xB330 selects C0B2[dir] (0xE8..0x104). Its finite 0x8008
-        -- list advances +0x200 per pass and holds on entry 7; entries 1..7
-        -- share one descriptor.
+        -- C0B2 supplies the runner down clip. Gameplay uses the imported
+        -- duration and holds the final frame.
         if state.animation_id ~= "runner_down" then
             state.animation_frame = 0
-            state.animation_accumulator = 0
+            state.animation_elapsed_updates = 0
         end
         state.animation_id = "runner_down"
-        local accumulated = state.animation_accumulator +
-            ActorAnimation.FRAME_INCREMENT
-        if accumulated >= ActorAnimation.FRAME_PERIOD then
-            accumulated = accumulated - ActorAnimation.FRAME_PERIOD
-            if state.animation_frame < 7 then
-                state.animation_frame = state.animation_frame + 1
-            end
-        end
-        state.animation_accumulator = accumulated
+        advance_player_finite_clip(state, Animator.Clip.DEATH)
         return
     end
     if context.animation_mode == "cast" then
         -- ROM 0xAF7C/0xAFAE select C082[dir] (0x80..0x9C), one frame.
         state.animation_id = "cast"
         state.animation_frame = 0
-        state.animation_accumulator = 0
+        state.animation_elapsed_updates = 0
         return
     end
 
@@ -568,6 +561,12 @@ local function advance_player_animation(state, context)
     local kind = SpriteType.FIELD_RUNNER -- 3
     local rate = Animator.loop_rate(kind, state.animation_frame,
                                     Animator.PLAYER_SPEED)
+    if state.animation_id ~= nil and state.animation_id ~= "idle" and
+       state.animation_id ~= "walk" then
+        -- A one-shot clip has its own duration and cannot leave fractional
+        -- locomotion time behind when movement resumes.
+        state.animation_accumulator = 0
+    end
     if context.animation_mode == "walking" then
         state.animation_id = "walk"
         Animator.step_loop(state,

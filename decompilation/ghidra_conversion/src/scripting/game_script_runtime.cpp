@@ -11441,16 +11441,24 @@ GameScriptRuntime::actor_heartbeat(
 
     lua_getfield(state, decision_table, "animation_accumulator");
     if (!lua_isinteger(state, -1)) {
-        return fail(
-            "actor_ai.heartbeat returned an invalid animation accumulator");
+        const bool uses_legacy_accumulator =
+            decision.animation_id == "idle" ||
+            decision.animation_id == "walk" ||
+            decision.animation_id == "projectile" ||
+            decision.animation_id == "hit_spark";
+        if (!lua_isnil(state, -1) || uses_legacy_accumulator) {
+            return fail(
+                "actor_ai.heartbeat omitted an accumulator-driven animation clock");
+        }
+    } else {
+        const auto animation_accumulator = lua_tointeger(state, -1);
+        if (animation_accumulator < -32768 || animation_accumulator > 32767) {
+            return fail(
+                "actor_ai.heartbeat returned an out-of-range animation accumulator");
+        }
+        decision.animation_accumulator =
+            static_cast<std::int16_t>(animation_accumulator);
     }
-    const auto animation_accumulator = lua_tointeger(state, -1);
-    if (animation_accumulator < -32768 || animation_accumulator > 32767) {
-        return fail(
-            "actor_ai.heartbeat returned an out-of-range animation accumulator");
-    }
-    decision.animation_accumulator =
-        static_cast<std::int16_t>(animation_accumulator);
     lua_pop(state, 1);
     lua_getfield(state, decision_table, "animation_selector");
     if (lua_type(state, -1) != LUA_TNIL) {

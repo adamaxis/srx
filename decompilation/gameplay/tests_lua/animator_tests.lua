@@ -45,6 +45,57 @@ check(A.advance_finite_clip(timed_hurt, imported_hurt) and
 check(A.loop_rate(3, 0, A.PLAYER_SPEED) == 0x280, "player 0x28*0x10")
 check(A.loop_rate(5, 0, 9) == 9 * 0x1c and A.loop_rate(5, 0, 0x16) == 0x160, "speed < 0x16 *0x1C else *0x10")
 check(A.loop_rate(13, 2, 9) == 0x90 and A.loop_rate(13, 1, 9) == 0x180, "kind 0xD cadence")
+local player_clip = {
+    animation_id = "idle",
+    animation_frame = 0,
+    animation_elapsed_updates = 0,
+    animation_accumulator = 0,
+    direction = 0,
+}
+for _ = 1, 5 do
+    R.advance_player_animation(player_clip, { animation_mode = "runner_hurt",
+        animation_direction_override = 0 })
+end
+check(player_clip.animation_frame == 0,
+      "runner hurt clip holds its first frame until its authored duration")
+R.advance_player_animation(player_clip, { animation_mode = "runner_hurt",
+    animation_direction_override = 0 })
+check(player_clip.animation_frame == 1 and
+      player_clip.animation_elapsed_updates > 0 and
+      player_clip.animation_accumulator == 0,
+      "runner hurt advances from elapsed clip updates without a source accumulator")
+for _ = 1, 5 do
+    R.advance_player_animation(player_clip, { animation_mode = "runner_hurt",
+        animation_direction_override = 0 })
+end
+check(player_clip.player_hurt_animation_complete_pending == true and
+      player_clip.animation_frame == 1,
+      "runner hurt reports completion while holding its final frame")
+player_clip = { animation_id = "runner_hurt", animation_frame = 0,
+    animation_elapsed_updates = 0, animation_accumulator = 0,
+    player_hurt_pose_active = true, direction = 0 }
+R.advance_player_animation(player_clip, { animation_mode = "idle",
+    animation_accumulator_override = 0x0900,
+    animation_direction_override = 0 })
+check(player_clip.animation_accumulator == 0,
+      "runner hurt ignores locomotion clock overrides while its clip is active")
+player_clip = { animation_id = "idle", animation_frame = 0,
+    animation_elapsed_updates = 0, direction = 0 }
+for _ = 1, 8 do
+    R.advance_player_animation(player_clip, { animation_mode = "strike",
+        animation_direction_override = 0 })
+end
+check(player_clip.animation_frame == 1 and
+      player_clip.animation_elapsed_updates == 0,
+      "runner strike advances from its named clip duration")
+player_clip = { animation_id = "idle", animation_frame = 0,
+    animation_elapsed_updates = 0, direction = 0 }
+for _ = 1, 64 do
+    R.advance_player_animation(player_clip, { animation_mode = "runner_down",
+        animation_direction_override = 0 })
+end
+check(player_clip.animation_frame == 7,
+      "runner down advances through the semantic death clip and holds")
 -- The source-clock helper is retained only for unconverted movement/effects.
 local st = { animation_accumulator = 0xE00, animation_frame = 1 }
 check(A.step_finite(st, 2, 0x200) and st.animation_frame == 1 and st.animation_accumulator == 0, "finite clamps & reports done")

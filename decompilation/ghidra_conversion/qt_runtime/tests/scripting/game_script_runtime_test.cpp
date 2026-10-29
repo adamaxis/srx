@@ -7449,8 +7449,8 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 108;
     }
-    // ROM 0xAFF2 selects C072[dir], whose kind-3 list has two frames and
-    // advances +0x0300 against the 0x1000 +0x1C period before holding frame 1.
+    // The imported C072 clip advances after its authored update duration and
+    // holds frame 1. ROM provenance is list 0x77F8 and threshold 0x1000 [C].
     player_strike_render.animation_mode = ScriptActorAnimationMode::runner_hurt;
     std::optional<ScriptActorBehaviorDecision> hurt_first;
     std::optional<ScriptActorBehaviorDecision> hurt_second;
