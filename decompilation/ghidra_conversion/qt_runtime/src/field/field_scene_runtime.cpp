@@ -3283,7 +3283,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
     // 0x43B6 drains the selected list before the default list. Publish now so
     // its actor takes the lowest live record and advances the shared PRNG
     // before defaults initialize their delay bytes.
-    publish_pending_world_activity_script_actors(scene_reference);
+    publish_pending_world_activity_script_actors(
+        scene_reference, "default_actor_initialization");
 
     // ROM 0x43B6 drains pending lists before the default list, so their
     // descriptors reserve the first ordinary records and shorten the later
@@ -3526,7 +3527,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
 }
 
 void FieldSceneRuntime::publish_pending_world_activity_script_actors(
-    const std::uint16_t scene_reference) {
+    const std::uint16_t scene_reference,
+    const std::string_view publish_site) {
     if (!pending_world_activity_script_actor_scene_.has_value() ||
         *pending_world_activity_script_actor_scene_ != scene_reference ||
         pending_world_activity_script_actors_.empty()) {
@@ -3535,7 +3537,17 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
 
     const auto expected_actor_count =
         pending_world_activity_script_actors_.size();
+#ifdef SHADOWRUN_QT_QA_DRIVER
+    source_boundary(
+        "field.world_activity.script_actor_publish_site:" +
+        std::string(publish_site) + ":scene=" +
+        std::to_string(scene_reference) + ":count=" +
+        std::to_string(expected_actor_count) + ":list=" +
+        std::to_string(pending_world_activity_script_actors_.front()
+                           .list_offset));
+#endif
     std::size_t published = 0U;
+    std::size_t retained = 0U;
     for (const auto& source_actor : pending_world_activity_script_actors_) {
         const auto artwork =
             field_dynamic_actor_artwork_.find(source_actor.sprite_stem);
@@ -3545,6 +3557,36 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             source_boundary(
                 "field.world_activity.script_actor_art_unresolved");
             break;
+        }
+
+        const auto actor_source_key = source_actor.script_index >= 0
+            ? "world_script_" +
+                  std::to_string(source_actor.script_index)
+            : "world_list_" + std::to_string(source_actor.list_offset);
+        const auto actor_instance_id =
+            "field_scene_" + std::to_string(scene_reference) +
+            "_" + actor_source_key +
+            "_actor_" + std::to_string(source_actor.source_order);
+        const auto existing_instance = std::find_if(
+            field_default_actors_.begin(), field_default_actors_.end(),
+            [&actor_instance_id, scene_reference](const auto& actor) {
+                return actor.active && actor.world_activity_script_actor &&
+                       actor.scene_reference == scene_reference &&
+                       actor.actor_instance_id == actor_instance_id;
+            });
+        if (existing_instance != field_default_actors_.end()) {
+            // [C] ROM 0x16854 preserves a nonzero FFE120 list selection and
+            // 0x43B6 drains that single pending list before the default list.
+            // The host's repeated destination preparation can deliver the
+            // same script/order row again; keep its one live Lua instance.
+            if (field_pending_actor_list_transition_group_.has_value()) {
+                existing_instance->actor_list_completion_group =
+                    field_pending_actor_list_transition_group_->name;
+            }
+            ++retained;
+            source_boundary(
+                "field.world_activity.script_actor_instance_retained");
+            continue;
         }
 
         std::array<bool, 7> occupied_actor_slots{};
@@ -3586,14 +3628,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         actor.source_record_slot = static_cast<FieldWorldActorSlot>(
             std::distance(occupied_actor_slots.begin(), actor_slot) + 3);
         actor.entity_kind = source_actor.entity_kind;
-        const auto actor_source_key = source_actor.script_index >= 0
-            ? "world_script_" +
-                  std::to_string(source_actor.script_index)
-            : "world_list_" + std::to_string(source_actor.list_offset);
-        actor.actor_instance_id =
-            "field_scene_" + std::to_string(scene_reference) +
-            "_" + actor_source_key +
-            "_actor_" + std::to_string(source_actor.source_order);
+        actor.actor_instance_id = actor_instance_id;
         actor.script_profile_id = source_actor.profile_id;
         actor.action_kind = source_actor.action_kind;
         actor.initial_action_code = source_actor.action_code;
@@ -3738,7 +3773,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
     if (field_pending_actor_list_transition_group_.has_value()) {
         const auto& group = *field_pending_actor_list_transition_group_;
         if (expected_actor_count != group.transitions ||
-            published != expected_actor_count) {
+            published + retained != expected_actor_count) {
             for (auto& actor : field_default_actors_) {
                 if (actor.actor_list_completion_group == group.name) {
                     actor.actor_list_completion_group.reset();
@@ -3762,7 +3797,8 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
 void FieldSceneRuntime::advance_default_field_actors(
     const bool source_target_list_service) {
     const auto current_scene = state_.field_scene_buffers.scene_reference;
-    publish_pending_world_activity_script_actors(current_scene);
+    publish_pending_world_activity_script_actors(
+        current_scene, "actor_service");
     std::vector<DefaultFieldActorPresentation*> ordered_actors;
     ordered_actors.reserve(field_default_actors_.size());
     for (auto& actor : field_default_actors_) {
@@ -5666,7 +5702,8 @@ FieldSceneRuntime::guard_world_effect_player_spawn() {
                 field_route_actor_transitions_remaining_.reset();
 
                 const auto actors_before = count_live_activity_actors();
-                publish_pending_world_activity_script_actors(scene_reference);
+                publish_pending_world_activity_script_actors(
+                    scene_reference, "player_spawn_fallback");
                 const auto actors_after = count_live_activity_actors();
 
                 pending_world_activity_script_actors_ =

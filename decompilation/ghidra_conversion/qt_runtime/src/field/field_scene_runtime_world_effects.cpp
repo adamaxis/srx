@@ -452,7 +452,8 @@ void FieldSceneRuntime::apply_field_alarm_result(
     }
     pending_world_activity_script_actor_scene_ = scene_reference;
     pending_world_activity_script_actors_ = std::move(*actors);
-    publish_pending_world_activity_script_actors(scene_reference);
+    publish_pending_world_activity_script_actors(
+        scene_reference, "alarm_reinforcements");
     source_boundary("field.alarm.reinforcements_published");
 }
 

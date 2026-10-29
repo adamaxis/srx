@@ -999,6 +999,34 @@ std::size_t FieldSceneRuntime::world_activity_script_actor_count_for_dump()
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
+std::vector<std::string>
+FieldSceneRuntime::world_activity_script_actor_summaries_for_dump() const {
+    const auto scene_reference = state_.field_scene_buffers.scene_reference;
+    std::vector<std::string> summaries;
+    for (std::size_t index = 0; index < field_default_actors_.size(); ++index) {
+        const auto& actor = field_default_actors_[index];
+        if (!actor.active || !actor.world_activity_script_actor ||
+            actor.scene_reference != scene_reference) {
+            continue;
+        }
+        summaries.push_back(
+            "entry=" + std::to_string(index) +
+            ",id=" + actor.actor_instance_id +
+            ",profile=" + actor.script_profile_id +
+            ",source_order=" + std::to_string(actor.source_order) +
+            ",record_slot=" +
+                (actor.source_record_slot.has_value()
+                     ? std::to_string(static_cast<unsigned>(
+                           *actor.source_record_slot))
+                     : std::string("none")) +
+            ",list_offset=" + std::to_string(actor.list_offset));
+    }
+    return summaries;
+}
+#endif // SHADOWRUN_QT_QA_DRIVER
+
+
+#ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<SceneRunnerPosition>
 FieldSceneRuntime::world_activity_script_actor_position_for_dump(
     const std::uint16_t source_order) const noexcept {

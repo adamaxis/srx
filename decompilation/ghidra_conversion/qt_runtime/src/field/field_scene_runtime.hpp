@@ -345,6 +345,8 @@ public:
     std::size_t default_actor_count_for_dump() const noexcept;
     std::size_t dynamic_world_actor_count_for_dump() const noexcept;
     std::size_t world_activity_script_actor_count_for_dump() const noexcept;
+    std::vector<std::string>
+    world_activity_script_actor_summaries_for_dump() const;
     std::optional<SceneRunnerPosition>
     world_activity_script_actor_position_for_dump(
         std::uint16_t source_order) const noexcept;
@@ -1776,7 +1778,7 @@ private:
     WorldEffectPlayerSpawnGuardAction guard_world_effect_player_spawn();
     bool retire_dialogue_escort_records();
     void publish_pending_world_activity_script_actors(
-        std::uint16_t scene_reference);
+        std::uint16_t scene_reference, std::string_view publish_site);
     void service_source_actor_weapon_action(
         DefaultFieldActorPresentation& actor,
         const scripting::ScriptActorBehaviorContext& context,

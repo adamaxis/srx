@@ -14515,12 +14515,22 @@ int run_scene1_underground93_story_gate_qa(
                      ? (std::uint32_t{1U} << 29U)
                      : 0U) ||
             !save("actual.bmp", actual) || !audio_events.empty()) {
-            std::cerr << "Underground 93 actor boundaries:";
-            for (const auto& boundary : boundaries) {
-                if (boundary.find("field.world_activity.script_actor_") !=
-                    std::string::npos) {
-                    std::cerr << ' ' << boundary;
+            std::cerr << "Underground 93 spawn boundaries:";
+            for (std::size_t boundary_index = 0U;
+                 boundary_index < boundaries.size(); ++boundary_index) {
+                const auto& boundary = boundaries[boundary_index];
+                if (boundary.find("field.conditional_actor.") !=
+                        std::string::npos ||
+                    boundary.find("field.world_activity.") !=
+                        std::string::npos) {
+                    std::cerr << "\n  [" << boundary_index << "] "
+                              << boundary;
                 }
+            }
+            for (const auto& actor_summary :
+                 field_scene.world_activity_script_actor_summaries_for_dump()) {
+                std::cerr << "\nUnderground 93 active script actor: "
+                          << actor_summary;
             }
             std::cerr << "\nUnderground 93 runtime failure: "
                       << field_scene.failure() << '\n';
