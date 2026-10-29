@@ -6028,6 +6028,53 @@ ScriptFieldSceneMode script_field_scene_mode_from_source_word(
     }
 }
 
+ScriptSceneTenActivityVariant
+script_scene_ten_activity_variant_from_source_event(
+    const std::uint8_t source_event) noexcept {
+    // [C] ROM 0x1686C-0x16880 selects the alternate Scene-10 actor list only
+    // when FFFBF9 equals 6; all other event values take the standard list.
+    return source_event == 6U ? ScriptSceneTenActivityVariant::alternate
+                              : ScriptSceneTenActivityVariant::standard;
+}
+
+std::vector<std::string>
+script_mode_one_activity_ids_present_from_source_markers(
+    const std::uint8_t primary_marker,
+    const std::uint8_t secondary_marker) {
+    // [C] ROM 0x168EE-0x16900 suppresses the scene's lone actor when its
+    // 0xEEFE-derived party marker matches either compact party marker. Give
+    // Lua the actor-list identities associated with those markers instead.
+    constexpr std::array<std::pair<std::uint8_t, std::string_view>, 10U>
+        kMarkerActivityIds{{
+            {3U, "scene_10_event_6_script"},
+            {5U, "scene_10_default_script"},
+            {2U, "scene_11_script"},
+            {7U, "scene_13_ilene_gate_script"},
+            {4U, "scene_14_script"},
+            {10U, "scene_15_script"},
+            {6U, "scene_16_script"},
+            {8U, "scene_17_script"},
+            {9U, "scene_18_script"},
+            {1U, "scene_19_script"},
+        }};
+    std::vector<std::string> result;
+    result.reserve(2U);
+    const auto append_activity_id =
+        [&result, &kMarkerActivityIds](const std::uint8_t marker) {
+            const auto found = std::find_if(
+                kMarkerActivityIds.begin(), kMarkerActivityIds.end(),
+                [marker](const auto& row) { return row.first == marker; });
+            if (found != kMarkerActivityIds.end() &&
+                std::find(result.begin(), result.end(), found->second) ==
+                    result.end()) {
+                result.emplace_back(found->second);
+            }
+        };
+    append_activity_id(primary_marker);
+    append_activity_id(secondary_marker);
+    return result;
+}
+
 std::optional<std::string> GameScriptRuntime::active_run_id() {
     auto* state = impl_->state;
     if (state == nullptr) {
@@ -7028,6 +7075,8 @@ GameScriptRuntime::conditional_actor_candidates_for_scene(
             row_scene == scene_id &&
             read_field_integer(state, row_index, "choice", 3U, choice) &&
             choice > previous_choice &&
+            read_field_text(state, row_index, "candidate_id",
+                            candidate.candidate_id, 128U) &&
             read_field_text(state, row_index, "actor_name",
                             candidate.actor_name, 128U) &&
             read_field_integer(state, row_index, "entity_kind", 15U,
@@ -7109,17 +7158,17 @@ bool GameScriptRuntime::reset_conditional_actor_selection() {
     return true;
 }
 
-std::optional<std::uint8_t>
-GameScriptRuntime::consume_conditional_actor_selection_choice() {
+std::optional<ScriptConditionalActorVariant>
+GameScriptRuntime::consume_conditional_actor_selection() {
     auto* state = impl_->state;
     if (state == nullptr) {
         impl_->failure =
-            "Lua runtime is unavailable for A800 choice consumption";
+            "Lua runtime is unavailable for conditional actor selection consumption";
         return std::nullopt;
     }
     const auto stack_base = lua_gettop(state);
     const auto fail = [this, state, stack_base](const std::string_view reason)
-        -> std::optional<std::uint8_t> {
+        -> std::optional<ScriptConditionalActorVariant> {
         lua_settop(state, stack_base);
         impl_->failure = std::string(reason);
         return std::nullopt;
@@ -7127,26 +7176,33 @@ GameScriptRuntime::consume_conditional_actor_selection_choice() {
     if (!impl_->push_module("world_content")) {
         return fail("gameplay script module is missing: world_content");
     }
-    lua_getfield(state, -1, "consume_conditional_actor_selection_choice");
+    lua_getfield(state, -1, "consume_conditional_actor_selection");
     if (!lua_isfunction(state, -1)) {
         return fail(
-            "world_content.consume_conditional_actor_selection_choice is missing");
+            "world_content.consume_conditional_actor_selection is missing");
     }
     lua_remove(state, -2);
     ScopedInstructionBudget instruction_budget(state);
     if (lua_pcall(state, 0, 1, 0) != LUA_OK) {
         return fail(
-            "world_content.consume_conditional_actor_selection_choice: " +
+            "world_content.consume_conditional_actor_selection: " +
             stack_error(state));
     }
-    std::uint32_t choice = 0U;
-    if (!read_integer(state, -1, 0xFFU, choice)) {
+    std::string variant;
+    if (!read_string_allow_empty(state, -1, variant) ||
+        (variant != "none" && variant != "first" && variant != "second")) {
         return fail(
-            "conditional actor selection choice is outside byte range");
+            "conditional actor selection returned an unknown variant");
     }
     lua_settop(state, stack_base);
     impl_->failure.clear();
-    return static_cast<std::uint8_t>(choice);
+    if (variant == "first") {
+        return ScriptConditionalActorVariant::first;
+    }
+    if (variant == "second") {
+        return ScriptConditionalActorVariant::second;
+    }
+    return ScriptConditionalActorVariant::none;
 }
 
 std::optional<ScriptConditionalActorSelection>
@@ -7210,28 +7266,30 @@ GameScriptRuntime::resolve_conditional_actor_selection(
     }
     lua_pushstring(state, scene_mode);
     lua_setfield(state, -2, "scene_mode");
-    lua_pushinteger(state, context.mode_event_code);
-    lua_setfield(state, -2, "mode_event_code");
-    lua_pushinteger(state, context.world_flags);
-    lua_setfield(state, -2, "world_flags");
-    lua_pushinteger(state, context.primary_runner_marker);
-    lua_setfield(state, -2, "primary_runner_marker");
-    lua_pushinteger(state, context.secondary_runner_marker);
-    lua_setfield(state, -2, "secondary_runner_marker");
+    const char* scene_ten_variant =
+        context.scene_ten_activity_variant ==
+                ScriptSceneTenActivityVariant::alternate
+            ? "alternate"
+            : "standard";
+    lua_pushstring(state, scene_ten_variant);
+    lua_setfield(state, -2, "scene_ten_activity_variant");
+    lua_pushboolean(state, context.scene_13_activity_gate_passed);
+    lua_setfield(state, -2, "scene_13_activity_gate_passed");
+    lua_pushboolean(state, context.scene_15_activity_gate_passed);
+    lua_setfield(state, -2, "scene_15_activity_gate_passed");
+    lua_createtable(state, 0,
+                    static_cast<int>(context.party_present_activity_ids.size()));
+    for (const auto& activity_id : context.party_present_activity_ids) {
+        lua_pushboolean(state, 1);
+        lua_setfield(state, -2, activity_id.c_str());
+    }
+    lua_setfield(state, -2, "party_present_activity_ids");
     lua_pushboolean(state, context.pending_actor_list);
     lua_setfield(state, -2, "pending_actor_list");
-    if (context.active_effect_index.has_value()) {
-        lua_pushinteger(state, *context.active_effect_index);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "active_effect_index");
-    if (context.selected_effect_index.has_value()) {
-        lua_pushinteger(state, *context.selected_effect_index);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "selected_effect_index");
+    lua_pushboolean(state, context.active_effect_is_story_contact);
+    lua_setfield(state, -2, "active_effect_is_story_contact");
+    lua_pushboolean(state, context.active_effect_matches_selection);
+    lua_setfield(state, -2, "active_effect_matches_selection");
     lua_pushboolean(state, context.player_spawn_pending);
     lua_setfield(state, -2, "player_spawn_pending");
 
@@ -7250,14 +7308,17 @@ GameScriptRuntime::resolve_conditional_actor_selection(
     }
     const auto decision_index = lua_absindex(state, -1);
     std::string kind;
-    std::uint32_t choice = 0U;
-    std::uint32_t list_offset = 0U;
+    std::string selection_variant;
+    std::string list_id;
     if (!read_field_text(state, decision_index, "kind", kind) ||
-        !read_field_integer(state, decision_index, "selection_choice", 3U,
-                            choice) ||
-        !read_field_integer(state, decision_index, "list_offset", 0x1FFFFFU,
-                            list_offset)) {
+        !read_field_text(state, decision_index, "selection_variant",
+                         selection_variant, 32U) ||
+        !read_field_text(state, decision_index, "list_id", list_id, 128U)) {
         return fail("conditional actor selector returned invalid decision fields");
+    }
+    if (selection_variant != "none" && selection_variant != "first" &&
+        selection_variant != "second") {
+        return fail("conditional actor selector returned an unknown variant");
     }
     lua_getfield(state, decision_index, "choice_changed");
     if (!lua_isboolean(state, -1)) {
@@ -7270,8 +7331,8 @@ GameScriptRuntime::resolve_conditional_actor_selection(
     ScriptConditionalActorSelection decision{};
     if (kind == "none") {
         decision.kind = ScriptConditionalActorSelectionKind::none;
-        if (list_offset != 0U) {
-            return fail("empty conditional actor decision names a source list");
+        if (!list_id.empty()) {
+            return fail("empty conditional actor decision names an actor list");
         }
     } else if (kind == "story_contact") {
         decision.kind = ScriptConditionalActorSelectionKind::story_contact;
@@ -7287,12 +7348,18 @@ GameScriptRuntime::resolve_conditional_actor_selection(
         return fail("conditional actor selector returned an unknown decision");
     }
     if (decision.kind != ScriptConditionalActorSelectionKind::none &&
-        list_offset == 0U) {
-        return fail("selected conditional actor decision has no source list");
+        list_id.empty()) {
+        return fail("selected conditional actor decision has no actor list id");
     }
-    decision.selection_choice = static_cast<std::uint8_t>(choice);
+    if (selection_variant == "first") {
+        decision.selection_variant = ScriptConditionalActorVariant::first;
+    } else if (selection_variant == "second") {
+        decision.selection_variant = ScriptConditionalActorVariant::second;
+    } else {
+        decision.selection_variant = ScriptConditionalActorVariant::none;
+    }
     decision.choice_changed = choice_changed;
-    decision.list_offset = list_offset;
+    decision.list_id = std::move(list_id);
     lua_settop(state, stack_base);
     impl_->failure.clear();
     return decision;

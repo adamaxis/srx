@@ -477,9 +477,9 @@ public:
     conditional_actor_candidates_for_dump(const std::uint16_t scene_id) {
         return game_scripts_.conditional_actor_candidates_for_scene(scene_id);
     }
-    std::optional<std::uint8_t>
-    consume_conditional_actor_selection_choice_for_dump() {
-        return game_scripts_.consume_conditional_actor_selection_choice();
+    std::optional<scripting::ScriptConditionalActorVariant>
+    consume_conditional_actor_selection_for_dump() {
+        return game_scripts_.consume_conditional_actor_selection();
     }
     std::uint8_t field_mode_exit_mode_for_dump() const noexcept {
         return field_mode_exit_transition_state_.exit_mode;

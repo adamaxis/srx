@@ -5,34 +5,38 @@
 -- Scene 13 and 15 retain the adjacent FFFC1E bit gates from 0x168CE-0x168EA.
 return {
     [10] = {
-        { event_code = 6, runner_marker = 3, list_offset = 0x17018 },
-        { event_code_not = 6, runner_marker = 5, list_offset = 0x17034 },
+        { activity_id = "scene_10_event_6_script",
+          variant = "alternate", list_id = "scene_10_event_6_script" },
+        { activity_id = "scene_10_default_script",
+          variant = "standard", list_id = "scene_10_default_script" },
     },
     [11] = {
-        { runner_marker = 2, list_offset = 0x17050 },
+        { activity_id = "scene_11_script", list_id = "scene_11_script" },
     },
-    -- Scene 12's 0x16FD4 pointer-table row is null.
+    -- Scene 12 has no authored world-activity list.
     [13] = {
-        { runner_marker = 7, required_world_flag = 19,
-          list_offset = 0x1706C },
+        { activity_id = "scene_13_ilene_gate_script",
+          required_gate = "scene_13_activity_gate_passed",
+          list_id = "scene_13_ilene_gate_script" },
     },
     [14] = {
-        { runner_marker = 4, list_offset = 0x17088 },
+        { activity_id = "scene_14_script", list_id = "scene_14_script" },
     },
     [15] = {
-        { runner_marker = 10, required_world_flag = 29,
-          list_offset = 0x170A2 },
+        { activity_id = "scene_15_script",
+          required_gate = "scene_15_activity_gate_passed",
+          list_id = "scene_15_script" },
     },
     [16] = {
-        { runner_marker = 6, list_offset = 0x170BC },
+        { activity_id = "scene_16_script", list_id = "scene_16_script" },
     },
     [17] = {
-        { runner_marker = 8, list_offset = 0x170D8 },
+        { activity_id = "scene_17_script", list_id = "scene_17_script" },
     },
     [18] = {
-        { runner_marker = 9, list_offset = 0x170F4 },
+        { activity_id = "scene_18_script", list_id = "scene_18_script" },
     },
     [19] = {
-        { runner_marker = 1, list_offset = 0x16FFC },
+        { activity_id = "scene_19_script", list_id = "scene_19_script" },
     },
 }

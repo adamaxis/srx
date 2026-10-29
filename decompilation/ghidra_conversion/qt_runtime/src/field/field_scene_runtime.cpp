@@ -3099,17 +3099,25 @@ void FieldSceneRuntime::initialize_default_field_actors(
         facts.pending_world_effect = field_pending_world_effect_;
         facts.scene_mode = scripting::script_field_scene_mode_from_source_word(
             field_movement_transition_state_.world_mode);
-        facts.mode_event_code =
-            field_movement_transition_state_.mode_event_code;
-        facts.world_flags = field_exit_world_flags_;
-        facts.primary_runner_marker =
-            field_party_roster_.primary_compact_marker();
-        facts.secondary_runner_marker =
-            field_party_roster_.secondary_compact_marker();
+        facts.scene_ten_activity_variant =
+            scripting::script_scene_ten_activity_variant_from_source_event(
+                field_movement_transition_state_.mode_event_code);
+        facts.scene_13_activity_gate_passed =
+            (field_exit_world_flags_ & (std::uint32_t{1U} << 19U)) != 0U;
+        facts.scene_15_activity_gate_passed =
+            (field_exit_world_flags_ & (std::uint32_t{1U} << 29U)) != 0U;
+        facts.party_present_activity_ids =
+            scripting::script_mode_one_activity_ids_present_from_source_markers(
+                field_party_roster_.primary_compact_marker(),
+                field_party_roster_.secondary_compact_marker());
         facts.pending_actor_list =
             !pending_world_activity_script_actors_.empty();
-        facts.active_effect_index = field_active_effect_index_;
-        facts.selected_effect_index = field_selected_effect_index_;
+        facts.active_effect_is_story_contact =
+            field_active_effect_index_ == std::optional<std::uint16_t>{4U};
+        facts.active_effect_matches_selection =
+            field_active_effect_index_.has_value() &&
+            field_selected_effect_index_.has_value() &&
+            field_active_effect_index_ == field_selected_effect_index_;
         facts.player_spawn_pending = has_pending_world_effect_player_spawn();
         facts.active_offer_id = game_scripts_.active_run_id();
         if (!facts.active_offer_id.has_value() &&
@@ -3149,8 +3157,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
                 case ScriptConditionalActorSelectionKind::story_contact:
                 case ScriptConditionalActorSelectionKind::pending_world_activity: {
                     auto actors =
-                        game_scripts_.world_activity_actors_for_source_list(
-                            scene_reference, selection->list_offset);
+                        game_scripts_.world_activity_actors_for_list_id(
+                            scene_reference, selection->list_id);
                     field_world_activity_transfer_actor_template_.reset();
                     if (actors.has_value() && !actors->empty()) {
                         field_world_activity_transfer_actor_template_ =
@@ -3166,8 +3174,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
                 }
                 case ScriptConditionalActorSelectionKind::mode_one_world_activity: {
                     auto actors =
-                        game_scripts_.world_activity_actors_for_source_list(
-                            scene_reference, selection->list_offset);
+                        game_scripts_.world_activity_actors_for_list_id(
+                            scene_reference, selection->list_id);
                     field_world_activity_transfer_actor_template_.reset();
                     queue_pending_actor_list(
                         std::move(actors),
@@ -3187,7 +3195,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
                     const auto candidate = std::find_if(
                         candidates->begin(), candidates->end(),
                         [&selection](const auto& row) {
-                            return row.list_offset == selection->list_offset;
+                            return row.candidate_id == selection->list_id;
                         });
                     if (candidate == candidates->end()) {
                         failure_ = "A800 selected a list absent from its scene table";
@@ -7511,9 +7519,9 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             // Lua owns the selected contact option. This flow only needs the
             // semantic fact that a selection exists and whether a live escort
             // remains in the current field scene.
-            const auto conditional_choice =
-                game_scripts_.consume_conditional_actor_selection_choice();
-            if (!conditional_choice.has_value()) {
+            const auto conditional_selection =
+                game_scripts_.consume_conditional_actor_selection();
+            if (!conditional_selection.has_value()) {
                 failure_ = game_scripts_.failure();
                 source_boundary(
                     "field.world_activity.conditional_actor_choice_unresolved");
@@ -7522,7 +7530,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             world_activity_request_outcome_ =
                 ::shadowrun::ghidra_conversion::handle_world_activity_request(
                     WorldActivityRequestFacts{
-                        *conditional_choice != 0U,
+                        *conditional_selection !=
+                            scripting::ScriptConditionalActorVariant::none,
                         current_world_activity_has_active_escort()},
                     world_activity_request_start_state_);
             if (world_activity_request_outcome_.has_value()) {

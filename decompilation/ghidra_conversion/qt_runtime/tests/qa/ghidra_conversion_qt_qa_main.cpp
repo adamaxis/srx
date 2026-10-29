@@ -21482,8 +21482,11 @@ bool verify_random_pedestrian_contact_qa(
         return false;
     }
     const auto retained_choice =
-        field_scene.consume_conditional_actor_selection_choice_for_dump();
-    if (retained_choice != std::optional<std::uint8_t>{choice}) {
+        field_scene.consume_conditional_actor_selection_for_dump();
+    const auto expected_variant = choice == 1U
+        ? shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant::first
+        : shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant::second;
+    if (retained_choice != std::optional<shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant>{expected_variant}) {
         std::cerr << "Pedestrian scenes QA: contact did not retain the "
                      "selected FFE183 choice-"
                   << static_cast<unsigned>(choice)
@@ -21823,8 +21826,11 @@ bool verify_field_pedestrian_late_gate_retention_qa(
             return false;
         }
         const auto consumed =
-            field_scene.consume_conditional_actor_selection_choice_for_dump();
-        if (consumed != std::optional<std::uint8_t>{choice}) {
+            field_scene.consume_conditional_actor_selection_for_dump();
+        if (consumed != std::optional<shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant>{
+                           choice == 1U
+                               ? shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant::first
+                               : shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant::second}) {
             std::cerr << "Pedestrian gate QA: 0x1E45E consumed "
                          "the wrong retained choice\n";
             return false;
@@ -22544,9 +22550,12 @@ int run_field_pedestrian_scenes_qa(
                 }
             } else {
                 const auto consumed_choice = field_scene
-                    .consume_conditional_actor_selection_choice_for_dump();
+                    .consume_conditional_actor_selection_for_dump();
+                const auto expected_variant = choice == 1U
+                    ? shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant::first
+                    : shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant::second;
                 if (consumed_choice !=
-                    std::optional<std::uint8_t>{choice}) {
+                    std::optional<shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant>{expected_variant}) {
                     std::cerr << "Pedestrian scenes QA: 0x1E45E did not consume "
                               << "Scene " << scene << " choice "
                               << static_cast<unsigned>(choice) << '\n';
@@ -31791,7 +31800,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
     }
 
     const auto selected_choice =
-        field_scene.consume_conditional_actor_selection_choice_for_dump();
+        field_scene.consume_conditional_actor_selection_for_dump();
     const auto active_effect_index =
         field_scene.active_effect_index_for_dump();
     const auto selected_effect_index =
@@ -31799,13 +31808,21 @@ int run_field_employee_recruitment_target_pedestrian_qa(
     const auto candidates =
         field_scene.conditional_actor_candidates_for_dump(
             route.destination_scene);
+    const auto selected_choice_number =
+        selected_choice == std::optional<shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant>{
+            shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant::first}
+            ? std::uint8_t{1U}
+        : selected_choice == std::optional<shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant>{
+            shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant::second}
+            ? std::uint8_t{2U}
+            : std::uint8_t{0U};
     const shadowrun::ghidra_conversion::scripting::ScriptConditionalActorCandidate*
         expected = nullptr;
-    if (candidates.has_value() && selected_choice.has_value()) {
+    if (candidates.has_value() && selected_choice_number != 0U) {
         const auto candidate = std::find_if(
             candidates->begin(), candidates->end(),
-            [selected_choice](const auto& row) {
-                return row.choice == *selected_choice;
+            [selected_choice_number](const auto& row) {
+                return row.choice == selected_choice_number;
             });
         if (candidate != candidates->end()) {
             expected = &*candidate;
@@ -31840,8 +31857,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         field_scene.world_activity_script_actor_projection_for_dump(0U);
     final_image = render_qa_field(field_scene);
     const bool candidate_gates_suppress_actor = ares_target &&
-        candidates.has_value() && selected_choice.has_value() &&
-        *selected_choice >= 1U && *selected_choice <= 2U &&
+        candidates.has_value() && selected_choice_number != 0U &&
         expected != nullptr &&
         expected->list_offset == route.candidate_list_offset &&
         expected->world_x == route.candidate_x &&
@@ -31852,8 +31868,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         !field_scene.pending_world_effect_for_dump() &&
         !field_scene.world_activity_transfer_actor_template_present_for_dump();
     const bool selected_candidate_row_valid = candidates.has_value() &&
-        selected_choice.has_value() && *selected_choice >= 1U &&
-        *selected_choice <= 2U && expected != nullptr;
+        selected_choice_number != 0U && expected != nullptr;
     const bool candidate_a800_gates_pass =
         field_scene.active_run_source_initializer_for_dump() ==
             std::optional<std::uint8_t>{route.initializer} &&
@@ -31922,8 +31937,8 @@ int run_field_employee_recruitment_target_pedestrian_qa(
                   << "(scene="
                   << field_scene.field_scene_reference_for_dump()
                   << ", choice="
-                  << (selected_choice.has_value()
-                          ? std::to_string(*selected_choice)
+                  << (selected_choice_number != 0U
+                          ? std::to_string(selected_choice_number)
                           : std::string("missing"))
                   << ", actor_count="
                   << field_scene.world_activity_script_actor_count_for_dump()
@@ -31997,7 +32012,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
           << route.source_scene << '\t' << route.collision_record << '\t'
           << static_cast<unsigned>(route.target_event) << '\t'
           << route.destination_scene
-          << '\t' << static_cast<unsigned>(*selected_choice) << '\t'
+          << '\t' << static_cast<unsigned>(selected_choice_number) << '\t'
           << (actor ? actor->profile_id : std::string("none")) << '\t';
     if (actor) {
         trace << "0x" << std::hex << actor->list_offset << "\t0x"
@@ -32041,7 +32056,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
               << static_cast<unsigned>(route.target_event)
               << " record=" << route.collision_record << " destination="
               << route.destination_scene << " "
-                 "choice=" << static_cast<unsigned>(*selected_choice)
+                 "choice=" << static_cast<unsigned>(selected_choice_number)
               << " actor_spawned=" << static_cast<bool>(actor)
               << " artifacts=" << output.string() << '\n';
     return 0;

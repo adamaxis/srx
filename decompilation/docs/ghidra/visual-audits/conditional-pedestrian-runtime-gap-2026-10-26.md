@@ -492,6 +492,18 @@ rejection, or left untouched by the higher-priority story lists. This is
 selector-state coverage; the separate field QA supplies the scene-entry,
 actor-allocation, and contact paths.
 
+The selector boundary was then moved away from source-shaped values. Lua now
+receives the named Scene-10 activity variant, the Scene-13/15 gate results,
+stable activity identities already represented in the party, and booleans for
+the story-contact effect and matching active/selected effects. The C++ field
+adapter derives these from FFFBF9, FFFC1E, FFFC0C/FFFC0D, FFF0C8, and FFE12C;
+Lua no longer interprets those bytes, words, or the packed story-flag word.
+Mode-one selection and A800 return stable actor-list/candidate IDs, and the
+retained random choice is the Lua-owned `first`/`second` variant. The existing
+8,640 selector permutations and Debug/Release pedestrian scene captures pass
+through this semantic interface. Extracted actor descriptors still retain
+source addresses as provenance for host-side resolution.
+
 The selected pending list is drained before the scene default list at `0x43B6`,
 so a candidate consumes an ordinary actor slot first. Keep all three table rows
 for provenance, but treat row 3 as unreachable under the ROM's valid

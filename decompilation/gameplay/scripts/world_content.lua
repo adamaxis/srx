@@ -3,7 +3,7 @@
 -- game.modules.world_content_data and versioned route JSON into
 -- game.content.entities; this module joins those records for map scripts.
 local World = {}
-local conditional_actor_selection_choice = 0
+local conditional_actor_selection_variant = nil
 local E = require("enums")
 local mode_one_activity_actor_lists =
     require("data.mode_one_activity_actor_lists")
@@ -389,6 +389,8 @@ function World.conditional_actor_candidates_for_scene(scene_id)
             local source_facts = type(row.actor_facts) == "table"
                 and row.actor_facts or {}
             result[#result + 1] = {
+                candidate_id = row.selection_group .. ":choice:" ..
+                    tostring(row.choice),
                 scene = row.scene,
                 choice = row.choice,
                 actor_name = row.actor_name,
@@ -417,49 +419,43 @@ function World.conditional_actor_candidates_for_scene(scene_id)
 end
 
 function World.reset_conditional_actor_selection()
-    conditional_actor_selection_choice = 0
+    conditional_actor_selection_variant = nil
 end
 
--- ROM 0x1E45E consumes FFE183 before scanning the active actor records.
--- Return the pending byte and clear it as one Lua-owned state transition so
--- the host cannot observe one value and later clear a different one.
-function World.consume_conditional_actor_selection_choice()
-    local choice = conditional_actor_selection_choice
-    conditional_actor_selection_choice = 0
-    return choice
+-- The request path only needs to know whether the chosen option is pending.
+-- The selected first/second variant stays private to this Lua policy.
+function World.consume_conditional_actor_selection()
+    local variant = conditional_actor_selection_variant or "none"
+    conditional_actor_selection_variant = nil
+    return variant
 end
 
 local function mode_one_activity_actor_list(scene_id, facts)
     if facts.scene_mode ~= "street" or facts.pending_actor_list then
-        return 0
+        return ""
     end
     local rows = mode_one_activity_actor_lists[scene_id]
     if type(rows) ~= "table" then
-        return 0
+        return ""
     end
     for _, row in ipairs(rows) do
-        local event_matches =
-            (row.event_code == nil or
-             facts.mode_event_code == row.event_code) and
-            (row.event_code_not == nil or
-             facts.mode_event_code ~= row.event_code_not)
-        local world_flag_matches = row.required_world_flag == nil or
-            (facts.world_flags & (1 << row.required_world_flag)) ~= 0
-        if event_matches and world_flag_matches and
-           facts.primary_runner_marker ~= row.runner_marker and
-           facts.secondary_runner_marker ~= row.runner_marker then
-            return row.list_offset
+        local variant_matches = row.variant == nil or
+            facts.scene_ten_activity_variant == row.variant
+        local gate_matches = row.required_gate == nil or
+            facts[row.required_gate] == true
+        local party_does_not_include_actor =
+            facts.party_present_activity_ids[row.activity_id] ~= true
+        if variant_matches and gate_matches and party_does_not_include_actor then
+            return row.list_id
         end
     end
-    return 0
+    return ""
 end
 
--- Lua owns the mode-one scene list gate and the A800 pending-list precedence
--- and pedestrian branch. The A800 choice remains here between source passes
--- and returns even when a late index/spawn gate fails; source clear points
--- call reset_conditional_actor_selection rather than keeping a second host
--- copy. Mode one only chooses its extracted list; C++ publishes its typed
--- actor descriptor through the shared field actor path.
+-- Lua owns the mode-one scene-list gate and A800 precedence. The host passes
+-- named party, story, run, and scene facts; this policy returns stable actor
+-- list identities. The selected first/second pedestrian variant remains Lua
+-- state across source passes and survives a late spawn gate failure.
 function World.resolve_conditional_actor_selection(
     scene_id, facts, random_below)
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
@@ -467,76 +463,69 @@ function World.resolve_conditional_actor_selection(
        type(facts.world_effect_active) ~= "boolean" or
        type(facts.pending_world_effect) ~= "boolean" or
        valid_field_scene_modes[facts.scene_mode] ~= true or
-       type(facts.mode_event_code) ~= "number" or
-       facts.mode_event_code % 1 ~= 0 or facts.mode_event_code < 0 or
-       facts.mode_event_code > 0xFF or
-       type(facts.world_flags) ~= "number" or
-       facts.world_flags % 1 ~= 0 or facts.world_flags < 0 or
-       facts.world_flags > 0xFFFFFFFF or
-       type(facts.primary_runner_marker) ~= "number" or
-       facts.primary_runner_marker % 1 ~= 0 or
-       facts.primary_runner_marker < 0 or
-       facts.primary_runner_marker > 0xFF or
-       type(facts.secondary_runner_marker) ~= "number" or
-       facts.secondary_runner_marker % 1 ~= 0 or
-       facts.secondary_runner_marker < 0 or
-       facts.secondary_runner_marker > 0xFF or
+       (facts.scene_ten_activity_variant ~= "standard" and
+        facts.scene_ten_activity_variant ~= "alternate") or
+       type(facts.scene_13_activity_gate_passed) ~= "boolean" or
+       type(facts.scene_15_activity_gate_passed) ~= "boolean" or
+       type(facts.party_present_activity_ids) ~= "table" or
        type(facts.pending_actor_list) ~= "boolean" or
+       type(facts.active_effect_is_story_contact) ~= "boolean" or
+       type(facts.active_effect_matches_selection) ~= "boolean" or
        type(facts.player_spawn_pending) ~= "boolean" or
        type(random_below) ~= "function" then
         error("conditional actor selection facts are invalid")
     end
-    local word_or_nil = function(value)
-        return value == nil or
-            (type(value) == "number" and value % 1 == 0 and
-             value >= 0 and value <= 0xFFFF)
-    end
     if (facts.active_offer_id ~= nil and
         (type(facts.active_offer_id) ~= "string" or
-         facts.active_offer_id == "")) or
-       not word_or_nil(facts.active_effect_index) or
-       not word_or_nil(facts.selected_effect_index) then
+         facts.active_offer_id == "")) then
         error("conditional actor selection has invalid gameplay facts")
     end
 
-    local choice = conditional_actor_selection_choice
+    for activity_id, present in pairs(facts.party_present_activity_ids) do
+        if type(activity_id) ~= "string" or activity_id == "" or
+           type(present) ~= "boolean" then
+            error("conditional actor party facts are invalid")
+        end
+    end
+
+    local variant = conditional_actor_selection_variant
     local choice_changed = false
-    local result = function(kind, list_offset)
+    local result = function(kind, list_id)
         return {
             kind = kind,
-            selection_choice = choice,
+            selection_variant = variant or "none",
             choice_changed = choice_changed,
-            list_offset = list_offset,
+            list_id = list_id,
         }
     end
 
     -- ROM 0x16854 branches past all later scene-list selection when FFE120
     -- already names a pending actor list.
     if facts.pending_actor_list then
-        return result("none", 0)
+        return result("none", "")
     end
 
     -- 0xA800 returns from this higher-priority branch unless FFF0C8, the
     -- active effect index, is 4; FFE182 and the random branch are skipped.
     if facts.world_effect_active then
-        if facts.active_effect_index == 4 then
-            return result("story_contact", 0xA8AE)
+        if facts.active_effect_is_story_contact then
+            return result("story_contact", "scene_34_story_contact")
         end
-        return result("none", 0)
+        return result("none", "")
     end
     if facts.pending_world_effect then
-        return result("pending_world_activity", 0xA8CC)
+        return result("pending_world_activity", "scene_20_ilene_pending_list")
     end
 
     -- 0x1684C sets FFDF40=1, then reads the FFFBF9/FFFC1E/compact-marker
     -- gates before queuing a 0x16FD4 source list in FFE120. It exits early
     -- when another source already owns that pending-list pointer.
     if facts.scene_mode == "street" then
-        local list_offset = mode_one_activity_actor_list(scene_id, facts)
-        if list_offset ~= 0 then
-            return result("mode_one_world_activity", list_offset)
+        local list_id = mode_one_activity_actor_list(scene_id, facts)
+        if list_id ~= "" then
+            return result("mode_one_world_activity", list_id)
         end
-        return result("none", 0)
+        return result("none", "")
     end
 
     -- ROM 0x1E69C dispatches the accepted offer through its source handler;
@@ -544,33 +533,34 @@ function World.resolve_conditional_actor_selection(
     -- identity before this field policy runs.
     if facts.active_offer_id ~= "employee_recruitment" or
        facts.scene_mode ~= "building" then
-        return result("none", 0)
+        return result("none", "")
     end
-    if choice == 0 then
+    if variant == nil then
         local roll = random_below(2)
         if type(roll) ~= "number" or roll % 1 ~= 0 or
            roll < 0 or roll >= 2 then
             error("conditional actor random service returned an invalid roll")
         end
-        choice = roll + 1
-        conditional_actor_selection_choice = choice
+        variant = roll == 0 and "first" or "second"
+        conditional_actor_selection_variant = variant
         choice_changed = true
     end
 
     -- A failed late gate keeps the choice sampled above, as the ROM does.
-    if facts.active_effect_index == nil or
-       facts.selected_effect_index ~= facts.active_effect_index or
+    if not facts.active_effect_matches_selection or
        facts.player_spawn_pending then
-        return result("none", 0)
+        return result("none", "")
     end
 
     local candidates = World.conditional_actor_candidates_for_scene(scene_id)
     for _, candidate in ipairs(candidates) do
-        if candidate.choice == choice then
-            return result("random_pedestrian", candidate.list_offset)
+        local candidate_variant = candidate.choice == 1 and "first" or
+            candidate.choice == 2 and "second" or "unreachable"
+        if candidate_variant == variant then
+            return result("random_pedestrian", candidate.candidate_id)
         end
     end
-    return result("none", 0)
+    return result("none", "")
 end
 
 -- Resolve coordinator-installed lists through their extracted transient

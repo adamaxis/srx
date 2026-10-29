@@ -1169,6 +1169,7 @@ struct ScriptFieldEncounterActor {
 struct ScriptConditionalActorCandidate {
     std::uint16_t scene_id = 0;
     std::uint8_t choice = 0;
+    std::string candidate_id;
     std::string actor_name;
     std::uint16_t entity_kind = 0;
     std::uint8_t palette_line = 0;
@@ -1185,9 +1186,9 @@ struct ScriptConditionalActorCandidate {
     std::string activation_gate;
 };
 
-// Gameplay facts for field actor selection. The active run is identified by
-// its canonical offer ID; Lua owns the retained one-shot pedestrian choice.
-// Floor selection facts remain distinct so late gate checks keep their order.
+// Semantic gameplay facts for field actor selection. ROM event bytes, story
+// bitfields, compact party markers, and effect indices are normalized by the
+// field host before Lua applies the selection policy.
 enum class ScriptFieldSceneMode : std::uint8_t {
     none,
     street,
@@ -1196,21 +1197,33 @@ enum class ScriptFieldSceneMode : std::uint8_t {
     unknown,
 };
 
+enum class ScriptSceneTenActivityVariant : std::uint8_t {
+    standard,
+    alternate,
+};
+
 ScriptFieldSceneMode script_field_scene_mode_from_source_word(
     std::uint16_t source_mode) noexcept;
+ScriptSceneTenActivityVariant
+script_scene_ten_activity_variant_from_source_event(
+    std::uint8_t source_event) noexcept;
+std::vector<std::string>
+script_mode_one_activity_ids_present_from_source_markers(
+    std::uint8_t primary_marker, std::uint8_t secondary_marker);
 
 struct ScriptConditionalActorSelectionContext {
     bool world_effect_active = false;
     bool pending_world_effect = false;
     std::optional<std::string> active_offer_id;
     ScriptFieldSceneMode scene_mode = ScriptFieldSceneMode::none;
-    std::uint8_t mode_event_code = 0;
-    std::uint32_t world_flags = 0;
-    std::uint8_t primary_runner_marker = 0xFFU;
-    std::uint8_t secondary_runner_marker = 0xFFU;
+    ScriptSceneTenActivityVariant scene_ten_activity_variant =
+        ScriptSceneTenActivityVariant::standard;
+    bool scene_13_activity_gate_passed = false;
+    bool scene_15_activity_gate_passed = false;
+    std::vector<std::string> party_present_activity_ids;
     bool pending_actor_list = false;
-    std::optional<std::uint16_t> active_effect_index;
-    std::optional<std::uint16_t> selected_effect_index;
+    bool active_effect_is_story_contact = false;
+    bool active_effect_matches_selection = false;
     bool player_spawn_pending = false;
 };
 
@@ -1222,12 +1235,19 @@ enum class ScriptConditionalActorSelectionKind : std::uint8_t {
     mode_one_world_activity,
 };
 
+enum class ScriptConditionalActorVariant : std::uint8_t {
+    none,
+    first,
+    second,
+};
+
 struct ScriptConditionalActorSelection {
     ScriptConditionalActorSelectionKind kind =
         ScriptConditionalActorSelectionKind::none;
-    std::uint8_t selection_choice = 0;
+    ScriptConditionalActorVariant selection_variant =
+        ScriptConditionalActorVariant::none;
     bool choice_changed = false;
-    std::uint32_t list_offset = 0;
+    std::string list_id;
 };
 
 // A source-selected field script list is installed by the world-activity
@@ -1897,9 +1917,10 @@ public:
     std::optional<std::vector<ScriptConditionalActorCandidate>>
     conditional_actor_candidates_for_scene(std::uint16_t scene_id);
     bool reset_conditional_actor_selection();
-    // ROM 0x1E45E tests and clears FFE183 before scanning actor records.
-    // Lua returns the pending selection byte while atomically clearing it.
-    std::optional<std::uint8_t> consume_conditional_actor_selection_choice();
+    // Consume Lua's typed first/second selection once before the host starts
+    // the associated world-activity request.
+    std::optional<ScriptConditionalActorVariant>
+    consume_conditional_actor_selection();
     std::optional<ScriptConditionalActorSelection>
     resolve_conditional_actor_selection(
         std::uint16_t scene_id,

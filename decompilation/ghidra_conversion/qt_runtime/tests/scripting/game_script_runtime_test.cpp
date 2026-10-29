@@ -19,6 +19,7 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -54,6 +55,38 @@ bool verify_field_scene_mode_translation() {
         }
     }
     return true;
+}
+
+bool verify_mode_one_semantic_fact_translation() {
+    using namespace shadowrun::ghidra_conversion::scripting;
+    const std::array<std::pair<std::uint8_t,
+                               ScriptSceneTenActivityVariant>, 5U>
+        event_cases{{
+            {0U, ScriptSceneTenActivityVariant::standard},
+            {5U, ScriptSceneTenActivityVariant::standard},
+            {6U, ScriptSceneTenActivityVariant::alternate},
+            {7U, ScriptSceneTenActivityVariant::standard},
+            {0xFFU, ScriptSceneTenActivityVariant::standard},
+        }};
+    for (const auto& [source_event, expected_variant] : event_cases) {
+        if (script_scene_ten_activity_variant_from_source_event(source_event) !=
+            expected_variant) {
+            std::cerr << "FFFBF9 Scene-10 event did not become its named variant: "
+                      << static_cast<unsigned>(source_event) << '\n';
+            return false;
+        }
+    }
+
+    const auto party_activity_ids =
+        script_mode_one_activity_ids_present_from_source_markers(3U, 10U);
+    const auto absent_party_activity_ids =
+        script_mode_one_activity_ids_present_from_source_markers(0xFFU, 0U);
+    return expect(
+        party_activity_ids == std::vector<std::string>{
+                                  "scene_10_event_6_script",
+                                  "scene_15_script"} &&
+            absent_party_activity_ids.empty(),
+        "compact party markers did not become stable activity identities");
 }
 
 bool verify_conditional_actor_selector_permutations(
@@ -93,7 +126,7 @@ bool verify_conditional_actor_selector_permutations(
                 "A800 permutation fixture lacks the Scene-21 source rows")) {
         return false;
     }
-    std::array<std::uint32_t, 2> choice_list_offsets{};
+    std::array<std::string, 2> choice_list_ids{};
     for (std::uint8_t choice = 1U; choice <= 2U; ++choice) {
         const auto row = std::find_if(
             candidates->begin(), candidates->end(),
@@ -104,7 +137,7 @@ bool verify_conditional_actor_selector_permutations(
             return expect(false,
                           "A800 permutation fixture lacks a reachable row");
         }
-        choice_list_offsets[choice - 1U] = row->list_offset;
+        choice_list_ids[choice - 1U] = row->candidate_id;
     }
 
     std::size_t random_calls = 0U;
@@ -123,6 +156,13 @@ bool verify_conditional_actor_selector_permutations(
     };
 
     std::size_t permutation_count = 0U;
+    const auto variant_for_choice = [](const std::uint8_t choice) {
+        using ScriptConditionalActorVariant =
+            shadowrun::ghidra_conversion::scripting::ScriptConditionalActorVariant;
+        return choice == 1U ? ScriptConditionalActorVariant::first
+             : choice == 2U ? ScriptConditionalActorVariant::second
+                            : ScriptConditionalActorVariant::none;
+    };
     for (const bool world_effect_active : kBooleans) {
         for (const bool pending_world_effect : kBooleans) {
             for (const auto offer_id : kOfferIds) {
@@ -146,8 +186,8 @@ bool verify_conditional_actor_selector_permutations(
                                             "employee_recruitment";
                                         seed_context.scene_mode =
                                             ScriptFieldSceneMode::building;
-                                        seed_context.active_effect_index = 0U;
-                                        seed_context.selected_effect_index = 1U;
+                                        seed_context.active_effect_matches_selection =
+                                            false;
                                         const auto seeded =
                                             scripts.resolve_conditional_actor_selection(
                                                 0x15U, seed_context,
@@ -157,8 +197,9 @@ bool verify_conditional_actor_selector_permutations(
                                         if (!seeded.has_value() ||
                                             seeded->kind !=
                                                 ScriptConditionalActorSelectionKind::none ||
-                                            seeded->selection_choice !=
-                                                retained_choice ||
+                                            seeded->selection_variant !=
+                                                variant_for_choice(
+                                                    retained_choice) ||
                                             !seeded->choice_changed) {
                                             std::cerr
                                                 << "A800 permutation could not seed retained choice "
@@ -180,10 +221,14 @@ bool verify_conditional_actor_selector_permutations(
                                             std::string(offer_id);
                                     }
                                     context.scene_mode = scene_mode;
-                                    context.active_effect_index =
-                                        effect_indices.active;
-                                    context.selected_effect_index =
-                                        effect_indices.selected;
+                                    context.active_effect_is_story_contact =
+                                        effect_indices.active ==
+                                        std::optional<std::uint16_t>{4U};
+                                    context.active_effect_matches_selection =
+                                        effect_indices.active.has_value() &&
+                                        effect_indices.selected.has_value() &&
+                                        effect_indices.active ==
+                                            effect_indices.selected;
                                     context.player_spawn_pending =
                                         player_spawn_pending;
 
@@ -202,24 +247,29 @@ bool verify_conditional_actor_selector_permutations(
                                         scene_mode ==
                                             ScriptFieldSceneMode::building &&
                                         retained_choice == 0U;
-                                    const auto expected_choice = should_sample
-                                        ? static_cast<std::uint8_t>(random_roll + 1U)
-                                        : retained_choice;
+                                    const auto expected_variant =
+                                        should_sample
+                                            ? variant_for_choice(
+                                                  static_cast<std::uint8_t>(
+                                                      random_roll + 1U))
+                                            : variant_for_choice(retained_choice);
 
                                     auto expected_kind =
                                         ScriptConditionalActorSelectionKind::none;
-                                    std::uint32_t expected_list_offset = 0U;
+                                    std::string expected_list_id;
                                     if (world_effect_active) {
                                         if (effect_indices.active ==
                                             std::optional<std::uint16_t>{4U}) {
                                             expected_kind =
                                                 ScriptConditionalActorSelectionKind::story_contact;
-                                            expected_list_offset = 0xA8AEU;
+                                            expected_list_id =
+                                                "scene_34_story_contact";
                                         }
                                     } else if (pending_world_effect) {
                                         expected_kind =
                                             ScriptConditionalActorSelectionKind::pending_world_activity;
-                                        expected_list_offset = 0xA8CCU;
+                                        expected_list_id =
+                                            "scene_20_ilene_pending_list";
                                     } else if (is_employee_recruitment &&
                                                scene_mode ==
                                                    ScriptFieldSceneMode::building &&
@@ -229,9 +279,12 @@ bool verify_conditional_actor_selector_permutations(
                                                !player_spawn_pending) {
                                         expected_kind =
                                             ScriptConditionalActorSelectionKind::random_pedestrian;
-                                        expected_list_offset =
-                                            choice_list_offsets[expected_choice -
-                                                                1U];
+                                        expected_list_id = choice_list_ids[
+                                            static_cast<std::size_t>(
+                                                expected_variant ==
+                                                        ScriptConditionalActorVariant::second
+                                                    ? 1U
+                                                    : 0U)];
                                     }
 
                                     const auto expected_test_random_calls =
@@ -239,10 +292,10 @@ bool verify_conditional_actor_selector_permutations(
                                     ++permutation_count;
                                     if (!selection.has_value() ||
                                         selection->kind != expected_kind ||
-                                        selection->list_offset !=
-                                            expected_list_offset ||
-                                        selection->selection_choice !=
-                                            expected_choice ||
+                                        selection->list_id !=
+                                            expected_list_id ||
+                                        selection->selection_variant !=
+                                            expected_variant ||
                                         selection->choice_changed !=
                                             should_sample ||
                                         random_calls - calls_before !=
@@ -343,16 +396,47 @@ bool verify_mode_one_activity_actor_lists(
         ++random_calls;
         return std::nullopt;
     };
+    constexpr std::array<std::pair<std::uint32_t, std::string_view>, 10U>
+        kListIds{{
+            {0x17018U, "scene_10_event_6_script"},
+            {0x17034U, "scene_10_default_script"},
+            {0x17050U, "scene_11_script"},
+            {0x1706CU, "scene_13_ilene_gate_script"},
+            {0x17088U, "scene_14_script"},
+            {0x170A2U, "scene_15_script"},
+            {0x170BCU, "scene_16_script"},
+            {0x170D8U, "scene_17_script"},
+            {0x170F4U, "scene_18_script"},
+            {0x16FFCU, "scene_19_script"},
+        }};
 
     for (const auto& test_case : kCases) {
         ScriptConditionalActorSelectionContext facts{};
         facts.scene_mode = script_field_scene_mode_from_source_word(
             test_case.source_mode_word);
-        facts.mode_event_code = test_case.event_code;
-        facts.world_flags = test_case.world_flags;
-        facts.primary_runner_marker = test_case.primary_marker;
-        facts.secondary_runner_marker = test_case.secondary_marker;
+        facts.scene_ten_activity_variant =
+            script_scene_ten_activity_variant_from_source_event(
+                test_case.event_code);
+        facts.scene_13_activity_gate_passed =
+            (test_case.world_flags & (1U << 19U)) != 0U;
+        facts.scene_15_activity_gate_passed =
+            (test_case.world_flags & (1U << 29U)) != 0U;
+        facts.party_present_activity_ids =
+            script_mode_one_activity_ids_present_from_source_markers(
+                test_case.primary_marker, test_case.secondary_marker);
         facts.pending_actor_list = test_case.pending_actor_list;
+        std::string expected_list_id;
+        if (test_case.expected_list != 0U) {
+            const auto expected_row = std::find_if(
+                kListIds.begin(), kListIds.end(), [&test_case](const auto& row) {
+                    return row.first == test_case.expected_list;
+                });
+            if (expected_row == kListIds.end()) {
+                return expect(false,
+                              "mode-one expected list lacks a semantic id");
+            }
+            expected_list_id = expected_row->second;
+        }
         const auto selection = scripts.resolve_conditional_actor_selection(
             test_case.scene, facts, no_random);
         const auto expected_kind = test_case.expected_list == 0U
@@ -360,7 +444,7 @@ bool verify_mode_one_activity_actor_lists(
             : ScriptConditionalActorSelectionKind::mode_one_world_activity;
         if (!expect(selection.has_value() &&
                         selection->kind == expected_kind &&
-                        selection->list_offset == test_case.expected_list &&
+                        selection->list_id == expected_list_id &&
                         !selection->choice_changed,
                     "0x1684C mode-one actor-list gate mismatch")) {
             std::cerr << "scene=" << test_case.scene
@@ -378,8 +462,8 @@ bool verify_mode_one_activity_actor_lists(
             return false;
         }
         if (test_case.expected_list != 0U) {
-            const auto actors = scripts.world_activity_actors_for_source_list(
-                test_case.scene, test_case.expected_list);
+            const auto actors = scripts.world_activity_actors_for_list_id(
+                test_case.scene, expected_list_id);
             if (!expect(actors.has_value() && actors->size() == 1U &&
                             actors->front().list_offset ==
                                 test_case.expected_list,
@@ -841,8 +925,7 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
     ScriptConditionalActorSelectionContext facts{};
     facts.active_offer_id = *active_run_id;
     facts.scene_mode = ScriptFieldSceneMode::building;
-    facts.active_effect_index = 0U;
-    facts.selected_effect_index = 0U;
+    facts.active_effect_matches_selection = true;
     std::size_t random_calls = 0U;
     const auto selection = scripts.resolve_conditional_actor_selection(
         0x15U, facts,
@@ -854,7 +937,7 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
         });
     const auto candidates = scripts.conditional_actor_candidates_for_scene(0x15U);
     bool expected_candidate_found = false;
-    std::uint32_t expected_list_offset = 0U;
+    std::string expected_candidate_id;
     if (candidates.has_value()) {
         const auto expected_candidate = std::find_if(
             candidates->begin(), candidates->end(),
@@ -863,11 +946,14 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
             });
         expected_candidate_found = expected_candidate != candidates->end();
         if (expected_candidate_found) {
-            expected_list_offset = expected_candidate->list_offset;
+            expected_candidate_id = expected_candidate->candidate_id;
         }
     }
     const auto consumed_choice =
-        scripts.consume_conditional_actor_selection_choice();
+        scripts.consume_conditional_actor_selection();
+    const auto expected_variant = a800_roll == 0U
+        ? ScriptConditionalActorVariant::first
+        : ScriptConditionalActorVariant::second;
     WorldActivityStartState activity{};
     const auto request_outcome = handle_world_activity_request(
         WorldActivityRequestFacts{consumed_choice.has_value(), true}, activity);
@@ -878,12 +964,12 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
             selection->kind ==
                 ScriptConditionalActorSelectionKind::random_pedestrian &&
             selection->choice_changed &&
-            selection->selection_choice == a800_roll + 1U &&
+            selection->selection_variant == expected_variant &&
             expected_candidate_found &&
-            selection->list_offset == expected_list_offset &&
+            selection->list_id == expected_candidate_id &&
             random_calls == 1U &&
             consumed_choice ==
-                std::optional<std::uint8_t>{a800_roll + 1U} &&
+                std::optional<ScriptConditionalActorVariant>{expected_variant} &&
             activity_started && request_outcome->active_escort_present &&
             activity.callback ==
                 WorldActivityCallbackKind::extraction_result &&
@@ -1100,8 +1186,7 @@ bool verify_employee_recruitment_pedestrian_request(
     ScriptConditionalActorSelectionContext selection_facts{};
     selection_facts.active_offer_id = *active_run_id;
     selection_facts.scene_mode = ScriptFieldSceneMode::building;
-    selection_facts.active_effect_index = 0U;
-    selection_facts.selected_effect_index = 0U;
+    selection_facts.active_effect_matches_selection = true;
     const auto selection = scripts.resolve_conditional_actor_selection(
         0x15U, selection_facts,
         [](const std::uint16_t bound) -> std::optional<std::uint16_t> {
@@ -1109,7 +1194,7 @@ bool verify_employee_recruitment_pedestrian_request(
                               : std::nullopt;
         });
     const auto consumed_choice =
-        scripts.consume_conditional_actor_selection_choice();
+        scripts.consume_conditional_actor_selection();
 
     WorldActivityStartState activity{};
     const auto request_outcome = handle_world_activity_request(
@@ -1119,9 +1204,11 @@ bool verify_employee_recruitment_pedestrian_request(
         selection.has_value() &&
             selection->kind ==
                 ScriptConditionalActorSelectionKind::random_pedestrian &&
-            selection->selection_choice == 2U &&
+            selection->selection_variant ==
+                ScriptConditionalActorVariant::second &&
             selection->choice_changed && consumed_choice ==
-                std::optional<std::uint8_t>{2U} && activity_started &&
+                std::optional<ScriptConditionalActorVariant>{
+                    ScriptConditionalActorVariant::second} && activity_started &&
             request_outcome->active_escort_present &&
             activity.callback ==
                 WorldActivityCallbackKind::extraction_result &&
@@ -1387,7 +1474,8 @@ int main() {
     using namespace shadowrun::ghidra_conversion;
     using namespace shadowrun::ghidra_conversion::scripting;
 
-    if (!verify_field_scene_mode_translation()) {
+    if (!verify_field_scene_mode_translation() ||
+        !verify_mode_one_semantic_fact_translation()) {
         return 1;
     }
 
@@ -1590,6 +1678,9 @@ int main() {
             const auto& candidate = (*candidates)[index];
             if (candidate.scene_id != scene ||
                 candidate.choice != index + 1U ||
+                candidate.candidate_id !=
+                    "scene-" + std::to_string(scene) + "-one-of-three:choice:" +
+                        std::to_string(candidate.choice) ||
                 candidate.entity_kind != 11U ||
                 candidate.palette_line != 3U ||
                 candidate.template_offset != 0x1D6988U ||
@@ -1664,13 +1755,13 @@ int main() {
     ScriptConditionalActorSelectionContext story_contact_context{};
     story_contact_context.world_effect_active = true;
     story_contact_context.pending_world_effect = true;
-    story_contact_context.active_effect_index = 4U;
+    story_contact_context.active_effect_is_story_contact = true;
     const auto story_contact_selection =
         scripts.resolve_conditional_actor_selection(
             0x22U, story_contact_context, unexpected_conditional_roll);
 
     auto blocked_story_context = story_contact_context;
-    blocked_story_context.active_effect_index = 3U;
+    blocked_story_context.active_effect_is_story_contact = false;
     const auto blocked_story_selection =
         scripts.resolve_conditional_actor_selection(
             0x22U, blocked_story_context, unexpected_conditional_roll);
@@ -1686,8 +1777,7 @@ int main() {
     auto package_recovery_context = pending_context;
     package_recovery_context.pending_world_effect = false;
     package_recovery_context.active_offer_id = "package_recovery";
-    package_recovery_context.active_effect_index = 0U;
-    package_recovery_context.selected_effect_index = 0U;
+    package_recovery_context.active_effect_matches_selection = true;
     const auto package_recovery_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, package_recovery_context,
@@ -1707,13 +1797,12 @@ int main() {
     ScriptConditionalActorSelectionContext late_effect_context{};
     late_effect_context.active_offer_id = "employee_recruitment";
     late_effect_context.scene_mode = ScriptFieldSceneMode::building;
-    late_effect_context.active_effect_index = 4U;
-    late_effect_context.selected_effect_index = 3U;
+    late_effect_context.active_effect_matches_selection = false;
     const auto late_effect_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, late_effect_context, conditional_roll(1U));
     auto resumed_effect_context = late_effect_context;
-    resumed_effect_context.selected_effect_index = 4U;
+    resumed_effect_context.active_effect_matches_selection = true;
     const auto resumed_effect_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, resumed_effect_context, unexpected_conditional_roll);
@@ -1721,7 +1810,7 @@ int main() {
     const bool choice_one_selection_reset =
         scripts.reset_conditional_actor_selection();
     auto reachable_choice_one_context = late_effect_context;
-    reachable_choice_one_context.selected_effect_index = 4U;
+    reachable_choice_one_context.active_effect_matches_selection = true;
     const auto reachable_choice_one_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, reachable_choice_one_context, conditional_roll(0U));
@@ -1729,7 +1818,7 @@ int main() {
     const bool blocked_spawn_selection_reset =
         scripts.reset_conditional_actor_selection();
     auto blocked_spawn_context = late_effect_context;
-    blocked_spawn_context.selected_effect_index = 4U;
+    blocked_spawn_context.active_effect_matches_selection = true;
     blocked_spawn_context.player_spawn_pending = true;
     const auto blocked_spawn_selection =
         scripts.resolve_conditional_actor_selection(
@@ -1744,8 +1833,9 @@ int main() {
         story_contact_selection.has_value() &&
         story_contact_selection->kind ==
             ScriptConditionalActorSelectionKind::story_contact &&
-        story_contact_selection->list_offset == 0xA8AEU &&
-        story_contact_selection->selection_choice == 0U &&
+        story_contact_selection->list_id == "scene_34_story_contact" &&
+        story_contact_selection->selection_variant ==
+            ScriptConditionalActorVariant::none &&
         !story_contact_selection->choice_changed &&
         blocked_story_selection.has_value() &&
         blocked_story_selection->kind ==
@@ -1753,7 +1843,7 @@ int main() {
         pending_selection.has_value() &&
         pending_selection->kind ==
             ScriptConditionalActorSelectionKind::pending_world_activity &&
-        pending_selection->list_offset == 0xA8CCU &&
+        pending_selection->list_id == "scene_20_ilene_pending_list" &&
         package_recovery_selection.has_value() &&
         package_recovery_selection->kind ==
             ScriptConditionalActorSelectionKind::none &&
@@ -1766,32 +1856,36 @@ int main() {
         late_effect_selection.has_value() &&
         late_effect_selection->kind ==
             ScriptConditionalActorSelectionKind::none &&
-        late_effect_selection->selection_choice == 2U &&
+        late_effect_selection->selection_variant ==
+            ScriptConditionalActorVariant::second &&
         late_effect_selection->choice_changed &&
         resumed_effect_selection.has_value() &&
         resumed_effect_selection->kind ==
             ScriptConditionalActorSelectionKind::random_pedestrian &&
-        resumed_effect_selection->selection_choice == 2U &&
-        resumed_effect_selection->list_offset ==
+        resumed_effect_selection->selection_variant ==
+            ScriptConditionalActorVariant::second &&
+        resumed_effect_selection->list_id ==
             (first_candidate_scene.has_value() &&
                      first_candidate_scene->size() > 1U
-                 ? first_candidate_scene->at(1U).list_offset
-                 : 0U) &&
+                 ? first_candidate_scene->at(1U).candidate_id
+                 : std::string{}) &&
         !resumed_effect_selection->choice_changed &&
         reachable_choice_one_selection.has_value() &&
         reachable_choice_one_selection->kind ==
             ScriptConditionalActorSelectionKind::random_pedestrian &&
-        reachable_choice_one_selection->selection_choice == 1U &&
-        reachable_choice_one_selection->list_offset ==
+        reachable_choice_one_selection->selection_variant ==
+            ScriptConditionalActorVariant::first &&
+        reachable_choice_one_selection->list_id ==
             (first_candidate_scene.has_value() &&
                      !first_candidate_scene->empty()
-                 ? first_candidate_scene->front().list_offset
-                 : 0U) &&
+                 ? first_candidate_scene->front().candidate_id
+                 : std::string{}) &&
         reachable_choice_one_selection->choice_changed &&
         blocked_spawn_selection.has_value() &&
         blocked_spawn_selection->kind ==
             ScriptConditionalActorSelectionKind::none &&
-        blocked_spawn_selection->selection_choice == 1U &&
+        blocked_spawn_selection->selection_variant ==
+            ScriptConditionalActorVariant::first &&
         blocked_spawn_selection->choice_changed &&
         conditional_random_calls == 3U;
     if (!expect(conditional_selection_matrix_valid,
@@ -1804,8 +1898,6 @@ int main() {
 
     auto wide_mode_context = late_effect_context;
     wide_mode_context.scene_mode = ScriptFieldSceneMode::unknown;
-    wide_mode_context.active_effect_index = 0U;
-    wide_mode_context.selected_effect_index = 0U;
     const auto wide_mode_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, wide_mode_context, unexpected_conditional_roll);
@@ -1822,8 +1914,7 @@ int main() {
     const bool wide_effect_mismatch_reset =
         scripts.reset_conditional_actor_selection();
     auto wide_effect_context = late_effect_context;
-    wide_effect_context.active_effect_index = 0x0100U;
-    wide_effect_context.selected_effect_index = 0U;
+    wide_effect_context.active_effect_matches_selection = false;
     const auto wide_effect_mismatch =
         scripts.resolve_conditional_actor_selection(
             0x15U, wide_effect_context, conditional_roll(0U));
@@ -1831,7 +1922,8 @@ int main() {
                     wide_effect_mismatch.has_value() &&
                     wide_effect_mismatch->kind ==
                         ScriptConditionalActorSelectionKind::none &&
-                    wide_effect_mismatch->selection_choice == 1U &&
+                    wide_effect_mismatch->selection_variant ==
+                        ScriptConditionalActorVariant::first &&
                     wide_effect_mismatch->choice_changed &&
                     conditional_random_calls == 4U,
                 "A800 compared effect-index words as byte values")) {
@@ -1842,7 +1934,7 @@ int main() {
 
     const bool equal_wide_effect_reset =
         scripts.reset_conditional_actor_selection();
-    wide_effect_context.selected_effect_index = 0x0100U;
+    wide_effect_context.active_effect_matches_selection = true;
     const auto equal_wide_effect_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, wide_effect_context, conditional_roll(0U));
@@ -1850,7 +1942,8 @@ int main() {
                     equal_wide_effect_selection.has_value() &&
                     equal_wide_effect_selection->kind ==
                         ScriptConditionalActorSelectionKind::random_pedestrian &&
-                    equal_wide_effect_selection->selection_choice == 1U &&
+                    equal_wide_effect_selection->selection_variant ==
+                        ScriptConditionalActorVariant::first &&
                     conditional_random_calls == 5U,
                 "A800 rejected equal 16-bit effect indices")) {
         std::cerr << "wide effect-index equality failure: "
@@ -1858,20 +1951,23 @@ int main() {
         return 1;
     }
     const auto consumed_conditional_choice =
-        scripts.consume_conditional_actor_selection_choice();
+        scripts.consume_conditional_actor_selection();
     const auto empty_conditional_choice =
-        scripts.consume_conditional_actor_selection_choice();
+        scripts.consume_conditional_actor_selection();
     const auto reselection_after_source_consume =
         scripts.resolve_conditional_actor_selection(
             0x15U, wide_effect_context, conditional_roll(1U));
     if (!expect(consumed_conditional_choice ==
-                    std::optional<std::uint8_t>{1U} &&
+                    std::optional<ScriptConditionalActorVariant>{
+                        ScriptConditionalActorVariant::first} &&
                     empty_conditional_choice ==
-                    std::optional<std::uint8_t>{0U} &&
+                    std::optional<ScriptConditionalActorVariant>{
+                        ScriptConditionalActorVariant::none} &&
                     reselection_after_source_consume.has_value() &&
                     reselection_after_source_consume->kind ==
                         ScriptConditionalActorSelectionKind::random_pedestrian &&
-                    reselection_after_source_consume->selection_choice == 2U &&
+                    reselection_after_source_consume->selection_variant ==
+                        ScriptConditionalActorVariant::second &&
                     reselection_after_source_consume->choice_changed &&
                     conditional_random_calls == 6U,
                 "ROM 0x1E45E did not consume and clear the Lua FFE183 choice")) {
