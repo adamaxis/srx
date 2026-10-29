@@ -270,9 +270,9 @@ function ActorAI.heartbeat(context)
                 elseif state.animation_id == "spell" then
                     -- C082 lists are one frame. Hold it; do not invent a count.
                     state.animation_frame = 0
-                    state.animation_accumulator = 0
+                    state.animation_progress = 0
                 elseif state.animation_id == "walk" then
-                    if not R.advance_dynamic_actor_walk_animation(state, context) then
+                    if not R.advance_dynamic_actor_walk_animation(state) then
                         return nil
                     end
                 else
@@ -283,6 +283,9 @@ function ActorAI.heartbeat(context)
                     state.direction = R.direction_from_heading(facing_heading)
                     state.animation_id = "idle"
                     state.animation_frame = 0
+                    if not R.advance_dynamic_actor_idle_animation(state) then
+                        return nil
+                    end
                 end
             else
                 R.advance_player_animation(state, context)

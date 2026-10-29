@@ -97,8 +97,6 @@ using field_scene_detail::kFieldHitSparkKind;
 using field_scene_detail::kFieldHitSparkSelector;
 using field_scene_detail::kFieldHitSparkPalette;
 using field_scene_detail::kFieldHitSparkFrameCount;
-using field_scene_detail::kFieldHitSparkFrameIncrement;
-using field_scene_detail::kFieldHitSparkFramePeriod;
 using field_scene_detail::kFieldHitSparkTargetYOffset;
 using field_scene_detail::kElevatorAnimationAliasPrefix;
 using field_scene_detail::kElevatorCurrentFloorAliasPrefix;

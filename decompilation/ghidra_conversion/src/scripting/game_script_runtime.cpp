@@ -10306,12 +10306,8 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "animation_direction_override");
-    if (context.animation_accumulator_override.has_value()) {
-        lua_pushinteger(state, *context.animation_accumulator_override);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "animation_accumulator_override");
+    lua_pushboolean(state, context.animation_clock_reset_requested);
+    lua_setfield(state, -2, "animation_clock_reset_requested");
     if (context.projectile_animation.has_value()) {
         const auto& animation = *context.projectile_animation;
         lua_createtable(state, 0, 7);
@@ -10335,19 +10331,13 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "projectile_animation");
     if (context.hit_spark_animation.has_value()) {
         const auto& animation = *context.hit_spark_animation;
-        lua_createtable(state, 0, 6);
+        lua_createtable(state, 0, 3);
         lua_pushinteger(state, animation.selector);
         lua_setfield(state, -2, "selector");
         lua_pushinteger(state, animation.frame_count);
         lua_setfield(state, -2, "frame_count");
         lua_pushinteger(state, animation.frame);
         lua_setfield(state, -2, "frame");
-        lua_pushinteger(state, animation.accumulator);
-        lua_setfield(state, -2, "accumulator");
-        lua_pushinteger(state, animation.increment);
-        lua_setfield(state, -2, "increment");
-        lua_pushinteger(state, animation.period);
-        lua_setfield(state, -2, "period");
     } else {
         lua_pushnil(state);
     }
@@ -11440,17 +11430,7 @@ GameScriptRuntime::actor_heartbeat(
     lua_pop(state, 1);
 
     lua_getfield(state, decision_table, "animation_accumulator");
-    if (!lua_isinteger(state, -1)) {
-        const bool uses_legacy_accumulator =
-            decision.animation_id == "idle" ||
-            decision.animation_id == "walk" ||
-            decision.animation_id == "projectile" ||
-            decision.animation_id == "hit_spark";
-        if (!lua_isnil(state, -1) || uses_legacy_accumulator) {
-            return fail(
-                "actor_ai.heartbeat omitted an accumulator-driven animation clock");
-        }
-    } else {
+    if (lua_isinteger(state, -1)) {
         const auto animation_accumulator = lua_tointeger(state, -1);
         if (animation_accumulator < -32768 || animation_accumulator > 32767) {
             return fail(
@@ -11458,6 +11438,10 @@ GameScriptRuntime::actor_heartbeat(
         }
         decision.animation_accumulator =
             static_cast<std::int16_t>(animation_accumulator);
+    } else if (!lua_isnil(state, -1) ||
+               context.projectile_animation.has_value()) {
+        return fail(
+            "actor_ai.heartbeat returned an invalid projectile animation clock");
     }
     lua_pop(state, 1);
     lua_getfield(state, decision_table, "animation_selector");
@@ -12391,8 +12375,7 @@ GameScriptRuntime::actor_heartbeat(
         if (context.phase == ScriptActorHeartbeatPhase::render &&
             (decision.animation_id != "hit_spark" ||
              decision.animation_frame >= context.hit_spark_animation->frame_count ||
-             !decision.animation_selector.has_value() ||
-             !decision.animation_increment.has_value())) {
+             !decision.animation_selector.has_value())) {
             return fail("actor_ai.heartbeat returned an invalid hit-spark frame");
         }
         if (context.phase == ScriptActorHeartbeatPhase::behavior &&

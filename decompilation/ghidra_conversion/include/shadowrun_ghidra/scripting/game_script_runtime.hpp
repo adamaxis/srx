@@ -1422,15 +1422,12 @@ struct ScriptActorProjectileAnimation {
 };
 
 // Player strike child presentation data: ROM 0x7330 supplies five finite
-// sprite-list frames at the 0x600E cadence [C]. Lua owns the mutable counters;
-// C++ only passes the source facts and draws the returned frame.
+// frames; the importer provides their update duration. Lua owns elapsed
+// presentation time and C++ only supplies the current asset/frame identity.
 struct ScriptActorHitSparkAnimation {
     std::uint16_t selector = 4U;
     std::uint8_t frame_count = 5U;
     std::uint8_t frame = 0U;
-    std::int16_t accumulator = 0;
-    std::int16_t increment = 0x0400;
-    std::int16_t period = 0x1000;
 };
 
 struct ScriptActorHitSparkSpawnRequest {
@@ -1614,7 +1611,7 @@ struct ScriptActorBehaviorContext {
     ScriptActorAnimationMode animation_mode =
         ScriptActorAnimationMode::idle;
     std::optional<std::uint8_t> animation_direction_override;
-    std::optional<std::int16_t> animation_accumulator_override;
+    bool animation_clock_reset_requested = false;
     std::optional<ScriptActorProjectileAnimation> projectile_animation;
     std::optional<ScriptActorHitSparkAnimation> hit_spark_animation;
     std::optional<ScriptActorProjectileMovement> projectile_movement;
@@ -1818,7 +1815,7 @@ struct ScriptActorBehaviorDecision {
         hit_spark_spawn_request;
     bool hit_spark_retired = false;
     std::optional<std::int16_t> animation_increment;
-    std::int16_t animation_accumulator = 0;
+    std::optional<std::int16_t> animation_accumulator;
     std::optional<ScriptCombatMeterUpdate> combat_meter_update;
     std::optional<ScriptActorSpellActionResolution>
         spell_action_resolution;

@@ -1081,9 +1081,9 @@ bool FieldSceneRuntime::restore_game_save_snapshot(
         field_entity_behavior_flags_;
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = false;
-    field_player_animation_reset_pending_ = true;
+    field_player_animation_clock_reset_pending_ = true;
     field_entity_animation_id_ = "idle";
-    field_entity_animation_ = EntityAnimationState{};
+    field_entity_animation_ = FieldFramePresentationState{};
     refresh_field_hud_runner_slot();
     refresh_command_overview_combat_bars();
     refresh_command_overview_item_detail();

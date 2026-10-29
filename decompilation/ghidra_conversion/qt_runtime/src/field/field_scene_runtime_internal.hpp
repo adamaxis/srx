@@ -110,8 +110,6 @@ inline constexpr std::uint16_t kFieldHitSparkKind = 1U;
 inline constexpr std::uint16_t kFieldHitSparkSelector = 4U;
 inline constexpr std::uint16_t kFieldHitSparkPalette = 0x2000U;
 inline constexpr std::uint16_t kFieldHitSparkFrameCount = 5U;
-inline constexpr std::int16_t kFieldHitSparkFrameIncrement = 0x0400;
-inline constexpr std::int16_t kFieldHitSparkFramePeriod = 0x1000;
 inline constexpr std::uint16_t kFieldHitSparkTargetYOffset = 0x0010U;
 inline constexpr std::string_view kElevatorAnimationAliasPrefix =
     "menu.field.elevator.selector.background.frame.";

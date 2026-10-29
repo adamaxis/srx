@@ -5213,7 +5213,7 @@ int main() {
             return decision.transition_complete &&
                    decision.ai_target_id.has_value() &&
                    !decision.ai_target_engaged &&
-                   decision.animation_accumulator == 0x1000;
+                   !decision.animation_accumulator.has_value();
         });
     const bool hound_far_keeps_pursuit = std::any_of(
         hell_hound_far_motion.begin(), hell_hound_far_motion.end(),
@@ -7244,24 +7244,51 @@ int main() {
     player_movement.combat_input_blocked = true;
     const auto player_combat_modal_block =
         scripts.actor_heartbeat(player_movement);
+    // Six updates leave the 0x280/0x1000 walk cadence just below its first
+    // frame boundary. A save restore explicitly resets Lua's normalized phase;
+    // the following update therefore stays on frame zero [C: 0x5FDC/0x6092].
+    ScriptActorBehaviorContext restored_runner_clock{};
+    restored_runner_clock.profile_id = "field_runner_k03_none00";
+    restored_runner_clock.entity_kind = 3U;
+    restored_runner_clock.instance_id = "restored_runner_clock";
+    restored_runner_clock.spawn = true;
+    restored_runner_clock.phase = ScriptActorHeartbeatPhase::render;
+    restored_runner_clock.animation_mode = ScriptActorAnimationMode::walking;
+    bool restored_runner_clock_updates_valid = true;
+    for (std::size_t update = 0U; update < 6U; ++update) {
+        const auto update_result = scripts.actor_heartbeat(
+            restored_runner_clock);
+        restored_runner_clock_updates_valid =
+            restored_runner_clock_updates_valid && update_result.has_value() &&
+            !update_result->animation_accumulator.has_value();
+        restored_runner_clock.spawn = false;
+    }
+    restored_runner_clock.animation_clock_reset_requested = true;
+    const auto restored_runner_clock_reset = scripts.actor_heartbeat(
+        restored_runner_clock);
+    const bool restored_runner_clock_resets =
+        restored_runner_clock_updates_valid &&
+        restored_runner_clock_reset.has_value() &&
+        restored_runner_clock_reset->animation_frame == 0U &&
+        !restored_runner_clock_reset->animation_accumulator.has_value();
     if (!expect(
             player_walk_start.has_value() &&
                 player_walk_start->animation_id == "walk" &&
                 !player_walk_start->animation_selector.has_value() &&
                 player_walk_start->direction == 2U &&
                 player_walk_start->animation_frame == 0U &&
-                player_walk_start->animation_accumulator == 0x0280 &&
+                !player_walk_start->animation_accumulator.has_value() &&
                 player_walk_seventh.has_value() &&
                 player_walk_seventh->animation_frame == 1U &&
                 player_reset_idle.has_value() &&
                 player_reset_idle->animation_id == "idle" &&
                 !player_reset_idle->animation_selector.has_value() &&
                 player_reset_idle->direction == 4U &&
-                player_reset_idle->animation_accumulator == 0x0400 &&
+                !player_reset_idle->animation_accumulator.has_value() &&
                 player_attack_pose.has_value() &&
                 player_attack_pose->animation_id == "attack" &&
                 player_attack_pose->animation_frame == 0U &&
-                player_attack_pose->animation_accumulator == 0 &&
+                !player_attack_pose->animation_accumulator.has_value() &&
                 player_walk_after_attack.has_value() &&
                 player_walk_after_attack->animation_frame == 1U &&
                 player_behavior_after_render.has_value() &&
@@ -7276,7 +7303,8 @@ int main() {
                 player_combat_cooldown.has_value() &&
                 !player_combat_cooldown->combat_action_requested &&
                 player_combat_modal_block.has_value() &&
-                !player_combat_modal_block->combat_action_requested,
+                !player_combat_modal_block->combat_action_requested &&
+                restored_runner_clock_resets,
             "Lua heartbeat did not own player animation, movement, and source-gated combat cadence")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -7576,7 +7604,7 @@ int main() {
     spark_context.initial_heading = 0x2000U;
     spark_context.phase = ScriptActorHeartbeatPhase::render;
     spark_context.hit_spark_animation = ScriptActorHitSparkAnimation{
-        4U, 5U, 0U, 0, 0x0400, 0x1000};
+        4U, 5U, 0U};
     std::array<std::size_t, 5> hit_spark_frame_passes{};
     std::optional<ScriptActorBehaviorDecision> hit_spark_last_frame;
     for (std::size_t pass = 0U; pass < 20U; ++pass) {
@@ -7586,7 +7614,8 @@ int main() {
             hit_spark_last_frame->animation_frame >=
                 hit_spark_frame_passes.size() ||
             !hit_spark_last_frame->animation_selector.has_value() ||
-            !hit_spark_last_frame->animation_increment.has_value()) {
+            hit_spark_last_frame->animation_accumulator.has_value() ||
+            hit_spark_last_frame->animation_increment.has_value()) {
             std::cerr << scripts.failure() << '\n';
             return 113;
         }
@@ -7595,8 +7624,6 @@ int main() {
         auto& animation = *spark_context.hit_spark_animation;
         animation.selector = *hit_spark_last_frame->animation_selector;
         animation.frame = hit_spark_last_frame->animation_frame;
-        animation.accumulator = hit_spark_last_frame->animation_accumulator;
-        animation.increment = *hit_spark_last_frame->animation_increment;
     }
     const std::array<std::size_t, 5> expected_hit_spark_frame_passes{
         3U, 4U, 4U, 4U, 5U};
@@ -7643,7 +7670,8 @@ int main() {
             auto& animation = *projectile_context.projectile_animation;
             animation.selector = decision.animation_selector.value_or(0U);
             animation.frame = decision.animation_frame;
-            animation.accumulator = decision.animation_accumulator;
+            animation.accumulator =
+                decision.animation_accumulator.value_or(0);
             animation.increment = decision.animation_increment.value_or(0);
         };
     if (projectile_frame_zero.has_value()) {
@@ -7705,7 +7733,7 @@ int main() {
                                  .value_or(0U);
         animation.frame = special_projectile_frame->animation_frame;
         animation.accumulator =
-            special_projectile_frame->animation_accumulator;
+            special_projectile_frame->animation_accumulator.value_or(0);
         animation.increment =
             special_projectile_frame->animation_increment.value_or(0);
         special_projectile_frame =

@@ -1,4 +1,5 @@
--- actor/animator.lua semantic finite clips and retained movement clock.
+-- actor/animator.lua semantic clips, normalized locomotion phase, and the
+-- isolated weapon-projectile clock.
 local ROOT = os.getenv("SHADOWRUN_ROOT") or "."
 local H = dofile(ROOT .. "/decompilation/gameplay/tests_lua/harness.lua")
 _G.game = H.make_game({}); require("actor.init")
@@ -41,15 +42,68 @@ end
 check(A.advance_finite_clip(timed_hurt, imported_hurt) and
       timed_hurt.animation_frame == imported_hurt.frame_count - 1,
       "hurt clip completes on its duration and holds its last frame")
--- 0x6092
-check(A.loop_rate(3, 0, A.PLAYER_SPEED) == 0x280, "player 0x28*0x10")
-check(A.loop_rate(5, 0, 9) == 9 * 0x1c and A.loop_rate(5, 0, 0x16) == 0x160, "speed < 0x16 *0x1C else *0x10")
-check(A.loop_rate(13, 2, 9) == 0x90 and A.loop_rate(13, 1, 9) == 0x180, "kind 0xD cadence")
+-- The ROM's 0x5FDC/0x6092 rates become a fraction of one animation frame per
+-- render update. Character state stores that normalized fraction rather than
+-- the source accumulator. Rates below are direct source-derived expectations.
+local player_walk_progress = A.PLAYER_WALK_PROGRESS_PER_UPDATE
+check(player_walk_progress == 0x280 / 0x1000,
+      "runner 0x28 movement step becomes normalized progress")
+check(A.loop_progress_per_update(E.SpriteType.CORP_GUARD, 0, 9) ==
+          (9 * 0x1c) / 0x1000 and
+      A.loop_progress_per_update(E.SpriteType.CORP_GUARD, 0, 0x16) ==
+          0x160 / 0x1000,
+      "creature movement step selects the source rate on either side of 0x16")
+check(A.loop_progress_per_update(E.SpriteType.GARGOYLE, 2, 9) ==
+          0x90 / 0x1000 and
+      A.loop_progress_per_update(E.SpriteType.GARGOYLE, 1, 9) ==
+          0x180 / 0x1000,
+      "gargoyle frame 2 uses its slower source rate")
+
+local runner_walk = { animation_id = "walk", animation_frame = 0,
+    animation_progress = 0, direction = 0 }
+for _ = 1, 6 do
+    R.advance_player_animation(runner_walk, { animation_mode = "walking",
+        animation_direction_override = 0 })
+end
+check(runner_walk.animation_frame == 0 and
+      runner_walk.animation_progress == 6 * player_walk_progress,
+      "runner stays on frame 0 until normalized phase reaches one frame")
+R.advance_player_animation(runner_walk, { animation_mode = "walking",
+    animation_direction_override = 0 })
+check(runner_walk.animation_frame == 1 and
+      runner_walk.animation_progress == 7 * player_walk_progress - 1,
+      "runner advances one frame and retains normalized fractional phase")
+
+local creature_walk = {
+    entity_kind = E.SpriteType.CORP_GUARD, direction = 0,
+    animation_frame = 0, animation_progress = 0,
+    movement_step_distance = 9,
+}
+for _ = 1, 17 do
+    check(R.advance_dynamic_actor_walk_animation(creature_walk),
+          "dynamic actor walk list advances")
+end
+check(creature_walk.animation_frame == 1 and
+      creature_walk.animation_progress == (17 * 9 * 0x1c / 0x1000) - 1,
+      "dynamic actor walk retains the source rate as normalized progress")
+
+local gargoyle_idle = {
+    entity_kind = E.SpriteType.GARGOYLE, direction = 0,
+    animation_frame = 0, animation_progress = 0,
+    movement_step_distance = 9,
+}
+for _ = 1, 11 do
+    check(R.advance_dynamic_actor_idle_animation(gargoyle_idle),
+          "dynamic actor idle list advances")
+end
+check(gargoyle_idle.animation_frame == 0 and
+      gargoyle_idle.animation_progress == 11 * 0x180 / 0x1000 - 1,
+      "gargoyle one-frame idle list wraps with normalized progress")
+
 local player_clip = {
     animation_id = "idle",
     animation_frame = 0,
     animation_elapsed_updates = 0,
-    animation_accumulator = 0,
     direction = 0,
 }
 for _ = 1, 5 do
@@ -62,8 +116,9 @@ R.advance_player_animation(player_clip, { animation_mode = "runner_hurt",
     animation_direction_override = 0 })
 check(player_clip.animation_frame == 1 and
       player_clip.animation_elapsed_updates > 0 and
-      player_clip.animation_accumulator == 0,
-      "runner hurt advances from elapsed clip updates without a source accumulator")
+      player_clip.animation_accumulator == nil and
+      player_clip.animation_progress == nil,
+      "runner hurt advances from elapsed updates without a source clock")
 for _ = 1, 5 do
     R.advance_player_animation(player_clip, { animation_mode = "runner_hurt",
         animation_direction_override = 0 })
@@ -72,13 +127,14 @@ check(player_clip.player_hurt_animation_complete_pending == true and
       player_clip.animation_frame == 1,
       "runner hurt reports completion while holding its final frame")
 player_clip = { animation_id = "runner_hurt", animation_frame = 0,
-    animation_elapsed_updates = 0, animation_accumulator = 0,
+    animation_elapsed_updates = 0, animation_progress = 0.75,
     player_hurt_pose_active = true, direction = 0 }
 R.advance_player_animation(player_clip, { animation_mode = "idle",
-    animation_accumulator_override = 0x0900,
+    animation_clock_reset_requested = true,
     animation_direction_override = 0 })
-check(player_clip.animation_accumulator == 0,
-      "runner hurt ignores locomotion clock overrides while its clip is active")
+check(player_clip.animation_progress == 0 and
+      player_clip.animation_accumulator == nil,
+      "save restore resets Lua-owned progress while the hurt clip remains active")
 player_clip = { animation_id = "idle", animation_frame = 0,
     animation_elapsed_updates = 0, direction = 0 }
 for _ = 1, 8 do
@@ -96,36 +152,41 @@ for _ = 1, 64 do
 end
 check(player_clip.animation_frame == 7,
       "runner down advances through the semantic death clip and holds")
--- The source-clock helper is retained only for unconverted movement/effects.
+-- Weapon projectile effects retain a private source clock until their signed
+-- overflow cadence is converted to authored clip durations.
 local st = { animation_accumulator = 0xE00, animation_frame = 1 }
-check(A.step_finite(st, 2, 0x200) and st.animation_frame == 1 and st.animation_accumulator == 0, "finite clamps & reports done")
-st = { animation_accumulator = 0xF00, animation_frame = 3 }
-A.step_loop(st, 4, 0x280); check(st.animation_frame == 0 and st.animation_accumulator == 0x180, "loop wraps")
+check(A.step_projectile_finite(st, 2, 0x200) and st.animation_frame == 1 and st.animation_accumulator == 0, "projectile finite list clamps and reports done")
 st = { animation_accumulator = 0x7F00, animation_frame = 0 }
-A.tick(st, 0x200, 0x1000); check(st.animation_frame == 0 and st.animation_accumulator < 0, "signed overflow does not advance")
+A.step_projectile_finite(st, 4, 0x200, 0x1000); check(st.animation_frame == 0 and st.animation_accumulator < 0, "projectile signed overflow does not advance")
 
--- Player: new data-driven path equals the pre-animator hardcoded 0x280/%4 path on
--- the live domain (frame 0..3, accumulator 0..0xFFF).
-local function old_player(state, mode)
-    local acc = state.animation_accumulator + 0x0280
-    local adv = acc >= 0x1000
-    if adv then acc = acc - 0x1000 end
-    state.animation_accumulator = acc
-    if mode == "walking" then
-        if adv then state.animation_frame = (state.animation_frame + 1) % 4 end
-    else state.animation_frame = 0 end
-end
+-- Exhaust the live source phase domain. Both runner idle and walk use looping
+-- lists, so compare their visible frame and fractional phase with the source
+-- threshold step while requiring that no source accumulator leaks into state.
 local same = true
 for _, mode in ipairs({ "walking", "idle" }) do
-    for f = 0, 3 do for acc = 0, 0xFFF, 0x20 do
-        local a = { animation_accumulator = acc, animation_frame = f }
-        local b = { animation_accumulator = acc, animation_frame = f, direction = 0 }
-        old_player(a, mode)
-        R.advance_player_animation(b, { animation_mode = mode, animation_direction_override = 0 })
-        if a.animation_frame ~= b.animation_frame or a.animation_accumulator ~= b.animation_accumulator then same = false end
-    end end
+    for f = 0, (mode == "walking" and 3 or 0) do
+      for source_phase = 0, 0xFFF do
+        local next_phase = source_phase + 0x280
+        local expected_frame = f
+        if next_phase >= 0x1000 then
+            next_phase = next_phase - 0x1000
+            expected_frame = (expected_frame + 1) %
+                (mode == "walking" and 4 or 1)
+        end
+        local state = { animation_id = mode == "walking" and "walk" or "idle",
+            animation_progress = source_phase / 0x1000,
+            animation_frame = f, direction = 0 }
+        R.advance_player_animation(state, { animation_mode = mode,
+            animation_direction_override = 0 })
+        if state.animation_frame ~= expected_frame or
+           math.abs(state.animation_progress - next_phase / 0x1000) > 1e-12 or
+           state.animation_accumulator ~= nil then
+            same = false
+        end
+      end
+    end
 end
-check(same, "player path unchanged on live domain")
+check(same, "runner idle/walk matches source frame cadence with normalized state")
 
 -- Death clips select frame count and duration from the actor's visual family.
 local death = R.death_list({ entity_kind = 15 })

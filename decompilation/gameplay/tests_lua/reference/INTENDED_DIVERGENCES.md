@@ -17,7 +17,13 @@ purpose, so the reference is wrong for them:
 (printed, not gating) in run_lua_suites.sh.
 
 ## advance_player_animation (actor/animator.lua)
-Now steps through the shared animator: kind-3 idle/walk lists from data/actor_anim_lists.lua
-(ROM 0x62AC), rate from 0x6092 with +0xCA = 0x28 (C002+4 via 0xBABC). Out-of-range random
-inputs (frame >= 4, accumulator >= 0x8000) now wrap as 0x600E/0x5FDC do; on the live domain
-(frame 0..3, accumulator 0..0xFFF) results are identical, checked exhaustively by animator_tests.
+Runner idle/walk lists from data/actor_anim_lists.lua (ROM 0x62AC) now keep their phase as a
+normalized fraction. The 0x6092 rate uses +0xCA = 0x28 (C002+4 via 0xBABC). Idle's one-frame
+list still advances its phase while holding its visible frame. `animator_tests.lua` exhausts all
+source phase values against the visible frame cadence and verifies that runner state exposes no
+source accumulator.
+
+## advance_dynamic_actor_walk_animation (actor/anim.lua)
+Dynamic actor locomotion also stores normalized phase. The source rate is still selected from the
+movement step, including the below-0x16 multiplier and Gargoyle's frame-2 rate at 0x6092. Focused
+`animator_tests.lua` checks both sides of the movement-step threshold and the Gargoyle special case.

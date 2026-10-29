@@ -102,6 +102,11 @@ constexpr std::size_t field_scene_profile_word_index(
     return static_cast<std::size_t>(word);
 }
 
+struct FieldFramePresentationState {
+    std::uint8_t frame = 0U;
+    bool redraw_requested = false;
+};
+
 enum class FieldWorldFactFlag : std::uint8_t {
     errascoe_question_available = 1,
     redmond_vigore_search_complete = 22,
@@ -1994,7 +1999,7 @@ private:
     struct FieldHitSparkPresentation {
         ReactionAuxiliaryChild child{};
         std::string actor_instance_id;
-        EntityAnimationState animation{};
+        FieldFramePresentationState animation{};
         bool script_initialized = false;
     };
 
@@ -2158,10 +2163,10 @@ private:
         std::array<std::string, 18> spell_effect_slot_target_ids{};
         EntityServiceTargetOwner entity_target_owner{};
         std::vector<EntityServiceTargetRecord> entity_target_records;
-        EntityAnimationState player_animation{};
+        FieldFramePresentationState player_animation{};
         std::uint16_t player_animation_selector = 0U;
         std::string player_animation_id = "idle";
-        bool player_animation_reset_pending = false;
+        bool player_animation_clock_reset_pending = false;
         bool player_walking = false;
         bool player_attack_pose = false;
         std::uint8_t player_attack_pose_kind = 0U;
@@ -2596,10 +2601,10 @@ private:
     std::array<std::vector<QImage>, 8> field_entity_walk_images_{};
     std::array<std::vector<int>, 8> field_entity_walk_origin_x_{};
     std::array<std::vector<int>, 8> field_entity_walk_origin_y_{};
-    EntityAnimationState field_entity_animation_{};
+    FieldFramePresentationState field_entity_animation_{};
     std::uint16_t field_entity_animation_selector_ = 0;
     std::string field_entity_animation_id_ = "idle";
-    bool field_player_animation_reset_pending_ = false;
+    bool field_player_animation_clock_reset_pending_ = false;
     bool field_entity_walking_ = false;
     bool field_entity_attack_pose_active_ = false;
     // Which list the active +0x16 pose came from: 0 firearm C042,

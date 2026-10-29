@@ -385,12 +385,11 @@ local function initial_state(context, profile)
         direction = direction_from_heading(context.initial_heading),
         entry_delay = context.entry_delay,
         behavior_timer = 0,
+        movement_step_distance = 0,
         animation_id = "idle",
         animation_frame = 0,
         animation_elapsed_updates = 0,
-        animation_accumulator = 0,
-        animation_increment = 0,
-        animation_timing_word = 0,
+        animation_progress = 0,
         action_animation_complete = false,
         item_action_complete = false,
         damage_reaction_active = false,
@@ -477,7 +476,6 @@ local function initial_state(context, profile)
         state.animation_selector = animation.selector
         state.animation_frame = animation.frame
         state.animation_elapsed_updates = 0
-        state.animation_accumulator = 0
         state.animation_frame_count = animation.frame_count
         state.hit_spark_retired = false
     end
@@ -518,8 +516,7 @@ local function same_actor(state, context, profile)
     state.animation_id = "idle"
     state.animation_frame = 0
     state.animation_elapsed_updates = 0
-    state.animation_accumulator = 0
-    state.animation_increment = 0
+    state.animation_progress = 0
     return true
 end
 

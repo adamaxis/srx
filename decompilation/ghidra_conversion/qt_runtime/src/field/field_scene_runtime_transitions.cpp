@@ -272,8 +272,8 @@ void FieldSceneRuntime::snapshot_world_activity_source_scene() {
     snapshot.player_animation = field_entity_animation_;
     snapshot.player_animation_selector = field_entity_animation_selector_;
     snapshot.player_animation_id = field_entity_animation_id_;
-    snapshot.player_animation_reset_pending =
-        field_player_animation_reset_pending_;
+    snapshot.player_animation_clock_reset_pending =
+        field_player_animation_clock_reset_pending_;
     snapshot.player_walking = field_entity_walking_;
     snapshot.player_attack_pose = field_entity_attack_pose_active_;
     snapshot.player_attack_pose_kind = field_entity_attack_pose_kind_;
@@ -337,7 +337,7 @@ void FieldSceneRuntime::snapshot_world_activity_source_scene() {
                         ((return_heading >> 14U) & 3U) * 2U);
                 snapshot.player_walking = false;
                 snapshot.player_attack_pose = false;
-                snapshot.player_animation_reset_pending = true;
+                snapshot.player_animation_clock_reset_pending = true;
             }
         }
     }
@@ -396,8 +396,8 @@ bool FieldSceneRuntime::restore_world_activity_source_scene(
     field_entity_animation_ = snapshot.player_animation;
     field_entity_animation_selector_ = snapshot.player_animation_selector;
     field_entity_animation_id_ = snapshot.player_animation_id;
-    field_player_animation_reset_pending_ =
-        snapshot.player_animation_reset_pending;
+    field_player_animation_clock_reset_pending_ =
+        snapshot.player_animation_clock_reset_pending;
     field_entity_walking_ = snapshot.player_walking;
     field_entity_attack_pose_active_ = snapshot.player_attack_pose;
     field_entity_attack_pose_kind_ = snapshot.player_attack_pose_kind;

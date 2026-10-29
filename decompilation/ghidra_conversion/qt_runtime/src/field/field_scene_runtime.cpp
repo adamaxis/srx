@@ -103,8 +103,6 @@ using field_scene_detail::kFieldHitSparkKind;
 using field_scene_detail::kFieldHitSparkSelector;
 using field_scene_detail::kFieldHitSparkPalette;
 using field_scene_detail::kFieldHitSparkFrameCount;
-using field_scene_detail::kFieldHitSparkFrameIncrement;
-using field_scene_detail::kFieldHitSparkFramePeriod;
 using field_scene_detail::kFieldHitSparkTargetYOffset;
 using field_scene_detail::kElevatorAnimationAliasPrefix;
 using field_scene_detail::kElevatorCurrentFloorAliasPrefix;
@@ -10192,10 +10190,8 @@ bool FieldSceneRuntime::bootstrap(
     field_joshua_archetype_selection_ = 0U;
     field_hud_slots_ = {};
     field_entity_animation_ = {};
-    field_entity_animation_.increment = kFieldWalkAnimationIncrement;
-    field_entity_animation_.period = kFieldEntityAnimationPeriod;
     field_entity_animation_id_ = "idle";
-    field_player_animation_reset_pending_ = false;
+    field_player_animation_clock_reset_pending_ = false;
     field_entity_animation_selector_ = 0U;
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = false;
@@ -11246,9 +11242,8 @@ FieldSceneRuntime::heartbeat_field_player(
             actor_context.animation_direction_override =
                 field_entity_.direction;
         }
-        if (field_player_animation_reset_pending_) {
-            actor_context.animation_accumulator_override =
-                field_entity_animation_.accumulator;
+        if (field_player_animation_clock_reset_pending_) {
+            actor_context.animation_clock_reset_requested = true;
         }
     }
     actor_context.controller_nibble = field_controller_nibble_;
@@ -11396,8 +11391,8 @@ FieldSceneRuntime::heartbeat_field_player(
             field_entity_animation_.redraw_requested = true;
         }
         if (phase == scripting::ScriptActorHeartbeatPhase::render &&
-            actor_context.animation_accumulator_override.has_value()) {
-            field_player_animation_reset_pending_ = false;
+            actor_context.animation_clock_reset_requested) {
+            field_player_animation_clock_reset_pending_ = false;
         }
     }
     return actor_decision;
@@ -11729,7 +11724,6 @@ void FieldSceneRuntime::service_player_weapon_action(
             runner.animation_action_gate = *delay;
         },
         [this] {
-            field_entity_animation_.accumulator = 0;
             field_entity_animation_.frame = 0U;
             field_entity_animation_.redraw_requested = true;
         });

@@ -97,8 +97,6 @@ using field_scene_detail::kFieldHitSparkKind;
 using field_scene_detail::kFieldHitSparkSelector;
 using field_scene_detail::kFieldHitSparkPalette;
 using field_scene_detail::kFieldHitSparkFrameCount;
-using field_scene_detail::kFieldHitSparkFrameIncrement;
-using field_scene_detail::kFieldHitSparkFramePeriod;
 using field_scene_detail::kFieldHitSparkTargetYOffset;
 using field_scene_detail::kElevatorAnimationAliasPrefix;
 using field_scene_detail::kElevatorCurrentFloorAliasPrefix;
@@ -663,7 +661,6 @@ void FieldSceneRuntime::advance_field_movement() {
 
     if (movement_step.outcome ==
         scripting::ScriptActorMovementStep::Outcome::reset) {
-        field_player_animation_reset_pending_ = true;
         field_entity_animation_.redraw_requested = true;
         field_entity_attack_pose_active_ = false;
         field_entity_walking_ = false;
@@ -701,7 +698,6 @@ void FieldSceneRuntime::advance_player_weapon_action_gate() {
         field_entity_animation_selector_ = static_cast<std::uint16_t>(
             field_entity_attack_direction_ * 4U);
         field_entity_animation_.frame = 0U;
-        field_entity_animation_.accumulator = 0;
         field_entity_animation_.redraw_requested = true;
     }
     source_boundary("field.combat.player_attack_pose_expired");
@@ -844,7 +840,6 @@ void FieldSceneRuntime::service_player_spell_cast(
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = true;
     field_entity_attack_pose_kind_ = kFieldPlayerPoseCast;
-    field_entity_animation_.accumulator = 0;
     field_entity_animation_.frame = 0U;
     field_entity_animation_.redraw_requested = true;
     refresh_field_hud_runner_slot();
@@ -893,7 +888,6 @@ void FieldSceneRuntime::service_player_melee(
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = true;
     field_entity_attack_pose_kind_ = kFieldPlayerPoseStrike;
-    field_entity_animation_.accumulator = 0;
     field_entity_animation_.frame = 0U;
     field_entity_animation_.redraw_requested = true;
     if (source_audio_event_callback_) {
@@ -958,8 +952,6 @@ void FieldSceneRuntime::spawn_field_hit_spark(
     spark.child = *child;
     spark.actor_instance_id =
         "field_hit_spark_slot_" + std::to_string(child->slot);
-    spark.animation.increment = kFieldHitSparkFrameIncrement;
-    spark.animation.period = kFieldHitSparkFramePeriod;
     field_hit_sparks_.push_back(std::move(spark));
     source_boundary("field.combat.hit_spark.spawned");
 }
@@ -1220,8 +1212,6 @@ void FieldSceneRuntime::advance_field_actor_animation() {
         } else {
             field_entity_.direction = decision->direction;
             field_entity_animation_.frame = decision->animation_frame;
-            field_entity_animation_.accumulator =
-                decision->animation_accumulator;
             field_entity_animation_id_ = decision->animation_id;
             field_entity_.spell_effect_visible =
                 decision->spell_effect_visible;
@@ -1371,10 +1361,7 @@ void FieldSceneRuntime::advance_field_hit_spark_behaviors() {
         context.hit_spark_animation = scripting::ScriptActorHitSparkAnimation{
             static_cast<std::uint16_t>(spark.child.animation_selector),
             static_cast<std::uint8_t>(kFieldHitSparkFrameCount),
-            static_cast<std::uint8_t>(spark.animation.frame),
-            spark.animation.accumulator,
-            spark.animation.increment,
-            spark.animation.period};
+            static_cast<std::uint8_t>(spark.animation.frame)};
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value() ||
             decision->animation_id != "hit_spark" ||
@@ -1430,17 +1417,13 @@ void FieldSceneRuntime::advance_field_hit_spark_animations() {
         context.hit_spark_animation = scripting::ScriptActorHitSparkAnimation{
             static_cast<std::uint16_t>(spark.child.animation_selector),
             static_cast<std::uint8_t>(kFieldHitSparkFrameCount),
-            static_cast<std::uint8_t>(spark.animation.frame),
-            spark.animation.accumulator,
-            spark.animation.increment,
-            spark.animation.period};
+            static_cast<std::uint8_t>(spark.animation.frame)};
         const auto previous_frame = spark.animation.frame;
         const auto previous_selector = spark.child.animation_selector;
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value() ||
             decision->animation_id != "hit_spark" ||
-            !decision->animation_selector.has_value() ||
-            !decision->animation_increment.has_value()) {
+            !decision->animation_selector.has_value()) {
             failure_ = game_scripts_.failure();
             source_boundary(
                 "field.combat.hit_spark.lua_animation_failed");
@@ -1451,8 +1434,6 @@ void FieldSceneRuntime::advance_field_hit_spark_animations() {
         spark.child.animation_selector = static_cast<std::int16_t>(
             *decision->animation_selector);
         spark.animation.frame = decision->animation_frame;
-        spark.animation.accumulator = decision->animation_accumulator;
-        spark.animation.increment = *decision->animation_increment;
         spark.animation.redraw_requested =
             previous_frame != spark.animation.frame ||
             previous_selector != spark.child.animation_selector;
@@ -1534,7 +1515,8 @@ void FieldSceneRuntime::advance_field_weapon_projectile_animations() {
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value() ||
             !decision->animation_selector.has_value() ||
-            !decision->animation_increment.has_value()) {
+            !decision->animation_increment.has_value() ||
+            !decision->animation_accumulator.has_value()) {
             failure_ = game_scripts_.failure();
             source_boundary("field.combat.weapon_projectile_lua_animation_failed");
             disable_record();
@@ -1544,7 +1526,7 @@ void FieldSceneRuntime::advance_field_weapon_projectile_animations() {
         script_initialized = true;
         record.animation_resource = *decision->animation_selector;
         animation.frame = decision->animation_frame;
-        animation.accumulator = decision->animation_accumulator;
+        animation.accumulator = *decision->animation_accumulator;
         animation.increment = *decision->animation_increment;
         animation.redraw_requested =
             previous_frame != animation.frame ||

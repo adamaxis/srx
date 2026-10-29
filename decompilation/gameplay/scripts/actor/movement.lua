@@ -254,6 +254,8 @@ local function projectile_heartbeat(state, context)
         movement.action_result = result
         -- ROM 0x14F86 clears +0x18 and +0x1E before the next render pass.
         state.animation_frame = 0
+        -- Keep the remaining projectile-specific source clock isolated here;
+        -- ordinary actor clips use normalized animation_progress.
         state.animation_accumulator = 0
     end
     if movement.outcome == projectile.outcome.hit_resolution_pending then
@@ -343,12 +345,15 @@ local function resolve_source_target_motion(context, state, target)
         -- 0x14C7C calls 0x15C84, whose 0x15C58 range test measures the
         -- linked record's actual coordinates and accepts only distance <
         -- 0x200. The preceding 0x14C56 projection result is not consumed by
-        -- that test. Kind 0xD at frame +0x1E == 2 forces +0x1A to 0x1000,
-        -- but clears carry, so the actor continues its route on that pass.
+        -- that test. A Gargoyle at frame 2 reaches the range branch that
+        -- writes the source animation phase to its threshold; represent that
+        -- as complete normalized progress for the next render update. The
+        -- actor continues its route on this behavior pass. [C: 0x14C7C,
+        -- 0x15C58, 0x5FDC]
         if distance < 0x200 then
             if context.entity_kind == SpriteType.GARGOYLE and
                context.ai_animation_frame == 2 then
-                state.animation_accumulator = 0x1000
+                state.animation_progress = 1.0
             else
                 state.movement_current_heading = heading
                 accepted = true
@@ -517,8 +522,9 @@ local function creature_movement_offsets(context, state)
         step = 40
     end
 
-    -- ROM 0xBADE copies the selected vector table's +4 word to actor +0xCA.
-    state.animation_timing_word = step
+    -- This is the actor's map-coordinate displacement per movement update.
+    -- ROM 0xBADE selects it from the movement vector table [C].
+    state.movement_step_distance = step
     return {
         {0, -step}, {step, -step}, {step, 0}, {step, step},
         {0, step}, {-step, step}, {-step, 0}, {-step, -step},
@@ -582,8 +588,8 @@ local function reset_blocked_movement(context, state, movement_state)
     local direction = R.direction_from_heading(movement_state.heading)
     state.direction = direction
     state.animation_id = "idle"
-    -- B442 replaces +0x16 and clears movement +0x38, but leaves the sprite
-    -- frame (+0x1E) and cadence accumulator (+0x1A) to the render pass.
+    -- B442 restores the facing and clears pending movement while preserving
+    -- the current frame and Lua-owned animation progress for the render pass.
     local _, terrain_collision_code = game.movement.collision(
         movement_state.position_x, movement_state.position_y)
     movement_state.terrain_collision_code = terrain_collision_code

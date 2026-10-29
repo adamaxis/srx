@@ -371,7 +371,7 @@ local function select_c082_directional_pose(state, heading)
     state.direction = direction
     state.animation_id = "spell"
     state.animation_frame = 0
-    state.animation_accumulator = 0
+    state.animation_progress = 0
     return direction
 end
 
@@ -415,10 +415,8 @@ local function begin_dynamic_item_action(state, context, target)
     state.direction = direction
     state.animation_id = "weapon"
     state.animation_frame = 0
-    state.animation_accumulator = 0
+    state.animation_progress = 0
     state.animation_elapsed_updates = 0
-    state.animation_increment = 0
-    state.animation_period = nil
     state.item_action_complete = false
     state.action_delay = source_action_delay(context, state, 0)
     state.ai_target_engaged = false
@@ -435,8 +433,7 @@ local function begin_spell_cast(state, context, target, resolution)
     state.direction = direction
     state.animation_id = "spell"
     state.animation_frame = 0
-    state.animation_accumulator = 0
-    state.animation_increment = 0
+    state.animation_progress = 0
     state.action_animation_complete = false
     state.action_delay = source_action_delay(context, state, 0)
     state.ai_target_engaged = false
@@ -940,10 +937,8 @@ local function begin_dynamic_target_action(state, context, target)
     -- kind-specific action cue, resets +0x1A/+0x1E, and applies delay mode 1.
     state.animation_id = "action"
     state.animation_frame = 0
-    state.animation_accumulator = 0
+    state.animation_progress = 0
     state.animation_elapsed_updates = 0
-    state.animation_increment = 0
-    state.animation_period = nil
     state.direction = direction
     state.action_animation_complete = false
     state.action_delay = source_action_delay(context, state, 1)

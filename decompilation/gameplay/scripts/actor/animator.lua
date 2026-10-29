@@ -1,6 +1,7 @@
 -- actor/animator.lua: named clip metadata and host animation timing.
 local R = require("actor.registry")
 local I = require("lib.int68k")
+local E = require("enums")
 local u16 = I.u16
 local LISTS = require("data.actor_anim_lists")
 
@@ -21,12 +22,12 @@ Animator.Clip = {
     DEATH = "death",
     HIT_SPARK = "hit_spark",
 }
--- Legacy source-clock support remains for projectile and movement paths that
--- have not yet been converted to duration-based animation state.
-Animator.PERIOD = 0x1000
--- 0xBABC moves the controlled runner with vector table 0xC002, whose +4 word
--- (0x28) 0xBADE copies to +0xCA [C].
-Animator.PLAYER_SPEED = 0x28
+-- Weapon projectiles still use the source clock until their signed-wrap
+-- cadence is converted to authored frame timing.
+Animator.PROJECTILE_PERIOD = 0x1000
+-- The runner's 0x28 movement step produces rate 0x280 in 0x6092, or 0.15625
+-- normalized animation progress per render update [C: 0xC002, 0xBADE, 0x6092].
+Animator.PLAYER_WALK_PROGRESS_PER_UPDATE = 0x280 / 0x1000
 
 function Animator.list(kind, clip, direction)
     local by_kind = LISTS[kind]
@@ -84,53 +85,76 @@ function Animator.advance_finite_clip(state, clip)
     return false
 end
 
-local function signed(word)
-    return word >= 0x8000 and word - 0x10000 or word
+-- Convert the recovered rate rule to a fraction of one animation frame per
+-- render update. Lua stores normalized progress instead of the ROM's signed
+-- 16-bit accumulator. ROM 0x5FDC/0x6092 [C].
+function Animator.loop_progress_per_update(kind, frame, movement_step)
+    local rate
+    if kind == E.SpriteType.GARGOYLE then
+        rate = frame == 2 and 0x0090 or 0x0180
+    else
+        if type(movement_step) ~= "number" or movement_step < 0 or
+           movement_step > 0xffff then
+            return nil
+        end
+        rate = (movement_step < 0x16 and movement_step * 0x1c or
+                movement_step * 0x10) & 0xffff
+    end
+    if rate <= 0 then
+        return 0
+    end
+    return rate / 0x1000
 end
 
--- ROM 0x5FDC: +0x1A += +0x18 (16-bit); when signed +0x1A >= +0x1C, +0x1E++ and
--- +0x1A -= +0x1C. Returns true when the frame advanced.
-function Animator.tick(state, rate, period)
-    local word = u16(state.animation_accumulator + rate)
-    if period <= signed(word) then
-        state.animation_frame = u16(state.animation_frame + 1)
-        state.animation_accumulator = signed(u16(word - period))
-        return true
+-- Advance at most one frame on each render update, preserving fractional
+-- cadence across updates and frame-specific rate changes. The normalized
+-- phase replaces the source accumulator while keeping its visible timing.
+function Animator.advance_loop_clip(state, count, progress_per_update)
+    if type(state) ~= "table" or type(count) ~= "number" or count < 1 or
+       type(progress_per_update) ~= "number" or progress_per_update < 0 or
+       type(state.animation_frame) ~= "number" then
+        return false
     end
-    state.animation_accumulator = signed(word)
-    return false
-end
-
--- ROM 0x6092: a looping list ignores its stored rate. Kind 0xD uses 0x180
--- (0x90 on frame 2); every other kind uses +0xCA * 0x1C below 0x16, else * 0x10.
-function Animator.loop_rate(kind, frame, speed)
-    if kind == 0x0D then
-        return frame == 2 and 0x0090 or 0x0180
+    local progress = state.animation_progress or 0
+    if type(progress) ~= "number" or progress < 0 then
+        return false
     end
-    if type(speed) ~= "number" or speed < 0 or speed > 0xffff then
-        return nil
+    progress = progress + progress_per_update
+    local advanced = progress + 1e-9 >= 1
+    if advanced then
+        progress = progress - 1
+        state.animation_frame = (state.animation_frame + 1) % count
     end
-    return (speed < 0x16 and speed * 0x1c or speed * 0x10) & 0xffff
+    state.animation_progress = progress
+    return advanced
 end
 
 -- 0x5FDC then 0x600E's finite branch: past the count, hold the last frame and
 -- report the list finished (the caller owns pose bit 15 / its done flag).
-function Animator.step_finite(state, count, rate, period)
-    Animator.tick(state, rate, period or Animator.PERIOD)
+local function tick_projectile_clock(state, rate, period)
+    local word = u16(state.animation_accumulator + rate)
+    local signed_word = word >= 0x8000 and word - 0x10000 or word
+    local threshold = period or Animator.PROJECTILE_PERIOD
+    if threshold <= signed_word then
+        state.animation_accumulator = u16(word - threshold)
+        if state.animation_accumulator >= 0x8000 then
+            state.animation_accumulator = state.animation_accumulator - 0x10000
+        end
+        return true
+    end
+    state.animation_accumulator = signed_word
+    return false
+end
+
+function Animator.step_projectile_finite(state, count, rate, period)
+    if tick_projectile_clock(state, rate, period) then
+        state.animation_frame = u16(state.animation_frame + 1)
+    end
     if state.animation_frame >= count then
         state.animation_frame = count - 1
         return true
     end
     return false
-end
-
--- 0x5FDC then 0x600E's looping branch: wrap to frame 0 at the count.
-function Animator.step_loop(state, count, rate, period)
-    local advanced = Animator.tick(state, rate, period or Animator.PERIOD)
-    if state.animation_frame >= count then
-        state.animation_frame = 0
-    end
-    return advanced
 end
 
 R.Animator = Animator

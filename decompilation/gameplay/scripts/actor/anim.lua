@@ -56,12 +56,9 @@ local function snapshot(state, action, audio_event, projectile_movement,
             state.animation_selector or nil,
         direction = state.direction,
         frame = state.animation_frame,
-        -- Only the remaining movement and effect clocks use this legacy host
-        -- field. Finite actor clips expose named frame state and duration.
-        animation_accumulator =
-            (state.animation_id == "idle" or state.animation_id == "walk" or
-             state.animation_id == "projectile" or
-             state.animation_id == "hit_spark") and
+        -- The source-shaped clock is isolated to weapon projectile effects;
+        -- character clips expose semantic frames and Lua-owned progress.
+        animation_accumulator = state.profile_id == "weapon_projectile" and
             state.animation_accumulator or nil,
         transition_started = state.transition_started,
         transition_complete = state.transition_complete,
@@ -74,7 +71,8 @@ local function snapshot(state, action, audio_event, projectile_movement,
         target_heading_audio_event = target_heading_audio_event,
         strike_heading = strike_heading,
         weapon_item_id = state.weapon_item_id,
-        animation_increment = state.animation_increment,
+        animation_increment = state.profile_id == "weapon_projectile" and
+            state.animation_increment or nil,
         movement_heading = state.movement_heading,
         movement_current_heading = state.movement_current_heading,
         movement_route_distance = state.movement_route_distance,
@@ -132,16 +130,17 @@ local function advance_projectile_animation(state, context)
     end
 
     -- The behavior pass may select a new list (for example, the stopped
-    -- projectile tail). Preserve +0x1A/+0x1E as 0x600E does: only the source
-    -- selector changes before this render heartbeat.
+    -- projectile tail). Preserve its current frame and projectile clock phase
+    -- while updating the selected clip metadata for this render heartbeat.
     state.animation_selector = animation.selector
     state.animation_period = animation.period
     state.animation_frame_count = animation.frame_count
 
     -- 0x5FDC with the previous +0x18, then 0x600E's finite clamp. The sixteen
     -- weapon-effect lists use 0x8003 or 0x800B markers and 0x270F cadence.
-    if Animator.step_finite(state, animation.frame_count,
-                            state.animation_increment, state.animation_period) then
+    if Animator.step_projectile_finite(
+            state, animation.frame_count, state.animation_increment,
+            state.animation_period) then
         state.animation_selector = state.animation_selector | 0x8000
     end
     state.animation_increment = weapon_projectile_descriptor_increment
@@ -247,10 +246,8 @@ local function begin_down_reaction(state)
     state.damage_reaction_active = true
     state.damage_reaction_animation_complete = false
     state.animation_frame = 0
-    state.animation_accumulator = 0
+    state.animation_progress = 0
     state.animation_elapsed_updates = 0
-    state.animation_increment = 0
-    state.animation_period = nil
     state.animation_id = "down"
     state.spell_death_variant = nil
     state.actor_facts.lifecycle.downed = true
@@ -313,10 +310,8 @@ local function begin_received_hit_reaction(state, context)
         state.damage_reaction_active = true
         state.damage_reaction_animation_complete = false
         state.animation_frame = 0
-        state.animation_accumulator = 0
+        state.animation_progress = 0
         state.animation_elapsed_updates = 0
-        state.animation_increment = 0
-        state.animation_period = nil
         state.animation_id = "down"
         state.spell_death_variant = hit.spell_death_variant
         state.spell_death = true
@@ -339,10 +334,8 @@ local function begin_received_hit_reaction(state, context)
     state.damage_reaction_active = true
     state.damage_reaction_animation_complete = false
     state.animation_frame = 0
-    state.animation_accumulator = 0
+    state.animation_progress = 0
     state.animation_elapsed_updates = 0
-    state.animation_increment = 0
-    state.animation_period = nil
     -- 0xAFF2 selects C072 and starts B07E's eight-service countdown.
     state.animation_id = "hurt"
     state.spell_death_variant = nil
@@ -388,7 +381,7 @@ local function begin_player_hurt_reaction(state, context)
     state.player_hurt_sound_active = true
     state.animation_id = "runner_hurt"
     state.animation_frame = 0
-    state.animation_accumulator = 0
+    state.animation_progress = 0
     state.animation_elapsed_updates = 0
     state.hurt_behavior_timer = PlayerHurt.SOUND_DELAY
     state.hurt_audio_event = SoundId.DAC_SAMPLE_40
@@ -412,14 +405,14 @@ local function finish_player_hurt_reaction(state, context)
         -- independent eight-service cue; its 0xB48C call is collision work.
         state.animation_id = "idle"
         state.animation_frame = 0
-        state.animation_accumulator = 0
+        state.animation_progress = 0
         state.animation_elapsed_updates = 0
         state.player_hurt_selector_reset_after_render = true
     end
     return true
 end
 
-local function advance_dynamic_actor_walk_animation(state, context)
+local function advance_dynamic_actor_walk_animation(state)
     local list = Animator.list(state.entity_kind, Animator.Clip.WALK,
                                state.direction)
     if list == nil or not list.looping then
@@ -428,14 +421,31 @@ local function advance_dynamic_actor_walk_animation(state, context)
 
     -- ROM 0x6092 looping-list rate from +0xCA (the movement vector's timing
     -- word); the positive C062 list wraps at its source marker.
-    local increment = Animator.loop_rate(state.entity_kind,
-        state.animation_frame, state.animation_timing_word)
-    if increment == nil then
+    local progress_per_update = Animator.loop_progress_per_update(
+        state.entity_kind, state.animation_frame,
+        state.movement_step_distance)
+    if progress_per_update == nil then
         return false
     end
-    state.animation_increment = increment
-    state.animation_period = Animator.PERIOD
-    Animator.step_loop(state, list.frame_count, increment, state.animation_period)
+    Animator.advance_loop_clip(state, list.frame_count,
+                               progress_per_update)
+    return true
+end
+
+local function advance_dynamic_actor_idle_animation(state)
+    local list = Animator.list(state.entity_kind, Animator.Clip.IDLE,
+                               state.direction)
+    if list == nil or not list.looping then
+        return true
+    end
+    local progress_per_update = Animator.loop_progress_per_update(
+        state.entity_kind, state.animation_frame,
+        state.movement_step_distance)
+    if progress_per_update == nil then
+        return false
+    end
+    Animator.advance_loop_clip(state, list.frame_count,
+                               progress_per_update)
     return true
 end
 
@@ -483,13 +493,9 @@ local function advance_player_animation(state, context)
         state.player_hurt_selector_reset_after_render = nil
     end
     local animation_mode = context.animation_mode
-    local looping_animation = animation_mode == "walking" or
-        (animation_mode == "idle" and
-         not state.player_hurt_pose_active)
-    if looping_animation and
-       type(context.animation_accumulator_override) == "number" then
-        state.animation_accumulator =
-            context.animation_accumulator_override
+    if context.animation_clock_reset_requested == true then
+        state.animation_progress = 0
+        state.animation_elapsed_updates = 0
     end
     if type(context.animation_direction_override) == "number" then
         state.direction = context.animation_direction_override & 0x7
@@ -559,22 +565,22 @@ local function advance_player_animation(state, context)
     -- Kind 3 idle/walk lists loop, so 0x6092 times them from +0xCA = 0x28
     -- (C002+4 via 0xBABC/0xBADE): 0x28 * 0x10 = 0x280 [C].
     local kind = SpriteType.FIELD_RUNNER -- 3
-    local rate = Animator.loop_rate(kind, state.animation_frame,
-                                    Animator.PLAYER_SPEED)
     if state.animation_id ~= nil and state.animation_id ~= "idle" and
        state.animation_id ~= "walk" then
         -- A one-shot clip has its own duration and cannot leave fractional
         -- locomotion time behind when movement resumes.
-        state.animation_accumulator = 0
+        state.animation_progress = 0
     end
     if context.animation_mode == "walking" then
         state.animation_id = "walk"
-        Animator.step_loop(state,
-            Animator.list(kind, Animator.Clip.WALK, state.direction).frame_count, rate)
+        Animator.advance_loop_clip(state,
+            Animator.list(kind, Animator.Clip.WALK, state.direction).frame_count,
+            Animator.PLAYER_WALK_PROGRESS_PER_UPDATE)
     else
         state.animation_id = "idle"
-        Animator.step_loop(state,
-            Animator.list(kind, Animator.Clip.IDLE, state.direction).frame_count, rate)
+        Animator.advance_loop_clip(state,
+            Animator.list(kind, Animator.Clip.IDLE, state.direction).frame_count,
+            Animator.PLAYER_WALK_PROGRESS_PER_UPDATE)
     end
 end
 
@@ -587,13 +593,14 @@ R.hit_spark_heartbeat = hit_spark_heartbeat
 R.advance_entry_animation = advance_entry_animation
 R.death_list = death_list
 R.advance_finite_actor_animation = advance_finite_actor_animation
+R.advance_dynamic_actor_idle_animation = advance_dynamic_actor_idle_animation
+R.advance_dynamic_actor_walk_animation = advance_dynamic_actor_walk_animation
 R.begin_received_hit_reaction = begin_received_hit_reaction
 R.begin_down_reaction = begin_down_reaction
 R.service_zero_meter_down = service_zero_meter_down
 R.advance_received_hit_reaction = advance_received_hit_reaction
 R.begin_player_hurt_reaction = begin_player_hurt_reaction
 R.finish_player_hurt_reaction = finish_player_hurt_reaction
-R.advance_dynamic_actor_walk_animation = advance_dynamic_actor_walk_animation
 R.advance_dynamic_actor_action_animation = advance_dynamic_actor_action_animation
 R.advance_dynamic_actor_item_action_animation = advance_dynamic_actor_item_action_animation
 R.advance_player_animation = advance_player_animation
