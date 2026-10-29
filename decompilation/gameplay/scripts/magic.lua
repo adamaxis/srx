@@ -1,7 +1,7 @@
 -- Stable spell IDs follow the ROM D4EA0 name/description table order.
 -- The native spell table filters this catalog for the active runner.
 local Magic = {}
-local SourceSpellRecords = require("data.spells").by_type
+local SpellDefinitions = require("data.spells").by_id
 local E = require("enums")
 
 local spell_ids = {
@@ -123,13 +123,13 @@ function Magic.spell_descriptions()
         text_keys(spell_ids, "magic.spells.description.")
 end
 
-function Magic.action_motion_distance_profile(code)
+function Magic.target_motion_range(code)
     if type(code) ~= "number" or code % 1 ~= 0 or
        code < 1 or code > #spell_action_by_code then
         return nil
     end
-    local source_record = SourceSpellRecords[code - 1]
-    return source_record and source_record.flag27 or nil
+    local definition = SpellDefinitions[spell_ids[code]]
+    return definition and definition.target_motion_range or nil
 end
 
 function Magic.spell_action_definition(code)
@@ -138,8 +138,8 @@ function Magic.spell_action_definition(code)
         return nil
     end
     local row = spell_action_by_code[code]
-    local source_record = SourceSpellRecords[code - 1]
-    if source_record == nil then
+    local definition = SpellDefinitions[spell_ids[code]]
+    if definition == nil then
         return nil
     end
     local effect_profile = actor_effect_profile_by_code[code]
@@ -153,7 +153,6 @@ function Magic.spell_action_definition(code)
         base_effect = row.base_effect,
         target_effect = row.target_effect,
         attribute_selector = row.attribute_selector,
-        totem_modifier_applies = source_record.totem_category >= 0,
         audio_event = action_effect_audio_event_by_code[code] or 0,
         untargeted_effect_kind = untargeted_effect_kind_by_code[code] or
             E.SpellEffectKind.NONE,

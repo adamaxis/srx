@@ -1,59 +1,37 @@
--- One source-backed catalog for all 50 US-ROM item records. Names and
--- categories resolve through the extracted dialogue text. Weapon and armor
--- stats live on the item they describe instead of in parallel partial lists.
+-- Semantic catalog for all 50 items. Stable string IDs are the gameplay keys;
+-- the host translates those IDs to source inventory values at the boundary.
 local Items = {}
-local SourceItemRecords = require("data.items").by_id
+local ItemDefinitions = require("data.items")
 local SourceWeaponRecords = require("data.weapons")
-local SourceEnums = require("enums")
+local E = require("enums")
+local ItemKind = E.ItemKind
 
-local source_item_kind_by_name = {
-    firearm = SourceEnums.ItemKind.FIREARM,
-    grenade = SourceEnums.ItemKind.GRENADE,
-    medical_kit = SourceEnums.ItemKind.MEDICAL_KIT,
-    stim_patch = SourceEnums.ItemKind.STIM_PATCH,
-    trauma_patch = SourceEnums.ItemKind.TRAUMA_PATCH,
-    fetish = SourceEnums.ItemKind.FETISH,
-    passkey = SourceEnums.ItemKind.PASSKEY,
-    electronic_kit = SourceEnums.ItemKind.ELECTRONIC_KIT,
-    smart_goggles = SourceEnums.ItemKind.SMART_GOGGLES,
-    enchanted_dagger = SourceEnums.ItemKind.ENCHANTED_DAGGER,
-    power_focus = SourceEnums.ItemKind.POWER_FOCUS,
-    spell_focus = SourceEnums.ItemKind.SPELL_FOCUS,
-    talisman = SourceEnums.ItemKind.TALISMAN,
-    spell_lock = SourceEnums.ItemKind.SPELL_LOCK,
-    totem = SourceEnums.ItemKind.TOTEM,
-    armor = SourceEnums.ItemKind.ARMOR,
-}
-
-local power_profile_by_rom_value = {
-    [4] = "low",
-    [6] = "light",
-    [7] = "medium",
-    [9] = "high",
-    [10] = "brutal",
-}
+local item_kind_by_value = {}
+for name, value in pairs(ItemKind) do
+    item_kind_by_value[value] = name:lower()
+end
 
 local image_family_by_kind = {
-    firearm = "weapons",
-    grenade = "weapons",
-    medical_kit = "first.aid",
-    stim_patch = "first.aid",
-    trauma_patch = "first.aid",
-    fetish = "miscellaneous",
-    passkey = "miscellaneous",
-    electronic_kit = "miscellaneous",
-    smart_goggles = "miscellaneous",
-    enchanted_dagger = "magic",
-    power_focus = "magic",
-    spell_focus = "magic",
-    talisman = "magic",
-    spell_lock = "magic",
-    totem = "magic",
-    armor = "armor",
+    firearm = "weapons", grenade = "weapons",
+    medical_kit = "first.aid", stim_patch = "first.aid",
+    trauma_patch = "first.aid", fetish = "miscellaneous",
+    passkey = "miscellaneous", electronic_kit = "miscellaneous",
+    smart_goggles = "miscellaneous", enchanted_dagger = "magic",
+    power_focus = "magic", spell_focus = "magic", talisman = "magic",
+    spell_lock = "magic", totem = "magic", armor = "armor",
 }
 
-local function item_image_suffix(code)
-    return code < 10 and ("0" .. code) or tostring(code)
+local armor_item_order = {
+    "armor_vest", "armor_clothing", "armor_jacket", "vest_with_plates",
+    "lined_duster", "light_combat_armor", "heavy_combat_armor",
+}
+local armor_index_by_item_id = {}
+for index, id in ipairs(armor_item_order) do
+    armor_index_by_item_id[id] = index
+end
+
+local function item_image_suffix(asset_index)
+    return asset_index < 10 and ("0" .. asset_index) or tostring(asset_index)
 end
 
 local function label_keys(ids, prefix)
@@ -64,33 +42,23 @@ local function label_keys(ids, prefix)
     return keys
 end
 
-local function define_item(id, code, kind, has_detail_art, content)
+local function define_item(id, asset_index)
+    local definition = ItemDefinitions.by_id[id]
+    assert(definition ~= nil and definition.id == id,
+           "item has no matching semantic definition: " .. id)
+    local kind = item_kind_by_value[definition.kind]
+    assert(kind ~= nil, "item definition has an unknown kind: " .. id)
     local image_family = image_family_by_kind[kind]
     assert(image_family ~= nil, "item kind has no image family: " .. kind)
-    local source_record = SourceItemRecords[code]
-    assert(source_record ~= nil and source_record.id == code,
-           "item has no matching ROM record: " .. code)
-    assert(source_record.kind == source_item_kind_by_name[kind],
-           "item kind differs from ROM record classification: " .. code)
-    local image_suffix = item_image_suffix(code)
+
+    local image_suffix = item_image_suffix(asset_index)
     local item = {
         id = id,
-        code = code,
         kind = kind,
-        name_key = "items.name." .. code,
-        category_key = "items.category." .. code,
-        source_record = source_record,
-        -- D4540 +0x27 is consumed by 0x13D0C while +0xB5 is active.
-        -- The complete US table is zero except item 43, whose value is 2.
-        action_motion_distance_profile = 0,
-        pricing = {
-            -- D4540 +0x22 is the purchase base. The source sale path starts
-            -- from half of that value before applying runner-dependent cost
-            -- adjustments, so retain both static terms on this item.
-            purchase_base = source_record.price,
-            resale_base = math.floor(source_record.price / 2),
-        },
-        has_detail_art = has_detail_art,
+        name_key = "items.name." .. asset_index,
+        category_key = "items.category." .. asset_index,
+        target_motion_range = definition.target_motion_range,
+        has_detail_art = definition.has_detail_art,
         presentation = {
             icon_resource_key = "items." .. image_family ..
                 ".icons.item." .. image_suffix,
@@ -98,143 +66,45 @@ local function define_item(id, code, kind, has_detail_art, content)
                 ".detail.item." .. image_suffix,
         },
     }
+    if definition.purchase_base ~= nil then
+        item.pricing = {
+            purchase_base = definition.purchase_base,
+            resale_base = math.floor(definition.purchase_base / 2),
+        }
+    end
+    if definition.totem_spell_modifiers ~= nil then
+        item.spell_action_modifiers = definition.totem_spell_modifiers
+    end
     if kind == "firearm" then
         item.weapon = {}
     end
-    if content ~= nil then
-        for key, value in pairs(content) do
-            item[key] = value
-        end
+    if kind == "armor" then
+        item.armor = { armor_index = armor_index_by_item_id[id] }
     end
-    return item
-end
 
--- Every row resolves to named icon/detail assets and has source-backed buy
--- and resale bases. Weapon behavior and hit data come from the canonical
--- weapon record; other item details depend on live actor/menu state.
-Items.catalog = {
-    define_item("streetline", 1, "firearm", true),
-    define_item("model_101t", 2, "firearm", true),
-    define_item("american_l36", 3, "firearm", true),
-    define_item("security_500", 4, "firearm", true),
-    define_item("warhawk", 5, "firearm", true),
-    define_item("max_power", 6, "firearm", true),
-    define_item("predator", 7, "firearm", true),
-    define_item("ak_97", 8, "firearm", true),
-    define_item("hk227_s", 9, "firearm", true),
-    define_item("mach_22", 10, "firearm", true),
-    define_item("allegiance", 11, "firearm", true),
-    define_item("roomsweeper", 12, "firearm", true),
-    define_item("frag", 13, "grenade", true,
-        { detail = { kind = "uses", value = 6 } }),
-    define_item("scatter", 14, "grenade", true,
-        { detail = { kind = "uses", value = 6 } }),
-    define_item("concussion", 15, "grenade", true,
-        { detail = { kind = "uses", value = 6 } }),
-    define_item("medkit", 16, "medical_kit", true,
-        { detail = { kind = "uses", value = 6 } }),
-    define_item("stim_patch", 17, "stim_patch", true,
-        { detail = { kind = "uses", value = 6 } }),
-    define_item("trauma_patch", 18, "trauma_patch", true,
-        { detail = { kind = "uses", value = 6 } }),
-    define_item("fetish", 19, "fetish", true,
-        { detail = { kind = "uses", value = 0 } }),
-    define_item("maglock_passkey", 20, "passkey", true),
-    define_item("electronic_kit", 21, "electronic_kit", true),
-    define_item("smart_goggles", 22, "smart_goggles", true),
-    define_item("enchanted_dagger", 23, "enchanted_dagger", true),
-    define_item("power_focus", 24, "power_focus", true),
-    define_item("flame_dart_focus", 25, "spell_focus", true),
-    define_item("flame_bolt_focus", 26, "spell_focus", true),
-    define_item("hellblast_focus", 27, "spell_focus", true),
-    define_item("invisibility_focus", 28, "spell_focus", true),
-    define_item("sleep_focus", 29, "spell_focus", true),
-    define_item("stink_focus", 30, "spell_focus", true),
-    define_item("supr_barrier_focus", 31, "spell_focus", true),
-    define_item("mana_zap_focus", 32, "spell_focus", true),
-    define_item("mana_blast_focus", 33, "spell_focus", true),
-    define_item("mana_storm_focus", 34, "spell_focus", true),
-    define_item("rockskin_focus", 35, "spell_focus", true),
-    define_item("heal_wounds_focus", 36, "spell_focus", true),
-    define_item("confusion_focus", 37, "spell_focus", true),
-    define_item("barrier_focus", 38, "spell_focus", true),
-    define_item("protection_talisman", 39, "talisman", true),
-    define_item("combat_sense_spell_lock", 40, "spell_lock", true),
-    define_item("rat_totem", 41, "totem", false,
-        { spell_action_modifiers = {
-            flame_dart = -1, flame_bolt = -1, hellblast = -1,
-            invisibility = 2, sleep = -1, stink = 2, mana_zap = -1,
-            mana_blast = -1, mana_storm = -1, heal_wounds = 0,
-            confusion = 2,
-        } }),
-    define_item("gator_totem", 42, "totem", false,
-        { spell_action_modifiers = {
-            flame_dart = 2, flame_bolt = 2, hellblast = 2,
-            invisibility = -1, sleep = 2, stink = -1, mana_zap = 2,
-            mana_blast = 2, mana_storm = 2, heal_wounds = 0,
-            confusion = -1,
-        } }),
-    define_item("bear_totem", 43, "totem", false,
-        { action_motion_distance_profile = 2,
-          spell_action_modifiers = {
-              flame_dart = 0, flame_bolt = 0, hellblast = 0,
-              invisibility = 0, sleep = 0, stink = 0, mana_zap = 0,
-              mana_blast = 0, mana_storm = 0, heal_wounds = 2,
-              confusion = 0,
-          } }),
-    define_item("armor_vest", 44, "armor", true,
-        { armor = { armor_index = 1 } }),
-    define_item("armor_clothing", 45, "armor", true,
-        { armor = { armor_index = 2 } }),
-    define_item("armor_jacket", 46, "armor", true,
-        { armor = { armor_index = 3 } }),
-    define_item("vest_with_plates", 47, "armor", true,
-        { armor = { armor_index = 4 } }),
-    define_item("lined_duster", 48, "armor", true,
-        { armor = { armor_index = 5 } }),
-    define_item("light_combat_armor", 49, "armor", true,
-        { armor = { armor_index = 6 } }),
-    define_item("heavy_combat_armor", 50, "armor", true,
-        { armor = { armor_index = 7 } }),
-}
-
--- The extracted record and the one-per-item weapon template are canonical.
--- Keep the older presentation fields as views for existing host consumers,
--- but validate and populate them from the source records here.
-Items.by_code = {}
-Items.by_id = {}
-for _, item in ipairs(Items.catalog) do
-    local record = SourceItemRecords[item.code]
-    assert(record == item.source_record,
-           "item lost its ROM record association: " .. item.code)
-    assert(item.pricing.purchase_base == record.price,
-           "item purchase value differs from ROM record: " .. item.code)
-
-    local template = SourceWeaponRecords.get(item.code)
+    local template = SourceWeaponRecords.get(id)
     if template ~= nil then
-        assert(template.price == record.price and
-                   template.clip_size == record.b24 and
-                   template.damage_class == record.b25 and
-                   template.power == record.b26 and
-                   template.band == record.b27,
-               "weapon template differs from ROM item record: " .. item.code)
-        item.source_weapon_template = template
+        assert(template.id == id and
+               template.purchase_base == definition.purchase_base,
+               "weapon profile disagrees with its item definition: " .. id)
         if item.weapon ~= nil then
             assert(template.fire_mode == "single_round" or
                        template.fire_mode == "three_round_burst",
-                   "firearm has no source firing mode: " .. item.code)
+                   "firearm has no source firing mode: " .. id)
             assert(template.automatic ==
                        (template.fire_mode == "three_round_burst") and
                        template.rounds_per_shot ==
                            (template.fire_mode == "three_round_burst" and 3 or 1),
-                   "weapon firing mode and round cost disagree: " .. item.code)
-            local power_profile = power_profile_by_rom_value[template.power]
+                   "weapon firing mode and round cost disagree: " .. id)
+            local power_profile = ({
+                [4] = "low", [6] = "light", [7] = "medium",
+                [9] = "high", [10] = "brutal",
+            })[template.power_rating]
             assert(power_profile ~= nil,
-                   "weapon power has no display profile: " .. item.code)
-            item.weapon.template = template
+                   "weapon power has no display profile: " .. id)
             item.weapon.source_action = template.source_action
-            item.weapon.magazine_capacity = template.clip_size
-            item.weapon.damage_bar_index = template.damage_class
+            item.weapon.magazine_capacity = template.magazine_capacity
+            item.weapon.damage_effect = template.damage_effect
             item.weapon.power_profile = power_profile
             item.weapon.fire_mode = template.fire_mode
             item.weapon.trigger_behavior = template.trigger_behavior
@@ -248,18 +118,29 @@ for _, item in ipairs(Items.catalog) do
                        item.weapon.attack_cadence ~= nil and
                        item.weapon.attack_delay_scale ~= nil and
                        item.weapon.reload_delay_scale ~= nil,
-                   "firearm template is incomplete: " .. item.code)
+                   "firearm template is incomplete: " .. id)
         end
-    elseif item.kind == "firearm" then
-        error("firearm has no source weapon template: " .. item.code)
-    elseif item.armor ~= nil then
-        item.armor.primary_modifier = record.b25
-        item.armor.secondary_modifier = record.b26
+    elseif kind == "firearm" then
+        error("firearm has no source weapon template: " .. id)
     end
-    Items.by_code[item.code] = item
+
+    if kind == "armor" then
+        assert(type(definition.armor) == "table",
+               "armor item has no modifier definition: " .. id)
+        item.armor.primary_modifier = definition.armor.primary_modifier
+        item.armor.secondary_modifier = definition.armor.secondary_modifier
+    end
+    return item
+end
+
+Items.catalog = {}
+Items.by_id = {}
+for asset_index, id in ipairs(ItemDefinitions.catalog_order) do
+    local item = define_item(id, asset_index)
+    Items.catalog[asset_index] = item
     Items.by_id[item.id] = item
 end
-assert(#Items.catalog == 50, "the ROM item catalog must have 50 records")
+assert(#Items.catalog == 50, "the item catalog must contain 50 entries")
 
 local detail_text_keys = {}
 for index = 0, 31 do

@@ -726,6 +726,7 @@ struct ScriptShopMenuSnapshot {
 
 struct ScriptWeaponTemplate {
     struct SourceAction {
+        // Native selector reconstructed from the named weapon identity.
         std::uint8_t effect_table_index = 0;
         std::uint8_t effect_value = 0;
         std::uint8_t difficulty = 0;
@@ -734,6 +735,8 @@ struct ScriptWeaponTemplate {
     std::string id;
     std::uint8_t item_code = 0;
     std::uint8_t magazine_capacity = 0;
+    // Resolved gameplay value; damage_bar_index is a native presentation mapping.
+    std::uint8_t damage_effect = 0;
     std::uint8_t damage_bar_index = 0;
     std::string power_profile;
     std::string power_label;
@@ -756,6 +759,11 @@ struct ScriptArmorTemplate {
     std::uint8_t secondary_modifier = 0;
 };
 
+struct ScriptTargetMotionRange {
+    std::uint16_t minimum_distance = 0;
+    std::uint16_t maximum_distance = 0;
+};
+
 struct ScriptItemDefinition {
     struct Pricing {
         std::uint16_t purchase_base = 0;
@@ -773,12 +781,12 @@ struct ScriptItemDefinition {
     };
 
     std::uint8_t code = 0;
-    std::uint8_t action_motion_distance_profile = 0;
+    ScriptTargetMotionRange target_motion_range{};
     std::string id;
     std::string kind;
     std::string name_key;
     std::string category_key;
-    Pricing pricing{};
+    std::optional<Pricing> pricing;
     Presentation presentation{};
     bool has_detail_art = false;
     std::optional<Detail> detail;

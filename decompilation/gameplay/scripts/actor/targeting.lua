@@ -7,7 +7,6 @@ local u16, s16 = I.u16, I.s16
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local ActionKind = R.ActionKind   -- from actor/tables.lua
-local ActionMotionDistanceBounds = R.ActionMotionDistanceBounds   -- from actor/tables.lua
 local EntityMotionDistanceBounds = R.EntityMotionDistanceBounds   -- from actor/tables.lua
 local profiles = R.profiles   -- from actor/tables.lua
 local ActorProfileCatalog = require("data.actor_profiles")
@@ -140,7 +139,7 @@ local function dynamic_encounter_profile(context)
         return nil
     end
     local source_actor_profile = ActorProfileCatalog.dynamic(
-        entity_kind, action_kind, action_code)
+        entity_kind, action_kind, action_code, context.action_item_id)
     return {
         package_id = "world_actor.kind_" .. tostring(entity_kind) ..
                      ".source_target_motion",
@@ -168,7 +167,11 @@ local function source_profile(context)
         not profile.hit_spark_animation and
         context.entity_kind ~= profile.entity_kind) or
        context.action_kind ~= profile.action_kind or
-       context.action_code ~= profile.action_code then
+       (profile.action_kind == ActionKind.item and
+        context.action_item_id ~= profile.weapon_item_id) or
+       (profile.action_kind ~= ActionKind.item and
+        profile.action_code ~= nil and
+        context.action_code ~= profile.action_code) then
         return nil
     end
     -- ROM 0x142AE takes the default-list waypoint branch for records carrying
@@ -245,22 +248,21 @@ local function linked_target(context, state)
     return retained
 end
 
-local function action_motion_distance_profile(context)
+local function action_target_motion_range(context)
     if context.action_kind == ActionKind.item then
         local item_module = game.modules.items
         local item = type(item_module) == "table" and
             type(item_module.by_id) == "table" and
             item_module.by_id[context.action_item_id] or nil
         if type(item) == "table" and item.id == context.action_item_id and
-           type(item.action_motion_distance_profile) == "number" then
-            return item.action_motion_distance_profile
+           type(item.target_motion_range) == "table" then
+            return item.target_motion_range
         end
     elseif context.action_kind == ActionKind.spell then
         local magic_module = game.modules.magic
         if type(magic_module) == "table" and
-           type(magic_module.action_motion_distance_profile) == "function" then
-            return magic_module.action_motion_distance_profile(
-                context.action_code)
+           type(magic_module.target_motion_range) == "function" then
+            return magic_module.target_motion_range(context.action_code)
         end
     end
     return nil
@@ -284,14 +286,19 @@ local function source_motion_bounds(context, state)
         return nil, true
     end
     state.target_motion_delay = state.target_motion_delay - 1
-    local profile = action_motion_distance_profile(context)
-    if type(profile) ~= "number" or profile % 1 ~= 0 or
-       profile < 0 or profile >= #ActionMotionDistanceBounds then
-        -- The source indexes the selected row while +0xB5 is active. An
-        -- unknown or 0xFF row remains unresolved for this route update.
+    local range = action_target_motion_range(context)
+    if type(range) ~= "table" or
+       type(range.minimum_distance) ~= "number" or
+       type(range.maximum_distance) ~= "number" or
+       range.minimum_distance % 1 ~= 0 or
+       range.maximum_distance % 1 ~= 0 or
+       range.minimum_distance < 0 or
+       range.maximum_distance < range.minimum_distance then
+        -- Leave the route pending when the selected action has no recovered
+        -- target-distance interval.
         return nil, false
     end
-    return ActionMotionDistanceBounds[profile + 1], true
+    return range, true
 end
 
 local function source_motion_destination_heading(context, state, target)
@@ -313,9 +320,9 @@ local function source_motion_destination_heading(context, state, target)
     end
     local heading = target.heading
     local distance = target.distance & 0xffff
-    if bounds == nil or distance < bounds.upper then
-        -- A zero +0xB5 counter reaches 0x13DCA directly. A selected action
-        -- row reaches the same flag when distance is below its upper bound.
+    if bounds == nil or distance < bounds.maximum_distance then
+        -- A zero +0xB5 counter reaches 0x13DCA directly. The selected action
+        -- range reaches the same state below its upper distance.
         state.actor_facts.behavior.in_target_band = true
     end
     context.movement_state.route_facts = state.actor_facts.behavior
@@ -324,10 +331,11 @@ local function source_motion_destination_heading(context, state, target)
     local destination_distance = target.perpendicular_route_distance & 0xffff
 
     if bounds ~= nil then
-        if distance >= bounds.lower and distance < bounds.upper then
+        if distance >= bounds.minimum_distance and
+           distance < bounds.maximum_distance then
             -- In-band actors drop +0xB5 and choose the lateral destination.
             state.target_motion_delay = 0
-        elseif distance >= bounds.upper then
+        elseif distance >= bounds.maximum_distance then
             -- At or beyond the upper bound the ROM copies the linked
             -- position and routes directly toward it.
             destination_heading = heading
@@ -526,7 +534,7 @@ R.dynamic_encounter_profile = dynamic_encounter_profile
 R.source_profile = source_profile
 R.target_is_eligible = target_is_eligible
 R.linked_target = linked_target
-R.action_motion_distance_profile = action_motion_distance_profile
+R.action_target_motion_range = action_target_motion_range
 R.source_motion_bounds = source_motion_bounds
 R.source_motion_destination_heading = source_motion_destination_heading
 R.retained_linked_target = retained_linked_target

@@ -13,6 +13,34 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DECOMP_ROOT = PROJECT_ROOT.parent
 ROM_DEFAULT = DECOMP_ROOT / "input" / "shadowrun_genesis_us.bin"
 KIND_MAP_DEFAULT = DECOMP_ROOT / "docs" / "ghidra" / "source-records" / "items_full.tsv"
+ITEM_RUNTIME_IDS = (
+    "streetline", "model_101t", "american_l36", "security_500",
+    "warhawk", "max_power", "predator", "ak_97", "hk227_s", "mach_22",
+    "allegiance", "roomsweeper", "frag", "scatter", "concussion",
+    "medkit", "stim_patch", "trauma_patch", "fetish", "maglock_passkey",
+    "electronic_kit", "smart_goggles", "enchanted_dagger", "power_focus",
+    "flame_dart_focus", "flame_bolt_focus", "hellblast_focus",
+    "invisibility_focus", "sleep_focus", "stink_focus",
+    "supr_barrier_focus", "mana_zap_focus", "mana_blast_focus",
+    "mana_storm_focus", "rockskin_focus", "heal_wounds_focus",
+    "confusion_focus", "barrier_focus", "protection_talisman",
+    "combat_sense_spell_lock", "rat_totem", "gator_totem", "bear_totem",
+    "armor_vest", "armor_clothing", "armor_jacket", "vest_with_plates",
+    "lined_duster", "light_combat_armor", "heavy_combat_armor",
+)
+SPELL_IDS = (
+    "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
+    "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
+    "rockskin", "heal_wounds", "confusion", "barrier",
+)
+# Source table 0x13E7C is converted to ordinary world-distance bounds here.
+# Runtime content receives the range, never the selector byte.
+ACTION_MOTION_RANGES = (
+    (0x0500, 0x0640),
+    (0x05A0, 0x0780),
+    (0x0640, 0x08C0),
+    (0x08C0, 0x0C80),
+)
 
 
 def read_u16(data: bytes, address: int) -> int:
@@ -27,6 +55,14 @@ def source_text(raw: bytes) -> str:
     return " ".join(raw.split(b"\xff")[0].replace(b"\x80", b" ").decode("latin1").split())
 
 
+def signed_byte(value: int) -> int:
+    return value - 256 if value >= 128 else value
+
+
+def signed_word(value: int) -> int:
+    return value - 0x10000 if value >= 0x8000 else value
+
+
 def load_kind_map(path: Path) -> dict[int, str]:
     with path.open(encoding="utf-8", newline="") as source:
         return {
@@ -38,40 +74,88 @@ def load_kind_map(path: Path) -> dict[int, str]:
 
 def item_rows(data: bytes, kinds: dict[int, str]) -> str:
     rows = []
+    # 0x12A8C uses live actor +0x6E detail values for item actions 0x0D+
+    # instead of the row's +0x24. Keep those bytes out of static item data.
+    spell_categories = tuple(signed_byte(value) for value in
+                             data[0xC8AE0:0xC8AE0 + 14])
     for code in range(1, 0x33):
         base = 0xD4540 + 0x30 * (code - 1)
+        kind = kinds[code]
+        runtime_id = ITEM_RUNTIME_IDS[code - 1]
+        range_selector = data[base + 0x27]
+        if range_selector >= len(ACTION_MOTION_RANGES):
+            raise ValueError(
+                f"item {code:02X} has unsupported target-motion range "
+                f"{range_selector:02X}"
+            )
+        minimum_distance, maximum_distance = ACTION_MOTION_RANGES[range_selector]
+        semantic_fields = []
+        if kind == "totem":
+            modifiers = []
+            for spell_index, selector in enumerate(spell_categories):
+                if selector < 0 or selector > 2:
+                    continue
+                modifier = signed_word(read_u16(
+                    data, base + 0x22 + selector * 2))
+                modifiers.append(
+                    f'{SPELL_IDS[spell_index]} = {modifier}')
+            semantic_fields.append(
+                "totem_spell_modifiers = { " + ", ".join(modifiers) + " }"
+            )
+        else:
+            semantic_fields.append(
+                f'purchase_base = {read_u16(data, base + 0x22)}'
+            )
+        if kind == "armor":
+            semantic_fields.append(
+                'armor = { '
+                f'primary_modifier = {data[base + 0x25]}, '
+                f'secondary_modifier = {data[base + 0x26]} }}'
+            )
+        semantic_fields.append(
+            f'target_motion_range = {{ minimum_distance = {minimum_distance}, '
+            f'maximum_distance = {maximum_distance} }}'
+        )
+        semantic_fields.append(
+            f'has_detail_art = '
+            f'{str(read_u32(data, base + 0x1E) != 0xFFFFFFFF).lower()}'
+        )
         rows.append(
-            f'    [0x{code:02X}] = Item{{ id = 0x{code:02X}, '
+            f'    ["{runtime_id}"] = Item{{ id = "{runtime_id}", '
             f'name = "{source_text(data[base:base + 0x1A])}", '
-            f'kind = ItemKind.{kinds[code].upper()}, '
-            f'price = {read_u16(data, base + 0x22)}, '
-            f'b24 = {data[base + 0x24]}, b25 = {data[base + 0x25]}, '
-            f'b26 = {data[base + 0x26]}, b27 = {data[base + 0x27]}, '
-            f'icon = 0x{read_u32(data, base + 0x1A):06X}, '
-            f'detail = 0x{read_u32(data, base + 0x1E):08X} }},'
+            f'kind = ItemKind.{kind.upper()}, '
+            f'{", ".join(semantic_fields)} }},'
         )
     return "\n".join(rows)
 
 
 def spell_rows(data: bytes) -> str:
-    categories = data[0xC8AE0:0xC8AE0 + 14]
     rows = []
     for spell_type in range(14):
         code = 0x33 + spell_type
         base = 0xD4540 + 0x30 * (code - 1)
-        raw_category = categories[spell_type]
-        category = raw_category - 256 if raw_category >= 128 else raw_category
+        drain_selector = data[base + 0x24]
+        base_drain = -signed_byte(data[0x166AD4 + drain_selector])
+        force_drain_modifier = data[base + 0x26]
+        range_selector = data[base + 0x27]
+        if range_selector < len(ACTION_MOTION_RANGES):
+            minimum_distance, maximum_distance = ACTION_MOTION_RANGES[
+                range_selector
+            ]
+            target_range = (
+                f"{{ minimum_distance = {minimum_distance}, "
+                f"maximum_distance = {maximum_distance} }}"
+            )
+        else:
+            target_range = "nil"
         rows.append(
-            f'    [{spell_type}] = Spell{{ type = {spell_type}, '
-            f'item_id = 0x{code:02X}, '
+            f'    ["{SPELL_IDS[spell_type]}"] = Spell{{ '
+            f'id = "{SPELL_IDS[spell_type]}", '
             f'name = "{source_text(data[base:base + 0x1A])}", '
-            f'drain_level = {data[base + 0x24]}, '
-            f'damage_class = {data[base + 0x25]}, '
-            f'drain_modifier = {data[base + 0x26]}, '
-            f'flag27 = {data[base + 0x27]}, '
-            f'totem_category = {category}, '
-            f'icon = 0x{read_u32(data, base + 0x1A):06X}, '
-            f'description = 0x{read_u32(data, base + 0x1E):06X} }},'
+            f'base_drain = {base_drain}, '
+            f'force_drain_modifier = {force_drain_modifier}, '
+            f'target_motion_range = {target_range}'
+            f' }},'
         )
     return "\n".join(rows)
 

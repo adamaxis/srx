@@ -35,56 +35,42 @@ local ActionKind = {
 
 local E = require("enums")
 local SpriteType = E.SpriteType
--- ROM 0x13E7C has four finite bounds pairs selected by item/spell template
--- byte +0x27. Coordinates are typed 16-bit scene units.
-local ActionMotionDistanceBounds = {
-    { lower = 0x0500, upper = 0x0640 },
-    { lower = 0x05a0, upper = 0x0780 },
-    { lower = 0x0640, upper = 0x08c0 },
-    { lower = 0x08c0, upper = 0x0c80 },
-}
+-- Entity approach intervals in the game's world-distance units. Action
+-- intervals are attached directly to item/spell definitions after import.
 local EntityMotionDistanceBounds = {
-    { lower = 0x0640, upper = 0x0780 },
-    { lower = 0x0640, upper = 0x0780 },
-    { lower = 0x0640, upper = 0x0780 },
-    { lower = 0x0460, upper = 0x05a0 },
-    { lower = 0x0460, upper = 0x05a0 },
-    { lower = 0x0460, upper = 0x05a0 },
-    { lower = 0x01e0, upper = 0x03c0 },
-    { lower = 0x01e0, upper = 0x03c0 },
-    { lower = 0x01e0, upper = 0x03c0 },
+    { minimum_distance = 0x0640, maximum_distance = 0x0780 },
+    { minimum_distance = 0x0640, maximum_distance = 0x0780 },
+    { minimum_distance = 0x0640, maximum_distance = 0x0780 },
+    { minimum_distance = 0x0460, maximum_distance = 0x05a0 },
+    { minimum_distance = 0x0460, maximum_distance = 0x05a0 },
+    { minimum_distance = 0x0460, maximum_distance = 0x05a0 },
+    { minimum_distance = 0x01e0, maximum_distance = 0x03c0 },
+    { minimum_distance = 0x01e0, maximum_distance = 0x03c0 },
+    { minimum_distance = 0x01e0, maximum_distance = 0x03c0 },
 }
 local target_motion_reacquire_updates = 6
 local source_close_range_threshold = 0x01e0
-local ItemAction = {
-    max_power_heavy_pistol = 6,
-}
 local profiles = {
     ["corp_guard_k05_item06"] = {
         package_id = "corp_security.max_power_heavy_pistol",
         entity_kind = SpriteType.CORP_GUARD,
         action_kind = ActionKind.item,
-        action_code = ItemAction.max_power_heavy_pistol,
-        weapon_item_id = ItemAction.max_power_heavy_pistol,
     },
     ["pedestrian_k0b_none00"] = {
         package_id = "pedestrian.no_active_action",
         entity_kind = SpriteType.PEDESTRIAN,
         action_kind = ActionKind.none,
-        action_code = 0,
     },
     ["field_runner_k03_none00"] = {
         package_id = "runner.field_controlled",
         entity_kind = SpriteType.FIELD_RUNNER,
         action_kind = ActionKind.none,
-        action_code = 0,
         controls_movement = true,
     },
     ["hell_hound_k0c_none00"] = {
         package_id = "creature.hell_hound.source_target_motion",
         entity_kind = SpriteType.HELL_HOUND,
         action_kind = ActionKind.none,
-        action_code = 0,
         controls_movement = true,
         dynamic_encounter_only = true,
     },
@@ -92,7 +78,6 @@ local profiles = {
         package_id = "creature.gargoyle.source_target_motion",
         entity_kind = SpriteType.GARGOYLE,
         action_kind = ActionKind.none,
-        action_code = 0,
         controls_movement = true,
         animation_cadence_profile = "gargoyle_walk",
         dynamic_encounter_only = true,
@@ -101,20 +86,17 @@ local profiles = {
         package_id = "creature.wendigo.source_target_motion",
         entity_kind = SpriteType.WENDIGO,
         action_kind = ActionKind.none,
-        action_code = 0,
         controls_movement = true,
         dynamic_encounter_only = true,
     },
     ["weapon_projectile"] = {
         package_id = "combat.weapon_projectile",
         action_kind = ActionKind.none,
-        action_code = 0,
         projectile_animation = true,
     },
     ["field_hit_spark"] = {
         package_id = "combat.player_hit_spark",
         action_kind = ActionKind.none,
-        action_code = 0,
         hit_spark_animation = true,
     },
 }
@@ -126,8 +108,7 @@ for profile_id, profile in pairs(profiles) do
     assert(source_profile ~= nil,
            "actor profile has no source record: " .. profile_id)
     assert(source_profile.package_id == profile.package_id and
-               source_profile.action_kind == profile.action_kind and
-               source_profile.action_code == profile.action_code,
+               source_profile.action_kind == profile.action_kind,
            "actor profile differs from source record: " .. profile_id)
     profile.source_profile = source_profile
     profile.entity_kind = source_profile.sprite_type
@@ -146,10 +127,8 @@ R.fixed_integer_shift = fixed_integer_shift
 R.fixed_fraction_scale = fixed_fraction_scale
 R.ActionKind = ActionKind
 R.SpriteType = SpriteType
-R.ActionMotionDistanceBounds = ActionMotionDistanceBounds
 R.EntityMotionDistanceBounds = EntityMotionDistanceBounds
 R.target_motion_reacquire_updates = target_motion_reacquire_updates
 R.source_close_range_threshold = source_close_range_threshold
-R.ItemAction = ItemAction
 R.profiles = profiles
 return R

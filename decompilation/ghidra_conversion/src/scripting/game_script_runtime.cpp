@@ -9808,15 +9808,8 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
             return fail("items.catalog contains a non-record value");
         }
         const auto item_index = lua_absindex(state, -1);
-        std::uint32_t code = 0U;
-        std::uint32_t profile_value = 0U;
         ScriptItemDefinition item;
         const bool base_fields_valid =
-            read_field_integer(state, item_index, "code", 50U, code) &&
-            code > 0U &&
-            read_field_integer(state, item_index,
-                               "action_motion_distance_profile", 3U,
-                               profile_value) &&
             read_field_string(state, item_index, "id", item.id) &&
             valid_identifier(item.id) &&
             read_field_string(state, item_index, "kind", item.kind) &&
@@ -9831,27 +9824,53 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
         if (!base_fields_valid) {
             return fail("items.catalog contains an incomplete item record");
         }
-        item.code = static_cast<std::uint8_t>(code);
-        item.action_motion_distance_profile =
-            static_cast<std::uint8_t>(profile_value);
+        const auto source_item_code = script_item_source_code_from_id(item.id);
+        if (!source_item_code.has_value()) {
+            return fail("items.catalog contains an unknown semantic item ID");
+        }
+        item.code = *source_item_code;
+
+        lua_getfield(state, item_index, "target_motion_range");
+        if (!lua_istable(state, -1)) {
+            return fail("item target motion range must be a distance interval");
+        }
+        const auto target_motion_range_index = lua_absindex(state, -1);
+        std::uint32_t minimum_distance = 0U;
+        std::uint32_t maximum_distance = 0U;
+        const bool target_motion_range_valid =
+            read_field_integer(state, target_motion_range_index,
+                               "minimum_distance", 65535U,
+                               minimum_distance) &&
+            read_field_integer(state, target_motion_range_index,
+                               "maximum_distance", 65535U,
+                               maximum_distance) &&
+            minimum_distance <= maximum_distance;
+        lua_pop(state, 1);
+        if (!target_motion_range_valid) {
+            return fail("item target motion range is invalid");
+        }
+        item.target_motion_range = ScriptTargetMotionRange{
+            static_cast<std::uint16_t>(minimum_distance),
+            static_cast<std::uint16_t>(maximum_distance)};
 
         lua_getfield(state, item_index, "pricing");
-        if (!lua_istable(state, -1)) {
+        if (lua_istable(state, -1)) {
+            const auto pricing_index = lua_absindex(state, -1);
+            std::uint32_t purchase_base = 0U;
+            std::uint32_t resale_base = 0U;
+            if (!read_field_integer(state, pricing_index, "purchase_base",
+                                    65535U, purchase_base) ||
+                !read_field_integer(state, pricing_index, "resale_base",
+                                    65535U, resale_base) ||
+                resale_base != purchase_base / 2U) {
+                return fail("item pricing is incomplete");
+            }
+            item.pricing = ScriptItemDefinition::Pricing{
+                static_cast<std::uint16_t>(purchase_base),
+                static_cast<std::uint16_t>(resale_base)};
+        } else if (item.kind != "totem") {
             return fail("item pricing must be a record");
         }
-        const auto pricing_index = lua_absindex(state, -1);
-        std::uint32_t purchase_base = 0U;
-        std::uint32_t resale_base = 0U;
-        if (!read_field_integer(state, pricing_index, "purchase_base",
-                                65535U, purchase_base) ||
-            !read_field_integer(state, pricing_index, "resale_base",
-                                65535U, resale_base) ||
-            resale_base != purchase_base / 2U) {
-            return fail("item pricing is incomplete");
-        }
-        item.pricing.purchase_base =
-            static_cast<std::uint16_t>(purchase_base);
-        item.pricing.resale_base = static_cast<std::uint16_t>(resale_base);
         lua_pop(state, 1);
 
         lua_getfield(state, item_index, "presentation");
@@ -9897,9 +9916,8 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
             }
             const auto weapon_index = lua_absindex(state, -1);
             std::uint32_t magazine_capacity = 0U;
-            std::uint32_t damage_bar_index = 0U;
+            std::uint32_t damage_effect = 0U;
             std::uint32_t rounds_per_action = 0U;
-            std::uint32_t source_effect_index = 0U;
             std::uint32_t source_effect_value = 0U;
             std::uint32_t source_difficulty = 0U;
             ScriptWeaponTemplate weapon;
@@ -9908,8 +9926,9 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
             if (!read_field_integer(state, weapon_index, "magazine_capacity",
                                     255U, magazine_capacity) ||
                 magazine_capacity == 0U ||
-                !read_field_integer(state, weapon_index, "damage_bar_index",
-                                    2U, damage_bar_index) ||
+                !read_field_integer(state, weapon_index, "damage_effect",
+                                    10U, damage_effect) ||
+                damage_effect == 0U ||
                 !read_field_string(state, weapon_index, "power_profile",
                                    weapon.power_profile) ||
                 !valid_identifier(weapon.power_profile) ||
@@ -9945,8 +9964,8 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
             }
             weapon.magazine_capacity =
                 static_cast<std::uint8_t>(magazine_capacity);
-            weapon.damage_bar_index =
-                static_cast<std::uint8_t>(damage_bar_index);
+            weapon.damage_effect =
+                static_cast<std::uint8_t>(damage_effect);
             weapon.rounds_per_action =
                 static_cast<std::uint8_t>(rounds_per_action);
             lua_getfield(state, weapon_index, "source_action");
@@ -9956,9 +9975,6 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
             }
             const auto source_action_index = lua_absindex(state, -1);
             const bool source_action_valid =
-                read_field_integer(state, source_action_index,
-                                   "effect_table_index", 2U,
-                                   source_effect_index) &&
                 read_field_integer(state, source_action_index,
                                    "effect_value", 10U,
                                    source_effect_value) &&
@@ -9973,12 +9989,14 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
             const auto expected_effect_value = expected_effect_index == 0U
                 ? 1U : expected_effect_index == 1U ? 3U : 6U;
             if (!source_action_valid ||
-                source_effect_index != expected_effect_index ||
-                source_effect_value != expected_effect_value) {
-                return fail("item weapon source action disagrees with D4540/166AD4");
+                damage_effect != expected_effect_value ||
+                source_effect_value != damage_effect) {
+                return fail("item weapon attack profile disagrees with D4540/166AD4");
             }
+            weapon.damage_bar_index =
+                static_cast<std::uint8_t>(expected_effect_index);
             weapon.source_action = ScriptWeaponTemplate::SourceAction{
-                static_cast<std::uint8_t>(source_effect_index),
+                static_cast<std::uint8_t>(expected_effect_index),
                 static_cast<std::uint8_t>(source_effect_value),
                 static_cast<std::uint8_t>(source_difficulty)};
             item.weapon = std::move(weapon);
@@ -10019,11 +10037,12 @@ std::optional<ScriptItemCatalog> GameScriptRuntime::item_catalog() {
 
         const bool firearm = item.kind == "firearm";
         const bool armor_item = item.kind == "armor";
-        const bool fixed_uses_item = code >= 13U && code <= 19U;
+        // ROM 0x12A8C reads live actor detail for the extended item-action
+        // bands. Static Lua definitions must not freeze those counts here.
         const bool content_shape_valid =
-            (code <= 12U) == firearm &&
-            (code >= 44U && code <= 50U) == armor_item &&
-            (fixed_uses_item == item.detail.has_value()) &&
+            (item.code <= 12U) == firearm &&
+            (item.code >= 44U && item.code <= 50U) == armor_item &&
+            !item.detail.has_value() &&
             (firearm == item.weapon.has_value()) &&
             (armor_item == item.armor.has_value()) &&
             (!item.weapon.has_value() || !item.armor.has_value());
@@ -12041,13 +12060,17 @@ GameScriptRuntime::actor_heartbeat(
     lua_pop(state, 1);
     lua_getfield(state, decision_table, "weapon_item_id");
     if (lua_type(state, -1) != LUA_TNIL) {
-        std::uint32_t item_id = 0U;
-        if (!read_integer(state, -1, 50U, item_id) || item_id == 0U ||
-            context.action_kind != ScriptActorActionKind::item ||
-            item_id != context.action_code) {
+        std::string item_id;
+        if (!read_string(state, -1, item_id)) {
             return fail("actor_ai.heartbeat returned an invalid weapon item");
         }
-        decision.weapon_item_id = static_cast<std::uint8_t>(item_id);
+        const auto item_code = script_item_source_code_from_id(item_id);
+        if (!item_code.has_value() ||
+            context.action_kind != ScriptActorActionKind::item ||
+            *item_code != context.action_code) {
+            return fail("actor_ai.heartbeat returned an invalid weapon item");
+        }
+        decision.weapon_item_id = *item_code;
     }
     lua_pop(state, 1);
     lua_getfield(state, decision_table, "movement_current_heading");
@@ -13384,7 +13407,14 @@ std::optional<std::int16_t> GameScriptRuntime::player_weapon_action_delay(
     lua_pushinteger(state, primary_attribute);
     lua_pushinteger(state, secondary_attribute);
     lua_pushinteger(state, capability_flags);
-    lua_pushinteger(state, weapon_code);
+    const auto weapon_id = script_item_id_from_source_code(weapon_code);
+    if (weapon_id.has_value()) {
+        lua_pushlstring(state, weapon_id->data(), weapon_id->size());
+    } else if (purpose == ScriptPlayerDelayPurpose::shared_action) {
+        lua_pushliteral(state, "");
+    } else {
+        return fail("player weapon delay item ID is unknown");
+    }
     lua_pushlstring(state, use.data(), use.size());
 
     ScopedInstructionBudget instruction_budget(state);

@@ -14814,7 +14814,8 @@ FieldActionBaseCostLookup FieldSceneRuntime::item_base_cost_lookup() const {
         }
         const auto& item = field_menu_text_.items[catalog_index].definition;
         return item.code == static_cast<std::uint8_t>(catalog_index + 1U)
-                   ? static_cast<std::uint32_t>(item.pricing.purchase_base)
+                   && item.pricing.has_value()
+                   ? static_cast<std::uint32_t>(item.pricing->purchase_base)
                    : 0U;
     };
 }
@@ -14826,7 +14827,8 @@ FieldActionBaseCostLookup FieldSceneRuntime::item_resale_base_lookup() const {
         }
         const auto& item = field_menu_text_.items[catalog_index].definition;
         return item.code == static_cast<std::uint8_t>(catalog_index + 1U)
-                   ? static_cast<std::uint32_t>(item.pricing.resale_base)
+                   && item.pricing.has_value()
+                   ? static_cast<std::uint32_t>(item.pricing->resale_base)
                    : 0U;
     };
 }

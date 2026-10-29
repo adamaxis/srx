@@ -65,8 +65,12 @@ function M.actor_action_delay(context, state, mode)
         mode)
 end
 
-local function weapon_mode(weapon_code, use)
-    local weapon = Weapons.get(weapon_code)
+local function weapon_mode(weapon_id, use)
+    if use == Use.SHARED_ACTION then
+        return Mode.NORMAL
+    end
+
+    local weapon = Weapons.get(weapon_id)
     if weapon == nil then
         return nil
     end
@@ -82,17 +86,14 @@ local function weapon_mode(weapon_code, use)
         return weapon_scale_modes[weapon.reload_delay_scale]
     end
 
-    if use == Use.SHARED_ACTION then
-        return Mode.NORMAL
-    end
     return nil
 end
 
 -- Lua selects the weapon-specific mode from the named runner facts and calculates
 -- the action delay from the supplied semantic modifier. [C]
 function M.player_weapon_action_delay(primary_attribute, secondary_attribute,
-                                      action_delay_modifier, weapon_code, use)
-    local mode = weapon_mode(weapon_code, use)
+                                      action_delay_modifier, weapon_id, use)
+    local mode = weapon_mode(weapon_id, use)
     if mode == nil then
         return nil
     end

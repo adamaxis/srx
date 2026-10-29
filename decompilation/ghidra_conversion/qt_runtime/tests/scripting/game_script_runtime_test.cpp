@@ -689,33 +689,57 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                   "  local weapons = require('data.weapons')\n"
                   "  local accessories = require('data.accessories').by_id\n"
                   "  local profiles = require('data.actor_profiles').by_id\n"
+                  "  local spell_data = require('data.spells').by_id\n"
                   "  local magic = require('magic')\n"
+                  "  if weapons.get(6) ~= nil then return 'numeric weapon lookup leaked into Lua' end\n"
+                  "  if items.by_code ~= nil then return 'numeric item lookup leaked into Lua' end\n"
                   "  for code = 1, 50 do\n"
-                  "    local item = items.by_code[code]\n"
-                  "    if item == nil or item.source_record ~= records[code] or\n"
-                  "       item.pricing.purchase_base ~= records[code].price then return 'item catalog mismatch' end\n"
+                  "    local item = items.catalog[code]\n"
+                  "    local definition = item and records[item.id] or nil\n"
+                  "    local range = item and item.target_motion_range or nil\n"
+                  "    if item == nil or definition == nil or item.code ~= nil or\n"
+                  "       item.id ~= definition.id or\n"
+                  "       item.source_record ~= nil or\n"
+                  "       definition.b24 ~= nil or definition.b25 ~= nil or\n"
+                  "       definition.b26 ~= nil or definition.b27 ~= nil or\n"
+                  "       definition.icon ~= nil or definition.detail_pointer ~= nil or\n"
+                  "       type(range) ~= 'table' or\n"
+                  "       range.minimum_distance ~= (code == 43 and 1600 or 1280) or\n"
+                  "       range.maximum_distance ~= (code == 43 and 2240 or 1600) then return 'semantic item catalog mismatch' end\n"
+                  "    if code >= 41 and code <= 43 then\n"
+                  "      if item.pricing ~= nil or definition.purchase_base ~= nil or item.spell_action_modifiers ~= definition.totem_spell_modifiers then return 'totem semantic record mismatch' end\n"
+                  "    elseif item.pricing == nil or item.pricing.purchase_base ~= definition.purchase_base then return 'item purchase price mismatch' end\n"
+                  "    if item.detail ~= nil or definition.detail ~= nil then return 'unverified static item detail leaked into catalog' end\n"
                   "    if code <= 15 then\n"
-                  "      local template = weapons.get(code)\n"
-                  "      if template == nil or item.source_weapon_template ~= template or\n"
-                  "         template.clip_size ~= records[code].b24 or\n"
-                  "         template.damage_class ~= records[code].b25 or\n"
-                  "         template.power ~= records[code].b26 or\n"
-                  "         template.band ~= records[code].b27 then return 'weapon ROM fields mismatch' end\n"
+                  "      local template = weapons.get(item.id)\n"
+                  "      if template == nil or template.id ~= item.id or\n"
+                  "         template.purchase_base ~= definition.purchase_base then return 'weapon definition mismatch' end\n"
                   "      if code <= 12 and (item.weapon == nil or\n"
-                  "         item.weapon.template ~= template or\n"
-                  "         item.weapon.magazine_capacity ~= template.clip_size or\n"
-                  "         item.weapon.damage_bar_index ~= template.damage_class or\n"
+                  "         item.weapon.magazine_capacity ~= template.magazine_capacity or\n"
+                  "         item.weapon.damage_effect ~= template.damage_effect or\n"
+                  "         item.weapon.damage_bar_index ~= nil or\n"
+                  "         template.damage_bar_index ~= nil or\n"
+                  "         template.source_action.effect_table_index ~= nil or\n"
                   "         item.weapon.rounds_per_action ~= template.rounds_per_shot) then return 'firearm host view mismatch' end\n"
                   "    end\n"
                   "    if item.armor ~= nil and\n"
-                  "       (item.armor.primary_modifier ~= records[code].b25 or\n"
-                  "        item.armor.secondary_modifier ~= records[code].b26) then return 'armor ROM fields mismatch' end\n"
+                  "       (definition.armor == nil or\n"
+                  "        item.armor.primary_modifier ~= definition.armor.primary_modifier or\n"
+                  "        item.armor.secondary_modifier ~= definition.armor.secondary_modifier) then return 'armor definition mismatch' end\n"
                   "  end\n"
                   "  local spell_ids = { 'flame_dart', 'flame_bolt', 'hellblast', 'invisibility', 'sleep', 'stink', 'super_barrier', 'mana_zap', 'mana_blast', 'mana_storm', 'rockskin', 'heal_wounds', 'confusion', 'barrier' }\n"
                   "  local focus_ids = { 'flame_dart_focus', 'flame_bolt_focus', 'hellblast_focus', 'invisibility_focus', 'sleep_focus', 'stink_focus', 'supr_barrier_focus', 'mana_zap_focus', 'mana_blast_focus', 'mana_storm_focus', 'rockskin_focus', 'heal_wounds_focus', 'confusion_focus', 'barrier_focus' }\n"
                   "  for code = 1, 14 do\n"
                   "    local definition = magic.spell_action_definition(code)\n"
-                  "    if definition == nil or definition.spell_id ~= spell_ids[code] or definition.focus_item_id ~= focus_ids[code] or type(definition.totem_modifier_applies) ~= 'boolean' then return 'spell semantic profile mismatch' end\n"
+                  "    local spell = spell_data[spell_ids[code]]\n"
+                  "    if definition == nil or spell == nil or\n"
+                  "       definition.spell_id ~= spell_ids[code] or definition.focus_item_id ~= focus_ids[code] or\n"
+                  "       type(spell.base_drain) ~= 'number' or\n"
+                  "       type(spell.force_drain_modifier) ~= 'number' or\n"
+                  "       spell.type ~= nil or spell.uses_damage_profile ~= nil or\n"
+                  "       spell.totem_modifier_applies ~= nil or\n"
+                  "       spell.flag27 ~= nil or spell.totem_category ~= nil or\n"
+                  "       spell.icon ~= nil or spell.description ~= nil then return 'spell semantic profile mismatch' end\n"
                   "    if code == 14 and (definition.spell_id ~= 'barrier' or definition.availability ~= -1 or definition.effect_table_index ~= 1 or definition.difficulty_modifier ~= 2 or definition.base_effect ~= 3 or definition.target_effect ~= 0 or definition.attribute_selector ~= 0) then return 'Barrier ROM action profile mismatch' end\n"
                   "  end\n"
                   "  for id = 0, 5 do\n"
@@ -725,8 +749,8 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                   "       type(accessory:base_price(1)) ~= 'number' or\n"
                   "       type(accessory:base_price(2)) ~= 'number' then return 'accessory price record mismatch' end\n"
                   "  end\n"
-                  "  if profiles['corp_guard_k05_item06'] == nil or\n"
-                  "     profiles['corp_guard_k05_item06']:weapon_record() ~= weapons.get(6) then return 'actor weapon profile mismatch' end\n"
+                  "  if profiles['corp_guard_k05_item06'] == nil or profiles['corp_guard_k05_item06'].action_code ~= nil or\n"
+                  "     profiles['corp_guard_k05_item06']:weapon_record() ~= weapons.get('max_power') then return 'actor weapon profile mismatch' end\n"
                   "  local safe = pcall(require, '..')\n"
                   "  local cycle = pcall(require, 'data.cycle')\n"
                   "  return module_ok and not safe and not cycle and 'module_catalog_ok' or 'module_probe_failed'\n"
@@ -11426,12 +11450,14 @@ int main() {
         "spell_focus", "spell_focus", "talisman", "spell_lock", "totem",
         "totem", "totem", "armor", "armor", "armor", "armor", "armor",
         "armor", "armor"}};
-    constexpr std::array<std::uint16_t, 50U> kBaseCosts{{
+    // Totem rows 41-43 use D4540 +0x22/+0x24/+0x26 as 0x104F6 modifiers,
+    // not purchase prices. Other rows use the +0x22 purchase base.
+    constexpr std::array<std::uint16_t, 50U> kPurchaseBaseCosts{{
         100U, 350U, 300U, 450U, 500U, 450U, 450U, 1000U, 1500U, 800U,
         1400U, 1000U, 300U, 180U, 180U, 200U, 300U, 300U, 500U, 10000U,
         1000U, 3000U, 50000U, 15000U, 4000U, 4000U, 4000U, 4000U, 4000U,
         4000U, 4000U, 4000U, 4000U, 4000U, 4000U, 4000U, 4000U, 4000U,
-        17500U, 17500U, 2U, 65535U, 0U, 200U, 500U, 900U, 600U, 700U,
+        17500U, 17500U, 0U, 0U, 0U, 200U, 500U, 900U, 600U, 700U,
         10000U, 20000U}};
     constexpr std::array<std::uint8_t, 12U> kWeaponCapacities{{
         6U, 12U, 11U, 25U, 6U, 10U, 15U, 30U, 28U, 24U, 5U, 8U}};
@@ -11454,11 +11480,17 @@ int main() {
         "meager", "minor", "very_low", "low", "very_light", "light",
         "medium", "medium_high", "high", "brutal", "severe", "massive",
         "incredible"}};
+    constexpr std::array<std::uint16_t, 4U> kTargetMotionMinimumDistances{{
+        0x0500U, 0x05A0U, 0x0640U, 0x08C0U}};
+    constexpr std::array<std::uint16_t, 4U> kTargetMotionMaximumDistances{{
+        0x0640U, 0x0780U, 0x08C0U, 0x0C80U}};
     bool full_catalog_matches = items.has_value() && items->items.size() == 50U;
     if (full_catalog_matches) {
         for (std::size_t index = 0; index < items->items.size(); ++index) {
             const auto& item = items->items[index];
             const auto& rom_item = us_item_catalog()[index];
+            const auto source_range_selector = static_cast<std::size_t>(
+                rom_item.source_action_parameter_tail);
             const auto item_number = index + 1U < 10U
                 ? "0" + std::to_string(index + 1U)
                 : std::to_string(index + 1U);
@@ -11472,14 +11504,23 @@ int main() {
                 image_family + ".icons.item." + item_number;
             const auto expected_detail_key = std::string("items.") +
                 image_family + ".detail.item." + item_number;
+            const bool is_totem = index >= 40U && index <= 42U;
             full_catalog_matches =
                 full_catalog_matches && item.code == index + 1U &&
                 item.id == kItemIds[index] && item.kind == kItemKinds[index] &&
-                item.pricing.purchase_base == kBaseCosts[index] &&
-                item.pricing.purchase_base == rom_item.base_cost &&
-                item.pricing.resale_base == kBaseCosts[index] / 2U &&
-                item.action_motion_distance_profile ==
-                    rom_item.source_action_parameter_tail &&
+                (is_totem
+                     ? !item.pricing.has_value()
+                     : item.pricing.has_value() &&
+                           item.pricing->purchase_base ==
+                               kPurchaseBaseCosts[index] &&
+                           item.pricing->purchase_base == rom_item.base_cost &&
+                           item.pricing->resale_base ==
+                               kPurchaseBaseCosts[index] / 2U) &&
+                source_range_selector < kTargetMotionMinimumDistances.size() &&
+                item.target_motion_range.minimum_distance ==
+                    kTargetMotionMinimumDistances[source_range_selector] &&
+                item.target_motion_range.maximum_distance ==
+                    kTargetMotionMaximumDistances[source_range_selector] &&
                 item.presentation.icon_resource_key == expected_icon_key &&
                 item.presentation.detail_resource_key == expected_detail_key &&
                 item.has_detail_art == rom_item.has_detail_art &&
@@ -11509,6 +11550,8 @@ int main() {
                             rom_item.signed_detail_asset_index) &&
                     weapon->source_action.effect_value ==
                         source_effect->negated_source_byte &&
+                    weapon->damage_effect ==
+                        source_effect->negated_source_byte &&
                     weapon->source_action.difficulty ==
                         rom_item.source_action_difficulty() &&
                     weapon->damage_bar_index == static_cast<std::uint8_t>(
@@ -11524,12 +11567,6 @@ int main() {
                     weapon->reload_delay_scale ==
                         kReloadDelayScales[index] &&
                     !item.detail.has_value() && !item.armor.has_value();
-            } else if (index >= 12U && index <= 18U) {
-                full_catalog_matches =
-                    full_catalog_matches && item.detail.has_value() &&
-                    item.detail->kind == "uses" &&
-                    item.detail->value == rom_item.source_combat_factor &&
-                    !item.weapon.has_value() && !item.armor.has_value();
             } else if (index >= 43U) {
                 const auto* armor = find_us_armor_definition_for_item_code(
                     item.code);
@@ -11543,6 +11580,10 @@ int main() {
                     item.armor->secondary_modifier ==
                         armor->secondary_modifier &&
                     !item.detail.has_value() && !item.weapon.has_value();
+            } else if (index >= 40U && index <= 42U) {
+                full_catalog_matches =
+                    full_catalog_matches && !item.detail.has_value() &&
+                    !item.weapon.has_value() && !item.armor.has_value();
             } else {
                 full_catalog_matches =
                     full_catalog_matches && !item.detail.has_value() &&

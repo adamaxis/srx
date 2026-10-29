@@ -142,9 +142,7 @@ local function action_phase_modifier(value, record, action_code)
     local totem = inventory_item_at(record, 8)
     if totem == nil or
        (totem.id ~= Item.RAT_TOTEM and totem.id ~= Item.GATOR_TOTEM and
-        totem.id ~= Item.BEAR_TOTEM) or
-       type(definition.totem_modifier_applies) ~= "boolean" or
-       not definition.totem_modifier_applies then
+        totem.id ~= Item.BEAR_TOTEM) then
         return value
     end
     local item = type(items) == "table" and
@@ -153,6 +151,11 @@ local function action_phase_modifier(value, record, action_code)
         item.spell_action_modifiers or nil
     local modifier = type(modifiers) == "table" and
         modifiers[definition.spell_id] or nil
+    -- ROM 0x104F6 skips the totem word when C8AE0 supplies a negative
+    -- selector; the generated semantic map omits those spell entries.
+    if modifier == nil then
+        return value
+    end
     if type(modifier) ~= "number" then
         return nil
     end
