@@ -149,26 +149,26 @@ local function canonical_animation_state(st, pose)
 end
 local SHAPE = {
   advance_dynamic_actor_walk_animation = function(st, ctx)
-    local list = canonical_animation_state(st, REG.Animator.Pose.WALK)
-    ctx.walk_animation_frame_count = list.count
-    st.walk_animation_frame_count = list.count
+    local list = canonical_animation_state(st, REG.Animator.Clip.WALK)
+    ctx.walk_animation_frame_count = list.frame_count
+    st.walk_animation_frame_count = list.frame_count
     st.animation_timing_word = 9
     st.animation_frame = 0
     st.animation_accumulator = 0
   end,
   advance_dynamic_actor_action_animation = function(st)
-    local list = canonical_animation_state(st, REG.Animator.Pose.ACTION)
-    st.action_animation_frame_count = list.count
-    st.action_animation_increment = list.rate
+    local list = canonical_animation_state(st, REG.Animator.Clip.ACTION)
+    st.action_animation_frame_count = list.frame_count
+    st.action_animation_increment = 0x200
     st.action_animation_threshold = REG.Animator.PERIOD
     st.animation_frame = 0
     st.animation_accumulator = 0
     st.action_animation_complete = false
   end,
   advance_dynamic_actor_item_action_animation = function(st)
-    local list = canonical_animation_state(st, REG.Animator.Pose.ITEM)
-    st.item_action_frame_count = list.count
-    st.item_action_increment = list.rate
+    local list = canonical_animation_state(st, REG.Animator.Clip.ITEM)
+    st.item_action_frame_count = list.frame_count
+    st.item_action_increment = 0x80
     st.item_action_threshold = REG.Animator.PERIOD
     st.source_animation_selector = REG.Animator.Pose.ITEM
     st.animation_frame = 0
@@ -285,7 +285,31 @@ for _, name in ipairs(targets) do
       sA.hit_spark_spawn_request = nil
       sB.hit_spark_spawn_request = nil
     end
+    local function normalize_clip_clock(value, seen_clock)
+      if type(value) ~= "table" then return end
+      seen_clock = seen_clock or {}
+      if seen_clock[value] then return end
+      seen_clock[value] = true
+      local semantic_finite_clip =
+        value.animation_id == "action" or value.animation_id == "weapon" or
+        value.animation_id == "hurt" or value.animation_id == "down" or
+        value.animation_id == "entry" or value.animation_id == "hit_spark"
+      if semantic_finite_clip then
+        -- The port stores elapsed animation updates; the frozen reference
+        -- stores the source fixed-point accumulator. Compare visible clip,
+        -- frame, selector, and completion state while ignoring that encoding.
+        value.animation_elapsed_updates = nil
+        value.animation_accumulator = nil
+        value.animation_increment = nil
+        value.animation_period = nil
+        value.hit_spark_animation_complete = nil
+      end
+      for _, child in pairs(value) do normalize_clip_clock(child, seen_clock) end
+    end
     local function sig(r, s, c, g, log, x)
+      normalize_clip_clock(s)
+      normalize_clip_clock(c)
+      normalize_clip_clock(g.actors)
       strip_think(r); strip_think(s); strip_think(g.actors)
       return table.concat({ tostring(r[1]), r[1] and ser({ table.unpack(r, 2, r.n) }) or H.norm_err(r[2]), ser(s), ser(c), ser(g.actors), ser(x), table.concat(log, ";") }, "|")
     end

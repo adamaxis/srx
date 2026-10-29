@@ -208,7 +208,7 @@ function ActorAI.heartbeat(context)
                state.animation_id == "hurt" then
                 state.movement_step = nil
                 local animation = R.Animator.list(
-                    state.entity_kind, R.Animator.Pose.HURT, state.direction)
+                    state.entity_kind, R.Animator.Clip.HURT, state.direction)
                 if not R.advance_finite_actor_animation(state, animation) then
                     return nil
                 end

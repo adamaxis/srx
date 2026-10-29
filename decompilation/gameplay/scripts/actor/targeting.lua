@@ -387,6 +387,7 @@ local function initial_state(context, profile)
         behavior_timer = 0,
         animation_id = "idle",
         animation_frame = 0,
+        animation_elapsed_updates = 0,
         animation_accumulator = 0,
         animation_increment = 0,
         animation_timing_word = 0,
@@ -469,18 +470,14 @@ local function initial_state(context, profile)
         if type(animation) ~= "table" or
            type(animation.selector) ~= "number" or
            type(animation.frame_count) ~= "number" or
-           type(animation.frame) ~= "number" or
-           type(animation.accumulator) ~= "number" or
-           type(animation.period) ~= "number" then
+           type(animation.frame) ~= "number" then
             return nil
         end
         state.animation_id = "hit_spark"
         state.animation_selector = animation.selector
         state.animation_frame = animation.frame
-        state.animation_accumulator = animation.accumulator
-        state.animation_increment = R.Animator.list(
-            E.SpriteType.HIT_SPARK, E.HitSpark.SELECTOR).rate
-        state.animation_period = animation.period
+        state.animation_elapsed_updates = 0
+        state.animation_accumulator = 0
         state.animation_frame_count = animation.frame_count
         state.hit_spark_retired = false
     end
@@ -521,6 +518,7 @@ local function same_actor(state, context, profile)
     state.animation_id = "idle"
     state.animation_selector = nil
     state.animation_frame = 0
+    state.animation_elapsed_updates = 0
     state.animation_accumulator = 0
     state.animation_increment = 0
     return true

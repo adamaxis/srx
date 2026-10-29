@@ -145,14 +145,13 @@ end
 
 -- ROM 0xC0B2 death list (pose 0xE8) or a 0xB0AC/0xB0E4 spell-death list
 -- (pose 0xE0/0xE4): finite, timed by that list's own +2 rate for this kind
--- (0x200 for kinds 3..14, 0x80 for THON) [C 0x62AC]. Returns rate, count.
+-- The imported catalog supplies its frame count and normalized update duration.
 local function death_list(state)
-    local pose = state.spell_death_variant == "spell_death_e0"
-        and Animator.Pose.SPELL_DEATH_E0 or
+    local clip = state.spell_death_variant == "spell_death_e0"
+        and Animator.Clip.SPELL_DEATH_E0 or
         (state.spell_death_variant == "spell_death_e4"
-            and Animator.Pose.SPELL_DEATH_E4 or Animator.Pose.DEATH)
-    local list = Animator.list(state.entity_kind,
-        pose, state.direction)
+            and Animator.Clip.SPELL_DEATH_E4 or Animator.Clip.DEATH)
+    local list = Animator.list(state.entity_kind, clip, state.direction)
     return list
 end
 
@@ -161,28 +160,25 @@ end
 -- The shared 0x5FDC/0x600E clock steps it; past the last entry 0x600E marks
 -- +0x16 negative [C].
 local function hit_spark_list()
-    return Animator.list(SpriteType.HIT_SPARK, HitSpark.SELECTOR)
+    return Animator.list(SpriteType.HIT_SPARK, Animator.Clip.HIT_SPARK)
 end
 
 local function advance_hit_spark_animation(state, context)
     local animation = context.hit_spark_animation
     local list = hit_spark_list()
     if context.phase ~= "render" or type(animation) ~= "table" or
-       list == nil or not list.finite or
+       list == nil or list.looping or
        type(animation.selector) ~= "number" or
-       animation.frame_count ~= list.count or
-       animation.period ~= Animator.PERIOD then
+       animation.frame_count ~= list.frame_count then
         return false
     end
     state.animation_selector = animation.selector
-    state.animation_period = animation.period
-    state.animation_frame_count = list.count
-    if Animator.step_finite(state, list.count, list.rate,
-                            state.animation_period) then
+    state.animation_frame_count = list.frame_count
+    if Animator.advance_finite_clip(state, list) then
         state.animation_selector = state.animation_selector |
             HitSpark.FINISHED_SELECTOR_BIT
+        state.hit_spark_animation_complete = true
     end
-    state.animation_increment = list.rate
     state.animation_id = "hit_spark"
     return true
 end
@@ -193,9 +189,8 @@ local function hit_spark_heartbeat(state, context)
             return nil
         end
     elseif context.phase == "behavior" then
-        -- ROM 0xAC4E clears +0x10 bit 0 after 0x600E marks +0x16 negative [C].
         state.hit_spark_retired =
-            (state.animation_selector & HitSpark.FINISHED_SELECTOR_BIT) ~= 0
+            state.hit_spark_animation_complete == true
     else
         return nil
     end
@@ -207,13 +202,12 @@ local function advance_entry_animation(state)
        state.transition_frame_list_finished then
         return
     end
-    local list = Animator.list(state.entity_kind, Animator.Pose.DEATH,
+    local list = Animator.list(state.entity_kind, Animator.Clip.DEATH,
                                state.direction)
-    if list == nil or not list.finite then
+    if list == nil or list.looping then
         return
     end
-    if Animator.step_finite(state, list.count, list.rate,
-                            Animator.PERIOD) then
+    if Animator.advance_finite_clip(state, list) then
         state.transition_frame_list_finished = true
     end
 end
@@ -222,14 +216,14 @@ local function advance_finite_actor_animation(state, animation)
     if state.damage_reaction_animation_complete then
         return true
     end
-    if type(animation) ~= "table" or animation.finite ~= true or
-       type(animation.count) ~= "number" or animation.count < 1 or
-       type(animation.rate) ~= "number" or animation.rate < 1 then
+    if type(animation) ~= "table" or animation.looping ~= false or
+       type(animation.frame_count) ~= "number" or animation.frame_count < 1 or
+       type(animation.frame_duration_updates) ~= "number" or
+       animation.frame_duration_updates <= 0 then
         return false
     end
-    -- 0x600E sets the list-finished selector and holds its last frame.
-    if Animator.step_finite(state, animation.count, animation.rate,
-                            Animator.PERIOD) then
+    -- Completion is a semantic flag; the last visible frame remains held.
+    if Animator.advance_finite_clip(state, animation) then
         state.damage_reaction_animation_complete = true
     end
     return true
@@ -248,6 +242,9 @@ local function begin_down_reaction(state)
     state.damage_reaction_animation_complete = false
     state.animation_frame = 0
     state.animation_accumulator = 0
+    state.animation_elapsed_updates = 0
+    state.animation_increment = 0
+    state.animation_period = nil
     state.animation_id = "down"
     state.animation_selector = Animator.Pose.DEATH + state.direction * 4
     state.spell_death_variant = nil
@@ -312,6 +309,9 @@ local function begin_received_hit_reaction(state, context)
         state.damage_reaction_animation_complete = false
         state.animation_frame = 0
         state.animation_accumulator = 0
+        state.animation_elapsed_updates = 0
+        state.animation_increment = 0
+        state.animation_period = nil
         state.animation_id = "down"
         state.spell_death_variant = hit.spell_death_variant
         state.animation_selector = hit.spell_death_variant == "spell_death_e0"
@@ -326,10 +326,10 @@ local function begin_received_hit_reaction(state, context)
         -- (0xB0AC/0xB0E4 send +0x10 b3 records and kind 0xC here too.)
         return begin_down_reaction(state)
     end
-    local list = Animator.list(state.entity_kind, Animator.Pose.HURT,
+    local list = Animator.list(state.entity_kind, Animator.Clip.HURT,
                                state.direction)
     local hurt_audio_event = Animator.hurt_audio(state.entity_kind)
-    if list == nil or not list.finite or
+    if list == nil or list.looping or
        type(hurt_audio_event) ~= "number" then
         return nil
     end
@@ -337,12 +337,13 @@ local function begin_received_hit_reaction(state, context)
     state.damage_reaction_animation_complete = false
     state.animation_frame = 0
     state.animation_accumulator = 0
+    state.animation_elapsed_updates = 0
+    state.animation_increment = 0
+    state.animation_period = nil
     -- 0xAFF2 selects C072 and starts B07E's eight-service countdown.
     state.animation_id = "hurt"
     state.animation_selector = Animator.Pose.HURT + state.direction * 4
     state.spell_death_variant = nil
-    state.animation_increment = list.rate
-    state.animation_period = Animator.PERIOD
     state.hurt_behavior_timer = 8
     state.hurt_audio_event = hurt_audio_event
     state.hurt_audio_emitted = false
@@ -418,9 +419,9 @@ local function finish_player_hurt_reaction(state, context)
 end
 
 local function advance_dynamic_actor_walk_animation(state, context)
-    local list = Animator.list(state.entity_kind, Animator.Pose.WALK,
+    local list = Animator.list(state.entity_kind, Animator.Clip.WALK,
                                state.direction)
-    if list == nil or list.finite then
+    if list == nil or not list.looping then
         return false
     end
 
@@ -434,7 +435,7 @@ local function advance_dynamic_actor_walk_animation(state, context)
     state.animation_increment = increment
     state.animation_period = Animator.PERIOD
     state.animation_selector = Animator.Pose.WALK + state.direction * 4
-    Animator.step_loop(state, list.count, increment, state.animation_period)
+    Animator.step_loop(state, list.frame_count, increment, state.animation_period)
     return true
 end
 
@@ -442,14 +443,12 @@ local function advance_dynamic_actor_action_animation(state)
     if state.animation_id ~= "action" or state.action_animation_complete then
         return true
     end
-    local list = Animator.list(state.entity_kind, Animator.Pose.ACTION,
+    local list = Animator.list(state.entity_kind, Animator.Clip.ACTION,
                                state.direction)
-    if list == nil or not list.finite then
+    if list == nil or list.looping then
         return false
     end
-    -- C0A2 list: 0x600E holds the last frame until a new list is selected.
-    if Animator.step_finite(state, list.count, list.rate,
-                            Animator.PERIOD) then
+    if Animator.advance_finite_clip(state, list) then
         state.action_animation_complete = true
     end
     return true
@@ -459,14 +458,12 @@ local function advance_dynamic_actor_item_action_animation(state)
     if state.animation_id ~= "weapon" or state.item_action_complete then
         return true
     end
-    local list = Animator.list(state.entity_kind, Animator.Pose.ITEM,
+    local list = Animator.list(state.entity_kind, Animator.Clip.ITEM,
                                state.direction)
-    if list == nil or not list.finite then
+    if list == nil or list.looping then
         return false
     end
-    -- C042 list: finite, marks pose bit 15 when done.
-    if Animator.step_finite(state, list.count, list.rate,
-                            Animator.PERIOD) then
+    if Animator.advance_finite_clip(state, list) then
         state.item_action_complete = true
     end
     return true
@@ -598,12 +595,12 @@ local function advance_player_animation(state, context)
         state.animation_id = "walk"
         state.animation_selector = Animator.Pose.WALK + state.direction * 4
         Animator.step_loop(state,
-            Animator.list(kind, Animator.Pose.WALK, state.direction).count, rate)
+            Animator.list(kind, Animator.Clip.WALK, state.direction).frame_count, rate)
     else
         state.animation_id = "idle"
         state.animation_selector = Animator.Pose.IDLE + state.direction * 4
         Animator.step_loop(state,
-            Animator.list(kind, Animator.Pose.IDLE, state.direction).count, rate)
+            Animator.list(kind, Animator.Clip.IDLE, state.direction).frame_count, rate)
     end
 end
 

@@ -407,9 +407,9 @@ local function begin_dynamic_item_action(state, context, target)
         return false
     end
     local direction = R.direction_from_heading(heading)
-    local animation = Animator.list(state.entity_kind, Animator.Pose.ITEM,
+    local animation = Animator.list(state.entity_kind, Animator.Clip.ITEM,
                                     direction)
-    if animation == nil or animation.finite ~= true then
+    if animation == nil or animation.looping ~= false then
         return false
     end
 
@@ -420,8 +420,9 @@ local function begin_dynamic_item_action(state, context, target)
     state.animation_id = "weapon"
     state.animation_frame = 0
     state.animation_accumulator = 0
-    state.animation_increment = animation.rate
-    state.animation_period = Animator.PERIOD
+    state.animation_elapsed_updates = 0
+    state.animation_increment = 0
+    state.animation_period = nil
     state.animation_selector = item_action_pose_selectors[direction + 1]
     state.item_action_complete = false
     state.action_delay = source_action_delay(context, state, 0)
@@ -935,8 +936,8 @@ local function begin_dynamic_target_action(state, context, target)
     heading = u16(heading)
     local direction = R.direction_from_heading(heading)
     local animation = Animator.list(state.entity_kind,
-                                    Animator.Pose.ACTION, direction)
-    if animation == nil or animation.finite ~= true then
+                                    Animator.Clip.ACTION, direction)
+    if animation == nil or animation.looping ~= false then
         return nil
     end
     state.movement_current_heading = heading
@@ -946,10 +947,11 @@ local function begin_dynamic_target_action(state, context, target)
     state.animation_id = "action"
     state.animation_frame = 0
     state.animation_accumulator = 0
+    state.animation_elapsed_updates = 0
+    state.animation_increment = 0
+    state.animation_period = nil
     state.direction = direction
     state.animation_selector = Animator.Pose.ACTION + direction * 4
-    state.animation_increment = animation.rate
-    state.animation_period = Animator.PERIOD
     state.action_animation_complete = false
     state.action_delay = source_action_delay(context, state, 1)
     -- ROM 0xB25E calls 0x1DBAA once the strike is accepted in range [C].

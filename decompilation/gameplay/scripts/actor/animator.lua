@@ -1,6 +1,4 @@
--- actor/animator.lua: the one ROM animation clock (0x5FDC + 0x600E), data-driven
--- from data/actor_anim_lists.lua (ROM 0x62AC). Every actor animation routine in
--- anim.lua steps through here; none keeps its own accumulator arithmetic.
+-- actor/animator.lua: named clip metadata and host animation timing.
 local R = require("actor.registry")
 local I = require("lib.int68k")
 local E = require("enums")
@@ -9,17 +7,32 @@ local LISTS = require("data.actor_anim_lists")
 
 local Animator = {}
 Animator.LISTS = LISTS
--- +0x1C: every actor list is timed against 0x1000 (spawn template) [C].
+-- Gameplay names for authored actor clips. ROM pose words are used only by
+-- the offline list importer; runtime policy selects clips by these names.
+Animator.Clip = {
+    IDLE = "idle",
+    WALK = "walk",
+    ITEM = "item_action",
+    HURT = "hurt",
+    SPELL = "spell",
+    WEAPON = "weapon",
+    ACTION = "action",
+    SPELL_DEATH_E0 = "spell_death_e0",
+    SPELL_DEATH_E4 = "spell_death_e4",
+    DEATH = "death",
+    HIT_SPARK = "hit_spark",
+}
+-- Legacy source-clock support remains for projectile and movement paths that
+-- have not yet been converted to duration-based animation state.
 Animator.PERIOD = 0x1000
--- Pose bases (+0x16 & 0x7FFF without the direction*4) [C].
 Animator.Pose = E.ActorPose
 -- 0xBABC moves the controlled runner with vector table 0xC002, whose +4 word
 -- (0x28) 0xBADE copies to +0xCA [C].
 Animator.PLAYER_SPEED = 0x28
 
-function Animator.list(kind, pose, direction)
+function Animator.list(kind, clip, direction)
     local by_kind = LISTS[kind]
-    local list = by_kind and by_kind[pose] or nil
+    local list = by_kind and by_kind[clip] or nil
     if list == nil or direction == nil or list.by_dir == nil then
         return list
     end
@@ -35,6 +48,42 @@ end
 
 function Animator.down_audio(kind)
     return LISTS.audio and LISTS.audio.down_by_kind[kind] or nil
+end
+
+-- Finite character clips use an ordinary duration measured in animation
+-- updates. The offline importer converts ROM 0x62AC list rates against the
+-- source 0x1000 threshold [C: 0x5FDC/0x600E]; gameplay stores elapsed updates.
+function Animator.advance_finite_clip(state, clip)
+    if type(state) ~= "table" or type(clip) ~= "table" or
+       clip.looping ~= false or type(clip.frame_count) ~= "number" or
+       clip.frame_count < 1 or
+       type(clip.frame_duration_updates) ~= "number" or
+       clip.frame_duration_updates <= 0 then
+        return false
+    end
+
+    if (state.animation_elapsed_updates ~= nil and
+        type(state.animation_elapsed_updates) ~= "number") or
+       (state.animation_frame ~= nil and
+        type(state.animation_frame) ~= "number") then
+        return false
+    end
+    local elapsed = (state.animation_elapsed_updates or 0) + 1
+    local frame = state.animation_frame or 0
+    local duration = clip.frame_duration_updates
+    while elapsed + 1e-9 >= duration and frame < clip.frame_count do
+        elapsed = elapsed - duration
+        frame = frame + 1
+    end
+    if frame >= clip.frame_count then
+        state.animation_frame = clip.frame_count - 1
+        state.animation_elapsed_updates = 0
+        return true
+    end
+
+    state.animation_frame = frame
+    state.animation_elapsed_updates = elapsed
+    return false
 end
 
 local function signed(word)
