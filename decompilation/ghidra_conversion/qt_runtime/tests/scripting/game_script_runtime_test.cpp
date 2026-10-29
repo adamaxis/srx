@@ -1653,6 +1653,50 @@ bool verify_party_wipe_recovery_bridge(
                   "party-wipe penalty cap or paid-bill destination changed");
 }
 
+bool verify_party_runner_refresh_bridge(
+    shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts) {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    // ROM 0x391A advances the role cursor, wraps at the roster end, and skips
+    // downed/dead members unless its suppression override is set.
+    ScriptPartyRunnerRefreshContext context{};
+    context.previous_role = ScriptPartyMemberRole::companion_two;
+    context.party[0].lifecycle = {true, false, false};
+    context.party[1].lifecycle = {false, false, true};
+    context.party[2].ends_roster = true;
+    context.party[2].selection_pending = true;
+    const auto wrapped = scripts.party_runner_refresh(context);
+    if (!expect(wrapped.has_value() &&
+                    wrapped->active_role == ScriptPartyMemberRole::leader &&
+                    wrapped->active_role_changed &&
+                    wrapped->selection_pending[0] &&
+                    !wrapped->selection_pending[2],
+                "party roster bridge did not wrap to the revived leader")) {
+        return false;
+    }
+
+    context = {};
+    context.previous_role = ScriptPartyMemberRole::leader;
+    context.party[0].lifecycle = {true, false, false};
+    context.party[1].lifecycle = {true, true, false};
+    context.party[2].ends_roster = true;
+    const auto skipped_downed = scripts.party_runner_refresh(context);
+    if (!expect(skipped_downed.has_value() &&
+                    skipped_downed->active_role ==
+                        ScriptPartyMemberRole::leader,
+                "party roster bridge selected a downed member without override")) {
+        return false;
+    }
+
+    context.suppression_override = true;
+    const auto override = scripts.party_runner_refresh(context);
+    return expect(override.has_value() &&
+                      override->active_role ==
+                          ScriptPartyMemberRole::companion_one &&
+                      override->active_role_changed,
+                  "party roster bridge ignored the suppression override");
+}
+
 } // namespace
 
 int main() {
@@ -1691,6 +1735,10 @@ int main() {
         return 1;
     }
     if (!verify_party_wipe_recovery_bridge(scripts)) {
+        std::cerr << scripts.failure() << '\n';
+        return 1;
+    }
+    if (!verify_party_runner_refresh_bridge(scripts)) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }

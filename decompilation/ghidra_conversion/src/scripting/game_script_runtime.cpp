@@ -12785,6 +12785,125 @@ GameScriptRuntime::party_wipe_recovery(
     return result;
 }
 
+std::optional<ScriptPartyRunnerRefreshDecision>
+GameScriptRuntime::party_runner_refresh(
+    const ScriptPartyRunnerRefreshContext& context) {
+    auto* state = impl_->state;
+    const auto stack_base = state == nullptr ? 0 : lua_gettop(state);
+    const auto fail = [this, state, stack_base](
+                          const std::string_view reason)
+        -> std::optional<ScriptPartyRunnerRefreshDecision> {
+        if (state != nullptr) {
+            lua_settop(state, stack_base);
+        }
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (state == nullptr) {
+        return fail("gameplay Lua party roster state is unavailable");
+    }
+
+    static constexpr std::array<std::string_view, 3> kRoleIds{
+        "leader", "companion_one", "companion_two"};
+    const auto previous_index =
+        static_cast<std::size_t>(context.previous_role);
+    if (previous_index >= kRoleIds.size()) {
+        return fail("party roster previous role is invalid");
+    }
+    if (!impl_->push_module("party_down")) {
+        return fail("gameplay Lua party_down module is missing");
+    }
+    lua_getfield(state, -1, "refresh_runner_selection");
+    if (!lua_isfunction(state, -1)) {
+        return fail("party_down.refresh_runner_selection is missing");
+    }
+    lua_remove(state, -2);
+
+    lua_createtable(state, 0, 3);
+    lua_pushlstring(state, kRoleIds[previous_index].data(),
+                    kRoleIds[previous_index].size());
+    lua_setfield(state, -2, "previous_role");
+    lua_pushboolean(state, context.suppression_override);
+    lua_setfield(state, -2, "suppression_override");
+    lua_createtable(state, 0, static_cast<int>(context.party.size()));
+    for (std::size_t index = 0U; index < context.party.size(); ++index) {
+        lua_createtable(state, 0, 3);
+        lua_createtable(state, 0, 3);
+        lua_pushboolean(state, context.party[index].lifecycle.active);
+        lua_setfield(state, -2, "active");
+        lua_pushboolean(state, context.party[index].lifecycle.downed);
+        lua_setfield(state, -2, "downed");
+        lua_pushboolean(state, context.party[index].lifecycle.dead);
+        lua_setfield(state, -2, "dead");
+        lua_setfield(state, -2, "lifecycle");
+        lua_pushboolean(state, context.party[index].selection_pending);
+        lua_setfield(state, -2, "selection_pending");
+        lua_pushboolean(state, context.party[index].ends_roster);
+        lua_setfield(state, -2, "ends_roster");
+        lua_setfield(state, -2, kRoleIds[index].data());
+    }
+    lua_setfield(state, -2, "party");
+
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("party_down.refresh_runner_selection: " +
+                    stack_error(state));
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("party_down.refresh_runner_selection returned no decision");
+    }
+    const auto root_index = lua_absindex(state, -1);
+    const auto read_boolean_field = [state](const int table_index,
+                                             const char* field,
+                                             bool& value) {
+        lua_getfield(state, table_index, field);
+        const bool valid = lua_isboolean(state, -1) != 0;
+        if (valid) value = lua_toboolean(state, -1) != 0;
+        lua_pop(state, 1);
+        return valid;
+    };
+
+    std::string active_role;
+    lua_getfield(state, root_index, "active_role");
+    if (!read_string(state, -1, active_role)) {
+        return fail("party roster selected role is invalid");
+    }
+    std::optional<std::size_t> selected_index;
+    for (std::size_t index = 0U; index < kRoleIds.size(); ++index) {
+        if (active_role == kRoleIds[index]) {
+            selected_index = index;
+            break;
+        }
+    }
+    if (!selected_index.has_value()) {
+        return fail("party roster selected an unknown role");
+    }
+
+    ScriptPartyRunnerRefreshDecision result{};
+    result.active_role =
+        static_cast<ScriptPartyMemberRole>(*selected_index);
+    if (!read_boolean_field(root_index, "active_role_changed",
+                            result.active_role_changed)) {
+        return fail("party roster active-role change result is invalid");
+    }
+    lua_getfield(state, root_index, "selection_pending");
+    if (!lua_istable(state, -1)) {
+        return fail("party roster selection indicators are invalid");
+    }
+    const auto markers_index = lua_absindex(state, -1);
+    for (std::size_t index = 0U; index < result.selection_pending.size();
+         ++index) {
+        if (!read_boolean_field(markers_index, kRoleIds[index].data(),
+                                result.selection_pending[index])) {
+            return fail("party roster selection indicator is invalid");
+        }
+    }
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return result;
+}
+
 std::optional<std::int16_t> GameScriptRuntime::player_weapon_action_delay(
     const std::uint8_t primary_attribute,
     const std::uint8_t secondary_attribute,

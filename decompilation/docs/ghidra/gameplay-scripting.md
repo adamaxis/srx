@@ -47,9 +47,11 @@ down transition also receives named party lifecycle facts and returns a
 named down/recovery decision; the field host owns source-record translation,
 audio selection, and frame timing. Party-wipe recovery also receives named
 party, wallet, and bill-payment facts and returns a typed lifecycle, meter,
-dismissal, funds, and destination result. The roster-refresh and run-failure
-gate calls still use flat source-shaped arguments, and Matrix datastore
-bitfields still need conversion; do not extend those interfaces.
+dismissal, funds, and destination result. Roster refresh receives named party
+roles, lifecycle facts, and the roster-end condition; Lua returns the active
+role and transient selection indicators. The run-failure gate still uses flat
+source-shaped arguments, and Matrix datastore bitfields still need conversion;
+do not extend those interfaces.
 
 The next capabilities should follow the same shape, added only as they connect
 to real native systems:

@@ -1141,6 +1141,24 @@ struct ScriptPartyWipeRecoveryDecision {
         ScriptPartyWakeDestination::little_chiba;
 };
 
+struct ScriptPartyRunnerRefreshMemberFacts {
+    ScriptPartyMemberLifecycleFacts lifecycle;
+    bool selection_pending = false;
+    bool ends_roster = false;
+};
+
+struct ScriptPartyRunnerRefreshContext {
+    ScriptPartyMemberRole previous_role = ScriptPartyMemberRole::leader;
+    bool suppression_override = false;
+    std::array<ScriptPartyRunnerRefreshMemberFacts, 3> party{};
+};
+
+struct ScriptPartyRunnerRefreshDecision {
+    ScriptPartyMemberRole active_role = ScriptPartyMemberRole::leader;
+    std::array<bool, 3> selection_pending{};
+    bool active_role_changed = false;
+};
+
 enum class ScriptActorSpellFieldEffectKind : std::uint8_t {
     none,          // 0x00 / return at 0x1584C [C]
     field_barrier, // 0x01 / 0x15830 -> 0x49A2 [C]
@@ -2020,6 +2038,8 @@ public:
         const ScriptPartyRunnerDownContext& context);
     std::optional<ScriptPartyWipeRecoveryDecision> party_wipe_recovery(
         const ScriptPartyWipeRecoveryContext& context);
+    std::optional<ScriptPartyRunnerRefreshDecision> party_runner_refresh(
+        const ScriptPartyRunnerRefreshContext& context);
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
     std::optional<ScriptActorTargetListRebuildDecision>

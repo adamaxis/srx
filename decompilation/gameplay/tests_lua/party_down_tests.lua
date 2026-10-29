@@ -91,31 +91,55 @@ check(cap.leader.meters.physical == 9 and cap.leader.meters.mental == 10,
 check(cap.wake_destination == "docwagon",
       "paid motel bill selects DocWagon")
 
--- 0x391A repeats the source runner walk after the wipe recovery [C]. C++
--- passes the effective player-record flags, with dismissed slots inactive.
-local refresh_from_second = P.refresh_runner_after_wipe_flat(
-    2, false, 0, E.RunnerStatus.ACTIVE,
-    1, E.RunnerStatus.DEAD, 2, 0)
-check(refresh_from_second[1] == 0 and
-      refresh_from_second[2] & E.RunnerStatus.SELECTION_MARKER ~= 0 and
-      refresh_from_second[3] & E.RunnerStatus.SELECTION_MARKER == 0 and
-      refresh_from_second[4] & E.RunnerStatus.SELECTION_MARKER == 0,
-      "0x391A wraps from the type-2 record to the revived leader")
-check(refresh_from_second[5] == 1 and
-      refresh_from_second[6] == E.MenuSound.MOVE,
-      "0x391A reports the changed active runner and event 0x25")
-local refresh_leader_only = P.refresh_runner_after_wipe_flat(
-    0, false, 0, E.RunnerStatus.ACTIVE,
-    1, E.RunnerStatus.DEAD, 2, E.RunnerStatus.DOWN)
-check(refresh_leader_only[1] == 0 and refresh_leader_only[5] == 0 and
-      refresh_leader_only[2] & E.RunnerStatus.SELECTION_MARKER ~= 0,
-      "0x391A retains the only eligible runner after a complete scan")
-local refresh_override = P.refresh_runner_after_wipe_flat(
-    0, true, 0, E.RunnerStatus.ACTIVE,
-    1, E.RunnerStatus.ACTIVE | E.RunnerStatus.DEAD,
-    2, E.RunnerStatus.DOWN)
-check(refresh_override[1] == 1,
-      "0x391A FFF09D override accepts an active suppressed runner")
+-- ROM 0x391A walks semantic party roles, wraps after the roster-end member,
+-- and skips dead/downed members unless the named override is enabled [C].
+local function member(active, downed, dead, selection_pending, ends_roster)
+    return {
+        lifecycle = { active = active, downed = downed, dead = dead },
+        selection_pending = selection_pending,
+        ends_roster = ends_roster,
+    }
+end
+local refresh_from_second = P.refresh_runner_selection({
+    previous_role = "companion_two",
+    suppression_override = false,
+    party = {
+        leader = member(true, false, false, false, false),
+        companion_one = member(false, false, true, false, false),
+        companion_two = member(false, false, false, true, true),
+    },
+})
+check(refresh_from_second.active_role == "leader" and
+      refresh_from_second.selection_pending.leader and
+      not refresh_from_second.selection_pending.companion_two,
+      "0x391A wraps from the roster end to the revived leader")
+check(refresh_from_second.active_role_changed,
+      "0x391A reports an active-role change")
+local refresh_leader_only = P.refresh_runner_selection({
+    previous_role = "leader",
+    suppression_override = false,
+    party = {
+        leader = member(true, false, false, false, false),
+        companion_one = member(false, false, true, false, false),
+        companion_two = member(false, true, false, false, true),
+    },
+})
+check(refresh_leader_only.active_role == "leader" and
+      not refresh_leader_only.active_role_changed and
+      refresh_leader_only.selection_pending.leader,
+      "0x391A retains the only eligible runner after a full scan")
+local refresh_override = P.refresh_runner_selection({
+    previous_role = "leader",
+    suppression_override = true,
+    party = {
+        leader = member(true, false, false, false, false),
+        companion_one = member(true, true, false, false, false),
+        companion_two = member(false, false, false, false, true),
+    },
+})
+check(refresh_override.active_role == "companion_one" and
+      refresh_override.active_role_changed,
+      "0x391A override accepts an active downed companion")
 
 -- 0xC64C's FFFBED/FFFC1C run-failure gates [C].
 local employee_failure = P.run_failure_flat(

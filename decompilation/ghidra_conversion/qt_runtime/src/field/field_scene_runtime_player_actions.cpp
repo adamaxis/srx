@@ -434,9 +434,9 @@ void FieldSceneRuntime::complete_field_party_wipe() {
         field_funds_ = recovery->remaining_nuyen;
     }
 
-    // 0x391A does a normal roster walk after 0xC716 revives the leader. Lua
-    // receives typed slot/type/flag facts and returns the selected runner and
-    // transient +0x10 bit-1 markers; the host applies those writes [C].
+    // 0x391A walks to the next eligible party role. Translate record status,
+    // selection, and roster-end facts before calling Lua; merge its named
+    // result back into the native roster [C].
     const auto selection_flags = [this, &records](const std::size_t slot) {
         auto flags = static_cast<std::uint8_t>(records[slot].flags >> 8U);
         if (!field_party_roster_.slot_active(slot)) {
@@ -445,51 +445,58 @@ void FieldSceneRuntime::complete_field_party_wipe() {
         }
         return flags;
     };
-    const auto selection = game_scripts_.call_integers(
-        "party_down", "refresh_runner_after_wipe_flat",
-        {static_cast<std::int64_t>(previous_slot),
-         field_entity_selection_state_.suppression_override ? 1 : 0,
-         field_entity_selection_state_.records[0].record_type,
-         selection_flags(0U),
-         field_entity_selection_state_.records[1].record_type,
-         selection_flags(1U),
-         field_entity_selection_state_.records[2].record_type,
-         selection_flags(2U)});
-    if (!selection.has_value() || selection->size() != 6U ||
-        (*selection)[0] < 0 ||
-        (*selection)[0] >= static_cast<std::int64_t>(records.size()) ||
-        !field_party_roster_.slot_active(
-            static_cast<std::size_t>((*selection)[0])) ||
-        (*selection)[5] < 0 || (*selection)[5] > 0xFFFF) {
+    scripting::ScriptPartyRunnerRefreshContext refresh_context{};
+    refresh_context.previous_role =
+        static_cast<scripting::ScriptPartyMemberRole>(previous_slot);
+    refresh_context.suppression_override =
+        field_entity_selection_state_.suppression_override;
+    constexpr auto kSelectionMarker = static_cast<std::uint8_t>(
+        srx::RunnerStatus::SELECTION_MARKER);
+    constexpr auto kRosterEndType = static_cast<std::uint16_t>(
+        srx::PartyWipeRunnerRefresh::TERMINAL_RECORD_TYPE);
+    for (std::size_t slot = 0U; slot < records.size(); ++slot) {
+        const auto flags = selection_flags(slot);
+        refresh_context.party[slot] = {
+            {(flags & kActiveStatus) != 0U,
+             (flags & kDownStatus) != 0U,
+             (flags & kDeadStatus) != 0U},
+            (flags & kSelectionMarker) != 0U,
+            field_entity_selection_state_.records[slot].record_type ==
+                kRosterEndType};
+    }
+    const auto selection = game_scripts_.party_runner_refresh(refresh_context);
+    if (!selection.has_value()) {
         failure_ = game_scripts_.failure();
+        source_boundary("field.party_wipe.runner_refresh_script_failed");
+        return;
+    }
+    const auto selected_slot =
+        static_cast<std::size_t>(selection->active_role);
+    if (selected_slot >= records.size() ||
+        !field_party_roster_.slot_active(selected_slot)) {
+        failure_ = "party_down.refresh_runner_selection chose an inactive role";
         source_boundary("field.party_wipe.runner_refresh_script_failed");
         return;
     }
     if (source_audio_event_callback_) {
         // 0x391A begins by requesting event 0x25 through 0x530DE [C].
-        source_audio_event_callback_(static_cast<std::uint16_t>((*selection)[5]));
+        source_audio_event_callback_(static_cast<std::uint16_t>(
+            srx::MenuSound::MOVE));
     }
-    if ((*selection)[4] != 0) {
+    if (selection->active_role_changed) {
         // 0x39E0 calls 0x1E540 when the selected record changes [C].
         initialize_effect_fade_marker(field_effect_fade_marker_);
         source_boundary("field.party_wipe.runner_change_fade_marker_reset");
     }
-    const auto selected_slot = static_cast<std::size_t>((*selection)[0]);
-    const auto selected_marker = static_cast<std::uint8_t>(
-        srx::RunnerStatus::SELECTION_MARKER);
     for (std::size_t slot = 0; slot < records.size(); ++slot) {
         auto& record = records[slot];
-        const auto returned_flags = static_cast<std::uint8_t>(
-            (*selection)[slot + 1U] & 0xFF);
         auto record_flags = static_cast<std::uint8_t>(record.flags >> 8U);
-        if (field_party_roster_.slot_active(slot)) {
-            record_flags = returned_flags;
-        } else {
-            // Membership is a separate typed host fact. Preserve its live
-            // record status while applying the source selection-marker clear.
+        if (selection->selection_pending[slot]) {
             record_flags = static_cast<std::uint8_t>(
-                (record_flags & ~selected_marker) |
-                (returned_flags & selected_marker));
+                record_flags | kSelectionMarker);
+        } else {
+            record_flags = static_cast<std::uint8_t>(
+                record_flags & static_cast<std::uint8_t>(~kSelectionMarker));
         }
         record.flags = static_cast<std::uint16_t>(
             (record.flags & 0x00FFU) |
@@ -512,7 +519,7 @@ void FieldSceneRuntime::complete_field_party_wipe() {
         active_runner_record().projection_word_08;
     field_entity_animation_.redraw_requested = true;
     refresh_field_hud_runner_slot();
-    source_boundary((*selection)[4] != 0
+    source_boundary(selection->active_role_changed
                         ? "field.party_wipe.active_runner_changed"
                         : "field.party_wipe.active_runner_retained");
     // The following source call, 0x1DC4C, scans and edits world-actor records;

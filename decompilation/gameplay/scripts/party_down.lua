@@ -1,6 +1,4 @@
 -- Party runner down (ROM 0xB330) and party wipe recovery (0xC64C/0xC716).
--- Record flags are the +0x10 status byte (E.RunnerStatus). Slot 0..2 are
--- FF0110/FF0210/FF0310. The host owns timers, text panels and scene moves.
 local E = require("enums")
 
 local PartyDown = {}
@@ -129,57 +127,67 @@ function PartyDown.resolve_party_wipe(context)
     }
 end
 
--- ROM 0x391A walks forward from FFFC04, wrapping after a type-2 record. The
--- host supplies typed player-slot facts; C++ applies the returned selection
--- marker, active slot, HUD state, and field projection [C].
--- 0x39AE requires ACTIVE; 0x39B6 honors FFF09D, then 0x39C0/0x39C8 skip
--- records with DEAD or DOWN set. The selected runner's 0x1E540 marker reset
--- and the following world-actor call stay in the host/combat boundary [C].
-function PartyDown.refresh_runner_after_wipe_flat(
-    current_slot, suppression_override, type0, flags0, type1, flags1,
-    type2, flags2)
-    local refresh = E.PartyWipeRunnerRefresh
-    local selected_flag = E.RunnerStatus.SELECTION_MARKER
-    local active_flag = E.RunnerStatus.ACTIVE
-    local suppressed_flags = E.RunnerStatus.DEAD | E.RunnerStatus.DOWN
-    local flags = { [0] = byte(flags0), byte(flags1), byte(flags2) }
-    local types = { [0] = byte(type0), byte(type1), byte(type2) }
-    local previous = math.tointeger(current_slot or refresh.FIRST_SLOT)
-    assert(previous and previous >= refresh.FIRST_SLOT and
-           previous < refresh.SLOT_COUNT,
-           "party_down: active runner slot out of range")
+-- ROM 0x391A walks party roles in order and wraps after the role marked as
+-- the roster end. It chooses an active member, skipping dead/downed members
+-- unless the suppression override is enabled. The host supplies those named
+-- facts and applies the active role and transient selection indicators [C].
+function PartyDown.refresh_runner_selection(context)
+    assert(type(context) == "table" and type(context.party) == "table",
+           "party_down: missing roster facts")
+    local roles = { "leader", "companion_one", "companion_two" }
+    local previous = context.previous_role
+    assert(previous == roles[1] or previous == roles[2] or
+           previous == roles[3], "party_down: unknown current party role")
+
+    local party = context.party
+    local selection_pending = {}
+    for _, role in ipairs(roles) do
+        local member = party[role]
+        assert(type(member) == "table" and
+               type(member.lifecycle) == "table",
+               "party_down: incomplete roster member facts")
+        selection_pending[role] = member.selection_pending == true
+    end
 
     local cursor = previous
     local selected = previous
-    local override = suppression_override == true or
-        math.tointeger(suppression_override or 0) ~= 0
-    for _ = 1, refresh.SLOT_COUNT do
-        flags[cursor] = flags[cursor] & ~selected_flag
-        if types[cursor] == refresh.TERMINAL_RECORD_TYPE then
-            cursor = refresh.FIRST_SLOT
+    local override = context.suppression_override == true
+    for _ = 1, #roles do
+        local current_member = party[cursor]
+        selection_pending[cursor] = false
+        local next_role
+        if current_member.ends_roster == true then
+            next_role = roles[1]
         else
-            cursor = cursor + 1
+            local current_index
+            for index, role in ipairs(roles) do
+                if role == cursor then
+                    current_index = index
+                    break
+                end
+            end
+            assert(current_index ~= nil and current_index < #roles,
+                   "party_down: roster end role is missing")
+            next_role = roles[current_index + 1]
         end
-        assert(cursor < refresh.SLOT_COUNT,
-               "party_down: roster has no type-2 terminal record")
 
-        flags[cursor] = flags[cursor] | selected_flag
-        local candidate_flags = flags[cursor]
-        local eligible = candidate_flags & active_flag ~= 0 and
-            (override or candidate_flags & suppressed_flags == 0)
+        selection_pending[next_role] = true
+        local candidate = party[next_role]
+        local eligible = candidate.lifecycle.active == true and
+            (override or
+             (candidate.lifecycle.dead ~= true and
+              candidate.lifecycle.downed ~= true))
         if eligible then
-            selected = cursor
+            selected = next_role
             break
         end
+        cursor = next_role
     end
 
     return {
-        selected,
-        flags[refresh.FIRST_SLOT],
-        flags[refresh.FIRST_SLOT + 1],
-        flags[refresh.FIRST_SLOT + 2],
-        selected ~= previous and 1 or 0,
-        E.MenuSound.MOVE,
+        active_role = selected,
+        selection_pending = selection_pending,
+        active_role_changed = selected ~= previous,
     }
 end
 
