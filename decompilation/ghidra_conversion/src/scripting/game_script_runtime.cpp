@@ -10490,6 +10490,10 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "source_record_slot");
+    lua_pushboolean(state, context.has_live_actor_record ||
+                               context.live_field_actor ||
+                               context.source_record_slot.has_value());
+    lua_setfield(state, -2, "has_live_actor_record");
     push_formation_position(state, "formation_position",
                             context.formation_position);
     lua_pushboolean(state, context.live_field_actor ||

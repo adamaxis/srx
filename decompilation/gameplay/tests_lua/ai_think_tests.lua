@@ -103,6 +103,23 @@ local function think_path(actor, facts)
     return actor.ai_think_path
 end
 
+local recorded_action_delay = { action_delay = 2 }
+R.advance_source_action_delay(recorded_action_delay, {
+    phase = "behavior", has_live_actor_record = true,
+})
+local unrecorded_action_delay = { action_delay = 2 }
+R.advance_source_action_delay(unrecorded_action_delay, {
+    phase = "behavior", has_live_actor_record = false,
+})
+local dynamic_action_delay = { action_delay = 2 }
+R.advance_source_action_delay(dynamic_action_delay, {
+    phase = "behavior", dynamic_world_encounter_actor = true,
+})
+check(recorded_action_delay.action_delay == 1 and
+      unrecorded_action_delay.action_delay == 2 and
+      dynamic_action_delay.action_delay == 1,
+      "0xA8EA advances delay for live and dynamic actors without slot bytes [C]")
+
 local function wounded_candidate(id, party_role, physical_meter,
                                 world_activity_actor)
     return {

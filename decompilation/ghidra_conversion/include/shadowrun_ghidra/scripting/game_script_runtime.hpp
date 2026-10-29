@@ -1847,6 +1847,9 @@ struct ScriptActorBehaviorContext {
     // The actor has a live field-scene record and can use field movement.
     // Lua receives this fact instead of inferring record existence from a slot.
     bool live_field_actor = false;
+    // This actor occupies an active gameplay record, including party members.
+    // Lua uses the fact for shared actor services, not the record's index.
+    bool has_live_actor_record = false;
 };
 
 enum class ScriptTarislarTombOutroStep {

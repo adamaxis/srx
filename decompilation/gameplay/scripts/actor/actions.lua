@@ -20,7 +20,7 @@ local source_action_delay = Delay.actor_action_delay
 local function advance_source_action_delay(state, context)
     if context.phase ~= "behavior" or
        (not context.dynamic_world_encounter_actor and
-        type(context.source_record_slot) ~= "number") then
+        context.has_live_actor_record ~= true) then
         return
     end
     -- ROM 0xA8EA decrements +0xDC for every active source record once before

@@ -3646,6 +3646,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
         context.source_actor_posture = actor.combatant.posture;
         context.source_record_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
+        context.has_live_actor_record = true;
         const auto source_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
         if (static_cast<std::size_t>(source_slot) >=
@@ -4031,6 +4032,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
         context.source_record_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
+        context.has_live_actor_record = true;
         context.world_activity_active =
             world_frame_logic_state_.world_active != 0U;
         context.world_scene_state = world_frame_logic_state_.scene_state;
@@ -4282,6 +4284,7 @@ void FieldSceneRuntime::advance_default_field_actors(
                 *actor.source_record_slot);
             context.source_record_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
+            context.has_live_actor_record = true;
             context.formation_position =
                 formation_position_from_record_slot(source_slot);
             if (source_slot >= FieldPartyRosterRuntime::kSlotCount) {
@@ -5506,6 +5509,7 @@ bool FieldSceneRuntime::retire_dialogue_escort_records() {
         context.source_actor_template_kind = actor.entity_kind;
         context.source_record_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
+        context.has_live_actor_record = true;
         context.source_actor_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
         context.live_field_actor = true;
@@ -6383,6 +6387,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         if (actor.source_record_slot.has_value()) {
             context.source_record_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
+            context.has_live_actor_record = true;
             context.source_record_flags = actor.source_record_flags;
             context.physical_condition = actor.physical_meter;
         }
@@ -11292,6 +11297,7 @@ FieldSceneRuntime::heartbeat_field_player(
     actor_context.walk_fast_enabled = field_walk_fast_enabled_;
     actor_context.source_record_slot = static_cast<std::uint8_t>(
         field_party_roster_.active_slot());
+    actor_context.has_live_actor_record = true;
     actor_context.movement_scene_id =
         state_.field_scene_buffers.scene_reference;
     actor_context.initial_heading =
@@ -12495,6 +12501,7 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             const auto source_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
             context.source_record_slot = source_slot;
+            context.has_live_actor_record = true;
             if (static_cast<std::size_t>(source_slot) >=
                 FieldPartyRosterRuntime::kSlotCount) {
                 context.source_actor_slot = source_slot;
