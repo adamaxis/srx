@@ -835,16 +835,10 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
     }
     const auto consumed_choice =
         scripts.consume_conditional_actor_selection_choice();
-    WorldActivityRoutineRequestState request_state{};
-    if (consumed_choice.has_value()) {
-        request_state.request_flag = *consumed_choice;
-    }
-    std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
-        request_slots{};
-    request_slots[0U] = WorldActivityRequestSlot{0x01U, 0x80U};
     WorldActivityStartState activity{};
-    const bool activity_started = handle_world_activity_request(
-        request_state, request_slots, activity);
+    const auto request_outcome = handle_world_activity_request(
+        WorldActivityRequestFacts{consumed_choice.has_value(), true}, activity);
+    const bool activity_started = request_outcome.has_value();
 
     const bool request_path_resolved = expect(
         selection.has_value() &&
@@ -857,8 +851,7 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
             random_calls == 1U &&
             consumed_choice ==
                 std::optional<std::uint8_t>{a800_roll + 1U} &&
-            activity_started && request_state.request_flag == 0U &&
-            request_state.found_marker == 0U &&
+            activity_started && request_outcome->active_escort_present &&
             activity.callback ==
                 WorldActivityCallbackKind::extraction_result &&
             activity.timer_frames == 0x3CU,
@@ -1082,16 +1075,10 @@ bool verify_employee_recruitment_pedestrian_request(
     const auto consumed_choice =
         scripts.consume_conditional_actor_selection_choice();
 
-    WorldActivityRoutineRequestState request_state{};
-    if (consumed_choice.has_value()) {
-        request_state.request_flag = *consumed_choice;
-    }
-    std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
-        request_slots{};
-    request_slots[0U] = WorldActivityRequestSlot{0x01U, 0x80U};
     WorldActivityStartState activity{};
-    const bool activity_started = handle_world_activity_request(
-        request_state, request_slots, activity);
+    const auto request_outcome = handle_world_activity_request(
+        WorldActivityRequestFacts{consumed_choice.has_value(), true}, activity);
+    const bool activity_started = request_outcome.has_value();
     const bool base_initializer_reaches_request = expect(
         selection.has_value() &&
             selection->kind ==
@@ -1099,7 +1086,7 @@ bool verify_employee_recruitment_pedestrian_request(
             selection->selection_choice == 2U &&
             selection->choice_changed && consumed_choice ==
                 std::optional<std::uint8_t>{2U} && activity_started &&
-            request_state.request_flag == 0U && request_state.found_marker == 0U &&
+            request_outcome->active_escort_present &&
             activity.callback ==
                 WorldActivityCallbackKind::extraction_result &&
             activity.timer_frames == 0x3CU,

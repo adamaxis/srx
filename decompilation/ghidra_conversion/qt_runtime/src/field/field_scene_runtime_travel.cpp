@@ -356,7 +356,7 @@ bool FieldSceneRuntime::transition_to_field_destination(
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     field_world_activity_timeout_state_.scene_id = scene_reference;
     world_activity_routine_state_ = WorldActivityRoutineState{};
-    world_activity_request_state_ = WorldActivityRoutineRequestState{};
+    world_activity_request_outcome_.reset();
     world_activity_request_start_state_ = WorldActivityStartState{};
     world_activity_return_snapshot_.reset();
     field_weapon_projectiles_.clear();

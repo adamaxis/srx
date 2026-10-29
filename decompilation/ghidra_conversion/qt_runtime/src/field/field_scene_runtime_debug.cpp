@@ -861,28 +861,19 @@ bool FieldSceneRuntime::dispatch_selected_security_terminal_for_dump() {
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::dispatch_world_activity_extraction_result_for_dump(
-    const bool active_high_effect_actor_found) {
+    const bool active_escort_present) {
     if (!ready_ || field_dialogue_.open() || field_interaction_.open()) {
         failure_ = "extraction result QA requires an idle, ready field";
         return false;
     }
 
-    // Seed the two possible outcomes of the ROM 0x1E43C thirteen-record scan,
-    // then exercise its typed callback/timer state and the production pending
-    // field-scene handler. This QA seam begins after the A800/contact trigger.
-    world_activity_request_state_ = WorldActivityRoutineRequestState{};
-    world_activity_request_state_.request_flag = 1U;
-    std::vector<WorldActivityRequestActorRecord> request_actors;
-    if (active_high_effect_actor_found) {
-        // FF0400 is source slot 3 relative to the full FF0100 record array.
-        request_actors.push_back({3U, 0x01U, 0x80U});
-    }
-    const auto request_slots =
-        project_world_activity_request_slots(request_actors);
+    // Seed the two semantic extraction outcomes, then exercise the typed
+    // callback/timer state and production pending field-scene handler.
     world_activity_request_start_state_ = WorldActivityStartState{};
-    if (!handle_world_activity_request(
-            world_activity_request_state_, request_slots,
-            world_activity_request_start_state_) ||
+    world_activity_request_outcome_ = handle_world_activity_request(
+        WorldActivityRequestFacts{true, active_escort_present},
+        world_activity_request_start_state_);
+    if (!world_activity_request_outcome_.has_value() ||
         world_activity_request_start_state_.callback !=
             WorldActivityCallbackKind::extraction_result) {
         failure_ = "0x1E43C QA request did not publish its typed result";
@@ -907,7 +898,8 @@ bool FieldSceneRuntime::dispatch_world_activity_extraction_result_for_dump(
             " lock=" + std::to_string(field_runtime_state_.field_activity_lock) +
             " display=" +
             std::to_string(field_runtime_state_.display_service_word) +
-            " found=" + std::to_string(world_activity_request_state_.found_marker) +
+            " active_escort=" +
+            std::to_string(world_activity_request_outcome_->active_escort_present) +
             " activity_timer=" +
             std::to_string(field_world_activity_state_.timeout);
         return false;
@@ -915,9 +907,8 @@ bool FieldSceneRuntime::dispatch_world_activity_extraction_result_for_dump(
     return true;
 }
 
-std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
-FieldSceneRuntime::world_activity_request_slots_for_dump() const {
-    return current_world_activity_request_slots();
+bool FieldSceneRuntime::world_activity_active_escort_present_for_dump() const {
+    return current_world_activity_has_active_escort();
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 

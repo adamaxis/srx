@@ -2140,23 +2140,26 @@ copies A6 to `FFDD2C` at `0x1E1F2`; `0x1E2E0` can publish that pointer to
 selector's callback-install arm as the `0x20882` entry for scenes `0x15..0x2B`;
 forwarded effects and other indirect dispatchers remain separate open paths.
 
-### Live actor projection for the `0x1E43C` scan (2026-10-28)
+### Semantic live-escort fact for the `0x1E43C` result (2026-10-28)
 
 **[C]** ROM `0x1E43C` sets A1 to `FF0400` and scans thirteen 0x100-byte actor
 records through source slot 15. The sixteen-record service at `0x0A8EA` starts
 at `FF0100`, so this scan covers source slots 3..15 and maps them to scan
-indices 0..12. ROM `0xED5A` sets bit 7 of `+0xB0` for the contacted escort.
+indices 0..12. Its result condition is an active actor (`+0x10.0`) whose
+escort state is set (`+0xB0.7`); contact code `0xED5A` sets that escort state.
 
-The Qt request callback had been filling its thirteen scan entries from
-`state_.behavior_entities[0..12]`, a separate bootstrap array. It now projects
-the current scene's live actor records by source slot and copies their raw
-`+0x10` and `+0xB0` bytes. The unit test covers source slots 2, 3, 9, 15, and
-16; field QA checks that the physically contacted slot-3 escort appears as an
-active escort during contact and after dismissal. Focused Debug and Release
-unit, world-activity, and pedestrian-scene CTests pass.
+The first runtime fix projected those live records into thirteen entries and
+copied the raw flag bytes into the request model. That source-shaped API has
+been replaced: the field adapter reduces current-scene actors to the semantic
+fact `active_escort_present`, and the request model receives it alongside
+whether a nonzero choice was made. The request model no longer exposes source
+slots or record bytes. Focused Debug and Release CTests cover idle,
+selected-without-escort, selected-with-escort, the Lua selection path, and the
+live contact/return path. Lua actor state still carries raw status and
+behavior bytes in other paths; removing those from Lua remains unfinished.
 
-This closes the live-record-to-scan projection defect once the request
-callback runs. It does not locate the direct/computed `FFDF42` producer or
-prove the automatic physical route from A800 contact into `0x1E43C`; the
-physical contact QA still stops at its documented continuation seam. Its BMPs
-are internal regression captures, not independent Genesis evidence.
+This models the result rule once the request callback runs. It does not locate
+the direct/computed `FFDF42` producer or prove the automatic physical route
+from A800 contact into `0x1E43C`; the physical contact QA still stops at its
+documented continuation seam. Its BMPs are internal regression captures, not
+independent Genesis evidence.

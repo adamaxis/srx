@@ -287,7 +287,6 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
     field_runtime_state_.scene_runtime_state = 0U;
     world_frame_logic_state_.scene_state = 0U;
     field_pending_world_effect_ = false;
-    world_activity_request_state_.clear_82 = 0U; // FFE182 [C]
 
     // 0x0A72 carries the typed FFFC1C bit-7 scene-reset state into Lua [C].
     const auto run_failure = game_scripts_.call_integers(
@@ -302,7 +301,7 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
     if ((*run_failure)[2] != 0) {
         // Only type 5 reaches 0xC684's FFE183 clear. That mode-five marker is
         // not used by player-side gameplay [C].
-        world_activity_request_state_.request_flag = 0U;
+        world_activity_request_outcome_.reset();
         field_mode_exit_transition_state_.mode_five_effect_marker = 0U;
         if (!game_scripts_.reset_conditional_actor_selection()) {
             failure_ = game_scripts_.failure();
@@ -510,7 +509,7 @@ void FieldSceneRuntime::start_field_party_wake_transition() {
     field_runtime_state_.world_activity_transition_marker = 0U; // FFE18F
     field_world_effect_active_ = false; // FFE180
     field_pending_world_effect_ = false; // FFE182
-    world_activity_request_state_ = WorldActivityRoutineRequestState{};
+    world_activity_request_outcome_.reset();
     field_mode_exit_transition_state_.effect_animation_marker = 0U; // FFE182
     field_mode_exit_transition_state_.mode_five_effect_marker = 0U; // FFE183
     if (!game_scripts_.reset_conditional_actor_selection()) {

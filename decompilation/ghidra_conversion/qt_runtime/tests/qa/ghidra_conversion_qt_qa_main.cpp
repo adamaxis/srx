@@ -21305,13 +21305,10 @@ bool verify_random_pedestrian_contact_qa(
         field_scene.world_activity_script_actor_profile_for_dump(0U);
     const auto contact_slot =
         field_scene.world_activity_script_actor_record_slot_for_dump(0U);
-    // ROM 0xED5A sets +0xB0.7 on the contacted slot 3; 0x1E43C starts its
-    // later request scan at FF0400, so that live actor must project to index 0.
-    const auto contact_request_slots =
-        field_scene.world_activity_request_slots_for_dump();
-    const bool contact_record_is_in_request_scan =
-        (contact_request_slots[0U].flags_byte & 0x01U) != 0U &&
-        (contact_request_slots[0U].route_flags & kEscortFlag) != 0U;
+    // [C] ROM 0xED5A marks the contacted actor as an escort. The 0x1E43C result
+    // flow depends on whether a live escort remains in the field.
+    const bool contact_escort_is_active =
+        field_scene.world_activity_active_escort_present_for_dump();
     const auto retained_transfer_profile =
         field_scene.world_effect_player_spawn_profile_for_dump();
     const auto guard_action =
@@ -21336,7 +21333,7 @@ bool verify_random_pedestrian_contact_qa(
             std::optional<std::string>{"pedestrian_k0b_none00"} ||
         contact_slot !=
             std::optional<FieldWorldActorSlot>{FieldWorldActorSlot::slot_3} ||
-        !contact_record_is_in_request_scan ||
+        !contact_escort_is_active ||
         !field_scene.world_effect_player_spawn_pending_for_dump() ||
         retained_transfer_profile !=
             std::optional<std::string>{"pedestrian_k0b_none00"} ||
@@ -21367,7 +21364,7 @@ bool verify_random_pedestrian_contact_qa(
                   << static_cast<unsigned>(contact_flags.value_or(0U))
                   << std::dec << ", pending="
                   << field_scene.world_effect_player_spawn_pending_for_dump()
-                  << ", request_scan=" << contact_record_is_in_request_scan
+                  << ", active_escort=" << contact_escort_is_active
                   << ", guard=" << static_cast<unsigned>(guard_action)
                   << ", dialogue=" << field_scene.dialogue_open()
                   << ", speaker=" << contact_page.actor_name
@@ -21403,8 +21400,8 @@ bool verify_random_pedestrian_contact_qa(
         field_scene.advance_frame();
     }
     const auto closed_image = render_qa_field(field_scene);
-    const auto closed_request_slots =
-        field_scene.world_activity_request_slots_for_dump();
+    const bool closed_escort_is_active =
+        field_scene.world_activity_active_escort_present_for_dump();
     const auto closed_bitmap =
         output / (contact_case + "-closed-actual.bmp");
     if (field_scene.dialogue_open() || field_return_frames >= 120U ||
@@ -21412,8 +21409,7 @@ bool verify_random_pedestrian_contact_qa(
         !field_scene.field_entity_visible_for_dump() ||
         count_playfield_lit(closed_image) < 100U ||
         field_scene.world_activity_script_actor_count_for_dump() != 1U ||
-        (closed_request_slots[0U].flags_byte & 0x01U) == 0U ||
-        (closed_request_slots[0U].route_flags & kEscortFlag) == 0U ||
+        !closed_escort_is_active ||
         !field_scene.world_effect_player_spawn_pending_for_dump() ||
         !field_scene.failure().empty() || closed_image.isNull() ||
         !closed_image.save(QString::fromStdWString(closed_bitmap.wstring()))) {
@@ -21430,10 +21426,7 @@ bool verify_random_pedestrian_contact_qa(
                   << ", lit=" << count_playfield_lit(closed_image)
                   << ", actors="
                   << field_scene.world_activity_script_actor_count_for_dump()
-                  << ", request_scan_active="
-                  << ((closed_request_slots[0U].flags_byte & 0x01U) != 0U)
-                  << ", request_scan_escort="
-                  << ((closed_request_slots[0U].route_flags & kEscortFlag) != 0U)
+                  << ", active_escort=" << closed_escort_is_active
                   << ", pending="
                   << field_scene.world_effect_player_spawn_pending_for_dump()
                   << ", failure='" << field_scene.failure() << "')\n";

@@ -260,47 +260,15 @@ bool schedule_world_activity_timeout(WorldActivityTimeoutState& state) {
     return true;
 }
 
-std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
-project_world_activity_request_slots(
-    const std::vector<WorldActivityRequestActorRecord>& actor_records) {
-    std::array<WorldActivityRequestSlot,
-               kWorldActivityRequestSlotCount> slots{};
-    for (const auto& actor : actor_records) {
-        if (actor.source_record_slot < 3U ||
-            actor.source_record_slot > 15U) {
-            continue;
-        }
-        const auto scan_index = static_cast<std::size_t>(
-            actor.source_record_slot - 3U);
-        slots[scan_index] = {actor.flags_byte, actor.route_flags};
-    }
-    return slots;
-}
-
-bool handle_world_activity_request(
-    WorldActivityRoutineRequestState& state,
-    const std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>&
-        slots,
+std::optional<WorldActivityRequestOutcome> handle_world_activity_request(
+    const WorldActivityRequestFacts& facts,
     WorldActivityStartState& activity) {
-    state.clear_80 = 0U;
-    state.clear_82 = 0U;
-    state.clear_84 = 0U;
-    state.clear_87 = 0U;
-    if (state.request_flag == 0U) {
-        return false;
-    }
-    state.request_flag = 0U;
-    state.found_marker = 0xFFU;
-    for (const auto& slot : slots) {
-        if ((slot.flags_byte & 1U) != 0U &&
-            (slot.route_flags & 0x80U) != 0U) {
-            state.found_marker = 0U;
-            break;
-        }
+    if (!facts.selection_made) {
+        return std::nullopt;
     }
     begin_world_activity(
         activity, WorldActivityCallbackKind::extraction_result);
-    return true;
+    return WorldActivityRequestOutcome{facts.active_escort_present};
 }
 
 } // namespace shadowrun::ghidra_conversion

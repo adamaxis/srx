@@ -457,81 +457,38 @@ int main() {
         return 12;
     }
 
-    WorldActivityRoutineRequestState idle{0U, 0x11U, 1U, 2U, 3U, 4U};
     WorldActivityStartState idle_activity{
         1U, WorldActivityCallbackKind::none};
-    std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount> slots{};
-    slots[0] = {1U, 0x80U};
-    if (!expect(!handle_world_activity_request(idle, slots, idle_activity) &&
-                idle.clear_80 == 0U && idle.clear_82 == 0U &&
-                idle.clear_84 == 0U && idle.clear_87 == 0U &&
-                idle.found_marker == 0x11U &&
+    // [C] ROM 0x1E43C starts the extraction-result flow after a nonzero choice
+    // and selects success when an active (+0x10.0) escort (+0xB0.7, set at
+    // 0xED5A on contact) remains. Assert those semantic outcomes.
+    if (!expect(!handle_world_activity_request(
+                     WorldActivityRequestFacts{false, true}, idle_activity)
+                     .has_value() &&
                 idle_activity.timer_frames == 1U &&
                 idle_activity.callback == WorldActivityCallbackKind::none)) {
         return 13;
     }
 
-    WorldActivityRoutineRequestState missing{1U, 0U, 9U, 9U, 9U, 9U};
     WorldActivityStartState missing_activity{};
-    slots = {};
-    slots[2] = {1U, 0U};
-    slots[3] = {0U, 0x80U};
-    if (!expect(handle_world_activity_request(missing, slots, missing_activity) &&
-                missing.request_flag == 0U && missing.found_marker == 0xFFU &&
+    const auto no_escort_outcome = handle_world_activity_request(
+        WorldActivityRequestFacts{true, false}, missing_activity);
+    if (!expect(no_escort_outcome.has_value() &&
+                !no_escort_outcome->active_escort_present &&
                 missing_activity.timer_frames == 0x3CU &&
                 missing_activity.callback ==
                     WorldActivityCallbackKind::extraction_result)) {
         return 14;
     }
 
-    WorldActivityRoutineRequestState found{1U, 0xFFU, 1U, 1U, 1U, 1U};
     WorldActivityStartState found_activity{};
-    slots = {};
-    slots[5] = {0x03U, 0x80U};
-    if (!expect(handle_world_activity_request(found, slots, found_activity) &&
-                found.found_marker == 0U &&
+    const auto escort_outcome = handle_world_activity_request(
+        WorldActivityRequestFacts{true, true}, found_activity);
+    if (!expect(escort_outcome.has_value() &&
+                escort_outcome->active_escort_present &&
                 found_activity.callback ==
                     WorldActivityCallbackKind::extraction_result)) {
         return 15;
-    }
-
-    // ROM 0x1E43C scans FF0400..FF1000 (13 records). The sixteen-record
-    // service at 0x0A8EA starts at FF0100, so source slots 3..15 map to scan
-    // indices 0..12; player slot 2 and slot 16 are outside this scan.
-    const std::vector<WorldActivityRequestActorRecord> source_records{
-        {2U, 0x01U, 0x80U},
-        {3U, 0x00U, 0x80U},
-        {9U, 0x01U, 0x80U},
-        {15U, 0x01U, 0x80U},
-        {16U, 0x01U, 0x80U},
-    };
-    const auto projected_slots =
-        project_world_activity_request_slots(source_records);
-    if (!expect(projected_slots[0].flags_byte == 0U &&
-                projected_slots[0].route_flags == 0x80U &&
-                projected_slots[6].flags_byte == 0x01U &&
-                projected_slots[6].route_flags == 0x80U &&
-                projected_slots[12].flags_byte == 0x01U &&
-                projected_slots[12].route_flags == 0x80U)) {
-        return 16;
-    }
-
-    WorldActivityRoutineRequestState projected_found{1U};
-    WorldActivityStartState projected_activity{};
-    if (!expect(handle_world_activity_request(
-                    projected_found, projected_slots, projected_activity) &&
-                projected_found.found_marker == 0U)) {
-        return 17;
-    }
-
-    const auto player_only_slots =
-        project_world_activity_request_slots({{2U, 0x01U, 0x80U}});
-    WorldActivityRoutineRequestState player_only{1U};
-    WorldActivityStartState player_only_activity{};
-    if (!expect(handle_world_activity_request(
-                    player_only, player_only_slots, player_only_activity) &&
-                player_only.found_marker == 0xFFU)) {
-        return 18;
     }
 
     return 0;

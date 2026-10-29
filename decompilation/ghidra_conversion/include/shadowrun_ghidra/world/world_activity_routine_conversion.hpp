@@ -142,41 +142,21 @@ struct WorldActivityTimeoutState {
 // set FFDF86 to 0x78, or 0x258 when FFE162!=0.
 bool schedule_world_activity_timeout(WorldActivityTimeoutState& state);
 
-constexpr std::size_t kWorldActivityRequestSlotCount = 13;
-struct WorldActivityRequestSlot {
-    std::uint8_t flags_byte = 0; // +0x10
-    std::uint8_t route_flags = 0; // +0xB0
+struct WorldActivityRequestFacts {
+    bool selection_made = false;
+    bool active_escort_present = false;
 };
 
-struct WorldActivityRequestActorRecord {
-    std::uint8_t source_record_slot = 0; // FF0100-based 0x100-byte slot index
-    std::uint8_t flags_byte = 0; // +0x10
-    std::uint8_t route_flags = 0; // +0xB0
+struct WorldActivityRequestOutcome {
+    bool active_escort_present = false;
 };
 
-// ROM 0x1E43C starts its thirteen-record scan at FF0400. ROM 0x0A8EA's
-// sixteen-record service starts at FF0100, so this projects source slots
-// 3..15 into request-scan indices 0..12.
-std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
-project_world_activity_request_slots(
-    const std::vector<WorldActivityRequestActorRecord>& actor_records);
-
-struct WorldActivityRoutineRequestState {
-    std::uint8_t request_flag = 0; // FFE183
-    std::uint8_t found_marker = 0; // FFE181
-    std::uint8_t clear_80 = 0; // FFE180
-    std::uint8_t clear_82 = 0; // FFE182
-    std::uint8_t clear_84 = 0; // FFE184
-    std::uint8_t clear_87 = 0; // FFE187
-};
-
-// ROM 0x1E43C: CLR FFE180/82/84/87. FFE183==0 RTS. Else CLR FFE183, scan
-// 13 slots at FF0400 for +0x10 bit 0 and +0xB0 bit 7, write FFE181 0 or
-// 0xFF, publish the typed extraction-result callback, and start its timer.
-bool handle_world_activity_request(
-    WorldActivityRoutineRequestState& state,
-    const std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>&
-        slots,
+// [C] A selected Employee Recruitment contact starts the extraction-result
+// flow. The presence of a live escort affects only which result is shown.
+// ROM 0x1E43C is the source for these semantics; its record layout stays in
+// the native field-runtime adapter rather than this gameplay model.
+std::optional<WorldActivityRequestOutcome> handle_world_activity_request(
+    const WorldActivityRequestFacts& facts,
     WorldActivityStartState& activity);
 
 } // namespace shadowrun::ghidra_conversion

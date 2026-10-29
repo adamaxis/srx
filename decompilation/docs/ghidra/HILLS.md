@@ -968,13 +968,17 @@ Only the aligned absolute-long request test/clear operands exist; the remaining
 byte-pair hit at odd offset `0x1896C3` crosses data words `0x00DF`/`0x424F`.
 Computed/indirect writes and the physical automatic callback path remain open.
 
-The `0x1E43C` request callback now builds its scan from the live current-scene
-actor records. Source slots 3..15 map to its thirteen entries, matching the
-ROM's `FF0400` start relative to the `FF0100` actor service at `0x0A8EA`.
-Focused Debug/Release unit, world-activity, and pedestrian-scene CTests pass;
-the contacted slot-3 escort retains its active and escort bits in the scan
-through dialogue dismissal. The automatic `FFDF42` producer/physical trigger
-is still open; see the [conditional pedestrian runtime audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md#live-actor-projection-for-the-0x1e43c-scan-2026-10-28).
+The ROM `0x1E43C` path is represented by a semantic request model: a nonzero
+conditional choice requests the result flow, and the active-escort fact
+selects success. The field adapter derives that fact from current-scene live
+actors; the request model no longer carries the ROM's 13-slot array or raw
+`+0x10`/`+0xB0` bytes. Lua still carries source actor flag bytes in other
+behavior paths, so the broader actor-state migration remains open. The
+automatic `FFDF42` producer/physical trigger is still open; see the
+[conditional pedestrian runtime audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md#semantic-live-escort-fact-for-the-0x1e43c-result-2026-10-28).
+The semantic request-model refactor passed focused Debug and Release CTests
+for the world-activity model, Lua runtime, field activity, and pedestrian
+contact/return paths.
 
 The focused offscreen Debug/Release pedestrian/A800 rerun passed all 14 tests;
 the matching output directories contain 1,485 files per build with identical

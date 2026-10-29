@@ -5064,22 +5064,20 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
     }
 }
 
-std::array<WorldActivityRequestSlot, kWorldActivityRequestSlotCount>
-FieldSceneRuntime::current_world_activity_request_slots() const {
-    std::vector<WorldActivityRequestActorRecord> request_actors;
+bool FieldSceneRuntime::current_world_activity_has_active_escort() const {
     const auto scene_reference =
         state_.field_scene_buffers.scene_reference;
     for (const auto& actor : field_default_actors_) {
-        if (actor.scene_reference != scene_reference ||
-            !actor.source_record_slot.has_value()) {
-            continue;
+        if (actor.scene_reference == scene_reference &&
+            actor.source_record_slot.has_value() && actor.active &&
+            actor_flag_is_set(actor.source_record_flags,
+                              ActorServiceFlag::active) &&
+            actor_flag_is_set(actor.source_behavior_flags,
+                              ActorServiceFlag::escort)) {
+            return true;
         }
-        request_actors.push_back({
-            static_cast<std::uint8_t>(*actor.source_record_slot),
-            actor.source_record_flags,
-            actor.source_behavior_flags});
     }
-    return project_world_activity_request_slots(request_actors);
+    return false;
 }
 
 bool FieldSceneRuntime::retire_dialogue_escort_records() {
@@ -7450,25 +7448,24 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.handle_world_activity_request =
         [this](integration::FieldRuntimeCoordinatorState& runtime) {
-            // ROM 0x1E43C consumes FFE183 before it scans actor records. Keep
-            // Lua authoritative and publish only that consumed byte to the
-            // typed routine model for this source pass.
+            // Lua owns the selected contact option. This flow only needs the
+            // semantic fact that a selection exists and whether a live escort
+            // remains in the current field scene.
             const auto conditional_choice =
                 game_scripts_.consume_conditional_actor_selection_choice();
-            world_activity_request_state_.request_flag = 0U;
             if (!conditional_choice.has_value()) {
                 failure_ = game_scripts_.failure();
                 source_boundary(
                     "field.world_activity.conditional_actor_choice_unresolved");
                 return;
             }
-            world_activity_request_state_.request_flag = *conditional_choice;
-            const auto request_slots = current_world_activity_request_slots();
-            const bool activity_started =
+            world_activity_request_outcome_ =
                 ::shadowrun::ghidra_conversion::handle_world_activity_request(
-                    world_activity_request_state_, request_slots,
+                    WorldActivityRequestFacts{
+                        *conditional_choice != 0U,
+                        current_world_activity_has_active_escort()},
                     world_activity_request_start_state_);
-            if (activity_started) {
+            if (world_activity_request_outcome_.has_value()) {
                 if (world_activity_request_start_state_.callback !=
                     WorldActivityCallbackKind::extraction_result) {
                     source_boundary(
@@ -7794,7 +7791,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         if (continuation == MovementModeTransitionContinuation::
                                 world_activity_extraction_result) {
             const bool extraction_succeeded =
-                world_activity_request_state_.found_marker == 0U;
+                world_activity_request_outcome_.has_value() &&
+                world_activity_request_outcome_->active_escort_present;
             std::string_view task;
             if (extraction_succeeded) {
                 // ROM 0x1F16A sets FFFC1C bit 7, then 0x1DED8 clears FFFC3C
@@ -9432,7 +9430,7 @@ bool FieldSceneRuntime::bootstrap(
     field_thon_period_counter_ = 0U;
     field_world_activity_timeout_state_ = WorldActivityTimeoutState{};
     world_activity_routine_state_ = WorldActivityRoutineState{};
-    world_activity_request_state_ = WorldActivityRoutineRequestState{};
+    world_activity_request_outcome_.reset();
     world_activity_request_start_state_ = WorldActivityStartState{};
     world_activity_return_snapshot_.reset();
     field_weapon_projectiles_.clear();
