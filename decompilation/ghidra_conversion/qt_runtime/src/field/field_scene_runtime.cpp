@@ -368,7 +368,7 @@ scripting::ScriptCombatantFacts script_combatant_facts(
     facts.skills = scripting::ScriptCombatSkills{
         record.skills[0], record.skills[1], record.skills[2],
         record.skills[3], record.skills[4], record.skills[5]};
-    facts.auxiliary_roll_bonus = record.magic_force;
+    facts.force = record.magic_force;
     facts.armor_index = record.equipped_armor_index;
     facts.traits = scripting::script_combat_traits_from_source_values(
         static_cast<std::int8_t>(record.species_index),
@@ -398,7 +398,7 @@ scripting::ScriptCombatantFacts script_combatant_facts(
             scripting::script_weapon_action_policy(action_id,
                                                    source_modifier);
     }
-    facts.magic_cap = record.auxiliary[0];
+    facts.spell_trial_cap = record.auxiliary[0];
     return facts;
 }
 
@@ -2128,13 +2128,12 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
                         scripting::kScriptWeaponActionIds[index],
                         source_modifier);
             }
-            actor.combatant.magic_cap = parse_byte_field(58U);
+            actor.combatant.spell_trial_cap = parse_byte_field(58U);
             actor.combatant.skills.firearms = parse_byte_field(59U);
             actor.combatant.skills.pistols = parse_byte_field(60U);
             actor.combatant.skills.smgs = parse_byte_field(61U);
             actor.combatant.skills.shotguns = parse_byte_field(62U);
-            actor.combatant.auxiliary_roll_bonus =
-                parse_byte_field(63U);
+            actor.combatant.force = parse_byte_field(63U);
             actor.combatant.linked_action_profile_index = 0xFFFFU;
             actor.combatant.equipped_action_code =
                 actor.initial_action_code;
@@ -5623,8 +5622,7 @@ void FieldSceneRuntime::service_source_actor_weapon_action(
     spawn_state.parent.flags = actor.source_record_flags;
     spawn_state.parent.field_0x56 = actor.equipped_action_slot;
     spawn_state.parent.field_0x57 = actor.initial_action_code;
-    spawn_state.parent.field_0x9d =
-        actor.combatant.auxiliary_roll_bonus;
+    spawn_state.parent.field_0x9d = actor.combatant.force;
     spawn_state.equipment = EntityEquipmentState{
         static_cast<std::uint8_t>(actor.ammunition_remaining),
         static_cast<std::int16_t>(actor.combatant.record_type)};

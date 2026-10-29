@@ -102,7 +102,8 @@ local function actor_row(source_order, sequence_id, placement_rule)
         combat_pistols = 0,
         combat_smgs = 0,
         combat_shotguns = 0,
-        combat_auxiliary_roll_bonus = 0,
+        force = 0,
+        spell_trial_cap = 0,
     }
 end
 

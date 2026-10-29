@@ -634,10 +634,9 @@ local function resolve_spell_action(context, target, allow_untargeted)
     local skill = item18_skill_value(attacker)
     local initial_trials = posture_reduction(
         skill, attacker.posture_reduction_percent)
-    initial_trials = math.min(initial_trials, attacker.magic_cap or 0)
-    initial_trials = add_source_byte_to_word(
-        initial_trials, attacker.force or
-            attacker.auxiliary_roll_bonus or 0)
+    initial_trials = math.min(
+        initial_trials, attacker.spell_trial_cap or 0)
+    initial_trials = add_source_byte_to_word(initial_trials, attacker.force or 0)
     initial_trials = action_phase_modifier(
         initial_trials, attacker, context.action_spell_id)
     if initial_trials == nil then
@@ -714,8 +713,7 @@ local function resolve_spell_action(context, target, allow_untargeted)
        (spell.spell_id == "stink" or spell.spell_id == "confusion") then
         result.special_result_published = true
         result.special_result_successes = successes
-        result.special_result_bonus = attacker.force or
-            attacker.auxiliary_roll_bonus or 0
+        result.special_result_bonus = attacker.force or 0
     end
 
     local remaining_skill = skill - posture_reduction(
@@ -723,7 +721,7 @@ local function resolve_spell_action(context, target, allow_untargeted)
     local effect_trials = (remaining_skill +
         attacker.attributes.willpower) & 0xff
     local residual = spell_residual(
-        attacker.force or attacker.auxiliary_roll_bonus or 0,
+        attacker.force or 0,
         effect_trials, spell)
     result.residual_effect = residual
     if residual <= 0 then
@@ -867,7 +865,7 @@ function Combat.resolve_spell_impact(context, pending, target)
             attribute, ready_party_bonus(context))
     end
     result.target_trial_count = attribute & 0xff
-    local force = caster.force or caster.auxiliary_roll_bonus or 0
+    local force = caster.force or 0
     result.difficulty = math.max(force, 2)
     local target_successes = thresholded_rolls(
         result.target_trial_count, result.difficulty,
@@ -946,8 +944,7 @@ function Combat.resolve_default_bonus_action(context, target)
         return nil
     end
     attacker.action_result = initial_successes
-    attacker.auxiliary_roll_bonus =
-        E.CombatTuning.DEFAULT_ACTION_TRIAL_COUNT
+    attacker.force = E.CombatTuning.DEFAULT_ACTION_TRIAL_COUNT
 
     local target_trials = defender.attributes.body
     if type(target.id) ~= "string" or type(target_trials) ~= "number" then

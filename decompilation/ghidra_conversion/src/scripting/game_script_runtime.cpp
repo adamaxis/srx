@@ -8631,9 +8631,9 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
             read_combatant_byte("armor_index", combatant.armor_index) &&
             read_combat_action_profile_options(
                 state, combatant_index, combatant.action_profile_options) &&
-            read_combatant_byte("auxiliary_roll_bonus",
-                                combatant.auxiliary_roll_bonus) &&
-            read_combatant_byte("magic_cap", combatant.magic_cap);
+            read_combatant_byte("force", combatant.force) &&
+            read_combatant_byte("spell_trial_cap",
+                                combatant.spell_trial_cap);
         if (!combatant_scalars_valid) {
             return fail("world-content actor combat facts are invalid");
         }
@@ -8975,10 +8975,9 @@ GameScriptRuntime::resolve_field_encounter_impl(
                                      actor.combatant.skills.shotguns) &&
                     read_combat_fact("skills", "melee_combat",
                                      actor.combatant.skills.melee_combat) &&
-                    read_combat_byte("auxiliary_roll_bonus",
-                                     actor.combatant.auxiliary_roll_bonus) &&
-                    read_combat_byte("magic_cap",
-                                     actor.combatant.magic_cap) &&
+                    read_combat_byte("force", actor.combatant.force) &&
+                    read_combat_byte("spell_trial_cap",
+                                     actor.combatant.spell_trial_cap) &&
                     read_combat_byte("armor_index",
                                      actor.combatant.armor_index) &&
                     read_combat_action_profile_options(
@@ -10918,14 +10917,9 @@ GameScriptRuntime::actor_heartbeat(
         set_skill("shotguns", combatant.skills.shotguns);
         set_skill("melee_combat", combatant.skills.melee_combat);
         lua_setfield(state, table_index, "skills");
-        set_integer("auxiliary_roll_bonus",
-                    combatant.auxiliary_roll_bonus);
-        // The same +0x9D byte acts as the caster's force in 0x10660 and
-        // 0x55B78. Keep the equipment-facing legacy name available while
-        // exposing its spell meaning directly to Lua.
-        set_integer("force", combatant.auxiliary_roll_bonus);
+        set_integer("force", combatant.force);
         set_integer("action_result", combatant.action_result);
-        set_integer("magic_cap", combatant.magic_cap);
+        set_integer("spell_trial_cap", combatant.spell_trial_cap);
         set_integer("armor_index", combatant.armor_index);
         lua_createtable(state, 0, 6);
         const auto traits_index = lua_absindex(state, -1);

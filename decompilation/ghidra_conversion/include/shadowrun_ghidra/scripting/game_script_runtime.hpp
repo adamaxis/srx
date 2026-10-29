@@ -1089,8 +1089,8 @@ struct ScriptCombatantFacts {
     ScriptCombatTraits traits;
     ScriptCombatAttributes attributes;
     ScriptCombatSkills skills;
-    // ROM 0x1033E adds live +0x9D to the initial action trial count.
-    std::uint8_t auxiliary_roll_bonus = 0;
+    // Live +0x9D is the actor's force, used by spell and action rules.
+    std::uint8_t force = 0;
     std::uint8_t action_result = 0; // live +0x9F
     std::uint8_t armor_index = 0;
     std::uint8_t equipped_action_code = 0;
@@ -1105,7 +1105,7 @@ struct ScriptCombatantFacts {
     std::array<std::uint8_t, 8> item_phases{};
     std::array<ScriptWeaponActionPolicy, 12> weapon_action_policies =
         default_script_weapon_action_policies();
-    std::uint8_t magic_cap = 0; // live +0x7F; spell action trial cap
+    std::uint8_t spell_trial_cap = 0; // live +0x7F
 };
 
 struct ScriptActionProfileModifierPair {

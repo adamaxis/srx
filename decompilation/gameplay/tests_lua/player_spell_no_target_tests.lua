@@ -53,7 +53,7 @@ local function caster()
             sorcery = 12, firearms = 0, pistols = 0, smgs = 0,
             shotguns = 0, melee_combat = 0,
         },
-        magic_cap = 20,
+        spell_trial_cap = 20,
         action_profile_options = { primary = false, secondary = false },
         combat_traits = {
             ignores_cover_condition_penalty = true,

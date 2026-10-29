@@ -2796,7 +2796,7 @@ int main() {
                         .attributes.intelligence == 6U &&
                 lone_star_sequence->actors[1].combatant
                         .attributes.willpower == 6U &&
-                lone_star_sequence->actors[1].combatant.magic_cap == 6U &&
+                lone_star_sequence->actors[1].combatant.spell_trial_cap == 6U &&
                 lone_star_sequence->actors[1].combatant
                         .weapon_action_policies[8].difficulty_adjustment ==
                     3 &&
@@ -2809,11 +2809,11 @@ int main() {
                 lone_star_sequence->actors[1].combatant.skills.smgs == 0U &&
                 lone_star_sequence->actors[1].combatant.skills.shotguns == 0U &&
                 lone_star_sequence->actors[1].combatant
-                        .auxiliary_roll_bonus == 2U &&
+                        .force == 2U &&
                 elven_mage_sequence.has_value() &&
                 elven_mage_sequence->actors.size() == 1U &&
                 elven_mage_sequence->actors[0].combatant
-                        .auxiliary_roll_bonus == 2U,
+                        .force == 2U,
             "ROM field encounter catalog did not resolve creature and Lone Star sequences")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
@@ -6198,7 +6198,7 @@ int main() {
     spell_caster.skills.sorcery = 8U;
     spell_caster.traits = script_combat_traits_from_source_values(4, 0U);
     spell_caster.equipped_action_code = 1U;
-    spell_caster.magic_cap = 20U;
+    spell_caster.spell_trial_cap = 20U;
     spell_caster.item_codes[0] = 6U;
     ScriptCombatantFacts spell_target{};
     spell_target.record_type = 0U;
@@ -8771,7 +8771,7 @@ int main() {
             facts.traits = script_combat_traits_from_source_values(-1, 0U);
             facts.equipped_action_code = 1U;
             facts.item_codes[0] = 50U;
-            facts.magic_cap = 6U;
+            facts.spell_trial_cap = 6U;
             constexpr std::array<std::uint8_t, 4> thon_weapon_modifiers{{
                 7U, 15U, 10U, 14U}};
             for (std::size_t index = 0U;

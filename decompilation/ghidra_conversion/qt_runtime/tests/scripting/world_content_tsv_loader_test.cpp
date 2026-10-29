@@ -151,6 +151,17 @@ int main() {
         }
         actor_rows_are_semantic = actor_rows_are_semantic &&
             field_is_nil(state, row, "combat_modifier_flags_df");
+        for (const auto* field : {"force", "spell_trial_cap"}) {
+            lua_getfield(state, row, field);
+            actor_rows_are_semantic = actor_rows_are_semantic &&
+                lua_isinteger(state, -1) != 0 &&
+                lua_tointeger(state, -1) >= 0 &&
+                lua_tointeger(state, -1) <= 0xFF;
+            lua_pop(state, 1);
+        }
+        actor_rows_are_semantic = actor_rows_are_semantic &&
+            field_is_nil(state, row, "combat_auxiliary_roll_bonus") &&
+            field_is_nil(state, row, "combat_magic_cap");
         for (const auto* field : {"source_record_offset", "tagged_template",
                                   "template_offset", "list_offset",
                                   "position_offset", "source_action_slot",
@@ -291,6 +302,18 @@ int main() {
         }
         dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
             field_is_nil(state, row, "combat_modifier_flags_df");
+        for (const auto* field : {"force", "spell_trial_cap"}) {
+            lua_getfield(state, row, field);
+            dynamic_actor_rows_are_semantic =
+                dynamic_actor_rows_are_semantic &&
+                lua_isinteger(state, -1) != 0 &&
+                lua_tointeger(state, -1) >= 0 &&
+                lua_tointeger(state, -1) <= 0xFF;
+            lua_pop(state, 1);
+        }
+        dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
+            field_is_nil(state, row, "combat_auxiliary_roll_bonus") &&
+            field_is_nil(state, row, "combat_magic_cap");
         lua_getfield(state, row, "action_delay_modifier");
         const auto action_delay_modifier = lua_tointeger(state, -1);
         dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&

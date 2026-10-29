@@ -477,15 +477,28 @@ bool push_record(lua_State* state, const TsvDocument& document,
         }
         if (column.rfind("combat_action_phase_", 0U) == 0U) {
             if (column == "combat_action_phase_7f") {
-                std::uint8_t magic_cap = 0U;
+                std::uint8_t spell_trial_cap = 0U;
                 if (!read_source_byte(document, row, column, source_path,
-                                      row_number, magic_cap, failure)) {
+                                      row_number, spell_trial_cap, failure)) {
                     lua_pop(state, 1);
                     return false;
                 }
-                lua_pushinteger(state, magic_cap);
-                lua_setfield(state, table_index, "combat_magic_cap");
+                lua_pushinteger(state, spell_trial_cap);
+                lua_setfield(state, table_index, "spell_trial_cap");
             }
+            continue;
+        }
+        if (column == "combat_auxiliary_roll_bonus") {
+            // The imported +0x9D value is the actor's force in the spell
+            // rules (ROM 0x10660/0x55B78); publish the gameplay name.
+            std::uint8_t force = 0U;
+            if (!read_source_byte(document, row, column, source_path,
+                                  row_number, force, failure)) {
+                lua_pop(state, 1);
+                return false;
+            }
+            lua_pushinteger(state, force);
+            lua_setfield(state, table_index, "force");
             continue;
         }
         if (column == "combat_cyberware_flags") {

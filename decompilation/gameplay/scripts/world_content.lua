@@ -288,9 +288,8 @@ local function world_activity_actor_descriptors(scene_id, list_id)
                         primary = row.primary_action_profile_enabled,
                         secondary = row.secondary_action_profile_enabled,
                     },
-                    auxiliary_roll_bonus =
-                        row.combat_auxiliary_roll_bonus,
-                    magic_cap = row.combat_magic_cap,
+                    force = row.force,
+                    spell_trial_cap = row.spell_trial_cap,
                     weapon_action_policies = row.weapon_action_policies,
                     inventory = row.inventory,
                 },
