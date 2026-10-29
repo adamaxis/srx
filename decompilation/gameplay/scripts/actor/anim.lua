@@ -8,9 +8,9 @@ local Animator = R.Animator   -- from actor/animator.lua
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local PlayerHurt = E.PlayerHurt
-local HitSpark = E.HitSpark
 local SpriteType = R.SpriteType   -- from actor/tables.lua
-local weapon_projectile_descriptor_increment = R.weapon_projectile_descriptor_increment   -- from actor/tables.lua
+local ProjectileAnimationClips =
+    require("data.weapon_projectile_animation_clips")
 
 local function snapshot(state, action, audio_event, projectile_movement,
                         target_heading_audio_event)
@@ -46,20 +46,16 @@ local function snapshot(state, action, audio_event, projectile_movement,
              state.action_animation_complete == true) or
             ((state.animation_id == "hurt" or
               state.animation_id == "down") and
-             state.damage_reaction_animation_complete == true),
+             state.damage_reaction_animation_complete == true) or
+            (state.profile_id == "weapon_projectile" and
+             state.animation_complete == true) or
+            (state.profile_id == "field_hit_spark" and
+             state.hit_spark_animation_complete == true),
         animation_variant = state.animation_id == "down" and
             state.spell_death_variant or "",
         actor_facts = state.actor_facts,
-        animation_selector =
-            (state.profile_id == "weapon_projectile" or
-             state.profile_id == "field_hit_spark") and
-            state.animation_selector or nil,
         direction = state.direction,
         frame = state.animation_frame,
-        -- The source-shaped clock is isolated to weapon projectile effects;
-        -- character clips expose semantic frames and Lua-owned progress.
-        animation_accumulator = state.profile_id == "weapon_projectile" and
-            state.animation_accumulator or nil,
         transition_started = state.transition_started,
         transition_complete = state.transition_complete,
         world_activity_requested = world_activity_requested,
@@ -71,8 +67,6 @@ local function snapshot(state, action, audio_event, projectile_movement,
         target_heading_audio_event = target_heading_audio_event,
         strike_heading = strike_heading,
         weapon_item_id = state.weapon_item_id,
-        animation_increment = state.profile_id == "weapon_projectile" and
-            state.animation_increment or nil,
         movement_heading = state.movement_heading,
         movement_current_heading = state.movement_current_heading,
         movement_route_distance = state.movement_route_distance,
@@ -120,30 +114,27 @@ end
 
 local function advance_projectile_animation(state, context)
     local animation = context.projectile_animation
+    local clip = type(animation) == "table" and
+        ProjectileAnimationClips[animation.frame_count] or nil
     if context.phase ~= "render" or type(animation) ~= "table" or
-       type(animation.selector) ~= "number" or
        type(animation.frame_count) ~= "number" or
-       animation.frame_count < 1 or animation.frame_count > 16 or
-       type(animation.finite) ~= "boolean" or not animation.finite or
-       type(animation.period) ~= "number" then
+       animation.frame_count < 1 or
+       type(clip) ~= "table" or
+       #clip.frame_durations ~= animation.frame_count then
         return false
     end
 
-    -- The behavior pass may select a new list (for example, the stopped
-    -- projectile tail). Preserve its current frame and projectile clock phase
-    -- while updating the selected clip metadata for this render heartbeat.
-    state.animation_selector = animation.selector
-    state.animation_period = animation.period
+    -- The asset list remains host presentation data; Lua only owns its frame
+    -- timeline and whether the temporary effect has completed.
     state.animation_frame_count = animation.frame_count
-
-    -- 0x5FDC with the previous +0x18, then 0x600E's finite clamp. The sixteen
-    -- weapon-effect lists use 0x8003 or 0x800B markers and 0x270F cadence.
-    if Animator.step_projectile_finite(
-            state, animation.frame_count, state.animation_increment,
-            state.animation_period) then
-        state.animation_selector = state.animation_selector | 0x8000
+    if state.projectile_animation_started ~= true then
+        state.projectile_animation_started = true
+        state.animation_frame = 0
+        state.animation_elapsed_updates = 0
+        state.animation_complete = false
+    else
+        Animator.advance_finite_schedule(state, clip.frame_durations)
     end
-    state.animation_increment = weapon_projectile_descriptor_increment
     state.animation_id = "projectile"
     return true
 end
@@ -160,28 +151,20 @@ local function death_list(state)
     return list
 end
 
--- Player hit spark (kind 1): 0x15118 sets +0x1C to 0x1000 and 0xB2BC
--- installs selector 4, whose ROM list 0x7330 is finite (5 frames, +0x400).
--- The shared 0x5FDC/0x600E clock steps it; past the last entry 0x600E marks
--- +0x16 negative [C].
+-- Player hit spark (kind 1): ROM 0x7330 supplies the five-frame clip and its
+-- duration. Lua stores its frame and completion as gameplay state; the host
+-- maps that completion to the auxiliary record's terminal marker [C].
 local function hit_spark_list()
     return Animator.list(SpriteType.HIT_SPARK, Animator.Clip.HIT_SPARK)
 end
 
 local function advance_hit_spark_animation(state, context)
-    local animation = context.hit_spark_animation
     local list = hit_spark_list()
-    if context.phase ~= "render" or type(animation) ~= "table" or
-       list == nil or list.looping or
-       type(animation.selector) ~= "number" or
-       animation.frame_count ~= list.frame_count then
+    if context.phase ~= "render" or list == nil or list.looping then
         return false
     end
-    state.animation_selector = animation.selector
     state.animation_frame_count = list.frame_count
     if Animator.advance_finite_clip(state, list) then
-        state.animation_selector = state.animation_selector |
-            HitSpark.FINISHED_SELECTOR_BIT
         state.hit_spark_animation_complete = true
     end
     state.animation_id = "hit_spark"
@@ -419,11 +402,9 @@ local function advance_dynamic_actor_walk_animation(state)
         return false
     end
 
-    -- ROM 0x6092 looping-list rate from +0xCA (the movement vector's timing
-    -- word); the positive C062 list wraps at its source marker.
-    local progress_per_update = Animator.loop_progress_per_update(
-        state.entity_kind, state.animation_frame,
-        state.movement_step_distance)
+    local progress_per_update = Animator.progress_per_update(
+        state.animation_cadence_profile, state.animation_frame,
+        state.movement_distance_per_update)
     if progress_per_update == nil then
         return false
     end
@@ -438,9 +419,9 @@ local function advance_dynamic_actor_idle_animation(state)
     if list == nil or not list.looping then
         return true
     end
-    local progress_per_update = Animator.loop_progress_per_update(
-        state.entity_kind, state.animation_frame,
-        state.movement_step_distance)
+    local progress_per_update = Animator.progress_per_update(
+        state.animation_cadence_profile, state.animation_frame,
+        state.movement_distance_per_update)
     if progress_per_update == nil then
         return false
     end

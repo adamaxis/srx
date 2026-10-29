@@ -10310,38 +10310,14 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "animation_clock_reset_requested");
     if (context.projectile_animation.has_value()) {
         const auto& animation = *context.projectile_animation;
-        lua_createtable(state, 0, 7);
-        lua_pushinteger(state, animation.selector);
-        lua_setfield(state, -2, "selector");
-        lua_pushinteger(state, animation.frame_count);
+        lua_createtable(state, 0, 1);
+        lua_pushinteger(state,
+                        static_cast<lua_Integer>(animation.frame_count));
         lua_setfield(state, -2, "frame_count");
-        lua_pushinteger(state, animation.frame);
-        lua_setfield(state, -2, "frame");
-        lua_pushinteger(state, animation.accumulator);
-        lua_setfield(state, -2, "accumulator");
-        lua_pushinteger(state, animation.increment);
-        lua_setfield(state, -2, "increment");
-        lua_pushinteger(state, animation.period);
-        lua_setfield(state, -2, "period");
-        lua_pushboolean(state, animation.finite);
-        lua_setfield(state, -2, "finite");
     } else {
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "projectile_animation");
-    if (context.hit_spark_animation.has_value()) {
-        const auto& animation = *context.hit_spark_animation;
-        lua_createtable(state, 0, 3);
-        lua_pushinteger(state, animation.selector);
-        lua_setfield(state, -2, "selector");
-        lua_pushinteger(state, animation.frame_count);
-        lua_setfield(state, -2, "frame_count");
-        lua_pushinteger(state, animation.frame);
-        lua_setfield(state, -2, "frame");
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "hit_spark_animation");
     if (context.projectile_movement.has_value()) {
         const auto& movement = *context.projectile_movement;
         lua_createtable(state, 0, 16);
@@ -11429,48 +11405,6 @@ GameScriptRuntime::actor_heartbeat(
     }
     lua_pop(state, 1);
 
-    lua_getfield(state, decision_table, "animation_accumulator");
-    if (lua_isinteger(state, -1)) {
-        const auto animation_accumulator = lua_tointeger(state, -1);
-        if (animation_accumulator < -32768 || animation_accumulator > 32767) {
-            return fail(
-                "actor_ai.heartbeat returned an out-of-range animation accumulator");
-        }
-        decision.animation_accumulator =
-            static_cast<std::int16_t>(animation_accumulator);
-    } else if (!lua_isnil(state, -1) ||
-               context.projectile_animation.has_value()) {
-        return fail(
-            "actor_ai.heartbeat returned an invalid projectile animation clock");
-    }
-    lua_pop(state, 1);
-    lua_getfield(state, decision_table, "animation_selector");
-    if (lua_type(state, -1) != LUA_TNIL) {
-        const auto maximum_selector =
-            context.projectile_animation.has_value() ||
-                    context.hit_spark_animation.has_value()
-                ? 0xFFFF
-                : 0x07FF;
-        if (!lua_isinteger(state, -1) || lua_tointeger(state, -1) < 0 ||
-            lua_tointeger(state, -1) > maximum_selector) {
-            return fail(
-                "actor_ai.heartbeat returned an invalid animation selector");
-        }
-        decision.animation_selector = static_cast<std::uint16_t>(
-            lua_tointeger(state, -1));
-    }
-    lua_pop(state, 1);
-    lua_getfield(state, decision_table, "animation_increment");
-    if (lua_type(state, -1) != LUA_TNIL) {
-        if (!lua_isinteger(state, -1) || lua_tointeger(state, -1) < -32768 ||
-            lua_tointeger(state, -1) > 32767) {
-            return fail(
-                "actor_ai.heartbeat returned an invalid animation increment");
-        }
-        decision.animation_increment = static_cast<std::int16_t>(
-            lua_tointeger(state, -1));
-    }
-    lua_pop(state, 1);
     const auto read_boolean_field = [state, decision_table](
                                         const char* field,
                                         bool& value) {
@@ -12367,23 +12301,15 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat retired a hit spark outside its behavior pass");
     }
     if (hit_spark_actor) {
-        if (!context.hit_spark_animation.has_value()) {
-            return fail("actor_ai.heartbeat hit-spark actor omitted its finite animation facts");
-        }
-        const bool source_selector_finished =
-            (context.hit_spark_animation->selector & 0x8000U) != 0U;
         if (context.phase == ScriptActorHeartbeatPhase::render &&
-            (decision.animation_id != "hit_spark" ||
-             decision.animation_frame >= context.hit_spark_animation->frame_count ||
-             !decision.animation_selector.has_value())) {
+            decision.animation_id != "hit_spark") {
             return fail("actor_ai.heartbeat returned an invalid hit-spark frame");
         }
         if (context.phase == ScriptActorHeartbeatPhase::behavior &&
-            decision.hit_spark_retired != source_selector_finished) {
-            return fail("actor_ai.heartbeat retirement did not follow the finished hit-spark selector");
+            decision.hit_spark_retired != decision.animation_complete) {
+            return fail("actor_ai.heartbeat retirement did not follow hit-spark completion");
         }
-    } else if (decision.animation_id == "hit_spark" ||
-               context.hit_spark_animation.has_value()) {
+    } else if (decision.animation_id == "hit_spark") {
         return fail("actor_ai.heartbeat used hit-spark state outside its source profile");
     }
     if (((begins_entry != decision.audio_event.has_value()) &&

@@ -1,9 +1,7 @@
 -- actor/animator.lua: named clip metadata and host animation timing.
 local R = require("actor.registry")
-local I = require("lib.int68k")
-local E = require("enums")
-local u16 = I.u16
 local LISTS = require("data.actor_anim_lists")
+local CADENCE = require("data.actor_animation_cadence")
 
 local Animator = {}
 Animator.LISTS = LISTS
@@ -22,12 +20,10 @@ Animator.Clip = {
     DEATH = "death",
     HIT_SPARK = "hit_spark",
 }
--- Weapon projectiles still use the source clock until their signed-wrap
--- cadence is converted to authored frame timing.
-Animator.PROJECTILE_PERIOD = 0x1000
--- The runner's 0x28 movement step produces rate 0x280 in 0x6092, or 0.15625
--- normalized animation progress per render update [C: 0xC002, 0xBADE, 0x6092].
-Animator.PLAYER_WALK_PROGRESS_PER_UPDATE = 0x280 / 0x1000
+-- Named host cadence profile. ROM 0xC002/0xBADE/0x6092 provide the observed
+-- timing; gameplay consumes a normalized frame rate rather than source words.
+Animator.PLAYER_WALK_PROGRESS_PER_UPDATE =
+    CADENCE.runner_walk.frames_per_update
 
 function Animator.list(kind, clip, direction)
     local by_kind = LISTS[kind]
@@ -85,25 +81,36 @@ function Animator.advance_finite_clip(state, clip)
     return false
 end
 
--- Convert the recovered rate rule to a fraction of one animation frame per
--- render update. Lua stores normalized progress instead of the ROM's signed
--- 16-bit accumulator. ROM 0x5FDC/0x6092 [C].
-function Animator.loop_progress_per_update(kind, frame, movement_step)
-    local rate
-    if kind == E.SpriteType.GARGOYLE then
-        rate = frame == 2 and 0x0090 or 0x0180
-    else
-        if type(movement_step) ~= "number" or movement_step < 0 or
-           movement_step > 0xffff then
-            return nil
+-- Profiles express cadence in host terms: frames per update, or frames per
+-- map unit for actors whose walk rate follows their movement distance.
+function Animator.progress_per_update(profile_id, frame,
+                                      distance_per_update)
+    local profile = CADENCE[profile_id]
+    if type(profile) ~= "table" then
+        return nil
+    end
+    if type(profile.frames_per_update) == "number" then
+        return profile.frames_per_update
+    end
+    if type(profile.default_frames_per_update) == "number" then
+        local overrides = profile.frame_overrides
+        local override = type(overrides) == "table" and
+            overrides[frame] or nil
+        return type(override) == "number"
+            and override or profile.default_frames_per_update
+    end
+    if type(distance_per_update) ~= "number" or
+       distance_per_update < 0 then
+        return nil
+    end
+    for _, band in ipairs(profile.distance_bands or {}) do
+        if type(band.frames_per_map_unit) == "number" and
+           (band.max_distance_per_update == nil or
+            distance_per_update <= band.max_distance_per_update) then
+            return distance_per_update * band.frames_per_map_unit
         end
-        rate = (movement_step < 0x16 and movement_step * 0x1c or
-                movement_step * 0x10) & 0xffff
     end
-    if rate <= 0 then
-        return 0
-    end
-    return rate / 0x1000
+    return nil
 end
 
 -- Advance at most one frame on each render update, preserving fractional
@@ -129,32 +136,48 @@ function Animator.advance_loop_clip(state, count, progress_per_update)
     return advanced
 end
 
--- 0x5FDC then 0x600E's finite branch: past the count, hold the last frame and
--- report the list finished (the caller owns pose bit 15 / its done flag).
-local function tick_projectile_clock(state, rate, period)
-    local word = u16(state.animation_accumulator + rate)
-    local signed_word = word >= 0x8000 and word - 0x10000 or word
-    local threshold = period or Animator.PROJECTILE_PERIOD
-    if threshold <= signed_word then
-        state.animation_accumulator = u16(word - threshold)
-        if state.animation_accumulator >= 0x8000 then
-            state.animation_accumulator = state.animation_accumulator - 0x10000
-        end
-        return true
+-- Advance one finite clip whose frames have explicit host update durations.
+-- The final frame remains visible while animation_complete tells gameplay it
+-- may retire the temporary actor.
+function Animator.advance_finite_schedule(state, frame_durations)
+    if type(state) ~= "table" or type(frame_durations) ~= "table" or
+       type(state.animation_frame) ~= "number" then
+        return false
     end
-    state.animation_accumulator = signed_word
-    return false
-end
-
-function Animator.step_projectile_finite(state, count, rate, period)
-    if tick_projectile_clock(state, rate, period) then
-        state.animation_frame = u16(state.animation_frame + 1)
+    local count = #frame_durations
+    if count == 0 then
+        return false
     end
     if state.animation_frame >= count then
         state.animation_frame = count - 1
+        state.animation_elapsed_updates = 0
+        state.animation_complete = true
         return true
     end
-    return false
+    if state.animation_complete == true then
+        state.animation_frame = count - 1
+        return true
+    end
+    local duration = frame_durations[state.animation_frame + 1]
+    if type(duration) ~= "number" or duration < 1 then
+        return false
+    end
+    local elapsed = state.animation_elapsed_updates or 0
+    if type(elapsed) ~= "number" or elapsed < 0 then
+        return false
+    end
+    elapsed = elapsed + 1
+    if elapsed >= duration then
+        elapsed = elapsed - duration
+        if state.animation_frame + 1 >= count then
+            state.animation_frame = count - 1
+            state.animation_complete = true
+        else
+            state.animation_frame = state.animation_frame + 1
+        end
+    end
+    state.animation_elapsed_updates = elapsed
+    return state.animation_complete == true
 end
 
 R.Animator = Animator

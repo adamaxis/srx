@@ -18,12 +18,20 @@ purpose, so the reference is wrong for them:
 
 ## advance_player_animation (actor/animator.lua)
 Runner idle/walk lists from data/actor_anim_lists.lua (ROM 0x62AC) now keep their phase as a
-normalized fraction. The 0x6092 rate uses +0xCA = 0x28 (C002+4 via 0xBABC). Idle's one-frame
-list still advances its phase while holding its visible frame. `animator_tests.lua` exhausts all
-source phase values against the visible frame cadence and verifies that runner state exposes no
-source accumulator.
+normalized fraction. A named host cadence profile expresses 0.15625 frames per update, based on
+the observed 0x6092 rate. Idle's one-frame list still advances its phase while holding its visible
+frame. `animator_tests.lua` exhausts all source phase values against the visible frame cadence and
+verifies that runner state exposes no source accumulator.
 
 ## advance_dynamic_actor_walk_animation (actor/anim.lua)
-Dynamic actor locomotion also stores normalized phase. The source rate is still selected from the
-movement step, including the below-0x16 multiplier and Gargoyle's frame-2 rate at 0x6092. Focused
-`animator_tests.lua` checks both sides of the movement-step threshold and the Gargoyle special case.
+Dynamic actor locomotion also stores normalized phase. Named host cadence profiles express runner
+frames per update, ordinary actor frames per map unit across speed bands, and the Gargoyle's slower
+frame-2 timing. `animator_tests.lua` checks the full movement-distance range against the observed
+cadence while gameplay avoids the source fixed-point arithmetic.
+
+## advance_projectile_animation (actor/anim.lua)
+Weapon-effect state now stores elapsed updates per frame and a semantic completion flag. The
+three-frame and eleven-frame schedules are explicit host data derived from the visible cadence of
+the ROM's 0x5FDC/0x600E path; Lua no longer mirrors its signed 16-bit clock or terminal selector bit.
+Asset selectors remain in the host presentation adapter, while `animator_tests.lua` and the embedded
+runtime QA assert the complete frame schedules and semantic completion behavior.

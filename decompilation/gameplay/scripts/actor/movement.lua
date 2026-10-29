@@ -244,6 +244,11 @@ local function projectile_heartbeat(state, context)
     if movement == nil then
         return nil
     end
+    if movement.animation_action == "stop" then
+        -- Stopping clears the finite visual's completion signal while
+        -- preserving the visible frame phase; the host chooses the asset.
+        state.animation_complete = false
+    end
     if movement.outcome == projectile.outcome.burst_followup_restarted then
         local result = game.modules.combat.resolve_weapon_attack_seed(context)
         if type(result) ~= "number" then
@@ -254,9 +259,9 @@ local function projectile_heartbeat(state, context)
         movement.action_result = result
         -- ROM 0x14F86 clears +0x18 and +0x1E before the next render pass.
         state.animation_frame = 0
-        -- Keep the remaining projectile-specific source clock isolated here;
-        -- ordinary actor clips use normalized animation_progress.
-        state.animation_accumulator = 0
+        state.animation_elapsed_updates = 0
+        state.animation_complete = false
+        state.projectile_animation_started = true
     end
     if movement.outcome == projectile.outcome.hit_resolution_pending then
         local hit_target
@@ -524,7 +529,7 @@ local function creature_movement_offsets(context, state)
 
     -- This is the actor's map-coordinate displacement per movement update.
     -- ROM 0xBADE selects it from the movement vector table [C].
-    state.movement_step_distance = step
+    state.movement_distance_per_update = step
     return {
         {0, -step}, {step, -step}, {step, 0}, {step, step},
         {0, step}, {-step, step}, {-step, 0}, {-step, -step},

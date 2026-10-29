@@ -11,6 +11,8 @@ local ActionMotionDistanceBounds = R.ActionMotionDistanceBounds   -- from actor/
 local EntityMotionDistanceBounds = R.EntityMotionDistanceBounds   -- from actor/tables.lua
 local profiles = R.profiles   -- from actor/tables.lua
 local ActorProfileCatalog = require("data.actor_profiles")
+local ProjectileAnimationClips =
+    require("data.weapon_projectile_animation_clips")
 local source_close_range_threshold = R.source_close_range_threshold   -- from actor/tables.lua
 
 local function copy_actor_facts(facts)
@@ -381,11 +383,13 @@ local function initial_state(context, profile)
         source_action_ammo = context.source_action_ammo or 0,
         source_action_counter = context.source_action_counter or 0,
         package_id = profile.package_id,
+        animation_cadence_profile =
+            profile.animation_cadence_profile or "moving_actor_walk",
         weapon_item_id = profile.weapon_item_id,
         direction = direction_from_heading(context.initial_heading),
         entry_delay = context.entry_delay,
         behavior_timer = 0,
-        movement_step_distance = 0,
+        movement_distance_per_update = 0,
         animation_id = "idle",
         animation_frame = 0,
         animation_elapsed_updates = 0,
@@ -448,15 +452,16 @@ local function initial_state(context, profile)
     }
     if profile.projectile_animation then
         local animation = context.projectile_animation
-        if type(animation) ~= "table" then
+        if type(animation) ~= "table" or
+           type(animation.frame_count) ~= "number" or
+           type(ProjectileAnimationClips[animation.frame_count]) ~= "table" then
             return nil
         end
         state.animation_id = "projectile"
-        state.animation_selector = animation.selector
-        state.animation_frame = animation.frame
-        state.animation_accumulator = animation.accumulator
-        state.animation_increment = animation.increment
-        state.animation_period = animation.period
+        state.animation_frame = 0
+        state.animation_elapsed_updates = 0
+        state.projectile_animation_started = false
+        state.animation_complete = false
         local projectile = context.projectile_movement
         state.action_result = type(projectile) == "table"
             and projectile.action_result or 0
@@ -465,19 +470,11 @@ local function initial_state(context, profile)
         state.combat_meter_update = nil
     end
     if profile.hit_spark_animation then
-        local animation = context.hit_spark_animation
-        if type(animation) ~= "table" or
-           type(animation.selector) ~= "number" or
-           type(animation.frame_count) ~= "number" or
-           type(animation.frame) ~= "number" then
-            return nil
-        end
         state.animation_id = "hit_spark"
-        state.animation_selector = animation.selector
-        state.animation_frame = animation.frame
+        state.animation_frame = 0
         state.animation_elapsed_updates = 0
-        state.animation_frame_count = animation.frame_count
         state.hit_spark_retired = false
+        state.hit_spark_animation_complete = false
     end
     return state
 end

@@ -1,11 +1,13 @@
--- actor/animator.lua semantic clips, normalized locomotion phase, and the
--- isolated weapon-projectile clock.
+-- actor/animator.lua semantic clips, host cadence profiles, and finite effect
+-- schedules.
 local ROOT = os.getenv("SHADOWRUN_ROOT") or "."
 local H = dofile(ROOT .. "/decompilation/gameplay/tests_lua/harness.lua")
 _G.game = H.make_game({}); require("actor.init")
 local R = require("actor.registry")
 local A = R.Animator
 local E = require("enums")
+local ProjectileAnimationClips =
+    require("data.weapon_projectile_animation_clips")
 local pass, total = 0, 0
 local function check(c, m) total = total + 1; if c then pass = pass + 1 else print("FAIL: " .. m) end end
 
@@ -42,22 +44,26 @@ end
 check(A.advance_finite_clip(timed_hurt, imported_hurt) and
       timed_hurt.animation_frame == imported_hurt.frame_count - 1,
       "hurt clip completes on its duration and holds its last frame")
--- The ROM's 0x5FDC/0x6092 rates become a fraction of one animation frame per
--- render update. Character state stores that normalized fraction rather than
--- the source accumulator. Rates below are direct source-derived expectations.
+-- Movement animation uses host cadence profiles in frames per update or map
+-- unit. The oracle below checks those profiles against the ROM-derived rate
+-- across the supported movement distance range [C: 0x5FDC/0x6092].
 local player_walk_progress = A.PLAYER_WALK_PROGRESS_PER_UPDATE
-check(player_walk_progress == 0x280 / 0x1000,
-      "runner 0x28 movement step becomes normalized progress")
-check(A.loop_progress_per_update(E.SpriteType.CORP_GUARD, 0, 9) ==
-          (9 * 0x1c) / 0x1000 and
-      A.loop_progress_per_update(E.SpriteType.CORP_GUARD, 0, 0x16) ==
-          0x160 / 0x1000,
-      "creature movement step selects the source rate on either side of 0x16")
-check(A.loop_progress_per_update(E.SpriteType.GARGOYLE, 2, 9) ==
-          0x90 / 0x1000 and
-      A.loop_progress_per_update(E.SpriteType.GARGOYLE, 1, 9) ==
-          0x180 / 0x1000,
-      "gargoyle frame 2 uses its slower source rate")
+check(player_walk_progress == 0.15625,
+      "runner profile uses its host frame rate")
+local distance_profiles_match_source = true
+for distance = 0, 40 do
+    local source_rate = distance < 22 and distance * 28 or distance * 16
+    if A.progress_per_update("moving_actor_walk", 0, distance) ~=
+       source_rate / 4096 then
+        distance_profiles_match_source = false
+        break
+    end
+end
+check(distance_profiles_match_source,
+      "moving-actor cadence profiles preserve each observed walk distance")
+check(A.progress_per_update("gargoyle_walk", 2, 9) == 0.03515625 and
+      A.progress_per_update("gargoyle_walk", 1, 9) == 0.09375,
+      "gargoyle profile applies its frame-specific cadence")
 
 local runner_walk = { animation_id = "walk", animation_frame = 0,
     animation_progress = 0, direction = 0 }
@@ -77,28 +83,31 @@ check(runner_walk.animation_frame == 1 and
 local creature_walk = {
     entity_kind = E.SpriteType.CORP_GUARD, direction = 0,
     animation_frame = 0, animation_progress = 0,
-    movement_step_distance = 9,
+    animation_cadence_profile = "moving_actor_walk",
+    movement_distance_per_update = 9,
 }
 for _ = 1, 17 do
     check(R.advance_dynamic_actor_walk_animation(creature_walk),
           "dynamic actor walk list advances")
 end
 check(creature_walk.animation_frame == 1 and
-      creature_walk.animation_progress == (17 * 9 * 0x1c / 0x1000) - 1,
-      "dynamic actor walk retains the source rate as normalized progress")
+      creature_walk.animation_progress ==
+          (17 * 9 * 0.0068359375) - 1,
+      "dynamic actor walk retains host progress across updates")
 
 local gargoyle_idle = {
     entity_kind = E.SpriteType.GARGOYLE, direction = 0,
     animation_frame = 0, animation_progress = 0,
-    movement_step_distance = 9,
+    animation_cadence_profile = "gargoyle_walk",
+    movement_distance_per_update = 9,
 }
 for _ = 1, 11 do
     check(R.advance_dynamic_actor_idle_animation(gargoyle_idle),
           "dynamic actor idle list advances")
 end
 check(gargoyle_idle.animation_frame == 0 and
-      gargoyle_idle.animation_progress == 11 * 0x180 / 0x1000 - 1,
-      "gargoyle one-frame idle list wraps with normalized progress")
+      gargoyle_idle.animation_progress == 11 * 0.09375 - 1,
+      "gargoyle one-frame idle list wraps with host cadence")
 
 local player_clip = {
     animation_id = "idle",
@@ -152,12 +161,60 @@ for _ = 1, 64 do
 end
 check(player_clip.animation_frame == 7,
       "runner down advances through the semantic death clip and holds")
--- Weapon projectile effects retain a private source clock until their signed
--- overflow cadence is converted to authored clip durations.
-local st = { animation_accumulator = 0xE00, animation_frame = 1 }
-check(A.step_projectile_finite(st, 2, 0x200) and st.animation_frame == 1 and st.animation_accumulator == 0, "projectile finite list clamps and reports done")
-st = { animation_accumulator = 0x7F00, animation_frame = 0 }
-A.step_projectile_finite(st, 4, 0x200, 0x1000); check(st.animation_frame == 0 and st.animation_accumulator < 0, "projectile signed overflow does not advance")
+-- The two weapon-effect list lengths become explicit host timing data. The
+-- cadence table records the visible behavior of ROM 0x5FDC/0x600E without
+-- preserving the signed accumulator or its completion bit in Lua state.
+local short_projectile = {
+    animation_frame = 0, animation_elapsed_updates = 0,
+    animation_complete = false,
+}
+local short_projectile_frames = {}
+for update = 1, 3 do
+    local complete = A.advance_finite_schedule(short_projectile,
+        ProjectileAnimationClips[3].frame_durations)
+    short_projectile_frames[update] = short_projectile.animation_frame
+    if update < 3 then
+        check(not complete, "three-frame projectile remains active before its last update")
+    else
+        check(complete, "three-frame projectile completes on update three")
+    end
+end
+check(short_projectile_frames[1] == 1 and
+      short_projectile_frames[2] == 2 and
+      short_projectile_frames[3] == 2 and
+      short_projectile.animation_accumulator == nil and
+      short_projectile.animation_increment == nil,
+      "three-frame projectile holds its terminal frame without source counters")
+
+local special_projectile = {
+    animation_frame = 0, animation_elapsed_updates = 0,
+    animation_complete = false,
+}
+local special_projectile_frames = {}
+for update = 1, 19 do
+    local complete = A.advance_finite_schedule(special_projectile,
+        ProjectileAnimationClips[11].frame_durations)
+    special_projectile_frames[update] = special_projectile.animation_frame
+    if update < 19 then
+        check(not complete, "eleven-frame projectile remains active before update nineteen")
+    else
+        check(complete, "eleven-frame projectile completes on update nineteen")
+    end
+end
+local expected_special_projectile_frames = {
+    1, 2, 3, 4, 4, 4, 4, 4, 5, 6,
+    7, 8, 9, 9, 9, 9, 9, 10, 10,
+}
+local special_projectile_schedule_matches = true
+for update, frame in ipairs(expected_special_projectile_frames) do
+    if special_projectile_frames[update] ~= frame then
+        special_projectile_schedule_matches = false
+    end
+end
+check(special_projectile_schedule_matches and
+      special_projectile.animation_accumulator == nil and
+      special_projectile.animation_increment == nil,
+      "eleven-frame projectile follows the source-visible hold schedule in semantic state")
 
 -- Exhaust the live source phase domain. Both runner idle and walk use looping
 -- lists, so compare their visible frame and fractional phase with the source

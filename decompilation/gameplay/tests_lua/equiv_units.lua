@@ -152,7 +152,8 @@ local SHAPE = {
     local list = canonical_animation_state(st, REG.Animator.Clip.WALK)
     ctx.walk_animation_frame_count = list.frame_count
     st.walk_animation_frame_count = list.frame_count
-    st.movement_step_distance = 9
+    st.animation_cadence_profile = "moving_actor_walk"
+    st.movement_distance_per_update = 9
     st.animation_frame = 0
     st.animation_progress = 0
   end,
@@ -222,6 +223,7 @@ local INTENDED = {
   request_target_motion_effect = "Hell Hound 0xB11C resolves 0x55B16 and emits the 0xB146 child request on changed defender meters",
   advance_player_animation = "runner idle and walk now store normalized animation progress; animator_tests checks the source frame cadence",
   advance_dynamic_actor_walk_animation = "dynamic actor locomotion now stores normalized animation progress; animator_tests checks the source frame cadence",
+  advance_projectile_animation = "weapon-effect lists now use explicit per-frame durations and a semantic completion flag; animator_tests and runtime QA check both list lengths",
   begin_dynamic_target_action = "0xC0A2 pose, rate, selector, and cue now come from generated ROM animation data",
   begin_dynamic_item_action = "0xC042 pose and rate now come from generated ROM animation data",
   begin_received_hit_reaction = "0xC072/C0B2 pose data and B03E/B05E cues now come from generated ROM animation data",

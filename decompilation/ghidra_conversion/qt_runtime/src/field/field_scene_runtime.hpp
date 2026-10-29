@@ -1985,12 +1985,14 @@ private:
         EntityCollisionRecord primary_collision_record{};
         EntityFixedPointPosition primary_fixed_position{};
         SceneRunnerPosition primary_spawn_position{};
-        EntityAnimationState primary_animation{};
+        FieldFramePresentationState primary_animation{};
+        bool primary_animation_complete = false;
         bool primary_animation_script_initialized = false;
         bool primary_active = false;
         std::optional<std::uint16_t> primary_slot;
         SpawnEntityRecordState source_record{};
-        EntityAnimationState animation{};
+        FieldFramePresentationState animation{};
+        bool animation_complete = false;
         bool secondary_animation_script_initialized = false;
         bool secondary_active = false;
         std::optional<std::uint16_t> secondary_slot;

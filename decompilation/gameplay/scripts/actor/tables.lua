@@ -8,9 +8,6 @@ local u8, u16, s16 = I.u8, I.u16, I.s16
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 
--- The directional weapon-effect records at ROM 0x630C use this descriptor
--- cadence in their finite 0x8003/0x800B lists.
-local weapon_projectile_descriptor_increment = 0x270f
 local projectile = {
     role = { primary = "primary", secondary = "secondary" },
     outcome = {
@@ -97,6 +94,7 @@ local profiles = {
         action_kind = ActionKind.none,
         action_code = 0,
         controls_movement = true,
+        animation_cadence_profile = "gargoyle_walk",
         dynamic_encounter_only = true,
     },
     ["wendigo_k0e_none00"] = {
@@ -142,7 +140,6 @@ end
 
 
 -- register this module's definitions
-R.weapon_projectile_descriptor_increment = weapon_projectile_descriptor_increment
 R.projectile = projectile
 R.fixed_long_mask = fixed_long_mask
 R.fixed_integer_shift = fixed_integer_shift

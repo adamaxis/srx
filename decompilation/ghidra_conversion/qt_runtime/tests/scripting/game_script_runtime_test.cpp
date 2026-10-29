@@ -19,11 +19,26 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <tuple>
 #include <utility>
 #include <vector>
 
 namespace {
+
+template <typename T, typename = void>
+struct HasLegacyAnimationSelector : std::false_type {};
+
+template <typename T>
+struct HasLegacyAnimationSelector<
+    T, std::void_t<decltype(std::declval<T>().animation_selector)>>
+    : std::true_type {};
+
+static_assert(
+    !HasLegacyAnimationSelector<
+        shadowrun::ghidra_conversion::scripting::
+            ScriptActorBehaviorDecision>::value,
+    "Lua actor decisions must use semantic animation state, not ROM selectors");
 
 bool expect(const bool condition, const char* message) {
     if (!condition) {
@@ -5212,8 +5227,7 @@ int main() {
         [](const auto& decision) {
             return decision.transition_complete &&
                    decision.ai_target_id.has_value() &&
-                   !decision.ai_target_engaged &&
-                   !decision.animation_accumulator.has_value();
+                   !decision.ai_target_engaged;
         });
     const bool hound_far_keeps_pursuit = std::any_of(
         hell_hound_far_motion.begin(), hell_hound_far_motion.end(),
@@ -5616,7 +5630,6 @@ int main() {
                *cast->source_action_dispatch == "spell" &&
                cast->animation_id == "spell" &&
                cast->animation_frame == 0U &&
-               !cast->animation_selector.has_value() &&
                cast->direction == 1U &&
                cast->action_delay == 0x6A &&
                !cast->ai_target_engaged &&
@@ -5629,7 +5642,6 @@ int main() {
                !cast->movement_heading.has_value() &&
                held->animation_id == "spell" &&
                held->animation_frame == 0U &&
-               !held->animation_selector.has_value() &&
                held->direction == 1U &&
                !held->source_action_dispatch.has_value() &&
                !held->spell_effect_visible &&
@@ -7260,7 +7272,7 @@ int main() {
             restored_runner_clock);
         restored_runner_clock_updates_valid =
             restored_runner_clock_updates_valid && update_result.has_value() &&
-            !update_result->animation_accumulator.has_value();
+            update_result->animation_id == "walk";
         restored_runner_clock.spawn = false;
     }
     restored_runner_clock.animation_clock_reset_requested = true;
@@ -7269,26 +7281,20 @@ int main() {
     const bool restored_runner_clock_resets =
         restored_runner_clock_updates_valid &&
         restored_runner_clock_reset.has_value() &&
-        restored_runner_clock_reset->animation_frame == 0U &&
-        !restored_runner_clock_reset->animation_accumulator.has_value();
+        restored_runner_clock_reset->animation_frame == 0U;
     if (!expect(
             player_walk_start.has_value() &&
                 player_walk_start->animation_id == "walk" &&
-                !player_walk_start->animation_selector.has_value() &&
                 player_walk_start->direction == 2U &&
                 player_walk_start->animation_frame == 0U &&
-                !player_walk_start->animation_accumulator.has_value() &&
                 player_walk_seventh.has_value() &&
                 player_walk_seventh->animation_frame == 1U &&
                 player_reset_idle.has_value() &&
                 player_reset_idle->animation_id == "idle" &&
-                !player_reset_idle->animation_selector.has_value() &&
                 player_reset_idle->direction == 4U &&
-                !player_reset_idle->animation_accumulator.has_value() &&
                 player_attack_pose.has_value() &&
                 player_attack_pose->animation_id == "attack" &&
                 player_attack_pose->animation_frame == 0U &&
-                !player_attack_pose->animation_accumulator.has_value() &&
                 player_walk_after_attack.has_value() &&
                 player_walk_after_attack->animation_frame == 1U &&
                 player_behavior_after_render.has_value() &&
@@ -7470,7 +7476,6 @@ int main() {
             down_first.has_value() &&
                 down_first->animation_id == "runner_down" &&
                 down_first->animation_frame == 0U &&
-                !down_first->animation_selector.has_value() &&
                 down_first->direction == 2U &&
                 down_last.has_value() && down_last->animation_frame == 7U,
             "Lua runner_down did not follow the 0xB330 C0B2 list")) {
@@ -7497,7 +7502,6 @@ int main() {
             hurt_first.has_value() &&
                 hurt_first->animation_id == "runner_hurt" &&
                 hurt_first->animation_frame == 0U &&
-                !hurt_first->animation_selector.has_value() &&
                 hurt_first->direction == 2U &&
                 hurt_second.has_value() &&
                 hurt_second->animation_frame == 1U &&
@@ -7516,13 +7520,11 @@ int main() {
                 strike_frame_zero.has_value() &&
                 strike_frame_zero->animation_id == "strike" &&
                 strike_frame_zero->animation_frame == 0U &&
-                !strike_frame_zero->animation_selector.has_value() &&
                 strike_frame_zero->direction == 2U &&
                 !strike_frame_zero->strike_heading.has_value() &&
                 strike_frame_one.has_value() &&
                 strike_frame_one->animation_frame == 1U &&
                 cast_pose.has_value() && cast_pose->animation_id == "cast" &&
-                !cast_pose->animation_selector.has_value() &&
                 cast_pose->direction == 2U,
             "Lua player strike did not follow 0x15C58 flags or the C0A2 pose")) {
         std::cerr << scripts.failure() << '\n';
@@ -7603,8 +7605,6 @@ int main() {
         ScriptActorActionKind::none, 0U, 0U, true);
     spark_context.initial_heading = 0x2000U;
     spark_context.phase = ScriptActorHeartbeatPhase::render;
-    spark_context.hit_spark_animation = ScriptActorHitSparkAnimation{
-        4U, 5U, 0U};
     std::array<std::size_t, 5> hit_spark_frame_passes{};
     std::optional<ScriptActorBehaviorDecision> hit_spark_last_frame;
     for (std::size_t pass = 0U; pass < 20U; ++pass) {
@@ -7612,18 +7612,12 @@ int main() {
         if (!hit_spark_last_frame.has_value() ||
             hit_spark_last_frame->animation_id != "hit_spark" ||
             hit_spark_last_frame->animation_frame >=
-                hit_spark_frame_passes.size() ||
-            !hit_spark_last_frame->animation_selector.has_value() ||
-            hit_spark_last_frame->animation_accumulator.has_value() ||
-            hit_spark_last_frame->animation_increment.has_value()) {
+                hit_spark_frame_passes.size()) {
             std::cerr << scripts.failure() << '\n';
             return 113;
         }
         ++hit_spark_frame_passes[hit_spark_last_frame->animation_frame];
         spark_context.spawn = false;
-        auto& animation = *spark_context.hit_spark_animation;
-        animation.selector = *hit_spark_last_frame->animation_selector;
-        animation.frame = hit_spark_last_frame->animation_frame;
     }
     const std::array<std::size_t, 5> expected_hit_spark_frame_passes{
         3U, 4U, 4U, 4U, 5U};
@@ -7631,22 +7625,23 @@ int main() {
             hit_spark_frame_passes == expected_hit_spark_frame_passes &&
                 hit_spark_last_frame.has_value() &&
                 hit_spark_last_frame->animation_frame == 4U &&
-                hit_spark_last_frame->animation_selector ==
-                    std::optional<std::uint16_t>{0x8004U},
+                hit_spark_last_frame->animation_complete,
             "the hit spark did not follow its five ROM frames and 20-pass life")) {
         std::cerr << scripts.failure() << '\n';
         return 114;
     }
     spark_context.phase = ScriptActorHeartbeatPhase::behavior;
     const auto hit_spark_retire_decision = scripts.actor_heartbeat(spark_context);
-    if (hit_spark_retire_decision.has_value() &&
-        hit_spark_retire_decision->animation_selector.has_value()) {
-        hit_spark->animation_selector = static_cast<std::int16_t>(
-            *hit_spark_retire_decision->animation_selector);
+    // ROM 0x600E's terminal selector bit is now an adapter detail: Lua reports
+    // completion, and the host maps it onto the auxiliary record here.
+    if (hit_spark.has_value() && hit_spark_retire_decision.has_value() &&
+        hit_spark_retire_decision->animation_complete) {
+        hit_spark->animation_selector = static_cast<std::int16_t>(0x8004U);
     }
     const bool hit_spark_retired = hit_spark.has_value() &&
         hit_spark_retire_decision.has_value() &&
         hit_spark_retire_decision->hit_spark_retired &&
+        hit_spark_retire_decision->animation_complete &&
         retire_auxiliary_child(
             hit_spark_slots[static_cast<std::size_t>(hit_spark->slot - 9U)],
             *hit_spark);
@@ -7661,32 +7656,14 @@ int main() {
         ScriptActorActionKind::none, 0U, 0U, true);
     projectile_context.phase = ScriptActorHeartbeatPhase::render;
     projectile_context.projectile_animation =
-        ScriptActorProjectileAnimation{0U, 3U, 0U, 0, 0, 0x1000, true};
+        ScriptActorProjectileAnimation{3U};
     const auto projectile_frame_zero =
         scripts.actor_heartbeat(projectile_context);
     projectile_context.spawn = false;
-    const auto set_projectile_input_from =
-        [&projectile_context](const ScriptActorBehaviorDecision& decision) {
-            auto& animation = *projectile_context.projectile_animation;
-            animation.selector = decision.animation_selector.value_or(0U);
-            animation.frame = decision.animation_frame;
-            animation.accumulator =
-                decision.animation_accumulator.value_or(0);
-            animation.increment = decision.animation_increment.value_or(0);
-        };
-    if (projectile_frame_zero.has_value()) {
-        set_projectile_input_from(*projectile_frame_zero);
-    }
     const auto projectile_frame_one =
         scripts.actor_heartbeat(projectile_context);
-    if (projectile_frame_one.has_value()) {
-        set_projectile_input_from(*projectile_frame_one);
-    }
     const auto projectile_frame_two =
         scripts.actor_heartbeat(projectile_context);
-    if (projectile_frame_two.has_value()) {
-        set_projectile_input_from(*projectile_frame_two);
-    }
     const auto projectile_terminal =
         scripts.actor_heartbeat(projectile_context);
     if (!expect(
@@ -7695,14 +7672,14 @@ int main() {
                     "combat.weapon_projectile" &&
                 projectile_frame_zero->animation_id == "projectile" &&
                 projectile_frame_zero->animation_frame == 0U &&
-                projectile_frame_zero->animation_increment == 0x270f &&
+                !projectile_frame_zero->animation_complete &&
                 projectile_frame_one.has_value() &&
                 projectile_frame_one->animation_frame == 1U &&
                 projectile_frame_two.has_value() &&
                 projectile_frame_two->animation_frame == 2U &&
                 projectile_terminal.has_value() &&
-                projectile_terminal->animation_selector == 0x8000U &&
-                projectile_terminal->animation_frame == 2U,
+                projectile_terminal->animation_frame == 2U &&
+                projectile_terminal->animation_complete,
             "Lua projectile render heartbeat did not follow the finite ROM animation list")) {
         std::cerr << scripts.failure() << '\n';
         return 19;
@@ -7713,12 +7690,12 @@ int main() {
         ScriptActorActionKind::none, 0U, 0U, true);
     special_projectile_context.phase = ScriptActorHeartbeatPhase::render;
     special_projectile_context.projectile_animation =
-        ScriptActorProjectileAnimation{0x20U, 11U, 0U, 0, 0, 0x1000, true};
+        ScriptActorProjectileAnimation{11U};
     auto special_projectile_frame =
         scripts.actor_heartbeat(special_projectile_context);
     if (!special_projectile_frame.has_value() ||
         special_projectile_frame->animation_frame != 0U ||
-        special_projectile_frame->animation_increment != 0x270f) {
+        special_projectile_frame->animation_complete) {
         std::cerr << "Lua special projectile render heartbeat did not start at frame 0\n";
         return 20;
     }
@@ -7727,25 +7704,14 @@ int main() {
         1U, 2U, 3U, 4U, 4U, 4U, 4U, 4U, 5U, 6U,
         7U, 8U, 9U, 9U, 9U, 9U, 9U, 10U, 10U};
     for (std::size_t tick = 0U; tick < expected_special_frames.size(); ++tick) {
-        auto& animation =
-            *special_projectile_context.projectile_animation;
-        animation.selector = special_projectile_frame->animation_selector
-                                 .value_or(0U);
-        animation.frame = special_projectile_frame->animation_frame;
-        animation.accumulator =
-            special_projectile_frame->animation_accumulator.value_or(0);
-        animation.increment =
-            special_projectile_frame->animation_increment.value_or(0);
         special_projectile_frame =
             scripts.actor_heartbeat(special_projectile_context);
         const bool terminal = tick + 1U == expected_special_frames.size();
         const auto expected_frame = expected_special_frames[tick];
         if (!special_projectile_frame.has_value() ||
-            !special_projectile_frame->animation_selector.has_value() ||
-            *special_projectile_frame->animation_selector !=
-                (terminal ? 0x8020U : 0x0020U) ||
             special_projectile_frame->animation_frame !=
-                (terminal ? 10U : expected_frame)) {
+                expected_frame ||
+            special_projectile_frame->animation_complete != terminal) {
             std::cerr << "Lua special projectile render heartbeat did not follow the finite 0x800B list at frame "
                       << tick + 1U << '\n';
             return 20;
@@ -7759,8 +7725,7 @@ int main() {
             "weapon_projectile", actor_id, 3U,
             ScriptActorActionKind::none, 0U, 0U, true);
         context.phase = ScriptActorHeartbeatPhase::behavior;
-        context.projectile_animation = ScriptActorProjectileAnimation{
-            0x0014U, 3U, 0U, 0, 0, 0x1000, true};
+        context.projectile_animation = ScriptActorProjectileAnimation{3U};
         context.projectile_movement = movement;
         return context;
     };
@@ -9079,8 +9044,6 @@ int main() {
         ScriptWeaponActionId::ak_97;
     linked_projectile_context.combatant =
         source_weapon_hit_context.combatant;
-    linked_projectile_context.projectile_animation->increment = 0x270f;
-    linked_projectile_context.projectile_animation->period = 0x1000;
     std::uint32_t burst_attack_seed_rolls = 0U;
     linked_projectile_context.ai_random_bound =
         [&burst_attack_seed_rolls](const std::uint16_t bound)
@@ -9135,15 +9098,12 @@ int main() {
     linked_projectile_context.spawn = false;
     linked_projectile_context.phase = ScriptActorHeartbeatPhase::render;
     linked_projectile_context.projectile_movement.reset();
-    linked_projectile_context.projectile_animation->selector = 0x14U;
-    linked_projectile_context.projectile_animation->frame = 0U;
-    linked_projectile_context.projectile_animation->accumulator = 0;
     const auto burst_restart_frame =
         scripts.actor_heartbeat(linked_projectile_context);
     if (!expect(burst_restart_frame.has_value() &&
                     burst_restart_frame->animation_frame == 1U &&
-                    burst_restart_frame->animation_selector == 0x14U,
-                "Lua did not restart the burst animation clock from frame zero")) {
+                    !burst_restart_frame->animation_complete,
+                "Lua did not restart the burst animation from frame zero")) {
         std::cerr << scripts.failure() << '\n';
         return 27;
     }

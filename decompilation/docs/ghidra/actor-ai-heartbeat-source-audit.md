@@ -337,22 +337,24 @@ list selected by kind `+0x0E` and animation selector `+0x16`, including the
 terminal marker and next increment. This work occurs in the render pass; it
 does not replace the AI/action update at `0xA8EA`.
 
-The connected weapon-projectile animation path preserves this split. The Lua
-`weapon_projectile` profile receives each active primary and secondary record
-during the `0x4618` render callback, with its selector, finite-list length,
-frame, accumulator, increment, and period. Lua applies the signed-word
-`0x5FDC` cadence and `0x600E` list bound, returning the frame and completion
-bit. The next `0xA8EA` pass observes that bit and retires the finite record
-before its following render pass. For the regular `0x8003` list, QA records
-frame 0 on the shot, frames 1 and 2 on the next two updates, completion marked
-while frame 2 remains selected on update 3, and record retirement before
-rendering update 4. The special `0x800B` list uses the same `0x270F` increment
-and `0x1000` period; signed word overflow in `0x5FDC` holds frames 4 and 9
-through their source intervals, with the terminal marker on update 19 and
-retirement before update 20. The Lua runtime QA checks this 19-pass list
-sequence; the connected field route has only captured the regular family so
-far. This is source pass ordering, not a single callback that advances and
-retires together.
+The connected weapon-projectile animation path keeps the source pass split
+while expressing the visual timing as native clip data. The host keeps the
+projectile asset identity and supplies only the loaded clip length; Lua owns
+the current frame, elapsed updates, and completion state. The host presents
+the returned frame and passes the completion fact to the following `0xA8EA`
+behavior pass, which retires the finite record before its next render. Stop and
+burst-restart decisions are semantic actions in Lua; the host translates them
+to the source record's visual identity at its adapter boundary. The `0x8003` list uses durations
+`[1,1,1]`: the spawned frame 0 is followed by frames 1 and 2, then completion
+while frame 2 remains selected. The `0x800B` list uses
+`[1,1,1,1,5,1,1,1,1,5,1]`, preserving the source-visible holds on frames 4
+and 9 without carrying the signed accumulator or terminal bit into Lua. These
+durations are derived from ROM `0x5FDC` and `0x600E`; the new Lua and embedded
+runtime tests assert both complete schedules. The hit-spark path follows the
+same boundary: Lua returns semantic frame/completion state, while C++ alone
+translates completion into the auxiliary-record terminal marker. This remains
+a render pass and a later behavior pass, not a combined advance-and-retire
+callback.
 
 ### C0A2 target-action pose and cue
 

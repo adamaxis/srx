@@ -5,6 +5,7 @@
 #include "shadowrun_ghidra/scripting/weapon_action_policy.hpp"
 
 #include <array>
+#include <cstddef>
 #include <filesystem>
 #include <cstdint>
 #include <functional>
@@ -1411,23 +1412,10 @@ using ScriptMovementCollisionRecovery =
     std::function<ScriptMovementCollisionRecoveryResult(
         std::uint16_t, std::uint16_t, std::int16_t, std::uint8_t)>;
 
+// Clip length is read from the loaded host image sequence; the asset identity
+// remains private to the field renderer and is never passed through Lua.
 struct ScriptActorProjectileAnimation {
-    std::uint16_t selector = 0;
-    std::uint16_t frame_count = 0;
-    std::uint16_t frame = 0;
-    std::int16_t accumulator = 0;
-    std::int16_t increment = 0;
-    std::int16_t period = 0;
-    bool finite = false;
-};
-
-// Player strike child presentation data: ROM 0x7330 supplies five finite
-// frames; the importer provides their update duration. Lua owns elapsed
-// presentation time and C++ only supplies the current asset/frame identity.
-struct ScriptActorHitSparkAnimation {
-    std::uint16_t selector = 4U;
-    std::uint8_t frame_count = 5U;
-    std::uint8_t frame = 0U;
+    std::size_t frame_count = 0U;
 };
 
 struct ScriptActorHitSparkSpawnRequest {
@@ -1613,7 +1601,6 @@ struct ScriptActorBehaviorContext {
     std::optional<std::uint8_t> animation_direction_override;
     bool animation_clock_reset_requested = false;
     std::optional<ScriptActorProjectileAnimation> projectile_animation;
-    std::optional<ScriptActorHitSparkAnimation> hit_spark_animation;
     std::optional<ScriptActorProjectileMovement> projectile_movement;
     // The first primary-record behavior pass resolves ROM 0x55640 once;
     // subsequent movement and the cloned secondary record retain its result.
@@ -1770,7 +1757,6 @@ struct ScriptActorBehaviorDecision {
     bool think_token_claimed = false; // FFE175 was consumed in this heartbeat [C]
     // Lua returns the shared FFE188 byte after the THON period path [C].
     std::optional<std::uint8_t> source_thon_period_counter;
-    std::optional<std::uint16_t> animation_selector;
     bool animation_complete = false;
     std::string animation_variant;
     bool combat_action_requested = false;
@@ -1814,8 +1800,6 @@ struct ScriptActorBehaviorDecision {
     std::optional<ScriptActorHitSparkSpawnRequest>
         hit_spark_spawn_request;
     bool hit_spark_retired = false;
-    std::optional<std::int16_t> animation_increment;
-    std::optional<std::int16_t> animation_accumulator;
     std::optional<ScriptCombatMeterUpdate> combat_meter_update;
     std::optional<ScriptActorSpellActionResolution>
         spell_action_resolution;

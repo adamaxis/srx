@@ -96,7 +96,6 @@ using field_scene_detail::kFieldHitSparkAliasPrefix;
 using field_scene_detail::kFieldHitSparkKind;
 using field_scene_detail::kFieldHitSparkSelector;
 using field_scene_detail::kFieldHitSparkPalette;
-using field_scene_detail::kFieldHitSparkFrameCount;
 using field_scene_detail::kFieldHitSparkTargetYOffset;
 using field_scene_detail::kElevatorAnimationAliasPrefix;
 using field_scene_detail::kElevatorCurrentFloorAliasPrefix;
@@ -1358,14 +1357,9 @@ void FieldSceneRuntime::advance_field_hit_spark_behaviors() {
         context.initial_heading = spark.child.heading;
         context.spawn = !spark.script_initialized;
         context.phase = scripting::ScriptActorHeartbeatPhase::behavior;
-        context.hit_spark_animation = scripting::ScriptActorHitSparkAnimation{
-            static_cast<std::uint16_t>(spark.child.animation_selector),
-            static_cast<std::uint8_t>(kFieldHitSparkFrameCount),
-            static_cast<std::uint8_t>(spark.animation.frame)};
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value() ||
-            decision->animation_id != "hit_spark" ||
-            !decision->animation_selector.has_value()) {
+            decision->animation_id != "hit_spark") {
             failure_ = game_scripts_.failure();
             source_boundary(
                 "field.combat.hit_spark.lua_behavior_failed");
@@ -1373,12 +1367,12 @@ void FieldSceneRuntime::advance_field_hit_spark_behaviors() {
             continue;
         }
         spark.script_initialized = true;
-        spark.child.animation_selector = static_cast<std::int16_t>(
-            *decision->animation_selector);
         if (!decision->hit_spark_retired) {
             continue;
         }
 
+        spark.child.animation_selector = static_cast<std::int16_t>(
+            kFieldHitSparkSelector | 0x8000U);
         AuxiliaryEntitySlot slot{};
         slot.active = true;
         if (retire_auxiliary_child(slot, spark.child)) {
@@ -1414,16 +1408,11 @@ void FieldSceneRuntime::advance_field_hit_spark_animations() {
         context.initial_heading = spark.child.heading;
         context.spawn = !spark.script_initialized;
         context.phase = scripting::ScriptActorHeartbeatPhase::render;
-        context.hit_spark_animation = scripting::ScriptActorHitSparkAnimation{
-            static_cast<std::uint16_t>(spark.child.animation_selector),
-            static_cast<std::uint8_t>(kFieldHitSparkFrameCount),
-            static_cast<std::uint8_t>(spark.animation.frame)};
         const auto previous_frame = spark.animation.frame;
         const auto previous_selector = spark.child.animation_selector;
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value() ||
-            decision->animation_id != "hit_spark" ||
-            !decision->animation_selector.has_value()) {
+            decision->animation_id != "hit_spark") {
             failure_ = game_scripts_.failure();
             source_boundary(
                 "field.combat.hit_spark.lua_animation_failed");
@@ -1431,8 +1420,10 @@ void FieldSceneRuntime::advance_field_hit_spark_animations() {
             continue;
         }
         spark.script_initialized = true;
+        // The ROM terminal marker stays inside the presentation adapter.
         spark.child.animation_selector = static_cast<std::int16_t>(
-            *decision->animation_selector);
+            kFieldHitSparkSelector |
+            (decision->animation_complete ? 0x8000U : 0U));
         spark.animation.frame = decision->animation_frame;
         spark.animation.redraw_requested =
             previous_frame != spark.animation.frame ||
@@ -1452,7 +1443,8 @@ void FieldSceneRuntime::advance_field_weapon_projectile_animations() {
     };
     const auto advance_record = [this, &release_slot](
                                     SpawnEntityRecordState& record,
-                                    EntityAnimationState& animation,
+                                    FieldFramePresentationState& animation,
+                                    bool& animation_complete,
                                     bool& active,
                                     bool& script_initialized,
                                     std::optional<std::uint16_t>& slot) {
@@ -1471,8 +1463,7 @@ void FieldSceneRuntime::advance_field_weapon_projectile_animations() {
             return;
         }
 
-        const auto selector = static_cast<std::uint16_t>(
-            record.animation_resource & 0x7FFFU);
+        const auto selector = record.animation_resource;
         const auto animation_index =
             static_cast<std::size_t>(selector / 4U);
         if ((selector & 0x0003U) != 0U ||
@@ -1484,7 +1475,7 @@ void FieldSceneRuntime::advance_field_weapon_projectile_animations() {
         }
         const auto frame_count =
             field_weapon_projectile_images_[animation_index].size();
-        if (frame_count == 0U || frame_count > 16U) {
+        if (frame_count == 0U) {
             source_boundary("field.combat.weapon_projectile_frames_invalid");
             disable_record();
             return;
@@ -1503,20 +1494,11 @@ void FieldSceneRuntime::advance_field_weapon_projectile_animations() {
         context.phase = scripting::ScriptActorHeartbeatPhase::render;
         context.projectile_animation =
             scripting::ScriptActorProjectileAnimation{
-                record.animation_resource,
-                static_cast<std::uint16_t>(frame_count),
-                animation.frame,
-                animation.accumulator,
-                animation.increment,
-                animation.period,
-                true};
+                frame_count};
         const auto previous_frame = animation.frame;
-        const auto previous_selector = record.animation_resource;
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value() ||
-            !decision->animation_selector.has_value() ||
-            !decision->animation_increment.has_value() ||
-            !decision->animation_accumulator.has_value()) {
+            decision->animation_id != "projectile") {
             failure_ = game_scripts_.failure();
             source_boundary("field.combat.weapon_projectile_lua_animation_failed");
             disable_record();
@@ -1524,21 +1506,21 @@ void FieldSceneRuntime::advance_field_weapon_projectile_animations() {
         }
 
         script_initialized = true;
-        record.animation_resource = *decision->animation_selector;
         animation.frame = decision->animation_frame;
-        animation.accumulator = *decision->animation_accumulator;
-        animation.increment = *decision->animation_increment;
+        animation_complete = decision->animation_complete;
         animation.redraw_requested =
-            previous_frame != animation.frame ||
-            previous_selector != record.animation_resource;
+            animation.redraw_requested ||
+            previous_frame != animation.frame;
     };
 
     for (auto& spawn : field_weapon_projectiles_) {
         advance_record(spawn.primary_record, spawn.primary_animation,
+                       spawn.primary_animation_complete,
                        spawn.primary_active,
                        spawn.primary_animation_script_initialized,
                        spawn.primary_slot);
         advance_record(spawn.source_record, spawn.animation,
+                       spawn.animation_complete,
                        spawn.secondary_active,
                        spawn.secondary_animation_script_initialized,
                        spawn.secondary_slot);

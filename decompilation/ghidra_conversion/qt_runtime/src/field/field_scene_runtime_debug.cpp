@@ -492,8 +492,7 @@ std::optional<std::uint16_t>
 FieldSceneRuntime::field_weapon_projectile_selector_for_dump() const noexcept {
     for (const auto& spawn : field_weapon_projectiles_) {
         if (spawn.secondary_active) {
-            return static_cast<std::uint16_t>(
-                spawn.source_record.animation_resource & 0x7FFFU);
+            return spawn.source_record.animation_resource;
         }
     }
     return std::nullopt;
@@ -506,7 +505,7 @@ std::optional<bool>
 FieldSceneRuntime::field_weapon_projectile_list_finished_for_dump() const noexcept {
     for (const auto& spawn : field_weapon_projectiles_) {
         if (spawn.secondary_active) {
-            return (spawn.source_record.animation_resource & 0x8000U) != 0U;
+            return spawn.animation_complete;
         }
     }
     return std::nullopt;

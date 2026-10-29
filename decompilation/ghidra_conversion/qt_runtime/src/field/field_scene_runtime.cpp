@@ -5428,19 +5428,14 @@ void FieldSceneRuntime::service_source_actor_weapon_action(
                         spawn.primary_record.position_y)) * 0x10000,
                 spawn.primary_record.heading_offset_x,
                 spawn.primary_record.heading_offset_y};
-            spawn.primary_animation.period = static_cast<std::int16_t>(
-                spawn.primary_record.behavior_defaults.behavior_timer);
         }
         if (spawn_cycle.secondary.has_value()) {
             spawn.source_record = *spawn_cycle.secondary;
             spawn.secondary_active = true;
             spawn.secondary_slot = spawn_cycle.secondary_slot;
-            spawn.animation.period = static_cast<std::int16_t>(
-                spawn.source_record.behavior_defaults.behavior_timer);
         }
 
-        const auto selector = static_cast<std::uint16_t>(
-            spawn.source_record.animation_resource & 0x7FFFU);
+        const auto selector = spawn.source_record.animation_resource;
         const auto animation_index =
             static_cast<std::size_t>(selector / 4U);
         if (spawn.secondary_active &&
@@ -11652,19 +11647,14 @@ void FieldSceneRuntime::service_player_weapon_action(
                         spawn.primary_record.position_y)) * 0x10000,
                 spawn.primary_record.heading_offset_x,
                 spawn.primary_record.heading_offset_y};
-            spawn.primary_animation.period = static_cast<std::int16_t>(
-                spawn.primary_record.behavior_defaults.behavior_timer);
         }
         if (spawn_cycle.secondary.has_value()) {
             spawn.source_record = *spawn_cycle.secondary;
             spawn.secondary_active = true;
             spawn.secondary_slot = spawn_cycle.secondary_slot;
-            spawn.animation.period = static_cast<std::int16_t>(
-                spawn.source_record.behavior_defaults.behavior_timer);
         }
 
-        const auto secondary_selector = static_cast<std::uint16_t>(
-            spawn.source_record.animation_resource & 0x7FFFU);
+        const auto secondary_selector = spawn.source_record.animation_resource;
         const auto secondary_animation_index = static_cast<std::size_t>(
             secondary_selector / 4U);
         if (spawn.secondary_active &&
@@ -11857,6 +11847,9 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                                     : spawn.secondary_slot;
         auto& animation = primary_record ? spawn.primary_animation
                                          : spawn.animation;
+        auto& animation_complete = primary_record
+            ? spawn.primary_animation_complete
+            : spawn.animation_complete;
         if (!active) {
             return;
         }
@@ -11871,8 +11864,7 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
             disable_record();
             return;
         }
-        const auto selector = static_cast<std::uint16_t>(
-            record.animation_resource & 0x7FFFU);
+        const auto selector = record.animation_resource;
         const auto animation_index =
             static_cast<std::size_t>(selector / 4U);
         if ((selector & 0x0003U) != 0U ||
@@ -11884,7 +11876,7 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         }
         const auto frame_count =
             field_weapon_projectile_images_[animation_index].size();
-        if (frame_count == 0U || frame_count > 16U) {
+        if (frame_count == 0U) {
             source_boundary("field.combat.weapon_projectile_frames_invalid");
             disable_record();
             return;
@@ -11905,13 +11897,7 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         context.phase = scripting::ScriptActorHeartbeatPhase::behavior;
         context.projectile_animation =
             scripting::ScriptActorProjectileAnimation{
-                record.animation_resource,
-                static_cast<std::uint16_t>(frame_count),
-                animation.frame,
-                animation.accumulator,
-                animation.increment,
-                animation.period,
-                true};
+                frame_count};
         context.projectile_movement.emplace();
         auto& projectile_movement = *context.projectile_movement;
         projectile_movement.role = primary_record
@@ -11924,8 +11910,7 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
             (record.record_flags & 0x08U) != 0U; // 0x14E0A [C]
         projectile_movement.impact_occurred =
             (record.record_flags & 0x01U) != 0U; // 0x14E32 [C]
-        projectile_movement.animation_finished =
-            (record.animation_resource & 0x8000U) != 0U; // 0x600E [C]
+        projectile_movement.animation_finished = animation_complete;
         projectile_movement.world_x = primary_record
             ? spawn.primary_fixed_position.world_x
             : signed_fixed_from_word(record.position_x, 0);
@@ -12045,6 +12030,13 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         const auto& movement = decision->projectile_movement->state;
         const auto projectile_outcome =
             decision->projectile_movement->outcome;
+        const auto previous_animation_frame = animation.frame;
+        const auto previous_animation_resource = record.animation_resource;
+        animation.frame = decision->animation_frame;
+        animation_complete = decision->animation_complete;
+        animation.redraw_requested =
+            animation.redraw_requested ||
+            previous_animation_frame != animation.frame;
         const auto merge_record_flag = [](const std::uint8_t original,
                                           const std::uint8_t mask,
                                           const bool enabled) {
@@ -12068,6 +12060,9 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                    scripting::ScriptActorProjectileAnimationAction::restart) {
             record.animation_resource = 0x0014U; // ROM 0x14F86 [C]
         }
+        animation.redraw_requested =
+            animation.redraw_requested ||
+            previous_animation_resource != record.animation_resource;
         record.remaining_clear_steps = movement.remaining_clear_steps;
         record.additional_shots_remaining =
             movement.additional_shots_remaining;
@@ -12115,7 +12110,7 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                 scripting::ScriptActorProjectileOutcome::
                     burst_followup_restarted) {
                 animation.frame = 0U;
-                animation.accumulator = 0;
+                animation_complete = false;
             }
         }
         if (decision->audio_event.has_value() &&
@@ -14329,8 +14324,7 @@ void FieldSceneRuntime::paint_field_scene_entities(
             if (!active || (record.flags & 0x01U) == 0U) {
                 return;
             }
-            const auto selector = static_cast<std::uint16_t>(
-                record.animation_resource & 0x7FFFU);
+            const auto selector = record.animation_resource;
             if ((selector & 0x0003U) != 0U) {
                 return;
             }
