@@ -29,14 +29,12 @@ local function context(overrides)
     return value
 end
 
-local function actor_row(source_order, sequence_list_offset, placement_rule)
+local function actor_row(source_order, sequence_id, placement_rule)
     return {
         scene = 2,
         context_group = 0,
         random_sum = E.FieldEncounter.SOURCE_SEQUENCE_SENTINEL,
-        selection_cell_offset = 0,
-        sequence_list_offset = sequence_list_offset or
-            E.FieldEncounter.ALARM_SEQUENCE_LIST_ADDRESS,
+        sequence_id = sequence_id or "field_alarm_reinforcements",
         source_order = source_order,
         actor_name = "corp guard",
         profile_id = "corp_guard_k05_item06",
@@ -57,8 +55,7 @@ local function actor_row(source_order, sequence_list_offset, placement_rule)
         entity_kind = E.SpriteType.CORP_GUARD,
         palette_line = 2,
         sprite_stem = "corp_guard_k05_item06",
-        tagged_template = E.FieldEncounter.ALARM_ACTOR_TEMPLATE_ADDRESS,
-        template_offset = E.FieldEncounter.ALARM_ACTOR_TEMPLATE_ADDRESS,
+        activity_probe_enabled = false,
         ordered_overrides = "-",
         placement_rule = placement_rule or
             "open screen-edge candidates based on the current viewport and terrain",
@@ -141,9 +138,9 @@ game = {
             dynamic_world_activity_actors = {
                 actor_row(1),
                 actor_row(0),
-                actor_row(1, 0x1D6FD0,
+                actor_row(1, "boris_strike_team",
                     "map-derived candidates around camera-relative map anchors"),
-                actor_row(0, 0x1D6FD0,
+                actor_row(0, "boris_strike_team",
                     "map-derived candidates around camera-relative map anchors"),
             },
         },
@@ -206,9 +203,8 @@ eq(grenade_seller.choice_1_dispatch_returns, false,
 local alarm_sequence = Encounters.resolve_alarm_sequence(2)
 eq(alarm_sequence.kind, "dynamic_world_effect_sequence",
    "alarm list resolves as a dynamic sequence")
-eq(alarm_sequence.sequence_list_offset,
-   E.FieldEncounter.ALARM_SEQUENCE_LIST_ADDRESS,
-   "alarm sequence retains the 0x1E20A table provenance")
+eq(alarm_sequence.sequence_id, "field_alarm_reinforcements",
+   "alarm sequence resolves by semantic identity")
 eq(alarm_sequence.placement_policy, "screen_edge_candidates",
    "alarm sequence uses the ROM 0x1E302 screen-edge placement path")
 eq(alarm_sequence.actors[1].placement_rule,
@@ -217,9 +213,8 @@ eq(alarm_sequence.actors[1].placement_rule,
 eq(#alarm_sequence.actors, 2, "alarm table resolves its two actor pointers")
 eq(alarm_sequence.actors[1].source_order, 0,
    "alarm actors retain source order")
-eq(alarm_sequence.actors[1].template_offset,
-   E.FieldEncounter.ALARM_ACTOR_TEMPLATE_ADDRESS,
-   "alarm actors use source template 0x1D6A1C")
+eq(alarm_sequence.actors[1].sequence_id, "field_alarm_reinforcements",
+   "alarm actor belongs to the named reinforcement sequence")
 local alarm_actor_facts = alarm_sequence.actors[1].actor_facts
 eq(alarm_actor_facts.roles.spotted, true,
    "alarm actor template is marked spotted for the common spawn path")
@@ -230,9 +225,11 @@ eq(alarm_actor_facts.roles.runner, true,
 eq(alarm_actor_facts.roles.hostile, true,
    "alarm actor template keeps its hostile role")
 
-local map_sequence = Encounters.resolve_source_sequence(2, 0x1D6FD0)
+local map_sequence = Encounters.resolve_sequence(2, "boris_strike_team")
 eq(map_sequence.placement_policy, "map_derived_candidates",
    "named map-derived source lists retain their placement path")
+eq(map_sequence.sequence_id, "boris_strike_team",
+   "Boris sequence resolves by semantic identity")
 eq(#map_sequence.actors, 2,
    "named map-derived source list retains both actor rows")
 

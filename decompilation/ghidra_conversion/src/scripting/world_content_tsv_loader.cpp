@@ -665,6 +665,52 @@ using ActivityListKey = std::pair<lua_Integer, lua_Integer>;
 using ActivityListIds = std::map<ActivityListKey, std::string>;
 using ActorProfileKey = std::tuple<lua_Integer, lua_Integer, lua_Integer>;
 using ActorProfileIds = std::map<ActorProfileKey, std::string>;
+using SourceSequenceIds = std::map<lua_Integer, std::string>;
+
+bool load_source_sequence_ids(
+    const std::filesystem::path& world_directory,
+    SourceSequenceIds& sequence_ids, std::string& failure) {
+    const auto path = world_directory / "field_actor_sequences.tsv";
+    TsvDocument document;
+    if (!read_tsv(path, true, document, failure)) {
+        return false;
+    }
+    for (std::size_t index = 0U; index < document.rows.size(); ++index) {
+        const auto& row = document.rows[index];
+        lua_Integer source_list_offset = 0;
+        if (!row_integer(document, row, "source_list_offset",
+                         source_list_offset, path, index + 2U, failure) ||
+            source_list_offset < 0 || source_list_offset > 0x1FFFFFU) {
+            if (failure.empty()) {
+                failure = path.string() + ": row " +
+                    std::to_string(index + 2U) +
+                    " has an invalid source sequence key";
+            }
+            return false;
+        }
+        const auto sequence_id = row_string(document, row, "sequence_id");
+        const bool valid_id = !sequence_id.empty() &&
+            std::all_of(sequence_id.begin(), sequence_id.end(),
+                        [](const char character) {
+                            return (character >= 'a' && character <= 'z') ||
+                                   (character >= 'A' && character <= 'Z') ||
+                                   (character >= '0' && character <= '9') ||
+                                   character == '_' || character == '-' ||
+                                   character == '.' || character == ':';
+                        });
+        if (!valid_id) {
+            failure = path.string() + ": row " +
+                std::to_string(index + 2U) +
+                " has an invalid semantic sequence id";
+            return false;
+        }
+        if (!sequence_ids.emplace(source_list_offset, sequence_id).second) {
+            failure = path.string() + ": source sequence keys are duplicated";
+            return false;
+        }
+    }
+    return true;
+}
 
 bool collect_activity_list_ids(
     const TsvDocument& document, const std::filesystem::path& path,
@@ -769,6 +815,157 @@ bool make_semantic_activity_actor_rows(
                      0x80000000U) != 0U ? "true" : "false");
             } else {
                 runtime_row.push_back(source_row[column]);
+            }
+        }
+        semantic.rows.push_back(std::move(runtime_row));
+    }
+    return true;
+}
+
+bool make_semantic_dynamic_actor_rows(
+    const TsvDocument& source, const std::filesystem::path& path,
+    const SourceSequenceIds& source_sequence_ids, TsvDocument& semantic,
+    std::string& failure) {
+    const auto scene_column = source.column_indexes.find("scene");
+    const auto context_column = source.column_indexes.find("context_group");
+    const auto sum_column = source.column_indexes.find("random_sum");
+    const auto list_column = source.column_indexes.find("sequence_list_offset");
+    const auto tag_column = source.column_indexes.find("tagged_template");
+    const auto run_target_area_column =
+        source.column_indexes.find("run_target_area");
+    const auto run_target_event_column =
+        source.column_indexes.find("run_target_event");
+    if (scene_column == source.column_indexes.end() ||
+        context_column == source.column_indexes.end() ||
+        sum_column == source.column_indexes.end() ||
+        list_column == source.column_indexes.end() ||
+        tag_column == source.column_indexes.end() ||
+        run_target_area_column == source.column_indexes.end() ||
+        run_target_event_column == source.column_indexes.end()) {
+        failure = path.string() +
+            ": dynamic actor catalog is missing source selection metadata";
+        return false;
+    }
+
+    semantic = {};
+    semantic.columns.reserve(source.columns.size());
+    for (const auto& source_column : source.columns) {
+        if (source_column == "selection_cell_offset" ||
+            source_column == "sequence_list_offset" ||
+            source_column == "template_offset") {
+            continue;
+        }
+        const auto runtime_column = source_column == "tagged_template"
+            ? std::string("activity_probe_enabled")
+            : source_column;
+        const auto index = semantic.columns.size();
+        if (!semantic.column_indexes.emplace(runtime_column, index).second) {
+            failure = path.string() +
+                ": dynamic actor semantic columns contain a duplicate name";
+            return false;
+        }
+        semantic.columns.push_back(runtime_column);
+        if (source_column == "random_sum") {
+            const auto sequence_index = semantic.columns.size();
+            semantic.column_indexes.emplace("sequence_id", sequence_index);
+            semantic.columns.emplace_back("sequence_id");
+        }
+    }
+
+    semantic.rows.reserve(source.rows.size());
+    for (std::size_t row_index = 0U; row_index < source.rows.size();
+         ++row_index) {
+        const auto& source_row = source.rows[row_index];
+        const auto parse_column = [&](const std::size_t column,
+                                      const std::string_view name,
+                                      lua_Integer& value) {
+            if (column >= source_row.size() ||
+                parse_integer(source_row[column], value)) {
+                return column < source_row.size();
+            }
+            failure = path.string() + ": row " +
+                std::to_string(row_index + 2U) + " column " +
+                std::string(name) + " is not an integer";
+            return false;
+        };
+        lua_Integer scene_id = 0;
+        lua_Integer context_group = 0;
+        lua_Integer random_sum = 0;
+        lua_Integer sequence_list_offset = 0;
+        lua_Integer tagged_template = 0;
+        lua_Integer run_target_area = 0;
+        lua_Integer run_target_event = 0;
+        if (!parse_column(scene_column->second, "scene", scene_id) ||
+            !parse_column(context_column->second, "context_group",
+                          context_group) ||
+            !parse_column(sum_column->second, "random_sum", random_sum) ||
+            !parse_column(list_column->second, "sequence_list_offset",
+                          sequence_list_offset) ||
+            !parse_column(tag_column->second, "tagged_template",
+                          tagged_template) ||
+            !parse_column(run_target_area_column->second, "run_target_area",
+                          run_target_area) ||
+            !parse_column(run_target_event_column->second, "run_target_event",
+                          run_target_event) ||
+            scene_id < 0 || scene_id > srx::v(srx::Scene::LAST_ID) ||
+            context_group < 0 || context_group > 0xFF ||
+            random_sum < 0 || random_sum > 0xFF ||
+            sequence_list_offset < 0 || sequence_list_offset > 0x1FFFFFU ||
+            run_target_area < 0 || run_target_area > 0xFF ||
+            run_target_event < 0 || run_target_event > 0xFF ||
+            tagged_template < 0 ||
+            static_cast<std::uint64_t>(tagged_template) >
+                std::numeric_limits<std::uint32_t>::max()) {
+            if (failure.empty()) {
+                failure = path.string() + ": row " +
+                    std::to_string(row_index + 2U) +
+                    " has invalid dynamic actor selector facts";
+            }
+            return false;
+        }
+
+        std::string sequence_id;
+        if (random_sum == 0xFF) {
+            const auto found = source_sequence_ids.find(sequence_list_offset);
+            if (found == source_sequence_ids.end()) {
+                failure = path.string() + ": row " +
+                    std::to_string(row_index + 2U) +
+                    " has no semantic id for its named actor sequence";
+                return false;
+            }
+            sequence_id = found->second;
+        } else if (run_target_area != 0) {
+            sequence_id = "field_encounter.scene.15.context." +
+                std::to_string(run_target_area) + ".weight." +
+                std::to_string(run_target_event);
+        } else {
+            sequence_id = "field_encounter.scene." +
+                std::to_string(scene_id) + ".context." +
+                std::to_string(context_group) + ".weight." +
+                std::to_string(random_sum);
+        }
+
+        std::vector<std::string> runtime_row;
+        runtime_row.reserve(semantic.columns.size());
+        for (std::size_t column = 0U; column < source.columns.size();
+             ++column) {
+            const auto& source_column = source.columns[column];
+            if (source_column == "selection_cell_offset" ||
+                source_column == "sequence_list_offset" ||
+                source_column == "template_offset") {
+                continue;
+            }
+            if (column == tag_column->second) {
+                // Keep the source interpretation as a named fact, never as
+                // the high-bit tagged template pointer.
+                runtime_row.emplace_back(
+                    (static_cast<std::uint32_t>(tagged_template) &
+                     0x80000000U) != 0U ? "true" : "false");
+            } else {
+                runtime_row.push_back(source_row[column]);
+            }
+            if (column == sum_column->second) {
+                runtime_row.push_back(sequence_id);
             }
         }
         semantic.rows.push_back(std::move(runtime_row));
@@ -1360,11 +1557,9 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
             {"entities/dynamic-world-activity-actors.tsv",
              "dynamic_world_activity_actors",
              {"scene", "context_group", "random_sum", "source_order",
-              "selection_cell_offset", "sequence_list_offset",
                "action_code", "source_spawn_state_flags",
               "source_interaction_flags", "entity_kind",
-               "palette_line",
-              "tagged_template", "template_offset", "physical_meter",
+                "palette_line", "physical_meter",
               "delay_primary_attribute", "delay_secondary_attribute",
               "delay_capability_flags", "combat_mental_meter",
               "combat_cyberware_flags", "combat_posture",
@@ -1392,7 +1587,9 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "combat_auxiliary_roll_bonus", "source_action_slot",
               "source_action_ammo", "source_action_counter",
               "run_target_area", "run_target_event", "run_target_x",
-              "run_target_y"}},
+              "run_target_y"},
+             {},
+             {"activity_probe_enabled"}},
             {"entities/world-activity-actors.tsv",
              "world_activity_actor_lists",
              {"scene", "source_order", "script_index", "template_offset",
@@ -1436,6 +1633,12 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
         }};
         ActivityListIds activity_ids;
         ActorProfileIds actor_profile_ids;
+        SourceSequenceIds source_sequence_ids;
+        if (!load_source_sequence_ids(world_directory, source_sequence_ids,
+                                      failure)) {
+            lua_settop(state, stack_base);
+            return false;
+        }
         for (const auto& source_table : source_tables) {
             TsvDocument document;
             const auto path = field_asset_directory / source_table.relative_path;
@@ -1444,9 +1647,19 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
                 return false;
             }
             TsvDocument semantic_actor_rows;
+            TsvDocument semantic_dynamic_actor_rows;
             TsvDocument semantic_candidate_rows;
             const TsvDocument* runtime_document = &document;
             if (std::string_view(source_table.field) ==
+                "dynamic_world_activity_actors") {
+                if (!make_semantic_dynamic_actor_rows(
+                        document, path, source_sequence_ids,
+                        semantic_dynamic_actor_rows, failure)) {
+                    lua_settop(state, stack_base);
+                    return false;
+                }
+                runtime_document = &semantic_dynamic_actor_rows;
+            } else if (std::string_view(source_table.field) ==
                 "world_activity_actor_lists") {
                 if (!collect_activity_list_ids(document, path, activity_ids,
                                                failure) ||

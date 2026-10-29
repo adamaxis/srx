@@ -2233,12 +2233,12 @@ int main() {
     struct RunTargetActorGroupCase {
         std::uint8_t area_id;
         std::uint8_t event_id;
-        std::uint32_t actor_list_offset;
+        std::string_view sequence_id;
     };
     constexpr std::array<RunTargetActorGroupCase, 3> run_target_groups{{
-        {1U, 9U, 0x1D6D4AU},
-        {2U, 9U, 0x1D6D5EU},
-        {3U, 4U, 0x1D6D72U},
+        {1U, 9U, "field_encounter.scene.15.context.1.weight.9"},
+        {2U, 9U, "field_encounter.scene.15.context.2.weight.9"},
+        {3U, 4U, "field_encounter.scene.15.context.3.weight.4"},
     }};
     constexpr std::array<std::array<std::uint16_t, 2>, 4>
         run_target_spawn_positions{{
@@ -2256,7 +2256,7 @@ int main() {
             for (std::size_t index = 0U; index < actors->actors.size(); ++index) {
                 const auto& actor = actors->actors[index];
                 actors_in_source_order = actors_in_source_order &&
-                    actor.sequence_list_offset == group.actor_list_offset &&
+                    actor.sequence_id == group.sequence_id &&
                     !actor.profile_id.empty() && !actor.sprite_stem.empty() &&
                     actor.run_target_spawn_x ==
                         run_target_spawn_positions[index][0] &&
@@ -2362,8 +2362,7 @@ int main() {
     }
 
     const auto alarm_alternate_sequence = scripts.resolve_field_actor_sequence(
-        2U, static_cast<std::uint32_t>(
-                srx::v(srx::FieldEncounter::ALARM_SEQUENCE_LIST_ADDRESS)));
+        2U, "field_alarm_reinforcements");
     if (!expect(
             alarm_alternate_sequence.has_value() &&
                 alarm_alternate_sequence->kind ==
@@ -2372,13 +2371,13 @@ int main() {
                 alarm_alternate_sequence->placement_policy ==
                     ScriptFieldEncounterPlacementPolicy::
                         screen_edge_candidates &&
+                alarm_alternate_sequence->sequence_id ==
+                    "field_alarm_reinforcements" &&
                 alarm_alternate_sequence->actors.size() == 2U &&
-                alarm_alternate_sequence->actors[0].template_offset ==
-                    static_cast<std::uint32_t>(srx::v(
-                        srx::FieldEncounter::ALARM_ACTOR_TEMPLATE_ADDRESS)) &&
-                alarm_alternate_sequence->actors[1].template_offset ==
-                    static_cast<std::uint32_t>(srx::v(
-                        srx::FieldEncounter::ALARM_ACTOR_TEMPLATE_ADDRESS)) &&
+                alarm_alternate_sequence->actors[0].sequence_id ==
+                    "field_alarm_reinforcements" &&
+                alarm_alternate_sequence->actors[1].sequence_id ==
+                    "field_alarm_reinforcements" &&
                 alarm_alternate_sequence->actors[0].source_spawn_state_flags ==
                     alarm_alternate_sequence->actors[1].source_spawn_state_flags,
             "Lua did not resolve the two source actors from ROM alarm list 0x1E20A")) {

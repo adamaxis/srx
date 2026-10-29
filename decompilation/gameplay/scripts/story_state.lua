@@ -4,7 +4,7 @@
 --   story.byte_get_<hex>            -> "value_<n>" or nil (unknown/unrestored)
 --   story.byte_set_<hex>_<n>        -> "applied" or nil
 --   story.world_effect_idle         -> "idle" or "busy"
---   story.queue_world_effect_<scene>_<list hex>_<actors>_<name> -> "queued"
+--   story.queue_world_effect_<scene>_<actors>_<sequence id> -> "queued"
 --   field.scene_reference           -> "scene_<n>"
 -- Story rules (caps, follow-up lists, which scene queues what) live here.
 local E = require("enums")
@@ -16,7 +16,7 @@ StoryState.BYTE_CAP = 8
 -- ROM 0x1F1E0 [C]: after FFFBFB advances in scene 2 it queues actor list
 -- 0x1D6FD0 (Boris's two map-placed Strike Team actors).
 StoryState.STRIKE_TEAM_FOLLOWUPS = {
-    [2] = { name = "boris_strike_team", list = 0x1D6FD0, actors = 2 },
+    [2] = { sequence_id = "boris_strike_team", actors = 2 },
 }
 
 function StoryState.byte(address)
@@ -51,8 +51,8 @@ end
 
 function StoryState.queue_world_effect(scene, effect)
     return game.services.call("story", string.format(
-        "queue_world_effect_%d_%x_%d_%s",
-        scene, effect.list, effect.actors, effect.name)) == "queued"
+        "queue_world_effect_%d_%d_%s",
+        scene, effect.actors, effect.sequence_id)) == "queued"
 end
 
 -- ROM 0x1F1E0: advance FFFBFB (cap 8) and queue the scene's follow-up list.

@@ -1135,8 +1135,7 @@ struct ScriptProjectileCombatTarget {
 
 struct ScriptFieldEncounterActor {
     std::uint16_t source_order = 0;
-    std::uint32_t selection_cell_offset = 0;
-    std::uint32_t sequence_list_offset = 0;
+    std::string sequence_id;
     std::optional<std::uint16_t> run_target_spawn_x;
     std::optional<std::uint16_t> run_target_spawn_y;
     std::string actor_name;
@@ -1151,8 +1150,7 @@ struct ScriptFieldEncounterActor {
     std::uint8_t source_action_counter = 0;
     std::uint8_t palette_line = 0;
     std::string sprite_stem;
-    std::uint32_t tagged_template = 0;
-    std::uint32_t template_offset = 0;
+    bool activity_probe_enabled = false;
     std::uint8_t source_spawn_state_flags = 0; // +0x9E template byte [C]
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t physical_meter = 0;
@@ -1309,6 +1307,7 @@ struct ScriptFieldEncounterOutcome {
     std::uint16_t scene_id = 0;
     std::uint8_t context_group = 0;
     std::uint8_t random_sum = 0;
+    std::string sequence_id;
     std::string event_name;
     std::uint32_t handler_offset = 0;
     std::string opening_text;
@@ -1912,7 +1911,7 @@ public:
         std::uint16_t scene_id, std::uint8_t first_roll,
         std::uint8_t second_roll);
     std::optional<ScriptFieldEncounterOutcome> resolve_field_actor_sequence(
-        std::uint16_t scene_id, std::uint32_t sequence_list_offset);
+        std::uint16_t scene_id, std::string_view sequence_id);
     std::optional<std::vector<ScriptWorldActivityActor>>
     world_activity_actors_for_script(std::uint16_t scene_id,
                                      std::uint16_t script_index);
@@ -2068,8 +2067,8 @@ private:
                                  std::uint8_t first_roll,
                                  std::uint8_t second_roll,
                                  bool run_target_actor_group,
-                                 std::optional<std::uint32_t>
-                                     source_sequence_list_offset =
+                                  std::optional<std::string_view>
+                                      source_sequence_id =
                                          std::nullopt);
     struct Impl;
     std::unique_ptr<Impl> impl_;

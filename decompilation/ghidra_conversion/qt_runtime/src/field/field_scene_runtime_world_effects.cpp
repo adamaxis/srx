@@ -510,9 +510,7 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
         return;
     case scripting::ScriptFieldEncounterTriggerAction::select_alarm_sequence: {
         auto outcome = game_scripts_.resolve_field_actor_sequence(
-            trigger.scene_id,
-            static_cast<std::uint32_t>(
-                srx::v(srx::FieldEncounter::ALARM_SEQUENCE_LIST_ADDRESS)));
+            trigger.scene_id, "field_alarm_reinforcements");
         if (!outcome.has_value() ||
             outcome->kind != scripting::
                 ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence ||

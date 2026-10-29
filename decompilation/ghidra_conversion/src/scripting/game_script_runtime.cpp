@@ -6962,14 +6962,13 @@ GameScriptRuntime::resolve_field_encounter(
 
 std::optional<ScriptFieldEncounterOutcome>
 GameScriptRuntime::resolve_field_actor_sequence(
-    const std::uint16_t scene_id,
-    const std::uint32_t sequence_list_offset) {
-    if (sequence_list_offset > 0x1FFFFFU) {
-        impl_->failure = "field actor sequence is outside source bounds";
+    const std::uint16_t scene_id, const std::string_view sequence_id) {
+    if (scene_id > 55U || !valid_identifier(sequence_id)) {
+        impl_->failure = "field actor sequence id is invalid";
         return std::nullopt;
     }
     return resolve_field_encounter_impl(scene_id, 0U, 0U, false,
-                                        sequence_list_offset);
+                                        sequence_id);
 }
 
 std::optional<std::vector<ScriptWorldActivityActor>>
@@ -7811,7 +7810,7 @@ std::optional<ScriptFieldEncounterOutcome>
 GameScriptRuntime::resolve_field_encounter_impl(
     const std::uint16_t scene_id, const std::uint8_t first_roll,
     const std::uint8_t second_roll, const bool run_target_actor_group,
-    const std::optional<std::uint32_t> source_sequence_list_offset) {
+    const std::optional<std::string_view> source_sequence_id) {
     auto* state = impl_->state;
     if (state == nullptr) {
         impl_->failure = "Lua runtime is unavailable for field encounters";
@@ -7824,14 +7823,14 @@ GameScriptRuntime::resolve_field_encounter_impl(
         impl_->failure = std::string(reason);
         return std::nullopt;
     };
-    const bool source_sequence = source_sequence_list_offset.has_value();
+    const bool source_sequence = source_sequence_id.has_value();
     if ((run_target_actor_group && source_sequence) ||
         (!run_target_actor_group && !source_sequence &&
          (scene_id > 55U || first_roll > 4U || second_roll > 4U)) ||
         (run_target_actor_group &&
          (first_roll == 0U || first_roll > 55U || second_roll == 0U)) ||
         (source_sequence &&
-         (scene_id > 55U || *source_sequence_list_offset > 0x1FFFFFU))) {
+         (scene_id > 55U || !valid_identifier(*source_sequence_id)))) {
         return fail("field encounter request is outside the ROM table bounds");
     }
     if (!impl_->push_module("field_encounters")) {
@@ -7839,7 +7838,7 @@ GameScriptRuntime::resolve_field_encounter_impl(
     }
     const auto* resolver_name = run_target_actor_group
         ? "resolve_run_target_actor_group"
-        : source_sequence ? "resolve_source_sequence" : "resolve";
+        : source_sequence ? "resolve_sequence" : "resolve";
     lua_getfield(state, -1, resolver_name);
     if (!lua_isfunction(state, -1)) {
         return fail(std::string("field_encounters.") + resolver_name +
@@ -7851,9 +7850,8 @@ GameScriptRuntime::resolve_field_encounter_impl(
         lua_pushinteger(state, second_roll);
     } else if (source_sequence) {
         lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
-        lua_pushinteger(
-            state,
-            static_cast<lua_Integer>(*source_sequence_list_offset));
+        lua_pushlstring(state, source_sequence_id->data(),
+                        source_sequence_id->size());
     } else {
         lua_pushinteger(state, scene_id);
         lua_pushinteger(state, first_roll);
@@ -7930,6 +7928,17 @@ GameScriptRuntime::resolve_field_encounter_impl(
         return fail(std::string("field_encounters.") + resolver_name +
                     " returned an unknown outcome kind");
     }
+    if (outcome.kind ==
+        ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence) {
+        if (!read_field_string(state, result_index, "sequence_id",
+                               outcome.sequence_id) ||
+            !valid_identifier(outcome.sequence_id) ||
+            (source_sequence &&
+             outcome.sequence_id != *source_sequence_id)) {
+            return fail(std::string("field_encounters.") + resolver_name +
+                        " returned an invalid semantic sequence id");
+        }
+    }
     outcome.scene_id = static_cast<std::uint16_t>(parsed_scene);
     outcome.context_group = static_cast<std::uint8_t>(context_group);
     outcome.random_sum = static_cast<std::uint8_t>(random_sum);
@@ -8005,8 +8014,6 @@ GameScriptRuntime::resolve_field_encounter_impl(
             const auto actor_index = lua_absindex(state, -1);
             ScriptFieldEncounterActor actor{};
             std::uint32_t source_order = 0U;
-            std::uint32_t selection_cell_offset = 0U;
-            std::uint32_t sequence_list_offset = 0U;
             std::uint32_t entity_kind = 0U;
             std::uint32_t action_code = 0U;
             std::uint32_t source_action_slot = 0U;
@@ -8016,8 +8023,7 @@ GameScriptRuntime::resolve_field_encounter_impl(
             ActorInteractionFacts actor_interaction;
             std::uint32_t physical_meter = 0U;
             std::uint32_t palette_line = 0U;
-            std::uint32_t tagged_template = 0U;
-            std::uint32_t template_offset = 0U;
+            bool activity_probe_enabled = false;
             std::uint32_t delay_primary_attribute = 0U;
             std::uint32_t delay_secondary_attribute = 0U;
             std::uint32_t delay_capability_flags = 0U;
@@ -8027,12 +8033,11 @@ GameScriptRuntime::resolve_field_encounter_impl(
             bool valid_actor =
                 read_field_integer(state, actor_index, "source_order", 31U,
                                    source_order) &&
-                read_field_integer(state, actor_index,
-                                   "selection_cell_offset", 0x1FFFFFU,
-                                   selection_cell_offset) &&
-                read_field_integer(state, actor_index,
-                                   "sequence_list_offset", 0x1FFFFFU,
-                                   sequence_list_offset) &&
+                read_field_string(state, actor_index, "sequence_id",
+                                  actor.sequence_id) &&
+                valid_identifier(actor.sequence_id) &&
+                (!source_sequence ||
+                 actor.sequence_id == *source_sequence_id) &&
                 read_field_text(state, actor_index, "actor_name",
                                 actor.actor_name, 128U) &&
                 read_field_string(state, actor_index, "profile_id",
@@ -8063,10 +8068,9 @@ GameScriptRuntime::resolve_field_encounter_impl(
                 read_field_string(state, actor_index, "sprite_stem",
                                   actor.sprite_stem) &&
                 valid_identifier(actor.sprite_stem) &&
-                read_field_integer(state, actor_index, "tagged_template",
-                                   0xFFFFFFFFU, tagged_template) &&
-                read_field_integer(state, actor_index, "template_offset",
-                                   0x1FFFFFU, template_offset) &&
+                read_field_boolean(state, actor_index,
+                                   "activity_probe_enabled",
+                                   activity_probe_enabled) &&
                 read_field_integer(state, actor_index,
                                    "delay_primary_attribute", 0xFFU,
                                    delay_primary_attribute) &&
@@ -8221,8 +8225,6 @@ GameScriptRuntime::resolve_field_encounter_impl(
                 return fail("dynamic world encounter has an unknown action kind");
             }
             actor.source_order = static_cast<std::uint16_t>(source_order);
-            actor.selection_cell_offset = selection_cell_offset;
-            actor.sequence_list_offset = sequence_list_offset;
             if (has_run_target_spawn) {
                 actor.run_target_spawn_x = static_cast<std::uint16_t>(
                     *run_target_spawn_x);
@@ -8243,8 +8245,7 @@ GameScriptRuntime::resolve_field_encounter_impl(
             actor.physical_meter =
                 static_cast<std::uint8_t>(physical_meter);
             actor.palette_line = static_cast<std::uint8_t>(palette_line);
-            actor.tagged_template = tagged_template;
-            actor.template_offset = template_offset;
+            actor.activity_probe_enabled = activity_probe_enabled;
             actor.delay_primary_attribute =
                 static_cast<std::uint8_t>(delay_primary_attribute);
             actor.delay_secondary_attribute =

@@ -903,39 +903,64 @@ FieldSceneRuntime::FieldSceneRuntime(
                            ? "busy"
                            : "idle";
             }
-            // story.queue_world_effect_<scene>_<list hex>_<actors>_<name>
+            // story.queue_world_effect_<scene>_<actors>_<sequence id>
             constexpr std::string_view kQueueWorldEffectPrefix =
                 "story.queue_world_effect_";
             if (service_id.rfind(kQueueWorldEffectPrefix, 0U) == 0U) {
                 auto rest = service_id.substr(kQueueWorldEffectPrefix.size());
-                std::array<std::uint32_t, 3U> numbers{};
-                for (std::size_t index = 0U; index < numbers.size(); ++index) {
-                    const auto split = rest.find('_');
-                    if (split == std::string_view::npos) {
-                        return std::nullopt;
-                    }
-                    const auto text = rest.substr(0U, split);
-                    const auto parsed = std::from_chars(
-                        text.data(), text.data() + text.size(), numbers[index],
-                        index == 1U ? 16 : 10);
-                    if (text.empty() || parsed.ec != std::errc{} ||
-                        parsed.ptr != text.data() + text.size()) {
-                        return std::nullopt;
-                    }
-                    rest = rest.substr(split + 1U);
+                const auto scene_split = rest.find('_');
+                if (scene_split == std::string_view::npos) {
+                    return std::nullopt;
                 }
-                if (rest.empty() || numbers[2] == 0U || numbers[2] > 0xFFU ||
-                    numbers[0] != state_.field_scene_buffers.scene_reference ||
+                const auto scene_text = rest.substr(0U, scene_split);
+                std::uint32_t scene_id = 0U;
+                const auto parsed_scene = std::from_chars(
+                    scene_text.data(), scene_text.data() + scene_text.size(),
+                    scene_id);
+                rest = rest.substr(scene_split + 1U);
+                const auto actor_count_split = rest.find('_');
+                if (actor_count_split == std::string_view::npos) {
+                    return std::nullopt;
+                }
+                const auto actor_count_text = rest.substr(0U,
+                                                          actor_count_split);
+                std::uint32_t actor_count = 0U;
+                const auto parsed_actor_count = std::from_chars(
+                    actor_count_text.data(),
+                    actor_count_text.data() + actor_count_text.size(),
+                    actor_count);
+                const auto sequence_id = rest.substr(actor_count_split + 1U);
+                const bool valid_sequence_id = !sequence_id.empty() &&
+                    std::all_of(sequence_id.begin(), sequence_id.end(),
+                                [](const char character) {
+                                    return (character >= 'a' && character <= 'z') ||
+                                           (character >= 'A' && character <= 'Z') ||
+                                           (character >= '0' && character <= '9') ||
+                                           character == '_' || character == '-' ||
+                                           character == '.' || character == ':';
+                                });
+                if (scene_text.empty() ||
+                    parsed_scene.ec != std::errc{} ||
+                    parsed_scene.ptr != scene_text.data() + scene_text.size() ||
+                    actor_count_text.empty() ||
+                    parsed_actor_count.ec != std::errc{} ||
+                    parsed_actor_count.ptr !=
+                        actor_count_text.data() + actor_count_text.size() ||
+                    !valid_sequence_id || actor_count == 0U ||
+                    actor_count > 0xFFU ||
+                    scene_id != state_.field_scene_buffers.scene_reference ||
                     field_pending_story_world_effect_.has_value() ||
                     pending_field_encounter_outcome_.has_value()) {
                     return std::nullopt;
                 }
                 field_pending_story_world_effect_ = PendingStoryWorldEffect{
-                    static_cast<std::uint16_t>(numbers[0]), numbers[1],
-                    static_cast<std::uint8_t>(numbers[2]), std::string(rest)};
+                    static_cast<std::uint16_t>(scene_id),
+                    std::string(sequence_id),
+                    static_cast<std::uint8_t>(actor_count),
+                    std::string(sequence_id)};
                 this->source_boundary(
-                    "field.world_activity." + std::string(rest) +
-                    "_list_queued");
+                    "field.world_activity." + std::string(sequence_id) +
+                    "_sequence_queued");
                 return "queued";
             }
             // field.queue_route_actor_list_<consume scene>_<source scene>_
@@ -5979,9 +6004,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             source_actor.source_interaction_flags;
         const auto& actor_artwork =
             field_dynamic_actor_artwork_.at(source_actor.sprite_stem);
-        actor.template_offset = source_actor.template_offset;
-        actor.list_offset = source_actor.sequence_list_offset;
-        actor.selection_cell_offset = source_actor.selection_cell_offset;
+        actor.world_activity_id = source_actor.sequence_id;
         actor.source_record_flags = static_cast<std::uint8_t>(
             actor_flag_mask(ActorServiceFlag::active) |
             actor_flag_mask(ActorServiceFlag::unresolved_service_bit_2) |
@@ -6160,19 +6183,19 @@ bool FieldSceneRuntime::process_pending_story_world_effect_sequence() {
             "field.world_activity.story_sequence_context_unresolved");
         return true;
     }
-    const auto sequence_list_offset = effect.list;
+    const auto sequence_id = effect.sequence_id;
     auto outcome = game_scripts_.resolve_field_actor_sequence(
-        scene_id, sequence_list_offset);
+        scene_id, sequence_id);
     if (!outcome.has_value() ||
         outcome->kind != scripting::
             ScriptFieldEncounterOutcomeKind::dynamic_world_effect_sequence ||
         outcome->placement_policy != scripting::
             ScriptFieldEncounterPlacementPolicy::map_derived_candidates ||
+        outcome->sequence_id != sequence_id ||
         outcome->actors.size() != effect.actor_count ||
         std::any_of(outcome->actors.begin(), outcome->actors.end(),
-                    [sequence_list_offset](const auto& actor) {
-                        return actor.sequence_list_offset !=
-                               sequence_list_offset;
+                    [&sequence_id](const auto& actor) {
+                        return actor.sequence_id != sequence_id;
                     })) {
         failure_ = game_scripts_.failure().empty()
             ? "Story world-effect list " + effect.name +
@@ -7346,8 +7369,14 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                     std::any_of(
                         outcome->actors.begin(), outcome->actors.end(),
                         [&run_target_actor_group](const auto& actor) {
-                            return actor.sequence_list_offset !=
-                                run_target_actor_group->actor_list_offset;
+                            const auto expected_sequence_id =
+                                "field_encounter.scene.15.context." +
+                                std::to_string(
+                                    run_target_actor_group->actor_group_area) +
+                                ".weight." +
+                                std::to_string(
+                                    run_target_actor_group->actor_group_event);
+                            return actor.sequence_id != expected_sequence_id;
                         })) {
                     failure_ = game_scripts_.failure().empty()
                         ? "ROM run-target actor descriptors do not match the selected list"

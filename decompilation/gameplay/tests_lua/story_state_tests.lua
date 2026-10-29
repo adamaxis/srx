@@ -33,9 +33,9 @@ game = {
         local a, v = op:match("^byte_set_(%x+)_(%d+)$")
         if a then host.bytes[tonumber(a, 16)] = tonumber(v); return "applied" end
         if op == "world_effect_idle" then return host.busy and "busy" or "idle" end
-        local s, l, n, name = op:match("^queue_world_effect_(%d+)_(%x+)_(%d+)_(.+)$")
+        local s, n, sequence_id = op:match("^queue_world_effect_(%d+)_(%d+)_(.+)$")
         if s then
-            host.queued[#host.queued + 1] = { tonumber(s), tonumber(l, 16), tonumber(n), name }
+            host.queued[#host.queued + 1] = { tonumber(s), tonumber(n), sequence_id }
             return "queued"
         end
         error("unexpected story op " .. op)
@@ -54,11 +54,12 @@ check(#host.queued == 0, "no follow-up outside scene 2")
 -- Unknown byte: no change.
 reset(5, 0, nil)
 check(S.advance_strike_team() == nil, "unknown strike byte fails")
--- Scene 2 (ROM 0x1F1E0): queues Boris list 0x1D6FD0 with 2 actors.
+-- Scene 2 (ROM 0x1F1E0): queues the Boris sequence by semantic identity.
 reset(2, 0, 1)
 check(S.advance_strike_team() == "applied" and host.bytes[E.StoryByte.STRIKE_TEAM] == 2, "scene 2 advance")
-check(#host.queued == 1 and host.queued[1][1] == 2 and host.queued[1][2] == 0x1D6FD0 and
-      host.queued[1][3] == 2 and host.queued[1][4] == "boris_strike_team", "Boris list queued")
+check(#host.queued == 1 and host.queued[1][1] == 2 and
+      host.queued[1][2] == 2 and
+      host.queued[1][3] == "boris_strike_team", "Boris sequence queued")
 -- Scene 2 while a world effect is pending: no change.
 reset(2, 0, 1, true)
 check(S.advance_strike_team() == nil and host.bytes[E.StoryByte.STRIKE_TEAM] == 1, "busy blocks")

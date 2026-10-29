@@ -27474,7 +27474,7 @@ int run_field_boris_greenhouse_strike_team_qa(
     const auto default_actors_before =
         field_scene.default_actor_count_for_dump();
     const auto listed_before = boundary_count(
-        "field.world_activity.boris_strike_team_list_queued");
+        "field.world_activity.boris_strike_team_sequence_queued");
     const auto resolved_before = boundary_count(
         "field.world_activity.boris_strike_team_sequence_resolved");
     const auto spawned_before = boundary_count(
@@ -27499,7 +27499,7 @@ int run_field_boris_greenhouse_strike_team_qa(
     const auto counter_after = field_scene.debug_inspection_fields().value(
         QStringLiteral("field.debug.strike_team_counter")).toInt(-1);
     if (counter_after != 1 ||
-        boundary_count("field.world_activity.boris_strike_team_list_queued")
+        boundary_count("field.world_activity.boris_strike_team_sequence_queued")
             != listed_before + 1) {
         std::cerr << "Boris Strike Team QA: command 0x2C did not queue list "
                      "0x1D6FD0 after incrementing FFFBFB (counter="

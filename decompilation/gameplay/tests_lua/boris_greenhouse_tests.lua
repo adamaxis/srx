@@ -414,7 +414,7 @@ local function strike_team_host(strike_value)
                id == "story.byte_set_fffbfb_" .. (strike_value + 1) then
             host.sets = host.sets + 1
             return "applied"
-        elseif id == "story.queue_world_effect_2_1d6fd0_2_boris_strike_team" then
+        elseif id == "story.queue_world_effect_2_2_boris_strike_team" then
             host.queued = host.queued + 1
             return "queued"
         end

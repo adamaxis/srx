@@ -170,6 +170,49 @@ int main() {
                    "or lacked their semantic profile id") && valid;
     lua_pop(state, 2);
 
+    lua_getfield(state, data_table, "dynamic_world_activity_actors");
+    const auto dynamic_actor_rows = lua_absindex(state, -1);
+    bool dynamic_actor_rows_are_semantic = true;
+    bool found_alarm_sequence = false;
+    bool found_boris_sequence = false;
+    for (std::size_t index = 1U; index <= lua_rawlen(state,
+                                                     dynamic_actor_rows);
+         ++index) {
+        lua_rawgeti(state, dynamic_actor_rows,
+                    static_cast<lua_Integer>(index));
+        const auto row = lua_absindex(state, -1);
+        lua_getfield(state, row, "sequence_id");
+        if (lua_isstring(state, -1) == 0) {
+            dynamic_actor_rows_are_semantic = false;
+        } else {
+            const auto* sequence_id = lua_tostring(state, -1);
+            found_alarm_sequence = found_alarm_sequence ||
+                std::string_view(sequence_id) == "field_alarm_reinforcements";
+            found_boris_sequence = found_boris_sequence ||
+                std::string_view(sequence_id) == "boris_strike_team";
+        }
+        lua_pop(state, 1);
+        lua_getfield(state, row, "activity_probe_enabled");
+        dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
+            lua_isboolean(state, -1) != 0;
+        lua_pop(state, 1);
+        for (const auto* field : {"selection_cell_offset",
+                                  "sequence_list_offset", "tagged_template",
+                                  "template_offset", "source_spawn_state_flags",
+                                  "source_interaction_flags"}) {
+            lua_getfield(state, row, field);
+            dynamic_actor_rows_are_semantic =
+                dynamic_actor_rows_are_semantic && lua_isnil(state, -1) != 0;
+            lua_pop(state, 1);
+        }
+        lua_pop(state, 1);
+    }
+    valid = expect(dynamic_actor_rows_are_semantic && found_alarm_sequence &&
+                       found_boris_sequence,
+                   "dynamic actor catalog leaked source pointers or failed "
+                   "to resolve named sequences") && valid;
+    lua_pop(state, 1);
+
     lua_getfield(state, data_table, "field_alarm_profiles");
     lua_rawgeti(state, -1, 21);
     const int scene_21_alarm_profile = lua_absindex(state, -1);

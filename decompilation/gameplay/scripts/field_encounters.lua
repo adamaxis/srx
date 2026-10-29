@@ -51,8 +51,7 @@ end
 local function actor_from_row(row)
     local actor = {
         source_order = row.source_order,
-        selection_cell_offset = row.selection_cell_offset,
-        sequence_list_offset = row.sequence_list_offset,
+        sequence_id = row.sequence_id,
         placement_rule = row.placement_rule,
         actor_name = row.actor_name,
         profile_id = row.profile_id,
@@ -66,8 +65,7 @@ local function actor_from_row(row)
         physical_meter = row.physical_meter,
         palette_line = row.palette_line,
         sprite_stem = row.sprite_stem,
-        tagged_template = row.tagged_template,
-        template_offset = row.template_offset,
+        activity_probe_enabled = row.activity_probe_enabled,
         ordered_overrides = row.ordered_overrides,
         delay_primary_attribute = row.delay_primary_attribute,
         delay_secondary_attribute = row.delay_secondary_attribute,
@@ -301,6 +299,9 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
         scene = scene_id,
         context_group = selected.context_group,
         random_sum = sum,
+        sequence_id = string.format(
+            "field_encounter.scene.%d.context.%d.weight.%d",
+            scene_id, selected.context_group, sum),
         event_name = selected.event_name,
         opening_text = "",
         choice_1 = "",
@@ -335,6 +336,9 @@ function Encounters.resolve_run_target_actor_group(area_id, event_id)
         scene = 15,
         context_group = area_id,
         random_sum = event_id,
+        sequence_id = string.format(
+            "field_encounter.scene.%d.context.%d.weight.%d",
+            15, area_id, event_id),
         event_name = "gang_contract_target",
         opening_text = "",
         choice_1 = "",
@@ -347,13 +351,13 @@ function Encounters.resolve_run_target_actor_group(area_id, event_id)
     }
 end
 
--- A named source list can be started by a story command without consuming the
--- ordinary field random selector. Its actor rows use random_sum 0xFF in the
--- extracted table so this lookup never leaks them into resolve().
-function Encounters.resolve_source_sequence(scene_id, sequence_list_offset)
+-- A named actor sequence can be started by a story command without consuming
+-- the ordinary field random selector. Import resolves source list addresses
+-- to these stable IDs before the table reaches Lua.
+function Encounters.resolve_sequence(scene_id, sequence_id)
     if not integer(scene_id, 0, E.Scene.LAST_ID) or
-       not integer(sequence_list_offset, 0,
-                   E.FieldEncounter.ROM_OFFSET_MAX) then
+       type(sequence_id) ~= "string" or
+       not sequence_id:match("^[%w_.:-]+$") then
         return nil
     end
     local data = content()
@@ -363,7 +367,7 @@ function Encounters.resolve_source_sequence(scene_id, sequence_list_offset)
     local actors = ordered_actor_rows(data, function(row)
         return row.scene == scene_id and
                row.random_sum == E.FieldEncounter.SOURCE_SEQUENCE_SENTINEL and
-               row.sequence_list_offset == sequence_list_offset
+               row.sequence_id == sequence_id
     end)
     if #actors == 0 then
         return nil
@@ -384,6 +388,7 @@ function Encounters.resolve_source_sequence(scene_id, sequence_list_offset)
         scene = scene_id,
         context_group = 0,
         random_sum = 0,
+        sequence_id = sequence_id,
         event_name = "source_sequence",
         opening_text = "",
         choice_1 = "",
@@ -392,7 +397,6 @@ function Encounters.resolve_source_sequence(scene_id, sequence_list_offset)
         choice_1_dispatch_returns = false,
         choice_2_dispatch_returns = false,
         choice_3_dispatch_returns = false,
-        sequence_list_offset = sequence_list_offset,
         actors = actors,
     }
 end
@@ -400,8 +404,8 @@ end
 -- ROM 0x1E1DA selects the fixed alternate list at 0x1E20A while FFE16F
 -- (field_alarm_active) is set. The list's actor template pointer is 0x1D6A1C.
 function Encounters.resolve_alarm_sequence(scene_id)
-    return Encounters.resolve_source_sequence(
-        scene_id, E.FieldEncounter.ALARM_SEQUENCE_LIST_ADDRESS)
+    return Encounters.resolve_sequence(
+        scene_id, "field_alarm_reinforcements")
 end
 
 return Encounters
