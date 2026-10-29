@@ -225,7 +225,7 @@ int main() {
     runtime.set_native_script_service_callback(
         [&fuchi_safe_arm_calls](const std::string_view service_id)
             -> std::optional<std::string> {
-            if (service_id == "story.byte_set_ffe187_255") {
+            if (service_id == "field.arm_fuchi_cyberheart_safe") {
                 ++fuchi_safe_arm_calls;
                 return "applied";
             }

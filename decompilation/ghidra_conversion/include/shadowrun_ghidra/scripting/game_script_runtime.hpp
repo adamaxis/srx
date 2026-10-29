@@ -940,10 +940,8 @@ enum class ScriptFieldSafeAction : std::uint8_t {
 struct ScriptFieldSafeDecision {
     ScriptFieldSafeAction action = ScriptFieldSafeAction::none;
     bool raise_alarm = false;
-    bool reset_strike_team_counter = false;
-    bool queue_alarm_transition = false;
-    std::uint8_t strike_team_counter_value = 0;
-    std::uint8_t alarm_transition_pending_value = 0;
+    bool reset_strike_team_stage = false;
+    bool defer_alarm_transition = false;
 };
 
 struct ScriptFieldEncounterTriggerInput {
@@ -1926,7 +1924,7 @@ public:
         const FieldMapCollisionEventInput& input);
     std::optional<ScriptFieldSafeDecision> resolve_field_safe_action(
         std::uint16_t scene_id, bool projected_terrain_event_published,
-        std::uint8_t fuchi_safe_context);
+        bool fuchi_cyberheart_safe_armed);
     std::optional<ScriptFieldEncounterOutcome> resolve_field_encounter(
         std::uint16_t scene_id, std::uint8_t first_roll,
         std::uint8_t second_roll);

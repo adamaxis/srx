@@ -2479,11 +2479,10 @@ private:
     // It is separate from the actor-transition countdown and remains unknown
     // when restored from a save that predates this field.
     std::optional<std::uint8_t> field_strike_team_counter_ = std::nullopt;
-    // FFE187 arms the Fuchi cyber-heart safe; FFE191 defers its alarm
-    // transition to the next source world-effect refresh. Both are transient.
-    std::optional<std::uint8_t> field_fuchi_safe_context_ = std::uint8_t{0U};
-    std::optional<std::uint8_t> field_alarm_transition_pending_ =
-        std::uint8_t{0U};
+    // ROM 0x5418C arms the Fuchi cyber-heart safe. ROM 0x54134 schedules its
+    // alarm transition for the next world-effect refresh. Both are transient.
+    bool field_fuchi_cyberheart_safe_armed_ = false;
+    bool field_alarm_transition_scheduled_ = false;
     std::optional<std::uint8_t> notebook_referral_flags_ = 0U;
     std::optional<std::uint16_t> notebook_shadowrunner_flags_ = 0U;
     QImage pocket_secretary_background_;

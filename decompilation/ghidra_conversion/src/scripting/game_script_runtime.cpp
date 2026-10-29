@@ -7008,7 +7008,7 @@ std::optional<ScriptFieldSafeDecision>
 GameScriptRuntime::resolve_field_safe_action(
     const std::uint16_t scene_id,
     const bool projected_terrain_event_published,
-    const std::uint8_t fuchi_safe_context) {
+    const bool fuchi_cyberheart_safe_armed) {
     auto* state = impl_->state;
     if (state == nullptr) {
         impl_->failure = "Lua runtime is unavailable for field safe policy";
@@ -7035,8 +7035,8 @@ GameScriptRuntime::resolve_field_safe_action(
     lua_setfield(state, input_index, "scene_id");
     lua_pushboolean(state, projected_terrain_event_published);
     lua_setfield(state, input_index, "projected_terrain_event_published");
-    lua_pushinteger(state, fuchi_safe_context);
-    lua_setfield(state, input_index, "fuchi_safe_context");
+    lua_pushboolean(state, fuchi_cyberheart_safe_armed);
+    lua_setfield(state, input_index, "fuchi_cyberheart_safe_armed");
 
     ScopedInstructionBudget instruction_budget(state);
     if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
@@ -7048,22 +7048,15 @@ GameScriptRuntime::resolve_field_safe_action(
     const auto result_index = lua_absindex(state, -1);
     std::string action_name;
     bool raise_alarm = false;
-    bool reset_strike_team_counter = false;
-    bool queue_alarm_transition = false;
-    std::uint32_t strike_team_counter_value = 0U;
-    std::uint32_t alarm_transition_pending_value = 0U;
+    bool reset_strike_team_stage = false;
+    bool defer_alarm_transition = false;
     if (!read_field_string(state, result_index, "action", action_name) ||
         !read_field_boolean(state, result_index, "raise_alarm", raise_alarm) ||
         !read_field_boolean(state, result_index,
-                            "reset_strike_team_counter",
-                            reset_strike_team_counter) ||
-        !read_field_boolean(state, result_index, "queue_alarm_transition",
-                            queue_alarm_transition) ||
-        !read_field_integer(state, result_index, "strike_team_counter_value",
-                            0xFFU, strike_team_counter_value) ||
-        !read_field_integer(state, result_index,
-                            "alarm_transition_pending_value", 0xFFU,
-                            alarm_transition_pending_value)) {
+                            "reset_strike_team_stage",
+                            reset_strike_team_stage) ||
+        !read_field_boolean(state, result_index, "defer_alarm_transition",
+                            defer_alarm_transition)) {
         return fail("field_safes.resolve returned invalid fields");
     }
 
@@ -7079,12 +7072,8 @@ GameScriptRuntime::resolve_field_safe_action(
         return fail("field_safes.resolve returned an unknown action");
     }
     decision.raise_alarm = raise_alarm;
-    decision.reset_strike_team_counter = reset_strike_team_counter;
-    decision.queue_alarm_transition = queue_alarm_transition;
-    decision.strike_team_counter_value =
-        static_cast<std::uint8_t>(strike_team_counter_value);
-    decision.alarm_transition_pending_value =
-        static_cast<std::uint8_t>(alarm_transition_pending_value);
+    decision.reset_strike_team_stage = reset_strike_team_stage;
+    decision.defer_alarm_transition = defer_alarm_transition;
 
     lua_settop(state, stack_base);
     impl_->failure.clear();

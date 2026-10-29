@@ -1,11 +1,9 @@
 -- story_state.lua and the Club Penumbra Mako callback against a host stub
 -- that mirrors FieldSceneRuntime's story.* / field.* primitives.
-local E = require("enums")
-
 local host
 local function reset(scene, heat, strike, busy)
-    host = { scene = scene, bytes = { [E.StoryByte.HEAT] = heat,
-             [E.StoryByte.STRIKE_TEAM] = strike }, busy = busy or false,
+    host = { scene = scene, heat_level = heat,
+             strike_team_stage = strike, busy = busy or false,
              queued = {}, karma = 0, roster = true,
              facts = { notebook_tip_flag_bit_49 = true,
                        field_mode_flag_bit_20 = true } }
@@ -25,13 +23,17 @@ game = {
             return "applied"
         end
         assert(domain == "story", "unexpected service " .. domain .. "." .. op)
-        local addr = op:match("^byte_get_(%x+)$")
-        if addr then
-            local v = host.bytes[tonumber(addr, 16)]
-            return v and ("value_" .. v) or nil
+        if op == "get_heat_level" then
+            return host.heat_level and ("level_" .. host.heat_level) or nil
         end
-        local a, v = op:match("^byte_set_(%x+)_(%d+)$")
-        if a then host.bytes[tonumber(a, 16)] = tonumber(v); return "applied" end
+        if op == "get_strike_team_stage" then
+            return host.strike_team_stage and
+                ("stage_" .. host.strike_team_stage) or nil
+        end
+        local heat = op:match("^set_heat_level_(%d+)$")
+        if heat then host.heat_level = tonumber(heat); return "applied" end
+        local stage = op:match("^set_strike_team_stage_(%d+)$")
+        if stage then host.strike_team_stage = tonumber(stage); return "applied" end
         if op == "world_effect_idle" then return host.busy and "busy" or "idle" end
         local s, n, sequence_id = op:match("^queue_world_effect_(%d+)_(%d+)_(.+)$")
         if s then
@@ -48,32 +50,32 @@ local function check(cond, msg) assert(cond, msg); checks = checks + 1 end
 
 -- Plain scene: +1, no follow-up; cap at 8.
 reset(5, 0, 7)
-check(S.advance_strike_team() == "applied" and host.bytes[E.StoryByte.STRIKE_TEAM] == 8, "advance to 8")
-check(S.advance_strike_team() == "applied" and host.bytes[E.StoryByte.STRIKE_TEAM] == 8, "cap 8")
+check(S.advance_strike_team() == "applied" and host.strike_team_stage == 8, "advance to 8")
+check(S.advance_strike_team() == "applied" and host.strike_team_stage == 8, "cap 8")
 check(#host.queued == 0, "no follow-up outside scene 2")
 -- Unknown byte: no change.
 reset(5, 0, nil)
 check(S.advance_strike_team() == nil, "unknown strike byte fails")
 -- Scene 2 (ROM 0x1F1E0): queues the Boris sequence by semantic identity.
 reset(2, 0, 1)
-check(S.advance_strike_team() == "applied" and host.bytes[E.StoryByte.STRIKE_TEAM] == 2, "scene 2 advance")
+check(S.advance_strike_team() == "applied" and host.strike_team_stage == 2, "scene 2 advance")
 check(#host.queued == 1 and host.queued[1][1] == 2 and
       host.queued[1][2] == 2 and
       host.queued[1][3] == "boris_strike_team", "Boris sequence queued")
 -- Scene 2 while a world effect is pending: no change.
 reset(2, 0, 1, true)
-check(S.advance_strike_team() == nil and host.bytes[E.StoryByte.STRIKE_TEAM] == 1, "busy blocks")
+check(S.advance_strike_team() == nil and host.strike_team_stage == 1, "busy blocks")
 
 local Club = require("club_penumbra")
 reset(5, 7, 0)
 check(Club.apply_mako_callback() == "applied", "mako applied")
-check(host.bytes[E.StoryByte.HEAT] == 8 and host.karma == 2 and
-      host.bytes[E.StoryByte.STRIKE_TEAM] == 1 and host.facts.story_flag_bit_11 == true and
+check(host.heat_level == 8 and host.karma == 2 and
+      host.strike_team_stage == 1 and host.facts.story_flag_bit_11 == true and
       host.facts.field_mode_flag_bit_20 == false and host.facts.field_mode_flag_bit_24 == true and
       host.facts.notebook_tip_flag_bit_49 == false, "mako effects")
 -- Missing roster: nothing changes.
 reset(5, 3, 0); host.roster = false
-check(Club.apply_mako_callback() == "service_unavailable" and host.bytes[E.StoryByte.HEAT] == 3 and
+check(Club.apply_mako_callback() == "service_unavailable" and host.heat_level == 3 and
       host.facts.story_flag_bit_11 == nil, "no roster leaves state")
 -- Unresolved facts: unavailable.
 reset(5, 3, 0); host.facts.notebook_tip_flag_bit_49 = nil

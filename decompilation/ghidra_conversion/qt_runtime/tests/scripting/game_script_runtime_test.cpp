@@ -1094,17 +1094,17 @@ bool verify_world_activity_extraction_result_pages(
                             task.operation->type ==
                                 ScriptNativeOperation::Type::service_call &&
                             task.operation->service_id ==
-                                "story.byte_get_fffbfb",
+                            "story.get_strike_team_stage",
                         "Renraku type-5 extraction skipped the FFFBFB gate")) {
                 return false;
             }
             task = scripts.complete_native_service_result(
-                "value_" + std::string(current_counter));
+                "stage_" + std::string(current_counter));
             if (!expect(task.operation.has_value() &&
                             task.operation->type ==
                                 ScriptNativeOperation::Type::service_call &&
                             task.operation->service_id ==
-                                "story.byte_set_fffbfb_8",
+                            "story.set_strike_team_stage_8",
                         "Renraku extraction did not clamp FFFBFB at eight")) {
                 return false;
             }
@@ -1443,8 +1443,8 @@ bool verify_dialogue_graph_outcomes(
                     task.operation->type ==
                         ScriptNativeOperation::Type::service_call &&
                     task.operation->service_id ==
-                        "story.byte_set_ffe187_255",
-                "Fuchi entry did not arm FFE187 before its source page")) {
+                        "field.arm_fuchi_cyberheart_safe",
+                "Fuchi entry did not arm the safe before its source page")) {
         return false;
     }
     task = scripts.complete_native_service_result("applied");
@@ -1613,22 +1613,20 @@ int main() {
                     renraku_safe->action ==
                         ScriptFieldSafeAction::renraku_map_overlay &&
                     renraku_safe->raise_alarm &&
-                    renraku_safe->reset_strike_team_counter &&
-                    renraku_safe->queue_alarm_transition &&
-                    renraku_safe->strike_team_counter_value == 0U &&
-                    renraku_safe->alarm_transition_pending_value == 1U &&
+                    renraku_safe->reset_strike_team_stage &&
+                    renraku_safe->defer_alarm_transition &&
                     renraku_safe_state.at("story_flag_bit_12"),
                 "0x540D6 Lua policy did not apply its gated one-shot reward")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
     const auto fuchi_safe_unarmed =
-        scripts.resolve_field_safe_action(0x28U, false, 0U);
+        scripts.resolve_field_safe_action(0x28U, false, false);
     const auto fuchi_safe =
-        scripts.resolve_field_safe_action(0x28U, false, 0xFFU);
+        scripts.resolve_field_safe_action(0x28U, false, true);
     const auto fuchi_safe_state = scripts.story_state();
     const auto fuchi_safe_repeat =
-        scripts.resolve_field_safe_action(0x28U, false, 0xFFU);
+        scripts.resolve_field_safe_action(0x28U, false, true);
     if (!expect(fuchi_safe_unarmed.has_value() &&
                     fuchi_safe_unarmed->action ==
                         ScriptFieldSafeAction::none &&

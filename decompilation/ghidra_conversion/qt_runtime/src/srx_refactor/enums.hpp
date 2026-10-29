@@ -971,10 +971,6 @@ enum class SteerFlag : std::int64_t {
     OVERSHOOT_X = 0x4,
     OVERSHOOT_Y = 0x8,
 };
-enum class StoryByte : std::int64_t {
-    HEAT = 0xFFFBFA,
-    STRIKE_TEAM = 0xFFFBFB,
-};
 enum class StoryFlag : std::int64_t {
     MOTEL_BILL_PAID = 0x0,
     TARISLAR_ASKED_SHALE = 0x1,

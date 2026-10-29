@@ -20,7 +20,7 @@ local function advance_renraku_escalation_if_eligible()
         -- 0x1F16A advances FFFBFB through 0x1F1E0 only for run type 4/5
         -- when the selected target is FFFBEE/FFFBEF = 5/6. The shared helper
         -- preserves the source upper bound of eight.
-        assert(StoryState.add_capped(E.StoryByte.STRIKE_TEAM, 1),
+        assert(StoryState.increase_strike_team_stage(1),
             "world-activity Strike Team counter is unresolved")
     end
 end

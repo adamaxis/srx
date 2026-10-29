@@ -78,8 +78,6 @@ E.FieldSafe = {
     RENRAKU_SCENE = 0x28, -- 0x540D6 safe handler checks FFFBF8 [C]
     FUCHI_ENTRY_SCENE = 0x03, -- 0x54152 arms FFE187 from scene 3/event 2 [C]
     FUCHI_ENTRY_EVENT = 0x02,
-    FUCHI_SAFE_CONTEXT_VALUE = 0xFF, -- 0x5418C writes FFE187 [C]
-    ALARM_TRANSITION_PENDING_VALUE = 0x01, -- 0x54134 writes FFE191 [C]
 }
 E.FieldEncounter = {
     FRAME_MASK = 0x03FF, -- raw 0x03FF: FFDF88 low-word cadence mask at 0x1E1AE [C]
@@ -371,13 +369,6 @@ E.LinkCode = { LINK = 0x80, ROW_SHIFT = 5, ROW_MASK = 0x03, EVENT_MASK = 0x1F } 
 E.DoorRow = { UP = 0, RIGHT = 1, DOWN = 2, LEFT = 3 }   -- code bits 6:5 = side the party is put back on, 0xBD34 rows [C]
 E.ServiceKind = { NONE = 0, HOTEL = 1, HOSPITAL = 2, SHOP = 3 }  -- 0x1F65A / 0x1F830 / 0x1FA78 handler chains (doc 18 section 3) [C]
 E.LinkReturn = { SERVICE = 1, INTERIOR = 2 }  -- 0x9B8 same-map d6 path / 0xA68 FFDF42 -> 0x2F32 interior exit [C]
--- Numeric story bytes the host exposes as story.byte_get_/byte_set_<hex>.
-E.StoryByte = {
-    HEAT = 0xFFFBFA,        -- Lone Star heat level 0..8 [C]
-    STRIKE_TEAM = 0xFFFBFB, -- Strike Team escalation stage 0..8, ROM 0x1F1E0 [C]
-    FUCHI_SAFE_CONTEXT = 0xFFE187, -- Fuchi entry service 0x54152 arms the cyber-heart safe [C]
-    ALARM_TRANSITION_PENDING = 0xFFE191, -- 0x54134 defers the alarm transition to 0x2940 [C]
-}
 E.LinkFacing = { PRESERVE_ENTRY = 0, FACE_AWAY = 1 }  -- per-link exit facing policy (port): FACE_AWAY = entry heading ^ 0x8000, the party faces out of the door
 E.Direction = { UP = 0, RIGHT = 2, DOWN = 4, LEFT = 6 }                                -- 0x148CA index [C]
 E.DirectionStep = { [0] = -0x40, [2] = 1, [4] = 0x40, [6] = -1 }                      -- 0x148CA values [C]

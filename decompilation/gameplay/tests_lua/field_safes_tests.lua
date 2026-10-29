@@ -13,11 +13,9 @@ local function reset()
         story = 0,
         group_items = 0,
         field_effects = 0,
-        bytes = {
-            [E.StoryByte.STRIKE_TEAM] = 5,
-            [E.StoryByte.FUCHI_SAFE_CONTEXT] = 0,
-            [E.StoryByte.ALARM_TRANSITION_PENDING] = 0,
-        },
+        strike_team_stage = 5,
+        fuchi_cyberheart_safe_armed = false,
+        alarm_transition_scheduled = false,
     }
     game = {
         state = setmetatable({}, {
@@ -77,8 +75,8 @@ local function context(scene, projected)
     return {
         scene_id = scene,
         projected_terrain_event_published = projected,
-        fuchi_safe_context =
-            host.bytes[E.StoryByte.FUCHI_SAFE_CONTEXT] or 0,
+        fuchi_cyberheart_safe_armed =
+            host.fuchi_cyberheart_safe_armed,
     }
 end
 
@@ -110,36 +108,31 @@ check(game.state.story_flag_bit_12 and game.state.group_item_flag_bit_8 and
       not game.state.field_mode_effect_flag_bit_8 and
       not game.state.field_mode_effect_flag_bit_17,
       "Renraku story, item, and field-effect writes match 0x540D6")
-check(host.bytes[E.StoryByte.STRIKE_TEAM] == 5 and
-      host.bytes[E.StoryByte.ALARM_TRANSITION_PENDING] == 0 and
-      renraku.reset_strike_team_counter and
-      renraku.queue_alarm_transition and
-      renraku.strike_team_counter_value == 0 and
-      renraku.alarm_transition_pending_value ==
-          E.FieldSafe.ALARM_TRANSITION_PENDING_VALUE,
-      "Renraku result requests the 0x540D6 strike reset and deferred alarm")
-host.bytes[E.StoryByte.STRIKE_TEAM] = 0
-host.bytes[E.StoryByte.ALARM_TRANSITION_PENDING] = 1
+check(host.strike_team_stage == 5 and not host.alarm_transition_scheduled and
+      renraku.reset_strike_team_stage and renraku.defer_alarm_transition,
+      "Renraku result requests escalation reset and deferred alarm")
+host.strike_team_stage = 0
+host.alarm_transition_scheduled = true
 local renraku_story = host.story
 local renraku_items = host.group_items
 local renraku_effects = host.field_effects
-local renraku_strike = host.bytes[E.StoryByte.STRIKE_TEAM]
-local renraku_alarm = host.bytes[E.StoryByte.ALARM_TRANSITION_PENDING]
+local renraku_strike = host.strike_team_stage
+local renraku_alarm = host.alarm_transition_scheduled
 check(Safes.resolve(context(0x28, true)).action == "none" and
       host.story == renraku_story and host.group_items == renraku_items and
       host.field_effects == renraku_effects and
-      host.bytes[E.StoryByte.STRIKE_TEAM] == renraku_strike and
-      host.bytes[E.StoryByte.ALARM_TRANSITION_PENDING] == renraku_alarm,
+      host.strike_team_stage == renraku_strike and
+      host.alarm_transition_scheduled == renraku_alarm,
       "Renraku safe repeat has no further effects")
 
 -- Fuchi safe: 0x541B2 is checked after 0x540D6 and uses FFE187, b25, and
 -- clear b14. It does not require the Renraku FFE178 gate.
 reset()
 host.story = set_bit(host.story, E.StoryFlag.HOSPITAL_VISITED, true)
-host.bytes[E.StoryByte.FUCHI_SAFE_CONTEXT] = 0
+host.fuchi_cyberheart_safe_armed = false
 check(Safes.resolve(context(0x28, false)).action == "none",
       "Fuchi safe requires FFE187")
-host.bytes[E.StoryByte.FUCHI_SAFE_CONTEXT] = E.FieldSafe.FUCHI_SAFE_CONTEXT_VALUE
+host.fuchi_cyberheart_safe_armed = true
 host.story = set_bit(host.story, E.StoryFlag.HOSPITAL_VISITED, false)
 check(Safes.resolve(context(0x28, false)).action == "none",
       "Fuchi safe requires story bit 25")
@@ -150,7 +143,7 @@ check(Safes.resolve(context(0x28, false)).action == "none",
 
 reset()
 host.story = set_bit(host.story, E.StoryFlag.HOSPITAL_VISITED, true)
-host.bytes[E.StoryByte.FUCHI_SAFE_CONTEXT] = E.FieldSafe.FUCHI_SAFE_CONTEXT_VALUE
+host.fuchi_cyberheart_safe_armed = true
 host.field_effects = set_bit(host.field_effects, 19, true)
 local fuchi = Safes.resolve(context(0x28, false))
 check(fuchi.action == "fuchi_prototype_cyberheart" and

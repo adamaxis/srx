@@ -852,56 +852,54 @@ FieldSceneRuntime::FieldSceneRuntime(
                 return "scene_" + std::to_string(
                     state_.field_scene_buffers.scene_reference);
             }
-            // Generic story bytes. Lua names them by ROM address
-            // (E.StoryByte); unknown addresses or unrestored values are nil.
-            const auto story_byte = [this](const std::string_view hex)
-                -> std::optional<std::uint8_t>* {
-                std::uint32_t address = 0U;
-                const auto parsed = std::from_chars(
-                    hex.data(), hex.data() + hex.size(), address, 16);
-                if (hex.empty() || parsed.ec != std::errc{} ||
-                    parsed.ptr != hex.data() + hex.size()) {
-                    return nullptr;
-                }
-                switch (address) {
-                case 0xFFFBFAU: return &field_heat_level_;
-                case 0xFFFBFBU: return &field_strike_team_counter_;
-                case 0xFFE187U: return &field_fuchi_safe_context_;
-                case 0xFFE191U: return &field_alarm_transition_pending_;
-                default: return nullptr;
-                }
-            };
-            constexpr std::string_view kStoryByteGetPrefix =
-                "story.byte_get_";
-            if (service_id.rfind(kStoryByteGetPrefix, 0U) == 0U) {
-                auto* value =
-                    story_byte(service_id.substr(kStoryByteGetPrefix.size()));
-                if (value == nullptr || !value->has_value()) {
-                    return std::nullopt;
-                }
-                return "value_" + std::to_string(**value);
+            // Lua sees named campaign progress. ROM work-RAM addresses stay
+            // at this host boundary as provenance, not as gameplay API.
+            if (service_id == "story.get_heat_level") {
+                return field_heat_level_.has_value()
+                    ? std::optional<std::string>("level_" +
+                          std::to_string(*field_heat_level_))
+                    : std::nullopt;
             }
-            constexpr std::string_view kStoryByteSetPrefix =
-                "story.byte_set_";
-            if (service_id.rfind(kStoryByteSetPrefix, 0U) == 0U) {
-                const auto args = service_id.substr(kStoryByteSetPrefix.size());
-                const auto split = args.find('_');
-                if (split == std::string_view::npos) {
-                    return std::nullopt;
-                }
-                auto* target = story_byte(args.substr(0U, split));
-                const auto value_text = args.substr(split + 1U);
+            if (service_id.rfind("story.set_heat_level_", 0U) == 0U) {
+                const auto value_text = service_id.substr(
+                    std::string_view("story.set_heat_level_").size());
                 unsigned value = 0U;
                 const auto parsed = std::from_chars(
                     value_text.data(), value_text.data() + value_text.size(),
                     value);
-                if (target == nullptr || value_text.empty() ||
-                    parsed.ec != std::errc{} ||
+                if (value_text.empty() || parsed.ec != std::errc{} ||
                     parsed.ptr != value_text.data() + value_text.size() ||
-                    value > 0xFFU) {
+                    value > 8U) {
                     return std::nullopt;
                 }
-                *target = static_cast<std::uint8_t>(value);
+                field_heat_level_ = static_cast<std::uint8_t>(value);
+                return "applied";
+            }
+            if (service_id == "story.get_strike_team_stage") {
+                return field_strike_team_counter_.has_value()
+                    ? std::optional<std::string>("stage_" +
+                          std::to_string(*field_strike_team_counter_))
+                    : std::nullopt;
+            }
+            if (service_id.rfind(
+                    "story.set_strike_team_stage_", 0U) == 0U) {
+                const auto value_text = service_id.substr(
+                    std::string_view("story.set_strike_team_stage_").size());
+                unsigned value = 0U;
+                const auto parsed = std::from_chars(
+                    value_text.data(), value_text.data() + value_text.size(),
+                    value);
+                if (value_text.empty() || parsed.ec != std::errc{} ||
+                    parsed.ptr != value_text.data() + value_text.size() ||
+                    value > 8U) {
+                    return std::nullopt;
+                }
+                field_strike_team_counter_ =
+                    static_cast<std::uint8_t>(value);
+                return "applied";
+            }
+            if (service_id == "field.arm_fuchi_cyberheart_safe") {
+                field_fuchi_cyberheart_safe_armed_ = true;
                 return "applied";
             }
             if (service_id == "story.world_effect_idle") {
@@ -7948,26 +7946,24 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 state_.field_scene_buffers.scene_reference,
                 field_movement_transition_state_
                     .projected_terrain_event_published,
-                field_fuchi_safe_context_.value_or(0U));
+                field_fuchi_cyberheart_safe_armed_);
             if (!decision.has_value()) {
                 failure_ = game_scripts_.failure();
                 source_boundary("field.safe.policy_unresolved");
                 return integration::PendingFieldSceneHandlerResult::unresolved;
             }
-            if (decision->reset_strike_team_counter) {
+            if (decision->reset_strike_team_stage) {
                 // ROM 0x540D6 clears FFFBFB before its first alarm call.
-                field_strike_team_counter_ =
-                    decision->strike_team_counter_value;
+                field_strike_team_counter_ = 0U;
             }
             if (decision->raise_alarm) {
                 // ROM 0x540D6 calls 0x1E04A after awarding the map overlay.
                 advance_field_alarm(true);
             }
-            if (decision->queue_alarm_transition) {
+            if (decision->defer_alarm_transition) {
                 // ROM 0x540D6 sets FFE191 after the immediate 0x1E04A call;
                 // 0x2940 consumes it on the next world-frame service pass.
-                field_alarm_transition_pending_ =
-                    decision->alarm_transition_pending_value;
+                field_alarm_transition_scheduled_ = true;
             }
             if (decision->action ==
                 scripting::ScriptFieldSafeAction::
@@ -8462,11 +8458,11 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         source_boundary("field.world_logic.process_terrain_work_batch");
     };
     world_frame_logic_callbacks_.advance_world_effect_trigger = [this] {
-        if (field_alarm_transition_pending_.value_or(0U) != 0U) {
+        if (field_alarm_transition_scheduled_) {
             // ROM 0x2940 clears FFE16F, consumes FFE191, and calls 0x1E04A.
             // The safe handler already made its immediate 0x1E04A call; this
             // frame service preserves the separate deferred transition.
-            field_alarm_transition_pending_ = 0U;
+            field_alarm_transition_scheduled_ = false;
             field_matrix_field_state_.alarm = false;
             advance_field_alarm(true);
         }
@@ -9343,8 +9339,8 @@ bool FieldSceneRuntime::bootstrap(
     field_matrix_field_state_ = scripting::ScriptMatrixFieldState{};
     field_matrix_field_state_.alarm = false;
     field_alarm_timer_ = 0;
-    field_fuchi_safe_context_ = 0U; // FFE187 starts clear [C].
-    field_alarm_transition_pending_ = 0U; // FFE191 starts clear [C].
+    field_fuchi_cyberheart_safe_armed_ = false; // 0x5418C arms it [C].
+    field_alarm_transition_scheduled_ = false; // 0x54134 defers it [C].
     field_matrix_field_state_.security_off = false;
     // Startup 0x007F6 calls 0x53290; field mode also calls it when 0x17490
     // detects a system change. A fresh bootstrap starts a new RAM bank, and

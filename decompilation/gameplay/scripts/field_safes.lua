@@ -23,8 +23,8 @@ local function renraku_map_overlay(context)
     end
 
     -- ROM 0x540D6: story bit 12, four FFFC34 clue changes, and group
-    -- item 8. The typed host applies the FFFBFB/FFE191 writes around the
-    -- 0x1E04A alarm service, in source order.
+    -- item 8. The typed host resets escalation and schedules the deferred
+    -- alarm transition around the 0x1E04A alarm service, in source order.
     StoryFlags.set(E.StoryFlag.RENRAKU_MAP_OVERLAY)
     set_effect_flag(9, true)
     set_effect_flag(16, false)
@@ -35,14 +35,14 @@ local function renraku_map_overlay(context)
 end
 
 local function fuchi_prototype_cyberheart(context)
-    if context.fuchi_safe_context == 0 or
+    if not context.fuchi_cyberheart_safe_armed or
        StoryFlags.is_set(E.StoryFlag.HOSPITAL_VISITED) ~= true or
        StoryFlags.is_set(E.StoryFlag.CYBERHEART_SAFE) ~= false then
         return false
     end
 
     -- ROM 0x541B2: mark bit 14, update the two FFFC34 flags, and give
-    -- FFFC22 bit 0. The source leaves FFE187 armed after this branch.
+    -- FFFC22 bit 0. The safe remains armed after this branch.
     StoryFlags.set(E.StoryFlag.CYBERHEART_SAFE)
     set_effect_flag(19, false)
     set_effect_flag(20, true)
@@ -55,10 +55,7 @@ function Safes.resolve(context)
        type(context.scene_id) ~= "number" or
        context.scene_id % 1 ~= 0 or context.scene_id < 0 or
        context.scene_id > E.Scene.LAST_ID or
-       type(context.fuchi_safe_context) ~= "number" or
-       context.fuchi_safe_context % 1 ~= 0 or
-       context.fuchi_safe_context < 0 or
-       context.fuchi_safe_context > 0xFF or
+       type(context.fuchi_cyberheart_safe_armed) ~= "boolean" or
        type(context.projected_terrain_event_published) ~= "boolean" then
         return nil
     end
@@ -67,30 +64,23 @@ function Safes.resolve(context)
         return {
             action = "renraku_map_overlay",
             raise_alarm = true,
-            reset_strike_team_counter = true,
-            queue_alarm_transition = true,
-            strike_team_counter_value = 0,
-            alarm_transition_pending_value =
-                E.FieldSafe.ALARM_TRANSITION_PENDING_VALUE,
+            reset_strike_team_stage = true,
+            defer_alarm_transition = true,
         }
     end
     if fuchi_prototype_cyberheart(context) then
         return {
             action = "fuchi_prototype_cyberheart",
             raise_alarm = false,
-            reset_strike_team_counter = false,
-            queue_alarm_transition = false,
-            strike_team_counter_value = 0,
-            alarm_transition_pending_value = 0,
+            reset_strike_team_stage = false,
+            defer_alarm_transition = false,
         }
     end
     return {
         action = "none",
         raise_alarm = false,
-        reset_strike_team_counter = false,
-        queue_alarm_transition = false,
-        strike_team_counter_value = 0,
-        alarm_transition_pending_value = 0,
+        reset_strike_team_stage = false,
+        defer_alarm_transition = false,
     }
 end
 

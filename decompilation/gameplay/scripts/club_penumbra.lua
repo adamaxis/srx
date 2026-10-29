@@ -12,8 +12,8 @@ end
 -- Mako result (ROM callback): +2 heat (cap 8), +2 Karma, story/mode/tip
 -- flag changes, then the shared Strike Team step (ROM 0x1F1E0).
 function ClubPenumbra.apply_mako_callback()
-    local heat = StoryState.byte(E.StoryByte.HEAT)
-    if heat == nil or StoryState.byte(E.StoryByte.STRIKE_TEAM) == nil or
+    local heat = StoryState.heat_level()
+    if heat == nil or StoryState.strike_team_stage() == nil or
        game.state.notebook_tip_flag_bit_49 == nil or
        game.state.field_mode_flag_bit_20 == nil then
         return "service_unavailable"
@@ -21,7 +21,8 @@ function ClubPenumbra.apply_mako_callback()
     -- Karma first: it is the only step that can still fail (no roster), so
     -- nothing has changed when it does.
     if game.services.call("party", "award_karma_2") ~= "applied" or
-       not StoryState.set_byte(E.StoryByte.HEAT, math.min(8, heat + 2)) then
+       not StoryState.set_heat_level(math.min(
+           StoryState.MAX_HEAT_LEVEL, heat + 2)) then
         return "service_unavailable"
     end
 

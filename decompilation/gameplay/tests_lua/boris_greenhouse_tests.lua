@@ -408,10 +408,10 @@ local function strike_team_host(strike_value)
             return "scene_2"
         elseif id == "story.world_effect_idle" then
             return "idle"
-        elseif id == "story.byte_get_fffbfb" then
-            return strike_value and ("value_" .. strike_value) or nil
+        elseif id == "story.get_strike_team_stage" then
+            return strike_value and ("stage_" .. strike_value) or nil
         elseif strike_value and
-               id == "story.byte_set_fffbfb_" .. (strike_value + 1) then
+               id == "story.set_strike_team_stage_" .. (strike_value + 1) then
             host.sets = host.sets + 1
             return "applied"
         elseif id == "story.queue_world_effect_2_2_boris_strike_team" then
