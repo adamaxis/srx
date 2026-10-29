@@ -4634,22 +4634,12 @@ void FieldSceneRuntime::advance_default_field_actors(
                 movement_state.heading = actor.movement_state.heading;
                 movement_state.animation_heading =
                     actor.movement_state.animation_heading;
-                movement_state.collision_context =
-                    actor.movement_state.collision_context;
                 movement_state.route_status = actor.movement_state.route_status;
                 movement_state.route_flags = actor.source_behavior_flags;
                 movement_state.collision_extent =
                     actor.movement_state.collision_extent;
                 movement_state.terrain_collision_code =
                     actor.movement_terrain_collision_code;
-                for (std::size_t index = 0U;
-                     index < field_movement_direction_offsets_.size();
-                     ++index) {
-                    context.movement_offsets[index] =
-                        scripting::ScriptMovementOffset{
-                            field_movement_direction_offsets_[index].x,
-                            field_movement_direction_offsets_[index].y};
-                }
                 context.movement_entity_flags = actor.source_record_flags;
                 context.movement_collision_mode =
                     field_movement_transition_state_.world_mode;
@@ -5159,8 +5149,6 @@ void FieldSceneRuntime::advance_default_field_actors(
             actor.movement_state.heading = step.state.heading;
             actor.movement_state.animation_heading =
                 step.state.animation_heading;
-            actor.movement_state.collision_context =
-                step.state.collision_context;
             if (step.state.substate_update ==
                 scripting::ScriptMovementSubstateUpdate::direct_translation) {
                 actor.movement_state.movement_substate = 0x1000U;
@@ -9789,7 +9777,6 @@ bool FieldSceneRuntime::bootstrap(
         source_boundary("field.bootstrap.field_scene_resources_missing");
         return false;
     }
-    field_movement_direction_offsets_ = assets.field_movement_direction_offsets;
     field_movement_route_sources_ = assets.field_movement_routes;
     for (std::size_t index = 0; index < field_movement_routes_.size();
          ++index) {
@@ -11566,8 +11553,6 @@ FieldSceneRuntime::heartbeat_field_player(
         movement_state.heading = field_movement_state_.heading;
         movement_state.animation_heading =
             field_movement_state_.animation_heading;
-        movement_state.collision_context =
-            field_movement_state_.collision_context;
         movement_state.route_status = field_movement_state_.route_status;
         movement_state.route_flags =
             field_movement_behavior_record_.route_flags;
@@ -11575,13 +11560,6 @@ FieldSceneRuntime::heartbeat_field_player(
             field_movement_state_.collision_extent;
         movement_state.terrain_collision_code =
             field_movement_transition_state_.terrain_collision_code;
-        for (std::size_t index = 0;
-             index < field_movement_direction_offsets_.size(); ++index) {
-            actor_context.movement_offsets[index] =
-                scripting::ScriptMovementOffset{
-                    field_movement_direction_offsets_[index].x,
-                    field_movement_direction_offsets_[index].y};
-        }
         actor_context.movement_entity_flags = field_entity_behavior_flags_;
         actor_context.movement_transition_active = false;
         actor_context.movement_scene_id =

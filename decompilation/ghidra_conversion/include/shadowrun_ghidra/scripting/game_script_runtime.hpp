@@ -1550,11 +1550,6 @@ enum class ScriptActorAnimationMode : std::uint8_t {
     runner_hurt, // ROM 0xAFF2 C072 party runner hurt list
 };
 
-struct ScriptMovementOffset {
-    std::int16_t x = 0;
-    std::int16_t y = 0;
-};
-
 enum class ScriptMovementSubstateUpdate : std::uint8_t {
     unchanged,
     direct_translation,
@@ -1566,7 +1561,6 @@ struct ScriptMovementStepState {
     std::uint16_t position_y = 0;
     std::uint16_t heading = 0;
     std::uint16_t animation_heading = 0;
-    std::uint16_t collision_context = 0;
     std::int16_t route_status = 0;
     std::uint8_t route_flags = 0;
     ScriptMovementSubstateUpdate substate_update =
@@ -1828,7 +1822,10 @@ struct ScriptActorBehaviorContext {
     ScriptProjectileTerrainProbe projectile_terrain_probe;
     ScriptProjectileCollisionSearch projectile_collision_search;
     bool movement_services_available = false;
-    std::array<ScriptMovementOffset, 8> movement_offsets{};
+    // Gameplay movement uses a direction and distance. The native adapter
+    // does not pass the ROM's eight-entry direction-offset table into Lua.
+    // C002's cardinal vector magnitude is 40 map units per update [C].
+    std::int16_t movement_default_step_distance = 40;
     ScriptMovementStepState movement_state{};
     std::uint8_t movement_entity_flags = 0;
     bool walk_fast_enabled = false;

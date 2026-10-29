@@ -671,7 +671,6 @@ void FieldSceneRuntime::advance_field_movement() {
     field_movement_state_.position_y = script_state.position_y;
     field_movement_state_.heading = script_state.heading;
     field_movement_state_.animation_heading = script_state.animation_heading;
-    field_movement_state_.collision_context = script_state.collision_context;
     if (script_state.substate_update ==
         scripting::ScriptMovementSubstateUpdate::direct_translation) {
         field_movement_state_.movement_substate = 0x1000U;

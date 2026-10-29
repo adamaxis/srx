@@ -8559,10 +8559,7 @@ int main() {
         context.movement_state.animation_heading = 0U;
         context.movement_state.route_status = -1;
         context.movement_state.route_flags = 0x03U;
-        context.movement_offsets = {{
-            {0, -18}, {18, -18}, {18, 0}, {18, 18},
-            {0, 18}, {-18, 18}, {-18, 0}, {-18, -18},
-        }};
+        context.movement_default_step_distance = 18;
         context.movement_collision =
             [](const std::uint16_t, const std::uint16_t) {
                 return ScriptMovementCollisionResult{0, 0U};
@@ -9871,10 +9868,9 @@ int main() {
         context.movement_state.animation_heading = initial_heading;
         context.movement_state.route_status = 9;
         context.movement_state.route_flags = 0x03U;
-        context.movement_offsets = {{
-            {10, 0}, {0, 10}, {20, 0}, {0, 20},
-            {-10, 0}, {0, -10}, {-20, 0}, {0, -20},
-        }};
+        // Use a small host movement distance; direction determines signed
+        // X/Y components, matching the compass order recovered from ROM C002.
+        context.movement_default_step_distance = 10;
         context.movement_collision_recovery =
             [](const std::uint16_t, const std::uint16_t,
                const std::int16_t, const std::uint8_t) {
@@ -9893,7 +9889,7 @@ int main() {
                                    const std::uint16_t y) {
             ++clear_collision_queries;
             const auto code = static_cast<std::int16_t>(
-                x == 110U && y == 100U ? 0 : 1);
+                x == 100U && y == 90U ? 0 : 1);
             return ScriptMovementCollisionResult{
                 code, static_cast<std::uint16_t>(code)};
         };
@@ -9911,7 +9907,7 @@ int main() {
                                    const std::uint16_t y) {
             ++route_collision_queries;
             const auto code = static_cast<std::int16_t>(
-                x == 120U && y == 100U ? 1 : 0);
+                x == 110U && y == 100U ? 1 : 0);
             return ScriptMovementCollisionResult{
                 code, static_cast<std::uint16_t>(code)};
         };
@@ -9930,8 +9926,8 @@ int main() {
         [&slide_collision_queries](const std::uint16_t x,
                                    const std::uint16_t y) {
             ++slide_collision_queries;
-            if ((x == 100U && y == 110U) ||
-                (x == 110U && y == 100U)) {
+            if ((x == 110U && y == 90U) ||
+                (x == 100U && y == 90U)) {
                 return ScriptMovementCollisionResult{1, 1U};
             }
             return ScriptMovementCollisionResult{0, 0U};
@@ -9978,22 +9974,28 @@ int main() {
     reset_step_context.movement_route_lookup =
         [](const std::uint16_t) { return ScriptMovementRouteFacts{}; };
     const auto reset_step = scripts.actor_heartbeat(reset_step_context);
+    // ROM C002 stores north as (0,-40), east as (40,0), and northeast as
+    // (40,-40). These checks inject a 10-unit distance and exercise the same
+    // signed compass vectors without passing C002's word array into Lua.
     if (!expect(
             clear_step.has_value() && clear_step->movement_step.has_value() &&
                 clear_step->movement_step->outcome ==
                     ScriptActorMovementStep::Outcome::accepted &&
-                clear_step->movement_step->state.position_x == 110U &&
+                clear_step->movement_step->state.position_x == 100U &&
+                clear_step->movement_step->state.position_y == 90U &&
                 clear_step->movement_step->state.clear_pending_event &&
                 clear_step->movement_step->state.substate_update ==
                     ScriptMovementSubstateUpdate::direct_translation &&
                 clear_step->movement_step->state.route_flags == 0x03U &&
                 clear_collision_queries == 1U &&
                 route_step.has_value() && route_step->movement_step.has_value() &&
-                route_step->movement_step->state.position_x == 110U &&
+                route_step->movement_step->state.position_x == 100U &&
+                route_step->movement_step->state.position_y == 90U &&
                 route_step->movement_step->state.clear_collision_recovery &&
                 observed_route_key == 4U && route_collision_queries == 2U &&
                 slide_step.has_value() && slide_step->movement_step.has_value() &&
-                slide_step->movement_step->state.position_x == 120U &&
+                slide_step->movement_step->state.position_x == 110U &&
+                slide_step->movement_step->state.position_y == 100U &&
                 slide_step->movement_step->state.route_status == 0 &&
                 slide_step->movement_step->state.substate_update ==
                     ScriptMovementSubstateUpdate::cardinal_fallback &&
@@ -10003,7 +10005,7 @@ int main() {
                 pending_event_step.has_value() &&
                 pending_event_step->movement_step.has_value() &&
                 pending_event_step->movement_step->state.route_flags == 0x20U &&
-                pending_event_step->movement_step->state.position_x == 110U &&
+                pending_event_step->movement_step->state.position_y == 90U &&
                 pending_event_recoveries == 1U &&
                 reset_step.has_value() && reset_step->movement_step.has_value() &&
                 reset_step->movement_step->outcome ==

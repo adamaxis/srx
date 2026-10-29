@@ -11396,18 +11396,8 @@ GameScriptRuntime::actor_heartbeat(
             static_cast<bool>(context.movement_route_lookup) &&
             static_cast<bool>(context.movement_collision_recovery));
     lua_setfield(state, -2, "movement_services_available");
-    lua_createtable(state, 8, 0);
-    for (std::size_t index = 0; index < context.movement_offsets.size();
-         ++index) {
-        const auto& offset = context.movement_offsets[index];
-        lua_createtable(state, 2, 0);
-        lua_pushinteger(state, offset.x);
-        lua_rawseti(state, -2, 1);
-        lua_pushinteger(state, offset.y);
-        lua_rawseti(state, -2, 2);
-        lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
-    }
-    lua_setfield(state, -2, "movement_offsets");
+    lua_pushinteger(state, context.movement_default_step_distance);
+    lua_setfield(state, -2, "movement_default_step_distance");
     lua_createtable(state, 0, 13);
     lua_pushinteger(state, context.movement_state.position_x);
     lua_setfield(state, -2, "position_x");
@@ -11417,8 +11407,6 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "heading");
     lua_pushinteger(state, context.movement_state.animation_heading);
     lua_setfield(state, -2, "animation_heading");
-    lua_pushinteger(state, context.movement_state.collision_context);
-    lua_setfield(state, -2, "collision_context");
     const char* substate_update = "unchanged";
     if (context.movement_state.substate_update ==
         ScriptMovementSubstateUpdate::direct_translation) {
@@ -12757,9 +12745,7 @@ GameScriptRuntime::actor_heartbeat(
             !read_movement("heading", 0xFFFFU,
                            movement_step.state.heading) ||
             !read_movement("animation_heading", 0xFFFFU,
-                           movement_step.state.animation_heading) ||
-            !read_movement("collision_context", 0xFFFFU,
-                           movement_step.state.collision_context)) {
+                           movement_step.state.animation_heading)) {
             return fail("actor_ai.heartbeat returned incomplete movement state");
         }
         std::string substate_update;

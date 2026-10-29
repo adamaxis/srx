@@ -2671,8 +2671,6 @@ private:
         FieldPlayerAttackPose::firearm;
     std::uint8_t field_entity_attack_direction_ = 0U;
     bool field_combat_input_suppressed_until_release_ = false;
-    std::array<MovementOffset, integration::kFieldMovementDirectionCount>
-        field_movement_direction_offsets_{};
     std::array<DirectionalMovementRoute,
                integration::kFieldMovementRouteCount>
         field_movement_routes_{};

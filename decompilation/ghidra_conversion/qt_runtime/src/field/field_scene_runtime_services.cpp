@@ -87,20 +87,12 @@ void FieldSceneRuntime::provide_source_profile_patrol_movement_services(
     context.movement_state.heading = actor.movement_state.heading;
     context.movement_state.animation_heading =
         actor.movement_state.animation_heading;
-    context.movement_state.collision_context =
-        actor.movement_state.collision_context;
     context.movement_state.route_status = actor.movement_state.route_status;
     context.movement_state.route_flags = actor.source_behavior_flags;
     context.movement_state.collision_extent =
         actor.movement_state.collision_extent;
     context.movement_state.terrain_collision_code =
         actor.movement_terrain_collision_code;
-    for (std::size_t index = 0U;
-         index < field_movement_direction_offsets_.size(); ++index) {
-        context.movement_offsets[index] = scripting::ScriptMovementOffset{
-            field_movement_direction_offsets_[index].x,
-            field_movement_direction_offsets_[index].y};
-    }
     context.movement_entity_flags = actor.source_record_flags;
     context.movement_collision_mode =
         field_movement_transition_state_.world_mode;

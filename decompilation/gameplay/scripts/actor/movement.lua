@@ -393,6 +393,20 @@ local function movement_lifecycle(context)
     return type(facts) == "table" and facts.lifecycle or {}
 end
 
+-- Movement is represented as a distance in map units per actor update.
+-- Direction supplies signed X/Y components; ROM C002's eight-entry XY word
+-- table is source evidence, not a runtime Lua data structure [C].
+local direction_vectors = {
+    { x = 0, y = -1 }, { x = 1, y = -1 },
+    { x = 1, y = 0 },  { x = 1, y = 1 },
+    { x = 0, y = 1 },  { x = -1, y = 1 },
+    { x = -1, y = 0 }, { x = -1, y = -1 },
+}
+
+local function direction_vector(direction)
+    return direction_vectors[(direction & 0x7) + 1]
+end
+
 local function actor_lifecycle(context)
     if context.dynamic_world_encounter_actor == true then
         local facts = context.actor_facts
@@ -428,7 +442,7 @@ local function movement_direction_from_heading(context, heading)
     return movement_octant_selector(context)(heading)
 end
 
-local function creature_movement_offsets(context, state)
+local function creature_movement_step_distance(context, state)
     local lifecycle = actor_lifecycle(context)
     local walk_fast_selected = context.walk_fast_enabled == true and
         lifecycle.thinking_enabled == true
@@ -442,7 +456,7 @@ local function creature_movement_offsets(context, state)
         context.dynamic_world_encounter_actor == true or
         type(combat_quickness) == "number"
     if not attribute_speed and not walk_fast_selected then
-        return context.movement_offsets
+        return context.movement_default_step_distance
     end
 
     -- 0xACAE installs 0xB574 when +0x10 bit 1 is set. Bit 1 clear is the
@@ -496,7 +510,7 @@ local function creature_movement_offsets(context, state)
         if not lifecycle.thinking_enabled then
             local distance = state.movement_route_distance
             if type(distance) ~= "number" then
-                return context.movement_offsets
+                return context.movement_default_step_distance
             end
             if targets_world then
                 step = 31
@@ -519,29 +533,18 @@ local function creature_movement_offsets(context, state)
     end
 
     -- This is the actor's map-coordinate displacement per movement update.
-    -- ROM 0xBADE selects it from the movement vector table [C].
     state.movement_distance_per_update = step
-    return {
-        {0, -step}, {step, -step}, {step, 0}, {step, step},
-        {0, step}, {-step, step}, {-step, 0}, {-step, -step},
-    }
-end
-
-local function movement_context_word(offsets, direction)
-    -- ROM 0xBADE reads the selected table's word at byte offset 4 + D0,
-    -- where D0 is the doubled direction ordinal.
-    local word_index = 2 + direction
-    local pair = math.floor(word_index / 2) + 1
-    local component = (word_index % 2) + 1
-    return offsets[pair][component] & AiTuning.WORD_MAX
+    return step
 end
 
 local function probe_movement(context, movement_state, direction_slot,
-                              movement_offsets)
+                              step_distance)
     local direction = (direction_slot >> 1) & 0x7
-    local offset = movement_offsets[direction + 1]
-    local candidate_x = u16(movement_state.position_x + offset[1])
-    local candidate_y = u16(movement_state.position_y + offset[2])
+    local vector = direction_vector(direction)
+    local candidate_x = u16(
+        movement_state.position_x + vector.x * step_distance)
+    local candidate_y = u16(
+        movement_state.position_y + vector.y * step_distance)
     local collision_code, terrain_collision_code = game.movement.collision(
         candidate_x, candidate_y)
     movement_state.terrain_collision_code = terrain_collision_code
@@ -602,8 +605,10 @@ local function advance_entity_movement(context, state)
         return nil
     end
 
-    local movement_offsets = creature_movement_offsets(context, state)
-    if type(movement_offsets) ~= "table" or #movement_offsets ~= 8 then
+    local movement_step_distance =
+        creature_movement_step_distance(context, state)
+    if type(movement_step_distance) ~= "number" or
+       movement_step_distance <= 0 then
         return nil
     end
 
@@ -630,10 +635,8 @@ local function advance_entity_movement(context, state)
     local octant_for_heading = movement_octant_selector(context)
     local initial_direction = octant_for_heading(movement_state.heading)
     local initial_slot = initial_direction * 2
-    movement_state.collision_context = movement_context_word(
-        movement_offsets, initial_direction)
     local initial = probe_movement(
-        context, movement_state, initial_slot, movement_offsets)
+        context, movement_state, initial_slot, movement_step_distance)
 
     if initial.collision_code == 0 then
         movement_state.substate_update = "direct_translation"
@@ -683,7 +686,8 @@ local function advance_entity_movement(context, state)
             -- 0xBBC8 doubles it into the probe slot (0xB77E doubles again
             -- for the vector table) [C].
             fallback = probe_movement(
-                context, movement_state, fallback_slot << 1, movement_offsets)
+                context, movement_state, fallback_slot << 1,
+                movement_step_distance)
             carry_set = movement_probe_is_blocked(fallback, context)
         else
             carry_set = true
@@ -711,13 +715,13 @@ local function advance_entity_movement(context, state)
     movement_state.cardinal_direction = movement_direction >> 1
     local selected = probe_movement(
         context, movement_state, movement_direction << 1,
-        movement_offsets)
+        movement_step_distance)
     if movement_probe_is_blocked(selected, context) then
         movement_state.route_status = movement_direction
         local alternate_direction = (movement_direction + 2) & 0x07
         selected = probe_movement(
             context, movement_state, alternate_direction << 1,
-            movement_offsets)
+            movement_step_distance)
         if movement_probe_is_blocked(selected, context) then
             local reset = reset_blocked_movement(
                 context, state, movement_state)
@@ -763,8 +767,7 @@ R.movement_collision_code = movement_collision_code
 R.walk_direction_from_heading = walk_direction_from_heading
 R.movement_octant_selector = movement_octant_selector
 R.movement_direction_from_heading = movement_direction_from_heading
-R.creature_movement_offsets = creature_movement_offsets
-R.movement_context_word = movement_context_word
+R.creature_movement_step_distance = creature_movement_step_distance
 R.probe_movement = probe_movement
 R.route_key_for_heading = route_key_for_heading
 R.movement_probe_is_blocked = movement_probe_is_blocked
