@@ -158,6 +158,22 @@ std::optional<std::uint8_t> script_spell_action_code_from_id(
     return static_cast<std::uint8_t>(spell->spell_code + 1U);
 }
 
+std::optional<std::uint8_t> script_action_code_from_semantic_id(
+    const std::string_view action_kind, const std::string_view action_id) {
+    if (action_kind == "none") {
+        return action_id.empty()
+            ? std::optional<std::uint8_t>{0U}
+            : std::nullopt;
+    }
+    if (action_kind == "item") {
+        return script_item_source_code_from_id(action_id);
+    }
+    if (action_kind == "spell") {
+        return script_spell_action_code_from_id(action_id);
+    }
+    return std::nullopt;
+}
+
 void push_runner_menu_facts(lua_State* lua,
                            const std::uint8_t source_status) {
     lua_createtable(lua, 0, 2);
@@ -8498,7 +8514,7 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
         std::uint32_t source_order = 0U;
         std::string visual_profile_id;
         std::uint32_t palette_line = 0U;
-        std::uint32_t action_code = 0U;
+        std::string action_id;
         std::uint32_t world_x = 0U;
         std::uint32_t world_y = 0U;
         std::uint32_t heading = 0U;
@@ -8556,8 +8572,8 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
             valid_fact(valid_identifier(actor.sprite_stem), "sprite id") &&
             valid_fact(read_field_string(state, row_index, "action_kind",
                                          action_kind), "action kind") &&
-            valid_fact(read_field_integer(state, row_index, "action_code",
-                                          0xFFU, action_code),
+            valid_fact(read_optional_field_string(state, row_index,
+                                                  "action_id", action_id),
                        "action selection") &&
             valid_fact(read_field_integer(state, row_index, "palette_line",
                                           3U, palette_line), "palette line") &&
@@ -8607,8 +8623,9 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
         } else {
             return fail("world-content actor activity kind is unknown");
         }
-        if ((actor.action_kind == ScriptActorActionKind::none) !=
-            (action_code == 0U)) {
+        const auto source_action_code =
+            script_action_code_from_semantic_id(action_kind, action_id);
+        if (!source_action_code.has_value()) {
             return fail("world-content script actor action fields disagree");
         }
         actor.scene_id = scene_id;
@@ -8619,7 +8636,7 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
         actor.entity_kind = *source_sprite_type;
         actor.combatant.blocks_spell_death_pose =
             script_sprite_type_blocks_spell_death_pose(actor.entity_kind);
-        actor.action_code = static_cast<std::uint8_t>(action_code);
+        actor.action_code = *source_action_code;
         actor.palette_line = static_cast<std::uint8_t>(palette_line);
         actor.world_x = static_cast<std::uint16_t>(world_x);
         actor.world_y = static_cast<std::uint16_t>(world_y);
@@ -8933,7 +8950,7 @@ GameScriptRuntime::resolve_field_encounter_impl(
             ScriptFieldEncounterActor actor{};
             std::uint32_t source_order = 0U;
             std::string visual_profile_id;
-            std::uint32_t action_code = 0U;
+            std::string action_id;
             ActorRoleFacts actor_roles;
             ActorInteractionFacts actor_interaction;
             std::uint32_t physical_meter = 0U;
@@ -8961,8 +8978,8 @@ GameScriptRuntime::resolve_field_encounter_impl(
                 valid_identifier(visual_profile_id) &&
                 read_field_string(state, actor_index, "action_kind",
                                   action_kind) &&
-                read_field_integer(state, actor_index, "action_code", 255U,
-                                   action_code) &&
+                read_optional_field_string(state, actor_index, "action_id",
+                                           action_id) &&
                 read_actor_role_facts(state, actor_index, actor_roles) &&
                 read_actor_interaction_facts(state, actor_index,
                                              actor_interaction) &&
@@ -8984,6 +9001,11 @@ GameScriptRuntime::resolve_field_encounter_impl(
                                         0xFFFFU, run_target_spawn_x) &&
                 read_optional_field_u32(state, actor_index, "spawn_y",
                                         0xFFFFU, run_target_spawn_y);
+            const auto source_action_code =
+                script_action_code_from_semantic_id(action_kind, action_id);
+            if (!source_action_code.has_value()) {
+                valid_actor = false;
+            }
             lua_getfield(state, actor_index, "combatant");
             if (!lua_istable(state, -1)) {
                 valid_actor = false;
@@ -9071,10 +9093,11 @@ GameScriptRuntime::resolve_field_encounter_impl(
                         actor.combatant.action_profile_options) &&
                     source_profile_binding !=
                         impl_->action_profile_index_by_actor_profile_id.end();
-                if (valid_combatant) {
+                if (valid_combatant && source_action_code.has_value()) {
                     actor.combatant.interaction_flags =
                         interaction_to_source(combat_interaction);
-                    actor.combatant.equipped_action_code = action_code;
+                    actor.combatant.equipped_action_code =
+                        *source_action_code;
                     actor.combatant.linked_action_profile_index =
                         source_profile_binding->second;
                     valid_combatant =
@@ -9134,7 +9157,7 @@ GameScriptRuntime::resolve_field_encounter_impl(
             actor.entity_kind = *source_sprite_type;
             actor.combatant.blocks_spell_death_pose =
                 script_sprite_type_blocks_spell_death_pose(actor.entity_kind);
-            actor.action_code = static_cast<std::uint8_t>(action_code);
+            actor.action_code = *source_action_code;
             actor.source_spawn_state_flags = roles_to_source(actor_roles, 0U);
             actor.source_interaction_flags =
                 interaction_to_source(actor_interaction);

@@ -40,7 +40,7 @@ local function actor_row(source_order, sequence_id, placement_rule)
         actor_name = "corp guard",
         profile_id = "corp_guard_k05_item06",
         action_kind = "item",
-        action_code = 6,
+        action_id = "max_power",
         actor_facts = {
             roles = {
                 spotted = true,

@@ -23,7 +23,7 @@ game = {
                     world_y = 0x0300,
                     initial_heading = 0xC000,
                     action_kind = "item",
-                    action_code = 3,
+                    action_id = "american_l36",
                     ordered_overrides = "0x2E=0xC0,0x9E=0x10",
                     actor_facts = { roles = {}, interaction = {} },
                 },
@@ -52,7 +52,7 @@ game = {
                     world_y = 0x0700,
                     initial_heading = 0x8000,
                     action_kind = "item",
-                    action_code = 3,
+                    action_id = "american_l36",
                     ordered_overrides = "0x9E=0x20,0x2E=0x80,0x9E=0x8",
                     actor_facts = { roles = {}, interaction = {} },
                 },
@@ -70,7 +70,8 @@ assert(actors[1].id == "world_activity:13:scene_13_ilene_gate_script:0" and
        actors[1].palette_line == 1 and
        actors[1].sprite == "actor-kind-10-palette-1" and
        actors[1].x == 0x1100 and actors[1].y == 0x0300 and
-       actors[1].heading == 0xC000 and actors[1].action_code == 3 and
+       actors[1].heading == 0xC000 and
+       actors[1].action_id == "american_l36" and
        actors[1].activity_kind == "scene_script" and
        actors[1].ordered_overrides == nil and
        actors[1].actor_facts.roles ~= nil,

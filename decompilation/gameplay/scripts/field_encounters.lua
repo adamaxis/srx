@@ -57,7 +57,7 @@ local function actor_from_row(row)
         profile_id = row.profile_id,
         visual_profile_id = row.visual_profile_id,
         action_kind = row.action_kind,
-        action_code = row.action_code,
+        action_id = row.action_id,
         actor_facts = row.actor_facts,
         physical_meter = row.physical_meter,
         palette_line = row.palette_line,

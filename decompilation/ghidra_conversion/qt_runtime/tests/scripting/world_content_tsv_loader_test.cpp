@@ -341,6 +341,26 @@ int main() {
         lua_pop(state, 1);
         dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
             field_is_nil(state, row, "entity_kind");
+        lua_getfield(state, row, "action_kind");
+        const auto* action_kind = lua_tostring(state, -1);
+        const std::string_view action_kind_id = action_kind == nullptr
+            ? std::string_view{}
+            : std::string_view(action_kind);
+        lua_pop(state, 1);
+        lua_getfield(state, row, "action_id");
+        const auto* action_id = lua_tostring(state, -1);
+        const std::string_view semantic_action_id = action_id == nullptr
+            ? std::string_view{}
+            : std::string_view(action_id);
+        dynamic_actor_rows_are_semantic =
+            dynamic_actor_rows_are_semantic &&
+            ((action_kind_id == "none" && lua_isnil(state, -1) != 0) ||
+             ((action_kind_id == "item" || action_kind_id == "spell") &&
+              lua_type(state, -1) == LUA_TSTRING &&
+              !semantic_action_id.empty()));
+        lua_pop(state, 1);
+        dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
+            field_is_nil(state, row, "action_code");
         for (const auto* field : {"primary_action_profile_enabled",
                                   "secondary_action_profile_enabled"}) {
             lua_getfield(state, row, field);
@@ -416,6 +436,40 @@ int main() {
                        found_boris_sequence && found_named_armor,
                    "dynamic actor catalog leaked source pointers or failed "
                    "to resolve named sequences") && valid;
+    lua_pop(state, 1);
+
+    lua_getfield(state, data_table, "world_activity_actor_lists");
+    bool activity_actor_actions_are_semantic = true;
+    for (std::size_t index = 1U;
+         index <= lua_rawlen(state, -1); ++index) {
+        lua_rawgeti(state, -1, static_cast<lua_Integer>(index));
+        const auto row = lua_absindex(state, -1);
+        lua_getfield(state, row, "action_kind");
+        const auto* action_kind = lua_tostring(state, -1);
+        const std::string_view action_kind_id = action_kind == nullptr
+            ? std::string_view{}
+            : std::string_view(action_kind);
+        lua_pop(state, 1);
+        lua_getfield(state, row, "action_id");
+        const auto* action_id = lua_tostring(state, -1);
+        const std::string_view semantic_action_id = action_id == nullptr
+            ? std::string_view{}
+            : std::string_view(action_id);
+        activity_actor_actions_are_semantic =
+            activity_actor_actions_are_semantic &&
+            ((action_kind_id == "none" && lua_isnil(state, -1) != 0) ||
+             ((action_kind_id == "item" || action_kind_id == "spell") &&
+              lua_type(state, -1) == LUA_TSTRING &&
+              !semantic_action_id.empty()));
+        lua_pop(state, 1);
+        activity_actor_actions_are_semantic =
+            activity_actor_actions_are_semantic &&
+            field_is_nil(state, row, "action_code");
+        lua_pop(state, 1);
+    }
+    valid = expect(activity_actor_actions_are_semantic,
+                   "Lua world activity rows expose source action codes") &&
+            valid;
     lua_pop(state, 1);
 
     lua_getfield(state, data_table, "field_alarm_profiles");

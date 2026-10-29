@@ -1,5 +1,6 @@
 #include "world_content_tsv_loader.hpp"
 #include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
+#include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
 #include "enums.hpp"
 #include "shadowrun_ghidra/scripting/combat_inventory.hpp"
 #include "shadowrun_ghidra/scripting/weapon_action_policy.hpp"
@@ -613,6 +614,8 @@ bool push_record(lua_State* state, const TsvDocument& document,
                 state,
                 script_posture_reduction_percent_from_source_value(
                     source_posture));
+        } else if (column == "action_id" && value.empty()) {
+            lua_pushnil(state);
         } else if (numeric_column(column, optional_numeric_columns)) {
             if (value.empty() || value == "-") {
                 lua_pushnil(state);
@@ -1000,6 +1003,50 @@ std::string row_string(const TsvDocument& document,
     return std::string(value_at(document, row, column));
 }
 
+bool semantic_action_id_from_source_row(
+    const TsvDocument& source, const std::vector<std::string>& row,
+    const std::filesystem::path& path, const std::size_t row_number,
+    std::string& result, std::string& failure) {
+    const auto action_kind = value_at(source, row, "action_kind");
+    std::uint8_t source_code = 0U;
+    if (!read_source_byte(source, row, "action_code", path, row_number,
+                          source_code, failure)) {
+        return false;
+    }
+    if (action_kind == "none") {
+        if (source_code != 0U) {
+            failure = path.string() + ": row " +
+                std::to_string(row_number) +
+                " has an action code for an actor with no action";
+            return false;
+        }
+        result.clear();
+        return true;
+    }
+    if (action_kind == "item") {
+        const auto item_id = script_item_id_from_source_code(source_code);
+        if (!item_id.has_value()) {
+            failure = path.string() + ": row " +
+                std::to_string(row_number) +
+                " has an unknown source item action";
+            return false;
+        }
+        result.assign(item_id->data(), item_id->size());
+        return true;
+    }
+    if (action_kind == "spell" && source_code != 0U) {
+        const auto* spell = find_us_magic_spell(
+            static_cast<std::uint8_t>(source_code - 1U));
+        if (spell != nullptr) {
+            result.assign(spell->id.data(), spell->id.size());
+            return true;
+        }
+    }
+    failure = path.string() + ": row " + std::to_string(row_number) +
+        " has an unknown source action kind or selector";
+    return false;
+}
+
 bool row_integer(const TsvDocument& document,
                  const std::vector<std::string>& row,
                  const std::string_view column, lua_Integer& result,
@@ -1234,7 +1281,9 @@ bool make_semantic_activity_actor_rows(
         }
         const auto runtime_column = source_column == "tagged_template"
             ? std::string("activity_probe_enabled")
-            : std::string(semantic_actor_runtime_column(source_column));
+            : source_column == "action_code"
+                ? std::string("action_id")
+                : std::string(semantic_actor_runtime_column(source_column));
         const auto index = semantic.columns.size();
         if (!semantic.column_indexes.emplace(runtime_column, index).second) {
             failure = path.string() +
@@ -1331,7 +1380,15 @@ bool make_semantic_activity_actor_rows(
                 }
                 continue;
             }
-            if (column == tag_column->second) {
+            if (source.columns[column] == "action_code") {
+                std::string action_id;
+                if (!semantic_action_id_from_source_row(
+                        source, source_row, path, row_index + 2U,
+                        action_id, failure)) {
+                    return false;
+                }
+                runtime_row.push_back(std::move(action_id));
+            } else if (column == tag_column->second) {
                 // Preserve the current host interpretation without exposing
                 // the tagged source pointer to Lua.
                 runtime_row.emplace_back(
@@ -1417,7 +1474,9 @@ bool make_semantic_dynamic_actor_rows(
         }
         const auto runtime_column = source_column == "tagged_template"
             ? std::string("activity_probe_enabled")
-            : std::string(semantic_actor_runtime_column(source_column));
+            : source_column == "action_code"
+                ? std::string("action_id")
+                : std::string(semantic_actor_runtime_column(source_column));
         const auto index = semantic.columns.size();
         if (!semantic.column_indexes.emplace(runtime_column, index).second) {
             failure = path.string() +
@@ -1548,6 +1607,14 @@ bool make_semantic_dynamic_actor_rows(
                         runtime_row, failure)) {
                     return false;
                 }
+            } else if (source_column == "action_code") {
+                std::string action_id;
+                if (!semantic_action_id_from_source_row(
+                        source, source_row, path, row_index + 2U,
+                        action_id, failure)) {
+                    return false;
+                }
+                runtime_row.push_back(std::move(action_id));
             } else if (source_column == "scene" &&
                 run_target_group_id != "none") {
                 // These imported actors are presented in the native gang

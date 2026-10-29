@@ -255,7 +255,7 @@ local function world_activity_actor_descriptors(scene_id, list_id)
                 y = row.world_y,
                 heading = row.initial_heading,
                 action_kind = row.action_kind,
-                action_code = row.action_code,
+                action_id = row.action_id,
                 actor_facts = row.actor_facts,
                 physical_meter = row.physical_meter,
                 action_delay_modifier = row.action_delay_modifier,
