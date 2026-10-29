@@ -1912,6 +1912,10 @@ struct ScriptActorBehaviorContext {
     // The host keeps roster placement; Lua uses this actor identity to locate
     // the controlled actor and key actor-owned state.
     std::string controlled_party_member_id;
+    // True only for the controlled party actor's own heartbeat. World actors
+    // also receive that party identity for targeting and must not consume its
+    // actor-keyed hurt reaction.
+    bool is_controlled_party_actor = false;
     // Named formation role for actor-follow policy. The host translates live
     // record identity here; Lua does not consume a source record slot for it.
     std::optional<ScriptFormationPosition> formation_position;

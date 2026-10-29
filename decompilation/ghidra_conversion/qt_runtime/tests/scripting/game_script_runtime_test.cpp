@@ -6358,6 +6358,7 @@ int main() {
         ScriptActorActionKind::none, 0U, 0U, true);
     player_hurt_event_context.controlled_party_member_id =
         "party.runner.0";
+    player_hurt_event_context.is_controlled_party_actor = true;
     player_hurt_event_context.source_record_flags = 0x01U;
     player_hurt_event_context.combatant = spell_target;
     player_hurt_event_context.physical_condition = 10;

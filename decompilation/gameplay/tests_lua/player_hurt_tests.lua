@@ -11,6 +11,7 @@ game = {
     },
 }
 local ActorAI = require("actor.init")
+local ActorAnim = require("actor.anim")
 
 local passed, total = 0, 0
 local function check(condition, label)
@@ -85,7 +86,7 @@ local party_hit = hit(party_target)
 check(party_hit ~= nil and party_hit.changed and
       party_hit.physical_meter > 0 and
       party_hit.mental_meter < party_target.combatant.mental_meter and
-      game.player_hurt_pending_by_slot[1] == true,
+      game.player_hurt_pending_by_actor_id[party_target.id] == true,
       "party damage with nonzero physical meter queues player C072")
 
 local world_target = {
@@ -96,12 +97,28 @@ local world_target = {
 local world_hit = hit(world_target)
 check(world_hit ~= nil and world_hit.changed and
       game.actors[world_target.id].incoming_hit ~= nil and
-      game.player_hurt_pending_by_slot[E.ActorPool.PARTY] == nil,
+      game.player_hurt_pending_by_actor_id[party_target.id] == true,
       "world damage keeps the existing incoming_hit path")
+
+local hurt_recipient_id = party_target.id
+game.player_hurt_pending_by_actor_id = {[hurt_recipient_id] = true}
+local unrelated_actor_state = {actor_id = "world.actor.4"}
+local unrelated_actor_context = {
+    actor_id = unrelated_actor_state.actor_id,
+    controlled_party_member_id = hurt_recipient_id,
+    is_controlled_party_actor = false,
+    phase = "behavior",
+}
+local unrelated_actor_started = ActorAnim.begin_player_hurt_reaction(
+    unrelated_actor_state, unrelated_actor_context)
+check(not unrelated_actor_started and
+      game.player_hurt_pending_by_actor_id[hurt_recipient_id] == true and
+      unrelated_actor_state.player_hurt_pose_active ~= true,
+      "world actor cannot consume another actor's player-hurt event")
 
 local function player_context(phase, spawn)
     return {
-        actor_id = "field_player_runner",
+        actor_id = hurt_recipient_id,
         profile_id = "field_runner_k03_none00",
         entity_kind = E.SpriteType.FIELD_RUNNER,
         action_kind = "none",
@@ -111,6 +128,8 @@ local function player_context(phase, spawn)
         entry_delay = 0,
         spawn = spawn,
         source_record_slot = 1,
+        controlled_party_member_id = hurt_recipient_id,
+        is_controlled_party_actor = true,
         actor_facts = {
             lifecycle = { active = true, thinking_enabled = false,
                 ai_runner = false, downed = false, group_leader = true,
@@ -142,7 +161,7 @@ ActorAI.heartbeat(player_context("behavior", true))
 local hurt_start = ActorAI.heartbeat(player_context("behavior", false))
 check(hurt_start ~= nil and hurt_start.animation == "runner_hurt" and
       hurt_start.combat_action_requested == true and
-      game.player_hurt_pending_by_slot[1] == nil,
+      game.player_hurt_pending_by_actor_id[hurt_recipient_id] == nil,
       "player consumes hurt event without blocking action input")
 
 local render_context = player_context("render", false)

@@ -346,9 +346,14 @@ end
 local function begin_player_hurt_reaction(state, context)
     local actor_id = context.controlled_party_member_id
     if context.phase ~= "behavior" or
-       type(actor_id) ~= "string" or actor_id == "" then
+       type(actor_id) ~= "string" or actor_id == "" or
+       context.is_controlled_party_actor ~= true then
         return false
     end
+    -- ROM 0x55C76 updates the selected target record. The pending host event
+    -- is keyed by that actor's stable id; a world heartbeat may know which
+    -- party member it is engaging but cannot consume that member's reaction.
+    -- [C]
     local pending = game.player_hurt_pending_by_actor_id
     if type(pending) ~= "table" or pending[actor_id] ~= true then
         return false

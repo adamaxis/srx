@@ -10650,6 +10650,8 @@ GameScriptRuntime::actor_heartbeat(
                         context.controlled_party_member_id.size());
     }
     lua_setfield(state, -2, "controlled_party_member_id");
+    lua_pushboolean(state, context.is_controlled_party_actor);
+    lua_setfield(state, -2, "is_controlled_party_actor");
     lua_pushboolean(state, context.player_spell_available);
     lua_setfield(state, -2, "player_spell_available");
     if (player_spell_id.has_value()) {
