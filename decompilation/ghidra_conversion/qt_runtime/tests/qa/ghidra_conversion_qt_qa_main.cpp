@@ -2461,6 +2461,116 @@ int run_field_random_encounter_spawn_qa(
         return 3;
     }
 
+    // ROM 0xAD86/0xB1DC: code zero with no equipped inventory slot still
+    // aims at +0xA2, accepts an active linked target inside 0x200 through
+    // 0x15C84, and sends the changed 0x55C76 meter result back to that live
+    // field record. Keep the New Game runner's source combat profile intact;
+    // only install the unarmed source action and a repeatable action-edge seed.
+    if (!field_scene.bootstrap_for_scene_dump(hit_startup_state, 2U) ||
+        field_scene.field_scene_reference_for_dump() != 2U) {
+        std::cerr << "field random-encounter QA: unarmed-hit Scene 2 reset failed\n";
+        return 3;
+    }
+    field_scene.set_source_random_seed_for_dump(0U);
+    if (field_scene.resolve_and_spawn_field_encounter_for_dump(
+            1U, 2U, 0x1234U) != 2U) {
+        std::cerr << "field random-encounter QA: could not recreate the ROM Weenr encounter for unarmed-hit review\n";
+        return 3;
+    }
+    bool unarmed_entry_complete = false;
+    for (std::uint16_t frame = 0U;
+         frame < 160U && !unarmed_entry_complete; ++frame) {
+        unarmed_entry_complete =
+            field_scene.default_actor_transition_complete_for_dump(0U) ==
+                std::optional<bool>{true} &&
+            field_scene.default_actor_transition_complete_for_dump(1U) ==
+                std::optional<bool>{true};
+        if (!unarmed_entry_complete) {
+            field_scene.set_controller_port_byte(0U);
+            field_scene.advance_frame();
+        }
+    }
+    if (!unarmed_entry_complete || !wait_for_actor_zero_in_range() ||
+        !select_actor_zero()) {
+        report_actor_zero_range(
+            "field random-encounter QA: unarmed target did not enter range and remain B-selected");
+        return 3;
+    }
+    auto& unarmed_runner = field_scene.active_runner_record();
+    unarmed_runner.flags = static_cast<std::uint16_t>(
+        unarmed_runner.flags | 0x0300U);
+    unarmed_runner.equipped_inventory_slot = -1;
+    unarmed_runner.equipped_item_code = 0U;
+    unarmed_runner.animation_action_gate = -1;
+    const auto unarmed_rounds_before = unarmed_runner.ammo_rounds;
+    const auto unarmed_clips_before = unarmed_runner.ammo_clips;
+    const auto unarmed_target_meter_before =
+        field_scene.default_actor_physical_meter_for_dump(0U);
+    if (!unarmed_target_meter_before.has_value()) {
+        std::cerr << "field random-encounter QA: live unarmed target has no physical meter\n";
+        return 3;
+    }
+    const auto unarmed_hit_output = hit_output / "unarmed-target-hit";
+    std::filesystem::create_directories(unarmed_hit_output, error);
+    if (error) {
+        std::cerr << "field random-encounter QA: cannot create unarmed-hit output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    const auto unarmed_before_image = render();
+    if (!unarmed_before_image.save(QString::fromStdWString(
+            (unarmed_hit_output / "before.bmp").wstring()))) {
+        std::cerr << "field random-encounter QA: could not save unarmed-hit baseline\n";
+        return 3;
+    }
+    const auto unarmed_audio_start = field_audio_events.size();
+    const auto unarmed_boundary_start = source_boundaries.size();
+    // This New Game profile, the live Weenr template, and seed 0x000C make
+    // the source reaction resolve to a two-point physical-meter reduction.
+    field_scene.set_source_random_seed_for_dump(0x000CU);
+    field_scene.set_controller_port_byte(0x40U);
+    field_scene.advance_frame();
+    field_scene.set_controller_port_byte(0U);
+    const auto unarmed_after_image = render();
+    const auto unarmed_target_meter_after =
+        field_scene.default_actor_physical_meter_for_dump(0U);
+    const auto unarmed_audio = field_audio_events.begin() +
+        static_cast<std::ptrdiff_t>(unarmed_audio_start);
+    const auto swing_audio = std::find(unarmed_audio,
+                                       field_audio_events.end(), 0x004CU);
+    const auto in_range_audio = std::find_if(
+        unarmed_audio, field_audio_events.end(), [](const std::uint16_t event) {
+            return event == 0x004DU || event == 0x004EU;
+        });
+    const auto damage_boundary = std::find(
+        source_boundaries.begin() + static_cast<std::ptrdiff_t>(
+            unarmed_boundary_start),
+        source_boundaries.end(),
+        "field.combat.player_melee.world_physical_meter_changed");
+    if (!field_scene.field_entity_attack_pose_for_dump() ||
+        !unarmed_target_meter_after.has_value() ||
+        *unarmed_target_meter_before != 10U ||
+        *unarmed_target_meter_after != 8U ||
+        swing_audio == field_audio_events.end() ||
+        in_range_audio == field_audio_events.end() ||
+        damage_boundary == source_boundaries.end() ||
+        unarmed_runner.ammo_rounds != unarmed_rounds_before ||
+        unarmed_runner.ammo_clips != unarmed_clips_before ||
+        !unarmed_after_image.save(QString::fromStdWString(
+            (unarmed_hit_output / "after.bmp").wstring())) ||
+        !field_hud_chrome_survives(unarmed_after_image, asset_root)) {
+        std::cerr << "field random-encounter QA: unarmed 0xB1DC strike did not damage its live in-range target"
+                  << " target_meter=" << static_cast<unsigned>(
+                         *unarmed_target_meter_before)
+                  << "->" << (unarmed_target_meter_after.has_value()
+                                  ? std::to_string(*unarmed_target_meter_after)
+                                  : std::string("<missing>"))
+                  << " swing_audio=" << (swing_audio != field_audio_events.end())
+                  << " in_range_audio=" << (in_range_audio != field_audio_events.end())
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
     // Recreate the source encounter with the AK-97. The preceding Warhawk
     // route owns hit reaction/audio verification; this route checks that one
     // item action traverses all three live projectile records.

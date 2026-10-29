@@ -1839,4 +1839,19 @@ ammo/reserve fields, and holds the pose until its mode-1 action delay expires.
 `shadowrun_ghidra_conversion_qt_field_player_action_qa` checks the route in
 Debug and Release and writes `qt_runtime/field-player-action-qa/unarmed-melee/`
 `{actual.bmp,field-return.bmp}`. These native captures verify the implemented
-route, not independent Genesis appearance; player melee damage remains open.
+pose and return, not independent Genesis appearance.
+
+The Scene-2 random-encounter QA now also follows the selected live target
+through ROM `0x15C84` and `0x55C76`. For the New Game class-2/race-0 runner and
+the live Yakuza Weenr record, ordinary B selection plus A with action code zero
+changes the target's physical meter from `10` to `8`, requests the `0x4C`
+swing and an in-range `0x4D`/`0x4E` cue, and leaves ammunition unchanged. The
+typed `field.combat.player_melee.world_physical_meter_changed` boundary confirms
+that the result reaches the live field record. Debug and Release
+`shadowrun_ghidra_conversion_qt_field_random_encounter_spawn_qa` pass and write
+the full-screen `before.bmp`/`after.bmp` pair under
+`qt_runtime/field-random-encounter-spawn-qa/hit-response/unarmed-target-hit/`.
+This covers one real class/race profile and its current cyberware state; it
+does not establish the hit probability for other runner profiles. The overall
+hill remains partial pending the broader equipment/profile routes and an
+independent Genesis appearance comparison.
