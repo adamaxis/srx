@@ -7,7 +7,7 @@ function EmployeeRecruitment.prepare_offer(contact_id, source_record)
     local payment = support.negotiate_payment(source_record)
     local target = support.choose_facility_target(
         source_record.target_pool_id)
-    local client_id = support.bounded_random(#support.client_names)
+    local employee_id = support.choose_client_id()
     local offer = support.new_offer(
         "employee_recruitment",
         "extraction",
@@ -17,8 +17,7 @@ function EmployeeRecruitment.prepare_offer(contact_id, source_record)
         payment,
         source_record.runner_progress_delta)
     offer.contact_id = contact_id
-    offer.client_id = client_id
-    offer.employee_name = support.client_names[client_id + 1]
+    offer.employee_id = employee_id
     game.runs.registry.current_offer = offer
     return offer.id
 end
@@ -26,13 +25,17 @@ end
 function EmployeeRecruitment.present_offer()
     local offer = game.runs.registry.current_offer
     assert(offer ~= nil and offer.id == "employee_recruitment")
+    local employee_name =
+        game.modules.run_support.client_name(offer.employee_id)
+    assert(employee_name ~= nil,
+        "employee recruitment offer has an invalid employee ID")
     local target = offer.route.target
     -- ROM 0x1E91A replaces the selected F1E58 area's terminal period with a
     -- comma before appending the employee name.
     local area_suffix = target.area_suffix:gsub("%.$", ",", 1)
     game.ui.say_text(
         "An employee of " .. target.location_name ..
-        " " .. area_suffix .. " " .. offer.employee_name ..
+        " " .. area_suffix .. " " .. employee_name ..
         ", wishes for a change in career.|" ..
         "Unfortunately, his current employer frowns upon this.||" ..
         "Assist my client with his professional growth and return here " ..

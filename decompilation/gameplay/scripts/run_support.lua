@@ -90,12 +90,39 @@ Support.location_rolls_by_area = {
     [5] = { 6, 1, 2, 3, 4, 5, 6, 1, 2, 6 },
 }
 
-Support.client_names = {
-    -- ROM F35A6 pointer table, selected with the source bound of twelve.
-    "Mike Nana", "John Worley", "Ellis Goodson", "John Van Anthony",
-    "Dok Whitson", "Jase Weese", "Heinrich Michaels", "Billy Gibson",
-    "Nero Manser", "Alan Turing", "Chris Stout", "Jorge Kish",
+Support.clients = {
+    mike_nana = { name = "Mike Nana" },
+    john_worley = { name = "John Worley" },
+    ellis_goodson = { name = "Ellis Goodson" },
+    john_van_anthony = { name = "John Van Anthony" },
+    dok_whitson = { name = "Dok Whitson" },
+    jase_weese = { name = "Jase Weese" },
+    heinrich_michaels = { name = "Heinrich Michaels" },
+    billy_gibson = { name = "Billy Gibson" },
+    nero_manser = { name = "Nero Manser" },
+    alan_turing = { name = "Alan Turing" },
+    chris_stout = { name = "Chris Stout" },
+    jorge_kish = { name = "Jorge Kish" },
 }
+
+-- Offer selection preserves the source table's twelve-entry distribution;
+-- live and saved state carries the selected person's stable identity.
+Support.client_ids = {
+    "mike_nana", "john_worley", "ellis_goodson", "john_van_anthony",
+    "dok_whitson", "jase_weese", "heinrich_michaels", "billy_gibson",
+    "nero_manser", "alan_turing", "chris_stout", "jorge_kish",
+}
+
+function Support.client_name(client_id)
+    local client = type(client_id) == "string" and
+        Support.clients[client_id] or nil
+    return type(client) == "table" and client.name or nil
+end
+
+function Support.choose_client_id()
+    local choice = Support.bounded_random(#Support.client_ids)
+    return Support.client_ids[choice + 1]
+end
 
 -- ROM 0xF36FA contains the four gang-contract variations shown after the
 -- selected target location. These strings are kept as content, separate from
@@ -163,14 +190,6 @@ local function source_location(pair)
     return location, area
 end
 
-local function source_client(client_id)
-    if type(client_id) ~= "number" or client_id % 1 ~= 0 or
-       client_id < 0 or client_id >= #Support.client_names then
-        return nil
-    end
-    return Support.client_names[client_id + 1]
-end
-
 local function source_run_body(offer, run_id)
     local body = {}
     local function copy(text, spaces)
@@ -206,7 +225,7 @@ local function source_run_body(offer, run_id)
         copy(origin, 1)
         copy(origin_area, 2)
         if run_id == E.RunId.BODYGUARD_ESCORT then
-            local client = source_client(offer.route.client_id)
+            local client = Support.client_name(offer.route.client_id)
             if client == nil then return nil end
             copy("There you will meet my client,", 1)       -- F34C8.
             copy(client, 2)                                 -- F35A6, D1=1.
@@ -250,7 +269,7 @@ local function source_run_body(offer, run_id)
         end
     elseif run_id == E.RunId.EMPLOYEE_RECRUITMENT then
         local target, area = route_pair(offer.route and offer.route.target)
-        local client = source_client(offer.client_id)
+        local client = Support.client_name(offer.employee_id)
         if target == nil or area == nil or client == nil then return nil end
         area = area:gsub("%.$", ",", 1)                     -- 0x1E91A.
         copy("An employee of", 1)                          -- F39BE, D1=0.
@@ -438,8 +457,8 @@ function Support.choose_contract_route(contact_id)
     end
 
     local origin_index, origin_name = choose_location(origin_area)
-    local client_index = Support.bounded_random(#Support.client_names)
-    local client_name = Support.client_names[client_index + 1]
+    local client_id = Support.choose_client_id()
+    local client_name = Support.client_name(client_id)
 
     local destination_area
     if contact_id == E.RunContact.JUMP_HOUSE then
@@ -469,7 +488,7 @@ function Support.choose_contract_route(contact_id)
             location_id = destination_index,
             location_name = destination_name,
         },
-        client_id = client_index,
+        client_id = client_id,
         client_name = client_name,
     }
 end

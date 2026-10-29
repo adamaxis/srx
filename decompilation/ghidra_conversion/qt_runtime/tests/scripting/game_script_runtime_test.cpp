@@ -1054,10 +1054,32 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
                std::optional<std::string>{"icarus_descending"}) {
         legacy_contact = 4;
     }
-    if (!expect(active_offer != nullptr && legacy_contact.has_value(),
-                "accepted run did not save its semantic contact identity")) {
+    const auto employee_field = active_offer == nullptr
+        ? ScriptPersistentValue::Object::const_iterator{}
+        : active_offer->find("employee_id");
+    const auto* employee_id = active_offer != nullptr &&
+            employee_field != active_offer->end()
+        ? std::get_if<std::string>(&employee_field->second.value)
+        : nullptr;
+    static constexpr std::array<std::string_view, 12> kLegacyClientIds{
+        "mike_nana", "john_worley", "ellis_goodson", "john_van_anthony",
+        "dok_whitson", "jase_weese", "heinrich_michaels", "billy_gibson",
+        "nero_manser", "alan_turing", "chris_stout", "jorge_kish"};
+    std::optional<std::int64_t> legacy_employee;
+    if (employee_id != nullptr) {
+        const auto employee = std::find(kLegacyClientIds.begin(),
+                                        kLegacyClientIds.end(), *employee_id);
+        if (employee != kLegacyClientIds.end()) {
+            legacy_employee = static_cast<std::int64_t>(
+                std::distance(kLegacyClientIds.begin(), employee));
+        }
+    }
+    if (!expect(active_offer != nullptr && legacy_contact.has_value() &&
+                    employee_id != nullptr && legacy_employee.has_value(),
+                "accepted run did not save semantic contact and employee IDs")) {
         return false;
     }
+    const auto expected_employee_id = *employee_id;
     const auto legacy_integer = [](const std::int64_t number) {
         ScriptPersistentValue result{};
         result.value = number;
@@ -1068,6 +1090,11 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
     active_offer->emplace("source_offer_context",
                           legacy_integer(*legacy_contact));
     active_offer->emplace("context", legacy_integer(*legacy_contact));
+    active_offer->erase("employee_id");
+    active_offer->emplace("client_id", legacy_integer(*legacy_employee));
+    ScriptPersistentValue legacy_employee_name{};
+    legacy_employee_name.value = std::string("legacy display copy");
+    active_offer->emplace("employee_name", std::move(legacy_employee_name));
     if (!expect(scripts.validate_run_registry_state(*saved_registry) &&
                     scripts.restore_run_registry_state(*saved_registry) &&
                     scripts.active_run_offer_variant_id() ==
@@ -1103,6 +1130,12 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
                     *saved_string("id") == "employee_recruitment" &&
                     saved_string("contact_id") != nullptr &&
                     *saved_string("contact_id") == *contact_id &&
+                    saved_string("employee_id") != nullptr &&
+                    *saved_string("employee_id") == expected_employee_id &&
+                    migrated_offer->find("client_id") ==
+                        migrated_offer->end() &&
+                    migrated_offer->find("employee_name") ==
+                        migrated_offer->end() &&
                     migrated_offer->find("source_run_type") ==
                         migrated_offer->end() &&
                     migrated_offer->find("source_offer_context") ==
@@ -2856,7 +2889,7 @@ int main() {
                     courier_route.has_value() &&
                     courier_route->at("origin_location") == "location_11" &&
                     courier_route->at("origin_area") == "area_2" &&
-                    courier_route->at("client") == "client_0" &&
+                    courier_route->at("client") == "mike_nana" &&
                     courier_route->at("destination_location") ==
                         "location_5" &&
                     courier_route->at("destination_area") ==
@@ -2950,7 +2983,7 @@ int main() {
                     escort_route.has_value() &&
                     escort_route->at("origin_location") == "location_4" &&
                     escort_route->at("origin_area") == "area_2" &&
-                    escort_route->at("client") == "client_6" &&
+                    escort_route->at("client") == "heinrich_michaels" &&
                     escort_route->at("destination_location") ==
                         "location_5" &&
                     escort_route->at("destination_area") ==

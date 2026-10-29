@@ -74,14 +74,15 @@ for _, target_pool in ipairs(recruitment_target_pools) do
         local area_suffix = RunSupport.area_suffixes[target_record.area_id]
         assert(location_name ~= nil and area_suffix ~= nil)
         local displayed_area = area_suffix:gsub("%.$", ",", 1)
-        for _, employee_name in ipairs(RunSupport.client_names) do
+        for _, employee_id in ipairs(RunSupport.client_ids) do
+            local employee_name = RunSupport.client_name(employee_id)
             game.runs.registry.current_offer = {
                 id = "employee_recruitment",
                 route = { target = {
                     location_name = location_name,
                     area_suffix = area_suffix,
                 } },
-                employee_name = employee_name,
+                employee_id = employee_id,
             }
             assert(EmployeeRecruitment.present_offer() == "accepted:yes")
             local expected = "An employee of " .. location_name .. " " ..

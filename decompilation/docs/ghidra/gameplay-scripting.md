@@ -54,9 +54,11 @@ stable run ID and named transition facts, then returns a named recovery
 decision. Johnson offers, returns, and the Current Run view pass `run_id` and
 `contact_id` strings across the Lua/native boundary; the ROM's run-type and
 contact selector bytes stay out of the live Lua offer model. Keep future run
-behavior on these semantic identities. Two source-shaped areas remain for
-separate work: run routes still store numeric area/location event IDs, and
-Matrix offers still store source datastore fields and flag bytes.
+behavior on these semantic identities. Selected run clients also use stable
+IDs, with their display names resolved from authored Lua data. Two
+source-shaped areas remain for separate work: run routes still store numeric
+area/location event IDs, and Matrix offers still store source datastore fields
+and flag bytes.
 
 The next capabilities should follow the same shape, added only as they connect
 to real native systems:

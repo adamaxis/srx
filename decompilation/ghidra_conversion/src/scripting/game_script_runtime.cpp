@@ -114,6 +114,7 @@ std::optional<std::string_view> legacy_run_offer_variant_id(
 }
 
 bool valid_run_contact_id(std::string_view value);
+bool valid_run_client_id(std::string_view value);
 
 std::optional<std::string_view> legacy_run_id(
     const std::int64_t source_type) noexcept {
@@ -138,6 +139,19 @@ std::optional<std::string_view> legacy_run_contact_id(
         return std::nullopt;
     }
     return kContactIds[static_cast<std::size_t>(source_context)];
+}
+
+std::optional<std::string_view> legacy_run_client_id(
+    const std::int64_t source_index) noexcept {
+    static constexpr std::array<std::string_view, 12> kClientIds{
+        "mike_nana", "john_worley", "ellis_goodson", "john_van_anthony",
+        "dok_whitson", "jase_weese", "heinrich_michaels", "billy_gibson",
+        "nero_manser", "alan_turing", "chris_stout", "jorge_kish"};
+    if (source_index < 0 || source_index >=
+            static_cast<std::int64_t>(kClientIds.size())) {
+        return std::nullopt;
+    }
+    return kClientIds[static_cast<std::size_t>(source_index)];
 }
 
 bool normalize_legacy_run_identity(
@@ -211,11 +225,93 @@ bool normalize_legacy_run_identity(
     return true;
 }
 
+bool normalize_legacy_run_client_ids(
+    ScriptPersistentValue::Object& offer, std::string& failure) {
+    const auto decode_client = [&failure](
+                                  const ScriptPersistentValue& value)
+        -> std::optional<std::string_view> {
+        if (const auto* index = std::get_if<std::int64_t>(&value.value)) {
+            const auto decoded = legacy_run_client_id(*index);
+            if (!decoded.has_value()) {
+                failure = "saved client index is outside its legacy table";
+            }
+            return decoded;
+        }
+        if (const auto* id = std::get_if<std::string>(&value.value)) {
+            if (!valid_run_client_id(*id)) {
+                failure = "saved client ID is unknown";
+                return std::nullopt;
+            }
+            return *id;
+        }
+        failure = "saved client identity has an invalid type";
+        return std::nullopt;
+    };
+
+    const auto route_field = offer.find("route");
+    if (route_field != offer.end()) {
+        auto* route = std::get_if<ScriptPersistentValue::Object>(
+            &route_field->second.value);
+        if (route == nullptr) {
+            failure = "saved run route is not an object";
+            return false;
+        }
+        const auto client = route->find("client_id");
+        if (client != route->end()) {
+            const auto decoded = decode_client(client->second);
+            if (!decoded.has_value()) return false;
+            ScriptPersistentValue semantic_client{};
+            semantic_client.value = std::string(*decoded);
+            client->second = std::move(semantic_client);
+        }
+    }
+
+    const auto offer_id_field = offer.find("id");
+    const auto* offer_id = offer_id_field == offer.end()
+        ? nullptr
+        : std::get_if<std::string>(&offer_id_field->second.value);
+    const auto legacy_client = offer.find("client_id");
+    const auto employee_id = offer.find("employee_id");
+    if (offer_id != nullptr && *offer_id == "employee_recruitment") {
+        std::optional<std::string_view> decoded;
+        if (legacy_client != offer.end()) {
+            decoded = decode_client(legacy_client->second);
+            if (!decoded.has_value()) return false;
+        }
+        if (employee_id != offer.end()) {
+            const auto* saved_id =
+                std::get_if<std::string>(&employee_id->second.value);
+            if (saved_id == nullptr || !valid_run_client_id(*saved_id) ||
+                (decoded.has_value() && *saved_id != *decoded)) {
+                failure = "saved employee conflicts with its client ID";
+                return false;
+            }
+        } else if (decoded.has_value()) {
+            ScriptPersistentValue semantic_employee{};
+            semantic_employee.value = std::string(*decoded);
+            offer.emplace("employee_id", std::move(semantic_employee));
+        }
+        offer.erase("client_id");
+    } else if (employee_id != offer.end()) {
+        failure = "non-recruitment run has an employee ID";
+        return false;
+    } else if (legacy_client != offer.end()) {
+        failure = "run has an unexpected top-level client identity";
+        return false;
+    }
+
+    // Older offers duplicated the selected employee's display name. The
+    // native migration keeps the stable identity and derives its display name.
+    offer.erase("employee_name");
+    return true;
+}
+
 bool normalize_saved_offer_variant(
     ScriptPersistentValue& value, std::string& failure) {
     auto* offer = std::get_if<ScriptPersistentValue::Object>(&value.value);
     if (offer == nullptr) return true;
     if (!normalize_legacy_run_identity(*offer, failure)) return false;
+    if (!normalize_legacy_run_client_ids(*offer, failure)) return false;
 
     const auto source_initializer = offer->find("source_initializer");
     const auto source_offer_type = offer->find("source_offer_type");
@@ -1132,6 +1228,15 @@ bool valid_run_contact_id(const std::string_view value) {
     return value == "jump_house" || value == "matchstick" ||
            value == "big_rhino" || value == "wanderer" ||
            value == "icarus_descending";
+}
+
+bool valid_run_client_id(const std::string_view value) {
+    return value == "mike_nana" || value == "john_worley" ||
+           value == "ellis_goodson" || value == "john_van_anthony" ||
+           value == "dok_whitson" || value == "jase_weese" ||
+           value == "heinrich_michaels" || value == "billy_gibson" ||
+           value == "nero_manser" || value == "alan_turing" ||
+           value == "chris_stout" || value == "jorge_kish";
 }
 
 bool outcome_has_only_fields(

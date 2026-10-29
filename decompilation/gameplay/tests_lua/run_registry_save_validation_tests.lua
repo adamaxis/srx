@@ -12,7 +12,7 @@ for _, resolved in pairs(OfferData.run_by_variant_id) do
         resolve_field_event = function() return { action = "no_action" } end,
     }
 end
-game = { runs = run_modules }
+game = { runs = run_modules, modules = { run_support = Support } }
 
 local function matrix_state()
     return {
@@ -45,6 +45,15 @@ local function source_offer(contact_id, row, skill, roll)
             negotiation_roll = roll,
         },
     }
+    if resolved.id == E.RunId.BODYGUARD_ESCORT then
+        offer.route = {
+            origin = { area_id = 2, location_id = 4 },
+            destination = { area_id = 2, location_id = 5 },
+            client_id = "mike_nana",
+        }
+    elseif resolved.id == E.RunId.EMPLOYEE_RECRUITMENT then
+        offer.employee_id = "mike_nana"
+    end
     if resolved.id == E.RunId.MATRIX_OBJECTIVE then
         offer.matrix_run_state = matrix_state()
     end
@@ -148,6 +157,19 @@ local missing_payment = copy_offer(courier)
 missing_payment.payment = nil
 assert(not valid(missing_payment),
     "source-backed accepted run must retain the negotiated payment record")
+
+local invalid_client
+for _, row in ipairs(OfferData.contacts[E.RunContact.JUMP_HOUSE]) do
+    if row.variant_id == "bodyguard_escort" then
+        invalid_client = source_offer(
+            E.RunContact.JUMP_HOUSE, row, 3, 0)
+        break
+    end
+end
+assert(invalid_client ~= nil)
+invalid_client.route.client_id = 7
+assert(not valid(invalid_client),
+    "saved Bodyguard routes must store a stable client ID")
 
 local wrong_skill = copy_offer(courier)
 wrong_skill.payment.negotiation_skill = 13

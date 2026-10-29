@@ -56,7 +56,8 @@ assert(Support.current_run_view(ghoul_without_kills).body == ghoul.body,
 local escort = view("bodyguard_escort", E.RunContact.MATCHSTICK,
     E.RunId.BODYGUARD_ESCORT,
     { route = {
-        origin = pair(2, 6), destination = pair(5, 6), client_id = 7,
+        origin = pair(2, 6), destination = pair(5, 6),
+        client_id = "billy_gibson",
     } })
 assert(escort.johnson_name == "Julius Strouther")
 assert(escort.body ==
@@ -127,7 +128,7 @@ assert(recovery.body ==
 
 local extraction = view("employee_recruitment", E.RunContact.ICARUS_DESCENDING,
     E.RunId.EMPLOYEE_RECRUITMENT,
-    { client_id = 0, route = { target = pair(3, 5) } })
+    { employee_id = "mike_nana", route = { target = pair(3, 5) } })
 assert(extraction.johnson_name == "Caleb Brightmore")
 assert(extraction.body ==
     "An employee of the Big Rhino in the Penumbra District, Mike Nana, " ..
@@ -193,7 +194,8 @@ local function fixture_for(variant_id, contact_id, run_id)
     elseif run_id == E.RunId.BODYGUARD_ESCORT or
            run_id == E.RunId.PACKAGE_DELIVERY then
         return { route = {
-            origin = pair(2, 0), destination = pair(2, 1), client_id = 0,
+            origin = pair(2, 0), destination = pair(2, 1),
+            client_id = "mike_nana",
         } }
     elseif run_id == E.RunId.GANG_CONTRACT then
         return { variant = 0,
@@ -210,7 +212,7 @@ local function fixture_for(variant_id, contact_id, run_id)
         end
         local target = pool[1]
         if run_id == E.RunId.EMPLOYEE_RECRUITMENT then
-            return { client_id = 0,
+            return { employee_id = "mike_nana",
                      route = { target = pair(target.area_id, target.location_id) } }
         end
         return { route = { target = pair(target.area_id, target.location_id) } }
@@ -286,7 +288,7 @@ for _, contact_id in ipairs(contacts) do
         end
         route_cases = route_cases + 1
 
-        for client_id = 0, #Support.client_names - 1 do
+        for _, client_id in ipairs(Support.client_ids) do
             local bodyguard_view = Support.current_run_view(offer(
                 "bodyguard_escort", route_contact,
                 E.RunId.BODYGUARD_ESCORT,
@@ -294,7 +296,7 @@ for _, contact_id in ipairs(contacts) do
                             client_id = client_id } }))
             assert(bodyguard_view ~= nil)
             assert(bodyguard_view.body:find(
-                Support.client_names[client_id + 1], 1, true))
+                Support.client_name(client_id), 1, true))
             assert(bodyguard_view.body:find(
                 Support.location_names[origin.area_id][origin.location_id], 1, true))
             assert(bodyguard_view.body:find(
@@ -323,4 +325,4 @@ assert(Support.current_run_view(bad) == nil,
 
 print("current run views passed: 13 offer variants, 24 Matrix objectives, " ..
       tostring(route_cases) .. " route pairs and " ..
-      tostring(route_cases * #Support.client_names) .. " escort client routes")
+      tostring(route_cases * #Support.client_ids) .. " escort client routes")

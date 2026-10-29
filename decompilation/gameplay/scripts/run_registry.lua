@@ -511,6 +511,7 @@ local function route_ids(offer)
             origin_location = "none",
             origin_area = "none",
             client = "none",
+            employee = "none",
             destination_location = "none",
             destination_area = "none",
         }
@@ -526,8 +527,10 @@ local function route_ids(offer)
     return {
         origin_location = origin_location,
         origin_area = origin_area,
-        client = route.client_id ~= nil and
-            "client_" .. tostring(route.client_id) or "none",
+        client = type(route.client_id) == "string"
+            and route.client_id or "none",
+        employee = type(offer.employee_id) == "string"
+            and offer.employee_id or "none",
         destination_location = destination_location,
         destination_area = destination_area,
         target_location = target_location,
@@ -649,6 +652,19 @@ function Registry.validate_saved_state(state)
             return false
         end
         if not valid_source_offer(offer) then return false end
+        local support = game.modules.run_support
+        if offer.id == E.RunId.BODYGUARD_ESCORT then
+            if type(offer.route) ~= "table" or
+               support.client_name(offer.route.client_id) == nil then
+                return false
+            end
+        elseif offer.id == E.RunId.EMPLOYEE_RECRUITMENT then
+            if support.client_name(offer.employee_id) == nil then
+                return false
+            end
+        elseif offer.employee_id ~= nil then
+            return false
+        end
         if offer.id == E.RunId.MATRIX_OBJECTIVE then
             if not valid_matrix_run_state(offer.matrix_run_state) then
                 return false

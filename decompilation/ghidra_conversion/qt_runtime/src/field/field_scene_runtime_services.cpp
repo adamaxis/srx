@@ -569,7 +569,7 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
     if (run_id == "bodyguard_escort") {
         route_fields.emplace("origin", location(2, 6));
         route_fields.emplace("destination", location(5, 6));
-        route_fields.emplace("client_id", scalar(std::int64_t{7}));
+        route_fields.emplace("client_id", scalar(std::string("billy_gibson")));
     } else if (run_id == "package_delivery") {
         // Section 03 video route: Ares Weapon Emporium to Jackal's Lantern.
         route_fields.emplace("origin", location(2, 11));
@@ -625,7 +625,7 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
     } else if (run_id == "gang_contract") {
         offer_fields.emplace("variant", scalar(std::int64_t{1}));
     } else if (run_id == "employee_recruitment") {
-        offer_fields.emplace("client_id", scalar(std::int64_t{0}));
+        offer_fields.emplace("employee_id", scalar(std::string("mike_nana")));
     } else if (run_id == "matrix_objective") {
         // The regular case is a simple row. The optional maximum-payment case
         // is source Matrix Expert row 7, rank 12, roll 120, displaying 6,700.
