@@ -82,9 +82,6 @@ inline constexpr std::string_view kFieldHudAmmoCounterAliasPrefix =
 inline constexpr std::string_view kFieldEntityIdleAliasPrefix = "field.entities.idle.";
 // Source +0x10 bit4 (E.RunnerStatus.DOWN 0x10) in the high byte of flags.
 inline constexpr std::uint16_t kRunnerFlagsDown = 0x1000U;
-inline constexpr std::uint8_t kFieldPlayerPoseFirearm = 0U;
-inline constexpr std::uint8_t kFieldPlayerPoseStrike = 1U;
-inline constexpr std::uint8_t kFieldPlayerPoseCast = 2U;
 inline constexpr std::string_view kFieldPlayerBarrierEffectOwner =
     "field_player_barrier";
 struct FieldSpellEffectProfile {

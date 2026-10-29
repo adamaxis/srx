@@ -303,6 +303,12 @@ struct FieldTerrainProbeTrace {
     bool outside_bounds = false;
 };
 
+enum class FieldPlayerAttackPose : std::uint8_t {
+    firearm,
+    strike,
+    cast,
+};
+
 // Composition-only adapter for the separate Ghidra-conversion Qt executable.
 // It owns no ROM view and does not duplicate converted field state. The
 // conversion bootstrap remains authoritative; this class supplies host
@@ -1605,8 +1611,39 @@ public:
     std::uint16_t field_entity_animation_frame_for_dump() const noexcept {
         return field_entity_animation_.frame;
     }
-    std::uint16_t field_entity_animation_selector_for_dump() const noexcept {
-        return field_entity_animation_selector_;
+    const std::string& field_entity_animation_id_for_dump() const noexcept {
+        return field_entity_animation_id_;
+    }
+    std::uint16_t field_entity_animation_selector_for_dump() const {
+        // This source-facing value is derived for QA output only. Runtime
+        // state and drawing use the named clip and facing direction.
+        const auto direction = field_entity_.direction;
+        if (field_entity_animation_id_ == "walk") {
+            return select_field_entity_animation_selector(direction, true);
+        }
+        if (field_entity_animation_id_ == "idle") {
+            return select_field_entity_animation_selector(direction, false);
+        }
+        if (field_entity_animation_id_ == "attack") {
+            return kFieldAttackAnimationSelectors[direction & 0x07U];
+        }
+        if (field_entity_animation_id_ == "runner_hurt") {
+            return static_cast<std::uint16_t>(
+                0x0060U + (direction & 0x07U) * 4U);
+        }
+        if (field_entity_animation_id_ == "cast") {
+            return static_cast<std::uint16_t>(
+                0x0080U + (direction & 0x07U) * 4U);
+        }
+        if (field_entity_animation_id_ == "strike") {
+            return static_cast<std::uint16_t>(
+                0x00C0U + (direction & 0x07U) * 4U);
+        }
+        if (field_entity_animation_id_ == "runner_down") {
+            return static_cast<std::uint16_t>(
+                0x00E8U + (direction & 0x07U) * 4U);
+        }
+        return 0U;
     }
     std::uint8_t field_entity_direction_for_dump() const noexcept {
         return field_entity_.direction;
@@ -1617,8 +1654,8 @@ public:
     bool field_entity_attack_pose_for_dump() const noexcept {
         return field_entity_attack_pose_active_;
     }
-    std::uint16_t field_entity_attack_selector_for_dump() const noexcept {
-        return field_entity_animation_selector_;
+    std::uint16_t field_entity_attack_selector_for_dump() const {
+        return field_entity_animation_selector_for_dump();
     }
     std::size_t field_weapon_projectile_count_for_dump() const noexcept {
         std::size_t count = 0U;
@@ -2184,12 +2221,12 @@ private:
         EntityServiceTargetOwner entity_target_owner{};
         std::vector<EntityServiceTargetRecord> entity_target_records;
         FieldFramePresentationState player_animation{};
-        std::uint16_t player_animation_selector = 0U;
         std::string player_animation_id = "idle";
         bool player_animation_clock_reset_pending = false;
         bool player_walking = false;
         bool player_attack_pose = false;
-        std::uint8_t player_attack_pose_kind = 0U;
+        FieldPlayerAttackPose player_attack_pose_kind =
+            FieldPlayerAttackPose::firearm;
         std::uint8_t player_attack_direction = 0U;
         std::uint16_t target_heading = 0U;
         FieldLocationReturnAnchor return_anchor =
@@ -2626,14 +2663,12 @@ private:
     std::array<std::vector<int>, 8> field_entity_walk_origin_x_{};
     std::array<std::vector<int>, 8> field_entity_walk_origin_y_{};
     FieldFramePresentationState field_entity_animation_{};
-    std::uint16_t field_entity_animation_selector_ = 0;
     std::string field_entity_animation_id_ = "idle";
     bool field_player_animation_clock_reset_pending_ = false;
     bool field_entity_walking_ = false;
     bool field_entity_attack_pose_active_ = false;
-    // Which list the active +0x16 pose came from: 0 firearm C042,
-    // 1 unarmed strike C0A2, 2 spell C082.
-    std::uint8_t field_entity_attack_pose_kind_ = 0U;
+    FieldPlayerAttackPose field_entity_attack_pose_kind_ =
+        FieldPlayerAttackPose::firearm;
     std::uint8_t field_entity_attack_direction_ = 0U;
     bool field_combat_input_suppressed_until_release_ = false;
     std::array<MovementOffset, integration::kFieldMovementDirectionCount>

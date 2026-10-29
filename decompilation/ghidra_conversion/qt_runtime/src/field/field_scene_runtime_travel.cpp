@@ -85,9 +85,6 @@ using field_scene_detail::kFieldHudBehaviorMeterCompanionAliasPrefix;
 using field_scene_detail::kFieldHudAmmoCounterAliasPrefix;
 using field_scene_detail::kFieldEntityIdleAliasPrefix;
 using field_scene_detail::kRunnerFlagsDown;
-using field_scene_detail::kFieldPlayerPoseFirearm;
-using field_scene_detail::kFieldPlayerPoseStrike;
-using field_scene_detail::kFieldPlayerPoseCast;
 using field_scene_detail::kFieldPlayerBarrierEffectOwner;
 using field_scene_detail::kFieldSpellEffectProfiles;
 using field_scene_detail::kFieldSpellEffectPhaseCapacity;
@@ -314,7 +311,6 @@ bool FieldSceneRuntime::transition_to_field_destination(
     field_entity_animation_id_ = "idle";
     field_player_actor_script_initialized_ = false;
     field_player_animation_clock_reset_pending_ = false;
-    field_entity_animation_selector_ = 0U;
     field_movement_behavior_record_.current_heading = 0U;
     field_movement_behavior_record_.target_heading = 0U;
     field_movement_transition_state_.terrain_collision_code = 0U;

@@ -93,9 +93,6 @@ using field_scene_detail::kFieldHudBehaviorMeterCompanionAliasPrefix;
 using field_scene_detail::kFieldHudAmmoCounterAliasPrefix;
 using field_scene_detail::kFieldEntityIdleAliasPrefix;
 using field_scene_detail::kRunnerFlagsDown;
-using field_scene_detail::kFieldPlayerPoseFirearm;
-using field_scene_detail::kFieldPlayerPoseStrike;
-using field_scene_detail::kFieldPlayerPoseCast;
 using field_scene_detail::kFieldPlayerBarrierEffectOwner;
 using field_scene_detail::kFieldSpellEffectProfiles;
 using field_scene_detail::kFieldSpellEffectPhaseCapacity;
@@ -10512,7 +10509,6 @@ bool FieldSceneRuntime::bootstrap(
     field_entity_animation_ = {};
     field_entity_animation_id_ = "idle";
     field_player_animation_clock_reset_pending_ = false;
-    field_entity_animation_selector_ = 0U;
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = false;
     input_ = integration::FieldSessionBootstrapInput{};
@@ -11528,9 +11524,11 @@ FieldSceneRuntime::heartbeat_field_player(
         actor_context.animation_mode = runner_down
             ? scripting::ScriptActorAnimationMode::runner_down
             : field_entity_attack_pose_active_
-            ? (field_entity_attack_pose_kind_ == kFieldPlayerPoseStrike
+            ? (field_entity_attack_pose_kind_ ==
+                       FieldPlayerAttackPose::strike
                    ? scripting::ScriptActorAnimationMode::strike
-                   : field_entity_attack_pose_kind_ == kFieldPlayerPoseCast
+                   : field_entity_attack_pose_kind_ ==
+                             FieldPlayerAttackPose::cast
                          ? scripting::ScriptActorAnimationMode::cast
                          : scripting::ScriptActorAnimationMode::attack)
             : field_entity_walking_
@@ -12008,34 +12006,25 @@ void FieldSceneRuntime::service_player_weapon_action(
         return;
     }
 
-    HeadingAnimationState attack_pose{};
     const auto spawned_heading = spawn_cycle.primary->heading;
     const auto direction = field_movement_direction_from_heading(
         spawned_heading);
-    set_entity_heading_with_field_animation(
-        attack_pose, spawned_heading,
-        kFieldAttackAnimationSelectors,
-        [this, &runner] {
-            const auto delay = game_scripts_.player_weapon_action_delay(
-                runner.attributes[1U], runner.attributes[4U],
-                runner.cyberware_flags, runner.equipped_item_code,
-                scripting::ScriptPlayerDelayPurpose::weapon_attack);
-            if (!delay.has_value()) {
-                source_boundary("field.combat.player_weapon_delay_unresolved");
-                return;
-            }
-            runner.animation_action_gate = *delay;
-        },
-        [this] {
-            field_entity_animation_.frame = 0U;
-            field_entity_animation_.redraw_requested = true;
-        });
-    field_entity_animation_selector_ = attack_pose.direction_animation;
+    const auto delay = game_scripts_.player_weapon_action_delay(
+        runner.attributes[1U], runner.attributes[4U],
+        runner.cyberware_flags, runner.equipped_item_code,
+        scripting::ScriptPlayerDelayPurpose::weapon_attack);
+    if (!delay.has_value()) {
+        source_boundary("field.combat.player_weapon_delay_unresolved");
+    } else {
+        runner.animation_action_gate = *delay;
+    }
+    field_entity_animation_.frame = 0U;
+    field_entity_animation_.redraw_requested = true;
     field_entity_attack_direction_ = direction;
     field_entity_.direction = direction;
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = true;
-    field_entity_attack_pose_kind_ = kFieldPlayerPoseFirearm;
+    field_entity_attack_pose_kind_ = FieldPlayerAttackPose::firearm;
     source_boundary("field.combat.player_weapon_spawned");
 }
 

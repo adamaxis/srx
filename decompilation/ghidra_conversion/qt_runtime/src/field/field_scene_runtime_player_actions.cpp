@@ -102,9 +102,6 @@ using field_scene_detail::kFieldHudBehaviorMeterCompanionAliasPrefix;
 using field_scene_detail::kFieldHudAmmoCounterAliasPrefix;
 using field_scene_detail::kFieldEntityIdleAliasPrefix;
 using field_scene_detail::kRunnerFlagsDown;
-using field_scene_detail::kFieldPlayerPoseFirearm;
-using field_scene_detail::kFieldPlayerPoseStrike;
-using field_scene_detail::kFieldPlayerPoseCast;
 using field_scene_detail::kFieldPlayerBarrierEffectOwner;
 using field_scene_detail::kFieldSpellEffectProfiles;
 using field_scene_detail::kFieldSpellEffectPhaseCapacity;
@@ -715,15 +712,6 @@ void FieldSceneRuntime::advance_field_movement() {
         source_boundary("field.player.lua_movement_animation_invalid");
         return;
     }
-    const auto animation_selector =
-        select_field_entity_animation_selector(
-            actor_decision->direction,
-            actor_decision->animation_id == "walk");
-    if (animation_selector != field_entity_animation_selector_) {
-        field_entity_animation_.redraw_requested = true;
-    }
-    field_entity_animation_selector_ = animation_selector;
-
     if (movement_step.outcome ==
         scripting::ScriptActorMovementStep::Outcome::reset) {
         field_entity_animation_.redraw_requested = true;
@@ -732,9 +720,13 @@ void FieldSceneRuntime::advance_field_movement() {
         source_boundary("field.movement.reset_blocked_step");
     }
 
+    const auto previous_direction = field_entity_.direction;
     field_entity_.world_position.x = field_movement_state_.position_x;
     field_entity_.world_position.y = field_movement_state_.position_y;
     field_entity_.direction = actor_decision->direction;
+    if (previous_direction != field_entity_.direction) {
+        field_entity_animation_.redraw_requested = true;
+    }
     if (previous_x != field_movement_state_.position_x ||
         previous_y != field_movement_state_.position_y) {
         source_boundary("field.movement.accepted_step");
@@ -760,8 +752,6 @@ void FieldSceneRuntime::advance_player_weapon_action_gate() {
 
     field_entity_attack_pose_active_ = false;
     if (!field_entity_walking_) {
-        field_entity_animation_selector_ = static_cast<std::uint16_t>(
-            field_entity_attack_direction_ * 4U);
         field_entity_animation_.frame = 0U;
         field_entity_animation_.redraw_requested = true;
     }
@@ -898,13 +888,11 @@ void FieldSceneRuntime::service_player_spell_cast(
     // 0xAF7C/0xAFAE: +0x16 = C082[dir(+0x2E)], then 0xAF6C clears the clock.
     const auto cast_direction = field_movement_direction_from_heading(
         field_movement_state_.heading);
-    field_entity_animation_selector_ =
-        static_cast<std::uint16_t>(0x0080U + cast_direction * 4U);
     field_entity_attack_direction_ = cast_direction;
     field_entity_.direction = cast_direction;
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = true;
-    field_entity_attack_pose_kind_ = kFieldPlayerPoseCast;
+    field_entity_attack_pose_kind_ = FieldPlayerAttackPose::cast;
     field_entity_animation_.frame = 0U;
     field_entity_animation_.redraw_requested = true;
     refresh_field_hud_runner_slot();
@@ -946,13 +934,11 @@ void FieldSceneRuntime::service_player_melee(
     }
     const auto strike_direction = field_movement_direction_from_heading(
         field_movement_state_.heading);
-    field_entity_animation_selector_ =
-        static_cast<std::uint16_t>(0x00C0U + strike_direction * 4U);
     field_entity_attack_direction_ = strike_direction;
     field_entity_.direction = strike_direction;
     field_entity_walking_ = false;
     field_entity_attack_pose_active_ = true;
-    field_entity_attack_pose_kind_ = kFieldPlayerPoseStrike;
+    field_entity_attack_pose_kind_ = FieldPlayerAttackPose::strike;
     field_entity_animation_.frame = 0U;
     field_entity_animation_.redraw_requested = true;
     if (source_audio_event_callback_) {
@@ -1281,8 +1267,6 @@ void FieldSceneRuntime::advance_field_actor_animation() {
         const auto previous_frame = field_entity_animation_.frame;
         const auto previous_animation = field_entity_animation_id_;
         const auto previous_direction = field_entity_.direction;
-        const auto previous_animation_selector =
-            field_entity_animation_selector_;
         const auto decision = heartbeat_field_player(
             scripting::ScriptActorHeartbeatPhase::render);
         if (!decision.has_value()) {
@@ -1292,15 +1276,6 @@ void FieldSceneRuntime::advance_field_actor_animation() {
             field_entity_.direction = decision->direction;
             field_entity_animation_.frame = decision->animation_frame;
             field_entity_animation_id_ = decision->animation_id;
-            // Keep the source-facing QA value derived from semantic render
-            // state. The presenter draws by animation ID and direction.
-            if (decision->animation_id == "idle" ||
-                decision->animation_id == "walk") {
-                field_entity_animation_selector_ =
-                    select_field_entity_animation_selector(
-                        decision->direction,
-                        decision->animation_id == "walk");
-            }
             field_entity_.spell_effect_visible =
                 decision->spell_effect_visible;
             field_entity_.spell_effect_id = decision->spell_effect_id;
@@ -1419,9 +1394,7 @@ void FieldSceneRuntime::advance_field_actor_animation() {
             field_entity_animation_.redraw_requested =
                 previous_frame != field_entity_animation_.frame ||
                 previous_animation != field_entity_animation_id_ ||
-                previous_direction != field_entity_.direction ||
-                previous_animation_selector !=
-                    field_entity_animation_selector_;
+                previous_direction != field_entity_.direction;
         }
     }
 }

@@ -271,7 +271,6 @@ void FieldSceneRuntime::snapshot_world_activity_source_scene() {
     snapshot.entity_target_owner = field_entity_target_owner_;
     snapshot.entity_target_records = field_entity_target_records_;
     snapshot.player_animation = field_entity_animation_;
-    snapshot.player_animation_selector = field_entity_animation_selector_;
     snapshot.player_animation_id = field_entity_animation_id_;
     snapshot.player_animation_clock_reset_pending =
         field_player_animation_clock_reset_pending_;
@@ -395,7 +394,6 @@ bool FieldSceneRuntime::restore_world_activity_source_scene(
     field_entity_target_owner_ = snapshot.entity_target_owner;
     field_entity_target_records_ = snapshot.entity_target_records;
     field_entity_animation_ = snapshot.player_animation;
-    field_entity_animation_selector_ = snapshot.player_animation_selector;
     field_entity_animation_id_ = snapshot.player_animation_id;
     field_player_animation_clock_reset_pending_ =
         snapshot.player_animation_clock_reset_pending;
