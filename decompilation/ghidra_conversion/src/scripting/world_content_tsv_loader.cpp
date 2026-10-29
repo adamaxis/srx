@@ -1202,7 +1202,8 @@ bool collect_actor_profile_ids(
 bool make_semantic_conditional_actor_rows(
     const TsvDocument& source, const std::filesystem::path& path,
     const ActorProfileIds& profile_ids, TsvDocument& semantic,
-    std::string& failure) {
+    std::string& failure,
+    std::vector<ScriptConditionalActorCandidate>* actor_catalog) {
     const auto template_column = source.column_indexes.find("template_offset");
     const auto entity_column = source.column_indexes.find("entity_kind");
     const auto palette_column = source.column_indexes.find("palette_line");
@@ -1214,44 +1215,64 @@ bool make_semantic_conditional_actor_rows(
     }
 
     semantic = {};
-    semantic.columns.reserve(source.columns.size());
-    for (const auto& source_column : source.columns) {
-        if (source_column == "template_offset" ||
-            source_column == "list_offset" ||
-            source_column == "position_offset") {
-            continue;
-        }
-        const auto index = semantic.columns.size();
-        if (!semantic.column_indexes.emplace(source_column, index).second) {
-            failure = path.string() +
-                ": candidate semantic columns contain a duplicate name";
-            return false;
-        }
-        semantic.columns.push_back(source_column);
-        if (source_column == "actor_name") {
-            const auto profile_index = semantic.columns.size();
-            semantic.column_indexes.emplace("profile_id", profile_index);
-            semantic.columns.emplace_back("profile_id");
-        }
+    semantic.columns = {"scene", "candidate_id", "variant"};
+    for (std::size_t column = 0U; column < semantic.columns.size(); ++column) {
+        semantic.column_indexes.emplace(semantic.columns[column], column);
+    }
+    if (actor_catalog != nullptr) {
+        actor_catalog->clear();
+        actor_catalog->reserve(source.rows.size());
     }
 
     semantic.rows.reserve(source.rows.size());
     for (std::size_t row_index = 0U; row_index < source.rows.size();
          ++row_index) {
         const auto& source_row = source.rows[row_index];
+        const auto row_number = row_index + 2U;
+        lua_Integer scene = 0;
+        lua_Integer choice = 0;
         lua_Integer template_offset = 0;
         lua_Integer entity_kind = 0;
         lua_Integer palette_line = 0;
+        lua_Integer world_x = 0;
+        lua_Integer world_y = 0;
+        lua_Integer heading_word = 0;
+        lua_Integer direction = 0;
+        lua_Integer spawn_state_flags = 0;
         if (template_column->second >= source_row.size() ||
             entity_column->second >= source_row.size() ||
             palette_column->second >= source_row.size() ||
+            !row_integer(source, source_row, "scene", scene, path,
+                         row_number, failure) ||
+            !row_integer(source, source_row, "choice", choice, path,
+                         row_number, failure) ||
             !parse_integer(source_row[template_column->second],
                            template_offset) ||
             !parse_integer(source_row[entity_column->second], entity_kind) ||
-            !parse_integer(source_row[palette_column->second], palette_line)) {
+            !parse_integer(source_row[palette_column->second], palette_line) ||
+            !row_integer(source, source_row, "world_x", world_x, path,
+                         row_number, failure) ||
+            !row_integer(source, source_row, "world_y", world_y, path,
+                         row_number, failure) ||
+            !row_integer(source, source_row, "heading_word", heading_word,
+                         path, row_number, failure) ||
+            !row_integer(source, source_row, "direction", direction, path,
+                         row_number, failure) ||
+            !row_integer(source, source_row, "source_spawn_state_flags",
+                         spawn_state_flags, path, row_number, failure) ||
+            scene < 0 || scene > srx::v(srx::Scene::LAST_ID) ||
+            choice < 1 || choice > 3 ||
+            template_offset < 0 || template_offset > 0x1FFFFF ||
+            entity_kind < 0 || entity_kind > 15 ||
+            palette_line < 0 || palette_line > 3 ||
+            world_x < 0 || world_x > 0xFFFF ||
+            world_y < 0 || world_y > 0xFFFF ||
+            heading_word < 0 || heading_word > 0xFFFF ||
+            direction < 0 || direction > 7 ||
+            spawn_state_flags < 0 || spawn_state_flags > 0xFF) {
             failure = path.string() + ": row " +
-                std::to_string(row_index + 2U) +
-                " has an invalid actor profile key";
+                std::to_string(row_number) +
+                " has invalid conditional actor data";
             return false;
         }
         const auto profile = profile_ids.find(
@@ -1263,22 +1284,41 @@ bool make_semantic_conditional_actor_rows(
             return false;
         }
 
-        std::vector<std::string> runtime_row;
-        runtime_row.reserve(semantic.columns.size());
-        for (std::size_t column = 0U; column < source.columns.size();
-             ++column) {
-            const auto& source_column = source.columns[column];
-            if (source_column == "template_offset" ||
-                source_column == "list_offset" ||
-                source_column == "position_offset") {
-                continue;
-            }
-            runtime_row.push_back(source_row[column]);
-            if (source_column == "actor_name") {
-                runtime_row.push_back(profile->second);
-            }
+        const auto actor_name = row_string(source, source_row, "actor_name");
+        const auto selection_group = row_string(
+            source, source_row, "selection_group");
+        if (actor_name.empty() || selection_group.empty()) {
+            failure = path.string() + ": row " +
+                std::to_string(row_number) +
+                " has no actor or selection identity";
+            return false;
         }
-        semantic.rows.push_back(std::move(runtime_row));
+        const auto variant = choice == 1 ? std::string("first")
+            : choice == 2 ? std::string("second")
+                          : std::string("unreachable");
+        const auto candidate_id = "scene_" + std::to_string(scene) +
+            "_pedestrian_" + variant;
+        semantic.rows.push_back({
+            std::to_string(scene), candidate_id, variant});
+
+        if (actor_catalog != nullptr) {
+            ScriptConditionalActorCandidate candidate{};
+            candidate.scene_id = static_cast<std::uint16_t>(scene);
+            candidate.choice = static_cast<std::uint8_t>(choice);
+            candidate.candidate_id = candidate_id;
+            candidate.actor_name = actor_name;
+            candidate.profile_id = profile->second;
+            candidate.entity_kind = static_cast<std::uint16_t>(entity_kind);
+            candidate.palette_line = static_cast<std::uint8_t>(palette_line);
+            candidate.world_x = static_cast<std::uint16_t>(world_x);
+            candidate.world_y = static_cast<std::uint16_t>(world_y);
+            candidate.heading =
+                static_cast<std::uint16_t>(heading_word);
+            candidate.source_spawn_state_flags =
+                static_cast<std::uint8_t>(spawn_state_flags);
+            candidate.selection_group = selection_group;
+            actor_catalog->push_back(std::move(candidate));
+        }
     }
     return true;
 }
@@ -1693,7 +1733,12 @@ void push_empty_data(lua_State* state, const int modules_reference) {
 bool load_world_content_tsv(lua_State* state, const int modules_reference,
                             const std::filesystem::path& world_directory,
                             std::string& failure,
-                            const std::filesystem::path& field_asset_directory) {
+                            const std::filesystem::path& field_asset_directory,
+                            std::vector<ScriptConditionalActorCandidate>*
+                                conditional_actor_catalog) {
+    if (conditional_actor_catalog != nullptr) {
+        conditional_actor_catalog->clear();
+    }
     if (state == nullptr || modules_reference == LUA_NOREF) {
         failure = "Lua runtime is unavailable for world-content TSV files";
         return false;
@@ -1811,9 +1856,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
              {"activity_probe_enabled"}},
             {"entities/conditional-actor-candidates.tsv",
              "conditional_actor_candidates",
-             {"scene", "choice", "entity_kind", "palette_line",
-               "world_x", "world_y", "heading_word", "direction",
-              "source_spawn_state_flags"}},
+             {"scene", "choice"}},
         }};
         ActivityListIds activity_ids;
         ActorProfileIds actor_profile_ids;
@@ -1859,7 +1902,8 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
                        "conditional_actor_candidates") {
                 if (!make_semantic_conditional_actor_rows(
                         document, path, actor_profile_ids,
-                        semantic_candidate_rows, failure)) {
+                        semantic_candidate_rows, failure,
+                        conditional_actor_catalog)) {
                     lua_settop(state, stack_base);
                     return false;
                 }

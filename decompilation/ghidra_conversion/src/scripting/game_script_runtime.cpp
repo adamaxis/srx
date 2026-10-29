@@ -1559,6 +1559,7 @@ struct GameScriptRuntime::Impl {
     std::optional<ScriptNativeOperation> pending_task_operation;
     std::optional<ScriptNativeOperation> active_native_operation;
     StoryFacts story_facts;
+    std::vector<ScriptConditionalActorCandidate> conditional_actor_catalog;
     StoryFactReader story_fact_reader;
     StoryFactWriter story_fact_writer;
     std::unordered_map<std::string, std::string> dialogue_texts;
@@ -4978,6 +4979,7 @@ struct GameScriptRuntime::Impl {
         pending_task_operation.reset();
         active_native_operation.reset();
         story_facts.clear();
+        conditional_actor_catalog.clear();
         dialogue_texts.clear();
         location_type.clear();
         location_id.clear();
@@ -5391,7 +5393,8 @@ bool GameScriptRuntime::load_package(
         script_directory.parent_path().parent_path() / "assets" / "field";
     if (!detail::load_world_content_tsv(
             impl_->state, impl_->modules_reference, world_directory,
-            impl_->failure, field_asset_directory)) {
+            impl_->failure, field_asset_directory,
+            &impl_->conditional_actor_catalog)) {
         return false;
     }
     const auto gameplay_dialogue_directory = json_content_directory.empty()
@@ -7210,109 +7213,22 @@ GameScriptRuntime::field_actor_contact_task(
 std::optional<std::vector<ScriptConditionalActorCandidate>>
 GameScriptRuntime::conditional_actor_candidates_for_scene(
     const std::uint16_t scene_id) {
-    auto* state = impl_->state;
-    if (state == nullptr || scene_id > 55U) {
+    if (impl_->state == nullptr || scene_id > 55U) {
         impl_->failure =
-            "conditional actor-candidate scene is outside source bounds";
+            "conditional actor-candidate scene is invalid";
         return std::nullopt;
     }
-    const auto stack_base = lua_gettop(state);
-    const auto fail = [this, state, stack_base](const std::string_view reason)
-        -> std::optional<std::vector<ScriptConditionalActorCandidate>> {
-        lua_settop(state, stack_base);
-        impl_->failure = std::string(reason);
-        return std::nullopt;
-    };
-    if (!impl_->push_module("world_content")) {
-        return fail("gameplay script module is missing: world_content");
-    }
-    lua_getfield(state, -1, "conditional_actor_candidates_for_scene");
-    if (!lua_isfunction(state, -1)) {
-        return fail(
-            "world_content.conditional_actor_candidates_for_scene is missing");
-    }
-    lua_remove(state, -2);
-    lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
-    ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
-        return fail("world_content.conditional_actor_candidates_for_scene: " +
-                    stack_error(state));
-    }
-    if (!lua_istable(state, -1)) {
-        return fail("conditional actor-candidate lookup must return an array");
-    }
-    const auto rows_index = lua_absindex(state, -1);
-    const auto row_count = lua_rawlen(state, rows_index);
-    if (row_count > 3U) {
-        return fail("conditional actor-candidate scene exceeds three rows");
-    }
-
     std::vector<ScriptConditionalActorCandidate> candidates;
-    candidates.reserve(row_count);
-    std::uint32_t previous_choice = 0U;
-    for (std::size_t index = 0U; index < row_count; ++index) {
-        lua_rawgeti(state, rows_index, static_cast<lua_Integer>(index + 1U));
-        if (!lua_istable(state, -1)) {
-            return fail("conditional actor-candidate list contains a bad row");
+    for (const auto& candidate : impl_->conditional_actor_catalog) {
+        if (candidate.scene_id == scene_id) {
+            candidates.push_back(candidate);
         }
-        const auto row_index = lua_absindex(state, -1);
-        ScriptConditionalActorCandidate candidate{};
-        std::uint32_t row_scene = 0U;
-        std::uint32_t choice = 0U;
-        std::uint32_t entity_kind = 0U;
-        std::uint32_t palette_line = 0U;
-        std::uint32_t world_x = 0U;
-        std::uint32_t world_y = 0U;
-        std::uint32_t heading_word = 0U;
-        std::uint32_t direction = 0U;
-        ActorRoleFacts actor_roles;
-        const bool valid =
-            read_field_integer(state, row_index, "scene", 55U, row_scene) &&
-            row_scene == scene_id &&
-            read_field_integer(state, row_index, "choice", 3U, choice) &&
-            choice > previous_choice &&
-            read_field_text(state, row_index, "candidate_id",
-                            candidate.candidate_id, 128U) &&
-            read_field_text(state, row_index, "actor_name",
-                            candidate.actor_name, 128U) &&
-            read_field_string(state, row_index, "profile_id",
-                              candidate.profile_id) &&
-            valid_identifier(candidate.profile_id) &&
-            read_field_integer(state, row_index, "entity_kind", 15U,
-                               entity_kind) &&
-            read_field_integer(state, row_index, "palette_line", 3U,
-                               palette_line) &&
-            read_field_integer(state, row_index, "world_x", 0xFFFFU,
-                               world_x) &&
-            read_field_integer(state, row_index, "world_y", 0xFFFFU,
-                               world_y) &&
-            read_field_integer(state, row_index, "heading_word", 0xFFFFU,
-                               heading_word) &&
-            read_field_integer(state, row_index, "direction", 7U,
-                               direction) &&
-            read_actor_role_facts(state, row_index, actor_roles) &&
-            read_field_text(state, row_index, "selection_group",
-                            candidate.selection_group, 128U) &&
-            read_field_text(state, row_index, "activation_gate",
-                            candidate.activation_gate, 512U);
-        if (!valid) {
-            return fail("conditional actor-candidate row has invalid fields");
-        }
-
-        candidate.scene_id = static_cast<std::uint16_t>(row_scene);
-        candidate.choice = static_cast<std::uint8_t>(choice);
-        candidate.entity_kind = static_cast<std::uint16_t>(entity_kind);
-        candidate.palette_line = static_cast<std::uint8_t>(palette_line);
-        candidate.world_x = static_cast<std::uint16_t>(world_x);
-        candidate.world_y = static_cast<std::uint16_t>(world_y);
-        candidate.heading_word = static_cast<std::uint16_t>(heading_word);
-        candidate.direction = static_cast<std::uint8_t>(direction);
-        candidate.source_spawn_state_flags = roles_to_source(actor_roles, 0U);
-        previous_choice = choice;
-        candidates.push_back(std::move(candidate));
-        lua_pop(state, 1);
     }
-    lua_settop(state, stack_base);
+    if (candidates.size() > 3U) {
+        impl_->failure =
+            "conditional actor catalog exceeds the selector's source table";
+        return std::nullopt;
+    }
     impl_->failure.clear();
     return candidates;
 }

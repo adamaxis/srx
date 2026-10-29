@@ -155,10 +155,16 @@ int main() {
     lua_rawgeti(state, -1, 1);
     const auto first_candidate_row = lua_absindex(state, -1);
     bool conditional_candidates_are_semantic =
-        field_string_is(state, first_candidate_row, "profile_id",
-                        "pedestrian_k0b_none00");
+        field_string_is(state, first_candidate_row, "candidate_id",
+                        "scene_21_pedestrian_first") &&
+        field_string_is(state, first_candidate_row, "variant", "first");
     for (const auto* field : {"template_offset", "list_offset",
-                              "position_offset"}) {
+                              "position_offset", "profile_id", "actor_name",
+                              "entity_kind", "palette_line", "world_x",
+                              "world_y", "heading_word", "direction", "choice",
+                              "selection_group",
+                              "source_spawn_state_flags", "ordered_overrides",
+                              "activation_gate", "actor_facts"}) {
         lua_getfield(state, first_candidate_row, field);
         conditional_candidates_are_semantic =
             conditional_candidates_are_semantic &&
@@ -166,8 +172,8 @@ int main() {
         lua_pop(state, 1);
     }
     valid = expect(conditional_candidates_are_semantic,
-                   "conditional actor candidates leaked source addresses "
-                   "or lacked their semantic profile id") && valid;
+                   "Lua conditional actor data contains spawn details "
+                   "instead of stable choices") && valid;
     lua_pop(state, 2);
 
     lua_getfield(state, data_table, "dynamic_world_activity_actors");

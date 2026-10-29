@@ -1179,9 +1179,9 @@ struct ScriptFieldEncounterActor {
     ScriptCombatantFacts combatant;
 };
 
-// A conditional table row is source data for the ROM's A800 selector.
-// Candidate rows remain descriptors until FieldSceneRuntime supplies the
-// source facts and selection lifecycle and publishes the selected actor.
+// Host-side spawn descriptors for conditional pedestrian variants. Lua gets
+// semantic candidate identities and variant names; this catalog retains
+// placement and presentation data for FieldSceneRuntime to publish an actor.
 struct ScriptConditionalActorCandidate {
     std::uint16_t scene_id = 0;
     std::uint8_t choice = 0;
@@ -1192,12 +1192,10 @@ struct ScriptConditionalActorCandidate {
     std::uint8_t palette_line = 0;
     std::uint16_t world_x = 0;
     std::uint16_t world_y = 0;
-    std::uint16_t heading_word = 0;
-    std::uint8_t direction = 0;
+    std::uint16_t heading = 0;
     // Offline extraction resolves the ordered source writes to final state.
     std::uint8_t source_spawn_state_flags = 0;
     std::string selection_group;
-    std::string activation_gate;
 };
 
 // Semantic gameplay facts for field actor selection. ROM event bytes, story

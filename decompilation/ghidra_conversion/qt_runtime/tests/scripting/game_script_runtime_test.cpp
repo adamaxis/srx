@@ -1753,7 +1753,7 @@ int main() {
     const auto random_pedestrian_effect_route =
         scripts.field_actor_contact_task(
             0x15U, "qa_random_pedestrian",
-            "scene-21-one-of-three:choice:1",
+            "scene_21_pedestrian_first",
             ContactHandler::world_effect);
     bool conditional_candidate_table_valid = true;
     std::size_t conditional_candidate_count = 0U;
@@ -1770,16 +1770,15 @@ int main() {
             if (candidate.scene_id != scene ||
                 candidate.choice != index + 1U ||
                 candidate.candidate_id !=
-                    "scene-" + std::to_string(scene) + "-one-of-three:choice:" +
-                        std::to_string(candidate.choice) ||
+                    "scene_" + std::to_string(scene) + "_pedestrian_" +
+                        (candidate.choice == 1U ? "first" :
+                         candidate.choice == 2U ? "second" : "unreachable") ||
                 candidate.entity_kind != 11U ||
                 candidate.palette_line != 3U ||
                 candidate.profile_id != "pedestrian_k0b_none00" ||
                 candidate.source_spawn_state_flags != 0x08U ||
                 candidate.selection_group !=
-                    "scene-" + std::to_string(scene) + "-one-of-three" ||
-                candidate.activation_gate.find("choice 3 unreachable") ==
-                    std::string::npos) {
+                    "scene-" + std::to_string(scene) + "-one-of-three") {
                 conditional_candidate_table_valid = false;
                 break;
             }
@@ -2183,17 +2182,16 @@ int main() {
                 first_candidate_scene.has_value() &&
                 first_candidate_scene->front().choice == 1U &&
                 first_candidate_scene->front().candidate_id ==
-                    "scene-21-one-of-three:choice:1" &&
+                    "scene_21_pedestrian_first" &&
                 first_candidate_scene->front().profile_id ==
                     "pedestrian_k0b_none00" &&
                 first_candidate_scene->front().world_x == 0x2800U &&
                 first_candidate_scene->front().world_y == 0x0580U &&
-                first_candidate_scene->front().heading_word == 0xC000U &&
-                first_candidate_scene->front().direction == 6U &&
+                first_candidate_scene->front().heading == 0xC000U &&
                 first_candidate_scene->front().source_spawn_state_flags ==
                     0x08U &&
                 scripts.failure().empty(),
-            "Lua did not return the typed ROM scene actor lists")) {
+            "host candidate catalog did not resolve the typed scene actors")) {
         const auto print_route = [](
             const std::string_view label,
             const std::optional<ScriptFieldActorContactAction>& route) {

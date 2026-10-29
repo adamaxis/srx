@@ -3285,7 +3285,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
                     actor.palette_line = candidate->palette_line;
                     actor.world_x = candidate->world_x;
                     actor.world_y = candidate->world_y;
-                    actor.heading = candidate->heading_word;
+                    actor.heading = candidate->heading;
                     actor.source_spawn_state_flags =
                         candidate->source_spawn_state_flags;
                     actor.source_interaction_flags =

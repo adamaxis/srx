@@ -21770,7 +21770,7 @@ bool verify_field_pedestrian_late_gate_retention_qa(
             actor->record_slot !=
                 std::optional<FieldWorldActorSlot>{
                     FieldWorldActorSlot::slot_3} ||
-            actor->initial_heading != expected->heading_word ||
+            actor->initial_heading != expected->heading ||
             actor->spawn_state_flags != 0x08U || !actor->visible) {
             std::cerr << "Pedestrian gate QA: child-scene actor did not reuse "
                          "choice "
@@ -22441,7 +22441,7 @@ int run_field_pedestrian_scenes_qa(
                         FieldWorldActorSlot::slot_3} ||
                 !default_guard_population_matches ||
                 actor->activity_id != expected->candidate_id ||
-                actor->initial_heading != expected->heading_word ||
+                actor->initial_heading != expected->heading ||
                 actor->spawn_state_flags !=
                     expected->source_spawn_state_flags ||
                 !actor->visible) {
@@ -22501,7 +22501,7 @@ int run_field_pedestrian_scenes_qa(
                                << std::hex
                                << expected->world_x << "\t0x"
                                << expected->world_y << "\t0x"
-                               << expected->heading_word << "\t0x08\t3\t1\t"
+                               << expected->heading << "\t0x08\t3\t1\t"
                                << std::dec
                                << static_cast<unsigned>(
                                       expected_default_guard_count)
@@ -31382,13 +31382,13 @@ int run_field_employee_recruitment_target_pedestrian_qa(
     case FieldEmployeeRecruitmentTargetQaRoute::initializer11_lone_star:
         route = TargetRoute{11U, 3U, 6U, 3U, 41U, 96U, 0x7000U, 0x0700U,
                             0x0700U, 0x071FU, 0x0040U, 0x005FU, 0x00C6U,
-                            "scene-41-one-of-three:choice:1", 0x1500U,
+                            "scene_41_pedestrian_first", 0x1500U,
                             0x0E80U, 4U, "Lone Star", {}};
         break;
     case FieldEmployeeRecruitmentTargetQaRoute::initializer11_ares:
         route = TargetRoute{11U, 1U, 2U, 1U, 26U, 71U, 0x5100U, 0x2500U,
                             0x0500U, 0x051FU, 0x0220U, 0x023FU, 0x00C2U,
-                            "scene-26-one-of-three:choice:2", 0x2D00U,
+                            "scene_26_pedestrian_second", 0x2D00U,
                             0x2300U, 28U, "Ares",
                             "ares-doorway-approach-collision-grid.tsv"};
         break;
@@ -31401,28 +31401,28 @@ int run_field_employee_recruitment_target_pedestrian_qa(
     case FieldEmployeeRecruitmentTargetQaRoute::initializer5_mitsuhama_scene0:
         route = TargetRoute{5U, 0U, 4U, 0U, 30U, 47U, 0x1100U, 0x2B00U,
                             0x0100U, 0x011FU, 0x0280U, 0x029FU, 0x00C4U,
-                            "scene-30-one-of-three:choice:2", 0x0900U,
+                            "scene_30_pedestrian_second", 0x0900U,
                             0x0B00U, 2U, "Mitsuhama",
                             "mitsuhama-doorway-approach-collision-grid.tsv"};
         break;
     case FieldEmployeeRecruitmentTargetQaRoute::initializer5_fuchi_scene0:
         route = TargetRoute{5U, 0U, 5U, 0U, 21U, 46U, 0x6B00U, 0x0900U,
                             0x06A0U, 0x06BFU, 0x0060U, 0x007FU, 0x00C5U,
-                            "scene-21-one-of-three:choice:1", 0x2800U,
+                            "scene_21_pedestrian_first", 0x2800U,
                             0x0580U, 539U, "Fuchi",
                             "fuchi-scene0-doorway-approach-collision-grid.tsv"};
         break;
     case FieldEmployeeRecruitmentTargetQaRoute::initializer5_fuchi_scene3:
         route = TargetRoute{5U, 3U, 2U, 3U, 21U, 97U, 0x0800U, 0x1700U,
                             0x0080U, 0x009FU, 0x0140U, 0x015FU, 0x00C2U,
-                            "scene-21-one-of-three:choice:2", 0x4700U,
+                            "scene_21_pedestrian_second", 0x4700U,
                             0x2D80U, 41U, "Fuchi",
                             "fuchi-scene3-doorway-approach-collision-grid.tsv"};
         break;
     case FieldEmployeeRecruitmentTargetQaRoute::initializer5_mitsuhama_scene3:
         route = TargetRoute{5U, 3U, 3U, 3U, 30U, 95U, 0x2D00U, 0x0F00U,
                             0x02C0U, 0x02DFU, 0x00A0U, 0x00BFU, 0x00C3U,
-                            "scene-30-one-of-three:choice:1", 0x2300U,
+                            "scene_30_pedestrian_first", 0x2300U,
                             0x3400U, 430U, "Mitsuhama",
                             "mitsuhama-scene3-doorway-approach-collision-grid.tsv"};
         break;
@@ -31893,7 +31893,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         actor->record_slot ==
             std::optional<FieldWorldActorSlot>{FieldWorldActorSlot::slot_3} &&
         actor->activity_id == expected->candidate_id &&
-        actor->initial_heading == expected->heading_word &&
+        actor->initial_heading == expected->heading &&
         actor->spawn_state_flags == expected->source_spawn_state_flags &&
         actor->visible;
     const bool selected_row_matches_route = route.candidate_id.empty() ||
@@ -31980,7 +31980,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
             std::cerr << expected->world_x << ',' << expected->world_y
                       << " activity=" << expected->candidate_id
                       << " heading=0x" << std::hex
-                      << expected->heading_word << std::dec;
+                      << expected->heading << std::dec;
         } else {
             std::cerr << "missing";
         }

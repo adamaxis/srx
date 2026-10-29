@@ -341,8 +341,8 @@ function World.world_activity_actors_for_list_id(scene_id, list_id)
     return world_activity_actor_descriptors(scene_id, "list_id", list_id)
 end
 
--- Preserve all ROM table rows as named source candidates. This lookup does
--- not run the A800 gates or claim that every listed choice is reachable.
+-- Expose only the semantic choices the A800 policy needs. Spawn placement,
+-- artwork, source flags, and source-table annotations stay in the host catalog.
 function World.conditional_actor_candidates_for_scene(scene_id)
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
        scene_id < 0 or scene_id > 55 then
@@ -351,32 +351,15 @@ function World.conditional_actor_candidates_for_scene(scene_id)
     local result = {}
     for _, row in ipairs(content().conditional_actor_candidates or {}) do
         if row.scene == scene_id then
-            local source_facts = type(row.actor_facts) == "table"
-                and row.actor_facts or {}
             result[#result + 1] = {
-                candidate_id = row.selection_group .. ":choice:" ..
-                    tostring(row.choice),
-                scene = row.scene,
-                choice = row.choice,
-                actor_name = row.actor_name,
-                profile_id = row.profile_id,
-                entity_kind = row.entity_kind,
-                palette_line = row.palette_line,
-                world_x = row.world_x,
-                world_y = row.world_y,
-                heading_word = row.heading_word,
-                direction = row.direction,
-                actor_facts = {
-                    roles = type(source_facts.roles) == "table"
-                        and source_facts.roles or {},
-                },
-                selection_group = row.selection_group,
-                activation_gate = row.activation_gate,
+                candidate_id = row.candidate_id,
+                variant = row.variant,
             }
         end
     end
+    local variant_order = { first = 1, second = 2, unreachable = 3 }
     table.sort(result, function(left, right)
-        return left.choice < right.choice
+        return variant_order[left.variant] < variant_order[right.variant]
     end)
     return result
 end
@@ -517,9 +500,7 @@ function World.resolve_conditional_actor_selection(
 
     local candidates = World.conditional_actor_candidates_for_scene(scene_id)
     for _, candidate in ipairs(candidates) do
-        local candidate_variant = candidate.choice == 1 and "first" or
-            candidate.choice == 2 and "second" or "unreachable"
-        if candidate_variant == variant then
+        if candidate.variant == variant then
             return result("random_pedestrian", candidate.candidate_id)
         end
     end
