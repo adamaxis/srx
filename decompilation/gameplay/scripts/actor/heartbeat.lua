@@ -3,22 +3,17 @@
 local R = require("actor.registry")
 local E = require("enums")
 local I = require("lib.int68k")
-local u8, u16, s16 = I.u8, I.u16, I.s16
-local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
-    E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
-local ActorStatus = E.ActorStatus
+local u16, s16 = I.u16, I.s16
+local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
+    E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local ActorPool = E.ActorPool
-local ActorFlag, SpriteType = E.ActorFlag, E.SpriteType
+local SpriteType = E.SpriteType
 
--- ROM 0x1E514: bclr #7,+0xB0 (escort; the host clears the typed FFFC3C actor
--- template marker when it observes this transition [C]) and bclr #0,+0x10
--- (ACTIVE). The C++ host frees the record slot (0x1A304) unless +0x10 b3 is set
--- and stops drawing/servicing the record (0x4618/0xA8EA skip inactive records).
+-- ROM 0x1E514 clears the escort relationship and deactivates the actor. The
+-- host clears its typed template marker and retires the live record slot.
 local function deactivate_record(state)
-    state.source_behavior_flags =
-        u8((state.source_behavior_flags or 0) & ~BehaviorFlag.ESCORT)
-    state.source_record_flags =
-        state.source_record_flags & ~ActorStatus.ACTIVE
+    state.actor_facts.behavior.escort = false
+    state.actor_facts.lifecycle.active = false
 end
 local ActorAI = {}
 local states = game.actors
@@ -93,30 +88,26 @@ function ActorAI.heartbeat(context)
     state.source_action_dispatch = nil
     state.strike_heading = nil
     state.spell_action_resolution = nil
-    state.source_record_flags = context.source_record_flags or
-                                state.source_record_flags
+    local incoming_facts = context.actor_facts
+    if type(incoming_facts) ~= "table" then
+        return nil
+    end
+    state.actor_facts = incoming_facts
     if state.damage_reaction_active and state.animation_id == "down" and
        not state.spell_death then
-        -- 0xB330 sets +0x10 bit 4 and leaves it set while the ordinary down
-        -- reaction is active. Preserve that Lua-owned transition if a later
-        -- host pass still carries the pre-transition record byte [C].
-        state.source_record_flags = state.source_record_flags |
-                                    ActorStatus.DOWN
+        -- 0xB330 leaves the downed state set throughout its ordinary reaction.
+        state.actor_facts.lifecycle.downed = true
     end
     state.source_physical_meter = context.source_physical_meter or
                                   state.source_physical_meter
     state.source_record_slot = context.source_record_slot or
                                state.source_record_slot
-    state.source_spawn_state_flags = context.source_spawn_state_flags or
-                                     state.source_spawn_state_flags or 0
     state.movement_scene_id = context.movement_scene_id or
                               state.movement_scene_id
     state.source_actor_list_offset = context.source_actor_list_offset or
                                      state.source_actor_list_offset
     state.source_actor_source_order = context.source_actor_source_order or
                                      state.source_actor_source_order
-    state.source_behavior_flags = context.source_behavior_flags or
-                                  state.source_behavior_flags
     state.source_action_slot = context.source_action_slot or
                                state.source_action_slot
     state.source_action_ammo = context.source_action_ammo or
@@ -128,8 +119,8 @@ function ActorAI.heartbeat(context)
     if context.phase == "behavior" and
        state.source_record_cleanup_requested then
         state.source_record_cleanup_requested = false
-        if (state.source_record_flags & ActorStatus.ACTIVE) ~= 0 and
-           (state.source_behavior_flags & BehaviorFlag.ESCORT) ~= 0 then
+        if state.actor_facts.lifecycle.active and
+           state.actor_facts.behavior.escort then
             -- ROM 0x1E514 clears +0xB0 bit 7 and +0x10 bit 0. The field host
             -- observes the inactive typed record and retires its live slot.
             deactivate_record(state)
@@ -203,12 +194,11 @@ function ActorAI.heartbeat(context)
                     return nil
                 end
             elseif state.damage_reaction_animation_complete and
-                   (state.source_record_flags & ActorStatus.DEAD) == 0 then
+                   not state.actor_facts.lifecycle.dead then
                 -- ROM 0xA93E: the finished C0B2 list sets pose bit 15, so the
                 -- next 0xA8EA service enters 0xAB02 once: drops, FFE177--,
                 -- and bset #6,+0x10 (DEAD, 0x40). The body stays drawn.
-                state.source_record_flags =
-                    state.source_record_flags | ActorStatus.DEAD
+                state.actor_facts.lifecycle.dead = true
                 -- ROM 0xA9DE/0xAA14: a Wendigo (kind 0xE, 14) whose list is
                 -- finished takes 0xA9BE instead: 0xAB02 then 0x1E514, so the
                 -- record leaves the field after its death list.
@@ -560,17 +550,18 @@ function ActorAI.has_world_scene_effect_target(actor_ids)
             end
             if type(state) ~= "table" or
                state.source_record_slot ~= index + 3 or
-               type(state.source_record_flags) ~= "number" or
-               state.source_record_flags < 0 or
-               state.source_record_flags > 0xff or
+               type(state.actor_facts) ~= "table" or
+               type(state.actor_facts.lifecycle) ~= "table" or
+               type(state.actor_facts.lifecycle.active) ~= "boolean" or
+               type(state.actor_facts.lifecycle.downed) ~= "boolean" or
+               type(state.actor_facts.lifecycle.dead) ~= "boolean" or
                type(physical_meter) ~= "number" or
                physical_meter < 0 or physical_meter > 0xff then
                 return nil
             end
-            local flags = state.source_record_flags
-            if (flags & ActorStatus.ACTIVE) ~= 0 and
-               (flags & ActorStatus.DOWN) == 0 and
-               (flags & ActorStatus.DEAD) == 0 and
+            local lifecycle = state.actor_facts.lifecycle
+            if lifecycle.active and not lifecycle.downed and
+               not lifecycle.dead and
                physical_meter ~= 0 then
                 return true
             end

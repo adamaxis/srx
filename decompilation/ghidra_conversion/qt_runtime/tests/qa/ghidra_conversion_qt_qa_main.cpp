@@ -14524,6 +14524,34 @@ int run_scene1_underground93_story_gate_qa(
             }
             std::cerr << "\nUnderground 93 runtime failure: "
                       << field_scene.failure() << '\n';
+            const auto second_actor_position = field_scene
+                .world_activity_script_actor_position_for_dump(1U);
+            const auto second_actor_profile = field_scene
+                .world_activity_script_actor_profile_for_dump(1U);
+            std::cerr << "Underground 93 second script actor: profile="
+                      << (second_actor_profile.has_value()
+                              ? *second_actor_profile
+                              : "none")
+                      << " position="
+                      << (second_actor_position.has_value()
+                              ? std::to_string(second_actor_position->x) + "," +
+                                    std::to_string(second_actor_position->y)
+                              : "none")
+                      << '\n';
+            const auto actor_debug = field_scene.debug_inspection_fields();
+            for (auto it = actor_debug.constBegin();
+                 it != actor_debug.constEnd(); ++it) {
+                const auto key = it.key();
+                if (key.startsWith(QStringLiteral("actor.")) &&
+                    (key.endsWith(QStringLiteral(".profile")) ||
+                     key.endsWith(QStringLiteral(".source_order")) ||
+                     key.endsWith(QStringLiteral(".record_slot")) ||
+                     key.endsWith(QStringLiteral(".world_activity_script_actor")))) {
+                    std::cerr << key.toStdString() << '='
+                              << it.value().toVariant().toString().toStdString()
+                              << '\n';
+                }
+            }
             std::cerr << "Underground 93 entry QA: event 4 did not load Scene "
                          "15 with the source story gate (heart_delivered="
                       << test_case.heart_delivered << ", scene="

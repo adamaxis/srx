@@ -295,7 +295,7 @@ enum class FieldAlarm : std::int64_t {
     TILE_SHIFT = 0x4,
     FRAME_VALUE = 0xD,
     FRAME_MASK = 0x3F,
-    ACTOR_FLAGS_MAX = 0xFF,
+    ACTOR_COUNT_MAX = 0xFF,
     TIMER_MAX = 0x7FFF,
     RANDOM_REJECT_FROM = 0x8000,
     WORD_MAX = 0xFFFF,

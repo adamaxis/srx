@@ -1,24 +1,18 @@
--- actor/tables.lua: data: ROM-derived constants, flag tables, actor profiles (no functions).
+-- actor/tables.lua: shared actor data and movement tuning (no functions).
 -- Split from the pre-module gameplay/scripts/actor_ai.lua; see docs/ghidra/lua-actor-ai-module-boundaries.md.
 local R = require("actor.registry")
 local E = require("enums")
 local I = require("lib.int68k")
 local ActorProfileCatalog = require("data.actor_profiles")
 local u8, u16, s16 = I.u8, I.u16, I.s16
-local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
-    E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
+    E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 
 -- The directional weapon-effect records at ROM 0x630C use this descriptor
 -- cadence in their finite 0x8003/0x800B lists.
 local weapon_projectile_descriptor_increment = 0x270f
 local projectile = {
     role = { primary = "primary", secondary = "secondary" },
-    flags = {
-        active_record = 0x01,
-        stopped_record = 0x08,
-        terminal_record = 0x09,
-        animation_list_finished = 0x8000,
-    },
     outcome = {
         none = "none",
         stopped = "stopped",
@@ -46,12 +40,7 @@ local ActionKind = {
 }
 
 local E = require("enums")
--- Flag tables now come from the shared enums (names corrected per docs/20_actors_ai.md; lua_review.md #1-#2):
---   ActorServiceFlag.{active,targets_world_actors,action_candidate_reserved,effect_locked} -> ActorStatus.{ACTIVE,AI_RUNNER,DOWN,DEAD} (+0x10)
---   ActorSpawnFlag.{transitioning,effect_route} -> ActorFlag.{PEDESTRIAN,QUEST} (+0x9E)
---   ActorBehaviorFlag.{action_window_open,high_effect} -> BehaviorFlag.{IN_BAND,ESCORT} (+0xB0)
---   EntityKind.* -> SpriteType.* (+0x0E)
-local ActorStatus, ActorFlag, BehaviorFlag, SpriteType = E.ActorStatus, E.ActorFlag, E.BehaviorFlag, E.SpriteType
+local SpriteType = E.SpriteType
 -- ROM 0x13E7C has four finite bounds pairs selected by item/spell template
 -- byte +0x27. Coordinates are typed 16-bit scene units.
 local ActionMotionDistanceBounds = {
@@ -174,9 +163,6 @@ R.fixed_long_mask = fixed_long_mask
 R.fixed_integer_shift = fixed_integer_shift
 R.fixed_fraction_scale = fixed_fraction_scale
 R.ActionKind = ActionKind
-R.ActorStatus = ActorStatus
-R.ActorFlag = ActorFlag
-R.BehaviorFlag = BehaviorFlag
 R.SpriteType = SpriteType
 R.ActionMotionDistanceBounds = ActionMotionDistanceBounds
 R.EntityMotionDistanceBounds = EntityMotionDistanceBounds

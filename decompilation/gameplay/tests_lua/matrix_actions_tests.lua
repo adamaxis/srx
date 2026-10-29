@@ -9,8 +9,22 @@ ok(NA.cancel_alert(st).redraw and st.alert == -1, "cancel"); ok(NA.cancel_alert(
 local run = { state = -1, objective = -1, value = 0, size = 0, fc28 = 1, fc1c = 0 }; local field = { alarm = true }
 local r = NA.crash_system(run, field)
 ok(run.state == 1 and run.fc28 == 0 and run.fc1c == 0x80 and field.security_off and field.maglocks_off and r.logout, "crash")
-local a = { { flags9e = 2 }, { flags9e = 0 } }; field = { alarm = true }
-NA.turn_off_node({ class = 0x27 }, field, a); ok(not field.alarm and field.security_off and a[1].flags9e == 6 and a[2].flags9e == 0, "turnoff 27")
+local a = {
+    { actor_facts = { roles = {
+        spotted = false, reinforcement = true,
+        despawn_offscreen = false, quest = false, runner = false,
+        pedestrian = false, hostile = false,
+    } } },
+    { actor_facts = { roles = {
+        spotted = false, reinforcement = false,
+        despawn_offscreen = false, quest = false, runner = false,
+        pedestrian = false, hostile = false,
+    } } },
+}; field = { alarm = true }
+NA.turn_off_node({ class = 0x27 }, field, a)
+ok(not field.alarm and field.security_off and
+   a[1].actor_facts.roles.despawn_offscreen and
+   not a[2].actor_facts.roles.despawn_offscreen, "turnoff 27")
 field = {}; NA.turn_off_node({ class = 0x29 }, field); ok(field.maglocks_off and not field.security_off, "turnoff 29")
 run = { state = -1, objective = 5, value = 0, fc28 = 0, fc1c = 0 }
 ok(NA.erase(run, { class = 5 }).text == NA.TEXT.ERASE_OBJECTIVE and run.state == 1, "erase obj")

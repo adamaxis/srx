@@ -1,5 +1,5 @@
 -- enums.lua: the shared named constants for Shadowrun (Genesis) game logic.
--- Naming: PascalCase type + UPPER_SNAKE member (ActorFlag.PEDESTRIAN). C++ mirror: enums.hpp (generated, `enum class`).
+-- Naming: PascalCase type + UPPER_SNAKE member. C++ mirror: enums.hpp (generated, `enum class`).
 -- Every value cites its ROM address or RAM location. Logic code uses these names, never raw values.
 local E = {}
 
@@ -25,12 +25,7 @@ E.ActorRaceOrState = {
 }
 E.GhoulBounty = { MAX_DEFEATS = 20 } -- FFFBF0 is capped at twenty (0x559BC) [C]
 
-E.ActorStatus   = { NONE = 0, ACTIVE = 0x01, THINK = 0x02, AI_RUNNER = 0x08, DOWN = 0x10, GROUP_LEADER = 0x20, DEAD = 0x40 }  -- +0x10 [C]
-E.ActorStatusEx = { PROJECTILE = 0x01, BREATH_OUT = 0x40, UNSEEN = 0x80 }                                        -- +0x11 [C]
 -- +0x9E role/AI flags (doc 20 §2); REINFORCEMENT is set by the alarm spawner 0x1E0B8 [C]
-E.ActorFlag = { NONE = 0, SPOTTED = 0x01, REINFORCEMENT = 0x02, DESPAWN_OFFSCREEN = 0x04, QUEST = 0x08,
-                RUNNER = 0x10, PEDESTRIAN = 0x20, HOSTILE = 0x40 }
-E.BehaviorFlag = { ROUTE_CLEAR = 0x01, PATH = 0x02, RESTART_STEER = 0x04, WALL_FOLLOW = 0x08, IN_BAND = 0x10, ROUTE_TRANSITION = 0x20, FLEEING = 0x40, ESCORT = 0x80 } -- +0xB0 [C]; ROUTE_CLEAR/ROUTE_TRANSITION [H] repo route_flags usage
 E.SteerFlag = { TARGET_RIGHT = 0x01, TARGET_BELOW = 0x02, OVERSHOOT_X = 0x04, OVERSHOOT_Y = 0x08 }  -- +0xB1 [C]
 E.CyberBit = { DATAJACK = 0, CYBEREYES = 1, HAND_RAZORS = 2, SPURS = 3, SMARTLINK = 4 }             -- +0x90 bit numbers (doc 04) [C]
 -- Player hurt animation selected by 0xAFF2 from the directional C072 table.
@@ -76,7 +71,7 @@ E.FieldAlarm = {
     WORD_MAX = 0xFFFF, -- source unsigned word bound [C]
     TIMER_MIN = -0x8000, TIMER_MAX = 0x7FFF, -- signed word bounds [C]
     LIST_ADDRESS_MAX = 0xFFFFFFFF, -- source longword bound [C]
-    ACTOR_FLAGS_MAX = 0xFF, -- +0x9E byte bound [C]
+    ACTOR_COUNT_MAX = 0xFF, -- FFE177 actor count is a byte [C]
 } -- 0x1DFC4 cadence and unsigned random gate [C]
 E.FieldSafe = {
     PROJECTED_EVENT = 0x1A, -- 0xB7B8 routes event 0x1A through 0x16760/0x20C90 [C]

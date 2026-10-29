@@ -3,19 +3,70 @@
 local R = require("actor.registry")
 local E = require("enums")
 local I = require("lib.int68k")
-local u8, u16, s16 = I.u8, I.u16, I.s16
-local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
-    E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local u16, s16 = I.u16, I.s16
+local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
+    E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local ActionKind = R.ActionKind   -- from actor/tables.lua
 local ActionMotionDistanceBounds = R.ActionMotionDistanceBounds   -- from actor/tables.lua
-local BehaviorFlag = R.BehaviorFlag   -- from actor/tables.lua
-local ActorStatus = R.ActorStatus   -- from actor/tables.lua
-local ActorFlag = R.ActorFlag   -- from actor/tables.lua
 local EntityMotionDistanceBounds = R.EntityMotionDistanceBounds   -- from actor/tables.lua
 local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
 local profiles = R.profiles   -- from actor/tables.lua
 local ActorProfileCatalog = require("data.actor_profiles")
 local source_close_range_threshold = R.source_close_range_threshold   -- from actor/tables.lua
+
+local function copy_actor_facts(facts)
+    facts = type(facts) == "table" and facts or {}
+    local lifecycle = type(facts.lifecycle) == "table" and facts.lifecycle or {}
+    local interaction = type(facts.interaction) == "table" and facts.interaction or {}
+    local behavior = type(facts.behavior) == "table" and facts.behavior or {}
+    local roles = type(facts.roles) == "table" and facts.roles or {}
+    return {
+        lifecycle = {
+            active = lifecycle.active == true,
+            thinking_enabled = lifecycle.thinking_enabled == true,
+            ai_runner = lifecycle.ai_runner == true,
+            downed = lifecycle.downed == true,
+            group_leader = lifecycle.group_leader == true,
+            dead = lifecycle.dead == true,
+        },
+        interaction = {
+            projectile = interaction.projectile == true,
+            proximity_interaction_pending =
+                interaction.proximity_interaction_pending == true,
+            use_collision_heading = interaction.use_collision_heading == true,
+            collision_recovery_active =
+                interaction.collision_recovery_active == true,
+            action_hook_pending = interaction.action_hook_pending == true,
+            defense_difficulty_reduction =
+                interaction.defense_difficulty_reduction == true,
+            breathing_out = interaction.breathing_out == true,
+            unseen = interaction.unseen == true,
+            no_coverage_difficulty_bonus =
+                interaction.no_coverage_difficulty_bonus == true,
+            defense_difficulty_reduction =
+                interaction.defense_difficulty_reduction == true,
+        },
+        behavior = {
+            route_clear = behavior.route_clear == true,
+            path_active = behavior.path_active == true,
+            restart_steering = behavior.restart_steering == true,
+            wall_following = behavior.wall_following == true,
+            in_target_band = behavior.in_target_band == true,
+            route_transition = behavior.route_transition == true,
+            fleeing = behavior.fleeing == true,
+            escort = behavior.escort == true,
+        },
+        roles = {
+            spotted = roles.spotted == true,
+            reinforcement = roles.reinforcement == true,
+            despawn_offscreen = roles.despawn_offscreen == true,
+            quest = roles.quest == true,
+            runner = roles.runner == true,
+            pedestrian = roles.pedestrian == true,
+            hostile = roles.hostile == true,
+        },
+    }
+end
 local target_motion_reacquire_updates = R.target_motion_reacquire_updates   -- from actor/tables.lua
 
 -- ROM 0x13874 selects the two pointer-list refreshes from FFDFE8 and
@@ -111,7 +162,7 @@ local function source_profile(context)
        (profile.dynamic_encounter_only and
         context.dynamic_world_encounter_actor ~= true) or
        (profile.dynamic_encounter_only and
-        (context.source_record_flags & 0x01) == 0) or
+        not context.actor_facts.lifecycle.active) or
        (not profile.projectile_animation and
         not profile.hit_spark_animation and
         context.entity_kind ~= profile.entity_kind) or
@@ -135,18 +186,18 @@ end
 local function target_is_eligible(candidate, world_actor_pool)
     if type(candidate) ~= "table" or type(candidate.id) ~= "string" or
        candidate.id == "" or candidate.projected_y_nonzero ~= true or
-       (candidate.service_flags & ActorStatus.ACTIVE) == 0 or
-       (candidate.service_flags & ActorStatus.DEAD) ~= 0 or
-       (candidate.service_flags & ActorStatus.DOWN) ~= 0 then
+       candidate.actor_facts.lifecycle.active ~= true or
+       candidate.actor_facts.lifecycle.dead == true or
+       candidate.actor_facts.lifecycle.downed == true then
         return false
     end
     if candidate.world_activity_actor ~= world_actor_pool then
         return false
     end
     if world_actor_pool and
-       ((candidate.behavior_flags & BehaviorFlag.ESCORT) ~= 0 or
-        (candidate.spawn_state_flags & ActorFlag.PEDESTRIAN) ~= 0 or
-        (candidate.spawn_state_flags & ActorFlag.QUEST) ~= 0) then
+       (candidate.actor_facts.behavior.escort == true or
+        candidate.actor_facts.roles.pedestrian == true or
+        candidate.actor_facts.roles.quest == true) then
         return false
     end
     return true
@@ -158,8 +209,7 @@ local function linked_target(context, state)
         state.linked_target_id = nil
         return nil
     end
-    local world_actor_pool =
-        (context.source_record_flags & ActorStatus.AI_RUNNER) ~= 0
+    local world_actor_pool = context.actor_facts.lifecycle.ai_runner == true
     local previous_target_id = state.linked_target_id
     local candidates = {}
     local retained
@@ -216,8 +266,7 @@ local function action_motion_distance_profile(context)
 end
 
 local function source_motion_bounds(context, state)
-    if (context.source_record_flags &
-        ActorStatus.AI_RUNNER) ~= 0 then
+    if context.actor_facts.lifecycle.ai_runner == true then
         -- ROM 0x13D84 indexes the nine-pair table at 0x13E58 with the live
         -- actor's +0x4D posture. The host supplies that named typed fact.
         local distance_type = context.source_actor_posture
@@ -246,7 +295,7 @@ end
 
 local function source_motion_destination_heading(context, state, target)
     -- ROM 0x13D0C clears +0xB0.4 before selecting the action distance row.
-    state.source_behavior_flags = u8(state.source_behavior_flags & ~BehaviorFlag.IN_BAND)
+    state.actor_facts.behavior.in_target_band = false
     if type(target) ~= "table" or not context.movement_allowed or
        type(target.heading) ~= "number" or
        type(target.distance) ~= "number" or
@@ -266,10 +315,9 @@ local function source_motion_destination_heading(context, state, target)
     if bounds == nil or distance < bounds.upper then
         -- A zero +0xB5 counter reaches 0x13DCA directly. A selected action
         -- row reaches the same flag when distance is below its upper bound.
-        state.source_behavior_flags = state.source_behavior_flags |
-            BehaviorFlag.IN_BAND
+        state.actor_facts.behavior.in_target_band = true
     end
-    context.movement_state.route_flags = state.source_behavior_flags
+    context.movement_state.route_facts = state.actor_facts.behavior
     local destination_heading = u16(heading + AiTuning.QUARTER_TURN)
     local destination_step_cost = target.perpendicular_route_step_cost
     local destination_distance = target.perpendicular_route_distance & 0xffff
@@ -303,9 +351,7 @@ local function retained_linked_target(context, state)
        type(context.ai_target_candidates) ~= "table" then
         return nil
     end
-    local world_actor_pool =
-        (context.source_record_flags &
-         ActorStatus.AI_RUNNER) ~= 0
+    local world_actor_pool = context.actor_facts.lifecycle.ai_runner == true
     for _, candidate in ipairs(context.ai_target_candidates) do
         if candidate.id == state.linked_target_id and
            target_is_eligible(candidate, world_actor_pool) then
@@ -322,14 +368,12 @@ local function initial_state(context, profile)
         entity_kind = context.entity_kind,
         action_kind = context.action_kind,
         action_code = context.action_code,
-        source_record_flags = context.source_record_flags or 0,
-        source_spawn_state_flags = context.source_spawn_state_flags or 0,
+        actor_facts = copy_actor_facts(context.actor_facts),
         movement_scene_id = context.movement_scene_id,
         source_actor_list_offset = context.source_actor_list_offset,
         source_actor_source_order = context.source_actor_source_order,
         source_physical_meter = context.source_physical_meter,
         source_record_slot = context.source_record_slot,
-        source_behavior_flags = context.source_behavior_flags or 0,
         -- Lua owns the mutable combat meters used by world-activity policy.
         -- The host supplies this record only at spawn and later combat results
         -- replace it through combat.lua.
@@ -345,7 +389,6 @@ local function initial_state(context, profile)
         weapon_item_id = profile.weapon_item_id,
         direction = direction_from_heading(context.initial_heading),
         entry_delay = context.entry_delay,
-        source_interaction_flags = context.source_interaction_flags or 0,
         behavior_timer = 0,
         animation_id = "idle",
         animation_frame = 0,

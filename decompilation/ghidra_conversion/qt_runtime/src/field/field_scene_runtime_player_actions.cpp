@@ -621,11 +621,35 @@ void FieldSceneRuntime::advance_field_movement() {
     field_movement_state_.heading = script_state.heading;
     field_movement_state_.animation_heading = script_state.animation_heading;
     field_movement_state_.collision_context = script_state.collision_context;
-    field_movement_state_.movement_substate = script_state.movement_substate;
+    if (script_state.substate_update ==
+        scripting::ScriptMovementSubstateUpdate::direct_translation) {
+        field_movement_state_.movement_substate = 0x1000U;
+    } else if (script_state.substate_update ==
+               scripting::ScriptMovementSubstateUpdate::cardinal_fallback) {
+        field_movement_state_.movement_substate = static_cast<std::uint16_t>(
+            script_state.cardinal_direction * 2U);
+    }
     field_movement_state_.route_status = script_state.route_status;
-    field_movement_state_.movement_flags = script_state.movement_flags;
-    field_movement_state_.collision_flags = script_state.collision_flags;
-    field_movement_state_.event_flags = script_state.event_flags;
+    if (script_state.mark_reset_after_block) {
+        field_movement_state_.movement_flags =
+            static_cast<std::uint8_t>(
+                field_movement_state_.movement_flags | 0x01U);
+    }
+    if (script_state.mark_directional_fallback) {
+        field_movement_state_.movement_flags =
+            static_cast<std::uint8_t>(
+                field_movement_state_.movement_flags | 0x04U);
+    }
+    if (script_state.clear_collision_recovery) {
+        field_movement_state_.collision_flags =
+            static_cast<std::uint8_t>(
+                field_movement_state_.collision_flags & 0xFEU);
+    }
+    if (script_state.clear_pending_event) {
+        field_movement_state_.event_flags =
+            static_cast<std::uint8_t>(
+                field_movement_state_.event_flags & 0xFEU);
+    }
     field_movement_state_.collision_extent = script_state.collision_extent;
     field_movement_transition_state_.terrain_collision_code =
         script_state.terrain_collision_code;

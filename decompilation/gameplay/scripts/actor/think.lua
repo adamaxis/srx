@@ -5,14 +5,8 @@ local I = require("lib.int68k")
 local EntityMotion = require("entity_motion")
 local WaypointLists = require("data.actor_waypoint_lists")
 local u8, u16, s8, s16 = I.u8, I.u16, I.s8, I.s16
-local AiTuning, ActorFlag, ActorStatus, ActorStatusEx, BehaviorFlag, SceneMode =
-    E.AiTuning, E.ActorFlag, E.ActorStatus, E.ActorStatusEx,
-    E.BehaviorFlag, E.SceneMode
+local AiTuning, SceneMode = E.AiTuning, E.SceneMode
 local ActionKind = R.ActionKind
-
-local function has(flags, bit)
-    return (flags & bit) ~= 0
-end
 
 local function controlled_runner(context)
     local slot = context.controlled_runner_slot
@@ -122,8 +116,8 @@ local function guard_spots_you(state, context, leader)
         return
     end
     if context.source_alarm_active ~= false or
-       has(state.source_spawn_state_flags or 0, ActorFlag.SPOTTED) or
-       not has(state.source_record_flags or 0, ActorStatus.GROUP_LEADER) or
+       state.actor_facts.roles.spotted or
+       not state.actor_facts.lifecycle.group_leader or
        type(leader) ~= "table" or type(context.action_line_clear) ~= "function" then
         return
     end
@@ -137,8 +131,7 @@ local function guard_spots_you(state, context, leader)
     end
     -- 0x15D3C measures guard-to-leader heading; 0x14D8E stores it in FF13AE
     -- when the leader is ACTIVE, otherwise FF13AE keeps the guard's +0x2E [C].
-    local facing_reference = has(leader.service_flags or 0,
-                                 ActorStatus.ACTIVE)
+    local facing_reference = leader.actor_facts.lifecycle.active
         and leader.heading or state.movement_current_heading
     if type(facing_reference) ~= "number" then
         state.ai_think_gap = "leader_heading_unavailable"
@@ -152,40 +145,37 @@ local function guard_spots_you(state, context, leader)
     end
 
     if context.source_scene_mode == SceneMode.BUILDING and
-       not has(leader.interaction_flags or 0, ActorStatusEx.UNSEEN) then
+       not leader.actor_facts.interaction.unseen then
         -- 0x13FCC queues the security message only for a visible leader [C].
         state.field_event_request = E.EventFn.GUARD_SPOTS_YOU
     end
     -- 0x13FF6 sets +0x9E.b0 after the optional building event [C].
-    state.source_spawn_state_flags = u8(
-        (state.source_spawn_state_flags or 0) | ActorFlag.SPOTTED)
+    state.actor_facts.roles.spotted = true
 end
 
 local function think_gate(state, context)
-    local spawn_flags = context.source_spawn_state_flags or 0
-    local behavior_flags = context.source_behavior_flags or 0
-    local record_flags = context.source_record_flags or 0
+    local facts = state.actor_facts
     local world_active = context.world_activity_active == true
 
     if context.entity_kind == E.SpriteType.THON then
         return thon_period_path(state, context)
     end
     -- 0x1392A -> 0x14508 -> 0x1450E uses the controlled runner's record [C].
-    if has(behavior_flags, BehaviorFlag.ESCORT) then
+    if facts.behavior.escort then
         return "follow_leader"
     end
-    if has(spawn_flags, ActorFlag.QUEST) then
+    if facts.roles.quest then
         return "skip"
     end
-    if has(spawn_flags, ActorFlag.PEDESTRIAN) and world_active then
+    if facts.roles.pedestrian and world_active then
         return context.source_projection_active == true and "flee" or "hold"
     end
     if context.source_projection_active == false and
-       has(spawn_flags, ActorFlag.DESPAWN_OFFSCREEN) then
+       facts.roles.despawn_offscreen then
         state.ai_deactivate_requested = true
         return "skip"
     end
-    if has(behavior_flags, BehaviorFlag.FLEEING) then
+    if facts.behavior.fleeing then
         return context.source_projection_active == true and "flee" or "hold"
     end
 
@@ -194,7 +184,7 @@ local function think_gate(state, context)
             return "patrol"
         end
         if context.world_scene_state ~= E.EndingState.NONE and
-           not has(record_flags, ActorStatus.AI_RUNNER) and
+           not facts.lifecycle.ai_runner and
            context.source_action_ammo == AiTuning.ENDING_HOLD_ROUNDS then
             return "hold"
         end
@@ -203,7 +193,7 @@ local function think_gate(state, context)
 
     local raises_world_activity = false
     if context.source_projection_active == true and
-       has(spawn_flags, ActorFlag.HOSTILE) then
+       facts.roles.hostile then
         -- 0x139BE calls 0x1DBAA before re-reading FFDF84 [C].
         request_world_activity(state)
         raises_world_activity = true
@@ -293,7 +283,7 @@ local function apply_flee(state, context)
         set_idle(state)
         return
     end
-    if not has(state.source_behavior_flags or 0, BehaviorFlag.FLEEING) then
+    if not state.actor_facts.behavior.fleeing then
         local camera_x, camera_y = context.source_camera_x,
             context.source_camera_y
         local limit_x, limit_y = context.source_camera_limit_x,
@@ -310,8 +300,7 @@ local function apply_flee(state, context)
         if (limit_y >> 1) < anchor_y then offset_y = -offset_y end
         state.flee_target_x = u16(anchor_x + offset_x)
         state.flee_target_y = u16(anchor_y + offset_y)
-        state.source_behavior_flags = u8(
-            (state.source_behavior_flags or 0) | BehaviorFlag.FLEEING)
+        state.actor_facts.behavior.fleeing = true
     end
     if type(state.flee_target_x) ~= "number" or
        type(state.flee_target_y) ~= "number" or
@@ -508,8 +497,7 @@ end
 
 local function apply_patrol(state, context)
     -- 0x142AE +0x9E.6 transfers directly to 0x1450E [C].
-    if has(state.source_spawn_state_flags or
-           context.source_spawn_state_flags or ActorFlag.NONE, ActorFlag.HOSTILE) then
+    if state.actor_facts.roles.hostile then
         apply_follow_destination(state, context)
         return
     end
@@ -533,9 +521,7 @@ local function apply_patrol(state, context)
 
     local group_leader = type(route) == "table"
         and route.group_leader == true
-        or (route == nil and has(state.source_record_flags or
-                                 context.source_record_flags or ActorStatus.NONE,
-                                 ActorStatus.GROUP_LEADER))
+        or (route == nil and state.actor_facts.lifecycle.group_leader)
     if not group_leader then
         apply_follow_destination(state, context)
         return

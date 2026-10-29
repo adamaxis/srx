@@ -115,9 +115,15 @@ local function cand(i)
 end
 local function list(f, n) local t = {} for i = 1, R(0, n) do t[i] = f(i) end return t end
 local function mstate()
-  return { animation_heading = num(), collision_context = num(), collision_extent = num(), collision_flags = num(),
-           event_flags = num(), heading = num(), movement_flags = num(), movement_substate = num(),
-           position_x = num(), position_y = num(), route_flags = num(), route_status = num(), terrain_collision_code = num() }
+  return { animation_heading = num(), collision_context = num(), collision_extent = num(),
+           heading = num(), position_x = num(), position_y = num(), route_status = num(),
+           terrain_collision_code = num(), substate_update = "unchanged",
+           cardinal_direction = R(0, 3), mark_reset_after_block = bool(),
+           mark_directional_fallback = bool(), clear_collision_recovery = bool(),
+           clear_pending_event = bool(), route_facts = {
+             route_clear = bool(), path_active = bool(), restart_steering = bool(),
+             wall_following = bool(), in_target_band = bool(), route_transition = bool(),
+             fleeing = bool(), escort = bool() } }
 end
 local function offsets() local t = {} for i = 1, 8 do t[i] = { R(-32, 32), R(-32, 32) } end return t end
 

@@ -4244,20 +4244,20 @@ void FieldSceneRuntime::advance_default_field_actors(
             context.movement_services_available =
                 context.movement_allowed;
             if (context.movement_services_available) {
-                context.movement_state = scripting::ScriptMovementStepState{
-                    actor.movement_state.position_x,
-                    actor.movement_state.position_y,
-                    actor.movement_state.heading,
-                    actor.movement_state.animation_heading,
-                    actor.movement_state.collision_context,
-                    actor.movement_state.movement_substate,
-                    actor.movement_state.route_status,
-                    actor.source_behavior_flags,
-                    actor.movement_state.movement_flags,
-                    actor.movement_state.collision_flags,
-                    actor.movement_state.event_flags,
-                    actor.movement_state.collision_extent,
-                    actor.movement_terrain_collision_code};
+                auto& movement_state = context.movement_state;
+                movement_state.position_x = actor.movement_state.position_x;
+                movement_state.position_y = actor.movement_state.position_y;
+                movement_state.heading = actor.movement_state.heading;
+                movement_state.animation_heading =
+                    actor.movement_state.animation_heading;
+                movement_state.collision_context =
+                    actor.movement_state.collision_context;
+                movement_state.route_status = actor.movement_state.route_status;
+                movement_state.route_flags = actor.source_behavior_flags;
+                movement_state.collision_extent =
+                    actor.movement_state.collision_extent;
+                movement_state.terrain_collision_code =
+                    actor.movement_terrain_collision_code;
                 for (std::size_t index = 0U;
                      index < field_movement_direction_offsets_.size();
                      ++index) {
@@ -4773,14 +4773,35 @@ void FieldSceneRuntime::advance_default_field_actors(
                 step.state.animation_heading;
             actor.movement_state.collision_context =
                 step.state.collision_context;
-            actor.movement_state.movement_substate =
-                step.state.movement_substate;
+            if (step.state.substate_update ==
+                scripting::ScriptMovementSubstateUpdate::direct_translation) {
+                actor.movement_state.movement_substate = 0x1000U;
+            } else if (step.state.substate_update ==
+                       scripting::ScriptMovementSubstateUpdate::cardinal_fallback) {
+                actor.movement_state.movement_substate = static_cast<std::uint16_t>(
+                    step.state.cardinal_direction * 2U);
+            }
             actor.movement_state.route_status = step.state.route_status;
-            actor.movement_state.movement_flags =
-                step.state.movement_flags;
-            actor.movement_state.collision_flags =
-                step.state.collision_flags;
-            actor.movement_state.event_flags = step.state.event_flags;
+            if (step.state.mark_reset_after_block) {
+                actor.movement_state.movement_flags =
+                    static_cast<std::uint8_t>(
+                        actor.movement_state.movement_flags | 0x01U);
+            }
+            if (step.state.mark_directional_fallback) {
+                actor.movement_state.movement_flags =
+                    static_cast<std::uint8_t>(
+                        actor.movement_state.movement_flags | 0x04U);
+            }
+            if (step.state.clear_collision_recovery) {
+                actor.movement_state.collision_flags =
+                    static_cast<std::uint8_t>(
+                        actor.movement_state.collision_flags & 0xFEU);
+            }
+            if (step.state.clear_pending_event) {
+                actor.movement_state.event_flags =
+                    static_cast<std::uint8_t>(
+                        actor.movement_state.event_flags & 0xFEU);
+            }
             actor.movement_state.collision_extent =
                 step.state.collision_extent;
             actor.source_behavior_flags = step.state.route_flags;
@@ -4949,7 +4970,7 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                           contact_route->front() < 0 ||
                           contact_route->front() > 3 ||
                           contact_route->at(1U) < 0 ||
-                          contact_route->at(1U) > 0xFF) {
+                          contact_route->at(1U) > 1) {
                           failure_ = game_scripts_.failure().empty()
                               ? "Lua field actor contact route is invalid"
                               : game_scripts_.failure();
@@ -4958,13 +4979,15 @@ void FieldSceneRuntime::resolve_default_actor_proximity(
                           return;
                       }
                       const auto contact_task = contact_route->front();
-                      if (contact_task == 1 || contact_task == 2) {
-                          // ROM 0xECCC sets the contacted record's +0xB0 bit 7
-                          // before entering the dialogue helper. Keep that
-                          // returned Lua state in the live typed record so
-                          // the post-dialogue 0x1DED8 scan sees it.
+                      if ((contact_task == 1 || contact_task == 2) &&
+                          contact_route->at(1U) == 1) {
+                          // Lua reports the escort relationship as a semantic
+                          // fact. Merge it at the native actor boundary.
                           actor.source_behavior_flags =
-                              static_cast<std::uint8_t>(contact_route->at(1U));
+                              static_cast<std::uint8_t>(
+                                  actor.source_behavior_flags |
+                                  actor_flag_mask(
+                                      ActorBehaviorFlag::high_effect_route));
                           current_entity.activity_flags =
                               actor.source_behavior_flags;
                       }
@@ -8999,7 +9022,9 @@ void FieldSceneRuntime::configure_field_menu_route() {
                 continue;
             }
             world.actors.push_back(scripting::ScriptMatrixFieldActorState{
-                actor.actor_instance_id, actor.source_spawn_state_flags});
+                actor.actor_instance_id,
+                field_scene_detail::actor_roles_from_source_byte(
+                    actor.source_spawn_state_flags)});
         }
         return world;
     };
@@ -9043,7 +9068,9 @@ void FieldSceneRuntime::configure_field_menu_route() {
                         candidate.actor_instance_id == source.actor_id;
                 });
             if (actor != field_default_actors_.end()) {
-                actor->source_spawn_state_flags = source.flags_9e;
+                actor->source_spawn_state_flags =
+                    field_scene_detail::merge_actor_role_facts(
+                        actor->source_spawn_state_flags, source.roles);
             }
         }
     };
@@ -11143,20 +11170,21 @@ FieldSceneRuntime::heartbeat_field_player(
             field_opening_auto_walk_.target_heading;
     }
     if (phase == scripting::ScriptActorHeartbeatPhase::behavior) {
-        actor_context.movement_state = scripting::ScriptMovementStepState{
-            field_movement_state_.position_x,
-            field_movement_state_.position_y,
-            field_movement_state_.heading,
-            field_movement_state_.animation_heading,
-            field_movement_state_.collision_context,
-            field_movement_state_.movement_substate,
-            field_movement_state_.route_status,
-            field_movement_behavior_record_.route_flags,
-            field_movement_state_.movement_flags,
-            field_movement_state_.collision_flags,
-            field_movement_state_.event_flags,
-            field_movement_state_.collision_extent,
-            field_movement_transition_state_.terrain_collision_code};
+        auto& movement_state = actor_context.movement_state;
+        movement_state.position_x = field_movement_state_.position_x;
+        movement_state.position_y = field_movement_state_.position_y;
+        movement_state.heading = field_movement_state_.heading;
+        movement_state.animation_heading =
+            field_movement_state_.animation_heading;
+        movement_state.collision_context =
+            field_movement_state_.collision_context;
+        movement_state.route_status = field_movement_state_.route_status;
+        movement_state.route_flags =
+            field_movement_behavior_record_.route_flags;
+        movement_state.collision_extent =
+            field_movement_state_.collision_extent;
+        movement_state.terrain_collision_code =
+            field_movement_transition_state_.terrain_collision_code;
         for (std::size_t index = 0;
              index < field_movement_direction_offsets_.size(); ++index) {
             actor_context.movement_offsets[index] =
@@ -11799,28 +11827,38 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                 animation.increment,
                 animation.period,
                 true};
-        context.projectile_movement =
-            scripting::ScriptActorProjectileMovement{
-                primary_record
-                    ? scripting::ScriptActorProjectileRole::primary
-                    : scripting::ScriptActorProjectileRole::secondary,
-                active,
-                record.flags,
-                record.record_flags,
-                primary_record ? spawn.primary_fixed_position.world_x
-                               : signed_fixed_from_word(record.position_x, 0),
-                primary_record ? spawn.primary_fixed_position.world_y
-                               : signed_fixed_from_word(record.position_y, 0),
-                primary_record ? record.heading_offset_x : std::int16_t{0},
-                primary_record ? record.heading_offset_y : std::int16_t{0},
-                record.field_0x89,
-                record.field_0x41,
-                record.heading,
-                record.saved_position_x,
-                record.saved_position_y,
-                record.action_result,
-                record.animation_resource};
-        context.projectile_movement->action_result = record.action_result;
+        context.projectile_movement.emplace();
+        auto& projectile_movement = *context.projectile_movement;
+        projectile_movement.role = primary_record
+            ? scripting::ScriptActorProjectileRole::primary
+            : scripting::ScriptActorProjectileRole::secondary;
+        projectile_movement.active = active;
+        // Decode native record state here. Lua sees behavior-level facts, and
+        // the serializer below merges them back while retaining unrelated bits.
+        projectile_movement.waiting_for_animation_end =
+            (record.record_flags & 0x08U) != 0U; // 0x14E0A [C]
+        projectile_movement.impact_occurred =
+            (record.record_flags & 0x01U) != 0U; // 0x14E32 [C]
+        projectile_movement.animation_finished =
+            (record.animation_resource & 0x8000U) != 0U; // 0x600E [C]
+        projectile_movement.world_x = primary_record
+            ? spawn.primary_fixed_position.world_x
+            : signed_fixed_from_word(record.position_x, 0);
+        projectile_movement.world_y = primary_record
+            ? spawn.primary_fixed_position.world_y
+            : signed_fixed_from_word(record.position_y, 0);
+        projectile_movement.tile_offset_x = primary_record
+            ? record.heading_offset_x
+            : std::int16_t{0};
+        projectile_movement.tile_offset_y = primary_record
+            ? record.heading_offset_y
+            : std::int16_t{0};
+        projectile_movement.retry_counter = record.field_0x89;
+        projectile_movement.linked_action_timer = record.field_0x41;
+        projectile_movement.heading = record.heading;
+        projectile_movement.saved_position_x = record.saved_position_x;
+        projectile_movement.saved_position_y = record.saved_position_y;
+        projectile_movement.action_result = record.action_result;
         context.projectile_attack_seed_pending =
             primary_record && !script_initialized;
         if (primary_record) {
@@ -11882,13 +11920,13 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                     field_terrain_outside_bounds_marker_};
             };
         context.projectile_collision_search =
-            [this, &live_collision_targets, &live_collision_target_ids](
-                const std::uint16_t x, const std::uint16_t y,
-                const std::uint8_t source_flags) {
+            [this, &record, &live_collision_targets,
+             &live_collision_target_ids](const std::uint16_t x,
+                                         const std::uint16_t y) {
                 EntityCollisionSearchContext collision_context{};
                 collision_context.probe_x = x;
                 collision_context.probe_y = y;
-                collision_context.source_flags = source_flags;
+                collision_context.source_flags = record.flags;
                 const auto result = find_colliding_entity(
                     collision_context, live_collision_targets);
                 std::optional<std::string> hit_target_id;
@@ -11920,9 +11958,29 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         const auto& movement = decision->projectile_movement->state;
         const auto projectile_outcome =
             decision->projectile_movement->outcome;
-        record.flags = movement.flags;
-        record.record_flags = movement.record_flags;
-        record.animation_resource = movement.animation_selector;
+        const auto merge_record_flag = [](const std::uint8_t original,
+                                          const std::uint8_t mask,
+                                          const bool enabled) {
+            return enabled
+                ? static_cast<std::uint8_t>(original | mask)
+                : static_cast<std::uint8_t>(original &
+                                            static_cast<std::uint8_t>(~mask));
+        };
+        // Encode the named Lua outcomes only at the native record boundary;
+        // retain reserved bits from the live projectile record.
+        record.flags = merge_record_flag(record.flags, 0x01U, movement.active);
+        record.record_flags = merge_record_flag(
+            record.record_flags, 0x08U,
+            movement.waiting_for_animation_end);
+        record.record_flags = merge_record_flag(
+            record.record_flags, 0x01U, movement.impact_occurred);
+        if (movement.animation_action ==
+            scripting::ScriptActorProjectileAnimationAction::stop) {
+            record.animation_resource = 0U;
+        } else if (movement.animation_action ==
+                   scripting::ScriptActorProjectileAnimationAction::restart) {
+            record.animation_resource = 0x0014U; // ROM 0x14F86 [C]
+        }
         record.field_0x89 = movement.retry_counter;
         record.field_0x41 = movement.linked_action_timer;
         record.action_result = movement.action_result;

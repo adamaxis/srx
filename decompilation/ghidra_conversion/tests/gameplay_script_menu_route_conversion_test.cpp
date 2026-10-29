@@ -37,6 +37,7 @@ using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteStartArguments;
 using shadowrun::ghidra_conversion::scripting::ScriptPersistentValue;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunState;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixDatastoreFacts;
+using shadowrun::ghidra_conversion::scripting::ScriptActorRoleFacts;
 using shadowrun::ghidra_conversion::scripting::
     ScriptMatrixLogoutVisualPhase;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixWorldState;
@@ -354,8 +355,12 @@ int main() {
     matrix_map_memory.cells[91] = 0x21U;
     matrix_map_memory.revealed[0] = 0xFFU;
     matrix_world_state.matrix_map_memory = matrix_map_memory;
-    matrix_world_state.actors = {{"fixture-armed", 0x02U},
-                                 {"fixture-other", 0x04U}};
+    matrix_world_state.actors = {
+        {"fixture-armed", ScriptActorRoleFacts{
+             false, true, false, false, false, false, false}},
+        {"fixture-other", ScriptActorRoleFacts{
+             false, false, true, false, false, false, false}},
+    };
     ScriptCyberdeckRecord matrix_deck;
     matrix_deck.mpcp = 6U;
     matrix_deck.storage = 1000U;
@@ -574,7 +579,7 @@ int main() {
                     return candidate.actor_id == actor.actor_id;
                 });
             if (current != matrix_world_state.actors.end()) {
-                current->flags_9e = actor.flags_9e;
+                current->roles = actor.roles;
             }
         }
     };
@@ -2672,8 +2677,9 @@ int main() {
           "Matrix datastore flag words survive the Lua-to-host state transaction",
           failures);
     check(matrix_world_state.actors.size() == 2U &&
-              matrix_world_state.actors[0].flags_9e == 0x06U &&
-              matrix_world_state.actors[1].flags_9e == 0x04U &&
+              matrix_world_state.actors[0].roles.reinforcement &&
+              matrix_world_state.actors[0].roles.despawn_offscreen &&
+              matrix_world_state.actors[1].roles.despawn_offscreen &&
               stopped_sounds == std::vector<std::uint16_t>{0x30U},
           "alarm-off applies the ROM actor flag change and stops sound 0x30",
           failures);

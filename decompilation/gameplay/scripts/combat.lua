@@ -183,8 +183,7 @@ local function condition_modifier(difficulty, attacker, target)
     if has_cyberware or
        attacker.race_or_state == E.ActorRaceOrState.CONDITION_BONUS_EXEMPT_04 or
        attacker.race_or_state == E.ActorRaceOrState.CONDITION_BONUS_EXEMPT_02 or
-       (target.interaction_flags &
-        E.CombatInteractionFlag.NO_COVERAGE_DIFFICULTY_BONUS) == 0 then
+       not target.actor_facts.interaction.no_coverage_difficulty_bonus then
         return difficulty
     end
     return difficulty + 4
@@ -221,7 +220,7 @@ local function ready_party_bonus(context)
     for _, candidate in ipairs(context.ai_target_candidates or {}) do
         local record = candidate.combatant
         if not candidate.world_activity_actor and type(record) == "table" and
-           (record.source_flags & E.ActorStatus.ACTIVE) ~= 0 and
+           record.actor_facts.lifecycle.active and
            signed_byte(record.class_code) <= 1 then
             local item18 = record.item18_base
             for slot = 7, 1, -1 do
@@ -316,8 +315,7 @@ local function secondary_armor_modifier(target)
 end
 
 local function defense_modifier(value, attacker)
-    if (attacker.interaction_flags &
-        E.CombatInteractionFlag.DEFENSE_DIFFICULTY_REDUCTION) ~= 0 then
+    if attacker.actor_facts.interaction.defense_difficulty_reduction then
         return value - 2
     end
     for slot = 1, 8 do
@@ -344,7 +342,7 @@ local function adjusted_meters(record, physical, damage, context)
             return physical_meter, mental_meter
         end
         local function advance_delay(delta)
-            if (record.source_flags & E.ActorStatus.ACTIVE) == 0 then
+            if not record.actor_facts.lifecycle.active then
                 physical_meter = 0
                 return
             end
@@ -358,7 +356,7 @@ local function adjusted_meters(record, physical, damage, context)
         if physical then
             advance_delay(-damage)
         else
-            if (record.source_flags & E.ActorStatus.ACTIVE) == 0 then
+            if not record.actor_facts.lifecycle.active then
                 mental_meter = 0
             else
                 local updated = add_source_byte(mental_meter, -damage)
@@ -387,7 +385,18 @@ end
 local function copy_combatant(record)
     local copy = {}
     for key, value in pairs(record) do
-        if type(value) == "table" then
+        if key == "actor_facts" and type(value) == "table" then
+            local facts = {}
+            for group_name, group in pairs(value) do
+                if type(group) == "table" then
+                    facts[group_name] = {}
+                    for name, fact in pairs(group) do
+                        facts[group_name][name] = fact == true
+                    end
+                end
+            end
+            copy[key] = facts
+        elseif type(value) == "table" then
             local array = {}
             for index, item in ipairs(value) do
                 array[index] = item
@@ -428,14 +437,25 @@ local function publish_player_hurt_event(target, defender, physical_meter,
     end
 end
 
+local function lifecycle_equal(left, right)
+    for _, name in ipairs({"active", "thinking_enabled", "ai_runner",
+                           "downed", "group_leader", "dead"}) do
+        if left[name] ~= right[name] then
+            return false
+        end
+    end
+    return true
+end
+
 local function commit_combatant_meters(target, defender, physical_meter,
-                                      mental_meter, source_flags, spell_death)
-    if type(source_flags) == "number" then
-        defender.source_flags = source_flags & 0xff
+                                      mental_meter, lifecycle, spell_death)
+    if type(lifecycle) == "table" then
+        defender.actor_facts.lifecycle = lifecycle
     end
     local changed = physical_meter ~= defender.physical_meter or
                     mental_meter ~= defender.mental_meter or
-                    defender.source_flags ~= target.combatant.source_flags
+                    not lifecycle_equal(defender.actor_facts.lifecycle,
+                                        target.combatant.actor_facts.lifecycle)
     if not changed then
         return false
     end
@@ -655,7 +675,7 @@ local function resolve_spell_action(context, target, allow_untargeted)
     if residual <= 0 then
         if attacker.mental_meter == 0 then
             result.behavior_meter_delta = 1
-            if (attacker.source_flags & E.ActorStatus.ACTIVE) ~= 0 then
+            if attacker.actor_facts.lifecycle.active then
                 attacker.mental_meter = math.min(
                     attacker.mental_meter + result.behavior_meter_delta, 10)
             else
@@ -673,7 +693,7 @@ local function resolve_spell_action(context, target, allow_untargeted)
     result.inventory_changed = inventory_changed
     if consumption == "fetish_exhausted" and attacker.mental_meter == 0 then
         result.behavior_meter_delta = 1
-        if (attacker.source_flags & E.ActorStatus.ACTIVE) ~= 0 then
+        if attacker.actor_facts.lifecycle.active then
             attacker.mental_meter = math.min(
                 attacker.mental_meter + result.behavior_meter_delta, 10)
         else
@@ -730,8 +750,8 @@ function Combat.resolve_spell_impact(context, pending, target)
         physical = pending.action_code ~= 5,
         physical_meter = defender.physical_meter,
         mental_meter = defender.mental_meter,
-        source_flags = defender.source_flags,
-        source_flags_changed = false,
+        actor_facts = copy_combatant(defender).actor_facts,
+        actor_lifecycle_changed = false,
         changed = false,
     }
 
@@ -743,23 +763,25 @@ function Combat.resolve_spell_impact(context, pending, target)
         if heal_amount <= 0 then
             heal_amount = 1
         end
-        local next_flags = (defender.source_flags &
-                            ~(E.ActorStatus.DOWN | E.ActorStatus.DEAD)) |
-                           E.ActorStatus.ACTIVE
+        local next_lifecycle = copy_combatant(defender).actor_facts.lifecycle
+        next_lifecycle.downed = false
+        next_lifecycle.dead = false
+        next_lifecycle.active = true
         local physical_meter =
-            (defender.source_flags & E.ActorStatus.ACTIVE) ~= 0
+            defender.actor_facts.lifecycle.active
             and math.min(defender.physical_meter + heal_amount, 10) or 0
         local mental_meter = defender.mental_meter
-        if mental_meter == 0 and
-           (next_flags & E.ActorStatus.ACTIVE) ~= 0 then
+        if mental_meter == 0 and next_lifecycle.active then
             mental_meter = math.min(mental_meter + 1, 10)
         end
         result.physical_meter = physical_meter
         result.mental_meter = mental_meter
-        result.source_flags = next_flags
-        result.source_flags_changed = next_flags ~= defender.source_flags
+        result.actor_facts.lifecycle = next_lifecycle
+        result.actor_lifecycle_changed = not lifecycle_equal(
+            next_lifecycle, defender.actor_facts.lifecycle)
         result.changed = commit_combatant_meters(
-            target, defender, physical_meter, mental_meter, next_flags)
+            target, defender, physical_meter, mental_meter,
+            next_lifecycle)
         result.effect_value = result.changed and
             math.min(heal_amount, 10) or 0
         result.outcome = result.changed and
@@ -1126,7 +1148,10 @@ function Combat.resolve_weapon_attack_seed(context)
     local action_code = context.projectile_action_code
     local empty_child = {
         class_code = 0,
-        interaction_flags = 0,
+        actor_facts = { interaction = {
+            no_coverage_difficulty_bonus = false,
+            defense_difficulty_reduction = false,
+        }},
         cyberware_flags = 0,
         race_or_state = 0,
     }
@@ -1226,7 +1251,10 @@ local function resolve_weapon_action_value(context, projectile,
     end
     -- The 0x14FF8 record is freshly zeroed before the source copies +0x56/+0x57.
     local blank_projectile = {
-        interaction_flags = 0,
+        actor_facts = { interaction = {
+            no_coverage_difficulty_bonus = false,
+            defense_difficulty_reduction = false,
+        }},
         item_codes = {},
         item_phases = {},
     }

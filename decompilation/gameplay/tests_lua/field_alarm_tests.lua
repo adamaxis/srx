@@ -29,8 +29,16 @@ local function facts(overrides)
             { x_min = 32, x_max = 127, y_min = 384, y_max = 479 },
         },
         actors = {
-            { flags9e = E.ActorFlag.SPOTTED | E.ActorFlag.REINFORCEMENT },
-            { flags9e = E.ActorFlag.SPOTTED },
+            { actor_facts = { roles = {
+                spotted = true, reinforcement = true,
+                despawn_offscreen = false, quest = false, runner = false,
+                pedestrian = false, hostile = false,
+            } } },
+            { actor_facts = { roles = {
+                spotted = true, reinforcement = false,
+                despawn_offscreen = false, quest = false, runner = false,
+                pedestrian = false, hostile = false,
+            } } },
         },
         reinforcement_list_address =
             E.FieldAlarmRomLayout.SCENE_21_REINFORCEMENT_LIST,
@@ -72,13 +80,15 @@ eq(raised.timer, E.AiTuning.ALARM_FRAMES,
    "fresh alarm loads source countdown")
 eq(raised.sound_start, E.SoundId.ALARM, "fresh alarm starts sound 0x30")
 eq(raised.clear_flags, "clear_spotted", "fresh alarm clears spotted flags")
-eq(raised.actors[1].flags9e,
-   E.ActorFlag.REINFORCEMENT,
-   "fresh alarm clears +0x9E bit zero")
+eq(raised.actors[1].actor_facts.roles.spotted, false,
+   "fresh alarm clears the spotted role")
+eq(raised.actors[1].actor_facts.roles.reinforcement, true,
+   "fresh alarm preserves the reinforcement role")
 eq(raised.spawn_reinforcements, true,
    "fresh alarm requests the building actor list")
-eq(raised.reinforcement_flag, E.ActorFlag.REINFORCEMENT,
-   "spawn result carries the source reinforcement flag")
+eq(raised.reinforcement_list_address,
+   E.FieldAlarmRomLayout.SCENE_21_REINFORCEMENT_LIST,
+   "spawn result carries the typed reinforcement-list identity")
 
 -- Timer refresh precedes the already-alarmed latch check at 0x1E04A [C].
 local refreshed = Alarm.tick(facts({
@@ -97,19 +107,28 @@ local expired = Alarm.tick(facts({
     disabled = true,
     frame_counter = E.FieldAlarm.FRAME_VALUE - 1,
     actors = {
-        { flags9e = E.ActorFlag.REINFORCEMENT },
-        { flags9e = E.ActorFlag.SPOTTED },
+        { actor_facts = { roles = {
+            spotted = false, reinforcement = true,
+            despawn_offscreen = false, quest = false, runner = false,
+            pedestrian = false, hostile = false,
+        } } },
+        { actor_facts = { roles = {
+            spotted = true, reinforcement = false,
+            despawn_offscreen = false, quest = false, runner = false,
+            pedestrian = false, hostile = false,
+        } } },
     },
 }))
 eq(expired.alarm, false, "negative timer clears the alarm")
 eq(expired.sound_stop, E.SoundId.ALARM, "alarm clear stops sound 0x30")
 eq(expired.clear_flags, "promote_reinforcement",
    "alarm clear promotes reinforcement flags")
-eq(expired.actors[1].flags9e,
-   E.ActorFlag.REINFORCEMENT | E.ActorFlag.DESPAWN_OFFSCREEN,
-   "clear sets +0x9E bit two only for reinforcements")
-eq(expired.actors[2].flags9e, E.ActorFlag.SPOTTED,
-   "clear preserves unrelated actor flags")
+eq(expired.actors[1].actor_facts.roles.despawn_offscreen, true,
+   "clear marks reinforcements for offscreen despawn")
+eq(expired.actors[2].actor_facts.roles.spotted, true,
+   "clear preserves unrelated spotted roles")
+eq(expired.actors[2].actor_facts.roles.despawn_offscreen, false,
+   "clear leaves non-reinforcements eligible for ordinary despawn policy")
 
 local countdown_step = Alarm.tick(facts({
     alarm = true, timer = 1, frame_counter = E.FieldAlarm.FRAME_VALUE - 1,
@@ -140,19 +159,26 @@ local scene_exit = Alarm.tick(facts({
     timer = E.AiTuning.ALARM_FRAMES,
     scene_exit = true,
     actors = {
-        { flags9e = E.ActorFlag.REINFORCEMENT },
-        { flags9e = E.ActorFlag.SPOTTED },
+        { actor_facts = { roles = {
+            spotted = false, reinforcement = true,
+            despawn_offscreen = false, quest = false, runner = false,
+            pedestrian = false, hostile = false,
+        } } },
+        { actor_facts = { roles = {
+            spotted = true, reinforcement = false,
+            despawn_offscreen = false, quest = false, runner = false,
+            pedestrian = false, hostile = false,
+        } } },
     },
 }))
 eq(scene_exit.alarm, false, "scene entry clears FFE16F")
 eq(scene_exit.disabled, false, "scene entry clears FFE170")
 eq(scene_exit.sound_stop, E.SoundId.ALARM,
    "scene exit stops the alarm sound resource")
-eq(scene_exit.actors[1].flags9e,
-   E.ActorFlag.REINFORCEMENT | E.ActorFlag.DESPAWN_OFFSCREEN,
+eq(scene_exit.actors[1].actor_facts.roles.despawn_offscreen, true,
    "scene exit marks alarm responders for despawn")
-eq(scene_exit.actors[2].flags9e, E.ActorFlag.SPOTTED,
-   "scene exit preserves unrelated actor flags")
+eq(scene_exit.actors[2].actor_facts.roles.spotted, true,
+   "scene exit preserves unrelated actor roles")
 local quiet_exit = Alarm.tick(facts({ alarm = false, scene_exit = true }))
 eq(quiet_exit.sound_stop, nil,
    "scene exit with no active alarm sends no second 0x30 stop")
@@ -174,9 +200,10 @@ local reset = Alarm.tick(facts({ alarm = true, disabled = true, reset = true }))
 eq(reset.alarm, false, "projected-cell reset clears FFE16F")
 eq(reset.disabled, false, "projected-cell reset clears FFE170")
 eq(reset.sound_stop, nil, "projected-cell reset does not stop sound")
-eq(reset.actors[1].flags9e,
-   E.ActorFlag.SPOTTED | E.ActorFlag.REINFORCEMENT,
-   "projected-cell reset does not promote actor flags")
+eq(reset.actors[1].actor_facts.roles.spotted, true,
+   "projected-cell reset leaves actor roles unchanged")
+eq(reset.actors[1].actor_facts.roles.despawn_offscreen, false,
+   "projected-cell reset does not promote reinforcements")
 
 -- FFE170 suppresses new region alarms after timer servicing [C].
 local disabled = Alarm.tick(facts({ disabled = true, rng = 0 }))

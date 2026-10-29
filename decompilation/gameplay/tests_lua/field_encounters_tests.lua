@@ -45,10 +45,15 @@ local function actor_row(source_order, sequence_list_offset, placement_rule)
         source_action_slot = 0,
         source_action_ammo = 0,
         source_action_counter = 0,
-        source_spawn_state_flags = E.ActorFlag.SPOTTED |
-            E.ActorFlag.REINFORCEMENT | E.ActorFlag.RUNNER |
-            E.ActorFlag.HOSTILE,
-        source_interaction_flags = 0,
+        actor_facts = {
+            roles = {
+                spotted = true,
+                reinforcement = true,
+                runner = true,
+                hostile = true,
+            },
+            interaction = {},
+        },
         entity_kind = E.SpriteType.CORP_GUARD,
         palette_line = 2,
         sprite_stem = "corp_guard_k05_item06",
@@ -215,10 +220,15 @@ eq(alarm_sequence.actors[1].source_order, 0,
 eq(alarm_sequence.actors[1].template_offset,
    E.FieldEncounter.ALARM_ACTOR_TEMPLATE_ADDRESS,
    "alarm actors use source template 0x1D6A1C")
-eq(alarm_sequence.actors[1].source_spawn_state_flags,
-   E.ActorFlag.SPOTTED | E.ActorFlag.REINFORCEMENT |
-       E.ActorFlag.RUNNER | E.ActorFlag.HOSTILE,
-   "alarm actor template flags are preserved for the common spawn path")
+local alarm_actor_facts = alarm_sequence.actors[1].actor_facts
+eq(alarm_actor_facts.roles.spotted, true,
+   "alarm actor template is marked spotted for the common spawn path")
+eq(alarm_actor_facts.roles.reinforcement, true,
+   "alarm actor template is marked as reinforcement")
+eq(alarm_actor_facts.roles.runner, true,
+   "alarm actor template keeps its runner role")
+eq(alarm_actor_facts.roles.hostile, true,
+   "alarm actor template keeps its hostile role")
 
 local map_sequence = Encounters.resolve_source_sequence(2, 0x1D6FD0)
 eq(map_sequence.placement_policy, "map_derived_candidates",

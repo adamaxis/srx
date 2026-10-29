@@ -1,5 +1,5 @@
 -- Field alarm policy for ROM 0x1DFC4..0x1E0DC. C++ supplies scene facts,
--- profile rectangles, actor flags, and lazy source RNG draws; Lua selects the
+-- profile rectangles, actor role facts, and lazy source RNG draws; Lua selects the
 -- state transition and typed side effects. [C]
 local E = require("enums")
 local M = {}
@@ -59,13 +59,15 @@ end
 
 local function actor_flag_action(actors, action)
     for _, actor in ipairs(actors) do
-        if type(actor) == "table" and
-           is_integer(actor.flags9e, 0, E.FieldAlarm.ACTOR_FLAGS_MAX) then
+        local roles = type(actor) == "table" and
+            type(actor.actor_facts) == "table" and
+            actor.actor_facts.roles or nil
+        if type(roles) == "table" then
             if action == "clear_spotted" then
-                actor.flags9e = actor.flags9e & ~E.ActorFlag.SPOTTED
+                roles.spotted = false
             elseif action == "promote_reinforcement" and
-                   (actor.flags9e & E.ActorFlag.REINFORCEMENT) ~= 0 then
-                actor.flags9e = actor.flags9e | E.ActorFlag.DESPAWN_OFFSCREEN
+                   roles.reinforcement == true then
+                roles.despawn_offscreen = true
             end
         end
     end
@@ -111,7 +113,6 @@ local function raised_result(facts, result)
     actor_flag_action(result.actors, result.clear_flags)
     result.spawn_reinforcements = true
     result.reinforcement_list_address = facts.reinforcement_list_address
-    result.reinforcement_flag = E.ActorFlag.REINFORCEMENT
     return result
 end
 

@@ -227,9 +227,19 @@ struct ScriptMatrixFieldState {
     std::optional<bool> maglocks_off;
 };
 
+struct ScriptActorRoleFacts {
+    bool spotted = false;
+    bool reinforcement = false;
+    bool despawn_offscreen = false;
+    bool quest = false;
+    bool runner = false;
+    bool pedestrian = false;
+    bool hostile = false;
+};
+
 struct ScriptMatrixFieldActorState {
     std::string actor_id;
-    std::uint8_t flags_9e = 0U;
+    ScriptActorRoleFacts roles;
 };
 
 // Typed subset read by the ROM special-datastore handler at 0x55058. Lua
@@ -957,9 +967,9 @@ struct ScriptFieldAlarmRegion {
     std::uint16_t y_max = 0U;
 };
 
-struct ScriptFieldAlarmActorFlags {
+struct ScriptFieldAlarmActorFacts {
     std::string actor_id;
-    std::uint8_t flags_9e = 0U;
+    ScriptActorRoleFacts roles;
 };
 
 struct ScriptFieldAlarmProfile {
@@ -983,7 +993,7 @@ struct ScriptFieldAlarmInput {
     bool reset = false;
     bool scene_exit = false;
     std::vector<ScriptFieldAlarmRegion> regions;
-    std::vector<ScriptFieldAlarmActorFlags> actors;
+    std::vector<ScriptFieldAlarmActorFacts> actors;
     std::optional<std::uint32_t> reinforcement_list_address;
 };
 
@@ -1004,8 +1014,7 @@ struct ScriptFieldAlarmResult {
     ScriptFieldAlarmFlagAction flag_action = ScriptFieldAlarmFlagAction::none;
     bool spawn_reinforcements = false;
     std::optional<std::uint32_t> reinforcement_list_address;
-    std::optional<std::uint8_t> reinforcement_flag;
-    std::vector<ScriptFieldAlarmActorFlags> actors;
+    std::vector<ScriptFieldAlarmActorFacts> actors;
 };
 
 // Source-derived fields consumed by the ROM close-target reaction path
@@ -1294,18 +1303,29 @@ struct ScriptMovementOffset {
     std::int16_t y = 0;
 };
 
+enum class ScriptMovementSubstateUpdate : std::uint8_t {
+    unchanged,
+    direct_translation,
+    cardinal_fallback,
+};
+
 struct ScriptMovementStepState {
     std::uint16_t position_x = 0;
     std::uint16_t position_y = 0;
     std::uint16_t heading = 0;
     std::uint16_t animation_heading = 0;
     std::uint16_t collision_context = 0;
-    std::uint16_t movement_substate = 0;
     std::int16_t route_status = 0;
     std::uint8_t route_flags = 0;
-    std::uint8_t movement_flags = 0;
-    std::uint8_t collision_flags = 0;
-    std::uint8_t event_flags = 0;
+    ScriptMovementSubstateUpdate substate_update =
+        ScriptMovementSubstateUpdate::unchanged;
+    std::uint8_t cardinal_direction = 0;
+    // Actions replace the packed movement bytes previously exposed to Lua.
+    // Their source encoding stays in the Qt/native adapter.
+    bool mark_reset_after_block = false;
+    bool mark_directional_fallback = false;
+    bool clear_collision_recovery = false;
+    bool clear_pending_event = false;
     std::int16_t collision_extent = 0;
     std::uint16_t terrain_collision_code = 0;
 };
@@ -1380,11 +1400,18 @@ enum class ScriptActorProjectileOutcome : std::uint8_t {
     burst_followup_restarted,
 };
 
+enum class ScriptActorProjectileAnimationAction : std::uint8_t {
+    unchanged,
+    stop,
+    restart,
+};
+
 struct ScriptActorProjectileMovement {
     ScriptActorProjectileRole role = ScriptActorProjectileRole::primary;
     bool active = false;
-    std::uint8_t flags = 0;
-    std::uint8_t record_flags = 0;
+    bool waiting_for_animation_end = false;
+    bool impact_occurred = false;
+    bool animation_finished = false;
     std::int32_t world_x = 0;
     std::int32_t world_y = 0;
     std::int16_t tile_offset_x = 0;
@@ -1395,7 +1422,8 @@ struct ScriptActorProjectileMovement {
     std::uint16_t saved_position_x = 0;
     std::uint16_t saved_position_y = 0;
     std::int8_t action_result = 0; // live +0x9F, shared by the projectile pair
-    std::uint16_t animation_selector = 0;
+    ScriptActorProjectileAnimationAction animation_action =
+        ScriptActorProjectileAnimationAction::unchanged;
     std::string hit_target_id;
 };
 
@@ -1424,7 +1452,7 @@ using ScriptProjectileTerrainProbe =
                                                 std::uint16_t y)>;
 using ScriptProjectileCollisionSearch =
     std::function<ScriptProjectileCollisionSearchResult(
-        std::uint16_t x, std::uint16_t y, std::uint8_t source_flags)>;
+        std::uint16_t x, std::uint16_t y)>;
 
 struct ScriptActorMovementStep {
     enum class Outcome : std::uint8_t {

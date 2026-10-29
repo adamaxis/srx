@@ -5,15 +5,13 @@ local E = require("enums")
 local I = require("lib.int68k")
 local Delay = require("actor.delay")
 local u8, u16, s16 = I.u8, I.u16, I.s16
-local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
-    E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
+    E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local states = game.actors
 R.pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_slot or {}
 R.spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot or {}
 local pending_spell_effects_by_source_slot = R.pending_spell_effects_by_source_slot
 local spell_effect_scans_by_source_slot = R.spell_effect_scans_by_source_slot
-local BehaviorFlag = R.BehaviorFlag   -- from actor/tables.lua
-local ActorStatus = R.ActorStatus   -- from actor/tables.lua
 local HitSpark = E.HitSpark
 local item_action_pose_selectors = R.item_action_pose_selectors   -- from actor/tables.lua
 local spell_pose_selectors = R.spell_pose_selectors   -- from actor/anim.lua
@@ -237,8 +235,8 @@ local function advance_world_target_selection(state, context)
         for offset = 0, 7 do
             local candidate = candidates_by_slot[start + offset]
             if candidate ~= nil then
-                local available =
-                    (candidate.service_flags & ActorStatus.ACTIVE) ~= 0
+                local lifecycle = candidate.actor_facts.lifecycle
+                local available = lifecycle.active == true
                 if special_path then
                     if available and type(candidate.id) == "string" and
                        candidate.id ~= "" then
@@ -247,12 +245,8 @@ local function advance_world_target_selection(state, context)
                     end
                 else
                     available = available and
-                        (candidate.service_flags &
-                         ActorStatus.DEAD) == 0 and
-                        (candidate.service_flags &
-                         ActorStatus.DOWN) == 0 and
-                        (candidate.behavior_flags &
-                         BehaviorFlag.ESCORT) == 0 and
+                        not lifecycle.dead and not lifecycle.downed and
+                        candidate.actor_facts.behavior.escort ~= true and
                         candidate.projected_y_nonzero == true
                     if available and type(candidate.id) == "string" and
                        candidate.id ~= "" then
@@ -284,8 +278,8 @@ local function first_wounded_party_runner(context)
             and candidate.source_record_slot or nil
         if type(candidate) == "table" and
            candidate.world_activity_actor ~= true and
-           type(candidate.service_flags) == "number" and
-           (candidate.service_flags & ActorStatus.ACTIVE) ~= 0 and
+           type(candidate.actor_facts) == "table" and
+           candidate.actor_facts.lifecycle.active == true and
            type(slot) == "number" and slot >= 0 and slot <= 2 and
            type(candidate.combatant) == "table" and
            type(candidate.combatant.physical_meter) == "number" then
@@ -354,8 +348,7 @@ local function classify_item_dispatch(state, context, target)
         return "item_target_heading_unresolved"
     end
     if context.world_scene_state ~= 0 or
-       (state.source_behavior_flags &
-        BehaviorFlag.IN_BAND) ~= 0 then
+       state.actor_facts.behavior.in_target_band then
         if state.source_action_ammo == 0 then
             return "item_empty"
         end
@@ -494,7 +487,8 @@ function R.queue_spell_effect(state, context, target, resolution)
             ai_target_candidates = context.ai_target_candidates,
             scene_id = context.movement_scene_id,
             caster_actor_id = state.actor_id,
-            caster_source_flags = context.source_record_flags or 0,
+            caster_is_ai_runner =
+                context.actor_facts.lifecycle.ai_runner == true,
             owns_effect_slot = true,
         }
 
@@ -507,10 +501,10 @@ function R.queue_spell_effect(state, context, target, resolution)
                 if type(candidate) == "table" and
                    type(candidate.id) == "string" and
                    type(candidate.source_record_slot) == "number" and
-                   type(candidate.service_flags) == "number" and
+                   type(candidate.actor_facts) == "table" and
                    type(candidate.direct_route_step_cost) == "number" and
-                   (candidate.service_flags & ActorStatus.ACTIVE) ~= 0 and
-                   (candidate.service_flags & ActorStatus.DEAD) == 0 and
+                   candidate.actor_facts.lifecycle.active and
+                   not candidate.actor_facts.lifecycle.dead and
                    candidate.direct_route_step_cost < 0x0500 then
                     local marker = {
                         action_code = 5,
@@ -671,11 +665,12 @@ function R.begin_player_melee(state, context)
         state.strike_heading = target.heading & 0xffff
     end
     -- ROM 0x15C58: target +0x10 bit 0 set, bit 6 clear, 0x14D58 < 0x200.
-    local flags = type(target) == "table" and target.service_flags or nil
+    local lifecycle = type(target) == "table" and
+        type(target.actor_facts) == "table" and
+        target.actor_facts.lifecycle or nil
     if type(target) ~= "table" or type(target.distance) ~= "number" or
-       type(flags) ~= "number" or
-       (flags & ActorStatus.ACTIVE) == 0 or
-       (flags & ActorStatus.DEAD) ~= 0 or
+       type(lifecycle) ~= "table" or lifecycle.active ~= true or
+       lifecycle.dead == true or
        (target.distance & 0xffff) >= HitSpark.RANGE_LIMIT then
         state.source_action_dispatch = "player_melee"
         return swing
@@ -828,20 +823,21 @@ local function advance_spell_effect(state, context)
         state.spell_effect_phase = pending.phase
         if pending.phase >= pending.phase_count then
             local combat = game.modules.combat
-            local caster_source_flags = pending.caster_source_flags
+            local caster_is_ai_runner = pending.caster_is_ai_runner
             if type(context.ai_target_candidates) == "table" then
                 for _, candidate in ipairs(context.ai_target_candidates) do
                     if type(candidate) == "table" and
                        candidate.id == pending.caster_actor_id and
-                       type(candidate.service_flags) == "number" then
-                        caster_source_flags = candidate.service_flags
+                       type(candidate.actor_facts) == "table" then
+                        caster_is_ai_runner =
+                            candidate.actor_facts.lifecycle.ai_runner == true
                         break
                     end
                 end
             end
             local skip_delayed_callback = pending.action_code == 2 and
                 context.world_scene_state == 3 and
-                (caster_source_flags & 0x08) == 0
+                not caster_is_ai_runner
             if pending.action_code ~= 5 and not skip_delayed_callback and
                type(combat) == "table" and
                type(combat.resolve_spell_impact) == "function" and
@@ -882,9 +878,9 @@ local function advance_spell_effect(state, context)
                             candidate, pending.scene_id)
                         if type(candidate) == "table" and
                            type(candidate.source_record_slot) == "number" and
-                           type(candidate.service_flags) == "number" and
-                           (candidate.service_flags & ActorStatus.ACTIVE) ~= 0 and
-                           (candidate.service_flags & ActorStatus.DEAD) == 0 and
+                           type(candidate.actor_facts) == "table" and
+                           candidate.actor_facts.lifecycle.active and
+                           not candidate.actor_facts.lifecycle.dead and
                            marker ~= nil then
                             local next_pending = {
                                 action_code = pending.action_code,
@@ -902,8 +898,8 @@ local function advance_spell_effect(state, context)
                                 caster_combatant = pending.caster_combatant,
                                 ai_target_candidates = candidates,
                                 scene_id = pending.scene_id,
-                                caster_source_flags =
-                                    pending.caster_source_flags,
+                                caster_is_ai_runner =
+                                    pending.caster_is_ai_runner,
                                 caster_actor_id = pending.caster_actor_id,
                                 owns_effect_slot = false,
                             }

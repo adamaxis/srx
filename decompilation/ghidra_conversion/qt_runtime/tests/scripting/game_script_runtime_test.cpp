@@ -1519,6 +1519,8 @@ int main() {
     const bool seeded_ilene_contact_actor = seed_contact_actor(
         "qa_ilene_contact", 20U, 0xA8CCU,
         "pedestrian_k0b_none00", 11U);
+    // field_actor_contact_task returns a 0/1 escort fact after the Lua state
+    // update; the value is no longer the ROM's +0xB0 bit mask (0x80).
     const auto aragorn_contact_route = scripts.call_integers(
         "world_content", "field_actor_contact_task",
         {34, 0xA8AEU, 0, 1, 0});
@@ -1990,13 +1992,13 @@ int main() {
                 seeded_ilene_contact_actor &&
                 aragorn_contact_route.has_value() &&
                 *aragorn_contact_route ==
-                    std::vector<std::int64_t>{1, 0x80} &&
+                    std::vector<std::int64_t>{1, 1} &&
                 aragorn_contact_priority_route.has_value() &&
                 *aragorn_contact_priority_route ==
-                    std::vector<std::int64_t>{1, 0x80} &&
+                    std::vector<std::int64_t>{1, 1} &&
                 ilene_contact_route.has_value() &&
                 *ilene_contact_route ==
-                    std::vector<std::int64_t>{2, 0x80} &&
+                    std::vector<std::int64_t>{2, 1} &&
                 unrelated_contact_route.has_value() &&
                 *unrelated_contact_route ==
                     std::vector<std::int64_t>{0, 0} &&
@@ -7548,7 +7550,7 @@ int main() {
             ScriptActorActionKind::none, 0U, 0U, true);
         context.phase = ScriptActorHeartbeatPhase::behavior;
         context.projectile_animation = ScriptActorProjectileAnimation{
-            movement.animation_selector, 3U, 0U, 0, 0, 0x1000, true};
+            0x0014U, 3U, 0U, 0, 0, 0x1000, true};
         context.projectile_movement = movement;
         return context;
     };
@@ -7556,7 +7558,6 @@ int main() {
     ScriptActorProjectileMovement moving_projectile{};
     moving_projectile.role = ScriptActorProjectileRole::primary;
     moving_projectile.active = true;
-    moving_projectile.flags = 0x01U;
     moving_projectile.world_x = 10 * 0x10000;
     moving_projectile.world_y = 20 * 0x10000;
     moving_projectile.tile_offset_x = 0x0100;
@@ -7573,8 +7574,7 @@ int main() {
         };
     moving_projectile_context.projectile_collision_search =
         [&projectile_collision_count](const std::uint16_t,
-                                      const std::uint16_t,
-                                      const std::uint8_t) {
+                                      const std::uint16_t) {
             ++projectile_collision_count;
             return ScriptProjectileCollisionSearchResult{};
         };
@@ -7611,8 +7611,7 @@ int main() {
         };
     outside_projectile_context.projectile_collision_search =
         [&outside_collision_count](const std::uint16_t,
-                                   const std::uint16_t,
-                                   const std::uint8_t) {
+                                   const std::uint16_t) {
             ++outside_collision_count;
             return ScriptProjectileCollisionSearchResult{};
         };
@@ -7621,13 +7620,11 @@ int main() {
     if (!expect(
             outside_projectile_step.has_value() &&
                 outside_projectile_step->projectile_movement.has_value() &&
-                outside_projectile_step->projectile_movement->state.record_flags ==
-                    0x09U &&
-                outside_projectile_step->projectile_movement->state.flags ==
-                    0U &&
+                outside_projectile_step->projectile_movement->state.impact_occurred &&
+                outside_projectile_step->projectile_movement->state.waiting_for_animation_end &&
                 !outside_projectile_step->projectile_movement->state.active &&
-                outside_projectile_step->projectile_movement->state.animation_selector ==
-                    0U &&
+                outside_projectile_step->projectile_movement->state.animation_action ==
+                    ScriptActorProjectileAnimationAction::stop &&
                 outside_projectile_step->projectile_movement->state.tile_offset_x ==
                     0 &&
                 outside_projectile_step->projectile_movement->state.retry_counter ==
@@ -7652,8 +7649,7 @@ int main() {
         };
     exhausted_projectile_context.projectile_collision_search =
         [&exhausted_collision_count](const std::uint16_t,
-                                    const std::uint16_t,
-                                    const std::uint8_t) {
+                                    const std::uint16_t) {
             ++exhausted_collision_count;
             return ScriptProjectileCollisionSearchResult{};
         };
@@ -7684,8 +7680,7 @@ int main() {
             return ScriptProjectileTerrainSample{0U, true, false};
         };
     hit_projectile_context.projectile_collision_search =
-        [](const std::uint16_t, const std::uint16_t,
-           const std::uint8_t) {
+        [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
                 true, true, 45U, 77U,
                 std::string{"field_scene_2_encounter_1_actor_0"}};
@@ -7975,8 +7970,7 @@ int main() {
             return ScriptProjectileTerrainSample{0U, true, false};
         };
     source_weapon_hit_context.projectile_collision_search =
-        [](const std::uint16_t, const std::uint16_t,
-           const std::uint8_t) {
+        [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
                 true, true, 45U, 77U,
                 std::string{"field_scene_2_encounter_1_actor_0"}};
@@ -8358,8 +8352,7 @@ int main() {
             "static_default_corp_guard_slot_3", 3U,
             *static_guard_context.combatant}};
     static_guard_projectile.projectile_collision_search =
-        [](const std::uint16_t, const std::uint16_t,
-           const std::uint8_t) {
+        [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
                 true, true, 45U, 77U,
                 std::string{"static_default_corp_guard_slot_3"}};
@@ -8380,8 +8373,7 @@ int main() {
             "static_default_pedestrian_slot_4", 4U,
             *static_pedestrian_context.combatant}};
     static_pedestrian_projectile.projectile_collision_search =
-        [](const std::uint16_t, const std::uint16_t,
-           const std::uint8_t) {
+        [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
                 true, true, 45U, 77U,
                 std::string{"static_default_pedestrian_slot_4"}};
@@ -8547,8 +8539,7 @@ int main() {
         ScriptProjectileCombatTarget{
             "field_scene_2_encounter_1_actor_2", 3U, victim_facts}};
     moving_weapon_hit_context.projectile_collision_search =
-        [](const std::uint16_t, const std::uint16_t,
-           const std::uint8_t) {
+        [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
                 true, true, 45U, 77U,
                 std::string{"field_scene_2_encounter_1_actor_2"}};
@@ -8614,8 +8605,7 @@ int main() {
             "field_scene_2_encounter_1_actor_1", 4U,
             exhausted_victim_facts}};
     lethal_hit_context.projectile_collision_search =
-        [](const std::uint16_t, const std::uint16_t,
-           const std::uint8_t) {
+        [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
                 true, true, 45U, 77U,
                 std::string{"field_scene_2_encounter_1_actor_1"}};
@@ -8639,8 +8629,7 @@ int main() {
         ScriptProjectileCombatTarget{
             "scene_55_scan_live", 8U, scene_55_live_victim_facts}};
     scene_55_lethal_hit_context.projectile_collision_search =
-        [](const std::uint16_t, const std::uint16_t,
-           const std::uint8_t) {
+        [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
                 true, true, 45U, 77U,
                 std::string{"scene_55_scan_live"}};
@@ -8767,8 +8756,7 @@ int main() {
             return ScriptProjectileTerrainSample{0U, true, false};
         };
     unresolved_weapon_context.projectile_collision_search =
-        [](const std::uint16_t x, const std::uint16_t y,
-           const std::uint8_t) {
+        [](const std::uint16_t x, const std::uint16_t y) {
             return ScriptProjectileCollisionSearchResult{
                 false, false, x, y, std::nullopt};
         };
@@ -8788,7 +8776,7 @@ int main() {
 
     auto secondary_projectile = moving_projectile;
     secondary_projectile.role = ScriptActorProjectileRole::secondary;
-    secondary_projectile.animation_selector = 0x8000U;
+    secondary_projectile.animation_finished = true;
     auto secondary_projectile_context = projectile_behavior_context(
         "field_weapon_slot_secondary", secondary_projectile);
     secondary_projectile_context.projectile_terrain_probe =
@@ -8796,8 +8784,7 @@ int main() {
             return ScriptProjectileTerrainSample{};
         };
     secondary_projectile_context.projectile_collision_search =
-        [](const std::uint16_t, const std::uint16_t,
-           const std::uint8_t) {
+        [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{};
         };
     const auto secondary_projectile_step =
@@ -8806,7 +8793,6 @@ int main() {
             secondary_projectile_step.has_value() &&
                 secondary_projectile_step->projectile_movement.has_value() &&
                 !secondary_projectile_step->projectile_movement->state.active &&
-                secondary_projectile_step->projectile_movement->state.flags == 0U &&
                 secondary_projectile_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::retired &&
                 !secondary_projectile_step->audio_event.has_value(),
@@ -8816,8 +8802,8 @@ int main() {
     }
 
     auto stopped_projectile = moving_projectile;
-    stopped_projectile.record_flags = 0x08U;
-    stopped_projectile.animation_selector = 0x8000U;
+    stopped_projectile.waiting_for_animation_end = true;
+    stopped_projectile.animation_finished = true;
     stopped_projectile.linked_action_timer = 0;
     auto stopped_projectile_context = projectile_behavior_context(
         "field_weapon_slot_stopped", stopped_projectile);
@@ -8826,8 +8812,7 @@ int main() {
             return ScriptProjectileTerrainSample{};
         };
     stopped_projectile_context.projectile_collision_search =
-        [](const std::uint16_t, const std::uint16_t,
-           const std::uint8_t) {
+        [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{};
         };
     const auto stopped_projectile_step =
@@ -8846,7 +8831,7 @@ int main() {
     }
 
     auto burst_projectile = stopped_projectile;
-    burst_projectile.record_flags = 0x09U;
+    burst_projectile.impact_occurred = true;
     burst_projectile.linked_action_timer = 2;
     burst_projectile.heading = 0x2000U;
     burst_projectile.saved_position_x = 0x2345U;
@@ -8873,8 +8858,7 @@ int main() {
             return ScriptProjectileTerrainSample{};
         };
     linked_projectile_context.projectile_collision_search =
-        [](const std::uint16_t, const std::uint16_t,
-           const std::uint8_t) {
+        [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{};
         };
     const auto linked_projectile_step =
@@ -8899,8 +8883,10 @@ int main() {
                 first_burst.tile_offset_y ==
                     first_burst_source_offsets.vertical &&
                 first_burst.retry_counter == 0x20U &&
-                first_burst.animation_selector == 0x14U &&
-                first_burst.record_flags == 0x01U &&
+                first_burst.animation_action ==
+                    ScriptActorProjectileAnimationAction::restart &&
+                !first_burst.waiting_for_animation_end &&
+                first_burst.impact_occurred &&
                 first_burst.action_result == 0 &&
                 linked_projectile_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::burst_followup_restarted &&
@@ -8927,8 +8913,10 @@ int main() {
     }
 
     auto second_burst_state = first_burst;
-    second_burst_state.record_flags = 0x09U;
-    second_burst_state.animation_selector = 0x8014U;
+    second_burst_state.waiting_for_animation_end = true;
+    second_burst_state.animation_finished = true;
+    second_burst_state.animation_action =
+        ScriptActorProjectileAnimationAction::unchanged;
     linked_projectile_context.phase = ScriptActorHeartbeatPhase::behavior;
     linked_projectile_context.projectile_movement = second_burst_state;
     const auto second_burst_step =
@@ -8947,8 +8935,10 @@ int main() {
                         second_burst_source_offsets.horizontal &&
                     second_burst.tile_offset_y ==
                         second_burst_source_offsets.vertical &&
-                    second_burst.animation_selector == 0x14U &&
-                    second_burst.record_flags == 0x01U &&
+                    second_burst.animation_action ==
+                        ScriptActorProjectileAnimationAction::restart &&
+                    !second_burst.waiting_for_animation_end &&
+                    second_burst.impact_occurred &&
                     second_burst_step->projectile_movement->outcome ==
                         ScriptActorProjectileOutcome::burst_followup_restarted &&
                     burst_attack_seed_rolls > 1U,
@@ -8961,8 +8951,9 @@ int main() {
                   << " heading=0x" << std::hex << second_burst.heading
                   << " offset=" << std::dec << second_burst.tile_offset_x
                   << ',' << second_burst.tile_offset_y
-                  << " selector=0x" << std::hex << second_burst.animation_selector
-                  << " flags=0x" << static_cast<unsigned>(second_burst.record_flags)
+                  << " animation_action=" << static_cast<unsigned>(second_burst.animation_action)
+                  << " stopped=" << second_burst.waiting_for_animation_end
+                  << " impact=" << second_burst.impact_occurred
                   << " outcome=" << (second_burst_step.has_value() &&
                          second_burst_step->projectile_movement.has_value()
                          ? static_cast<unsigned>(second_burst_step->projectile_movement->outcome)
@@ -8972,8 +8963,10 @@ int main() {
     }
 
     auto final_burst_state = second_burst;
-    final_burst_state.record_flags = 0x09U;
-    final_burst_state.animation_selector = 0x8014U;
+    final_burst_state.waiting_for_animation_end = true;
+    final_burst_state.animation_finished = true;
+    final_burst_state.animation_action =
+        ScriptActorProjectileAnimationAction::unchanged;
     linked_projectile_context.projectile_movement = final_burst_state;
     const auto final_burst_step =
         scripts.actor_heartbeat(linked_projectile_context);
@@ -8990,12 +8983,12 @@ int main() {
     }
 
     auto source_table_sample = stopped_projectile;
-    source_table_sample.record_flags = 0x09U;
+    source_table_sample.impact_occurred = true;
     source_table_sample.linked_action_timer = 2;
     source_table_sample.heading = 0xE200U;
     source_table_sample.saved_position_x = 0x2345U;
     source_table_sample.saved_position_y = 0x3456U;
-    source_table_sample.animation_selector = 0x8000U;
+    source_table_sample.animation_finished = true;
     linked_projectile_context.projectile_movement = source_table_sample;
     const auto questioned_source_sample_step =
         scripts.actor_heartbeat(linked_projectile_context);
@@ -9050,12 +9043,8 @@ int main() {
         context.movement_state.position_y = 100U;
         context.movement_state.heading = initial_heading;
         context.movement_state.animation_heading = initial_heading;
-        context.movement_state.movement_substate = 7U;
         context.movement_state.route_status = 9;
         context.movement_state.route_flags = 0x03U;
-        context.movement_state.movement_flags = 0x08U;
-        context.movement_state.collision_flags = 0x01U;
-        context.movement_state.event_flags = 0x01U;
         context.movement_offsets = {{
             {10, 0}, {0, 10}, {20, 0}, {0, 20},
             {-10, 0}, {0, -10}, {-20, 0}, {0, -20},
@@ -9168,17 +9157,22 @@ int main() {
                 clear_step->movement_step->outcome ==
                     ScriptActorMovementStep::Outcome::accepted &&
                 clear_step->movement_step->state.position_x == 110U &&
-                clear_step->movement_step->state.event_flags == 0U &&
+                clear_step->movement_step->state.clear_pending_event &&
+                clear_step->movement_step->state.substate_update ==
+                    ScriptMovementSubstateUpdate::direct_translation &&
                 clear_step->movement_step->state.route_flags == 0x03U &&
                 clear_collision_queries == 1U &&
                 route_step.has_value() && route_step->movement_step.has_value() &&
                 route_step->movement_step->state.position_x == 110U &&
-                route_step->movement_step->state.collision_flags == 0U &&
+                route_step->movement_step->state.clear_collision_recovery &&
                 observed_route_key == 4U && route_collision_queries == 2U &&
                 slide_step.has_value() && slide_step->movement_step.has_value() &&
                 slide_step->movement_step->state.position_x == 120U &&
                 slide_step->movement_step->state.route_status == 0 &&
-                slide_step->movement_step->state.movement_flags == 0x0CU &&
+                slide_step->movement_step->state.substate_update ==
+                    ScriptMovementSubstateUpdate::cardinal_fallback &&
+                slide_step->movement_step->state.cardinal_direction == 0U &&
+                slide_step->movement_step->state.mark_directional_fallback &&
                 slide_collision_queries == 3U &&
                 pending_event_step.has_value() &&
                 pending_event_step->movement_step.has_value() &&
@@ -9190,7 +9184,7 @@ int main() {
                     ScriptActorMovementStep::Outcome::reset &&
                 reset_step->movement_current_heading == 0x4000U &&
                 reset_step->movement_step->state.route_flags == 0x01U &&
-                reset_step->movement_step->state.movement_flags == 0x09U &&
+                reset_step->movement_step->state.mark_reset_after_block &&
                 reset_step->movement_step->state.route_status == -1 &&
                 reset_step->movement_step->direction_animation == 0x22U &&
                 clear_step->movement_step->direction_animation == 0x40U &&
@@ -9198,6 +9192,33 @@ int main() {
                 reset_collision_queries == 4U,
             "Lua movement policy did not preserve event retry state or resolve clear, route, slide, and reset cases")) {
         std::cerr << scripts.failure() << '\n';
+        const auto state_of = [](const auto& decision)
+            -> const ScriptMovementStepState* {
+            return decision.has_value() && decision->movement_step.has_value()
+                ? &decision->movement_step->state
+                : nullptr;
+        };
+        const auto* clear_state = state_of(clear_step);
+        const auto* route_state = state_of(route_step);
+        const auto* slide_state = state_of(slide_step);
+        const auto* pending_state = state_of(pending_event_step);
+        const auto* reset_state = state_of(reset_step);
+        std::cerr << "movement cases: clear=" << (clear_state != nullptr)
+                  << ",clear_event=" << (clear_state && clear_state->clear_pending_event)
+                  << ",clear_mode=" << (clear_state ? static_cast<unsigned>(clear_state->substate_update) : 99U)
+                  << ",route=" << (route_state != nullptr)
+                  << ",clear_collision=" << (route_state && route_state->clear_collision_recovery)
+                  << ",route_queries=" << route_collision_queries
+                  << ",slide=" << (slide_state != nullptr)
+                  << ",slide_mode=" << (slide_state ? static_cast<unsigned>(slide_state->substate_update) : 99U)
+                  << ",slide_direction=" << (slide_state ? static_cast<unsigned>(slide_state->cardinal_direction) : 99U)
+                  << ",slide_mark=" << (slide_state && slide_state->mark_directional_fallback)
+                  << ",pending=" << (pending_state != nullptr)
+                  << ",pending_x=" << (pending_state ? pending_state->position_x : 0U)
+                  << ",reset=" << (reset_state != nullptr)
+                  << ",reset_mark=" << (reset_state && reset_state->mark_reset_after_block)
+                  << ",reset_route=" << (reset_state ? reset_state->route_status : 0)
+                  << '\n';
         return 18;
     }
 

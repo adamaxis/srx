@@ -5,13 +5,12 @@ local E = require("enums")
 local I = require("lib.int68k")
 local u8, u16, s16 = I.u8, I.u16, I.s16
 local Animator = R.Animator   -- from actor/animator.lua
-local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
-    E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
+    E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local PlayerHurt = E.PlayerHurt
 local HitSpark = E.HitSpark
 local ActorAnimation = E.ActorAnimation
 local ActorPose = E.ActorPose
-local ActorStatus = R.ActorStatus   -- from actor/tables.lua
 local SpriteType = R.SpriteType   -- from actor/tables.lua
 local idle_pose_selectors = R.idle_pose_selectors   -- from actor/tables.lua
 local walk_pose_selectors = R.walk_pose_selectors   -- from actor/tables.lua
@@ -49,15 +48,13 @@ local function snapshot(state, action, audio_event, projectile_movement,
         action_code = state.action_code,
         action = action,
         animation = state.animation_id,
-        source_record_flags = state.source_record_flags,
-        source_spawn_state_flags = state.source_spawn_state_flags or 0,
+        actor_facts = state.actor_facts,
         animation_selector = state.animation_selector,
         direction = state.direction,
         frame = state.animation_frame,
         animation_accumulator = state.animation_accumulator,
         transition_started = state.transition_started,
         transition_complete = state.transition_complete,
-        source_behavior_flags = state.source_behavior_flags,
         world_activity_requested = world_activity_requested,
         field_event_request = field_event_request,
         think_token_claimed = think_token_claimed,
@@ -247,7 +244,7 @@ local function begin_down_reaction(state)
     state.animation_id = "down"
     state.animation_selector = Animator.Pose.DEATH + state.direction * 4
     state.source_animation_selector = state.animation_selector
-    state.source_record_flags = state.source_record_flags | ActorStatus.DOWN
+    state.actor_facts.lifecycle.downed = true
     state.hurt_behavior_timer = 0
     state.movement_active = false
     return down_audio_event
@@ -259,7 +256,7 @@ end
 -- +0x10 bit 4 and enters 0xB330. This is how stun kills (mental meter 0) and
 -- deferred zero-meter hits die; the hit path alone only checks +0x4C.
 local function service_zero_meter_down(state, context)
-    if (state.source_record_flags & ActorStatus.DOWN) ~= 0 then
+    if state.actor_facts.lifecycle.downed then
         return nil
     end
     -- The host's per-pass record (context.combatant) holds the live +0x4C /
@@ -293,11 +290,11 @@ local function begin_received_hit_reaction(state, context)
         return nil
     end
     state.incoming_hit = nil
-    if (state.source_record_flags & ActorStatus.DOWN) ~= 0 then
+    if state.actor_facts.lifecycle.downed then
         return nil
     end
     if hit.physical_meter == 0 and hit.spell_death_pose ~= nil and
-       (state.source_record_flags & ActorStatus.AI_RUNNER) == 0 and
+       not state.actor_facts.lifecycle.ai_runner and
        context.entity_kind ~= SpriteType.HELL_HOUND then
         -- 0xB0AC/0xB0E4 (spell death): pose E.ActorPose.SPELL_DEATH_E0/E4,
         -- continuation 0xB0D4/0xB10C, no +0x10 b4 and no cue. 0xA9A6 then

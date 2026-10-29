@@ -6,6 +6,7 @@
 #include <charconv>
 #include <cstdint>
 #include <fstream>
+#include <initializer_list>
 #include <limits>
 #include <map>
 #include <set>
@@ -251,6 +252,12 @@ bool push_record(lua_State* state, const TsvDocument& document,
     lua_createtable(state, 0, static_cast<int>(document.columns.size()));
     const auto table_index = lua_absindex(state, -1);
     for (const auto& column : document.columns) {
+        // These source bytes are import evidence. Lua receives named actor
+        // traits and interaction rules built below, never the packed byte.
+        if (column == "source_spawn_state_flags" ||
+            column == "source_interaction_flags") {
+            continue;
+        }
         const auto value = value_at(document, row, column);
         if (numeric_column(column, optional_numeric_columns)) {
             if (value.empty() || value == "-") {
@@ -281,6 +288,78 @@ bool push_record(lua_State* state, const TsvDocument& document,
         }
         const auto destination = lua_column_name(column, aliases);
         lua_setfield(state, table_index, std::string(destination).c_str());
+    }
+
+    const auto push_actor_group = [state](
+        const char* group_name,
+        const std::initializer_list<std::pair<const char*, std::uint8_t>> fields,
+        const std::uint8_t value) {
+        lua_createtable(state, 0, static_cast<int>(fields.size()));
+        const auto group_index = lua_absindex(state, -1);
+        for (const auto& [name, mask] : fields) {
+            lua_pushboolean(state, (value & mask) != 0U);
+            lua_setfield(state, group_index, name);
+        }
+        lua_setfield(state, -2, group_name);
+    };
+    const auto push_semantic_actor_facts = [&]() -> bool {
+        const bool has_roles = document.column_indexes.find(
+            "source_spawn_state_flags") != document.column_indexes.end();
+        const bool has_interaction = document.column_indexes.find(
+            "source_interaction_flags") != document.column_indexes.end();
+        if (!has_roles && !has_interaction) {
+            return true;
+        }
+        lua_createtable(state, 0, 2);
+        const auto facts_index = lua_absindex(state, -1);
+        const auto read_byte = [&](const std::string_view column,
+                                   std::uint8_t& output) {
+            lua_Integer parsed = 0;
+            const auto text = value_at(document, row, column);
+            if (!parse_integer(text, parsed) || parsed < 0 || parsed > 0xFF) {
+                failure = source_path.string() + ": row " +
+                          std::to_string(row_number) + " column " +
+                          std::string(column) + " is not an actor fact byte";
+                return false;
+            }
+            output = static_cast<std::uint8_t>(parsed);
+            return true;
+        };
+        std::uint8_t roles = 0U;
+        std::uint8_t interaction = 0U;
+        if (has_roles && !read_byte("source_spawn_state_flags", roles)) {
+            lua_pop(state, 1);
+            return false;
+        }
+        if (has_interaction &&
+            !read_byte("source_interaction_flags", interaction)) {
+            lua_pop(state, 1);
+            return false;
+        }
+        if (has_roles) {
+            push_actor_group("roles",
+                {{"spotted", 0x01U}, {"reinforcement", 0x02U},
+                 {"despawn_offscreen", 0x04U}, {"quest", 0x08U},
+                 {"runner", 0x10U}, {"pedestrian", 0x20U},
+                 {"hostile", 0x40U}}, roles);
+        }
+        if (has_interaction) {
+            push_actor_group("interaction",
+                {{"projectile", 0x01U},
+                 {"proximity_interaction_pending", 0x02U},
+                 {"use_collision_heading", 0x04U},
+                 {"collision_recovery_active", 0x08U},
+                 {"action_hook_pending", 0x10U},
+                 {"defense_difficulty_reduction", 0x20U},
+                 {"breathing_out", 0x40U}, {"unseen", 0x80U},
+                 {"no_coverage_difficulty_bonus", 0x80U}}, interaction);
+        }
+        lua_setfield(state, table_index, "actor_facts");
+        return true;
+    };
+    if (!push_semantic_actor_facts()) {
+        lua_pop(state, 1);
+        return false;
     }
     return true;
 }

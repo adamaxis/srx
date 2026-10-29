@@ -12,12 +12,43 @@ local function check(condition, message)
     if condition then pass = pass + 1 else print("FAIL: " .. message) end
 end
 
+local function actor_facts(overrides)
+    local facts = {
+        lifecycle = {
+            active = true, thinking_enabled = false, ai_runner = false,
+            downed = false, group_leader = false, dead = false,
+        },
+        interaction = {
+            projectile = false, proximity_interaction_pending = false,
+            use_collision_heading = false, collision_recovery_active = false,
+            action_hook_pending = false, defense_difficulty_reduction = false,
+            breathing_out = false, unseen = false,
+            no_coverage_difficulty_bonus = false,
+        },
+        behavior = {
+            route_clear = false, path_active = false,
+            restart_steering = false, wall_following = false,
+            in_target_band = false, route_transition = false,
+            fleeing = false, escort = false,
+        },
+        roles = {
+            spotted = false, reinforcement = false,
+            despawn_offscreen = false, quest = false, runner = false,
+            pedestrian = false, hostile = false,
+        },
+    }
+    for group, values in pairs(overrides or {}) do
+        for name, value in pairs(values) do
+            facts[group][name] = value
+        end
+    end
+    return facts
+end
+
 local function context(overrides)
     local c = {
         entity_kind = E.SpriteType.CORP_GUARD,
-        source_record_flags = E.ActorStatus.ACTIVE,
-        source_spawn_state_flags = 0,
-        source_behavior_flags = 0,
+        actor_facts = actor_facts(),
         source_projection_active = true,
         source_think_suppressed = false,
         source_alarm_active = false,
@@ -33,25 +64,34 @@ local function context(overrides)
               world_activity_actor = false, world_x = 0x2000,
               world_y = 0x2400, heading = 0x1000, distance = 0x300,
               projected_y_nonzero = true,
-              service_flags = E.ActorStatus.ACTIVE,
-              interaction_flags = 0 },
+              actor_facts = actor_facts() },
         },
     }
-    for key, value in pairs(overrides or {}) do c[key] = value end
+    for key, value in pairs(overrides or {}) do
+        if key == "actor_facts" then
+            c.actor_facts = actor_facts(value)
+        else
+            c[key] = value
+        end
+    end
     return c
 end
 
 local function state(overrides)
     local s = {
         behavior_timer = 0,
-        source_record_flags = E.ActorStatus.ACTIVE,
-        source_spawn_state_flags = 0,
-        source_behavior_flags = 0,
+        actor_facts = actor_facts(),
         source_animation_selector = 0,
         movement_current_heading = 0x1000,
         movement_active = false,
     }
-    for key, value in pairs(overrides or {}) do s[key] = value end
+    for key, value in pairs(overrides or {}) do
+        if key == "actor_facts" then
+            s.actor_facts = actor_facts(value)
+        else
+            s[key] = value
+        end
+    end
     return s
 end
 
@@ -128,7 +168,7 @@ local thon_context = context({
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, projected_y_nonzero = true,
-          service_flags = E.ActorStatus.ACTIVE, interaction_flags = 0,
+          actor_facts = actor_facts(),
           world_x = 0x2000, world_y = 0x2400,
           heading = 0x1000, distance = 0x300 },
     },
@@ -157,13 +197,13 @@ local offscreen_runner = {
     id = "party.runner.1",
     world_activity_actor = false,
     projected_y_nonzero = false,
-    service_flags = E.ActorStatus.ACTIVE,
+    actor_facts = actor_facts(),
 }
 local visible_runner = {
     id = "party.runner.0",
     world_activity_actor = false,
     projected_y_nonzero = true,
-    service_flags = E.ActorStatus.ACTIVE,
+    actor_facts = actor_facts(),
 }
 local runner_pool_context = context({
     ai_target_candidates = { offscreen_runner, visible_runner },
@@ -233,31 +273,30 @@ check(R.think_gate(thon_busy_state, thon_context) == "thon_busy" and
       "THON with +0x16 above 0x3C leaves the period and action path untouched")
 
 local escort_path = R.think_gate(state({
-    source_behavior_flags = E.BehaviorFlag.ESCORT,
-}), context({ source_behavior_flags = E.BehaviorFlag.ESCORT }))
+    actor_facts = { behavior = { escort = true } },
+}), context({ actor_facts = { behavior = { escort = true } } }))
 check(escort_path == "follow_leader",
       "0x1392A escort branch selects 0x14508 follow")
 
-check(R.think_gate(state({ source_spawn_state_flags = E.ActorFlag.QUEST }),
-    context({ source_spawn_state_flags = E.ActorFlag.QUEST })) == "skip",
+check(R.think_gate(state({ actor_facts = { roles = { quest = true } } }),
+    context({ actor_facts = { roles = { quest = true } } })) == "skip",
     "0x1393C +0x9E.b3 returns")
 
-local pedestrian = E.ActorFlag.PEDESTRIAN
-check(R.think_gate(state({ source_spawn_state_flags = pedestrian }),
-    context({ source_spawn_state_flags = pedestrian,
+check(R.think_gate(state({ actor_facts = { roles = { pedestrian = true } } }),
+    context({ actor_facts = { roles = { pedestrian = true } },
               world_activity_active = true })) == "flee",
     "0x1394A pedestrian with FFDF84 active enters the flee route")
 
-s = state({ source_spawn_state_flags = E.ActorFlag.DESPAWN_OFFSCREEN })
+s = state({ actor_facts = { roles = { despawn_offscreen = true } } })
 local despawn_path = R.think_gate(s, context({
-    source_spawn_state_flags = E.ActorFlag.DESPAWN_OFFSCREEN,
+    actor_facts = { roles = { despawn_offscreen = true } },
     source_projection_active = false,
 }))
 check(despawn_path == "skip" and s.ai_deactivate_requested,
       "0x13962 offscreen +0x9E.b2 calls 0x1E514")
 
-check(R.think_gate(state({ source_behavior_flags = E.BehaviorFlag.FLEEING }),
-    context({ source_behavior_flags = E.BehaviorFlag.FLEEING })) == "flee",
+check(R.think_gate(state({ actor_facts = { behavior = { fleeing = true } } }),
+    context({ actor_facts = { behavior = { fleeing = true } } })) == "flee",
     "0x1397A +0xB0.b6 returns to the stored flee route")
 
 check(R.think_gate(state(), context({ source_projection_active = false })) ==
@@ -270,17 +309,19 @@ check(R.think_gate(state(), context({ source_projection_active = false,
       world_scene_state = E.EndingState.FINAL_FIGHT,
       source_action_ammo = E.AiTuning.ENDING_HOLD_ROUNDS })) == "hold",
       "0x13996 ending-state offscreen actor with +0x4E gate enters hold")
-check(R.think_gate(state(), context({ source_projection_active = false,
+check(R.think_gate(state({ actor_facts = {
+          lifecycle = { ai_runner = true },
+      } }), context({ source_projection_active = false,
       world_activity_active = true,
       world_scene_state = E.EndingState.FINAL_FIGHT,
       source_action_ammo = E.AiTuning.ENDING_HOLD_ROUNDS,
-      source_record_flags = E.ActorStatus.ACTIVE | E.ActorStatus.AI_RUNNER })) ==
+      actor_facts = { lifecycle = { ai_runner = true } } })) ==
       "follow_leader",
       "0x139A0 +0x10.b3 bypasses the ending-state hold branch")
 
-s = state({ source_spawn_state_flags = E.ActorFlag.HOSTILE })
+s = state({ actor_facts = { roles = { hostile = true } } })
 local hostile_path = R.think_gate(s, context({
-    source_spawn_state_flags = E.ActorFlag.HOSTILE,
+    actor_facts = { roles = { hostile = true } },
 }))
 check(hostile_path == "combat" and s.world_activity_requested,
       "0x139BE hostile on-screen branch requests 0x1DBAA then combat")
@@ -300,8 +341,8 @@ check(R.think(s, hold_context) and s.animation_id == "action" and
       s.movement_active,
       "0x13E40 leaves a busy pose and its current movement alone")
 
-s = state()
-c = context({ source_spawn_state_flags = pedestrian,
+s = state({ actor_facts = { roles = { pedestrian = true } } })
+c = context({ actor_facts = { roles = { pedestrian = true } },
                world_activity_active = true,
                source_camera_x = 0x1000, source_camera_y = 0x6000,
                source_camera_limit_x = 0x8000,
@@ -314,7 +355,7 @@ end
 local flee_handled = R.think(s, c)
 check(flee_handled and s.ai_think_path == "flee" and measured_x == 0x3F80 and
       measured_y == 0x4480 and
-      (s.source_behavior_flags & E.BehaviorFlag.FLEEING) ~= 0,
+      s.actor_facts.behavior.fleeing,
       "0x13E9E stores camera-biased flee coordinates once and 0x145A2 routes")
 local stored_x = s.flee_target_x
 c.source_camera_x = 0x3000
@@ -324,9 +365,10 @@ check(s.flee_target_x == stored_x,
       "0x13E9E does not replace an existing flee destination")
 
 s = state({ source_animation_selector = E.AiTuning.ANIM_BUSY + 1,
-            movement_active = true })
-check(R.think_gate(s, context({ source_behavior_flags =
-      E.BehaviorFlag.FLEEING, source_projection_active = false })) == "hold",
+            movement_active = true,
+            actor_facts = { behavior = { fleeing = true } } })
+check(R.think_gate(s, context({ actor_facts = { behavior =
+      { fleeing = true } }, source_projection_active = false })) == "hold",
       "0x13E8C offscreen flee route enters 0x13E40")
 
 check(R.think_gate(state(), context({ source_actor_posture = E.Posture.MEDIUM_DEFENSE })) ==
@@ -336,7 +378,7 @@ check(R.think_gate(s, context({ source_actor_posture = E.Posture.FULL_OFFENSE,
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, distance = E.AiTuning.ENGAGE_DIST,
-          heading = 0x1000, interaction_flags = 0 },
+          heading = 0x1000, actor_facts = actor_facts() },
     } })) == "patrol" and not s.world_activity_requested,
     "0x13EF4 posture 4 at ENGAGE_DIST does not engage")
 s = state()
@@ -344,7 +386,7 @@ check(R.think_gate(s, context({ source_actor_posture = E.Posture.FULL_OFFENSE,
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, distance = E.AiTuning.ENGAGE_DIST - 1,
-          heading = 0x1000, interaction_flags = 0 },
+          heading = 0x1000, actor_facts = actor_facts() },
     } })) == "combat" and s.world_activity_requested,
     "0x13EF4 posture 4 inside ENGAGE_DIST requests combat")
 check(R.think_gate(state(), context({ source_actor_posture =
@@ -354,7 +396,7 @@ check(R.think_gate(state(), context({ source_actor_posture = E.Posture.MEDIUM_OF
       ai_target_candidates = {
           { id = "party.runner.0", source_record_slot = 0,
             world_activity_actor = false, distance = E.AiTuning.WATCH_DIST,
-            heading = 0x1000, interaction_flags = 0 },
+            heading = 0x1000, actor_facts = actor_facts() },
       } })) == "patrol",
       "0x13F52 watch distance at WATCH_DIST returns to patrol")
 s = state()
@@ -363,7 +405,7 @@ local watch_context = context({
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, distance = E.AiTuning.WATCH_DIST - 1,
-          heading = 0x2000, interaction_flags = 0 },
+          heading = 0x2000, actor_facts = actor_facts() },
     },
 })
 check(R.think(s, watch_context) and s.ai_think_path == "watch" and
@@ -372,7 +414,7 @@ check(R.think(s, watch_context) and s.ai_think_path == "watch" and
 
 local function guard_case(overrides, actor_overrides, line_clear)
     local gc = context({
-        source_record_flags = E.ActorStatus.ACTIVE | E.ActorStatus.GROUP_LEADER,
+        actor_facts = { lifecycle = { group_leader = true } },
         source_actor_posture = E.Posture.NEUTRAL,
         source_alarm_active = false,
         source_scene_mode = E.SceneMode.BUILDING,
@@ -381,72 +423,73 @@ local function guard_case(overrides, actor_overrides, line_clear)
             { id = "party.runner.0", source_record_slot = 0,
               world_activity_actor = false, world_x = 0x2000,
               world_y = 0x2400, distance = 0x300, heading = 0x1000,
-              service_flags = E.ActorStatus.ACTIVE,
-              interaction_flags = 0 },
+              actor_facts = actor_facts() },
         },
     })
     for key, value in pairs(overrides or {}) do gc[key] = value end
-    local gs = state({ source_record_flags =
-        E.ActorStatus.ACTIVE | E.ActorStatus.GROUP_LEADER,
+    local gs = state({ actor_facts = {
+        lifecycle = { group_leader = true },
+    },
         movement_current_heading = 0x2000 })
     for key, value in pairs(actor_overrides or {}) do gs[key] = value end
     return gs, gc, R.think_gate(gs, gc)
 end
 
 s, c = guard_case()
-check((s.source_spawn_state_flags & E.ActorFlag.SPOTTED) ~= 0 and
+check(s.actor_facts.roles.spotted and
       s.field_event_request == E.EventFn.GUARD_SPOTS_YOU,
       "0x13F76 clear line and facing schedules GUARD_SPOTS_YOU in building mode")
 s, c = guard_case({ source_scene_mode = E.SceneMode.STREET })
-check((s.source_spawn_state_flags & E.ActorFlag.SPOTTED) ~= 0 and
+check(s.actor_facts.roles.spotted and
       s.field_event_request == nil,
       "0x13FF6 marks spotted outside building mode without the event")
 s, c = guard_case({ ai_target_candidates = {
     { id = "party.runner.0", source_record_slot = 0,
       world_activity_actor = false, world_x = 0x2000, world_y = 0x2400,
       distance = 0x300, heading = 0x1000,
-      interaction_flags = E.ActorStatusEx.UNSEEN },
+      actor_facts = actor_facts({ interaction = { unseen = true } }) },
 } })
-check((s.source_spawn_state_flags & E.ActorFlag.SPOTTED) ~= 0 and
+check(s.actor_facts.roles.spotted and
       s.field_event_request == nil,
       "0x13FDE suppresses the event while active runner +0x11.b7 is set")
 s, c = guard_case({}, {}, false)
-check((s.source_spawn_state_flags & E.ActorFlag.SPOTTED) == 0,
+check(not s.actor_facts.roles.spotted,
       "0x13FAC blocked line check does not mark the actor spotted")
 s, c = guard_case({ source_alarm_active = true })
 check(s.world_activity_requested and
-      (s.source_spawn_state_flags & E.ActorFlag.SPOTTED) == 0,
+      not s.actor_facts.roles.spotted,
       "0x13F80 FFE16F branch requests 0x1DBAA before spotting")
 s, c = guard_case({ ai_target_candidates = {
     { id = "party.runner.0", source_record_slot = 0,
       world_activity_actor = false, world_x = 0x2000, world_y = 0x2400,
       distance = 0x300, heading = 0x7000,
-      service_flags = 0, interaction_flags = 0 },
+      actor_facts = actor_facts({ lifecycle = { active = false } }) },
 } })
-check((s.source_spawn_state_flags & E.ActorFlag.SPOTTED) ~= 0 and
+check(s.actor_facts.roles.spotted and
       s.ai_think_gap == nil,
       "0x14D8E keeps the guard heading in FF13AE when leader ACTIVE is clear")
 s, c = guard_case({ ai_target_candidates = {
     { id = "party.runner.0", source_record_slot = 0,
       world_activity_actor = false, world_x = 0x2000, world_y = 0x2400,
       distance = 0x300, heading = 0x1000,
-      service_flags = E.ActorStatus.ACTIVE, interaction_flags = 0 },
-} }, { movement_current_heading = 0x5000 })
-check((s.source_spawn_state_flags & E.ActorFlag.SPOTTED) == 0,
+      actor_facts = actor_facts(),
+} } }, { movement_current_heading = 0x5000 })
+check(not s.actor_facts.roles.spotted,
       "0x13FC6 rejects a facing difference at the quarter-turn boundary")
 s, c = guard_case({ ai_target_candidates = {
     { id = "party.runner.0", source_record_slot = 0,
       world_activity_actor = false, world_x = 0x2000, world_y = 0x2400,
       distance = 0x300, heading = 32769,
-      service_flags = E.ActorStatus.ACTIVE, interaction_flags = 0 },
-} }, { movement_current_heading = 32767 })
-check((s.source_spawn_state_flags & E.ActorFlag.SPOTTED) ~= 0,
+      actor_facts = actor_facts(),
+} } }, { movement_current_heading = 32767 })
+check(s.actor_facts.roles.spotted,
       "0x13FB4 wraps the signed heading delta across 0x8000")
 
 check(R.think_gate(state(), context({ source_projection_active = false })) ==
       "patrol", "0x142AE selects the patrol branch [C]")
-check(R.think_gate(state({ source_behavior_flags = E.BehaviorFlag.ESCORT }),
-      context({ source_behavior_flags = E.BehaviorFlag.ESCORT })) ==
+check(R.think_gate(state({ actor_facts = {
+          behavior = { escort = true } } }),
+      context({ actor_facts = { behavior = { escort = true } } })) ==
       "follow_leader", "0x1450E formation follow is selected by escort [C]")
 
 local WaypointLists = require("data.actor_waypoint_lists")
@@ -520,8 +563,7 @@ for source_order = 0, 2 do
     if valid then
         local route_context = context({
             entity_kind = E.SpriteType.PEDESTRIAN,
-            source_record_flags = E.ActorStatus.ACTIVE,
-            source_spawn_state_flags = pedestrian,
+            actor_facts = { roles = { pedestrian = true } },
             source_actor_slot = source_order + 3,
             source_actor_list_offset = 0x172D1C,
             source_actor_source_order = source_order,
@@ -575,8 +617,7 @@ for _, region in ipairs(regional_pedestrian_routes) do
         if valid_route then
             local route_context = context({
                 entity_kind = E.SpriteType.PEDESTRIAN,
-                source_record_flags = E.ActorStatus.ACTIVE,
-                source_spawn_state_flags = pedestrian,
+                actor_facts = { roles = { pedestrian = true } },
                 source_actor_slot = source_order + 3,
                 source_actor_list_offset = region.list,
                 source_actor_source_order = source_order,
@@ -592,7 +633,7 @@ for _, region in ipairs(regional_pedestrian_routes) do
             end
 
             local pedestrian_state = state({
-                source_spawn_state_flags = pedestrian,
+                actor_facts = { roles = { pedestrian = true } },
             })
             local arrived_at = route.initial
             for step = 1, expected_points + 2 do
@@ -639,14 +680,14 @@ local function formation_case(actor_slot, leader_slot, leader_heading,
     local formation_context = context({
         controlled_runner_slot = leader_slot,
         source_actor_slot = actor_slot,
-        source_behavior_flags = E.BehaviorFlag.ESCORT,
+        actor_facts = { behavior = { escort = true } },
         ai_target_candidates = {
             { id = "party.runner." .. leader_slot,
               source_record_slot = leader_slot,
               world_activity_actor = false,
               world_x = 8192, world_y = 9216,
               source_record_heading = leader_heading,
-              heading = 0, distance = 0, interaction_flags = 0 },
+              heading = 0, distance = 0, actor_facts = actor_facts() },
         },
     })
     formation_context.measure_destination = function(x, y)
@@ -657,7 +698,7 @@ local function formation_case(actor_slot, leader_slot, leader_heading,
             step_cost = E.AiTuning.ARRIVE_DIST + 1,
         }
     end
-    local follower = state()
+    local follower = state({ actor_facts = { behavior = { escort = true } } })
     local handled = R.think(follower, formation_context)
     check(handled and follower.ai_route_target_x == expected_x and
           follower.ai_route_target_y == expected_y and
@@ -691,14 +732,14 @@ local reverse_x, reverse_y
 local blocked_context = context({
     controlled_runner_slot = E.AiTuning.FOLLOW_FIRST_LEADER_SLOT,
     source_actor_slot = E.AiTuning.FOLLOW_FIRST_SLOT,
-    source_behavior_flags = E.BehaviorFlag.ESCORT,
+    actor_facts = { behavior = { escort = true } },
     ai_target_candidates = {
         { id = "party.runner." .. E.AiTuning.FOLLOW_FIRST_LEADER_SLOT,
           source_record_slot = E.AiTuning.FOLLOW_FIRST_LEADER_SLOT,
           world_activity_actor = false,
           world_x = 8192, world_y = 9216,
           source_record_heading = 0, heading = 0, distance = 0,
-          interaction_flags = 0 },
+          actor_facts = actor_facts() },
     },
 })
 blocked_context.measure_destination = function(x, y)
@@ -709,7 +750,7 @@ blocked_context.measure_destination = function(x, y)
         step_cost = E.AiTuning.ARRIVE_DIST + 1,
     }
 end
-s = state()
+s = state({ actor_facts = { behavior = { escort = true } } })
 R.think(s, blocked_context)
 check(collision_calls == 2 and reverse_x == 8351 and reverse_y == 9058 and
       s.ai_route_target_x == reverse_x and s.ai_route_target_y == reverse_y,
@@ -730,13 +771,15 @@ local function movement_fixture(dynamic_actor)
         dynamic_world_encounter_actor = dynamic_actor,
         entity_kind = dynamic_actor and E.SpriteType.CORP_GUARD
             or E.SpriteType.FIELD_RUNNER,
-        source_record_flags = E.ActorStatus.ACTIVE & ~E.ActorStatus.THINK,
-        source_spawn_state_flags = dynamic_actor and E.ActorFlag.HOSTILE
-            or E.ActorFlag.NONE,
-        source_behavior_flags = 0,
+        actor_facts = actor_facts({
+            lifecycle = { active = true, thinking_enabled = false },
+            roles = { hostile = dynamic_actor == true },
+        }),
+        movement_actor_facts = actor_facts({
+            lifecycle = { active = true, thinking_enabled = false },
+        }),
         source_projection_active = true,
         world_activity_active = false,
-        movement_entity_flags = E.ActorStatus.ACTIVE & ~E.ActorStatus.THINK,
         movement_services_available = true,
         movement_idle_selectors = walk_selector_offsets,
         movement_offsets = {
@@ -744,12 +787,20 @@ local function movement_fixture(dynamic_actor)
             { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 },
         },
         movement_state = {
-            event_flags = 0,
-            collision_flags = 0,
-            movement_flags = 0,
+            substate_update = "unchanged",
+            cardinal_direction = 0,
+            mark_reset_after_block = false,
+            mark_directional_fallback = false,
+            clear_collision_recovery = false,
+            clear_pending_event = false,
             position_x = 0x4000,
             position_y = 0x4000,
-            route_flags = 0,
+            route_facts = {
+                route_clear = false, path_active = false,
+                restart_steering = false, wall_following = false,
+                in_target_band = false, route_transition = false,
+                fleeing = false, escort = false,
+            },
             route_status = 0,
         },
     }
@@ -789,9 +840,8 @@ movement_heading_case(0xF000, 0, false,
 local route_actor_context = movement_fixture(false)
 route_actor_context.entity_kind = E.SpriteType.CORP_GUARD
 route_actor_context.source_actor_has_waypoint_data = true
-route_actor_context.source_record_flags = E.ActorStatus.ACTIVE | 0x04
-route_actor_context.movement_entity_flags = E.ActorStatus.ACTIVE | 0x04
-route_actor_context.source_spawn_state_flags = E.ActorFlag.REINFORCEMENT
+route_actor_context.actor_facts.roles.reinforcement = true
+route_actor_context.movement_actor_facts.lifecycle.active = true
 route_actor_context.combatant = { command_attribute_78 = 19 }
 local route_actor_state = {
     movement_heading = 0xF000,
@@ -819,9 +869,8 @@ for _, speed_case in ipairs(regional_pedestrian_speed_cases) do
     local speed_context = movement_fixture(false)
     speed_context.entity_kind = E.SpriteType.PEDESTRIAN
     speed_context.source_actor_has_waypoint_data = true
-    speed_context.source_record_flags = E.ActorStatus.ACTIVE | 0x04
-    speed_context.movement_entity_flags = E.ActorStatus.ACTIVE | 0x04
-    speed_context.source_spawn_state_flags = pedestrian
+    speed_context.actor_facts.roles.pedestrian = true
+    speed_context.movement_actor_facts.lifecycle.active = true
     speed_context.combatant = { command_attribute_78 = 1 }
     local speed_state = {
         movement_heading = 0x4000,
@@ -855,8 +904,7 @@ local heartbeat_target = {
     id = "party.runner.0",
     world_activity_actor = false,
     projected_y_nonzero = true,
-    service_flags = E.ActorStatus.ACTIVE,
-    interaction_flags = 0,
+    actor_facts = actor_facts(),
     heading = 0xF000,
     distance = E.AiTuning.HELL_HOUND_PURSUIT_RANGE,
 }

@@ -21,6 +21,40 @@ namespace shadowrun::ghidra_conversion::qt_runtime::field_scene_detail {
 inline constexpr std::uint16_t kInitialFieldSceneReference = 2U;
 inline constexpr std::uint8_t kFieldModalReturnTransitionFrames = 60U;
 
+// +0x9E actor roles cross into Lua as named facts. The source byte is decoded
+// and merged only where the native live actor record enters or leaves scripts.
+inline scripting::ScriptActorRoleFacts actor_roles_from_source_byte(
+    const std::uint8_t flags) {
+    return {
+        (flags & 0x01U) != 0U,
+        (flags & 0x02U) != 0U,
+        (flags & 0x04U) != 0U,
+        (flags & 0x08U) != 0U,
+        (flags & 0x10U) != 0U,
+        (flags & 0x20U) != 0U,
+        (flags & 0x40U) != 0U,
+    };
+}
+
+inline std::uint8_t merge_actor_role_facts(
+    const std::uint8_t original,
+    const scripting::ScriptActorRoleFacts& roles) {
+    auto result = static_cast<std::uint8_t>(original & 0x80U);
+    const auto set = [&result](const bool enabled, const std::uint8_t bit) {
+        if (enabled) {
+            result = static_cast<std::uint8_t>(result | bit);
+        }
+    };
+    set(roles.spotted, 0x01U);
+    set(roles.reinforcement, 0x02U);
+    set(roles.despawn_offscreen, 0x04U);
+    set(roles.quest, 0x08U);
+    set(roles.runner, 0x10U);
+    set(roles.pedestrian, 0x20U);
+    set(roles.hostile, 0x40U);
+    return result;
+}
+
 inline constexpr std::string_view kFieldHudAlias = "field.hud.background";
 // ROM 0x39F2: the active runner's 6x8 frame block (0x6AADE), decoded at
 // slot 0's window address 0xF144 (x 272, y 16) [C].

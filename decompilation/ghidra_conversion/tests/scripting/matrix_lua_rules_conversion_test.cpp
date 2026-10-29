@@ -882,7 +882,14 @@ eq(MatrixText.from_rom(Actions.TEXT.ERASED),
 local crash_run = { state = -1, objective = -1, value = 0, size = 0,
     fc28 = 1, fc1c = 0 }
 local crash_field = { alarm = true, security_off = false, maglocks_off = false }
-local alarm_actors = { { flags9e = 0x02 }, { flags9e = 0x04 } }
+local alarm_actors = {
+    { actor_facts = { roles = { spotted = false, reinforcement = true,
+        despawn_offscreen = false, quest = false, runner = false,
+        pedestrian = false, hostile = false } } },
+    { actor_facts = { roles = { spotted = false, reinforcement = false,
+        despawn_offscreen = true, quest = false, runner = false,
+        pedestrian = false, hostile = false } } },
+}
 local crash_result = Actions.crash_system(crash_run, crash_field, alarm_actors)
 eq(crash_run.state, 1, "Crash System completes a negative state and objective")
 eq(crash_run.fc28, 0, "Crash System clears the completion bit")
@@ -890,8 +897,10 @@ eq(crash_run.fc1c, 0x80, "Crash System sets the run-complete flag")
 eq(crash_field.alarm, false, "Crash System turns the alarm off")
 eq(crash_field.security_off, true, "Crash System disables security")
 eq(crash_field.maglocks_off, true, "Crash System disengages maglocks")
-eq(alarm_actors[1].flags9e, 0x06, "alarm-off arms actors whose +0x9E bit 1 was set")
-eq(alarm_actors[2].flags9e, 0x04, "alarm-off preserves unrelated actor flags")
+eq(alarm_actors[1].actor_facts.roles.despawn_offscreen, true,
+    "alarm-off marks reinforcement actors for despawn")
+eq(alarm_actors[2].actor_facts.roles.despawn_offscreen, true,
+    "alarm-off preserves an unrelated despawn role")
 eq(crash_result.step, 61, "Crash System wait uses D5=$3C plus the DBF pass")
 eq(crash_result.stop_sfx, 0x30, "Crash System stops the source alarm effect")
 local partial_run = { state = -1, objective = 0, fc28 = 1, fc1c = 0 }
@@ -902,12 +911,16 @@ local absent_run_result = Actions.crash_system(nil, {})
 eq(absent_run_result.logout, true, "Crash System handles an unknown run without inventing one")
 
 local class_27_field = { alarm = true }
-local class_27_actors = { { flags9e = 0x02 } }
+local class_27_actors = { { actor_facts = { roles = {
+    spotted = false, reinforcement = true, despawn_offscreen = false,
+    quest = false, runner = false, pedestrian = false, hostile = false,
+} } } }
 local class_27_result = Actions.turn_off_node(
     { class = 0x27 }, class_27_field, class_27_actors)
 eq(class_27_field.alarm, false, "class 0x27 turns off the alarm")
 eq(class_27_field.security_off, true, "class 0x27 disables building security")
-eq(class_27_actors[1].flags9e, 0x06, "class 0x27 applies alarm actor flags")
+eq(class_27_actors[1].actor_facts.roles.despawn_offscreen, true,
+    "class 0x27 marks alarm responders for despawn")
 eq(class_27_result.stop_sfx, 0x30, "class 0x27 stops the alarm sound")
 eq(class_27_result.text, Actions.TEXT.OFFLINE, "class 0x27 uses ROM offline text")
 local class_28_field = { alarm = true }

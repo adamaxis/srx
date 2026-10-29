@@ -350,8 +350,10 @@ void FieldSceneRuntime::advance_field_alarm(const bool direct_raise,
             slot > static_cast<std::uint16_t>(FieldWorldActorSlot::slot_9)) {
             continue;
         }
-        input.actors.push_back(scripting::ScriptFieldAlarmActorFlags{
-            actor.actor_instance_id, actor.source_spawn_state_flags});
+        input.actors.push_back(scripting::ScriptFieldAlarmActorFacts{
+            actor.actor_instance_id,
+            field_scene_detail::actor_roles_from_source_byte(
+                actor.source_spawn_state_flags)});
     }
 
     auto result = game_scripts_.evaluate_field_alarm(input);
@@ -393,8 +395,9 @@ void FieldSceneRuntime::apply_field_alarm_result(
                     candidate.actor_instance_id == source.actor_id;
             });
         if (actor != field_default_actors_.end()) {
-            // ROM +0x9E is carried as the typed actor spawn-state flags. [C]
-            actor->source_spawn_state_flags = source.flags_9e;
+            actor->source_spawn_state_flags =
+                field_scene_detail::merge_actor_role_facts(
+                    actor->source_spawn_state_flags, source.roles);
         }
     }
     if (result.sound_start.has_value() && source_audio_event_callback_) {
@@ -419,8 +422,7 @@ void FieldSceneRuntime::apply_field_alarm_result(
     if (!result.spawn_reinforcements) {
         return;
     }
-    if (!result.reinforcement_list_address.has_value() ||
-        !result.reinforcement_flag.has_value()) {
+    if (!result.reinforcement_list_address.has_value()) {
         source_boundary("field.alarm.reinforcement_data_unresolved");
         return;
     }
@@ -441,8 +443,12 @@ void FieldSceneRuntime::apply_field_alarm_result(
         return;
     }
     for (auto& actor : *actors) {
-        actor.source_spawn_state_flags = static_cast<std::uint8_t>(
-            actor.source_spawn_state_flags | *result.reinforcement_flag);
+        auto roles = field_scene_detail::actor_roles_from_source_byte(
+            actor.source_spawn_state_flags);
+        roles.reinforcement = true;
+        actor.source_spawn_state_flags =
+            field_scene_detail::merge_actor_role_facts(
+                actor.source_spawn_state_flags, roles);
     }
     pending_world_activity_script_actor_scene_ = scene_reference;
     pending_world_activity_script_actors_ = std::move(*actors);

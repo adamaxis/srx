@@ -30,6 +30,382 @@ namespace {
 // E.ActorStatus.DOWN (0x10): actor record +0x10 bit 4, set at 0xB356 [C].
 constexpr std::uint8_t kActorStatusDown = 0x10U;
 
+// The live field model still meets ROM records at the host boundary, but Lua
+// receives the meaning of these bits as named facts. Unknown bits remain in
+// the native record and are preserved when a script result is merged back.
+struct ActorLifecycleFacts {
+    bool active = false;
+    bool thinking_enabled = false;
+    bool ai_runner = false;
+    bool downed = false;
+    bool group_leader = false;
+    bool dead = false;
+};
+
+struct ActorInteractionFacts {
+    bool projectile = false;
+    bool proximity_interaction_pending = false; // [H] 0xAA88 consumes it.
+    bool use_collision_heading = false; // [H] 0xB6BE selects +0x36.
+    bool collision_recovery_active = false; // [H] 0x14E0A selects recovery.
+    bool action_hook_pending = false; // [H] 0xA926 calls the actor hook.
+    bool defense_difficulty_reduction = false;
+    bool breathing_out = false;
+    bool unseen = false;
+    bool no_coverage_difficulty_bonus = false;
+};
+
+struct ActorBehaviorFacts {
+    bool route_clear = false; // [H] source bit value is known; use is not.
+    bool path_active = false;
+    bool restart_steering = false;
+    bool wall_following = false;
+    bool in_target_band = false;
+    bool route_transition = false; // [H] source bit value is known; use is not.
+    bool fleeing = false;
+    bool escort = false;
+};
+
+using ActorRoleFacts = ScriptActorRoleFacts;
+
+struct ActorFacts {
+    ActorLifecycleFacts lifecycle;
+    ActorInteractionFacts interaction;
+    ActorBehaviorFacts behavior;
+    ActorRoleFacts roles;
+};
+
+ActorRoleFacts actor_roles_from_source(const std::uint8_t roles) {
+    return {
+        (roles & 0x01U) != 0U,
+        (roles & 0x02U) != 0U,
+        (roles & 0x04U) != 0U,
+        (roles & 0x08U) != 0U,
+        (roles & 0x10U) != 0U,
+        (roles & 0x20U) != 0U,
+        (roles & 0x40U) != 0U,
+    };
+}
+
+template <typename Facts>
+void push_named_boolean_group(
+    lua_State* state, const Facts& facts,
+    const std::initializer_list<std::pair<const char*, bool Facts::*>>& fields) {
+    lua_createtable(state, 0, static_cast<int>(fields.size()));
+    const auto table_index = lua_absindex(state, -1);
+    for (const auto& [name, member] : fields) {
+        lua_pushboolean(state, facts.*member);
+        lua_setfield(state, table_index, name);
+    }
+}
+
+void push_actor_facts(lua_State* state, const std::uint8_t lifecycle,
+                      const std::uint8_t interaction,
+                      const std::uint8_t behavior,
+                      const std::uint8_t roles) {
+    ActorFacts facts{
+        { (lifecycle & 0x01U) != 0U, (lifecycle & 0x02U) != 0U,
+          (lifecycle & 0x08U) != 0U, (lifecycle & 0x10U) != 0U,
+          (lifecycle & 0x20U) != 0U, (lifecycle & 0x40U) != 0U },
+        { (interaction & 0x01U) != 0U, (interaction & 0x02U) != 0U,
+          (interaction & 0x04U) != 0U, (interaction & 0x08U) != 0U,
+          (interaction & 0x10U) != 0U, (interaction & 0x20U) != 0U,
+          (interaction & 0x40U) != 0U, (interaction & 0x80U) != 0U,
+          (interaction & 0x80U) != 0U },
+        { (behavior & 0x01U) != 0U, (behavior & 0x02U) != 0U,
+          (behavior & 0x04U) != 0U, (behavior & 0x08U) != 0U,
+          (behavior & 0x10U) != 0U, (behavior & 0x20U) != 0U,
+          (behavior & 0x40U) != 0U, (behavior & 0x80U) != 0U },
+        actor_roles_from_source(roles)
+    };
+    lua_createtable(state, 0, 4);
+    const auto table_index = lua_absindex(state, -1);
+    push_named_boolean_group(state, facts.lifecycle,
+        {{"active", &ActorLifecycleFacts::active},
+         {"thinking_enabled", &ActorLifecycleFacts::thinking_enabled},
+         {"ai_runner", &ActorLifecycleFacts::ai_runner},
+         {"downed", &ActorLifecycleFacts::downed},
+         {"group_leader", &ActorLifecycleFacts::group_leader},
+         {"dead", &ActorLifecycleFacts::dead}});
+    lua_setfield(state, table_index, "lifecycle");
+    push_named_boolean_group(state, facts.interaction,
+        {{"projectile", &ActorInteractionFacts::projectile},
+         {"proximity_interaction_pending",
+          &ActorInteractionFacts::proximity_interaction_pending},
+         {"use_collision_heading",
+          &ActorInteractionFacts::use_collision_heading},
+         {"collision_recovery_active",
+          &ActorInteractionFacts::collision_recovery_active},
+         {"action_hook_pending", &ActorInteractionFacts::action_hook_pending},
+         {"defense_difficulty_reduction",
+          &ActorInteractionFacts::defense_difficulty_reduction},
+         {"breathing_out", &ActorInteractionFacts::breathing_out},
+         {"unseen", &ActorInteractionFacts::unseen},
+         {"no_coverage_difficulty_bonus",
+          &ActorInteractionFacts::no_coverage_difficulty_bonus}});
+    lua_setfield(state, table_index, "interaction");
+    push_named_boolean_group(state, facts.behavior,
+        {{"route_clear", &ActorBehaviorFacts::route_clear},
+         {"path_active", &ActorBehaviorFacts::path_active},
+         {"restart_steering", &ActorBehaviorFacts::restart_steering},
+         {"wall_following", &ActorBehaviorFacts::wall_following},
+         {"in_target_band", &ActorBehaviorFacts::in_target_band},
+         {"route_transition", &ActorBehaviorFacts::route_transition},
+         {"fleeing", &ActorBehaviorFacts::fleeing},
+         {"escort", &ActorBehaviorFacts::escort}});
+    lua_setfield(state, table_index, "behavior");
+    push_named_boolean_group(state, facts.roles,
+        {{"spotted", &ActorRoleFacts::spotted},
+         {"reinforcement", &ActorRoleFacts::reinforcement},
+         {"despawn_offscreen", &ActorRoleFacts::despawn_offscreen},
+         {"quest", &ActorRoleFacts::quest}, {"runner", &ActorRoleFacts::runner},
+         {"pedestrian", &ActorRoleFacts::pedestrian},
+         {"hostile", &ActorRoleFacts::hostile}});
+    lua_setfield(state, table_index, "roles");
+}
+
+void push_actor_behavior_facts(lua_State* state,
+                               const std::uint8_t behavior) {
+    const ActorBehaviorFacts facts{
+        (behavior & 0x01U) != 0U, (behavior & 0x02U) != 0U,
+        (behavior & 0x04U) != 0U, (behavior & 0x08U) != 0U,
+        (behavior & 0x10U) != 0U, (behavior & 0x20U) != 0U,
+        (behavior & 0x40U) != 0U, (behavior & 0x80U) != 0U};
+    push_named_boolean_group(state, facts,
+        {{"route_clear", &ActorBehaviorFacts::route_clear},
+         {"path_active", &ActorBehaviorFacts::path_active},
+         {"restart_steering", &ActorBehaviorFacts::restart_steering},
+         {"wall_following", &ActorBehaviorFacts::wall_following},
+         {"in_target_band", &ActorBehaviorFacts::in_target_band},
+         {"route_transition", &ActorBehaviorFacts::route_transition},
+         {"fleeing", &ActorBehaviorFacts::fleeing},
+         {"escort", &ActorBehaviorFacts::escort}});
+}
+
+bool read_actor_behavior_facts(lua_State* state, const int table_index,
+                               const char* field_name,
+                               ActorBehaviorFacts& facts) {
+    lua_getfield(state, table_index, field_name);
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        return false;
+    }
+    const auto facts_index = lua_absindex(state, -1);
+    bool valid = true;
+    for (const auto& [name, member] : {
+             std::pair<const char*, bool ActorBehaviorFacts::*> {
+                 "route_clear", &ActorBehaviorFacts::route_clear},
+             {"path_active", &ActorBehaviorFacts::path_active},
+             {"restart_steering", &ActorBehaviorFacts::restart_steering},
+             {"wall_following", &ActorBehaviorFacts::wall_following},
+             {"in_target_band", &ActorBehaviorFacts::in_target_band},
+             {"route_transition", &ActorBehaviorFacts::route_transition},
+             {"fleeing", &ActorBehaviorFacts::fleeing},
+             {"escort", &ActorBehaviorFacts::escort}}) {
+        lua_getfield(state, facts_index, name);
+        if (!lua_isboolean(state, -1)) {
+            lua_pop(state, 1);
+            valid = false;
+            break;
+        }
+        facts.*member = lua_toboolean(state, -1) != 0;
+        lua_pop(state, 1);
+    }
+    lua_pop(state, 1);
+    return valid;
+}
+
+template <typename Facts>
+bool read_named_boolean_group(
+    lua_State* state, const int table_index, const char* group_name,
+    Facts& facts,
+    const std::initializer_list<std::pair<const char*, bool Facts::*>>& fields) {
+    lua_getfield(state, table_index, group_name);
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        return false;
+    }
+    const auto group_index = lua_absindex(state, -1);
+    for (const auto& [name, member] : fields) {
+        lua_getfield(state, group_index, name);
+        if (!lua_isboolean(state, -1)) {
+            lua_pop(state, 2);
+            return false;
+        }
+        facts.*member = lua_toboolean(state, -1) != 0;
+        lua_pop(state, 1);
+    }
+    lua_pop(state, 1);
+    return true;
+}
+
+bool read_actor_facts(lua_State* state, const int table_index,
+                      ActorFacts& facts) {
+    lua_getfield(state, table_index, "actor_facts");
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        return false;
+    }
+    const auto facts_index = lua_absindex(state, -1);
+    const bool valid =
+        read_named_boolean_group(state, facts_index, "lifecycle", facts.lifecycle,
+            {{"active", &ActorLifecycleFacts::active},
+             {"thinking_enabled", &ActorLifecycleFacts::thinking_enabled},
+             {"ai_runner", &ActorLifecycleFacts::ai_runner},
+             {"downed", &ActorLifecycleFacts::downed},
+             {"group_leader", &ActorLifecycleFacts::group_leader},
+             {"dead", &ActorLifecycleFacts::dead}}) &&
+        read_named_boolean_group(state, facts_index, "interaction", facts.interaction,
+            {{"projectile", &ActorInteractionFacts::projectile},
+             {"proximity_interaction_pending",
+              &ActorInteractionFacts::proximity_interaction_pending},
+             {"use_collision_heading",
+              &ActorInteractionFacts::use_collision_heading},
+             {"collision_recovery_active",
+              &ActorInteractionFacts::collision_recovery_active},
+             {"action_hook_pending",
+              &ActorInteractionFacts::action_hook_pending},
+             {"defense_difficulty_reduction",
+              &ActorInteractionFacts::defense_difficulty_reduction},
+             {"breathing_out", &ActorInteractionFacts::breathing_out},
+             {"unseen", &ActorInteractionFacts::unseen},
+             {"no_coverage_difficulty_bonus",
+              &ActorInteractionFacts::no_coverage_difficulty_bonus}}) &&
+        read_named_boolean_group(state, facts_index, "behavior", facts.behavior,
+            {{"route_clear", &ActorBehaviorFacts::route_clear},
+             {"path_active", &ActorBehaviorFacts::path_active},
+             {"restart_steering", &ActorBehaviorFacts::restart_steering},
+             {"wall_following", &ActorBehaviorFacts::wall_following},
+             {"in_target_band", &ActorBehaviorFacts::in_target_band},
+             {"route_transition", &ActorBehaviorFacts::route_transition},
+             {"fleeing", &ActorBehaviorFacts::fleeing},
+             {"escort", &ActorBehaviorFacts::escort}}) &&
+        read_named_boolean_group(state, facts_index, "roles", facts.roles,
+            {{"spotted", &ActorRoleFacts::spotted},
+             {"reinforcement", &ActorRoleFacts::reinforcement},
+             {"despawn_offscreen", &ActorRoleFacts::despawn_offscreen},
+             {"quest", &ActorRoleFacts::quest}, {"runner", &ActorRoleFacts::runner},
+             {"pedestrian", &ActorRoleFacts::pedestrian},
+             {"hostile", &ActorRoleFacts::hostile}});
+    lua_pop(state, 1);
+    return valid;
+}
+
+bool read_actor_role_facts(lua_State* state, const int table_index,
+                           ActorRoleFacts& facts) {
+    lua_getfield(state, table_index, "actor_facts");
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        return false;
+    }
+    const auto facts_index = lua_absindex(state, -1);
+    const bool valid = read_named_boolean_group(
+        state, facts_index, "roles", facts,
+        {{"spotted", &ActorRoleFacts::spotted},
+         {"reinforcement", &ActorRoleFacts::reinforcement},
+         {"despawn_offscreen", &ActorRoleFacts::despawn_offscreen},
+         {"quest", &ActorRoleFacts::quest}, {"runner", &ActorRoleFacts::runner},
+         {"pedestrian", &ActorRoleFacts::pedestrian},
+         {"hostile", &ActorRoleFacts::hostile}});
+    lua_pop(state, 1);
+    return valid;
+}
+
+bool read_actor_interaction_facts(lua_State* state, const int table_index,
+                                  ActorInteractionFacts& facts) {
+    lua_getfield(state, table_index, "actor_facts");
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        return false;
+    }
+    const auto facts_index = lua_absindex(state, -1);
+    const bool valid = read_named_boolean_group(
+        state, facts_index, "interaction", facts,
+        {{"projectile", &ActorInteractionFacts::projectile},
+         {"proximity_interaction_pending",
+          &ActorInteractionFacts::proximity_interaction_pending},
+         {"use_collision_heading",
+          &ActorInteractionFacts::use_collision_heading},
+         {"collision_recovery_active",
+          &ActorInteractionFacts::collision_recovery_active},
+         {"action_hook_pending", &ActorInteractionFacts::action_hook_pending},
+         {"defense_difficulty_reduction",
+          &ActorInteractionFacts::defense_difficulty_reduction},
+         {"breathing_out", &ActorInteractionFacts::breathing_out},
+         {"unseen", &ActorInteractionFacts::unseen},
+         {"no_coverage_difficulty_bonus",
+          &ActorInteractionFacts::no_coverage_difficulty_bonus}});
+    lua_pop(state, 1);
+    return valid;
+}
+
+template <typename Facts>
+std::uint8_t merge_known_actor_bits(
+    const std::uint8_t original, const std::uint8_t known_mask,
+    const Facts& facts,
+    const std::initializer_list<std::pair<bool Facts::*, std::uint8_t>>& fields) {
+    auto result = static_cast<std::uint8_t>(original &
+        static_cast<std::uint8_t>(~known_mask));
+    for (const auto& [member, bit] : fields) {
+        if (facts.*member) {
+            result = static_cast<std::uint8_t>(result | bit);
+        }
+    }
+    return result;
+}
+
+std::uint8_t lifecycle_to_source(const ActorLifecycleFacts& facts,
+                                const std::uint8_t original) {
+    return merge_known_actor_bits(original, 0x7BU, facts,
+        {{&ActorLifecycleFacts::active, 0x01U},
+         {&ActorLifecycleFacts::thinking_enabled, 0x02U},
+         {&ActorLifecycleFacts::ai_runner, 0x08U},
+         {&ActorLifecycleFacts::downed, 0x10U},
+         {&ActorLifecycleFacts::group_leader, 0x20U},
+         {&ActorLifecycleFacts::dead, 0x40U}});
+}
+
+std::uint8_t behavior_to_source(const ActorBehaviorFacts& facts,
+                                const std::uint8_t original) {
+    return merge_known_actor_bits(original, 0xFFU, facts,
+        {{&ActorBehaviorFacts::route_clear, 0x01U},
+         {&ActorBehaviorFacts::path_active, 0x02U},
+         {&ActorBehaviorFacts::restart_steering, 0x04U},
+         {&ActorBehaviorFacts::wall_following, 0x08U},
+         {&ActorBehaviorFacts::in_target_band, 0x10U},
+         {&ActorBehaviorFacts::route_transition, 0x20U},
+         {&ActorBehaviorFacts::fleeing, 0x40U},
+         {&ActorBehaviorFacts::escort, 0x80U}});
+}
+
+std::uint8_t roles_to_source(const ActorRoleFacts& facts,
+                             const std::uint8_t original) {
+    return merge_known_actor_bits(original, 0x7FU, facts,
+        {{&ActorRoleFacts::spotted, 0x01U},
+         {&ActorRoleFacts::reinforcement, 0x02U},
+         {&ActorRoleFacts::despawn_offscreen, 0x04U},
+         {&ActorRoleFacts::quest, 0x08U}, {&ActorRoleFacts::runner, 0x10U},
+         {&ActorRoleFacts::pedestrian, 0x20U},
+         {&ActorRoleFacts::hostile, 0x40U}});
+}
+
+std::uint8_t interaction_to_source(const ActorInteractionFacts& facts) {
+    std::uint8_t result = 0U;
+    const auto set = [&result](const bool enabled, const std::uint8_t bit) {
+        if (enabled) {
+            result = static_cast<std::uint8_t>(result | bit);
+        }
+    };
+    set(facts.projectile, 0x01U);
+    set(facts.proximity_interaction_pending, 0x02U);
+    set(facts.use_collision_heading, 0x04U);
+    set(facts.collision_recovery_active, 0x08U);
+    set(facts.action_hook_pending, 0x10U);
+    set(facts.defense_difficulty_reduction, 0x20U);
+    set(facts.breathing_out, 0x40U);
+    set(facts.unseen || facts.no_coverage_difficulty_bonus, 0x80U);
+    return result;
+}
+
 constexpr std::size_t kMaximumScriptModules = 128U;
 constexpr std::size_t kMaximumMapEventRules = 512U;
 // The command overview has seven source rows; Pocket Secretary's extended
@@ -3779,7 +4155,7 @@ struct GameScriptRuntime::Impl {
                     static_cast<std::int16_t>(lua_tointeger(lua, 3)),
                     static_cast<std::uint8_t>(direction_slot));
             lua_pushboolean(lua, recovery.movement_recovered);
-            lua_pushinteger(lua, recovery.route_flags);
+            lua_pushboolean(lua, (recovery.route_flags & 0x20U) != 0U);
             return 2;
         } catch (...) {
             return luaL_error(
@@ -3819,23 +4195,20 @@ struct GameScriptRuntime::Impl {
         auto* self = from_upvalue(lua);
         std::uint32_t x = 0U;
         std::uint32_t y = 0U;
-        std::uint32_t source_flags = 0U;
         if (self == nullptr || self->active_actor_context == nullptr ||
             !self->active_actor_context->projectile_movement.has_value() ||
             !self->active_actor_context->projectile_collision_search ||
             !read_integer(lua, 1, 0xFFFFU, x) ||
-            !read_integer(lua, 2, 0xFFFFU, y) ||
-            !read_integer(lua, 3, 0xFFU, source_flags)) {
+            !read_integer(lua, 2, 0xFFFFU, y)) {
             return luaL_error(
                 lua,
-                "game.movement.projectile_collision expects x/y/flags during a projectile behavior heartbeat");
+                "game.movement.projectile_collision expects x/y during a projectile behavior heartbeat");
         }
         try {
             const auto result =
                 self->active_actor_context->projectile_collision_search(
                     static_cast<std::uint16_t>(x),
-                    static_cast<std::uint16_t>(y),
-                    static_cast<std::uint8_t>(source_flags));
+                    static_cast<std::uint16_t>(y));
             lua_pushboolean(lua, result.source_carry);
             lua_pushboolean(lua, result.source_position_updated);
             lua_pushinteger(lua, result.source_x);
@@ -6593,7 +6966,7 @@ GameScriptRuntime::conditional_actor_candidates_for_scene(
         std::uint32_t world_y = 0U;
         std::uint32_t heading_word = 0U;
         std::uint32_t direction = 0U;
-        std::uint32_t source_spawn_state_flags = 0U;
+        ActorRoleFacts actor_roles;
         const bool valid =
             read_field_integer(state, row_index, "scene", 55U, row_scene) &&
             row_scene == scene_id &&
@@ -6619,8 +6992,7 @@ GameScriptRuntime::conditional_actor_candidates_for_scene(
                                heading_word) &&
             read_field_integer(state, row_index, "direction", 7U,
                                direction) &&
-            read_field_integer(state, row_index, "source_spawn_state_flags",
-                               0xFFU, source_spawn_state_flags) &&
+            read_actor_role_facts(state, row_index, actor_roles) &&
             read_field_text(state, row_index, "selection_group",
                             candidate.selection_group, 128U) &&
             read_field_text(state, row_index, "activation_gate",
@@ -6640,8 +7012,7 @@ GameScriptRuntime::conditional_actor_candidates_for_scene(
         candidate.world_y = static_cast<std::uint16_t>(world_y);
         candidate.heading_word = static_cast<std::uint16_t>(heading_word);
         candidate.direction = static_cast<std::uint8_t>(direction);
-        candidate.source_spawn_state_flags =
-            static_cast<std::uint8_t>(source_spawn_state_flags);
+        candidate.source_spawn_state_flags = roles_to_source(actor_roles, 0U);
         previous_choice = choice;
         candidates.push_back(std::move(candidate));
         lua_pop(state, 1);
@@ -6975,8 +7346,8 @@ GameScriptRuntime::world_activity_actors_for_selector(
         std::uint32_t world_x = 0U;
         std::uint32_t world_y = 0U;
         std::uint32_t heading = 0U;
-        std::uint32_t source_spawn_state_flags = 0U;
-        std::uint32_t source_interaction_flags = 0U;
+        ActorRoleFacts actor_roles;
+        ActorInteractionFacts actor_interaction;
         std::uint32_t physical_meter = 0U;
         std::uint32_t delay_primary_attribute = 0U;
         std::uint32_t delay_secondary_attribute = 0U;
@@ -7043,12 +7414,9 @@ GameScriptRuntime::world_activity_actors_for_selector(
                                heading) &&
             read_field_text(state, row_index, "ordered_overrides",
                             actor.ordered_overrides, 512U) &&
-            read_field_integer(state, row_index,
-                               "source_spawn_state_flags", 0xFFU,
-                               source_spawn_state_flags) &&
-            read_field_integer(state, row_index,
-                               "source_interaction_flags", 0xFFU,
-                               source_interaction_flags) &&
+            read_actor_role_facts(state, row_index, actor_roles) &&
+            read_actor_interaction_facts(state, row_index,
+                                         actor_interaction) &&
             read_field_integer(state, row_index, "physical_meter", 0xFFU,
                                physical_meter) &&
             read_field_integer(state, row_index,
@@ -7095,10 +7463,9 @@ GameScriptRuntime::world_activity_actors_for_selector(
         actor.world_x = static_cast<std::uint16_t>(world_x);
         actor.world_y = static_cast<std::uint16_t>(world_y);
         actor.heading = static_cast<std::uint16_t>(heading);
-        actor.source_spawn_state_flags =
-            static_cast<std::uint8_t>(source_spawn_state_flags);
+        actor.source_spawn_state_flags = roles_to_source(actor_roles, 0U);
         actor.source_interaction_flags =
-            static_cast<std::uint8_t>(source_interaction_flags);
+            interaction_to_source(actor_interaction);
         actor.physical_meter = static_cast<std::uint8_t>(physical_meter);
         actor.delay_primary_attribute =
             static_cast<std::uint8_t>(delay_primary_attribute);
@@ -7135,8 +7502,11 @@ GameScriptRuntime::world_activity_actors_for_selector(
                 return true;
             };
         auto& combatant = actor.combatant;
+        ActorInteractionFacts combatant_interaction;
         std::uint8_t race_or_state = 0U;
         const bool combatant_scalars_valid =
+            read_actor_interaction_facts(state, combatant_index,
+                                         combatant_interaction) &&
             read_combatant_byte("physical_meter", combatant.physical_meter) &&
             read_combatant_byte("mental_meter", combatant.mental_meter) &&
             read_combatant_word("cyberware_flags", combatant.cyberware_flags) &&
@@ -7198,7 +7568,8 @@ GameScriptRuntime::world_activity_actors_for_selector(
             !read_combatant_array("action_skills", combatant.action_skills)) {
             return fail("world-content actor combat arrays are invalid");
         }
-        combatant.interaction_flags = actor.source_interaction_flags;
+        combatant.interaction_flags =
+            interaction_to_source(combatant_interaction);
         combatant.equipped_action_code = actor.action_code;
         actors.push_back(std::move(actor));
         lua_pop(state, 1);
@@ -7414,8 +7785,8 @@ GameScriptRuntime::resolve_field_encounter_impl(
             std::uint32_t source_action_slot = 0U;
             std::uint32_t source_action_ammo = 0U;
             std::uint32_t source_action_counter = 0U;
-            std::uint32_t source_spawn_state_flags = 0U;
-            std::uint32_t source_interaction_flags = 0U;
+            ActorRoleFacts actor_roles;
+            ActorInteractionFacts actor_interaction;
             std::uint32_t physical_meter = 0U;
             std::uint32_t palette_line = 0U;
             std::uint32_t tagged_template = 0U;
@@ -7455,12 +7826,9 @@ GameScriptRuntime::resolve_field_encounter_impl(
                 read_field_integer(state, actor_index,
                                    "source_action_counter", 255U,
                                    source_action_counter) &&
-                read_field_integer(state, actor_index,
-                                   "source_spawn_state_flags", 255U,
-                                   source_spawn_state_flags) &&
-                read_field_integer(state, actor_index,
-                                   "source_interaction_flags", 255U,
-                                   source_interaction_flags) &&
+                read_actor_role_facts(state, actor_index, actor_roles) &&
+                read_actor_interaction_facts(state, actor_index,
+                                             actor_interaction) &&
                 read_field_integer(state, actor_index, "physical_meter",
                                    255U, physical_meter) &&
                 read_field_integer(state, actor_index, "palette_line", 3U,
@@ -7505,9 +7873,10 @@ GameScriptRuntime::resolve_field_encounter_impl(
                 };
                 std::uint32_t cyberware_flags = 0U;
                 std::uint32_t profile_index = 0U;
+                ActorInteractionFacts combat_interaction;
                 bool valid_combatant =
-                    read_combat_byte("interaction_flags",
-                                     actor.combatant.interaction_flags) &&
+                    read_actor_interaction_facts(state, combat_index,
+                                                 combat_interaction) &&
                     read_combat_byte("physical_meter",
                                      actor.combatant.physical_meter) &&
                     read_combat_byte("mental_meter",
@@ -7547,6 +7916,8 @@ GameScriptRuntime::resolve_field_encounter_impl(
                                        "linked_action_profile_index",
                                        0xFFFFU, profile_index);
                 if (valid_combatant) {
+                    actor.combatant.interaction_flags =
+                        interaction_to_source(combat_interaction);
                     actor.combatant.race_or_state =
                         static_cast<std::int8_t>(signed_combat_value);
                     actor.combatant.cyberware_flags =
@@ -7639,10 +8010,9 @@ GameScriptRuntime::resolve_field_encounter_impl(
                 static_cast<std::uint8_t>(source_action_ammo);
             actor.source_action_counter =
                 static_cast<std::uint8_t>(source_action_counter);
-            actor.source_spawn_state_flags =
-                static_cast<std::uint8_t>(source_spawn_state_flags);
+            actor.source_spawn_state_flags = roles_to_source(actor_roles, 0U);
             actor.source_interaction_flags =
-                static_cast<std::uint8_t>(source_interaction_flags);
+                interaction_to_source(actor_interaction);
             actor.physical_meter =
                 static_cast<std::uint8_t>(physical_meter);
             actor.palette_line = static_cast<std::uint8_t>(palette_line);
@@ -8005,8 +8375,18 @@ GameScriptRuntime::evaluate_field_alarm(const ScriptFieldAlarmInput& input) {
         const auto actor_table = lua_absindex(state, -1);
         lua_pushlstring(state, actor.actor_id.data(), actor.actor_id.size());
         lua_setfield(state, actor_table, "actor_id");
-        lua_pushinteger(state, actor.flags_9e);
-        lua_setfield(state, actor_table, "flags9e");
+        lua_createtable(state, 0, 1);
+        const auto facts_table = lua_absindex(state, -1);
+        push_named_boolean_group(state, actor.roles,
+            {{"spotted", &ActorRoleFacts::spotted},
+             {"reinforcement", &ActorRoleFacts::reinforcement},
+             {"despawn_offscreen", &ActorRoleFacts::despawn_offscreen},
+             {"quest", &ActorRoleFacts::quest},
+             {"runner", &ActorRoleFacts::runner},
+             {"pedestrian", &ActorRoleFacts::pedestrian},
+             {"hostile", &ActorRoleFacts::hostile}});
+        lua_setfield(state, facts_table, "roles");
+        lua_setfield(state, actor_table, "actor_facts");
         lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
     }
     lua_setfield(state, input_table, "actors");
@@ -8088,15 +8468,6 @@ GameScriptRuntime::evaluate_field_alarm(const ScriptFieldAlarmInput& input) {
             result.reinforcement_list_address)) {
         return fail("field_alarm.tick returned an invalid actor list");
     }
-    std::optional<std::uint8_t> reinforcement_flag;
-    if (!read_optional_field_integer(
-            state, result_table, "reinforcement_flag",
-            static_cast<std::uint32_t>(srx::FieldAlarm::ACTOR_FLAGS_MAX),
-            reinforcement_flag)) {
-        return fail("field_alarm.tick returned an invalid actor flag");
-    }
-    result.reinforcement_flag = reinforcement_flag;
-
     lua_getfield(state, result_table, "actors");
     if (!lua_istable(state, -1) || lua_rawlen(state, -1) != input.actors.size()) {
         return fail("field_alarm.tick returned a mismatched actor list");
@@ -8111,16 +8482,14 @@ GameScriptRuntime::evaluate_field_alarm(const ScriptFieldAlarmInput& input) {
         }
         const auto actor_table = lua_absindex(state, -1);
         std::string actor_id;
-        std::uint32_t flags = 0U;
+        ActorRoleFacts roles;
         if (!read_field_string(state, actor_table, "actor_id", actor_id) ||
-            !read_field_integer(
-                state, actor_table, "flags9e",
-                static_cast<std::uint32_t>(srx::FieldAlarm::ACTOR_FLAGS_MAX),
-                flags) || actor_id != input.actors[index].actor_id) {
-            return fail("field_alarm.tick returned invalid actor flags");
+            !read_actor_role_facts(state, actor_table, roles) ||
+            actor_id != input.actors[index].actor_id) {
+            return fail("field_alarm.tick returned invalid actor facts");
         }
-        result.actors.push_back(ScriptFieldAlarmActorFlags{
-            std::move(actor_id), static_cast<std::uint8_t>(flags)});
+        result.actors.push_back(ScriptFieldAlarmActorFacts{
+            std::move(actor_id), roles});
         lua_pop(state, 1);
     }
     lua_settop(state, stack_base);
@@ -9245,8 +9614,11 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "source_world_y");
-    lua_pushinteger(state, context.source_record_flags);
-    lua_setfield(state, -2, "source_record_flags");
+    push_actor_facts(state, context.source_record_flags,
+                     context.source_interaction_flags,
+                     context.source_behavior_flags,
+                     context.source_spawn_state_flags);
+    lua_setfield(state, -2, "actor_facts");
     if (context.source_physical_meter.has_value()) {
         lua_pushinteger(state, *context.source_physical_meter);
     } else {
@@ -9259,10 +9631,6 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "source_actor_posture");
-    lua_pushinteger(state, context.source_interaction_flags);
-    lua_setfield(state, -2, "source_interaction_flags");
-    lua_pushinteger(state, context.source_behavior_flags);
-    lua_setfield(state, -2, "source_behavior_flags");
     lua_pushinteger(state, context.source_action_slot);
     lua_setfield(state, -2, "source_action_slot");
     lua_pushinteger(state, context.source_action_ammo);
@@ -9282,8 +9650,6 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "source_item_spawn_result");
-    lua_pushinteger(state, context.source_spawn_state_flags);
-    lua_setfield(state, -2, "source_spawn_state_flags");
     if (context.source_think_suppressed.has_value()) {
         lua_pushboolean(state, *context.source_think_suppressed ? 1 : 0);
     } else {
@@ -9359,8 +9725,9 @@ GameScriptRuntime::actor_heartbeat(
             lua_setfield(state, table_index, field);
         };
         set_integer("record_type", combatant.record_type);
-        set_integer("source_flags", combatant.source_flags);
-        set_integer("interaction_flags", combatant.interaction_flags);
+        push_actor_facts(state, combatant.source_flags,
+                         combatant.interaction_flags, 0U, 0U);
+        lua_setfield(state, table_index, "actor_facts");
         set_integer("cyberware_flags", combatant.cyberware_flags);
         set_integer("physical_meter", combatant.physical_meter);
         set_integer("mental_meter", combatant.mental_meter);
@@ -9517,14 +9884,11 @@ GameScriptRuntime::actor_heartbeat(
             lua_setfield(state, -2, "source_record_heading");
             lua_pushinteger(state, candidate.distance);
             lua_setfield(state, -2, "distance");
-            lua_pushinteger(state, candidate.service_flags);
-            lua_setfield(state, -2, "service_flags");
-            lua_pushinteger(state, candidate.interaction_flags);
-            lua_setfield(state, -2, "interaction_flags");
-            lua_pushinteger(state, candidate.behavior_flags);
-            lua_setfield(state, -2, "behavior_flags");
-            lua_pushinteger(state, candidate.spawn_state_flags);
-            lua_setfield(state, -2, "spawn_state_flags");
+            push_actor_facts(state, candidate.service_flags,
+                             candidate.interaction_flags,
+                             candidate.behavior_flags,
+                             candidate.spawn_state_flags);
+            lua_setfield(state, -2, "actor_facts");
             lua_pushboolean(state, candidate.projected_y_nonzero);
             lua_setfield(state, -2, "projected_y_nonzero");
             lua_pushboolean(state, candidate.world_activity_actor);
@@ -9664,10 +10028,12 @@ GameScriptRuntime::actor_heartbeat(
         lua_setfield(state, -2, "role");
         lua_pushboolean(state, movement.active);
         lua_setfield(state, -2, "active");
-        lua_pushinteger(state, movement.flags);
-        lua_setfield(state, -2, "flags");
-        lua_pushinteger(state, movement.record_flags);
-        lua_setfield(state, -2, "record_flags");
+        lua_pushboolean(state, movement.waiting_for_animation_end);
+        lua_setfield(state, -2, "waiting_for_animation_end");
+        lua_pushboolean(state, movement.impact_occurred);
+        lua_setfield(state, -2, "impact_occurred");
+        lua_pushboolean(state, movement.animation_finished);
+        lua_setfield(state, -2, "animation_finished");
         lua_pushinteger(state, movement.world_x);
         lua_setfield(state, -2, "world_x");
         lua_pushinteger(state, movement.world_y);
@@ -9688,8 +10054,16 @@ GameScriptRuntime::actor_heartbeat(
         lua_setfield(state, -2, "saved_position_y");
         lua_pushinteger(state, movement.action_result);
         lua_setfield(state, -2, "action_result");
-        lua_pushinteger(state, movement.animation_selector);
-        lua_setfield(state, -2, "animation_selector");
+        const char* animation_action = "unchanged";
+        if (movement.animation_action ==
+            ScriptActorProjectileAnimationAction::stop) {
+            animation_action = "stop";
+        } else if (movement.animation_action ==
+                   ScriptActorProjectileAnimationAction::restart) {
+            animation_action = "restart";
+        }
+        lua_pushstring(state, animation_action);
+        lua_setfield(state, -2, "animation_action");
         if (movement.hit_target_id.empty()) {
             lua_pushnil(state);
         } else {
@@ -9740,25 +10114,37 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "animation_heading");
     lua_pushinteger(state, context.movement_state.collision_context);
     lua_setfield(state, -2, "collision_context");
-    lua_pushinteger(state, context.movement_state.movement_substate);
-    lua_setfield(state, -2, "movement_substate");
+    const char* substate_update = "unchanged";
+    if (context.movement_state.substate_update ==
+        ScriptMovementSubstateUpdate::direct_translation) {
+        substate_update = "direct_translation";
+    } else if (context.movement_state.substate_update ==
+               ScriptMovementSubstateUpdate::cardinal_fallback) {
+        substate_update = "cardinal_fallback";
+    }
+    lua_pushstring(state, substate_update);
+    lua_setfield(state, -2, "substate_update");
+    lua_pushinteger(state, context.movement_state.cardinal_direction);
+    lua_setfield(state, -2, "cardinal_direction");
     lua_pushinteger(state, context.movement_state.route_status);
     lua_setfield(state, -2, "route_status");
-    lua_pushinteger(state, context.movement_state.route_flags);
-    lua_setfield(state, -2, "route_flags");
-    lua_pushinteger(state, context.movement_state.movement_flags);
-    lua_setfield(state, -2, "movement_flags");
-    lua_pushinteger(state, context.movement_state.collision_flags);
-    lua_setfield(state, -2, "collision_flags");
-    lua_pushinteger(state, context.movement_state.event_flags);
-    lua_setfield(state, -2, "event_flags");
+    push_actor_behavior_facts(state, context.movement_state.route_flags);
+    lua_setfield(state, -2, "route_facts");
+    lua_pushboolean(state, context.movement_state.mark_reset_after_block);
+    lua_setfield(state, -2, "mark_reset_after_block");
+    lua_pushboolean(state, context.movement_state.mark_directional_fallback);
+    lua_setfield(state, -2, "mark_directional_fallback");
+    lua_pushboolean(state, context.movement_state.clear_collision_recovery);
+    lua_setfield(state, -2, "clear_collision_recovery");
+    lua_pushboolean(state, context.movement_state.clear_pending_event);
+    lua_setfield(state, -2, "clear_pending_event");
     lua_pushinteger(state, context.movement_state.collision_extent);
     lua_setfield(state, -2, "collision_extent");
     lua_pushinteger(state, context.movement_state.terrain_collision_code);
     lua_setfield(state, -2, "terrain_collision_code");
     lua_setfield(state, -2, "movement_state");
-    lua_pushinteger(state, context.movement_entity_flags);
-    lua_setfield(state, -2, "movement_entity_flags");
+    push_actor_facts(state, context.movement_entity_flags, 0U, 0U, 0U);
+    lua_setfield(state, -2, "movement_actor_facts");
     lua_pushboolean(state, context.walk_fast_enabled);
     lua_setfield(state, -2, "walk_fast_enabled");
     lua_pushboolean(state, context.movement_transition_active);
@@ -9790,10 +10176,12 @@ GameScriptRuntime::actor_heartbeat(
                      ? std::string("primary")
                      : std::string("secondary")) +
                 ",active=" + (movement.active ? "true" : "false") +
-                ",record_flags=" +
-                std::to_string(static_cast<unsigned>(movement.record_flags)) +
-                ",selector=" +
-                std::to_string(movement.animation_selector) +
+                ",waiting_for_animation_end=" +
+                (movement.waiting_for_animation_end ? "true" : "false") +
+                ",impact_occurred=" +
+                (movement.impact_occurred ? "true" : "false") +
+                ",animation_finished=" +
+                (movement.animation_finished ? "true" : "false") +
                 ",timer=" +
                 std::to_string(static_cast<int>(movement.linked_action_timer)) +
                 "}";
@@ -9835,25 +10223,16 @@ GameScriptRuntime::actor_heartbeat(
         return fail("actor_ai.heartbeat returned an incomplete snapshot");
     }
     decision.direction = static_cast<std::uint8_t>(returned_action_code);
-    if (!read_field_integer(state, decision_table, "source_record_flags",
-                            0xFFU, returned_action_code)) {
-        return fail("actor_ai.heartbeat returned invalid source actor flags");
+    ActorFacts returned_actor_facts;
+    if (!read_actor_facts(state, decision_table, returned_actor_facts)) {
+        return fail("actor_ai.heartbeat returned invalid named actor facts");
     }
-    decision.source_record_flags =
-        static_cast<std::uint8_t>(returned_action_code);
-    if (!read_field_integer(state, decision_table, "source_behavior_flags",
-                            0xFFU, returned_action_code)) {
-        return fail("actor_ai.heartbeat returned invalid source behavior flags");
-    }
-    decision.source_behavior_flags =
-        static_cast<std::uint8_t>(returned_action_code);
-    if (!read_field_integer(state, decision_table,
-                            "source_spawn_state_flags", 0xFFU,
-                            returned_action_code)) {
-        return fail("actor_ai.heartbeat returned invalid source spawn flags");
-    }
-    decision.source_spawn_state_flags =
-        static_cast<std::uint8_t>(returned_action_code);
+    decision.source_record_flags = lifecycle_to_source(
+        returned_actor_facts.lifecycle, context.source_record_flags);
+    decision.source_behavior_flags = behavior_to_source(
+        returned_actor_facts.behavior, context.source_behavior_flags);
+    decision.source_spawn_state_flags = roles_to_source(
+        returned_actor_facts.roles, context.source_spawn_state_flags);
     if (!read_field_boolean(state, decision_table,
                             "world_activity_requested",
                             decision.world_activity_requested)) {
@@ -10620,17 +10999,21 @@ GameScriptRuntime::actor_heartbeat(
                 "actor_ai.heartbeat returned incomplete spell effect meters");
         }
         resolution.mental_meter = static_cast<std::uint8_t>(value);
-        if (!read_field_integer(state, resolution_table, "source_flags",
-                                0xFFU, value) ||
+        ActorFacts result_actor_facts;
+        if (!read_actor_facts(state, resolution_table, result_actor_facts) ||
             !read_field_boolean(state, resolution_table,
-                                "source_flags_changed",
+                                "actor_lifecycle_changed",
                                 resolution.source_record_flags_changed) ||
             !read_field_boolean(state, resolution_table, "changed",
                                 resolution.changed)) {
             return fail(
                 "actor_ai.heartbeat returned incomplete spell effect state");
         }
-        resolution.source_record_flags = static_cast<std::uint8_t>(value);
+        resolution.source_record_flags = lifecycle_to_source(
+            result_actor_facts.lifecycle,
+            context.combatant.has_value()
+                ? context.combatant->source_flags
+                : static_cast<std::uint8_t>(0U));
 
         const bool target_context_matches = context.combatant.has_value() &&
             context.instance_id == resolution.target_id &&
@@ -11022,6 +11405,7 @@ GameScriptRuntime::actor_heartbeat(
         }
         const auto movement_table = lua_absindex(state, -1);
         ScriptActorMovementStep movement_step{};
+        movement_step.state = context.movement_state;
         std::string outcome;
         if (!read_field_string(state, movement_table, "outcome", outcome) ||
             (outcome != "accepted" && outcome != "reset")) {
@@ -11056,19 +11440,58 @@ GameScriptRuntime::actor_heartbeat(
             !read_movement("animation_heading", 0xFFFFU,
                            movement_step.state.animation_heading) ||
             !read_movement("collision_context", 0xFFFFU,
-                           movement_step.state.collision_context) ||
-            !read_movement("movement_substate", 0xFFFFU,
-                           movement_step.state.movement_substate) ||
-            !read_movement("route_flags", 0xFFU,
-                           movement_step.state.route_flags) ||
-            !read_movement("movement_flags", 0xFFU,
-                           movement_step.state.movement_flags) ||
-            !read_movement("collision_flags", 0xFFU,
-                           movement_step.state.collision_flags) ||
-            !read_movement("event_flags", 0xFFU,
-                           movement_step.state.event_flags)) {
+                           movement_step.state.collision_context)) {
             return fail("actor_ai.heartbeat returned incomplete movement state");
         }
+        std::string substate_update;
+        if (!read_field_string(state, movement_state_table,
+                               "substate_update", substate_update)) {
+            return fail("actor_ai.heartbeat returned invalid movement substate action");
+        }
+        if (substate_update == "unchanged") {
+            movement_step.state.substate_update =
+                ScriptMovementSubstateUpdate::unchanged;
+        } else if (substate_update == "direct_translation") {
+            movement_step.state.substate_update =
+                ScriptMovementSubstateUpdate::direct_translation;
+        } else if (substate_update == "cardinal_fallback") {
+            movement_step.state.substate_update =
+                ScriptMovementSubstateUpdate::cardinal_fallback;
+        } else {
+            return fail("actor_ai.heartbeat returned unsupported movement substate action");
+        }
+        if (!read_field_integer(state, movement_state_table,
+                                "cardinal_direction", 3U, movement_value)) {
+            return fail("actor_ai.heartbeat returned invalid cardinal movement direction");
+        }
+        movement_step.state.cardinal_direction =
+            static_cast<std::uint8_t>(movement_value);
+        const auto read_movement_action = [&](const char* field, bool& value) {
+            lua_getfield(state, movement_state_table, field);
+            const bool valid = lua_isboolean(state, -1);
+            if (valid) {
+                value = lua_toboolean(state, -1) != 0;
+            }
+            lua_pop(state, 1);
+            return valid;
+        };
+        if (!read_movement_action("mark_reset_after_block",
+                                  movement_step.state.mark_reset_after_block) ||
+            !read_movement_action("mark_directional_fallback",
+                                  movement_step.state.mark_directional_fallback) ||
+            !read_movement_action("clear_collision_recovery",
+                                  movement_step.state.clear_collision_recovery) ||
+            !read_movement_action("clear_pending_event",
+                                  movement_step.state.clear_pending_event)) {
+            return fail("actor_ai.heartbeat returned incomplete movement actions");
+        }
+        ActorBehaviorFacts route_facts;
+        if (!read_actor_behavior_facts(state, movement_state_table,
+                                       "route_facts", route_facts)) {
+            return fail("actor_ai.heartbeat returned invalid movement route facts");
+        }
+        movement_step.state.route_flags = behavior_to_source(
+            route_facts, context.movement_state.route_flags);
         lua_getfield(state, movement_state_table, "collision_extent");
         if (!lua_isinteger(state, -1) || lua_tointeger(state, -1) < -32768 ||
             lua_tointeger(state, -1) > 32767) {
@@ -11150,20 +11573,15 @@ GameScriptRuntime::actor_heartbeat(
                          ? "primary"
                          : "secondary") ||
             !read_boolean("active", movement_decision.state.active) ||
-            !read_field_integer(state, movement_table, "flags", 0xFFU,
-                                unsigned_value)) {
+            !read_boolean("waiting_for_animation_end",
+                          movement_decision.state.waiting_for_animation_end) ||
+            !read_boolean("impact_occurred",
+                          movement_decision.state.impact_occurred) ||
+            !read_boolean("animation_finished",
+                          movement_decision.state.animation_finished)) {
             return fail(
                 "actor_ai.heartbeat returned an incomplete projectile state");
         }
-        movement_decision.state.flags =
-            static_cast<std::uint8_t>(unsigned_value);
-        if (!read_field_integer(state, movement_table, "record_flags", 0xFFU,
-                                unsigned_value)) {
-            return fail(
-                "actor_ai.heartbeat returned invalid projectile record flags");
-        }
-        movement_decision.state.record_flags =
-            static_cast<std::uint8_t>(unsigned_value);
         if (!read_signed("world_x",
                          static_cast<lua_Integer>(-2147483647LL - 1LL),
                          2147483647LL, signed_value)) {
@@ -11232,13 +11650,25 @@ GameScriptRuntime::actor_heartbeat(
         }
         movement_decision.state.action_result =
             static_cast<std::int8_t>(signed_value);
-        if (!read_field_integer(state, movement_table, "animation_selector",
-                                0xFFFFU, unsigned_value)) {
+        std::string animation_action;
+        if (!read_field_string(state, movement_table, "animation_action",
+                               animation_action)) {
             return fail(
-                "actor_ai.heartbeat returned incomplete projectile policy state");
+                "actor_ai.heartbeat returned invalid projectile animation action");
         }
-        movement_decision.state.animation_selector =
-            static_cast<std::uint16_t>(unsigned_value);
+        if (animation_action == "unchanged") {
+            movement_decision.state.animation_action =
+                ScriptActorProjectileAnimationAction::unchanged;
+        } else if (animation_action == "stop") {
+            movement_decision.state.animation_action =
+                ScriptActorProjectileAnimationAction::stop;
+        } else if (animation_action == "restart") {
+            movement_decision.state.animation_action =
+                ScriptActorProjectileAnimationAction::restart;
+        } else {
+            return fail(
+                "actor_ai.heartbeat returned an unsupported projectile animation action");
+        }
         lua_getfield(state, movement_table, "hit_target_id");
         if (lua_type(state, -1) == LUA_TSTRING) {
             std::size_t target_id_size = 0U;

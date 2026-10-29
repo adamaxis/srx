@@ -5,8 +5,7 @@ local Registry = {}
 Registry.__index = Registry
 local StoryFlags = require("story_flags")
 local E = require("enums")
-local ActorStatus, BehaviorFlag, ActorPool =
-    E.ActorStatus, E.BehaviorFlag, E.ActorPool
+local ActorPool = E.ActorPool
 local LAST_WORLD_ACTOR_SLOT = 9 -- ROM 0x1DED8 scans FF0400..FF0A00.
 
 local function is_identifier(value)
@@ -198,16 +197,12 @@ local function register_core_actions(registry)
         for _, state in pairs(game.actors) do
             local slot = type(state) == "table" and
                 state.source_record_slot or nil
-            local record_flags = type(state) == "table" and
-                state.source_record_flags or 0
-            local behavior_flags = type(state) == "table" and
-                state.source_behavior_flags or 0
+            local facts = type(state) == "table" and
+                state.actor_facts or nil
             if type(slot) == "number" and slot % 1 == 0 and
                slot >= ActorPool.PARTY and slot <= LAST_WORLD_ACTOR_SLOT and
-               type(record_flags) == "number" and
-               (record_flags & ActorStatus.ACTIVE) ~= 0 and
-               type(behavior_flags) == "number" and
-               (behavior_flags & BehaviorFlag.ESCORT) ~= 0 then
+               type(facts) == "table" and
+               facts.lifecycle.active and facts.behavior.escort then
                 state.source_record_cleanup_requested = true
                 cleanup_count = cleanup_count + 1
             end

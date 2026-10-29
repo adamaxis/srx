@@ -26,7 +26,17 @@ local function combatant(record_type)
     end
     return {
         record_type = record_type,
-        source_flags = E.ActorStatus.ACTIVE,
+        actor_facts = {
+            lifecycle = { active = true, thinking_enabled = false,
+                ai_runner = false, downed = false, group_leader = false,
+                dead = false },
+            interaction = { projectile = false,
+                proximity_interaction_pending = false,
+                use_collision_heading = false, collision_recovery_active = false,
+                action_hook_pending = false, defense_difficulty_reduction = false,
+                breathing_out = false, unseen = true,
+                no_coverage_difficulty_bonus = true },
+        },
         physical_meter = 10,
         mental_meter = 10,
         force = 0,
@@ -41,7 +51,6 @@ local function combatant(record_type)
         class_code = 0,
         armor_index = 0,
         equipped_action_code = 1,
-        interaction_flags = 128,
         cyberware_flags = 0,
         action_profile_modifier_flags = 0,
         item_codes = item_codes,
@@ -64,7 +73,14 @@ local target = {
     world_y = 2748,
     heading = 16384,
     distance = 256,
-    service_flags = E.ActorStatus.ACTIVE,
+    actor_facts = {
+        lifecycle = { active = true, dead = false, downed = false,
+            ai_runner = false, thinking_enabled = false,
+            group_leader = false },
+        behavior = { escort = false },
+        roles = { pedestrian = false, quest = false },
+        interaction = { unseen = false },
+    },
     world_activity_actor = true,
     has_action = true,
     combatant = combatant(E.ActorPool.OTHERS),
@@ -78,6 +94,24 @@ local context = {
     action_code = E.ItemId.NONE,
     entry_delay = 0,
     initial_heading = 0,
+    actor_facts = {
+        lifecycle = { active = true, thinking_enabled = false,
+            ai_runner = false, downed = false, group_leader = false,
+            dead = false },
+        interaction = { projectile = false,
+            proximity_interaction_pending = false,
+            use_collision_heading = false, collision_recovery_active = false,
+            action_hook_pending = false, defense_difficulty_reduction = false,
+            breathing_out = false, unseen = false,
+            no_coverage_difficulty_bonus = false },
+        behavior = { route_clear = false, path_active = false,
+            restart_steering = false, wall_following = false,
+            in_target_band = false, route_transition = false,
+            fleeing = false, escort = false },
+        roles = { spotted = false, reinforcement = false,
+            despawn_offscreen = false, quest = false, runner = false,
+            pedestrian = false, hostile = false },
+    },
     spawn = true,
     phase = "behavior",
     player_melee_available = true,
@@ -86,6 +120,11 @@ local context = {
     combat_action_ready = true,
     combat_input_blocked = false,
     combatant = attacker,
+    movement_actor_facts = {
+        lifecycle = { active = true, thinking_enabled = false,
+            ai_runner = false, downed = false, group_leader = false,
+            dead = false },
+    },
     ai_random_bound = successful_reaction_roll,
     ai_target_candidates = { target },
 }
@@ -111,14 +150,14 @@ check(strike_out_of_range ~= nil and
       "out-of-range player swing does not request a spark")
 
 target.distance = 256
-target.service_flags = E.ActorStatus.ACTIVE | E.ActorStatus.DEAD
+target.actor_facts.lifecycle.dead = true
 local strike_dead_target = ActorAI.heartbeat(context)
 check(strike_dead_target ~= nil and
       strike_dead_target.source_action_dispatch == "player_melee" and
       strike_dead_target.hit_spark_spawn_request == nil,
       "dead linked record does not request a spark")
 
-target.service_flags = E.ActorStatus.ACTIVE
+target.actor_facts.lifecycle.dead = false
 context.ai_random_bound = function() return nil end
 local strike_unchanged = ActorAI.heartbeat(context)
 check(strike_unchanged ~= nil and

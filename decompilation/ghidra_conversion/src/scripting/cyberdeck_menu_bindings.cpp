@@ -164,6 +164,69 @@ std::optional<bool> read_optional_boolean(
     return is_boolean ? std::optional<bool>{value} : std::nullopt;
 }
 
+bool read_boolean(lua_State* lua, const int table_index, const char* name,
+                  bool& value) {
+    lua_getfield(lua, table_index, name);
+    const bool valid = lua_isboolean(lua, -1) != 0;
+    if (valid) {
+        value = lua_toboolean(lua, -1) != 0;
+    }
+    lua_pop(lua, 1);
+    return valid;
+}
+
+std::optional<ScriptActorRoleFacts> read_actor_roles(
+    lua_State* lua, const int actor_index) {
+    lua_getfield(lua, actor_index, "actor_facts");
+    if (!lua_istable(lua, -1)) {
+        lua_pop(lua, 1);
+        return std::nullopt;
+    }
+    const auto facts_index = lua_absindex(lua, -1);
+    lua_getfield(lua, facts_index, "roles");
+    if (!lua_istable(lua, -1)) {
+        lua_pop(lua, 2);
+        return std::nullopt;
+    }
+    const auto roles_index = lua_absindex(lua, -1);
+    ScriptActorRoleFacts roles;
+    const bool valid =
+        read_boolean(lua, roles_index, "spotted", roles.spotted) &&
+        read_boolean(lua, roles_index, "reinforcement",
+                     roles.reinforcement) &&
+        read_boolean(lua, roles_index, "despawn_offscreen",
+                     roles.despawn_offscreen) &&
+        read_boolean(lua, roles_index, "quest", roles.quest) &&
+        read_boolean(lua, roles_index, "runner", roles.runner) &&
+        read_boolean(lua, roles_index, "pedestrian", roles.pedestrian) &&
+        read_boolean(lua, roles_index, "hostile", roles.hostile);
+    lua_pop(lua, 2);
+    return valid ? std::optional<ScriptActorRoleFacts>{roles}
+                 : std::nullopt;
+}
+
+void push_actor_roles(lua_State* lua, const int actor_index,
+                      const ScriptActorRoleFacts& roles) {
+    lua_createtable(lua, 0, 1);
+    const auto facts_index = lua_absindex(lua, -1);
+    lua_createtable(lua, 0, 7);
+    const auto roles_index = lua_absindex(lua, -1);
+    const auto push = [lua, roles_index](const char* name,
+                                         const bool value) {
+        lua_pushboolean(lua, value);
+        lua_setfield(lua, roles_index, name);
+    };
+    push("spotted", roles.spotted);
+    push("reinforcement", roles.reinforcement);
+    push("despawn_offscreen", roles.despawn_offscreen);
+    push("quest", roles.quest);
+    push("runner", roles.runner);
+    push("pedestrian", roles.pedestrian);
+    push("hostile", roles.hostile);
+    lua_setfield(lua, facts_index, "roles");
+    lua_setfield(lua, actor_index, "actor_facts");
+}
+
 void push_optional_boolean(lua_State* lua, const int table_index,
                            const char* name,
                            const std::optional<bool> value) {
@@ -272,8 +335,7 @@ void push_matrix_world_state(lua_State* lua,
         lua_createtable(lua, 0, 2);
         lua_pushlstring(lua, actor.actor_id.data(), actor.actor_id.size());
         lua_setfield(lua, -2, "id");
-        lua_pushinteger(lua, actor.flags_9e);
-        lua_setfield(lua, -2, "flags9e");
+        push_actor_roles(lua, lua_absindex(lua, -1), actor.roles);
         lua_rawseti(lua, actors_index, static_cast<lua_Integer>(index + 1U));
     }
     lua_setfield(lua, world_index, "actors");
@@ -401,10 +463,9 @@ ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
                 if (id != nullptr) {
                     const std::string actor_id(id, id_size);
                     lua_pop(lua, 1);
+                    const auto roles = read_actor_roles(lua, actor_index);
                     world.actors.push_back(ScriptMatrixFieldActorState{
-                        actor_id,
-                        static_cast<std::uint8_t>(read_integer(
-                            lua, actor_index, "flags9e", 0, 0, 0xFF))});
+                        actor_id, roles.value_or(ScriptActorRoleFacts{})});
                 } else {
                     lua_pop(lua, 1);
                 }

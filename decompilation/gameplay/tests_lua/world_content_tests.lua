@@ -23,6 +23,7 @@ game = {
                     ordered_overrides = "0x2E=0xC0,0x9E=0x10",
                     template_offset = 0x172CA,
                     list_offset = 0x1706C,
+                    actor_facts = { roles = {}, interaction = {} },
                 },
                 {
                     scene = 47,
@@ -51,6 +52,7 @@ game = {
                     position_offset = 0xA8E4,
                     world_effect_active_gate = 0,
                     pending_world_effect_gate = 1,
+                    actor_facts = { roles = {}, interaction = {} },
                 },
             },
         },

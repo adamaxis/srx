@@ -4,12 +4,9 @@ local R = require("actor.registry")
 local E = require("enums")
 local I = require("lib.int68k")
 local u8, u16, s16 = I.u8, I.u16, I.s16
-local BehaviorFlag, SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
-    E.BehaviorFlag, E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
+    E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local ActorPose = E.ActorPose
-local BehaviorFlag = R.BehaviorFlag   -- from actor/tables.lua
-local ActorStatus = R.ActorStatus   -- from actor/tables.lua
-local ActorFlag = R.ActorFlag   -- from actor/tables.lua
 local SpriteType = R.SpriteType   -- from actor/tables.lua
 local byte_mask = R.byte_mask   -- from actor/tables.lua
 local byte_modulus = R.byte_modulus   -- from actor/tables.lua
@@ -30,9 +27,9 @@ local function projectile_movement_snapshot(context, state)
        (source.role ~= projectile.role.primary and
         source.role ~= projectile.role.secondary) or
        type(source.active) ~= "boolean" or
-       type(source.flags) ~= "number" or source.flags < 0 or
-       source.flags > 0xff or type(source.record_flags) ~= "number" or
-       source.record_flags < 0 or source.record_flags > 0xff or
+       type(source.waiting_for_animation_end) ~= "boolean" or
+       type(source.impact_occurred) ~= "boolean" or
+       type(source.animation_finished) ~= "boolean" or
        type(source.world_x) ~= "number" or
        type(source.world_y) ~= "number" or
        type(source.tile_offset_x) ~= "number" or
@@ -48,17 +45,17 @@ local function projectile_movement_snapshot(context, state)
        source.saved_position_x < 0 or source.saved_position_x > AiTuning.WORD_MAX or
        type(source.saved_position_y) ~= "number" or
        source.saved_position_y < 0 or source.saved_position_y > AiTuning.WORD_MAX or
-       type(source.animation_selector) ~= "number" or
-       source.animation_selector < 0 or
-       source.animation_selector > AiTuning.WORD_MAX then
+       type(source.animation_action) ~= "string" or
+       source.animation_action ~= "unchanged" then
         return nil
     end
 
     local result = {
         role = source.role,
         active = source.active,
-        flags = source.flags,
-        record_flags = source.record_flags,
+        waiting_for_animation_end = source.waiting_for_animation_end,
+        impact_occurred = source.impact_occurred,
+        animation_finished = source.animation_finished,
         world_x = source.world_x,
         world_y = source.world_y,
         tile_offset_x = source.tile_offset_x,
@@ -69,7 +66,7 @@ local function projectile_movement_snapshot(context, state)
         saved_position_x = source.saved_position_x,
         saved_position_y = source.saved_position_y,
         action_result = state.action_result or source.action_result,
-        animation_selector = source.animation_selector,
+        animation_action = "unchanged",
         outcome = projectile.outcome.none,
     }
     local audio_event
@@ -80,24 +77,20 @@ local function projectile_movement_snapshot(context, state)
     if result.role == projectile.role.secondary then
         -- ROM 0xAC4E retires the secondary record after the preceding render
         -- heartbeat marks its finite animation list complete.
-        if (result.animation_selector &
-            projectile.flags.animation_list_finished) ~= 0 then
-            result.flags = result.flags & ~projectile.flags.active_record
+        if result.animation_finished then
             result.active = false
             result.outcome = projectile.outcome.retired
         end
         return result, nil
     end
 
-    if (result.record_flags & projectile.flags.stopped_record) ~= 0 then
+    if result.waiting_for_animation_end then
         -- ROM 0x14E0A/0x14F1C wait for the stopped record's finite list.
         -- The linked action pair in 0x14F86 is still an explicit boundary.
-        if (result.animation_selector &
-            projectile.flags.animation_list_finished) ~= 0 then
+        if result.animation_finished then
             result.linked_action_timer =
                 signed_byte(result.linked_action_timer - 1)
             if result.linked_action_timer < 0 then
-                result.flags = result.flags & ~projectile.flags.active_record
                 result.active = false
                 result.outcome = projectile.outcome.retired
             else
@@ -125,9 +118,8 @@ local function projectile_movement_snapshot(context, state)
                 result.tile_offset_x = offsets.horizontal
                 result.tile_offset_y = offsets.vertical
                 result.retry_counter = 0x20
-                result.animation_selector = 0x14
-                result.record_flags = result.record_flags &
-                                      ~projectile.flags.stopped_record
+                result.animation_action = "restart"
+                result.waiting_for_animation_end = false
                 result.outcome = projectile.outcome.burst_followup_restarted
             end
         end
@@ -159,13 +151,12 @@ local function projectile_movement_snapshot(context, state)
             terminal = signed_byte(result.retry_counter) < 0
         end
         if terminal then
-            result.record_flags = result.record_flags |
-                                  projectile.flags.terminal_record
-            result.animation_selector = 0
+            result.impact_occurred = true
+            result.waiting_for_animation_end = true
+            result.animation_action = "stop"
             result.tile_offset_x = 0
             result.tile_offset_y = 0
             if outside_bounds_marker then
-                result.flags = result.flags & ~projectile.flags.active_record
                 result.active = false
                 result.outcome = projectile.outcome.retired
             else
@@ -182,8 +173,7 @@ local function projectile_movement_snapshot(context, state)
         local source_carry, source_position_updated, source_x, source_y,
               hit_target_id =
             game.movement.projectile_collision(
-                integer_world_word(probe_x), integer_world_word(probe_y),
-                result.flags)
+                integer_world_word(probe_x), integer_world_word(probe_y))
         if type(source_carry) ~= "boolean" or
            type(source_position_updated) ~= "boolean" or
            type(source_x) ~= "number" or type(source_y) ~= "number" then
@@ -194,13 +184,12 @@ local function projectile_movement_snapshot(context, state)
             return nil
         end
         if source_carry then
-            result.record_flags = result.record_flags |
-                                  projectile.flags.terminal_record
-            result.animation_selector = 0
+            result.impact_occurred = true
+            result.waiting_for_animation_end = true
+            result.animation_action = "stop"
             result.tile_offset_x = 0
             result.tile_offset_y = 0
             if outside_bounds_marker then
-                result.flags = result.flags & ~projectile.flags.active_record
                 result.active = false
                 result.outcome = projectile.outcome.retired
             end
@@ -277,7 +266,6 @@ local function projectile_heartbeat(state, context)
                 context, { action_result = state.action_result }, hit_target)
         end
     end
-    state.animation_selector = movement.animation_selector
     return R.snapshot(state, "hold", audio_event, movement)
 end
 
@@ -396,12 +384,17 @@ end
 -- ROM 0xBDF2, cardinal step by Quickness clamped to 0..9.
 local quickness_cardinal_steps = { 9, 9, 12, 16, 19, 22, 25, 27, 29, 31 }
 
-local function movement_record_flags(context)
-    -- +0x10. The runner publishes it as movement_entity_flags. Dynamic
-    -- actors publish the same byte as source_record_flags.
-    return context.dynamic_world_encounter_actor == true
-        and context.source_record_flags
-        or context.movement_entity_flags
+local function movement_lifecycle(context)
+    local facts = context.movement_actor_facts
+    return type(facts) == "table" and facts.lifecycle or {}
+end
+
+local function actor_lifecycle(context)
+    if context.dynamic_world_encounter_actor == true then
+        local facts = context.actor_facts
+        return type(facts) == "table" and facts.lifecycle or {}
+    end
+    return movement_lifecycle(context)
 end
 
 local function walk_direction_from_heading(heading)
@@ -421,7 +414,7 @@ local function movement_octant_selector(context)
     -- BABC path keeps its existing flag-gated rounded selector.
     if context.dynamic_world_encounter_actor == true or
        context.source_actor_has_waypoint_data == true or
-       (movement_record_flags(context) & ActorStatus.THINK) ~= 0 then
+       actor_lifecycle(context).thinking_enabled then
         return walk_direction_from_heading
     end
     return R.direction_from_heading
@@ -432,10 +425,9 @@ local function movement_direction_from_heading(context, heading)
 end
 
 local function creature_movement_offsets(context, state)
-    local record_flags = movement_record_flags(context)
-    local controlled_action = ActorStatus.THINK
+    local lifecycle = actor_lifecycle(context)
     local walk_fast_selected = context.walk_fast_enabled == true and
-        (record_flags & controlled_action) ~= 0
+        lifecycle.thinking_enabled == true
     -- Contexts without a live Quickness byte keep the host vector list.
     -- Walk Fast is an earlier ROM branch and does not require Quickness.
     local attribute_speed =
@@ -448,10 +440,8 @@ local function creature_movement_offsets(context, state)
 
     -- 0xACAE installs 0xB574 when +0x10 bit 1 is set. Bit 1 clear is the
     -- distance-band path at 0xB6E4.
-    local targets_world =
-        (record_flags & ActorStatus.AI_RUNNER) ~= 0
-    local high_effect =
-        (context.source_behavior_flags & BehaviorFlag.ESCORT) ~= 0
+    local targets_world = lifecycle.ai_runner == true
+    local high_effect = context.actor_facts.behavior.escort == true
     local activity = context.world_activity_active == true
     local step
 
@@ -469,8 +459,7 @@ local function creature_movement_offsets(context, state)
             step = 18
         end
         local skip_quickness = false
-        if (context.source_spawn_state_flags &
-                ActorFlag.PEDESTRIAN) ~= 0 then
+        if context.actor_facts.roles.pedestrian then
             step = 22
             if activity then
                 skip_quickness = true
@@ -498,7 +487,7 @@ local function creature_movement_offsets(context, state)
                 end
             end
         end
-        if (record_flags & controlled_action) == 0 then
+        if not lifecycle.thinking_enabled then
             local distance = state.movement_route_distance
             if type(distance) ~= "number" then
                 return context.movement_offsets
@@ -551,7 +540,8 @@ local function probe_movement(context, movement_state, direction_slot,
     movement_state.terrain_collision_code = terrain_collision_code
     -- ROM 0xB77E maps detailed negative terrain results to 0x7F unless the
     -- actor's +0x10 bit 1 requests that negative values be preserved.
-    if collision_code < 0 and (context.movement_entity_flags & 0x02) == 0 then
+    if collision_code < 0 and
+       not actor_lifecycle(context).thinking_enabled then
         collision_code = Collision.BLOCKED
     end
     return {
@@ -575,13 +565,13 @@ end
 local function commit_movement_candidate(movement_state, probe)
     movement_state.position_x = probe.candidate_x
     movement_state.position_y = probe.candidate_y
-    movement_state.event_flags = movement_state.event_flags & 0xfe
+    movement_state.clear_pending_event = true
 end
 
 local function reset_blocked_movement(context, state, movement_state)
-    movement_state.route_flags = u8(movement_state.route_flags & ~BehaviorFlag.PATH)
+    movement_state.route_facts.path_active = false
     movement_state.heading = state.movement_heading
-    movement_state.movement_flags = movement_state.movement_flags | 0x01
+    movement_state.mark_reset_after_block = true
     movement_state.route_status = -1
     state.movement_current_heading = state.movement_heading
     local direction = R.direction_from_heading(movement_state.heading)
@@ -617,6 +607,12 @@ local function advance_entity_movement(context, state)
     end
     movement_state.heading = state.movement_current_heading
     movement_state.animation_heading = movement_state.heading
+    movement_state.substate_update = "unchanged"
+    movement_state.cardinal_direction = 0
+    movement_state.mark_reset_after_block = false
+    movement_state.mark_directional_fallback = false
+    movement_state.clear_collision_recovery = false
+    movement_state.clear_pending_event = false
     if context.dynamic_world_encounter_actor == true then
         movement_state.collision_extent =
             context.entity_kind == SpriteType.GARGOYLE and
@@ -634,7 +630,7 @@ local function advance_entity_movement(context, state)
         context, movement_state, initial_slot, movement_offsets)
 
     if initial.collision_code == 0 then
-        movement_state.movement_substate = 0x1000
+        movement_state.substate_update = "direct_translation"
         commit_movement_candidate(movement_state, initial)
         state.animation_id = "walk"
         state.direction = initial_direction
@@ -647,23 +643,17 @@ local function advance_entity_movement(context, state)
     end
 
     if initial.collision_code < 0 then
-        local recovered, route_flags = game.movement.recover_collision(
+        local recovered, route_transition = game.movement.recover_collision(
             initial.candidate_x, initial.candidate_y,
             initial.collision_code, initial.direction_slot)
         if type(recovered) ~= "boolean" or
-           type(route_flags) ~= "number" or route_flags < 0 or
-           route_flags > 0xff then
+           type(route_transition) ~= "boolean" then
             return nil
         end
-        -- ROM 0xB7B8 sets the actor +0xB0 retry bit before dispatching the
-        -- map event. Preserve that native collision side effect across the
-        -- Lua movement R.snapshot; 0xAC5E clears it after clear terrain. The
-        -- recovery result already carries the transition's separate movement
-        -- outcome, so keep the other route-state bits in Lua's R.snapshot.
-        movement_state.route_flags =
-            u8(movement_state.route_flags & ~BehaviorFlag.ROUTE_TRANSITION) | (route_flags & BehaviorFlag.ROUTE_TRANSITION)
+        -- Collision recovery reports a typed doorway transition outcome.
+        movement_state.route_facts.route_transition = route_transition
         if not recovered then
-            movement_state.movement_substate = 0x1000
+            movement_state.substate_update = "direct_translation"
             commit_movement_candidate(movement_state, initial)
             state.animation_id = "walk"
             local fallback_direction = octant_for_heading(
@@ -697,7 +687,7 @@ local function advance_entity_movement(context, state)
             carry_set = true
         end
         if not carry_set and fallback ~= nil then
-            movement_state.collision_flags = movement_state.collision_flags & 0xfe
+            movement_state.clear_collision_recovery = true
             commit_movement_candidate(movement_state, fallback)
             state.animation_id = "walk"
             local fallback_direction = octant_for_heading(
@@ -717,7 +707,8 @@ local function advance_entity_movement(context, state)
     end
 
     local movement_direction = (movement_state.heading >> 13) & 0x06
-    movement_state.movement_substate = movement_direction
+    movement_state.substate_update = "cardinal_fallback"
+    movement_state.cardinal_direction = movement_direction >> 1
     local selected = probe_movement(
         context, movement_state, movement_direction << 1,
         movement_offsets)
@@ -738,7 +729,7 @@ local function advance_entity_movement(context, state)
     movement_state.animation_heading =
         u16((selected.direction_slot >> 4) |
          (selected.direction_slot << 12))
-    movement_state.movement_flags = movement_state.movement_flags | 0x04
+    movement_state.mark_directional_fallback = true
     commit_movement_candidate(movement_state, selected)
     state.animation_id = "walk"
     local selected_direction = octant_for_heading(
@@ -754,12 +745,10 @@ end
 
 local function finish_entity_movement(context, movement_step)
     if movement_step ~= nil and
-       (context.movement_entity_flags & 0x08) ~= 0 and
+       actor_lifecycle(context).ai_runner and
        movement_step.state.terrain_collision_code == 0 then
-        -- ROM 0xAC5E releases B7B8's retry bit after FFDF64 reports clear
-        -- terrain, allowing a later doorway or terminal event to dispatch.
-        movement_step.state.route_flags =
-            u8(movement_step.state.route_flags & ~BehaviorFlag.ROUTE_TRANSITION)
+        -- Clear the transition outcome after the accepted terrain probe.
+        movement_step.state.route_facts.route_transition = false
     end
     return movement_step
 end
@@ -774,7 +763,6 @@ R.projectile_heartbeat = projectile_heartbeat
 R.requested_movement_heading = requested_movement_heading
 R.resolve_source_target_motion = resolve_source_target_motion
 R.movement_collision_code = movement_collision_code
-R.movement_record_flags = movement_record_flags
 R.walk_direction_from_heading = walk_direction_from_heading
 R.movement_octant_selector = movement_octant_selector
 R.movement_direction_from_heading = movement_direction_from_heading

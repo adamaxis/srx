@@ -271,14 +271,15 @@ local function world_activity_actor_descriptors(scene_id, selector_field,
                 source_action_ammo = row.source_action_ammo,
                 source_action_counter = row.source_action_counter,
                 ordered_overrides = row.ordered_overrides,
-                source_spawn_state_flags = row.source_spawn_state_flags,
-                source_interaction_flags = row.source_interaction_flags,
+                actor_facts = row.actor_facts,
                 physical_meter = row.physical_meter,
                 delay_primary_attribute = row.delay_primary_attribute,
                 delay_secondary_attribute = row.delay_secondary_attribute,
                 delay_capability_flags = row.delay_capability_flags,
                 combatant = {
-                    interaction_flags = row.source_interaction_flags,
+                    actor_facts = {
+                        interaction = row.actor_facts.interaction,
+                    },
                     physical_meter = row.physical_meter,
                     mental_meter = row.combat_mental_meter,
                     cyberware_flags = row.combat_cyberware_flags,
@@ -378,6 +379,8 @@ function World.conditional_actor_candidates_for_scene(scene_id)
     local result = {}
     for _, row in ipairs(content().conditional_actor_candidates or {}) do
         if row.scene == scene_id then
+            local source_facts = type(row.actor_facts) == "table"
+                and row.actor_facts or {}
             result[#result + 1] = {
                 scene = row.scene,
                 choice = row.choice,
@@ -391,7 +394,10 @@ function World.conditional_actor_candidates_for_scene(scene_id)
                 world_y = row.world_y,
                 heading_word = row.heading_word,
                 direction = row.direction,
-                source_spawn_state_flags = row.source_spawn_state_flags,
+                actor_facts = {
+                    roles = type(source_facts.roles) == "table"
+                        and source_facts.roles or {},
+                },
                 selection_group = row.selection_group,
                 activation_gate = row.activation_gate,
             }
@@ -610,17 +616,17 @@ function World.field_actor_contact_task(
     end
     if world_effect_handler == 1 then
         if scene_id == 34 and source_list_offset == 0xA8AE then
-            local behavior_flags = World.mark_contact_actor_for_escort_cleanup(
+            local escort_marked = World.mark_contact_actor_for_escort_cleanup(
                 scene_id, source_list_offset, source_order)
-            return { behavior_flags and 1 or 0, behavior_flags or 0 }
+            return { escort_marked and 1 or 0, escort_marked and 1 or 0 }
         end
         return { 0, 0 }
     end
     if pending_effect_handler == 1 then
         if scene_id == 20 and source_list_offset == 0xA8CC then
-            local behavior_flags = World.mark_contact_actor_for_escort_cleanup(
+            local escort_marked = World.mark_contact_actor_for_escort_cleanup(
                 scene_id, source_list_offset, source_order)
-            return { behavior_flags and 2 or 0, behavior_flags or 0 }
+            return { escort_marked and 2 or 0, escort_marked and 1 or 0 }
         end
         return { 0, 0 }
     end
@@ -645,7 +651,7 @@ function World.mark_contact_actor_for_escort_cleanup(
     if type(game.actors) ~= "table" then
         error("contact actor cleanup needs the Lua actor registry")
     end
-    local matched_behavior_flags
+    local matched_actor = false
     for _, state in pairs(game.actors) do
         if type(state) == "table" and
            state.movement_scene_id == scene_id and
@@ -654,15 +660,13 @@ function World.mark_contact_actor_for_escort_cleanup(
            type(state.source_record_slot) == "number" and
            state.source_record_slot >= E.ActorPool.PARTY and
            state.source_record_slot <= 9 and
-           type(state.source_record_flags) == "number" and
-           (state.source_record_flags & E.ActorStatus.ACTIVE) ~= 0 then
-            state.source_behavior_flags =
-                (state.source_behavior_flags or 0) |
-                E.BehaviorFlag.ESCORT
-            matched_behavior_flags = state.source_behavior_flags
+           type(state.actor_facts) == "table" and
+           state.actor_facts.lifecycle.active then
+            state.actor_facts.behavior.escort = true
+            matched_actor = true
         end
     end
-    return matched_behavior_flags
+    return matched_actor
 end
 
 function World.pending_world_activity_actor_list_for_scene(

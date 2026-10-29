@@ -62,8 +62,7 @@ local function actor_from_row(row)
         source_action_slot = row.source_action_slot,
         source_action_ammo = row.source_action_ammo,
         source_action_counter = row.source_action_counter,
-        source_spawn_state_flags = row.source_spawn_state_flags,
-        source_interaction_flags = row.source_interaction_flags,
+        actor_facts = row.actor_facts,
         physical_meter = row.physical_meter,
         palette_line = row.palette_line,
         sprite_stem = row.sprite_stem,
@@ -74,7 +73,9 @@ local function actor_from_row(row)
         delay_secondary_attribute = row.delay_secondary_attribute,
         delay_capability_flags = row.delay_capability_flags,
         combatant = {
-            interaction_flags = row.source_interaction_flags,
+            actor_facts = {
+                interaction = row.actor_facts.interaction,
+            },
             cyberware_flags = row.combat_cyberware_flags,
             physical_meter = row.physical_meter,
             mental_meter = row.combat_mental_meter,
@@ -179,7 +180,7 @@ function Encounters.trigger_attempt(context)
        type(context.field_alarm_active) ~= "boolean" or
        type(context.combat_active) ~= "boolean" or
        not integer(context.encounter_actor_count, 0,
-                   E.FieldAlarm.ACTOR_FLAGS_MAX) then
+                   E.FieldAlarm.ACTOR_COUNT_MAX) then
         return nil
     end
 
