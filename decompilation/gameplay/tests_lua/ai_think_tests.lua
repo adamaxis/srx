@@ -56,7 +56,7 @@ local function context(overrides)
         world_activity_active = false,
         world_scene_state = E.EndingState.NONE,
         source_actor_posture = E.Posture.NEUTRAL,
-        source_animation_selector = 0,
+        animation_blocks_behavior = false,
         source_action_ammo = 0,
         controlled_runner_slot = 0,
         ai_target_candidates = {
@@ -81,7 +81,7 @@ local function state(overrides)
     local s = {
         behavior_timer = 0,
         actor_facts = actor_facts(),
-        source_animation_selector = 0,
+        animation_id = "idle",
         movement_current_heading = 0x1000,
         movement_active = false,
     }
@@ -190,7 +190,7 @@ check(thon_skips == E.AiTuning.THON_PERIOD and
       thon_state.source_thon_period_counter == E.AiTuning.THON_PERIOD and
       thon_state.ai_target_id == "party.runner.0" and
       thon_state.movement_current_heading == 0x1000 and
-      thon_state.source_animation_selector > E.AiTuning.ANIM_BUSY,
+      thon_state.animation_id == "spell",
       "THON decrements the shared period eight times, then aims and selects C082")
 
 local offscreen_runner = {
@@ -257,11 +257,9 @@ check(R.think_gate(thon_unknown_state,
           "thon_global_period_initial_value_unresolved",
       "THON preserves the missing FFE188 initializer as an explicit gap")
 
-local thon_busy_state = state({
-    source_animation_selector = E.AiTuning.ANIM_BUSY + 1,
-})
+local thon_busy_state = state()
 local thon_los_calls = 0
-thon_context.source_animation_selector = E.AiTuning.ANIM_BUSY + 1
+thon_context.animation_blocks_behavior = true
 thon_context.source_thon_period_counter = E.AiTuning.THON_PERIOD
 thon_context.action_line_clear = function()
     thon_los_calls = thon_los_calls + 1
@@ -331,12 +329,13 @@ check(R.think_gate(state(), context({ world_activity_active = true })) ==
 local hold_context = context({ source_projection_active = false,
     world_activity_active = true, world_scene_state = E.EndingState.FINAL_FIGHT,
     source_action_ammo = E.AiTuning.ENDING_HOLD_ROUNDS })
-s = state({ source_animation_selector = E.AiTuning.ANIM_BUSY })
+s = state()
+hold_context.animation_blocks_behavior = false
 check(R.think(s, hold_context) and s.ai_think_path == "hold" and
       s.animation_id == "idle" and not s.movement_active,
       "0x13E40 idle pose sets the held idle continuation")
-s = state({ source_animation_selector = E.AiTuning.ANIM_BUSY + 1,
-            movement_active = true, animation_id = "action" })
+s = state({ movement_active = true, animation_id = "action" })
+hold_context.animation_blocks_behavior = true
 check(R.think(s, hold_context) and s.animation_id == "action" and
       s.movement_active,
       "0x13E40 leaves a busy pose and its current movement alone")
@@ -364,11 +363,11 @@ R.think(s, c)
 check(s.flee_target_x == stored_x,
       "0x13E9E does not replace an existing flee destination")
 
-s = state({ source_animation_selector = E.AiTuning.ANIM_BUSY + 1,
-            movement_active = true,
+s = state({ movement_active = true,
             actor_facts = { behavior = { fleeing = true } } })
 check(R.think_gate(s, context({ actor_facts = { behavior =
-      { fleeing = true } }, source_projection_active = false })) == "hold",
+      { fleeing = true } }, source_projection_active = false,
+      animation_blocks_behavior = true })) == "hold",
       "0x13E8C offscreen flee route enters 0x13E40")
 
 check(R.think_gate(state(), context({ source_actor_posture = E.Posture.MEDIUM_DEFENSE })) ==
