@@ -318,10 +318,9 @@ local function classify_spell_dispatch(state, context, target)
 end
 
 local function classify_item_dispatch(state, context, target)
-    -- 0x13FFE tests delay and +0x0C before the nonnegative +0x56 branch.
-    -- Codes 13..15 reach 0x15646. Other nonzero codes reach the 0x1411E
-    -- gate, which needs FFE186 or +0xB0 bit 4. Those facts are not hosted,
-    -- so a clear probe is not a spawn and not a C042/C092 pose.
+    -- 0x13FFE tests delay and +0x0C before dispatching the selected item.
+    -- Grenades enter the item-effect path; firearms reach the ranged-action
+    -- gate. Other item categories have no actor ranged action here.
     if type(target) ~= "table" then
         return nil
     end
@@ -337,11 +336,17 @@ local function classify_item_dispatch(state, context, target)
     if not action_line_clear(context, target) then
         return "blocked"
     end
-    local code = context.action_code
-    if code >= 13 and code <= 15 then
+    local item_module = game.modules.items
+    local item = type(item_module) == "table" and
+        type(item_module.by_id) == "table" and
+        item_module.by_id[context.action_item_id] or nil
+    if type(item) ~= "table" then
+        return "item_gated"
+    end
+    if item.kind == "grenade" then
         return "item_effect"
     end
-    if code < 1 or code > 12 then
+    if item.kind ~= "firearm" then
         return "item_gated"
     end
     if type(target.source_record_heading) ~= "number" then

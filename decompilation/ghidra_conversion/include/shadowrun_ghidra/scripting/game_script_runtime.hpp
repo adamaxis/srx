@@ -1062,6 +1062,8 @@ struct ScriptCombatantFacts {
     // 0xFFFF means the source +0xD8 linked-record relationship has not been
     // supplied; never substitute an unrelated runner menu-table index.
     std::uint16_t linked_action_profile_index = 0xFFFFU;
+    // Host-side source-record adapter only. Lua receives the ordered,
+    // item-specific `inventory` view from combat_inventory.hpp.
     std::array<std::uint8_t, 8> item_codes{};
     std::array<std::uint8_t, 8> item_phases{};
     std::array<ScriptWeaponActionPolicy, 12> weapon_action_policies =
@@ -1118,6 +1120,7 @@ struct ScriptActorSpellActionResolution {
     std::int16_t residual_effect = 0;
     std::uint8_t behavior_meter_delta = 0;
     bool inventory_changed = false;
+    // Host-side record update assembled from semantic Lua inventory items.
     std::array<std::uint8_t, 8> item_codes{};
     std::array<std::uint8_t, 8> item_phases{};
     std::uint8_t mental_meter = 0;

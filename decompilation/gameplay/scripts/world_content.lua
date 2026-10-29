@@ -310,18 +310,7 @@ local function world_activity_actor_descriptors(scene_id, selector_field,
                         row.combat_auxiliary_roll_bonus,
                     magic_cap = row.combat_magic_cap,
                     weapon_action_policies = row.weapon_action_policies,
-                    item_codes = {
-                        row.combat_item_code_0, row.combat_item_code_1,
-                        row.combat_item_code_2, row.combat_item_code_3,
-                        row.combat_item_code_4, row.combat_item_code_5,
-                        row.combat_item_code_6, row.combat_item_code_7,
-                    },
-                    item_phases = {
-                        row.combat_item_phase_0, row.combat_item_phase_1,
-                        row.combat_item_phase_2, row.combat_item_phase_3,
-                        row.combat_item_phase_4, row.combat_item_phase_5,
-                        row.combat_item_phase_6, row.combat_item_phase_7,
-                    },
+                    inventory = row.inventory,
                 },
             }
         end

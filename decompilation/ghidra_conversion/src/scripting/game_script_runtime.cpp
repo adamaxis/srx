@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+#include "shadowrun_ghidra/scripting/combat_inventory.hpp"
 #include "shadowrun_ghidra/scripting/cyberdeck_menu_bindings.hpp"
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
 #include "enums.hpp"
@@ -602,6 +603,98 @@ bool read_optional_field_integer(
         value = static_cast<std::uint8_t>(parsed);
     }
     return valid;
+}
+
+bool push_combat_inventory(
+    lua_State* state, const std::array<std::uint8_t, 8>& item_codes,
+    const std::array<std::uint8_t, 8>& item_values) {
+    lua_createtable(state, static_cast<int>(item_codes.size()), 0);
+    const auto inventory_index = lua_absindex(state, -1);
+    lua_Integer inventory_entry = 1;
+    for (std::size_t index = 0U; index < item_codes.size(); ++index) {
+        if (item_codes[index] == 0U) {
+            continue;
+        }
+        const auto item = script_combat_inventory_item(
+            static_cast<std::uint8_t>(index + 1U), item_codes[index],
+            item_values[index]);
+        if (!item.has_value()) {
+            lua_pop(state, 1);
+            return false;
+        }
+        lua_createtable(state, 0, item->value_property.empty() ? 2 : 3);
+        const auto item_index = lua_absindex(state, -1);
+        lua_pushlstring(state, item->item_id.data(), item->item_id.size());
+        lua_setfield(state, item_index, "id");
+        lua_pushinteger(state, item->slot);
+        lua_setfield(state, item_index, "slot");
+        if (!item->value_property.empty()) {
+            lua_pushinteger(state, item->value);
+            lua_setfield(state, item_index,
+                         std::string(item->value_property).c_str());
+        }
+        lua_rawseti(state, inventory_index, inventory_entry++);
+    }
+    return true;
+}
+
+bool read_combat_inventory(
+    lua_State* state, const int combatant_index,
+    std::array<std::uint8_t, 8>& item_codes,
+    std::array<std::uint8_t, 8>& item_values) {
+    lua_getfield(state, combatant_index, "inventory");
+    if (!lua_istable(state, -1) || lua_rawlen(state, -1) > item_codes.size()) {
+        lua_pop(state, 1);
+        return false;
+    }
+    item_codes.fill(0U);
+    item_values.fill(0U);
+    std::array<bool, 8> used_slots{};
+    const auto inventory_index = lua_absindex(state, -1);
+    const auto inventory_size = lua_rawlen(state, inventory_index);
+    for (std::size_t index = 0U; index < inventory_size; ++index) {
+        lua_rawgeti(state, inventory_index,
+                    static_cast<lua_Integer>(index + 1U));
+        if (!lua_istable(state, -1)) {
+            lua_pop(state, 2);
+            return false;
+        }
+        const auto item_index = lua_absindex(state, -1);
+        std::string item_id;
+        std::uint32_t slot = 0U;
+        if (!read_field_string(state, item_index, "id", item_id) ||
+            !read_field_integer(state, item_index, "slot", 8U, slot) ||
+            slot == 0U || used_slots[slot - 1U]) {
+            lua_pop(state, 2);
+            return false;
+        }
+        const auto source_code = script_item_source_code_from_id(item_id);
+        if (!source_code.has_value()) {
+            lua_pop(state, 2);
+            return false;
+        }
+        const auto item = script_combat_inventory_item(
+            static_cast<std::uint8_t>(slot), *source_code, 0U);
+        if (!item.has_value()) {
+            lua_pop(state, 2);
+            return false;
+        }
+        item_codes[slot - 1U] = *source_code;
+        used_slots[slot - 1U] = true;
+        if (!item->value_property.empty()) {
+            std::uint32_t value = 0U;
+            if (!read_field_integer(state, item_index,
+                                    std::string(item->value_property).c_str(),
+                                    0xFFU, value)) {
+                lua_pop(state, 2);
+                return false;
+            }
+            item_values[slot - 1U] = static_cast<std::uint8_t>(value);
+        }
+        lua_pop(state, 1);
+    }
+    lua_pop(state, 1);
+    return true;
 }
 
 bool read_field_boolean(lua_State* state, const int table_index,
@@ -7837,34 +7930,9 @@ GameScriptRuntime::world_activity_actors_for_selector(
             return fail("world-content actor combat facts are invalid");
         }
         combatant.race_or_state = static_cast<std::int8_t>(race_or_state);
-        const auto read_combatant_array =
-            [state, combatant_index](const char* field, auto& destination) {
-                lua_getfield(state, combatant_index, field);
-                if (!lua_istable(state, -1) ||
-                    lua_rawlen(state, -1) != destination.size()) {
-                    lua_pop(state, 1);
-                    return false;
-                }
-                const auto array_index = lua_absindex(state, -1);
-                bool valid = true;
-                for (std::size_t element = 0U;
-                     element < destination.size(); ++element) {
-                    lua_rawgeti(state, array_index,
-                                static_cast<lua_Integer>(element + 1U));
-                    std::uint32_t value = 0U;
-                    valid = valid && read_integer(state, -1, 0xFFU, value);
-                    lua_pop(state, 1);
-                    if (!valid) {
-                        break;
-                    }
-                    destination[element] =
-                        static_cast<std::uint8_t>(value);
-                }
-                lua_pop(state, 1);
-                return valid;
-            };
-        if (!read_combatant_array("item_codes", combatant.item_codes) ||
-            !read_combatant_array("item_phases", combatant.item_phases) ||
+        if (!read_combat_inventory(state, combatant_index,
+                                   combatant.item_codes,
+                                   combatant.item_phases) ||
             !read_weapon_action_policies(state, combatant_index,
                                          combatant.weapon_action_policies)) {
             return fail("world-content actor combat facts are invalid");
@@ -8258,38 +8326,11 @@ GameScriptRuntime::resolve_field_encounter_impl(
                         static_cast<std::uint16_t>(cyberware_flags);
                     actor.combatant.linked_action_profile_index =
                         static_cast<std::uint16_t>(profile_index);
-                    const auto read_combat_array = [&](const char* field,
-                                                       auto& values) {
-                        lua_getfield(state, combat_index, field);
-                        if (!lua_istable(state, -1) ||
-                            lua_rawlen(state, -1) != values.size()) {
-                            lua_pop(state, 1);
-                            return false;
-                        }
-                        const auto array_index = lua_absindex(state, -1);
-                        for (std::size_t item = 0U; item < values.size();
-                             ++item) {
-                            lua_rawgeti(state, array_index,
-                                        static_cast<lua_Integer>(item + 1U));
-                            int is_number = 0;
-                            const auto value = lua_tointegerx(
-                                state, -1, &is_number);
-                            lua_pop(state, 1);
-                            if (is_number == 0 || value < 0 ||
-                                value > 0xFF) {
-                                lua_pop(state, 1);
-                                return false;
-                            }
-                            values[item] = static_cast<std::uint8_t>(value);
-                        }
-                        lua_pop(state, 1);
-                        return true;
-                    };
                     valid_combatant =
-                        read_combat_array("item_codes",
-                                          actor.combatant.item_codes) &&
-                        read_combat_array("item_phases",
-                                          actor.combatant.item_phases) &&
+                        read_combat_inventory(
+                            state, combat_index,
+                            actor.combatant.item_codes,
+                            actor.combatant.item_phases) &&
                         read_weapon_action_policies(
                             state, combat_index,
                             actor.combatant.weapon_action_policies);
@@ -9781,6 +9822,15 @@ GameScriptRuntime::actor_heartbeat(
         impl_->failure = "gameplay Lua actor action source is inconsistent";
         return std::nullopt;
     }
+    const auto action_item_id = context.action_kind ==
+            ScriptActorActionKind::item
+        ? script_item_id_from_source_code(context.action_code)
+        : std::nullopt;
+    if (context.action_kind == ScriptActorActionKind::item &&
+        !action_item_id.has_value()) {
+        impl_->failure = "gameplay Lua actor item identity is unavailable";
+        return std::nullopt;
+    }
     if (context.projectile_movement.has_value() &&
         (context.profile_id != "weapon_projectile" ||
          context.phase != ScriptActorHeartbeatPhase::behavior ||
@@ -9869,6 +9919,28 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "action_kind");
     lua_pushinteger(state, context.action_code);
     lua_setfield(state, -2, "action_code");
+    if (action_item_id.has_value()) {
+        lua_pushlstring(state, action_item_id->data(),
+                        action_item_id->size());
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "action_item_id");
+    const auto profile_separator = context.profile_id.rfind('_');
+    const auto profile_suffix = profile_separator == std::string_view::npos
+        ? std::string_view{}
+        : context.profile_id.substr(profile_separator + 1U);
+    const bool has_profile_prefix =
+        profile_suffix == "none00" ||
+        (profile_suffix.size() == 6U &&
+         profile_suffix.substr(0U, 4U) == "item");
+    if (has_profile_prefix) {
+        lua_pushlstring(state, context.profile_id.data(),
+                        profile_separator);
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "profile_prefix");
     if (context.projectile_action.has_value()) {
         const auto action_name =
             script_weapon_action_name(*context.projectile_action);
@@ -10048,7 +10120,8 @@ GameScriptRuntime::actor_heartbeat(
         lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
     }
     lua_setfield(state, -2, "world_effect_slot_occupancy");
-    const auto push_combatant = [state](
+    bool semantic_inventory_valid = true;
+    const auto push_combatant = [state, &semantic_inventory_valid](
         const ScriptCombatantFacts& combatant) {
         lua_createtable(state, 0, 22);
         const auto table_index = lua_absindex(state, -1);
@@ -10108,26 +10181,25 @@ GameScriptRuntime::actor_heartbeat(
         set_integer("class_code", combatant.class_code);
         set_integer("equipped_action_code",
                     combatant.equipped_action_code);
+        const auto equipped_action_id = script_item_id_from_source_code(
+            combatant.equipped_action_code);
+        if (equipped_action_id.has_value()) {
+            lua_pushlstring(state, equipped_action_id->data(),
+                            equipped_action_id->size());
+        } else {
+            lua_pushnil(state);
+        }
+        lua_setfield(state, table_index, "equipped_action_id");
         set_integer("action_profile_modifier_flags",
                     combatant.action_profile_modifier_flags);
         set_integer("linked_action_profile_index",
                     combatant.linked_action_profile_index);
-        lua_createtable(state,
-                        static_cast<int>(combatant.item_codes.size()), 0);
-        for (std::size_t index = 0U; index < combatant.item_codes.size();
-             ++index) {
-            lua_pushinteger(state, combatant.item_codes[index]);
-            lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+        if (!push_combat_inventory(state, combatant.item_codes,
+                                   combatant.item_phases)) {
+            semantic_inventory_valid = false;
+            lua_pushnil(state);
         }
-        lua_setfield(state, table_index, "item_codes");
-        lua_createtable(state,
-                        static_cast<int>(combatant.item_phases.size()), 0);
-        for (std::size_t index = 0U; index < combatant.item_phases.size();
-             ++index) {
-            lua_pushinteger(state, combatant.item_phases[index]);
-            lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
-        }
-        lua_setfield(state, table_index, "item_phases");
+        lua_setfield(state, table_index, "inventory");
         lua_createtable(state, 0,
                         static_cast<int>(combatant.weapon_action_policies.size()));
         const auto policies_index = lua_absindex(state, -1);
@@ -10290,6 +10362,10 @@ GameScriptRuntime::actor_heartbeat(
         lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
     }
     lua_setfield(state, -2, "projectile_combat_targets");
+    if (!semantic_inventory_valid) {
+        return fail(
+            "actor combat facts contain an item without a semantic identity");
+    }
     lua_pushlightuserdata(state, impl_.get());
     lua_pushcclosure(state, Impl::actor_random_bound, 1);
     lua_setfield(state, -2, "ai_random_bound");
@@ -11098,25 +11174,49 @@ GameScriptRuntime::actor_heartbeat(
             }
         }
         lua_pop(state, 1);
-        lua_getfield(state, resolution_table, "next_action_code");
+        lua_getfield(state, resolution_table, "next_action_item_id");
         if (lua_type(state, -1) != LUA_TNIL) {
-            std::uint32_t next_action_code = 0U;
-            if (!read_integer(state, -1, 0xFFU, next_action_code)) {
+            std::string item_id;
+            if (!read_string(state, -1, item_id)) {
                 return fail(
-                    "actor_ai.heartbeat returned an invalid next action code");
+                    "actor_ai.heartbeat returned an invalid next inventory item");
             }
-            resolution.next_action_code =
-                static_cast<std::uint8_t>(next_action_code);
+            const auto source_code =
+                script_item_source_code_from_id(item_id);
+            if (!source_code.has_value()) {
+                return fail(
+                    "actor_ai.heartbeat returned an unknown next inventory item");
+            }
+            resolution.next_action_code = *source_code;
+        } else if (resolution.next_action_kind ==
+                   ScriptActorActionKind::none) {
+            resolution.next_action_code = 0U;
         }
         lua_pop(state, 1);
-        std::string next_profile_id;
+        std::string next_profile_prefix;
         if (!read_optional_field_string(state, resolution_table,
-                                        "next_profile_id",
-                                        next_profile_id)) {
+                                        "next_profile_prefix",
+                                        next_profile_prefix)) {
             return fail(
                 "actor_ai.heartbeat returned an invalid next actor profile");
         }
-        if (!next_profile_id.empty()) {
+        if (!next_profile_prefix.empty()) {
+            if (!valid_identifier(next_profile_prefix) ||
+                !resolution.next_action_kind.has_value() ||
+                !resolution.next_action_code.has_value()) {
+                return fail(
+                    "actor_ai.heartbeat returned an incomplete next actor identity");
+            }
+            std::string next_profile_id = next_profile_prefix + "_";
+            if (resolution.next_action_kind == ScriptActorActionKind::none) {
+                next_profile_id += "none00";
+            } else {
+                constexpr char hex_digits[] = "0123456789abcdef";
+                const auto item_code = *resolution.next_action_code;
+                next_profile_id += "item";
+                next_profile_id += hex_digits[(item_code >> 4U) & 0x0FU];
+                next_profile_id += hex_digits[item_code & 0x0FU];
+            }
             if (!valid_identifier(next_profile_id)) {
                 return fail(
                     "actor_ai.heartbeat returned an invalid next actor profile");
@@ -11146,34 +11246,31 @@ GameScriptRuntime::actor_heartbeat(
         }
         resolution.mental_meter =
             static_cast<std::uint8_t>(resolution_value);
-        const auto read_byte_array = [&](const char* field,
-                                         auto& values) {
-            lua_getfield(state, updated_combatant_table, field);
-            if (!lua_istable(state, -1) ||
-                lua_rawlen(state, -1) != values.size()) {
-                lua_pop(state, 1);
-                return false;
+        if (context.combatant.has_value()) {
+            resolution.item_codes = context.combatant->item_codes;
+            resolution.item_phases = context.combatant->item_phases;
+        }
+        if (resolution.inventory_changed) {
+            std::array<std::uint8_t, 8> updated_item_codes{};
+            std::array<std::uint8_t, 8> updated_item_values{};
+            if (!context.combatant.has_value() ||
+                !read_combat_inventory(state, updated_combatant_table,
+                                       updated_item_codes,
+                                       updated_item_values)) {
+                return fail(
+                    "actor_ai.heartbeat returned invalid semantic spell inventory");
             }
-            const auto array_table = lua_absindex(state, -1);
-            for (std::size_t index = 0U; index < values.size(); ++index) {
-                lua_rawgeti(state, array_table,
-                            static_cast<lua_Integer>(index + 1U));
-                std::uint32_t value = 0U;
-                const bool valid = read_integer(state, -1, 0xFFU, value);
-                lua_pop(state, 1);
-                if (!valid) {
-                    lua_pop(state, 1);
-                    return false;
+            const auto fetish_code = script_item_source_code_from_id("fetish");
+            if (!fetish_code.has_value()) {
+                return fail("semantic inventory has no fetish item identity");
+            }
+            for (std::size_t slot = 0U;
+                 slot < resolution.item_codes.size(); ++slot) {
+                if (resolution.item_codes[slot] == *fetish_code) {
+                    resolution.item_codes[slot] = updated_item_codes[slot];
+                    resolution.item_phases[slot] = updated_item_values[slot];
                 }
-                values[index] = static_cast<std::uint8_t>(value);
             }
-            lua_pop(state, 1);
-            return true;
-        };
-        if (!read_byte_array("item_codes", resolution.item_codes) ||
-            !read_byte_array("item_phases", resolution.item_phases)) {
-            return fail(
-                "actor_ai.heartbeat returned invalid spell inventory state");
         }
         lua_pop(state, 1);
 

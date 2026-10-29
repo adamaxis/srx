@@ -248,9 +248,9 @@ local function action_motion_distance_profile(context)
     if context.action_kind == ActionKind.item then
         local item_module = game.modules.items
         local item = type(item_module) == "table" and
-            type(item_module.catalog) == "table" and
-            item_module.catalog[context.action_code] or nil
-        if type(item) == "table" and item.code == context.action_code and
+            type(item_module.by_id) == "table" and
+            item_module.by_id[context.action_item_id] or nil
+        if type(item) == "table" and item.id == context.action_item_id and
            type(item.action_motion_distance_profile) == "number" then
             return item.action_motion_distance_profile
         end
@@ -368,6 +368,7 @@ local function initial_state(context, profile)
         entity_kind = context.entity_kind,
         action_kind = context.action_kind,
         action_code = context.action_code,
+        action_item_id = context.action_item_id,
         actor_facts = copy_actor_facts(context.actor_facts),
         movement_scene_id = context.movement_scene_id,
         source_physical_meter = context.source_physical_meter,
@@ -491,23 +492,33 @@ local function initial_state(context, profile)
 end
 
 local function same_actor(state, context, profile)
+    local same_action = state.action_kind == context.action_kind and
+        (context.action_kind == ActionKind.item
+            and state.action_item_id == context.action_item_id
+            or context.action_kind ~= ActionKind.item
+                and state.action_code == context.action_code)
     if state.profile_id == context.profile_id and
        state.entity_kind == context.entity_kind and
-       state.action_kind == context.action_kind and
-       state.action_code == context.action_code then
+       same_action then
         return true
     end
     local pending = state.pending_source_action
+    local pending_action_matches = type(pending) == "table" and
+        pending.action_kind == context.action_kind and
+        (context.action_kind == ActionKind.item
+            and pending.action_item_id == context.action_item_id
+            or context.action_kind == ActionKind.none and
+                pending.action_item_id == nil)
     if type(pending) ~= "table" or
-       pending.profile_id ~= context.profile_id or
-       pending.action_kind ~= context.action_kind or
-       pending.action_code ~= context.action_code or
+       pending.profile_prefix ~= context.profile_prefix or
+       not pending_action_matches or
        state.entity_kind ~= context.entity_kind then
         return false
     end
     state.profile_id = context.profile_id
     state.action_kind = context.action_kind
     state.action_code = context.action_code
+    state.action_item_id = context.action_item_id
     state.package_id = profile.package_id
     state.weapon_item_id = profile.weapon_item_id
     state.pending_source_action = nil

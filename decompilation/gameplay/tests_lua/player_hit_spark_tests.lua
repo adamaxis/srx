@@ -19,11 +19,6 @@ local function check(condition, label)
 end
 
 local function combatant(record_type)
-    local item_codes, item_phases = {}, {}
-    for slot = 1, 8 do
-        item_codes[slot] = 0
-        item_phases[slot] = 0
-    end
     return {
         record_type = record_type,
         actor_facts = {
@@ -55,8 +50,7 @@ local function combatant(record_type)
         equipped_action_code = 1,
         cyberware_flags = 0,
         action_profile_modifier_flags = 0,
-        item_codes = item_codes,
-        item_phases = item_phases,
+        inventory = {},
     }
 end
 

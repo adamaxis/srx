@@ -12,6 +12,9 @@ local gameA, gameB = H.make_game(logA), H.make_game(logB)
 _G.game = gameA; local A = dofile(H.ORIG)
 _G.game = gameB; require("actor.init"); local REG = require("actor.registry")
 local E = require("enums")
+local Items = require("items")
+gameA.modules.items = Items
+gameB.modules.items = Items
 
 -- collect the original's local functions by name via upvalues
 local origf, seen = {}, {}
@@ -186,7 +189,7 @@ local SHAPE = {
       physical_meter = R(0, 5), mental_meter = R(0, 5), down = R(3) == 1 }
   end,
   begin_dynamic_item_action = function(st, ctx)
-    ctx.dynamic_world_encounter_actor = true; ctx.action_kind = "item"; ctx.action_code = R(1, 15); st.action_delay = -R(1, 5)
+    ctx.dynamic_world_encounter_actor = true; ctx.action_kind = "item"; ctx.action_code = R(1, 15); ctx.action_item_id = Items.catalog[ctx.action_code].id; st.action_delay = -R(1, 5)
     ctx.entity_kind = E.SpriteType.CORP_GUARD; st.entity_kind = E.SpriteType.CORP_GUARD
     ctx.source_item_spawn_result = "spawned"; ctx.action_line_clear = R(4) ~= 1
   end,

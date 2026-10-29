@@ -71,7 +71,14 @@ from actor `+0x6E` using the weapon item code; the final four weapon entries
 cross into the source fields at `+0x76..+0x79`. The host decodes that source
 lookup into policies, and exposes `+0x7F` separately as `magic_cap`. Lua no
 longer receives the ten-byte `action_phase_extension` or a numeric projectile
-item code. Inventory item/phase arrays remain a separate unfinished boundary.
+item code. Combat Lua also receives ordered inventory instances with stable
+item IDs and item-specific state (`loaded_rounds`, `uses_remaining`, focus
+bonuses, talisman rating, spell-lock bonus, and armor index). ROM item codes
+and paired detail values are decoded at the host boundary; scripts no longer
+receive `item_codes`, `item_phases`, or extracted `combat_item_code_*` /
+`combat_item_phase_*` fields. Spell-focus and totem bonuses are keyed by spell
+IDs, and fetish consumption updates the named item's uses while preserving the
+source inventory ordering.
 
 ## State and ownership
 

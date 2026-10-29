@@ -8,6 +8,16 @@ local SpellActionCode = E.SpellActionCode
 local SpellEffectKind = E.SpellEffectKind
 local SpellTuning = E.SpellTuning
 local SoundId = E.SoundId
+local Item = {
+    COMBAT_SENSE_SPELL_LOCK = "combat_sense_spell_lock",
+    POWER_FOCUS = "power_focus",
+    PROTECTION_TALISMAN = "protection_talisman",
+    SMART_GOGGLES = "smart_goggles",
+    FETISH = "fetish",
+    RAT_TOTEM = "rat_totem",
+    GATOR_TOTEM = "gator_totem",
+    BEAR_TOTEM = "bear_totem",
+}
 
 -- ROM 0x490A spell-callback table: the callbacks for action codes 1 (0x521E),
 -- 2 (0x5152), 8 (0x508A) and 9 (0x4FE2) call 0xB0AC / 0xB0E4 instead of
@@ -44,15 +54,49 @@ local function add_source_byte_to_word(value, amount)
     return (value & 0xff00) | ((value + amount) & 0xff)
 end
 
+local function inventory_items(record)
+    return type(record.inventory) == "table" and record.inventory or {}
+end
+
+local function inventory_item_at(record, slot)
+    for _, item in ipairs(inventory_items(record)) do
+        if item.slot == slot then
+            return item
+        end
+    end
+    return nil
+end
+
+local function find_inventory_item(record, item_id, reverse, maximum_slot)
+    local inventory = inventory_items(record)
+    if reverse then
+        for index = #inventory, 1, -1 do
+            local item = inventory[index]
+            if item.id == item_id and
+               (maximum_slot == nil or item.slot <= maximum_slot) then
+                return item
+            end
+        end
+    else
+        for _, item in ipairs(inventory) do
+            if item.id == item_id and
+               (maximum_slot == nil or item.slot <= maximum_slot) then
+                return item
+            end
+        end
+    end
+    return nil
+end
+
 local function command_average(record)
     local total = (record.attributes.quickness +
                    record.attributes.intelligence +
                    record.attributes.willpower) & 0xff
     local value = total >> 1
-    for slot = 1, 8 do
-        if record.item_codes[slot] == E.ItemId.COMBAT_SENSE_SPELL_LOCK then
-            return (value + record.item_phases[slot]) & 0xff
-        end
+    local spell_lock = find_inventory_item(
+        record, Item.COMBAT_SENSE_SPELL_LOCK, false)
+    if spell_lock ~= nil then
+        return (value + (spell_lock.command_bonus or 0)) & 0xff
     end
     return value
 end
@@ -63,54 +107,53 @@ end
 
 local function item18_skill_value(record)
     local value = record.skills.sorcery & 0xff
-    -- 0x55F02 scans slots 6..0; possession cell 7 is reserved for the
-    -- separate special-item modifier path at 0x104F6.
-    for slot = 7, 1, -1 do
-        if record.item_codes[slot] == E.ItemId.POWER_FOCUS then
-            return add_source_byte_to_word(
-                value, record.item_phases[slot])
-        end
+    -- 0x55F02 scans positions 1..7 from the last slot down; slot 8 belongs
+    -- to the separate special-item path at 0x104F6.
+    local focus = find_inventory_item(
+        record, Item.POWER_FOCUS, true, 7)
+    if focus ~= nil then
+        return add_source_byte_to_word(value, focus.sorcery_bonus or 0)
     end
     return value
 end
 
 local function action_phase_modifier(value, record, action_code)
-    local item_code = action_code + E.ItemId.POWER_FOCUS
-    -- The ROM scans only possession cells 6..0 for the action phase.
-    for slot = 7, 1, -1 do
-        if record.item_codes[slot] == item_code then
-            value = add_source_byte_to_word(value, record.item_phases[slot])
-            break
-        end
-    end
-
-    local slot_item_code = record.item_codes[8]
-    if slot_item_code < E.ItemId.RAT_TOTEM or
-       slot_item_code > E.ItemId.BEAR_TOTEM then
-        return value
-    end
     local magic = game.modules.magic
     local items = game.modules.items
     local definition = type(magic) == "table" and
         type(magic.spell_action_definition) == "function" and
         magic.spell_action_definition(action_code) or nil
-    local selector = type(definition) == "table" and
-        definition.action_modifier_selector or nil
-    if type(selector) ~= "number" or selector < 0 then
+    if type(definition) ~= "table" or
+       type(definition.spell_id) ~= "string" then
+        return nil
+    end
+    local focus = find_inventory_item(
+        record, definition.focus_item_id, true, 7)
+    if focus ~= nil then
+        if type(focus.spell_action_bonus) ~= "number" then
+            return nil
+        end
+        value = add_source_byte_to_word(value, focus.spell_action_bonus)
+    end
+
+    local totem = inventory_item_at(record, 8)
+    if totem == nil or
+       (totem.id ~= Item.RAT_TOTEM and totem.id ~= Item.GATOR_TOTEM and
+        totem.id ~= Item.BEAR_TOTEM) or
+       type(definition.totem_modifier_applies) ~= "boolean" or
+       not definition.totem_modifier_applies then
         return value
     end
-    if selector > 2 then
-        return nil
-    end
     local item = type(items) == "table" and
-        type(items.catalog) == "table" and
-        items.catalog[slot_item_code] or nil
-    local words = type(item) == "table" and
-        item.source_action_modifier_words or nil
-    if type(words) ~= "table" or type(words[selector + 1]) ~= "number" then
+        type(items.by_id) == "table" and items.by_id[totem.id] or nil
+    local modifiers = type(item) == "table" and
+        item.spell_action_modifiers or nil
+    local modifier = type(modifiers) == "table" and
+        modifiers[definition.spell_id] or nil
+    if type(modifier) ~= "number" then
         return nil
     end
-    value = (value + words[selector + 1]) & 0xffff
+    value = (value + modifier) & 0xffff
     if signed_word(value) <= 0 then
         value = 1
     end
@@ -222,13 +265,7 @@ local function ready_party_bonus(context)
         if not candidate.world_activity_actor and type(record) == "table" and
            record.actor_facts.lifecycle.active and
            signed_byte(record.class_code) <= 1 then
-            local item18 = record.skills.sorcery
-            for slot = 7, 1, -1 do
-                if record.item_codes[slot] == E.ItemId.POWER_FOCUS then
-                    item18 = (item18 + record.item_phases[slot]) & 0xff
-                    break
-                end
-            end
+            local item18 = item18_skill_value(record)
             bonus = bonus + math.floor(item18 / 4)
             if (item18 % 4) >= 3 then
                 bonus = bonus + 1
@@ -318,10 +355,10 @@ local function defense_modifier(value, attacker)
     if attacker.actor_facts.interaction.defense_difficulty_reduction then
         return value - 2
     end
-    for slot = 1, 8 do
-        if attacker.item_codes[slot] == E.ItemId.PROTECTION_TALISMAN then
-            return value - math.floor(attacker.item_phases[slot] / 2)
-        end
+    local talisman = find_inventory_item(
+        attacker, Item.PROTECTION_TALISMAN, false)
+    if talisman ~= nil then
+        return value - math.floor((talisman.rating or 0) / 2)
     end
     return value
 end
@@ -412,6 +449,16 @@ local function copy_combatant(record)
                 policies[action_id] = policy_copy
             end
             copy[key] = policies
+        elseif key == "inventory" then
+            local inventory = {}
+            for index, item in ipairs(value) do
+                local item_copy = {}
+                for name, state in pairs(item) do
+                    item_copy[name] = state
+                end
+                inventory[index] = item_copy
+            end
+            copy[key] = inventory
         elseif type(value) == "table" then
             local array = {}
             for index, item in ipairs(value) do
@@ -503,23 +550,22 @@ end
 local function consume_fetish_residual(record, residual)
     local remaining = residual
     local changed = false
-    -- 0x10660 scans item code 0x13 in all eight possession cells. It is the
-    -- ROM's fetish item, not firearm ammunition; spells never decrement a
-    -- weapon magazine here.
-    for slot = #record.item_codes, 1, -1 do
-        if record.item_codes[slot] == 0x13 then
-            local phase = record.item_phases[slot]
+    -- 0x10660 consumes fetish uses from the last occupied inventory slot
+    -- toward the first. Other item quantities and firearm rounds are intact.
+    for index = #inventory_items(record), 1, -1 do
+        local item = record.inventory[index]
+        if item.id == Item.FETISH then
+            local uses = item.uses_remaining or 0
             changed = true
-            if remaining <= phase then
-                record.item_phases[slot] = (phase - remaining) & 0xff
-                if record.item_phases[slot] == 0 then
-                    record.item_codes[slot] = 0
+            if remaining <= uses then
+                item.uses_remaining = uses - remaining
+                if item.uses_remaining == 0 then
+                    table.remove(record.inventory, index)
                 end
                 return "fetish_consumed", changed
             end
-            remaining = remaining - phase
-            record.item_codes[slot] = 0
-            record.item_phases[slot] = 0
+            remaining = remaining - uses
+            table.remove(record.inventory, index)
         end
     end
     return "fetish_exhausted", changed
@@ -577,18 +623,16 @@ local function resolve_spell_action(context, target, allow_untargeted)
     -- item; the field host applies that header after the heartbeat.
     if attacker.mental_meter == 1 then
         if attacker.record_type >= 3 then
-            local first_item = attacker.item_codes[1] or 0
-            result.next_action_kind = first_item == 0 and "none" or "item"
-            result.next_action_code = first_item
+            local first_item = inventory_item_at(attacker, 1)
+            result.next_action_kind = first_item == nil and "none" or "item"
+            result.next_action_item_id = first_item and first_item.id or nil
             local profile_prefix = type(context.profile_id) == "string" and
                 string.match(context.profile_id,
                              "^(.-_k%x%x)_[a-z]+%x%x$") or nil
             if profile_prefix ~= nil then
-                result.next_profile_id = string.format(
-                    "%s_%s%02x", profile_prefix,
-                    result.next_action_kind, first_item)
+                result.next_profile_prefix = profile_prefix
             end
-            attacker.equipped_action_code = first_item
+            attacker.equipped_action_id = first_item and first_item.id or nil
         end
         result.outcome = "target_state_gate"
         return result
@@ -1015,7 +1059,7 @@ function Combat.resolve_reaction(context, target)
     local second_count = minimum_plus_attribute(
         defender_average - defender_reduction,
         defender.skills.melee_combat,
-        defender.equipped_action_code == 0)
+        defender.equipped_action_id == nil)
     local second_difficulty = condition_modifier(4, defender, attacker)
     second_difficulty = dynamic_status_modifier(
         second_difficulty, defender, attacker, context)
@@ -1117,10 +1161,8 @@ local function weapon_action_eligibility(difficulty, attacker, policy)
     if (attacker.cyberware_flags & E.CyberwareMask.SMARTLINK) ~= 0 then
         return difficulty - 2
     end
-    for slot = #attacker.item_codes, 1, -1 do
-        if attacker.item_codes[slot] == E.ItemId.SMART_GOGGLES then
-            return difficulty - 1
-        end
+    if find_inventory_item(attacker, Item.SMART_GOGGLES, true) ~= nil then
+        return difficulty - 1
     end
     return difficulty
 end
@@ -1258,8 +1300,7 @@ local function resolve_weapon_action_value(context, projectile,
             no_coverage_difficulty_bonus = false,
             defense_difficulty_reduction = false,
         }},
-        item_codes = {},
-        item_phases = {},
+        inventory = {},
     }
     action_value = defense_modifier(action_value, blank_projectile)
     return math.max(action_value, 0)

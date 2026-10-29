@@ -20,11 +20,6 @@ local function check(condition, label)
 end
 
 local function caster()
-    local item_codes, item_phases = {}, {}
-    for slot = 1, 8 do
-        item_codes[slot] = 0
-        item_phases[slot] = 0
-    end
     return {
         record_type = 0,
         actor_facts = {
@@ -55,8 +50,7 @@ local function caster()
         race_or_state = 4,
         class_code = 0,
         cyberware_flags = 0,
-        item_codes = item_codes,
-        item_phases = item_phases,
+        inventory = {},
     }
 end
 

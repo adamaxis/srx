@@ -83,6 +83,9 @@ end
 -- load implementations, each with its own game
 local logA, logB = {}, {}
 local gameA, gameB = make_game(logA), make_game(logB)
+local Items = require("items")
+gameA.modules.items = Items
+gameB.modules.items = Items
 _G.game = gameA
 local A = dofile(ORIG)
 if os.getenv("SRX_HEARTBEAT_RECORD") then A = require("heartbeat_recorder").wrap(A, os.getenv("SRX_HEARTBEAT_RECORD")) end
@@ -133,9 +136,12 @@ local function context(actor)
   local dyn = R(4) == 1
   if dyn then pid = (#kinds_list > 0 and R(2) == 1) and pick(kinds_list) or string.format("x_k%02x_%s%02x", R(4, 14), pick({ "item", "spell", "none" }), R(0, 15)) end
   local ek, ak, ac = pid:match("_k(%x%x)_([a-z]+)(%x%x)$")
+  local action_code = ac and tonumber(ac, 16) or 0
+  local action_item = ak == "item" and Items.catalog[action_code] or nil
   return {
     actor_id = actor, profile_id = pid, dynamic_world_encounter_actor = dyn,
-    entity_kind = ek and tonumber(ek, 16) or num(), action_kind = ak or "none", action_code = ac and tonumber(ac, 16) or 0,
+    entity_kind = ek and tonumber(ek, 16) or num(), action_kind = ak or "none", action_code = action_code,
+    action_item_id = action_item and action_item.id or nil,
     phase = pick({ "behavior", "render", "behavior" }), spawn = R(6) == 1,
     initial_heading = num(), entry_delay = R(0, 16), entry_animation_frame_count = R(1, 8),
     source_record_flags = R(4) == 1 and 0 or 1, source_record_slot = R(0, 7), combatant = bool(),

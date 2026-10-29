@@ -1,5 +1,6 @@
 #include "world_content_tsv_loader.hpp"
 #include "enums.hpp"
+#include "shadowrun_ghidra/scripting/combat_inventory.hpp"
 #include "shadowrun_ghidra/scripting/weapon_action_policy.hpp"
 
 #include <algorithm>
@@ -313,6 +314,66 @@ std::string_view lua_column_name(
     return tsv_column;
 }
 
+bool push_semantic_inventory(
+    lua_State* state, const TsvDocument& document,
+    const std::vector<std::string>& row,
+    const std::filesystem::path& source_path,
+    const std::size_t row_number, std::string& failure) {
+    if (document.column_indexes.find("combat_item_code_0") ==
+        document.column_indexes.end()) {
+        return true;
+    }
+    lua_createtable(state, 8, 0);
+    const auto inventory_index = lua_absindex(state, -1);
+    lua_Integer inventory_entry = 1;
+    for (std::size_t slot = 0U; slot < 8U; ++slot) {
+        const auto code_column = "combat_item_code_" + std::to_string(slot);
+        const auto value_column = "combat_item_phase_" + std::to_string(slot);
+        std::uint8_t item_code = 0U;
+        std::uint8_t item_value = 0U;
+        if (!read_source_byte(document, row, code_column, source_path,
+                              row_number, item_code, failure) ||
+            !read_source_byte(document, row, value_column, source_path,
+                              row_number, item_value, failure)) {
+            lua_pop(state, 1);
+            return false;
+        }
+        if (item_code == 0U) {
+            continue;
+        }
+        const auto item = script_combat_inventory_item(
+            static_cast<std::uint8_t>(slot + 1U), item_code, item_value);
+        if (!item.has_value()) {
+            failure = source_path.string() + ": row " +
+                      std::to_string(row_number) + " has unknown inventory "
+                      "item code " + std::to_string(item_code);
+            lua_pop(state, 1);
+            return false;
+        }
+        if (item->value_property.empty() && item_value != 0U) {
+            failure = source_path.string() + ": row " +
+                      std::to_string(row_number) + " has an unmapped nonzero "
+                      "inventory value for " + std::string(item->item_id);
+            lua_pop(state, 1);
+            return false;
+        }
+        lua_createtable(state, 0, item->value_property.empty() ? 2 : 3);
+        const auto item_index = lua_absindex(state, -1);
+        lua_pushlstring(state, item->item_id.data(), item->item_id.size());
+        lua_setfield(state, item_index, "id");
+        lua_pushinteger(state, item->slot);
+        lua_setfield(state, item_index, "slot");
+        if (!item->value_property.empty()) {
+            lua_pushinteger(state, item->value);
+            lua_setfield(state, item_index,
+                         std::string(item->value_property).c_str());
+        }
+        lua_rawseti(state, inventory_index, inventory_entry++);
+    }
+    lua_setfield(state, -2, "inventory");
+    return true;
+}
+
 bool push_record(lua_State* state, const TsvDocument& document,
                  const std::vector<std::string>& row,
                  const std::vector<std::string_view>& numeric_columns,
@@ -329,6 +390,10 @@ bool push_record(lua_State* state, const TsvDocument& document,
         // traits and interaction rules built below, never the packed byte.
         if (column == "source_spawn_state_flags" ||
             column == "source_interaction_flags") {
+            continue;
+        }
+        if (column.rfind("combat_item_code_", 0U) == 0U ||
+            column.rfind("combat_item_phase_", 0U) == 0U) {
             continue;
         }
         if (column.rfind("combat_action_phase_", 0U) == 0U) {
@@ -390,6 +455,11 @@ bool push_record(lua_State* state, const TsvDocument& document,
 
     if (!push_weapon_action_policies(state, document, row, source_path,
                                      row_number, failure)) {
+        lua_pop(state, 1);
+        return false;
+    }
+    if (!push_semantic_inventory(state, document, row, source_path,
+                                 row_number, failure)) {
         lua_pop(state, 1);
         return false;
     }

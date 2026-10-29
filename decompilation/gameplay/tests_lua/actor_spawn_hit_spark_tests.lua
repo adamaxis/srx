@@ -6,11 +6,6 @@ require("actor.init")
 local R = require("actor.registry")
 
 local function combatant(record_type, physical_meter)
-    local item_codes, item_phases = {}, {}
-    for slot = 1, 8 do
-        item_codes[slot] = E.ItemId.NONE
-        item_phases[slot] = 0
-    end
     return {
         record_type = record_type,
         class_code = 0,
@@ -39,8 +34,7 @@ local function combatant(record_type, physical_meter)
             sorcery = 0, firearms = 0, pistols = 0, smgs = 0,
             shotguns = 0, melee_combat = 0,
         },
-        item_codes = item_codes,
-        item_phases = item_phases,
+        inventory = {},
     }
 end
 

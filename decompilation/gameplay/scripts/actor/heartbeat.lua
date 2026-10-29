@@ -375,17 +375,23 @@ function ActorAI.heartbeat(context)
                                             spell_resolution.action_result
                                         if type(spell_resolution.next_action_kind) ==
                                                "string" and
-                                           type(spell_resolution.next_action_code) ==
-                                               "number" and
-                                           type(spell_resolution.next_profile_id) ==
-                                               "string" then
+                                           type(spell_resolution.next_profile_prefix) ==
+                                               "string" and
+                                           ((spell_resolution.next_action_kind ==
+                                                 "item" and
+                                             type(spell_resolution.next_action_item_id) ==
+                                                 "string") or
+                                            (spell_resolution.next_action_kind ==
+                                                 "none" and
+                                             spell_resolution.next_action_item_id ==
+                                                 nil)) then
                                             state.pending_source_action = {
-                                                profile_id =
-                                                    spell_resolution.next_profile_id,
+                                                profile_prefix =
+                                                    spell_resolution.next_profile_prefix,
                                                 action_kind =
                                                     spell_resolution.next_action_kind,
-                                                action_code =
-                                                    spell_resolution.next_action_code,
+                                                action_item_id =
+                                                    spell_resolution.next_action_item_id,
                                             }
                                         end
                                         if type(spell_resolution.combatant) ==

@@ -1,4 +1,5 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
+#include "shadowrun_ghidra/scripting/combat_inventory.hpp"
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
 #include "enums.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
@@ -66,6 +67,58 @@ bool verify_weapon_action_policy_translation() {
         }
     }
     return true;
+}
+
+bool verify_semantic_combat_inventory_translation() {
+    using namespace shadowrun::ghidra_conversion::scripting;
+    struct Case {
+        std::uint8_t source_code;
+        std::uint8_t value;
+        std::string_view item_id;
+        std::string_view property;
+    };
+    // Actor inventory values at +0x66..+0x75 are decoded by item identity:
+    // weapon rounds, consumable uses, focus/talisman modifiers, and armor
+    // index. Lua receives these named item facts rather than parallel bytes.
+    constexpr std::array<Case, 7U> cases{{
+        {8U, 21U, "ak_97", "loaded_rounds"},
+        {19U, 10U, "fetish", "uses_remaining"},
+        {24U, 2U, "power_focus", "sorcery_bonus"},
+        {29U, 3U, "sleep_focus", "spell_action_bonus"},
+        {39U, 4U, "protection_talisman", "rating"},
+        {40U, 2U, "combat_sense_spell_lock", "command_bonus"},
+        {47U, 4U, "vest_with_plates", "armor_index"},
+    }};
+    for (const auto& test_case : cases) {
+        const auto item = script_combat_inventory_item(
+            3U, test_case.source_code, test_case.value);
+        if (!item.has_value() || item->slot != 3U ||
+            item->item_id != test_case.item_id ||
+            item->value_property != test_case.property ||
+            item->value != test_case.value ||
+            script_item_source_code_from_id(test_case.item_id) !=
+                test_case.source_code) {
+            std::cerr << "inventory mapping code="
+                      << static_cast<unsigned>(test_case.source_code)
+                      << " expected=" << test_case.item_id << "/"
+                      << test_case.property << "/"
+                      << static_cast<unsigned>(test_case.value);
+            if (item.has_value()) {
+                std::cerr << " actual=" << item->item_id << "/"
+                          << item->value_property << "/"
+                          << static_cast<unsigned>(item->value);
+            } else {
+                std::cerr << " actual=<invalid>";
+            }
+            std::cerr << '\n';
+            return expect(false,
+                          "source inventory state did not become a named item property");
+        }
+    }
+    return expect(!script_combat_inventory_item(1U, 0U, 0U).has_value() &&
+                      !script_combat_inventory_item(9U, 1U, 0U).has_value() &&
+                      !script_item_source_code_from_id("not_an_item").has_value(),
+                  "semantic inventory accepted an invalid source item");
 }
 
 bool verify_field_scene_mode_translation() {
@@ -619,7 +672,6 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                   "  local items = require('items')\n"
                   "  local records = require('data.items').by_id\n"
                   "  local weapons = require('data.weapons')\n"
-                  "  local spells = require('data.spells').by_type\n"
                   "  local accessories = require('data.accessories').by_id\n"
                   "  local profiles = require('data.actor_profiles').by_id\n"
                   "  local magic = require('magic')\n"
@@ -644,9 +696,11 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                   "       (item.armor.primary_modifier ~= records[code].b25 or\n"
                   "        item.armor.secondary_modifier ~= records[code].b26) then return 'armor ROM fields mismatch' end\n"
                   "  end\n"
+                  "  local spell_ids = { 'flame_dart', 'flame_bolt', 'hellblast', 'invisibility', 'sleep', 'stink', 'super_barrier', 'mana_zap', 'mana_blast', 'mana_storm', 'rockskin', 'heal_wounds', 'confusion', 'barrier' }\n"
+                  "  local focus_ids = { 'flame_dart_focus', 'flame_bolt_focus', 'hellblast_focus', 'invisibility_focus', 'sleep_focus', 'stink_focus', 'supr_barrier_focus', 'mana_zap_focus', 'mana_blast_focus', 'mana_storm_focus', 'rockskin_focus', 'heal_wounds_focus', 'confusion_focus', 'barrier_focus' }\n"
                   "  for code = 1, 14 do\n"
                   "    local definition = magic.spell_action_definition(code)\n"
-                  "    if definition == nil or definition.source_record ~= spells[code - 1] then return 'spell record mismatch' end\n"
+                  "    if definition == nil or definition.spell_id ~= spell_ids[code] or definition.focus_item_id ~= focus_ids[code] or type(definition.totem_modifier_applies) ~= 'boolean' then return 'spell semantic profile mismatch' end\n"
                   "    if code == 14 and (definition.spell_id ~= 'barrier' or definition.availability ~= -1 or definition.effect_table_index ~= 1 or definition.difficulty_modifier ~= 2 or definition.base_effect ~= 3 or definition.target_effect ~= 0 or definition.attribute_selector ~= 0) then return 'Barrier ROM action profile mismatch' end\n"
                   "  end\n"
                   "  for id = 0, 5 do\n"
@@ -1512,6 +1566,7 @@ int main() {
     using namespace shadowrun::ghidra_conversion::scripting;
 
     if (!verify_weapon_action_policy_translation() ||
+        !verify_semantic_combat_inventory_translation() ||
         !verify_field_scene_mode_translation() ||
         !verify_mode_one_semantic_fact_translation()) {
         return 1;

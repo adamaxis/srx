@@ -21,6 +21,23 @@ local spell_ids = {
     "barrier",
 }
 
+local focus_item_by_spell = {
+    flame_dart = "flame_dart_focus",
+    flame_bolt = "flame_bolt_focus",
+    hellblast = "hellblast_focus",
+    invisibility = "invisibility_focus",
+    sleep = "sleep_focus",
+    stink = "stink_focus",
+    super_barrier = "supr_barrier_focus",
+    mana_zap = "mana_zap_focus",
+    mana_blast = "mana_blast_focus",
+    mana_storm = "mana_storm_focus",
+    rockskin = "rockskin_focus",
+    heal_wounds = "heal_wounds_focus",
+    confusion = "confusion_focus",
+    barrier = "barrier_focus",
+}
+
 -- D4EA0 action rows in one-based live-record action-code order. The row
 -- stores caster residual index at +0x24, target effect index/availability at
 -- +0x25, difficulty modifier at +0x26, and target attribute selector at
@@ -128,6 +145,7 @@ function Magic.spell_action_definition(code)
     local effect_profile = actor_effect_profile_by_code[code]
     return {
         spell_id = spell_ids[code],
+        focus_item_id = focus_item_by_spell[spell_ids[code]],
         row_index = code - 1,
         availability = row.availability,
         effect_table_index = row.effect_table_index,
@@ -135,8 +153,7 @@ function Magic.spell_action_definition(code)
         base_effect = row.base_effect,
         target_effect = row.target_effect,
         attribute_selector = row.attribute_selector,
-        action_modifier_selector = source_record.totem_category,
-        source_record = source_record,
+        totem_modifier_applies = source_record.totem_category >= 0,
         audio_event = action_effect_audio_event_by_code[code] or 0,
         untargeted_effect_kind = untargeted_effect_kind_by_code[code] or
             E.SpellEffectKind.NONE,

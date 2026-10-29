@@ -161,12 +161,27 @@ Items.catalog = {
     define_item("protection_talisman", 39, "talisman", true),
     define_item("combat_sense_spell_lock", 40, "spell_lock", true),
     define_item("rat_totem", 41, "totem", false,
-        { source_action_modifier_words = { 0x0002, 0xffff, 0x0000 } }),
+        { spell_action_modifiers = {
+            flame_dart = -1, flame_bolt = -1, hellblast = -1,
+            invisibility = 2, sleep = -1, stink = 2, mana_zap = -1,
+            mana_blast = -1, mana_storm = -1, heal_wounds = 0,
+            confusion = 2,
+        } }),
     define_item("gator_totem", 42, "totem", false,
-        { source_action_modifier_words = { 0xffff, 0x0002, 0x0000 } }),
+        { spell_action_modifiers = {
+            flame_dart = 2, flame_bolt = 2, hellblast = 2,
+            invisibility = -1, sleep = 2, stink = -1, mana_zap = 2,
+            mana_blast = 2, mana_storm = 2, heal_wounds = 0,
+            confusion = -1,
+        } }),
     define_item("bear_totem", 43, "totem", false,
         { action_motion_distance_profile = 2,
-          source_action_modifier_words = { 0x0000, 0x0000, 0x0202 } }),
+          spell_action_modifiers = {
+              flame_dart = 0, flame_bolt = 0, hellblast = 0,
+              invisibility = 0, sleep = 0, stink = 0, mana_zap = 0,
+              mana_blast = 0, mana_storm = 0, heal_wounds = 2,
+              confusion = 0,
+          } }),
     define_item("armor_vest", 44, "armor", true,
         { armor = { armor_index = 1 } }),
     define_item("armor_clothing", 45, "armor", true,
@@ -187,6 +202,7 @@ Items.catalog = {
 -- Keep the older presentation fields as views for existing host consumers,
 -- but validate and populate them from the source records here.
 Items.by_code = {}
+Items.by_id = {}
 for _, item in ipairs(Items.catalog) do
     local record = SourceItemRecords[item.code]
     assert(record == item.source_record,
@@ -241,6 +257,7 @@ for _, item in ipairs(Items.catalog) do
         item.armor.secondary_modifier = record.b26
     end
     Items.by_code[item.code] = item
+    Items.by_id[item.id] = item
 end
 assert(#Items.catalog == 50, "the ROM item catalog must have 50 records")
 
