@@ -879,7 +879,7 @@ for _, speed_case in ipairs(regional_pedestrian_speed_cases) do
     }
     local speed_step = R.advance_entity_movement(speed_context, speed_state)
     check(speed_step ~= nil and speed_step.outcome == "accepted" and
-          speed_state.animation_timing_word == speed_case[2],
+          speed_state.movement_distance_per_update == speed_case[2],
           string.format("regional pedestrian B6E4 distance 0x%04X selects %d-unit vector [C]",
                         speed_case[1], speed_case[2]))
 end
