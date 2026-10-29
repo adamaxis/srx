@@ -230,9 +230,9 @@ function World.actor_spawns_in_scene(scene_id)
     return records_in_scene("actor_spawns", scene_id)
 end
 
--- Return one extracted actor list as ordinary host actor descriptors. Gameplay
--- selects by a world-script index or stable activity id; source addresses stay
--- in the extracted row for the native host to resolve placement data.
+-- Return selected actors with stable activity identity and named runtime
+-- facts. Import resolves all catalog pointers to semantic actor/activity IDs
+-- and translates the template tag before Lua sees these rows.
 local function world_activity_actor_descriptors(scene_id, selector_field,
                                                 selector)
     local rows = content().world_activity_actor_lists or {}
@@ -257,10 +257,7 @@ local function world_activity_actor_descriptors(scene_id, selector_field,
                 script_index = row.script_index,
                 list_id = row.list_id,
                 source_order = row.source_order,
-                list_offset = row.list_offset,
-                tagged_template = row.tagged_template,
-                template_offset = row.template_offset,
-                position_offset = row.position_offset,
+                activity_probe_enabled = row.activity_probe_enabled,
                 name = row.actor_name,
                 profile_id = row.profile_id,
                 entity_kind = row.entity_kind,
@@ -381,11 +378,9 @@ function World.conditional_actor_candidates_for_scene(scene_id)
                 scene = row.scene,
                 choice = row.choice,
                 actor_name = row.actor_name,
+                profile_id = row.profile_id,
                 entity_kind = row.entity_kind,
                 palette_line = row.palette_line,
-                template_offset = row.template_offset,
-                list_offset = row.list_offset,
-                position_offset = row.position_offset,
                 world_x = row.world_x,
                 world_y = row.world_y,
                 heading_word = row.heading_word,

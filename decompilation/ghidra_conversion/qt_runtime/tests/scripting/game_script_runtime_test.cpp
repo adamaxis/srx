@@ -466,8 +466,7 @@ bool verify_mode_one_activity_actor_lists(
                 test_case.scene, expected_list_id);
             if (!expect(actors.has_value() && actors->size() == 1U &&
                             actors->front().list_id == expected_list_id &&
-                            actors->front().list_offset ==
-                                test_case.expected_list,
+                            actors->front().activity_id == expected_list_id,
                         "0x16FD4 selected list lacks its extracted actor")) {
                 std::cerr << "scene=" << test_case.scene
                           << " list=0x" << std::hex
@@ -1684,7 +1683,7 @@ int main() {
                         std::to_string(candidate.choice) ||
                 candidate.entity_kind != 11U ||
                 candidate.palette_line != 3U ||
-                candidate.template_offset != 0x1D6988U ||
+                candidate.profile_id != "pedestrian_k0b_none00" ||
                 candidate.source_spawn_state_flags != 0x08U ||
                 candidate.selection_group !=
                     "scene-" + std::to_string(scene) + "-one-of-three" ||
@@ -1981,7 +1980,8 @@ int main() {
                 spirit_eyes_entry_list->size() == 5U &&
                 spirit_eyes_entry_list->front().scene_id == 47U &&
                 spirit_eyes_entry_list->front().list_id == "mode_13_entry" &&
-                spirit_eyes_entry_list->front().list_offset == 0x1E552U &&
+                spirit_eyes_entry_list->front().activity_id ==
+                    "mode_13_entry" &&
                 spirit_eyes_entry_list->front().source_order == 0U &&
                 spirit_eyes_entry_list->front().world_x == 0x5980U &&
                 spirit_eyes_entry_list->front().world_y == 0x0E80U,
@@ -2003,12 +2003,9 @@ int main() {
                     "scene_13_ilene_gate_script" &&
                 ilene_gate_actors->front().script_index == 3U &&
                 ilene_gate_actors->front().source_order == 0U &&
-                ilene_gate_actors->front().list_offset == 0x1706CU &&
                 ilene_gate_actors->front().activity_id ==
                     "scene_13_ilene_gate_script" &&
-                ilene_gate_actors->front().tagged_template == 0x800172CAU &&
-                ilene_gate_actors->front().template_offset == 0x172CAU &&
-                ilene_gate_actors->front().position_offset == 0x17082U &&
+                ilene_gate_actors->front().activity_probe_enabled &&
                 ilene_gate_actors->front().actor_name == "lone11" &&
                 ilene_gate_actors->front().profile_id ==
                     "lone11_k0a_item03" &&
@@ -2048,11 +2045,7 @@ int main() {
                 ilene_pending_list->front().source_order == 0U &&
                 ilene_pending_list->front().activity_id ==
                     "scene_20_ilene_pending_list" &&
-                ilene_pending_list->front().list_offset == 0xA8CCU &&
-                ilene_pending_list->front().tagged_template ==
-                    0x800172CAU &&
-                ilene_pending_list->front().template_offset == 0x172CAU &&
-                ilene_pending_list->front().position_offset == 0xA8E4U &&
+                ilene_pending_list->front().activity_probe_enabled &&
                 ilene_pending_list->front().profile_id ==
                     "lone11_k0a_item03" &&
                 ilene_pending_list->front().entity_kind == 10U &&
@@ -2091,8 +2084,10 @@ int main() {
                 non_candidate_scene->empty() &&
                 first_candidate_scene.has_value() &&
                 first_candidate_scene->front().choice == 1U &&
-                first_candidate_scene->front().list_offset == 0x1EDECCU &&
-                first_candidate_scene->front().position_offset == 0x1EDEE4U &&
+                first_candidate_scene->front().candidate_id ==
+                    "scene-21-one-of-three:choice:1" &&
+                first_candidate_scene->front().profile_id ==
+                    "pedestrian_k0b_none00" &&
                 first_candidate_scene->front().world_x == 0x2800U &&
                 first_candidate_scene->front().world_y == 0x0580U &&
                 first_candidate_scene->front().heading_word == 0xC000U &&

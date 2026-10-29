@@ -41,6 +41,15 @@ bool field_integer_is(lua_State* state, const int table_index,
     return matches;
 }
 
+bool field_boolean_is(lua_State* state, const int table_index,
+                      const char* field, const bool expected) {
+    lua_getfield(state, table_index, field);
+    const bool matches = lua_isboolean(state, -1) != 0 &&
+        (lua_toboolean(state, -1) != 0) == expected;
+    lua_pop(state, 1);
+    return matches;
+}
+
 bool array_has_id(lua_State* state, const int array_index,
                   const char* id) {
     const auto array = lua_absindex(state, array_index);
@@ -101,16 +110,65 @@ int main() {
     const int data_table = lua_absindex(state, -1);
 
     lua_getfield(state, data_table, "world_activity_actor_lists");
-    lua_rawgeti(state, -1, 1);
+    const int actor_list_rows = lua_absindex(state, -1);
+    const auto actor_list_count = lua_rawlen(state, actor_list_rows);
+    bool actor_rows_are_semantic = true;
+    bool found_probe_enabled = false;
+    bool found_probe_disabled = false;
+    for (std::size_t index = 1U; index <= actor_list_count; ++index) {
+        lua_rawgeti(state, actor_list_rows, static_cast<lua_Integer>(index));
+        const auto row = lua_absindex(state, -1);
+        lua_getfield(state, row, "activity_probe_enabled");
+        if (lua_isboolean(state, -1) == 0) {
+            actor_rows_are_semantic = false;
+        } else if (lua_toboolean(state, -1) != 0) {
+            found_probe_enabled = true;
+        } else {
+            found_probe_disabled = true;
+        }
+        lua_pop(state, 1);
+        for (const auto* field : {"source_record_offset", "tagged_template",
+                                  "template_offset", "list_offset",
+                                  "position_offset"}) {
+            lua_getfield(state, row, field);
+            actor_rows_are_semantic = actor_rows_are_semantic &&
+                lua_isnil(state, -1) != 0;
+            lua_pop(state, 1);
+        }
+        lua_pop(state, 1);
+    }
+    bool valid = expect(actor_rows_are_semantic && found_probe_enabled &&
+                            found_probe_disabled,
+                        "actor catalog did not replace source pointers with "
+                        "semantic identity and boolean probe facts");
+    lua_rawgeti(state, actor_list_rows, 1);
     const int first_actor_list_row = lua_absindex(state, -1);
-    bool valid = expect(field_string_is(state, first_actor_list_row, "list_id",
-                                        "scene_10_event_6_script"),
-                        "actor catalog lost its semantic activity ID");
-    lua_getfield(state, first_actor_list_row, "source_record_offset");
-    valid = expect(lua_isnil(state, -1),
-                   "ROM actor record address leaked into Lua catalog data") &&
+    valid = expect(field_string_is(state, first_actor_list_row, "list_id",
+                                   "scene_10_event_6_script") &&
+                       field_boolean_is(state, first_actor_list_row,
+                                        "activity_probe_enabled", true),
+                   "actor catalog lost its semantic activity identity") &&
             valid;
-    lua_pop(state, 3);
+    lua_pop(state, 2);
+
+    lua_getfield(state, data_table, "conditional_actor_candidates");
+    lua_rawgeti(state, -1, 1);
+    const auto first_candidate_row = lua_absindex(state, -1);
+    bool conditional_candidates_are_semantic =
+        field_string_is(state, first_candidate_row, "profile_id",
+                        "pedestrian_k0b_none00");
+    for (const auto* field : {"template_offset", "list_offset",
+                              "position_offset"}) {
+        lua_getfield(state, first_candidate_row, field);
+        conditional_candidates_are_semantic =
+            conditional_candidates_are_semantic &&
+            lua_isnil(state, -1) != 0;
+        lua_pop(state, 1);
+    }
+    valid = expect(conditional_candidates_are_semantic,
+                   "conditional actor candidates leaked source addresses "
+                   "or lacked their semantic profile id") && valid;
+    lua_pop(state, 2);
 
     lua_getfield(state, data_table, "field_alarm_profiles");
     lua_rawgeti(state, -1, 21);

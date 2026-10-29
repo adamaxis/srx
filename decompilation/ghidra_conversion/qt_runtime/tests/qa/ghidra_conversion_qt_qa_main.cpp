@@ -12277,18 +12277,15 @@ int run_field_scene26_event1_physical_entry_qa(
         const auto source_initializer =
             field_scene.active_run_source_initializer_for_dump();
         std::uint8_t selected_choice = 0U;
-        std::uint32_t selected_position_offset = 0U;
         bool candidate_matches = false;
         if (candidates.has_value() && actor.has_value()) {
             const auto selected_candidate = std::find_if(
                 candidates->begin(), candidates->end(),
                 [&actor](const auto& row) {
-                    return row.list_offset == actor->list_offset;
+                    return row.candidate_id == actor->activity_id;
                 });
             if (selected_candidate != candidates->end()) {
                 selected_choice = selected_candidate->choice;
-                selected_position_offset =
-                    selected_candidate->position_offset;
                 candidate_matches = selected_candidate->choice >= 1U &&
                     selected_candidate->choice <= 2U &&
                     actor->world_position.x == selected_candidate->world_x &&
@@ -12342,13 +12339,12 @@ int run_field_scene26_event1_physical_entry_qa(
             return 3;
         }
         candidate_trace
-            << "scene\tchoice\tlist_offset\tposition_offset\tworld_x"
+            << "scene\tchoice\tactivity_id\tworld_x"
                "\tworld_y\theading\tactor_slot\tvisible"
                "\tsource_initializer\tworld_mode\teffect_index\n";
         candidate_trace << static_cast<unsigned>(kDestinationScene) << '\t'
-                        << static_cast<unsigned>(selected_choice) << "\t0x"
-                        << std::hex << actor->list_offset << "\t0x"
-                        << selected_position_offset << "\t0x"
+                        << static_cast<unsigned>(selected_choice) << '\t'
+                        << actor->activity_id << "\t0x"
                         << actor->world_position.x << "\t0x"
                         << actor->world_position.y << "\t0x"
                         << actor->initial_heading << std::dec << '\t'
@@ -20896,7 +20892,7 @@ bool ride_scene30_elevator_for_pedestrian_qa(
             return candidate.choice == expected_choice;
         });
     if (expected == candidates->end() ||
-        actor->list_offset != expected->list_offset ||
+        actor->activity_id != expected->candidate_id ||
         actor->world_position.x != expected->world_x ||
         actor->world_position.y != expected->world_y ||
         actor->profile_id != "pedestrian_k0b_none00" ||
@@ -20907,9 +20903,9 @@ bool ride_scene30_elevator_for_pedestrian_qa(
                   << static_cast<unsigned>(expected_choice)
                   << " (expected_list="
                   << (expected != candidates->end()
-                          ? std::to_string(expected->list_offset)
+                          ? expected->candidate_id
                           : std::string("missing"))
-                  << ", actual_list=" << actor->list_offset
+                  << ", actual_activity=" << actor->activity_id
                   << ", expected_position="
                   << (expected != candidates->end()
                           ? std::to_string(expected->world_x) + "," +
@@ -20943,7 +20939,7 @@ bool ride_scene30_elevator_for_pedestrian_qa(
     if (!trace) return false;
     trace << "stage\tscene\tinput\tupdates\tactive_index\tselected_index"
              "\tchoice\tinitial_choice_seed\topposing_destination_seed"
-             "\tresult\tlist_offset\tactor_x\tactor_y\tprofile\trecord_slot\n";
+              "\tresult\tactivity_id\tactor_x\tactor_y\tprofile\trecord_slot\n";
     trace << "scene-30-deferred\t30\tentry\t" << entry_wait
           << "\t0\t4\t" << static_cast<unsigned>(expected_choice)
           << "\t0x" << std::hex << initial_choice_seed << "\t0x"
@@ -20960,7 +20956,7 @@ bool ride_scene30_elevator_for_pedestrian_qa(
           << "\t4\t4\t" << static_cast<unsigned>(expected_choice)
           << "\t0x" << std::hex << initial_choice_seed << "\t0x"
           << destination_random_seed
-          << "\tspawned\t0x" << actor->list_offset << "\t0x"
+          << "\tspawned\t" << actor->activity_id << "\t0x"
           << actor->world_position.x << "\t0x"
           << actor->world_position.y << '\t' << actor->profile_id << '\t'
           << static_cast<unsigned>(*actor->record_slot) << '\n';
@@ -21767,7 +21763,7 @@ bool verify_field_pedestrian_late_gate_retention_qa(
             selected_effect_index != active_effect_index ||
             field_scene.world_effect_player_spawn_pending_for_dump() ||
             field_scene.world_activity_script_actor_count_for_dump() != 1U ||
-            actor->list_offset != expected->list_offset ||
+            actor->activity_id != expected->candidate_id ||
             actor->world_position.x != expected->world_x ||
             actor->world_position.y != expected->world_y ||
             actor->profile_id != "pedestrian_k0b_none00" ||
@@ -21782,12 +21778,12 @@ bool verify_field_pedestrian_late_gate_retention_qa(
                       << field_scene.field_scene_reference_for_dump()
                       << " actors="
                       << field_scene.world_activity_script_actor_count_for_dump()
-                      << " expected_list="
+                      << " expected_activity="
                       << (expected != candidates->end()
-                              ? std::to_string(expected->list_offset)
+                               ? expected->candidate_id
                               : std::string("missing"))
-                      << " actual_list="
-                      << (actor ? std::to_string(actor->list_offset)
+                      << " actual_activity="
+                      << (actor ? actor->activity_id
                                 : std::string("missing"))
                       << " actual_position="
                       << (actor
@@ -21998,7 +21994,7 @@ int run_field_scene26_a800_contact_route_qa(
         : std::vector<shadowrun::ghidra_conversion::scripting::
               ScriptConditionalActorCandidate>::const_iterator{};
     if (!candidates.has_value() || candidate == candidates->end() ||
-        !actor || actor->list_offset != candidate->list_offset ||
+        !actor || actor->activity_id != candidate->candidate_id ||
         actor->world_position.x != candidate->world_x ||
         actor->world_position.y != candidate->world_y ||
         actor->record_slot !=
@@ -22068,61 +22064,63 @@ int run_field_pedestrian_scenes_qa(
             bool story_flag_value;
             std::uint8_t primary_marker;
             std::uint8_t secondary_marker;
-            std::uint32_t expected_list;
+            const char* expected_activity_id;
             const char* expected_profile;
             std::uint16_t expected_x;
             std::uint16_t expected_y;
             std::uint16_t expected_heading;
             const char* artifact_name;
         };
-        // ROM 0x1684C/0x16884 selects mode one. The expected pointers follow
-        // 0x16FD4, marker exclusions use 0xEEFE+1 at 0x168EE-0x16900, and
-        // Scene 13/15's story gates are FFFC1E bits 19/29 at 0x168CE-0x168EA.
+        // [C] ROM 0x1684C/0x16884 selects mode one and 0x16FD4 resolves each
+        // source list. These cases assert the catalog's semantic list IDs;
+        // marker exclusions use 0xEEFE+1 at 0x168EE-0x16900, and Scene 13/15
+        // gates are FFFC1E bits 19/29 at 0x168CE-0x168EA.
         constexpr std::array<ModeOneActorCase, 18U> kModeOneCases{{
-            {10U, 6U, -1, false, 0xFFU, 0xFFU, 0x17018U,
+            {10U, 6U, -1, false, 0xFFU, 0xFFU, "scene_10_event_6_script",
              "lone11_k09_item03", 0x0700U, 0x0500U, 0x4000U,
              "scene-10-event-06-list-17018"},
-            {10U, 6U, -1, false, 3U, 0xFFU, 0U, "", 0U, 0U, 0U,
+            {10U, 6U, -1, false, 3U, 0xFFU, nullptr, "", 0U, 0U, 0U,
              "scene-10-marker-03-blocked"},
-            {10U, 0U, -1, false, 0xFFU, 0xFFU, 0x17034U,
+            {10U, 0U, -1, false, 0xFFU, 0xFFU, "scene_10_default_script",
              "lone11_k0a_item03", 0x0700U, 0x0500U, 0x4000U,
              "scene-10-default-list-17034"},
-            {10U, 0U, -1, false, 0xFFU, 5U, 0U, "", 0U, 0U, 0U,
+            {10U, 0U, -1, false, 0xFFU, 5U, nullptr, "", 0U, 0U, 0U,
              "scene-10-marker-05-blocked"},
-            {11U, 0U, -1, false, 0xFFU, 0xFFU, 0x17050U,
+            {11U, 0U, -1, false, 0xFFU, 0xFFU, "scene_11_script",
              "lone11_k04_item03", 0x0B00U, 0x0300U, 0xC000U,
              "scene-11-list-17050"},
-            {11U, 0U, -1, false, 0xFFU, 2U, 0U, "", 0U, 0U, 0U,
+            {11U, 0U, -1, false, 0xFFU, 2U, nullptr, "", 0U, 0U, 0U,
              "scene-11-marker-02-blocked"},
-            {12U, 0U, -1, false, 0xFFU, 0xFFU, 0U, "", 0U, 0U, 0U,
+            {12U, 0U, -1, false, 0xFFU, 0xFFU, nullptr, "", 0U, 0U, 0U,
              "scene-12-null-list"},
-            {13U, 0U, 19, false, 0xFFU, 0xFFU, 0U, "", 0U, 0U, 0U,
+            {13U, 0U, 19, false, 0xFFU, 0xFFU, nullptr, "", 0U, 0U, 0U,
              "scene-13-flag-19-clear"},
-            {13U, 0U, 19, true, 0xFFU, 0xFFU, 0x1706CU,
+            {13U, 0U, 19, true, 0xFFU, 0xFFU,
+             "scene_13_ilene_gate_script",
              "lone11_k0a_item03", 0x1100U, 0x0300U, 0xC000U,
              "scene-13-flag-19-set-list-1706c"},
-            {13U, 0U, 19, true, 7U, 0xFFU, 0U, "", 0U, 0U, 0U,
+            {13U, 0U, 19, true, 7U, 0xFFU, nullptr, "", 0U, 0U, 0U,
              "scene-13-marker-07-blocked"},
-            {14U, 0U, -1, false, 0xFFU, 0xFFU, 0x17088U,
+            {14U, 0U, -1, false, 0xFFU, 0xFFU, "scene_14_script",
              "lone11_k0b_item03", 0x0300U, 0x0680U, 0U,
              "scene-14-list-17088"},
-            {15U, 0U, 29, false, 0xFFU, 0xFFU, 0U, "", 0U, 0U, 0U,
+            {15U, 0U, 29, false, 0xFFU, 0xFFU, nullptr, "", 0U, 0U, 0U,
              "scene-15-flag-29-clear"},
-            {15U, 0U, 29, true, 0xFFU, 0xFFU, 0x170A2U,
+            {15U, 0U, 29, true, 0xFFU, 0xFFU, "scene_15_script",
              "lone11_k03_item03", 0x0380U, 0x0A80U, 0U,
              "scene-15-flag-29-set-list-170a2"},
-            {15U, 0U, 29, true, 0xFFU, 10U, 0U, "", 0U, 0U, 0U,
+            {15U, 0U, 29, true, 0xFFU, 10U, nullptr, "", 0U, 0U, 0U,
              "scene-15-marker-10-blocked"},
-            {16U, 0U, -1, false, 0xFFU, 0xFFU, 0x170BCU,
+            {16U, 0U, -1, false, 0xFFU, 0xFFU, "scene_16_script",
              "lone11_k09_item03", 0x0B00U, 0x0300U, 0xC000U,
              "scene-16-list-170bc"},
-            {17U, 0U, -1, false, 0xFFU, 0xFFU, 0x170D8U,
+            {17U, 0U, -1, false, 0xFFU, 0xFFU, "scene_17_script",
              "lone11_k06_item03", 0x0F00U, 0x0500U, 0xC000U,
              "scene-17-list-170d8"},
-            {18U, 0U, -1, false, 0xFFU, 0xFFU, 0x170F4U,
+            {18U, 0U, -1, false, 0xFFU, 0xFFU, "scene_18_script",
              "lone11_k06_item03", 0x0300U, 0x0680U, 0U,
              "scene-18-list-170f4"},
-            {19U, 0U, -1, false, 0xFFU, 0xFFU, 0x16FFCU,
+            {19U, 0U, -1, false, 0xFFU, 0xFFU, "scene_19_script",
              "lone11_k0b_item03", 0x1100U, 0x0700U, 0x4000U,
              "scene-19-list-16ffc"},
         }};
@@ -22143,7 +22141,7 @@ int run_field_pedestrian_scenes_qa(
         }
         mode_one_manifest
             << "scene_id\tmode\tevent_code\tworld_flags\tprimary_marker"
-               "\tsecondary_marker\tlist_offset\tprofile\tworld_x\tworld_y"
+               "\tsecondary_marker\tactivity_id\tprofile\tworld_x\tworld_y"
                "\theading\tactor_slot\tartifact\n";
         for (const auto& test_case : kModeOneCases) {
             field_scene.set_field_entity_world_position_for_dump(
@@ -22176,7 +22174,7 @@ int run_field_pedestrian_scenes_qa(
             }
             const auto actor = field_scene
                 .world_activity_script_actor_projection_for_dump(0U);
-            const bool actor_matches = test_case.expected_list == 0U
+            const bool actor_matches = test_case.expected_activity_id == nullptr
                 ? field_scene.world_activity_script_actor_count_for_dump() == 0U &&
                       !actor
                 : field_scene.field_scene_reference_for_dump() ==
@@ -22184,7 +22182,8 @@ int run_field_pedestrian_scenes_qa(
                       field_scene.field_interaction_mode_for_dump() == 1U &&
                       field_scene.world_activity_script_actor_count_for_dump() ==
                           1U &&
-                      actor && actor->list_offset == test_case.expected_list &&
+                      actor &&
+                      actor->activity_id == test_case.expected_activity_id &&
                       actor->profile_id == test_case.expected_profile &&
                       actor->world_position.x == test_case.expected_x &&
                       actor->world_position.y == test_case.expected_y &&
@@ -22200,11 +22199,14 @@ int run_field_pedestrian_scenes_qa(
                           << field_scene.field_interaction_mode_for_dump()
                           << " actor_count="
                           << field_scene.world_activity_script_actor_count_for_dump()
-                          << " expected_list=0x" << std::hex
-                          << test_case.expected_list << " event="
+                          << " expected_activity="
+                          << (test_case.expected_activity_id != nullptr
+                                  ? test_case.expected_activity_id
+                                  : "<none>")
+                          << " event="
                           << static_cast<unsigned>(test_case.event_code)
-                          << " actual_list=0x"
-                          << (actor ? actor->list_offset : 0U) << std::dec
+                          << " actual_activity="
+                          << (actor ? actor->activity_id : "<none>")
                           << " failure=" << field_scene.failure() << '\n';
                 return 3;
             }
@@ -22236,7 +22238,7 @@ int run_field_pedestrian_scenes_qa(
                        test_case.primary_marker)
                 << "\t0x" << static_cast<unsigned>(
                        test_case.secondary_marker)
-                << "\t0x" << (actor ? actor->list_offset : 0U) << std::dec
+                << '\t' << (actor ? actor->activity_id : std::string{"-"})
                 << '\t' << (actor ? actor->profile_id : std::string{"-"})
                 << '\t' << (actor ? actor->world_position.x : 0U)
                 << '\t' << (actor ? actor->world_position.y : 0U)
@@ -22285,7 +22287,7 @@ int run_field_pedestrian_scenes_qa(
         return 3;
     }
     candidate_manifest
-        << "scene_id\tchoice\tsource_initializer\tlist_offset\tposition_offset"
+        << "scene_id\tchoice\tsource_initializer\tcandidate_id"
            "\tworld_x\tworld_y"
            "\theading_word\tspawn_flags\tactor_slot\tvisible"
            "\tdefault_guard_count\tguard_record_slots\n";
@@ -22438,7 +22440,7 @@ int run_field_pedestrian_scenes_qa(
                     std::optional<FieldWorldActorSlot>{
                         FieldWorldActorSlot::slot_3} ||
                 !default_guard_population_matches ||
-                actor->list_offset != expected->list_offset ||
+                actor->activity_id != expected->candidate_id ||
                 actor->initial_heading != expected->heading_word ||
                 actor->spawn_state_flags !=
                     expected->source_spawn_state_flags ||
@@ -22447,15 +22449,16 @@ int run_field_pedestrian_scenes_qa(
                           << " choice " << static_cast<unsigned>(choice)
                           << " projection mismatch actor_count="
                           << field_scene.world_activity_script_actor_count_for_dump()
-                          << " expected_list=0x" << std::hex
-                          << expected->list_offset << " expected_position=0x"
+                          << " expected_activity=" << expected->candidate_id
+                          << " expected_position=0x"
                           << expected->world_x << ",0x" << expected->world_y
                           << std::dec << " actual_position=";
                 if (actor) {
                     std::cerr << actor->world_position.x << ','
                               << actor->world_position.y
-                              << " list=0x" << std::hex << actor->list_offset
-                              << " heading=0x" << actor->initial_heading
+                              << " activity=" << actor->activity_id
+                              << " heading=0x" << std::hex
+                              << actor->initial_heading
                               << " flags=0x"
                               << static_cast<unsigned>(actor->spawn_state_flags)
                               << std::dec << " visible=" << actor->visible;
@@ -22494,9 +22497,8 @@ int run_field_pedestrian_scenes_qa(
             candidate_manifest << scene << '\t'
                                << static_cast<unsigned>(choice) << '\t'
                                << static_cast<unsigned>(source_initializer)
-                               << "\t0x"
-                               << std::hex << expected->list_offset << "\t0x"
-                               << expected->position_offset << "\t0x"
+                               << '\t' << expected->candidate_id << "\t0x"
+                               << std::hex
                                << expected->world_x << "\t0x"
                                << expected->world_y << "\t0x"
                                << expected->heading_word << "\t0x08\t3\t1\t"
@@ -31356,7 +31358,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         std::uint16_t collision_top;
         std::uint16_t collision_bottom;
         std::uint16_t collision_code;
-        std::uint32_t candidate_list_offset;
+        std::string_view candidate_id;
         std::uint16_t candidate_x;
         std::uint16_t candidate_y;
         std::uint16_t offer_selection_seed;
@@ -31380,42 +31382,48 @@ int run_field_employee_recruitment_target_pedestrian_qa(
     case FieldEmployeeRecruitmentTargetQaRoute::initializer11_lone_star:
         route = TargetRoute{11U, 3U, 6U, 3U, 41U, 96U, 0x7000U, 0x0700U,
                             0x0700U, 0x071FU, 0x0040U, 0x005FU, 0x00C6U,
-                            0x1EE1F6U, 0x1500U, 0x0E80U, 4U, "Lone Star", {}};
+                            "scene-41-one-of-three:choice:1", 0x1500U,
+                            0x0E80U, 4U, "Lone Star", {}};
         break;
     case FieldEmployeeRecruitmentTargetQaRoute::initializer11_ares:
         route = TargetRoute{11U, 1U, 2U, 1U, 26U, 71U, 0x5100U, 0x2500U,
                             0x0500U, 0x051FU, 0x0220U, 0x023FU, 0x00C2U,
-                            0x1EDCCEU, 0x2D00U, 0x2300U, 28U, "Ares",
+                            "scene-26-one-of-three:choice:2", 0x2D00U,
+                            0x2300U, 28U, "Ares",
                             "ares-doorway-approach-collision-grid.tsv"};
         break;
     case FieldEmployeeRecruitmentTargetQaRoute::initializer12_renraku:
         route = TargetRoute{12U, 5U, 6U, 5U, 35U, 46U, 0x2700U, 0x1000U,
                             0x0260U, 0x027FU, 0x00A0U, 0x00BFU, 0x00C6U,
-                            0U, 0U, 0U, 4U, "Renraku",
+                            {}, 0U, 0U, 4U, "Renraku",
                             "renraku-doorway-approach-collision-grid.tsv"};
         break;
     case FieldEmployeeRecruitmentTargetQaRoute::initializer5_mitsuhama_scene0:
         route = TargetRoute{5U, 0U, 4U, 0U, 30U, 47U, 0x1100U, 0x2B00U,
                             0x0100U, 0x011FU, 0x0280U, 0x029FU, 0x00C4U,
-                            0x1EDDDCU, 0x0900U, 0x0B00U, 2U, "Mitsuhama",
+                            "scene-30-one-of-three:choice:2", 0x0900U,
+                            0x0B00U, 2U, "Mitsuhama",
                             "mitsuhama-doorway-approach-collision-grid.tsv"};
         break;
     case FieldEmployeeRecruitmentTargetQaRoute::initializer5_fuchi_scene0:
         route = TargetRoute{5U, 0U, 5U, 0U, 21U, 46U, 0x6B00U, 0x0900U,
                             0x06A0U, 0x06BFU, 0x0060U, 0x007FU, 0x00C5U,
-                            0x1EDECCU, 0x2800U, 0x0580U, 539U, "Fuchi",
+                            "scene-21-one-of-three:choice:1", 0x2800U,
+                            0x0580U, 539U, "Fuchi",
                             "fuchi-scene0-doorway-approach-collision-grid.tsv"};
         break;
     case FieldEmployeeRecruitmentTargetQaRoute::initializer5_fuchi_scene3:
         route = TargetRoute{5U, 3U, 2U, 3U, 21U, 97U, 0x0800U, 0x1700U,
                             0x0080U, 0x009FU, 0x0140U, 0x015FU, 0x00C2U,
-                            0x1EDEEAU, 0x4700U, 0x2D80U, 41U, "Fuchi",
+                            "scene-21-one-of-three:choice:2", 0x4700U,
+                            0x2D80U, 41U, "Fuchi",
                             "fuchi-scene3-doorway-approach-collision-grid.tsv"};
         break;
     case FieldEmployeeRecruitmentTargetQaRoute::initializer5_mitsuhama_scene3:
         route = TargetRoute{5U, 3U, 3U, 3U, 30U, 95U, 0x2D00U, 0x0F00U,
                             0x02C0U, 0x02DFU, 0x00A0U, 0x00BFU, 0x00C3U,
-                            0x1EDDBEU, 0x2300U, 0x3400U, 430U, "Mitsuhama",
+                            "scene-30-one-of-three:choice:1", 0x2300U,
+                            0x3400U, 430U, "Mitsuhama",
                             "mitsuhama-scene3-doorway-approach-collision-grid.tsv"};
         break;
     }
@@ -31859,7 +31867,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
     const bool candidate_gates_suppress_actor = ares_target &&
         candidates.has_value() && selected_choice_number != 0U &&
         expected != nullptr &&
-        expected->list_offset == route.candidate_list_offset &&
+        expected->candidate_id == route.candidate_id &&
         expected->world_x == route.candidate_x &&
         expected->world_y == route.candidate_y && !actor &&
         active_effect_index == std::optional<std::uint16_t>{0U} &&
@@ -31884,13 +31892,13 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         actor->world_position.y == expected->world_y &&
         actor->record_slot ==
             std::optional<FieldWorldActorSlot>{FieldWorldActorSlot::slot_3} &&
-        actor->list_offset == expected->list_offset &&
+        actor->activity_id == expected->candidate_id &&
         actor->initial_heading == expected->heading_word &&
         actor->spawn_state_flags == expected->source_spawn_state_flags &&
         actor->visible;
-    const bool selected_row_matches_route = route.candidate_list_offset == 0U ||
+    const bool selected_row_matches_route = route.candidate_id.empty() ||
         (expected != nullptr &&
-         expected->list_offset == route.candidate_list_offset &&
+         expected->candidate_id == route.candidate_id &&
          expected->world_x == route.candidate_x &&
          expected->world_y == route.candidate_y);
     const bool actor_matches = actor_matches_selected_row &&
@@ -31970,15 +31978,16 @@ int run_field_employee_recruitment_target_pedestrian_qa(
                   << ", image_saved=" << final_image_saved << ", expected=";
         if (expected != nullptr) {
             std::cerr << expected->world_x << ',' << expected->world_y
-                      << " list=0x" << std::hex << expected->list_offset
-                      << " heading=0x" << expected->heading_word << std::dec;
+                      << " activity=" << expected->candidate_id
+                      << " heading=0x" << std::hex
+                      << expected->heading_word << std::dec;
         } else {
             std::cerr << "missing";
         }
         if (actor) {
             std::cerr << ", actual=" << actor->world_position.x << ','
-                      << actor->world_position.y << " list=0x" << std::hex
-                      << actor->list_offset << " heading=0x"
+                      << actor->world_position.y << " activity="
+                      << actor->activity_id << " heading=0x"
                       << actor->initial_heading << " flags=0x"
                       << static_cast<unsigned>(actor->spawn_state_flags)
                       << std::dec << ", slot="
@@ -31998,11 +32007,11 @@ int run_field_employee_recruitment_target_pedestrian_qa(
              "\tsource_random_seed_after_offer\ttarget_area\ttarget_event"
              "\tsource_scene"
              "\trom_record\tevent\tdestination_scene\tchoice"
-             "\tactor_profile\tactor_list_offset\tactor_x\tactor_y"
+              "\tactor_profile\tactor_activity_id\tactor_x\tactor_y"
              "\tactive_effect_index\tselected_effect_index"
              "\tworld_effect_active\tpending_world_effect"
              "\tplayer_spawn_pending\ttransfer_template_present"
-             "\tworld_activity_mode\tactor_count\tcandidate_list_offset"
+              "\tworld_activity_mode\tactor_count\tcandidate_id"
              "\tcandidate_x\tcandidate_y"
              "\tmovement_ticks\tentry_wait\tlockout_frames\tsettle_frames"
              "\tmap_transition\n"
@@ -32015,7 +32024,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
           << '\t' << static_cast<unsigned>(selected_choice_number) << '\t'
           << (actor ? actor->profile_id : std::string("none")) << '\t';
     if (actor) {
-        trace << "0x" << std::hex << actor->list_offset << "\t0x"
+        trace << actor->activity_id << "\t0x"
               << actor->world_position.x << "\t0x" << actor->world_position.y
               << std::dec << '\t';
     } else {
@@ -32041,7 +32050,7 @@ int run_field_employee_recruitment_target_pedestrian_qa(
           << '\t'
           << field_scene.world_activity_script_actor_count_for_dump() << '\t';
     if (expected != nullptr) {
-        trace << "0x" << std::hex << expected->list_offset << "\t0x"
+        trace << expected->candidate_id << "\t0x"
               << expected->world_x << "\t0x" << expected->world_y << std::dec;
     } else {
         trace << "none\tnone\tnone";

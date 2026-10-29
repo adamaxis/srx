@@ -3207,8 +3207,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
                         field_default_actors_.begin(),
                         field_default_actors_.end(),
                         [&candidate](const auto& actor) {
-                            return actor.template_offset ==
-                                       candidate->template_offset &&
+                            return actor.script_profile_id ==
+                                       candidate->profile_id &&
                                    actor.entity_kind ==
                                        candidate->entity_kind &&
                                    actor.palette_line ==
@@ -3227,12 +3227,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
                     actor.activity_id = candidate->candidate_id;
                     actor.script_index = -1;
                     actor.source_order = 0U;
-                    actor.list_offset = candidate->list_offset;
-                    actor.source_record_offset = candidate->list_offset;
-                    actor.tagged_template =
-                        candidate->template_offset | 0x80000000U;
-                    actor.template_offset = candidate->template_offset;
-                    actor.position_offset = candidate->position_offset;
+                    actor.activity_probe_enabled = true;
                     actor.actor_name = candidate->actor_name;
                     actor.profile_id = actor_template->script_profile_id;
                     actor.entity_kind = candidate->entity_kind;
@@ -3549,9 +3544,8 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         "field.world_activity.script_actor_publish_site:" +
         std::string(publish_site) + ":scene=" +
         std::to_string(scene_reference) + ":count=" +
-        std::to_string(expected_actor_count) + ":list=" +
-        std::to_string(pending_world_activity_script_actors_.front()
-                           .list_offset));
+        std::to_string(expected_actor_count) + ":activity=" +
+        pending_world_activity_script_actors_.front().activity_id);
 #endif
     std::size_t published = 0U;
     std::size_t retained = 0U;
@@ -3645,14 +3639,11 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         actor.delay_secondary_attribute = source_actor.delay_secondary_attribute;
         actor.delay_capability_flags = source_actor.delay_capability_flags;
         actor.sprite_stem = source_actor.sprite_stem;
-        actor.template_offset = source_actor.template_offset;
-        actor.position_offset = source_actor.position_offset;
-        actor.list_offset = source_actor.list_offset;
         actor.ordered_overrides = source_actor.ordered_overrides;
         actor.source_record_flags = static_cast<std::uint8_t>(
             actor_flag_mask(ActorServiceFlag::active) |
             actor_flag_mask(ActorServiceFlag::unresolved_service_bit_2) |
-            ((source_actor.tagged_template & 0x80000000U) != 0U
+            (source_actor.activity_probe_enabled
                  ? actor_flag_mask(ActorServiceFlag::activity_probe_enabled)
                  : 0U));
         actor.source_interaction_flags =

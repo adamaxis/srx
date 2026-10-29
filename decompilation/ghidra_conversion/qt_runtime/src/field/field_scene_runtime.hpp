@@ -251,8 +251,8 @@ enum class FieldWorldActorSlot : std::uint8_t {
 struct WorldActivityActorProjectionForDump {
     SceneRunnerPosition world_position{};
     std::string profile_id;
+    std::string activity_id;
     std::optional<FieldWorldActorSlot> record_slot;
-    std::uint32_t list_offset = 0U;
     std::uint16_t initial_heading = 0U;
     std::uint8_t spawn_state_flags = 0U;
     bool visible = false;

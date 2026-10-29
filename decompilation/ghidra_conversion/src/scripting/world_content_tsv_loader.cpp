@@ -12,6 +12,7 @@
 #include <set>
 #include <string_view>
 #include <system_error>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -249,20 +250,30 @@ bool push_record(lua_State* state, const TsvDocument& document,
                  const std::filesystem::path& source_path,
                  const std::size_t row_number, std::string& failure,
                  const std::vector<std::string_view>& optional_numeric_columns = {},
-                 const std::vector<std::string_view>& omitted_columns = {}) {
+                 const std::vector<std::string_view>& boolean_columns = {}) {
     lua_createtable(state, 0, static_cast<int>(document.columns.size()));
     const auto table_index = lua_absindex(state, -1);
     for (const auto& column : document.columns) {
         // These source bytes are import evidence. Lua receives named actor
         // traits and interaction rules built below, never the packed byte.
         if (column == "source_spawn_state_flags" ||
-            column == "source_interaction_flags" ||
-            std::find(omitted_columns.begin(), omitted_columns.end(), column) !=
-                omitted_columns.end()) {
+            column == "source_interaction_flags") {
             continue;
         }
         const auto value = value_at(document, row, column);
-        if (numeric_column(column, optional_numeric_columns)) {
+        if (numeric_column(column, boolean_columns)) {
+            if (value == "true") {
+                lua_pushboolean(state, 1);
+            } else if (value == "false") {
+                lua_pushboolean(state, 0);
+            } else {
+                failure = source_path.string() + ": row " +
+                          std::to_string(row_number) + " column " + column +
+                          " is not a boolean";
+                lua_pop(state, 1);
+                return false;
+            }
+        } else if (numeric_column(column, optional_numeric_columns)) {
             if (value.empty() || value == "-") {
                 lua_pushnil(state);
             } else {
@@ -374,13 +385,13 @@ bool push_rows(lua_State* state, const TsvDocument& document,
                const std::vector<
                    std::pair<std::string_view, std::string_view>>& aliases = {},
                const std::vector<std::string_view>& optional_numeric_columns = {},
-               const std::vector<std::string_view>& omitted_columns = {}) {
+               const std::vector<std::string_view>& boolean_columns = {}) {
     lua_createtable(state, static_cast<int>(document.rows.size()), 0);
     const auto array_index = lua_absindex(state, -1);
     for (std::size_t index = 0; index < document.rows.size(); ++index) {
         if (!push_record(state, document, document.rows[index],
                          numeric_columns, aliases, source_path, index + 2U,
-                         failure, optional_numeric_columns, omitted_columns)) {
+                         failure, optional_numeric_columns, boolean_columns)) {
             lua_pop(state, 1);
             return false;
         }
@@ -652,6 +663,8 @@ bool row_integer(const TsvDocument& document,
 
 using ActivityListKey = std::pair<lua_Integer, lua_Integer>;
 using ActivityListIds = std::map<ActivityListKey, std::string>;
+using ActorProfileKey = std::tuple<lua_Integer, lua_Integer, lua_Integer>;
+using ActorProfileIds = std::map<ActorProfileKey, std::string>;
 
 bool collect_activity_list_ids(
     const TsvDocument& document, const std::filesystem::path& path,
@@ -688,6 +701,203 @@ bool collect_activity_list_ids(
                       "activity ids";
             return false;
         }
+    }
+    return true;
+}
+
+bool make_semantic_activity_actor_rows(
+    const TsvDocument& source, const std::filesystem::path& path,
+    TsvDocument& semantic, std::string& failure) {
+    const auto tag_column = source.column_indexes.find("tagged_template");
+    if (tag_column == source.column_indexes.end()) {
+        failure = path.string() + ": actor catalog has no template tag";
+        return false;
+    }
+
+    semantic = {};
+    semantic.columns.reserve(source.columns.size());
+    for (const auto& source_column : source.columns) {
+        if (source_column == "source_record_offset" ||
+            source_column == "list_offset" ||
+            source_column == "position_offset" ||
+            source_column == "template_offset") {
+            continue;
+        }
+        const auto runtime_column = source_column == "tagged_template"
+            ? std::string("activity_probe_enabled")
+            : source_column;
+        const auto index = semantic.columns.size();
+        if (!semantic.column_indexes.emplace(runtime_column, index).second) {
+            failure = path.string() +
+                ": actor catalog semantic columns contain a duplicate name";
+            return false;
+        }
+        semantic.columns.push_back(runtime_column);
+    }
+
+    semantic.rows.reserve(source.rows.size());
+    for (std::size_t row_index = 0U; row_index < source.rows.size();
+         ++row_index) {
+        const auto& source_row = source.rows[row_index];
+        lua_Integer tagged_template = 0;
+        if (tag_column->second >= source_row.size() ||
+            !parse_integer(source_row[tag_column->second], tagged_template) ||
+            tagged_template < 0 ||
+            static_cast<std::uint64_t>(tagged_template) >
+                std::numeric_limits<std::uint32_t>::max()) {
+            failure = path.string() + ": row " +
+                std::to_string(row_index + 2U) +
+                " has an invalid template tag";
+            return false;
+        }
+
+        std::vector<std::string> runtime_row;
+        runtime_row.reserve(semantic.columns.size());
+        for (std::size_t column = 0U; column < source.columns.size();
+             ++column) {
+            if (source.columns[column] == "source_record_offset" ||
+                source.columns[column] == "list_offset" ||
+                source.columns[column] == "position_offset" ||
+                source.columns[column] == "template_offset") {
+                continue;
+            }
+            if (column == tag_column->second) {
+                // Preserve the current host interpretation without exposing
+                // the tagged source pointer to Lua.
+                runtime_row.emplace_back(
+                    (static_cast<std::uint32_t>(tagged_template) &
+                     0x80000000U) != 0U ? "true" : "false");
+            } else {
+                runtime_row.push_back(source_row[column]);
+            }
+        }
+        semantic.rows.push_back(std::move(runtime_row));
+    }
+    return true;
+}
+
+bool collect_actor_profile_ids(
+    const TsvDocument& source, const std::filesystem::path& path,
+    ActorProfileIds& profile_ids, std::string& failure) {
+    for (std::size_t index = 0U; index < source.rows.size(); ++index) {
+        const auto& row = source.rows[index];
+        lua_Integer template_offset = 0;
+        lua_Integer entity_kind = 0;
+        lua_Integer palette_line = 0;
+        if (!row_integer(source, row, "template_offset", template_offset,
+                         path, index + 2U, failure) ||
+            !row_integer(source, row, "entity_kind", entity_kind, path,
+                         index + 2U, failure) ||
+            !row_integer(source, row, "palette_line", palette_line, path,
+                         index + 2U, failure) ||
+            template_offset < 0 || template_offset > 0x1FFFFFU ||
+            entity_kind < 0 || entity_kind > 15 ||
+            palette_line < 0 || palette_line > 3) {
+            if (failure.empty()) {
+                failure = path.string() + ": row " +
+                    std::to_string(index + 2U) +
+                    " has an invalid actor profile key";
+            }
+            return false;
+        }
+        const auto profile_id = row_string(source, row, "profile_id");
+        if (profile_id.empty() || profile_id == "-") {
+            failure = path.string() + ": row " +
+                std::to_string(index + 2U) +
+                " has no semantic actor profile id";
+            return false;
+        }
+        const ActorProfileKey key{template_offset, entity_kind, palette_line};
+        const auto [found, inserted] = profile_ids.emplace(key, profile_id);
+        if (!inserted && found->second != profile_id) {
+            failure = path.string() + ": actor profile key maps to multiple "
+                      "profile ids";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool make_semantic_conditional_actor_rows(
+    const TsvDocument& source, const std::filesystem::path& path,
+    const ActorProfileIds& profile_ids, TsvDocument& semantic,
+    std::string& failure) {
+    const auto template_column = source.column_indexes.find("template_offset");
+    const auto entity_column = source.column_indexes.find("entity_kind");
+    const auto palette_column = source.column_indexes.find("palette_line");
+    if (template_column == source.column_indexes.end() ||
+        entity_column == source.column_indexes.end() ||
+        palette_column == source.column_indexes.end()) {
+        failure = path.string() + ": candidate table has no actor profile key";
+        return false;
+    }
+
+    semantic = {};
+    semantic.columns.reserve(source.columns.size());
+    for (const auto& source_column : source.columns) {
+        if (source_column == "template_offset" ||
+            source_column == "list_offset" ||
+            source_column == "position_offset") {
+            continue;
+        }
+        const auto index = semantic.columns.size();
+        if (!semantic.column_indexes.emplace(source_column, index).second) {
+            failure = path.string() +
+                ": candidate semantic columns contain a duplicate name";
+            return false;
+        }
+        semantic.columns.push_back(source_column);
+        if (source_column == "actor_name") {
+            const auto profile_index = semantic.columns.size();
+            semantic.column_indexes.emplace("profile_id", profile_index);
+            semantic.columns.emplace_back("profile_id");
+        }
+    }
+
+    semantic.rows.reserve(source.rows.size());
+    for (std::size_t row_index = 0U; row_index < source.rows.size();
+         ++row_index) {
+        const auto& source_row = source.rows[row_index];
+        lua_Integer template_offset = 0;
+        lua_Integer entity_kind = 0;
+        lua_Integer palette_line = 0;
+        if (template_column->second >= source_row.size() ||
+            entity_column->second >= source_row.size() ||
+            palette_column->second >= source_row.size() ||
+            !parse_integer(source_row[template_column->second],
+                           template_offset) ||
+            !parse_integer(source_row[entity_column->second], entity_kind) ||
+            !parse_integer(source_row[palette_column->second], palette_line)) {
+            failure = path.string() + ": row " +
+                std::to_string(row_index + 2U) +
+                " has an invalid actor profile key";
+            return false;
+        }
+        const auto profile = profile_ids.find(
+            ActorProfileKey{template_offset, entity_kind, palette_line});
+        if (profile == profile_ids.end()) {
+            failure = path.string() + ": row " +
+                std::to_string(row_index + 2U) +
+                " has no extracted semantic actor profile";
+            return false;
+        }
+
+        std::vector<std::string> runtime_row;
+        runtime_row.reserve(semantic.columns.size());
+        for (std::size_t column = 0U; column < source.columns.size();
+             ++column) {
+            const auto& source_column = source.columns[column];
+            if (source_column == "template_offset" ||
+                source_column == "list_offset" ||
+                source_column == "position_offset") {
+                continue;
+            }
+            runtime_row.push_back(source_row[column]);
+            if (source_column == "actor_name") {
+                runtime_row.push_back(profile->second);
+            }
+        }
+        semantic.rows.push_back(std::move(runtime_row));
     }
     return true;
 }
@@ -1141,7 +1351,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
             const char* field;
             std::vector<std::string_view> numeric_columns;
             std::vector<std::string_view> optional_numeric_columns;
-            std::vector<std::string_view> omitted_columns{};
+            std::vector<std::string_view> boolean_columns{};
         };
         const std::array<SourceTable, 4> source_tables{{
             {"world-activity-outcomes.tsv", "world_activity_outcomes",
@@ -1185,9 +1395,8 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "run_target_y"}},
             {"entities/world-activity-actors.tsv",
              "world_activity_actor_lists",
-             {"scene", "list_offset", "source_order", "script_index",
-              "source_record_offset", "tagged_template", "template_offset",
-              "position_offset", "entity_kind", "action_code",
+             {"scene", "source_order", "script_index", "template_offset",
+              "entity_kind", "action_code",
               "source_action_slot", "source_action_ammo",
               "source_action_counter", "palette_line", "world_x",
               "world_y", "initial_heading", "source_spawn_state_flags",
@@ -1217,27 +1426,52 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "combat_action_phase_7e", "combat_action_phase_7f",
               "combat_action_skill_81", "combat_action_skill_82",
               "combat_action_skill_83", "combat_action_skill_84",
-              "combat_auxiliary_roll_bonus"}, {}, {"source_record_offset"}},
+              "combat_auxiliary_roll_bonus"}, {},
+             {"activity_probe_enabled"}},
             {"entities/conditional-actor-candidates.tsv",
              "conditional_actor_candidates",
              {"scene", "choice", "entity_kind", "palette_line",
-              "template_offset", "list_offset", "position_offset",
-              "world_x", "world_y", "heading_word", "direction",
+               "world_x", "world_y", "heading_word", "direction",
               "source_spawn_state_flags"}},
         }};
         ActivityListIds activity_ids;
+        ActorProfileIds actor_profile_ids;
         for (const auto& source_table : source_tables) {
             TsvDocument document;
             const auto path = field_asset_directory / source_table.relative_path;
-            if (!read_tsv(path, false, document, failure) ||
-                (std::string_view(source_table.field) ==
-                     "world_activity_actor_lists" &&
-                 !collect_activity_list_ids(document, path, activity_ids,
-                                            failure)) ||
-                !push_rows(state, document, source_table.numeric_columns,
-                           path, failure, {},
+            if (!read_tsv(path, false, document, failure)) {
+                lua_settop(state, stack_base);
+                return false;
+            }
+            TsvDocument semantic_actor_rows;
+            TsvDocument semantic_candidate_rows;
+            const TsvDocument* runtime_document = &document;
+            if (std::string_view(source_table.field) ==
+                "world_activity_actor_lists") {
+                if (!collect_activity_list_ids(document, path, activity_ids,
+                                               failure) ||
+                    !collect_actor_profile_ids(document, path,
+                                               actor_profile_ids, failure) ||
+                    !make_semantic_activity_actor_rows(
+                        document, path, semantic_actor_rows, failure)) {
+                    lua_settop(state, stack_base);
+                    return false;
+                }
+                runtime_document = &semantic_actor_rows;
+            } else if (std::string_view(source_table.field) ==
+                       "conditional_actor_candidates") {
+                if (!make_semantic_conditional_actor_rows(
+                        document, path, actor_profile_ids,
+                        semantic_candidate_rows, failure)) {
+                    lua_settop(state, stack_base);
+                    return false;
+                }
+                runtime_document = &semantic_candidate_rows;
+            }
+            if (!push_rows(state, *runtime_document,
+                           source_table.numeric_columns, path, failure, {},
                            source_table.optional_numeric_columns,
-                           source_table.omitted_columns)) {
+                           source_table.boolean_columns)) {
                 lua_settop(state, stack_base);
                 return false;
             }

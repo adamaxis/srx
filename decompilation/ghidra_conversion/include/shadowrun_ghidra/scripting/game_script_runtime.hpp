@@ -1171,11 +1171,9 @@ struct ScriptConditionalActorCandidate {
     std::uint8_t choice = 0;
     std::string candidate_id;
     std::string actor_name;
+    std::string profile_id;
     std::uint16_t entity_kind = 0;
     std::uint8_t palette_line = 0;
-    std::uint32_t template_offset = 0;
-    std::uint32_t list_offset = 0;
-    std::uint32_t position_offset = 0;
     std::uint16_t world_x = 0;
     std::uint16_t world_y = 0;
     std::uint16_t heading_word = 0;
@@ -1270,15 +1268,12 @@ enum class ScriptFieldActorContactAction : std::uint8_t {
 struct ScriptWorldActivityActor {
     std::uint16_t scene_id = 0;
     std::string list_id;
-    // Stable content identity used by gameplay policy. ROM table addresses
-    // remain host-side extraction provenance and are not sent to Lua actors.
+    // Stable content identity used by gameplay policy. Template and list
+    // addresses are resolved to semantic profiles and activity IDs at import.
     std::string activity_id;
     std::int16_t script_index = 0;
     std::uint16_t source_order = 0;
-    std::uint32_t list_offset = 0;
-    std::uint32_t tagged_template = 0;
-    std::uint32_t template_offset = 0;
-    std::uint32_t position_offset = 0;
+    bool activity_probe_enabled = false;
     std::string actor_name;
     std::string profile_id;
     std::uint16_t entity_kind = 0;

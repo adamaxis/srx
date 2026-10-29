@@ -7134,9 +7134,6 @@ GameScriptRuntime::conditional_actor_candidates_for_scene(
         std::uint32_t choice = 0U;
         std::uint32_t entity_kind = 0U;
         std::uint32_t palette_line = 0U;
-        std::uint32_t template_offset = 0U;
-        std::uint32_t list_offset = 0U;
-        std::uint32_t position_offset = 0U;
         std::uint32_t world_x = 0U;
         std::uint32_t world_y = 0U;
         std::uint32_t heading_word = 0U;
@@ -7151,16 +7148,13 @@ GameScriptRuntime::conditional_actor_candidates_for_scene(
                             candidate.candidate_id, 128U) &&
             read_field_text(state, row_index, "actor_name",
                             candidate.actor_name, 128U) &&
+            read_field_string(state, row_index, "profile_id",
+                              candidate.profile_id) &&
+            valid_identifier(candidate.profile_id) &&
             read_field_integer(state, row_index, "entity_kind", 15U,
                                entity_kind) &&
             read_field_integer(state, row_index, "palette_line", 3U,
                                palette_line) &&
-            read_field_integer(state, row_index, "template_offset",
-                               0x1FFFFFU, template_offset) &&
-            read_field_integer(state, row_index, "list_offset", 0x1FFFFFU,
-                               list_offset) &&
-            read_field_integer(state, row_index, "position_offset",
-                               0x1FFFFFU, position_offset) &&
             read_field_integer(state, row_index, "world_x", 0xFFFFU,
                                world_x) &&
             read_field_integer(state, row_index, "world_y", 0xFFFFU,
@@ -7182,9 +7176,6 @@ GameScriptRuntime::conditional_actor_candidates_for_scene(
         candidate.choice = static_cast<std::uint8_t>(choice);
         candidate.entity_kind = static_cast<std::uint16_t>(entity_kind);
         candidate.palette_line = static_cast<std::uint8_t>(palette_line);
-        candidate.template_offset = template_offset;
-        candidate.list_offset = list_offset;
-        candidate.position_offset = position_offset;
         candidate.world_x = static_cast<std::uint16_t>(world_x);
         candidate.world_y = static_cast<std::uint16_t>(world_y);
         candidate.heading_word = static_cast<std::uint16_t>(heading_word);
@@ -7566,80 +7557,107 @@ GameScriptRuntime::world_activity_actors_for_selector(
         std::uint32_t delay_primary_attribute = 0U;
         std::uint32_t delay_secondary_attribute = 0U;
         std::uint32_t delay_capability_flags = 0U;
-        std::uint32_t list_offset = 0U;
-        std::uint32_t tagged_template = 0U;
-        std::uint32_t template_offset = 0U;
-        std::uint32_t position_offset = 0U;
         std::uint32_t row_scene = 0U;
         int row_script_index = 0;
+        bool activity_probe_enabled = false;
         std::string action_kind;
         std::string row_list_id;
+        std::string invalid_fact;
+        const auto valid_fact = [&invalid_fact](
+                                    const bool valid,
+                                    const std::string_view name) {
+            if (!valid && invalid_fact.empty()) {
+                invalid_fact = name;
+            }
+            return valid;
+        };
         const bool valid =
-            read_field_integer(state, row_index, "scene", 55U,
-                               row_scene) &&
-            row_scene == scene_id &&
-            read_field_signed_integer(state, row_index, "script_index", -1,
-                                      0xFF, row_script_index) &&
-            (selector_field != "script_index" ||
-             row_script_index == static_cast<int>(selector_value)) &&
-            read_field_string(state, row_index, "list_id", row_list_id) &&
-            valid_identifier(row_list_id) &&
-            read_field_integer(state, row_index, "source_order", 31U,
-                               source_order) &&
-            source_orders.insert(static_cast<std::uint16_t>(source_order))
-                .second &&
-            read_field_integer(state, row_index, "list_offset", 0x1FFFFFU,
-                               list_offset) &&
-            (selector_field != "list_offset" ||
-             list_offset == selector_value) &&
-            (selector_field != "list_id" || row_list_id == selector_text) &&
-            read_field_integer(state, row_index, "tagged_template",
-                               0xFFFFFFFFU, tagged_template) &&
-            read_field_integer(state, row_index, "template_offset",
-                               0x1FFFFFU, template_offset) &&
-            read_field_integer(state, row_index, "position_offset",
-                               0x1FFFFFU, position_offset) &&
-            read_field_text(state, row_index, "name", actor.actor_name,
-                            128U) &&
-            read_field_string(state, row_index, "profile_id",
-                              actor.profile_id) &&
-            valid_identifier(actor.profile_id) &&
-            read_field_integer(state, row_index, "entity_kind", 15U,
-                               entity_kind) &&
-            read_field_string(state, row_index, "sprite", actor.sprite_stem) &&
-            valid_identifier(actor.sprite_stem) &&
-            read_field_string(state, row_index, "action_kind", action_kind) &&
-            read_field_integer(state, row_index, "action_code", 0xFFU,
-                               action_code) &&
-            read_field_integer(state, row_index, "source_action_slot", 0xFFU,
-                               source_action_slot) &&
-            read_field_integer(state, row_index, "source_action_ammo", 0xFFU,
-                               source_action_ammo) &&
-            read_field_integer(state, row_index, "source_action_counter", 0xFFU,
-                               source_action_counter) &&
-            read_field_integer(state, row_index, "palette_line", 3U,
-                               palette_line) &&
-            read_field_integer(state, row_index, "x", 0xFFFFU, world_x) &&
-            read_field_integer(state, row_index, "y", 0xFFFFU, world_y) &&
-            read_field_integer(state, row_index, "heading", 0xFFFFU,
-                               heading) &&
-            read_field_text(state, row_index, "ordered_overrides",
-                            actor.ordered_overrides, 512U) &&
-            read_actor_role_facts(state, row_index, actor_roles) &&
-            read_actor_interaction_facts(state, row_index,
-                                         actor_interaction) &&
-            read_field_integer(state, row_index, "physical_meter", 0xFFU,
-                               physical_meter) &&
-            read_field_integer(state, row_index,
-                               "delay_primary_attribute", 0xFFU,
-                               delay_primary_attribute) &&
-            read_field_integer(state, row_index,
-                               "delay_secondary_attribute", 0xFFU,
-                               delay_secondary_attribute) &&
-            read_field_integer(state, row_index, "delay_capability_flags",
-                               0xFFFFU, delay_capability_flags);
+            valid_fact(read_field_integer(state, row_index, "scene", 55U,
+                                          row_scene), "scene id") &&
+            valid_fact(row_scene == scene_id, "scene selection") &&
+            valid_fact(read_field_signed_integer(
+                           state, row_index, "script_index", -1, 0xFF,
+                           row_script_index), "script selection") &&
+            valid_fact(selector_field != "script_index" ||
+                           row_script_index == static_cast<int>(selector_value),
+                       "script selection") &&
+            valid_fact(read_field_string(state, row_index, "list_id",
+                                         row_list_id), "activity id") &&
+            valid_fact(valid_identifier(row_list_id), "activity id") &&
+            valid_fact(read_field_integer(state, row_index, "source_order",
+                                          31U, source_order), "actor order") &&
+            valid_fact(source_orders.insert(
+                           static_cast<std::uint16_t>(source_order)).second,
+                       "actor order uniqueness") &&
+            valid_fact(selector_field != "list_id" ||
+                           row_list_id == selector_text,
+                       "activity selection") &&
+            valid_fact(read_field_boolean(state, row_index,
+                                          "activity_probe_enabled",
+                                          activity_probe_enabled),
+                       "activity probe fact") &&
+            valid_fact(read_field_text(state, row_index, "name",
+                                       actor.actor_name, 128U),
+                       "actor name") &&
+            valid_fact(read_field_string(state, row_index, "profile_id",
+                                         actor.profile_id), "actor profile") &&
+            valid_fact(valid_identifier(actor.profile_id), "actor profile") &&
+            valid_fact(read_field_integer(state, row_index, "entity_kind",
+                                          15U, entity_kind), "entity kind") &&
+            valid_fact(read_field_string(state, row_index, "sprite",
+                                         actor.sprite_stem), "sprite id") &&
+            valid_fact(valid_identifier(actor.sprite_stem), "sprite id") &&
+            valid_fact(read_field_string(state, row_index, "action_kind",
+                                         action_kind), "action kind") &&
+            valid_fact(read_field_integer(state, row_index, "action_code",
+                                          0xFFU, action_code),
+                       "action selection") &&
+            valid_fact(read_field_integer(state, row_index,
+                                          "source_action_slot", 0xFFU,
+                                          source_action_slot),
+                       "action equipment slot") &&
+            valid_fact(read_field_integer(state, row_index,
+                                          "source_action_ammo", 0xFFU,
+                                          source_action_ammo),
+                       "action ammunition") &&
+            valid_fact(read_field_integer(state, row_index,
+                                          "source_action_counter", 0xFFU,
+                                          source_action_counter),
+                       "action counter") &&
+            valid_fact(read_field_integer(state, row_index, "palette_line",
+                                          3U, palette_line), "palette line") &&
+            valid_fact(read_field_integer(state, row_index, "x", 0xFFFFU,
+                                          world_x), "world position x") &&
+            valid_fact(read_field_integer(state, row_index, "y", 0xFFFFU,
+                                          world_y), "world position y") &&
+            valid_fact(read_field_integer(state, row_index, "heading",
+                                          0xFFFFU, heading), "heading") &&
+            valid_fact(read_field_text(state, row_index, "ordered_overrides",
+                                       actor.ordered_overrides, 512U),
+                       "ordered actor traits") &&
+            valid_fact(read_actor_role_facts(state, row_index, actor_roles),
+                       "actor roles") &&
+            valid_fact(read_actor_interaction_facts(
+                           state, row_index, actor_interaction),
+                       "interaction facts") &&
+            valid_fact(read_field_integer(state, row_index, "physical_meter",
+                                          0xFFU, physical_meter),
+                       "physical vitality") &&
+            valid_fact(read_field_integer(state, row_index,
+                                          "delay_primary_attribute", 0xFFU,
+                                          delay_primary_attribute),
+                       "primary delay attribute") &&
+            valid_fact(read_field_integer(state, row_index,
+                                          "delay_secondary_attribute", 0xFFU,
+                                          delay_secondary_attribute),
+                       "secondary delay attribute") &&
+            valid_fact(read_field_integer(state, row_index,
+                                          "delay_capability_flags", 0xFFFFU,
+                                          delay_capability_flags),
+                       "delay capabilities");
         if (!valid) {
-            return fail("world-content actor row has invalid source fields");
+            return fail("world-content actor descriptor has invalid " +
+                        invalid_fact);
         }
         if (action_kind == "none") {
             actor.action_kind = ScriptActorActionKind::none;
@@ -7659,10 +7677,7 @@ GameScriptRuntime::world_activity_actors_for_selector(
         actor.activity_id = actor.list_id;
         actor.script_index = static_cast<std::int16_t>(row_script_index);
         actor.source_order = static_cast<std::uint16_t>(source_order);
-        actor.list_offset = list_offset;
-        actor.tagged_template = tagged_template;
-        actor.template_offset = template_offset;
-        actor.position_offset = position_offset;
+        actor.activity_probe_enabled = activity_probe_enabled;
         actor.entity_kind = static_cast<std::uint16_t>(entity_kind);
         actor.action_code = static_cast<std::uint8_t>(action_code);
         actor.source_action_slot =

@@ -1128,8 +1128,8 @@ FieldSceneRuntime::world_activity_script_actor_projection_for_dump(
     return WorldActivityActorProjectionForDump{
         actor->world_position,
         actor->script_profile_id,
+        actor->world_activity_id,
         actor->source_record_slot,
-        actor->list_offset,
         actor->initial_heading,
         actor->source_spawn_state_flags,
         visible};
