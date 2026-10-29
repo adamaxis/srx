@@ -132,6 +132,16 @@ namespace {
 // longest 0x62AC list has 10 frames (0x75E8) [C], so 16 is headroom [H].
 constexpr std::uint8_t kActorArtFrameScanLimit = 16U;
 
+void set_script_ammunition_facts(
+    scripting::ScriptActorBehaviorContext& context,
+    const std::uint16_t ammunition_remaining) {
+    context.ammunition_remaining = ammunition_remaining;
+    // [C] ROM 0x139AA / 0x13D20 also branches on live actor +0x4E == 0x28.
+    // Keep that source condition in the host adapter and give Lua the policy
+    // fact separately from the ammunition resource value.
+    context.hold_for_ending_activity = ammunition_remaining == 0x28U;
+}
+
 void set_script_animation_facts(
     scripting::ScriptActorBehaviorContext& context,
     const std::string_view animation_id, const bool animation_complete) {
@@ -2439,6 +2449,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
 
     field_dynamic_actor_artwork_.clear();
     field_dynamic_actor_profile_facts_.clear();
+    field_world_activity_actor_profile_facts_.clear();
     field_thon_default_actor_artwork_.reset();
     std::string line;
     if (!std::getline(input, line) ||
@@ -2505,12 +2516,9 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             const auto source_spawn_state_flags = std::stoul(fields[10]);
             const auto kind = static_cast<std::uint16_t>(std::stoul(fields[12]));
             const auto physical_meter = std::stoul(fields[19]);
-            const auto delay_primary_attribute = std::stoul(fields[20]);
-            const auto delay_secondary_attribute = std::stoul(fields[21]);
-            const auto delay_capability_flags = std::stoul(fields[22]);
-            const auto source_action_slot = std::stoul(fields[69]);
-            const auto source_action_ammo = std::stoul(fields[70]);
-            const auto source_action_counter = std::stoul(fields[71]);
+            const auto equipped_action_slot = std::stoul(fields[69]);
+            const auto ammunition_remaining = std::stoul(fields[70]);
+            const auto action_count = std::stoul(fields[71]);
             const auto action_code = std::stoul(fields[9]);
             const auto template_offset = std::stoul(fields[16], nullptr, 0);
             const auto run_target_area = std::stoul(fields[72]);
@@ -2520,11 +2528,9 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             if (source_spawn_state_flags > 0xFFU || kind < 4U ||
                 kind > 14U || fields[14].empty() ||
                 physical_meter > 0xFFU ||
-                delay_primary_attribute > 0xFFU ||
-                delay_secondary_attribute > 0xFFU ||
-                delay_capability_flags > 0xFFFFU ||
-                source_action_slot > 0xFFU || source_action_ammo > 0xFFU ||
-                source_action_counter > 0xFFU || action_code > 0xFFU ||
+                equipped_action_slot > 0xFFU ||
+                ammunition_remaining > 0xFFU || action_count > 0xFFU ||
+                action_code > 0xFFU ||
                 template_offset > 0x1FFFFFU || fields[7].empty() ||
                 run_target_area > 55U ||
                 run_target_event > 0xFFU ||
@@ -2558,12 +2564,12 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             source_facts.entity_kind = kind;
             source_facts.action_kind = action_kind;
             source_facts.action_code = static_cast<std::uint8_t>(action_code);
-            source_facts.source_action_slot = static_cast<std::uint8_t>(
-                source_action_slot);
-            source_facts.source_action_ammo = static_cast<std::uint8_t>(
-                source_action_ammo);
-            source_facts.source_action_counter = static_cast<std::uint8_t>(
-                source_action_counter);
+            source_facts.equipped_action_slot = static_cast<std::uint8_t>(
+                equipped_action_slot);
+            source_facts.ammunition_remaining = static_cast<std::uint16_t>(
+                ammunition_remaining);
+            source_facts.action_count = static_cast<std::uint16_t>(
+                action_count);
             const auto profile_key = source_facts.profile_id + "@" +
                 std::to_string(source_facts.template_offset);
             const auto [source_position, source_inserted] =
@@ -2573,12 +2579,12 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 (source_position->second.entity_kind != source_facts.entity_kind ||
                  source_position->second.action_kind != source_facts.action_kind ||
                  source_position->second.action_code != source_facts.action_code ||
-                 source_position->second.source_action_slot !=
-                     source_facts.source_action_slot ||
-                 source_position->second.source_action_ammo !=
-                     source_facts.source_action_ammo ||
-                 source_position->second.source_action_counter !=
-                     source_facts.source_action_counter)) {
+                 source_position->second.equipped_action_slot !=
+                     source_facts.equipped_action_slot ||
+                 source_position->second.ammunition_remaining !=
+                     source_facts.ammunition_remaining ||
+                 source_position->second.action_count !=
+                     source_facts.action_count)) {
                 failure_ = "dynamic actor profile facts disagree for one ROM template";
                 return false;
             }
@@ -2634,11 +2640,23 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             std::distance(script_actor_columns.begin(), found));
     };
     const auto script_index_column = column_index("script_index");
+    const auto scene_column = column_index("scene");
+    const auto list_id_column = column_index("list_id");
+    const auto source_order_column = column_index("source_order");
+    const auto template_offset_column = column_index("template_offset");
     const auto entity_kind_column = column_index("entity_kind");
     const auto profile_id_column = column_index("profile_id");
     const auto sprite_stem_column = column_index("sprite_stem");
+    const auto action_kind_column = column_index("action_kind");
+    const auto action_code_column = column_index("action_code");
+    const auto action_slot_column = column_index("source_action_slot");
+    const auto action_ammo_column = column_index("source_action_ammo");
+    const auto action_count_column = column_index("source_action_counter");
     if (script_actor_columns.size() < 21U || !script_index_column ||
-        !entity_kind_column || !profile_id_column || !sprite_stem_column) {
+        !scene_column || !list_id_column || !source_order_column ||
+        !template_offset_column || !entity_kind_column || !profile_id_column ||
+        !sprite_stem_column || !action_kind_column || !action_code_column ||
+        !action_slot_column || !action_ammo_column || !action_count_column) {
         failure_ = "conditional world-activity actor table header is invalid";
         return false;
     }
@@ -2665,6 +2683,90 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 std::stoi(fields[*script_index_column]);
             const auto entity_kind = static_cast<std::uint16_t>(
                 std::stoul(fields[*entity_kind_column]));
+            const auto parse_source_number = [](
+                const std::string& text, const int base) -> unsigned long {
+                if (text.empty() || text == "-") {
+                    return 0UL;
+                }
+                return std::stoul(text, nullptr, base);
+            };
+            const auto source_scene = parse_source_number(
+                fields[*scene_column], 10);
+            const auto source_order = parse_source_number(
+                fields[*source_order_column], 10);
+            const auto template_offset = parse_source_number(
+                fields[*template_offset_column], 0);
+            const auto action_code = parse_source_number(
+                fields[*action_code_column], 10);
+            const auto equipped_action_slot = parse_source_number(
+                fields[*action_slot_column], 10);
+            const auto ammunition_remaining = parse_source_number(
+                fields[*action_ammo_column], 10);
+            const auto action_count = parse_source_number(
+                fields[*action_count_column], 10);
+            if (source_scene > 55UL || source_order > 0xFFFFUL ||
+                template_offset > 0x1FFFFFUL || action_code > 0xFFUL ||
+                equipped_action_slot > 0xFFUL ||
+                ammunition_remaining > 0xFFUL || action_count > 0xFFUL) {
+                failure_ = "world-activity actor action profile is outside its typed range";
+                return false;
+            }
+            scripting::ScriptActorActionKind action_kind{};
+            if (fields[*action_kind_column] == "none") {
+                action_kind = scripting::ScriptActorActionKind::none;
+            } else if (fields[*action_kind_column] == "item") {
+                action_kind = scripting::ScriptActorActionKind::item;
+            } else if (fields[*action_kind_column] == "spell") {
+                action_kind = scripting::ScriptActorActionKind::spell;
+            } else {
+                failure_ = "world-activity actor action profile has an unknown action kind";
+                return false;
+            }
+            if ((action_kind == scripting::ScriptActorActionKind::none) !=
+                (action_code == 0UL)) {
+                failure_ = "world-activity actor action kind and code disagree";
+                return false;
+            }
+            if (!fields[*list_id_column].empty() &&
+                !fields[*profile_id_column].empty()) {
+                DynamicActorSourceProfileFacts action_profile{};
+                action_profile.profile_id = fields[*profile_id_column];
+                action_profile.template_offset =
+                    static_cast<std::uint32_t>(template_offset);
+                action_profile.entity_kind = entity_kind;
+                action_profile.action_kind = action_kind;
+                action_profile.action_code =
+                    static_cast<std::uint8_t>(action_code);
+                action_profile.equipped_action_slot =
+                    static_cast<std::uint8_t>(equipped_action_slot);
+                action_profile.ammunition_remaining =
+                    static_cast<std::uint16_t>(ammunition_remaining);
+                action_profile.action_count =
+                    static_cast<std::uint16_t>(action_count);
+                const auto profile_key =
+                    std::to_string(source_scene) + "|" +
+                    fields[*list_id_column] + "|" +
+                    std::to_string(source_order);
+                const auto [profile, inserted] =
+                    field_world_activity_actor_profile_facts_.emplace(
+                        profile_key, action_profile);
+                if (!inserted &&
+                    (profile->second.profile_id != action_profile.profile_id ||
+                     profile->second.template_offset !=
+                         action_profile.template_offset ||
+                     profile->second.entity_kind != action_profile.entity_kind ||
+                     profile->second.action_kind != action_profile.action_kind ||
+                     profile->second.action_code != action_profile.action_code ||
+                     profile->second.equipped_action_slot !=
+                         action_profile.equipped_action_slot ||
+                     profile->second.ammunition_remaining !=
+                         action_profile.ammunition_remaining ||
+                     profile->second.action_count !=
+                         action_profile.action_count)) {
+                    failure_ = "world-activity list row has conflicting action profiles";
+                    return false;
+                }
+            }
             // The A8AE story-contact row uses the extracted pedestrian
             // animation profile as its host-art key. Other non-script lists
             // keep their own list-specific asset sources.
@@ -3043,6 +3145,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
     if (!pending_world_activity_script_actor_scene_.has_value() ||
         *pending_world_activity_script_actor_scene_ != scene_reference) {
         pending_world_activity_script_actors_.clear();
+        pending_world_activity_script_actor_profiles_.clear();
         pending_world_activity_script_actor_scene_.reset();
     }
 
@@ -3099,7 +3202,22 @@ void FieldSceneRuntime::initialize_default_field_actors(
                 "selected pending world-activity list exceeds live actor slots";
             source_boundary("field.world_activity.pending_list_slot_overflow");
         } else {
+            std::vector<DynamicActorSourceProfileFacts> actor_profiles;
+            actor_profiles.reserve(actors->size());
+            for (const auto& source_actor : *actors) {
+                const auto facts = action_profile_for_actor(source_actor);
+                if (!facts.has_value()) {
+                    failure_ = "selected world-activity actor has no unique native profile: " +
+                        source_actor.profile_id;
+                    source_boundary(
+                        "field.world_activity.script_actor_profile_unresolved");
+                    return;
+                }
+                actor_profiles.push_back(std::move(*facts));
+            }
             pending_world_activity_script_actor_scene_ = scene_reference;
+            pending_world_activity_script_actor_profiles_ =
+                std::move(actor_profiles);
             pending_world_activity_script_actors_ = std::move(*actors);
             source_boundary("field.world_activity.pending_actor_list_queued");
         }
@@ -3287,12 +3405,6 @@ void FieldSceneRuntime::initialize_default_field_actors(
                     actor.sprite_stem = actor_template->sprite_stem;
                     actor.action_kind = actor_template->action_kind;
                     actor.action_code = actor_template->initial_action_code;
-                    actor.source_action_slot =
-                        actor_template->source_action_slot;
-                    actor.source_action_ammo =
-                        actor_template->source_action_ammo;
-                    actor.source_action_counter =
-                        actor_template->source_action_counter;
                     actor.palette_line = candidate->palette_line;
                     actor.world_x = candidate->world_x;
                     actor.world_y = candidate->world_y;
@@ -3302,19 +3414,35 @@ void FieldSceneRuntime::initialize_default_field_actors(
                     actor.source_interaction_flags =
                         actor_template->source_interaction_flags;
                     actor.physical_meter = actor_template->physical_meter;
-                    actor.delay_primary_attribute =
-                        actor_template->delay_primary_attribute;
-                    actor.delay_secondary_attribute =
-                        actor_template->delay_secondary_attribute;
-                    actor.delay_capability_flags =
-                        actor_template->delay_capability_flags;
+                    actor.action_delay_modifier =
+                        actor_template->action_delay_modifier;
                     actor.combatant = actor_template->initial_combatant;
                     field_world_activity_transfer_actor_template_ = actor;
                     pending_world_activity_script_actor_scene_ =
                         scene_reference;
                     pending_world_activity_script_actors_.clear();
+                    pending_world_activity_script_actor_profiles_.clear();
                     pending_world_activity_script_actors_.push_back(
                         std::move(actor));
+                    DynamicActorSourceProfileFacts actor_profile_facts{};
+                    actor_profile_facts.profile_id =
+                        actor_template->script_profile_id;
+                    actor_profile_facts.template_offset =
+                        actor_template->template_offset;
+                    actor_profile_facts.entity_kind =
+                        actor_template->entity_kind;
+                    actor_profile_facts.action_kind =
+                        actor_template->action_kind;
+                    actor_profile_facts.action_code =
+                        actor_template->initial_action_code;
+                    actor_profile_facts.equipped_action_slot =
+                        actor_template->equipped_action_slot;
+                    actor_profile_facts.ammunition_remaining =
+                        actor_template->ammunition_remaining;
+                    actor_profile_facts.action_count =
+                        actor_template->action_count;
+                    pending_world_activity_script_actor_profiles_.push_back(
+                        std::move(actor_profile_facts));
                     source_boundary(
                         "field.conditional_actor.random_pedestrian_queued");
                     break;
@@ -3408,12 +3536,11 @@ void FieldSceneRuntime::initialize_default_field_actors(
             // extracted combat actor catalog. ROM 0x44BC copies template
             // bytes +0x06..+0x09 into the live action/ammo fields [C].
             actor.source_default_dynamic_profile = true;
-            actor.source_action_slot =
-                dynamic_profile_facts->second.source_action_slot;
-            actor.source_action_ammo =
-                dynamic_profile_facts->second.source_action_ammo;
-            actor.source_action_counter =
-                dynamic_profile_facts->second.source_action_counter;
+            actor.equipped_action_slot =
+                dynamic_profile_facts->second.equipped_action_slot;
+            actor.ammunition_remaining =
+                dynamic_profile_facts->second.ammunition_remaining;
+            actor.action_count = dynamic_profile_facts->second.action_count;
         }
         if (!actor.source_default_dynamic_profile &&
             actor.entity_kind == 5U && actor.source_actor_has_waypoint_data &&
@@ -3421,16 +3548,15 @@ void FieldSceneRuntime::initialize_default_field_actors(
             actor.initial_action_code >= 1U &&
             actor.initial_action_code <= 12U &&
             dynamic_profile_facts_match &&
-            dynamic_profile_facts->second.source_action_ammo != 0U) {
+            dynamic_profile_facts->second.ammunition_remaining != 0U) {
             // Default-list guards keep their patrol policy. Matched template
             // facts supply ROM 0x44BC's +0x4E/+0x4F/+0x56 action fields [C].
             actor.source_default_item_action_profile = true;
-            actor.source_action_slot =
-                dynamic_profile_facts->second.source_action_slot;
-            actor.source_action_ammo =
-                dynamic_profile_facts->second.source_action_ammo;
-            actor.source_action_counter =
-                dynamic_profile_facts->second.source_action_counter;
+            actor.equipped_action_slot =
+                dynamic_profile_facts->second.equipped_action_slot;
+            actor.ammunition_remaining =
+                dynamic_profile_facts->second.ammunition_remaining;
+            actor.action_count = dynamic_profile_facts->second.action_count;
         }
         if (actor.scene_reference == 55U && actor.source_order == 0U &&
             actor.entity_kind == 15U &&
@@ -3502,9 +3628,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
-        context.source_action_slot = actor.source_action_slot;
-        context.source_action_ammo = actor.source_action_ammo;
-        context.source_action_counter = actor.source_action_counter;
+        set_script_ammunition_facts(context, actor.ammunition_remaining);
         context.source_physical_meter = actor.physical_meter;
         set_script_animation_facts(
             context, actor.animation_id, actor.animation_complete);
@@ -3516,9 +3640,10 @@ void FieldSceneRuntime::initialize_default_field_actors(
                 static_cast<std::uint16_t>(state_.field_scene_buffers.camera_x),
                 static_cast<std::uint16_t>(state_.field_scene_buffers.camera_y));
             context.initial_action_delay = actor.action_delay;
-            context.delay_primary_attribute = actor.delay_primary_attribute;
-            context.delay_secondary_attribute = actor.delay_secondary_attribute;
-            context.delay_capability_flags = actor.delay_capability_flags;
+            context.action_timing = {
+                actor.combatant.attributes.quickness,
+                actor.combatant.attributes.intelligence,
+                actor.action_delay_modifier};
         }
         const auto decision = game_scripts_.actor_heartbeat(context);
         if (!decision.has_value()) {
@@ -3585,6 +3710,91 @@ void FieldSceneRuntime::initialize_default_field_actors(
     }
 }
 
+std::optional<FieldSceneRuntime::DynamicActorSourceProfileFacts>
+FieldSceneRuntime::source_profile_facts_for_actor(
+    const std::string_view profile_id, const std::uint16_t entity_kind,
+    const scripting::ScriptActorActionKind action_kind,
+    const std::uint8_t action_code) const {
+    std::optional<DynamicActorSourceProfileFacts> match;
+    bool conflicting_profiles = false;
+    const auto consider_profile =
+        [&match, &conflicting_profiles](
+            const DynamicActorSourceProfileFacts& facts) {
+            if (!match.has_value()) {
+                match = facts;
+                return;
+            }
+            if (match->equipped_action_slot != facts.equipped_action_slot ||
+                match->ammunition_remaining != facts.ammunition_remaining ||
+                match->action_count != facts.action_count) {
+                conflicting_profiles = true;
+            }
+        };
+    for (const auto& [unused_key, facts] :
+         field_dynamic_actor_profile_facts_) {
+        (void)unused_key;
+        if (facts.profile_id != profile_id ||
+            facts.entity_kind != entity_kind ||
+            facts.action_kind != action_kind ||
+            facts.action_code != action_code) {
+            continue;
+        }
+        consider_profile(facts);
+    }
+    return conflicting_profiles ? std::nullopt : match;
+}
+
+std::optional<FieldSceneRuntime::DynamicActorSourceProfileFacts>
+FieldSceneRuntime::world_activity_profile_facts_for_actor(
+    const scripting::ScriptWorldActivityActor& actor) const {
+    const auto key = std::to_string(actor.scene_id) + "|" + actor.list_id +
+        "|" + std::to_string(actor.source_order);
+    const auto found = field_world_activity_actor_profile_facts_.find(key);
+    if (found == field_world_activity_actor_profile_facts_.end() ||
+        found->second.profile_id != actor.profile_id ||
+        found->second.entity_kind != actor.entity_kind ||
+        found->second.action_kind != actor.action_kind ||
+        found->second.action_code != actor.action_code) {
+        return std::nullopt;
+    }
+    return found->second;
+}
+
+std::optional<FieldSceneRuntime::DynamicActorSourceProfileFacts>
+FieldSceneRuntime::action_profile_for_actor(
+    const scripting::ScriptWorldActivityActor& actor) const {
+    if (auto facts = world_activity_profile_facts_for_actor(actor)) {
+        return facts;
+    }
+
+    const auto default_profile = std::find_if(
+        field_default_actors_.begin(), field_default_actors_.end(),
+        [&actor](const DefaultFieldActorPresentation& candidate) {
+            return candidate.script_profile_id == actor.profile_id &&
+                   candidate.entity_kind == actor.entity_kind &&
+                   candidate.action_kind == actor.action_kind &&
+                   candidate.initial_action_code == actor.action_code &&
+                   candidate.sprite_stem == actor.sprite_stem &&
+                   candidate.palette_line == actor.palette_line;
+        });
+    if (default_profile != field_default_actors_.end()) {
+        DynamicActorSourceProfileFacts facts{};
+        facts.profile_id = default_profile->script_profile_id;
+        facts.template_offset = default_profile->template_offset;
+        facts.entity_kind = default_profile->entity_kind;
+        facts.action_kind = default_profile->action_kind;
+        facts.action_code = default_profile->initial_action_code;
+        facts.equipped_action_slot = default_profile->equipped_action_slot;
+        facts.ammunition_remaining = default_profile->ammunition_remaining;
+        facts.action_count = default_profile->action_count;
+        return facts;
+    }
+
+    return source_profile_facts_for_actor(
+        actor.profile_id, actor.entity_kind, actor.action_kind,
+        actor.action_code);
+}
+
 void FieldSceneRuntime::publish_pending_world_activity_script_actors(
     const std::uint16_t scene_reference,
     const std::string_view publish_site) {
@@ -3606,7 +3816,21 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
 #endif
     std::size_t published = 0U;
     std::size_t retained = 0U;
-    for (const auto& source_actor : pending_world_activity_script_actors_) {
+    const bool has_profile_sidecar =
+        pending_world_activity_script_actor_profiles_.size() ==
+        pending_world_activity_script_actors_.size();
+    if (!pending_world_activity_script_actor_profiles_.empty() &&
+        !has_profile_sidecar) {
+        failure_ = "pending world-script actor profiles do not match the actor list";
+        source_boundary(
+            "field.world_activity.script_actor_profile_unresolved");
+        return;
+    }
+    for (std::size_t actor_index = 0U;
+         actor_index < pending_world_activity_script_actors_.size();
+         ++actor_index) {
+        const auto& source_actor =
+            pending_world_activity_script_actors_[actor_index];
         const auto artwork =
             field_dynamic_actor_artwork_.find(source_actor.sprite_stem);
         if (source_actor.entity_kind < 3U || source_actor.entity_kind > 14U ||
@@ -3614,6 +3838,23 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             failure_ = "selected ROM world-script actor has no extracted Lua profile and art";
             source_boundary(
                 "field.world_activity.script_actor_art_unresolved");
+            break;
+        }
+        const auto actor_profile_facts = has_profile_sidecar
+            ? std::optional<DynamicActorSourceProfileFacts>{
+                  pending_world_activity_script_actor_profiles_[actor_index]}
+            : action_profile_for_actor(source_actor);
+        if (!actor_profile_facts.has_value() ||
+            actor_profile_facts->profile_id != source_actor.profile_id ||
+            actor_profile_facts->entity_kind != source_actor.entity_kind ||
+            actor_profile_facts->action_kind != source_actor.action_kind ||
+            actor_profile_facts->action_code != source_actor.action_code) {
+            failure_ = "selected world-script actor has no unique native profile: " +
+                source_actor.profile_id + " in " + source_actor.list_id +
+                " scene=" + std::to_string(source_actor.scene_id) +
+                " order=" + std::to_string(source_actor.source_order);
+            source_boundary(
+                "field.world_activity.script_actor_profile_unresolved");
             break;
         }
 
@@ -3692,9 +3933,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         actor.initial_heading = source_actor.heading;
         actor.palette_line = source_actor.palette_line;
         actor.physical_meter = source_actor.physical_meter;
-        actor.delay_primary_attribute = source_actor.delay_primary_attribute;
-        actor.delay_secondary_attribute = source_actor.delay_secondary_attribute;
-        actor.delay_capability_flags = source_actor.delay_capability_flags;
+        actor.action_delay_modifier = source_actor.action_delay_modifier;
         actor.sprite_stem = source_actor.sprite_stem;
         actor.ordered_overrides = source_actor.ordered_overrides;
         actor.source_record_flags = static_cast<std::uint8_t>(
@@ -3714,9 +3953,10 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         } else {
             actor.actor_list_completion_group.reset();
         }
-        actor.source_action_slot = source_actor.source_action_slot;
-        actor.source_action_ammo = source_actor.source_action_ammo;
-        actor.source_action_counter = source_actor.source_action_counter;
+        actor.equipped_action_slot =
+            actor_profile_facts->equipped_action_slot;
+        actor.ammunition_remaining = actor_profile_facts->ammunition_remaining;
+        actor.action_count = actor_profile_facts->action_count;
         actor.combatant = source_actor.combatant;
         actor.combatant.record_type = static_cast<std::uint16_t>(
             *actor.source_record_slot);
@@ -3758,9 +3998,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_behavior_flags = actor.source_behavior_flags;
-        context.source_action_slot = actor.source_action_slot;
-        context.source_action_ammo = actor.source_action_ammo;
-        context.source_action_counter = actor.source_action_counter;
+        set_script_ammunition_facts(context, actor.ammunition_remaining);
         set_script_animation_facts(
             context, actor.animation_id, actor.animation_complete);
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
@@ -3770,9 +4008,10 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             world_frame_logic_state_.world_active != 0U;
         context.world_scene_state = world_frame_logic_state_.scene_state;
         context.movement_scene_id = scene_reference;
-        context.delay_primary_attribute = actor.delay_primary_attribute;
-        context.delay_secondary_attribute = actor.delay_secondary_attribute;
-        context.delay_capability_flags = actor.delay_capability_flags;
+        context.action_timing = {
+            actor.combatant.attributes.quickness,
+            actor.combatant.attributes.intelligence,
+            actor.action_delay_modifier};
         context.action_profile_modifiers =
             script_action_profile_modifiers(state_.action_selection_profiles);
         context.action_attribute_selectors =
@@ -3818,6 +4057,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
     }
 
     pending_world_activity_script_actors_.clear();
+    pending_world_activity_script_actor_profiles_.clear();
     pending_world_activity_script_actor_scene_.reset();
     if (field_pending_actor_list_transition_group_.has_value()) {
         const auto& group = *field_pending_actor_list_transition_group_;
@@ -4055,9 +4295,7 @@ void FieldSceneRuntime::advance_default_field_actors(
             context.source_interaction_flags =
                 actor.source_interaction_flags;
             context.source_behavior_flags = actor.source_behavior_flags;
-            context.source_action_slot = actor.source_action_slot;
-            context.source_action_ammo = actor.source_action_ammo;
-            context.source_action_counter = actor.source_action_counter;
+            set_script_ammunition_facts(context, actor.ammunition_remaining);
             set_script_animation_facts(
                 context, actor.animation_id, actor.animation_complete);
             context.source_item_spawn_result =
@@ -4089,12 +4327,10 @@ void FieldSceneRuntime::advance_default_field_actors(
             context.target_heading_audio_alternate =
                 (field_random_seed_ & 0x8000U) != 0U;
             context.initial_action_delay = actor.action_delay;
-            context.delay_primary_attribute =
-                actor.delay_primary_attribute;
-            context.delay_secondary_attribute =
-                actor.delay_secondary_attribute;
-            context.delay_capability_flags =
-                actor.delay_capability_flags;
+            context.action_timing = {
+                actor.combatant.attributes.quickness,
+                actor.combatant.attributes.intelligence,
+                actor.action_delay_modifier};
             context.world_effect_slot_occupancy =
                 field_world_effect_slots_occupied_;
             context.source_projection_active = caster_projection_active(
@@ -4409,14 +4645,13 @@ void FieldSceneRuntime::advance_default_field_actors(
         }
 
         if (source_default_item_action) {
-            context.source_action_slot = actor.source_action_slot;
-            context.source_action_ammo = actor.source_action_ammo;
-            context.source_action_counter = actor.source_action_counter;
+            set_script_ammunition_facts(context, actor.ammunition_remaining);
             context.source_item_spawn_result = actor.source_item_spawn_result;
             context.initial_action_delay = actor.action_delay;
-            context.delay_primary_attribute = actor.delay_primary_attribute;
-            context.delay_secondary_attribute = actor.delay_secondary_attribute;
-            context.delay_capability_flags = actor.delay_capability_flags;
+            context.action_timing = {
+                actor.combatant.attributes.quickness,
+                actor.combatant.attributes.intelligence,
+                actor.action_delay_modifier};
             context.world_activity_active =
                 world_frame_logic_state_.world_active != 0U;
             context.world_scene_state = world_frame_logic_state_.scene_state;
@@ -5239,9 +5474,7 @@ bool FieldSceneRuntime::retire_dialogue_escort_records() {
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_behavior_flags = actor.source_behavior_flags;
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
-        context.source_action_slot = actor.source_action_slot;
-        context.source_action_ammo = actor.source_action_ammo;
-        context.source_action_counter = actor.source_action_counter;
+        set_script_ammunition_facts(context, actor.ammunition_remaining);
         set_script_animation_facts(
             context, actor.animation_id, actor.animation_complete);
         context.source_physical_meter = actor.physical_meter;
@@ -5302,7 +5535,7 @@ void FieldSceneRuntime::service_source_actor_weapon_action(
          !actor.source_default_item_action_profile) ||
         actor.action_kind != scripting::ScriptActorActionKind::item ||
         actor.initial_action_code == 0U ||
-        actor.initial_action_code > 12U || actor.source_action_ammo == 0U ||
+        actor.initial_action_code > 12U || actor.ammunition_remaining == 0U ||
         (context.world_scene_state == 0U &&
          !actor_flag_is_set(actor.source_behavior_flags,
                             ActorBehaviorFlag::action_window_open))) {
@@ -5328,12 +5561,12 @@ void FieldSceneRuntime::service_source_actor_weapon_action(
     spawn_state.parent.position_y = actor.world_position.y;
     spawn_state.parent.heading = actor.movement_state.heading;
     spawn_state.parent.flags = actor.source_record_flags;
-    spawn_state.parent.field_0x56 = actor.source_action_slot;
+    spawn_state.parent.field_0x56 = actor.equipped_action_slot;
     spawn_state.parent.field_0x57 = actor.initial_action_code;
     spawn_state.parent.field_0x9d =
         actor.combatant.auxiliary_roll_bonus;
     spawn_state.equipment = EntityEquipmentState{
-        actor.source_action_ammo,
+        static_cast<std::uint8_t>(actor.ammunition_remaining),
         static_cast<std::int16_t>(actor.combatant.record_type)};
     spawn_state.linked_target = SpawnEntityLinkedState{
         target->world_x, target->world_y, 0x01U, false};
@@ -5343,9 +5576,9 @@ void FieldSceneRuntime::service_source_actor_weapon_action(
         actor.animation_id == "idle" || actor.animation_id == "walk";
     spawn_state.global_mode = context.world_scene_state;
     spawn_state.entity_flags = actor.source_record_flags;
-    if (actor.source_action_slot < actor.combatant.item_phases.size()) {
+    if (actor.equipped_action_slot < actor.combatant.item_phases.size()) {
         spawn_state.source_status_flags =
-            actor.combatant.item_phases[actor.source_action_slot];
+            actor.combatant.item_phases[actor.equipped_action_slot];
     }
 
     std::vector<std::uint16_t> allocated_slots;
@@ -5392,7 +5625,7 @@ void FieldSceneRuntime::service_source_actor_weapon_action(
                 std::function<void(std::int8_t)>{});
         });
 
-    actor.source_action_ammo = spawn_state.equipment.current_ammo;
+    actor.ammunition_remaining = spawn_state.equipment.current_ammo;
     for (const auto slot : allocated_slots) {
         const bool has_primary = spawn_cycle.primary.has_value() &&
             spawn_cycle.primary_slot.has_value() &&
@@ -5465,7 +5698,7 @@ void FieldSceneRuntime::service_source_actor_weapon_action(
         : "field.actor.weapon_projectile_blocked:" + actor.actor_instance_id);
     source_boundary("field.actor.weapon_ammo_remaining:" +
                     actor.actor_instance_id + ":" +
-                    std::to_string(actor.source_action_ammo));
+                    std::to_string(actor.ammunition_remaining));
 }
 
 FieldSceneRuntime::DefaultActorSpriteView
@@ -5736,6 +5969,8 @@ FieldSceneRuntime::guard_world_effect_player_spawn() {
                 // 0x1E4AC record through the ordinary Lua actor service.
                 auto saved_pending_actors =
                     std::move(pending_world_activity_script_actors_);
+                auto saved_pending_actor_profiles =
+                    std::move(pending_world_activity_script_actor_profiles_);
                 auto saved_pending_scene =
                     std::move(pending_world_activity_script_actor_scene_);
                 auto saved_transition_group =
@@ -5744,6 +5979,7 @@ FieldSceneRuntime::guard_world_effect_player_spawn() {
                     std::move(field_route_actor_transitions_remaining_);
                 pending_world_activity_script_actor_scene_ = scene_reference;
                 pending_world_activity_script_actors_.clear();
+                pending_world_activity_script_actor_profiles_.clear();
                 pending_world_activity_script_actors_.push_back(
                     std::move(fallback_actor));
                 field_pending_actor_list_transition_group_.reset();
@@ -5756,6 +5992,8 @@ FieldSceneRuntime::guard_world_effect_player_spawn() {
 
                 pending_world_activity_script_actors_ =
                     std::move(saved_pending_actors);
+                pending_world_activity_script_actor_profiles_ =
+                    std::move(saved_pending_actor_profiles);
                 pending_world_activity_script_actor_scene_ =
                     std::move(saved_pending_scene);
                 field_pending_actor_list_transition_group_ =
@@ -5950,6 +6188,15 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             pending_field_encounter_outcome_.reset();
             return;
         }
+        if (!source_profile_facts_for_actor(
+                 source_actor.profile_id, source_actor.entity_kind,
+                 source_actor.action_kind, source_actor.action_code)
+                 .has_value()) {
+            failure_ = "ROM encounter actor has no unique native profile";
+            source_boundary("field.random_encounter.profile_unresolved");
+            pending_field_encounter_outcome_.reset();
+            return;
+        }
     }
 
     const auto actor_count = source_positions_complete
@@ -5991,6 +6238,15 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         }
 
         const auto& source_actor = outcome.actors[index];
+        const auto actor_profile_facts = source_profile_facts_for_actor(
+            source_actor.profile_id, source_actor.entity_kind,
+            source_actor.action_kind, source_actor.action_code);
+        if (!actor_profile_facts.has_value()) {
+            failure_ = "ROM encounter actor native profile changed during spawn";
+            source_boundary("field.random_encounter.profile_unresolved");
+            pending_field_encounter_outcome_.reset();
+            return;
+        }
         DefaultFieldActorPresentation actor{};
         actor.active = true;
         actor.scene_reference = outcome.scene_id;
@@ -6019,12 +6275,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.initial_heading = 0U;
         actor.palette_line = source_actor.palette_line;
         actor.physical_meter = source_actor.physical_meter;
-        actor.delay_primary_attribute =
-            source_actor.delay_primary_attribute;
-        actor.delay_secondary_attribute =
-            source_actor.delay_secondary_attribute;
-        actor.delay_capability_flags =
-            source_actor.delay_capability_flags;
+        actor.action_delay_modifier = source_actor.action_delay_modifier;
         actor.sprite_stem = source_actor.sprite_stem;
         actor.source_interaction_flags =
             source_actor.source_interaction_flags;
@@ -6036,9 +6287,11 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             actor_flag_mask(ActorServiceFlag::unresolved_service_bit_2) |
             actor_flag_mask(ActorServiceFlag::activity_probe_enabled));
         actor.source_behavior_flags = 0U;
-        actor.source_action_slot = source_actor.source_action_slot;
-        actor.source_action_ammo = source_actor.source_action_ammo;
-        actor.source_action_counter = source_actor.source_action_counter;
+        actor.equipped_action_slot =
+            actor_profile_facts->equipped_action_slot;
+        actor.ammunition_remaining =
+            actor_profile_facts->ammunition_remaining;
+        actor.action_count = actor_profile_facts->action_count;
         actor.combatant = source_actor.combatant;
         actor.combatant.record_type = actor_slot;
         actor.combatant.source_flags = actor.source_record_flags;
@@ -6104,9 +6357,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         context.source_record_flags = actor.source_record_flags;
         context.source_interaction_flags = actor.source_interaction_flags;
         context.source_behavior_flags = actor.source_behavior_flags;
-        context.source_action_slot = actor.source_action_slot;
-        context.source_action_ammo = actor.source_action_ammo;
-        context.source_action_counter = actor.source_action_counter;
+        set_script_ammunition_facts(context, actor.ammunition_remaining);
         set_script_animation_facts(
             context, actor.animation_id, actor.animation_complete);
         context.source_spawn_state_flags = actor.source_spawn_state_flags;
@@ -6115,9 +6366,10 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         context.world_scene_state = world_frame_logic_state_.scene_state;
         context.ai_animation_frame = actor.animation_frame;
         context.initial_action_delay = actor.action_delay;
-        context.delay_primary_attribute = actor.delay_primary_attribute;
-        context.delay_secondary_attribute = actor.delay_secondary_attribute;
-        context.delay_capability_flags = actor.delay_capability_flags;
+        context.action_timing = {
+            actor.combatant.attributes.quickness,
+            actor.combatant.attributes.intelligence,
+            actor.action_delay_modifier};
         context.world_effect_slot_occupancy =
             field_world_effect_slots_occupied_;
         context.world_effect_slot_occupancy[actor.effect_slot.value()] = true;
@@ -7481,12 +7733,34 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                             "field.world_activity.script_actor_list_unresolved");
                         runtime.field_transition_requested = true;
                     } else {
-                        pending_world_activity_script_actor_scene_ =
-                            world_activity_routine_state_.scene_id;
-                        pending_world_activity_script_actors_ =
-                            std::move(*actors);
-                        source_boundary(
-                            "field.world_activity.script_actor_list_queued");
+                        std::vector<DynamicActorSourceProfileFacts>
+                            actor_profiles;
+                        actor_profiles.reserve(actors->size());
+                        for (const auto& actor : *actors) {
+                            const auto profile =
+                                action_profile_for_actor(actor);
+                            if (!profile.has_value()) {
+                                failure_ =
+                                    "selected world script actor has no native action profile: " +
+                                    actor.profile_id;
+                                break;
+                            }
+                            actor_profiles.push_back(std::move(*profile));
+                        }
+                        if (actor_profiles.size() != actors->size()) {
+                            source_boundary(
+                                "field.world_activity.script_actor_profile_unresolved");
+                            runtime.field_transition_requested = true;
+                        } else {
+                            pending_world_activity_script_actor_scene_ =
+                                world_activity_routine_state_.scene_id;
+                            pending_world_activity_script_actor_profiles_ =
+                                std::move(actor_profiles);
+                            pending_world_activity_script_actors_ =
+                                std::move(*actors);
+                            source_boundary(
+                                "field.world_activity.script_actor_list_queued");
+                        }
                     }
                 }
             }
@@ -12224,9 +12498,7 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 actor.source_default_item_action_profile;
             context.world_activity_script_actor =
                 actor.world_activity_script_actor;
-            context.source_action_slot = actor.source_action_slot;
-            context.source_action_ammo = actor.source_action_ammo;
-            context.source_action_counter = actor.source_action_counter;
+            set_script_ammunition_facts(context, actor.ammunition_remaining);
             set_script_animation_facts(
                 context, actor.animation_id, actor.animation_complete);
             context.source_item_spawn_result =
@@ -12239,12 +12511,10 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 world_frame_logic_state_.scene_state;
             context.ai_animation_frame = actor.animation_frame;
             context.initial_action_delay = actor.action_delay;
-            context.delay_primary_attribute =
-                actor.delay_primary_attribute;
-            context.delay_secondary_attribute =
-                actor.delay_secondary_attribute;
-            context.delay_capability_flags =
-                actor.delay_capability_flags;
+            context.action_timing = {
+                actor.combatant.attributes.quickness,
+                actor.combatant.attributes.intelligence,
+                actor.action_delay_modifier};
             context.world_effect_slot_occupancy =
                 field_world_effect_slots_occupied_;
             context.source_projection_active = caster_projection_active(

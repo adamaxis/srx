@@ -405,11 +405,11 @@ public:
         std::uint16_t source_order) const noexcept;
     std::optional<std::uint16_t> default_actor_ai_target_distance_for_dump(
         std::uint16_t source_order) const noexcept;
-    std::optional<std::uint8_t> default_actor_source_action_ammo_for_dump(
+    std::optional<std::uint16_t> default_actor_ammunition_remaining_for_dump(
         std::uint16_t source_order) const noexcept;
-    std::optional<std::uint8_t> default_actor_source_action_slot_for_dump(
+    std::optional<std::uint8_t> default_actor_equipped_action_slot_for_dump(
         std::uint16_t source_order) const noexcept;
-    std::optional<std::uint8_t> default_actor_source_action_counter_for_dump(
+    std::optional<std::uint16_t> default_actor_action_count_for_dump(
         std::uint16_t source_order) const noexcept;
     std::optional<std::uint8_t> default_actor_weapon_item_for_dump(
         std::uint16_t source_order) const noexcept;
@@ -2021,9 +2021,7 @@ private:
         std::uint16_t initial_heading = 0;
         std::uint8_t palette_line = 0;
         std::uint8_t physical_meter = 0;
-        std::uint8_t delay_primary_attribute = 0;
-        std::uint8_t delay_secondary_attribute = 0;
-        std::uint16_t delay_capability_flags = 0;
+        std::uint8_t action_delay_modifier = 0;
         std::string sprite_stem;
         std::uint32_t template_offset = 0;
         std::uint32_t position_offset = 0;
@@ -2033,9 +2031,9 @@ private:
         std::uint8_t source_interaction_flags = 0;
         std::uint8_t source_behavior_flags = 0;
         std::uint8_t source_spawn_state_flags = 0;
-        std::uint8_t source_action_slot = 0;
-        std::uint8_t source_action_ammo = 0;
-        std::uint8_t source_action_counter = 0;
+        std::uint8_t equipped_action_slot = 0;
+        std::uint16_t ammunition_remaining = 0;
+        std::uint16_t action_count = 0;
         // Source-default profiles that use the dynamic combat behavior path
         // while retaining their default-list record identity and lifetime.
         bool source_default_dynamic_profile = false;
@@ -2129,10 +2127,21 @@ private:
         scripting::ScriptActorActionKind action_kind =
             scripting::ScriptActorActionKind::none;
         std::uint8_t action_code = 0;
-        std::uint8_t source_action_slot = 0;
-        std::uint8_t source_action_ammo = 0;
-        std::uint8_t source_action_counter = 0;
+        std::uint8_t equipped_action_slot = 0;
+        std::uint16_t ammunition_remaining = 0;
+        std::uint16_t action_count = 0;
     };
+    std::optional<DynamicActorSourceProfileFacts>
+    source_profile_facts_for_actor(
+        std::string_view profile_id, std::uint16_t entity_kind,
+        scripting::ScriptActorActionKind action_kind,
+        std::uint8_t action_code) const;
+    std::optional<DynamicActorSourceProfileFacts>
+    world_activity_profile_facts_for_actor(
+        const scripting::ScriptWorldActivityActor& actor) const;
+    std::optional<DynamicActorSourceProfileFacts>
+    action_profile_for_actor(
+        const scripting::ScriptWorldActivityActor& actor) const;
 
     struct CreatureEffectArtwork {
         std::array<QImage, 4> images{};
@@ -2542,6 +2551,8 @@ private:
         field_dynamic_actor_artwork_;
     std::unordered_map<std::string, DynamicActorSourceProfileFacts>
         field_dynamic_actor_profile_facts_;
+    std::unordered_map<std::string, DynamicActorSourceProfileFacts>
+        field_world_activity_actor_profile_facts_;
     std::vector<std::array<QImage, 4>>
         field_target_marker_images_by_scene_;
     std::vector<std::array<CreatureEffectArtwork, 8>>
@@ -2585,6 +2596,8 @@ private:
         pending_world_activity_script_actor_scene_;
     std::vector<scripting::ScriptWorldActivityActor>
         pending_world_activity_script_actors_;
+    std::vector<DynamicActorSourceProfileFacts>
+        pending_world_activity_script_actor_profiles_;
     std::array<std::vector<QImage>, 16> field_weapon_projectile_images_{};
     std::array<std::vector<int>, 16> field_weapon_projectile_origin_x_{};
     std::array<std::vector<int>, 16> field_weapon_projectile_origin_y_{};

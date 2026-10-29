@@ -3486,7 +3486,7 @@ int run_field_npc_item_action_qa(
     const auto profile_2 = field_scene.default_actor_script_profile_for_dump(2U);
     const auto item = field_scene.default_actor_weapon_item_for_dump(0U);
     const auto ammo_before =
-        field_scene.default_actor_source_action_ammo_for_dump(0U);
+        field_scene.default_actor_ammunition_remaining_for_dump(0U);
     const auto encounter_entry = render();
     if (spawned != 3U ||
         field_scene.default_actor_count_for_dump() != actors_before + 3U ||
@@ -3556,7 +3556,7 @@ int run_field_npc_item_action_qa(
         const auto direction =
             field_scene.default_actor_direction_for_dump(0U);
         const auto ammo =
-            field_scene.default_actor_source_action_ammo_for_dump(0U);
+            field_scene.default_actor_ammunition_remaining_for_dump(0U);
         const auto distance =
             field_scene.default_actor_ai_target_distance_for_dump(0U);
         trace << frame << '\t' << animation.value_or("<none>") << '\t'
@@ -3626,7 +3626,7 @@ int run_field_npc_item_action_qa(
     const auto shot_animation =
         field_scene.default_actor_animation_id_for_dump(0U);
     const auto ammo_after =
-        field_scene.default_actor_source_action_ammo_for_dump(0U);
+        field_scene.default_actor_ammunition_remaining_for_dump(0U);
     const auto shot_audio_count = count_audio(first_action_audio, 0x001CU);
     const bool shot_saved = save("weapon-action-start.bmp", shot_image);
     const bool actual_saved = save("actual.bmp", shot_image);
@@ -3684,7 +3684,7 @@ int run_field_npc_item_action_qa(
         const auto animation_frame =
             field_scene.default_actor_animation_frame_for_dump(0U);
         const auto ammo =
-            field_scene.default_actor_source_action_ammo_for_dump(0U);
+            field_scene.default_actor_ammunition_remaining_for_dump(0U);
         const auto distance =
             field_scene.default_actor_ai_target_distance_for_dump(0U);
         const auto action_shots =
@@ -3808,11 +3808,11 @@ int run_field_default_guard_item_action_qa(
     const auto item = field_scene.default_actor_weapon_item_for_dump(
         kGuardOrder);
     const auto action_slot =
-        field_scene.default_actor_source_action_slot_for_dump(kGuardOrder);
+        field_scene.default_actor_equipped_action_slot_for_dump(kGuardOrder);
     const auto action_counter =
-        field_scene.default_actor_source_action_counter_for_dump(kGuardOrder);
+        field_scene.default_actor_action_count_for_dump(kGuardOrder);
     const auto ammo_before =
-        field_scene.default_actor_source_action_ammo_for_dump(kGuardOrder);
+        field_scene.default_actor_ammunition_remaining_for_dump(kGuardOrder);
     const auto guard_positions =
         field_scene.active_default_actor_positions_for_dump();
     const auto ready = render_qa_field(field_scene);
@@ -3826,7 +3826,7 @@ int run_field_default_guard_item_action_qa(
         slot != std::optional<FieldWorldActorSlot>{FieldWorldActorSlot::slot_5} ||
         item != std::optional<std::uint8_t>{6U} ||
         action_slot != std::optional<std::uint8_t>{0U} ||
-        action_counter != std::optional<std::uint8_t>{0U} ||
+        action_counter != std::optional<std::uint16_t>{0U} ||
         ammo_before != std::optional<std::uint8_t>{18U} ||
         guard_positions.size() <= kGuardOrder ||
         guard_positions[kGuardOrder].x != kGuardPosition.x ||
@@ -3923,14 +3923,14 @@ int run_field_default_guard_item_action_qa(
         std::cerr << (distance ? std::to_string(*distance) : "<missing>")
                   << " ammo=";
         const auto ammo = field_scene.
-            default_actor_source_action_ammo_for_dump(kGuardOrder);
+            default_actor_ammunition_remaining_for_dump(kGuardOrder);
         std::cerr << (ammo ? std::to_string(*ammo) : "<missing>")
                   << " failure=" << field_scene.failure() << '\n';
         return 3;
     }
 
     const auto ammo_at_projectile =
-        field_scene.default_actor_source_action_ammo_for_dump(kGuardOrder);
+        field_scene.default_actor_ammunition_remaining_for_dump(kGuardOrder);
     bool weapon_pose_seen = false;
     bool weapon_pose_capture_saved = false;
     QImage actual = render_qa_field(field_scene);
@@ -19915,7 +19915,7 @@ int run_field_default_yakuza_actors_qa(
             field_scene.default_actor_script_profile_for_dump(
                 static_cast<std::uint16_t>(source_order)) ==
                 std::optional<std::string>{"yakuza_weenr_k08_item0a"} &&
-            field_scene.default_actor_source_action_ammo_for_dump(
+            field_scene.default_actor_ammunition_remaining_for_dump(
                 static_cast<std::uint16_t>(source_order)) ==
                 std::optional<std::uint8_t>{48U};
     }

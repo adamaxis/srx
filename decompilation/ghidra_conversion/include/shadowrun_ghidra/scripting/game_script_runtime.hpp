@@ -1162,20 +1162,13 @@ struct ScriptFieldEncounterActor {
     std::uint16_t entity_kind = 0;
     ScriptActorActionKind action_kind = ScriptActorActionKind::none;
     std::uint8_t action_code = 0;
-    // ROM 0x44BC copies template +0x08/+0x06/+0x07 into the live action
-    // slot, remaining item uses, and action counter at +0x56/+0x4E/+0x4F.
-    std::uint8_t source_action_slot = 0;
-    std::uint8_t source_action_ammo = 0;
-    std::uint8_t source_action_counter = 0;
     std::uint8_t palette_line = 0;
     std::string sprite_stem;
     bool activity_probe_enabled = false;
     std::uint8_t source_spawn_state_flags = 0; // +0x9E template byte [C]
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t physical_meter = 0;
-    std::uint8_t delay_primary_attribute = 0;
-    std::uint8_t delay_secondary_attribute = 0;
-    std::uint16_t delay_capability_flags = 0;
+    std::uint8_t action_delay_modifier = 0;
     std::string ordered_overrides;
     ScriptCombatantFacts combatant;
 };
@@ -1295,9 +1288,6 @@ struct ScriptWorldActivityActor {
     std::string sprite_stem;
     ScriptActorActionKind action_kind = ScriptActorActionKind::none;
     std::uint8_t action_code = 0;
-    std::uint8_t source_action_slot = 0;
-    std::uint8_t source_action_ammo = 0;
-    std::uint8_t source_action_counter = 0;
     std::uint8_t palette_line = 0;
     std::uint16_t world_x = 0;
     std::uint16_t world_y = 0;
@@ -1307,9 +1297,7 @@ struct ScriptWorldActivityActor {
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t source_behavior_flags = 0;
     std::uint8_t physical_meter = 0;
-    std::uint8_t delay_primary_attribute = 0;
-    std::uint8_t delay_secondary_attribute = 0;
-    std::uint16_t delay_capability_flags = 0;
+    std::uint8_t action_delay_modifier = 0;
     ScriptCombatantFacts combatant{};
 };
 
@@ -1561,6 +1549,12 @@ using ScriptActorDestinationMeasure =
     std::function<std::optional<ScriptActorDestinationMeasurement>(
         std::uint16_t world_x, std::uint16_t world_y)>;
 
+struct ScriptActorActionTiming {
+    std::uint8_t quickness = 0;
+    std::uint8_t intelligence = 0;
+    std::uint8_t action_delay_modifier = 0;
+};
+
 // Source-derived identity and spawn facts passed to an actor's Lua heartbeat.
 // Lua owns per-instance behavior state; the host retains world facts and
 // consumes the returned presentation/action snapshot.
@@ -1663,9 +1657,8 @@ struct ScriptActorBehaviorContext {
     std::optional<std::uint16_t> source_camera_y;
     std::optional<std::uint16_t> source_camera_limit_x;
     std::optional<std::uint16_t> source_camera_limit_y;
-    std::uint8_t source_action_slot = 0;
-    std::uint8_t source_action_ammo = 0;
-    std::uint8_t source_action_counter = 0;
+    std::uint16_t ammunition_remaining = 0;
+    bool hold_for_ending_activity = false;
     // Animation policy is exposed as game state, not as the source record's
     // packed pose selector. The host derives these facts from the actor's
     // current semantic animation state.
@@ -1681,12 +1674,10 @@ struct ScriptActorBehaviorContext {
     // ROM FFF9F8 bit 7 selects 0x4D vs 0x4E after the target heading is
     // accepted. The source condition is a fact; Lua chooses the cue.
     bool target_heading_audio_alternate = false;
-    // 0x44BC fills +0x78/+0x7B/+0x90 from the selected ROM template. Lua
-    // uses these typed facts when 0xB11C resets the signed +0xDC delay.
+    // The importer builds a semantic action-timing value from Quickness,
+    // Intelligence, and the 0xD7EA capability result. [C]
     std::int16_t initial_action_delay = 0;
-    std::uint8_t delay_primary_attribute = 0;
-    std::uint8_t delay_secondary_attribute = 0;
-    std::uint16_t delay_capability_flags = 0;
+    ScriptActorActionTiming action_timing{};
     std::array<bool, 18> world_effect_slot_occupancy{};
     // ROM +0x11.4 target-selection latch, forwarded as a fact; Lua owns the
     // visible 0x5C7E marker cadence and returns its presentation state.

@@ -57,7 +57,8 @@ local function context(overrides)
         world_scene_state = E.EndingState.NONE,
         source_actor_posture = E.Posture.NEUTRAL,
         animation_blocks_behavior = false,
-        source_action_ammo = 0,
+        ammunition_remaining = 0,
+        hold_for_ending_activity = false,
         controlled_runner_slot = 0,
         ai_target_candidates = {
             { id = "party.runner.0", source_record_slot = 0,
@@ -305,14 +306,14 @@ check(R.think_gate(state(), context({ source_projection_active = false,
 check(R.think_gate(state(), context({ source_projection_active = false,
       world_activity_active = true,
       world_scene_state = E.EndingState.FINAL_FIGHT,
-      source_action_ammo = E.AiTuning.ENDING_HOLD_ROUNDS })) == "hold",
-      "0x13996 ending-state offscreen actor with +0x4E gate enters hold")
+      hold_for_ending_activity = true })) == "hold",
+      "0x13996 ending-state offscreen actor with the host-derived hold policy enters hold")
 check(R.think_gate(state({ actor_facts = {
           lifecycle = { ai_runner = true },
       } }), context({ source_projection_active = false,
       world_activity_active = true,
       world_scene_state = E.EndingState.FINAL_FIGHT,
-      source_action_ammo = E.AiTuning.ENDING_HOLD_ROUNDS,
+      hold_for_ending_activity = true,
       actor_facts = { lifecycle = { ai_runner = true } } })) ==
       "follow_leader",
       "0x139A0 +0x10.b3 bypasses the ending-state hold branch")
@@ -328,7 +329,7 @@ check(R.think_gate(state(), context({ world_activity_active = true })) ==
 
 local hold_context = context({ source_projection_active = false,
     world_activity_active = true, world_scene_state = E.EndingState.FINAL_FIGHT,
-    source_action_ammo = E.AiTuning.ENDING_HOLD_ROUNDS })
+    hold_for_ending_activity = true })
 s = state()
 hold_context.animation_blocks_behavior = false
 check(R.think(s, hold_context) and s.ai_think_path == "hold" and

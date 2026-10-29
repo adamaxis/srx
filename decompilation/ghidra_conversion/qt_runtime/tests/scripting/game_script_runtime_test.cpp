@@ -2120,9 +2120,6 @@ int main() {
                 ilene_gate_actors->front().action_kind ==
                     ScriptActorActionKind::item &&
                 ilene_gate_actors->front().action_code == 3U &&
-                ilene_gate_actors->front().source_action_slot == 0U &&
-                ilene_gate_actors->front().source_action_ammo == 11U &&
-                ilene_gate_actors->front().source_action_counter == 0U &&
                 ilene_gate_actors->front().palette_line == 1U &&
                 ilene_gate_actors->front().world_x == 0x1100U &&
                 ilene_gate_actors->front().world_y == 0x0300U &&
@@ -2132,8 +2129,9 @@ int main() {
                 ilene_gate_actors->front().source_spawn_state_flags == 0x10U &&
                 ilene_gate_actors->front().source_interaction_flags == 0U &&
                 ilene_gate_actors->front().physical_meter == 10U &&
-                ilene_gate_actors->front().delay_primary_attribute == 3U &&
-                ilene_gate_actors->front().delay_secondary_attribute == 2U &&
+                ilene_gate_actors->front().action_delay_modifier == 0U &&
+                ilene_gate_actors->front().combatant.attributes.quickness == 3U &&
+                ilene_gate_actors->front().combatant.attributes.intelligence == 2U &&
                 ilene_gate_actors->front().combatant.mental_meter == 10U &&
                 ilene_gate_actors->front().combatant.posture == 2U &&
                 ilene_gate_actors->front().combatant.item_codes[0] == 4U &&
@@ -4838,8 +4836,7 @@ int main() {
     hound_effect_context.dynamic_world_encounter_actor = true;
     hound_effect_context.source_record_flags = 0x01U;
     hound_effect_context.movement_allowed = true;
-    hound_effect_context.delay_primary_attribute = 8U;
-    hound_effect_context.delay_secondary_attribute = 2U;
+    hound_effect_context.action_timing = {8U, 2U, 0U};
     hound_effect_context.ai_target_candidates.push_back(
         ScriptActorTargetCandidate{
             "party.runner.0", 0x1000U, 0x1000U, 0x2000U, 0x0100U,
@@ -5117,8 +5114,7 @@ int main() {
     c0a2_action_context.dynamic_world_encounter_actor = true;
     c0a2_action_context.source_record_flags = 0x25U;
     c0a2_action_context.initial_action_delay = 0;
-    c0a2_action_context.delay_primary_attribute = 4U;
-    c0a2_action_context.delay_secondary_attribute = 6U;
+    c0a2_action_context.action_timing = {4U, 6U, 0U};
     c0a2_action_context.movement_allowed = true;
     c0a2_action_context.ai_target_candidates.push_back(
         ScriptActorTargetCandidate{
@@ -6198,9 +6194,7 @@ int main() {
             action_code, 0U, true);
         context.dynamic_world_encounter_actor = true;
         context.source_record_flags = 0x01U;
-        context.source_action_slot = 0U;
-        context.source_action_ammo = 10U;
-        context.source_action_counter = 0U;
+        context.ammunition_remaining = 10U;
         // The Lua route policy opens +0xB0.4 for a close target; the host
         // begins with the ROM record's clear flag and validates the decision.
         context.source_behavior_flags = 0U;
@@ -6366,10 +6360,8 @@ int main() {
             ScriptActorActionKind::item, 1U, 0U, true);
         context.dynamic_world_encounter_actor = true;
         context.source_record_flags = 0x01U;
-        context.source_action_slot = 0U;
         context.source_behavior_flags = 0x10U;
-        context.source_action_ammo = 10U;
-        context.source_action_counter = 0U;
+        context.ammunition_remaining = 10U;
         context.animation_blocks_behavior = false;
         context.can_start_item_action = true;
         context.initial_action_delay = 0;
@@ -6433,7 +6425,7 @@ int main() {
                       << " animation=" << last_animation
                       << " flags=0x" << static_cast<unsigned>(last_flags)
                       << std::dec << " ammo="
-                      << static_cast<unsigned>(context.source_action_ammo)
+                      << static_cast<unsigned>(context.ammunition_remaining)
                       << " distance=" << context.ai_target_candidates[0].distance
                       << "\n";
             return std::nullopt;
@@ -6752,9 +6744,8 @@ int main() {
         context.movement_allowed = true;
         context.initial_action_delay = 0;
         if (row.decision == CatalogDecision::hound_effect) {
-            // Template +0x78/+0x7B. 0xD7EA with no capability bits yields 90.
-            context.delay_primary_attribute = 8U;
-            context.delay_secondary_attribute = 2U;
+            // Quickness 8, Intelligence 2, and no timing modifier yield 90.
+            context.action_timing = {8U, 2U, 0U};
         }
         if (row.decision == CatalogDecision::unarmed) {
             context.combatant = catalog_attacker;
@@ -6951,8 +6942,7 @@ int main() {
     combat_probe_context.dynamic_world_encounter_actor = true;
     combat_probe_context.source_record_flags = 0x25U;
     combat_probe_context.initial_action_delay = 0;
-    combat_probe_context.delay_primary_attribute = 4U;
-    combat_probe_context.delay_secondary_attribute = 6U;
+    combat_probe_context.action_timing = {4U, 6U, 0U};
     combat_probe_context.movement_allowed = true;
     const auto& combat_spell_rows = us_magic_spell_catalog();
     combat_probe_context.action_attribute_selectors = {

@@ -352,7 +352,7 @@ local function classify_item_dispatch(state, context, target)
     end
     if context.world_scene_state ~= 0 or
        state.actor_facts.behavior.in_target_band then
-        if state.source_action_ammo == 0 then
+        if state.ammunition_remaining == 0 then
             return "item_empty"
         end
         return "item_spawn_requested"

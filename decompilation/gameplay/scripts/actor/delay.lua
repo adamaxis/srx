@@ -6,7 +6,6 @@ local u8 = I.u8
 
 local M = {}
 local Mode = E.ActionDelayMode
-local Capability = E.DelayCapability
 local Use = {
     ATTACK = "attack",
     RELOAD_ACTION = "reload_action",
@@ -20,22 +19,13 @@ local weapon_scale_modes = {
     double = Mode.DOUBLE,
 }
 
--- ROM 0xD7EA takes the first set +0x90 bit from 12 through 14, then adds
--- (bit-11)*4 to the wrapped average of +0x78 and +0x7B before subtracting one. [C]
+-- The importer translates the source capability word into a semantic action
+-- delay modifier. Lua combines that value with named actor attributes. [C]
 local function delay_factor(primary_attribute, secondary_attribute,
-                            capability_flags)
-    local modifier = 0
-    for bit = Capability.FIRST_BIT, Capability.THIRD_BIT do
-        if (capability_flags & (1 << bit)) ~= 0 then
-            modifier = (bit - Capability.MODIFIER_ORIGIN) *
-                E.ActionDelay.FACTOR_STEP
-            break
-        end
-    end
-
+                            action_delay_modifier)
     -- ROM 0xD81C adds the two bytes before shifting, so the sum wraps at one byte. [C]
     local wrapped_sum = u8(primary_attribute + secondary_attribute)
-    local factor = (wrapped_sum >> 1) + modifier - 1
+    local factor = (wrapped_sum >> 1) + action_delay_modifier - 1
     if factor < 0 then
         factor = 0
     end
@@ -44,10 +34,11 @@ end
 
 -- ROM 0xABFC computes 0x6A-factor*4, applies D0, then clamps signed D2 to 0x0F. [C]
 function M.calculate(primary_attribute, secondary_attribute,
-                      capability_flags, mode)
+                      action_delay_modifier, mode)
     mode = mode == nil and Mode.NORMAL or mode
     local delay = E.ActionDelay.BASE -
-        delay_factor(primary_attribute, secondary_attribute, capability_flags) *
+        delay_factor(primary_attribute, secondary_attribute,
+                     action_delay_modifier) *
             E.ActionDelay.FACTOR_STEP
 
     if mode == Mode.DOUBLE then
@@ -62,12 +53,15 @@ function M.calculate(primary_attribute, secondary_attribute,
     return delay
 end
 
--- Actor behavior passes the record-backed attributes through this shared path. [C]
+-- Actor behavior uses the combatant's named attributes and imported modifier.
 function M.actor_action_delay(context, state, mode)
+    local timing = type(context.action_timing) == "table" and
+                   context.action_timing or state.action_timing
+    timing = type(timing) == "table" and timing or {}
     return M.calculate(
-        context.delay_primary_attribute or state.delay_primary_attribute or 0,
-        context.delay_secondary_attribute or state.delay_secondary_attribute or 0,
-        context.delay_capability_flags or state.delay_capability_flags or 0,
+        timing.quickness or 0,
+        timing.intelligence or 0,
+        timing.action_delay_modifier or 0,
         mode)
 end
 
@@ -94,16 +88,16 @@ local function weapon_mode(weapon_code, use)
     return nil
 end
 
--- The host passes typed runner facts and an action purpose; Lua selects the
--- weapon-specific source mode and runs the same 0xABFC / 0xD7EA calculation. [C]
+-- Lua selects the weapon-specific mode from the named runner facts and calculates
+-- the action delay from the supplied semantic modifier. [C]
 function M.player_weapon_action_delay(primary_attribute, secondary_attribute,
-                                      capability_flags, weapon_code, use)
+                                      action_delay_modifier, weapon_code, use)
     local mode = weapon_mode(weapon_code, use)
     if mode == nil then
         return nil
     end
     return M.calculate(primary_attribute, secondary_attribute,
-                       capability_flags, mode)
+                       action_delay_modifier, mode)
 end
 
 return M

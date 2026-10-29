@@ -47,8 +47,7 @@ local function strike_fixture(target_meter)
         action_profile_modifiers = {},
         ai_random_bound = function() return 0 end,
         combatant = combatant(E.ActorPool.OTHERS, 10),
-        delay_primary_attribute = 0,
-        delay_secondary_attribute = 0,
+        action_timing = { quickness = 0, intelligence = 0, modifier = 0 },
         world_effect_slot_occupancy = {},
     }
     local state = {

@@ -1647,8 +1647,8 @@ FieldSceneRuntime::default_actor_weapon_item_for_dump(
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint8_t>
-FieldSceneRuntime::default_actor_source_action_ammo_for_dump(
+std::optional<std::uint16_t>
+FieldSceneRuntime::default_actor_ammunition_remaining_for_dump(
     const std::uint16_t source_order) const noexcept {
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
     const auto actor = std::find_if(
@@ -1660,14 +1660,14 @@ FieldSceneRuntime::default_actor_source_action_ammo_for_dump(
         });
     return actor == field_default_actors_.end()
                ? std::nullopt
-               : std::optional<std::uint8_t>{actor->source_action_ammo};
+               : std::optional<std::uint16_t>{actor->ammunition_remaining};
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
 std::optional<std::uint8_t>
-FieldSceneRuntime::default_actor_source_action_slot_for_dump(
+FieldSceneRuntime::default_actor_equipped_action_slot_for_dump(
     const std::uint16_t source_order) const noexcept {
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
     const auto actor = std::find_if(
@@ -1679,14 +1679,14 @@ FieldSceneRuntime::default_actor_source_action_slot_for_dump(
         });
     return actor == field_default_actors_.end()
                ? std::nullopt
-               : std::optional<std::uint8_t>{actor->source_action_slot};
+               : std::optional<std::uint8_t>{actor->equipped_action_slot};
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
-std::optional<std::uint8_t>
-FieldSceneRuntime::default_actor_source_action_counter_for_dump(
+std::optional<std::uint16_t>
+FieldSceneRuntime::default_actor_action_count_for_dump(
     const std::uint16_t source_order) const noexcept {
     const auto scene_reference = state_.field_scene_buffers.scene_reference;
     const auto actor = std::find_if(
@@ -1698,7 +1698,7 @@ FieldSceneRuntime::default_actor_source_action_counter_for_dump(
         });
     return actor == field_default_actors_.end()
                ? std::nullopt
-               : std::optional<std::uint8_t>{actor->source_action_counter};
+               : std::optional<std::uint16_t>{actor->action_count};
 }
 #endif // SHADOWRUN_QT_QA_DRIVER
 

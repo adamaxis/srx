@@ -132,6 +132,7 @@ local function offsets() local t = {} for i = 1, 8 do t[i] = { R(-32, 32), R(-32
 
 local kinds_list = {} for k in pairs(kinds) do kinds_list[#kinds_list + 1] = k end table.sort(kinds_list)
 local function context(actor)
+  local ammunition_remaining = R(0, 30)
   local pid = pick(pids)
   local dyn = R(4) == 1
   if dyn then pid = (#kinds_list > 0 and R(2) == 1) and pick(kinds_list) or string.format("x_k%02x_%s%02x", R(4, 14), pick({ "item", "spell", "none" }), R(0, 15)) end
@@ -158,12 +159,14 @@ local function context(actor)
     ai_animation_frame = num(), action_animation_frame_count = R(1, 8), action_animation_audio_event = num(),
     world_scene_state = { }, walk_animation_frame_count = R(1, 8), target_selection_linked_slot = R(0, 7),
     target_selection_current_slot = R(0, 7), target_selection_advances_cursor = bool(),
-    source_animation_selector = num(), source_action_slot = R(0, 7), source_action_counter = num(), source_action_ammo = R(0, 30),
+    ammunition_remaining = ammunition_remaining,
+    hold_for_ending_activity = false,
     projectile_attack_seed_pending = bool(), projectile_animation = bool(), projectile_movement = maybe(mstate),
     movement_heading_override = maybe(num), item_action_threshold = num(), item_action_increment = num(),
     item_action_frame_count = R(1, 8), hurt_audio_event = num(), hurt_animation_threshold = num(),
     hurt_animation_increment = num(), hurt_animation_frame_count = R(1, 8), down_audio_event = num(),
-    delay_secondary_attribute = R(0, 10), delay_primary_attribute = R(0, 10), delay_capability_flags = num(),
+    action_timing = { quickness = R(0, 10), intelligence = R(0, 10),
+                      action_delay_modifier = pick({ 0, 4, 8, 12 }) },
     combat_input_blocked = bool(), combat_confirm_held = bool(), combat_action_ready = bool(), combat_action_available = bool(),
     animation_mode = pick({ "attack", "walking", "idle" }), animation_direction_override = maybe(function() return R(0, 7) end),
     animation_accumulator_override = maybe(num), world_activity_active = bool(), target_selection_special_marker = bool(),
@@ -184,6 +187,49 @@ local function deepcopy(v, seen)
   for k, x in pairs(v) do c[deepcopy(k, seen)] = deepcopy(x, seen) end
   return c
 end
+local function modifier_flags(modifier)
+  if modifier == 4 then return 1 << 12 end
+  if modifier == 8 then return 1 << 13 end
+  if modifier == 12 then return 1 << 14 end
+  return 0
+end
+local function modifier_from_flags(flags)
+  for bit = 12, 14 do
+    if ((flags or 0) & (1 << bit)) ~= 0 then
+      return (bit - 11) * 4
+    end
+  end
+  return 0
+end
+local function legacy_context_for_reference(context)
+  local legacy = deepcopy(context)
+  local timing = context.action_timing or {}
+  legacy.delay_primary_attribute = timing.quickness or 0
+  legacy.delay_secondary_attribute = timing.intelligence or 0
+  legacy.delay_capability_flags =
+    modifier_flags(timing.action_delay_modifier or 0)
+  legacy.source_action_slot = 0
+  legacy.source_action_ammo = legacy.ammunition_remaining or 0
+  legacy.source_action_counter = 0
+  legacy.ammunition_remaining = nil
+  return legacy
+end
+local function serialize_context_for_parity(context)
+  local comparable = deepcopy(context)
+  if comparable.ammunition_remaining == nil then
+    comparable.ammunition_remaining = comparable.source_action_ammo or 0
+  end
+  if comparable.hold_for_ending_activity == nil then
+    comparable.hold_for_ending_activity = false
+  end
+  comparable.source_action_slot = nil
+  comparable.source_action_ammo = nil
+  comparable.source_action_counter = nil
+  comparable.delay_primary_attribute = nil
+  comparable.delay_secondary_attribute = nil
+  comparable.delay_capability_flags = nil
+  return ser(comparable)
+end
 local function serialize_actor_states_for_parity(actors)
   -- The split runtime caches the raw record slot on each persistent actor so
   -- typed host slots can be checked against ROM records. The bfa3908 baseline
@@ -192,7 +238,27 @@ local function serialize_actor_states_for_parity(actors)
   -- returned states, nested state, contexts, and service traces still compare.
   local comparable = deepcopy(actors)
   for _, state in pairs(comparable) do
-    if type(state) == "table" then state.source_record_slot = nil end
+    if type(state) == "table" then
+      state.source_record_slot = nil
+      if type(state.action_timing) ~= "table" and
+         type(state.delay_primary_attribute) == "number" then
+        state.action_timing = {
+          quickness = state.delay_primary_attribute,
+          intelligence = state.delay_secondary_attribute or 0,
+          action_delay_modifier =
+            modifier_from_flags(state.delay_capability_flags),
+        }
+      end
+      state.delay_primary_attribute = nil
+      state.delay_secondary_attribute = nil
+      state.delay_capability_flags = nil
+      if state.ammunition_remaining == nil then
+        state.ammunition_remaining = state.source_action_ammo
+      end
+      state.source_action_slot = nil
+      state.source_action_ammo = nil
+      state.source_action_counter = nil
+    end
   end
   return ser(comparable)
 end
@@ -230,7 +296,7 @@ for trial = 1, TRIALS do
     base.spawn = false
     ctx.phase = (frame % 2 == 0) and "render" or "behavior"
     if R(10) == 1 then ctx.phase = fresh.phase end
-    local cA, cB = deepcopy(ctx), deepcopy(ctx)
+    local cA, cB = legacy_context_for_reference(ctx), deepcopy(ctx)
     cB.ai_random_bound, cA.ai_random_bound = ctx.ai_random_bound, ctx.ai_random_bound
     for i = #logA, 1, -1 do logA[i] = nil end
     for i = #logB, 1, -1 do logB[i] = nil end
@@ -240,11 +306,13 @@ for trial = 1, TRIALS do
     if okA and rA ~= nil then nonnil = nonnil + 1 end
     if not okA then errs = errs + 1 end
     local partsA = {
-      tostring(okA), okA and ser(rA) or norm_err(rA), ser(cA),
+      tostring(okA), okA and ser(rA) or norm_err(rA),
+      serialize_context_for_parity(cA),
       serialize_actor_states_for_parity(gameA.actors), table.concat(logA, ";"),
     }
     local partsB = {
-      tostring(okB), okB and ser(rB) or norm_err(rB), ser(cB),
+      tostring(okB), okB and ser(rB) or norm_err(rB),
+      serialize_context_for_parity(cB),
       serialize_actor_states_for_parity(gameB.actors), table.concat(logB, ";"),
     }
     local sA, sB = table.concat(partsA, "|"), table.concat(partsB, "|")

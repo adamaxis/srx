@@ -183,7 +183,7 @@ local function think_gate(state, context)
         end
         if context.world_scene_state ~= E.EndingState.NONE and
            not facts.lifecycle.ai_runner and
-           context.source_action_ammo == AiTuning.ENDING_HOLD_ROUNDS then
+           context.hold_for_ending_activity == true then
             return "hold"
         end
         return "follow_leader"

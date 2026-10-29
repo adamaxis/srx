@@ -102,12 +102,8 @@ function ActorAI.heartbeat(context)
                                state.source_record_slot
     state.movement_scene_id = context.movement_scene_id or
                               state.movement_scene_id
-    state.source_action_slot = context.source_action_slot or
-                               state.source_action_slot
-    state.source_action_ammo = context.source_action_ammo or
-                               state.source_action_ammo
-    state.source_action_counter = context.source_action_counter or
-                                  state.source_action_counter
+    state.ammunition_remaining = context.ammunition_remaining or
+                                state.ammunition_remaining
     if context.phase == "behavior" and
        state.source_record_cleanup_requested then
         state.source_record_cleanup_requested = false

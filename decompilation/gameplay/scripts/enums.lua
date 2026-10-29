@@ -106,8 +106,10 @@ E.EndingState = { NONE = 0, FINAL_FIGHT = 3 }                                   
 -- Source callers use only 0, 1, and 2 [C].
 E.ActionDelayMode = { NORMAL = 0, HALF = 1, DOUBLE = 2 } -- 0xABFC D0 modes [C]
 E.ActionDelay = { BASE = 0x6A, FACTOR_STEP = 4, MINIMUM = 0x0F }                -- 0xABFC [C]
-E.DelayCapability = { FIRST_BIT = 12, SECOND_BIT = 13, THIRD_BIT = 14,
-                       MODIFIER_ORIGIN = 11 }                                    -- 0xD7EA +0x90 scan [C]
+E.ActionDelayModifier = {
+    NONE = 0, FACTOR_BONUS_4 = 4, FACTOR_BONUS_8 = 8,
+    FACTOR_BONUS_12 = 12,
+}
 
 E.SpriteType  = { FIELD_RUNNER = 3, CORP_GUARD = 5, GHOUL = 7, PEDESTRIAN = 11, HELL_HOUND = 12, GARGOYLE = 13,
                   WENDIGO = 14, THON = 15 }   -- +0x0E [C: 7,12,13,15 from our trace; 3,5,11,14 names from pre-module actor_ai.lua:40-46]
@@ -311,7 +313,6 @@ E.AiTuning = {   -- [C] unless marked
     HURT_BELOW = 4, CAST_MIN_STUN = 5, SPELL_GATE_MAX = 2, APPROACH_TICKS = 6,
     QUARTER_TURN = 0x4000, NO_TARGET = 0x12345678, STEER_NONE = 0x1000, ALARM_FRAMES = 0x960,
     RELOAD_ROUNDS = 0x26, PATH_TRIES = 5, ANIM_TIMER_MASK = 0x7FF,
-    ENDING_HOLD_ROUNDS = 0x28,   -- +0x4E tests at 0x13D20 and 0x139AA [C value, H meaning]
     TARGET_LIST_PHASE_MASK = 0x3F, -- raw 0x3F: FFDF88 mask at 0x13874 [C]
     WORLD_TARGET_LIST_PHASE = 0x0B, -- raw 0x0B: rebuild 0x1438C at 0x13874 [C]
     RUNNER_TARGET_LIST_PHASE = 0x0F, -- raw 0x0F: rebuild 0x14446 at 0x13874 [C]

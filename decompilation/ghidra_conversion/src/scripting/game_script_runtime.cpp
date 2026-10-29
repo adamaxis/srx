@@ -7588,18 +7588,13 @@ GameScriptRuntime::world_activity_actors_for_selector(
         std::uint32_t entity_kind = 0U;
         std::uint32_t palette_line = 0U;
         std::uint32_t action_code = 0U;
-        std::uint32_t source_action_slot = 0U;
-        std::uint32_t source_action_ammo = 0U;
-        std::uint32_t source_action_counter = 0U;
         std::uint32_t world_x = 0U;
         std::uint32_t world_y = 0U;
         std::uint32_t heading = 0U;
         ActorRoleFacts actor_roles;
         ActorInteractionFacts actor_interaction;
         std::uint32_t physical_meter = 0U;
-        std::uint32_t delay_primary_attribute = 0U;
-        std::uint32_t delay_secondary_attribute = 0U;
-        std::uint32_t delay_capability_flags = 0U;
+        std::uint32_t action_delay_modifier = 0U;
         std::uint32_t row_scene = 0U;
         int row_script_index = 0;
         bool activity_probe_enabled = false;
@@ -7655,18 +7650,6 @@ GameScriptRuntime::world_activity_actors_for_selector(
             valid_fact(read_field_integer(state, row_index, "action_code",
                                           0xFFU, action_code),
                        "action selection") &&
-            valid_fact(read_field_integer(state, row_index,
-                                          "source_action_slot", 0xFFU,
-                                          source_action_slot),
-                       "action equipment slot") &&
-            valid_fact(read_field_integer(state, row_index,
-                                          "source_action_ammo", 0xFFU,
-                                          source_action_ammo),
-                       "action ammunition") &&
-            valid_fact(read_field_integer(state, row_index,
-                                          "source_action_counter", 0xFFU,
-                                          source_action_counter),
-                       "action counter") &&
             valid_fact(read_field_integer(state, row_index, "palette_line",
                                           3U, palette_line), "palette line") &&
             valid_fact(read_field_integer(state, row_index, "x", 0xFFFFU,
@@ -7687,17 +7670,10 @@ GameScriptRuntime::world_activity_actors_for_selector(
                                           0xFFU, physical_meter),
                        "physical vitality") &&
             valid_fact(read_field_integer(state, row_index,
-                                          "delay_primary_attribute", 0xFFU,
-                                          delay_primary_attribute),
-                       "primary delay attribute") &&
-            valid_fact(read_field_integer(state, row_index,
-                                          "delay_secondary_attribute", 0xFFU,
-                                          delay_secondary_attribute),
-                       "secondary delay attribute") &&
-            valid_fact(read_field_integer(state, row_index,
-                                          "delay_capability_flags", 0xFFFFU,
-                                          delay_capability_flags),
-                       "delay capabilities");
+                                          "action_delay_modifier", 12U,
+                                          action_delay_modifier) &&
+                       action_delay_modifier % 4U == 0U,
+                       "action-delay modifier");
         if (!valid) {
             return fail("world-content actor descriptor has invalid " +
                         invalid_fact);
@@ -7723,12 +7699,6 @@ GameScriptRuntime::world_activity_actors_for_selector(
         actor.activity_probe_enabled = activity_probe_enabled;
         actor.entity_kind = static_cast<std::uint16_t>(entity_kind);
         actor.action_code = static_cast<std::uint8_t>(action_code);
-        actor.source_action_slot =
-            static_cast<std::uint8_t>(source_action_slot);
-        actor.source_action_ammo =
-            static_cast<std::uint8_t>(source_action_ammo);
-        actor.source_action_counter =
-            static_cast<std::uint8_t>(source_action_counter);
         actor.palette_line = static_cast<std::uint8_t>(palette_line);
         actor.world_x = static_cast<std::uint16_t>(world_x);
         actor.world_y = static_cast<std::uint16_t>(world_y);
@@ -7737,12 +7707,8 @@ GameScriptRuntime::world_activity_actors_for_selector(
         actor.source_interaction_flags =
             interaction_to_source(actor_interaction);
         actor.physical_meter = static_cast<std::uint8_t>(physical_meter);
-        actor.delay_primary_attribute =
-            static_cast<std::uint8_t>(delay_primary_attribute);
-        actor.delay_secondary_attribute =
-            static_cast<std::uint8_t>(delay_secondary_attribute);
-        actor.delay_capability_flags =
-            static_cast<std::uint16_t>(delay_capability_flags);
+        actor.action_delay_modifier =
+            static_cast<std::uint8_t>(action_delay_modifier);
 
         lua_getfield(state, row_index, "combatant");
         if (!lua_istable(state, -1)) {
@@ -8064,17 +8030,12 @@ GameScriptRuntime::resolve_field_encounter_impl(
             std::uint32_t source_order = 0U;
             std::uint32_t entity_kind = 0U;
             std::uint32_t action_code = 0U;
-            std::uint32_t source_action_slot = 0U;
-            std::uint32_t source_action_ammo = 0U;
-            std::uint32_t source_action_counter = 0U;
             ActorRoleFacts actor_roles;
             ActorInteractionFacts actor_interaction;
             std::uint32_t physical_meter = 0U;
             std::uint32_t palette_line = 0U;
             bool activity_probe_enabled = false;
-            std::uint32_t delay_primary_attribute = 0U;
-            std::uint32_t delay_secondary_attribute = 0U;
-            std::uint32_t delay_capability_flags = 0U;
+            std::uint32_t action_delay_modifier = 0U;
             std::optional<std::uint32_t> run_target_spawn_x;
             std::optional<std::uint32_t> run_target_spawn_y;
             std::string action_kind;
@@ -8097,15 +8058,6 @@ GameScriptRuntime::resolve_field_encounter_impl(
                                   action_kind) &&
                 read_field_integer(state, actor_index, "action_code", 255U,
                                    action_code) &&
-                read_field_integer(state, actor_index,
-                                   "source_action_slot", 255U,
-                                   source_action_slot) &&
-                read_field_integer(state, actor_index,
-                                   "source_action_ammo", 255U,
-                                   source_action_ammo) &&
-                read_field_integer(state, actor_index,
-                                   "source_action_counter", 255U,
-                                   source_action_counter) &&
                 read_actor_role_facts(state, actor_index, actor_roles) &&
                 read_actor_interaction_facts(state, actor_index,
                                              actor_interaction) &&
@@ -8120,14 +8072,9 @@ GameScriptRuntime::resolve_field_encounter_impl(
                                    "activity_probe_enabled",
                                    activity_probe_enabled) &&
                 read_field_integer(state, actor_index,
-                                   "delay_primary_attribute", 0xFFU,
-                                   delay_primary_attribute) &&
-                read_field_integer(state, actor_index,
-                                   "delay_secondary_attribute", 0xFFU,
-                                   delay_secondary_attribute) &&
-                read_field_integer(state, actor_index,
-                                   "delay_capability_flags", 0xFFFFU,
-                                   delay_capability_flags) &&
+                                   "action_delay_modifier", 12U,
+                                   action_delay_modifier) &&
+                action_delay_modifier % 4U == 0U &&
                 read_field_text(state, actor_index, "ordered_overrides",
                                 actor.ordered_overrides, 512U) &&
                 read_optional_field_u32(state, actor_index, "spawn_x",
@@ -8280,12 +8227,6 @@ GameScriptRuntime::resolve_field_encounter_impl(
             }
             actor.entity_kind = static_cast<std::uint16_t>(entity_kind);
             actor.action_code = static_cast<std::uint8_t>(action_code);
-            actor.source_action_slot =
-                static_cast<std::uint8_t>(source_action_slot);
-            actor.source_action_ammo =
-                static_cast<std::uint8_t>(source_action_ammo);
-            actor.source_action_counter =
-                static_cast<std::uint8_t>(source_action_counter);
             actor.source_spawn_state_flags = roles_to_source(actor_roles, 0U);
             actor.source_interaction_flags =
                 interaction_to_source(actor_interaction);
@@ -8293,12 +8234,8 @@ GameScriptRuntime::resolve_field_encounter_impl(
                 static_cast<std::uint8_t>(physical_meter);
             actor.palette_line = static_cast<std::uint8_t>(palette_line);
             actor.activity_probe_enabled = activity_probe_enabled;
-            actor.delay_primary_attribute =
-                static_cast<std::uint8_t>(delay_primary_attribute);
-            actor.delay_secondary_attribute =
-                static_cast<std::uint8_t>(delay_secondary_attribute);
-            actor.delay_capability_flags =
-                static_cast<std::uint16_t>(delay_capability_flags);
+            actor.action_delay_modifier =
+                static_cast<std::uint8_t>(action_delay_modifier);
             if ((actor.action_kind == ScriptActorActionKind::none) !=
                 (actor.action_code == 0U)) {
                 return fail("dynamic world encounter action facts disagree");
@@ -9942,12 +9879,10 @@ GameScriptRuntime::actor_heartbeat(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "source_actor_posture");
-    lua_pushinteger(state, context.source_action_slot);
-    lua_setfield(state, -2, "source_action_slot");
-    lua_pushinteger(state, context.source_action_ammo);
-    lua_setfield(state, -2, "source_action_ammo");
-    lua_pushinteger(state, context.source_action_counter);
-    lua_setfield(state, -2, "source_action_counter");
+    lua_pushinteger(state, context.ammunition_remaining);
+    lua_setfield(state, -2, "ammunition_remaining");
+    lua_pushboolean(state, context.hold_for_ending_activity);
+    lua_setfield(state, -2, "hold_for_ending_activity");
     lua_pushboolean(state, context.animation_blocks_behavior);
     lua_setfield(state, -2, "animation_blocks_behavior");
     lua_pushboolean(state, context.can_start_item_action);
@@ -10013,12 +9948,14 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "target_heading_audio_alternate");
     lua_pushinteger(state, context.initial_action_delay);
     lua_setfield(state, -2, "initial_action_delay");
-    lua_pushinteger(state, context.delay_primary_attribute);
-    lua_setfield(state, -2, "delay_primary_attribute");
-    lua_pushinteger(state, context.delay_secondary_attribute);
-    lua_setfield(state, -2, "delay_secondary_attribute");
-    lua_pushinteger(state, context.delay_capability_flags);
-    lua_setfield(state, -2, "delay_capability_flags");
+    lua_createtable(state, 0, 3);
+    lua_pushinteger(state, context.action_timing.quickness);
+    lua_setfield(state, -2, "quickness");
+    lua_pushinteger(state, context.action_timing.intelligence);
+    lua_setfield(state, -2, "intelligence");
+    lua_pushinteger(state, context.action_timing.action_delay_modifier);
+    lua_setfield(state, -2, "action_delay_modifier");
+    lua_setfield(state, -2, "action_timing");
     lua_createtable(state, static_cast<int>(
                                context.world_effect_slot_occupancy.size()), 0);
     for (std::size_t index = 0U;
@@ -12078,7 +12015,7 @@ GameScriptRuntime::actor_heartbeat(
             const bool invalid_item_action =
                 context.action_kind != ScriptActorActionKind::item ||
                 context.action_code == 0U || context.action_code > 12U ||
-                context.source_action_ammo == 0U ||
+                context.ammunition_remaining == 0U ||
                 !context.can_start_item_action ||
                 (context.world_scene_state == 0U &&
                  (decision.source_behavior_flags & 0x10U) == 0U) ||
@@ -12090,7 +12027,7 @@ GameScriptRuntime::actor_heartbeat(
                     "(kind=" + std::to_string(static_cast<unsigned>(
                                       context.action_kind)) +
                     ",code=" + std::to_string(context.action_code) +
-                    ",ammo=" + std::to_string(context.source_action_ammo) +
+                    ",ammo=" + std::to_string(context.ammunition_remaining) +
                     ",can_start_item_action=" +
                         (context.can_start_item_action ? "yes" : "no") +
                     ",scene=" + std::to_string(context.world_scene_state) +

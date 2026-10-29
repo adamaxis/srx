@@ -116,6 +116,7 @@ local function offsets() local t = {} for i = 1, 8 do t[i] = { R(-32, 32), R(-32
 
 local kinds_list = {} for k in pairs(kinds) do kinds_list[#kinds_list + 1] = k end table.sort(kinds_list)
 local function context(actor)
+  local ammunition_remaining = R(0, 30)
   local pid = pick(pids)
   local dyn = R(4) == 1
   if dyn then pid = (#kinds_list > 0 and R(2) == 1) and pick(kinds_list) or string.format("x_k%02x_%s%02x", R(4, 14), pick({ "item", "spell", "none" }), R(0, 15)) end
@@ -126,6 +127,8 @@ local function context(actor)
     phase = pick({ "behavior", "render", "behavior" }), spawn = R(6) == 1,
     initial_heading = num(), entry_delay = R(0, 16), entry_animation_frame_count = R(1, 8),
     source_record_flags = R(4) == 1 and 0 or 1, source_record_slot = R(0, 7), combatant = bool(),
+    action_timing = { quickness = R(0, 10), intelligence = R(0, 10),
+                      modifier = pick({ 0, 4, 8, 12 }) },
     ai_target_candidates = maybe(function() return list(cand, 4) end),
     world_target_selection_candidates = maybe(function() return list(cand, 3) end),
     projectile_combat_targets = maybe(function() return list(cand, 3) end),
@@ -139,12 +142,12 @@ local function context(actor)
     ai_animation_frame = num(), action_animation_frame_count = R(1, 8), action_animation_audio_event = num(),
     world_scene_state = { }, walk_animation_frame_count = R(1, 8), target_selection_linked_slot = R(0, 7),
     target_selection_current_slot = R(0, 7), target_selection_advances_cursor = bool(),
-    source_animation_selector = num(), source_action_slot = R(0, 7), source_action_counter = num(), source_action_ammo = R(0, 30),
+    ammunition_remaining = ammunition_remaining,
+    hold_for_ending_activity = false,
     projectile_attack_seed_pending = bool(), projectile_animation = bool(), projectile_movement = maybe(mstate),
     movement_heading_override = maybe(num), item_action_threshold = num(), item_action_increment = num(),
     item_action_frame_count = R(1, 8), hurt_audio_event = num(), hurt_animation_threshold = num(),
     hurt_animation_increment = num(), hurt_animation_frame_count = R(1, 8), down_audio_event = num(),
-    delay_secondary_attribute = R(0, 10), delay_primary_attribute = R(0, 10), delay_capability_flags = num(),
     combat_input_blocked = bool(), combat_confirm_held = bool(), combat_action_ready = bool(), combat_action_available = bool(),
     animation_mode = pick({ "attack", "walking", "idle" }), animation_direction_override = maybe(function() return R(0, 7) end),
     animation_accumulator_override = maybe(num), world_activity_active = bool(), target_selection_special_marker = bool(),

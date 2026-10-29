@@ -430,7 +430,8 @@ bool push_record(lua_State* state, const TsvDocument& document,
                 if (!parse_integer(value, number)) {
                     failure = source_path.string() + ": row " +
                               std::to_string(row_number) + " column " + column +
-                              " is not an integer";
+                              " is not an integer: [" +
+                              std::string(value) + "]";
                     lua_pop(state, 1);
                     return false;
                 }
@@ -441,7 +442,7 @@ bool push_record(lua_State* state, const TsvDocument& document,
             if (!parse_integer(value, number)) {
                 failure = source_path.string() + ": row " +
                           std::to_string(row_number) + " column " + column +
-                          " is not an integer";
+                          " is not an integer: [" + std::string(value) + "]";
                 lua_pop(state, 1);
                 return false;
             }
@@ -911,10 +912,10 @@ bool collect_activity_list_ids(
     return true;
 }
 
-std::string_view semantic_actor_combat_column(
+std::string_view semantic_actor_runtime_column(
     const std::string_view source_column) {
     static constexpr std::array<std::pair<std::string_view,
-                                          std::string_view>, 11U> aliases{{
+                                          std::string_view>, 12U> aliases{{
         {"combat_attribute_77", "combat_body"},
         {"combat_attribute_78", "combat_quickness"},
         {"combat_attribute_79", "combat_strength"},
@@ -926,6 +927,7 @@ std::string_view semantic_actor_combat_column(
         {"combat_action_skill_82", "combat_pistols"},
         {"combat_action_skill_83", "combat_smgs"},
         {"combat_action_skill_84", "combat_shotguns"},
+        {"delay_capability_flags", "action_delay_modifier"},
     }};
     for (const auto& [source, semantic] : aliases) {
         if (source_column == source) {
@@ -933,6 +935,26 @@ std::string_view semantic_actor_combat_column(
         }
     }
     return source_column;
+}
+
+bool action_delay_modifier_from_source_flags(
+    const std::string_view text, std::uint8_t& result) {
+    lua_Integer flags = 0;
+    if (!parse_integer(text, flags) || flags < 0 || flags > 0xFFFF) {
+        return false;
+    }
+    // ROM 0xD7EA scans source bits 12 through 14 and converts the first set
+    // bit to a 4/8/12 action-delay modifier. Lua receives that domain value,
+    // never the encoded capability word. [C]
+    result = 0U;
+    for (int bit = 12; bit <= 14; ++bit) {
+        if ((static_cast<std::uint16_t>(flags) &
+             (std::uint16_t{1U} << bit)) != 0U) {
+            result = static_cast<std::uint8_t>((bit - 11) * 4);
+            break;
+        }
+    }
+    return true;
 }
 
 bool make_semantic_activity_actor_rows(
@@ -950,12 +972,17 @@ bool make_semantic_activity_actor_rows(
         if (source_column == "source_record_offset" ||
             source_column == "list_offset" ||
             source_column == "position_offset" ||
-            source_column == "template_offset") {
+            source_column == "template_offset" ||
+            source_column == "delay_primary_attribute" ||
+            source_column == "delay_secondary_attribute" ||
+            source_column == "source_action_slot" ||
+            source_column == "source_action_ammo" ||
+            source_column == "source_action_counter") {
             continue;
         }
         const auto runtime_column = source_column == "tagged_template"
             ? std::string("activity_probe_enabled")
-            : std::string(semantic_actor_combat_column(source_column));
+            : std::string(semantic_actor_runtime_column(source_column));
         const auto index = semantic.columns.size();
         if (!semantic.column_indexes.emplace(runtime_column, index).second) {
             failure = path.string() +
@@ -988,7 +1015,12 @@ bool make_semantic_activity_actor_rows(
             if (source.columns[column] == "source_record_offset" ||
                 source.columns[column] == "list_offset" ||
                 source.columns[column] == "position_offset" ||
-                source.columns[column] == "template_offset") {
+                source.columns[column] == "template_offset" ||
+                source.columns[column] == "delay_primary_attribute" ||
+                source.columns[column] == "delay_secondary_attribute" ||
+                source.columns[column] == "source_action_slot" ||
+                source.columns[column] == "source_action_ammo" ||
+                source.columns[column] == "source_action_counter") {
                 continue;
             }
             if (column == tag_column->second) {
@@ -997,6 +1029,17 @@ bool make_semantic_activity_actor_rows(
                 runtime_row.emplace_back(
                     (static_cast<std::uint32_t>(tagged_template) &
                      0x80000000U) != 0U ? "true" : "false");
+            } else if (source.columns[column] ==
+                       "delay_capability_flags") {
+                std::uint8_t modifier = 0U;
+                if (!action_delay_modifier_from_source_flags(
+                        source_row[column], modifier)) {
+                    failure = path.string() + ": row " +
+                        std::to_string(row_index + 2U) +
+                        " has invalid action-delay capability data";
+                    return false;
+                }
+                runtime_row.push_back(std::to_string(modifier));
             } else {
                 runtime_row.push_back(source_row[column]);
             }
@@ -1036,12 +1079,17 @@ bool make_semantic_dynamic_actor_rows(
     for (const auto& source_column : source.columns) {
         if (source_column == "selection_cell_offset" ||
             source_column == "sequence_list_offset" ||
-            source_column == "template_offset") {
+            source_column == "template_offset" ||
+            source_column == "delay_primary_attribute" ||
+            source_column == "delay_secondary_attribute" ||
+            source_column == "source_action_slot" ||
+            source_column == "source_action_ammo" ||
+            source_column == "source_action_counter") {
             continue;
         }
         const auto runtime_column = source_column == "tagged_template"
             ? std::string("activity_probe_enabled")
-            : std::string(semantic_actor_combat_column(source_column));
+            : std::string(semantic_actor_runtime_column(source_column));
         const auto index = semantic.columns.size();
         if (!semantic.column_indexes.emplace(runtime_column, index).second) {
             failure = path.string() +
@@ -1136,7 +1184,12 @@ bool make_semantic_dynamic_actor_rows(
             const auto& source_column = source.columns[column];
             if (source_column == "selection_cell_offset" ||
                 source_column == "sequence_list_offset" ||
-                source_column == "template_offset") {
+                source_column == "template_offset" ||
+                source_column == "delay_primary_attribute" ||
+                source_column == "delay_secondary_attribute" ||
+                source_column == "source_action_slot" ||
+                source_column == "source_action_ammo" ||
+                source_column == "source_action_counter") {
                 continue;
             }
             if (column == tag_column->second) {
@@ -1145,6 +1198,16 @@ bool make_semantic_dynamic_actor_rows(
                 runtime_row.emplace_back(
                     (static_cast<std::uint32_t>(tagged_template) &
                      0x80000000U) != 0U ? "true" : "false");
+            } else if (source_column == "delay_capability_flags") {
+                std::uint8_t modifier = 0U;
+                if (!action_delay_modifier_from_source_flags(
+                        source_row[column], modifier)) {
+                    failure = path.string() + ": row " +
+                        std::to_string(row_index + 2U) +
+                        " has invalid action-delay capability data";
+                    return false;
+                }
+                runtime_row.push_back(std::to_string(modifier));
             } else {
                 runtime_row.push_back(source_row[column]);
             }
@@ -1789,8 +1852,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
                "action_code", "source_spawn_state_flags",
               "source_interaction_flags", "entity_kind",
                 "palette_line", "physical_meter",
-              "delay_primary_attribute", "delay_secondary_attribute",
-              "delay_capability_flags", "combat_mental_meter",
+              "action_delay_modifier", "combat_mental_meter",
               "combat_cyberware_flags", "combat_posture",
               "combat_body", "combat_quickness", "combat_strength",
               "combat_intelligence", "combat_willpower",
@@ -1813,8 +1875,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
               "combat_action_phase_7e", "combat_action_phase_7f",
               "combat_firearms", "combat_pistols", "combat_smgs",
               "combat_shotguns",
-              "combat_auxiliary_roll_bonus", "source_action_slot",
-              "source_action_ammo", "source_action_counter",
+              "combat_auxiliary_roll_bonus",
               "run_target_area", "run_target_event", "run_target_x",
               "run_target_y"},
              {},
@@ -1822,14 +1883,11 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
             {"entities/world-activity-actors.tsv",
              "world_activity_actor_lists",
              {"scene", "source_order", "script_index", "template_offset",
-              "entity_kind", "action_code",
-              "source_action_slot", "source_action_ammo",
-              "source_action_counter", "palette_line", "world_x",
+              "entity_kind", "action_code", "palette_line", "world_x",
               "world_y", "initial_heading", "source_spawn_state_flags",
               "world_effect_active_gate", "pending_world_effect_gate",
               "source_interaction_flags", "physical_meter",
-              "delay_primary_attribute", "delay_secondary_attribute",
-              "delay_capability_flags", "combat_mental_meter",
+              "action_delay_modifier", "combat_mental_meter",
               "combat_cyberware_flags", "combat_posture",
               "combat_body", "combat_quickness", "combat_strength",
               "combat_intelligence", "combat_willpower",

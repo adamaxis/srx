@@ -40,9 +40,6 @@ local function actor_row(source_order, sequence_id, placement_rule)
         profile_id = "corp_guard_k05_item06",
         action_kind = "item",
         action_code = 6,
-        source_action_slot = 0,
-        source_action_ammo = 0,
-        source_action_counter = 0,
         actor_facts = {
             roles = {
                 spotted = true,
@@ -60,9 +57,7 @@ local function actor_row(source_order, sequence_id, placement_rule)
         placement_rule = placement_rule or
             "open screen-edge candidates based on the current viewport and terrain",
         physical_meter = 10,
-        delay_primary_attribute = 3,
-        delay_secondary_attribute = 2,
-        delay_capability_flags = 0,
+        action_delay_modifier = 0,
         combat_mental_meter = 0,
         combat_cyberware_flags = 0,
         combat_posture = E.Posture.NEUTRAL,

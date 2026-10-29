@@ -115,6 +115,7 @@ int main() {
     bool actor_rows_are_semantic = true;
     bool found_probe_enabled = false;
     bool found_probe_disabled = false;
+    bool found_bodyguard_timing_modifier = false;
     for (std::size_t index = 1U; index <= actor_list_count; ++index) {
         lua_rawgeti(state, actor_list_rows, static_cast<lua_Integer>(index));
         const auto row = lua_absindex(state, -1);
@@ -129,18 +130,37 @@ int main() {
         lua_pop(state, 1);
         for (const auto* field : {"source_record_offset", "tagged_template",
                                   "template_offset", "list_offset",
-                                  "position_offset"}) {
+                                  "position_offset", "source_action_slot",
+                                  "source_action_ammo",
+                                  "source_action_counter",
+                                  "equipped_action_slot",
+                                  "ammunition_remaining", "action_count",
+                                  "delay_primary_attribute",
+                                  "delay_secondary_attribute",
+                                  "delay_capability_flags"}) {
             lua_getfield(state, row, field);
             actor_rows_are_semantic = actor_rows_are_semantic &&
                 lua_isnil(state, -1) != 0;
             lua_pop(state, 1);
         }
+        found_bodyguard_timing_modifier = found_bodyguard_timing_modifier ||
+            (field_string_is(state, row, "profile_id",
+                             "bodyguard_k05_item07") &&
+             field_integer_is(state, row, "action_delay_modifier", 4));
+        lua_getfield(state, row, "action_delay_modifier");
+        const auto action_delay_modifier = lua_tointeger(state, -1);
+        actor_rows_are_semantic = actor_rows_are_semantic &&
+            lua_isinteger(state, -1) != 0 && action_delay_modifier >= 0 &&
+            action_delay_modifier <= 12 && action_delay_modifier % 4 == 0;
+        lua_pop(state, 1);
         lua_pop(state, 1);
     }
     bool valid = expect(actor_rows_are_semantic && found_probe_enabled &&
-                            found_probe_disabled,
+                            found_probe_disabled &&
+                            found_bodyguard_timing_modifier,
                         "actor catalog did not replace source pointers with "
-                        "semantic identity and boolean probe facts");
+                        "semantic identity, timing modifiers, and boolean "
+                        "probe facts");
     lua_rawgeti(state, actor_list_rows, 1);
     const int first_actor_list_row = lua_absindex(state, -1);
     valid = expect(field_string_is(state, first_actor_list_row, "list_id",
@@ -202,6 +222,12 @@ int main() {
         dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
             lua_isboolean(state, -1) != 0;
         lua_pop(state, 1);
+        lua_getfield(state, row, "action_delay_modifier");
+        const auto action_delay_modifier = lua_tointeger(state, -1);
+        dynamic_actor_rows_are_semantic = dynamic_actor_rows_are_semantic &&
+            lua_isinteger(state, -1) != 0 && action_delay_modifier >= 0 &&
+            action_delay_modifier <= 12 && action_delay_modifier % 4 == 0;
+        lua_pop(state, 1);
         if (index == 1U) {
             dynamic_actor_rows_are_semantic =
                 dynamic_actor_rows_are_semantic &&
@@ -217,6 +243,14 @@ int main() {
                                   "sequence_list_offset", "tagged_template",
                                   "template_offset", "source_spawn_state_flags",
                                   "source_interaction_flags",
+                                  "source_action_slot",
+                                  "source_action_ammo",
+                                  "source_action_counter",
+                                  "equipped_action_slot",
+                                  "ammunition_remaining", "action_count",
+                                  "delay_primary_attribute",
+                                  "delay_secondary_attribute",
+                                  "delay_capability_flags",
                                   "combat_attribute_77",
                                   "combat_attribute_78",
                                   "combat_attribute_79",

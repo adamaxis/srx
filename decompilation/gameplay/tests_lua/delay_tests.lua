@@ -1,7 +1,7 @@
 local E = require("enums")
 local Delay = require("actor.delay")
 local Mode = E.ActionDelayMode
-local Capability = E.DelayCapability
+local Modifier = E.ActionDelayModifier
 local byte_max = 0xFF -- 0xD81C MOVE.B inputs [C]
 
 assert(Delay.calculate(0, 0, 0, Mode.NORMAL) == E.ActionDelay.BASE)
@@ -16,21 +16,14 @@ assert(Delay.calculate(byte_max, byte_max, 0, Mode.NORMAL) ==
 assert(Delay.calculate(byte_max, 1, 0, Mode.NORMAL) ==
        E.ActionDelay.BASE)
 
-local both_first_two = (1 << Capability.FIRST_BIT) |
-    (1 << Capability.SECOND_BIT)
-local both_second_three = (1 << Capability.SECOND_BIT) |
-    (1 << Capability.THIRD_BIT)
-local first_bit_delay = Delay.calculate(2, 2,
-    1 << Capability.FIRST_BIT, Mode.NORMAL)
-local second_bit_delay = Delay.calculate(2, 2,
-    1 << Capability.SECOND_BIT, Mode.NORMAL)
-local third_bit_delay = Delay.calculate(2, 2,
-    1 << Capability.THIRD_BIT, Mode.NORMAL)
-assert(first_bit_delay > second_bit_delay and
-       second_bit_delay > third_bit_delay)
--- D7EA keeps the first enabled capability in the 12, 13, 14 scan. [C]
-assert(Delay.calculate(2, 2, both_first_two, Mode.NORMAL) == first_bit_delay)
-assert(Delay.calculate(2, 2, both_second_three, Mode.NORMAL) == second_bit_delay)
+local first_level_delay =
+    Delay.calculate(2, 2, Modifier.FACTOR_BONUS_4, Mode.NORMAL)
+local second_level_delay =
+    Delay.calculate(2, 2, Modifier.FACTOR_BONUS_8, Mode.NORMAL)
+local third_level_delay =
+    Delay.calculate(2, 2, Modifier.FACTOR_BONUS_12, Mode.NORMAL)
+assert(first_level_delay == 86 and second_level_delay == 70 and
+       third_level_delay == 54)
 
 local use = Delay.Use
 assert(Delay.player_weapon_action_delay(0, 0, 0, E.ItemId.WARHAWK,

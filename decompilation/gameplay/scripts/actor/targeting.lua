@@ -379,9 +379,7 @@ local function initial_state(context, profile)
         -- replace it through combat.lua.
         combatant = type(context.combatant) == "table"
             and context.combatant or nil,
-        source_action_slot = context.source_action_slot or 0,
-        source_action_ammo = context.source_action_ammo or 0,
-        source_action_counter = context.source_action_counter or 0,
+        ammunition_remaining = context.ammunition_remaining or 0,
         package_id = profile.package_id,
         animation_cadence_profile =
             profile.animation_cadence_profile or "moving_actor_walk",
@@ -436,9 +434,12 @@ local function initial_state(context, profile)
         spell_effect_phase = 0,
         spell_effect_action_code = 0,
         pending_source_action = nil,
-        delay_primary_attribute = context.delay_primary_attribute or 0,
-        delay_secondary_attribute = context.delay_secondary_attribute or 0,
-        delay_capability_flags = context.delay_capability_flags or 0,
+        action_timing = type(context.action_timing) == "table" and {
+            quickness = context.action_timing.quickness or 0,
+            intelligence = context.action_timing.intelligence or 0,
+            action_delay_modifier =
+                context.action_timing.action_delay_modifier or 0,
+        } or nil,
         target_motion_effect_active = false,
         target_motion_effect_slot = nil,
         target_motion_effect_slot_request = nil,
