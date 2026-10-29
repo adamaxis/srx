@@ -7511,6 +7511,8 @@ GameScriptRuntime::world_activity_actors_for_selector(
                                       0xFF, row_script_index) &&
             (selector_field != "script_index" ||
              row_script_index == static_cast<int>(selector_value)) &&
+            read_field_string(state, row_index, "list_id", row_list_id) &&
+            valid_identifier(row_list_id) &&
             read_field_integer(state, row_index, "source_order", 31U,
                                source_order) &&
             source_orders.insert(static_cast<std::uint16_t>(source_order))
@@ -7519,9 +7521,7 @@ GameScriptRuntime::world_activity_actors_for_selector(
                                list_offset) &&
             (selector_field != "list_offset" ||
              list_offset == selector_value) &&
-            (selector_field != "list_id" ||
-             (read_field_string(state, row_index, "list_id", row_list_id) &&
-              row_list_id == selector_text)) &&
+            (selector_field != "list_id" || row_list_id == selector_text) &&
             read_field_integer(state, row_index, "source_record_offset",
                                0x1FFFFFU, source_record_offset) &&
             read_field_integer(state, row_index, "tagged_template",
@@ -7586,6 +7586,7 @@ GameScriptRuntime::world_activity_actors_for_selector(
             return fail("world-content script actor action fields disagree");
         }
         actor.scene_id = scene_id;
+        actor.list_id = std::move(row_list_id);
         actor.script_index = static_cast<std::int16_t>(row_script_index);
         actor.source_order = static_cast<std::uint16_t>(source_order);
         actor.list_offset = list_offset;

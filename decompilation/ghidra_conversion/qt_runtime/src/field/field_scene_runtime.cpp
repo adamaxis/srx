@@ -3567,13 +3567,9 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             break;
         }
 
-        const auto actor_source_key = source_actor.script_index >= 0
-            ? "world_script_" +
-                  std::to_string(source_actor.script_index)
-            : "world_list_" + std::to_string(source_actor.list_offset);
         const auto actor_instance_id =
             "field_scene_" + std::to_string(scene_reference) +
-            "_" + actor_source_key +
+            "_" + source_actor.list_id +
             "_actor_" + std::to_string(source_actor.source_order);
         const auto existing_instance = std::find_if(
             field_default_actors_.begin(), field_default_actors_.end(),

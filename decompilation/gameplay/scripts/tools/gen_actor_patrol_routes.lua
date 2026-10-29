@@ -1,6 +1,6 @@
--- Regenerates data/actor_waypoint_lists.lua from actor spawn records and
+-- Regenerates data/actor_patrol_routes.lua from actor spawn records and
 -- their +0xE0 coordinate lists. Usage:
--- lua tools/gen_actor_waypoint_lists.lua <rom.bin> <default-actors.tsv> <world-activity-actors.tsv> > data/actor_waypoint_lists.lua
+-- lua tools/gen_actor_patrol_routes.lua <rom.bin> <default-actors.tsv> <world-activity-actors.tsv> > data/actor_patrol_routes.lua
 local function read_file(path)
     local file = assert(io.open(path, "rb"), "cannot open " .. path)
     local value = file:read("a")
@@ -54,7 +54,7 @@ local function number(row, field)
 end
 
 local sources = {}
-local function add_source(list_offset, source_order, position_offset,
+local function add_source(route_id, list_offset, source_order, position_offset,
                           tagged_template)
     assert(position_offset > 0, "actor spawn has no +0xE0 pointer")
     local list = sources[list_offset]
@@ -67,12 +67,15 @@ local function add_source(list_offset, source_order, position_offset,
         assert(existing.position_offset == position_offset and
                existing.tagged_template == tagged_template,
                "actor source tables disagree for one spawn identity")
-        return
+    else
+        existing = {
+            position_offset = position_offset,
+            tagged_template = tagged_template,
+            route_ids = {},
+        }
+        list[source_order] = existing
     end
-    list[source_order] = {
-        position_offset = position_offset,
-        tagged_template = tagged_template,
-    }
+    existing.route_ids[#existing.route_ids + 1] = route_id
 end
 
 -- Default actor rows preserve their +0xE0 pointers but not the tagged
@@ -95,6 +98,7 @@ for _, row in ipairs(default_rows) do
                "default actor scenes disagree on a shared source record")
     else
         list[source_order] = {
+            scene = number(row, "scene"),
             source_order = source_order,
             position_offset = position_offset,
         }
@@ -118,7 +122,9 @@ for list_offset, rows in pairs(default_lists) do
         local position_offset = L(cursor + 4)
         assert(position_offset == row.position_offset,
                "default actor +0xE0 pointer disagrees with ROM")
-        add_source(list_offset, row.source_order, position_offset,
+        local route_id = string.format("field_scene_%d_actor_%d",
+                                       row.scene, row.source_order)
+        add_source(route_id, list_offset, row.source_order, position_offset,
                    tagged_template)
 
         local next_record = cursor + 8
@@ -143,7 +149,11 @@ end
 -- Conditional scene actor records already retain the tagged template and
 -- coordinate-list pointer in the extracted manifest [C].
 for _, row in ipairs(tsv(assert(arg[3], "world-activity actor TSV path"))) do
-    add_source(number(row, "list_offset"), number(row, "source_order"),
+    local route_id = string.format("field_scene_%d_%s_actor_%d",
+        number(row, "scene"), assert(row.list_id, "actor list id"),
+        number(row, "source_order"))
+    add_source(route_id, number(row, "list_offset"),
+               number(row, "source_order"),
                number(row, "position_offset"),
                number(row, "tagged_template"))
 end
@@ -154,10 +164,7 @@ end
 local function route_at(position_offset)
     local initial_x = signed_word(W(position_offset))
     local initial_y = signed_word(W(position_offset + 2))
-    local result = {
-        position_offset = position_offset,
-        initial = { x = initial_x, y = initial_y },
-    }
+    local result = { initial = { x = initial_x, y = initial_y } }
     if initial_x < 0 then
         result.no_patrol = true
         return result
@@ -181,52 +188,54 @@ local function route_at(position_offset)
     return result
 end
 
-local list_offsets = {}
-for list_offset in pairs(sources) do
-    list_offsets[#list_offsets + 1] = list_offset
+local routes = {}
+for _, source_list in pairs(sources) do
+    for _, source in pairs(source_list) do
+        local route = route_at(source.position_offset)
+        route.group_leader = (source.tagged_template & 0x80000000) ~= 0
+        for _, route_id in ipairs(source.route_ids) do
+            assert(routes[route_id] == nil,
+                   "duplicate semantic actor route id: " .. route_id)
+            routes[route_id] = {
+                route = route,
+                position_offset = source.position_offset,
+                tagged_template = source.tagged_template,
+            }
+        end
+    end
 end
-table.sort(list_offsets)
+local route_ids = {}
+for route_id in pairs(routes) do route_ids[#route_ids + 1] = route_id end
+table.sort(route_ids)
 
 local out = {
-    "-- data/actor_waypoint_lists.lua: source spawn records to +0xE0 routes [C].",
-    "-- 0x142DC reads +0xE0, advances +0xE4 by four, wraps on a zero X, and",
-    "-- treats a negative initial X as no patrol list. Generated from rom.bin",
-    "-- plus the extracted default/world-activity actor manifests; regenerate, do not hand-edit.",
+    "-- data/actor_patrol_routes.lua: actor identities to native patrol routes [C].",
+    "-- The ROM patrol cursor is represented by ordinary route data at runtime.",
+    "-- ROM addresses are used only by this offline generator and retained below as comments.",
+    "-- Generated from the ROM and extracted actor manifests; do not hand-edit.",
     "return {",
 }
-for _, list_offset in ipairs(list_offsets) do
-    out[#out + 1] = string.format("    [0x%X] = { -- source list", list_offset)
-    local orders = {}
-    for source_order in pairs(sources[list_offset]) do
-        orders[#orders + 1] = source_order
-    end
-    table.sort(orders)
-    for _, source_order in ipairs(orders) do
-        local source = sources[list_offset][source_order]
-        local route = route_at(source.position_offset)
-        local fields = {
-            string.format("position_offset = 0x%X", route.position_offset),
-            string.format("group_leader = %s",
-                tostring((source.tagged_template & 0x80000000) ~= 0)),
-            string.format("initial = { x = %d, y = %d }",
-                route.initial.x, route.initial.y),
-        }
-        if route.no_patrol then
-            fields[#fields + 1] = "no_patrol = true"
-        else
-            local points = {}
-            for _, point in ipairs(route.points) do
-                points[#points + 1] = string.format(
-                    "{ x = %d, y = %d }", point.x, point.y)
-            end
-            fields[#fields + 1] = "points = { " ..
-                table.concat(points, ", ") .. " }"
+for _, route_id in ipairs(route_ids) do
+    local entry = routes[route_id]
+    local route = entry.route
+    local fields = {
+        string.format("group_leader = %s", tostring(route.group_leader)),
+        string.format("initial = { x = %d, y = %d }",
+                      route.initial.x, route.initial.y),
+    }
+    if route.no_patrol then
+        fields[#fields + 1] = "no_patrol = true"
+    else
+        local points = {}
+        for _, point in ipairs(route.points) do
+            points[#points + 1] = string.format(
+                "{ x = %d, y = %d }", point.x, point.y)
         end
-        out[#out + 1] = string.format("        [%d] = { %s }, -- +0xE0=0x%X tagged=0x%08X",
-            source_order, table.concat(fields, ", "),
-            source.position_offset, source.tagged_template)
+        fields[#fields + 1] = "points = { " .. table.concat(points, ", ") .. " }"
     end
-    out[#out + 1] = "    },"
+    out[#out + 1] = string.format("    [%q] = { %s }, -- ROM route 0x%X tagged=0x%08X",
+        route_id, table.concat(fields, ", "), entry.position_offset,
+        entry.tagged_template)
 end
 out[#out + 1] = "}"
 io.write(table.concat(out, "\n"), "\n")

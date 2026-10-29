@@ -492,25 +492,24 @@ check(R.think_gate(state({ actor_facts = {
       context({ actor_facts = { behavior = { escort = true } } })) ==
       "follow_leader", "0x1450E formation follow is selected by escort [C]")
 
-local WaypointLists = require("data.actor_waypoint_lists")
-local patrol_list_offset, patrol_route
-for list_offset, records in pairs(WaypointLists) do
-    local candidate = records[0]
-    if candidate ~= nil and candidate.initial.x == 1536 and
-       candidate.initial.y == 4096 and candidate.points ~= nil and
-       #candidate.points == 8 and candidate.points[1].x == 15616 and
-       candidate.points[1].y == 4096 then
-        patrol_list_offset, patrol_route = list_offset, candidate
+local ActorWaypointRoutes = require("data.actor_patrol_routes")
+local routes_use_actor_ids = true
+for actor_id, route in pairs(ActorWaypointRoutes) do
+    if type(actor_id) ~= "string" or actor_id == "" or
+       type(route) ~= "table" then
+        routes_use_actor_ids = false
         break
     end
 end
+check(routes_use_actor_ids,
+      "patrol content is keyed by actor identity, not ROM table position")
+local patrol_actor_id = "field_scene_5_actor_0"
+local patrol_route = ActorWaypointRoutes[patrol_actor_id]
 check(patrol_route ~= nil,
-      "generated spawn data contains the hand-traced 0x679F0 patrol route [C]")
+      "actor route data contains the ROM 0x679F0 patrol path [C]")
 if patrol_route ~= nil then
     local route_context = context({
-        source_actor_list_offset = patrol_list_offset,
-        source_actor_source_order = 0,
-        source_actor_slot = 0,
+        actor_id = patrol_actor_id,
         source_world_x = patrol_route.initial.x,
         source_world_y = patrol_route.initial.y,
     })
@@ -547,26 +546,31 @@ if patrol_route ~= nil then
           "0x142F6 clears +0xE4 and wraps to the spawn pair [C]")
 end
 
-local redmond_route_records = WaypointLists[0x172D1C]
+local redmond_route_records = {
+    ActorWaypointRoutes["field_scene_2_actor_0"],
+    ActorWaypointRoutes["field_scene_2_actor_1"],
+    ActorWaypointRoutes["field_scene_2_actor_2"],
+}
 local redmond_expected = {
-    { offset = 0x172D58, x = 10240, y = 8704 },
-    { offset = 0x172D68, x = 21248, y = 9472 },
-    { offset = 0x172D78, x = 25216, y = 2944 },
+    { initial_x = 13440, initial_y = 8704, x = 10240, y = 8704 },
+    { initial_x = 21248, initial_y = 14080, x = 21248, y = 9472 },
+    { initial_x = 25216, initial_y = 6400, x = 25216, y = 2944 },
 }
 for source_order = 0, 2 do
-    local route = redmond_route_records and redmond_route_records[source_order]
+    local route = redmond_route_records[source_order + 1]
     local expected = redmond_expected[source_order + 1]
-    local valid = route ~= nil and route.position_offset == expected.offset and
-        route.initial ~= nil and type(route.points) == "table"
+    local valid = route ~= nil and route.initial ~= nil and
+        route.initial.x == expected.initial_x and
+        route.initial.y == expected.initial_y and
+        type(route.points) == "table" and route.points[1] ~= nil and
+        route.points[1].x == expected.x and route.points[1].y == expected.y
     check(valid,
-          string.format("scene-2 pedestrian %d has its ROM 0x172D1C route", source_order))
+          string.format("scene-2 pedestrian %d has its ROM route data", source_order))
     if valid then
         local route_context = context({
+            actor_id = "field_scene_2_actor_" .. source_order,
             entity_kind = E.SpriteType.PEDESTRIAN,
             actor_facts = { roles = { pedestrian = true } },
-            source_actor_slot = source_order + 3,
-            source_actor_list_offset = 0x172D1C,
-            source_actor_source_order = source_order,
             source_world_x = route.initial.x,
             source_world_y = route.initial.y,
         })
@@ -589,21 +593,19 @@ end
 -- Route counts are the independently recorded ROM list counts, while the
 -- extracted coordinates supply the actual source target values.
 local regional_pedestrian_routes = {
-    { scene = 0, list = 0xD5538, counts = { 19, 13, 9 } },
-    { scene = 1, list = 0x17D660, counts = { 10, 4, 7 } },
-    { scene = 2, list = 0x172D1C, counts = { 11, 7, 3 } },
-    { scene = 3, list = 0x18A73A, counts = { 8, 2, 7 } },
-    { scene = 4, list = 0x15B998, counts = { 17, 11, 7 } },
-    { scene = 5, list = 0x679F0, counts = { 8, 5, 2 } },
+    { scene = 0, counts = { 19, 13, 9 } }, -- ROM list 0xD5538
+    { scene = 1, counts = { 10, 4, 7 } }, -- ROM list 0x17D660
+    { scene = 2, counts = { 11, 7, 3 } }, -- ROM list 0x172D1C
+    { scene = 3, counts = { 8, 2, 7 } }, -- ROM list 0x18A73A
+    { scene = 4, counts = { 17, 11, 7 } }, -- ROM list 0x15B998
+    { scene = 5, counts = { 8, 5, 2 } }, -- ROM list 0x679F0
 }
 local regional_route_steps = 0
 for _, region in ipairs(regional_pedestrian_routes) do
-    local source_rows = WaypointLists[region.list]
-    check(type(source_rows) == "table",
-          string.format("scene %d has ROM pedestrian waypoint list %06X",
-                        region.scene, region.list))
     for source_order = 0, 2 do
-        local route = source_rows and source_rows[source_order]
+        local actor_id = "field_scene_" .. region.scene .. "_actor_" ..
+            source_order
+        local route = ActorWaypointRoutes[actor_id]
         local expected_points = region.counts[source_order + 1]
         local valid_route = route ~= nil and route.initial ~= nil and
             type(route.initial.x) == "number" and
@@ -616,11 +618,9 @@ for _, region in ipairs(regional_pedestrian_routes) do
                             region.scene, source_order, expected_points))
         if valid_route then
             local route_context = context({
+                actor_id = actor_id,
                 entity_kind = E.SpriteType.PEDESTRIAN,
                 actor_facts = { roles = { pedestrian = true } },
-                source_actor_slot = source_order + 3,
-                source_actor_list_offset = region.list,
-                source_actor_source_order = source_order,
                 source_world_x = route.initial.x,
                 source_world_y = route.initial.y,
             })

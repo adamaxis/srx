@@ -1256,6 +1256,7 @@ struct ScriptConditionalActorSelection {
 // the scene-script list at 0x167AE / 0x43B6.
 struct ScriptWorldActivityActor {
     std::uint16_t scene_id = 0;
+    std::string list_id;
     std::int16_t script_index = 0;
     std::uint16_t source_order = 0;
     std::uint32_t list_offset = 0;

@@ -3,7 +3,7 @@ local R = require("actor.registry")
 local E = require("enums")
 local I = require("lib.int68k")
 local EntityMotion = require("entity_motion")
-local WaypointLists = require("data.actor_waypoint_lists")
+local ActorWaypointRoutes = require("data.actor_patrol_routes")
 local u8, u16, s8, s16 = I.u8, I.u16, I.s8, I.s16
 local AiTuning, SceneMode = E.AiTuning, E.SceneMode
 local ActionKind = R.ActionKind
@@ -337,13 +337,11 @@ local function apply_watch(state)
 end
 
 local function actor_spawn_record(context)
-    local list_offset = context.source_actor_list_offset
-    local source_order = context.source_actor_source_order
-    if type(list_offset) ~= "number" or type(source_order) ~= "number" then
+    local actor_id = context.actor_id
+    if type(actor_id) ~= "string" or actor_id == "" then
         return nil
     end
-    local list = WaypointLists[list_offset]
-    return type(list) == "table" and list[source_order] or nil
+    return ActorWaypointRoutes[actor_id]
 end
 
 local function set_route_target(state, x, y)

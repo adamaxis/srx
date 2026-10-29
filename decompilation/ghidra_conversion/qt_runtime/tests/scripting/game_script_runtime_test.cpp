@@ -465,6 +465,7 @@ bool verify_mode_one_activity_actor_lists(
             const auto actors = scripts.world_activity_actors_for_list_id(
                 test_case.scene, expected_list_id);
             if (!expect(actors.has_value() && actors->size() == 1U &&
+                            actors->front().list_id == expected_list_id &&
                             actors->front().list_offset ==
                                 test_case.expected_list,
                         "0x16FD4 selected list lacks its extracted actor")) {
@@ -1979,6 +1980,7 @@ int main() {
             spirit_eyes_entry_list.has_value() &&
                 spirit_eyes_entry_list->size() == 5U &&
                 spirit_eyes_entry_list->front().scene_id == 47U &&
+                spirit_eyes_entry_list->front().list_id == "mode_13_entry" &&
                 spirit_eyes_entry_list->front().list_offset == 0x1E552U &&
                 spirit_eyes_entry_list->front().source_order == 0U &&
                 spirit_eyes_entry_list->front().world_x == 0x5980U &&
@@ -1997,6 +1999,8 @@ int main() {
             ilene_gate_actors.has_value() &&
                 ilene_gate_actors->size() == 1U &&
                 ilene_gate_actors->front().scene_id == 13U &&
+                ilene_gate_actors->front().list_id ==
+                    "scene_13_ilene_gate_script" &&
                 ilene_gate_actors->front().script_index == 3U &&
                 ilene_gate_actors->front().source_order == 0U &&
                 ilene_gate_actors->front().list_offset == 0x1706CU &&

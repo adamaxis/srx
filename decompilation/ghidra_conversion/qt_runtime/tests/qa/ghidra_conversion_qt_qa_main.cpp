@@ -30253,7 +30253,7 @@ int run_field_penumbra_mako_qa(
         std::size_t count = 0U;
         for (auto it = fields.constBegin(); it != fields.constEnd(); ++it) {
             if (it.key().startsWith(QStringLiteral(
-                    "actor.field_scene_17_world_list_124456_actor_")) &&
+                    "actor.field_scene_17_pending_list_1e628_actor_")) &&
                 it.key().endsWith(QStringLiteral(".profile"))) {
                 ++count;
             }
