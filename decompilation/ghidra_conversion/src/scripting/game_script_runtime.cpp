@@ -113,10 +113,109 @@ std::optional<std::string_view> legacy_run_offer_variant_id(
     return kVariants[static_cast<std::size_t>(selector)];
 }
 
+bool valid_run_contact_id(std::string_view value);
+
+std::optional<std::string_view> legacy_run_id(
+    const std::int64_t source_type) noexcept {
+    static constexpr std::array<std::string_view, 7> kRunIds{
+        "ghoul_bounty", "bodyguard_escort", "package_delivery",
+        "gang_contract", "package_recovery", "employee_recruitment",
+        "matrix_objective"};
+    if (source_type < 0 || source_type >=
+            static_cast<std::int64_t>(kRunIds.size())) {
+        return std::nullopt;
+    }
+    return kRunIds[static_cast<std::size_t>(source_type)];
+}
+
+std::optional<std::string_view> legacy_run_contact_id(
+    const std::int64_t source_context) noexcept {
+    static constexpr std::array<std::string_view, 5> kContactIds{
+        "jump_house", "matchstick", "big_rhino", "wanderer",
+        "icarus_descending"};
+    if (source_context < 0 || source_context >=
+            static_cast<std::int64_t>(kContactIds.size())) {
+        return std::nullopt;
+    }
+    return kContactIds[static_cast<std::size_t>(source_context)];
+}
+
+bool normalize_legacy_run_identity(
+    ScriptPersistentValue::Object& offer, std::string& failure) {
+    const auto run_type = offer.find("source_run_type");
+    if (run_type != offer.end()) {
+        const auto* value = std::get_if<std::int64_t>(&run_type->second.value);
+        const auto decoded = value == nullptr
+            ? std::optional<std::string_view>{}
+            : legacy_run_id(*value);
+        const auto run_id = offer.find("id");
+        const auto* saved_run_id = run_id == offer.end()
+            ? nullptr
+            : std::get_if<std::string>(&run_id->second.value);
+        if (!decoded.has_value() || saved_run_id == nullptr ||
+            *saved_run_id != *decoded) {
+            failure = "saved run identity conflicts with its legacy type";
+            return false;
+        }
+    }
+
+    std::optional<std::string_view> decoded_contact;
+    for (const auto field_name : {"source_offer_context", "context"}) {
+        const auto field = offer.find(field_name);
+        if (field == offer.end()) continue;
+        if (const auto* value =
+                std::get_if<std::int64_t>(&field->second.value)) {
+            const auto decoded = legacy_run_contact_id(*value);
+            if (!decoded.has_value() ||
+                (decoded_contact.has_value() &&
+                 *decoded_contact != *decoded)) {
+                failure = "saved contact conflicts with its legacy context";
+                return false;
+            }
+            decoded_contact = decoded;
+        } else if (const auto* value =
+                       std::get_if<std::string>(&field->second.value)) {
+            if (!valid_run_contact_id(*value) ||
+                (decoded_contact.has_value() &&
+                 *decoded_contact != *value)) {
+                failure = "saved contact has an invalid legacy value";
+                return false;
+            }
+            decoded_contact = *value;
+        } else {
+            failure = "saved contact has an invalid legacy type";
+            return false;
+        }
+    }
+
+    if (decoded_contact.has_value()) {
+        const auto contact = offer.find("contact_id");
+        if (contact != offer.end()) {
+            const auto* saved_contact =
+                std::get_if<std::string>(&contact->second.value);
+            if (saved_contact == nullptr ||
+                *saved_contact != *decoded_contact) {
+                failure = "saved contact conflicts with its semantic ID";
+                return false;
+            }
+        } else {
+            ScriptPersistentValue contact_value{};
+            contact_value.value = std::string(*decoded_contact);
+            offer.emplace("contact_id", std::move(contact_value));
+        }
+    }
+
+    offer.erase("source_run_type");
+    offer.erase("source_offer_context");
+    offer.erase("context");
+    return true;
+}
+
 bool normalize_saved_offer_variant(
     ScriptPersistentValue& value, std::string& failure) {
     auto* offer = std::get_if<ScriptPersistentValue::Object>(&value.value);
     if (offer == nullptr) return true;
+    if (!normalize_legacy_run_identity(*offer, failure)) return false;
 
     const auto source_initializer = offer->find("source_initializer");
     const auto source_offer_type = offer->find("source_offer_type");
@@ -1027,6 +1126,12 @@ bool valid_identifier(const std::string_view value) {
                       character == '_' || character == '-' ||
                       character == '.';
            });
+}
+
+bool valid_run_contact_id(const std::string_view value) {
+    return value == "jump_house" || value == "matchstick" ||
+           value == "big_rhino" || value == "wanderer" ||
+           value == "icarus_descending";
 }
 
 bool outcome_has_only_fields(
@@ -2801,10 +2906,13 @@ struct GameScriptRuntime::Impl {
                             state, view_index, "offer_variant_id",
                             view.offer_variant_id) &&
                             valid_identifier(view.offer_variant_id);
-                        const auto context = read_optional(
-                            view_index, "context");
-                        const auto run_type = read_optional(
-                            view_index, "run_type");
+                        const bool run_identity_valid =
+                            read_field_string(state, view_index, "contact_id",
+                                              view.contact_id) &&
+                            valid_run_contact_id(view.contact_id) &&
+                            read_field_string(state, view_index, "run_id",
+                                              view.run_id) &&
+                            valid_identifier(view.run_id);
                         const auto payment = read_optional(
                             view_index, "payment_amount");
                         const auto body_lines = read_text_array(
@@ -2829,15 +2937,11 @@ struct GameScriptRuntime::Impl {
                                               "currency_symbol",
                                               view.currency_symbol);
                         if (variant_valid &&
-                            context.has_value() && *context >= 0 &&
-                            *context <= 4 && run_type.has_value() &&
-                            *run_type >= 0 && *run_type <= 6 &&
+                            run_identity_valid &&
                             payment.has_value() && *payment >= 0 &&
                             *payment <= 0xFFFF && labels_valid &&
                             body_lines.has_value() &&
                             !body_lines->empty()) {
-                            view.context = *context;
-                            view.run_type = *run_type;
                             view.payment_amount = *payment;
                             view.body_lines = *body_lines;
                             menu_route_state.top_notebook_current_run =
@@ -6660,9 +6764,9 @@ GameScriptRuntime::resolve_active_run_actor_defeat(
 
 std::optional<ScriptRunJohnsonReturnDecision>
 GameScriptRuntime::resolve_active_run_johnson_return(
-    const std::uint8_t context) {
+    const std::string_view contact_id) {
     auto* state = impl_->state;
-    if (state == nullptr) {
+    if (state == nullptr || !valid_run_contact_id(contact_id)) {
         impl_->failure = "Lua runtime is unavailable for Johnson run returns";
         return std::nullopt;
     }
@@ -6681,7 +6785,7 @@ GameScriptRuntime::resolve_active_run_johnson_return(
         return fail("run_registry Johnson-return resolver is missing");
     }
     lua_remove(state, -2);
-    lua_pushinteger(state, context);
+    lua_pushlstring(state, contact_id.data(), contact_id.size());
     if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
         return fail("run_registry Johnson-return resolver failed: " +
                     stack_error(state));
@@ -6732,7 +6836,8 @@ GameScriptRuntime::resolve_active_run_johnson_return(
     return decision;
 }
 
-std::optional<std::uint8_t> GameScriptRuntime::johnson_interaction_context(
+std::optional<std::string>
+GameScriptRuntime::johnson_interaction_contact_id(
     const std::string_view text_profile) {
     auto* state = impl_->state;
     if (state == nullptr || !valid_identifier(text_profile)) {
@@ -6741,7 +6846,7 @@ std::optional<std::uint8_t> GameScriptRuntime::johnson_interaction_context(
     }
     const auto stack_base = lua_gettop(state);
     const auto fail = [this, state, stack_base](const std::string_view reason)
-        -> std::optional<std::uint8_t> {
+        -> std::optional<std::string> {
         lua_settop(state, stack_base);
         impl_->failure = std::string(reason);
         return std::nullopt;
@@ -6757,14 +6862,15 @@ std::optional<std::uint8_t> GameScriptRuntime::johnson_interaction_context(
     if (!lua_istable(state, -1)) {
         return fail("location has no Johnson interaction profile");
     }
-    lua_getfield(state, -1, "run_offer_context");
-    std::uint32_t context = 0U;
-    if (!read_integer(state, -1, 0xFFU, context)) {
-        return fail("Johnson interaction profile has no valid run context");
+    lua_getfield(state, -1, "run_contact_id");
+    std::string contact_id;
+    if (!read_string(state, -1, contact_id) ||
+        !valid_run_contact_id(contact_id)) {
+        return fail("Johnson interaction profile has no valid run contact");
     }
     lua_settop(state, stack_base);
     impl_->failure.clear();
-    return static_cast<std::uint8_t>(context);
+    return contact_id;
 }
 
 std::optional<ScriptPersistentValue>
@@ -12897,6 +13003,83 @@ GameScriptRuntime::party_runner_refresh(
                                 result.selection_pending[index])) {
             return fail("party roster selection indicator is invalid");
         }
+    }
+
+    lua_settop(state, stack_base);
+    impl_->failure.clear();
+    return result;
+}
+
+std::optional<ScriptPartyWipeRunFailureDecision>
+GameScriptRuntime::prepare_party_wipe_run_failure(
+    const ScriptPartyWipeRunFailureContext& context) {
+    auto* state = impl_->state;
+    const auto stack_base = state == nullptr ? 0 : lua_gettop(state);
+    const auto fail = [this, state, stack_base](
+                          const std::string_view reason)
+        -> std::optional<ScriptPartyWipeRunFailureDecision> {
+        if (state != nullptr) {
+            lua_settop(state, stack_base);
+        }
+        impl_->failure = std::string(reason);
+        return std::nullopt;
+    };
+    if (state == nullptr) {
+        return fail("gameplay Lua party run-failure state is unavailable");
+    }
+    if (!impl_->push_module("party_down")) {
+        return fail("gameplay Lua party_down module is missing");
+    }
+    lua_getfield(state, -1, "prepare_run_failure");
+    if (!lua_isfunction(state, -1)) {
+        return fail("party_down.prepare_run_failure is missing");
+    }
+    lua_remove(state, -2);
+
+    lua_createtable(state, 0, 1);
+    lua_pushboolean(state, context.world_activity_scene_reset);
+    lua_setfield(state, -2, "world_activity_scene_reset");
+
+    ScopedInstructionBudget instruction_budget(state);
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
+        return fail("party_down.prepare_run_failure: " + stack_error(state));
+    }
+    if (!lua_istable(state, -1)) {
+        return fail("party_down.prepare_run_failure returned no decision");
+    }
+    const auto root_index = lua_absindex(state, -1);
+    const auto read_boolean_field = [state](const int table_index,
+                                             const char* field,
+                                             bool& value) {
+        lua_getfield(state, table_index, field);
+        const bool valid = lua_isboolean(state, -1) != 0;
+        if (valid) value = lua_toboolean(state, -1) != 0;
+        lua_pop(state, 1);
+        return valid;
+    };
+    ScriptPartyWipeRunFailureDecision result{};
+    if (!read_boolean_field(root_index, "page_pending", result.page_pending) ||
+        !read_boolean_field(root_index, "clear_high_effects",
+                             result.clear_high_effects) ||
+        !read_boolean_field(root_index, "clear_world_activity_request",
+                             result.clear_world_activity_request) ||
+        !read_boolean_field(root_index, "clear_player_spawn_request",
+                             result.clear_player_spawn_request)) {
+        return fail("party run-failure boolean result is invalid");
+    }
+    lua_getfield(state, root_index, "objective_result");
+    std::string objective_result;
+    if (!read_string(state, -1, objective_result)) {
+        return fail("party run-failure objective result is invalid");
+    }
+    if (objective_result == "unchanged") {
+        result.objective_result = ScriptPartyWipeObjectiveResult::unchanged;
+    } else if (objective_result == "cleared") {
+        result.objective_result = ScriptPartyWipeObjectiveResult::cleared;
+    } else if (objective_result == "unavailable") {
+        result.objective_result = ScriptPartyWipeObjectiveResult::unavailable;
+    } else {
+        return fail("party run-failure objective result is unknown");
     }
 
     lua_settop(state, stack_base);

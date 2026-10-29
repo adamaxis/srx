@@ -465,13 +465,18 @@ bool FieldSceneRuntime::seed_run_target_for_dump(
 }
 
 bool FieldSceneRuntime::seed_current_run_for_dump(
-    const std::uint8_t source_run_type,
+    const std::string_view run_id,
     const bool matrix_max_payment,
     const std::optional<std::string_view> employee_offer_variant_id) {
-    if (!ready_ || source_run_type > 6U ||
-        (matrix_max_payment && source_run_type != 6U) ||
+    static constexpr std::array<std::string_view, 7> kIds{
+        "ghoul_bounty", "bodyguard_escort", "package_delivery",
+        "gang_contract", "package_recovery", "employee_recruitment",
+        "matrix_objective"};
+    const auto selected_id = std::find(kIds.begin(), kIds.end(), run_id);
+    if (!ready_ || selected_id == kIds.end() ||
+        (matrix_max_payment && run_id != "matrix_objective") ||
         (employee_offer_variant_id.has_value() &&
-         (source_run_type != 5U || matrix_max_payment ||
+         (run_id != "employee_recruitment" || matrix_max_payment ||
           (*employee_offer_variant_id !=
                "employee_recruitment_two_site_pool" &&
            *employee_offer_variant_id !=
@@ -480,12 +485,14 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
     }
 
     using PersistentValue = scripting::ScriptPersistentValue;
-    const auto type = static_cast<std::size_t>(source_run_type);
+    const auto run_index = static_cast<std::size_t>(
+        std::distance(kIds.begin(), selected_id));
     // Each case is an accepted offer row from the ROM context table. The
     // values below keep the QA seed tied to real variant/context/payment
     // combinations while presenting each of the seven shared detail handlers.
-    static constexpr std::array<std::uint8_t, 7> kContexts{
-        0U, 1U, 0U, 2U, 3U, 1U, 2U};
+    static constexpr std::array<std::string_view, 7> kContacts{
+        "jump_house", "matchstick", "jump_house", "big_rhino",
+        "wanderer", "matchstick", "big_rhino"};
     static constexpr std::array<std::string_view, 7> kVariants{
         "ghoul_bounty", "bodyguard_escort", "package_delivery",
         "gang_contract", "package_recovery_two_site_pool",
@@ -496,10 +503,6 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         10, 200, 40, 190, 1700, 500, 425};
     static constexpr std::array<std::int64_t, 7> kNegotiationScales{
         3, 2, 1, 2, 4, 5, 1};
-    static constexpr std::array<std::string_view, 7> kIds{
-        "ghoul_bounty", "bodyguard_escort", "package_delivery",
-        "gang_contract", "package_recovery", "employee_recruitment",
-        "matrix_objective"};
     static constexpr std::array<std::string_view, 7> kCategories{
         "bounty", "escort", "courier", "gang", "recovery",
         "extraction", "matrix"};
@@ -516,34 +519,34 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         "return_to_johnson_after_the_recruitment",
         "complete_the_source_matrix_objective"};
 
-    auto context = matrix_max_payment
-        ? std::uint8_t{4U}
-        : kContexts[type];
+    auto contact_id = matrix_max_payment
+        ? std::string_view{"icarus_descending"}
+        : kContacts[run_index];
     auto variant_id = matrix_max_payment
         ? std::string_view{"matrix_expert"}
-        : kVariants[type];
+        : kVariants[run_index];
     auto progress_delta = matrix_max_payment
         ? std::int64_t{5}
-        : kProgressDeltas[type];
+        : kProgressDeltas[run_index];
     auto base_payment = matrix_max_payment
         ? std::int64_t{6100}
-        : kBasePayments[type];
+        : kBasePayments[run_index];
     auto negotiation_scale = matrix_max_payment
         ? std::int64_t{10}
-        : kNegotiationScales[type];
+        : kNegotiationScales[run_index];
     // [C] ROM F3EBC context 1/slot 4 and context 4/slot 4 are the two
     // distinct Employee Recruitment target-pool variants exercised below.
     // The QA bridge carries those named gameplay variants into Lua.
     if (employee_offer_variant_id == std::optional<std::string_view>{
             "employee_recruitment_two_site_pool"}) {
-        context = 1U;
+        contact_id = "matchstick";
         variant_id = "employee_recruitment_two_site_pool";
         progress_delta = 4;
         base_payment = 900;
         negotiation_scale = 5;
     } else if (employee_offer_variant_id == std::optional<std::string_view>{
                    "employee_recruitment_renraku"}) {
-        context = 4U;
+        contact_id = "icarus_descending";
         variant_id = "employee_recruitment_renraku";
         progress_delta = 6;
         base_payment = 3500;
@@ -563,20 +566,20 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         }};
     };
     PersistentValue::Object route_fields;
-    if (source_run_type == 1U) {
+    if (run_id == "bodyguard_escort") {
         route_fields.emplace("origin", location(2, 6));
         route_fields.emplace("destination", location(5, 6));
         route_fields.emplace("client_id", scalar(std::int64_t{7}));
-    } else if (source_run_type == 2U) {
+    } else if (run_id == "package_delivery") {
         // Section 03 video route: Ares Weapon Emporium to Jackal's Lantern.
         route_fields.emplace("origin", location(2, 11));
         route_fields.emplace("destination", location(2, 5));
-    } else if (source_run_type == 3U) {
+    } else if (run_id == "gang_contract") {
         route_fields.emplace("target", location(3, 4));
-    } else if (source_run_type == 4U) {
+    } else if (run_id == "package_recovery") {
         // First site in the source two-site package-recovery pool.
         route_fields.emplace("target", location(1, 2));
-    } else if (source_run_type == 5U) {
+    } else if (run_id == "employee_recruitment") {
         if (variant_id == "employee_recruitment_two_site_pool") {
             // First target in the context-1 two-site source pool.
             route_fields.emplace("target", location(1, 2));
@@ -592,7 +595,7 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
 
     const std::int64_t negotiation_skill = matrix_max_payment
         ? 12
-        : (source_run_type == 0U ? 0 : 3);
+        : (run_id == "ghoul_bounty" ? 0 : 3);
     const auto negotiation_bound =
         negotiation_scale * negotiation_skill + 1;
     const auto negotiation_roll = negotiation_bound - 1;
@@ -605,27 +608,25 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         {"negotiation_roll", scalar(negotiation_roll)},
     }};
     PersistentValue::Object offer_fields{
-        {"id", scalar(std::string(kIds[type]))},
-        {"category", scalar(std::string(kCategories[type]))},
-        {"objective", scalar(std::string(kObjectives[type]))},
+        {"id", scalar(std::string(run_id))},
+        {"category", scalar(std::string(kCategories[run_index]))},
+        {"objective", scalar(std::string(kObjectives[run_index]))},
         {"completion_condition",
-         scalar(std::string(kCompletionConditions[type]))},
+         scalar(std::string(kCompletionConditions[run_index]))},
         {"runner_progress_delta", scalar(progress_delta)},
         {"offer_variant_id", scalar(std::string(variant_id))},
-        {"source_offer_context", scalar(static_cast<std::int64_t>(context))},
-        {"source_run_type", scalar(static_cast<std::int64_t>(source_run_type))},
-        {"context", scalar(static_cast<std::int64_t>(context))},
+        {"contact_id", scalar(std::string(contact_id))},
         {"route", route},
         {"payment", payment},
     };
-    if (source_run_type == 0U) {
+    if (run_id == "ghoul_bounty") {
         offer_fields.emplace("area_id", scalar(std::int64_t{2}));
         offer_fields.emplace("ghoul_kill_count", scalar(std::int64_t{19}));
-    } else if (source_run_type == 3U) {
+    } else if (run_id == "gang_contract") {
         offer_fields.emplace("variant", scalar(std::int64_t{1}));
-    } else if (source_run_type == 5U) {
+    } else if (run_id == "employee_recruitment") {
         offer_fields.emplace("client_id", scalar(std::int64_t{0}));
-    } else if (source_run_type == 6U) {
+    } else if (run_id == "matrix_objective") {
         // The regular case is a simple row. The optional maximum-payment case
         // is source Matrix Expert row 7, rank 12, roll 120, displaying 6,700.
         const auto objective_index = matrix_max_payment ? 0 : 2;
@@ -661,7 +662,7 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
 bool FieldSceneRuntime::seed_employee_recruitment_run_target_for_dump(
     const std::uint8_t map_id, const std::uint8_t event_id) {
     using PersistentValue = scripting::ScriptPersistentValue;
-    if (!seed_current_run_for_dump(5U)) {
+    if (!seed_current_run_for_dump("employee_recruitment")) {
         return false;
     }
     auto registry_state = game_scripts_.save_run_registry_state();
@@ -812,15 +813,15 @@ bool FieldSceneRuntime::open_field_location_dialogue(
         field_movement_transition_state_.field_transition_context});
 
     if (route.entry_dialogue_module == "johnson") {
-        const auto context = game_scripts_.johnson_interaction_context(
+        const auto contact_id = game_scripts_.johnson_interaction_contact_id(
             route.entry_text_profile);
-        if (!context.has_value()) {
+        if (!contact_id.has_value()) {
             failure_ = game_scripts_.failure();
             source_boundary("field.run.johnson_profile_unresolved");
             return false;
         }
         const auto run_return =
-            game_scripts_.resolve_active_run_johnson_return(*context);
+            game_scripts_.resolve_active_run_johnson_return(*contact_id);
         if (!run_return.has_value()) {
             failure_ = game_scripts_.failure();
             source_boundary("field.run.johnson_return_script_failed");

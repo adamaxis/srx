@@ -542,7 +542,7 @@ public:
     bool seed_run_target_for_dump(std::string_view run_id,
                                   std::uint8_t map_id,
                                   std::uint8_t event_id);
-    bool seed_current_run_for_dump(std::uint8_t source_run_type,
+    bool seed_current_run_for_dump(std::string_view run_id,
                                    bool matrix_max_payment = false,
                                    std::optional<std::string_view>
                                        employee_offer_variant_id =

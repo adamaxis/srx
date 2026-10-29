@@ -195,7 +195,7 @@ int main() {
     constexpr auto other_race_or_state = static_cast<std::int8_t>(
         srx::v(srx::ActorRaceOrState::GHOUL_BOUNTY_TARGET) - 1);
     const auto no_kills = scripts.resolve_active_run_johnson_return(
-        static_cast<std::uint8_t>(srx::v(srx::RunOfferContext::JUMP_HOUSE)));
+        "jump_house");
     if (!expect(no_kills.has_value() &&
                     no_kills->action ==
                         ScriptRunJohnsonReturnAction::no_action &&
@@ -258,7 +258,7 @@ int main() {
     }
 
     const auto wrong_johnson = scripts.resolve_active_run_johnson_return(
-        static_cast<std::uint8_t>(srx::v(srx::RunOfferContext::WANDERER)));
+        "wanderer");
     if (!expect(wrong_johnson.has_value() &&
                     wrong_johnson->action ==
                         ScriptRunJohnsonReturnAction::no_action &&
@@ -272,7 +272,7 @@ int main() {
     }
 
     const auto completed = scripts.resolve_active_run_johnson_return(
-        static_cast<std::uint8_t>(srx::v(srx::RunOfferContext::JUMP_HOUSE)));
+        "jump_house");
     if (!expect(completed.has_value() &&
                     completed->action ==
                         ScriptRunJohnsonReturnAction::completed &&

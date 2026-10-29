@@ -69,7 +69,7 @@ local function existing_completion_flags()
     return 0
 end
 
-function MatrixObjective.prepare_offer(context, source_record)
+function MatrixObjective.prepare_offer(contact_id, source_record)
     local band_id = source_record.matrix_band_id
     local band = band_by_id[band_id]
     assert(band ~= nil,
@@ -97,7 +97,7 @@ function MatrixObjective.prepare_offer(context, source_record)
         nil,
         payment,
         source_record.runner_progress_delta)
-    offer.context = context
+    offer.contact_id = contact_id
     offer.objective_index = objective_index
     offer.target_system_id = target_system_id
     offer.target_system_name = Catalog.systems[target_system_id]

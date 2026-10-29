@@ -129,22 +129,22 @@ Support.run_target_pools = {
     renraku = { area_id = 5, location_id = 6 },
 }
 
-local run_context_names = {
-    [E.RunOfferContext.JUMP_HOUSE] = "Mr. Gunderson",
-    [E.RunOfferContext.SCENE_18] = "Julius Strouther",
-    [E.RunOfferContext.BIG_RHINO] = "Mortimer Reed",
-    [E.RunOfferContext.WANDERER] = "Vigore and Jarl",
-    [E.RunOfferContext.ICARUS_DESCENDING] = "Caleb Brightmore",
+local contact_names = {
+    [E.RunContact.JUMP_HOUSE] = "Mr. Gunderson",
+    [E.RunContact.MATCHSTICK] = "Julius Strouther",
+    [E.RunContact.BIG_RHINO] = "Mortimer Reed",
+    [E.RunContact.WANDERER] = "Vigore and Jarl",
+    [E.RunContact.ICARUS_DESCENDING] = "Caleb Brightmore",
 }
 
-local run_type_names = {
-    [E.RunType.GHOUL_BOUNTY] = "Ghoul Bounty",
-    [E.RunType.BODYGUARD_ESCORT] = "Bodyguard",
-    [E.RunType.PACKAGE_DELIVERY] = "Courier",
-    [E.RunType.GANG_CONTRACT] = "Enforcement",
-    [E.RunType.PACKAGE_RECOVERY] = "Acquisition",
-    [E.RunType.EMPLOYEE_RECRUITMENT] = "Extraction",
-    [E.RunType.MATRIX_OBJECTIVE] = "Matrix Run",
+local run_names = {
+    [E.RunId.GHOUL_BOUNTY] = "Ghoul Bounty",
+    [E.RunId.BODYGUARD_ESCORT] = "Bodyguard",
+    [E.RunId.PACKAGE_DELIVERY] = "Courier",
+    [E.RunId.GANG_CONTRACT] = "Enforcement",
+    [E.RunId.PACKAGE_RECOVERY] = "Acquisition",
+    [E.RunId.EMPLOYEE_RECRUITMENT] = "Extraction",
+    [E.RunId.MATRIX_OBJECTIVE] = "Matrix Run",
 }
 
 local function source_location(pair)
@@ -171,7 +171,7 @@ local function source_client(client_id)
     return Support.client_names[client_id + 1]
 end
 
-local function source_run_body(offer, run_type)
+local function source_run_body(offer, run_id)
     local body = {}
     local function copy(text, spaces)
         if type(text) ~= "string" then return false end
@@ -185,7 +185,7 @@ local function source_run_body(offer, run_type)
         return location, area
     end
 
-    if run_type == E.RunType.GHOUL_BOUNTY then
+    if run_id == E.RunId.GHOUL_BOUNTY then
         local area = Support.area_suffixes[offer.area_id]
         if area == nil or offer.area_id < 0 or offer.area_id > 3 then
             return nil
@@ -195,8 +195,8 @@ local function source_run_body(offer, run_type)
         copy("They have been preying on the citizens there." ..
              "\n\nKill as many as possible and return here for payment.",
              1)                                              -- F2549, D1=0.
-    elseif run_type == E.RunType.BODYGUARD_ESCORT or
-           run_type == E.RunType.PACKAGE_DELIVERY then
+    elseif run_id == E.RunId.BODYGUARD_ESCORT or
+           run_id == E.RunId.PACKAGE_DELIVERY then
         local origin, origin_area = route_pair(
             offer.route and offer.route.origin)
         local destination, destination_area = route_pair(
@@ -205,7 +205,7 @@ local function source_run_body(offer, run_type)
         copy("Go to", 1)                                    -- F23B2, D1=0.
         copy(origin, 1)
         copy(origin_area, 2)
-        if run_type == E.RunType.BODYGUARD_ESCORT then
+        if run_id == E.RunId.BODYGUARD_ESCORT then
             local client = source_client(offer.route.client_id)
             if client == nil then return nil end
             copy("There you will meet my client,", 1)       -- F34C8.
@@ -223,11 +223,11 @@ local function source_run_body(offer, run_type)
             copy("You will be paid upon safe delivery of the package.", 0)
                                                             -- F23ED, D1=-1.
         end
-    elseif run_type == E.RunType.GANG_CONTRACT or
-           run_type == E.RunType.PACKAGE_RECOVERY then
+    elseif run_id == E.RunId.GANG_CONTRACT or
+           run_id == E.RunId.PACKAGE_RECOVERY then
         local target, area = route_pair(offer.route and offer.route.target)
         if target == nil then return nil end
-        if run_type == E.RunType.GANG_CONTRACT then
+        if run_id == E.RunId.GANG_CONTRACT then
             if type(offer.variant) ~= "number" or
                offer.variant % 1 ~= 0 or offer.variant < 0 or
                offer.variant >= #Support.gang_contract_texts then
@@ -248,7 +248,7 @@ local function source_run_body(offer, run_type)
                  "\n\nI will then pay you for your services.", 0)
                                                             -- F367C, D1=-1.
         end
-    elseif run_type == E.RunType.EMPLOYEE_RECRUITMENT then
+    elseif run_id == E.RunId.EMPLOYEE_RECRUITMENT then
         local target, area = route_pair(offer.route and offer.route.target)
         local client = source_client(offer.client_id)
         if target == nil or area == nil or client == nil then return nil end
@@ -264,7 +264,7 @@ local function source_run_body(offer, run_type)
              "\n\nAssist my client with his professional growth and return here " ..
              "to receive full compensation for your services.", 0)
                                                             -- F39EC, D1=-1.
-    elseif run_type == E.RunType.MATRIX_OBJECTIVE then
+    elseif run_id == E.RunId.MATRIX_OBJECTIVE then
         local objective_index = offer.objective_index
         if type(objective_index) ~= "number" or
            objective_index % 1 ~= 0 or objective_index < 0 or
@@ -340,29 +340,30 @@ function Support.current_run_view(offer)
     local variant_id = offer.offer_variant_id
     local resolved = type(variant_id) == "string" and
         OfferData.run_by_variant_id[variant_id] or nil
-    if resolved == nil or offer.source_run_type ~= resolved.type then
+    if resolved == nil or offer.id ~= resolved.id or
+       type(offer.contact_id) ~= "string" then
         return nil
     end
-    local context = offer.source_offer_context or offer.context
-    local johnson_name = run_context_names[context]
-    local run_type_name = run_type_names[resolved.type]
+    local contact_id = offer.contact_id
+    local johnson_name = contact_names[contact_id]
+    local run_name = run_names[resolved.id]
     local payment = type(offer.payment) == "table" and
         offer.payment.negotiated_amount or nil
-    if johnson_name == nil or run_type_name == nil or
+    if johnson_name == nil or run_name == nil or
        type(payment) ~= "number" or payment % 1 ~= 0 or
        payment < 0 or payment > 0xFFFF then
         return nil
     end
-    local body = source_run_body(offer, resolved.type)
+    local body = source_run_body(offer, resolved.id)
     if body == nil or body == "" then return nil end
     return {
         offer_variant_id = variant_id,
-        context = context,
-        run_type = resolved.type,
+        contact_id = contact_id,
+        run_id = resolved.id,
         johnson_label = "JOHNSON:",
         johnson_name = johnson_name,
         run_type_label = "TYPE:",
-        run_type_name = run_type_name,
+        run_type_name = run_name,
         payment_label = "PAY:",
         payment_amount = payment,
         currency_symbol = "$",
@@ -425,12 +426,12 @@ local function choose_location(area_id)
     return local_index, name
 end
 
-function Support.choose_contract_route(context)
+function Support.choose_contract_route(contact_id)
     -- ROM 0x1E9C0 chooses origin area/location, client, then destination
     -- area/location. The opening context fixes both areas to Redmond and
     -- retries the destination location until it differs from the origin.
     local origin_area
-    if context == E.RunOfferContext.JUMP_HOUSE then
+    if contact_id == E.RunContact.JUMP_HOUSE then
         origin_area = 2
     else
         origin_area = Support.bounded_random(6)
@@ -441,7 +442,7 @@ function Support.choose_contract_route(context)
     local client_name = Support.client_names[client_index + 1]
 
     local destination_area
-    if context == E.RunOfferContext.JUMP_HOUSE then
+    if contact_id == E.RunContact.JUMP_HOUSE then
         destination_area = 2
     else
         repeat
@@ -450,7 +451,7 @@ function Support.choose_contract_route(context)
     end
 
     local destination_index, destination_name = choose_location(destination_area)
-    while context == E.RunOfferContext.JUMP_HOUSE and
+    while contact_id == E.RunContact.JUMP_HOUSE and
           destination_index == origin_index do
         destination_index, destination_name = choose_location(destination_area)
     end
@@ -473,10 +474,10 @@ function Support.choose_contract_route(context)
     }
 end
 
-function Support.choose_ghoul_area(context)
+function Support.choose_ghoul_area(contact_id)
     -- ROM 0x1E744 fixes the opening contract to area 2; other contexts use
     -- the four-area random pool from that handler.
-    if context == E.RunOfferContext.JUMP_HOUSE then return 2 end
+    if contact_id == E.RunContact.JUMP_HOUSE then return 2 end
     return Support.bounded_random(4)
 end
 

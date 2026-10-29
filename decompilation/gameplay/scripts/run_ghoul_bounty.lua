@@ -2,7 +2,7 @@
 local GhoulBounty = {}
 local E = require("enums")
 
-function GhoulBounty.prepare_offer(context, source_record)
+function GhoulBounty.prepare_offer(contact_id, source_record)
     local support = game.modules.run_support
     local payment = support.negotiate_payment(source_record)
     local offer = game.modules.run_support.new_offer(
@@ -13,8 +13,8 @@ function GhoulBounty.prepare_offer(context, source_record)
         nil,
         payment,
         source_record.runner_progress_delta)
-    offer.context = context
-    offer.area_id = support.choose_ghoul_area(context)
+    offer.contact_id = contact_id
+    offer.area_id = support.choose_ghoul_area(contact_id)
     offer.ghoul_kill_count = 0
     game.runs.registry.current_offer = offer
     return offer.id
@@ -32,9 +32,9 @@ function GhoulBounty.resolve_actor_defeat(offer, facts)
     return { action = "objective_advanced", objective_progress = count }
 end
 
-function GhoulBounty.resolve_johnson_return(offer, context)
+function GhoulBounty.resolve_johnson_return(offer, contact_id)
     local count = offer.ghoul_kill_count or 0
-    if context ~= offer.context or count <= 0 then
+    if contact_id ~= offer.contact_id or count <= 0 then
         return {
             action = "no_action",
             objective_progress = count,

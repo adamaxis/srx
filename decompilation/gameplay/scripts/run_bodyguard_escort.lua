@@ -2,10 +2,10 @@
 -- selection and the escort's actor behavior are owned by this run module.
 local BodyguardEscort = {}
 
-function BodyguardEscort.prepare_offer(context, source_record)
+function BodyguardEscort.prepare_offer(contact_id, source_record)
     local support = game.modules.run_support
     local payment = support.negotiate_payment(source_record)
-    local route = support.choose_contract_route(context)
+    local route = support.choose_contract_route(contact_id)
     local offer = game.modules.run_support.new_offer(
         "bodyguard_escort",
         "escort",
@@ -14,6 +14,7 @@ function BodyguardEscort.prepare_offer(context, source_record)
         route,
         payment,
         source_record.runner_progress_delta)
+    offer.contact_id = contact_id
     game.runs.registry.current_offer = offer
     return offer.id
 end

@@ -73,11 +73,11 @@ for _, profile in ipairs(raw_profile_negotiation) do
 end
 
 local contexts = {
-    E.RunOfferContext.JUMP_HOUSE,
-    E.RunOfferContext.SCENE_18,
-    E.RunOfferContext.BIG_RHINO,
-    E.RunOfferContext.WANDERER,
-    E.RunOfferContext.ICARUS_DESCENDING,
+    E.RunContact.JUMP_HOUSE,
+    E.RunContact.MATCHSTICK,
+    E.RunContact.BIG_RHINO,
+    E.RunContact.WANDERER,
+    E.RunContact.ICARUS_DESCENDING,
 }
 local maximum_payment = 0
 local maximum_payment_row = nil
@@ -86,7 +86,7 @@ local maximum_preset_payment_row = nil
 local longplay_offer_payment = nil
 
 for _, context in ipairs(contexts) do
-    local rows = OfferData.contexts[context]
+    local rows = OfferData.contacts[context]
     assert(rows ~= nil and #rows == 8,
         "source Johnson context must contain eight ROM offer rows")
     for row_index, record in ipairs(rows) do
@@ -101,7 +101,7 @@ for _, context in ipairs(contexts) do
         for skill = 0, 12 do
             check_payment(record, skill, false)
             local maximum_roll_payment = check_payment(record, skill, true)
-            if context == E.RunOfferContext.JUMP_HOUSE and row_index == 5 and
+            if context == E.RunContact.JUMP_HOUSE and row_index == 5 and
                skill == raw_profile_negotiation[3][2] then
                 longplay_offer_payment = maximum_roll_payment
             end
@@ -125,7 +125,7 @@ end
 assert(source_row_count == 40,
     "payment audit must cover all five eight-row ROM offer contexts")
 local longplay_offer_row =
-    OfferData.contexts[E.RunOfferContext.JUMP_HOUSE][5]
+    OfferData.contacts[E.RunContact.JUMP_HOUSE][5]
 assert(longplay_offer_row.base_payment == 40 and
        longplay_offer_row.negotiation_scale == 1 and
        raw_profile_negotiation[3][1] == "Joshua Gator Shaman" and

@@ -1,6 +1,5 @@
--- ROM 0x1E69C selects one of eight six-byte F3EBC records. The context-zero
--- handler sequence below is expressed as Lua run IDs; the registry only
--- selects a run and dispatches to its separate implementation.
+-- ROM 0x1E69C selects a Johnson's offer row. Lua selects by stable contact
+-- identity and dispatches the chosen run to its separate implementation.
 local Registry = {}
 local E = require("enums")
 local OfferData = require("data.johnson_run_offers")
@@ -42,7 +41,7 @@ end
 
 local function matrix_run_state_for(offer)
     if type(offer) ~= "table" or
-       offer.source_run_type ~= E.RunType.MATRIX_OBJECTIVE or
+       offer.id ~= E.RunId.MATRIX_OBJECTIVE or
        not valid_matrix_run_state(offer.matrix_run_state) then
         return nil
     end
@@ -51,7 +50,7 @@ end
 
 local function set_matrix_run_state(offer, state)
     if type(offer) ~= "table" or
-       offer.source_run_type ~= E.RunType.MATRIX_OBJECTIVE or
+       offer.id ~= E.RunId.MATRIX_OBJECTIVE or
        not valid_matrix_run_state(state) then
         return false
     end
@@ -75,8 +74,7 @@ function Registry.commit_active_matrix_run_state(state)
     return set_matrix_run_state(Registry.active_offer, state)
 end
 
-local new_game_selection =
-    OfferData.contexts[E.RunOfferContext.JUMP_HOUSE]
+local new_game_selection = OfferData.contacts[E.RunContact.JUMP_HOUSE]
 
 function Registry.available_run_ids()
     local ids = {}
@@ -115,7 +113,7 @@ local function extension_offer_slots()
     return slots
 end
 
-local function prepare_source_offer(context, source_record)
+local function prepare_source_offer(contact_id, source_record)
     local variant_id = source_record.variant_id
     local resolved = OfferData.run_by_variant_id[variant_id]
     assert(resolved ~= nil,
@@ -125,42 +123,39 @@ local function prepare_source_offer(context, source_record)
         "offer variant has no Lua implementation: " .. resolved.id)
     Registry.current_offer = nil
     Registry._last_offer_result = nil
-    local run_id = run.prepare_offer(context, source_record)
+    local run_id = run.prepare_offer(contact_id, source_record)
     local offer = Registry.current_offer
     assert(run_id == resolved.id and type(offer) == "table" and
-           offer.id == resolved.id,
+           offer.id == resolved.id and offer.contact_id == contact_id,
         "run handler failed to publish its Lua offer state")
-    offer.context = context
     offer.offer_variant_id = variant_id
-    offer.source_offer_context = context
-    offer.source_run_type = resolved.type
     offer.target_pool_id = source_record.target_pool_id
     offer.matrix_band_id = source_record.matrix_band_id
     return run_id
 end
 
-function Registry.prepare_offer_for_context(context)
-    local rows = OfferData.contexts[context]
+function Registry.prepare_offer_for_contact(contact_id)
+    local rows = OfferData.contacts[contact_id]
     assert(rows ~= nil,
-        "ROM Johnson offer context is not present: " .. tostring(context))
+        "Johnson contact has no offer list: " .. tostring(contact_id))
     local slot = game.modules.run_support.bounded_random(#rows)
-    return prepare_source_offer(context, rows[slot + 1])
+    return prepare_source_offer(contact_id, rows[slot + 1])
 end
 
-function Registry.present_offer_for_context(context)
-    local run_id = Registry.prepare_offer_for_context(context)
+function Registry.present_offer_for_contact(contact_id)
+    local run_id = Registry.prepare_offer_for_contact(contact_id)
     return game.runs[run_id].present_offer()
 end
 
 function Registry.prepare_new_game_offer()
-    -- New Game uses ROM context zero. Keep the original eight source rows
-    -- first; explicitly weighted extensions may be appended after that pool.
-    local context = E.RunOfferContext.JUMP_HOUSE
+    -- Preserve the original eight Jump House offers before explicitly
+    -- weighted gameplay extensions.
+    local contact_id = E.RunContact.JUMP_HOUSE
     local extension_slots = extension_offer_slots()
     local slot = game.modules.run_support.bounded_random(
         #new_game_selection + #extension_slots)
     if slot < #new_game_selection then
-        return prepare_source_offer(context, new_game_selection[slot + 1])
+        return prepare_source_offer(contact_id, new_game_selection[slot + 1])
     end
 
     local extension = extension_slots[slot - #new_game_selection + 1]
@@ -169,7 +164,7 @@ function Registry.prepare_new_game_offer()
         "weighted run slot has no Lua implementation: " .. extension.run_id)
     Registry.current_offer = nil
     Registry._last_offer_result = nil
-    return run.prepare_offer(context, extension.payment)
+    return run.prepare_offer(contact_id, extension.payment)
 end
 
 function Registry.present_new_game_offer()
@@ -341,10 +336,10 @@ function Registry.resolve_actor_defeat(facts)
     }
 end
 
-function Registry.resolve_johnson_return(context)
-    assert(type(context) == "number" and context % 1 == 0 and
-           context >= 0 and context <= 0xFF,
-        "Johnson-return context is invalid")
+function Registry.resolve_johnson_return(contact_id)
+    assert(type(contact_id) == "string" and
+           OfferData.contacts[contact_id] ~= nil,
+        "Johnson-return contact is invalid")
 
     Registry._pending_johnson_return = nil
     local offer = Registry.active_offer
@@ -371,7 +366,7 @@ function Registry.resolve_johnson_return(context)
         }
     end
 
-    local result = handler(offer, context)
+    local result = handler(offer, contact_id)
     assert(type(result) == "table" and
            (result.action == "no_action" or result.action == "completed"),
         "run Johnson-return handler returned an invalid action")
@@ -393,7 +388,7 @@ function Registry.resolve_johnson_return(context)
         Registry.active_offer = nil
         Registry._pending_johnson_return = {
             run_id = offer.id,
-            context = context,
+            contact_id = contact_id,
             objective_progress = progress,
         }
     end
@@ -412,46 +407,48 @@ function Registry.take_pending_johnson_return()
     if pending == nil then return nil end
     return {
         run_id = pending.run_id,
-        context = pending.context,
+        contact_id = pending.contact_id,
         objective_progress = pending.objective_progress,
     }
 end
 
--- ROM 0x1E68C resets the run-context word and FFFC1C when the matching
--- Johnson booth has been vacated. The Scene-14 caller applies it only when
--- FFFBEC's low byte is the Wanderer context, so preserve every other offer.
-function Registry.clear_active_offer_for_context(context)
-    assert(type(context) == "number" and context % 1 == 0 and
-           context >= 0 and context <= 0xFF,
-        "Johnson context reset is invalid")
+-- ROM 0x1E68C clears the active run when the Wanderer booth is vacated.
+function Registry.clear_active_offer_for_contact(contact_id)
+    assert(type(contact_id) == "string" and
+           OfferData.contacts[contact_id] ~= nil,
+        "Johnson contact reset is invalid")
     local cleared = false
     local active = Registry.active_offer
-    if active ~= nil and active.source_offer_context == context then
+    if active ~= nil and active.contact_id == contact_id then
         Registry.active_offer = nil
         cleared = true
     end
     local pending = Registry._pending_johnson_return
-    if pending ~= nil and pending.context == context then
+    if pending ~= nil and pending.contact_id == contact_id then
         Registry._pending_johnson_return = nil
         cleared = true
     end
     return cleared
 end
 
--- The Lua registry supplies FFFBED and the active-run bit in the host model
--- [H]. The host passes its typed FFFC1C bit-7 state, which ROM 0x0A72 sets
--- when FFE18F is nonzero and 0xC678 checks for type 5 [C].
+-- Party recovery consumes stable run and contact identities plus a named
+-- scene-reset condition. Source type/context selectors do not enter Lua [C].
 function Registry.party_wipe_failure_state(world_activity_scene_reset)
     local offer = Registry.active_offer
-    if offer == nil or type(offer.source_run_type) ~= "number" then
-        return { run_type = E.RunType.NONE, flags = 0 }
+    if offer == nil or type(offer.id) ~= "string" then
+        return {
+            run_id = "none",
+            active = false,
+            employee_failure_guard = false,
+        }
     end
-    local flags = E.RunContextFlag.ACTIVE
-    if world_activity_scene_reset == true or
-       world_activity_scene_reset == 1 then
-        flags = flags | E.RunContextFlag.EMPLOYEE_FAILURE_GUARD
-    end
-    return { run_type = offer.source_run_type, flags = flags }
+    return {
+        run_id = offer.id,
+        active = true,
+        employee_failure_guard =
+            offer.id == E.RunId.EMPLOYEE_RECRUITMENT and
+            world_activity_scene_reset == true,
+    }
 end
 
 -- ROM 0x1E68C resets FFFBEC and clears the run-status byte at FFFC1C.
@@ -597,22 +594,17 @@ function Registry.validate_saved_state(state)
     -- separately saved variant, context, progress, or payment tuple.
     local function valid_source_offer(offer)
         local variant_id = offer.offer_variant_id
-        local has_source_metadata = variant_id ~= nil or
-            offer.source_offer_context ~= nil or
-            offer.source_run_type ~= nil
-        if not has_source_metadata then return true end
+        if variant_id == nil then return true end
         if type(variant_id) ~= "string" or variant_id == "" then
             return false
         end
 
         local resolved = OfferData.run_by_variant_id[variant_id]
-        local context = offer.source_offer_context
+        local contact_id = offer.contact_id
         if resolved == nil or
-           not integer_between(context, 0, 0xFF) or
-           OfferData.contexts[context] == nil or
-           offer.context ~= context or
-           offer.id ~= resolved.id or
-           offer.source_run_type ~= resolved.type then
+           type(contact_id) ~= "string" or
+           OfferData.contacts[contact_id] == nil or
+           offer.id ~= resolved.id then
             return false
         end
 
@@ -626,7 +618,7 @@ function Registry.validate_saved_state(state)
             return false
         end
 
-        for _, source_record in ipairs(OfferData.contexts[context]) do
+        for _, source_record in ipairs(OfferData.contacts[contact_id]) do
             if source_record.variant_id == variant_id and
                source_record.base_payment == payment.base_amount and
                source_record.runner_progress_delta ==
@@ -656,14 +648,8 @@ function Registry.validate_saved_state(state)
            offer.runner_progress_delta % 1 ~= 0 then
             return false
         end
-        if offer.source_run_type ~= nil and
-           (type(offer.source_run_type) ~= "number" or
-            offer.source_run_type % 1 ~= 0 or
-            offer.source_run_type < 0 or offer.source_run_type > 255) then
-            return false
-        end
         if not valid_source_offer(offer) then return false end
-        if offer.source_run_type == E.RunType.MATRIX_OBJECTIVE then
+        if offer.id == E.RunId.MATRIX_OBJECTIVE then
             if not valid_matrix_run_state(offer.matrix_run_state) then
                 return false
             end

@@ -205,8 +205,8 @@ void FieldSceneRuntime::synchronize_pocket_secretary_notebook_from_route(
             *route_state.top_notebook_current_run;
         auto& current_run = notebook.current_run;
         current_run.offer_variant_id = source_view.offer_variant_id;
-        current_run.context = source_view.context;
-        current_run.run_type = source_view.run_type;
+        current_run.contact_id = source_view.contact_id;
+        current_run.run_id = source_view.run_id;
         current_run.payment_amount = source_view.payment_amount;
         current_run.johnson_label = source_view.johnson_label;
         current_run.johnson_name = source_view.johnson_name;

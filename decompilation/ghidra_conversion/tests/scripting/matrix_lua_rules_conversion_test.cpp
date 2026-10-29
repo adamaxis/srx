@@ -1795,14 +1795,12 @@ Registry.active_offer = {
     objective = "retrieve_matrix_data",
     completion_condition = "source_matrix_objective_satisfied",
     runner_progress_delta = 2,
-    context = E.RunOfferContext.BIG_RHINO,
-    source_offer_context = E.RunOfferContext.BIG_RHINO,
+    contact_id = E.RunContact.BIG_RHINO,
     offer_variant_id = "matrix_simple",
     payment = {
         base_amount = 425, negotiated_amount = 425, negotiation_skill = 0,
         negotiation_bound = 1, negotiation_roll = 0,
     },
-    source_run_type = E.RunType.MATRIX_OBJECTIVE,
     matrix_run_state = {
         state = -1, objective = 5, value = 0, size = 30,
         fc28 = 1, fc1c = 0, target_system_id = 6,
@@ -1853,26 +1851,26 @@ do
 end
 local Dialogue = require("dialogue")
 local expected_context_rows = {
-    [0] = {
+    [E.RunContact.JUMP_HOUSE] = {
         {"ghoul_bounty",1,10,3}, {"bodyguard_escort",1,45,1},
         {"package_delivery",1,35,1}, {"bodyguard_escort",1,50,1},
         {"package_delivery",1,40,1}, {"bodyguard_escort",1,55,1},
         {"package_delivery",1,45,1}, {"ghoul_bounty",1,20,2},
     },
-    [1] = {
+    [E.RunContact.MATCHSTICK] = {
         {"matrix_moderate",3,2600,4}, {"bodyguard_escort",1,200,2},
         {"employee_recruitment",2,500,5}, {"package_recovery",2,600,5},
         {"employee_recruitment_two_site_pool",4,900,5},
         {"package_recovery_two_site_pool",4,1000,5},
         {"package_delivery",1,180,2}, {"gang_contract",2,160,3},
     },
-    [2] = {
+    [E.RunContact.BIG_RHINO] = {
         {"matrix_simple",2,425,1}, {"gang_contract",2,190,2},
         {"package_delivery",1,180,1}, {"ghoul_bounty",1,40,1},
         {"package_recovery",2,550,4}, {"employee_recruitment",2,450,4},
         {"bodyguard_escort",1,200,1}, {"package_delivery",1,190,1},
     },
-    [3] = {
+    [E.RunContact.WANDERER] = {
         {"gang_contract",1,230,1}, {"matrix_moderate",2,3000,2},
         {"matrix_expert",4,6350,5}, {"package_delivery",0,250,1},
         {"package_recovery_two_site_pool",3,1700,4},
@@ -1880,7 +1878,7 @@ local expected_context_rows = {
         {"employee_recruitment_renraku",5,4000,10},
         {"matrix_simple",1,500,1},
     },
-    [4] = {
+    [E.RunContact.ICARUS_DESCENDING] = {
         {"matrix_moderate",3,2550,5}, {"matrix_expert",5,6000,10},
         {"employee_recruitment_two_site_pool",4,1200,5},
         {"package_recovery_two_site_pool",4,1400,5},
@@ -1889,20 +1887,27 @@ local expected_context_rows = {
         {"matrix_expert",5,6100,10}, {"matrix_moderate",4,2750,5},
     },
 }
-for context = 0, 4 do
-    local rows = OfferData.contexts[context]
-    eq(#rows, 8, "ROM offer row count for context " .. context)
+local contact_ids = {
+    E.RunContact.JUMP_HOUSE,
+    E.RunContact.MATCHSTICK,
+    E.RunContact.BIG_RHINO,
+    E.RunContact.WANDERER,
+    E.RunContact.ICARUS_DESCENDING,
+}
+for _, contact_id in ipairs(contact_ids) do
+    local rows = OfferData.contacts[contact_id]
+    eq(#rows, 8, "Johnson offer row count for " .. contact_id)
     for index = 1, 8 do
         local row = rows[index]
-        local expected = expected_context_rows[context][index]
+        local expected = expected_context_rows[contact_id][index]
         eq(row.variant_id, expected[1], "semantic offer variant row")
         eq(row.runner_progress_delta, expected[2], "progress row")
         eq(row.base_payment, expected[3], "base payment row")
         eq(row.negotiation_scale, expected[4], "negotiation scale row")
     end
 end
-eq(Dialogue.johnson_interaction_profiles["wanderer.vigore_jarl"].run_offer_context,
-    E.RunOfferContext.WANDERER, "Wanderer routes work to context three")
+eq(Dialogue.johnson_interaction_profiles["wanderer.vigore_jarl"].run_contact_id,
+    E.RunContact.WANDERER, "Wanderer profile selects the Wanderer contact")
 
 -- Wanderer context 3, slot 7 selects source initializer 6. Its simple
 -- Matrix objective follows the ROM objective -> system -> size RNG sequence.
@@ -1931,15 +1936,19 @@ game = {
         return { run = { fc28 = 5 } }
     end,
 }
-local selected_run = Registry.prepare_offer_for_context(E.RunOfferContext.WANDERER)
+local selected_run = Registry.prepare_offer_for_contact(E.RunContact.WANDERER)
 local matrix_offer = Registry.current_offer
 eq(selected_run, "matrix_objective", "context selects Matrix Lua module")
 eq(matrix_offer.offer_variant_id, "matrix_simple",
     "offer retains its semantic Matrix variant")
-eq(matrix_offer.source_run_type, E.RunType.MATRIX_OBJECTIVE,
-    "offer retains the canonical run type")
-eq(matrix_offer.source_offer_context, E.RunOfferContext.WANDERER,
-    "offer retains its ROM Johnson context")
+eq(matrix_offer.id, E.RunId.MATRIX_OBJECTIVE,
+    "offer retains its semantic run identity")
+eq(matrix_offer.contact_id, E.RunContact.WANDERER,
+    "offer retains its semantic Johnson contact")
+eq(matrix_offer.source_run_type, nil,
+    "source handler selectors do not enter the Lua offer state")
+eq(matrix_offer.source_offer_context, nil,
+    "source context selectors do not enter the Lua offer state")
 eq(matrix_offer.matrix_run_state.state, -1,
     "simple Matrix initializer selects the negative band")
 eq(matrix_offer.matrix_run_state.objective, 4,
@@ -1972,13 +1981,14 @@ Registry.active_offer = nil
 game.runs.gang_contract = require("run_gang_contract")
 game.runs.package_recovery = require("run_package_recovery")
 game.runs.employee_recruitment = require("run_employee_recruitment")
-local function prepare_context_row(context, rolls)
+local function prepare_contact_row(contact_id, rolls)
     random_call = 0
     random_rolls = rolls
-    return Registry.prepare_offer_for_context(context), Registry.current_offer
+    return Registry.prepare_offer_for_contact(contact_id), Registry.current_offer
 end
 
-local gang_id, gang_offer = prepare_context_row(1, { 7, 0, 0, 0 })
+local gang_id, gang_offer = prepare_contact_row(
+    E.RunContact.MATCHSTICK, { 7, 0, 0, 0 })
 eq(gang_id, "gang_contract", "gang source initializer loads its own module")
 eq(gang_offer.offer_variant_id, "gang_contract",
     "gang offer retains semantic variant")
@@ -1993,7 +2003,8 @@ assert(Support.gang_contract_texts[1]:find("||", 1, true) and
 checks = checks + 1
 Registry.resolve_current_offer("no")
 
-local recovery_id, recovery_offer = prepare_context_row(3, { 4, 0, 0, 0 })
+local recovery_id, recovery_offer = prepare_contact_row(
+    E.RunContact.WANDERER, { 4, 0, 0, 0 })
 eq(recovery_id, "package_recovery",
     "two-site package recovery loads its own module")
 eq(recovery_offer.offer_variant_id, "package_recovery_two_site_pool",
@@ -2004,7 +2015,8 @@ eq(recovery_offer.route.target.location_id, 2,
     "recovery target retains the selected event ID")
 Registry.resolve_current_offer("no")
 
-local employee_id, employee_offer = prepare_context_row(3, { 6, 0, 0 })
+local employee_id, employee_offer = prepare_contact_row(
+    E.RunContact.WANDERER, { 6, 0, 0 })
 eq(employee_id, "employee_recruitment",
     "Renraku employee recovery loads its own module")
 eq(employee_offer.offer_variant_id, "employee_recruitment_renraku",
@@ -2017,7 +2029,8 @@ eq(employee_offer.employee_name, "Mike Nana",
     "employee name comes from the twelve-name source table")
 Registry.resolve_current_offer("no")
 
-local moderate_id, moderate_offer = prepare_context_row(3, { 1, 0, 14, 0, 0 })
+local moderate_id, moderate_offer = prepare_contact_row(
+    E.RunContact.WANDERER, { 1, 0, 14, 0, 0 })
 eq(moderate_id, "matrix_objective",
     "moderate Matrix initializer reaches the Matrix module")
 eq(moderate_offer.matrix_run_state.state, 0,
@@ -2026,7 +2039,8 @@ eq(moderate_offer.matrix_run_state.target_system_id, 10,
     "moderate candidate retries until its system is in the source band")
 Registry.resolve_current_offer("no")
 
-local expert_id, expert_offer = prepare_context_row(3, { 2, 0, 4, 0, 0 })
+local expert_id, expert_offer = prepare_contact_row(
+    E.RunContact.WANDERER, { 2, 0, 4, 0, 0 })
 eq(expert_id, "matrix_objective",
     "expert Matrix initializer reaches the Matrix module")
 eq(expert_offer.matrix_run_state.state, 1,
@@ -2054,12 +2068,12 @@ game.ui = {
         return johnson_menu_calls == 1 and "work" or "leave"
     end,
     prompt_text = function()
-        accepted_offer_context = Registry.current_offer.source_offer_context
+        accepted_offer_context = Registry.current_offer.contact_id
         return "no"
     end,
 }
 eq(Johnson.interaction(), "leave", "shared Johnson interaction returns to field")
-eq(accepted_offer_context, E.RunOfferContext.WANDERER,
+eq(accepted_offer_context, E.RunContact.WANDERER,
     "work choice passes the live Wanderer context into offer selection")
 eq(#johnson_intro_events, 2,
     "Wanderer first-visit introduction shows its two source pages")
@@ -2077,11 +2091,11 @@ local old_active_offer = Registry.active_offer
 local old_pending_return = Registry._pending_johnson_return
 Registry.active_offer = {
     id = "matrix_objective_probe",
-    source_offer_context = E.RunOfferContext.WANDERER,
+    contact_id = E.RunContact.WANDERER,
 }
 Registry._pending_johnson_return = {
     run_id = "matrix_objective_probe",
-    context = E.RunOfferContext.WANDERER,
+    contact_id = E.RunContact.WANDERER,
 }
 game.location = { text_profile = "wanderer.vigore_jarl" }
 game.state = {
@@ -2130,7 +2144,7 @@ end
 Registry.take_pending_johnson_return = function()
     return {
         run_id = "matrix_objective_probe",
-        context = E.RunOfferContext.WANDERER,
+        contact_id = E.RunContact.WANDERER,
     }
 end
 game.location = { text_profile = "wanderer.vigore_jarl" }
@@ -2157,13 +2171,13 @@ return_run.present_completion = old_present_completion
 -- Mortimer's Big Rhino work choice uses source context 2 and its own opening
 -- page. Information remains separate until its ROM question and contact-
 -- purchase branches are connected.
-local old_present_offer_for_context = Registry.present_offer_for_context
+local old_present_offer_for_contact = Registry.present_offer_for_contact
 local old_take_pending_johnson_return = Registry.take_pending_johnson_return
 local mortimer_offer_context
 local mortimer_events = {}
 local mortimer_menu_call = 0
-Registry.present_offer_for_context = function(context)
-    mortimer_offer_context = context
+Registry.present_offer_for_contact = function(contact_id)
+    mortimer_offer_context = contact_id
     return "declined"
 end
 Registry.take_pending_johnson_return = function() return nil end
@@ -2184,7 +2198,7 @@ game.ui = {
 }
 eq(Johnson.interaction(), "leave",
     "Mortimer interaction returns to the field after leave")
-eq(mortimer_offer_context, E.RunOfferContext.BIG_RHINO,
+eq(mortimer_offer_context, E.RunContact.BIG_RHINO,
     "Mortimer work selection uses ROM Johnson context two")
 eq(mortimer_events[1], "booth_entry",
     "Mortimer first contact shows the ROM booth-entry dialogue")
@@ -2200,7 +2214,7 @@ eq(Johnson.interaction(), "leave",
     "Mortimer information returns to its own opening menu")
 eq(mortimer_events[5], "information_opening",
     "Mortimer information uses its own ROM introduction")
-Registry.present_offer_for_context = old_present_offer_for_context
+Registry.present_offer_for_contact = old_present_offer_for_contact
 Registry.take_pending_johnson_return = old_take_pending_johnson_return
 
 print("matrix Lua rules: " .. checks .. " checks passed")

@@ -49,9 +49,14 @@ audio selection, and frame timing. Party-wipe recovery also receives named
 party, wallet, and bill-payment facts and returns a typed lifecycle, meter,
 dismissal, funds, and destination result. Roster refresh receives named party
 roles, lifecycle facts, and the roster-end condition; Lua returns the active
-role and transient selection indicators. The run-failure gate still uses flat
-source-shaped arguments, and Matrix datastore bitfields still need conversion;
-do not extend those interfaces.
+role and transient selection indicators. Party-wipe run failure now receives a
+stable run ID and named transition facts, then returns a named recovery
+decision. Johnson offers, returns, and the Current Run view pass `run_id` and
+`contact_id` strings across the Lua/native boundary; the ROM's run-type and
+contact selector bytes stay out of the live Lua offer model. Keep future run
+behavior on these semantic identities. Two source-shaped areas remain for
+separate work: run routes still store numeric area/location event IDs, and
+Matrix offers still store source datastore fields and flag bytes.
 
 The next capabilities should follow the same shape, added only as they connect
 to real native systems:

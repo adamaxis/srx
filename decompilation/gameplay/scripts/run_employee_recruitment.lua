@@ -2,7 +2,7 @@
 -- recovery, then select one of the twelve source client records.
 local EmployeeRecruitment = {}
 
-function EmployeeRecruitment.prepare_offer(context, source_record)
+function EmployeeRecruitment.prepare_offer(contact_id, source_record)
     local support = game.modules.run_support
     local payment = support.negotiate_payment(source_record)
     local target = support.choose_facility_target(
@@ -16,7 +16,7 @@ function EmployeeRecruitment.prepare_offer(context, source_record)
         { target = target },
         payment,
         source_record.runner_progress_delta)
-    offer.context = context
+    offer.contact_id = contact_id
     offer.client_id = client_id
     offer.employee_name = support.client_names[client_id + 1]
     game.runs.registry.current_offer = offer

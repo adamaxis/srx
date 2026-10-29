@@ -9,51 +9,51 @@ local E = require("enums")
 -- the runtime does not carry that source byte into Lua.
 local run_by_variant_id = {
     ghoul_bounty = {
-        id = "ghoul_bounty", type = E.RunType.GHOUL_BOUNTY,
+        id = E.RunId.GHOUL_BOUNTY,
     },
     bodyguard_escort = {
-        id = "bodyguard_escort", type = E.RunType.BODYGUARD_ESCORT,
+        id = E.RunId.BODYGUARD_ESCORT,
     },
     package_delivery = {
-        id = "package_delivery", type = E.RunType.PACKAGE_DELIVERY,
+        id = E.RunId.PACKAGE_DELIVERY,
     },
     gang_contract = {
-        id = "gang_contract", type = E.RunType.GANG_CONTRACT,
+        id = E.RunId.GANG_CONTRACT,
     },
     package_recovery = {
-        id = "package_recovery", type = E.RunType.PACKAGE_RECOVERY,
+        id = E.RunId.PACKAGE_RECOVERY,
         target_pool_id = "four_site",
     },
     package_recovery_two_site_pool = {
-        id = "package_recovery", type = E.RunType.PACKAGE_RECOVERY,
+        id = E.RunId.PACKAGE_RECOVERY,
         target_pool_id = "two_site",
     },
     package_recovery_renraku = {
-        id = "package_recovery", type = E.RunType.PACKAGE_RECOVERY,
+        id = E.RunId.PACKAGE_RECOVERY,
         target_pool_id = "renraku",
     },
     employee_recruitment = {
-        id = "employee_recruitment", type = E.RunType.EMPLOYEE_RECRUITMENT,
+        id = E.RunId.EMPLOYEE_RECRUITMENT,
         target_pool_id = "four_site",
     },
     employee_recruitment_two_site_pool = {
-        id = "employee_recruitment", type = E.RunType.EMPLOYEE_RECRUITMENT,
+        id = E.RunId.EMPLOYEE_RECRUITMENT,
         target_pool_id = "two_site",
     },
     employee_recruitment_renraku = {
-        id = "employee_recruitment", type = E.RunType.EMPLOYEE_RECRUITMENT,
+        id = E.RunId.EMPLOYEE_RECRUITMENT,
         target_pool_id = "renraku",
     },
     matrix_simple = {
-        id = "matrix_objective", type = E.RunType.MATRIX_OBJECTIVE,
+        id = E.RunId.MATRIX_OBJECTIVE,
         matrix_band_id = "simple",
     },
     matrix_moderate = {
-        id = "matrix_objective", type = E.RunType.MATRIX_OBJECTIVE,
+        id = E.RunId.MATRIX_OBJECTIVE,
         matrix_band_id = "moderate",
     },
     matrix_expert = {
-        id = "matrix_objective", type = E.RunType.MATRIX_OBJECTIVE,
+        id = E.RunId.MATRIX_OBJECTIVE,
         matrix_band_id = "expert",
     },
 }
@@ -64,7 +64,6 @@ local function row(variant_id, progress, base, negotiation)
     return {
         variant_id = variant_id,
         run_id = variant.id,
-        run_type = variant.type,
         target_pool_id = variant.target_pool_id,
         matrix_band_id = variant.matrix_band_id,
         runner_progress_delta = progress,
@@ -74,8 +73,8 @@ local function row(variant_id, progress, base, negotiation)
 end
 
 return {
-    contexts = {
-        [E.RunOfferContext.JUMP_HOUSE] = {
+    contacts = {
+        [E.RunContact.JUMP_HOUSE] = {
             row("ghoul_bounty", 1, 10, 3),
             row("bodyguard_escort", 1, 45, 1),
             row("package_delivery", 1, 35, 1),
@@ -85,7 +84,7 @@ return {
             row("package_delivery", 1, 45, 1),
             row("ghoul_bounty", 1, 20, 2),
         },
-        [E.RunOfferContext.SCENE_18] = {
+        [E.RunContact.MATCHSTICK] = {
             row("matrix_moderate", 3, 2600, 4),
             row("bodyguard_escort", 1, 200, 2),
             row("employee_recruitment", 2, 500, 5),
@@ -95,7 +94,7 @@ return {
             row("package_delivery", 1, 180, 2),
             row("gang_contract", 2, 160, 3),
         },
-        [E.RunOfferContext.BIG_RHINO] = {
+        [E.RunContact.BIG_RHINO] = {
             row("matrix_simple", 2, 425, 1),
             row("gang_contract", 2, 190, 2),
             row("package_delivery", 1, 180, 1),
@@ -105,7 +104,7 @@ return {
             row("bodyguard_escort", 1, 200, 1),
             row("package_delivery", 1, 190, 1),
         },
-        [E.RunOfferContext.WANDERER] = {
+        [E.RunContact.WANDERER] = {
             row("gang_contract", 1, 230, 1),
             row("matrix_moderate", 2, 3000, 2),
             row("matrix_expert", 4, 6350, 5),
@@ -115,7 +114,7 @@ return {
             row("employee_recruitment_renraku", 5, 4000, 10),
             row("matrix_simple", 1, 500, 1),
         },
-        [E.RunOfferContext.ICARUS_DESCENDING] = {
+        [E.RunContact.ICARUS_DESCENDING] = {
             row("matrix_moderate", 3, 2550, 5),
             row("matrix_expert", 5, 6000, 10),
             row("employee_recruitment_two_site_pool", 4, 1200, 5),

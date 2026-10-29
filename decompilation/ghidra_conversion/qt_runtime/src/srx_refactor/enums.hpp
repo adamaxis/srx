@@ -724,27 +724,6 @@ enum class Posture : std::int64_t {
     MEDIUM_OFFENSE = 0x3,
     FULL_OFFENSE = 0x4,
 };
-enum class RunContextFlag : std::int64_t {
-    ACTIVE = 0x1,
-    EMPLOYEE_FAILURE_GUARD = 0x80,
-};
-enum class RunOfferContext : std::int64_t {
-    JUMP_HOUSE = 0x0,
-    SCENE_18 = 0x1,
-    BIG_RHINO = 0x2,
-    WANDERER = 0x3,
-    ICARUS_DESCENDING = 0x4,
-};
-enum class RunType : std::int64_t {
-    GHOUL_BOUNTY = 0x0,
-    BODYGUARD_ESCORT = 0x1,
-    PACKAGE_DELIVERY = 0x2,
-    GANG_CONTRACT = 0x3,
-    PACKAGE_RECOVERY = 0x4,
-    EMPLOYEE_RECRUITMENT = 0x5,
-    MATRIX_OBJECTIVE = 0x6,
-    NONE = 0xFF,
-};
 enum class RunnerField : std::int64_t {
     STATUS = 0x10,
     STATE_FN = 0x3A,

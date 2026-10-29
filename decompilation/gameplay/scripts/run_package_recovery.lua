@@ -3,7 +3,7 @@
 -- still waiting on the field item/event bridge.
 local PackageRecovery = {}
 
-function PackageRecovery.prepare_offer(context, source_record)
+function PackageRecovery.prepare_offer(contact_id, source_record)
     local support = game.modules.run_support
     local payment = support.negotiate_payment(source_record)
     local target = support.choose_facility_target(
@@ -17,7 +17,7 @@ function PackageRecovery.prepare_offer(context, source_record)
         { target = target },
         payment,
         source_record.runner_progress_delta)
-    offer.context = context
+    offer.contact_id = contact_id
     offer.presentation_variant = variant
     game.runs.registry.current_offer = offer
     return offer.id

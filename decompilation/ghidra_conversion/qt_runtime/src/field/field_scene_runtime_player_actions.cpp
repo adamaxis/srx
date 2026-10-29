@@ -302,17 +302,19 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
     world_frame_logic_state_.scene_state = 0U;
     field_pending_world_effect_ = false;
 
-    // 0x0A72 carries the typed FFFC1C bit-7 scene-reset state into Lua [C].
-    const auto run_failure = game_scripts_.call_integers(
-        "party_down", "prepare_run_failure_flat",
-        {field_runtime_state_.world_activity_scene_reset_bit ? 1 : 0,
-         has_pending_world_effect_player_spawn() ? 1 : 0});
-    if (!run_failure.has_value() || run_failure->size() != 6U) {
+    // 0x0A72 supplies the world-activity transition fact used by the
+    // employee-recruitment failure gate. Lua returns a recovery decision;
+    // the host applies effects to its native scene and actor models [C].
+    const auto run_failure = game_scripts_.prepare_party_wipe_run_failure(
+        scripting::ScriptPartyWipeRunFailureContext{
+            field_runtime_state_.world_activity_scene_reset_bit,
+        });
+    if (!run_failure.has_value()) {
         failure_ = game_scripts_.failure();
         source_boundary("field.party_wipe.run_failure_script_failed");
         return;
     }
-    if ((*run_failure)[2] != 0) {
+    if (run_failure->clear_world_activity_request) {
         // Only type 5 reaches 0xC684's FFE183 clear. That mode-five marker is
         // not used by player-side gameplay [C].
         world_activity_request_outcome_.reset();
@@ -324,23 +326,22 @@ void FieldSceneRuntime::resolve_field_party_wipe() {
         }
         source_boundary("field.party_wipe.world_activity_request_cleared");
     }
-    if ((*run_failure)[4] != 0) {
+    if (run_failure->clear_player_spawn_request) {
         field_world_effect_player_spawn_actor_template_.reset(); // FFFC3C [C]
         field_world_effect_player_spawn_qa_override_ = false;
         source_boundary("field.party_wipe.player_spawn_request_cleared");
     }
-    if ((*run_failure)[1] != 0) {
+    if (run_failure->clear_high_effects) {
         // 0x1DED8 clears FFFC3C before its seven FF0400..FF0A00 world-actor
         // records. Apply the typed player/field write; leave that record sweep
         // to the combat branch [C].
         source_boundary("field.party_wipe.world_actor_sweep_boundary");
     }
-    if ((*run_failure)[3] == 2) {
+    if (run_failure->objective_result ==
+        scripting::ScriptPartyWipeObjectiveResult::unavailable) {
         source_boundary("field.party_wipe.group_item_flags_unresolved");
     }
-    if ((*run_failure)[0] !=
-        static_cast<std::int64_t>(
-            std::numeric_limits<std::uint8_t>::max())) {
+    if (run_failure->page_pending) {
         // 0x1E68C clears FFFC1C after the Lua registry drops its active offer.
         field_runtime_state_.world_activity_scene_reset_bit = false;
         game_scripts_.set_location_context("field_map", "party_wipe",

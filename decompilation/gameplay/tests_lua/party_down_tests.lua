@@ -142,8 +142,11 @@ check(refresh_override.active_role == "companion_one" and
       "0x391A override accepts an active downed companion")
 
 -- 0xC64C's FFFBED/FFFC1C run-failure gates [C].
-local employee_failure = P.run_failure_flat(
-    E.RunType.EMPLOYEE_RECRUITMENT, E.RunContextFlag.ACTIVE)
+local employee_failure = P.select_run_failure({
+    run_id = "employee_recruitment",
+    active = true,
+    employee_failure_guard = false,
+})
 check(employee_failure ~= nil and
       employee_failure.event_id ==
           "party_wipe_employee_recruitment_failure" and
@@ -151,14 +154,18 @@ check(employee_failure ~= nil and
       employee_failure.clear_player_spawn_request and
       employee_failure.clear_world_activity_request,
       "type 5 active run shows extraction failure at 0xF3D5C")
-check(P.run_failure_flat(
-          E.RunType.EMPLOYEE_RECRUITMENT,
-          E.RunContextFlag.ACTIVE |
-              E.RunContextFlag.EMPLOYEE_FAILURE_GUARD) == nil,
+check(P.select_run_failure({
+          run_id = "employee_recruitment",
+          active = true,
+          employee_failure_guard = true,
+      }) == nil,
       "type 5 world-activity scene-reset bit suppresses failure")
 
-local bodyguard_failure = P.run_failure_flat(
-    E.RunType.BODYGUARD_ESCORT, E.RunContextFlag.ACTIVE)
+local bodyguard_failure = P.select_run_failure({
+    run_id = "bodyguard_escort",
+    active = true,
+    employee_failure_guard = false,
+})
 check(bodyguard_failure ~= nil and
       bodyguard_failure.event_id == "party_wipe_bodyguard_failure" and
       bodyguard_failure.clear_high_effects and
@@ -170,58 +177,80 @@ check(bodyguard_failure ~= nil and
 -- longword whenever selected, including when it was already clear [C].
 local prior_game = rawget(_G, "game")
 _G.game = { runs = { registry = RunRegistry }, state = {} }
-RunRegistry.active_offer = { source_run_type = E.RunType.BODYGUARD_ESCORT }
-local sweep_pending = P.prepare_run_failure_flat(false, true)
-check(sweep_pending[2] == 1 and sweep_pending[5] == 1 and
-      sweep_pending[6] == 1,
-      "0x1DED8 requests FFFC3C clear after receiving a pending marker")
-RunRegistry.active_offer = { source_run_type = E.RunType.BODYGUARD_ESCORT }
-local sweep_clear = P.prepare_run_failure_flat(false, false)
-check(sweep_clear[2] == 1 and sweep_clear[5] == 1 and
-      sweep_clear[6] == 0,
-      "0x1DED8 still requests FFFC3C clear when the marker is already clear")
+RunRegistry.active_offer = { id = "bodyguard_escort" }
+local sweep_pending = P.prepare_run_failure({
+    world_activity_scene_reset = false,
+})
+check(sweep_pending.clear_high_effects and
+      sweep_pending.clear_player_spawn_request and
+      not sweep_pending.clear_world_activity_request,
+      "0x1DED8 requests high-effect and spawn-template clears")
+RunRegistry.active_offer = { id = "bodyguard_escort" }
+local sweep_clear = P.prepare_run_failure({
+    world_activity_scene_reset = false,
+})
+check(sweep_clear.clear_high_effects and
+      sweep_clear.clear_player_spawn_request and
+      not sweep_clear.clear_world_activity_request,
+      "0x1DED8 requests the same clears without pending host state")
 _G.game = prior_game
 
-local delivery_failure = P.run_failure_flat(
-    E.RunType.PACKAGE_DELIVERY, E.RunContextFlag.ACTIVE)
+local delivery_failure = P.select_run_failure({
+    run_id = "package_delivery",
+    active = true,
+    employee_failure_guard = false,
+})
 check(delivery_failure ~= nil and
       delivery_failure.event_id == "party_wipe_package_failure" and
       delivery_failure.clear_run_objective and
       not delivery_failure.clear_high_effects and
       not delivery_failure.clear_player_spawn_request and
-      delivery_failure.run_type == E.RunType.PACKAGE_DELIVERY,
+      delivery_failure.run_id == "package_delivery",
       "type 2 active run shows package failure and clears FFFC22 bit 9")
 
-local recovery_failure = P.run_failure_flat(
-    E.RunType.PACKAGE_RECOVERY, E.RunContextFlag.ACTIVE)
+local recovery_failure = P.select_run_failure({
+    run_id = "package_recovery",
+    active = true,
+    employee_failure_guard = false,
+})
 check(recovery_failure ~= nil and
       recovery_failure.event_id == "party_wipe_package_failure" and
       recovery_failure.clear_run_objective and
       not recovery_failure.clear_player_spawn_request,
       "type 4 active run takes the shared type 2 failure path")
 
-check(P.run_failure_flat(E.RunType.BODYGUARD_ESCORT, 0) == nil,
-      "type 1 without FFFC1C bit 0 does not fail a run")
-check(P.run_failure_flat(E.RunType.MATRIX_OBJECTIVE,
-                         E.RunContextFlag.ACTIVE) == nil,
+check(P.select_run_failure({
+          run_id = "bodyguard_escort",
+          active = false,
+          employee_failure_guard = false,
+      }) == nil,
+      "inactive bodyguard run does not show a failure page")
+check(P.select_run_failure({
+          run_id = "matrix_objective",
+          active = true,
+          employee_failure_guard = false,
+      }) == nil,
       "type 6 has no C64C run-failure branch")
-check(P.run_failure_flat(E.RunType.NONE, 0) == nil,
+check(P.select_run_failure({
+          run_id = "none",
+          active = false,
+          employee_failure_guard = false,
+      }) == nil,
       "no active run skips run-failure presentation")
 
--- Registry active offers are the Lua model of FFFBED and FFFC1C [H mapping].
+-- Registry active offers are the semantic run state used by recovery. Their
+-- source type and context encodings stay at the import/host boundary [C].
 RunRegistry.active_offer = {
-    source_run_type = E.RunType.EMPLOYEE_RECRUITMENT,
+    id = "employee_recruitment",
 }
 local run_state = RunRegistry.party_wipe_failure_state(false)
-check(run_state.run_type == E.RunType.EMPLOYEE_RECRUITMENT and
-      run_state.flags == E.RunContextFlag.ACTIVE,
-      "accepted source offer publishes active FFFC1C state")
+check(run_state.run_id == "employee_recruitment" and
+      run_state.active and not run_state.employee_failure_guard,
+      "accepted employee run publishes active gameplay state")
 run_state = RunRegistry.party_wipe_failure_state(true)
-check(run_state.flags ==
-          (E.RunContextFlag.ACTIVE |
-           E.RunContextFlag.EMPLOYEE_FAILURE_GUARD),
-      "FFE18F scene reset publishes FFFC1C bit 7")
-check(P.run_failure_flat(run_state.run_type, run_state.flags) == nil,
+check(run_state.employee_failure_guard,
+      "world-activity scene reset suppresses employee failure")
+check(P.select_run_failure(run_state) == nil,
       "typed scene-reset state suppresses the active type-5 wipe page")
 RunRegistry.clear_active_offer_after_party_wipe()
 check(RunRegistry.active_offer == nil,

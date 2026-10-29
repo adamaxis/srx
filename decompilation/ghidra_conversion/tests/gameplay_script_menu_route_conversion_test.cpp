@@ -146,9 +146,8 @@ ScriptPersistentValue current_package_run_state() {
                   persistent_string("package_delivered_safely"));
     offer.emplace("runner_progress_delta", persistent_integer(1));
     offer.emplace("offer_variant_id", persistent_string("package_delivery"));
-    offer.emplace("source_offer_context", persistent_integer(0));
-    offer.emplace("source_run_type", persistent_integer(2));
-    offer.emplace("context", persistent_integer(0));
+    offer.emplace("contact_id", persistent_string("jump_house"));
+    offer.emplace("context", persistent_string("jump_house"));
     offer.emplace("route", persistent_object(std::move(route)));
     offer.emplace("payment", persistent_object(std::move(payment)));
     Object saved;
@@ -807,14 +806,14 @@ int main() {
               route.top_notebook_current_run.has_value() &&
               route.top_notebook_current_run->offer_variant_id ==
                   "package_delivery" &&
-              route.top_notebook_current_run->context == 0 &&
-              route.top_notebook_current_run->run_type == 2 &&
+              route.top_notebook_current_run->contact_id == "jump_house" &&
+              route.top_notebook_current_run->run_id == "package_delivery" &&
               route.top_notebook_current_run->johnson_name ==
                   "Mr. Gunderson" &&
               route.top_notebook_current_run->run_type_name == "Courier" &&
               route.top_notebook_current_run->payment_amount == 55 &&
               !route.top_notebook_current_run->body_lines.empty(),
-          "accepted offer maps live source fields into a typed Current Run view",
+          "accepted offer maps semantic identities into the Current Run view",
           failures);
     if (route.top_notebook_current_run.has_value()) {
         std::string body;

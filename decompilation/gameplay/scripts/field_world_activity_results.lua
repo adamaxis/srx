@@ -1,7 +1,7 @@
 -- Presentation and run-state changes for the 0x1F16A extraction-result
 -- callback. C++ supplies the typed callback result and owns field actor cleanup.
-local E = require("enums")
 local StoryState = require("story_state")
+local E = require("enums")
 
 local Results = {}
 
@@ -9,15 +9,16 @@ local function advance_renraku_escalation_if_eligible()
     local registry = game.runs.registry
     local offer = type(registry) == "table" and registry.active_offer or nil
     if type(offer) ~= "table" or
-       (offer.source_run_type ~= E.RunType.PACKAGE_RECOVERY and
-        offer.source_run_type ~= E.RunType.EMPLOYEE_RECRUITMENT) then
+       (offer.id ~= E.RunId.PACKAGE_RECOVERY and
+        offer.id ~= E.RunId.EMPLOYEE_RECRUITMENT) then
         return
     end
 
     local target = type(offer.route) == "table" and offer.route.target or nil
     if type(target) == "table" and target.area_id == 5 and
        target.location_id == 6 then
-        -- 0x1F16A advances FFFBFB through 0x1F1E0 only for run type 4/5
+        -- 0x1F16A advances FFFBFB through 0x1F1E0 only for package recovery
+        -- and employee recruitment
         -- when the selected target is FFFBEE/FFFBEF = 5/6. The shared helper
         -- preserves the source upper bound of eight.
         assert(StoryState.increase_strike_team_stage(1),

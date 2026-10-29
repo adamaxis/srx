@@ -34,8 +34,8 @@ struct NotebookMenuState {
     struct CurrentRunState {
         bool open = false;
         std::string offer_variant_id;
-        int context = -1;
-        int run_type = -1;
+        std::string contact_id;
+        std::string run_id;
         int payment_amount = -1;
         std::string johnson_label;
         std::string johnson_name;

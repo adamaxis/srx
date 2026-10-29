@@ -1548,7 +1548,7 @@ int run_field_party_wipe_qa(
             return false;
         }
         if (!field_scene.seed_current_run_for_dump(
-                static_cast<std::uint8_t>(srx::RunType::BODYGUARD_ESCORT))) {
+                "bodyguard_escort")) {
             return false;
         }
         field_scene.set_world_effect_player_spawn_pending_for_dump(true);
@@ -3780,7 +3780,7 @@ int run_field_default_guard_item_action_qa(
         return 3;
     }
     clear_qa_bitmap_artifacts(output, error);
-    if (error || !field_scene.seed_current_run_for_dump(0U)) {
+    if (error || !field_scene.seed_current_run_for_dump("ghoul_bounty")) {
         std::cerr << "Default corp-guard item-action QA: could not prepare "
                      "the new-run scene state\n";
         return 3;
@@ -22733,7 +22733,7 @@ int run_field_pedestrian_scenes_qa(
     constexpr std::uint16_t kGuardNextY = 0x2580U;
     field_scene.set_field_entity_world_position_for_dump(0x1000U,
                                                           0x1000U);
-    if (!field_scene.seed_current_run_for_dump(0U)) {
+    if (!field_scene.seed_current_run_for_dump("ghoul_bounty")) {
         std::cerr << "Pedestrian scenes QA: no-run initializer could not be "
                      "installed for the corp-guard route check\n";
         return 3;
@@ -22896,7 +22896,7 @@ int run_field_pedestrian_scenes_qa(
         FieldWorldActorSlot::slot_9,
     }};
     field_scene.set_field_entity_world_position_for_dump(0x5000U, 0x7000U);
-    if (!field_scene.seed_current_run_for_dump(0U)) {
+    if (!field_scene.seed_current_run_for_dump("ghoul_bounty")) {
         std::cerr << "Pedestrian scenes QA: no-run initializer could not be "
                      "installed for Scene-20 guard patrols\n";
         return 3;
@@ -55509,7 +55509,8 @@ int main(int argc, char** argv) {
                                  "write failed\n";
                     return 3;
                 }
-                if (!field_scene.seed_current_run_for_dump(2U)) {
+                if (!field_scene.seed_current_run_for_dump(
+                        "package_delivery")) {
                     std::cerr << "field secretary dump: accepted Courier "
                                  "source record could not be seeded\n";
                     return 3;
@@ -55522,8 +55523,8 @@ int main(int argc, char** argv) {
                     field_scene.field_menu_route_screen_for_dump() != 41U ||
                     !current_run_view.open ||
                     current_run_view.offer_variant_id != "package_delivery" ||
-                    current_run_view.context != 0 ||
-                    current_run_view.run_type != 2 ||
+                    current_run_view.contact_id != "jump_house" ||
+                    current_run_view.run_id != "package_delivery" ||
                     current_run_view.payment_amount != 55 ||
                     current_run_view.johnson_name != "Mr. Gunderson" ||
                     current_run_view.run_type_name != "Courier" ||
@@ -55693,8 +55694,16 @@ int main(int argc, char** argv) {
                                  "asset could not be loaded\n";
                     return 3;
                 }
-                constexpr std::array<std::uint8_t, 7> current_run_contexts{
-                    0U, 1U, 0U, 2U, 3U, 1U, 4U};
+                constexpr std::array<std::string_view, 7>
+                    current_run_contacts{
+                        "jump_house", "matchstick", "jump_house",
+                        "big_rhino", "wanderer", "matchstick",
+                        "icarus_descending"};
+                constexpr std::array<std::string_view, 7> current_run_ids{
+                    "ghoul_bounty", "bodyguard_escort",
+                    "package_delivery", "gang_contract",
+                    "package_recovery", "employee_recruitment",
+                    "matrix_objective"};
                 constexpr std::array<std::string_view, 7>
                     current_run_variant_ids{
                         "ghoul_bounty", "bodyguard_escort",
@@ -55720,13 +55729,14 @@ int main(int argc, char** argv) {
                         "Escort my client to", "Ares Weapon Emporium",
                         "Eye Fivers", "A package was taken",
                         "An employee of", "Aztechnology"};
-                for (std::uint8_t run_type = 0U; run_type <= 6U;
-                     ++run_type) {
+                for (std::size_t run_index = 0U;
+                     run_index < current_run_ids.size(); ++run_index) {
                     if (!field_scene.seed_current_run_for_dump(
-                            run_type, run_type == 6U)) {
+                            current_run_ids[run_index],
+                            current_run_ids[run_index] == "matrix_objective")) {
                         std::cerr << "field secretary dump: could not seed "
-                                     "accepted source run type "
-                                  << static_cast<unsigned>(run_type) << '\n';
+                                     "accepted run "
+                                  << current_run_ids[run_index] << '\n';
                         return 3;
                     }
                     tap_qa_controller_button(field_scene, 0x40U);
@@ -55734,26 +55744,25 @@ int main(int argc, char** argv) {
                         .pocket_secretary_notebook_current_run_for_dump();
                     if (!type_view.open ||
                         type_view.offer_variant_id !=
-                            current_run_variant_ids[run_type] ||
-                        type_view.context != current_run_contexts[run_type] ||
-                        type_view.run_type != run_type ||
+                            current_run_variant_ids[run_index] ||
+                        type_view.contact_id !=
+                            current_run_contacts[run_index] ||
+                        type_view.run_id != current_run_ids[run_index] ||
                         type_view.payment_amount !=
-                            current_run_payments[run_type] ||
+                            current_run_payments[run_index] ||
                         type_view.johnson_name !=
-                            current_run_johnsons[run_type] ||
+                            current_run_johnsons[run_index] ||
                         type_view.run_type_name !=
-                            current_run_type_names[run_type] ||
+                            current_run_type_names[run_index] ||
                         type_view.body_lines.empty() ||
                         type_view.body_lines.size() > 16U) {
-                        std::cerr << "field secretary dump: Current Run type "
-                                  << static_cast<unsigned>(run_type)
+                        std::cerr << "field secretary dump: Current Run "
+                                  << current_run_ids[run_index]
                                   << " has the wrong typed source view: open="
                                   << type_view.open << " variant="
                                   << type_view.offer_variant_id
-                                  << " context="
-                                  << static_cast<unsigned>(type_view.context)
-                                  << " run_type="
-                                  << static_cast<unsigned>(type_view.run_type)
+                                  << " contact=" << type_view.contact_id
+                                  << " run_id=" << type_view.run_id
                                   << " payment=" << type_view.payment_amount
                                   << " Johnson=" << type_view.johnson_name
                                   << " type_name=" << type_view.run_type_name
@@ -55766,23 +55775,24 @@ int main(int argc, char** argv) {
                         if (line.size() > 27U) {
                             std::cerr << "field secretary dump: Current Run "
                                          "type "
-                                      << static_cast<unsigned>(run_type)
+                                      << current_run_ids[run_index]
                                       << " exceeds the ROM text scan width\n";
                             return 3;
                         }
                         type_body += line;
                         type_body.push_back(' ');
                     }
-                    if (type_body.find(current_run_body_tokens[run_type]) ==
+                    if (type_body.find(
+                            current_run_body_tokens[run_index]) ==
                             std::string::npos) {
                         std::cerr << "field secretary dump: Current Run type "
-                                  << static_cast<unsigned>(run_type)
+                                  << current_run_ids[run_index]
                                   << " does not display its source body\n";
                         return 3;
                     }
                     const auto type_scene = render_secretary_scene();
                     auto payment_text = std::to_string(
-                        current_run_payments[run_type]);
+                        current_run_payments[run_index]);
                     if (payment_text.size() > 3U) {
                         payment_text.insert(payment_text.size() - 3U, 1U, ',');
                     }
@@ -55807,7 +55817,7 @@ int main(int argc, char** argv) {
                         !source_menu_caption_matches(
                             type_scene, current_run_font, 144, 48, "$")) {
                         std::cerr << "field secretary dump: Current Run type "
-                                  << static_cast<unsigned>(run_type)
+                                  << current_run_ids[run_index]
                                   << " header or amount pixels do not match "
                                      "the typed source view\n";
                         return 3;
@@ -55821,20 +55831,20 @@ int main(int argc, char** argv) {
                                 64 + static_cast<int>(line) * 8, text)) {
                             std::cerr
                                 << "field secretary dump: Current Run type "
-                                << static_cast<unsigned>(run_type)
+                                << current_run_ids[run_index]
                                 << " body line " << line
                                 << " pixel layout does not match its typed "
                                    "source string\n";
                             return 3;
                         }
                     }
-                    const auto type_name = std::string("type-") +
-                        std::to_string(static_cast<unsigned>(run_type));
+                    const auto type_name = std::string("run-") +
+                        std::string(current_run_ids[run_index]);
                     if (!save_notebook_record_scene(
                             "current-run", type_name, type_scene)) {
                         std::cerr << "field secretary dump: could not save "
                                      "Current Run type "
-                                  << static_cast<unsigned>(run_type)
+                                  << current_run_ids[run_index]
                                   << " actual.bmp\n";
                         return 3;
                     }
@@ -55852,7 +55862,7 @@ int main(int argc, char** argv) {
                             "current-run", type_name + "-return",
                             type_return_scene)) {
                         std::cerr << "field secretary dump: Current Run type "
-                                  << static_cast<unsigned>(run_type)
+                                  << current_run_ids[run_index]
                                   << " failed its clean Notebook return\n";
                         return 3;
                     }

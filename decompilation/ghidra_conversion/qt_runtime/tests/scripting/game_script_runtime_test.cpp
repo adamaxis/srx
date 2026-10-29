@@ -674,10 +674,10 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                              std::ios::binary);
         plugin << "local Probe = { new_game_weight = 1,\n"
                   "  new_game_payment = { base_payment = 40, negotiation_scale = 1 } }\n"
-                  "function Probe.prepare_offer(context)\n"
+                  "function Probe.prepare_offer(contact_id)\n"
                   "  local offer = game.modules.run_support.new_offer(\n"
                   "    'dynamic_probe', 'test', 'probe', 'probe_complete')\n"
-                  "  offer.context = context\n"
+                  "  offer.contact_id = contact_id\n"
                   "  game.runs.registry.current_offer = offer\n"
                   "  return offer.id\n"
                   "end\n"
@@ -1023,6 +1023,93 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
                         std::optional<std::string>{"employee_recruitment"},
                 "accepted variant did not preserve its semantic identity")) {
         std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+
+    const auto contact_id =
+        scripts.johnson_interaction_contact_id(text_profile);
+    auto saved_registry = scripts.save_run_registry_state();
+    auto* saved_fields = saved_registry.has_value()
+        ? std::get_if<ScriptPersistentValue::Object>(
+              &saved_registry->value)
+        : nullptr;
+    ScriptPersistentValue::Object* active_offer = nullptr;
+    if (saved_fields != nullptr) {
+        const auto active_offer_field = saved_fields->find("active_offer");
+        if (active_offer_field != saved_fields->end()) {
+            active_offer = std::get_if<ScriptPersistentValue::Object>(
+                &active_offer_field->second.value);
+        }
+    }
+    std::optional<std::int64_t> legacy_contact;
+    if (contact_id == std::optional<std::string>{"jump_house"}) {
+        legacy_contact = 0;
+    } else if (contact_id == std::optional<std::string>{"matchstick"}) {
+        legacy_contact = 1;
+    } else if (contact_id == std::optional<std::string>{"big_rhino"}) {
+        legacy_contact = 2;
+    } else if (contact_id == std::optional<std::string>{"wanderer"}) {
+        legacy_contact = 3;
+    } else if (contact_id ==
+               std::optional<std::string>{"icarus_descending"}) {
+        legacy_contact = 4;
+    }
+    if (!expect(active_offer != nullptr && legacy_contact.has_value(),
+                "accepted run did not save its semantic contact identity")) {
+        return false;
+    }
+    const auto legacy_integer = [](const std::int64_t number) {
+        ScriptPersistentValue result{};
+        result.value = number;
+        return result;
+    };
+    active_offer->erase("contact_id");
+    active_offer->emplace("source_run_type", legacy_integer(5));
+    active_offer->emplace("source_offer_context",
+                          legacy_integer(*legacy_contact));
+    active_offer->emplace("context", legacy_integer(*legacy_contact));
+    if (!expect(scripts.validate_run_registry_state(*saved_registry) &&
+                    scripts.restore_run_registry_state(*saved_registry) &&
+                    scripts.active_run_offer_variant_id() ==
+                        std::optional<std::string>{expected_variant_id},
+                "legacy run bytes were not migrated to semantic identities "
+                "at the native save boundary")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+    const auto migrated_registry = scripts.save_run_registry_state();
+    const auto* migrated_fields = migrated_registry.has_value()
+        ? std::get_if<ScriptPersistentValue::Object>(
+              &migrated_registry->value)
+        : nullptr;
+    const auto migrated_offer_field = migrated_fields == nullptr
+        ? ScriptPersistentValue::Object::const_iterator{}
+        : migrated_fields->find("active_offer");
+    const auto* migrated_offer = migrated_fields != nullptr &&
+            migrated_offer_field != migrated_fields->end()
+        ? std::get_if<ScriptPersistentValue::Object>(
+              &migrated_offer_field->second.value)
+        : nullptr;
+    const auto saved_string = [migrated_offer](const char* key)
+        -> const std::string* {
+        if (migrated_offer == nullptr) return nullptr;
+        const auto field = migrated_offer->find(key);
+        return field == migrated_offer->end()
+            ? nullptr
+            : std::get_if<std::string>(&field->second.value);
+    };
+    if (!expect(migrated_offer != nullptr &&
+                    saved_string("id") != nullptr &&
+                    *saved_string("id") == "employee_recruitment" &&
+                    saved_string("contact_id") != nullptr &&
+                    *saved_string("contact_id") == *contact_id &&
+                    migrated_offer->find("source_run_type") ==
+                        migrated_offer->end() &&
+                    migrated_offer->find("source_offer_context") ==
+                        migrated_offer->end() &&
+                    migrated_offer->find("context") ==
+                        migrated_offer->end(),
+                "restored run state retained only semantic identity fields")) {
         return false;
     }
 
@@ -3762,21 +3849,26 @@ int main() {
     scripts.set_story_state({});
 
     const auto jump_house_context =
-        scripts.johnson_interaction_context("gunderson.jump_house");
+        scripts.johnson_interaction_contact_id("gunderson.jump_house");
     const auto wanderer_context =
-        scripts.johnson_interaction_context("wanderer.vigore_jarl");
+        scripts.johnson_interaction_contact_id("wanderer.vigore_jarl");
     const auto big_rhino_context =
-        scripts.johnson_interaction_context("big-rhino.mortimer_reed");
-    const auto caleb_context = scripts.johnson_interaction_context(
+        scripts.johnson_interaction_contact_id("big-rhino.mortimer_reed");
+    const auto caleb_context = scripts.johnson_interaction_contact_id(
         "icarus-descending.caleb_brightmore");
-    const auto julius_context = scripts.johnson_interaction_context(
+    const auto julius_context = scripts.johnson_interaction_contact_id(
         "matchstick.julius_strouther");
-    if (!expect(jump_house_context == std::optional<std::uint8_t>{0U} &&
-                    wanderer_context == std::optional<std::uint8_t>{3U} &&
-                    big_rhino_context == std::optional<std::uint8_t>{2U} &&
-                    caleb_context == std::optional<std::uint8_t>{4U} &&
-                    julius_context == std::optional<std::uint8_t>{1U},
-                "Johnson return context was not selected by its Lua profile")) {
+    if (!expect(jump_house_context ==
+                        std::optional<std::string>{"jump_house"} &&
+                    wanderer_context ==
+                        std::optional<std::string>{"wanderer"} &&
+                    big_rhino_context ==
+                        std::optional<std::string>{"big_rhino"} &&
+                    caleb_context ==
+                        std::optional<std::string>{"icarus_descending"} &&
+                    julius_context ==
+                        std::optional<std::string>{"matchstick"},
+                "Johnson contact identity was not selected by its Lua profile")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }

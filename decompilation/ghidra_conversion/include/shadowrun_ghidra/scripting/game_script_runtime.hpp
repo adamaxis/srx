@@ -464,8 +464,8 @@ struct ScriptMatrixLogoutVisual {
 
 struct ScriptNotebookCurrentRunView {
     std::string offer_variant_id;
-    int context = -1;
-    int run_type = -1;
+    std::string contact_id;
+    std::string run_id;
     int payment_amount = -1;
     std::string johnson_label;
     std::string johnson_name;
@@ -1157,6 +1157,25 @@ struct ScriptPartyRunnerRefreshDecision {
     ScriptPartyMemberRole active_role = ScriptPartyMemberRole::leader;
     std::array<bool, 3> selection_pending{};
     bool active_role_changed = false;
+};
+
+enum class ScriptPartyWipeObjectiveResult : std::uint8_t {
+    unchanged,
+    cleared,
+    unavailable,
+};
+
+struct ScriptPartyWipeRunFailureContext {
+    bool world_activity_scene_reset = false;
+};
+
+struct ScriptPartyWipeRunFailureDecision {
+    bool page_pending = false;
+    bool clear_high_effects = false;
+    bool clear_world_activity_request = false;
+    ScriptPartyWipeObjectiveResult objective_result =
+        ScriptPartyWipeObjectiveResult::unchanged;
+    bool clear_player_spawn_request = false;
 };
 
 enum class ScriptActorSpellFieldEffectKind : std::uint8_t {
@@ -1949,8 +1968,8 @@ public:
     std::optional<ScriptRunActorDefeatDecision>
     resolve_active_run_actor_defeat(const ScriptActorDefeatFacts& facts);
     std::optional<ScriptRunJohnsonReturnDecision>
-    resolve_active_run_johnson_return(std::uint8_t context);
-    std::optional<std::uint8_t> johnson_interaction_context(
+    resolve_active_run_johnson_return(std::string_view contact_id);
+    std::optional<std::string> johnson_interaction_contact_id(
         std::string_view text_profile);
     std::optional<ScriptPersistentValue> save_run_registry_state();
     bool validate_run_registry_state(const ScriptPersistentValue& state);
@@ -2040,6 +2059,9 @@ public:
         const ScriptPartyWipeRecoveryContext& context);
     std::optional<ScriptPartyRunnerRefreshDecision> party_runner_refresh(
         const ScriptPartyRunnerRefreshContext& context);
+    std::optional<ScriptPartyWipeRunFailureDecision>
+    prepare_party_wipe_run_failure(
+        const ScriptPartyWipeRunFailureContext& context);
     std::optional<ScriptActorBehaviorDecision> actor_heartbeat(
         const ScriptActorBehaviorContext& context);
     std::optional<ScriptActorTargetListRebuildDecision>

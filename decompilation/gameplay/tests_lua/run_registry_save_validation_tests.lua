@@ -26,7 +26,7 @@ local function matrix_state()
     }
 end
 
-local function source_offer(context, row, skill, roll)
+local function source_offer(contact_id, row, skill, roll)
     local resolved = OfferData.run_by_variant_id[row.variant_id]
     local bound = row.negotiation_scale * skill + 1
     local offer = {
@@ -36,9 +36,7 @@ local function source_offer(context, row, skill, roll)
         completion_condition = "source_completion",
         runner_progress_delta = row.runner_progress_delta,
         offer_variant_id = row.variant_id,
-        source_offer_context = context,
-        source_run_type = resolved.type,
-        context = context,
+        contact_id = contact_id,
         payment = {
             base_amount = row.base_payment,
             negotiated_amount = row.base_payment + roll * 5,
@@ -47,7 +45,7 @@ local function source_offer(context, row, skill, roll)
             negotiation_roll = roll,
         },
     }
-    if resolved.type == E.RunType.MATRIX_OBJECTIVE then
+    if resolved.id == E.RunId.MATRIX_OBJECTIVE then
         offer.matrix_run_state = matrix_state()
     end
     return offer
@@ -83,20 +81,27 @@ local function copy_offer(original)
     return copy
 end
 
+local contacts = {
+    E.RunContact.JUMP_HOUSE,
+    E.RunContact.MATCHSTICK,
+    E.RunContact.BIG_RHINO,
+    E.RunContact.WANDERER,
+    E.RunContact.ICARUS_DESCENDING,
+}
 local checked = 0
 local courier
-for context = 0, 4 do
-    for _, row in ipairs(OfferData.contexts[context]) do
+for _, contact_id in ipairs(contacts) do
+    for _, row in ipairs(OfferData.contacts[contact_id]) do
         for skill = 0, 12 do
             local bound = row.negotiation_scale * skill + 1
             for _, roll in ipairs({ 0, bound - 1 }) do
-                local offer = source_offer(context, row, skill, roll)
+                local offer = source_offer(contact_id, row, skill, roll)
                 assert(valid(offer), string.format(
-                    "valid source save rejected: context=%d variant=%s " ..
+                    "valid source save rejected: contact=%s variant=%s " ..
                     "skill=%d roll=%d",
-                    context, row.variant_id, skill, roll))
+                    contact_id, row.variant_id, skill, roll))
                 checked = checked + 1
-                if context == E.RunOfferContext.JUMP_HOUSE and
+                if contact_id == E.RunContact.JUMP_HOUSE and
                    row.variant_id == "package_delivery" and
                    row.base_payment == 40 and skill == 3 and roll == 3 then
                     courier = offer
@@ -114,21 +119,20 @@ courier.route = {
     destination = { area_id = 2, location_id = 5 },
 }
 
-local mismatched_context = copy_offer(courier)
-mismatched_context.context = E.RunOfferContext.SCENE_18
-mismatched_context.source_offer_context = E.RunOfferContext.SCENE_18
-assert(not valid(mismatched_context),
-    "a package delivery cannot be restored under another Johnson context")
+local mismatched_contact = copy_offer(courier)
+mismatched_contact.contact_id = E.RunContact.MATCHSTICK
+assert(not valid(mismatched_contact),
+    "a package delivery cannot be restored under another Johnson contact")
 
 local mismatched_variant = copy_offer(courier)
 mismatched_variant.offer_variant_id = "ghoul_bounty"
 assert(not valid(mismatched_variant),
-    "saved offer variant must agree with the selected context row")
+    "saved offer variant must agree with the selected contact row")
 
-local missing_context = copy_offer(courier)
-missing_context.source_offer_context = nil
-assert(not valid(missing_context),
-    "source-backed save must retain its Johnson context")
+local missing_contact = copy_offer(courier)
+missing_contact.contact_id = nil
+assert(not valid(missing_contact),
+    "source-backed save must retain its Johnson contact")
 
 local mismatched_run = copy_offer(courier)
 mismatched_run.id = "ghoul_bounty"
@@ -176,14 +180,14 @@ assert(Registry.validate_saved_state(accepted_save),
     "accepted Courier run must pass source save validation")
 Registry.active_offer = nil
 Registry.restore_saved_state(accepted_save)
-assert(Registry.active_offer.source_offer_context ==
-           E.RunOfferContext.JUMP_HOUSE and
+assert(Registry.active_offer.contact_id ==
+           E.RunContact.JUMP_HOUSE and
        Registry.active_offer.offer_variant_id == "package_delivery" and
        Registry.active_offer.payment.base_amount == 40 and
        Registry.active_offer.payment.negotiated_amount == 55 and
        Support.current_run_view(Registry.active_offer).payment_amount == 55,
-    "save restore must preserve the accepted Current Run context and amount")
+    "save restore must preserve the accepted Current Run contact and amount")
 
 print("run registry save validation passed: " .. tostring(checked) ..
     " source row/rank/roll states; accepted Courier 40 -> 55 persisted; " ..
-    "corrupt context, offer variant, progression, and payment rejected")
+    "corrupt contact, offer variant, progression, and payment rejected")

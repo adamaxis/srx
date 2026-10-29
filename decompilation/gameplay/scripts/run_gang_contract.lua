@@ -17,7 +17,7 @@ local target_actor_groups = {
     },
 }
 
-function GangContract.prepare_offer(context, source_record)
+function GangContract.prepare_offer(contact_id, source_record)
     local support = game.modules.run_support
     local payment = support.negotiate_payment(source_record)
     local target = support.choose_gang_contract_target()
@@ -30,7 +30,7 @@ function GangContract.prepare_offer(context, source_record)
         { target = target },
         payment,
         source_record.runner_progress_delta)
-    offer.context = context
+    offer.contact_id = contact_id
     offer.variant = variant
     game.runs.registry.current_offer = offer
     return offer.id

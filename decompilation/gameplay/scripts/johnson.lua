@@ -40,13 +40,13 @@ end
 local function present_work_offer()
     local profile = game.modules.dialogue.johnson_interaction_profiles[
         game.location.text_profile]
-    assert(profile ~= nil and profile.run_offer_context ~= nil,
-        "this Johnson location has no ROM-derived offer context")
+    assert(profile ~= nil and profile.run_contact_id ~= nil,
+        "this Johnson location has no run-contact profile")
     if profile.work_opening_event ~= nil then
         game.ui.say(profile.work_opening_event)
     end
-    return game.runs.registry.present_offer_for_context(
-        profile.run_offer_context)
+    return game.runs.registry.present_offer_for_contact(
+        profile.run_contact_id)
 end
 
 local function question_choices()
@@ -339,19 +339,19 @@ function Johnson.interaction()
         -- Scene 14 checks FFFC1E bit 16 before its normal first-visit and
         -- Johnson-return paths. It clears context 3 with 0x1E68C, then shows
         -- the blank-profile booth-vacated page with no choices.
-        local context = profile.post_departure_context or
-            profile.run_offer_context
-        game.runs.registry.clear_active_offer_for_context(context)
+        local contact_id = profile.post_departure_contact_id or
+            profile.run_contact_id
+        game.runs.registry.clear_active_offer_for_contact(contact_id)
         game.ui.say(profile.post_departure_event,
             profile.post_departure_speaker,
             profile.post_departure_text_profile)
         return "booth_vacated"
     end
-    local returned_run = profile ~= nil and profile.run_offer_context ~= nil
+    local returned_run = profile ~= nil and profile.run_contact_id ~= nil
         and game.runs.registry.take_pending_johnson_return() or nil
     local first_visit = false
     if returned_run ~= nil then
-        assert(returned_run.context == profile.run_offer_context,
+        assert(returned_run.contact_id == profile.run_contact_id,
             "pending run return belongs to another Johnson context")
         local run = game.runs[returned_run.run_id]
         assert(type(run) == "table" and

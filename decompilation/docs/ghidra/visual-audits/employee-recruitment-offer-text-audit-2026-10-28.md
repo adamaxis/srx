@@ -26,7 +26,7 @@ screen or the Recruitment hill.
   name and area suffix, the client indexed from `0xF35A6`, `0xF39CD`, and the
   fixed follow-up appended at `0x1E9AC` from `0xF39EC`. It changes the suffix
   terminator to a comma before inserting the employee name.
-- Runtime flow is `RunRegistry.present_offer_for_context()` to
+- Runtime flow is `RunRegistry.present_offer_for_contact()` to
   `run_employee_recruitment.present_offer()` and `game.ui.say_text()`. The
   accepted typed offer retains the selected `route.target` and `employee_name`.
   `run_support.current_run_view()` formats the related Current Run body

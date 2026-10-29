@@ -332,7 +332,7 @@ Dialogue.vid_phone_contacts = vid_phone_contacts
 -- records supply the return context and optional first-visit facts.
 Dialogue.johnson_interaction_profiles = {
     ["big-rhino.mortimer_reed"] = {
-        run_offer_context = E.RunOfferContext.BIG_RHINO,
+        run_contact_id = E.RunContact.BIG_RHINO,
         information_flow = "big_rhino",
         access_facts = { "mr_johnsons_flag_bit_2" },
         -- ROM scene 11 selects 0x105544 on first contact and 0x105574
@@ -348,7 +348,7 @@ Dialogue.johnson_interaction_profiles = {
         leave_event = "leave",
     },
     ["matchstick.julius_strouther"] = {
-        run_offer_context = E.RunOfferContext.SCENE_18,
+        run_contact_id = E.RunContact.MATCHSTICK,
         information_flow = "julius",
         access_facts = { "mr_johnsons_flag_bit_1" },
         first_visit_fact = "mr_johnsons_flag_bit_5",
@@ -359,25 +359,25 @@ Dialogue.johnson_interaction_profiles = {
         leave_event = "leave",
     },
     ["gunderson.jump_house"] = {
-        run_offer_context = E.RunOfferContext.JUMP_HOUSE,
+        run_contact_id = E.RunContact.JUMP_HOUSE,
         information_flow = "gunderson",
         -- ROM 0x106C99 "Well, ol' Gunderson's got a beauty for you." opens
         -- the work branch before the offer (bfa3908 always said it here).
         work_opening_event = "work-opening",
     },
     ["wanderer.vigore_jarl"] = {
-        run_offer_context = E.RunOfferContext.WANDERER,
+        run_contact_id = E.RunContact.WANDERER,
         first_visit_fact = "wanderer_vigore_jarl_intro_seen",
         first_visit_events = { "first_impression", "first_meeting" },
         post_departure_story_flag = E.StoryFlag.ITO_FIGHT_WON,
-        post_departure_context = E.RunOfferContext.WANDERER,
+        post_departure_contact_id = E.RunContact.WANDERER,
         post_departure_event = "booth_vacated",
         post_departure_speaker = "wanderer_booth_narrator",
         post_departure_text_profile = "wanderer.vigore_jarl",
         run_return_root = "conditional_opening",
     },
     ["icarus-descending.caleb_brightmore"] = {
-        run_offer_context = E.RunOfferContext.ICARUS_DESCENDING,
+        run_contact_id = E.RunContact.ICARUS_DESCENDING,
         access_facts = { "mr_johnsons_flag_bit_4" },
         first_visit_fact = "mr_johnsons_flag_bit_7",
         first_visit_events = { "first_meeting", "first_meeting_continuation" },
