@@ -1,5 +1,6 @@
 #include "world_content_tsv_loader.hpp"
 #include "enums.hpp"
+#include "shadowrun_ghidra/scripting/weapon_action_policy.hpp"
 
 #include <algorithm>
 #include <array>
@@ -231,6 +232,76 @@ bool numeric_column(const std::string_view name,
            numeric_columns.end();
 }
 
+bool read_source_byte(const TsvDocument& document,
+                      const std::vector<std::string>& row,
+                      const std::string_view column,
+                      const std::filesystem::path& source_path,
+                      const std::size_t row_number, std::uint8_t& result,
+                      std::string& failure) {
+    lua_Integer parsed = 0;
+    if (!parse_integer(value_at(document, row, column), parsed) ||
+        parsed < 0 || parsed > 0xFF) {
+        failure = source_path.string() + ": row " +
+                  std::to_string(row_number) + " column " +
+                  std::string(column) + " is not a source byte";
+        return false;
+    }
+    result = static_cast<std::uint8_t>(parsed);
+    return true;
+}
+
+bool push_weapon_action_policies(
+    lua_State* state, const TsvDocument& document,
+    const std::vector<std::string>& row,
+    const std::filesystem::path& source_path,
+    const std::size_t row_number, std::string& failure) {
+    if (document.column_indexes.find("combat_item_phase_0") ==
+        document.column_indexes.end()) {
+        return true;
+    }
+    std::array<std::uint8_t, 12> source_modifiers{};
+    for (std::size_t index = 0U; index < 8U; ++index) {
+        const auto column = "combat_item_phase_" + std::to_string(index);
+        if (!read_source_byte(document, row, column, source_path, row_number,
+                              source_modifiers[index], failure)) {
+            return false;
+        }
+    }
+    constexpr std::array<std::string_view, 4> extended_columns{{
+        "combat_action_phase_76", "combat_action_phase_77",
+        "combat_action_phase_78", "combat_action_phase_79"}};
+    for (std::size_t index = 0U; index < extended_columns.size(); ++index) {
+        if (!read_source_byte(document, row, extended_columns[index],
+                              source_path, row_number,
+                              source_modifiers[index + 8U], failure)) {
+            return false;
+        }
+    }
+
+    lua_createtable(state, 0,
+                    static_cast<int>(kScriptWeaponActionIds.size()));
+    const auto policies_index = lua_absindex(state, -1);
+    for (std::size_t index = 0U; index < kScriptWeaponActionIds.size();
+         ++index) {
+        const auto action_id = kScriptWeaponActionIds[index];
+        const auto policy = script_weapon_action_policy(
+            action_id, source_modifiers[index]);
+        lua_createtable(state, 0, 3);
+        const auto skill_group =
+            script_weapon_skill_group_name(policy.skill_group);
+        lua_pushlstring(state, skill_group.data(), skill_group.size());
+        lua_setfield(state, -2, "skill_group");
+        lua_pushinteger(state, policy.difficulty_adjustment);
+        lua_setfield(state, -2, "difficulty_adjustment");
+        lua_pushboolean(state, policy.benefits_from_targeting_assist);
+        lua_setfield(state, -2, "benefits_from_targeting_assist");
+        const auto action_name = script_weapon_action_name(action_id);
+        lua_setfield(state, policies_index, action_name.data());
+    }
+    lua_setfield(state, -2, "weapon_action_policies");
+    return true;
+}
+
 std::string_view lua_column_name(
     const std::string_view tsv_column,
     const std::vector<std::pair<std::string_view, std::string_view>>& aliases) {
@@ -258,6 +329,19 @@ bool push_record(lua_State* state, const TsvDocument& document,
         // traits and interaction rules built below, never the packed byte.
         if (column == "source_spawn_state_flags" ||
             column == "source_interaction_flags") {
+            continue;
+        }
+        if (column.rfind("combat_action_phase_", 0U) == 0U) {
+            if (column == "combat_action_phase_7f") {
+                std::uint8_t magic_cap = 0U;
+                if (!read_source_byte(document, row, column, source_path,
+                                      row_number, magic_cap, failure)) {
+                    lua_pop(state, 1);
+                    return false;
+                }
+                lua_pushinteger(state, magic_cap);
+                lua_setfield(state, table_index, "combat_magic_cap");
+            }
             continue;
         }
         const auto value = value_at(document, row, column);
@@ -302,6 +386,12 @@ bool push_record(lua_State* state, const TsvDocument& document,
         }
         const auto destination = lua_column_name(column, aliases);
         lua_setfield(state, table_index, std::string(destination).c_str());
+    }
+
+    if (!push_weapon_action_policies(state, document, row, source_path,
+                                     row_number, failure)) {
+        lua_pop(state, 1);
+        return false;
     }
 
     const auto push_actor_group = [state](

@@ -402,6 +402,16 @@ local function copy_combatant(record)
                 values[name] = number
             end
             copy[key] = values
+        elseif key == "weapon_action_policies" then
+            local policies = {}
+            for action_id, policy in pairs(value) do
+                local policy_copy = {}
+                for name, item in pairs(policy) do
+                    policy_copy[name] = item
+                end
+                policies[action_id] = policy_copy
+            end
+            copy[key] = policies
         elseif type(value) == "table" then
             local array = {}
             for index, item in ipairs(value) do
@@ -586,8 +596,7 @@ local function resolve_spell_action(context, target, allow_untargeted)
 
     local skill = item18_skill_value(attacker)
     local initial_trials = posture_reduction(skill, attacker.posture)
-    initial_trials = math.min(
-        initial_trials, attacker.action_phase_extension[10] or 0)
+    initial_trials = math.min(initial_trials, attacker.magic_cap or 0)
     initial_trials = add_source_byte_to_word(
         initial_trials, attacker.force or
             attacker.auxiliary_roll_bonus or 0)
@@ -1075,20 +1084,16 @@ local function source_byte_at_least(left, right)
     return (((left - right) & 0xff) & 0x80) == 0
 end
 
-local function weapon_action_skill_value(attacker, action_code,
+local function weapon_action_skill_value(attacker, skill_group,
                                          posture_component)
     local skills = attacker.skills
     if type(skills) ~= "table" or
        type(skills.firearms) ~= "number" or
-       type(skills.pistols) ~= "number" or
-       type(skills.smgs) ~= "number" or
-       type(skills.shotguns) ~= "number" then
+       type(skills[skill_group]) ~= "number" then
         return nil
     end
     local selected = skills.firearms
-    local candidate = action_code < 8 and skills.pistols
-        or action_code < 11 and skills.smgs
-        or skills.shotguns
+    local candidate = skills[skill_group]
     if not source_byte_at_least(selected, candidate) then
         selected = candidate
     end
@@ -1099,30 +1104,14 @@ local function weapon_action_skill_value(attacker, action_code,
     return result == 0 and 1 or result
 end
 
-local function weapon_action_eligibility(difficulty, attacker,
-                                         action_code)
-    local phase
-    if action_code <= #attacker.item_phases then
-        phase = attacker.item_phases[action_code]
-    else
-        local extension_index = action_code - #attacker.item_phases
-        phase = attacker.action_phase_extension[extension_index]
-    end
-    if type(phase) ~= "number" then
+local function weapon_action_eligibility(difficulty, attacker, policy)
+    if type(policy) ~= "table" or
+       type(policy.difficulty_adjustment) ~= "number" or
+       type(policy.benefits_from_targeting_assist) ~= "boolean" then
         return nil
     end
-    if action_code >= 8 and action_code <= 10 then
-        difficulty = difficulty + 3
-        if (phase & E.WeaponActionPhaseFlag.ACTION_DIFFICULTY_MINUS_TWO) ~= 0 then
-            difficulty = difficulty - 2
-        elseif (phase & E.WeaponActionPhaseFlag.ACTION_DIFFICULTY_MINUS_THREE) ~= 0 then
-            difficulty = difficulty - 3
-        end
-    end
-    if (phase & E.WeaponActionPhaseFlag.ACTION_DIFFICULTY_MINUS_ONE) ~= 0 then
-        difficulty = difficulty - 1
-    end
-    if (phase & E.WeaponActionPhaseFlag.CYBERWARE_DIFFICULTY_BONUS) == 0 then
+    difficulty = difficulty + policy.difficulty_adjustment
+    if not policy.benefits_from_targeting_assist then
         return difficulty
     end
     if (attacker.cyberware_flags & E.CyberwareMask.SMARTLINK) ~= 0 then
@@ -1136,9 +1125,9 @@ local function weapon_action_eligibility(difficulty, attacker,
     return difficulty
 end
 
-local function source_weapon_action(item_code)
+local function source_weapon_action(item_id)
     for _, item in ipairs(game.modules.items.catalog or {}) do
-        if item.code == item_code and item.kind == "firearm" and
+        if item.id == item_id and item.kind == "firearm" and
            type(item.weapon) == "table" and
            type(item.weapon.source_action) == "table" then
             return item.weapon.source_action
@@ -1150,13 +1139,16 @@ end
 function Combat.resolve_weapon_attack_seed(context)
     if type(context) ~= "table" or type(context.combatant) ~= "table" or
        type(context.ai_random_bound) ~= "function" or
-       type(context.projectile_action_code) ~= "number" or
-       context.projectile_action_code < 1 or
-       context.projectile_action_code > 12 then
+       type(context.projectile_action_id) ~= "string" then
         return nil
     end
     local attacker = copy_combatant(context.combatant)
-    local action_code = context.projectile_action_code
+    local action_id = context.projectile_action_id
+    local policies = attacker.weapon_action_policies
+    local policy = type(policies) == "table" and policies[action_id] or nil
+    if type(policy) ~= "table" or type(policy.skill_group) ~= "string" then
+        return nil
+    end
     local empty_child = {
         class_code = 0,
         actor_facts = { interaction = {
@@ -1169,7 +1161,7 @@ function Combat.resolve_weapon_attack_seed(context)
     local average = command_average(attacker)
     local reduced = posture_reduction(average, attacker.posture)
     local trial_count = weapon_action_skill_value(
-        attacker, action_code, reduced)
+        attacker, policy.skill_group, reduced)
     if trial_count == nil then
         return nil
     end
@@ -1180,7 +1172,7 @@ function Combat.resolve_weapon_attack_seed(context)
         return nil
     end
     difficulty = weapon_action_eligibility(
-        difficulty, attacker, action_code)
+        difficulty, attacker, policy)
     if difficulty == nil then
         return nil
     end
@@ -1281,8 +1273,7 @@ function Combat.resolve_weapon_hit(context, projectile, target)
        type(target.source_record_slot) ~= "number" then
         return nil
     end
-    local source_action = source_weapon_action(
-        context.projectile_action_code)
+    local source_action = source_weapon_action(context.projectile_action_id)
     if source_action == nil then
         return nil
     end

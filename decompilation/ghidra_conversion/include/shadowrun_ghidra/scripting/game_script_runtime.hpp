@@ -2,6 +2,7 @@
 
 #include "shadowrun_ghidra/field/field_map_event_system_conversion.hpp"
 #include "shadowrun_ghidra/scripting/dialogue_outcome.hpp"
+#include "shadowrun_ghidra/scripting/weapon_action_policy.hpp"
 
 #include <array>
 #include <filesystem>
@@ -1063,7 +1064,9 @@ struct ScriptCombatantFacts {
     std::uint16_t linked_action_profile_index = 0xFFFFU;
     std::array<std::uint8_t, 8> item_codes{};
     std::array<std::uint8_t, 8> item_phases{};
-    std::array<std::uint8_t, 10> action_phase_extension{}; // live +0x76..+0x7F
+    std::array<ScriptWeaponActionPolicy, 12> weapon_action_policies =
+        default_script_weapon_action_policies();
+    std::uint8_t magic_cap = 0; // live +0x7F; spell action trial cap
 };
 
 struct ScriptActionProfileModifierPair {
@@ -1724,9 +1727,9 @@ struct ScriptActorBehaviorContext {
     // corresponding +0xDF dynamic-profile branch.
     std::array<std::int8_t, 2> action_attribute_selectors{};
     bool combat_meter_service_blocked = false;
-    // The source weapon row copied into projectile +0x57; this is separate
-    // from the actor profile's item/spell action classification above.
-    std::uint8_t projectile_action_code = 0;
+    // Semantic weapon identity copied into projectile +0x57 by the source.
+    // Lua receives the item ID after the host resolves the source code.
+    std::optional<ScriptWeaponActionId> projectile_action;
     // ROM 0x5A94 writes the caster's projected Y to +0x0C and 0x5ABE clears
     // it outside the field window. Unset means the host did not measure it.
     std::optional<bool> source_projection_active;

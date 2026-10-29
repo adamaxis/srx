@@ -169,12 +169,6 @@ E.CombatActionProfileFlag = {
     PRIMARY = 0x01, -- raw 0x01: primary action profile modifier [C]
     SECONDARY = 0x02, -- raw 0x02: secondary action profile modifier [C]
 }
-E.WeaponActionPhaseFlag = {
-    CYBERWARE_DIFFICULTY_BONUS = 0x01, -- raw 0x01: applies the cyberware/item difficulty path [C value, H flag name]
-    ACTION_DIFFICULTY_MINUS_ONE = 0x08, -- raw 0x08: subtracts one [C value, H flag name]
-    ACTION_DIFFICULTY_MINUS_TWO = 0x10, -- raw 0x10: action codes 8..10 subtract two [C value, H flag name]
-    ACTION_DIFFICULTY_MINUS_THREE = 0x20, -- raw 0x20: action codes 8..10 subtract three [C value, H flag name]
-}
 E.WeaponClass = { LIGHT_PISTOL = 0, HEAVY_PISTOL = 1, SMG = 2, SHOTGUN = 3, THROWN = 4 }  -- grouping of 0x15318 rows [C]
 E.WeaponSlot  = { NONE = 0x7F }                                                     -- +0x56 [C]
 -- note [C]: 0x13B00 compares against 0x0D, so grenades (0x0D-0x0F) are NOT picked by switch_to_weapon.

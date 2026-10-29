@@ -64,6 +64,15 @@ provide terrain queries and accepted-position commits, audio output, and
 rendering; they do not choose an actor's next behavior or animation. New
 operations can be added one at a time behind this interface.
 
+Combat scripts receive weapon policies keyed by stable item IDs such as
+`ak_97`, with the skill family and resulting difficulty/aiming modifiers
+already resolved. ROM `0x556C6..0x5573E` selects a contiguous modifier byte
+from actor `+0x6E` using the weapon item code; the final four weapon entries
+cross into the source fields at `+0x76..+0x79`. The host decodes that source
+lookup into policies, and exposes `+0x7F` separately as `magic_cap`. Lua no
+longer receives the ten-byte `action_phase_extension` or a numeric projectile
+item code. Inventory item/phase arrays remain a separate unfinished boundary.
+
 ## State and ownership
 
 `game.state` writes update the native story-fact store immediately. The host

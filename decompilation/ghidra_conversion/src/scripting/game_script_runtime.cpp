@@ -629,6 +629,52 @@ bool read_field_signed_integer(lua_State* state, const int table_index,
     return valid;
 }
 
+bool read_weapon_action_policies(
+    lua_State* state, const int combatant_index,
+    std::array<ScriptWeaponActionPolicy, 12>& policies) {
+    lua_getfield(state, combatant_index, "weapon_action_policies");
+    if (!lua_istable(state, -1)) {
+        lua_pop(state, 1);
+        return false;
+    }
+    const auto table_index = lua_absindex(state, -1);
+    bool valid = true;
+    for (std::size_t index = 0U; index < policies.size(); ++index) {
+        const auto action_id = kScriptWeaponActionIds[index];
+        const auto action_name = script_weapon_action_name(action_id);
+        lua_getfield(state, table_index, action_name.data());
+        if (!lua_istable(state, -1)) {
+            lua_pop(state, 1);
+            valid = false;
+            break;
+        }
+        const auto action_index = lua_absindex(state, -1);
+        std::string skill_group;
+        int difficulty_adjustment = 0;
+        bool targeting_assist = false;
+        valid = read_field_string(state, action_index, "skill_group",
+                                  skill_group) &&
+            skill_group == script_weapon_skill_group_name(
+                               script_weapon_skill_group(action_id)) &&
+            read_field_signed_integer(state, action_index,
+                                      "difficulty_adjustment", -3, 3,
+                                      difficulty_adjustment) &&
+            read_field_boolean(state, action_index,
+                               "benefits_from_targeting_assist",
+                               targeting_assist);
+        lua_pop(state, 1);
+        if (!valid) {
+            break;
+        }
+        policies[index] = ScriptWeaponActionPolicy{
+            script_weapon_skill_group(action_id),
+            static_cast<std::int8_t>(difficulty_adjustment),
+            targeting_assist};
+    }
+    lua_pop(state, 1);
+    return valid;
+}
+
 bool valid_identifier(std::string_view value);
 
 bool read_shop_menu_snapshot(lua_State* state, const int table_index,
@@ -7785,7 +7831,8 @@ GameScriptRuntime::world_activity_actors_for_selector(
             read_combatant_byte("action_profile_modifier_flags",
                                 combatant.action_profile_modifier_flags) &&
             read_combatant_byte("auxiliary_roll_bonus",
-                                combatant.auxiliary_roll_bonus);
+                                combatant.auxiliary_roll_bonus) &&
+            read_combatant_byte("magic_cap", combatant.magic_cap);
         if (!combatant_scalars_valid) {
             return fail("world-content actor combat facts are invalid");
         }
@@ -7818,9 +7865,9 @@ GameScriptRuntime::world_activity_actors_for_selector(
             };
         if (!read_combatant_array("item_codes", combatant.item_codes) ||
             !read_combatant_array("item_phases", combatant.item_phases) ||
-            !read_combatant_array("action_phase_extension",
-                                  combatant.action_phase_extension)) {
-            return fail("world-content actor combat arrays are invalid");
+            !read_weapon_action_policies(state, combatant_index,
+                                         combatant.weapon_action_policies)) {
+            return fail("world-content actor combat facts are invalid");
         }
         combatant.interaction_flags =
             interaction_to_source(combatant_interaction);
@@ -8183,6 +8230,8 @@ GameScriptRuntime::resolve_field_encounter_impl(
                                      actor.combatant.skills.melee_combat) &&
                     read_combat_byte("auxiliary_roll_bonus",
                                      actor.combatant.auxiliary_roll_bonus) &&
+                    read_combat_byte("magic_cap",
+                                     actor.combatant.magic_cap) &&
                     read_combat_byte("armor_index",
                                      actor.combatant.armor_index) &&
                     read_combat_byte("class_code",
@@ -8241,9 +8290,9 @@ GameScriptRuntime::resolve_field_encounter_impl(
                                           actor.combatant.item_codes) &&
                         read_combat_array("item_phases",
                                           actor.combatant.item_phases) &&
-                        read_combat_array(
-                            "action_phase_extension",
-                            actor.combatant.action_phase_extension);
+                        read_weapon_action_policies(
+                            state, combat_index,
+                            actor.combatant.weapon_action_policies);
                 }
                 valid_actor = valid_actor && valid_combatant;
             }
@@ -9820,8 +9869,14 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "action_kind");
     lua_pushinteger(state, context.action_code);
     lua_setfield(state, -2, "action_code");
-    lua_pushinteger(state, context.projectile_action_code);
-    lua_setfield(state, -2, "projectile_action_code");
+    if (context.projectile_action.has_value()) {
+        const auto action_name =
+            script_weapon_action_name(*context.projectile_action);
+        lua_pushlstring(state, action_name.data(), action_name.size());
+    } else {
+        lua_pushnil(state);
+    }
+    lua_setfield(state, -2, "projectile_action_id");
     lua_pushinteger(state, context.entry_delay);
     lua_setfield(state, -2, "entry_delay");
     lua_pushboolean(state, context.entry_started);
@@ -10047,8 +10102,7 @@ GameScriptRuntime::actor_heartbeat(
         // exposing its spell meaning directly to Lua.
         set_integer("force", combatant.auxiliary_roll_bonus);
         set_integer("action_result", combatant.action_result);
-        set_integer("roll_count_cap",
-                    combatant.action_phase_extension.back());
+        set_integer("magic_cap", combatant.magic_cap);
         set_integer("armor_index", combatant.armor_index);
         set_integer("race_or_state", combatant.race_or_state);
         set_integer("class_code", combatant.class_code);
@@ -10074,16 +10128,26 @@ GameScriptRuntime::actor_heartbeat(
             lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
         }
         lua_setfield(state, table_index, "item_phases");
-        lua_createtable(
-            state,
-            static_cast<int>(combatant.action_phase_extension.size()), 0);
+        lua_createtable(state, 0,
+                        static_cast<int>(combatant.weapon_action_policies.size()));
+        const auto policies_index = lua_absindex(state, -1);
         for (std::size_t index = 0U;
-             index < combatant.action_phase_extension.size(); ++index) {
-            lua_pushinteger(state,
-                            combatant.action_phase_extension[index]);
-            lua_rawseti(state, -2, static_cast<lua_Integer>(index + 1U));
+             index < combatant.weapon_action_policies.size(); ++index) {
+            const auto action_id = kScriptWeaponActionIds[index];
+            const auto& policy = combatant.weapon_action_policies[index];
+            lua_createtable(state, 0, 3);
+            const auto skill_group =
+                script_weapon_skill_group_name(policy.skill_group);
+            lua_pushlstring(state, skill_group.data(), skill_group.size());
+            lua_setfield(state, -2, "skill_group");
+            lua_pushinteger(state, policy.difficulty_adjustment);
+            lua_setfield(state, -2, "difficulty_adjustment");
+            lua_pushboolean(state, policy.benefits_from_targeting_assist);
+            lua_setfield(state, -2, "benefits_from_targeting_assist");
+            const auto action_name = script_weapon_action_name(action_id);
+            lua_setfield(state, policies_index, action_name.data());
         }
-        lua_setfield(state, table_index, "action_phase_extension");
+        lua_setfield(state, table_index, "weapon_action_policies");
     };
     if (context.combatant.has_value()) {
         push_combatant(*context.combatant);

@@ -50,7 +50,7 @@ local function caster()
             sorcery = 12, firearms = 0, pistols = 0, smgs = 0,
             shotguns = 0, melee_combat = 0,
         },
-        action_phase_extension = { [10] = 20 },
+        magic_cap = 20,
         action_profile_modifier_flags = 0,
         race_or_state = 4,
         class_code = 0,

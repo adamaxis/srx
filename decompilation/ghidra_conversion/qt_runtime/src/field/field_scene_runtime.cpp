@@ -331,11 +331,21 @@ scripting::ScriptCombatantFacts script_combatant_facts(
     facts.linked_action_profile_index = 0xFFFFU;
     facts.item_codes = record.inventory_item_codes;
     facts.item_phases = record.inventory_phase_bytes;
-    facts.action_phase_extension = {
-        record.equipped_armor_index,
-        record.attributes[0], record.attributes[1], record.attributes[2],
-        record.attributes[3], record.attributes[4], record.attributes[5],
-        record.attributes[6], record.attributes[7], record.auxiliary[0]};
+    // ROM 0x556C6 reads the twelve weapon-policy bytes beginning at +0x6E.
+    // The final four happen to overlap armor and attributes at +0x76..+0x79;
+    // expose their decoded action rules instead of that source-layout spill.
+    for (std::size_t index = 0U;
+         index < facts.weapon_action_policies.size(); ++index) {
+        const auto action_id = scripting::kScriptWeaponActionIds[index];
+        const auto source_modifier = index < record.inventory_phase_bytes.size()
+            ? record.inventory_phase_bytes[index]
+            : index == 8U ? record.equipped_armor_index
+            : record.attributes[index - 9U];
+        facts.weapon_action_policies[index] =
+            scripting::script_weapon_action_policy(action_id,
+                                                   source_modifier);
+    }
+    facts.magic_cap = record.auxiliary[0];
     return facts;
 }
 
@@ -2047,12 +2057,26 @@ bool FieldSceneRuntime::load_field_default_actor_assets(
                 actor.combatant.item_phases[index] =
                     parse_byte_field(41U + index);
             }
+            std::array<std::uint8_t, 4> extended_weapon_modifiers{};
             for (std::size_t index = 0U;
-                 index < actor.combatant.action_phase_extension.size();
-                 ++index) {
-                actor.combatant.action_phase_extension[index] =
+                 index < extended_weapon_modifiers.size(); ++index) {
+                extended_weapon_modifiers[index] =
                     parse_byte_field(49U + index);
             }
+            for (std::size_t index = 0U;
+                 index < actor.combatant.weapon_action_policies.size();
+                 ++index) {
+                const auto source_modifier =
+                    index < actor.combatant.item_phases.size()
+                    ? actor.combatant.item_phases[index]
+                    : extended_weapon_modifiers[index -
+                                                 actor.combatant.item_phases.size()];
+                actor.combatant.weapon_action_policies[index] =
+                    scripting::script_weapon_action_policy(
+                        scripting::kScriptWeaponActionIds[index],
+                        source_modifier);
+            }
+            actor.combatant.magic_cap = parse_byte_field(58U);
             actor.combatant.skills.firearms = parse_byte_field(59U);
             actor.combatant.skills.pistols = parse_byte_field(60U);
             actor.combatant.skills.smgs = parse_byte_field(61U);
@@ -11872,7 +11896,9 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         context.profile_id = "weapon_projectile";
         context.entity_kind = record.behavior_defaults.animation_state;
         context.action_kind = scripting::ScriptActorActionKind::none;
-        context.projectile_action_code = record.field_0x57;
+        context.projectile_action =
+            scripting::script_weapon_action_from_source_code(
+                record.field_0x57);
         context.instance_id = instance_id;
         context.initial_heading = record.heading;
         context.spawn = !script_initialized;

@@ -31,6 +31,43 @@ bool expect(const bool condition, const char* message) {
     return condition;
 }
 
+bool verify_weapon_action_policy_translation() {
+    using namespace shadowrun::ghidra_conversion::scripting;
+    struct Case {
+        ScriptWeaponActionId id;
+        std::uint8_t source_modifier;
+        ScriptWeaponSkillGroup skill_group;
+        std::int8_t difficulty_adjustment;
+        bool targeting_assist;
+    };
+    // ROM 0x556C6..0x5573E indexes actor +0x6E by weapon item code - 1.
+    // The code-8..10 branch adds three, prefers bit 4 over bit 5, then
+    // applies bit 3; bit 0 gates the later Smartlink/goggles adjustment.
+    constexpr std::array<Case, 4U> cases{{
+        {ScriptWeaponActionId::streetline_special, 0x09U,
+         ScriptWeaponSkillGroup::pistols, -1, true},
+        {ScriptWeaponActionId::ak_97, 0x39U,
+         ScriptWeaponSkillGroup::smgs, 0, true},
+        {ScriptWeaponActionId::hk227_s, 0x29U,
+         ScriptWeaponSkillGroup::smgs, -1, true},
+        {ScriptWeaponActionId::allegiance, 0x01U,
+         ScriptWeaponSkillGroup::shotguns, 0, true},
+    }};
+    for (const auto& test_case : cases) {
+        const auto policy = script_weapon_action_policy(
+            test_case.id, test_case.source_modifier);
+        if (policy.skill_group != test_case.skill_group ||
+            policy.difficulty_adjustment !=
+                test_case.difficulty_adjustment ||
+            policy.benefits_from_targeting_assist !=
+                test_case.targeting_assist) {
+            return expect(false,
+                          "source weapon modifier did not become semantic action policy");
+        }
+    }
+    return true;
+}
+
 bool verify_field_scene_mode_translation() {
     using namespace shadowrun::ghidra_conversion::scripting;
     struct Case {
@@ -1474,7 +1511,8 @@ int main() {
     using namespace shadowrun::ghidra_conversion;
     using namespace shadowrun::ghidra_conversion::scripting;
 
-    if (!verify_field_scene_mode_translation() ||
+    if (!verify_weapon_action_policy_translation() ||
+        !verify_field_scene_mode_translation() ||
         !verify_mode_one_semantic_fact_translation()) {
         return 1;
     }
@@ -2033,8 +2071,15 @@ int main() {
                 ilene_gate_actors->front().combatant.posture == 2U &&
                 ilene_gate_actors->front().combatant.item_codes[0] == 4U &&
                 ilene_gate_actors->front().combatant.item_codes[4] == 44U &&
-                ilene_gate_actors->front().combatant.action_phase_extension[0] ==
-                    1U &&
+                ilene_gate_actors->front().combatant
+                        .weapon_action_policies[8].skill_group ==
+                    ScriptWeaponSkillGroup::smgs &&
+                ilene_gate_actors->front().combatant
+                        .weapon_action_policies[8].difficulty_adjustment ==
+                    3 &&
+                ilene_gate_actors->front().combatant
+                        .weapon_action_policies[8]
+                        .benefits_from_targeting_assist &&
                 ilene_gate_actors->front().combatant.skills.pistols == 3U &&
                 absent_scene_script_actors.has_value() &&
                 absent_scene_script_actors->empty() &&
@@ -2213,10 +2258,13 @@ int main() {
                         .attributes.intelligence == 6U &&
                 lone_star_sequence->actors[1].combatant
                         .attributes.willpower == 6U &&
+                lone_star_sequence->actors[1].combatant.magic_cap == 6U &&
                 lone_star_sequence->actors[1].combatant
-                        .action_phase_extension ==
-                    std::array<std::uint8_t, 10>{
-                        0U, 3U, 5U, 2U, 5U, 6U, 6U, 5U, 6U, 6U} &&
+                        .weapon_action_policies[8].difficulty_adjustment ==
+                    3 &&
+                !lone_star_sequence->actors[1].combatant
+                     .weapon_action_policies[8]
+                     .benefits_from_targeting_assist &&
                 lone_star_sequence->actors[1].combatant.skills.sorcery == 4U &&
                 lone_star_sequence->actors[1].combatant.skills.firearms == 2U &&
                 lone_star_sequence->actors[1].combatant.skills.pistols == 0U &&
@@ -5585,7 +5633,7 @@ int main() {
     spell_caster.skills.sorcery = 8U;
     spell_caster.race_or_state = 4;
     spell_caster.equipped_action_code = 1U;
-    spell_caster.action_phase_extension[9] = 20U;
+    spell_caster.magic_cap = 20U;
     spell_caster.item_codes[0] = 6U;
     ScriptCombatantFacts spell_target{};
     spell_target.record_type = 0U;
@@ -7783,7 +7831,8 @@ int main() {
     source_weapon_hit.action_result = 0;
     auto source_weapon_hit_context = projectile_behavior_context(
         "field_weapon_slot_combat_hit", source_weapon_hit);
-    source_weapon_hit_context.projectile_action_code = 5U;
+    source_weapon_hit_context.projectile_action =
+        ScriptWeaponActionId::warhawk;
     source_weapon_hit_context.projectile_attack_seed_pending = true;
     ScriptCombatantFacts shooter_facts{};
     shooter_facts.record_type = 0U;
@@ -8126,8 +8175,16 @@ int main() {
             facts.class_code = 0U;
             facts.equipped_action_code = 1U;
             facts.item_codes[0] = 50U;
-            facts.action_phase_extension = {
-                7U, 15U, 10U, 14U, 2U, 8U, 16U, 9U, 6U, 6U};
+            facts.magic_cap = 6U;
+            constexpr std::array<std::uint8_t, 4> thon_weapon_modifiers{{
+                7U, 15U, 10U, 14U}};
+            for (std::size_t index = 0U;
+                 index < thon_weapon_modifiers.size(); ++index) {
+                facts.weapon_action_policies[index + 8U] =
+                    script_weapon_action_policy(
+                        kScriptWeaponActionIds[index + 8U],
+                        thon_weapon_modifiers[index]);
+            }
             facts.skills.firearms = 5U;
             facts.skills.pistols = 0U;
             facts.skills.smgs = 0U;
@@ -8822,7 +8879,8 @@ int main() {
     auto unresolved_weapon_seed = moving_projectile;
     auto unresolved_weapon_context = projectile_behavior_context(
         "field_weapon_slot_unresolved_seed", unresolved_weapon_seed);
-    unresolved_weapon_context.projectile_action_code = 5U;
+    unresolved_weapon_context.projectile_action =
+        ScriptWeaponActionId::warhawk;
     unresolved_weapon_context.projectile_attack_seed_pending = true;
     shooter_facts.action_profile_modifier_flags = 0x01U;
     unresolved_weapon_context.combatant = shooter_facts;
@@ -8923,7 +8981,8 @@ int main() {
     burst_projectile.world_y = 30 * 0x10000 + 0x1357;
     auto linked_projectile_context = projectile_behavior_context(
         "field_weapon_slot_linked", burst_projectile);
-    linked_projectile_context.projectile_action_code = 8U;
+    linked_projectile_context.projectile_action =
+        ScriptWeaponActionId::ak_97;
     linked_projectile_context.combatant =
         source_weapon_hit_context.combatant;
     linked_projectile_context.projectile_animation->increment = 0x270f;
