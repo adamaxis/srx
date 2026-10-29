@@ -6985,18 +6985,6 @@ GameScriptRuntime::world_activity_actors_for_script(
 }
 
 std::optional<std::vector<ScriptWorldActivityActor>>
-GameScriptRuntime::world_activity_actors_for_source_list(
-    const std::uint16_t scene_id, const std::uint32_t list_offset) {
-    if (list_offset > 0x1FFFFFU) {
-        impl_->failure = "world-activity source list is outside ROM bounds";
-        return std::nullopt;
-    }
-    return world_activity_actors_for_selector(
-        scene_id, "list_offset", list_offset, 0x1FFFFFU,
-        "world_activity_actors_for_source_list");
-}
-
-std::optional<std::vector<ScriptWorldActivityActor>>
 GameScriptRuntime::world_activity_actors_for_list_id(
     const std::uint16_t scene_id, const std::string_view list_id) {
     if (list_id.empty() || list_id.size() > 128U) {
@@ -7449,7 +7437,7 @@ GameScriptRuntime::resolve_conditional_actor_selection(
     return decision;
 }
 
-std::optional<std::uint32_t>
+std::optional<std::string>
 GameScriptRuntime::pending_world_activity_actor_list_for_scene(
     const std::uint16_t scene_id, const bool world_effect_active,
     const bool pending_world_effect) {
@@ -7461,7 +7449,7 @@ GameScriptRuntime::pending_world_activity_actor_list_for_scene(
     }
     const auto stack_base = lua_gettop(state);
     const auto fail = [this, state, stack_base](const std::string_view reason)
-        -> std::optional<std::uint32_t> {
+        -> std::optional<std::string> {
         lua_settop(state, stack_base);
         impl_->failure = std::string(reason);
         return std::nullopt;
@@ -7490,14 +7478,14 @@ GameScriptRuntime::pending_world_activity_actor_list_for_scene(
         impl_->failure.clear();
         return std::nullopt;
     }
-    std::uint32_t list_offset = 0U;
-    if (!read_integer(state, -1, 0x1FFFFFU, list_offset)) {
+    std::string list_id;
+    if (!read_string(state, -1, list_id) || !valid_identifier(list_id)) {
         return fail(
-            "world-content pending actor-list selector returned an invalid offset");
+            "world-content pending actor-list selector returned an invalid id");
     }
     lua_settop(state, stack_base);
     impl_->failure.clear();
-    return list_offset;
+    return list_id;
 }
 
 std::optional<std::vector<ScriptWorldActivityActor>>
@@ -8450,7 +8438,64 @@ GameScriptRuntime::field_alarm_profile(const std::uint16_t scene_id) {
             list_address)) {
         return fail("field alarm profile has an invalid reinforcement list");
     }
-    profile.reinforcement_list_address = list_address;
+    if (list_address.has_value()) {
+        lua_getfield(state, content_table, "world_activity_actor_lists");
+        if (!lua_istable(state, -1)) {
+            return fail(
+                "world-content activity actor lists are missing for alarm profile");
+        }
+        const auto actor_lists_table = lua_absindex(state, -1);
+        const auto actor_list_count = lua_rawlen(state, actor_lists_table);
+        std::optional<std::string> activity_id;
+        for (std::size_t index = 0U; index < actor_list_count; ++index) {
+            lua_rawgeti(state, actor_lists_table,
+                        static_cast<lua_Integer>(index + 1U));
+            if (!lua_istable(state, -1)) {
+                return fail(
+                    "world-content activity actor list contains a bad row");
+            }
+            const auto actor_row = lua_absindex(state, -1);
+            std::uint32_t row_scene = 0U;
+            if (!read_field_integer(state, actor_row, "scene", 55U,
+                                    row_scene)) {
+                return fail(
+                    "world-content activity actor has an invalid scene");
+            }
+            if (row_scene == scene_id) {
+                std::uint32_t row_list_offset = 0U;
+                if (!read_field_integer(
+                        state, actor_row, "list_offset",
+                        static_cast<std::uint32_t>(
+                            srx::FieldAlarm::LIST_ADDRESS_MAX),
+                        row_list_offset)) {
+                    return fail(
+                        "world-content activity actor has an invalid source list");
+                }
+                if (row_list_offset == *list_address) {
+                    std::string row_activity_id;
+                    if (!read_field_string(state, actor_row, "list_id",
+                                           row_activity_id) ||
+                        !valid_identifier(row_activity_id)) {
+                        return fail(
+                            "world-content activity actor has an invalid activity id");
+                    }
+                    if (activity_id.has_value() &&
+                        *activity_id != row_activity_id) {
+                        return fail(
+                            "alarm source list maps to multiple activity ids");
+                    }
+                    activity_id = std::move(row_activity_id);
+                }
+            }
+            lua_pop(state, 1);
+        }
+        lua_pop(state, 1);
+        if (!activity_id.has_value()) {
+            return fail(
+                "alarm source list has no semantic activity identity");
+        }
+        profile.reinforcement_activity_id = std::move(activity_id);
+    }
     std::optional<std::uint32_t> expected_region_count;
     if (!read_optional_field_u32(state, profile_table, "region_count", 256U,
                                  expected_region_count) ||
@@ -8522,7 +8567,9 @@ GameScriptRuntime::evaluate_field_alarm(const ScriptFieldAlarmInput& input) {
     if (input.scene_id >
             static_cast<std::uint16_t>(srx::SceneId::FINAL) ||
         input.regions.size() > 256U ||
-        input.actors.size() > 16U) {
+        input.actors.size() > 16U ||
+        (input.reinforcement_activity_id.has_value() &&
+         !valid_identifier(*input.reinforcement_activity_id))) {
         impl_->failure = "field alarm input exceeds its source bounds";
         return std::nullopt;
     }
@@ -8573,12 +8620,13 @@ GameScriptRuntime::evaluate_field_alarm(const ScriptFieldAlarmInput& input) {
         lua_pushnil(state);
         lua_setfield(state, input_table, "rng");
     }
-    if (input.reinforcement_list_address.has_value()) {
-        set_integer("reinforcement_list_address",
-                    *input.reinforcement_list_address);
+    if (input.reinforcement_activity_id.has_value()) {
+        lua_pushlstring(state, input.reinforcement_activity_id->data(),
+                        input.reinforcement_activity_id->size());
+        lua_setfield(state, input_table, "reinforcement_activity_id");
     } else {
         lua_pushnil(state);
-        lua_setfield(state, input_table, "reinforcement_list_address");
+        lua_setfield(state, input_table, "reinforcement_activity_id");
     }
     lua_createtable(state, static_cast<int>(input.regions.size()), 0);
     for (std::size_t index = 0U; index < input.regions.size(); ++index) {
@@ -8690,11 +8738,17 @@ GameScriptRuntime::evaluate_field_alarm(const ScriptFieldAlarmInput& input) {
     } else if (!flag_action.empty()) {
         return fail("field_alarm.tick returned an unknown flag action");
     }
-    if (!read_optional_field_u32(
-            state, result_table, "reinforcement_list_address",
-            static_cast<std::uint32_t>(srx::FieldAlarm::LIST_ADDRESS_MAX),
-            result.reinforcement_list_address)) {
+    std::string reinforcement_activity_id;
+    if (!read_optional_field_string(state, result_table,
+                                    "reinforcement_activity_id",
+                                    reinforcement_activity_id) ||
+        (!reinforcement_activity_id.empty() &&
+         !valid_identifier(reinforcement_activity_id))) {
         return fail("field_alarm.tick returned an invalid actor list");
+    }
+    if (!reinforcement_activity_id.empty()) {
+        result.reinforcement_activity_id =
+            std::move(reinforcement_activity_id);
     }
     lua_getfield(state, result_table, "actors");
     if (!lua_istable(state, -1) || lua_rawlen(state, -1) != input.actors.size()) {

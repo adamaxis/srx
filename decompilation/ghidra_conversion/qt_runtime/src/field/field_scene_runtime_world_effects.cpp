@@ -337,8 +337,8 @@ void FieldSceneRuntime::advance_field_alarm(const bool direct_raise,
     input.reset = reset_alarm;
     input.scene_exit = scene_exit;
     input.regions = std::move(profile->regions);
-    input.reinforcement_list_address =
-        profile->reinforcement_list_address;
+    input.reinforcement_activity_id =
+        profile->reinforcement_activity_id;
     for (const auto& actor : field_default_actors_) {
         if (!actor.active || actor.scene_reference != scene_reference ||
             !actor.source_record_slot.has_value()) {
@@ -422,7 +422,7 @@ void FieldSceneRuntime::apply_field_alarm_result(
     if (!result.spawn_reinforcements) {
         return;
     }
-    if (!result.reinforcement_list_address.has_value()) {
+    if (!result.reinforcement_activity_id.has_value()) {
         source_boundary("field.alarm.reinforcement_data_unresolved");
         return;
     }
@@ -433,8 +433,8 @@ void FieldSceneRuntime::apply_field_alarm_result(
         source_boundary("field.alarm.reinforcement_list_conflict");
         return;
     }
-    auto actors = game_scripts_.world_activity_actors_for_source_list(
-        scene_reference, *result.reinforcement_list_address);
+    auto actors = game_scripts_.world_activity_actors_for_list_id(
+        scene_reference, *result.reinforcement_activity_id);
     if (!actors.has_value() || actors->empty()) {
         failure_ = game_scripts_.failure().empty()
             ? "alarm reinforcement list has no extracted actors"

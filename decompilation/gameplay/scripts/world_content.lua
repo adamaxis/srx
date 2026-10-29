@@ -230,9 +230,9 @@ function World.actor_spawns_in_scene(scene_id)
     return records_in_scene("actor_spawns", scene_id)
 end
 
--- Return one extracted actor list as ordinary host actor descriptors. A
--- caller selects by ROM list offset or world-script index; the lookup consumes
--- extracted scene/list data and never follows ROM pointers at runtime.
+-- Return one extracted actor list as ordinary host actor descriptors. Gameplay
+-- selects by a world-script index or stable activity id; source addresses stay
+-- in the extracted row for the native host to resolve placement data.
 local function world_activity_actor_descriptors(scene_id, selector_field,
                                                 selector)
     local rows = content().world_activity_actor_lists or {}
@@ -240,8 +240,6 @@ local function world_activity_actor_descriptors(scene_id, selector_field,
     for _, row in ipairs(rows) do
         local selector_matches = selector_field == "script_index"
             and row.script_index == selector
-            or selector_field == "list_offset"
-                and row.list_offset == selector
             or selector_field == "list_id"
                 and row.list_id == selector
         if row.scene == scene_id and selector_matches then
@@ -251,7 +249,7 @@ local function world_activity_actor_descriptors(scene_id, selector_field,
                     row.script_index .. ":" .. row.source_order
             else
                 id = "world_activity:" .. scene_id .. ":list:" ..
-                    row.list_offset .. ":" .. row.source_order
+                    row.list_id .. ":" .. row.source_order
             end
             result[#result + 1] = {
                 id = id,
@@ -356,16 +354,6 @@ function World.world_activity_actors_for_script(scene_id, script_index)
     end
     return world_activity_actor_descriptors(scene_id, "script_index",
                                              script_index)
-end
-
-function World.world_activity_actors_for_source_list(scene_id, list_offset)
-    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
-       type(list_offset) ~= "number" or list_offset % 1 ~= 0 or
-       list_offset < 0 then
-        return {}
-    end
-    return world_activity_actor_descriptors(scene_id, "list_offset",
-                                             list_offset)
 end
 
 function World.world_activity_actors_for_list_id(scene_id, list_id)
@@ -631,7 +619,7 @@ function World.pending_world_activity_actor_list_for_scene(
        type(pending_world_effect) ~= "boolean" then
         return nil
     end
-    local selected_list_offset = nil
+    local selected_list_id = nil
     for _, row in ipairs(content().world_activity_actor_lists or {}) do
         local active_gate = row.world_effect_active_gate
         local pending_gate = row.pending_world_effect_gate
@@ -640,14 +628,17 @@ function World.pending_world_activity_actor_list_for_scene(
            type(pending_gate) == "number" and pending_gate >= 0 and
            (active_gate == 1) == world_effect_active and
            (pending_gate == 1) == pending_world_effect then
-            if selected_list_offset ~= nil and
-               selected_list_offset ~= row.list_offset then
+            if type(row.list_id) ~= "string" or row.list_id == "" then
+                error("pending world-activity list is missing its activity id")
+            end
+            if selected_list_id ~= nil and
+               selected_list_id ~= row.list_id then
                 error("ambiguous pending world-activity actor lists")
             end
-            selected_list_offset = row.list_offset
+            selected_list_id = row.list_id
         end
     end
-    return selected_list_offset
+    return selected_list_id
 end
 
 function World.encounter_regions_in_scene(scene_id)

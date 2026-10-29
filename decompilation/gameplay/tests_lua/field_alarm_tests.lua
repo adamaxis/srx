@@ -40,8 +40,7 @@ local function facts(overrides)
                 pedestrian = false, hostile = false,
             } } },
         },
-        reinforcement_list_address =
-            E.FieldAlarmRomLayout.SCENE_21_REINFORCEMENT_LIST,
+        reinforcement_activity_id = "field_alarm_scene_21",
     }
     for key, item in pairs(overrides or {}) do value[key] = item end
     return value
@@ -86,9 +85,10 @@ eq(raised.actors[1].actor_facts.roles.reinforcement, true,
    "fresh alarm preserves the reinforcement role")
 eq(raised.spawn_reinforcements, true,
    "fresh alarm requests the building actor list")
-eq(raised.reinforcement_list_address,
-   E.FieldAlarmRomLayout.SCENE_21_REINFORCEMENT_LIST,
-   "spawn result carries the typed reinforcement-list identity")
+eq(raised.reinforcement_activity_id, "field_alarm_scene_21",
+   "spawn result carries the semantic reinforcement activity identity")
+eq(raised.reinforcement_list_address, nil,
+   "gameplay policy does not return the ROM list address")
 
 -- Timer refresh precedes the already-alarmed latch check at 0x1E04A [C].
 local refreshed = Alarm.tick(facts({

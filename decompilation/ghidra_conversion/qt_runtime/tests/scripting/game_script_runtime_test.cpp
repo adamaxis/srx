@@ -1612,7 +1612,8 @@ int main() {
     const auto absent_scene_script_actors =
         scripts.world_activity_actors_for_script(13U, 2U);
     const auto ilene_pending_list =
-        scripts.world_activity_actors_for_source_list(20U, 0xA8CCU);
+        scripts.world_activity_actors_for_list_id(
+            20U, "scene_20_ilene_pending_list");
     const auto spirit_eyes_entry_list =
         scripts.world_activity_actors_for_list_id(47U, "mode_13_entry");
     const auto spirit_eyes_entry_failure = scripts.failure();
@@ -2068,7 +2069,9 @@ int main() {
                     "0x9E=0x20,0x2E=0x80,0x9E=0x8" &&
                 ilene_pending_list->front().source_spawn_state_flags ==
                     0x08U &&
-                ilene_selected_pending_list == 0xA8CCU &&
+                ilene_selected_pending_list ==
+                    std::optional<std::string>{
+                        "scene_20_ilene_pending_list"} &&
                 !ilene_blocked_pending_list.has_value() &&
                 seeded_aragorn_contact_actor &&
                 seeded_ilene_contact_actor &&
@@ -2393,23 +2396,26 @@ int main() {
     const auto empty_alarm_profile_39 = scripts.field_alarm_profile(39U);
     const auto empty_alarm_profile_40 = scripts.field_alarm_profile(40U);
     const auto empty_alarm_profile_43 = scripts.field_alarm_profile(43U);
+    // [C] Source profile lists 0x1D7460, 0x1DD8E2, 0x1DDD96, and 0x1DE8BA
+    // resolve through extracted actor rows to named activities before Lua
+    // receives the alarm policy facts.
     if (!expect(
             populated_alarm_profile.has_value() &&
                 populated_alarm_profile->regions.size() == 4U &&
-                populated_alarm_profile->reinforcement_list_address ==
-                    std::optional<std::uint32_t>{0x1D7460U} &&
+                populated_alarm_profile->reinforcement_activity_id ==
+                    std::optional<std::string>{"field_alarm_scene_21"} &&
                 empty_alarm_profile_39.has_value() &&
                 empty_alarm_profile_39->regions.empty() &&
-                empty_alarm_profile_39->reinforcement_list_address ==
-                    std::optional<std::uint32_t>{0x1DD8E2U} &&
+                empty_alarm_profile_39->reinforcement_activity_id ==
+                    std::optional<std::string>{"field_alarm_scene_39"} &&
                 empty_alarm_profile_40.has_value() &&
                 empty_alarm_profile_40->regions.empty() &&
-                empty_alarm_profile_40->reinforcement_list_address ==
-                    std::optional<std::uint32_t>{0x1DDD96U} &&
+                empty_alarm_profile_40->reinforcement_activity_id ==
+                    std::optional<std::string>{"field_alarm_scene_40"} &&
                 empty_alarm_profile_43.has_value() &&
                 empty_alarm_profile_43->regions.empty() &&
-                empty_alarm_profile_43->reinforcement_list_address ==
-                    std::optional<std::uint32_t>{0x1DE8BAU},
+                empty_alarm_profile_43->reinforcement_activity_id ==
+                    std::optional<std::string>{"field_alarm_scene_43"},
             "ROM zero-region alarm profile did not resolve as an empty profile")) {
         std::cerr << scripts.failure() << '\n';
         return 4;

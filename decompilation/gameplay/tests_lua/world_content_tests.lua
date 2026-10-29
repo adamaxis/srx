@@ -27,6 +27,7 @@ game = {
                 },
                 {
                     scene = 47,
+                    list_id = "scene_47_strike_team",
                     script_index = -1,
                     source_order = 0,
                     list_offset = 0x1E5C4,
@@ -34,6 +35,7 @@ game = {
                 },
                 {
                     scene = 20,
+                    list_id = "scene_20_ilene_pending_list",
                     script_index = -1,
                     source_order = 0,
                     list_offset = 0xA8CC,
@@ -69,20 +71,23 @@ assert(actors[1].id == "world_activity:13:3:0" and
        actors[1].heading == 0xC000 and actors[1].action_code == 3 and
        actors[1].ordered_overrides == "0x2E=0xC0,0x9E=0x10",
        "selector lookup lost the typed host actor facts")
-local pending = World.world_activity_actors_for_source_list(20, 0xA8CC)
+local pending = World.world_activity_actors_for_list_id(
+    20, "scene_20_ilene_pending_list")
 assert(#pending == 1 and
-       pending[1].id == "world_activity:20:list:43212:0" and
+       pending[1].id ==
+           "world_activity:20:list:scene_20_ilene_pending_list:0" and
        pending[1].script_index == -1 and
        pending[1].name == "lone11" and pending[1].entity_kind == 10 and
        pending[1].x == 0x0E80 and pending[1].y == 0x0700 and
        pending[1].heading == 0x8000 and
        pending[1].ordered_overrides ==
            "0x9E=0x20,0x2E=0x80,0x9E=0x8",
-       "source-list lookup did not preserve the pending Ilene actor")
-assert(#World.world_activity_actors_for_source_list(20, 0x1E5C4) == 0,
-       "source-list lookup crossed scene/list boundaries")
+       "activity-id lookup did not preserve the pending Ilene actor")
+assert(#World.world_activity_actors_for_list_id(
+           20, "scene_47_strike_team") == 0,
+       "activity-id lookup crossed scene boundaries")
 assert(World.pending_world_activity_actor_list_for_scene(20, false, true) ==
-           0xA8CC and
+           "scene_20_ilene_pending_list" and
        World.pending_world_activity_actor_list_for_scene(20, true, true) ==
            nil and
        World.pending_world_activity_actor_list_for_scene(20, false, false) ==

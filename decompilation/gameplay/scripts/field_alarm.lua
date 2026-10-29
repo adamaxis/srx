@@ -9,6 +9,11 @@ local function is_integer(value, minimum, maximum)
            value >= minimum and value <= maximum
 end
 
+local function valid_activity_id(value)
+    return type(value) == "string" and #value > 0 and #value <= 128 and
+           value:match("^[%w_.%-]+$") ~= nil
+end
+
 local function valid_rectangles(rectangles)
     if type(rectangles) ~= "table" then return false end
     for _, rect in ipairs(rectangles) do
@@ -41,9 +46,8 @@ local function valid_facts(facts)
         (facts.disable_alarm == nil or type(facts.disable_alarm) == "boolean") and
         (facts.reset == nil or type(facts.reset) == "boolean") and
         (facts.scene_exit == nil or type(facts.scene_exit) == "boolean") and
-        (facts.reinforcement_list_address == nil or
-         is_integer(facts.reinforcement_list_address, 0,
-                    E.FieldAlarm.LIST_ADDRESS_MAX)) and
+        (facts.reinforcement_activity_id == nil or
+         valid_activity_id(facts.reinforcement_activity_id)) and
         valid_rectangles(facts.rects) and
         (facts.actors == nil or type(facts.actors) == "table")
 end
@@ -112,7 +116,7 @@ local function raised_result(facts, result)
     result.clear_flags = "clear_spotted"
     actor_flag_action(result.actors, result.clear_flags)
     result.spawn_reinforcements = true
-    result.reinforcement_list_address = facts.reinforcement_list_address
+    result.reinforcement_activity_id = facts.reinforcement_activity_id
     return result
 end
 

@@ -974,7 +974,7 @@ struct ScriptFieldAlarmActorFacts {
 
 struct ScriptFieldAlarmProfile {
     std::vector<ScriptFieldAlarmRegion> regions;
-    std::optional<std::uint32_t> reinforcement_list_address;
+    std::optional<std::string> reinforcement_activity_id;
 };
 
 struct ScriptFieldAlarmInput {
@@ -994,7 +994,7 @@ struct ScriptFieldAlarmInput {
     bool scene_exit = false;
     std::vector<ScriptFieldAlarmRegion> regions;
     std::vector<ScriptFieldAlarmActorFacts> actors;
-    std::optional<std::uint32_t> reinforcement_list_address;
+    std::optional<std::string> reinforcement_activity_id;
 };
 
 enum class ScriptFieldAlarmFlagAction : std::uint8_t {
@@ -1013,7 +1013,7 @@ struct ScriptFieldAlarmResult {
     std::optional<std::uint16_t> sound_stop;
     ScriptFieldAlarmFlagAction flag_action = ScriptFieldAlarmFlagAction::none;
     bool spawn_reinforcements = false;
-    std::optional<std::uint32_t> reinforcement_list_address;
+    std::optional<std::string> reinforcement_activity_id;
     std::vector<ScriptFieldAlarmActorFacts> actors;
 };
 
@@ -1923,9 +1923,6 @@ public:
     world_activity_actors_for_script(std::uint16_t scene_id,
                                      std::uint16_t script_index);
     std::optional<std::vector<ScriptWorldActivityActor>>
-    world_activity_actors_for_source_list(std::uint16_t scene_id,
-                                          std::uint32_t list_offset);
-    std::optional<std::vector<ScriptWorldActivityActor>>
     world_activity_actors_for_list_id(std::uint16_t scene_id,
                                      std::string_view list_id);
     std::optional<ScriptFieldActorContactAction> field_actor_contact_task(
@@ -1944,7 +1941,7 @@ public:
         std::uint16_t scene_id,
         const ScriptConditionalActorSelectionContext& context,
         const ScriptActorRandomBound& random_bound);
-    std::optional<std::uint32_t>
+    std::optional<std::string>
     pending_world_activity_actor_list_for_scene(
         std::uint16_t scene_id, bool world_effect_active,
         bool pending_world_effect);
