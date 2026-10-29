@@ -30,12 +30,16 @@ function EmployeeRecruitment.present_offer()
     assert(employee_name ~= nil,
         "employee recruitment offer has an invalid employee ID")
     local target = offer.route.target
+    local details = game.modules.run_support.location_details(
+        target.location_id)
+    assert(details ~= nil,
+        "employee recruitment has an invalid semantic place")
     -- ROM 0x1E91A replaces the selected F1E58 area's terminal period with a
     -- comma before appending the employee name.
-    local area_suffix = target.area_suffix:gsub("%.$", ",", 1)
+    local region_suffix = details.region_suffix:gsub("%.$", ",", 1)
     game.ui.say_text(
-        "An employee of " .. target.location_name ..
-        " " .. area_suffix .. " " .. employee_name ..
+        "An employee of " .. details.name ..
+        " " .. region_suffix .. " " .. employee_name ..
         ", wishes for a change in career.|" ..
         "Unfortunately, his current employer frowns upon this.||" ..
         "Assist my client with his professional growth and return here " ..
@@ -51,18 +55,17 @@ function EmployeeRecruitment.present_offer()
     return game.runs.registry.resolve_current_offer("yes")
 end
 
-function EmployeeRecruitment.resolve_field_event(offer, map_id, event_id)
+function EmployeeRecruitment.resolve_field_event(offer, location_id)
     local route = type(offer) == "table" and offer.route or nil
     local target = type(route) == "table" and route.target or nil
     if type(target) ~= "table" or
-       type(target.area_id) ~= "number" or
-       type(target.location_id) ~= "number" then
+       type(target.location_id) ~= "string" then
         return { action = "no_action" }
     end
 
     -- ROM 0x1F106 compares FFFBF8/FFFBF9 with FFFBEE/FFFBEF. For the
     -- Renraku initializer, 0x1E7D0 sets that pair to area 5/event 6.
-    if map_id == target.area_id and event_id == target.location_id then
+    if location_id == target.location_id then
         return {
             action = "entry_dialogue",
             dialogue_module = "run_employee_recruitment",

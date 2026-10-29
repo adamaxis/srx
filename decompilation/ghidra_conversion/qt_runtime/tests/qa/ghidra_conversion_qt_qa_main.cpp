@@ -9,6 +9,7 @@
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_record_access_conversion.hpp"
 #include "shadowrun_ghidra/session/startup_record_assets_conversion.hpp"
+#include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
 #include "shadowrun_ghidra/world/post_intro_mode_conversion.hpp"
 #include "numeric_visual_renderer.hpp"
 
@@ -31470,9 +31471,12 @@ int run_field_employee_recruitment_target_pedestrian_qa(
         run_registry.value(QStringLiteral("active_offer")).toObject();
     const auto target = active_offer.value(QStringLiteral("route")).toObject()
                             .value(QStringLiteral("target")).toObject();
-    const auto target_area = target.value(QStringLiteral("area_id")).toInt(-1);
-    const auto target_event =
-        target.value(QStringLiteral("location_id")).toInt(-1);
+    const auto target_location =
+        target.value(QStringLiteral("location_id")).toString().toStdString();
+    const auto expected_location =
+        shadowrun::ghidra_conversion::scripting::
+            run_location_id_for_source_selector(
+                route.target_area, route.target_event);
     if (!accepted_snapshot.has_value() ||
         !accepted_run_state.has_value() ||
         !accepted_funds.has_value() ||
@@ -31480,14 +31484,16 @@ int run_field_employee_recruitment_target_pedestrian_qa(
             QStringLiteral("employee_recruitment") ||
         active_offer.value(QStringLiteral("offer_variant_id")).toString()
                 .toStdString() != route.offer_variant_id ||
-        target_area != route.target_area ||
-        target_event != route.target_event ||
+        !expected_location.has_value() ||
+        target_location != std::string(*expected_location) ||
         offer_scene.active_run_offer_variant_id_for_dump() !=
             std::optional<std::string>{route.offer_variant_id}) {
         std::cerr << "Employee target pedestrian QA: accepted offer target "
                      "did not match the live variant "
-                  << route.offer_variant_id << " draw (area="
-                  << target_area << ", event=" << target_event
+                  << route.offer_variant_id << " draw (location='"
+                  << target_location << "', expected source selector="
+                  << static_cast<unsigned>(route.target_area) << ':'
+                  << static_cast<unsigned>(route.target_event)
                   << ", snapshot=" << accepted_snapshot.has_value()
                   << ", error='" << snapshot_error.toStdString() << "')\n";
         return 3;
@@ -32032,7 +32038,8 @@ int run_field_employee_recruitment_target_pedestrian_qa(
              "\tmap_transition\n"
           << route.offer_variant_id << '\t'
           << route.offer_selection_seed << '\t' << saved_random_seed << '\t'
-          << target_area << '\t' << target_event << '\t'
+          << static_cast<unsigned>(route.target_area) << '\t'
+          << static_cast<unsigned>(route.target_event) << '\t'
           << route.source_scene << '\t' << route.collision_record << '\t'
           << static_cast<unsigned>(route.target_event) << '\t'
           << route.destination_scene

@@ -23,13 +23,20 @@ function BodyguardEscort.present_offer()
     local offer = game.runs.registry.current_offer
     assert(offer ~= nil and offer.id == "bodyguard_escort")
     local route = offer.route
+    local support = game.modules.run_support
+    local origin = support.location_details(route.origin.location_id)
+    local destination = support.location_details(
+        route.destination.location_id)
+    local client_name = support.client_name(route.client_id)
+    assert(origin ~= nil and destination ~= nil and client_name ~= nil,
+        "bodyguard route has invalid semantic identities")
     game.ui.say_text(
-        "Go to " .. route.origin.location_name .. " " ..
-        route.origin.area_suffix .. "|There you will meet my client, " ..
-        route.client_name .. ".", true)
+        "Go to " .. origin.name .. " " ..
+        origin.region_suffix .. "|There you will meet my client, " ..
+        client_name .. ".", true)
     local terms =
-        "Escort my client to " .. route.destination.location_name .. " " ..
-        route.destination.area_suffix ..
+        "Escort my client to " .. destination.name .. " " ..
+        destination.region_suffix ..
         "|You will be paid by my client upon safe arrival at the specified destination."
     -- ROM 0x214CE: F3E1E row FFFBED=1 has secondary handler 0x1EB32, which
     -- prints F34E7/F34FD and returns text-only descriptor 0x1058B8 (buffer

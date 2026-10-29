@@ -842,10 +842,10 @@ bool verify_package_delivery_field_events(
                         std::optional<std::string>{"package_delivery"} &&
                     !scripts.active_run_offer_variant_id().has_value() &&
                     route.has_value() &&
-                    route->at("origin_area") == "area_2" &&
-                    route->at("origin_location") == "location_4" &&
-                    route->at("destination_area") == "area_2" &&
-                    route->at("destination_location") == "location_5" &&
+                    route->at("origin_region") == "redmond_barrens" &&
+                    route->at("origin_location") == "jump_house" &&
+                    route->at("destination_region") == "redmond_barrens" &&
+                    route->at("destination_location") == "jackals_lantern" &&
                     payment.has_value() &&
                     payment->at("negotiated_amount") == "45" &&
                     payment->at("runner_progress_delta") == "1",
@@ -885,11 +885,15 @@ bool verify_package_delivery_field_events(
         return false;
     }
 
-    const auto before_origin = scripts.resolve_active_run_field_event(2U, 5U);
-    const auto origin = scripts.resolve_active_run_field_event(2U, 4U);
-    const auto between = scripts.resolve_active_run_field_event(2U, 6U);
-    const auto destination = scripts.resolve_active_run_field_event(2U, 5U);
-    const auto after_completion = scripts.resolve_active_run_field_event(2U, 5U);
+    const auto before_origin =
+        scripts.resolve_active_run_field_event("jackals_lantern");
+    const auto origin = scripts.resolve_active_run_field_event("jump_house");
+    const auto between =
+        scripts.resolve_active_run_field_event("boris_greenhouse");
+    const auto destination =
+        scripts.resolve_active_run_field_event("jackals_lantern");
+    const auto after_completion =
+        scripts.resolve_active_run_field_event("jackals_lantern");
     return expect(
         before_origin.has_value() &&
             before_origin->action == ScriptRunFieldEventAction::no_action &&
@@ -2597,14 +2601,13 @@ int main() {
     }
 
     struct RunTargetActorGroupCase {
-        std::uint8_t area_id;
-        std::uint8_t event_id;
+        std::string_view actor_group_id;
         std::string_view sequence_id;
     };
     constexpr std::array<RunTargetActorGroupCase, 3> run_target_groups{{
-        {1U, 9U, "field_encounter.scene.15.context.1.weight.9"},
-        {2U, 9U, "field_encounter.scene.15.context.2.weight.9"},
-        {3U, 4U, "field_encounter.scene.15.context.3.weight.4"},
+        {"gang_contract.ork_gang", "gang_contract.ork_gang"},
+        {"gang_contract.halloweeners", "gang_contract.halloweeners"},
+        {"gang_contract.eye_fivers", "gang_contract.eye_fivers"},
     }};
     constexpr std::array<std::array<std::uint16_t, 2>, 4>
         run_target_spawn_positions{{
@@ -2615,7 +2618,7 @@ int main() {
         }};
     for (const auto& group : run_target_groups) {
         const auto actors = scripts.resolve_run_target_actor_group(
-            group.area_id, group.event_id);
+            group.actor_group_id);
         bool actors_in_source_order = actors.has_value() &&
                                       actors->actors.size() == 4U;
         if (actors_in_source_order) {
@@ -2631,22 +2634,44 @@ int main() {
                     actor.source_order == index;
             }
         }
+        const bool run_target_group_resolved =
+            actors.has_value() &&
+            actors->kind == ScriptFieldEncounterOutcomeKind::
+                dynamic_world_effect_sequence &&
+            actors->placement_policy ==
+                ScriptFieldEncounterPlacementPolicy::explicit_actor_positions &&
+            actors->scene_id == 15U && actors->context_group == 0U &&
+            actors->random_sum == 0U && actors->actors.size() == 4U &&
+            actors_in_source_order;
+        if (!run_target_group_resolved) {
+            std::cerr << "run target group=" << group.actor_group_id
+                      << " resolved=" << actors.has_value();
+            if (actors.has_value()) {
+                std::cerr << " scene=" << actors->scene_id
+                          << " context=" << actors->context_group
+                          << " sum=" << actors->random_sum
+                          << " count=" << actors->actors.size();
+                for (const auto& actor : actors->actors) {
+                    std::cerr << " [sequence=" << actor.sequence_id
+                              << " order=" << actor.source_order
+                              << " spawn="
+                              << actor.run_target_spawn_x.value_or(65536U)
+                              << ','
+                              << actor.run_target_spawn_y.value_or(65536U)
+                              << ']';
+                }
+            }
+            std::cerr << " script_failure=" << scripts.failure() << '\n';
+        }
         if (!expect(
-                actors.has_value() &&
-                    actors->kind == ScriptFieldEncounterOutcomeKind::
-                        dynamic_world_effect_sequence &&
-                    actors->scene_id == 15U &&
-                    actors->context_group == group.area_id &&
-                    actors->random_sum == group.event_id &&
-                    actors->actors.size() == 4U &&
-                    actors_in_source_order,
+                run_target_group_resolved,
                 "ROM run-target actor group did not preserve its ordered source list")) {
-            std::cerr << scripts.failure() << '\n';
             return 1;
         }
     }
     if (!expect(
-            !scripts.resolve_run_target_actor_group(2U, 8U).has_value(),
+            !scripts.resolve_run_target_actor_group(
+                "gang_contract.not_a_group").has_value(),
             "non-target map event resolved a gang-contract actor group")) {
         return 1;
     }
@@ -2887,13 +2912,15 @@ int main() {
                         std::optional<std::string>{
                             "package_delivered_safely"} &&
                     courier_route.has_value() &&
-                    courier_route->at("origin_location") == "location_11" &&
-                    courier_route->at("origin_area") == "area_2" &&
+                    courier_route->at("origin_location") ==
+                        "ares_weapon_emporium" &&
+                    courier_route->at("origin_region") ==
+                        "redmond_barrens" &&
                     courier_route->at("client") == "mike_nana" &&
                     courier_route->at("destination_location") ==
-                        "location_5" &&
-                    courier_route->at("destination_area") ==
-                        "area_2" && courier_payment.has_value() &&
+                        "jackals_lantern" &&
+                    courier_route->at("destination_region") ==
+                        "redmond_barrens" && courier_payment.has_value() &&
                     courier_payment->at("base_amount") == "40" &&
                     courier_payment->at("negotiated_amount") == "55" &&
                     courier_payment->at("negotiation_bound") == "4" &&
@@ -2981,13 +3008,13 @@ int main() {
                         std::optional<std::string>{
                             "client_reaches_destination_alive"} &&
                     escort_route.has_value() &&
-                    escort_route->at("origin_location") == "location_4" &&
-                    escort_route->at("origin_area") == "area_2" &&
+                    escort_route->at("origin_location") == "jump_house" &&
+                    escort_route->at("origin_region") == "redmond_barrens" &&
                     escort_route->at("client") == "heinrich_michaels" &&
                     escort_route->at("destination_location") ==
-                        "location_5" &&
-                    escort_route->at("destination_area") ==
-                        "area_2" && escort_payment.has_value() &&
+                        "jackals_lantern" &&
+                    escort_route->at("destination_region") ==
+                        "redmond_barrens" && escort_payment.has_value() &&
                     escort_payment->at("base_amount") == "45" &&
                     escort_payment->at("negotiated_amount") == "60",
                 "escort contract did not use its Lua route and client data")) {

@@ -1,4 +1,5 @@
 #include "world_content_tsv_loader.hpp"
+#include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
 #include "enums.hpp"
 #include "shadowrun_ghidra/scripting/combat_inventory.hpp"
 #include "shadowrun_ghidra/scripting/weapon_action_policy.hpp"
@@ -1080,6 +1081,8 @@ bool make_semantic_dynamic_actor_rows(
         if (source_column == "selection_cell_offset" ||
             source_column == "sequence_list_offset" ||
             source_column == "template_offset" ||
+            source_column == "run_target_area" ||
+            source_column == "run_target_event" ||
             source_column == "delay_primary_attribute" ||
             source_column == "delay_secondary_attribute" ||
             source_column == "source_action_slot" ||
@@ -1103,6 +1106,13 @@ bool make_semantic_dynamic_actor_rows(
             semantic.columns.emplace_back("sequence_id");
         }
     }
+    const auto run_target_group_index = semantic.columns.size();
+    semantic.column_indexes.emplace("run_target_group_id",
+                                    run_target_group_index);
+    semantic.columns.emplace_back("run_target_group_id");
+    const auto selection_kind_index = semantic.columns.size();
+    semantic.column_indexes.emplace("selection_kind", selection_kind_index);
+    semantic.columns.emplace_back("selection_kind");
 
     semantic.rows.reserve(source.rows.size());
     for (std::size_t row_index = 0U; row_index < source.rows.size();
@@ -1145,6 +1155,7 @@ bool make_semantic_dynamic_actor_rows(
             sequence_list_offset < 0 || sequence_list_offset > 0x1FFFFFU ||
             run_target_area < 0 || run_target_area > 0xFF ||
             run_target_event < 0 || run_target_event > 0xFF ||
+            ((run_target_area == 0) != (run_target_event == 0)) ||
             tagged_template < 0 ||
             static_cast<std::uint64_t>(tagged_template) >
                 std::numeric_limits<std::uint32_t>::max()) {
@@ -1157,7 +1168,10 @@ bool make_semantic_dynamic_actor_rows(
         }
 
         std::string sequence_id;
+        std::string run_target_group_id = "none";
+        std::string selection_kind = "weighted_encounter";
         if (random_sum == 0xFF) {
+            selection_kind = "named_sequence";
             const auto found = source_sequence_ids.find(sequence_list_offset);
             if (found == source_sequence_ids.end()) {
                 failure = path.string() + ": row " +
@@ -1167,9 +1181,18 @@ bool make_semantic_dynamic_actor_rows(
             }
             sequence_id = found->second;
         } else if (run_target_area != 0) {
-            sequence_id = "field_encounter.scene.15.context." +
-                std::to_string(run_target_area) + ".weight." +
-                std::to_string(run_target_event);
+            selection_kind = "run_target_group";
+            const auto group_id =
+                run_target_actor_group_id_for_source_selector(
+                    run_target_area, run_target_event);
+            if (!group_id.has_value()) {
+                failure = path.string() + ": row " +
+                    std::to_string(row_index + 2U) +
+                    " has no semantic ID for its run actor group";
+                return false;
+            }
+            run_target_group_id = std::string(*group_id);
+            sequence_id = run_target_group_id;
         } else {
             sequence_id = "field_encounter.scene." +
                 std::to_string(scene_id) + ".context." +
@@ -1185,6 +1208,8 @@ bool make_semantic_dynamic_actor_rows(
             if (source_column == "selection_cell_offset" ||
                 source_column == "sequence_list_offset" ||
                 source_column == "template_offset" ||
+                source_column == "run_target_area" ||
+                source_column == "run_target_event" ||
                 source_column == "delay_primary_attribute" ||
                 source_column == "delay_secondary_attribute" ||
                 source_column == "source_action_slot" ||
@@ -1192,7 +1217,21 @@ bool make_semantic_dynamic_actor_rows(
                 source_column == "source_action_counter") {
                 continue;
             }
-            if (column == tag_column->second) {
+            if (source_column == "scene" &&
+                run_target_group_id != "none") {
+                // These imported actors are presented in the native gang
+                // encounter scene. Their source region selector identifies
+                // the run target only; it is not their gameplay scene.
+                runtime_row.emplace_back("15");
+            } else if (source_column == "placement_rule" &&
+                       run_target_group_id != "none") {
+                runtime_row.emplace_back("explicit_actor_positions");
+            } else if (source_column == "random_sum" &&
+                       selection_kind != "weighted_encounter") {
+                // The source uses 0xFF as a list tag. Lua receives a named
+                // selection kind, not that source-table sentinel.
+                runtime_row.emplace_back("0");
+            } else if (column == tag_column->second) {
                 // Keep the source interpretation as a named fact, never as
                 // the high-bit tagged template pointer.
                 runtime_row.emplace_back(
@@ -1215,6 +1254,8 @@ bool make_semantic_dynamic_actor_rows(
                 runtime_row.push_back(sequence_id);
             }
         }
+        runtime_row.push_back(std::move(run_target_group_id));
+        runtime_row.push_back(std::move(selection_kind));
         semantic.rows.push_back(std::move(runtime_row));
     }
     return true;

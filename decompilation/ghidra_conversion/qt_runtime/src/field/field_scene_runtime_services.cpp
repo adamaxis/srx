@@ -4,6 +4,7 @@
 #include "enums.hpp"
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_conversion.hpp"
+#include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
 
 #include "shadowrun_ghidra/audio/audio_command_batch_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
@@ -433,6 +434,12 @@ bool FieldSceneRuntime::seed_run_target_for_dump(
         return false;
     }
 
+    const auto target_location_id =
+        scripting::run_location_id_for_source_selector(map_id, event_id);
+    if (!target_location_id.has_value()) {
+        return false;
+    }
+
     using PersistentValue = scripting::ScriptPersistentValue;
     const auto scalar = [](auto value) {
         PersistentValue result{};
@@ -440,20 +447,26 @@ bool FieldSceneRuntime::seed_run_target_for_dump(
         return result;
     };
     const PersistentValue target{PersistentValue::Object{
-        {"area_id", scalar(std::int64_t{map_id})},
-        {"location_id", scalar(std::int64_t{event_id})},
+        {"location_id", scalar(std::string(*target_location_id))},
     }};
     const PersistentValue route{PersistentValue::Object{
         {"target", target},
     }};
-    const PersistentValue active_offer{PersistentValue::Object{
+    PersistentValue::Object active_offer_fields{
         {"id", scalar(std::string(run_id))},
         {"category", scalar(category)},
         {"objective", scalar(objective)},
         {"completion_condition", scalar(completion_condition)},
         {"runner_progress_delta", scalar(std::int64_t{0})},
         {"route", route},
-    }};
+    };
+    if (run_id == "gang_contract") {
+        active_offer_fields.emplace(
+            "contract_variant_id",
+            scalar(std::string("building_vandalism")));
+    }
+    const PersistentValue active_offer{
+        std::move(active_offer_fields)};
     const PersistentValue registry_state{PersistentValue::Object{
         {"schema_version", scalar(std::int64_t{1})},
         {"current_offer", scalar(std::monostate{})},
@@ -558,41 +571,37 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         result.value = value;
         return result;
     };
-    const auto location = [&scalar](const std::int64_t area_id,
-                                    const std::int64_t location_id) {
+    const auto location = [&scalar](const std::string_view location_id) {
         return PersistentValue{PersistentValue::Object{
-            {"area_id", scalar(area_id)},
-            {"location_id", scalar(location_id)},
+            {"location_id", scalar(std::string(location_id))},
         }};
     };
     PersistentValue::Object route_fields;
     if (run_id == "bodyguard_escort") {
-        route_fields.emplace("origin", location(2, 6));
-        route_fields.emplace("destination", location(5, 6));
+        route_fields.emplace("origin", location("boris_greenhouse"));
+        route_fields.emplace("destination", location("renraku_offices"));
         route_fields.emplace("client_id", scalar(std::string("billy_gibson")));
     } else if (run_id == "package_delivery") {
         // Section 03 video route: Ares Weapon Emporium to Jackal's Lantern.
-        route_fields.emplace("origin", location(2, 11));
-        route_fields.emplace("destination", location(2, 5));
+        route_fields.emplace("origin", location("ares_weapon_emporium"));
+        route_fields.emplace("destination", location("jackals_lantern"));
     } else if (run_id == "gang_contract") {
-        route_fields.emplace("target", location(3, 4));
+        route_fields.emplace("target", location("eye_fivers_hideout"));
     } else if (run_id == "package_recovery") {
         // First site in the source two-site package-recovery pool.
-        route_fields.emplace("target", location(1, 2));
+        route_fields.emplace("target", location("ares_corporate_offices"));
     } else if (run_id == "employee_recruitment") {
         if (variant_id == "employee_recruitment_two_site_pool") {
             // First target in the context-1 two-site source pool.
-            route_fields.emplace("target", location(1, 2));
+            route_fields.emplace("target", location("ares_corporate_offices"));
         } else if (variant_id == "employee_recruitment_renraku") {
             // The fixed Renraku target selected by the context-4 row.
-            route_fields.emplace("target", location(5, 6));
+            route_fields.emplace("target", location("renraku_offices"));
         } else {
             // First site in the shared four-site employee-recruitment pool.
-            route_fields.emplace("target", location(0, 5));
+            route_fields.emplace("target", location("fuchi_local_office"));
         }
     }
-    const PersistentValue route{std::move(route_fields)};
-
     const std::int64_t negotiation_skill = matrix_max_payment
         ? 12
         : (run_id == "ghoul_bounty" ? 0 : 3);
@@ -616,14 +625,20 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         {"runner_progress_delta", scalar(progress_delta)},
         {"offer_variant_id", scalar(std::string(variant_id))},
         {"contact_id", scalar(std::string(contact_id))},
-        {"route", route},
         {"payment", payment},
     };
+    if (!route_fields.empty()) {
+        offer_fields.emplace(
+            "route", PersistentValue{std::move(route_fields)});
+    }
     if (run_id == "ghoul_bounty") {
-        offer_fields.emplace("area_id", scalar(std::int64_t{2}));
+        offer_fields.emplace(
+            "region_id", scalar(std::string("redmond_barrens")));
         offer_fields.emplace("ghoul_kill_count", scalar(std::int64_t{19}));
     } else if (run_id == "gang_contract") {
-        offer_fields.emplace("variant", scalar(std::int64_t{1}));
+        offer_fields.emplace(
+            "contract_variant_id",
+            scalar(std::string("renraku_information_leak")));
     } else if (run_id == "employee_recruitment") {
         offer_fields.emplace("employee_id", scalar(std::string("mike_nana")));
     } else if (run_id == "matrix_objective") {
@@ -692,16 +707,20 @@ bool FieldSceneRuntime::seed_employee_recruitment_run_target_for_dump(
     if (route == nullptr) {
         return false;
     }
-    const auto scalar = [](const std::uint8_t value) {
+    const auto location_id =
+        scripting::run_location_id_for_source_selector(map_id, event_id);
+    if (!location_id.has_value()) {
+        return false;
+    }
+    const auto scalar = [](const std::string_view value) {
         PersistentValue result{};
-        result.value = static_cast<std::int64_t>(value);
+        result.value = std::string(value);
         return result;
     };
     route->insert_or_assign(
         "target",
         PersistentValue{PersistentValue::Object{
-            {"area_id", scalar(map_id)},
-            {"location_id", scalar(event_id)},
+            {"location_id", scalar(*location_id)},
         }});
     return game_scripts_.restore_run_registry_state(*registry_state);
 }

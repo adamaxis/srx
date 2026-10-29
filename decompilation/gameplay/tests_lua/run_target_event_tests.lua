@@ -7,17 +7,18 @@ local GangContract = require("run_gang_contract")
 local RunSupport = require("run_support")
 local active_offer = {
     id = "employee_recruitment",
-    route = { target = { area_id = 5, location_id = 6 } },
+    route = { target = { location_id = "renraku_offices" } },
 }
 
-local matched = EmployeeRecruitment.resolve_field_event(active_offer, 5, 6)
+local matched = EmployeeRecruitment.resolve_field_event(
+    active_offer, "renraku_offices")
 assert(matched.action == "entry_dialogue")
 assert(matched.dialogue_module == "run_employee_recruitment")
 assert(matched.dialogue_function == "present_target_entry")
 
-for _, route in ipairs({ { 2, 1 }, { 5, 5 }, { 4, 6 } }) do
+for _, location_id in ipairs({ "little_chiba", "wire_masters", "ork_embassy" }) do
     local ignored = EmployeeRecruitment.resolve_field_event(
-        active_offer, route[1], route[2])
+        active_offer, location_id)
     assert(ignored.action == "no_action")
 end
 
@@ -32,6 +33,9 @@ game = {
     } },
     modules = {
         run_support = {
+            location_details = RunSupport.location_details,
+            client_name = RunSupport.client_name,
+            gang_actor_group_id = RunSupport.gang_actor_group_id,
             amount_in_reserved_field = function(amount, width)
                 local digits = tostring(amount)
                 return string.rep(" ", math.max(0, width - #digits)) .. digits
@@ -68,20 +72,15 @@ local recruitment_target_pools = {
 }
 local recruitment_offer_cases = 0
 for _, target_pool in ipairs(recruitment_target_pools) do
-    for _, target_record in ipairs(target_pool) do
-        local location_name =
-            RunSupport.location_names[target_record.area_id][target_record.location_id]
-        local area_suffix = RunSupport.area_suffixes[target_record.area_id]
-        assert(location_name ~= nil and area_suffix ~= nil)
-        local displayed_area = area_suffix:gsub("%.$", ",", 1)
+    for _, location_id in ipairs(target_pool) do
+        local details = assert(RunSupport.location_details(location_id))
+        local location_name = details.name
+        local displayed_area = details.region_suffix:gsub("%.$", ",", 1)
         for _, employee_id in ipairs(RunSupport.client_ids) do
             local employee_name = RunSupport.client_name(employee_id)
             game.runs.registry.current_offer = {
                 id = "employee_recruitment",
-                route = { target = {
-                    location_name = location_name,
-                    area_suffix = area_suffix,
-                } },
+                route = { target = { location_id = location_id } },
                 employee_id = employee_id,
             }
             assert(EmployeeRecruitment.present_offer() == "accepted:yes")
@@ -107,14 +106,14 @@ assert(recruitment_offer_cases == 84,
 
 local recovery_offer = {
     id = "package_recovery",
-    route = { target = { area_id = 2, location_id = 5 } },
+    route = { target = { location_id = "jackals_lantern" } },
 }
 local recovery_match = PackageRecovery.resolve_field_event(
-    recovery_offer, 2, 5)
+    recovery_offer, "jackals_lantern")
 assert(recovery_match.action == "entry_dialogue")
 assert(recovery_match.dialogue_module == "run_package_recovery")
 assert(recovery_match.dialogue_function == "present_target_entry")
-assert(PackageRecovery.resolve_field_event(recovery_offer, 2, 4).action ==
+assert(PackageRecovery.resolve_field_event(recovery_offer, "jump_house").action ==
     "no_action")
 game.runs.registry.active_offer = recovery_offer
 assert(PackageRecovery.present_target_entry() == "shown")
@@ -127,32 +126,29 @@ assert(presented.text ==
 
 local gang_offer = {
     id = "gang_contract",
-    route = { target = { area_id = 2, location_id = 9 } },
+    route = { target = { location_id = "halloweeners_hideout" } },
 }
-local gang_match = GangContract.resolve_field_event(gang_offer, 2, 9)
+local gang_match = GangContract.resolve_field_event(
+    gang_offer, "halloweeners_hideout")
 assert(gang_match.action == "entry_dialogue")
 assert(gang_match.dialogue_module == "run_gang_contract")
 assert(gang_match.dialogue_function == "present_target_entry")
-assert(gang_match.actor_group_area == 2)
-assert(gang_match.actor_group_event == 9)
-assert(gang_match.activity_scene_id == 15)
-assert(gang_match.actor_list_offset == 0x1D6D5E)
-assert(gang_match.actor_resource_profile == 0x121E38)
-for _, route in ipairs({ { 1, 9 }, { 2, 8 }, { 3, 4 } }) do
+assert(gang_match.actor_group_id == "gang_contract.halloweeners")
+for _, location_id in ipairs({ "ork_gang_hideout", "little_chiba", "eye_fivers_hideout" }) do
     assert(GangContract.resolve_field_event(
-        gang_offer, route[1], route[2]).action == "no_action")
+        gang_offer, location_id).action == "no_action")
 end
 
-gang_offer.route.target = { area_id = 1, location_id = 9 }
-local first_gang_match = GangContract.resolve_field_event(gang_offer, 1, 9)
+gang_offer.route.target = { location_id = "ork_gang_hideout" }
+local first_gang_match = GangContract.resolve_field_event(
+    gang_offer, "ork_gang_hideout")
 assert(first_gang_match.action == "entry_dialogue")
-assert(first_gang_match.actor_list_offset == 0x1D6D4A)
-assert(first_gang_match.actor_resource_profile == 0x122054)
-gang_offer.route.target = { area_id = 3, location_id = 4 }
-local third_gang_match = GangContract.resolve_field_event(gang_offer, 3, 4)
+assert(first_gang_match.actor_group_id == "gang_contract.ork_gang")
+gang_offer.route.target = { location_id = "eye_fivers_hideout" }
+local third_gang_match = GangContract.resolve_field_event(
+    gang_offer, "eye_fivers_hideout")
 assert(third_gang_match.action == "entry_dialogue")
-assert(third_gang_match.actor_list_offset == 0x1D6D72)
-assert(third_gang_match.actor_resource_profile == 0x122018)
+assert(third_gang_match.actor_group_id == "gang_contract.eye_fivers")
 
 game.runs.registry.active_offer = gang_offer
 assert(GangContract.present_target_entry() == "shown")
@@ -172,36 +168,22 @@ local delivery_offer = {
     payment = { base_amount = 400, negotiated_amount = 450 },
 }
 local delivery_route_cases = 0
-local function check_delivery_route(origin_area, origin_location,
-                                    destination_area, destination_location)
-    local origin_name = RunSupport.location_names[origin_area][origin_location]
-    local destination_name =
-        RunSupport.location_names[destination_area][destination_location]
-    local origin_suffix = RunSupport.area_suffixes[origin_area]
-    local destination_suffix = RunSupport.area_suffixes[destination_area]
-    assert(origin_name ~= nil and destination_name ~= nil and
-           origin_suffix ~= nil and destination_suffix ~= nil,
-        "source courier route pool has an unmapped text field")
+local function check_delivery_route(origin_location_id,
+                                    destination_location_id)
+    local origin = assert(RunSupport.location_details(origin_location_id))
+    local destination =
+        assert(RunSupport.location_details(destination_location_id))
     delivery_offer.route = {
-        origin = {
-            area_id = origin_area,
-            location_id = origin_location,
-            location_name = origin_name,
-            area_suffix = origin_suffix,
-        },
-        destination = {
-            area_id = destination_area,
-            location_id = destination_location,
-            location_name = destination_name,
-            area_suffix = destination_suffix,
-        },
+        origin = { location_id = origin_location_id },
+        destination = { location_id = destination_location_id },
     }
     game.runs.registry.current_offer = delivery_offer
     assert(PackageDelivery.present_offer() == "accepted:yes")
     assert(presented ~= nil and presented.continuation == true)
-    local expected = "Go to " .. origin_name .. " " .. origin_suffix .. "  " ..
+    local expected = "Go to " .. origin.name .. " " ..
+        origin.region_suffix .. "  " ..
         "A contact there will give you a package.||Take it to " ..
-        destination_name .. " " .. destination_suffix .. "  " ..
+        destination.name .. " " .. destination.region_suffix .. "  " ..
         "You will be paid upon safe delivery of the package."
     assert(presented.text == expected,
         "courier detail changed its ROM text stream for a source route")
@@ -210,23 +192,24 @@ end
 
 local source_contexts = { 0, 1, 2, 3, 4 }
 for _, context in ipairs(source_contexts) do
-    for origin_area = 0, 5 do
-        local origin_rolls = RunSupport.location_rolls_by_area[origin_area]
-        for destination_area = 0, 5 do
+    for _, origin_region_id in ipairs(RunSupport.contract_region_ids) do
+        local origin_rolls =
+            RunSupport.location_choice_ids_by_region[origin_region_id]
+        for _, destination_region_id in ipairs(RunSupport.contract_region_ids) do
+            local destination_rolls =
+                RunSupport.location_choice_ids_by_region[destination_region_id]
             local jump_house_route = context == 0
-                and origin_area == 2 and destination_area == 2
+                and origin_region_id == "redmond_barrens" and
+                destination_region_id == "redmond_barrens"
             local route_is_valid = jump_house_route or
-                context ~= 0 and destination_area ~= origin_area
+                context ~= 0 and destination_region_id ~= origin_region_id
             if route_is_valid then
-                local destination_rolls =
-                    RunSupport.location_rolls_by_area[destination_area]
                 for _, origin_location in ipairs(origin_rolls) do
                     for _, destination_location in ipairs(destination_rolls) do
                         if not jump_house_route or
                            origin_location ~= destination_location then
                             check_delivery_route(
-                                origin_area, origin_location,
-                                destination_area, destination_location)
+                                origin_location, destination_location)
                         end
                     end
                 end

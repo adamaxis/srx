@@ -34,12 +34,13 @@ local function view(variant_id, contact_id, run_id, extra)
     return result
 end
 
-local function pair(area_id, location_id)
-    return { area_id = area_id, location_id = location_id }
+local function point(location_id)
+    return { location_id = location_id }
 end
 
 local ghoul = view("ghoul_bounty", E.RunContact.JUMP_HOUSE,
-    E.RunId.GHOUL_BOUNTY, { area_id = 2, ghoul_kill_count = 19 })
+    E.RunId.GHOUL_BOUNTY,
+    { region_id = "redmond_barrens", ghoul_kill_count = 19 })
 assert(ghoul.johnson_name == "Mr. Gunderson")
 assert(ghoul.run_type_name == "Ghoul Bounty")
 assert(ghoul.body ==
@@ -49,14 +50,16 @@ assert(ghoul.body ==
     "\n\nKill as many as possible and return here for payment. ",
     string.format("unexpected ghoul text: %q", ghoul.body))
 local ghoul_without_kills = offer("ghoul_bounty", E.RunContact.JUMP_HOUSE,
-    E.RunId.GHOUL_BOUNTY, { area_id = 2, ghoul_kill_count = 0 })
+    E.RunId.GHOUL_BOUNTY,
+    { region_id = "redmond_barrens", ghoul_kill_count = 0 })
 assert(Support.current_run_view(ghoul_without_kills).body == ghoul.body,
     "live ghoul count is not part of the detail text")
 
 local escort = view("bodyguard_escort", E.RunContact.MATCHSTICK,
     E.RunId.BODYGUARD_ESCORT,
     { route = {
-        origin = pair(2, 6), destination = pair(5, 6),
+        origin = point("boris_greenhouse"),
+        destination = point("renraku_offices"),
         client_id = "billy_gibson",
     } })
 assert(escort.johnson_name == "Julius Strouther")
@@ -71,7 +74,8 @@ assert(escort.body ==
 local courier = view("package_delivery", E.RunContact.JUMP_HOUSE,
     E.RunId.PACKAGE_DELIVERY,
     { route = {
-        origin = pair(2, 2), destination = pair(1, 7),
+        origin = point("stokers_coffin_motel"),
+        destination = point("tarislar_gardens_apartments"),
     } })
 assert(courier.body ==
     "Go to Stoker's Coffin Motel in the Redmond Barrens.  " ..
@@ -83,7 +87,8 @@ assert(courier.body ==
 local video_courier = view("package_delivery", E.RunContact.JUMP_HOUSE,
     E.RunId.PACKAGE_DELIVERY,
     { route = {
-        origin = pair(2, 11), destination = pair(2, 5),
+        origin = point("ares_weapon_emporium"),
+        destination = point("jackals_lantern"),
     } })
 assert(table.concat(video_courier.body_lines, "\n") ==
     "Go to Ares Weapon Emporium\n" ..
@@ -99,7 +104,8 @@ assert(table.concat(video_courier.body_lines, "\n") ==
 
 local gang = view("gang_contract", E.RunContact.BIG_RHINO,
     E.RunId.GANG_CONTRACT,
-    { variant = 1, route = { target = pair(3, 4) } })
+    { contract_variant_id = "renraku_information_leak",
+      route = { target = point("eye_fivers_hideout") } })
 assert(gang.johnson_name == "Mortimer Reed")
 assert(gang.body ==
     "Go see the Eye Fivers in the Penumbra District.  " ..
@@ -107,17 +113,18 @@ assert(gang.body ==
     "Renraku has been using this info to find and eliminate Johnsons.  " ..
     "Needless to say, this makes me uneasy.\n\n" ..
     "\"Discuss\" this matter with them and return here to collect your fee.")
-for variant = 0, #Support.gang_contract_texts - 1 do
+for _, variant in ipairs(Support.gang_contract_variants) do
     local current = view("gang_contract", E.RunContact.BIG_RHINO,
         E.RunId.GANG_CONTRACT,
-        { variant = variant, route = { target = pair(2, 9) } })
+        { contract_variant_id = variant.id,
+          route = { target = point("halloweeners_hideout") } })
     assert(#current.body_lines <= 16,
         "gang variant must fit the source detail text panel")
 end
 
 local recovery = view("package_recovery", E.RunContact.WANDERER,
     E.RunId.PACKAGE_RECOVERY,
-    { route = { target = pair(0, 6) } })
+    { route = { target = point("space_needle") } })
 assert(recovery.johnson_name == "Vigore and Jarl")
 assert(recovery.body ==
     "Go to the Space Needle in Downtown Seattle.  " ..
@@ -128,7 +135,8 @@ assert(recovery.body ==
 
 local extraction = view("employee_recruitment", E.RunContact.ICARUS_DESCENDING,
     E.RunId.EMPLOYEE_RECRUITMENT,
-    { employee_id = "mike_nana", route = { target = pair(3, 5) } })
+    { employee_id = "mike_nana",
+      route = { target = point("big_rhino") } })
 assert(extraction.johnson_name == "Caleb Brightmore")
 assert(extraction.body ==
     "An employee of the Big Rhino in the Penumbra District, Mike Nana, " ..
@@ -190,16 +198,17 @@ for contact_id, rows in pairs(OfferData.contacts) do
 end
 local function fixture_for(variant_id, contact_id, run_id)
     if run_id == E.RunId.GHOUL_BOUNTY then
-        return { area_id = 2 }
+        return { region_id = "redmond_barrens" }
     elseif run_id == E.RunId.BODYGUARD_ESCORT or
            run_id == E.RunId.PACKAGE_DELIVERY then
         return { route = {
-            origin = pair(2, 0), destination = pair(2, 1),
+            origin = point("hollywood_correctional_facilities"),
+            destination = point("little_chiba"),
             client_id = "mike_nana",
         } }
     elseif run_id == E.RunId.GANG_CONTRACT then
-        return { variant = 0,
-                 route = { target = pair(1, 9) } }
+        return { contract_variant_id = "building_vandalism",
+                 route = { target = point("ork_gang_hideout") } }
     elseif run_id == E.RunId.PACKAGE_RECOVERY or
            run_id == E.RunId.EMPLOYEE_RECRUITMENT then
         local pool = Support.run_target_pools.four_site
@@ -210,12 +219,12 @@ local function fixture_for(variant_id, contact_id, run_id)
                variant_id == "employee_recruitment_renraku" then
             pool = { Support.run_target_pools.renraku }
         end
-        local target = pool[1]
+        local target_location_id = pool[1]
         if run_id == E.RunId.EMPLOYEE_RECRUITMENT then
             return { employee_id = "mike_nana",
-                     route = { target = pair(target.area_id, target.location_id) } }
+                     route = { target = point(target_location_id) } }
         end
-        return { route = { target = pair(target.area_id, target.location_id) } }
+        return { route = { target = point(target_location_id) } }
     elseif run_id == E.RunId.MATRIX_OBJECTIVE then
         local objective = Catalog.objectives[1]
         local system_id = objective.systems[1]
@@ -236,27 +245,28 @@ assert(variant_count == 13, "all thirteen source offer variants are tested")
 
 local function each_contract_route(contact_id, callback)
     if contact_id == E.RunContact.JUMP_HOUSE then
-        local area = 2
-        local rolls = Support.location_rolls_by_area[area]
-        for _, origin_id in ipairs(rolls) do
-            for _, destination_id in ipairs(rolls) do
+        local region_id = "redmond_barrens"
+        local choices = Support.location_choice_ids_by_region[region_id]
+        for _, origin_id in ipairs(choices) do
+            for _, destination_id in ipairs(choices) do
                 if destination_id ~= origin_id then
-                    callback(contact_id, pair(area, origin_id),
-                             pair(area, destination_id))
+                    callback(contact_id, point(origin_id),
+                             point(destination_id))
                 end
             end
         end
         return
     end
-    for origin_area = 0, 5 do
-        for destination_area = 0, 5 do
-            if destination_area ~= origin_area then
+    for _, origin_region_id in ipairs(Support.contract_region_ids) do
+        for _, destination_region_id in ipairs(Support.contract_region_ids) do
+            if destination_region_id ~= origin_region_id then
                 for _, origin_id in ipairs(
-                    Support.location_rolls_by_area[origin_area]) do
+                    Support.location_choice_ids_by_region[origin_region_id]) do
                     for _, destination_id in ipairs(
-                        Support.location_rolls_by_area[destination_area]) do
-                        callback(contact_id, pair(origin_area, origin_id),
-                                 pair(destination_area, destination_id))
+                        Support.location_choice_ids_by_region[
+                            destination_region_id]) do
+                        callback(contact_id, point(origin_id),
+                                 point(destination_id))
                     end
                 end
             end
@@ -280,9 +290,9 @@ for _, contact_id in ipairs(contacts) do
             { route = { origin = origin, destination = destination } }))
         assert(courier_view ~= nil)
         assert(courier_view.body:find(
-            Support.location_names[origin.area_id][origin.location_id], 1, true))
+            Support.locations[origin.location_id].name, 1, true))
         assert(courier_view.body:find(
-            Support.location_names[destination.area_id][destination.location_id], 1, true))
+            Support.locations[destination.location_id].name, 1, true))
         for _, line in ipairs(courier_view.body_lines) do
             assert(#line <= 26)
         end
@@ -298,9 +308,9 @@ for _, contact_id in ipairs(contacts) do
             assert(bodyguard_view.body:find(
                 Support.client_name(client_id), 1, true))
             assert(bodyguard_view.body:find(
-                Support.location_names[origin.area_id][origin.location_id], 1, true))
+                Support.locations[origin.location_id].name, 1, true))
             assert(bodyguard_view.body:find(
-                Support.location_names[destination.area_id][destination.location_id],
+                Support.locations[destination.location_id].name,
                 1, true))
             assert(#bodyguard_view.body_lines <= 16,
                 "route/client combination must fit the detail text panel")
@@ -311,7 +321,10 @@ assert(route_cases == 12090, "every legal source route pair is covered")
 
 local bad = offer("package_delivery", E.RunContact.JUMP_HOUSE,
     E.RunId.PACKAGE_DELIVERY, {
-        route = { origin = pair(2, 2), destination = pair(2, 2) },
+        route = {
+            origin = point("stokers_coffin_motel"),
+            destination = point("stokers_coffin_motel"),
+        },
     })
 assert(Support.current_run_view(bad) ~= nil,
     "the display follows saved active fields without silently rerolling them")

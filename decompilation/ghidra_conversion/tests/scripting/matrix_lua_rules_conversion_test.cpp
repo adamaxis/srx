@@ -1992,13 +1992,12 @@ local gang_id, gang_offer = prepare_contact_row(
 eq(gang_id, "gang_contract", "gang source initializer loads its own module")
 eq(gang_offer.offer_variant_id, "gang_contract",
     "gang offer retains semantic variant")
-eq(gang_offer.route.target.area_id, 1,
-    "gang target is selected from the ROM three-site list")
-eq(gang_offer.route.target.location_id, 9,
-    "gang target retains its source event ID")
-eq(gang_offer.variant, 0, "gang copy uses the source four-variant roll")
-assert(Support.gang_contract_texts[1]:find("||", 1, true) and
-       not Support.gang_contract_texts[1]:find("\n", 1, true),
+eq(gang_offer.route.target.location_id, "ork_gang_hideout",
+    "gang target uses its semantic place identity")
+eq(gang_offer.contract_variant_id, "building_vandalism",
+    "gang copy stores a semantic contract variant")
+assert(Support.gang_contract_variants[1].text:find("||", 1, true) and
+       not Support.gang_contract_variants[1].text:find("\n", 1, true),
     "gang copy uses the shared dialogue paragraph separators")
 checks = checks + 1
 Registry.resolve_current_offer("no")
@@ -2009,10 +2008,8 @@ eq(recovery_id, "package_recovery",
     "two-site package recovery loads its own module")
 eq(recovery_offer.offer_variant_id, "package_recovery_two_site_pool",
     "recovery preserves its two-site target-pool choice")
-eq(recovery_offer.route.target.area_id, 1,
-    "recovery target uses the ROM two-site pool")
-eq(recovery_offer.route.target.location_id, 2,
-    "recovery target retains the selected event ID")
+eq(recovery_offer.route.target.location_id, "ares_corporate_offices",
+    "recovery target uses the semantic place from the ROM two-site pool")
 Registry.resolve_current_offer("no")
 
 local employee_id, employee_offer = prepare_contact_row(
@@ -2021,12 +2018,10 @@ eq(employee_id, "employee_recruitment",
     "Renraku employee recovery loads its own module")
 eq(employee_offer.offer_variant_id, "employee_recruitment_renraku",
     "employee offer preserves its fixed-site variant")
-eq(employee_offer.route.target.area_id, 5,
-    "employee offer uses the ROM fixed Renraku area")
-eq(employee_offer.route.target.location_id, 6,
-    "employee offer uses the ROM fixed Renraku event")
-eq(employee_offer.employee_name, "Mike Nana",
-    "employee name comes from the twelve-name source table")
+eq(employee_offer.route.target.location_id, "renraku_offices",
+    "employee offer uses the semantic fixed Renraku place")
+eq(employee_offer.employee_id, "mike_nana",
+    "employee identity comes from the semantic client catalog")
 Registry.resolve_current_offer("no")
 
 local moderate_id, moderate_offer = prepare_contact_row(

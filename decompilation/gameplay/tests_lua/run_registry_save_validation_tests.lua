@@ -47,12 +47,25 @@ local function source_offer(contact_id, row, skill, roll)
     }
     if resolved.id == E.RunId.BODYGUARD_ESCORT then
         offer.route = {
-            origin = { area_id = 2, location_id = 4 },
-            destination = { area_id = 2, location_id = 5 },
+            origin = { location_id = "jump_house" },
+            destination = { location_id = "jackals_lantern" },
             client_id = "mike_nana",
         }
+    elseif resolved.id == E.RunId.PACKAGE_DELIVERY then
+        offer.route = {
+            origin = { location_id = "ares_weapon_emporium" },
+            destination = { location_id = "jackals_lantern" },
+        }
+    elseif resolved.id == E.RunId.GANG_CONTRACT then
+        offer.route = { target = { location_id = "ork_gang_hideout" } }
+        offer.contract_variant_id = "building_vandalism"
+    elseif resolved.id == E.RunId.PACKAGE_RECOVERY then
+        offer.route = { target = { location_id = "ares_corporate_offices" } }
     elseif resolved.id == E.RunId.EMPLOYEE_RECRUITMENT then
         offer.employee_id = "mike_nana"
+        offer.route = { target = { location_id = "renraku_offices" } }
+    elseif resolved.id == E.RunId.GHOUL_BOUNTY then
+        offer.region_id = "redmond_barrens"
     end
     if resolved.id == E.RunId.MATRIX_OBJECTIVE then
         offer.matrix_run_state = matrix_state()
@@ -124,9 +137,16 @@ assert(checked == 1040,
 assert(courier ~= nil and courier.payment.negotiated_amount == 55,
     "Section 03 Courier offer must resolve to the saved 40 -> 55 amount")
 courier.route = {
-    origin = { area_id = 2, location_id = 11 },
-    destination = { area_id = 2, location_id = 5 },
+    origin = { location_id = "ares_weapon_emporium" },
+    destination = { location_id = "jackals_lantern" },
 }
+
+local source_shaped_route = copy_offer(courier)
+source_shaped_route.route.origin = {
+    area_id = 2, location_id = 11,
+}
+assert(not valid(source_shaped_route),
+    "Lua save validation must reject raw region/event selectors")
 
 local mismatched_contact = copy_offer(courier)
 mismatched_contact.contact_id = E.RunContact.MATCHSTICK

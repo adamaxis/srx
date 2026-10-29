@@ -25,12 +25,17 @@ function PackageDelivery.present_offer()
     -- ROM 0x1EBAA appends the origin, area suffix, and F23B8 stream into one
     -- text buffer. F23B8 alone supplies the two 0x80 row breaks before
     -- "Take it to"; the other phrase boundaries wrap naturally at 26 columns.
+    local support = game.modules.run_support
+    local origin = support.location_details(route.origin.location_id)
+    local destination = support.location_details(route.destination.location_id)
+    assert(origin ~= nil and destination ~= nil,
+        "package route has an invalid semantic place")
     game.ui.say_text(
-        "Go to " .. route.origin.location_name .. " " ..
-        route.origin.area_suffix .. "  " ..
+        "Go to " .. origin.name .. " " ..
+        origin.region_suffix .. "  " ..
         "A contact there will give you a package." ..
-        "||Take it to " .. route.destination.location_name .. " " ..
-        route.destination.area_suffix .. "  " ..
+        "||Take it to " .. destination.name .. " " ..
+        destination.region_suffix .. "  " ..
         "You will be paid upon safe delivery of the package.", true)
     local payment = offer.payment
     local support = game.modules.run_support
@@ -46,7 +51,7 @@ function PackageDelivery.present_offer()
     return game.modules.run_support.resolve_offer_decision(choice)
 end
 
-function PackageDelivery.resolve_field_event(offer, map_id, event_id)
+function PackageDelivery.resolve_field_event(offer, location_id)
     local route = offer.route
     if type(route) ~= "table" then
         return { action = "no_action" }
@@ -56,12 +61,9 @@ function PackageDelivery.resolve_field_event(offer, map_id, event_id)
     -- then checks the destination after the run's active bit has been set.
     -- For type 2 it changes the alternate result at each match; the origin
     -- match arms delivery, and the destination match enters the common payout.
-    local origin_matches =
-        map_id == route.origin.area_id and
-        event_id == route.origin.location_id
+    local origin_matches = location_id == route.origin.location_id
     local destination_matches =
-        map_id == route.destination.area_id and
-        event_id == route.destination.location_id
+        location_id == route.destination.location_id
 
     if not offer.package_collected then
         if origin_matches then

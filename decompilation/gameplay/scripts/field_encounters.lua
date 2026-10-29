@@ -100,7 +100,8 @@ local function actor_from_row(row)
             inventory = row.inventory,
         },
     }
-    if (row.run_target_area or 0) ~= 0 then
+    if row.run_target_group_id ~= nil and
+       row.run_target_group_id ~= "none" then
         actor.spawn_x = row.run_target_x
         actor.spawn_y = row.run_target_y
     end
@@ -121,6 +122,9 @@ local function ordered_actor_rows(data, predicate)
 end
 
 local function placement_policy_for_rule(placement_rule)
+    if placement_rule == "explicit_actor_positions" then
+        return "explicit_actor_positions"
+    end
     if placement_rule ==
        "open screen-edge candidates based on the current viewport and terrain" then
         return "screen_edge_candidates"
@@ -244,7 +248,7 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
 
     local actors = {}
     actors = ordered_actor_rows(data, function(row)
-        return (row.run_target_area or 0) == 0 and
+        return row.selection_kind == "weighted_encounter" and
                row.scene == scene_id and row.random_sum == sum
     end)
     if #actors == 0 then
@@ -281,41 +285,12 @@ function Encounters.resolve(scene_id, first_roll, second_roll)
     }
 end
 
-function Encounters.resolve_run_target_actor_group(area_id, event_id)
-    if not integer(area_id, 0, E.Scene.LAST_ID) or
-       not integer(event_id, 0, 255) then
+function Encounters.resolve_run_target_actor_group(group_id)
+    if type(group_id) ~= "string" or
+       not group_id:match("^[%w_.:-]+$") then
         return nil
     end
-    local data = content()
-    if data == nil then
-        return nil
-    end
-    local actors = ordered_actor_rows(data, function(row)
-        return row.run_target_area == area_id and
-               row.run_target_event == event_id
-    end)
-    if #actors == 0 then
-        return nil
-    end
-    return {
-        kind = "dynamic_world_effect_sequence",
-        placement_policy = "source_actor_positions",
-        scene = 15,
-        context_group = area_id,
-        random_sum = event_id,
-        sequence_id = string.format(
-            "field_encounter.scene.%d.context.%d.weight.%d",
-            15, area_id, event_id),
-        event_name = "gang_contract_target",
-        opening_text = "",
-        choice_1 = "",
-        choice_2 = "",
-        choice_3 = "",
-        choice_1_dispatch_returns = false,
-        choice_2_dispatch_returns = false,
-        choice_3_dispatch_returns = false,
-        actors = actors,
-    }
+    return Encounters.resolve_sequence(15, group_id)
 end
 
 -- A named actor sequence can be started by a story command without consuming
@@ -333,8 +308,10 @@ function Encounters.resolve_sequence(scene_id, sequence_id)
     end
     local actors = ordered_actor_rows(data, function(row)
         return row.scene == scene_id and
-               row.random_sum == E.FieldEncounter.SOURCE_SEQUENCE_SENTINEL and
-               row.sequence_id == sequence_id
+               row.sequence_id == sequence_id and
+               (row.selection_kind == "named_sequence" or
+                (row.selection_kind == "run_target_group" and
+                 row.run_target_group_id == sequence_id))
     end)
     if #actors == 0 then
         return nil

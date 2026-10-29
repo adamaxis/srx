@@ -14,7 +14,7 @@ function GhoulBounty.prepare_offer(contact_id, source_record)
         payment,
         source_record.runner_progress_delta)
     offer.contact_id = contact_id
-    offer.area_id = support.choose_ghoul_area(contact_id)
+    offer.region_id = support.choose_ghoul_region(contact_id)
     offer.ghoul_kill_count = 0
     game.runs.registry.current_offer = offer
     return offer.id
@@ -54,7 +54,7 @@ function GhoulBounty.resolve_johnson_return(offer, contact_id)
     }
 end
 
-function GhoulBounty.resolve_field_event(offer, map_id, event_id)
+function GhoulBounty.resolve_field_event(offer, location_id)
     -- The ROM counts eligible ghoul deaths in its actor/combat path. Its
     -- event-return and payout branch has not been connected to Lua yet, so
     -- this run deliberately does not treat an arbitrary map event as success.
@@ -65,10 +65,10 @@ function GhoulBounty.present_offer()
     local offer = game.runs.registry.current_offer
     assert(offer ~= nil and offer.id == "ghoul_bounty")
     local support = game.modules.run_support
-    local area = support.area_suffixes[offer.area_id]
-    assert(area ~= nil, "ghoul bounty has an invalid target area")
+    local region_suffix = support.region_suffix(offer.region_id)
+    assert(region_suffix ~= nil, "ghoul bounty has an invalid target region")
     game.ui.say_text(
-        "There is a community of Ghouls somewhere " .. area ..
+        "There is a community of Ghouls somewhere " .. region_suffix ..
         "|They have been preying on the citizens there." ..
         "|Kill as many as possible and return here for payment.", true)
     local payment = offer.payment

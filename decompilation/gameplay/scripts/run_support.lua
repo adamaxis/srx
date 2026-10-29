@@ -4,90 +4,179 @@ local E = require("enums")
 local OfferData = require("data.johnson_run_offers")
 local MatrixCatalog = require("data.matrix_run_catalog")
 
-Support.area_suffixes = {
-    -- ROM F1E58 strings used by the contract location formatter.
-    [0] = "in Downtown Seattle.",
-    [1] = "in the Puyallup Barrens.",
-    [2] = "in the Redmond Barrens.",
-    [3] = "in the Penumbra District.",
-    [4] = "on Council Island.",
-    [5] = "in the Renraku Arcology.",
-    [6] = "in the AmerIndian Lands.",
+Support.regions = {
+    downtown_seattle = { suffix = "in Downtown Seattle." },
+    puyallup_barrens = { suffix = "in the Puyallup Barrens." },
+    redmond_barrens = { suffix = "in the Redmond Barrens." },
+    penumbra_district = { suffix = "in the Penumbra District." },
+    council_island = { suffix = "on Council Island." },
+    renraku_arcology = { suffix = "in the Renraku Arcology." },
+    amerindian_lands = { suffix = "in the AmerIndian Lands." },
 }
 
-Support.location_names = {
-    -- ROM F1F1A's per-area location strings, kept as named Lua data.
-    [0] = {
-        [0] = "Seattle General Hospital",
-        [1] = "Icarus Descending",
-        [2] = "Matchsticks",
-        [3] = "the Gates Undersound Hotel",
-        [4] = "Mitsuhama Computer Technologies",
-        [5] = "Fuchi's local office",
-        [6] = "the Space Needle",
-        [7] = "see Roscoe the Fixer",
-        [8] = "OOGA BOOGA BOOGA",
-        [9] = "OOGA BOOGA BOOGA",
+Support.contract_region_ids = {
+    "downtown_seattle", "puyallup_barrens", "redmond_barrens",
+    "penumbra_district", "council_island", "renraku_arcology",
+}
+
+Support.locations = {
+    seattle_general_hospital = {
+        region_id = "downtown_seattle", name = "Seattle General Hospital",
     },
-    [1] = {
-        [0] = "the Wanderer",
-        [1] = "the Tarislar City Inn",
-        [2] = "Ares' Corporate Offices",
-        [3] = "Riannon's",
-        [4] = "Underground 93",
-        [5] = "the Crime Mall",
-        [6] = "Dr. Bob's Quickstitch",
-        [7] = "the Tarislar Gardens Apartment Complex",
-        [8] = "OOGA BOOGA BOOGA",
-        [9] = "see the Ork Gang",
+    icarus_descending = {
+        region_id = "downtown_seattle", name = "Icarus Descending",
     },
-    [2] = {
-        [0] = "the Hollywood Correctional Facilities",
-        [1] = "Little Chiba",
-        [2] = "Stoker's Coffin Motel",
-        [3] = "the Shiawase Nuke Plant",
-        [4] = "the Jump House",
-        [5] = "the Jackal's Lantern",
-        [6] = "Boris' Greenhouse",
-        [7] = "the Rat's Nest",
-        [9] = "see the Halloweeners",
-        [11] = "Ares Weapon Emporium",
+    matchsticks = {
+        region_id = "downtown_seattle", name = "Matchsticks",
     },
-    [3] = {
-        [0] = "Club Penumbra",
-        [1] = "Wylie's Gala Inn",
-        [2] = "Fuchi Industrial Electronics",
-        [3] = "Mitsuhama's local office",
-        [4] = "see the Eye Fivers",
-        [5] = "the Big Rhino",
-        [6] = "Lone Star Security",
+    gates_undersound_hotel = {
+        region_id = "downtown_seattle", name = "the Gates Undersound Hotel",
     },
-    [4] = {
-        [0] = "the Council Island Inn",
-        [1] = "the Friendship Restaurant",
-        [2] = "the Passport Lodge",
-        [3] = "the Medicine Lodge Hollow",
-        [4] = "the Council Island Hospital",
-        [5] = "the Ork Embassy",
+    mitsuhama_computer_technologies = {
+        region_id = "downtown_seattle",
+        name = "Mitsuhama Computer Technologies",
     },
-    [5] = {
-        [1] = "the Frag Grenade",
-        [2] = "Wire-Masters",
-        [3] = "Merlin's Lore",
-        [4] = "Microtronics",
-        [5] = "Weapons World",
-        [6] = "the Renraku Offices",
+    fuchi_local_office = {
+        region_id = "downtown_seattle", name = "Fuchi's local office",
+    },
+    space_needle = {
+        region_id = "downtown_seattle", name = "the Space Needle",
+    },
+    roscoe_the_fixer = {
+        region_id = "downtown_seattle", name = "see Roscoe the Fixer",
+    },
+    wanderer = { region_id = "puyallup_barrens", name = "the Wanderer" },
+    tarislar_city_inn = {
+        region_id = "puyallup_barrens", name = "the Tarislar City Inn",
+    },
+    ares_corporate_offices = {
+        region_id = "puyallup_barrens", name = "Ares' Corporate Offices",
+    },
+    riannons = { region_id = "puyallup_barrens", name = "Riannon's" },
+    underground_93 = {
+        region_id = "puyallup_barrens", name = "Underground 93",
+    },
+    crime_mall = { region_id = "puyallup_barrens", name = "the Crime Mall" },
+    dr_bobs_quickstitch = {
+        region_id = "puyallup_barrens", name = "Dr. Bob's Quickstitch",
+    },
+    tarislar_gardens_apartments = {
+        region_id = "puyallup_barrens",
+        name = "the Tarislar Gardens Apartment Complex",
+    },
+    ork_gang_hideout = {
+        region_id = "puyallup_barrens", name = "see the Ork Gang",
+    },
+    hollywood_correctional_facilities = {
+        region_id = "redmond_barrens",
+        name = "the Hollywood Correctional Facilities",
+    },
+    little_chiba = { region_id = "redmond_barrens", name = "Little Chiba" },
+    stokers_coffin_motel = {
+        region_id = "redmond_barrens", name = "Stoker's Coffin Motel",
+    },
+    shiawase_nuke_plant = {
+        region_id = "redmond_barrens", name = "the Shiawase Nuke Plant",
+    },
+    jump_house = { region_id = "redmond_barrens", name = "the Jump House" },
+    jackals_lantern = {
+        region_id = "redmond_barrens", name = "the Jackal's Lantern",
+    },
+    boris_greenhouse = {
+        region_id = "redmond_barrens", name = "Boris' Greenhouse",
+    },
+    rats_nest = { region_id = "redmond_barrens", name = "the Rat's Nest" },
+    halloweeners_hideout = {
+        region_id = "redmond_barrens", name = "see the Halloweeners",
+    },
+    ares_weapon_emporium = {
+        region_id = "redmond_barrens", name = "Ares Weapon Emporium",
+    },
+    club_penumbra = {
+        region_id = "penumbra_district", name = "Club Penumbra",
+    },
+    wylies_gala_inn = {
+        region_id = "penumbra_district", name = "Wylie's Gala Inn",
+    },
+    fuchi_industrial_electronics = {
+        region_id = "penumbra_district",
+        name = "Fuchi Industrial Electronics",
+    },
+    mitsuhama_local_office = {
+        region_id = "penumbra_district", name = "Mitsuhama's local office",
+    },
+    eye_fivers_hideout = {
+        region_id = "penumbra_district", name = "see the Eye Fivers",
+    },
+    big_rhino = { region_id = "penumbra_district", name = "the Big Rhino" },
+    lone_star_security = {
+        region_id = "penumbra_district", name = "Lone Star Security",
+    },
+    council_island_inn = {
+        region_id = "council_island", name = "the Council Island Inn",
+    },
+    friendship_restaurant = {
+        region_id = "council_island", name = "the Friendship Restaurant",
+    },
+    passport_lodge = {
+        region_id = "council_island", name = "the Passport Lodge",
+    },
+    medicine_lodge_hollow = {
+        region_id = "council_island", name = "the Medicine Lodge Hollow",
+    },
+    council_island_hospital = {
+        region_id = "council_island", name = "the Council Island Hospital",
+    },
+    ork_embassy = { region_id = "council_island", name = "the Ork Embassy" },
+    frag_grenade = {
+        region_id = "renraku_arcology", name = "the Frag Grenade",
+    },
+    wire_masters = { region_id = "renraku_arcology", name = "Wire-Masters" },
+    merlins_lore = { region_id = "renraku_arcology", name = "Merlin's Lore" },
+    microtronics = { region_id = "renraku_arcology", name = "Microtronics" },
+    weapons_world = { region_id = "renraku_arcology", name = "Weapons World" },
+    renraku_offices = {
+        region_id = "renraku_arcology", name = "the Renraku Offices",
     },
 }
 
--- ROM F3E80's ten-entry location-index selection for each contract area.
-Support.location_rolls_by_area = {
-    [0] = { 7, 0, 1, 2, 3, 4, 5, 6, 7, 0 },
-    [1] = { 5, 0, 1, 2, 3, 4, 5, 6, 7, 9 },
-    [2] = { 0, 1, 2, 3, 4, 5, 6, 7, 9, 11 },
-    [3] = { 0, 1, 2, 3, 4, 5, 6, 0, 4, 6 },
-    [4] = { 0, 1, 2, 3, 4, 5, 2, 3, 4, 5 },
-    [5] = { 6, 1, 2, 3, 4, 5, 6, 1, 2, 6 },
+-- Preserve each source table's ten equally likely choices as named locations.
+Support.location_choice_ids_by_region = {
+    downtown_seattle = {
+        "roscoe_the_fixer", "seattle_general_hospital", "icarus_descending",
+        "matchsticks", "gates_undersound_hotel",
+        "mitsuhama_computer_technologies", "fuchi_local_office",
+        "space_needle", "roscoe_the_fixer", "seattle_general_hospital",
+    },
+    puyallup_barrens = {
+        "crime_mall", "wanderer", "tarislar_city_inn",
+        "ares_corporate_offices", "riannons", "underground_93",
+        "crime_mall", "dr_bobs_quickstitch", "tarislar_gardens_apartments",
+        "ork_gang_hideout",
+    },
+    redmond_barrens = {
+        "hollywood_correctional_facilities", "little_chiba",
+        "stokers_coffin_motel", "shiawase_nuke_plant", "jump_house",
+        "jackals_lantern", "boris_greenhouse", "rats_nest",
+        "halloweeners_hideout", "ares_weapon_emporium",
+    },
+    penumbra_district = {
+        "club_penumbra", "wylies_gala_inn", "fuchi_industrial_electronics",
+        "mitsuhama_local_office", "eye_fivers_hideout", "big_rhino",
+        "lone_star_security", "club_penumbra", "eye_fivers_hideout",
+        "lone_star_security",
+    },
+    council_island = {
+        "council_island_inn", "friendship_restaurant", "passport_lodge",
+        "medicine_lodge_hollow", "council_island_hospital", "ork_embassy",
+        "passport_lodge", "medicine_lodge_hollow", "council_island_hospital",
+        "ork_embassy",
+    },
+    renraku_arcology = {
+        "renraku_offices", "frag_grenade", "wire_masters", "merlins_lore",
+        "microtronics", "weapons_world", "renraku_offices", "frag_grenade",
+        "wire_masters", "renraku_offices",
+    },
 }
 
 Support.clients = {
@@ -127,33 +216,63 @@ end
 -- ROM 0xF36FA contains the four gang-contract variations shown after the
 -- selected target location. These strings are kept as content, separate from
 -- route selection and shared payment rules.
-Support.gang_contract_texts = {
-    "They have been defacing and damaging buildings in that area.  I find this appalling!||Show them how I feel about vandals and return to me for your payment.",
-    "They have been feeding Renraku a lot of information.||Renraku has been using this info to find and eliminate Johnsons.  Needless to say, this makes me uneasy.||\"Discuss\" this matter with them and return here to collect your fee.",
-    "Their recent antics have been most heinous!||I want you to tell them to quit terrorizing the locals.  And make it stick!||Payment will be rendered when the gang is no longer a problem.",
-    "Their payments are late on an insurance policy they have with me.||You will be payed when you return with their premiums.",
+Support.gang_contract_variants = {
+    {
+        id = "building_vandalism",
+        text = "They have been defacing and damaging buildings in that area.  I find this appalling!||Show them how I feel about vandals and return to me for your payment.",
+    },
+    {
+        id = "renraku_information_leak",
+        text = "They have been feeding Renraku a lot of information.||Renraku has been using this info to find and eliminate Johnsons.  Needless to say, this makes me uneasy.||\"Discuss\" this matter with them and return here to collect your fee.",
+    },
+    {
+        id = "local_terrorism",
+        text = "Their recent antics have been most heinous!||I want you to tell them to quit terrorizing the locals.  And make it stick!||Payment will be rendered when the gang is no longer a problem.",
+    },
+    {
+        id = "insurance_premiums",
+        text = "Their payments are late on an insurance policy they have with me.||You will be payed when you return with their premiums.",
+    },
 }
 
+function Support.choose_gang_contract_variant_id()
+    local index = Support.bounded_random(#Support.gang_contract_variants)
+    return Support.gang_contract_variants[index + 1].id
+end
+
+function Support.gang_contract_variant_text(variant_id)
+    for _, variant in ipairs(Support.gang_contract_variants) do
+        if variant.id == variant_id then return variant.text end
+    end
+    return nil
+end
+
 Support.gang_contract_targets = {
-    { area_id = 1, location_id = 9 },
-    { area_id = 2, location_id = 9 },
-    { area_id = 3, location_id = 4 },
+    "ork_gang_hideout",
+    "halloweeners_hideout",
+    "eye_fivers_hideout",
+}
+
+Support.gang_actor_group_ids = {
+    ork_gang_hideout = "gang_contract.ork_gang",
+    halloweeners_hideout = "gang_contract.halloweeners",
+    eye_fivers_hideout = "gang_contract.eye_fivers",
 }
 
 -- ROM F3E6E (four-site pool), F3E76 (two-site pool), and the fixed 5/6
 -- Renraku tuple imported for the two named Renraku variants.
 Support.run_target_pools = {
     four_site = {
-        { area_id = 0, location_id = 5 },
-        { area_id = 0, location_id = 4 },
-        { area_id = 3, location_id = 2 },
-        { area_id = 3, location_id = 3 },
+        "fuchi_local_office",
+        "mitsuhama_computer_technologies",
+        "fuchi_industrial_electronics",
+        "mitsuhama_local_office",
     },
     two_site = {
-        { area_id = 1, location_id = 2 },
-        { area_id = 3, location_id = 6 },
+        "ares_corporate_offices",
+        "lone_star_security",
     },
-    renraku = { area_id = 5, location_id = 6 },
+    renraku = "renraku_offices",
 }
 
 local contact_names = {
@@ -174,20 +293,29 @@ local run_names = {
     [E.RunId.MATRIX_OBJECTIVE] = "Matrix Run",
 }
 
-local function source_location(pair)
-    if type(pair) ~= "table" then return nil end
-    local area_id = pair.area_id
-    local location_id = pair.location_id
-    if type(area_id) ~= "number" or area_id % 1 ~= 0 or
-       type(location_id) ~= "number" or location_id % 1 ~= 0 then
-        return nil
-    end
-    local area = Support.area_suffixes[area_id]
-    local locations = Support.location_names[area_id]
-    local location = type(locations) == "table" and
-        locations[location_id] or nil
-    if area == nil or location == nil then return nil end
-    return location, area
+function Support.location_details(location_id)
+    local location = type(location_id) == "string" and
+        Support.locations[location_id] or nil
+    if type(location) ~= "table" then return nil end
+    local region = Support.regions[location.region_id]
+    if type(region) ~= "table" then return nil end
+    return {
+        location_id = location_id,
+        name = location.name,
+        region_id = location.region_id,
+        region_suffix = region.suffix,
+    }
+end
+
+function Support.region_suffix(region_id)
+    local region = type(region_id) == "string" and
+        Support.regions[region_id] or nil
+    return type(region) == "table" and region.suffix or nil
+end
+
+function Support.gang_actor_group_id(location_id)
+    return type(location_id) == "string" and
+        Support.gang_actor_group_ids[location_id] or nil
 end
 
 local function source_run_body(offer, run_id)
@@ -198,27 +326,29 @@ local function source_run_body(offer, run_id)
         body[#body + 1] = string.rep(" ", spaces)
         return true
     end
-    local function route_pair(pair)
-        local location, area = source_location(pair)
-        if location == nil then return nil end
-        return location, area
+    local function route_location(route_point)
+        if type(route_point) ~= "table" then return nil end
+        local details = Support.location_details(route_point.location_id)
+        if details == nil then return nil end
+        return details.name, details.region_suffix
     end
 
     if run_id == E.RunId.GHOUL_BOUNTY then
-        local area = Support.area_suffixes[offer.area_id]
-        if area == nil or offer.area_id < 0 or offer.area_id > 3 then
-            return nil
-        end
+        local region_suffix = Support.region_suffix(offer.region_id)
+        if region_suffix == nil or
+           offer.region_id == "council_island" or
+           offer.region_id == "renraku_arcology" or
+           offer.region_id == "amerindian_lands" then return nil end
         copy("There is a community of Ghouls somewhere", 1) -- F2520, D1=0.
-        copy(area, 2)                                        -- F1E58, D1=1.
+        copy(region_suffix, 2)                              -- F1E58, D1=1.
         copy("They have been preying on the citizens there." ..
              "\n\nKill as many as possible and return here for payment.",
              1)                                              -- F2549, D1=0.
     elseif run_id == E.RunId.BODYGUARD_ESCORT or
            run_id == E.RunId.PACKAGE_DELIVERY then
-        local origin, origin_area = route_pair(
+        local origin, origin_area = route_location(
             offer.route and offer.route.origin)
-        local destination, destination_area = route_pair(
+        local destination, destination_area = route_location(
             offer.route and offer.route.destination)
         if origin == nil or destination == nil then return nil end
         copy("Go to", 1)                                    -- F23B2, D1=0.
@@ -244,20 +374,18 @@ local function source_run_body(offer, run_id)
         end
     elseif run_id == E.RunId.GANG_CONTRACT or
            run_id == E.RunId.PACKAGE_RECOVERY then
-        local target, area = route_pair(offer.route and offer.route.target)
+        local target, area = route_location(offer.route and offer.route.target)
         if target == nil then return nil end
         if run_id == E.RunId.GANG_CONTRACT then
-            if type(offer.variant) ~= "number" or
-               offer.variant % 1 ~= 0 or offer.variant < 0 or
-               offer.variant >= #Support.gang_contract_texts then
-                return nil
-            end
+            local variant_text = Support.gang_contract_variant_text(
+                offer.contract_variant_id)
+            if variant_text == nil then return nil end
             -- 0x1ECA4 removes "to" from F23B2 because each gang target
             -- begins with "see", yielding "Go see <gang>".
             copy("Go ", 0)
             copy(target, 1)
             copy(area, 2)
-            copy(Support.gang_contract_texts[offer.variant + 1]:gsub("|", "\n"), 0)
+            copy(variant_text:gsub("|", "\n"), 0)
         else
             copy("Go to", 1)                                -- F23B2, D1=0.
             copy(target, 1)
@@ -268,7 +396,7 @@ local function source_run_body(offer, run_id)
                                                             -- F367C, D1=-1.
         end
     elseif run_id == E.RunId.EMPLOYEE_RECRUITMENT then
-        local target, area = route_pair(offer.route and offer.route.target)
+        local target, area = route_location(offer.route and offer.route.target)
         local client = Support.client_name(offer.employee_id)
         if target == nil or area == nil or client == nil then return nil end
         area = area:gsub("%.$", ",", 1)                     -- 0x1E91A.
@@ -437,79 +565,72 @@ function Support.amount_in_reserved_field(amount, width)
     return string.rep(" ", width - #digits) .. digits
 end
 
-local function choose_location(area_id)
+local function choose_location(region_id)
     local roll = Support.bounded_random(10)
-    local local_index = Support.location_rolls_by_area[area_id][roll + 1]
-    local name = Support.location_names[area_id][local_index]
-    assert(name ~= nil, "source location table entry has no imported name")
-    return local_index, name
+    local choices = Support.location_choice_ids_by_region[region_id]
+    assert(type(choices) == "table",
+        "contract offer selected an unknown region")
+    local location_id = choices[roll + 1]
+    assert(Support.location_details(location_id) ~= nil,
+        "contract location choice has no semantic place")
+    return location_id
 end
 
 function Support.choose_contract_route(contact_id)
     -- ROM 0x1E9C0 chooses origin area/location, client, then destination
     -- area/location. The opening context fixes both areas to Redmond and
     -- retries the destination location until it differs from the origin.
-    local origin_area
+    local origin_region_id
     if contact_id == E.RunContact.JUMP_HOUSE then
-        origin_area = 2
+        origin_region_id = "redmond_barrens"
     else
-        origin_area = Support.bounded_random(6)
+        local region_index = Support.bounded_random(
+            #Support.contract_region_ids)
+        origin_region_id = Support.contract_region_ids[region_index + 1]
     end
 
-    local origin_index, origin_name = choose_location(origin_area)
+    local origin_location_id = choose_location(origin_region_id)
     local client_id = Support.choose_client_id()
-    local client_name = Support.client_name(client_id)
 
-    local destination_area
+    local destination_region_id
     if contact_id == E.RunContact.JUMP_HOUSE then
-        destination_area = 2
+        destination_region_id = "redmond_barrens"
     else
         repeat
-            destination_area = Support.bounded_random(6)
-        until destination_area ~= origin_area
+            local region_index = Support.bounded_random(
+                #Support.contract_region_ids)
+            destination_region_id =
+                Support.contract_region_ids[region_index + 1]
+        until destination_region_id ~= origin_region_id
     end
 
-    local destination_index, destination_name = choose_location(destination_area)
+    local destination_location_id = choose_location(destination_region_id)
     while contact_id == E.RunContact.JUMP_HOUSE and
-          destination_index == origin_index do
-        destination_index, destination_name = choose_location(destination_area)
+          destination_location_id == origin_location_id do
+        destination_location_id = choose_location(destination_region_id)
     end
 
     return {
-        origin = {
-            area_id = origin_area,
-            area_suffix = Support.area_suffixes[origin_area],
-            location_id = origin_index,
-            location_name = origin_name,
-        },
-        destination = {
-            area_id = destination_area,
-            area_suffix = Support.area_suffixes[destination_area],
-            location_id = destination_index,
-            location_name = destination_name,
-        },
+        origin = { location_id = origin_location_id },
+        destination = { location_id = destination_location_id },
         client_id = client_id,
-        client_name = client_name,
     }
 end
 
-function Support.choose_ghoul_area(contact_id)
+function Support.choose_ghoul_region(contact_id)
     -- ROM 0x1E744 fixes the opening contract to area 2; other contexts use
     -- the four-area random pool from that handler.
-    if contact_id == E.RunContact.JUMP_HOUSE then return 2 end
-    return Support.bounded_random(4)
+    if contact_id == E.RunContact.JUMP_HOUSE then
+        return "redmond_barrens"
+    end
+    local region_index = Support.bounded_random(4)
+    return Support.contract_region_ids[region_index + 1]
 end
 
-local function named_target(target)
-    local name = Support.location_names[target.area_id] and
-        Support.location_names[target.area_id][target.location_id]
-    assert(name ~= nil, "source run target has no imported location name")
-    return {
-        area_id = target.area_id,
-        area_suffix = Support.area_suffixes[target.area_id],
-        location_id = target.location_id,
-        location_name = name,
-    }
+local function named_target(location_id)
+    assert(Support.location_details(location_id) ~= nil,
+        "run target has no semantic place")
+    return { location_id = location_id }
 end
 
 function Support.choose_gang_contract_target()
@@ -526,12 +647,9 @@ function Support.choose_facility_target(target_pool_id)
     assert(type(target_pool_id) == "string",
         "facility offer needs a semantic target pool")
     local pool = Support.run_target_pools[target_pool_id]
-    assert(type(pool) == "table",
+    assert(pool ~= nil,
         "facility offer selected an unknown target pool")
     if target_pool_id == "renraku" then
-        assert(type(pool.area_id) == "number" and
-               type(pool.location_id) == "number",
-            "fixed facility offer needs a named target location")
         return named_target(pool)
     end
     assert(#pool > 0, "facility offer selected an empty target pool")

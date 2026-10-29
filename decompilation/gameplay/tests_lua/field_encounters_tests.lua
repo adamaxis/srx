@@ -33,7 +33,8 @@ local function actor_row(source_order, sequence_id, placement_rule)
     return {
         scene = 2,
         context_group = 0,
-        random_sum = E.FieldEncounter.SOURCE_SEQUENCE_SENTINEL,
+        random_sum = 0,
+        selection_kind = "named_sequence",
         sequence_id = sequence_id or "field_alarm_reinforcements",
         source_order = source_order,
         actor_name = "corp guard",

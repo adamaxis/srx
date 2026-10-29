@@ -24,6 +24,7 @@
 #include "shadowrun_ghidra/field/field_entity_render_batch_conversion.hpp"
 #include "shadowrun_ghidra/integration/field_session_source_assets_conversion.hpp"
 #include "shadowrun_ghidra/session/runner_status_conversion.hpp"
+#include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/field/vid_phone_service_conversion.hpp"
@@ -1276,11 +1277,15 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 !field_party_roster_.available()) {
                 return false;
             }
+            const auto location_id =
+                scripting::run_location_id_for_source_selector(
+                    runtime_state.scene_id,
+                    field_movement_transition_state_.mode_event_code);
+            if (!location_id.has_value()) {
+                return false;
+            }
             const auto run_event =
-                game_scripts_.resolve_active_run_field_event(
-                    static_cast<std::uint8_t>(runtime_state.scene_id),
-                    static_cast<std::uint8_t>(
-                        field_movement_transition_state_.mode_event_code));
+                game_scripts_.resolve_active_run_field_event(*location_id);
             if (!run_event.has_value()) {
                 source_boundary("field.run.event_script_failed");
                 state.caller_exit_status = -1;
@@ -1322,11 +1327,7 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                 // through the modal and resume it when the passage closes.
                 field_mode_entry_destination_scene_ =
                     *event_route.area_event_target;
-                if (run_event->activity_scene_id == 15U &&
-                    run_event->actor_group_area != 0U &&
-                    run_event->actor_group_event != 0U &&
-                    run_event->actor_list_offset != 0U &&
-                    run_event->actor_resource_profile_offset != 0U) {
+                if (!run_event->actor_group_id.empty()) {
                     field_mode_entry_run_target_actor_group_ = *run_event;
                 } else {
                     field_mode_entry_run_target_actor_group_.reset();
@@ -6095,7 +6096,7 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
     }
     if (source_positions_complete !=
         (outcome.placement_policy == scripting::
-             ScriptFieldEncounterPlacementPolicy::source_actor_positions)) {
+             ScriptFieldEncounterPlacementPolicy::explicit_actor_positions)) {
         failure_ = "encounter placement policy does not match its actor positions";
         source_boundary("field.random_encounter.placement_policy_unresolved");
         pending_field_encounter_outcome_.reset();
@@ -7514,11 +7515,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 field_mode_entry_run_target_actor_group_;
             const bool descriptors_pending =
                 run_target_actor_group.has_value() &&
-                run_target_actor_group->activity_scene_id == 15U &&
-                run_target_actor_group->actor_group_area != 0U &&
-                run_target_actor_group->actor_group_event != 0U &&
-                run_target_actor_group->actor_list_offset != 0U &&
-                run_target_actor_group->actor_resource_profile_offset != 0U;
+                !run_target_actor_group->actor_group_id.empty();
             if (run_target_actor_group.has_value() && !descriptors_pending) {
                 source_boundary(
                     "field.world_activity.run_target_descriptor_facts_invalid");
@@ -7618,30 +7615,20 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 }
                 const auto outcome =
                     game_scripts_.resolve_run_target_actor_group(
-                        run_target_actor_group->actor_group_area,
-                        run_target_actor_group->actor_group_event);
+                        run_target_actor_group->actor_group_id);
                 if (!outcome.has_value() ||
                     outcome->kind != scripting::
                         ScriptFieldEncounterOutcomeKind::
                             dynamic_world_effect_sequence ||
-                    outcome->scene_id !=
-                        run_target_actor_group->activity_scene_id ||
-                    outcome->context_group !=
-                        run_target_actor_group->actor_group_area ||
-                    outcome->random_sum !=
-                        run_target_actor_group->actor_group_event ||
+                    outcome->scene_id != 15U ||
+                    outcome->context_group != 0U ||
+                    outcome->random_sum != 0U ||
                     outcome->actors.size() != 4U ||
                     std::any_of(
                         outcome->actors.begin(), outcome->actors.end(),
                         [&run_target_actor_group](const auto& actor) {
-                            const auto expected_sequence_id =
-                                "field_encounter.scene.15.context." +
-                                std::to_string(
-                                    run_target_actor_group->actor_group_area) +
-                                ".weight." +
-                                std::to_string(
-                                    run_target_actor_group->actor_group_event);
-                            return actor.sequence_id != expected_sequence_id;
+                            return actor.sequence_id !=
+                                run_target_actor_group->actor_group_id;
                         })) {
                     failure_ = game_scripts_.failure().empty()
                         ? "ROM run-target actor descriptors do not match the selected list"

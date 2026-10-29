@@ -189,11 +189,10 @@ function Registry.resolve_current_offer(choice)
     return Registry._last_offer_result
 end
 
-function Registry.resolve_field_event(map_id, event_id)
-    assert(type(map_id) == "number" and map_id >= 0 and
-           map_id <= 255 and map_id % 1 == 0)
-    assert(type(event_id) == "number" and event_id >= 0 and
-           event_id <= 255 and event_id % 1 == 0)
+function Registry.resolve_field_event(location_id)
+    assert(type(location_id) == "string" and
+           game.modules.run_support.location_details(location_id) ~= nil,
+        "run field event needs a semantic place ID")
 
     local offer = Registry.active_offer
     if offer == nil then
@@ -216,7 +215,7 @@ function Registry.resolve_field_event(map_id, event_id)
         }
     end
 
-    local result = handler(offer, map_id, event_id)
+    local result = handler(offer, location_id)
     assert(type(result) == "table" and
            (result.action == "no_action" or
             result.action == "objective_advanced" or
@@ -245,36 +244,16 @@ function Registry.resolve_field_event(map_id, event_id)
     if result.action == "entry_dialogue" then
         decision.dialogue_module = dialogue_module
         decision.dialogue_function = dialogue_function
-        local has_actor_group = result.actor_group_area ~= nil or
-            result.actor_group_event ~= nil or
-            result.activity_scene_id ~= nil or
-            result.actor_list_offset ~= nil or
-            result.actor_resource_profile ~= nil
+        local has_actor_group = result.actor_group_id ~= nil
         if has_actor_group then
-            assert(type(result.actor_group_area) == "number" and
-                   result.actor_group_area >= 1 and
-                   result.actor_group_area <= 55 and
-                   result.actor_group_area % 1 == 0 and
-                   type(result.actor_group_event) == "number" and
-                   result.actor_group_event >= 1 and
-                   result.actor_group_event <= 255 and
-                   result.actor_group_event % 1 == 0 and
-                   result.activity_scene_id == 15 and
-                   type(result.actor_list_offset) == "number" and
-                   result.actor_list_offset > 0 and
-                   result.actor_list_offset <= 0x1FFFFF and
-                   result.actor_list_offset % 1 == 0 and
-                   type(result.actor_resource_profile) == "number" and
-                   result.actor_resource_profile > 0 and
-                   result.actor_resource_profile <= 0x1FFFFF and
-                   result.actor_resource_profile % 1 == 0,
-                "run field-event actor activity metadata is incomplete")
-            decision.actor_group_area = result.actor_group_area
-            decision.actor_group_event = result.actor_group_event
-            decision.activity_scene_id = result.activity_scene_id
-            decision.actor_list_offset = result.actor_list_offset
-            decision.actor_resource_profile =
-                result.actor_resource_profile
+            local target = offer.route and offer.route.target
+            assert(type(result.actor_group_id) == "string" and
+                   result.actor_group_id:match("^[%w_.:-]+$") ~= nil and
+                   type(target) == "table" and
+                   game.modules.run_support.gang_actor_group_id(
+                       target.location_id) == result.actor_group_id,
+                "run field-event actor group has no semantic target")
+            decision.actor_group_id = result.actor_group_id
         end
     end
     assert(type(decision.reward_nuyen) == "number" and
@@ -509,32 +488,35 @@ local function route_ids(offer)
     if route == nil then
         return {
             origin_location = "none",
-            origin_area = "none",
+            origin_region = "none",
             client = "none",
             employee = "none",
             destination_location = "none",
-            destination_area = "none",
+            destination_region = "none",
         }
     end
-    local function pair_ids(pair)
-        if type(pair) ~= "table" then return "none", "none" end
-        return "location_" .. tostring(pair.location_id),
-               "area_" .. tostring(pair.area_id)
+    local function point_ids(point)
+        if type(point) ~= "table" then return "none", "none" end
+        local details = game.modules.run_support.location_details(
+            point.location_id)
+        if details == nil then return "none", "none" end
+        return details.location_id, details.region_id
     end
-    local origin_location, origin_area = pair_ids(route.origin)
-    local destination_location, destination_area = pair_ids(route.destination)
-    local target_location, target_area = pair_ids(route.target)
+    local origin_location, origin_region = point_ids(route.origin)
+    local destination_location, destination_region =
+        point_ids(route.destination)
+    local target_location, target_region = point_ids(route.target)
     return {
         origin_location = origin_location,
-        origin_area = origin_area,
+        origin_region = origin_region,
         client = type(route.client_id) == "string"
             and route.client_id or "none",
         employee = type(offer.employee_id) == "string"
             and offer.employee_id or "none",
         destination_location = destination_location,
-        destination_area = destination_area,
+        destination_region = destination_region,
         target_location = target_location,
-        target_area = target_area,
+        target_region = target_region,
     }
 end
 
@@ -653,9 +635,32 @@ function Registry.validate_saved_state(state)
         end
         if not valid_source_offer(offer) then return false end
         local support = game.modules.run_support
+        local function valid_location_point(point)
+            return type(point) == "table" and
+                support.location_details(point.location_id) ~= nil and
+                point.area_id == nil and point.location_name == nil and
+                point.area_suffix == nil
+        end
+        local route = offer.route
+        if offer.id == E.RunId.BODYGUARD_ESCORT or
+           offer.id == E.RunId.PACKAGE_DELIVERY then
+            if type(route) ~= "table" or
+               not valid_location_point(route.origin) or
+               not valid_location_point(route.destination) then
+                return false
+            end
+        elseif offer.id == E.RunId.GANG_CONTRACT or
+               offer.id == E.RunId.PACKAGE_RECOVERY or
+               offer.id == E.RunId.EMPLOYEE_RECRUITMENT then
+            if type(route) ~= "table" or
+               not valid_location_point(route.target) then
+                return false
+            end
+        elseif route ~= nil then
+            return false
+        end
         if offer.id == E.RunId.BODYGUARD_ESCORT then
-            if type(offer.route) ~= "table" or
-               support.client_name(offer.route.client_id) == nil then
+            if support.client_name(offer.route.client_id) == nil then
                 return false
             end
         elseif offer.id == E.RunId.EMPLOYEE_RECRUITMENT then
@@ -663,6 +668,14 @@ function Registry.validate_saved_state(state)
                 return false
             end
         elseif offer.employee_id ~= nil then
+            return false
+        end
+        if offer.id == E.RunId.GANG_CONTRACT then
+            if support.gang_contract_variant_text(
+                    offer.contract_variant_id) == nil then
+                return false
+            end
+        elseif offer.contract_variant_id ~= nil then
             return false
         end
         if offer.id == E.RunId.MATRIX_OBJECTIVE then
@@ -673,13 +686,20 @@ function Registry.validate_saved_state(state)
             return false
         end
         if offer.id == "ghoul_bounty" then
+            local region_id = offer.region_id
+            if region_id ~= "downtown_seattle" and
+               region_id ~= "puyallup_barrens" and
+               region_id ~= "redmond_barrens" and
+               region_id ~= "penumbra_district" then
+                return false
+            end
             local count = offer.ghoul_kill_count
             if count ~= nil and
                (type(count) ~= "number" or count % 1 ~= 0 or
                 count < 0 or count > E.GhoulBounty.MAX_DEFEATS) then
                 return false
             end
-        elseif offer.ghoul_kill_count ~= nil then
+        elseif offer.ghoul_kill_count ~= nil or offer.region_id ~= nil then
             return false
         end
         local run = game.runs[offer.id]

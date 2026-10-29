@@ -844,11 +844,7 @@ struct ScriptRunFieldEventDecision {
     std::uint8_t runner_progress_delta = 0;
     std::string dialogue_module;
     std::string dialogue_function;
-    std::uint8_t actor_group_area = 0;
-    std::uint8_t actor_group_event = 0;
-    std::uint8_t activity_scene_id = 0;
-    std::uint32_t actor_list_offset = 0;
-    std::uint32_t actor_resource_profile_offset = 0;
+    std::string actor_group_id;
 };
 
 struct ScriptActorDefeatFacts {
@@ -918,7 +914,7 @@ enum class ScriptFieldEncounterOutcomeKind : std::uint8_t {
 };
 
 enum class ScriptFieldEncounterPlacementPolicy : std::uint8_t {
-    source_actor_positions,
+    explicit_actor_positions,
     screen_edge_candidates,
     map_derived_candidates,
 };
@@ -1964,7 +1960,7 @@ public:
     std::optional<std::string> active_run_id();
     std::optional<std::string> active_run_offer_variant_id();
     std::optional<ScriptRunFieldEventDecision> resolve_active_run_field_event(
-        std::uint8_t map_id, std::uint8_t event_id);
+        std::string_view location_id);
     std::optional<ScriptRunActorDefeatDecision>
     resolve_active_run_actor_defeat(const ScriptActorDefeatFacts& facts);
     std::optional<ScriptRunJohnsonReturnDecision>
@@ -2017,8 +2013,7 @@ public:
         std::uint16_t scene_id, bool world_effect_active,
         bool pending_world_effect);
     std::optional<ScriptFieldEncounterOutcome>
-    resolve_run_target_actor_group(std::uint8_t area_id,
-                                   std::uint8_t event_id);
+    resolve_run_target_actor_group(std::string_view actor_group_id);
     // audio.lua scene_music: the music id Lua selects on scene init from
     // scene profile word +0x40 (FFDE06). nullopt = no music / failure.
     std::optional<std::uint16_t> scene_music(std::uint16_t scene_id,
@@ -2153,10 +2148,8 @@ private:
     resolve_field_encounter_impl(std::uint16_t scene_id,
                                  std::uint8_t first_roll,
                                  std::uint8_t second_roll,
-                                 bool run_target_actor_group,
-                                  std::optional<std::string_view>
-                                      source_sequence_id =
-                                         std::nullopt);
+                                 std::optional<std::string_view>
+                                     source_sequence_id = std::nullopt);
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };

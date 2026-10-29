@@ -1,6 +1,7 @@
 #include "shadowrun_ghidra/scripting/game_script_runtime.hpp"
 #include "shadowrun_ghidra/scripting/combat_inventory.hpp"
 #include "shadowrun_ghidra/scripting/cyberdeck_menu_bindings.hpp"
+#include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
 #include "enums.hpp"
 #include "world_content_tsv_loader.hpp"
@@ -306,12 +307,201 @@ bool normalize_legacy_run_client_ids(
     return true;
 }
 
+bool normalize_saved_gang_contract_variant(
+    ScriptPersistentValue::Object& offer, std::string& failure) {
+    static constexpr std::array<std::string_view, 4> kVariantIds{
+        "building_vandalism", "renraku_information_leak",
+        "local_terrorism", "insurance_premiums"};
+    const auto id_field = offer.find("id");
+    const auto* run_id = id_field == offer.end()
+        ? nullptr
+        : std::get_if<std::string>(&id_field->second.value);
+    const auto legacy = offer.find("variant");
+    const auto semantic = offer.find("contract_variant_id");
+    if (run_id == nullptr || *run_id != "gang_contract") {
+        if (legacy != offer.end() || semantic != offer.end()) {
+            failure = "non-gang run has a gang contract variant";
+            return false;
+        }
+        return true;
+    }
+
+    std::optional<std::string_view> variant_id;
+    if (legacy != offer.end()) {
+        const auto* index = std::get_if<std::int64_t>(&legacy->second.value);
+        if (index == nullptr || *index < 0 ||
+            *index >= static_cast<std::int64_t>(kVariantIds.size())) {
+            failure = "saved gang variant is outside its legacy table";
+            return false;
+        }
+        variant_id = kVariantIds[static_cast<std::size_t>(*index)];
+    }
+    if (semantic != offer.end()) {
+        const auto* value = std::get_if<std::string>(&semantic->second.value);
+        if (value == nullptr ||
+            std::find(kVariantIds.begin(), kVariantIds.end(), *value) ==
+                kVariantIds.end() ||
+            (variant_id.has_value() && *variant_id != *value)) {
+            failure = "saved gang contract variant ID is invalid";
+            return false;
+        }
+        variant_id = *value;
+    }
+    if (!variant_id.has_value()) {
+        failure = "saved gang run has no contract variant identity";
+        return false;
+    }
+    ScriptPersistentValue value{};
+    value.value = std::string(*variant_id);
+    if (semantic == offer.end()) {
+        offer.emplace("contract_variant_id", std::move(value));
+    } else {
+        semantic->second = std::move(value);
+    }
+    offer.erase("variant");
+    return true;
+}
+
+bool normalize_saved_run_locations(
+    ScriptPersistentValue::Object& offer, std::string& failure) {
+    const auto run_id_field = offer.find("id");
+    const auto* run_id = run_id_field == offer.end()
+        ? nullptr
+        : std::get_if<std::string>(&run_id_field->second.value);
+    const auto route_field = offer.find("route");
+    if (route_field != offer.end()) {
+        auto* route = std::get_if<ScriptPersistentValue::Object>(
+            &route_field->second.value);
+        if (route == nullptr) {
+            failure = "saved run route is not an object";
+            return false;
+        }
+        const auto normalize_point = [&failure](
+                                         ScriptPersistentValue& value) {
+            auto* point = std::get_if<ScriptPersistentValue::Object>(
+                &value.value);
+            if (point == nullptr) {
+                failure = "saved run place is not an object";
+                return false;
+            }
+            const auto location_field = point->find("location_id");
+            const auto region_field = point->find("area_id");
+            std::optional<std::string_view> semantic_location;
+            if (location_field != point->end()) {
+                if (const auto* value = std::get_if<std::string>(
+                        &location_field->second.value)) {
+                    semantic_location = run_region_id_for_location(*value)
+                        .has_value()
+                        ? std::optional<std::string_view>{*value}
+                        : std::nullopt;
+                } else if (const auto* selector = std::get_if<std::int64_t>(
+                               &location_field->second.value)) {
+                    const auto* region_selector = region_field == point->end()
+                        ? nullptr
+                        : std::get_if<std::int64_t>(
+                              &region_field->second.value);
+                    if (region_selector != nullptr) {
+                        semantic_location =
+                            run_location_id_for_source_selector(
+                                *region_selector, *selector);
+                    }
+                }
+            }
+            if (!semantic_location.has_value()) {
+                failure = "saved run place has an unknown semantic location";
+                return false;
+            }
+            ScriptPersistentValue semantic_value{};
+            semantic_value.value = std::string(*semantic_location);
+            if (location_field == point->end()) {
+                point->emplace("location_id", std::move(semantic_value));
+            } else {
+                location_field->second = std::move(semantic_value);
+            }
+            if (region_field != point->end()) {
+                const auto* legacy_region = std::get_if<std::int64_t>(
+                    &region_field->second.value);
+                const auto expected_region = run_region_id_for_location(
+                    *semantic_location);
+                if (legacy_region == nullptr || !expected_region.has_value() ||
+                    run_region_id_for_source_selector(*legacy_region) !=
+                        expected_region) {
+                    failure = "saved run place conflicts with its region";
+                    return false;
+                }
+                point->erase(region_field);
+            }
+            point->erase("location_name");
+            point->erase("area_suffix");
+            return true;
+        };
+        for (const auto* point_name : {"origin", "destination", "target"}) {
+            const auto point = route->find(point_name);
+            if (point != route->end() && !normalize_point(point->second)) {
+                return false;
+            }
+        }
+    }
+
+    const auto legacy_region = offer.find("area_id");
+    if (legacy_region != offer.end()) {
+        if (run_id == nullptr || *run_id != "ghoul_bounty") {
+            failure = "run has an unexpected legacy area selector";
+            return false;
+        }
+        const auto* selector = std::get_if<std::int64_t>(
+            &legacy_region->second.value);
+        const auto region_id = selector == nullptr
+            ? std::optional<std::string_view>{}
+            : run_region_id_for_source_selector(*selector);
+        if (!region_id.has_value() || *selector > 3) {
+            failure = "saved ghoul region is outside its legacy table";
+            return false;
+        }
+        const auto current_region = offer.find("region_id");
+        if (current_region != offer.end()) {
+            const auto* semantic_region = std::get_if<std::string>(
+                &current_region->second.value);
+            if (semantic_region == nullptr || *semantic_region != *region_id) {
+                failure = "saved ghoul region conflicts with its semantic ID";
+                return false;
+            }
+        } else {
+            ScriptPersistentValue semantic_region{};
+            semantic_region.value = std::string(*region_id);
+            offer.emplace("region_id", std::move(semantic_region));
+        }
+        offer.erase(legacy_region);
+    }
+    const auto region = offer.find("region_id");
+    if (region != offer.end()) {
+        const auto* region_id = std::get_if<std::string>(&region->second.value);
+        if (run_id == nullptr || *run_id != "ghoul_bounty" ||
+            region_id == nullptr || !is_run_region_id(*region_id)) {
+            failure = "saved run has an invalid region identity";
+            return false;
+        }
+    }
+    return true;
+}
+
 bool normalize_saved_offer_variant(
     ScriptPersistentValue& value, std::string& failure) {
     auto* offer = std::get_if<ScriptPersistentValue::Object>(&value.value);
     if (offer == nullptr) return true;
     if (!normalize_legacy_run_identity(*offer, failure)) return false;
     if (!normalize_legacy_run_client_ids(*offer, failure)) return false;
+    if (!normalize_saved_gang_contract_variant(*offer, failure)) return false;
+    if (!normalize_saved_run_locations(*offer, failure)) return false;
+    if (const auto* run_id = [&]() -> const std::string* {
+            const auto id = offer->find("id");
+            return id == offer->end()
+                ? nullptr
+                : std::get_if<std::string>(&id->second.value);
+        }();
+        run_id != nullptr && *run_id == "package_recovery") {
+        offer->erase("presentation_variant");
+    }
 
     const auto source_initializer = offer->find("source_initializer");
     const auto source_offer_type = offer->find("source_offer_type");
@@ -6675,7 +6865,7 @@ GameScriptRuntime::active_run_offer_variant_id() {
 
 std::optional<ScriptRunFieldEventDecision>
 GameScriptRuntime::resolve_active_run_field_event(
-    const std::uint8_t map_id, const std::uint8_t event_id) {
+    const std::string_view location_id) {
     auto* state = impl_->state;
     if (state == nullptr) {
         impl_->failure = "Lua runtime is unavailable for run field events";
@@ -6696,9 +6886,8 @@ GameScriptRuntime::resolve_active_run_field_event(
         return fail("run_registry field-event resolver is missing");
     }
     lua_remove(state, -2);
-    lua_pushinteger(state, map_id);
-    lua_pushinteger(state, event_id);
-    if (lua_pcall(state, 2, 1, 0) != LUA_OK) {
+    lua_pushlstring(state, location_id.data(), location_id.size());
+    if (lua_pcall(state, 1, 1, 0) != LUA_OK) {
         return fail("run_registry field-event resolver failed: " +
                     stack_error(state));
     }
@@ -6713,11 +6902,7 @@ GameScriptRuntime::resolve_active_run_field_event(
     std::string dialogue_function;
     std::uint32_t reward_nuyen = 0U;
     std::uint32_t progress_delta = 0U;
-    std::optional<std::uint32_t> actor_group_area;
-    std::optional<std::uint32_t> actor_group_event;
-    std::optional<std::uint32_t> activity_scene_id;
-    std::optional<std::uint32_t> actor_list_offset;
-    std::optional<std::uint32_t> actor_resource_profile_offset;
+    std::string actor_group_id;
     if (!read_field_string(state, result_index, "action", action_name) ||
         !read_field_string(state, result_index, "run_id", run_id) ||
         !valid_identifier(run_id) ||
@@ -6745,32 +6930,11 @@ GameScriptRuntime::resolve_active_run_field_event(
             !valid_identifier(dialogue_function)) {
             return fail("run field-event dialogue task is invalid");
         }
-        if (!read_optional_field_u32(state, result_index, "actor_group_area",
-                                     55U, actor_group_area) ||
-            !read_optional_field_u32(state, result_index, "actor_group_event",
-                                     0xFFU, actor_group_event) ||
-            !read_optional_field_u32(state, result_index, "activity_scene_id",
-                                     55U, activity_scene_id) ||
-            !read_optional_field_u32(state, result_index, "actor_list_offset",
-                                     0x1FFFFFU, actor_list_offset) ||
-            !read_optional_field_u32(
-                state, result_index, "actor_resource_profile",
-                0x1FFFFFU, actor_resource_profile_offset)) {
-            return fail("run field-event actor activity facts are invalid");
-        }
-        const bool has_actor_group = actor_group_area.has_value() ||
-                                     actor_group_event.has_value() ||
-                                     activity_scene_id.has_value() ||
-                                     actor_list_offset.has_value() ||
-                                     actor_resource_profile_offset.has_value();
-        if (has_actor_group &&
-            (!actor_group_area.has_value() || *actor_group_area == 0U ||
-             !actor_group_event.has_value() || *actor_group_event == 0U ||
-             !activity_scene_id.has_value() || *activity_scene_id != 15U ||
-             !actor_list_offset.has_value() || *actor_list_offset == 0U ||
-             !actor_resource_profile_offset.has_value() ||
-             *actor_resource_profile_offset == 0U)) {
-            return fail("run field-event actor activity is incomplete");
+        if (!read_optional_field_string(state, result_index, "actor_group_id",
+                                        actor_group_id) ||
+            (!actor_group_id.empty() &&
+             !is_run_target_actor_group_id(actor_group_id))) {
+            return fail("run field-event actor group identity is invalid");
         }
     } else {
         return fail("run field-event decision has an unknown action");
@@ -6785,15 +6949,7 @@ GameScriptRuntime::resolve_active_run_field_event(
         static_cast<std::uint8_t>(progress_delta);
     decision.dialogue_module = std::move(dialogue_module);
     decision.dialogue_function = std::move(dialogue_function);
-    decision.actor_group_area = static_cast<std::uint8_t>(
-        actor_group_area.value_or(0U));
-    decision.actor_group_event = static_cast<std::uint8_t>(
-        actor_group_event.value_or(0U));
-    decision.activity_scene_id = static_cast<std::uint8_t>(
-        activity_scene_id.value_or(0U));
-    decision.actor_list_offset = actor_list_offset.value_or(0U);
-    decision.actor_resource_profile_offset =
-        actor_resource_profile_offset.value_or(0U);
+    decision.actor_group_id = std::move(actor_group_id);
 
     lua_settop(state, stack_base);
     impl_->failure.clear();
@@ -7479,8 +7635,7 @@ std::optional<ScriptFieldEncounterOutcome>
 GameScriptRuntime::resolve_field_encounter(
     const std::uint16_t scene_id, const std::uint8_t first_roll,
     const std::uint8_t second_roll) {
-    return resolve_field_encounter_impl(scene_id, first_roll, second_roll,
-                                        false);
+    return resolve_field_encounter_impl(scene_id, first_roll, second_roll);
 }
 
 std::optional<ScriptFieldEncounterOutcome>
@@ -7490,8 +7645,7 @@ GameScriptRuntime::resolve_field_actor_sequence(
         impl_->failure = "field actor sequence id is invalid";
         return std::nullopt;
     }
-    return resolve_field_encounter_impl(scene_id, 0U, 0U, false,
-                                        sequence_id);
+    return resolve_field_encounter_impl(scene_id, 0U, 0U, sequence_id);
 }
 
 std::optional<std::vector<ScriptWorldActivityActor>>
@@ -8212,7 +8366,7 @@ GameScriptRuntime::world_activity_actors_for_selector(
 std::optional<ScriptFieldEncounterOutcome>
 GameScriptRuntime::resolve_field_encounter_impl(
     const std::uint16_t scene_id, const std::uint8_t first_roll,
-    const std::uint8_t second_roll, const bool run_target_actor_group,
+    const std::uint8_t second_roll,
     const std::optional<std::string_view> source_sequence_id) {
     auto* state = impl_->state;
     if (state == nullptr) {
@@ -8227,11 +8381,10 @@ GameScriptRuntime::resolve_field_encounter_impl(
         return std::nullopt;
     };
     const bool source_sequence = source_sequence_id.has_value();
-    if ((run_target_actor_group && source_sequence) ||
-        (!run_target_actor_group && !source_sequence &&
+    const bool run_target_actor_group = source_sequence &&
+        is_run_target_actor_group_id(*source_sequence_id);
+    if ((!source_sequence &&
          (scene_id > 55U || first_roll > 4U || second_roll > 4U)) ||
-        (run_target_actor_group &&
-         (first_roll == 0U || first_roll > 55U || second_roll == 0U)) ||
         (source_sequence &&
          (scene_id > 55U || !valid_identifier(*source_sequence_id)))) {
         return fail("field encounter request is outside the ROM table bounds");
@@ -8239,19 +8392,15 @@ GameScriptRuntime::resolve_field_encounter_impl(
     if (!impl_->push_module("field_encounters")) {
         return fail("field_encounters.lua module is missing");
     }
-    const auto* resolver_name = run_target_actor_group
-        ? "resolve_run_target_actor_group"
-        : source_sequence ? "resolve_sequence" : "resolve";
+    const auto* resolver_name = source_sequence
+        ? "resolve_sequence" : "resolve";
     lua_getfield(state, -1, resolver_name);
     if (!lua_isfunction(state, -1)) {
         return fail(std::string("field_encounters.") + resolver_name +
                     " is missing");
     }
     lua_remove(state, -2);
-    if (run_target_actor_group) {
-        lua_pushinteger(state, first_roll);
-        lua_pushinteger(state, second_roll);
-    } else if (source_sequence) {
+    if (source_sequence) {
         lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
         lua_pushlstring(state, source_sequence_id->data(),
                         source_sequence_id->size());
@@ -8261,9 +8410,7 @@ GameScriptRuntime::resolve_field_encounter_impl(
         lua_pushinteger(state, second_roll);
     }
     ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state,
-                  (run_target_actor_group || source_sequence) ? 2 : 3,
-                  1, 0) != LUA_OK) {
+    if (lua_pcall(state, source_sequence ? 2 : 3, 1, 0) != LUA_OK) {
         return fail(std::string("field_encounters.") + resolver_name +
                     " failed");
     }
@@ -8289,15 +8436,11 @@ GameScriptRuntime::resolve_field_encounter_impl(
         !read_field_integer(state, result_index, "context_group", 15U,
                             context_group) ||
         !read_field_integer(state, result_index, "random_sum",
-                            run_target_actor_group ? 0xFFU : 8U,
-                            random_sum) ||
-        parsed_scene != (run_target_actor_group ? 15U : scene_id) ||
-        (run_target_actor_group && context_group != first_roll) ||
+                            8U, random_sum) ||
+        parsed_scene != scene_id ||
         (source_sequence && (context_group != 0U || random_sum != 0U)) ||
         (!source_sequence &&
-         random_sum != (run_target_actor_group
-                            ? second_roll
-                            : static_cast<std::uint32_t>(first_roll + second_roll)))) {
+         random_sum != static_cast<std::uint32_t>(first_roll + second_roll))) {
         return fail(std::string("field_encounters.") + resolver_name +
                     " returned invalid selector facts");
     }
@@ -8312,9 +8455,9 @@ GameScriptRuntime::resolve_field_encounter_impl(
             return fail(
                 "dynamic world encounter has no placement policy");
         }
-        if (placement_policy == "source_actor_positions") {
+        if (placement_policy == "explicit_actor_positions") {
             outcome.placement_policy =
-                ScriptFieldEncounterPlacementPolicy::source_actor_positions;
+                ScriptFieldEncounterPlacementPolicy::explicit_actor_positions;
         } else if (placement_policy == "screen_edge_candidates") {
             outcome.placement_policy =
                 ScriptFieldEncounterPlacementPolicy::
@@ -8640,8 +8783,12 @@ GameScriptRuntime::resolve_field_encounter_impl(
 
 std::optional<ScriptFieldEncounterOutcome>
 GameScriptRuntime::resolve_run_target_actor_group(
-    const std::uint8_t area_id, const std::uint8_t event_id) {
-    return resolve_field_encounter_impl(0U, area_id, event_id, true);
+    const std::string_view actor_group_id) {
+    if (!is_run_target_actor_group_id(actor_group_id)) {
+        impl_->failure = "run actor group identity is unknown";
+        return std::nullopt;
+    }
+    return resolve_field_encounter_impl(15U, 0U, 0U, actor_group_id);
 }
 
 std::optional<std::uint16_t> GameScriptRuntime::scene_music(

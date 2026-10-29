@@ -15,11 +15,11 @@ local function advance_renraku_escalation_if_eligible()
     end
 
     local target = type(offer.route) == "table" and offer.route.target or nil
-    if type(target) == "table" and target.area_id == 5 and
-       target.location_id == 6 then
+    if type(target) == "table" and
+       target.location_id == "renraku_offices" then
         -- 0x1F16A advances FFFBFB through 0x1F1E0 only for package recovery
         -- and employee recruitment
-        -- when the selected target is FFFBEE/FFFBEF = 5/6. The shared helper
+        -- when the selected target is the Renraku Offices. The shared helper
         -- preserves the source upper bound of eight.
         assert(StoryState.increase_strike_team_stage(1),
             "world-activity Strike Team counter is unresolved")

@@ -2,6 +2,7 @@
 #include "field_scene_runtime_internal.hpp"
 
 #include "enums.hpp"
+#include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
 #include "shadowrun_ghidra/field/scene_profile_conversion.hpp"
 #include "shadowrun_ghidra/field/field_mode_conversion.hpp"
 
@@ -601,18 +602,21 @@ bool FieldSceneRuntime::resume_field_mode_entry_route() {
     const bool run_target_actor_group_pending =
         field_mode_entry_run_target_actor_group_.has_value();
     const auto expected_activity_scene = run_target_actor_group_pending
-        ? static_cast<std::uint16_t>(
-              field_mode_entry_run_target_actor_group_->activity_scene_id)
+        ? static_cast<std::uint16_t>(15U)
         : expected_scene;
-    if (run_target_actor_group_pending &&
-        (field_mode_entry_run_target_actor_group_->activity_scene_id != 15U ||
-         field_mode_entry_run_target_actor_group_->actor_group_area !=
-             state_.field_scene_buffers.scene_reference ||
-         field_mode_entry_run_target_actor_group_->actor_group_event !=
-             active_field_script_route_->event_code)) {
-        field_mode_entry_run_target_actor_group_.reset();
-        source_boundary("field.entry.run_target_actor_group_route_mismatch");
-        return false;
+    if (run_target_actor_group_pending) {
+        const auto expected_group =
+            scripting::run_target_actor_group_id_for_source_selector(
+                state_.field_scene_buffers.scene_reference,
+                active_field_script_route_->event_code);
+        if (!expected_group.has_value() ||
+            *expected_group !=
+                field_mode_entry_run_target_actor_group_->actor_group_id) {
+            field_mode_entry_run_target_actor_group_.reset();
+            source_boundary(
+                "field.entry.run_target_actor_group_route_mismatch");
+            return false;
+        }
     }
 
     const auto initialize =

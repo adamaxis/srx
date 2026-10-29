@@ -8,7 +8,9 @@ function PackageRecovery.prepare_offer(contact_id, source_record)
     local payment = support.negotiate_payment(source_record)
     local target = support.choose_facility_target(
         source_record.target_pool_id)
-    local variant = support.bounded_random(12)
+    -- Preserve the source draw order without storing its table index as
+    -- gameplay state; the selected target already has a semantic place ID.
+    support.bounded_random(12)
     local offer = support.new_offer(
         "package_recovery",
         "recovery",
@@ -18,7 +20,6 @@ function PackageRecovery.prepare_offer(contact_id, source_record)
         payment,
         source_record.runner_progress_delta)
     offer.contact_id = contact_id
-    offer.presentation_variant = variant
     game.runs.registry.current_offer = offer
     return offer.id
 end
@@ -27,26 +28,28 @@ function PackageRecovery.present_offer()
     local offer = game.runs.registry.current_offer
     assert(offer ~= nil and offer.id == "package_recovery")
     local target = offer.route.target
+    local details = game.modules.run_support.location_details(
+        target.location_id)
+    assert(details ~= nil, "package recovery has an invalid semantic place")
     game.ui.say_text(
-        "Go to " .. target.location_name .. " " .. target.area_suffix ..
+        "Go to " .. details.name .. " " .. details.region_suffix ..
         "|A package was taken from a courier of mine.|Get the package and " ..
         "bring it back to me.|I will then pay you for your services.", true)
     return game.modules.run_support.present_run_acceptance(
         offer, "for recovering the package.")
 end
 
-function PackageRecovery.resolve_field_event(offer, map_id, event_id)
+function PackageRecovery.resolve_field_event(offer, location_id)
     local route = type(offer) == "table" and offer.route or nil
     local target = type(route) == "table" and route.target or nil
     if type(target) ~= "table" or
-       type(target.area_id) ~= "number" or
-       type(target.location_id) ~= "number" then
+       type(target.location_id) ~= "string" then
         return { action = "no_action" }
     end
 
     -- ROM 0x1F046 matches FFFBF8/FFFBF9 to FFFBEE/FFFBEF before showing
     -- the package-recovery entry passage at 0xFDF90.
-    if map_id == target.area_id and event_id == target.location_id then
+    if location_id == target.location_id then
         return {
             action = "entry_dialogue",
             dialogue_module = "run_package_recovery",
