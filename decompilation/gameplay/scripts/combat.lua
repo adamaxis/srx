@@ -4,7 +4,6 @@
 local Combat = {}
 local E = require("enums")
 local ActorPool = E.ActorPool
-local SpellActionCode = E.SpellActionCode
 local SpellEffectKind = E.SpellEffectKind
 local SpellTuning = E.SpellTuning
 local SoundId = E.SoundId
@@ -26,13 +25,13 @@ local Item = {
 -- [H: codes are E.SpellType + 1 (code 12 = heal), i.e. flame dart/bolt and
 -- mana zap/blast; the names are not traced.]
 local SpellDeath = {
-    [1] = { animation_variant = "spell_death_e0" },
-    [2] = {
+    flame_dart = { animation_variant = "spell_death_e0" },
+    flame_bolt = {
         animation_variant = "spell_death_e0",
         excluded_kind = E.SpriteType.THON,
     },
-    [8] = { animation_variant = "spell_death_e4" },
-    [9] = { animation_variant = "spell_death_e4" },
+    mana_zap = { animation_variant = "spell_death_e4" },
+    mana_blast = { animation_variant = "spell_death_e4" },
 }
 
 local function signed_byte(value)
@@ -120,12 +119,12 @@ local function item18_skill_value(record)
     return value
 end
 
-local function action_phase_modifier(value, record, action_code)
+local function action_phase_modifier(value, record, spell_id)
     local magic = game.modules.magic
     local items = game.modules.items
     local definition = type(magic) == "table" and
         type(magic.spell_action_definition) == "function" and
-        magic.spell_action_definition(action_code) or nil
+        magic.spell_action_definition(spell_id) or nil
     if type(definition) ~= "table" or
        type(definition.spell_id) ~= "string" then
         return nil
@@ -316,16 +315,17 @@ local function dynamic_status_modifier(difficulty, attacker, linked, context)
         roll_difficulty = profile.secondary_difficulty
     end
 
-    -- The source D4540 selector bytes at rows 5 and 12 are both signed -1,
-    -- so these two profile branches use the attacker's +0x77 attribute.
-    local selectors = context.action_attribute_selectors
-    local selector = type(selectors) == "table" and
-        selectors[primary and 1 or 2] or nil
-    if type(selector) ~= "number" then
+    -- The host resolves the source row's signed selector into an attribute
+    -- name before this rule runs. At ROM 0x557C4, a negative selector selects
+    -- +0x7C (Willpower); D4EA0 rows 5 and 12 are both negative.
+    local attributes = context.action_profile_attributes
+    local attribute_name = type(attributes) == "table" and
+        attributes[primary and 1 or 2] or nil
+    if attribute_name ~= E.ActorAttribute.BODY and
+       attribute_name ~= E.ActorAttribute.WILLPOWER then
         return nil
     end
-    local attribute = selector < 0 and attacker.attributes.body or
-        attacker.attributes.willpower
+    local attribute = attacker.attributes[attribute_name]
     if attacker.record_type < 3 then
         attribute = add_source_byte_to_word(
             ready_party_bonus(context), attribute)
@@ -590,13 +590,13 @@ local function resolve_spell_action(context, target, allow_untargeted)
          type(target.source_record_slot) ~= "number")) or
        (untargeted and type(context.source_record_slot) ~= "number") or
        type(context.ai_random_bound) ~= "function" or
-       type(context.action_code) ~= "number" then
+       type(context.action_spell_id) ~= "string" then
         return nil
     end
     local magic = game.modules.magic
     local spell = type(magic) == "table" and
         type(magic.spell_action_definition) == "function" and
-        magic.spell_action_definition(context.action_code) or nil
+        magic.spell_action_definition(context.action_spell_id) or nil
     if type(spell) ~= "table" then
         return nil
     end
@@ -604,7 +604,7 @@ local function resolve_spell_action(context, target, allow_untargeted)
     local attacker = copy_combatant(context.combatant)
     local defender = not untargeted and copy_combatant(target.combatant) or nil
     local result = {
-        action_code = context.action_code,
+        spell_id = context.action_spell_id,
         target_id = not untargeted and target.id or "",
         source_record_slot = not untargeted and target.source_record_slot or
             context.source_record_slot,
@@ -633,11 +633,8 @@ local function resolve_spell_action(context, target, allow_untargeted)
             local first_item = inventory_item_at(attacker, 1)
             result.next_action_kind = first_item == nil and "none" or "item"
             result.next_action_item_id = first_item and first_item.id or nil
-            local profile_prefix = type(context.profile_id) == "string" and
-                string.match(context.profile_id,
-                             "^(.-_k%x%x)_[a-z]+%x%x$") or nil
-            if profile_prefix ~= nil then
-                result.next_profile_prefix = profile_prefix
+            if type(context.profile_prefix) == "string" then
+                result.next_profile_prefix = context.profile_prefix
             end
             attacker.equipped_action_id = first_item and first_item.id or nil
         end
@@ -652,7 +649,7 @@ local function resolve_spell_action(context, target, allow_untargeted)
         initial_trials, attacker.force or
             attacker.auxiliary_roll_bonus or 0)
     initial_trials = action_phase_modifier(
-        initial_trials, attacker, context.action_code)
+        initial_trials, attacker, context.action_spell_id)
     if initial_trials == nil then
         result.outcome = "source_data_unavailable"
         return result
@@ -719,13 +716,12 @@ local function resolve_spell_action(context, target, allow_untargeted)
                 break
             end
         end
-        if result.effect_started and spell.audio_event ~= 0 then
+        if result.effect_started and spell.audio_event ~= nil then
             result.audio_event = spell.audio_event
         end
     end
     if not untargeted and
-       (context.action_code == SpellActionCode.STINK or
-        context.action_code == SpellActionCode.CONFUSION) then
+       (spell.spell_id == "stink" or spell.spell_id == "confusion") then
         result.special_result_published = true
         result.special_result_successes = successes
         result.special_result_bonus = attacker.force or
@@ -784,7 +780,7 @@ function Combat.resolve_spell_impact(context, pending, target)
        type(target) ~= "table" or type(context.combatant) ~= "table" or
        type(target.combatant) ~= "table" or
        type(context.ai_random_bound) ~= "function" or
-       type(pending.action_code) ~= "number" or
+       type(pending.spell_id) ~= "string" or
        type(pending.action_result) ~= "number" or
        type(pending.target_id) ~= "string" or
        type(target.id) ~= "string" or
@@ -797,7 +793,7 @@ function Combat.resolve_spell_impact(context, pending, target)
     local magic = game.modules.magic
     local spell = type(magic) == "table" and
         type(magic.spell_action_definition) == "function" and
-        magic.spell_action_definition(pending.action_code) or nil
+        magic.spell_action_definition(pending.spell_id) or nil
     if type(spell) ~= "table" then
         return nil
     end
@@ -805,7 +801,7 @@ function Combat.resolve_spell_impact(context, pending, target)
     local caster = copy_combatant(context.combatant)
     local defender = copy_combatant(target.combatant)
     local result = {
-        action_code = pending.action_code,
+        spell_id = pending.spell_id,
         target_id = target.id,
         source_record_slot = target.source_record_slot,
         record_type = defender.record_type,
@@ -814,7 +810,7 @@ function Combat.resolve_spell_impact(context, pending, target)
         target_roll_successes = 0,
         effect_value = 0,
         outcome = "target_roll_failed",
-        physical = pending.action_code ~= 5,
+        physical = spell.spell_id ~= "sleep",
         physical_meter = defender.physical_meter,
         mental_meter = defender.mental_meter,
         actor_facts = copy_combatant(defender).actor_facts,
@@ -822,7 +818,7 @@ function Combat.resolve_spell_impact(context, pending, target)
         changed = false,
     }
 
-    if pending.action_code == 12 then
+    if spell.spell_id == "heal_wounds" then
         -- ROM 0x56DE ends by calling 0x55C2C. That callback heals directly
         -- from the caster's stored +0x9F result; unlike the offensive spell
         -- callback, it does not perform a second target roll.
@@ -860,7 +856,9 @@ function Combat.resolve_spell_impact(context, pending, target)
     -- against +0x9B == 0x17. It supplies D4/D6 but inherits D5 from its
     -- caller; keep that path explicit until the effect callback's D5 input
     -- is traced rather than assigning it an invented spell strength.
-    if pending.action_code <= 3 and
+    if (spell.spell_id == "flame_dart" or
+        spell.spell_id == "flame_bolt" or
+        spell.spell_id == "hellblast") and
        defender.race_or_state == E.ActorRaceOrState.SPELL_SPECIAL_TARGET then
         result.outcome = "source_special_target_path"
         result.target_trial_count = 12
@@ -868,9 +866,13 @@ function Combat.resolve_spell_impact(context, pending, target)
         return result
     end
 
-    local attribute = spell.attribute_selector < 0
-        and defender.attributes.willpower
-        or defender.attributes.body
+    local resistance_attribute = spell.target_resistance_attribute
+    if resistance_attribute ~= E.ActorAttribute.BODY and
+       resistance_attribute ~= E.ActorAttribute.WILLPOWER then
+        result.outcome = "source_data_unresolved"
+        return result
+    end
+    local attribute = defender.attributes[resistance_attribute]
     if defender.record_type < 3 then
         attribute = add_source_byte_to_word(
             attribute, ready_party_bonus(context))
@@ -920,7 +922,7 @@ function Combat.resolve_spell_impact(context, pending, target)
     result.mental_meter = mental_meter
     result.changed = commit_combatant_meters(
         target, defender, physical_meter, mental_meter, nil,
-        SpellDeath[pending.action_code])
+        SpellDeath[pending.spell_id])
     result.outcome = result.changed and "effect_applied" or "effect_no_change"
     return result
 end

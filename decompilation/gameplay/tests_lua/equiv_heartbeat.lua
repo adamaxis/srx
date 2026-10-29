@@ -131,6 +131,13 @@ end
 local function offsets() local t = {} for i = 1, 8 do t[i] = { R(-32, 32), R(-32, 32) } end return t end
 
 local kinds_list = {} for k in pairs(kinds) do kinds_list[#kinds_list + 1] = k end table.sort(kinds_list)
+local SpellIdByActionCode = {
+  [1] = "flame_dart", [2] = "flame_bolt", [3] = "hellblast",
+  [4] = "invisibility", [5] = "sleep", [6] = "stink",
+  [7] = "super_barrier", [8] = "mana_zap", [9] = "mana_blast",
+  [10] = "mana_storm", [11] = "rockskin", [12] = "heal_wounds",
+  [13] = "confusion", [14] = "barrier",
+}
 local function context(actor)
   local ammunition_remaining = R(0, 30)
   local pid = pick(pids)
@@ -139,10 +146,13 @@ local function context(actor)
   local ek, ak, ac = pid:match("_k(%x%x)_([a-z]+)(%x%x)$")
   local action_code = ac and tonumber(ac, 16) or 0
   local action_item = ak == "item" and Items.catalog[action_code] or nil
+  local action_spell_id = ak == "spell" and
+      SpellIdByActionCode[action_code] or nil
   return {
     actor_id = actor, profile_id = pid, dynamic_world_encounter_actor = dyn,
     entity_kind = ek and tonumber(ek, 16) or num(), action_kind = ak or "none", action_code = action_code,
     action_item_id = action_item and action_item.id or nil,
+    action_spell_id = action_spell_id,
     phase = pick({ "behavior", "render", "behavior" }), spawn = R(6) == 1,
     initial_heading = num(), entry_delay = R(0, 16), entry_animation_frame_count = R(1, 8),
     source_record_flags = R(4) == 1 and 0 or 1, source_record_slot = R(0, 7), combatant = bool(),

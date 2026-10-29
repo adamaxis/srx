@@ -1289,19 +1289,19 @@ bool FieldSceneRuntime::set_default_actor_world_position_for_dump(
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
 bool FieldSceneRuntime::set_field_spell_effect_for_dump(
-    const std::uint8_t action_code, const std::uint8_t phase,
-    const bool visible) noexcept {
+    const std::string_view spell_id, const std::uint8_t phase,
+    const bool visible) {
     if (!visible) {
         field_entity_.spell_effect_visible = false;
-        field_entity_.spell_effect_action_code = 0U;
+        field_entity_.spell_effect_id.clear();
         field_entity_.spell_effect_phase = 0U;
         return true;
     }
 
     const auto profile = std::find_if(
         kFieldSpellEffectProfiles.cbegin(), kFieldSpellEffectProfiles.cend(),
-        [action_code](const auto& candidate) {
-            return candidate.action_code == action_code;
+        [spell_id](const auto& candidate) {
+            return candidate.spell_id == spell_id;
         });
     if (profile == kFieldSpellEffectProfiles.cend() ||
         phase >= profile->phase_count) {
@@ -1309,7 +1309,7 @@ bool FieldSceneRuntime::set_field_spell_effect_for_dump(
     }
 
     field_entity_.spell_effect_visible = true;
-    field_entity_.spell_effect_action_code = action_code;
+    field_entity_.spell_effect_id = profile->spell_id;
     field_entity_.spell_effect_phase = phase;
     return true;
 }

@@ -384,12 +384,18 @@ script_action_profile_modifiers(const EntityActionProfileTable& profiles) {
     return result;
 }
 
-std::array<std::int8_t, 2> script_action_attribute_selectors() {
+std::array<std::string_view, 2> script_action_profile_attributes() {
     const auto& source_rows = us_magic_spell_catalog();
-    // ROM 0x55786 selects the signed +0x27 byte from D4EA0 rows 5 and 12
-    // when live +0xDF bits 0 and 1 select the primary/secondary branch.
-    return {source_rows[5U].attribute_selector,
-            source_rows[12U].attribute_selector};
+    // ROM 0x55786 selects D4EA0 +0x27 from rows 5 and 12 when live +0xDF
+    // selects the primary/secondary branch. At 0x557C4 a negative value
+    // selects +0x7C (Willpower), otherwise +0x77 (Body). Pass that meaning to
+    // Lua instead of the source byte.
+    const auto selected_attribute = [](const std::int8_t source_value) {
+        return source_value < 0 ? std::string_view{"willpower"}
+                                : std::string_view{"body"};
+    };
+    return {selected_attribute(source_rows[5U].attribute_selector),
+            selected_attribute(source_rows[12U].attribute_selector)};
 }
 
 constexpr std::string_view kFieldEntityWalkAliasPrefix =
@@ -4005,8 +4011,8 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             actor.action_delay_modifier};
         context.action_profile_modifiers =
             script_action_profile_modifiers(state_.action_selection_profiles);
-        context.action_attribute_selectors =
-            script_action_attribute_selectors();
+        context.action_profile_attributes =
+            script_action_profile_attributes();
         context.combat_meter_service_blocked =
             field_movement_transition_state_.world_mode == 3U;
         context.world_effect_slot_occupancy =
@@ -4232,8 +4238,8 @@ void FieldSceneRuntime::advance_default_field_actors(
             target_marker_reads_stun_meter(active_runner_record());
         context.action_profile_modifiers =
             script_action_profile_modifiers(state_.action_selection_profiles);
-        context.action_attribute_selectors =
-            script_action_attribute_selectors();
+        context.action_profile_attributes =
+            script_action_profile_attributes();
         context.combat_meter_service_blocked =
             field_movement_transition_state_.world_mode == 3U;
         context.combatant = actor.combatant;
@@ -6340,8 +6346,8 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         }
         context.action_profile_modifiers =
             script_action_profile_modifiers(state_.action_selection_profiles);
-        context.action_attribute_selectors =
-            script_action_attribute_selectors();
+        context.action_profile_attributes =
+            script_action_profile_attributes();
         context.combat_meter_service_blocked =
             field_movement_transition_state_.world_mode == 3U;
         context.source_record_flags = actor.source_record_flags;
@@ -11364,8 +11370,8 @@ FieldSceneRuntime::heartbeat_field_player(
             actor_context.action_profile_modifiers =
                 script_action_profile_modifiers(
                     state_.action_selection_profiles);
-            actor_context.action_attribute_selectors =
-                script_action_attribute_selectors();
+            actor_context.action_profile_attributes =
+                script_action_profile_attributes();
             actor_context.world_effect_slot_occupancy =
                 field_world_effect_slots_occupied_;
             const auto selected = field_entity_target_owner_.selected_target;
@@ -12206,8 +12212,8 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         context.ai_target_candidates = live_party_combat_candidates;
         context.action_profile_modifiers =
             script_action_profile_modifiers(state_.action_selection_profiles);
-        context.action_attribute_selectors =
-            script_action_attribute_selectors();
+        context.action_profile_attributes =
+            script_action_profile_attributes();
         context.combat_meter_service_blocked =
             field_movement_transition_state_.world_mode == 3U;
         context.ai_random_bound = [this](const std::uint16_t bound)
@@ -12646,8 +12652,7 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             }
         }
         actor.spell_effect_visible = decision->spell_effect_visible;
-        actor.spell_effect_action_code =
-            decision->spell_effect_action_code;
+        actor.spell_effect_id = decision->spell_effect_id;
         actor.spell_effect_phase = decision->spell_effect_phase;
         if (decision->spell_effect_slot_released.has_value()) {
             const auto slot = *decision->spell_effect_slot_released;
@@ -14399,8 +14404,8 @@ void FieldSceneRuntime::paint_field_scene_entities(
                     kFieldSpellEffectProfiles.cbegin(),
                     kFieldSpellEffectProfiles.cend(),
                     [this](const auto& candidate) {
-                        return candidate.action_code ==
-                            field_entity_.spell_effect_action_code;
+                        return candidate.spell_id ==
+                            field_entity_.spell_effect_id;
                     });
                 if (profile != kFieldSpellEffectProfiles.cend()) {
                     const auto profile_index = static_cast<std::size_t>(
@@ -14461,8 +14466,7 @@ void FieldSceneRuntime::paint_field_scene_entities(
                 kFieldSpellEffectProfiles.cbegin(),
                 kFieldSpellEffectProfiles.cend(),
                 [&actor](const auto& candidate) {
-                    return candidate.action_code ==
-                        actor.spell_effect_action_code;
+                    return candidate.spell_id == actor.spell_effect_id;
                 });
             if (profile != kFieldSpellEffectProfiles.cend()) {
                 const auto profile_index = static_cast<std::size_t>(

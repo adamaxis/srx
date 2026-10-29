@@ -372,19 +372,21 @@ int main() {
     dynamic.ready_entities[0] = ready;
     dynamic.action_profile_table = &profiles;
     dynamic.linked_profile_index = 2U;
+    // ROM 0x557C4 branches negative to +0x7C (Willpower), then rolls with
+    // the ready-entity bonus. The semantic input is 8 + the existing bonus 3.
     dynamic.attribute_selectors[0] = -1;
     std::uint16_t dynamic_difficulty = 4U;
     const auto dynamic_result = apply_dynamic_status_modifier(
         dynamic_difficulty, dynamic,
         [](const std::uint16_t roll_count, const std::uint16_t difficulty) {
-            return static_cast<std::uint8_t>(roll_count == 6U &&
+            return static_cast<std::uint8_t>(roll_count == 11U &&
                                              difficulty == 4U ? 2U : 0U);
         });
     if (!expect(dynamic_result.selected &&
                 dynamic_result.action_profile_available &&
                 dynamic_result.selected_profile_index == 2U &&
                 dynamic_result.selected_action_table_index == 5U &&
-                dynamic_result.ready_roll_count == 6U &&
+                dynamic_result.ready_roll_count == 11U &&
                 dynamic_result.added_difficulty == 6U &&
                 dynamic_difficulty == 10U)) {
         return 14;
@@ -392,18 +394,18 @@ int main() {
 
     dynamic.actor_flags_df = 0x02U;
     dynamic.actor_record_type = 3U;
-    dynamic.actor_attribute_7c = 2U;
+    // A nonnegative source value takes the other branch and reads +0x77.
     dynamic.attribute_selectors[1] = 1;
     dynamic_difficulty = 4U;
     const auto defensive_result = apply_dynamic_status_modifier(
         dynamic_difficulty, dynamic,
         [](const std::uint16_t roll_count, const std::uint16_t difficulty) {
-            return static_cast<std::uint8_t>(roll_count == 2U &&
+            return static_cast<std::uint8_t>(roll_count == 3U &&
                                              difficulty == 3U ? 1U : 0U);
         });
     if (!expect(defensive_result.selected &&
                 defensive_result.selected_action_table_index == 12U &&
-                defensive_result.ready_roll_count == 2U &&
+                defensive_result.ready_roll_count == 3U &&
                 defensive_result.added_difficulty == 3U &&
                 dynamic_difficulty == 7U)) {
         return 15;

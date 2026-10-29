@@ -115,37 +115,41 @@ local function approach_heading(current, target)
 end
 
 local function dynamic_encounter_profile(context)
-    if type(context.profile_id) ~= "string" then
+    if context.dynamic_world_encounter_actor ~= true or
+       type(context.entity_kind) ~= "number" then
         return nil
     end
-    local kind_hex, action_name, action_hex = string.match(
-        context.profile_id, "^.+_k([0-9a-f][0-9a-f])_([a-z]+)(%x%x)$")
-    local action_kind = ActionKind[action_name]
-    if kind_hex == nil or action_kind == nil then
+    local entity_kind = context.entity_kind
+    local action_kind = context.action_kind
+    local action_id
+    if action_kind == ActionKind.item then
+        action_id = context.action_item_id
+    elseif action_kind == ActionKind.spell then
+        action_id = context.action_spell_id
+    elseif action_kind ~= ActionKind.none then
         return nil
     end
-    local entity_kind = tonumber(kind_hex, 16)
-    local action_code = tonumber(action_hex, 16)
     local minimum_entity_kind = context.world_activity_script_actor == true
         and 3 or 4
-    if entity_kind == nil or action_code == nil or
-       entity_kind < minimum_entity_kind or
+    if entity_kind < minimum_entity_kind or
        entity_kind > E.SpriteType.THON or
        (entity_kind == E.SpriteType.THON and
-        (action_kind ~= ActionKind.spell or action_code ~= 1)) or
-       entity_kind ~= context.entity_kind or
+        (action_kind ~= ActionKind.spell or
+         action_id ~= "flame_dart")) or
        action_kind ~= context.action_kind or
-       action_code ~= context.action_code then
+       ((action_kind == ActionKind.item or
+         action_kind == ActionKind.spell) and
+        type(action_id) ~= "string") then
         return nil
     end
     local source_actor_profile = ActorProfileCatalog.dynamic(
-        entity_kind, action_kind, action_code, context.action_item_id)
+        entity_kind, action_kind, action_id)
     return {
         package_id = "world_actor.kind_" .. tostring(entity_kind) ..
                      ".source_target_motion",
         entity_kind = source_actor_profile.sprite_type,
         action_kind = source_actor_profile.action_kind,
-        action_code = source_actor_profile.action_code,
+        action_id = source_actor_profile.action_id,
         weapon_item_id = source_actor_profile.weapon,
         controls_movement = source_actor_profile.controls_movement,
         dynamic_encounter_only =
@@ -169,9 +173,11 @@ local function source_profile(context)
        context.action_kind ~= profile.action_kind or
        (profile.action_kind == ActionKind.item and
         context.action_item_id ~= profile.weapon_item_id) or
-       (profile.action_kind ~= ActionKind.item and
-        profile.action_code ~= nil and
-        context.action_code ~= profile.action_code) then
+       (profile.action_id ~= nil and
+        ((context.action_kind == ActionKind.item and
+          context.action_item_id ~= profile.action_id) or
+         (context.action_kind == ActionKind.spell and
+          context.action_spell_id ~= profile.action_id))) then
         return nil
     end
     -- ROM 0x142AE takes the default-list waypoint branch for records carrying
@@ -262,7 +268,7 @@ local function action_target_motion_range(context)
         local magic_module = game.modules.magic
         if type(magic_module) == "table" and
            type(magic_module.target_motion_range) == "function" then
-            return magic_module.target_motion_range(context.action_code)
+            return magic_module.target_motion_range(context.action_spell_id)
         end
     end
     return nil
@@ -371,12 +377,16 @@ local function retained_linked_target(context, state)
 end
 
 local function initial_state(context, profile)
+    local action_id = context.action_kind == ActionKind.item
+        and context.action_item_id or
+        context.action_kind == ActionKind.spell
+        and context.action_spell_id or nil
     local state = {
         actor_id = context.actor_id,
         profile_id = context.profile_id,
         entity_kind = context.entity_kind,
         action_kind = context.action_kind,
-        action_code = context.action_code,
+        action_id = action_id,
         action_item_id = context.action_item_id,
         actor_facts = copy_actor_facts(context.actor_facts),
         movement_scene_id = context.movement_scene_id,
@@ -440,7 +450,7 @@ local function initial_state(context, profile)
         spell_effect_resolution = nil,
         spell_effect_visible = false,
         spell_effect_phase = 0,
-        spell_effect_action_code = 0,
+        spell_effect_id = nil,
         pending_source_action = nil,
         action_timing = type(context.action_timing) == "table" and {
             quickness = context.action_timing.quickness or 0,
@@ -489,11 +499,12 @@ local function initial_state(context, profile)
 end
 
 local function same_actor(state, context, profile)
+    local action_id = context.action_kind == ActionKind.item
+        and context.action_item_id or
+        context.action_kind == ActionKind.spell
+        and context.action_spell_id or nil
     local same_action = state.action_kind == context.action_kind and
-        (context.action_kind == ActionKind.item
-            and state.action_item_id == context.action_item_id
-            or context.action_kind ~= ActionKind.item
-                and state.action_code == context.action_code)
+        state.action_id == action_id
     if state.profile_id == context.profile_id and
        state.entity_kind == context.entity_kind and
        same_action then
@@ -514,7 +525,7 @@ local function same_actor(state, context, profile)
     end
     state.profile_id = context.profile_id
     state.action_kind = context.action_kind
-    state.action_code = context.action_code
+    state.action_id = action_id
     state.action_item_id = context.action_item_id
     state.package_id = profile.package_id
     state.weapon_item_id = profile.weapon_item_id

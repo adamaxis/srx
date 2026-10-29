@@ -4334,16 +4334,16 @@ int run_field_spell_effect_qa(
     }
 
     struct EffectCapture {
-        std::uint8_t action_code;
+        std::string_view spell_id;
         std::uint8_t phase_count;
         std::string_view name;
     };
     constexpr std::array<EffectCapture, 5> effects{{
-        {1U, 4U, "flame-dart"},
-        {2U, 6U, "flame-bolt"},
-        {5U, 9U, "sleep"},
-        {9U, 6U, "mana-blast"},
-        {12U, 16U, "heal-wounds"},
+        {"flame_dart", 4U, "flame-dart"},
+        {"flame_bolt", 6U, "flame-bolt"},
+        {"sleep", 9U, "sleep"},
+        {"mana_blast", 6U, "mana-blast"},
+        {"heal_wounds", 16U, "heal-wounds"},
     }};
     bool all_phases_saved = true;
     bool hud_unchanged = true;
@@ -4363,9 +4363,9 @@ int run_field_spell_effect_qa(
         bool any_phase_visible = false;
         for (std::uint8_t phase = 0U; phase < effect.phase_count; ++phase) {
             if (!field_scene.set_field_spell_effect_for_dump(
-                    effect.action_code, phase, true)) {
-                std::cerr << "Spell effect QA: rejected source phase code="
-                          << static_cast<unsigned>(effect.action_code)
+                    effect.spell_id, phase, true)) {
+                std::cerr << "Spell effect QA: rejected spell phase id="
+                          << effect.spell_id
                           << " phase=" << static_cast<unsigned>(phase)
                           << '\n';
                 return 3;
@@ -4374,11 +4374,11 @@ int run_field_spell_effect_qa(
             const auto filename = effect_directory /
                 ("phase-" + std::to_string(phase) + ".bmp");
             all_phases_saved = save(filename, image) && all_phases_saved;
-            if (effect.action_code == 1U && phase == 1U) {
+            if (effect.spell_id == "flame_dart" && phase == 1U) {
                 all_phases_saved = save("actual.bmp", image) &&
                                    all_phases_saved;
             }
-            if (effect.action_code == 12U && phase == 1U) {
+            if (effect.spell_id == "heal_wounds" && phase == 1U) {
                 all_phases_saved = save(
                     std::filesystem::path("heal-wounds") / "actual.bmp",
                     image) && all_phases_saved;
@@ -4415,7 +4415,7 @@ int run_field_spell_effect_qa(
             } else if (image != first_phase) {
                 profile_phases_change_the_frame = true;
             }
-            if (effect.action_code == 1U && phase == 1U) {
+            if (effect.spell_id == "flame_dart" && phase == 1U) {
                 phase_one_changed_pixels = changed_pixels;
             }
             hud_unchanged = hud_unchanged &&
@@ -4427,7 +4427,7 @@ int run_field_spell_effect_qa(
         effect_frames_differ = effect_frames_differ &&
             profile_phases_change_the_frame && any_phase_visible;
     }
-    field_scene.set_field_spell_effect_for_dump(0U, 0U, false);
+    field_scene.set_field_spell_effect_for_dump({}, 0U, false);
 
     const QImage actual_image(QString::fromStdWString(
         (output / "actual.bmp").wstring()));

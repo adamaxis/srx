@@ -25,11 +25,12 @@ local M = { ActorProfile = ActorProfile, by_id = {
     ["weapon_projectile"] = ActorProfile{ id = "weapon_projectile", package_id = "combat.weapon_projectile", sprite_type = nil, action_kind = "none", weapon = nil, controls_movement = false, projectile = true, dynamic_encounter_only = false },
     ["field_hit_spark"] = ActorProfile{ id = "field_hit_spark", package_id = "combat.player_hit_spark", sprite_type = SpriteType.HIT_SPARK, action_kind = "none", weapon = nil, controls_movement = false, projectile = false, dynamic_encounter_only = false },
 } }
--- Dynamic encounter profiles are synthesised from "<name>_kXX_<kind>YY" ids (repo dynamic_encounter_profile).
-function M.dynamic(sprite_type, action_kind, action_code, action_item_id)
-    return ActorProfile{ id = string.format("dyn_k%02x_%s%02x", sprite_type, action_kind, action_code),
-        sprite_type = sprite_type, action_kind = action_kind, action_code = action_code,
-        weapon = action_kind == "item" and action_item_id or nil,
+-- Dynamic profiles receive a semantic action identity from the host adapter.
+function M.dynamic(sprite_type, action_kind, action_id)
+    local identity = action_id or "none"
+    return ActorProfile{ id = "dynamic." .. tostring(sprite_type) .. "." .. action_kind .. "." .. identity,
+        sprite_type = sprite_type, action_kind = action_kind, action_id = action_id,
+        weapon = action_kind == "item" and action_id or nil,
         controls_movement = sprite_type ~= SpriteType.THON,
         projectile = false, dynamic_encounter_only = true }
 end

@@ -483,9 +483,11 @@ EntityActionDynamicModifierResult apply_dynamic_status_modifier(
         result.ready_roll_count = calculate_ready_entity_action_bonus(
             context.ready_entities);
     }
+    // ROM 0x557C4 branches on the signed D4EA0 +0x27 byte: negative adds
+    // actor +0x7C, while nonnegative adds actor +0x77.
     const auto attribute = context.attribute_selectors[modifier_index] < 0
-                               ? context.actor_attribute_77
-                               : context.actor_attribute_7c;
+                               ? context.actor_attribute_7c
+                               : context.actor_attribute_77;
     result.ready_roll_count = static_cast<std::uint16_t>(
         result.ready_roll_count + attribute);
 

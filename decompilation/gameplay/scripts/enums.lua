@@ -45,6 +45,7 @@ E.ActorAnimation = {
 } -- ROM 0xB1DC strike and 0xB330 runner-down selectors [C]
 
 E.Posture   = { FULL_DEFENSE = 0, MEDIUM_DEFENSE = 1, NEUTRAL = 2, MEDIUM_OFFENSE = 3, FULL_OFFENSE = 4 }  -- +0x4D, names 0xD1A05 [C]
+E.ActorAttribute = { BODY = "body", WILLPOWER = "willpower" } -- semantic attributes used by combat rules; +0x77/+0x7C [C]
 E.SceneMode = { NONE = 0, STREET = 1, BUILDING = 2, CAVE = 3 }  -- FFDF40: 1 scenes <0x15, 2 0x15-0x2B, 3 0x2C-0x37 [C]
 E.Scene = {
     JUMP_HOUSE = 13, WANDERER = 14, -- 0x1B3C06 / 0x1D5B52 scene profiles [C]
@@ -255,7 +256,9 @@ E.SoundId = {   -- played through 0x530DE (doc 10) [C]
     MATRIX_PROGRAM_2A = 0x2A, MATRIX_PROGRAM_2B = 0x2B,
     MENU_COMMAND_29 = 0x29,          -- 0x26A0C [C site, role unknown]
     SPELL_EFFECT_31 = 0x31, SPELL_EFFECT_32 = 0x32, SPELL_EFFECT_33 = 0x33,  -- spell table 0x4946 [C]
-    SPELL_EFFECT_34 = 0x34, SPELL_EFFECT_35 = 0x35, SPELL_EFFECT_37 = 0x37,
+    SPELL_EFFECT_34 = 0x34, SPELL_EFFECT_35 = 0x35,
+    SPELL_EFFECT_36 = 0x36, -- action-effect table 0x4946 selects this for spell code 13 [C]
+    SPELL_EFFECT_37 = 0x37,
     SPELL_EFFECT_38 = 0x38, SPELL_EFFECT_39 = 0x39, SPELL_EFFECT_3A = 0x3A,
     FIELD_3B = 0x3B,                 -- 0x49A2 -> 0x4AA4 field barrier [C]
     UNUSED_3D = 0x3D, UNUSED_3E = 0x3E, UNUSED_50 = 0x50,                   -- no caller found (doc 10 §5 re-scan) [H]

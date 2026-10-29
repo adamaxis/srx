@@ -336,11 +336,11 @@ function ActorAI.heartbeat(context)
                             -- Negative +0x56 never enters 0x14C7C / 0xB1DC.
                             state.ai_target_engaged = false
                             local spell_target = target
-                            if context.action_code == 12 then
+                            if context.action_spell_id == "heal_wounds" then
                                 spell_target =
                                     R.first_wounded_party_runner(context)
                             end
-                            if context.action_code == 12 and
+                            if context.action_spell_id == "heal_wounds" and
                                spell_target == nil then
                                 -- 0x13BBA returns carry clear when 0x13C20
                                 -- finds no eligible runner lane.

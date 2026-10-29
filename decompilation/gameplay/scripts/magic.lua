@@ -38,72 +38,80 @@ local focus_item_by_spell = {
     barrier = "barrier_focus",
 }
 
--- D4EA0 action rows in one-based live-record action-code order. The row
--- stores caster residual index at +0x24, target effect index/availability at
--- +0x25, difficulty modifier at +0x26, and target attribute selector at
--- +0x27. Both effect values are decoded through the shared 166AD4 byte table
--- offline: +0x24 is consumed by 0x10660 and +0x25 by 0x55B78.
-local spell_action_by_code = {
-    { availability = 1, effect_table_index = 0, difficulty_modifier = 0,
-      base_effect = 1, target_effect = 3, attribute_selector = 0 },
-    { availability = 2, effect_table_index = 1, difficulty_modifier = 1,
-      base_effect = 3, target_effect = 6, attribute_selector = 0 },
-    { availability = 3, effect_table_index = 3, difficulty_modifier = 3,
-      base_effect = 10, target_effect = 10, attribute_selector = 0 },
-    { availability = -1, effect_table_index = 1, difficulty_modifier = 0,
-      base_effect = 3, target_effect = 0, attribute_selector = 0 },
-    { availability = 1, effect_table_index = 2, difficulty_modifier = 0,
-      base_effect = 6, target_effect = 3, attribute_selector = -1 },
-    { availability = -1, effect_table_index = 2, difficulty_modifier = 0,
-      base_effect = 6, target_effect = 0, attribute_selector = -1 },
-    { availability = -1, effect_table_index = 2, difficulty_modifier = 2,
-      base_effect = 6, target_effect = 0, attribute_selector = 0 },
-    { availability = 0, effect_table_index = 0, difficulty_modifier = 0,
-      base_effect = 1, target_effect = 1, attribute_selector = -1 },
-    { availability = 1, effect_table_index = 1, difficulty_modifier = 0,
-      base_effect = 3, target_effect = 3, attribute_selector = -1 },
-    { availability = 2, effect_table_index = 2, difficulty_modifier = 1,
-      base_effect = 6, target_effect = 6, attribute_selector = -1 },
-    { availability = -1, effect_table_index = 1, difficulty_modifier = 2,
-      base_effect = 3, target_effect = 0, attribute_selector = 0 },
-    { availability = -1, effect_table_index = 1, difficulty_modifier = 0,
-      base_effect = 3, target_effect = 0, attribute_selector = 0 },
-    { availability = -1, effect_table_index = 2, difficulty_modifier = 0,
-      base_effect = 6, target_effect = 0, attribute_selector = -1 },
-    { availability = -1, effect_table_index = 1, difficulty_modifier = 2,
-      base_effect = 3, target_effect = 0, attribute_selector = 0 },
+-- Gameplay-facing spell rules use resolved effects and named attributes.
+-- Source action-profile attribute selection is decoded before Lua: 0x557C4
+-- maps a negative D4EA0 +0x27 value to +0x7C (Willpower), otherwise +0x77
+-- (Body). The target-resistance choices below remain [H] until the spell's
+-- delayed target-effect callback is traced end to end.
+local spell_action_by_id = {
+    flame_dart = { difficulty_modifier = 0, base_effect = 1,
+        target_effect = 3, target_resistance_attribute = E.ActorAttribute.BODY },
+    flame_bolt = { difficulty_modifier = 1, base_effect = 3,
+        target_effect = 6, target_resistance_attribute = E.ActorAttribute.BODY },
+    hellblast = { difficulty_modifier = 3, base_effect = 10,
+        target_effect = 10, target_resistance_attribute = E.ActorAttribute.BODY },
+    invisibility = { difficulty_modifier = 0, base_effect = 3,
+        target_effect = 0, target_resistance_attribute = E.ActorAttribute.BODY },
+    sleep = { difficulty_modifier = 0, base_effect = 6,
+        target_effect = 3, target_resistance_attribute = E.ActorAttribute.WILLPOWER },
+    stink = { difficulty_modifier = 0, base_effect = 6,
+        target_effect = 0, target_resistance_attribute = E.ActorAttribute.WILLPOWER },
+    super_barrier = { difficulty_modifier = 2, base_effect = 6,
+        target_effect = 0, target_resistance_attribute = E.ActorAttribute.BODY },
+    mana_zap = { difficulty_modifier = 0, base_effect = 1,
+        target_effect = 1, target_resistance_attribute = E.ActorAttribute.WILLPOWER },
+    mana_blast = { difficulty_modifier = 0, base_effect = 3,
+        target_effect = 3, target_resistance_attribute = E.ActorAttribute.WILLPOWER },
+    mana_storm = { difficulty_modifier = 1, base_effect = 6,
+        target_effect = 6, target_resistance_attribute = E.ActorAttribute.WILLPOWER },
+    rockskin = { difficulty_modifier = 2, base_effect = 3,
+        target_effect = 0, target_resistance_attribute = E.ActorAttribute.BODY },
+    heal_wounds = { difficulty_modifier = 0, base_effect = 3,
+        target_effect = 0, target_resistance_attribute = E.ActorAttribute.BODY },
+    confusion = { difficulty_modifier = 0, base_effect = 6,
+        target_effect = 0, target_resistance_attribute = E.ActorAttribute.WILLPOWER },
+    barrier = { difficulty_modifier = 2, base_effect = 3,
+        target_effect = 0, target_resistance_attribute = E.ActorAttribute.BODY },
 }
 
 -- ROM 0x4946. Zero entries are silent at the 0x15830 action-effect handoff.
-local action_effect_audio_event_by_code = {
-    [1] = 0x32, [2] = 0x34, [3] = 0x34, [4] = 0x31,
-    [5] = 0x37, [6] = 0x38, [7] = 0x00, [8] = 0x33,
-    [9] = 0x35, [10] = 0x35, [11] = 0x39, [12] = 0x3a,
-    [13] = 0x36, [14] = 0x00, [15] = 0x00,
+local action_effect_audio_event_by_id = {
+    flame_dart = E.SoundId.SPELL_EFFECT_32,
+    flame_bolt = E.SoundId.SPELL_EFFECT_34,
+    hellblast = E.SoundId.SPELL_EFFECT_34,
+    invisibility = E.SoundId.SPELL_EFFECT_31,
+    sleep = E.SoundId.SPELL_EFFECT_37,
+    stink = E.SoundId.SPELL_EFFECT_38,
+    mana_zap = E.SoundId.SPELL_EFFECT_33,
+    mana_blast = E.SoundId.SPELL_EFFECT_35,
+    mana_storm = E.SoundId.SPELL_EFFECT_35,
+    rockskin = E.SoundId.SPELL_EFFECT_39,
+    heal_wounds = E.SoundId.SPELL_EFFECT_3A,
+    confusion = E.SoundId.SPELL_EFFECT_36,
 }
 
 -- The actor effect handlers at 0x490A use different render clocks for the
 -- spell actions that occur in the encounter tables. 0x15830 initializes the
 -- target record countdown to five; these entries describe only the handler
 -- cadence and presentation profile that follow that source handoff.
-local actor_effect_profile_by_code = {
-    [1] = { id = "flame-dart", repeat_countdown = 1, phase_count = 4,
+local actor_effect_profile_by_id = {
+    flame_dart = { id = "flame-dart", repeat_countdown = 1, phase_count = 4,
             palette_line = 1 },
-    [2] = { id = "flame-bolt", repeat_countdown = 4, phase_count = 6,
+    flame_bolt = { id = "flame-bolt", repeat_countdown = 4, phase_count = 6,
             palette_line = 1 },
-    [5] = { id = "sleep", repeat_countdown = 6, phase_count = 9,
+    sleep = { id = "sleep", repeat_countdown = 6, phase_count = 9,
             palette_line = 3 },
-    [9] = { id = "mana-blast", repeat_countdown = 4, phase_count = 6,
+    mana_blast = { id = "mana-blast", repeat_countdown = 4, phase_count = 6,
             palette_line = 2 },
-    [12] = { id = "heal-wounds", repeat_countdown = 4, phase_count = 16,
+    heal_wounds = { id = "heal-wounds", repeat_countdown = 4, phase_count = 16,
              palette_line = 3 },
 }
 
 -- 0x15830 branches to 0x49A2 for these two action codes before it reads
 -- +0xA2. All other action codes return when that link is zero [C].
-local untargeted_effect_kind_by_code = {
-    [E.SpellActionCode.SUPER_BARRIER] = E.SpellEffectKind.FIELD_BARRIER,
-    [E.SpellActionCode.BARRIER] = E.SpellEffectKind.FIELD_BARRIER,
+local untargeted_effect_kind_by_id = {
+    super_barrier = E.SpellEffectKind.FIELD_BARRIER,
+    barrier = E.SpellEffectKind.FIELD_BARRIER,
 }
 
 local function text_keys(ids, prefix)
@@ -123,56 +131,50 @@ function Magic.spell_descriptions()
         text_keys(spell_ids, "magic.spells.description.")
 end
 
-function Magic.target_motion_range(code)
-    if type(code) ~= "number" or code % 1 ~= 0 or
-       code < 1 or code > #spell_action_by_code then
+function Magic.target_motion_range(spell_id)
+    if type(spell_id) ~= "string" then
         return nil
     end
-    local definition = SpellDefinitions[spell_ids[code]]
+    local definition = SpellDefinitions[spell_id]
     return definition and definition.target_motion_range or nil
 end
 
-function Magic.spell_action_definition(code)
-    if type(code) ~= "number" or code % 1 ~= 0 or
-       code < 1 or code > #spell_action_by_code then
+function Magic.spell_action_definition(spell_id)
+    if type(spell_id) ~= "string" then
         return nil
     end
-    local row = spell_action_by_code[code]
-    local definition = SpellDefinitions[spell_ids[code]]
-    if definition == nil then
+    local profile = spell_action_by_id[spell_id]
+    local definition = SpellDefinitions[spell_id]
+    if profile == nil or definition == nil then
         return nil
     end
-    local effect_profile = actor_effect_profile_by_code[code]
+    local effect_profile = actor_effect_profile_by_id[spell_id]
     return {
-        spell_id = spell_ids[code],
-        focus_item_id = focus_item_by_spell[spell_ids[code]],
-        row_index = code - 1,
-        availability = row.availability,
-        effect_table_index = row.effect_table_index,
-        difficulty_modifier = row.difficulty_modifier,
-        base_effect = row.base_effect,
-        target_effect = row.target_effect,
-        attribute_selector = row.attribute_selector,
-        audio_event = action_effect_audio_event_by_code[code] or 0,
-        untargeted_effect_kind = untargeted_effect_kind_by_code[code] or
+        spell_id = spell_id,
+        focus_item_id = focus_item_by_spell[spell_id],
+        difficulty_modifier = profile.difficulty_modifier,
+        base_effect = profile.base_effect,
+        target_effect = profile.target_effect,
+        target_resistance_attribute = profile.target_resistance_attribute,
+        audio_event = action_effect_audio_event_by_id[spell_id],
+        untargeted_effect_kind = untargeted_effect_kind_by_id[spell_id] or
             E.SpellEffectKind.NONE,
         actor_effect = effect_profile,
     }
 end
 
-function Magic.untargeted_effect_kind(code)
-    if type(code) ~= "number" or code % 1 ~= 0 or
-       code < 1 or code > #spell_action_by_code then
+function Magic.untargeted_effect_kind(spell_id)
+    if type(spell_id) ~= "string" then
         return nil
     end
-    return untargeted_effect_kind_by_code[code] or E.SpellEffectKind.NONE
+    return untargeted_effect_kind_by_id[spell_id] or E.SpellEffectKind.NONE
 end
 
-function Magic.actor_effect_profile(code)
-    if type(code) ~= "number" or code % 1 ~= 0 then
+function Magic.actor_effect_profile(spell_id)
+    if type(spell_id) ~= "string" then
         return nil
     end
-    local profile = actor_effect_profile_by_code[code]
+    local profile = actor_effect_profile_by_id[spell_id]
     if profile == nil then
         return nil
     end

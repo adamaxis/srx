@@ -20,10 +20,15 @@ int main() {
         1, 2, 3, -1, 1, -1, -1, 0, 1, 2, -1, -1, -1, -1};
     constexpr std::array<std::int8_t, kUsMagicSpellCount> kSelectors{
         0, 0, 0, 0, -1, -1, 0, -1, -1, -1, 0, 0, -1, 0};
+    constexpr std::array<std::string_view, kUsMagicSpellCount> kSpellIds{
+        "flame_dart", "flame_bolt", "hellblast", "invisibility", "sleep",
+        "stink", "super_barrier", "mana_zap", "mana_blast", "mana_storm",
+        "rockskin", "heal_wounds", "confusion", "barrier"};
 
     for (std::size_t index = 0; index < spells.size(); ++index) {
         const auto& spell = spells[index];
-        if (spell.spell_code != index || spell.base_effect != kEffects[index] ||
+        if (spell.spell_code != index || spell.id != kSpellIds[index] ||
+            spell.base_effect != kEffects[index] ||
             spell.difficulty_modifier != kDifficulty[index] ||
             spell.availability_byte != kAvailability[index] ||
             spell.attribute_selector != kSelectors[index]) {
@@ -33,6 +38,8 @@ int main() {
 
     const auto* mana_storm = find_us_magic_spell(9U);
     if (mana_storm == nullptr || mana_storm->display_name != "Mana Storm" ||
+        find_us_magic_spell("mana_storm") != mana_storm ||
+        find_us_magic_spell("unknown_spell") != nullptr ||
         mana_storm->effect_table_index != 2U ||
         find_us_magic_spell(13U) == nullptr ||
         find_us_magic_spell(14U) != nullptr) {

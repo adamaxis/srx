@@ -17,6 +17,7 @@ constexpr std::size_t kUsActionEffectCount = 16U;
 // value used by 0x10660, so callers do not perform ROM-table arithmetic.
 struct MagicSpellDefinition {
     std::uint8_t spell_code = 0;
+    std::string_view id;
     std::string_view display_name;
     std::int8_t availability_byte = -1; // D4EA0 +0x25
     std::uint8_t difficulty_modifier = 0; // D4EA0 +0x26
@@ -71,6 +72,7 @@ const UsActionEffectDefinition* find_us_action_effect(
     std::uint8_t effect_table_index);
 
 const MagicSpellDefinition* find_us_magic_spell(std::uint8_t spell_code);
+const MagicSpellDefinition* find_us_magic_spell(std::string_view spell_id);
 
 const UsMagicSpellTableCatalog& us_magic_spell_table_catalog();
 

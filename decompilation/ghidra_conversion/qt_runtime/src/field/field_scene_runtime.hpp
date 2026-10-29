@@ -1570,9 +1570,9 @@ public:
     bool field_entity_visible_for_dump() const noexcept {
         return field_entity_.visible;
     }
-    bool set_field_spell_effect_for_dump(std::uint8_t action_code,
+    bool set_field_spell_effect_for_dump(std::string_view spell_id,
                                          std::uint8_t phase,
-                                         bool visible) noexcept;
+                                         bool visible);
     std::uint16_t field_entity_screen_x_for_dump() const noexcept {
         return field_entity_.projection.screen_x;
     }
@@ -1983,7 +1983,7 @@ private:
         std::uint8_t direction = 0;
         bool visible = false;
         bool spell_effect_visible = false;
-        std::uint8_t spell_effect_action_code = 0U;
+        std::string spell_effect_id;
         std::uint8_t spell_effect_phase = 0U;
     };
 
@@ -2076,7 +2076,7 @@ private:
         std::uint8_t target_motion_effect_phase = 0;
         std::int16_t action_delay = 0;
         bool spell_effect_visible = false;
-        std::uint8_t spell_effect_action_code = 0U;
+        std::string spell_effect_id;
         std::uint8_t spell_effect_phase = 0U;
         bool ai_target_valid = false;
         std::uint16_t ai_target_heading = 0;

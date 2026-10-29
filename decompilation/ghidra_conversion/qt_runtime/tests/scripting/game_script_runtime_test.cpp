@@ -672,6 +672,9 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
     {
         std::ofstream plugin(temporary_directory / "run_dynamic_probe.lua",
                              std::ios::binary);
+        // [H] The target-resistance mapping is preserved from the existing
+        // gameplay model; only the Lua-facing byte selector is replaced by a
+        // semantic attribute. Its source callback remains open for tracing.
         plugin << "local Probe = { new_game_weight = 1,\n"
                   "  new_game_payment = { base_payment = 40, negotiation_scale = 1 } }\n"
                   "function Probe.prepare_offer(contact_id)\n"
@@ -691,8 +694,8 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                   "  local profiles = require('data.actor_profiles').by_id\n"
                   "  local spell_data = require('data.spells').by_id\n"
                   "  local magic = require('magic')\n"
-                  "  if weapons.get(6) ~= nil then return 'numeric weapon lookup leaked into Lua' end\n"
-                  "  if items.by_code ~= nil then return 'numeric item lookup leaked into Lua' end\n"
+                  "  if weapons.get(6) ~= nil then return 'numeric_weapon_lookup_leaked_into_lua' end\n"
+                  "  if items.by_code ~= nil then return 'numeric_item_lookup_leaked_into_lua' end\n"
                   "  for code = 1, 50 do\n"
                   "    local item = items.catalog[code]\n"
                   "    local definition = item and records[item.id] or nil\n"
@@ -705,52 +708,61 @@ bool verify_dynamic_run_module(const std::filesystem::path& source_directory,
                   "       definition.icon ~= nil or definition.detail_pointer ~= nil or\n"
                   "       type(range) ~= 'table' or\n"
                   "       range.minimum_distance ~= (code == 43 and 1600 or 1280) or\n"
-                  "       range.maximum_distance ~= (code == 43 and 2240 or 1600) then return 'semantic item catalog mismatch' end\n"
+                  "       range.maximum_distance ~= (code == 43 and 2240 or 1600) then return 'semantic_item_catalog_mismatch' end\n"
                   "    if code >= 41 and code <= 43 then\n"
-                  "      if item.pricing ~= nil or definition.purchase_base ~= nil or item.spell_action_modifiers ~= definition.totem_spell_modifiers then return 'totem semantic record mismatch' end\n"
-                  "    elseif item.pricing == nil or item.pricing.purchase_base ~= definition.purchase_base then return 'item purchase price mismatch' end\n"
-                  "    if item.detail ~= nil or definition.detail ~= nil then return 'unverified static item detail leaked into catalog' end\n"
+                  "      if item.pricing ~= nil or definition.purchase_base ~= nil or item.spell_action_modifiers ~= definition.totem_spell_modifiers then return 'totem_semantic_record_mismatch' end\n"
+                  "    elseif item.pricing == nil or item.pricing.purchase_base ~= definition.purchase_base then return 'item_purchase_price_mismatch' end\n"
+                  "    if item.detail ~= nil or definition.detail ~= nil then return 'unverified_static_item_detail_leaked_into_catalog' end\n"
                   "    if code <= 15 then\n"
                   "      local template = weapons.get(item.id)\n"
                   "      if template == nil or template.id ~= item.id or\n"
-                  "         template.purchase_base ~= definition.purchase_base then return 'weapon definition mismatch' end\n"
+                  "         template.purchase_base ~= definition.purchase_base then return 'weapon_definition_mismatch' end\n"
                   "      if code <= 12 and (item.weapon == nil or\n"
                   "         item.weapon.magazine_capacity ~= template.magazine_capacity or\n"
                   "         item.weapon.damage_effect ~= template.damage_effect or\n"
                   "         item.weapon.damage_bar_index ~= nil or\n"
                   "         template.damage_bar_index ~= nil or\n"
                   "         template.source_action.effect_table_index ~= nil or\n"
-                  "         item.weapon.rounds_per_action ~= template.rounds_per_shot) then return 'firearm host view mismatch' end\n"
+                  "         item.weapon.rounds_per_action ~= template.rounds_per_shot) then return 'firearm_host_view_mismatch' end\n"
                   "    end\n"
                   "    if item.armor ~= nil and\n"
                   "       (definition.armor == nil or\n"
                   "        item.armor.primary_modifier ~= definition.armor.primary_modifier or\n"
-                  "        item.armor.secondary_modifier ~= definition.armor.secondary_modifier) then return 'armor definition mismatch' end\n"
+                  "        item.armor.secondary_modifier ~= definition.armor.secondary_modifier) then return 'armor_definition_mismatch' end\n"
                   "  end\n"
                   "  local spell_ids = { 'flame_dart', 'flame_bolt', 'hellblast', 'invisibility', 'sleep', 'stink', 'super_barrier', 'mana_zap', 'mana_blast', 'mana_storm', 'rockskin', 'heal_wounds', 'confusion', 'barrier' }\n"
                   "  local focus_ids = { 'flame_dart_focus', 'flame_bolt_focus', 'hellblast_focus', 'invisibility_focus', 'sleep_focus', 'stink_focus', 'supr_barrier_focus', 'mana_zap_focus', 'mana_blast_focus', 'mana_storm_focus', 'rockskin_focus', 'heal_wounds_focus', 'confusion_focus', 'barrier_focus' }\n"
+                  "  local target_attributes = { 'body', 'body', 'body', 'body', 'willpower', 'willpower', 'body', 'willpower', 'willpower', 'willpower', 'body', 'body', 'willpower', 'body' }\n"
+                  "  local spell_ranges = { flame_dart = { 1280, 1600 }, flame_bolt = { 1280, 1600 }, hellblast = { 1280, 1600 }, invisibility = { 1280, 1600 }, super_barrier = { 1280, 1600 }, rockskin = { 1280, 1600 }, heal_wounds = { 1280, 1600 }, barrier = { 1280, 1600 } }\n"
                   "  for code = 1, 14 do\n"
-                  "    local definition = magic.spell_action_definition(code)\n"
-                  "    local spell = spell_data[spell_ids[code]]\n"
-                  "    if definition == nil or spell == nil or\n"
-                  "       definition.spell_id ~= spell_ids[code] or definition.focus_item_id ~= focus_ids[code] or\n"
-                  "       type(spell.base_drain) ~= 'number' or\n"
-                  "       type(spell.force_drain_modifier) ~= 'number' or\n"
-                  "       spell.type ~= nil or spell.uses_damage_profile ~= nil or\n"
-                  "       spell.totem_modifier_applies ~= nil or\n"
-                  "       spell.flag27 ~= nil or spell.totem_category ~= nil or\n"
-                  "       spell.icon ~= nil or spell.description ~= nil then return 'spell semantic profile mismatch' end\n"
-                  "    if code == 14 and (definition.spell_id ~= 'barrier' or definition.availability ~= -1 or definition.effect_table_index ~= 1 or definition.difficulty_modifier ~= 2 or definition.base_effect ~= 3 or definition.target_effect ~= 0 or definition.attribute_selector ~= 0) then return 'Barrier ROM action profile mismatch' end\n"
+                  "    local spell_id = spell_ids[code]\n"
+                  "    local definition = magic.spell_action_definition(spell_id)\n"
+                  "    local motion_range = magic.target_motion_range(spell_id)\n"
+                  "    local spell = spell_data[spell_id]\n"
+                  "    if definition == nil or spell == nil then return 'spell_definition_missing' end\n"
+                  "    if magic.spell_action_definition(code) ~= nil then return 'numeric_spell_lookup_available' end\n"
+                  "    if magic.target_motion_range(code) ~= nil then return 'numeric_spell_range_available' end\n"
+                  "    local expected_range = spell_ranges[spell_id]\n"
+                  "    if expected_range == nil then\n"
+                  "      if motion_range ~= nil then return 'unexpected_spell_motion_range' end\n"
+                  "    elseif type(motion_range) ~= 'table' or motion_range.minimum_distance ~= expected_range[1] or motion_range.maximum_distance ~= expected_range[2] then return 'spell_motion_range_mismatch' end\n"
+                  "    if definition.spell_id ~= spell_id or definition.focus_item_id ~= focus_ids[code] then return 'spell_identity_or_focus_mismatch' end\n"
+                  "    if definition.target_resistance_attribute ~= target_attributes[code] then return 'spell_resistance_attribute_mismatch' end\n"
+                  "    if definition.attribute_selector ~= nil or definition.effect_table_index ~= nil then return 'spell_source_selector_leaked' end\n"
+                  "    if definition.availability ~= nil or definition.row_index ~= nil then return 'spell_source_row_leaked' end\n"
+                  "    if type(spell.base_drain) ~= 'number' or type(spell.force_drain_modifier) ~= 'number' then return 'spell_drain_missing' end\n"
+                  "    if spell.type ~= nil or spell.uses_damage_profile ~= nil or spell.totem_modifier_applies ~= nil or spell.flag27 ~= nil or spell.totem_category ~= nil or spell.icon ~= nil or spell.description ~= nil then return 'spell_source_fields_leaked' end\n"
+                  "    if code == 14 and (definition.spell_id ~= 'barrier' or definition.difficulty_modifier ~= 2 or definition.base_effect ~= 3 or definition.target_effect ~= 0 or definition.target_resistance_attribute ~= 'body') then return 'barrier_semantic_action_profile_mismatch' end\n"
                   "  end\n"
                   "  for id = 0, 5 do\n"
                   "    local accessory = accessories[id]\n"
                   "    if accessory == nil or accessory.id ~= id or\n"
                   "       type(accessory:base_price(0)) ~= 'number' or\n"
                   "       type(accessory:base_price(1)) ~= 'number' or\n"
-                  "       type(accessory:base_price(2)) ~= 'number' then return 'accessory price record mismatch' end\n"
+                  "       type(accessory:base_price(2)) ~= 'number' then return 'accessory_price_record_mismatch' end\n"
                   "  end\n"
                   "  if profiles['corp_guard_k05_item06'] == nil or profiles['corp_guard_k05_item06'].action_code ~= nil or\n"
-                  "     profiles['corp_guard_k05_item06']:weapon_record() ~= weapons.get('max_power') then return 'actor weapon profile mismatch' end\n"
+                  "     profiles['corp_guard_k05_item06']:weapon_record() ~= weapons.get('max_power') then return 'actor_weapon_profile_mismatch' end\n"
                   "  local safe = pcall(require, '..')\n"
                   "  local cycle = pcall(require, 'data.cycle')\n"
                   "  return module_ok and not safe and not cycle and 'module_catalog_ok' or 'module_probe_failed'\n"
@@ -5948,7 +5960,7 @@ int main() {
                held->direction == 1U &&
                !held->source_action_dispatch.has_value() &&
                !held->spell_effect_visible &&
-               held->spell_effect_action_code == 0U &&
+               held->spell_effect_id.empty() &&
                next->animation_id == "spell" &&
                next->animation_frame == 0U &&
                next->action_delay == 0x69 &&
@@ -6111,7 +6123,11 @@ int main() {
             : action_code == 12U
                   ? std::optional<std::uint16_t>{0x003aU}
                   : std::nullopt;
-        return driven.refresh.has_value() &&
+        const auto* expected_spell = action_code == 0U
+            ? nullptr
+            : shadowrun::ghidra_conversion::find_us_magic_spell(
+                  static_cast<std::uint8_t>(action_code - 1U));
+        return expected_spell != nullptr && driven.refresh.has_value() &&
                expected_audio_event.has_value() &&
                driven.refresh->audio_event == expected_audio_event &&
                driven.refresh->spell_action_resolution.has_value() &&
@@ -6120,8 +6136,8 @@ int main() {
                driven.spell_effect_visible_heartbeats == visible_count &&
                !driven.effect_completed_early &&
                driven.completed_effect.has_value() &&
-               driven.completed_effect->spell_effect_action_code ==
-                   action_code &&
+               driven.completed_effect->spell_effect_id ==
+                   expected_spell->id &&
                driven.completed_effect->spell_effect_phase == phase_count &&
                driven.completed_effect->spell_effect_slot_released.has_value();
     };
@@ -6131,7 +6147,7 @@ int main() {
     const bool spell_action_roll_resolved =
         resolved_spell_cast.refresh.has_value() &&
         spell_action_result.has_value() &&
-        spell_action_result->action_code == 1U &&
+        spell_action_result->spell_id == "flame_dart" &&
         spell_action_result->target_id == "party.runner.0" &&
         spell_action_result->target_record_slot == 0U &&
         spell_action_result->target_record_type == 0U &&
@@ -6172,12 +6188,12 @@ int main() {
                    expected_spell_visibility_trace.end(),
                    resolved_spell_cast.spell_effect_visible_trace.begin()) &&
         resolved_spell_cast.completed_effect.has_value() &&
-        resolved_spell_cast.completed_effect->spell_effect_action_code == 1U &&
+        resolved_spell_cast.completed_effect->spell_effect_id == "flame_dart" &&
         resolved_spell_cast.completed_effect->spell_effect_slot_released ==
             std::optional<std::uint8_t>{0U} &&
         resolved_spell_cast.completed_effect->spell_effect_phase == 4U &&
         spell_effect_result.has_value() &&
-        spell_effect_result->action_code == 1U &&
+        spell_effect_result->spell_id == "flame_dart" &&
         spell_effect_result->target_id == "party.runner.0" &&
         spell_effect_result->target_trial_count == 8U &&
         spell_effect_result->difficulty == 2U &&
@@ -6203,11 +6219,11 @@ int main() {
     const bool heal_wounds_source_lane_matches =
         heal_wounds_cast.refresh.has_value() &&
         heal_action_result.has_value() &&
-        heal_action_result->action_code == 12U &&
+        heal_action_result->spell_id == "heal_wounds" &&
         heal_action_result->target_id == "party.runner.1" &&
         heal_action_result->target_record_slot == 1U &&
         heal_effect_result.has_value() &&
-        heal_effect_result->action_code == 12U &&
+        heal_effect_result->spell_id == "heal_wounds" &&
         heal_effect_result->target_id == "party.runner.1" &&
         heal_effect_result->target_record_slot == 1U &&
         heal_effect_result->outcome == "effect_applied" &&
@@ -6240,7 +6256,7 @@ int main() {
         code2_scene_state_callback.completed_effect->spell_effect_completed &&
         code2_scene_state_callback.completed_effect->spell_effect_resolution &&
         code2_scene_state_callback.completed_effect->spell_effect_resolution->
-                action_code == 2U;
+                spell_id == "flame_bolt";
     const bool sleep_scan_fanout_matches =
         sleep_fanout_cast.completed_effect.has_value() &&
         sleep_fanout_cast.completed_effect->spell_effect_completed &&
@@ -6302,8 +6318,7 @@ int main() {
                 const auto& value =
                     *driven.refresh->spell_action_resolution;
                 std::cerr << " outcome=" << value.outcome
-                          << " action_code="
-                          << static_cast<unsigned>(value.action_code)
+                          << " spell_id=" << value.spell_id
                           << " rolls=" << value.roll_attempted
                           << " trials="
                           << (value.initial_trial_count.has_value()
@@ -7035,7 +7050,6 @@ int main() {
     catalog_defender.armor_index = 0U;
     catalog_defender.class_code = 0U;
     catalog_defender.equipped_action_code = 0U;
-    const auto& catalog_spell_rows = us_magic_spell_catalog();
     const auto drive_catalog_decision =
         [&](const CatalogProfile& row)
         -> std::optional<ScriptActorBehaviorDecision> {
@@ -7056,9 +7070,8 @@ int main() {
         }
         if (row.decision == CatalogDecision::unarmed) {
             context.combatant = catalog_attacker;
-            context.action_attribute_selectors = {
-                catalog_spell_rows[5U].attribute_selector,
-                catalog_spell_rows[12U].attribute_selector};
+            // ROM 0x557C4: negative D4EA0 +0x27 selects +0x7C (Willpower).
+            context.action_profile_attributes = {"willpower", "willpower"};
         }
         if (row.decision == CatalogDecision::item_gated) {
             context.source_projection_active = true;
@@ -7251,10 +7264,8 @@ int main() {
     combat_probe_context.initial_action_delay = 0;
     combat_probe_context.action_timing = {4U, 6U, 0U};
     combat_probe_context.movement_allowed = true;
-    const auto& combat_spell_rows = us_magic_spell_catalog();
-    combat_probe_context.action_attribute_selectors = {
-        combat_spell_rows[5U].attribute_selector,
-        combat_spell_rows[12U].attribute_selector};
+    combat_probe_context.action_profile_attributes = {
+        "willpower", "willpower"};
     ScriptCombatantFacts attacker_facts{};
     attacker_facts.record_type = 7U;
     attacker_facts.source_flags = 0x25U;
@@ -7718,8 +7729,8 @@ int main() {
                 player_cast_resolved->source_action_dispatch ==
                     std::optional<std::string>{"player_spell"} &&
                 player_cast_resolved->spell_action_resolution.has_value() &&
-                player_cast_resolved->spell_action_resolution->action_code ==
-                    1U &&
+                player_cast_resolved->spell_action_resolution->spell_id ==
+                    "flame_dart" &&
                 player_cast_resolved->spell_action_resolution->target_id ==
                     "field_actor_slot_3",
             "Lua player spell did not resolve the no-link roll/0x49A2 barrier split")) {
@@ -8714,7 +8725,8 @@ int main() {
         thon_success.cast->spell_action_resolution.has_value() &&
         thon_success.cast->source_action_dispatch ==
             std::optional<std::string>{"spell"} &&
-        thon_success.cast->spell_action_resolution->action_code == 1U &&
+        thon_success.cast->spell_action_resolution->spell_id ==
+            "flame_dart" &&
         thon_success.cast->spell_action_resolution->target_id ==
             "party.runner.0" &&
         thon_success.cast->source_thon_period_counter ==
@@ -8731,8 +8743,8 @@ int main() {
         thon_success.target_effect.has_value() &&
         thon_success.target_effect->spell_effect_completed &&
         thon_success.target_effect->spell_effect_resolution.has_value() &&
-        thon_success.target_effect->spell_effect_resolution->action_code ==
-            1U &&
+        thon_success.target_effect->spell_effect_resolution->spell_id ==
+            "flame_dart" &&
         thon_success.target_effect->spell_effect_resolution->target_id ==
             "party.runner.0" &&
         thon_success.target_effect->spell_effect_resolution->outcome ==

@@ -1188,7 +1188,9 @@ enum class ScriptActorSpellFieldEffectKind : std::uint8_t {
 };
 
 struct ScriptActorSpellActionResolution {
-    std::uint8_t action_code = 0;
+    std::string spell_id;
+    // Derived from spell_id at the host boundary for source-record checks.
+    std::uint8_t source_action_code = 0;
     std::string target_id;
     // Untargeted 0xAE6E calls carry the caster's source slot/type here and an
     // empty target id [C]; the stale 68k A1 value is not a stable target [H].
@@ -1222,7 +1224,9 @@ struct ScriptActorSpellActionResolution {
 };
 
 struct ScriptActorSpellEffectResolution {
-    std::uint8_t action_code = 0;
+    std::string spell_id;
+    // Derived from spell_id at the host boundary for source behavior checks.
+    std::uint8_t source_action_code = 0;
     std::string target_id;
     std::uint8_t target_record_slot = 0;
     std::uint16_t target_record_type = 0;
@@ -1790,9 +1794,9 @@ struct ScriptActorBehaviorContext {
     std::optional<ScriptCombatantFacts> combatant;
     std::array<ScriptActionProfileModifierPair, 5>
         action_profile_modifiers{};
-    // D4EA0 action rows 5 and 12 select +0x77 or +0x7C for the
-    // corresponding +0xDF dynamic-profile branch.
-    std::array<std::int8_t, 2> action_attribute_selectors{};
+    // Resolved attribute names for the two +0xDF dynamic-profile branches.
+    // The host interprets the source row's signed selector before Lua sees it.
+    std::array<std::string_view, 2> action_profile_attributes{};
     bool combat_meter_service_blocked = false;
     // Semantic weapon identity copied into projectile +0x57 by the source.
     // Lua receives the item ID after the host resolves the source code.
@@ -1866,7 +1870,7 @@ struct ScriptActorBehaviorDecision {
     bool target_motion_effect_slot_released = false;
     bool spell_effect_visible = false;
     std::uint8_t spell_effect_phase = 0;
-    std::uint8_t spell_effect_action_code = 0;
+    std::string spell_effect_id;
     bool spell_effect_completed = false;
     std::optional<std::uint8_t> spell_effect_slot_released;
     std::optional<std::uint16_t> field_barrier_remaining;

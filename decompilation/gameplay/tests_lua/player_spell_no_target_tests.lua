@@ -13,6 +13,14 @@ game = {
 require("actor.init")
 local R = require("actor.registry")
 
+local SpellIdByActionCode = {
+    [1] = "flame_dart", [2] = "flame_bolt", [3] = "hellblast",
+    [4] = "invisibility", [5] = "sleep", [6] = "stink",
+    [7] = "super_barrier", [8] = "mana_zap", [9] = "mana_blast",
+    [10] = "mana_storm", [11] = "rockskin", [12] = "heal_wounds",
+    [13] = "confusion", [14] = "barrier",
+}
+
 local pass, total = 0, 0
 local function check(condition, label)
     total = total + 1
@@ -62,7 +70,7 @@ local function make_context(action_code)
         actor_id = "field_player_runner",
         phase = "behavior",
         player_spell_available = true,
-        player_spell_code = action_code,
+        player_spell_id = SpellIdByActionCode[action_code],
         combat_confirm_held = true,
         combat_action_ready = true,
         combat_input_blocked = false,
@@ -107,8 +115,8 @@ for action_code = E.SpellActionCode.FLAME_DART,
     local audio = R.begin_player_spell_cast(state, context)
     local result = state.spell_action_resolution
     local is_field_barrier =
-        action_code == E.SpellActionCode.SUPER_BARRIER or
-        action_code == E.SpellActionCode.BARRIER
+        context.player_spell_id == "super_barrier" or
+        context.player_spell_id == "barrier"
     check(state.source_action_dispatch == "player_spell" and
           type(result) == "table" and result.untargeted and
           result.target_id == "" and result.source_record_slot == 0,
@@ -145,7 +153,7 @@ end
 local expiring = {
     actor_id = "field_player_runner",
     player_field_spell_effect = {
-        action_code = E.SpellActionCode.BARRIER,
+        spell_id = "barrier",
         effect_slot = 4,
         remaining = 1,
     },
@@ -153,7 +161,7 @@ local expiring = {
 R.advance_spell_effect(expiring, {phase = "render"})
 check(expiring.player_field_spell_effect == nil and
       expiring.spell_effect_completed and
-      expiring.spell_effect_action_code == E.SpellActionCode.BARRIER and
+      expiring.spell_effect_id == "barrier" and
       expiring.spell_effect_phase == 1 and
       expiring.spell_effect_slot_released == 4,
       "0x4ADC field effect terminal pass releases its shared slot")

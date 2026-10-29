@@ -1282,8 +1282,7 @@ void FieldSceneRuntime::advance_field_actor_animation() {
             field_entity_animation_id_ = decision->animation_id;
             field_entity_.spell_effect_visible =
                 decision->spell_effect_visible;
-            field_entity_.spell_effect_action_code =
-                decision->spell_effect_action_code;
+            field_entity_.spell_effect_id = decision->spell_effect_id;
             field_entity_.spell_effect_phase = decision->spell_effect_phase;
             field_barrier_sprite_plan_.reset();
             if (decision->field_barrier_remaining.has_value()) {

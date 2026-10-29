@@ -306,7 +306,8 @@ local function classify_spell_dispatch(state, context, target)
     if context.source_projection_active ~= true then
         return "offscreen"
     end
-    if context.action_code == 4 or context.action_code == 11 then
+    if context.action_spell_id == "invisibility" or
+       context.action_spell_id == "rockskin" then
         return "suppressed"
     end
     if not action_line_clear(context, target) then
@@ -445,7 +446,7 @@ local function begin_spell_cast(state, context, target, resolution)
     state.combat_action_requested = false
     state.spell_effect_visible = false
     state.spell_effect_phase = 0
-    state.spell_effect_action_code = 0
+    state.spell_effect_id = nil
     state.spell_effect_slot_released = nil
     state.spell_effect_resolution = nil
     R.queue_spell_effect(state, context, target, resolution)
@@ -462,12 +463,12 @@ function R.queue_spell_effect(state, context, target, resolution)
         local magic = game.modules.magic
         local effect_profile = type(magic) == "table" and
             type(magic.actor_effect_profile) == "function" and
-            magic.actor_effect_profile(context.action_code) or nil
+            magic.actor_effect_profile(context.action_spell_id) or nil
         if type(effect_profile) ~= "table" then
             return
         end
         local pending = {
-            action_code = context.action_code,
+            spell_id = context.action_spell_id,
             action_result = resolution.action_result,
             target_id = target.id,
             source_record_slot = target.source_record_slot,
@@ -489,7 +490,7 @@ function R.queue_spell_effect(state, context, target, resolution)
         -- ROM 0x1597E's type-5 scan marks every live record under the 0x500
         -- route-cost bound. 0x5322 later consumes those marks one record at
         -- a time as the preceding sleep animation finishes.
-        if context.action_code == 5 and
+        if context.action_spell_id == "sleep" and
            type(context.ai_target_candidates) == "table" then
             for _, candidate in ipairs(context.ai_target_candidates) do
                 if type(candidate) == "table" and
@@ -501,7 +502,7 @@ function R.queue_spell_effect(state, context, target, resolution)
                    not candidate.actor_facts.lifecycle.dead and
                    candidate.direct_route_step_cost < 0x0500 then
                     local marker = {
-                        action_code = 5,
+                        spell_id = "sleep",
                         actor_id = candidate.id,
                         scene_id = context.movement_scene_id,
                     }
@@ -563,11 +564,11 @@ function R.begin_player_spell_cast(state, context)
             return nil
         end
         local cast_context = setmetatable(
-            {action_code = context.player_spell_code},
+            {action_spell_id = context.player_spell_id},
             {__index = context})
         local replaces_field_barrier =
-            context.player_spell_code == E.SpellActionCode.SUPER_BARRIER or
-            context.player_spell_code == E.SpellActionCode.BARRIER
+            context.player_spell_id == "super_barrier" or
+            context.player_spell_id == "barrier"
         -- 0x49A2 resets the previous field barrier before reserving its new
         -- shared effect slot. Present that Lua-owned slot as free to the roll [C].
         local old_field_effect = state.player_field_spell_effect
@@ -598,7 +599,7 @@ function R.begin_player_spell_cast(state, context)
             if resolution.effect_started and
                type(resolution.spell_effect_slot) == "number" then
                 state.player_field_spell_effect = {
-                    action_code = resolution.action_code,
+                    spell_id = resolution.spell_id,
                     effect_slot = resolution.spell_effect_slot,
                     remaining = resolution.action_result *
                         E.SpellTuning.FIELD_BARRIER_TICKS_PER_SUCCESS,
@@ -617,7 +618,7 @@ function R.begin_player_spell_cast(state, context)
         return nil
     end
     local cast_context = setmetatable(
-        {action_code = context.player_spell_code},
+        {action_spell_id = context.player_spell_id},
         {__index = context})
     local resolution = combat.resolve_spell_action(cast_context, target)
     if resolution == nil then
@@ -766,7 +767,7 @@ local function advance_spell_effect(state, context)
     state.spell_effect_resolution = nil
     state.spell_effect_visible = false
     state.spell_effect_phase = 0
-    state.spell_effect_action_code = 0
+    state.spell_effect_id = nil
     state.spell_effect_completed = false
     state.field_barrier_remaining = nil
     transfer_pending_spell_effect(state, context)
@@ -777,7 +778,7 @@ local function advance_spell_effect(state, context)
         -- owns the allocated shared slot; Lua owns this source clock.
         field_effect.remaining = field_effect.remaining - 1
         if field_effect.remaining <= 0 then
-            state.spell_effect_action_code = field_effect.action_code
+            state.spell_effect_id = field_effect.spell_id
             state.spell_effect_phase = 1
             state.spell_effect_slot_released = field_effect.effect_slot
             state.spell_effect_completed = true
@@ -800,7 +801,7 @@ local function advance_spell_effect(state, context)
     if not actor_matches_pending_spell_target(context, pending) then
         return
     end
-    state.spell_effect_action_code = pending.action_code
+    state.spell_effect_id = pending.spell_id
     if context.source_record_slot ~= pending.source_record_slot then
         state.spell_effect_phase = pending.phase_count
         if pending.owns_effect_slot ~= false then
@@ -829,10 +830,10 @@ local function advance_spell_effect(state, context)
                     end
                 end
             end
-            local skip_delayed_callback = pending.action_code == 2 and
+            local skip_delayed_callback = pending.spell_id == "flame_bolt" and
                 context.world_scene_state == 3 and
                 not caster_is_ai_runner
-            if pending.action_code ~= 5 and not skip_delayed_callback and
+            if pending.spell_id ~= "sleep" and not skip_delayed_callback and
                type(combat) == "table" and
                type(combat.resolve_spell_impact) == "function" and
                type(context.combatant) == "table" and
@@ -860,7 +861,7 @@ local function advance_spell_effect(state, context)
             state.spell_effect_pending = nil
             state.spell_effect_completed = true
 
-            if pending.action_code == 5 then
+            if pending.spell_id == "sleep" then
                 clear_spell_scan_marker(
                     pending.source_record_slot, pending.target_id)
                 local candidates = type(context.ai_target_candidates) == "table"
@@ -877,7 +878,7 @@ local function advance_spell_effect(state, context)
                            not candidate.actor_facts.lifecycle.dead and
                            marker ~= nil then
                             local next_pending = {
-                                action_code = pending.action_code,
+                                spell_id = pending.spell_id,
                                 action_result = pending.action_result,
                                 target_id = candidate.id,
                                 source_record_slot =

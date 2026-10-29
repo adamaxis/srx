@@ -88,16 +88,16 @@ inline constexpr std::uint8_t kFieldPlayerPoseCast = 2U;
 inline constexpr std::string_view kFieldPlayerBarrierEffectOwner =
     "field_player_barrier";
 struct FieldSpellEffectProfile {
-    std::uint8_t action_code;
+    std::string_view spell_id;
     std::string_view asset_id;
     std::uint8_t phase_count;
 };
 inline constexpr std::array<FieldSpellEffectProfile, 5> kFieldSpellEffectProfiles{{
-    {1U, "flame-dart", 4U},
-    {2U, "flame-bolt", 6U},
-    {5U, "sleep", 9U},
-    {9U, "mana-blast", 6U},
-    {12U, "heal-wounds", 16U},
+    {"flame_dart", "flame-dart", 4U},
+    {"flame_bolt", "flame-bolt", 6U},
+    {"sleep", "sleep", 9U},
+    {"mana_blast", "mana-blast", 6U},
+    {"heal_wounds", "heal-wounds", 16U},
 }};
 inline constexpr std::size_t kFieldSpellEffectPhaseCapacity = 16U;
 inline constexpr std::string_view kFieldWeaponProjectileAliasPrefix =

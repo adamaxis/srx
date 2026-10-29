@@ -106,7 +106,8 @@ struct EntityActionActorState {
 // +0x1E/+0x1F and +0x20/+0x21 pairs selected by actor +0xDF bits 0 and 1.
 // ROM 0x55828 resolves the profile row from the linked record's +0xA0
 // selector. `attribute_selector` is the signed +0x27 byte from the
-// corresponding D4EA0 action row: negative selects +0x77, otherwise +0x7C.
+// corresponding D4EA0 action row: negative selects +0x7C, otherwise +0x77
+// (0x557C4).
 struct EntityActionDynamicModifierContext {
     std::uint8_t actor_flags_df = 0;
     std::uint16_t actor_record_type = 0;

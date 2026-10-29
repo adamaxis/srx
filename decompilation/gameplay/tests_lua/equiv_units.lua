@@ -13,6 +13,13 @@ _G.game = gameA; local A = dofile(H.ORIG)
 _G.game = gameB; require("actor.init"); local REG = require("actor.registry")
 local E = require("enums")
 local Items = require("items")
+local SpellIdByActionCode = {
+  [1] = "flame_dart", [2] = "flame_bolt", [3] = "hellblast",
+  [4] = "invisibility", [5] = "sleep", [6] = "stink",
+  [7] = "super_barrier", [8] = "mana_zap", [9] = "mana_blast",
+  [10] = "mana_storm", [11] = "rockskin", [12] = "heal_wounds",
+  [13] = "confusion", [14] = "barrier",
+}
 gameA.modules.items = Items
 gameB.modules.items = Items
 
@@ -195,7 +202,7 @@ local SHAPE = {
     ctx.source_item_spawn_result = "spawned"; ctx.action_line_clear = R(4) ~= 1
   end,
   begin_spell_cast = function(st, ctx)
-    ctx.dynamic_world_encounter_actor = true; ctx.action_kind = "spell"; ctx.action_code = R(0, 13); st.action_delay = -R(1, 5)
+    ctx.dynamic_world_encounter_actor = true; ctx.action_kind = "spell"; ctx.action_code = R(0, 13); ctx.action_spell_id = SpellIdByActionCode[ctx.action_code]; st.action_delay = -R(1, 5)
   end,
   advance_spell_effect = function(st, ctx) st.pending_spell_effect = pending(); st.pending_spell_effect.countdown = R(0, 2) end,
   transfer_pending_spell_effect = function(st, ctx) st.pending_spell_effect = pending() end,
