@@ -46,11 +46,14 @@ local function current_picture_code(st, ctx)
 end
 
 -- 0x10D36/0x10D40: btst #6 / #4 on leader +0x10 (DEAD / DOWN), then 0x391A [C].
--- party().status is the +0x10 byte. The old C++ binding tested the +0x11 byte.
+-- The host translates record +0x10 into runner_facts.lifecycle; Lua does not
+-- receive the status byte. The earlier native check read +0x11 by mistake.
 local function reselect_if_incapacitated(ctx)
     local r = leader(ctx)
-    local down = E.RunnerStatus.DEAD | E.RunnerStatus.DOWN
-    if r and r.status & down ~= 0 then ctx.game.reselect_leader() end
+    local lifecycle = r and r.runner_facts and r.runner_facts.lifecycle
+    if lifecycle and (lifecycle.dead or lifecycle.downed) then
+        ctx.game.reselect_leader()
+    end
 end
 
 -- Full build: 0x10D30 (display off ... on) then 0x10E2E. [C]

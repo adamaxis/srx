@@ -12,10 +12,24 @@ local function deck_slots()
     return slots
 end
 local function runner(o)
-    local r = { status = E.RunnerStatus.ACTIVE, clips = 2, rounds = 0, weapon_slot = 0, weapon_code = 3, armor = 0,
+    local r = { runner_facts = {
+            lifecycle = { active = true, downed = false, dead = false },
+            clip_distribution_remainder = false,
+        }, clips = 2, rounds = 0, weapon_slot = 0, weapon_code = 3, armor = 0,
         inventory = zeros(8), phase = zeros(8), attributes = zeros(8), skills = zeros(16),
         karma = 0, species = 0, archetype = 3, magic = 0, force = 1, posture = 2, stun = 10, physical = 10 }
-    for k, v in pairs(o or {}) do r[k] = v end
+    for k, v in pairs(o or {}) do
+        if k == "downed" or k == "dead" or k == "active" or
+           k == "clip_distribution_remainder" then
+            if k == "clip_distribution_remainder" then
+                r.runner_facts[k] = v
+            else
+                r.runner_facts.lifecycle[k] = v
+            end
+        else
+            r[k] = v
+        end
+    end
     return r
 end
 local function mk(o)
@@ -426,14 +440,17 @@ complete_pull_plug_exit(rc, lc, gc, "Black IC kills")
 end)
 -- debug menu (hidden row 5, docs/12) [C]
 section('debug menu (hidden row 5, docs/12) [C', function()
-local rd, ld, gd = mk({ extra = true, party = { [0] = runner({ karma = 250, status = E.RunnerStatus.ACTIVE | E.RunnerStatus.DOWN, archetype = 0 }), [1] = runner({ karma = 1 }) } })
+local rd, ld, gd = mk({ extra = true, party = { [0] = runner({ karma = 250, downed = true, archetype = 0 }), [1] = runner({ karma = 1 }) } })
 rd:frame(P.A); rd:frame(P.UP); rd:frame(P.A); check(top(rd) == S.DEBUG_MENU, "row 5 -> debug menu")
 rd:frame(P.UP); check(st(rd).row == 7, "debug cursor wraps to 7")
 rd:frame(P.DOWN); rd:frame(P.A); check(gd.nuyen == 0x3D090 and gd.unlock == false and top(rd) == S.POCKET_SECRETARY, "Nuyen = 250000, FFF101 cleared")
 rd:frame(P.UP); rd:frame(P.A); for _ = 1, 5 do rd:frame(P.DOWN) end; rd:frame(P.A)
 check(gd.party[0].karma == 4 and gd.party[1].karma == 11, "+10 karma wraps byte [C +0x8D]")
 rd:frame(P.UP); rd:frame(P.A); for _ = 1, 4 do rd:frame(P.DOWN) end; rd:frame(P.A)
-check(gd.party[0].status == E.RunnerStatus.ACTIVE and gd.party[0].physical == 10, "heal all clears DOWN")
+check(gd.party[0].runner_facts.lifecycle.active and
+      not gd.party[0].runner_facts.lifecycle.downed and
+      not gd.party[0].runner_facts.lifecycle.dead and
+      gd.party[0].physical == 10, "heal all clears downed/dead facts")
 rd:frame(P.UP); rd:frame(P.A); rd:frame(P.DOWN); rd:frame(P.A); check(gd.spells.entry_count == 14 and gd.spells.entries[1].code == 13 and gd.spells.entries[14].code == 0 and gd.spells.entries[1].force_limit == 4, "spells 13..0 force 4 [C 0x59B34]")
 rd:frame(P.UP); rd:frame(P.A); for _ = 1, 3 do rd:frame(P.DOWN) end; rd:frame(P.A); check(top(rd) == S.DEBUG_PICK_SYSTEM, "pick system")
 rd:frame(P.UP); check(st(rd).system == 0, "pick clamp lo"); for _ = 1, 30 do rd:frame(P.DOWN) end; check(st(rd).system == 0x18, "pick clamp hi")

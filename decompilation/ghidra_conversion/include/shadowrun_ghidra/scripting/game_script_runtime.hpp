@@ -127,8 +127,8 @@ enum class ScriptFieldReturnTransitionPhase : std::uint8_t {
 };
 
 struct ScriptMenuPartyMember {
-    // Source record +0x10 is a big-endian word; the +0x10 byte used by the
-    // Clips rules is its high byte.
+    // Native adapter storage for source +0x10. The Lua menu API exposes its
+    // lifecycle and clip-distribution meanings as named booleans instead.
     std::uint8_t status = 0U;
     std::uint8_t clips = 0U;
     std::uint8_t rounds = 0U;

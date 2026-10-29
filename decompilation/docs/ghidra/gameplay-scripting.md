@@ -36,6 +36,16 @@ context, including mode, event code, and the signed alternate result used by
 source prompts. The proxies are not duplicated Lua tables or raw pointers
 into Qt objects.
 
+Record-backed flag bytes stay inside the native adapter. Lua receives named
+facts such as `actor_facts.lifecycle.active` and
+`runner_facts.lifecycle.downed`; when a script changes one of those facts, the
+adapter merges that change back while preserving unrelated native record bits.
+Do not expose record offsets, packed status bytes, or source slot numbers as
+gameplay state when a stable actor ID or named rule describes the behavior.
+The actor heartbeat and party-menu bridges follow this contract. Older flat
+party-wipe calls and Matrix datastore bitfields still need conversion; do not
+extend those interfaces.
+
 The next capabilities should follow the same shape, added only as they connect
 to real native systems:
 

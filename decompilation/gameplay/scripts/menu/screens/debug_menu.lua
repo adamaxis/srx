@@ -3,8 +3,8 @@
 -- development. Six source effects are wired to typed host services below.
 local E = require("enums")
 local Grid = require("menu.rules.random_grid")
-local P, D, R, T, St = E.Pad, E.DebugOption, E.MenuRegion,
-                         E.MenuTransition, E.RunnerStatus
+local P, D, R, T = E.Pad, E.DebugOption, E.MenuRegion,
+                    E.MenuTransition
 
 local M = {
     window = E.WindowPlane.SIDEBAR,
@@ -54,10 +54,10 @@ M.effects = {
         for slot = 0, 2 do
             local runner = party[slot]
             if runner then
-                -- ROM 0x59BCC clears +0x10 bits 6 and 4, then fills
-                -- +0x4C and +0x9C for all three live-record slots.
-                runner.status = runner.status &
-                                ~(St.DEAD | St.DOWN)
+                -- ROM 0x59BCC clears the downed/dead conditions, then fills
+                -- physical and stun meters for all three live-record slots.
+                runner.runner_facts.lifecycle.dead = false
+                runner.runner_facts.lifecycle.downed = false
                 runner.physical = 10
                 runner.stun = 10
             end

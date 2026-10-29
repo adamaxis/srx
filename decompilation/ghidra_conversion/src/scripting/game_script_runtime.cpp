@@ -32,6 +32,67 @@ namespace {
 // E.ActorStatus.DOWN (0x10): actor record +0x10 bit 4, set at 0xB356 [C].
 constexpr std::uint8_t kActorStatusDown = 0x10U;
 
+// Runner menus receive the meaning of +0x10 as named fields. Keep these
+// source masks inside the native adapter, where record storage is translated.
+// [C] +0x10.0 is active; +0x10.1 is the temporary clip remainder marker;
+// Command checks +0x10.4/+0x10.6 at 0x10D36/0x10D40.
+constexpr std::uint8_t kRunnerActive = 0x01U;
+constexpr std::uint8_t kRunnerClipRemainder = 0x02U;
+constexpr std::uint8_t kRunnerDowned = 0x10U;
+constexpr std::uint8_t kRunnerDead = 0x40U;
+
+void push_runner_menu_facts(lua_State* lua,
+                           const std::uint8_t source_status) {
+    lua_createtable(lua, 0, 2);
+    const auto runner_index = lua_absindex(lua, -1);
+    lua_createtable(lua, 0, 3);
+    lua_pushboolean(lua, (source_status & kRunnerActive) != 0U);
+    lua_setfield(lua, -2, "active");
+    lua_pushboolean(lua, (source_status & kRunnerDowned) != 0U);
+    lua_setfield(lua, -2, "downed");
+    lua_pushboolean(lua, (source_status & kRunnerDead) != 0U);
+    lua_setfield(lua, -2, "dead");
+    lua_setfield(lua, runner_index, "lifecycle");
+    lua_pushboolean(lua, (source_status & kRunnerClipRemainder) != 0U);
+    lua_setfield(lua, runner_index, "clip_distribution_remainder");
+}
+
+void merge_runner_menu_facts(lua_State* lua, const int member_index,
+                             const std::uint8_t original_status,
+                             std::uint8_t& status) {
+    status = original_status;
+    const auto apply_boolean = [lua, &status](const int table_index,
+                                               const char* field,
+                                               const std::uint8_t mask) {
+        lua_getfield(lua, table_index, field);
+        if (lua_isboolean(lua, -1)) {
+            if (lua_toboolean(lua, -1) != 0) {
+                status = static_cast<std::uint8_t>(status | mask);
+            } else {
+                status = static_cast<std::uint8_t>(
+                    status & static_cast<std::uint8_t>(~mask));
+            }
+        }
+        lua_pop(lua, 1);
+    };
+
+    lua_getfield(lua, member_index, "runner_facts");
+    if (lua_istable(lua, -1)) {
+        const auto facts_index = lua_absindex(lua, -1);
+        lua_getfield(lua, facts_index, "lifecycle");
+        if (lua_istable(lua, -1)) {
+            const auto lifecycle_index = lua_absindex(lua, -1);
+            apply_boolean(lifecycle_index, "active", kRunnerActive);
+            apply_boolean(lifecycle_index, "downed", kRunnerDowned);
+            apply_boolean(lifecycle_index, "dead", kRunnerDead);
+        }
+        lua_pop(lua, 1);
+        apply_boolean(facts_index, "clip_distribution_remainder",
+                      kRunnerClipRemainder);
+    }
+    lua_pop(lua, 1);
+}
+
 // Older saves stored the byte selected from ROM's F3EBC offer row under
 // source_initializer/source_offer_type. Decode it here and pass only the
 // named gameplay variant into Lua. [C] The row selector indexes the callback
@@ -1833,7 +1894,8 @@ struct GameScriptRuntime::Impl {
                     lua_pushinteger(lua, value);
                     lua_setfield(lua, -2, name);
                 };
-                set_integer("status", member.status);
+                push_runner_menu_facts(lua, member.status);
+                lua_setfield(lua, -2, "runner_facts");
                 set_integer("clips", member.clips);
                 set_integer("rounds", member.rounds);
                 set_integer("weapon_slot", member.weapon_slot);
@@ -1988,6 +2050,9 @@ struct GameScriptRuntime::Impl {
                 !lua_istable(lua, 1)) {
                 return 0;
             }
+            const auto original_party = self->menu_route_bindings.game.party
+                ? self->menu_route_bindings.game.party()
+                : std::array<ScriptMenuPartyMember, 3>{};
             std::array<ScriptMenuPartyMember, 3> party{};
             const auto read_integer = [lua](const int table_index,
                                             const char* name,
@@ -2032,7 +2097,9 @@ struct GameScriptRuntime::Impl {
                             std::clamp<lua_Integer>(
                                 read_integer(table_index, name, 0), 0, 0xFF));
                     };
-                    member.status = bounded_byte(member_index, "status");
+                    merge_runner_menu_facts(
+                        lua, member_index, original_party[index].status,
+                        member.status);
                     member.clips = bounded_byte(member_index, "clips");
                     member.rounds = bounded_byte(member_index, "rounds");
                     member.weapon_slot = static_cast<int>(

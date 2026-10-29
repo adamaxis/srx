@@ -1330,6 +1330,37 @@ int main() {
     check(!runtime.menu_route_snapshot().open && closed_count == 3,
           "host scene transition closes the complete route", failures);
 
+    // The native menu bridge should expose runner state as named facts and
+    // merge those facts back into +0x10 without dropping bits it does not own.
+    // Heal All at ROM 0x59BCC clears dead/downed and fills +0x4C/+0x9C.
+    const auto party_before_semantic_route = party;
+    const auto unlocks_before_semantic_route = debug_unlock_consumptions;
+    const auto closes_before_semantic_route = closed_count;
+    party[0].status = 0xD1U; // active, down, dead, plus preserved unknown bit.
+    party[1].status = 0xA3U; // active, remainder marker, two unknown bits.
+    party[2].status = 0x48U; // dead plus an unknown bit.
+    pocket_extra_row = true;
+    check(runtime.open_menu_route(kCommand),
+          "open command for semantic runner-fact route", failures);
+    runtime.advance_menu_route(0x4000U); // Pocket Secretary.
+    for (int row = 0; row < 5; ++row) {
+        runtime.advance_menu_route(0x0200U);
+    }
+    runtime.advance_menu_route(0x4000U); // Debug menu.
+    for (int row = 0; row < 4; ++row) {
+        runtime.advance_menu_route(0x0200U);
+    }
+    runtime.advance_menu_route(0x4000U); // Heal All.
+    check(party[0].status == 0x81U && party[1].status == 0xA3U &&
+              party[2].status == 0x08U && party[0].physical == 10U &&
+              party[0].stun == 10U,
+          "semantic runner facts clear only down/dead and preserve unrelated status bits",
+          failures);
+    runtime.close_menu_route();
+    party = party_before_semantic_route;
+    debug_unlock_consumptions = unlocks_before_semantic_route;
+    closed_count = closes_before_semantic_route;
+
     // Exercise the debug-only Matrix entry as a live route, not as an
     // isolated Lua function. The picker clamps 0..24, waits 20 frames, then
     // enters the source Cyberdeck loop. The separate node-action rules are

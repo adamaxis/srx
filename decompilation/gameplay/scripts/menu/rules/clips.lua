@@ -1,6 +1,6 @@
 -- rules/clips.lua: Clips page rules 0x11B58 (srx clips_menu_conversion.cpp) [C unless marked]
 local E = require("enums")
-local C, S = E.ClipsCommand, E.RunnerStatus
+local C = E.ClipsCommand
 local M = { RELOAD_ROUNDS = 0x26 }          -- one clip = 0x26 rounds (same constant as AiTuning.RELOAD_ROUNDS) [C]
 
 function M.cycle(cur, step)
@@ -31,7 +31,10 @@ function M.recipients(party, source)
     local out = {}
     for i = 0, 2 do
         local r = party[i]
-        if i ~= source and r and r.status & S.REMAINDER == 0 and r.status & S.ACTIVE ~= 0 then out[#out + 1] = i end
+        if i ~= source and r and r.runner_facts.lifecycle.active and
+           not r.runner_facts.clip_distribution_remainder then
+            out[#out + 1] = i
+        end
     end
     return out
 end
@@ -39,7 +42,7 @@ function M.distribute(party)
     local n, total = 0, 0
     for i = 0, 2 do
         local r = party[i]
-        if r and r.status & S.ACTIVE ~= 0 then
+        if r and r.runner_facts.lifecycle.active then
             n = n + 1
             total = (total + r.clips) & 0xFF -- source ADD.B at 0x11FFA
         end
@@ -50,10 +53,11 @@ function M.distribute(party)
     for i = 0, 2 do
         local r = party[i]
         -- The ROM writes the base quotient to all three records; only the
-        -- remainder bonus is guarded by status bit 1 (0x12024..0x1203A).
+        -- remainder bonus goes to records marked by the source pass
+        -- (0x12024..0x1203A); the host exposes that as a named fact.
         if r then
             local d = q & 0xFF
-            if r.status & S.REMAINDER ~= 0 then d = d + rem end
+            if r.runner_facts.clip_distribution_remainder then d = d + rem end
             r.clips = d & 0xFF
         end
     end

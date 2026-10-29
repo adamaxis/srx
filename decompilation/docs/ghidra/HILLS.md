@@ -972,8 +972,11 @@ The ROM `0x1E43C` path is represented by a semantic request model: a nonzero
 conditional choice requests the result flow, and the active-escort fact
 selects success. The field adapter derives that fact from current-scene live
 actors; the request model no longer carries the ROM's 13-slot array or raw
-`+0x10`/`+0xB0` bytes. Lua still carries source actor flag bytes in other
-behavior paths, so the broader actor-state migration remains open. The
+`+0x10`/`+0xB0` bytes. The actor Lua bridge translates lifecycle, interaction,
+behavior, and role flags into named facts. The party-menu bridge now does the
+same for runner lifecycle and clip-distribution state, merging changes back
+while preserving unrelated native status bits. Other packed story and Matrix
+state still has separate semanticization work. The
 automatic `FFDF42` producer/physical trigger is still open; see the
 [conditional pedestrian runtime audit](visual-audits/conditional-pedestrian-runtime-gap-2026-10-26.md#semantic-live-escort-fact-for-the-0x1e43c-result-2026-10-28).
 The semantic request-model refactor passed focused Debug and Release CTests

@@ -58,9 +58,12 @@ local function mk(o)
         set_contact_flags = function(m) g.contacts = m end, set_spell_table = function(t) g.spells = t end,
         source_random_bound = function(n) return 0 end, matrix_alert_random_bound = function(n) return 0 end,
     }
-    g.party = { [0] = { status = 1, archetype = 3, magic = 0, species = 0, karma = 0, attributes = {}, skills = {}, inventory = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 }, phase = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 } } }
+    g.party = { [0] = { runner_facts = {
+        lifecycle = { active = true, downed = false, dead = false },
+        clip_distribution_remainder = false,
+    }, archetype = 3, magic = 0, species = 0, karma = 0, attributes = {}, skills = {}, inventory = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 }, phase = { [0] = 0, 0, 0, 0, 0, 0, 0, 0 } } }
     for slot, code in pairs(o.items or {}) do g.party[0].inventory[slot] = code end
-    if o.inc then g.party[0].status = g.party[0].status | E.RunnerStatus.DOWN end
+    if o.inc then g.party[0].runner_facts.lifecycle.downed = true end
     local r = Route.new(host, game); r:open(S.COMMAND); return r, log, g
 end
 local function st(r) return r.stack[1].state end
@@ -273,7 +276,7 @@ local r8 = mk(); r8:frame(P.A); r8:frame(P.START); check(r8:is_open() and r8:top
 local r9, l9 = mk(); r9:frame(P.LEFT); r9:frame(P.LEFT); r9:frame(P.A); check(r9:top().screen == S.CYBERWARE, "cyber")
 clear(l9); r9:frame(P.B); check(r9:top().screen == S.COMMAND and l9.sounds[1] == 0x25 and #l9.blanks == 2, "cyber return")
 -- Start exits; incapacitated leader reselected on exit
-local ra, la, ga = mk(); ga.party[0].status = ga.party[0].status | E.RunnerStatus.DEAD
+local ra, la, ga = mk(); ga.party[0].runner_facts.lifecycle.dead = true
 ra:frame(P.START); check(not ra:is_open() and ga.reselects == 1, "start exit")
 -- the incapacity test reads the +0x10 status byte (DOWN = bit 4) [C 0x10D40]
 local rb, _, gb = mk({ inc = true }); check(gb.reselects == 1, "DOWN leader reselected on open")

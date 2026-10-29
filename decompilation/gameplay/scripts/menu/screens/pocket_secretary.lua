@@ -413,7 +413,13 @@ function Dismiss.enter(st, ctx)
     st.grid_effect_frames = Grid.frames
     st.candidates = {}
     local party = ctx.game.party()
-    for s = 1, 2 do if ctx.game.slot_active_set()[s] and party[s] and party[s].status & E.RunnerStatus.ACTIVE ~= 0 then st.candidates[#st.candidates + 1] = s end end
+    for s = 1, 2 do
+        local runner = party[s]
+        if ctx.game.slot_active_set()[s] and runner and
+           runner.runner_facts.lifecycle.active then
+            st.candidates[#st.candidates + 1] = s
+        end
+    end
     ctx.redraw(R.SUBMENU)
 end
 function Dismiss.input(st, events, ctx)
