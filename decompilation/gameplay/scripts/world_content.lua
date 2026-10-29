@@ -7,6 +7,13 @@ local conditional_actor_selection_choice = 0
 local E = require("enums")
 local mode_one_activity_actor_lists =
     require("data.mode_one_activity_actor_lists")
+local valid_field_scene_modes = {
+    none = true,
+    street = true,
+    building = true,
+    cave = true,
+    unknown = true,
+}
 
 local function content()
     local data = game.modules.world_content_data
@@ -423,7 +430,7 @@ function World.consume_conditional_actor_selection_choice()
 end
 
 local function mode_one_activity_actor_list(scene_id, facts)
-    if facts.world_mode ~= 1 or facts.pending_actor_list then
+    if facts.scene_mode ~= "street" or facts.pending_actor_list then
         return 0
     end
     local rows = mode_one_activity_actor_lists[scene_id]
@@ -459,8 +466,7 @@ function World.resolve_conditional_actor_selection(
        scene_id < 0 or scene_id > 55 or type(facts) ~= "table" or
        type(facts.world_effect_active) ~= "boolean" or
        type(facts.pending_world_effect) ~= "boolean" or
-       type(facts.world_mode) ~= "number" or facts.world_mode % 1 ~= 0 or
-       facts.world_mode < 0 or facts.world_mode > 0xFFFF or
+       valid_field_scene_modes[facts.scene_mode] ~= true or
        type(facts.mode_event_code) ~= "number" or
        facts.mode_event_code % 1 ~= 0 or facts.mode_event_code < 0 or
        facts.mode_event_code > 0xFF or
@@ -525,7 +531,7 @@ function World.resolve_conditional_actor_selection(
     -- 0x1684C sets FFDF40=1, then reads the FFFBF9/FFFC1E/compact-marker
     -- gates before queuing a 0x16FD4 source list in FFE120. It exits early
     -- when another source already owns that pending-list pointer.
-    if facts.world_mode == 1 then
+    if facts.scene_mode == "street" then
         local list_offset = mode_one_activity_actor_list(scene_id, facts)
         if list_offset ~= 0 then
             return result("mode_one_world_activity", list_offset)
@@ -537,7 +543,7 @@ function World.resolve_conditional_actor_selection(
     -- the run registry has already resolved handler variants to one gameplay
     -- identity before this field policy runs.
     if facts.active_offer_id ~= "employee_recruitment" or
-       facts.world_mode ~= 2 then
+       facts.scene_mode ~= "building" then
         return result("none", 0)
     end
     if choice == 0 then

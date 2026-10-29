@@ -1,8 +1,8 @@
 # Conditional pedestrian runtime gap audit
 
 **Status:** `FieldSceneRuntime` calls the Lua `0xA800` selector with the
-canonical active run ID (for example `employee_recruitment`), FFDF40,
-FFE180/FFE182, a derived presence projection of
+canonical active run ID (for example `employee_recruitment`), a named scene
+mode translated from FFDF40, FFE180/FFE182, a derived presence projection of
 the typed FFFC3C actor-template marker, and typed FFE12C / FFF0C8 indices. The
 selected FFE110 actor descriptor is retained in typed state; eligible bit-3
 contact copies that descriptor into FFFC3C, and escort cleanup clears it.
@@ -474,21 +474,23 @@ handlers without making Lua's field policy repeat their source byte values.
 | `FFE180 != 0` and `FFF0C8 == 4` | None | Select fixed story-contact list `0xA8AE`; skip `FFE182` and random pedestrians. |
 | `FFE180 != 0` and `FFF0C8 != 4` | None | Select no list; return without checking `FFE182`. |
 | `FFE180 == 0` and `FFE182 != 0` | None | Select fixed list `0xA8CC`; skip random pedestrians. |
-| Both markers clear; active run is not `employee_recruitment` or `FFDF40 != 2` | None | Select no list and do not sample `FFE183`. |
+| Both markers clear; active run is not `employee_recruitment` or `FFDF40 != 2` (the semantic `building` mode) | None | Select no list and do not sample `FFE183`. |
 | Both markers clear; run-identity and mode gates pass; `FFE183 == 0` | Sample bound 2 and store 1 or 2 before testing the remaining gates. | The choice persists if a later gate fails. |
 | Random branch reaches `FFE12C != FFF0C8` or `FFFC3C != 0` | Choice may already have been sampled and stored. | Select no list; retain the choice. |
 | Both markers clear; run-identity/mode gates pass; floor words equal; `FFFC3C == 0` | Index the scene table using the stored `FFE183` choice. | Select one candidate list; reachable choices are 1 and 2. |
 
 The Debug and Release `shadowrun_gameplay_script_runtime_qa` now enumerate
-13,824 combinations through Lua's decision function. The sweep crosses both
-effect markers, raw initializer values `nil`, 0, 4, 5, 9, 10, 11, and 12,
-`FFDF40` values 0, 1, 2, and `0x0102`, nine absent/equal/mismatched 16-bit
-effect-index pairs, both `FFFC3C` states, retained choices 0/1/2, and both
-bound-2 rolls. It asserts branch precedence and list identity, checks that only
-normalized employee initializer 5 reaches the random branch, and verifies
-whether the choice is sampled, retained after late rejection, or left untouched
-by the higher-priority story lists. This is selector-state coverage; the
-separate field QA supplies the scene-entry, actor-allocation, and contact paths.
+8,640 combinations through Lua's decision function. The sweep crosses both
+effect markers, canonical offer IDs (none, package recovery, Employee
+Recruitment, and bodyguard escort), all five semantic field-mode states, nine
+absent/equal/mismatched 16-bit effect-index pairs, both `FFFC3C` states,
+retained choices 0/1/2, and both bound-2 rolls. A separate boundary test maps
+FFDF40 values 0-3 to named modes and confirms `0x0102` remains unknown rather
+than truncating to building mode. It asserts branch precedence and list
+identity, and verifies whether the choice is sampled, retained after late
+rejection, or left untouched by the higher-priority story lists. This is
+selector-state coverage; the separate field QA supplies the scene-entry,
+actor-allocation, and contact paths.
 
 The selected pending list is drained before the scene default list at `0x43B6`,
 so a candidate consumes an ordinary actor slot first. Keep all three table rows
@@ -548,12 +550,13 @@ route-matched Genesis capture are still open.
 
 `FieldSceneRuntime::initialize_default_field_actors` now calls
 `GameScriptRuntime::resolve_conditional_actor_selection` after the explicit
-route-owned lists. It passes the canonical active run ID, current FFDF40 mode,
-FFE180/FFE182, a presence projection of the typed FFFC3C template, and separate
-optional 16-bit FFE12C and FFF0C8 values. Lua checks the run identity and mode
-before sampling. The one-shot FFE183 choice remains Lua-owned. The random
-callback uses the field PRNG's bound sampler, and Lua calls it only after the
-marker, run-identity, and mode gates pass.
+route-owned lists. It passes the canonical active run ID and a named scene mode
+translated from FFDF40 (`street`, `building`, `cave`, `none`, or `unknown`),
+along with FFE180/FFE182, a presence projection of the typed FFFC3C template,
+and separate optional 16-bit FFE12C and FFF0C8 values. Lua checks the run
+identity and mode before sampling. The one-shot FFE183 choice remains Lua-owned.
+The random callback uses the field PRNG's bound sampler, and Lua calls it only
+after the marker, run-identity, and mode gates pass.
 
 Resource initialization records the selected FFE12C index and initial FFF0C8
 word. Elevator entry and completed floor movement update the active floor

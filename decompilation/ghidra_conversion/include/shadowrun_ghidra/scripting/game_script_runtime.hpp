@@ -1188,11 +1188,22 @@ struct ScriptConditionalActorCandidate {
 // Gameplay facts for field actor selection. The active run is identified by
 // its canonical offer ID; Lua owns the retained one-shot pedestrian choice.
 // Floor selection facts remain distinct so late gate checks keep their order.
+enum class ScriptFieldSceneMode : std::uint8_t {
+    none,
+    street,
+    building,
+    cave,
+    unknown,
+};
+
+ScriptFieldSceneMode script_field_scene_mode_from_source_word(
+    std::uint16_t source_mode) noexcept;
+
 struct ScriptConditionalActorSelectionContext {
     bool world_effect_active = false;
     bool pending_world_effect = false;
     std::optional<std::string> active_offer_id;
-    std::uint16_t world_mode = 0;
+    ScriptFieldSceneMode scene_mode = ScriptFieldSceneMode::none;
     std::uint8_t mode_event_code = 0;
     std::uint32_t world_flags = 0;
     std::uint8_t primary_runner_marker = 0xFFU;

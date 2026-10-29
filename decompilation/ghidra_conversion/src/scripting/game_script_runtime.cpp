@@ -6010,6 +6010,24 @@ GameScriptRuntime::resolve_field_location_route(
     return route;
 }
 
+ScriptFieldSceneMode script_field_scene_mode_from_source_word(
+    const std::uint16_t source_mode) noexcept {
+    // ROM 0x167AE writes FFDF40 before the field actor-selection pass. Keep
+    // that word at the boundary and pass the selector a named scene mode.
+    switch (source_mode) {
+    case 0U:
+        return ScriptFieldSceneMode::none;
+    case 1U:
+        return ScriptFieldSceneMode::street;
+    case 2U:
+        return ScriptFieldSceneMode::building;
+    case 3U:
+        return ScriptFieldSceneMode::cave;
+    default:
+        return ScriptFieldSceneMode::unknown;
+    }
+}
+
 std::optional<std::string> GameScriptRuntime::active_run_id() {
     auto* state = impl_->state;
     if (state == nullptr) {
@@ -7172,8 +7190,26 @@ GameScriptRuntime::resolve_conditional_actor_selection(
         lua_pushnil(state);
     }
     lua_setfield(state, -2, "active_offer_id");
-    lua_pushinteger(state, context.world_mode);
-    lua_setfield(state, -2, "world_mode");
+    const char* scene_mode = "unknown";
+    switch (context.scene_mode) {
+    case ScriptFieldSceneMode::none:
+        scene_mode = "none";
+        break;
+    case ScriptFieldSceneMode::street:
+        scene_mode = "street";
+        break;
+    case ScriptFieldSceneMode::building:
+        scene_mode = "building";
+        break;
+    case ScriptFieldSceneMode::cave:
+        scene_mode = "cave";
+        break;
+    case ScriptFieldSceneMode::unknown:
+        scene_mode = "unknown";
+        break;
+    }
+    lua_pushstring(state, scene_mode);
+    lua_setfield(state, -2, "scene_mode");
     lua_pushinteger(state, context.mode_event_code);
     lua_setfield(state, -2, "mode_event_code");
     lua_pushinteger(state, context.world_flags);

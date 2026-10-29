@@ -3097,7 +3097,8 @@ void FieldSceneRuntime::initialize_default_field_actors(
         scripting::ScriptConditionalActorSelectionContext facts{};
         facts.world_effect_active = field_world_effect_active_;
         facts.pending_world_effect = field_pending_world_effect_;
-        facts.world_mode = field_movement_transition_state_.world_mode;
+        facts.scene_mode = scripting::script_field_scene_mode_from_source_word(
+            field_movement_transition_state_.world_mode);
         facts.mode_event_code =
             field_movement_transition_state_.mode_event_code;
         facts.world_flags = field_exit_world_flags_;

@@ -30,6 +30,32 @@ bool expect(const bool condition, const char* message) {
     return condition;
 }
 
+bool verify_field_scene_mode_translation() {
+    using namespace shadowrun::ghidra_conversion::scripting;
+    struct Case {
+        std::uint16_t source_word;
+        ScriptFieldSceneMode scene_mode;
+    };
+    // ROM field-mode values are named in E.SceneMode. Keep invalid wider
+    // words unknown instead of truncating them to a valid mode.
+    constexpr std::array<Case, 5U> kCases{{
+        {0U, ScriptFieldSceneMode::none},
+        {1U, ScriptFieldSceneMode::street},
+        {2U, ScriptFieldSceneMode::building},
+        {3U, ScriptFieldSceneMode::cave},
+        {0x0102U, ScriptFieldSceneMode::unknown},
+    }};
+    for (const auto& test_case : kCases) {
+        if (script_field_scene_mode_from_source_word(test_case.source_word) !=
+            test_case.scene_mode) {
+            std::cerr << "FFDF40 semantic conversion mismatch for source word "
+                      << test_case.source_word << '\n';
+            return false;
+        }
+    }
+    return true;
+}
+
 bool verify_conditional_actor_selector_permutations(
     shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts) {
     using namespace shadowrun::ghidra_conversion::scripting;
@@ -41,8 +67,10 @@ bool verify_conditional_actor_selector_permutations(
     constexpr std::array<std::string_view, 4> kOfferIds{{
         "", "package_recovery", "employee_recruitment", "bodyguard_escort",
     }};
-    constexpr std::array<std::uint16_t, 4> kWorldModes{{
-        0U, 1U, 2U, 0x0102U,
+    constexpr std::array<ScriptFieldSceneMode, 5> kSceneModes{{
+        ScriptFieldSceneMode::none, ScriptFieldSceneMode::street,
+        ScriptFieldSceneMode::building, ScriptFieldSceneMode::cave,
+        ScriptFieldSceneMode::unknown,
     }};
     constexpr std::array<EffectIndexPair, 9> kEffectIndexPairs{{
         {std::nullopt, std::nullopt},
@@ -98,7 +126,7 @@ bool verify_conditional_actor_selector_permutations(
     for (const bool world_effect_active : kBooleans) {
         for (const bool pending_world_effect : kBooleans) {
             for (const auto offer_id : kOfferIds) {
-                for (const auto world_mode : kWorldModes) {
+                for (const auto scene_mode : kSceneModes) {
                     for (const auto effect_indices : kEffectIndexPairs) {
                         for (const bool player_spawn_pending : kBooleans) {
                             for (const auto retained_choice :
@@ -116,7 +144,8 @@ bool verify_conditional_actor_selector_permutations(
                                             seed_context{};
                                         seed_context.active_offer_id =
                                             "employee_recruitment";
-                                        seed_context.world_mode = 2U;
+                                        seed_context.scene_mode =
+                                            ScriptFieldSceneMode::building;
                                         seed_context.active_effect_index = 0U;
                                         seed_context.selected_effect_index = 1U;
                                         const auto seeded =
@@ -150,7 +179,7 @@ bool verify_conditional_actor_selector_permutations(
                                         context.active_offer_id =
                                             std::string(offer_id);
                                     }
-                                    context.world_mode = world_mode;
+                                    context.scene_mode = scene_mode;
                                     context.active_effect_index =
                                         effect_indices.active;
                                     context.selected_effect_index =
@@ -170,7 +199,8 @@ bool verify_conditional_actor_selector_permutations(
                                         !world_effect_active &&
                                         !pending_world_effect &&
                                         is_employee_recruitment &&
-                                        world_mode == 2U &&
+                                        scene_mode ==
+                                            ScriptFieldSceneMode::building &&
                                         retained_choice == 0U;
                                     const auto expected_choice = should_sample
                                         ? static_cast<std::uint8_t>(random_roll + 1U)
@@ -191,7 +221,8 @@ bool verify_conditional_actor_selector_permutations(
                                             ScriptConditionalActorSelectionKind::pending_world_activity;
                                         expected_list_offset = 0xA8CCU;
                                     } else if (is_employee_recruitment &&
-                                               world_mode == 2U &&
+                                               scene_mode ==
+                                                   ScriptFieldSceneMode::building &&
                                                effect_indices.active.has_value() &&
                                                effect_indices.active ==
                                                    effect_indices.selected &&
@@ -226,7 +257,8 @@ bool verify_conditional_actor_selector_permutations(
                                             << (offer_id.empty()
                                                     ? "none"
                                                     : std::string(offer_id))
-                                            << " mode=" << world_mode
+                                            << " scene-mode="
+                                            << static_cast<unsigned>(scene_mode)
                                             << " active-index="
                                             << (effect_indices.active.has_value()
                                                     ? std::to_string(
@@ -259,7 +291,7 @@ bool verify_conditional_actor_selector_permutations(
     }
     std::cout << "a800_source_gate_permutations=" << permutation_count
               << " random_calls=" << random_calls << '\n';
-    return expect(permutation_count == 6'912U &&
+    return expect(permutation_count == 8'640U &&
                       invalid_random_bounds == 0U,
                   "A800 source-gate permutation count mismatch");
 }
@@ -275,7 +307,7 @@ bool verify_mode_one_activity_actor_lists(
         std::uint8_t primary_marker;
         std::uint8_t secondary_marker;
         bool pending_actor_list;
-        std::uint16_t world_mode;
+        std::uint16_t source_mode_word;
         std::uint32_t expected_list;
     };
     // US ROM 0x1684C uses 0xEEFE plus one for the runner-marker exclusion,
@@ -314,7 +346,8 @@ bool verify_mode_one_activity_actor_lists(
 
     for (const auto& test_case : kCases) {
         ScriptConditionalActorSelectionContext facts{};
-        facts.world_mode = test_case.world_mode;
+        facts.scene_mode = script_field_scene_mode_from_source_word(
+            test_case.source_mode_word);
         facts.mode_event_code = test_case.event_code;
         facts.world_flags = test_case.world_flags;
         facts.primary_runner_marker = test_case.primary_marker;
@@ -339,7 +372,7 @@ bool verify_mode_one_activity_actor_lists(
                       << ',' << static_cast<unsigned>(
                              test_case.secondary_marker)
                       << " pending=" << test_case.pending_actor_list
-                      << " mode=" << test_case.world_mode
+                      << " source-mode-word=" << test_case.source_mode_word
                       << " expected_list=0x" << test_case.expected_list
                       << " failure=" << scripts.failure() << std::dec << '\n';
             return false;
@@ -807,7 +840,7 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
 
     ScriptConditionalActorSelectionContext facts{};
     facts.active_offer_id = *active_run_id;
-    facts.world_mode = 2U;
+    facts.scene_mode = ScriptFieldSceneMode::building;
     facts.active_effect_index = 0U;
     facts.selected_effect_index = 0U;
     std::size_t random_calls = 0U;
@@ -1066,7 +1099,7 @@ bool verify_employee_recruitment_pedestrian_request(
 
     ScriptConditionalActorSelectionContext selection_facts{};
     selection_facts.active_offer_id = *active_run_id;
-    selection_facts.world_mode = 2U;
+    selection_facts.scene_mode = ScriptFieldSceneMode::building;
     selection_facts.active_effect_index = 0U;
     selection_facts.selected_effect_index = 0U;
     const auto selection = scripts.resolve_conditional_actor_selection(
@@ -1353,6 +1386,10 @@ bool verify_dialogue_outcome_dispatcher() {
 int main() {
     using namespace shadowrun::ghidra_conversion;
     using namespace shadowrun::ghidra_conversion::scripting;
+
+    if (!verify_field_scene_mode_translation()) {
+        return 1;
+    }
 
     if (!verify_dialogue_outcome_dispatcher()) {
         return 2;
@@ -1641,7 +1678,7 @@ int main() {
     ScriptConditionalActorSelectionContext pending_context{};
     pending_context.pending_world_effect = true;
     pending_context.active_offer_id = "employee_recruitment";
-    pending_context.world_mode = 2U;
+    pending_context.scene_mode = ScriptFieldSceneMode::building;
     const auto pending_selection = scripts.resolve_conditional_actor_selection(
         0x15U, pending_context, unexpected_conditional_roll);
 
@@ -1662,14 +1699,14 @@ int main() {
             0x15U, other_offer_context, unexpected_conditional_roll);
     auto rejected_mode_context = package_recovery_context;
     rejected_mode_context.active_offer_id = "employee_recruitment";
-    rejected_mode_context.world_mode = 1U;
+    rejected_mode_context.scene_mode = ScriptFieldSceneMode::street;
     const auto rejected_mode_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, rejected_mode_context, unexpected_conditional_roll);
 
     ScriptConditionalActorSelectionContext late_effect_context{};
     late_effect_context.active_offer_id = "employee_recruitment";
-    late_effect_context.world_mode = 2U;
+    late_effect_context.scene_mode = ScriptFieldSceneMode::building;
     late_effect_context.active_effect_index = 4U;
     late_effect_context.selected_effect_index = 3U;
     const auto late_effect_selection =
@@ -1766,7 +1803,7 @@ int main() {
     }
 
     auto wide_mode_context = late_effect_context;
-    wide_mode_context.world_mode = 0x0102U;
+    wide_mode_context.scene_mode = ScriptFieldSceneMode::unknown;
     wide_mode_context.active_effect_index = 0U;
     wide_mode_context.selected_effect_index = 0U;
     const auto wide_mode_selection =
@@ -1776,8 +1813,8 @@ int main() {
                     wide_mode_selection->kind ==
                         ScriptConditionalActorSelectionKind::none &&
                     conditional_random_calls == 3U,
-                "A800 compared the FFDF40 mode word as a byte")) {
-        std::cerr << "wide mode-word rejection failure: "
+                "A800 accepted an unknown semantic field mode")) {
+        std::cerr << "unknown scene-mode rejection failure: "
                   << scripts.failure() << '\n';
         return 1;
     }
