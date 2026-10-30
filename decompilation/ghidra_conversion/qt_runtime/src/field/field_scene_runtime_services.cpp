@@ -632,21 +632,25 @@ bool FieldSceneRuntime::seed_current_run_for_dump(
         // The regular case is a simple row. The optional maximum-payment case
         // is source Matrix Expert row 7, rank 12, roll 120, displaying 6,700.
         const auto objective_index = matrix_max_payment ? 0 : 2;
-        const auto objective_class = matrix_max_payment ? 4 : 0;
-        const auto objective_value = matrix_max_payment ? 20 : 1;
-        const auto matrix_state = matrix_max_payment ? 1 : -1;
+        const auto file_class = matrix_max_payment
+            ? "Security Files" : "Outdated Files";
+        const auto file_id = matrix_max_payment ? 20 : 1;
         const auto target_system_id = matrix_max_payment ? 7 : 0;
         offer_fields.emplace("objective_index", scalar(objective_index));
         offer_fields.emplace("target_system_id", scalar(target_system_id));
         offer_fields.emplace(
             "matrix_run_state",
             PersistentValue{PersistentValue::Object{
-                {"state", scalar(matrix_state)},
-                {"objective", scalar(objective_class)},
-                {"value", scalar(objective_value)},
-                {"size", scalar(std::int64_t{20})},
-                {"fc28", scalar(std::int64_t{0})},
-                {"fc1c", scalar(std::int64_t{0})},
+                {"status", scalar(std::string("pending"))},
+                {"objective", PersistentValue{PersistentValue::Object{
+                    {"node", scalar(std::string("datastore"))},
+                    {"action", scalar(std::string("download_file"))},
+                    {"file_class", scalar(std::string(file_class))},
+                    {"file_id", scalar(std::int64_t{file_id})},
+                }}},
+                {"file_size", scalar(std::int64_t{20})},
+                {"completion_marker_present", scalar(false)},
+                {"completion_recorded", scalar(false)},
                 {"target_system_id", scalar(target_system_id)},
             }});
     }

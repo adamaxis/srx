@@ -36,6 +36,10 @@ using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteBindings;
 using shadowrun::ghidra_conversion::scripting::ScriptMenuRouteStartArguments;
 using shadowrun::ghidra_conversion::scripting::ScriptPersistentValue;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunState;
+using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunStatus;
+using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunNode;
+using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunAction;
+using shadowrun::ghidra_conversion::scripting::ScriptMatrixRunObjective;
 using shadowrun::ghidra_conversion::scripting::ScriptMatrixDatastoreFacts;
 using shadowrun::ghidra_conversion::scripting::ScriptActorRoleFacts;
 using shadowrun::ghidra_conversion::scripting::
@@ -56,6 +60,22 @@ using shadowrun::ghidra_conversion::qt_runtime::paint_matrix_deck_stats_text;
 #endif
 
 namespace {
+
+ScriptMatrixRunState matrix_run(
+    const ScriptMatrixRunStatus status, const ScriptMatrixRunNode node,
+    const ScriptMatrixRunAction action, std::string file_class,
+    const std::optional<int> file_id, const int file_size,
+    const bool completion_marker_present,
+    const std::optional<int> target_system_id = std::nullopt) {
+    ScriptMatrixRunState run;
+    run.status = status;
+    run.objective = ScriptMatrixRunObjective{
+        node, action, std::move(file_class), file_id};
+    run.file_size = file_size;
+    run.completion_marker_present = completion_marker_present;
+    run.target_system_id = target_system_id;
+    return run;
+}
 
 constexpr std::uint16_t kCommand = 1U;
 constexpr std::uint16_t kPosture = 2U;
@@ -190,11 +210,11 @@ void verify_cyberdeck_file_value_bridge(int& failures) {
     dispatch_cyberdeck_menu_binding(lua, game, CyberdeckMenuBinding::record);
     lua_getfield(lua, -1, "files");
     lua_rawgeti(lua, -1, 0);
-    lua_getfield(lua, -1, "value");
-    int is_integer = 0;
-    const auto objective_value = lua_tointegerx(lua, -1, &is_integer);
-    check(is_integer != 0 && objective_value == -1,
-          "Lua receives the signed objective marker from the Cyberdeck record",
+    lua_getfield(lua, -1, "run_objective");
+    const bool is_run_objective = lua_isboolean(lua, -1) != 0 &&
+                                  lua_toboolean(lua, -1) != 0;
+    check(is_run_objective,
+          "Lua receives the Cyberdeck run marker as a named fact",
           failures);
     lua_settop(lua, 0);
 
@@ -218,13 +238,15 @@ void verify_cyberdeck_file_value_bridge(int& failures) {
 
     lua_createtable(lua, 0, 1); // record
     lua_createtable(lua, 1, 0); // files
-    lua_createtable(lua, 0, 3); // file 0
+    lua_createtable(lua, 0, 4); // file 0
     lua_pushinteger(lua, 12);
     lua_setfield(lua, -2, "id");
     lua_pushinteger(lua, 40);
     lua_setfield(lua, -2, "size");
+    lua_pushboolean(lua, 0);
+    lua_setfield(lua, -2, "run_objective");
     lua_pushinteger(lua, -7);
-    lua_setfield(lua, -2, "value");
+    lua_setfield(lua, -2, "data_value");
     lua_rawseti(lua, -2, 0);
     lua_setfield(lua, -2, "files");
     lua_createtable(lua, 5, 0); // program slot records
@@ -339,7 +361,9 @@ int main() {
     ScriptMatrixWorldState matrix_world_state;
     matrix_world_state.karma_counter = 1;
     matrix_world_state.passive_ic_counter = -3;
-    matrix_world_state.run = ScriptMatrixRunState{-1, -1, 0, 0, 1, 0};
+    matrix_world_state.run = matrix_run(
+        ScriptMatrixRunStatus::active, ScriptMatrixRunNode::cpu,
+        ScriptMatrixRunAction::crash_system, {}, std::nullopt, 0, true);
     matrix_world_state.datastore = ScriptMatrixDatastoreFacts{
         0U, 0xA2345678U, 0xCDEF1234U, 0x81234567U, 0x6023U,
         0x12345678U, 0x08U};
@@ -1405,8 +1429,10 @@ int main() {
     }
     check(runtime.menu_route_snapshot().top_text == "00",
           "Pick System returns to system zero", failures);
-    matrix_world_state.run = ScriptMatrixRunState{
-        -1, 5, 0, 30, 1, 0, std::uint8_t{1}};
+    matrix_world_state.run = matrix_run(
+        ScriptMatrixRunStatus::active, ScriptMatrixRunNode::datastore,
+        ScriptMatrixRunAction::delete_file, "Dead Projects", 0, 30, true,
+        1);
     runtime.advance_menu_route(0x4000U); // Jack in.
     check(runtime.menu_route_snapshot().top_screen == kMatrixEntry &&
               sounds.back() == 0x1AU && debug_unlock_consumptions == 1,
@@ -1424,9 +1450,10 @@ int main() {
               route.top_matrix_state_present &&
               route.top_matrix_system_id == 0 && route.top_matrix_node == 0 &&
               matrix_world_state.run.has_value() &&
-              matrix_world_state.run->state == 0 &&
+              matrix_world_state.run->status ==
+                  ScriptMatrixRunStatus::inactive &&
               matrix_world_state.run->target_system_id ==
-                  std::optional<std::uint8_t>{1U} &&
+                  std::optional<int>{1} &&
               matrix_world_state.map_knowledge.has_value() &&
               matrix_world_state.map_knowledge->system_id == 0U &&
               matrix_world_state.map_knowledge->rows[6][7].analysis_level == 2U &&
@@ -2117,7 +2144,9 @@ int main() {
 #endif
     runtime.advance_menu_route(0x2000U);
 
-    matrix_world_state.run = ScriptMatrixRunState{0, 0, 0, 0, 1, 0};
+    matrix_world_state.run = matrix_run(
+        ScriptMatrixRunStatus::inactive, ScriptMatrixRunNode::datastore,
+        ScriptMatrixRunAction::delete_file, "Outdated Files", 0, 0, true);
     matrix_search_miss = true;
     runtime.advance_menu_route(0x0200U); // Select Transfer Data after the redraw reset.
     runtime.advance_menu_route(0x4000U); // Search again with a forced miss.
@@ -2158,8 +2187,10 @@ int main() {
           "returning from Transfer Data restores node action selection",
           failures);
 
-    matrix_world_state.run = ScriptMatrixRunState{
-        -1, 9, 12, 30, 1, 0, std::uint8_t{0}};
+    matrix_world_state.run = matrix_run(
+        ScriptMatrixRunStatus::active, ScriptMatrixRunNode::datastore,
+        ScriptMatrixRunAction::download_file, "Financial Data", 12, 30,
+        true, 0);
     runtime.advance_menu_route(0x0200U);
     const auto objective_rng_count = random_bounds.size();
     runtime.advance_menu_route(0x4000U);
@@ -2168,7 +2199,7 @@ int main() {
               route.top_text ==
                   "Personnel Dossiers|     . . . . . . Mp 30" &&
               random_bounds.size() == objective_rng_count,
-          "matching run objective skips search dots and uses its value as file ID",
+          "matching run objective skips search dots and previews its selected file",
           failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     save_transfer_frame("transfer-objective-preview.bmp", route);
@@ -2181,9 +2212,10 @@ int main() {
               matrix_deck.files[1].size == 30 &&
               matrix_deck.files[1].value == -1 &&
               matrix_world_state.run.has_value() &&
-              matrix_world_state.run->state == 1 &&
+              matrix_world_state.run->status ==
+                  ScriptMatrixRunStatus::completed &&
               matrix_world_state.run->target_system_id ==
-                  std::optional<std::uint8_t>{0U},
+                  std::optional<int>{0},
           "objective download stores the ROM marker and completes the run",
           failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
@@ -2191,7 +2223,10 @@ int main() {
 #endif
     runtime.advance_menu_route(0x2000U);
 
-    matrix_world_state.run = ScriptMatrixRunState{-1, 9, -1, 30, 1, 0};
+    matrix_world_state.run = matrix_run(
+        ScriptMatrixRunStatus::active, ScriptMatrixRunNode::datastore,
+        ScriptMatrixRunAction::upload_file, "Financial Data", std::nullopt,
+        30, true);
     const auto upload_rng_count = random_bounds.size();
     runtime.advance_menu_route(0x0200U); // Select Transfer Data after the redraw reset.
     runtime.advance_menu_route(0x4000U);
@@ -2199,17 +2234,20 @@ int main() {
     check(route.top_title == "Matrix Message" &&
               route.top_text ==
                   "You upload the file| to the datastore.|| Run accomplished!" &&
-              matrix_world_state.run->state == 1 &&
+              matrix_world_state.run->status ==
+                  ScriptMatrixRunStatus::completed &&
               matrix_deck_commits == 2 &&
               random_bounds.size() == upload_rng_count,
-          "negative objective value uploads immediately without a datafile",
+          "upload objective completes immediately without a datafile",
           failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     save_transfer_frame("transfer-upload-complete.bmp", route);
 #endif
     runtime.advance_menu_route(0x2000U);
 
-    matrix_world_state.run = ScriptMatrixRunState{-1, 9, 0, 30, 1, 0};
+    matrix_world_state.run = matrix_run(
+        ScriptMatrixRunStatus::active, ScriptMatrixRunNode::datastore,
+        ScriptMatrixRunAction::delete_file, "Financial Data", 0, 30, true);
     forced_roll_successes = 2;
     runtime.advance_menu_route(0x0200U); // Transfer Data.
     runtime.advance_menu_route(0x0200U); // Erase.
@@ -2221,11 +2259,11 @@ int main() {
                   "  The recog-code| rapidly finds the|data and zaps it to| electron heaven!!|| Run accomplished!" &&
               route.top_option_labels.empty() &&
               matrix_world_state.run.has_value() &&
-              matrix_world_state.run->state == 1 &&
-              matrix_world_state.run->completion_flags == 0 &&
-              matrix_world_state.run->run_flags == 0x80U &&
+              matrix_world_state.run->status ==
+                  ScriptMatrixRunStatus::completed &&
+              !matrix_world_state.run->completion_marker_present &&
               action_rolls.size() == erase_gate_count + 1U,
-          "objective Erase uses the shared gate, ROM class/value checks, and completes the run",
+          "objective Erase uses the shared gate, named category/action checks, and completes the run",
           failures);
 #ifdef SHADOWRUN_MATRIX_MAP_QT_TEST
     const auto save_erase_message = [&](const std::string& filename) {
@@ -2267,7 +2305,9 @@ int main() {
     runtime.advance_menu_route(0x4000U); // Leave Node from the slave module.
     runtime.advance_menu_route(0x4000U); // First link returns to datastore.
     route = runtime.menu_route_snapshot();
-    matrix_world_state.run = ScriptMatrixRunState{-1, 5, 0, 30, 1, 0};
+    matrix_world_state.run = matrix_run(
+        ScriptMatrixRunStatus::active, ScriptMatrixRunNode::datastore,
+        ScriptMatrixRunAction::delete_file, "Dead Projects", 0, 30, true);
     forced_roll_successes = 2;
     runtime.advance_menu_route(0x0200U); // Transfer Data.
     runtime.advance_menu_route(0x0200U); // Erase.
@@ -2279,7 +2319,8 @@ int main() {
                   "You find a file that| appears important| and obliterate it|  from memory!!!|| Score one for the|downtrodden hacker!" &&
               route.top_option_labels.empty() &&
               matrix_world_state.run.has_value() &&
-              matrix_world_state.run->state == -1 &&
+              matrix_world_state.run->status ==
+                  ScriptMatrixRunStatus::active &&
               action_rolls.size() == ordinary_erase_gate_count + 1U,
           "ordinary Erase uses the shared gate without completing another run",
           failures);
@@ -2306,7 +2347,9 @@ int main() {
               route.top_matrix_previous_node == 4,
           "erase route restores the prior-node relationship used by Retreat",
           failures);
-    matrix_world_state.run = ScriptMatrixRunState{-1, -1, 0, 0, 1, 0};
+    matrix_world_state.run = matrix_run(
+        ScriptMatrixRunStatus::active, ScriptMatrixRunNode::cpu,
+        ScriptMatrixRunAction::crash_system, {}, std::nullopt, 0, true);
     runtime.advance_menu_route(0x8000U); // Start enters the deck loop.
     route = runtime.menu_route_snapshot();
     check(route.top_screen == kCyberdeck &&
@@ -2733,9 +2776,9 @@ int main() {
               route.top_option_labels.empty(),
           "Crash System shows its ROM message and starts at three", failures);
     check(matrix_world_state.run.has_value() &&
-              matrix_world_state.run->state == 1 &&
-              matrix_world_state.run->completion_flags == 0 &&
-              matrix_world_state.run->run_flags == 0x80U &&
+              matrix_world_state.run->status ==
+                  ScriptMatrixRunStatus::completed &&
+              !matrix_world_state.run->completion_marker_present &&
               matrix_world_state.field.alarm == std::optional<bool>{false} &&
               matrix_world_state.field.security_off ==
                   std::optional<bool>{true} &&
@@ -3092,7 +3135,9 @@ int main() {
     // selects from its 14-system table, then shares the same 20-frame entry.
     matrix_search_miss = false;
     random_high_branch = false;
-    matrix_world_state.run = ScriptMatrixRunState{-1, -1, 0, 0, 0, 0};
+    matrix_world_state.run = matrix_run(
+        ScriptMatrixRunStatus::active, ScriptMatrixRunNode::cpu,
+        ScriptMatrixRunAction::crash_system, {}, std::nullopt, 0, false);
     ScriptMenuRouteStartArguments field_matrix_arguments{};
     field_matrix_arguments.return_to_field = true;
     check(runtime.open_menu_route(kMatrixSearch, field_matrix_arguments),
@@ -3351,7 +3396,7 @@ int main() {
           "Run Info active text layer is written", failures);
 #endif
 
-    matrix_world_state.run->state = 0;
+    matrix_world_state.run->status = ScriptMatrixRunStatus::inactive;
     runtime.advance_menu_route(0x4000U); // Reopen CyberInfo.
     runtime.advance_menu_route(0x0200U);
     runtime.advance_menu_route(0x4000U);
@@ -3397,7 +3442,7 @@ int main() {
                   (run_info_artifact_dir / "no-run-text-layer.bmp").string())),
           "both 0xC42C message rows fit inside the visible screen", failures);
 #endif
-    matrix_world_state.run->state = 1;
+    matrix_world_state.run->status = ScriptMatrixRunStatus::completed;
     runtime.advance_menu_route(0x4000U); // Reopen CyberInfo.
     runtime.advance_menu_route(0x0200U);
     runtime.advance_menu_route(0x4000U);

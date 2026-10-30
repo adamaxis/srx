@@ -424,6 +424,20 @@ E.MenuSound = { MOVE = 0x25, SELECT = 0x24, JACK_IN = 0x1A, DAMAGE = 0x18 }   --
 E.MatrixDeckMode = { ATTACK = 0xFF, BALANCED = 0x00, DEFENSE = 0x01 }      -- FFF0B7: A/B/C split the Matrix pool [C]
 -- Signed view used by ROM branches after FFF0B7 is loaded into a signed word.
 E.MatrixModeResult = { ATTACK = -1, BALANCED = 0, DEFENSE = 1 }
+-- Native Matrix run lifecycle translated from the source run word and its
+-- completion gate into explicit gameplay state.
+E.MatrixRunStatus = {
+    PENDING = "pending",
+    INACTIVE = "inactive",
+    ACTIVE = "active",
+    COMPLETED = "completed",
+}
+E.MatrixRunAction = {
+    DELETE_FILE = "delete_file",
+    UPLOAD_FILE = "upload_file",
+    CRASH_SYSTEM = "crash_system",
+    DOWNLOAD_FILE = "download_file",
+}
 -- Stable gameplay identities for the Johnsons that offer work. Native import
 -- code maps source scene/context values to these IDs before Lua sees them.
 E.RunId = {

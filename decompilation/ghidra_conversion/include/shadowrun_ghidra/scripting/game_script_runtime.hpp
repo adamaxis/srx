@@ -211,17 +211,41 @@ struct ScriptMatrixNodeFacts {
     std::uint8_t ic_rating2 = 0U;
 };
 
-// Mutable world facts touched by Matrix node actions. Missing values mean the
-// active host state has not been recovered (for example, a restored run).
+enum class ScriptMatrixRunStatus : std::uint8_t {
+    pending,
+    inactive,
+    active,
+    completed,
+};
+
+enum class ScriptMatrixRunNode : std::uint8_t {
+    cpu,
+    datastore,
+};
+
+enum class ScriptMatrixRunAction : std::uint8_t {
+    crash_system,
+    delete_file,
+    upload_file,
+    download_file,
+};
+
+struct ScriptMatrixRunObjective {
+    ScriptMatrixRunNode node = ScriptMatrixRunNode::datastore;
+    ScriptMatrixRunAction action = ScriptMatrixRunAction::download_file;
+    std::string file_class;
+    std::optional<int> file_id;
+};
+
+// Native Matrix objective facts use named operations and a typed lifecycle.
 struct ScriptMatrixRunState {
-    std::int8_t state = 0;
-    std::int8_t objective = 0;
-    std::int8_t value = 0;
-    std::uint8_t size = 0U;
-    std::uint8_t completion_flags = 0U;
-    std::uint8_t run_flags = 0U;
-    // ROM FFFBF0: the active type-6 Matrix objective's target system.
-    std::optional<std::uint8_t> target_system_id;
+    ScriptMatrixRunStatus status = ScriptMatrixRunStatus::pending;
+    ScriptMatrixRunObjective objective;
+    int file_size = 0;
+    bool completion_marker_present = false;
+    bool completion_recorded = false;
+    // Stable Matrix system identity used by the selected objective.
+    std::optional<int> target_system_id;
 };
 
 struct ScriptMatrixFieldState {

@@ -82,6 +82,23 @@ local function eq(actual, expected, label)
     checks = checks + 1
 end
 
+local function matrix_run(status, node, action, file_class, file_id,
+                          file_size, target_system_id)
+    return {
+        status = status,
+        objective = {
+            node = node,
+            action = action,
+            file_class = file_class,
+            file_id = file_id,
+        },
+        file_size = file_size or 0,
+        completion_marker_present = true,
+        completion_recorded = status == E.MatrixRunStatus.COMPLETED,
+        target_system_id = target_system_id,
+    }
+end
+
 eq(Session.program_mode_from_buttons(E.Pad.C), E.MatrixModeResult.ATTACK,
    "ROM C button selects attack pool mode")
 eq(Session.program_mode_from_buttons(E.Pad.A), E.MatrixModeResult.BALANCED,
@@ -783,23 +800,23 @@ eq(alarm_session.attempts, 0,
 eq(alarm_session.overload_armed, true,
    "node-action entry arms the ROM overload response")
 Session.finish(alarm_session)
-local targeted_entry = { state = -1, target_system_id = 6, fc1c = 0 }
+local targeted_entry = matrix_run(E.MatrixRunStatus.ACTIVE, "datastore",
+    E.MatrixRunAction.DELETE_FILE, "Security Files", 0, 30, 6)
 eq(Session.activate_run_for_system(5, targeted_entry), true,
     "entering another system deactivates a Matrix objective")
-eq(targeted_entry.state, 0,
+eq(targeted_entry.status, E.MatrixRunStatus.INACTIVE,
     "an unfinished Matrix objective is inactive outside its target system")
 eq(Session.activate_run_for_system(5, targeted_entry), false,
     "re-entering the same non-target system leaves its state stable")
 eq(Session.activate_run_for_system(6, targeted_entry), true,
     "entering the objective system activates the Matrix run")
-eq(targeted_entry.state, -1,
+eq(targeted_entry.status, E.MatrixRunStatus.ACTIVE,
     "the ROM target system restores the active Matrix run state")
-local completed_targeted_entry = {
-    state = 1, target_system_id = 6, fc1c = 0x80,
-}
+local completed_targeted_entry = matrix_run(E.MatrixRunStatus.COMPLETED,
+    "datastore", E.MatrixRunAction.DELETE_FILE, "Security Files", 0, 30, 6)
 eq(Session.activate_run_for_system(5, completed_targeted_entry), true,
     "fresh Matrix entry resets the prior completed-state display")
-eq(completed_targeted_entry.state, 0,
+eq(completed_targeted_entry.status, E.MatrixRunStatus.INACTIVE,
     "completed-run flag prevents reactivation of the target system")
 eq(table.concat(Session.map_labels(), ","), "CPU,SPU,IOP,SAN,SM,DS",
     "Matrix map labels match ROM text table")
@@ -894,8 +911,8 @@ eq(MatrixText.from_rom(Actions.TEXT.ERASE_OBJECTIVE),
 eq(MatrixText.from_rom(Actions.TEXT.ERASED),
     "You find a file that| appears important| and obliterate it|  from memory!!!|| Score one for the|downtrodden hacker!",
     "ROM ordinary Erase text preserves source line breaks")
-local crash_run = { state = -1, objective = -1, value = 0, size = 0,
-    fc28 = 1, fc1c = 0 }
+local crash_run = matrix_run(E.MatrixRunStatus.ACTIVE, "cpu",
+    E.MatrixRunAction.CRASH_SYSTEM, nil, nil, 0)
 local crash_field = { alarm = true, security_off = false, maglocks_off = false }
 local alarm_actors = {
     { actor_facts = { roles = { spotted = false, reinforcement = true,
@@ -906,9 +923,12 @@ local alarm_actors = {
         pedestrian = false, hostile = false } } },
 }
 local crash_result = Actions.crash_system(crash_run, crash_field, alarm_actors)
-eq(crash_run.state, 1, "Crash System completes a negative state and objective")
-eq(crash_run.fc28, 0, "Crash System clears the completion bit")
-eq(crash_run.fc1c, 0x80, "Crash System sets the run-complete flag")
+eq(crash_run.status, E.MatrixRunStatus.COMPLETED,
+   "Crash System completes a CPU objective")
+eq(crash_run.completion_marker_present, false,
+   "Crash System clears the semantic completion marker")
+eq(crash_run.completion_recorded, true,
+   "Crash System records objective completion")
 eq(crash_field.alarm, false, "Crash System turns the alarm off")
 eq(crash_field.security_off, true, "Crash System disables security")
 eq(crash_field.maglocks_off, true, "Crash System disengages maglocks")
@@ -918,10 +938,13 @@ eq(alarm_actors[2].actor_facts.roles.despawn_offscreen, true,
     "alarm-off preserves an unrelated despawn role")
 eq(crash_result.step, 61, "Crash System wait uses D5=$3C plus the DBF pass")
 eq(crash_result.stop_sfx, 0x30, "Crash System stops the source alarm effect")
-local partial_run = { state = -1, objective = 0, fc28 = 1, fc1c = 0 }
+local partial_run = matrix_run(E.MatrixRunStatus.ACTIVE, "datastore",
+    E.MatrixRunAction.DELETE_FILE, "Outdated Files", 0, 30)
 Actions.crash_system(partial_run, {})
-eq(partial_run.state, -1, "Crash System leaves a nonnegative objective incomplete")
-eq(partial_run.fc28, 1, "incomplete Crash System preserves the completion bit")
+eq(partial_run.status, E.MatrixRunStatus.ACTIVE,
+   "Crash System leaves a datastore objective incomplete")
+eq(partial_run.completion_marker_present, true,
+   "incomplete Crash System preserves the objective marker")
 local absent_run_result = Actions.crash_system(nil, {})
 eq(absent_run_result.logout, true, "Crash System handles an unknown run without inventing one")
 
@@ -931,7 +954,7 @@ local class_27_actors = { { actor_facts = { roles = {
     quest = false, runner = false, pedestrian = false, hostile = false,
 } } } }
 local class_27_result = Actions.turn_off_node(
-    { class = 0x27 }, class_27_field, class_27_actors)
+    { file_class = "Security Cntrl" }, class_27_field, class_27_actors)
 eq(class_27_field.alarm, false, "class 0x27 turns off the alarm")
 eq(class_27_field.security_off, true, "class 0x27 disables building security")
 eq(class_27_actors[1].actor_facts.roles.despawn_offscreen, true,
@@ -939,16 +962,18 @@ eq(class_27_actors[1].actor_facts.roles.despawn_offscreen, true,
 eq(class_27_result.stop_sfx, 0x30, "class 0x27 stops the alarm sound")
 eq(class_27_result.text, Actions.TEXT.OFFLINE, "class 0x27 uses ROM offline text")
 local class_28_field = { alarm = true }
-local class_28_result = Actions.turn_off_node({ class = 0x28 }, class_28_field)
+local class_28_result = Actions.turn_off_node(
+    { file_class = "Cameras" }, class_28_field)
 eq(class_28_field.security_off, true, "class 0x28 disables security")
 eq(class_28_field.alarm, true, "class 0x28 leaves the alarm unchanged")
 eq(class_28_result.stop_sfx, nil, "class 0x28 does not stop alarm audio")
 local class_29_field = { alarm = true }
-Actions.turn_off_node({ class = 0x29 }, class_29_field)
+Actions.turn_off_node({ file_class = "Maglocks" }, class_29_field)
 eq(class_29_field.maglocks_off, true, "class 0x29 disengages maglocks")
 eq(class_29_field.alarm, true, "class 0x29 leaves the alarm unchanged")
 local class_2a_field = { alarm = true }
-local class_2a_result = Actions.turn_off_node({ class = 0x2A }, class_2a_field)
+local class_2a_result = Actions.turn_off_node(
+    { file_class = "Alert Control" }, class_2a_field)
 eq(class_2a_field.alarm, false, "class 0x2A turns off the alarm")
 eq(class_2a_field.security_off, nil, "class 0x2A leaves security unchanged")
 eq(class_2a_result.stop_sfx, 0x30, "class 0x2A stops the alarm sound")
@@ -1460,30 +1485,60 @@ eq(D.FILE_NAMES[69], "Unsolved Cases",
     "datafile name table includes its final catalog entry")
 eq(D.FILE_NAMES[70], nil, "text following the datafile table is not a file name")
 local stored_files = { storage = 4096, files = {}, ratings = {} }
-for i = 0, 4 do stored_files.files[i] = { id = -1, size = 0, value = 0 } end
+for i = 0, 4 do
+    stored_files.files[i] = {
+        id = -1, size = 0, data_value = 0, run_objective = false,
+    }
+end
 for i = 0, 11 do stored_files.ratings[i] = 0 end
-local objective_run = { state = -1, objective = 4, value = 3,
-    fc28 = 1, fc1c = 0 }
+local objective_run = matrix_run(E.MatrixRunStatus.ACTIVE, "datastore",
+    E.MatrixRunAction.DOWNLOAD_FILE, "Security Files", 3, 30)
 local objective_slot = Actions.store(stored_files, objective_run,
-    { class = 4, colour = 2 }, { fff0ae = 0xFF },
-    { objective = true, id = 3, value = 3, size = 30 },
+    { class = 4, colour = 2 },
+    { run_objective = true, id = 3, size = 30 },
     function() return 0 end)
 eq(objective_slot, 0, "objective file fills the first free deck slot")
 eq(stored_files.files[0].id, 3,
-    "objective download uses the ROM run value as its datafile ID")
-eq(stored_files.files[0].value, -1,
-    "objective marker is represented as the signed ROM byte")
-eq(objective_run.state, 1, "storing the objective completes its run")
+    "objective download stores the requested data file")
+eq(stored_files.files[0].run_objective, true,
+    "stored objective uses a named marker")
+eq(objective_run.status, E.MatrixRunStatus.COMPLETED,
+    "storing the objective completes its run")
 local ordinary_slot = Actions.store(stored_files, objective_run,
-    { class = 4, colour = 3 }, {}, { id = 21, size = 20 },
+    { class = 4, colour = 3 }, { id = 21, size = 20 },
     function(bound) return bound == 7 and 1 or 0 end)
 eq(ordinary_slot, 1, "ordinary data file uses the next free slot")
-eq(stored_files.files[1].value, 2,
+eq(stored_files.files[1].data_value, 2,
     "ordinary file retains its positive sale multiplier")
 D.erase_file(stored_files, 0)
-eq(stored_files.files[0].value, 0,
-    "erasing a file clears its value byte with the size word")
-eq(D.run_info(0, 0, 0), "NONE", "no active run summary")
+eq(stored_files.files[0].run_objective, false,
+    "erasing a file clears its named objective marker")
+eq(stored_files.files[0].data_value, 0,
+    "erasing a file clears its ordinary data value")
+-- [C] ROM 0x18C28..0x18CD0 distinguishes none, completed, CPU, and datastore
+-- summaries; objective actions map to separate Run Info labels.
+eq(D.run_info(nil).status, "none", "no active run summary")
+eq(D.run_info(matrix_run(E.MatrixRunStatus.COMPLETED, "cpu",
+    E.MatrixRunAction.CRASH_SYSTEM, nil, nil, 0)).status, "complete",
+    "completed run summary")
+local cpu_info = D.run_info(matrix_run(E.MatrixRunStatus.ACTIVE, "cpu",
+    E.MatrixRunAction.CRASH_SYSTEM, nil, nil, 0))
+eq(cpu_info.action, E.MatrixRunAction.CRASH_SYSTEM,
+    "active CPU objective uses the Crash System action")
+local delete_info = D.run_info(matrix_run(E.MatrixRunStatus.ACTIVE,
+    "datastore", E.MatrixRunAction.DELETE_FILE, "Security Files", 0, 30))
+eq(delete_info.action, E.MatrixRunAction.DELETE_FILE,
+    "delete objective uses the Delete File action")
+local upload_info = D.run_info(matrix_run(E.MatrixRunStatus.ACTIVE,
+    "datastore", E.MatrixRunAction.UPLOAD_FILE, "Financial Data", nil, 30))
+eq(upload_info.action, E.MatrixRunAction.UPLOAD_FILE,
+    "upload objective uses the Upload File action")
+local download_info = D.run_info(matrix_run(E.MatrixRunStatus.ACTIVE,
+    "datastore", E.MatrixRunAction.DOWNLOAD_FILE, "Security Files", 20, 30))
+eq(download_info.action, E.MatrixRunAction.DOWNLOAD_FILE,
+    "download objective uses the Download File action")
+eq(download_info.file_class, "Security Files",
+    "Run Info retains the requested datastore category")
 local slots = {
     [0] = { status = 6, phase = 0, timer = 0 },
     [1] = { status = 6, phase = 0, timer = 0 },
@@ -1517,37 +1572,42 @@ eq(cancelled_alert_state.alert, MX.NONE,
    "0x54AEA Cancel Alert writes FFF0A0 to No Alert")
 eq(cancelled_alert_state.world_effect_gate_negative, true,
    "0x54AEA leaves the independent FFDF84 gate untouched")
-local run = { state = -1, objective = 5, value = 0, size = 30,
-    fc28 = 1, fc1c = 0 }
-local found = Actions.search(run, { class = 5 }, {}, decker, deck, nil,
+local run = matrix_run(E.MatrixRunStatus.ACTIVE, "datastore",
+    E.MatrixRunAction.DELETE_FILE, "Security Files", 0, 30)
+local run_node = { class = 5, file_class = "Security Files" }
+-- [C] ROM 0x54C5E previews matching file objectives, uploads the explicit
+-- upload case immediately, and 0x5559E completes only a matching delete.
+local found = Actions.search(run, run_node, decker, deck, nil,
     function() return 0 end)
-eq(found.file.objective, true, "objective search returns objective file")
-eq(found.file.id, 0, "objective preview uses the ROM run value as file ID")
+eq(found.file.run_objective, true,
+   "objective search marks its preview as a run file")
+eq(found.file.id, 0, "delete objective previews its selected data file")
 eq(found.file.size, 30, "objective file uses run size")
-local targeted_run = { state = -1, objective = 5, value = 0, size = 30,
-    fc28 = 1, fc1c = 0, target_system_id = 6 }
+local targeted_run = matrix_run(E.MatrixRunStatus.ACTIVE, "datastore",
+    E.MatrixRunAction.DELETE_FILE, "Security Files", 0, 30, 6)
 local wrong_system_search = Actions.begin_search(
-    targeted_run, { class = 5 }, {}, 5)
+    targeted_run, run_node, 5)
 eq(wrong_system_search, nil,
     "matching node classes do not expose a run objective in another system")
-eq(targeted_run.state, -1,
+eq(targeted_run.status, E.MatrixRunStatus.ACTIVE,
     "searching a same-class node outside the target leaves the run active")
 local wrong_system_erase = Actions.erase(
-    targeted_run, { class = 5 }, 5)
+    targeted_run, run_node, 5)
 eq(wrong_system_erase.text, Actions.TEXT.ERASED,
     "Erase cannot complete a Matrix objective in another system")
-eq(targeted_run.state, -1,
+eq(targeted_run.status, E.MatrixRunStatus.ACTIVE,
     "wrong-system Erase leaves the objective unfinished")
 local target_system_search = Actions.begin_search(
-    targeted_run, { class = 5 }, {}, 6)
-eq(target_system_search.file.objective, true,
+    targeted_run, run_node, 6)
+eq(target_system_search.file.run_objective, true,
     "the assigned system exposes its matching datafile objective")
-local upload_run = { state = -1, objective = 5, value = -1, size = 30,
-    fc28 = 1, fc1c = 0 }
-local upload = Actions.begin_search(upload_run, { class = 5 }, {})
+local upload_run = matrix_run(E.MatrixRunStatus.ACTIVE, "datastore",
+    E.MatrixRunAction.UPLOAD_FILE, "Security Files", nil, 30)
+local upload = Actions.begin_search(upload_run, run_node)
 eq(upload.text, Actions.TEXT.UPLOAD_DONE,
-    "negative objective value uploads immediately without a download prompt")
-eq(upload_run.state, 1, "immediate objective upload completes the run")
+    "upload objective completes immediately without a download prompt")
+eq(upload_run.status, E.MatrixRunStatus.COMPLETED,
+    "immediate objective upload completes the run")
 local source_decker = { attributes = { [4] = 6 }, skills = { [7] = 6 } }
 local source_deck = { persona = { [3] = 5 } }
 local search_bounds = {}
@@ -1652,40 +1712,40 @@ eq(virology_facts.tips_page3_flags, 0xFC000000,
 eq(virology_facts.nuyen, 49999,
     "system 16 class 1 applies the 32-bit ROM wallet addition")
 local low_storage = { storage = 0, files = {}, ratings = {} }
-for i = 0, 4 do low_storage.files[i] = { id = -1, size = 0, value = 0 } end
+for i = 0, 4 do low_storage.files[i] = { id = -1, size = 0 } end
 for i = 0, 11 do low_storage.ratings[i] = 0 end
 local _, low_storage_text = Actions.store(
-    low_storage, nil, { class = 9, colour = 1 }, {},
+    low_storage, nil, { class = 9, colour = 1 },
     { id = 45, size = 20 }, function() return 0 end)
 eq(low_storage_text, Actions.TEXT.NO_STORAGE,
     "insufficient deck storage uses the ROM two-part message")
 local full_file_slots = { storage = 100, files = {}, ratings = {} }
-for i = 0, 4 do full_file_slots.files[i] = { id = i, size = 0, value = 0 } end
+for i = 0, 4 do full_file_slots.files[i] = { id = i, size = 0 } end
 for i = 0, 11 do full_file_slots.ratings[i] = 0 end
 local _, full_file_text = Actions.store(
-    full_file_slots, nil, { class = 9, colour = 1 }, {},
+    full_file_slots, nil, { class = 9, colour = 1 },
     { id = 45, size = 20 }, function() return 0 end)
 eq(full_file_text, Actions.TEXT.FIVE_FILES,
     "five occupied file slots use the ROM capacity message")
-local result = Actions.erase(run, { class = 5 })
+local result = Actions.erase(run, run_node)
 eq(result.text, Actions.TEXT.ERASE_OBJECTIVE, "objective erase text")
-eq(run.state, 1, "objective erase completes run")
-local ordinary_erase_run = { state = -1, objective = 9, value = 0,
-    size = 30, fc28 = 1, fc1c = 0 }
-local ordinary_erase = Actions.erase(ordinary_erase_run, { class = 5 })
+eq(run.status, E.MatrixRunStatus.COMPLETED, "objective erase completes run")
+local ordinary_erase_run = matrix_run(E.MatrixRunStatus.ACTIVE,
+    "datastore", E.MatrixRunAction.DELETE_FILE, "Financial Data", 0, 30)
+local ordinary_erase = Actions.erase(ordinary_erase_run, run_node)
 eq(ordinary_erase.text, Actions.TEXT.ERASED,
     "non-objective Erase uses the ordinary ROM message")
-eq(ordinary_erase_run.state, -1,
+eq(ordinary_erase_run.status, E.MatrixRunStatus.ACTIVE,
     "non-objective Erase leaves the active run incomplete")
-local erase_nonzero_value_run = { state = -1, objective = 5, value = 1,
-    size = 30, fc28 = 1, fc1c = 0 }
+local erase_nonzero_value_run = matrix_run(E.MatrixRunStatus.ACTIVE,
+    "datastore", E.MatrixRunAction.DOWNLOAD_FILE, "Security Files", 1, 30)
 local erase_nonzero_value = Actions.erase(erase_nonzero_value_run,
-    { class = 5 })
+    run_node)
 eq(erase_nonzero_value.text, Actions.TEXT.ERASED,
-    "objective-class Erase requires a zero objective value")
-eq(erase_nonzero_value_run.state, -1,
-    "nonzero objective value does not complete the run")
-local no_run_erase = Actions.erase(nil, { class = 5 })
+    "download objective does not complete through Erase")
+eq(erase_nonzero_value_run.status, E.MatrixRunStatus.ACTIVE,
+    "download objective remains active after Erase")
+local no_run_erase = Actions.erase(nil, run_node)
 eq(no_run_erase.text, Actions.TEXT.ERASED,
     "Erase without an imported active run remains a normal file erase")
 local gate_state = { attempts = 0 }
@@ -1829,18 +1889,29 @@ Registry.active_offer = {
         negotiation_bound = 1, negotiation_roll = 0,
     },
     matrix_run_state = {
-        state = -1, objective = 5, value = 0, size = 30,
-        fc28 = 1, fc1c = 0, target_system_id = 6,
+        status = E.MatrixRunStatus.ACTIVE,
+        objective = {
+            node = "datastore",
+            action = E.MatrixRunAction.DELETE_FILE,
+            file_class = "Security Files",
+            file_id = 0,
+        },
+        file_size = 30,
+        completion_marker_present = true,
+        completion_recorded = false,
+        target_system_id = 6,
     },
 }
 local world = Session.world_state(game)
-eq(world.run.state, -1,
+eq(world.run.status, E.MatrixRunStatus.ACTIVE,
     "Matrix world projection uses the accepted Lua objective")
-world.run.state = 1
-eq(Registry.active_matrix_run_state().state, -1,
+world.run.status = E.MatrixRunStatus.COMPLETED
+world.run.completion_marker_present = false
+world.run.completion_recorded = true
+eq(Registry.active_matrix_run_state().status, E.MatrixRunStatus.ACTIVE,
     "Matrix projection is a copy until committed")
 Session.commit_world_state(game, world)
-eq(Registry.active_matrix_run_state().state, 1,
+eq(Registry.active_matrix_run_state().status, E.MatrixRunStatus.COMPLETED,
     "Matrix objective commit updates the Lua run registry")
 eq(committed_world.run, nil,
     "native world commit does not retain a second Matrix run state")
@@ -1960,7 +2031,7 @@ game = {
         end,
     },
     matrix_world_state = function()
-        return { run = { fc28 = 5 } }
+        return { run = { completion_marker_present = true } }
     end,
 }
 local selected_run = Registry.prepare_offer_for_contact(E.RunContact.WANDERER)
@@ -1976,18 +2047,23 @@ eq(matrix_offer.source_run_type, nil,
     "source handler selectors do not enter the Lua offer state")
 eq(matrix_offer.source_offer_context, nil,
     "source context selectors do not enter the Lua offer state")
-eq(matrix_offer.matrix_run_state.state, -1,
-    "simple Matrix initializer selects the negative band")
-eq(matrix_offer.matrix_run_state.objective, 4,
-    "Matrix objective class comes from the source candidate")
-eq(matrix_offer.matrix_run_state.value, 20,
-    "Matrix objective value comes from the source candidate")
-eq(matrix_offer.matrix_run_state.size, 10,
+eq(matrix_offer.matrix_run_state.status, E.MatrixRunStatus.PENDING,
+    "simple Matrix objective begins pending system selection")
+eq(matrix_offer.matrix_run_state.objective.node, "datastore",
+    "Matrix candidate targets a datastore")
+eq(matrix_offer.matrix_run_state.objective.file_class, "Security Files",
+    "Matrix candidate names its target datastore category")
+eq(matrix_offer.matrix_run_state.objective.action,
+    E.MatrixRunAction.DOWNLOAD_FILE,
+    "Matrix candidate carries a named file operation")
+eq(matrix_offer.matrix_run_state.objective.file_id, 20,
+    "Matrix candidate names the requested file")
+eq(matrix_offer.matrix_run_state.file_size, 10,
     "Matrix file size follows the source one-to-three roll")
-eq(matrix_offer.matrix_run_state.fc28, 5,
-    "Matrix initializer preserves the typed completion flags")
-eq(matrix_offer.matrix_run_state.fc1c, 0,
-    "common source initializer clears the run flags")
+eq(matrix_offer.matrix_run_state.completion_marker_present, true,
+    "Matrix initializer keeps the host completion fact")
+eq(matrix_offer.matrix_run_state.completion_recorded, false,
+    "new objective begins without a recorded completion")
 eq(matrix_offer.matrix_run_state.target_system_id, 2,
     "Matrix candidate uses an allowed simple-band system")
 assert(matrix_offer.objective_text:find("A small R&D firm", 1, true),
@@ -2055,8 +2131,8 @@ local moderate_id, moderate_offer = prepare_contact_row(
     E.RunContact.WANDERER, { 1, 0, 14, 0, 0 })
 eq(moderate_id, "matrix_objective",
     "moderate Matrix initializer reaches the Matrix module")
-eq(moderate_offer.matrix_run_state.state, 0,
-    "moderate Matrix initializer selects the zero band")
+eq(moderate_offer.matrix_run_state.status, E.MatrixRunStatus.PENDING,
+    "moderate Matrix objective begins pending system selection")
 eq(moderate_offer.matrix_run_state.target_system_id, 10,
     "moderate candidate retries until its system is in the source band")
 Registry.resolve_current_offer("no")
@@ -2065,8 +2141,8 @@ local expert_id, expert_offer = prepare_contact_row(
     E.RunContact.WANDERER, { 2, 0, 4, 0, 0 })
 eq(expert_id, "matrix_objective",
     "expert Matrix initializer reaches the Matrix module")
-eq(expert_offer.matrix_run_state.state, 1,
-    "expert Matrix initializer selects the positive band")
+eq(expert_offer.matrix_run_state.status, E.MatrixRunStatus.PENDING,
+    "expert Matrix objective begins pending system selection")
 eq(expert_offer.matrix_run_state.target_system_id, 7,
     "expert candidate retains an allowed source system")
 Registry.resolve_current_offer("no")

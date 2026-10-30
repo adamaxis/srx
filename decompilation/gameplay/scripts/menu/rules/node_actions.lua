@@ -1,7 +1,5 @@
--- rules/node_actions.lua: node-action handlers 0x54AEA..0x5561E, ROM-traced 2026-10-15 [C unless marked].
--- node = FF1100 record view (class +1, colour +5, ic_condition +0x0F); st = Matrix RAM (alert FFF0A0);
--- run = {state FFF0E3, objective FFFBF2, value FFFBF6 (signed), size FFFBF7, fc28, fc1c};
--- field = {alarm FFE16F, security_off FFE170, maglocks_off FFE17F}. rand(n) = 0xD3A -> 0..n-1. Texts are ROM addresses.
+-- Matrix node-action policy. Source addresses remain provenance; Lua uses
+-- semantic run, node, field, and file facts at runtime.
 local E = require("enums")
 local FieldAlarm = require("field_alarm")
 local DECK = require("menu.rules.deck")
@@ -18,13 +16,18 @@ M.SEARCH_DOT_FRAMES = 0x14 + 1
 M.SEARCH_TAIL_FRAMES = 9 + 1
 M.SHUTDOWN_STEP_FRAMES = 0x3C + 1
 
-local function complete(run)                       -- shared "run complete" (0x54B34 / 0x54F72 / 0x5559E)
-    run.fc28 = run.fc28 & ~1; run.state = 1; run.fc1c = run.fc1c | 0x80
+local function complete(run)                       -- shared run completion (0x54B34 / 0x54F72 / 0x5559E)
+    run.completion_marker_present = false
+    run.completion_recorded = true
+    run.status = E.MatrixRunStatus.COMPLETED
 end
--- 0x54C6A / 0x555A? run check: FFF0E3 < 0 (run in progress) and node class byte == FFFBF2 byte [C].
+-- [C] 0x54C6A / 0x5559E require an active objective and matching file class.
 local function on_objective(run, node, current_system_id)
-    if run == nil or node == nil or run.state >= 0 or
-       (node.class & 0xFF) ~= (run.objective & 0xFF) then
+    if run == nil or node == nil or
+       run.status ~= E.MatrixRunStatus.ACTIVE or
+       type(run.objective) ~= "table" or
+       run.objective.node ~= "datastore" or
+       node.file_class ~= run.objective.file_class then
         return false
     end
     if run.target_system_id ~= nil and
@@ -44,7 +47,12 @@ function M.cancel_alert(st)
 end
 -- 0x54B34 Crash System: countdown 3..0 at 61 VBlanks each, fade 0x18776, logout 0x26A00.
 function M.crash_system(run, field, actors)
-    if run and run.state < 0 and run.objective < 0 then complete(run) end
+    if run and run.status == E.MatrixRunStatus.ACTIVE and
+       type(run.objective) == "table" and
+       run.objective.node == "cpu" and
+       run.objective.action == E.MatrixRunAction.CRASH_SYSTEM then
+        complete(run)
+    end
     M.alarm_off(field, actors)                          -- 0x1E09A
     field.security_off, field.maglocks_off = true, true
     return { text = M.TEXT.SHUTDOWN, countdown = { 3, 2, 1, 0 }, step = M.SHUTDOWN_STEP_FRAMES, logout = true, stop_sfx = E.SoundId.ALARM }
@@ -55,11 +63,16 @@ function M.alarm_off(field, actors)
     local result = FieldAlarm.clear(field, actors)
     return result ~= nil and result.was_active == true -- caller stops E.SoundId.ALARM
 end
--- 0x54BD2 Turn Off Node by class (+1).
-M.TURN_OFF = { [0x27] = { alarm = true, security = true }, [0x28] = { security = true },
-               [0x29] = { maglocks = true }, [0x2A] = { alarm = true } }
+-- [C] 0x54BD2 dispatches class-specific shutdown effects. The native rules
+-- select those effects using the resolved file-class name.
+M.TURN_OFF = {
+    ["Security Cntrl"] = { alarm = true, security = true },
+    ["Cameras"] = { security = true },
+    ["Maglocks"] = { maglocks = true },
+    ["Alert Control"] = { alarm = true },
+}
 function M.turn_off_node(node, field, actors)
-    local e = M.TURN_OFF[node.class]
+    local e = M.TURN_OFF[node.file_class]
     local stop_sfx
     if e then
         if e.alarm then
@@ -71,9 +84,13 @@ function M.turn_off_node(node, field, actors)
     end
     return { text = M.TEXT.OFFLINE, stop_sfx = stop_sfx }
 end
--- 0x5559E Erase: objective "erase" when class == FFFBF2 and FFFBF6 == 0.
+-- [C] 0x5559E Erase completes a matching Delete objective with value zero.
 function M.erase(run, node, current_system_id)
-    if on_objective(run, node, current_system_id) and run.value == 0 then complete(run); return { text = M.TEXT.ERASE_OBJECTIVE } end
+    if on_objective(run, node, current_system_id) and
+       run.objective.action == E.MatrixRunAction.DELETE_FILE then
+        complete(run)
+        return { text = M.TEXT.ERASE_OBJECTIVE }
+    end
     return { text = M.TEXT.ERASED }
 end
 -- 0x5561E Lockout: text only.
@@ -81,18 +98,20 @@ function M.lockout() return { text = M.TEXT.LOCKOUT } end
 
 -- 0x54C5E Transfer Data, phase 1 (search). r = datastore_special record (system, flags, nuyen ...).
 M.VALUE = { [0]=0, 1, 3, 0, 2, 0, 5, 4, 6, 8, 0, 0 }      -- 0x16668A
--- The objective check precedes the browsing animation in the ROM. A negative
--- objective value is uploaded immediately; a nonnegative value goes straight
--- to the normal file preview with the run's value byte as the file ID.
-function M.begin_search(run, node, st, current_system_id)
-    st.fff0ae = 0
+-- The objective check precedes the browsing animation. Upload objectives
+-- complete immediately; file objectives show their named target file.
+function M.begin_search(run, node, current_system_id)
     if on_objective(run, node, current_system_id) then
-        if run.value < 0 then complete(run); return { text = M.TEXT.UPLOAD_DONE } end
-        st.fff0ae = 0xFF                               -- 0x54CDA: marker byte, stored as file +0x21
-        st.fff096, st.fff098 = run.size, run.value & 0xFF
-        return { text = M.TEXT.OBJECTIVE_FOUND,
-                 file = { objective = true, id = run.value & 0xFF,
-                          size = run.size, value = run.value } }
+        if run.objective.action == E.MatrixRunAction.UPLOAD_FILE then
+            complete(run)
+            return { text = M.TEXT.UPLOAD_DONE }
+        end
+        if run.objective.file_id ~= nil then
+            return { text = M.TEXT.OBJECTIVE_FOUND,
+                     file = { run_objective = true,
+                              id = run.objective.file_id,
+                              size = run.file_size } }
+        end
     end
     return nil
 end
@@ -122,35 +141,31 @@ function M.finish_search(node, decker, deck, special, rand)
     end
     return { file = { id = node.class * 5 + rand(5), size = (rand(5) + 2) * 10 } }
 end
-function M.search(run, node, st, decker, deck, special, rand,
+function M.search(run, node, decker, deck, special, rand,
                   current_system_id)
-    local immediate = M.begin_search(run, node, st, current_system_id)
+    local immediate = M.begin_search(run, node, current_system_id)
     if immediate then return immediate end
     return M.finish_search(node, decker, deck, special, rand)
 end
 function M.file_name(id) return DECK.FILE_NAMES[id] end
 -- Phase 2 (after "Download File?" A = yes). Returns message key or stored slot.
-function M.store(rec, run, node, st, file, rand)
+function M.store(rec, run, node, file, rand)
     if not DECK.storage_fits_file(rec, file.size) then
         return nil, M.TEXT.NO_STORAGE
     end
     local k; for i = 0, DECK.FILES - 1 do if rec.files[i].id < 0 then k = i; break end end
     if not k then return nil, M.TEXT.FIVE_FILES end
     local id = file.id
-    if id == nil and file.objective and file.value ~= nil then
-        id = file.value & 0xFF
-    end
     if id == nil then id = node.class * 5 end
     local f = rec.files[k]; f.id, f.size = id, file.size
-    if file.objective then
-        -- The 0x54C5E objective branch stores FFF0AE's 0xFF marker at
-        -- data-file +0x21; expose it as the signed host value -1.
-        f.value = -1
+    f.run_objective = file.run_objective == true
+    if f.run_objective then
+        f.data_value = 0
         complete(run)
         return k, M.TEXT.STORED_OBJECTIVE
     end
     local m = node.colour == 4 and 5 or node.colour - 1
-    f.value = (M.VALUE[rand(7) + rand(6)] * m) & 0xFF
+    f.data_value = (M.VALUE[rand(7) + rand(6)] * m) & 0xFF
     return k, M.TEXT.STORED
 end
 -- Node-action loop 0x54662 gate (A edge, 0x548A0): dice = min(pool, Computer +0x88) + Computer (0 -> 1) - (colour - 1);

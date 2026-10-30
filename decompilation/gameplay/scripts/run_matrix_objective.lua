@@ -17,15 +17,9 @@ local intro_by_band_id = {
 }
 
 local band_by_id = {
-    simple = {
-        value = -1, systems = Catalog.bands.simple,
-    },
-    moderate = {
-        value = 0, systems = Catalog.bands.moderate,
-    },
-    expert = {
-        value = 1, systems = Catalog.bands.expert,
-    },
+    simple = { systems = Catalog.bands.simple },
+    moderate = { systems = Catalog.bands.moderate },
+    expert = { systems = Catalog.bands.expert },
 }
 
 local system_ordinal = {}
@@ -56,17 +50,17 @@ local function select_objective(band)
     end
 end
 
-local function existing_completion_flags()
-    -- The common source reset clears the type-6 run flags at FFFC1C, but does
-    -- not write FFFC28. Preserve that typed host fact when it is available.
+local function existing_completion_marker()
+    -- [C] Objective handlers clear FFFC28 bit 0 on completion. Carry only the
+    -- confirmed fact, not the surrounding source flags word.
     if type(game.matrix_world_state) == "function" then
         local world = game.matrix_world_state()
         if type(world) == "table" and type(world.run) == "table" and
-           type(world.run.fc28) == "number" then
-            return world.run.fc28
+           type(world.run.completion_marker_present) == "boolean" then
+            return world.run.completion_marker_present
         end
     end
-    return 0
+    return false
 end
 
 function MatrixObjective.prepare_offer(contact_id, source_record)
@@ -81,12 +75,16 @@ function MatrixObjective.prepare_offer(contact_id, source_record)
         select_objective(band)
     local size = (support.bounded_random(3) + 1) * 10
     local state = {
-        state = band.value,
-        objective = objective.class_id,
-        value = objective.value,
-        size = size,
-        fc28 = existing_completion_flags(),
-        fc1c = 0,
+        status = E.MatrixRunStatus.PENDING,
+        objective = {
+            node = objective.node,
+            action = objective.action,
+            file_class = objective.file_class,
+            file_id = objective.file_id,
+        },
+        file_size = size,
+        completion_marker_present = existing_completion_marker(),
+        completion_recorded = false,
         target_system_id = target_system_id,
     }
     local offer = support.new_offer(

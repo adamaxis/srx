@@ -132,25 +132,24 @@ function CyberInfo.input(st, events, ctx)
             if MatrixSession.is_online(st.matrix_state) then
                 run = MatrixSession.world_state(ctx.game).run
             end
-            local status, action_index = D.run_info(
-                run and run.state or 0,
-                run and run.objective or 0,
-                run and run.value or 0)
-            if status == "COMPLETE" then
+            local info = D.run_info(run)
+            if info.status == "complete" then
                 return { transition = T.POP,
                          result = { matrix_run_info = {
                              kind = "complete",
                              message = "Shadowrun is| complete!!",
                          } } }
             end
-            if status == "ACTIVE" then
-                local objective = run.objective
-                local node = objective < 0 and "CPU" or "Datastore"
-                local node_function = objective < 0 and "Cntrl Processor" or
-                                     MatrixSession.file_class_name(objective)
+            if info.status == "active" then
+                local node = info.node == "cpu" and "CPU" or "Datastore"
+                local node_function = info.node == "cpu" and
+                    "Cntrl Processor" or
+                    info.file_class
                 local action_names = {
-                    [0] = "Delete File", "Upload File", "Crash System",
-                    "Download File",
+                    [E.MatrixRunAction.DELETE_FILE] = "Delete File",
+                    [E.MatrixRunAction.UPLOAD_FILE] = "Upload File",
+                    [E.MatrixRunAction.CRASH_SYSTEM] = "Crash System",
+                    [E.MatrixRunAction.DOWNLOAD_FILE] = "Download File",
                 }
                 return { transition = T.POP, result = { matrix_run_info = {
                     kind = "active",
@@ -159,7 +158,7 @@ function CyberInfo.input(st, events, ctx)
                     function_label = "Node Function:",
                     node_function = node_function,
                     action_label = "Action:",
-                    action = action_names[action_index],
+                    action = action_names[info.action],
                 } } }
             end
             -- The field Cyberdeck route has no active run. ROM 0x18C50

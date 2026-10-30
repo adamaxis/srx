@@ -82,10 +82,11 @@ independent Genesis frame of this prompt is currently available.
 
 ## Change
 
-Lua now returns a typed Run Info view for all three `FFF0E3` branches. The Qt
-presenter draws each field at its ROM-derived address using the imported Matrix
-font. It no longer flattens the labels and values into the generic Cyberdeck
-message block.
+Lua now returns a typed Run Info view from the named run lifecycle and
+objective action. The source's signed status/action encodings remain in the ROM
+trace and save migration adapter. The Qt presenter draws each field at its
+ROM-derived address using the imported Matrix font. It no longer flattens the
+labels and values into the generic Cyberdeck message block.
 
 ## Deck Stats placement
 

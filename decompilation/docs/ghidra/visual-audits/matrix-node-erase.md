@@ -27,8 +27,8 @@ Primary source: `input/shadowrun_genesis_us.bin`.
 
 `matrix_node_action.lua` runs Erase through the same Lua runner gate as the
 other node actions. It reads the optional typed Matrix run snapshot, applies
-the ROM objective condition, commits the resulting state, and displays the
-decoded text. If the host does not yet know an active run, Erase takes the
+the run's named datastore category and delete action, commits the resulting
+state, and displays the decoded text. If the host does not yet know an active run, Erase takes the
 ordinary text path and does not create or complete a run.
 
 ## Verification

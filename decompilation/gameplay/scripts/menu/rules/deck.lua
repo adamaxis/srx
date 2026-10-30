@@ -1,10 +1,10 @@
--- rules/deck.lua: cyberdeck memory/storage/load-time rules, ROM-traced [C unless marked].
--- Deck record view (FFFBBE, docs/05 s3): rec.memory (+0x02 w, active memory), rec.storage (+0x04 w),
---   rec.load_io (+0x06 b, "Load/IO Speed" label 0xE387E block), rec.ratings[0..11] (+0x0E+p),
---   rec.active[0..4] (+0x1A+slot, -1 = empty), rec.files[0..4] = {id (+0x1F+3k, <0 empty), size (+0x20+3k), signed value (+0x21+3k; -1 = run objective)}.
--- Slot state: slots[0..4] are typed records containing status (FFF0ED), timer
--- (FFF0F2 words), and phase (FFF0E8), matching the host's narrow binding.
--- srx cross-check: src/cyberspace/matrix_storage_conversion.cpp, matrix_program_timing_conversion.cpp (same maths).
+-- Cyberdeck memory/storage/load-time rules over named native records.
+-- File values expose data_value and run_objective; the storage adapter
+-- translates the objective marker at its boundary. Source layout and
+-- addresses stay in the Matrix audits. srx cross-check:
+-- src/cyberspace/matrix_storage_conversion.cpp and
+-- matrix_program_timing_conversion.cpp (same rules).
+local E = require("enums")
 local M = {}
 M.FOOTPRINT = { [0] = 2, 4, 4, 3, 4, 4, 2, 3, 3, 2, 2, 3 }   -- 0xE2DF2 [C bytes]
 M.PROGRAMS, M.SLOTS, M.FILES, M.MAX_LOAD_STEPS, M.READY = 12, 5, 5, 6, 6
@@ -114,13 +114,33 @@ function M.unload(rec, slots, slot) local p = rec.active[slot]; rec.active[slot]
 function M.next_file(rec, from)
     for i = 0, M.FILES - 1 do local k = (from - i) % M.FILES; if rec.files[k].id >= 0 then return k end end
 end
-function M.erase_file(rec, k) rec.files[k].id = -1; rec.files[k].size = 0; rec.files[k].value = 0 end -- 0x18F2A clears the size/value word
+function M.erase_file(rec, k)
+    local file = rec.files[k]
+    file.id, file.size, file.data_value, file.run_objective = -1, 0, 0, false
+end -- 0x18F2A clears the size/value word
 function M.files(rec) local t = {}; for k = M.FILES - 1, 0, -1 do if rec.files[k].id >= 0 then t[#t + 1] = k end end; return t end  -- 0x18F7C order
--- Run Info 0x18C28: FFF0E3 < 0 on a run, 0 none, > 0 complete. Action text 0xE44C8[i]: FFFBF6 < 0 -> 1, 0 -> 0, > 0 -> 3;
--- FFFBF2 < 0 (CPU) -> index 2 [C 0x18C8C..0x18CD0]
-function M.run_info(run_state, node_kind, action)
-    if run_state == 0 then return "NONE" elseif run_state > 0 then return "COMPLETE" end
-    local i = node_kind < 0 and 2 or (action < 0 and 1 or action == 0 and 0 or 3)
-    return "ACTIVE", i
+-- [C] ROM 0x18C28..0x18CD0 shows no-run/complete/active paths and chooses
+-- the action from the objective kind and value. Lua consumes named run facts.
+function M.run_info(run)
+    if type(run) ~= "table" then return { status = "none" } end
+    if run.status == E.MatrixRunStatus.COMPLETED then
+        return { status = "complete" }
+    end
+    if run.status ~= E.MatrixRunStatus.ACTIVE then
+        return { status = "none" }
+    end
+    if run.objective.node == "cpu" then
+        return {
+            status = "active",
+            node = "cpu",
+            action = E.MatrixRunAction.CRASH_SYSTEM,
+        }
+    end
+    return {
+        status = "active",
+        node = run.objective.node,
+        action = run.objective.action,
+        file_class = run.objective.file_class,
+    }
 end
 return M

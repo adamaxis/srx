@@ -24,12 +24,15 @@ end
 
 local function typed_node(source)
     if not source then return nil end
+    local file_class = FILE_CLASSES[source.file_class_id]
+    if file_class then file_class = file_class:match("^%s*(.-)%s*$") end
     return {
         function_id = source.function_id,
         fn = source.function_id,
         file_class_id = source.file_class_id,
-        -- The ROM's node +1 byte is also the class consumed by node actions
-        -- (including 0x27..0x2A Turn Off Node dispatch).
+        file_class = file_class,
+        -- Keep imported class identity for topology, while the action rules
+        -- use this resolved display category for objective matching.
         class = source.file_class_id,
         x = source.x,
         y = source.y,
@@ -247,9 +250,8 @@ function M.begin(system_id, field_alarm, initial_node_id,
     return true, state
 end
 
--- ROM 0xE034 clears FFF0E3 before system selection. ROM 0xE110 checks run
--- type 6, then sets it negative only when the selected system matches FFFBF0
--- and FFFC1C bit 7 is clear; all other entries remain outside the active run.
+-- [C] ROM 0xE034 starts each system visit outside the active run; 0xE110
+-- activates only the assigned system when its completion has not been recorded.
 function M.activate_run_for_system(system_id, run)
     if type(system_id) ~= "number" or system_id % 1 ~= 0 or
        system_id < 0 or system_id > 24 or type(run) ~= "table" or
@@ -259,22 +261,20 @@ function M.activate_run_for_system(system_id, run)
         return false
     end
 
-    local next_state
-    if system_id == run.target_system_id and
-       (((run.fc1c or 0) & 0x80) == 0) then
-        next_state = -1
-    else
-        next_state = 0
-    end
-    if run.state == next_state then return false end
-    run.state = next_state
+    -- [C] ROM 0xE110 activates a run only in its assigned system and only
+    -- before its completion has been recorded.
+    local next_status = system_id == run.target_system_id and
+                        not run.completion_recorded and
+                            E.MatrixRunStatus.ACTIVE or
+                        E.MatrixRunStatus.INACTIVE
+    if run.status == next_status then return false end
+    run.status = next_status
     return true
 end
 
--- Matrix objective RAM belongs to the accepted Lua run offer and is included
--- in run_registry.save_state(). The host supplies only field/world facts; this
--- projection keeps run state in one Lua-owned place while node rules operate
--- on a temporary typed view.
+-- The accepted run offer owns named objective facts in the Lua save state.
+-- The host supplies field/world facts; this projection keeps one gameplay
+-- state while node rules update a temporary typed view.
 function M.world_state(game)
     local world = game.matrix_world_state()
     local run = RunRegistry.active_matrix_run_state()
@@ -282,8 +282,8 @@ function M.world_state(game)
     return world
 end
 
--- Persist named per-cell discovery facts across Matrix sessions. ROM RAM
--- addresses and packed status bytes stay in the source trace and C++ adapter.
+-- Persist named per-cell discovery facts across Matrix sessions. Packed source
+-- storage is decoded at import and does not become gameplay state.
 function M.commit_map_knowledge(game, state)
     state = state or M.active
     if type(state) ~= "table" or

@@ -63,8 +63,11 @@ void push_record(lua_State* lua, const ScriptCyberdeckRecord& record) {
         lua_setfield(lua, -2, "id");
         lua_pushinteger(lua, record.files[index].size);
         lua_setfield(lua, -2, "size");
-        lua_pushinteger(lua, record.files[index].value);
-        lua_setfield(lua, -2, "value");
+        lua_pushboolean(lua, record.files[index].value == -1);
+        lua_setfield(lua, -2, "run_objective");
+        lua_pushinteger(lua, record.files[index].value == -1
+                                ? 0 : record.files[index].value);
+        lua_setfield(lua, -2, "data_value");
         lua_rawseti(lua, files_index, static_cast<lua_Integer>(index));
     }
     lua_setfield(lua, record_index, "files");
@@ -122,6 +125,68 @@ ScriptMatrixSecurityColor matrix_security_color_from_lua(
     return color;
 }
 
+const char* matrix_run_status_name(const ScriptMatrixRunStatus status) {
+    switch (status) {
+    case ScriptMatrixRunStatus::pending:
+        return "pending";
+    case ScriptMatrixRunStatus::inactive:
+        return "inactive";
+    case ScriptMatrixRunStatus::active:
+        return "active";
+    case ScriptMatrixRunStatus::completed:
+        return "completed";
+    }
+    return "pending";
+}
+
+const char* matrix_run_node_name(const ScriptMatrixRunNode node) {
+    switch (node) {
+    case ScriptMatrixRunNode::cpu:
+        return "cpu";
+    case ScriptMatrixRunNode::datastore:
+        return "datastore";
+    }
+    return "datastore";
+}
+
+const char* matrix_run_action_name(const ScriptMatrixRunAction action) {
+    switch (action) {
+    case ScriptMatrixRunAction::crash_system:
+        return "crash_system";
+    case ScriptMatrixRunAction::delete_file:
+        return "delete_file";
+    case ScriptMatrixRunAction::upload_file:
+        return "upload_file";
+    case ScriptMatrixRunAction::download_file:
+        return "download_file";
+    }
+    return "download_file";
+}
+
+std::optional<ScriptMatrixRunStatus> matrix_run_status_from_lua(
+    lua_State* lua, const int table_index) {
+    lua_getfield(lua, table_index, "status");
+    std::optional<ScriptMatrixRunStatus> status;
+    if (lua_type(lua, -1) == LUA_TSTRING) {
+        std::size_t length = 0U;
+        const char* value = lua_tolstring(lua, -1, &length);
+        if (value != nullptr) {
+            const std::string_view name(value, length);
+            if (name == "pending") {
+                status = ScriptMatrixRunStatus::pending;
+            } else if (name == "inactive") {
+                status = ScriptMatrixRunStatus::inactive;
+            } else if (name == "active") {
+                status = ScriptMatrixRunStatus::active;
+            } else if (name == "completed") {
+                status = ScriptMatrixRunStatus::completed;
+            }
+        }
+    }
+    lua_pop(lua, 1);
+    return status;
+}
+
 template <typename Values>
 void read_array(lua_State* lua, const int table_index, const char* name,
                 Values& values, const int minimum, const int maximum) {
@@ -175,8 +240,14 @@ ScriptCyberdeckRecord read_record(lua_State* lua, const int table_index) {
                     read_integer(lua, file_index, "id", -1, -1, 127));
                 record.files[index].size = static_cast<std::uint16_t>(
                     read_integer(lua, file_index, "size", 0, 0, 0xFFFF));
-                record.files[index].value = static_cast<std::int8_t>(
-                    read_integer(lua, file_index, "value", 0, -128, 127));
+                lua_getfield(lua, file_index, "run_objective");
+                const bool run_objective = lua_type(lua, -1) == LUA_TBOOLEAN &&
+                    lua_toboolean(lua, -1) != 0;
+                lua_pop(lua, 1);
+                record.files[index].value = run_objective
+                    ? static_cast<std::int8_t>(-1)
+                    : static_cast<std::int8_t>(read_integer(
+                        lua, file_index, "data_value", 0, -128, 127));
             }
             lua_pop(lua, 1);
         }
@@ -330,20 +401,32 @@ void push_matrix_world_state(lua_State* lua,
     }
     if (world.run.has_value()) {
         const auto& run = *world.run;
-        lua_createtable(lua, 0, 7);
+        lua_createtable(lua, 0, 6);
         const int run_index = lua_absindex(lua, -1);
-        lua_pushinteger(lua, run.state);
-        lua_setfield(lua, run_index, "state");
-        lua_pushinteger(lua, run.objective);
+        lua_pushstring(lua, matrix_run_status_name(run.status));
+        lua_setfield(lua, run_index, "status");
+        lua_createtable(lua, 0, 4);
+        const int objective_index = lua_absindex(lua, -1);
+        lua_pushstring(lua, matrix_run_node_name(run.objective.node));
+        lua_setfield(lua, objective_index, "node");
+        lua_pushstring(lua, matrix_run_action_name(run.objective.action));
+        lua_setfield(lua, objective_index, "action");
+        if (!run.objective.file_class.empty()) {
+            lua_pushlstring(lua, run.objective.file_class.data(),
+                            run.objective.file_class.size());
+            lua_setfield(lua, objective_index, "file_class");
+        }
+        if (run.objective.file_id.has_value()) {
+            lua_pushinteger(lua, *run.objective.file_id);
+            lua_setfield(lua, objective_index, "file_id");
+        }
         lua_setfield(lua, run_index, "objective");
-        lua_pushinteger(lua, run.value);
-        lua_setfield(lua, run_index, "value");
-        lua_pushinteger(lua, run.size);
-        lua_setfield(lua, run_index, "size");
-        lua_pushinteger(lua, run.completion_flags);
-        lua_setfield(lua, run_index, "fc28");
-        lua_pushinteger(lua, run.run_flags);
-        lua_setfield(lua, run_index, "fc1c");
+        lua_pushinteger(lua, run.file_size);
+        lua_setfield(lua, run_index, "file_size");
+        lua_pushboolean(lua, run.completion_marker_present);
+        lua_setfield(lua, run_index, "completion_marker_present");
+        lua_pushboolean(lua, run.completion_recorded);
+        lua_setfield(lua, run_index, "completion_recorded");
         push_optional_integer(lua, run_index, "target_system_id",
                               run.target_system_id);
         lua_setfield(lua, world_index, "run");
@@ -456,33 +539,108 @@ ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
     lua_getfield(lua, world_index, "run");
     if (lua_istable(lua, -1)) {
         const int run_index = lua_absindex(lua, -1);
-        ScriptMatrixRunState run;
-        const auto read_byte = [lua, run_index](const char* name,
-                                                const lua_Integer fallback,
-                                                const lua_Integer minimum,
-                                                const lua_Integer maximum) {
-            const auto value = read_optional_integer(lua, run_index, name);
-            return static_cast<int>(std::clamp<lua_Integer>(
-                value.value_or(fallback), minimum, maximum));
-        };
-        run.state = static_cast<std::int8_t>(
-            read_byte("state", 0, -128, 127));
-        run.objective = static_cast<std::int8_t>(
-            read_byte("objective", 0, -128, 127));
-        run.value = static_cast<std::int8_t>(
-            read_byte("value", 0, -128, 127));
-        run.size = static_cast<std::uint8_t>(
-            read_byte("size", 0, 0, 0xFF));
-        run.completion_flags = static_cast<std::uint8_t>(
-            read_byte("fc28", 0, 0, 0xFF));
-        run.run_flags = static_cast<std::uint8_t>(
-            read_byte("fc1c", 0, 0, 0xFF));
-        if (const auto target = read_optional_integer(
-                lua, run_index, "target_system_id");
-            target.has_value() && *target >= 0 && *target <= 24) {
-            run.target_system_id = static_cast<std::uint8_t>(*target);
+        const auto status = matrix_run_status_from_lua(lua, run_index);
+        const auto file_size =
+            read_optional_integer(lua, run_index, "file_size");
+        const auto completion_marker_present =
+            read_optional_boolean(lua, run_index, "completion_marker_present");
+        const auto completion_recorded =
+            read_optional_boolean(lua, run_index, "completion_recorded");
+        const auto target =
+            read_optional_integer(lua, run_index, "target_system_id");
+        ScriptMatrixRunObjective objective;
+        bool objective_node_valid = false;
+        bool objective_valid = false;
+        lua_getfield(lua, run_index, "objective");
+        if (lua_istable(lua, -1)) {
+            const int objective_index = lua_absindex(lua, -1);
+            lua_getfield(lua, objective_index, "node");
+            if (lua_type(lua, -1) == LUA_TSTRING) {
+                std::size_t length = 0U;
+                const char* value = lua_tolstring(lua, -1, &length);
+                if (value != nullptr) {
+                    const std::string_view name(value, length);
+                    if (name == "cpu") {
+                        objective.node = ScriptMatrixRunNode::cpu;
+                        objective_node_valid = true;
+                    } else if (name == "datastore") {
+                        objective.node = ScriptMatrixRunNode::datastore;
+                        objective_node_valid = true;
+                    }
+                }
+            }
+            lua_pop(lua, 1);
+
+            lua_getfield(lua, objective_index, "action");
+            if (lua_type(lua, -1) == LUA_TSTRING) {
+                std::size_t length = 0U;
+                const char* value = lua_tolstring(lua, -1, &length);
+                if (value != nullptr) {
+                    const std::string_view name(value, length);
+                    if (name == "crash_system") {
+                        objective.action = ScriptMatrixRunAction::crash_system;
+                        objective_valid = true;
+                    } else if (name == "delete_file") {
+                        objective.action = ScriptMatrixRunAction::delete_file;
+                        objective_valid = true;
+                    } else if (name == "upload_file") {
+                        objective.action = ScriptMatrixRunAction::upload_file;
+                        objective_valid = true;
+                    } else if (name == "download_file") {
+                        objective.action = ScriptMatrixRunAction::download_file;
+                        objective_valid = true;
+                    }
+                }
+            }
+            lua_pop(lua, 1);
+
+            lua_getfield(lua, objective_index, "file_class");
+            if (lua_type(lua, -1) == LUA_TSTRING) {
+                std::size_t length = 0U;
+                const char* value = lua_tolstring(lua, -1, &length);
+                if (value != nullptr) {
+                    objective.file_class.assign(value, length);
+                }
+            }
+            lua_pop(lua, 1);
+            objective.file_id = read_optional_integer(
+                lua, objective_index, "file_id");
         }
-        world.run = run;
+        lua_pop(lua, 1);
+        const bool target_is_valid = !target.has_value() ||
+            (*target >= 0 && *target <= 24);
+        const bool file_is_valid = !objective.file_id.has_value() ||
+            (*objective.file_id >= 0 && *objective.file_id <= 69);
+        const bool objective_shape_valid = objective_node_valid &&
+            objective_valid && file_is_valid &&
+            ((objective.node == ScriptMatrixRunNode::cpu &&
+              objective.action == ScriptMatrixRunAction::crash_system &&
+              objective.file_class.empty() && !objective.file_id.has_value()) ||
+             (objective.node == ScriptMatrixRunNode::datastore &&
+              objective.action != ScriptMatrixRunAction::crash_system &&
+              !objective.file_class.empty() &&
+              ((objective.action == ScriptMatrixRunAction::upload_file &&
+                !objective.file_id.has_value()) ||
+               ((objective.action == ScriptMatrixRunAction::delete_file ||
+                 objective.action == ScriptMatrixRunAction::download_file) &&
+                objective.file_id.has_value()))));
+        if (status.has_value() && objective_shape_valid &&
+            file_size.has_value() && *file_size >= 0 && *file_size <= 255 &&
+            completion_marker_present.has_value() &&
+            completion_recorded.has_value() &&
+            target_is_valid) {
+            ScriptMatrixRunState run;
+            run.status = *status;
+            run.objective = std::move(objective);
+            run.file_size = static_cast<int>(*file_size);
+            run.completion_marker_present =
+                *completion_marker_present;
+            run.completion_recorded = *completion_recorded;
+            if (target.has_value()) {
+                run.target_system_id = static_cast<int>(*target);
+            }
+            world.run = run;
+        }
     }
     lua_pop(lua, 1);
 

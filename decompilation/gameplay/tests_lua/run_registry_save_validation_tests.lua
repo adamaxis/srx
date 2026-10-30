@@ -16,12 +16,16 @@ game = { runs = run_modules, modules = { run_support = Support } }
 
 local function matrix_state()
     return {
-        state = 0,
-        objective = 0,
-        value = 0,
-        size = 10,
-        fc28 = 0,
-        fc1c = 0,
+        status = E.MatrixRunStatus.PENDING,
+        objective = {
+            node = "datastore",
+            action = E.MatrixRunAction.DOWNLOAD_FILE,
+            file_class = "Outdated Files",
+            file_id = 1,
+        },
+        file_size = 10,
+        completion_marker_present = false,
+        completion_recorded = false,
         target_system_id = 0,
     }
 end
@@ -229,6 +233,56 @@ assert(Registry.active_offer.contact_id ==
        Registry.active_offer.payment.negotiated_amount == 55 and
        Support.current_run_view(Registry.active_offer).payment_amount == 55,
     "save restore must preserve the accepted Current Run contact and amount")
+
+local matrix_offer
+for _, row in ipairs(OfferData.contacts[E.RunContact.BIG_RHINO]) do
+    if row.variant_id == "matrix_simple" then
+        matrix_offer = source_offer(E.RunContact.BIG_RHINO, row, 0, 0)
+        break
+    end
+end
+assert(matrix_offer ~= nil)
+matrix_offer.matrix_run_state = {
+    state = -1,
+    objective = 4,
+    value = 20,
+    size = 30,
+    fc28 = 1,
+    fc1c = 0,
+    target_system_id = 7,
+}
+local legacy_matrix_save = saved(matrix_offer)
+assert(Registry.validate_saved_state(legacy_matrix_save),
+    "the save boundary accepts a prior Matrix run record for migration")
+Registry.restore_saved_state(legacy_matrix_save)
+local migrated_matrix = Registry.active_matrix_run_state()
+assert(migrated_matrix.status == E.MatrixRunStatus.ACTIVE and
+       migrated_matrix.objective.node == "datastore" and
+       migrated_matrix.objective.action == E.MatrixRunAction.DOWNLOAD_FILE and
+       migrated_matrix.objective.file_class == "Security Files" and
+       migrated_matrix.objective.file_id == 20 and
+       migrated_matrix.file_size == 30 and
+       migrated_matrix.completion_marker_present and
+       not migrated_matrix.completion_recorded and
+       migrated_matrix.target_system_id == 7 and
+       migrated_matrix.state == nil and migrated_matrix.fc28 == nil,
+    "legacy Matrix save fields normalize once into named objective facts")
+
+local invalid_matrix_offer = copy_offer(matrix_offer)
+invalid_matrix_offer.matrix_run_state = {
+    status = E.MatrixRunStatus.ACTIVE,
+    objective = {
+        node = "datastore",
+        action = E.MatrixRunAction.DELETE_FILE,
+        file_class = "Security Files",
+    },
+    file_size = 30,
+    completion_marker_present = true,
+    completion_recorded = false,
+    target_system_id = 7,
+}
+assert(not Registry.validate_saved_state(saved(invalid_matrix_offer)),
+    "a delete action without a selected file is not a valid Matrix objective")
 
 print("run registry save validation passed: " .. tostring(checked) ..
     " source row/rank/roll states; accepted Courier 40 -> 55 persisted; " ..

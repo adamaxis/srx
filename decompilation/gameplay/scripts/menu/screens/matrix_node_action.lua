@@ -508,9 +508,8 @@ local function start_transfer(st, ctx)
     -- The Yes/No prompt has its own cursor. Keep the selected node action
     -- (Transfer Data) when returning from the prompt or its result message.
     st.transfer_return_row = st.row
-    st.transfer_ram = st.transfer_ram or {}
     local result = NodeActions.begin_search(
-        world.run, node, st.transfer_ram, st.system_id)
+        world.run, node, st.system_id)
     st.matrix_message = nil
     if result then
         if result.text == NodeActions.TEXT.UPLOAD_DONE then
@@ -573,11 +572,11 @@ local function store_transfer_file(st, ctx)
     local slots = game.deck_slots()
     local slot, text = NodeActions.store(
         record, world.run, MatrixSession.current_node(st.matrix_state),
-        st.transfer_ram, transfer.file,
+        transfer.file,
         function(bound) return game.source_random_bound(bound) end)
     if slot ~= nil then
         game.deck_commit(record, slots)
-        if transfer.file.objective then
+        if transfer.file.run_objective then
             MatrixSession.commit_world_state(game, world)
         end
     end

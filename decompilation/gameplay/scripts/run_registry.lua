@@ -3,40 +3,132 @@
 local Registry = {}
 local E = require("enums")
 local OfferData = require("data.johnson_run_offers")
+local FileClasses = require("data.matrix_file_classes")
+
+local RunStatus = E.MatrixRunStatus
+local RunAction = E.MatrixRunAction
+
+local function class_name(class_id)
+    local label = FileClasses[class_id]
+    return type(label) == "string" and label:match("^%s*(.-)%s*$") or nil
+end
+
+-- Saved offers from the previous schema are normalized at the save boundary.
+-- New gameplay code sees only named lifecycle and objective facts.
+local function matrix_run_state_view(state)
+    if type(state) ~= "table" then return nil end
+
+    local status = state.status
+    local objective = state.objective
+    local file_size = state.file_size
+    local completion_marker_present = state.completion_marker_present
+    local completion_recorded = state.completion_recorded
+    if status == nil then
+        local legacy_status = state.state
+        local legacy_class = state.objective
+        local legacy_value = state.value
+        local old_completion_flags = state.fc28
+        local old_run_flags = state.fc1c
+        local function legacy_integer(value, minimum, maximum)
+            return type(value) == "number" and value % 1 == 0 and
+                   value >= minimum and value <= maximum
+        end
+        if not legacy_integer(legacy_status, -128, 127) or
+           not legacy_integer(legacy_class, -128, 127) or
+           not legacy_integer(legacy_value, -128, 127) or
+           not legacy_integer(old_completion_flags, 0, 255) or
+           not legacy_integer(old_run_flags, 0, 255) then
+            return nil
+        end
+        status = ((old_run_flags & 0x80) ~= 0 or legacy_status > 0) and
+                     RunStatus.COMPLETED or
+                 (legacy_status < 0 and RunStatus.ACTIVE or
+                  RunStatus.INACTIVE)
+        if legacy_class < 0 then
+            objective = { node = "cpu", action = RunAction.CRASH_SYSTEM }
+        else
+            local action = legacy_value < 0 and RunAction.UPLOAD_FILE or
+                           legacy_value == 0 and RunAction.DELETE_FILE or
+                           RunAction.DOWNLOAD_FILE
+            objective = {
+                node = "datastore",
+                action = action,
+                file_class = class_name(legacy_class),
+                file_id = legacy_value >= 0 and legacy_value or nil,
+            }
+        end
+        file_size = state.size
+        completion_marker_present = (old_completion_flags & 1) ~= 0
+        completion_recorded = (old_run_flags & 0x80) ~= 0 or
+                              legacy_status > 0
+    end
+
+    if (status ~= RunStatus.PENDING and status ~= RunStatus.INACTIVE and
+        status ~= RunStatus.ACTIVE and status ~= RunStatus.COMPLETED) or
+       type(objective) ~= "table" or
+       (objective.node ~= "cpu" and objective.node ~= "datastore") or
+       type(file_size) ~= "number" or file_size % 1 ~= 0 or
+       file_size < 0 or file_size > 255 or
+       type(completion_marker_present) ~= "boolean" or
+       type(completion_recorded) ~= "boolean" then
+        return nil
+    end
+
+    local action = objective.action
+    local file_id = objective.file_id
+    local valid_action = action == RunAction.CRASH_SYSTEM or
+                         action == RunAction.DELETE_FILE or
+                         action == RunAction.UPLOAD_FILE or
+                         action == RunAction.DOWNLOAD_FILE
+    local valid_file_class = false
+    for _, label in pairs(FileClasses) do
+        if type(label) == "string" and
+           label:match("^%s*(.-)%s*$") == objective.file_class then
+            valid_file_class = true
+            break
+        end
+    end
+    local valid_objective = valid_action and
+        ((objective.node == "cpu" and
+          action == RunAction.CRASH_SYSTEM and
+          objective.file_class == nil and file_id == nil) or
+         (objective.node == "datastore" and
+          action ~= RunAction.CRASH_SYSTEM and valid_file_class and
+          ((action == RunAction.UPLOAD_FILE and file_id == nil) or
+           ((action == RunAction.DELETE_FILE or
+             action == RunAction.DOWNLOAD_FILE) and
+            type(file_id) == "number" and file_id % 1 == 0 and
+            file_id >= 0 and file_id <= 69))))
+    if not valid_objective then return nil end
+
+    local target_system_id = state.target_system_id
+    if target_system_id ~= nil and
+       (type(target_system_id) ~= "number" or
+        target_system_id % 1 ~= 0 or
+        target_system_id < 0 or target_system_id > 24) then
+        return nil
+    end
+    return {
+        status = status,
+        objective = {
+            node = objective.node,
+            action = action,
+            file_class = objective.file_class,
+            file_id = file_id,
+        },
+        file_size = file_size,
+        completion_marker_present = completion_marker_present,
+        completion_recorded = completion_recorded,
+        target_system_id = target_system_id,
+    }
+end
 
 local function valid_matrix_run_state(state)
-    if type(state) ~= "table" then return false end
-    local function signed_byte(value)
-        return type(value) == "number" and value % 1 == 0 and
-               value >= -128 and value <= 127
-    end
-    local function byte(value)
-        return type(value) == "number" and value % 1 == 0 and
-               value >= 0 and value <= 0xFF
-    end
-    if not signed_byte(state.state) or
-       not signed_byte(state.objective) or
-       not signed_byte(state.value) or not byte(state.size) or
-       not byte(state.fc28) or not byte(state.fc1c) then
-        return false
-    end
-    return state.target_system_id == nil or
-        (type(state.target_system_id) == "number" and
-         state.target_system_id % 1 == 0 and
-         state.target_system_id >= 0 and state.target_system_id <= 24)
+    return matrix_run_state_view(state) ~= nil
 end
 
 local function copy_matrix_run_state(state)
-    if state == nil then return nil end
-    return {
-        state = state.state,
-        objective = state.objective,
-        value = state.value,
-        size = state.size,
-        fc28 = state.fc28,
-        fc1c = state.fc1c,
-        target_system_id = state.target_system_id,
-    }
+    return matrix_run_state_view(state)
 end
 
 local function matrix_run_state_for(offer)
@@ -722,9 +814,19 @@ end
 function Registry.restore_saved_state(state)
     local valid, message = Registry.validate_saved_state(state)
     assert(valid, message)
-    Registry.current_offer = state.current_offer
-    Registry.active_offer = state.active_offer
-    Registry.last_completed_offer = state.last_completed_offer
+    local function restored_offer(offer)
+        if type(offer) ~= "table" then return offer end
+        local restored = {}
+        for key, value in pairs(offer) do restored[key] = value end
+        if restored.id == E.RunId.MATRIX_OBJECTIVE then
+            restored.matrix_run_state =
+                copy_matrix_run_state(restored.matrix_run_state)
+        end
+        return restored
+    end
+    Registry.current_offer = restored_offer(state.current_offer)
+    Registry.active_offer = restored_offer(state.active_offer)
+    Registry.last_completed_offer = restored_offer(state.last_completed_offer)
     Registry._last_offer_result = state.last_offer_result
 end
 

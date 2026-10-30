@@ -74,6 +74,17 @@ Primary source: `input/shadowrun_genesis_us.bin`.
   action/input sound outside those branches has not been independently
   established.
 
+## Native gameplay state
+
+Lua represents the run with a named lifecycle and an objective record containing
+its node kind, action, datastore category, and optional file identity. The
+requested file size and completion facts are separate named fields. Upload,
+delete, download, and CPU-crash behavior no longer depends on signed values or
+packed run flags in gameplay logic. A save-restore adapter translates older
+saved run records once; the active run model contains only the normalized
+facts. Cyberdeck file state exposes `run_objective` as a boolean, while the
+narrow storage adapter maps that fact to the host record format.
+
 ## Seven-question visual review
 
 1. **Does it look correct?** The Qt route captures show the search message,

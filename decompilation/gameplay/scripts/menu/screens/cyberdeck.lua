@@ -92,7 +92,7 @@ function M.prepare_program_child_surface(st, ctx)
     update_program_details(st, record, program)
 
     local run = MatrixSession.world_state(ctx.game).run
-    if run == nil or (run.state or 0) >= 0 then
+    if run == nil or run.status ~= E.MatrixRunStatus.ACTIVE then
         st.runner_detail_lines = D.NO_ACTIVE_RUN_DETAILS
     else
         st.runner_detail_lines = nil
@@ -167,7 +167,7 @@ function M.enter(st, ctx)
     local _, record = update_program_art_state(st, ctx)
     update_program_details(st, record)
     local run = MatrixSession.world_state(ctx.game).run
-    if run == nil or (run.state or 0) >= 0 then
+    if run == nil or run.status ~= E.MatrixRunStatus.ACTIVE then
         st.runner_detail_lines = D.NO_ACTIVE_RUN_DETAILS
     else
         st.runner_detail_lines = nil
