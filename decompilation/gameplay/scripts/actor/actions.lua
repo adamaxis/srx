@@ -862,9 +862,10 @@ local function begin_dynamic_target_action(state, context, target)
     state.direction = direction
     state.action_animation_complete = false
     state.action_delay = source_action_delay(context, state, 1)
-    -- ROM 0xB25E calls 0x1DBAA once the strike is accepted in range [C].
-    -- The typed heartbeat result lets the host set FFDF84/FFDF86 [H].
-    state.world_activity_requested = true
+    -- The accepted strike starts combat engagement. The host owns the
+    -- resulting activity delay; Lua reports this gameplay event, not its
+    -- source timer fields [C: 0xB258 -> 0x1DBAA].
+    state.combat_engagement_started = true
     -- ROM 0xB284 invokes the shared 0x55C76 reaction only after the linked
     -- heading is accepted. Lua resolves the source-derived action now and
     -- returns a one-heartbeat meter update for the host to apply.

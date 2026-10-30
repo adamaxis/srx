@@ -23,8 +23,8 @@ local function controlled_runner(context)
     return nil
 end
 
-local function request_world_activity(state)
-    state.world_activity_requested = true
+local function mark_combat_engagement_started(state)
+    state.combat_engagement_started = true
 end
 
 local function thon_action_path(state, context)
@@ -111,7 +111,7 @@ local function guard_spots_you(state, context, leader)
     end
     if context.source_alarm_active == true then
         -- 0x13F80 tail-jumps to 0x1DBAA when FFE16F is already set [C].
-        request_world_activity(state)
+        mark_combat_engagement_started(state)
         return
     end
     if context.source_alarm_active ~= false or
@@ -191,14 +191,14 @@ local function think_gate(state, context)
         return "follow_leader"
     end
 
-    local raises_world_activity = false
+    local engagement_started = false
     if context.source_projection_active == true and
        facts.roles.hostile then
         -- 0x139BE calls 0x1DBAA before re-reading FFDF84 [C].
-        request_world_activity(state)
-        raises_world_activity = true
+        mark_combat_engagement_started(state)
+        engagement_started = true
     end
-    if world_active or raises_world_activity then
+    if world_active or engagement_started then
         return "combat"
     end
 
@@ -223,7 +223,7 @@ local function think_gate(state, context)
             return "combat"
         end
         if leader.distance < AiTuning.ENGAGE_DIST then
-            request_world_activity(state)
+            mark_combat_engagement_started(state)
             return "combat"
         end
         return "patrol"
@@ -248,7 +248,7 @@ local function think_gate(state, context)
 end
 
 local function select_think_path(state, context)
-    state.world_activity_requested = false
+    state.combat_engagement_started = false
     state.field_event_request = nil
     state.ai_deactivate_requested = false
     state.ai_think_gap = nil

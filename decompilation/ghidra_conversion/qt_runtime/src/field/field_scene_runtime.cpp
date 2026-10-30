@@ -170,6 +170,70 @@ void set_script_ammunition_facts(
     context.hold_for_ending_activity = ammunition_remaining == 0x28U;
 }
 
+scripting::ScriptActorFacts actor_facts_from_field_record(
+    const std::uint8_t lifecycle, const std::uint8_t interaction,
+    const std::uint8_t behavior, const std::uint8_t roles) {
+    return {
+        { (lifecycle & 0x01U) != 0U, (lifecycle & 0x02U) != 0U,
+          (lifecycle & 0x08U) != 0U, (lifecycle & 0x10U) != 0U,
+          (lifecycle & 0x20U) != 0U, (lifecycle & 0x40U) != 0U },
+        { (interaction & 0x01U) != 0U, (interaction & 0x02U) != 0U,
+          (interaction & 0x04U) != 0U, (interaction & 0x08U) != 0U,
+          (interaction & 0x10U) != 0U, (interaction & 0x20U) != 0U,
+          (interaction & 0x40U) != 0U, (interaction & 0x80U) != 0U,
+          (interaction & 0x80U) != 0U },
+        { (behavior & 0x01U) != 0U, (behavior & 0x02U) != 0U,
+          (behavior & 0x04U) != 0U, (behavior & 0x08U) != 0U,
+          (behavior & 0x10U) != 0U, (behavior & 0x20U) != 0U,
+          (behavior & 0x40U) != 0U, (behavior & 0x80U) != 0U },
+        { (roles & 0x01U) != 0U, (roles & 0x02U) != 0U,
+          (roles & 0x04U) != 0U, (roles & 0x08U) != 0U,
+          (roles & 0x10U) != 0U, (roles & 0x20U) != 0U,
+          (roles & 0x40U) != 0U }
+    };
+}
+
+std::uint8_t lifecycle_flags_from_facts(
+    const scripting::ScriptActorLifecycleFacts& facts,
+    const std::uint8_t original) {
+    auto result = static_cast<std::uint8_t>(original & 0x84U);
+    if (facts.active) result |= 0x01U;
+    if (facts.thinking_enabled) result |= 0x02U;
+    if (facts.ai_runner) result |= 0x08U;
+    if (facts.downed) result |= 0x10U;
+    if (facts.group_leader) result |= 0x20U;
+    if (facts.dead) result |= 0x40U;
+    return result;
+}
+
+std::uint8_t behavior_flags_from_facts(
+    const scripting::ScriptActorBehaviorFacts& facts) {
+    std::uint8_t result = 0U;
+    if (facts.route_clear) result |= 0x01U;
+    if (facts.path_active) result |= 0x02U;
+    if (facts.restart_steering) result |= 0x04U;
+    if (facts.wall_following) result |= 0x08U;
+    if (facts.in_target_band) result |= 0x10U;
+    if (facts.route_transition) result |= 0x20U;
+    if (facts.fleeing) result |= 0x40U;
+    if (facts.escort) result |= 0x80U;
+    return result;
+}
+
+std::uint8_t role_flags_from_facts(
+    const scripting::ScriptActorRoleFacts& facts,
+    const std::uint8_t original) {
+    auto result = static_cast<std::uint8_t>(original & 0x80U);
+    if (facts.spotted) result |= 0x01U;
+    if (facts.reinforcement) result |= 0x02U;
+    if (facts.despawn_offscreen) result |= 0x04U;
+    if (facts.quest) result |= 0x08U;
+    if (facts.runner) result |= 0x10U;
+    if (facts.pedestrian) result |= 0x20U;
+    if (facts.hostile) result |= 0x40U;
+    return result;
+}
+
 void set_script_animation_facts(
     scripting::ScriptActorBehaviorContext& context,
     const std::string_view animation_id, const bool animation_complete) {
@@ -3677,9 +3741,9 @@ void FieldSceneRuntime::initialize_default_field_actors(
             context.source_actor_slot = source_slot;
             context.live_field_actor = true;
         }
-        context.source_record_flags = actor.source_record_flags;
-        context.source_interaction_flags = actor.source_interaction_flags;
-        context.source_spawn_state_flags = actor.source_spawn_state_flags;
+        context.actor_facts = actor_facts_from_field_record(
+            actor.source_record_flags, actor.source_interaction_flags,
+            0U, actor.source_spawn_state_flags);
         set_script_ammunition_facts(context, actor.ammunition_remaining);
         context.physical_condition = actor.physical_meter;
         set_script_animation_facts(
@@ -3717,10 +3781,13 @@ void FieldSceneRuntime::initialize_default_field_actors(
         actor.animation_complete = decision->animation_complete;
         if (actor.source_default_dynamic_profile ||
             actor.source_default_item_action_profile) {
-            actor.source_record_flags = decision->source_record_flags;
-            actor.source_behavior_flags = decision->source_behavior_flags;
-            actor.source_spawn_state_flags =
-                decision->source_spawn_state_flags;
+            actor.source_record_flags = lifecycle_flags_from_facts(
+                decision->actor_facts.lifecycle, actor.source_record_flags);
+            actor.source_behavior_flags = behavior_flags_from_facts(
+                decision->actor_facts.behavior);
+            actor.source_spawn_state_flags = role_flags_from_facts(
+                decision->actor_facts.roles,
+                actor.source_spawn_state_flags);
             actor.combatant.source_flags = actor.source_record_flags;
         }
         if (decision->target_motion_effect_slot_request.has_value()) {
@@ -4048,13 +4115,12 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         context.actor_behavior_profile =
             scripting::script_actor_behavior_profile_from_source_posture(
                 actor.combatant.source_posture);
-        context.source_record_flags = actor.source_record_flags;
-        context.source_interaction_flags = actor.source_interaction_flags;
-        context.source_behavior_flags = actor.source_behavior_flags;
+        context.actor_facts = actor_facts_from_field_record(
+            actor.source_record_flags, actor.source_interaction_flags,
+            actor.source_behavior_flags, actor.source_spawn_state_flags);
         set_script_ammunition_facts(context, actor.ammunition_remaining);
         set_script_animation_facts(
             context, actor.animation_id, actor.animation_complete);
-        context.source_spawn_state_flags = actor.source_spawn_state_flags;
         context.source_record_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
         context.has_live_actor_record = true;
@@ -4093,8 +4159,10 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
         actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
         actor.action_delay = decision->action_delay;
-        actor.source_record_flags = decision->source_record_flags;
-        actor.source_behavior_flags = decision->source_behavior_flags;
+        actor.source_record_flags = lifecycle_flags_from_facts(
+            decision->actor_facts.lifecycle, actor.source_record_flags);
+        actor.source_behavior_flags = behavior_flags_from_facts(
+            decision->actor_facts.behavior);
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_variant = decision->animation_variant;
@@ -4322,12 +4390,9 @@ void FieldSceneRuntime::advance_default_field_actors(
             }
             context.world_position = scripting::ScriptWorldPosition{
                 actor.world_position.x, actor.world_position.y};
-            context.source_record_flags = actor.source_record_flags;
-            context.source_interaction_flags =
-                actor.source_interaction_flags;
-            context.source_behavior_flags = actor.source_behavior_flags;
-            context.source_spawn_state_flags =
-                actor.source_spawn_state_flags;
+            context.actor_facts = actor_facts_from_field_record(
+                actor.source_record_flags, actor.source_interaction_flags,
+                actor.source_behavior_flags, actor.source_spawn_state_flags);
             context.physical_condition = actor.physical_meter;
             context.actor_behavior_profile =
                 scripting::script_actor_behavior_profile_from_source_posture(
@@ -4355,17 +4420,14 @@ void FieldSceneRuntime::advance_default_field_actors(
                 source_default_item_action;
             context.world_activity_script_actor =
                 actor.world_activity_script_actor;
-            context.source_record_flags = actor.source_record_flags;
-            context.source_interaction_flags =
-                actor.source_interaction_flags;
-            context.source_behavior_flags = actor.source_behavior_flags;
+            context.actor_facts = actor_facts_from_field_record(
+                actor.source_record_flags, actor.source_interaction_flags,
+                actor.source_behavior_flags, actor.source_spawn_state_flags);
             set_script_ammunition_facts(context, actor.ammunition_remaining);
             set_script_animation_facts(
                 context, actor.animation_id, actor.animation_complete);
             context.source_item_spawn_result =
                 actor.source_item_spawn_result;
-            context.source_spawn_state_flags =
-                actor.source_spawn_state_flags;
             context.source_alarm_active = field_matrix_field_state_.alarm;
             context.scene_mode =
                 scripting::script_field_scene_mode_from_source_word(
@@ -4927,7 +4989,8 @@ void FieldSceneRuntime::advance_default_field_actors(
             actor.combatant.record_type == static_cast<std::uint16_t>(
                 *actor.source_record_slot);
         if (world_combat_record) {
-            actor.source_record_flags = decision->source_record_flags;
+            actor.source_record_flags = lifecycle_flags_from_facts(
+                decision->actor_facts.lifecycle, actor.source_record_flags);
             actor.combatant.source_flags = actor.source_record_flags;
         }
         actor.animation_direction = decision->direction;
@@ -4936,12 +4999,14 @@ void FieldSceneRuntime::advance_default_field_actors(
         actor.animation_frame = decision->animation_frame;
         actor.animation_complete = decision->animation_complete;
         if (dynamic_actor_behavior || source_default_item_action) {
-            actor.source_behavior_flags = decision->source_behavior_flags;
-            actor.source_spawn_state_flags =
-                decision->source_spawn_state_flags;
+            actor.source_behavior_flags = behavior_flags_from_facts(
+                decision->actor_facts.behavior);
+            actor.source_spawn_state_flags = role_flags_from_facts(
+                decision->actor_facts.roles,
+                actor.source_spawn_state_flags);
         }
-        if (dynamic_actor_behavior && decision->world_activity_requested) {
-            // 0x1DBAA's FFDF84/FFDF86 effect uses the existing timeout model [C].
+        if (dynamic_actor_behavior && decision->combat_engagement_started) {
+            // Engagement is gameplay state; the host owns its activity delay.
             if (schedule_world_activity_timeout(
                     field_world_activity_timeout_state_)) {
                 world_frame_logic_state_.world_active =
@@ -4950,9 +5015,9 @@ void FieldSceneRuntime::advance_default_field_actors(
                 world_frame_logic_state_.cleanup_countdown =
                     static_cast<std::int16_t>(
                         field_world_activity_timeout_state_.timeout_frames);
-                source_boundary("field.actor.think_world_activity_requested");
+                source_boundary("field.actor.combat_engagement_started");
             } else {
-                source_boundary("field.actor.think_world_activity_request_gated");
+                source_boundary("field.actor.combat_engagement_gated");
             }
         }
         if (decision->field_event_request.has_value()) {
@@ -5534,10 +5599,9 @@ bool FieldSceneRuntime::retire_dialogue_escort_records() {
         context.source_actor_slot = static_cast<std::uint8_t>(
             *actor.source_record_slot);
         context.live_field_actor = true;
-        context.source_record_flags = actor.source_record_flags;
-        context.source_interaction_flags = actor.source_interaction_flags;
-        context.source_behavior_flags = actor.source_behavior_flags;
-        context.source_spawn_state_flags = actor.source_spawn_state_flags;
+        context.actor_facts = actor_facts_from_field_record(
+            actor.source_record_flags, actor.source_interaction_flags,
+            actor.source_behavior_flags, actor.source_spawn_state_flags);
         set_script_ammunition_facts(context, actor.ammunition_remaining);
         set_script_animation_facts(
             context, actor.animation_id, actor.animation_complete);
@@ -5550,15 +5614,16 @@ bool FieldSceneRuntime::retire_dialogue_escort_records() {
             source_boundary("field.actor.contact_cleanup_failed");
             return false;
         }
-        if (actor_flag_is_set(decision->source_record_flags,
-                              ActorServiceFlag::active)) {
+        if (decision->actor_facts.lifecycle.active) {
             failure_ = "Lua did not retire an escort record after dialogue";
             source_boundary("field.actor.contact_cleanup_not_applied");
             return false;
         }
 
-        actor.source_record_flags = decision->source_record_flags;
-        actor.source_behavior_flags = decision->source_behavior_flags;
+        actor.source_record_flags = lifecycle_flags_from_facts(
+            decision->actor_facts.lifecycle, actor.source_record_flags);
+        actor.source_behavior_flags = behavior_flags_from_facts(
+            decision->actor_facts.behavior);
         actor.combatant.source_flags = actor.source_record_flags;
         // ROM 0x1E514 clears FFFC3C when it clears an escort actor's +0xB0
         // bit 7. Keep the selected template marker paired with that lifecycle.
@@ -6408,7 +6473,9 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             context.source_record_slot = static_cast<std::uint8_t>(
                 *actor.source_record_slot);
             context.has_live_actor_record = true;
-            context.source_record_flags = actor.source_record_flags;
+            context.actor_facts = actor_facts_from_field_record(
+                actor.source_record_flags, actor.source_interaction_flags,
+                actor.source_behavior_flags, actor.source_spawn_state_flags);
             context.physical_condition = actor.physical_meter;
         }
         context.action_profile_modifiers =
@@ -6417,13 +6484,12 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
             script_action_profile_attributes();
         context.combat_meter_service_blocked =
             field_movement_transition_state_.world_mode == 3U;
-        context.source_record_flags = actor.source_record_flags;
-        context.source_interaction_flags = actor.source_interaction_flags;
-        context.source_behavior_flags = actor.source_behavior_flags;
+        context.actor_facts = actor_facts_from_field_record(
+            actor.source_record_flags, actor.source_interaction_flags,
+            actor.source_behavior_flags, actor.source_spawn_state_flags);
         set_script_ammunition_facts(context, actor.ammunition_remaining);
         set_script_animation_facts(
             context, actor.animation_id, actor.animation_complete);
-        context.source_spawn_state_flags = actor.source_spawn_state_flags;
         context.world_activity_active =
             world_frame_logic_state_.world_active != 0U;
         context.world_scene_state = world_frame_logic_state_.scene_state;
@@ -6448,8 +6514,10 @@ void FieldSceneRuntime::spawn_field_world_effect_sequence() {
         actor.ai_target_heading = decision->ai_target_heading.value_or(0U);
         actor.ai_target_distance = decision->ai_target_distance.value_or(0U);
         actor.action_delay = decision->action_delay;
-        actor.source_record_flags = decision->source_record_flags;
-        actor.source_behavior_flags = decision->source_behavior_flags;
+        actor.source_record_flags = lifecycle_flags_from_facts(
+            decision->actor_facts.lifecycle, actor.source_record_flags);
+        actor.source_behavior_flags = behavior_flags_from_facts(
+            decision->actor_facts.behavior);
         actor.animation_direction = decision->direction;
         actor.animation_id = decision->animation_id;
         actor.animation_variant = decision->animation_variant;
@@ -12622,12 +12690,11 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
         context.actor_behavior_profile =
             scripting::script_actor_behavior_profile_from_source_posture(
                 actor.combatant.source_posture);
-        context.source_record_flags = actor.source_record_flags;
-        context.source_interaction_flags = actor.source_interaction_flags;
-        context.source_behavior_flags = actor.source_behavior_flags;
+        context.actor_facts = actor_facts_from_field_record(
+            actor.source_record_flags, actor.source_interaction_flags,
+            actor.source_behavior_flags, actor.source_spawn_state_flags);
         set_script_animation_facts(
             context, actor.animation_id, actor.animation_complete);
-        context.source_spawn_state_flags = actor.source_spawn_state_flags;
         context.physical_condition = actor.physical_meter;
         if (dynamic_actor_behavior || actor.source_default_item_action_profile) {
             context.dynamic_world_encounter_actor = dynamic_actor_behavior;
@@ -12640,8 +12707,6 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
                 context, actor.animation_id, actor.animation_complete);
             context.source_item_spawn_result =
                 actor.source_item_spawn_result;
-            context.source_spawn_state_flags =
-                actor.source_spawn_state_flags;
             context.world_activity_active =
                 world_frame_logic_state_.world_active != 0U;
             context.world_scene_state =
@@ -12792,11 +12857,13 @@ void FieldSceneRuntime::advance_default_field_actor_animations() {
             actor.combatant.record_type == static_cast<std::uint16_t>(
                 *actor.source_record_slot);
         if (world_combat_record) {
-            actor.source_record_flags = decision->source_record_flags;
+            actor.source_record_flags = lifecycle_flags_from_facts(
+                decision->actor_facts.lifecycle, actor.source_record_flags);
             actor.combatant.source_flags = actor.source_record_flags;
         }
         if (dynamic_actor_behavior) {
-            actor.source_behavior_flags = decision->source_behavior_flags;
+            actor.source_behavior_flags = behavior_flags_from_facts(
+                decision->actor_facts.behavior);
             actor.source_item_spawn_result.reset();
         }
         if (decision->spell_effect_resolution.has_value()) {

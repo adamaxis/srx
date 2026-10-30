@@ -14,12 +14,13 @@ local ProjectileAnimationClips =
 
 local function snapshot(state, action, audio_event, projectile_movement,
                         target_heading_audio_event)
-    local world_activity_requested = state.world_activity_requested == true
+    local combat_engagement_started =
+        state.combat_engagement_started == true
     local field_event_request = state.field_event_request
     local think_token_claimed = state.think_token_claimed == true
     local thon_action_cooldown_remaining =
         state.thon_action_cooldown_remaining
-    state.world_activity_requested = false
+    state.combat_engagement_started = false
     state.field_event_request = nil
     state.think_token_claimed = false
     state.thon_action_cooldown_remaining = nil
@@ -59,7 +60,7 @@ local function snapshot(state, action, audio_event, projectile_movement,
         frame = state.animation_frame,
         transition_started = state.transition_started,
         transition_complete = state.transition_complete,
-        world_activity_requested = world_activity_requested,
+        combat_engagement_started = combat_engagement_started,
         field_event_request = field_event_request,
         think_token_claimed = think_token_claimed,
         thon_action_cooldown_remaining = thon_action_cooldown_remaining,

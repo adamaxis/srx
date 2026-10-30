@@ -34,11 +34,56 @@ struct HasLegacyAnimationSelector<
     T, std::void_t<decltype(std::declval<T>().animation_selector)>>
     : std::true_type {};
 
+template <typename T, typename = void>
+struct HasSourceRecordByte : std::false_type {};
+
+template <typename T>
+struct HasSourceRecordByte<
+    T, std::void_t<decltype(std::declval<T>().source_record_flags)>>
+    : std::true_type {};
+
 static_assert(
     !HasLegacyAnimationSelector<
         shadowrun::ghidra_conversion::scripting::
             ScriptActorBehaviorDecision>::value,
     "Lua actor decisions must use semantic animation state, not ROM selectors");
+static_assert(
+    !HasSourceRecordByte<
+        shadowrun::ghidra_conversion::scripting::
+            ScriptActorBehaviorContext>::value &&
+        !HasSourceRecordByte<
+            shadowrun::ghidra_conversion::scripting::
+                ScriptActorBehaviorDecision>::value,
+    "actor Lua calls must exchange facts, not serialized record bytes");
+
+using ActorBehaviorContext =
+    shadowrun::ghidra_conversion::scripting::ScriptActorBehaviorContext;
+
+// Test fixtures may start from an extracted record value, then hand the Lua
+// runtime named gameplay facts exactly as the native field adapter does.
+void set_actor_facts_from_fixture_record(
+    ActorBehaviorContext& context, const std::uint8_t lifecycle,
+    const std::uint8_t interaction = 0U, const std::uint8_t behavior = 0U,
+    const std::uint8_t roles = 0U) {
+    context.actor_facts = {
+        { (lifecycle & 0x01U) != 0U, (lifecycle & 0x02U) != 0U,
+          (lifecycle & 0x08U) != 0U, (lifecycle & 0x10U) != 0U,
+          (lifecycle & 0x20U) != 0U, (lifecycle & 0x40U) != 0U },
+        { (interaction & 0x01U) != 0U, (interaction & 0x02U) != 0U,
+          (interaction & 0x04U) != 0U, (interaction & 0x08U) != 0U,
+          (interaction & 0x10U) != 0U, (interaction & 0x20U) != 0U,
+          (interaction & 0x40U) != 0U, (interaction & 0x80U) != 0U,
+          (interaction & 0x80U) != 0U },
+        { (behavior & 0x01U) != 0U, (behavior & 0x02U) != 0U,
+          (behavior & 0x04U) != 0U, (behavior & 0x08U) != 0U,
+          (behavior & 0x10U) != 0U, (behavior & 0x20U) != 0U,
+          (behavior & 0x40U) != 0U, (behavior & 0x80U) != 0U },
+        { (roles & 0x01U) != 0U, (roles & 0x02U) != 0U,
+          (roles & 0x04U) != 0U, (roles & 0x08U) != 0U,
+          (roles & 0x10U) != 0U, (roles & 0x20U) != 0U,
+          (roles & 0x40U) != 0U }
+    };
+}
 
 bool expect(const bool condition, const char* message) {
     if (!condition) {
@@ -2483,8 +2528,8 @@ int main() {
         context.world_activity_script_actor = true;
         context.source_record_slot = 3U;
         context.source_actor_slot = 3U;
-        context.source_record_flags = 0x01U;
-        context.source_spawn_state_flags = 0x08U;
+        set_actor_facts_from_fixture_record(context, 0x01U, 0U, 0U,
+                                            0x08U);
         context.movement_scene_id = scene_id;
         return scripts.actor_heartbeat(context).has_value();
     };
@@ -5412,7 +5457,7 @@ int main() {
                 ScriptActorActionKind::none, 0U, 0U, true);
             context.dynamic_world_encounter_actor = true;
             context.source_record_slot = slot;
-            context.source_record_flags = service_flags;
+            set_actor_facts_from_fixture_record(context, service_flags);
             ScriptCombatantFacts combatant{};
             combatant.record_type = slot;
             combatant.physical_meter = physical_meter;
@@ -5429,7 +5474,7 @@ int main() {
         "pedestrian_k0b_none00", "scene_55_scan_inactive", 11U,
         ScriptActorActionKind::none, 0U, 0U, true);
     scan_inactive_context.source_record_slot = 7U;
-    scan_inactive_context.source_record_flags = 0U;
+    set_actor_facts_from_fixture_record(scan_inactive_context, 0U);
     ScriptCombatantFacts scan_inactive_combatant{};
     scan_inactive_combatant.record_type = 7U;
     scan_inactive_combatant.physical_meter = 10U;
@@ -5505,7 +5550,7 @@ int main() {
         marker_facts.mental_meter = mental_meter;
         context.combatant = marker_facts;
         context.target_marker_reads_stun_meter = reads_stun_meter;
-        context.source_record_flags = 0x01U;
+        set_actor_facts_from_fixture_record(context, 0x01U);
         if (!scripts.actor_heartbeat(context).has_value()) {
             std::cerr << "target marker actor spawn failed for " << profile_id
                       << ": " << scripts.failure() << '\n';
@@ -5554,7 +5599,7 @@ int main() {
         const auto active = static_cast<std::uint8_t>(
             srx::ActorStatus::ACTIVE);
         context.source_record_slot = slot;
-        context.source_record_flags = active;
+        set_actor_facts_from_fixture_record(context, active);
         context.physical_condition = physical_meter;
         ScriptCombatantFacts facts{};
         facts.record_type = slot;
@@ -5591,7 +5636,8 @@ int main() {
         "marker_animation_k06_none00", "target_marker_animation", 6U,
         ScriptActorActionKind::none, 0U, 0U, true);
     target_marker_animation_context.dynamic_world_encounter_actor = true;
-    target_marker_animation_context.source_record_flags = 0x01U;
+    set_actor_facts_from_fixture_record(target_marker_animation_context,
+                                        0x01U);
     const auto target_marker_spawn =
         scripts.actor_heartbeat(target_marker_animation_context);
     target_marker_animation_context.spawn = false;
@@ -5666,7 +5712,7 @@ int main() {
         "hell_hound_k0c_none00", "hell_hound_effect_cadence", 12U,
         ScriptActorActionKind::none, 0U, 0U, true);
     hound_effect_context.dynamic_world_encounter_actor = true;
-    hound_effect_context.source_record_flags = 0x01U;
+    set_actor_facts_from_fixture_record(hound_effect_context, 0x01U);
     hound_effect_context.movement_allowed = true;
     hound_effect_context.action_timing = {8U, 2U, 0U};
     hound_effect_context.ai_target_candidates.push_back(
@@ -5773,7 +5819,7 @@ int main() {
                 profile_id, actor_id, entity_kind, action_kind, action_code,
                 0U, true);
             context.dynamic_world_encounter_actor = true;
-            context.source_record_flags = 0x25U;
+            set_actor_facts_from_fixture_record(context, 0x25U);
             context.initial_action_delay = initial_action_delay;
             context.ai_animation_frame = ai_animation_frame;
             context.movement_allowed = true;
@@ -5944,7 +5990,7 @@ int main() {
         "eye5r_1_k07_none00", "c0a2_action", 7U,
         ScriptActorActionKind::none, 0U, 0U, true);
     c0a2_action_context.dynamic_world_encounter_actor = true;
-    c0a2_action_context.source_record_flags = 0x25U;
+    set_actor_facts_from_fixture_record(c0a2_action_context, 0x25U);
     c0a2_action_context.initial_action_delay = 0;
     c0a2_action_context.action_timing = {4U, 6U, 0U};
     c0a2_action_context.movement_allowed = true;
@@ -6026,14 +6072,14 @@ int main() {
         c0a2_entry_start.has_value() &&
         c0a2_action_start.has_value() &&
         c0a2_action_start->ai_target_engaged &&
-        c0a2_action_start->world_activity_requested &&
+        c0a2_action_start->combat_engagement_started &&
         c0a2_action_start->audio_event == 0x004CU &&
         c0a2_action_start->target_heading_audio_event == 0x004DU &&
         c0a2_action_start->action_delay == 45 &&
         c0a2_action_start->animation_frame == 0U &&
         c0a2_alternate_spawn.has_value() &&
         c0a2_alternate_action_start.has_value() &&
-        c0a2_alternate_action_start->world_activity_requested &&
+        c0a2_alternate_action_start->combat_engagement_started &&
         c0a2_alternate_action_start->audio_event == 0x004CU &&
         c0a2_alternate_action_start->target_heading_audio_event == 0x004EU &&
         c0a2_action_frame_zero.has_value() &&
@@ -6219,7 +6265,7 @@ int main() {
             profile_id, actor_id, entity_kind, ScriptActorActionKind::spell,
             action_code, 0U, true);
         context.dynamic_world_encounter_actor = true;
-        context.source_record_flags = 0x01U;
+        set_actor_facts_from_fixture_record(context, 0x01U);
         context.world_scene_state = world_scene_state;
         context.initial_action_delay = initial_delay;
         context.movement_scene_id = 2U;
@@ -6691,7 +6737,7 @@ int main() {
         ScriptActorActionKind::none, 0U, 0U, true);
     unrelated_hurt_event_context.controlled_party_member_id =
         "party.runner.1";
-    unrelated_hurt_event_context.source_record_flags = 0x01U;
+    set_actor_facts_from_fixture_record(unrelated_hurt_event_context, 0x01U);
     unrelated_hurt_event_context.combatant = spell_target;
     const auto unrelated_hurt_event_spawn =
         scripts.actor_heartbeat(unrelated_hurt_event_context);
@@ -6708,7 +6754,7 @@ int main() {
     player_hurt_event_context.controlled_party_member_id =
         "party.runner.0";
     player_hurt_event_context.is_controlled_party_actor = true;
-    player_hurt_event_context.source_record_flags = 0x01U;
+    set_actor_facts_from_fixture_record(player_hurt_event_context, 0x01U);
     player_hurt_event_context.combatant = spell_target;
     player_hurt_event_context.physical_condition = 10;
     const auto player_hurt_event_spawn =
@@ -7070,11 +7116,10 @@ int main() {
             profile_id, actor_id, 7U, ScriptActorActionKind::item,
             action_code, 0U, true);
         context.dynamic_world_encounter_actor = true;
-        context.source_record_flags = 0x01U;
+        set_actor_facts_from_fixture_record(context, 0x01U);
         context.ammunition_remaining = 10U;
-        // The Lua route policy opens +0xB0.4 for a close target; the host
-        // begins with the ROM record's clear flag and validates the decision.
-        context.source_behavior_flags = 0U;
+        // Lua receives named actor facts; the native adapter validates the
+        // resulting close-target action against the live actor record.
         context.animation_blocks_behavior = false;
         context.can_start_item_action = true;
         context.initial_action_delay = initial_delay;
@@ -7199,7 +7244,7 @@ int main() {
         item_request_ok(item_spawn_request, "item_gated", 1U) &&
         item_spawn_line &&
         item_request_ok(item_close_request, "item_spawn_requested", 1U) &&
-        (item_close_request.refresh->source_behavior_flags & 0x10U) != 0U &&
+        item_close_request.refresh->actor_facts.behavior.in_target_band &&
         item_close_line &&
         item_request_ok(frag_request, "item_effect", 13U) && frag_line &&
         item_request_ok(concussion_request, "item_effect", 15U) &&
@@ -7236,8 +7281,7 @@ int main() {
             "eye5r_1_k07_item01", actor_id, 7U,
             ScriptActorActionKind::item, 1U, 0U, true);
         context.dynamic_world_encounter_actor = true;
-        context.source_record_flags = 0x01U;
-        context.source_behavior_flags = 0x10U;
+        set_actor_facts_from_fixture_record(context, 0x01U, 0U, 0x10U);
         context.ammunition_remaining = 10U;
         context.animation_blocks_behavior = false;
         context.can_start_item_action = true;
@@ -7279,7 +7323,7 @@ int main() {
         std::string last_item_dispatch = "<none>";
         std::string last_target = "<none>";
         std::string last_animation = "<none>";
-        std::uint8_t last_flags = 0U;
+        bool target_band_seen = false;
         for (std::uint16_t pass = 0U; pass < 120U; ++pass) {
             const auto decision = scripts.actor_heartbeat(context);
             if (!decision.has_value()) {
@@ -7289,7 +7333,7 @@ int main() {
             last_item_dispatch = decision->source_action_dispatch.value_or("<none>");
             last_target = decision->ai_target_id.value_or("<none>");
             last_animation = decision->animation_id;
-            last_flags = decision->source_behavior_flags;
+            target_band_seen = decision->actor_facts.behavior.in_target_band;
             if (decision->source_action_dispatch ==
                 std::optional<std::string>{"item_spawn_requested"}) {
                 request_seen = true;
@@ -7300,8 +7344,7 @@ int main() {
             std::cerr << "item pose request missing: dispatch="
                       << last_item_dispatch << " target=" << last_target
                       << " animation=" << last_animation
-                      << " flags=0x" << static_cast<unsigned>(last_flags)
-                      << std::dec << " ammo="
+                      << " target_band=" << target_band_seen << " ammo="
                       << static_cast<unsigned>(context.ammunition_remaining)
                       << " distance=" << context.ai_target_candidates[0].distance
                       << "\n";
@@ -7323,7 +7366,7 @@ int main() {
         context.can_start_item_action =
             decision->animation_id == "idle" ||
             decision->animation_id == "walk";
-        context.source_behavior_flags = decision->source_behavior_flags;
+        context.actor_facts = decision->actor_facts;
         if (result == ScriptActorItemSpawnResult::spawned) {
             for (std::uint8_t frame = 0U; frame < 32U; ++frame) {
                 decision = scripts.actor_heartbeat(context);
@@ -7338,8 +7381,7 @@ int main() {
                 context.can_start_item_action =
                     decision->animation_id == "idle" ||
                     decision->animation_id == "walk";
-                context.source_behavior_flags =
-                    decision->source_behavior_flags;
+                context.actor_facts = decision->actor_facts;
             }
         }
         return decision;
@@ -7616,7 +7658,7 @@ int main() {
             row.profile_id, actor_id, row.entity_kind, row.action_kind,
             row.action_code, 0U, true);
         context.dynamic_world_encounter_actor = true;
-        context.source_record_flags = 0x01U;
+        set_actor_facts_from_fixture_record(context, 0x01U);
         context.movement_allowed = true;
         context.initial_action_delay = 0;
         if (row.decision == CatalogDecision::hound_effect) {
@@ -7815,7 +7857,7 @@ int main() {
         "eye5r_1_k07_none00", "combat_reaction_probe", 7U,
         ScriptActorActionKind::none, 0U, 0U, true);
     combat_probe_context.dynamic_world_encounter_actor = true;
-    combat_probe_context.source_record_flags = 0x25U;
+    set_actor_facts_from_fixture_record(combat_probe_context, 0x25U);
     combat_probe_context.initial_action_delay = 0;
     combat_probe_context.action_timing = {4U, 6U, 0U};
     combat_probe_context.movement_allowed = true;
@@ -8805,7 +8847,7 @@ int main() {
             "hell_hound_k0c_none00", actor_id, 12U,
             ScriptActorActionKind::none, 0U, 0U, true);
         context.dynamic_world_encounter_actor = true;
-        context.source_record_flags = 0x25U;
+        set_actor_facts_from_fixture_record(context, 0x25U);
         return context;
     };
     const auto configure_encounter_movement = [](
@@ -8853,7 +8895,7 @@ int main() {
         if (!decision.has_value()) {
             return false;
         }
-        context.source_record_flags = decision->source_record_flags;
+        context.actor_facts = decision->actor_facts;
         for (std::uint16_t pass = 0U;
              pass < 128U && !decision->transition_complete; ++pass) {
             context.phase = ScriptActorHeartbeatPhase::render;
@@ -8861,14 +8903,13 @@ int main() {
             if (!render_decision.has_value()) {
                 return false;
             }
-            context.source_record_flags =
-                render_decision->source_record_flags;
+            context.actor_facts = render_decision->actor_facts;
             context.phase = ScriptActorHeartbeatPhase::behavior;
             decision = scripts.actor_heartbeat(context);
             if (!decision.has_value()) {
                 return false;
             }
-            context.source_record_flags = decision->source_record_flags;
+            context.actor_facts = decision->actor_facts;
         }
         context.phase = ScriptActorHeartbeatPhase::behavior;
         return decision->transition_complete;
@@ -8882,7 +8923,7 @@ int main() {
             if (!behavior.has_value()) {
                 return false;
             }
-            context.source_record_flags = behavior->source_record_flags;
+            context.actor_facts = behavior->actor_facts;
             if (behavior->movement_step.has_value()) {
                 context.movement_state = behavior->movement_step->state;
                 return true;
@@ -8892,7 +8933,7 @@ int main() {
             if (!render.has_value()) {
                 return false;
             }
-            context.source_record_flags = render->source_record_flags;
+            context.actor_facts = render->actor_facts;
         }
         return false;
     };
@@ -8911,7 +8952,7 @@ int main() {
             posture_actor_id);
         posture_band_actor.profile_id = "weenr1_k08_none00";
         posture_band_actor.entity_kind = 8U;
-        posture_band_actor.source_record_flags = 0x2DU;
+        set_actor_facts_from_fixture_record(posture_band_actor, 0x2DU);
         posture_band_actor.actor_behavior_profile =
             script_actor_behavior_profile_from_source_posture(posture);
         // This case exercises the linked-target combat route; FFDF84 is the
@@ -8935,7 +8976,9 @@ int main() {
                     posture_band_actor.actor_behavior_profile.has_value() &&
                     posture_band_actor.actor_behavior_profile->approach_band ==
                         std::optional<ScriptActorApproachBand>{expected_band} &&
-                    posture_band_actor.source_record_flags == 0x2DU &&
+                    posture_band_actor.actor_facts.lifecycle.active &&
+                    posture_band_actor.actor_facts.lifecycle.ai_runner &&
+                    posture_band_actor.actor_facts.lifecycle.group_leader &&
                     posture_band_route->movement_heading == 0x2000U &&
                     posture_band_route->movement_route_distance ==
                         target_distance,
@@ -8951,7 +8994,7 @@ int main() {
         "field_scene_2_encounter_quickness_step");
     quickness_actor.profile_id = "weenr1_k08_none00";
     quickness_actor.entity_kind = 8U;
-    quickness_actor.source_record_flags = 0x25U;
+    set_actor_facts_from_fixture_record(quickness_actor, 0x25U);
     quickness_actor.initial_heading = 0x2000U;
     quickness_actor.world_activity_active = true;
     quickness_actor.source_projection_active = true;
@@ -9006,11 +9049,11 @@ int main() {
             stunned_service.has_value() &&
                 stunned_service->animation_id == "down" &&
                 stunned_service->audio_event == 0x0056U &&
-                (stunned_service->source_record_flags & 0x10U) != 0U &&
+                stunned_service->actor_facts.lifecycle.downed &&
                 healthy_service.has_value() &&
                 healthy_service->animation_id != "down" &&
                 healthy_service->audio_event != 0x0056U &&
-                (healthy_service->source_record_flags & 0x10U) == 0U,
+                !healthy_service->actor_facts.lifecycle.downed,
             "zero stun meter did not enter 0xB330 on the 0xA93A service pass")) {
         std::cerr << scripts.failure() << '\n';
         return 24;
@@ -9148,14 +9191,13 @@ int main() {
         const auto active = static_cast<std::uint8_t>(
             srx::ActorStatus::ACTIVE);
         context.source_record_slot = slot;
-        context.source_record_flags = active;
+        set_actor_facts_from_fixture_record(
+            context, active, 0U, 0U,
+            pedestrian ? static_cast<std::uint8_t>(srx::ActorFlag::PEDESTRIAN)
+                       : 0U);
         context.physical_condition = physical_meter;
         context.combatant = make_static_default_combatant(
             profile_id, slot, physical_meter);
-        if (pedestrian) {
-            context.source_spawn_state_flags = static_cast<std::uint8_t>(
-                srx::ActorFlag::PEDESTRIAN);
-        }
         return context;
     };
 
@@ -9229,8 +9271,8 @@ int main() {
             "field_runner_k03_none00", "party.runner.0", 3U,
             ScriptActorActionKind::none, 0U, 0U, true);
         target.source_record_slot = 0U;
-        target.source_record_flags = static_cast<std::uint8_t>(
-            srx::ActorStatus::ACTIVE);
+        set_actor_facts_from_fixture_record(
+            target, static_cast<std::uint8_t>(srx::ActorStatus::ACTIVE));
         target.combatant = spell_target;
         target.movement_scene_id = 55U;
         target.ai_target_candidates = caster.ai_target_candidates;
@@ -9474,8 +9516,12 @@ int main() {
         pedestrian_hit_facts.mental_meter = update.mental_meter;
         if (update.source_record_flags_updated) {
             pedestrian_hit_facts.source_flags = update.source_record_flags;
-            static_pedestrian_context.source_record_flags =
-                update.source_record_flags;
+            static_pedestrian_context.actor_facts.lifecycle.active =
+                (update.source_record_flags & 0x01U) != 0U;
+            static_pedestrian_context.actor_facts.lifecycle.downed =
+                (update.source_record_flags & 0x10U) != 0U;
+            static_pedestrian_context.actor_facts.lifecycle.dead =
+                (update.source_record_flags & 0x40U) != 0U;
         }
     }
     static_pedestrian_context.combatant = pedestrian_hit_facts;
@@ -9487,10 +9533,8 @@ int main() {
     const auto static_pedestrian_down =
         scripts.actor_heartbeat(static_pedestrian_context);
     if (static_pedestrian_down.has_value()) {
-        static_pedestrian_context.source_record_flags =
-            static_pedestrian_down->source_record_flags;
-        pedestrian_hit_facts.source_flags =
-            static_pedestrian_down->source_record_flags;
+        static_pedestrian_context.actor_facts =
+            static_pedestrian_down->actor_facts;
         static_pedestrian_context.combatant = pedestrian_hit_facts;
     }
     static_pedestrian_context.phase = ScriptActorHeartbeatPhase::render;
@@ -9503,12 +9547,6 @@ int main() {
         ScriptActorHeartbeatPhase::behavior;
     const auto static_pedestrian_dead =
         scripts.actor_heartbeat(static_pedestrian_context);
-    const auto active_status = static_cast<std::uint8_t>(
-        srx::ActorStatus::ACTIVE);
-    const auto down_status = static_cast<std::uint8_t>(
-        srx::ActorStatus::DOWN);
-    const auto dead_status = static_cast<std::uint8_t>(
-        srx::ActorStatus::DEAD);
     if (!expect(static_guard_spawn.has_value() &&
                     static_guard_hit.has_value() &&
                     static_guard_hit->combat_meter_update.has_value() &&
@@ -9538,14 +9576,11 @@ int main() {
                         0U &&
                     static_pedestrian_down.has_value() &&
                     static_pedestrian_down->animation_id == "down" &&
-                    (static_pedestrian_down->source_record_flags &
-                     down_status) != 0U &&
+                    static_pedestrian_down->actor_facts.lifecycle.downed &&
                     static_pedestrian_death_frame.has_value() &&
                     static_pedestrian_dead.has_value() &&
-                    (static_pedestrian_dead->source_record_flags &
-                     dead_status) != 0U &&
-                    (static_pedestrian_dead->source_record_flags &
-                     active_status) != 0U,
+                    static_pedestrian_dead->actor_facts.lifecycle.dead &&
+                    static_pedestrian_dead->actor_facts.lifecycle.active,
                 "static_default_pedestrian_lethal_projectile_down_dead: ROM 0xAFF2/0xB330/0xA93E retains slot 4 through DOWN and DEAD")) {
         std::cerr << scripts.failure() << '\n';
         return 24;
@@ -9560,7 +9595,9 @@ int main() {
                 injured_actor_reaction.has_value() &&
                 injured_actor_reaction->animation_id == "hurt" &&
                 injured_actor_reaction->animation_frame == 0U &&
-                injured_actor_reaction->source_record_flags == 0x25U &&
+                injured_actor_reaction->actor_facts.lifecycle.active &&
+                injured_actor_reaction->actor_facts.lifecycle.group_leader &&
+                !injured_actor_reaction->actor_facts.lifecycle.downed &&
                 !injured_actor_reaction->audio_event.has_value(),
             "stationary nonlethal firearm damage did not select directional C072")) {
         std::cerr << scripts.failure() << '\n';
@@ -9747,14 +9784,16 @@ int main() {
             exhausted_actor_reaction.has_value() &&
                 exhausted_actor_reaction->animation_id == "down" &&
                 exhausted_actor_reaction->animation_frame == 0U &&
-                exhausted_actor_reaction->source_record_flags == 0x35U &&
+                exhausted_actor_reaction->actor_facts.lifecycle.active &&
+                exhausted_actor_reaction->actor_facts.lifecycle.group_leader &&
+                exhausted_actor_reaction->actor_facts.lifecycle.downed &&
                 exhausted_actor_reaction->audio_event == 0x0056U,
             "zero physical meter did not enter the C0B2 exhausted transition and B05E cue")) {
         std::cerr << scripts.failure() << '\n';
         return 24;
     }
-    exhausted_actor_context.source_record_flags =
-        exhausted_actor_reaction->source_record_flags;
+    exhausted_actor_context.actor_facts =
+        exhausted_actor_reaction->actor_facts;
     exhausted_actor_context.phase = ScriptActorHeartbeatPhase::render;
     std::optional<ScriptActorBehaviorDecision> exhausted_actor_frame;
     for (std::uint8_t frame = 0U; frame < 7U; ++frame) {
@@ -9783,7 +9822,8 @@ int main() {
     if (!expect(exhausted_actor_frame.has_value() &&
                     exhausted_actor_frame->animation_id == "down" &&
                     exhausted_actor_frame->animation_frame == 1U &&
-                    exhausted_actor_frame->source_record_flags == 0x35U,
+                    exhausted_actor_frame->actor_facts.lifecycle.active &&
+                    exhausted_actor_frame->actor_facts.lifecycle.downed,
                 "C0B2 exhausted transition did not retain its final frame and reserved actor flag")) {
         std::cerr << scripts.failure() << '\n';
         return 24;
@@ -9795,7 +9835,7 @@ int main() {
             "wendigo_k0e_none00", "field_wendigo_death_actor", 14U,
             ScriptActorActionKind::none, 0U, 0U, true);
         wendigo.dynamic_world_encounter_actor = true;
-        wendigo.source_record_flags = 0x25U;
+        set_actor_facts_from_fixture_record(wendigo, 0x25U);
         // Meters are Lua-owned after spawn, so seed stun 0 at spawn.
         auto stunned = wendigo.combatant.value_or(ScriptCombatantFacts{});
         stunned.physical_meter = 10U;
@@ -9807,9 +9847,9 @@ int main() {
         auto pass = scripts.actor_heartbeat(wendigo);
         const bool went_down = pass.has_value() &&
                                pass->animation_id == "down" &&
-                               (pass->source_record_flags & 0x10U) != 0U;
+                               pass->actor_facts.lifecycle.downed;
         if (pass.has_value()) {
-            wendigo.source_record_flags = pass->source_record_flags;
+            wendigo.actor_facts = pass->actor_facts;
         }
         wendigo.phase = ScriptActorHeartbeatPhase::render;
         // Kind 14's ROM C0B2 list has eight entries at the Lua-owned rate;
@@ -9820,7 +9860,8 @@ int main() {
         wendigo.phase = ScriptActorHeartbeatPhase::behavior;
         pass = scripts.actor_heartbeat(wendigo);
         if (!expect(spawned && went_down && pass.has_value() &&
-                        (pass->source_record_flags & 0x41U) == 0x40U,
+                        pass->actor_facts.lifecycle.dead &&
+                        !pass->actor_facts.lifecycle.active,
                     "Wendigo did not deactivate (0x1E514) after its death list")) {
             std::cerr << scripts.failure() << '\n';
             return 24;

@@ -354,9 +354,9 @@ local strike_audio, strike_heading_audio = R.begin_dynamic_target_action(
     strike_state, strike_context, strike_target)
 local strike_result = R.snapshot(strike_state, "hold", strike_audio, nil,
                                  strike_heading_audio)
-check(strike_in_range and strike_result.world_activity_requested == true and
-      strike_state.world_activity_requested == false,
-      "0xB25E strike returns one typed request for 0x1DBAA in range [C]")
+check(strike_in_range and strike_result.combat_engagement_started == true and
+      strike_state.combat_engagement_started == false,
+      "0xB258 accepted strike emits one combat-engagement event [C]")
 
 local thon_unknown_state = state()
 check(R.think_gate(thon_unknown_state,
@@ -430,8 +430,8 @@ s = state({ actor_facts = { roles = { hostile = true } } })
 local hostile_path = R.think_gate(s, context({
     actor_facts = { roles = { hostile = true } },
 }))
-check(hostile_path == "combat" and s.world_activity_requested,
-      "0x139BE hostile on-screen branch requests 0x1DBAA then combat")
+check(hostile_path == "combat" and s.combat_engagement_started,
+      "0x139BE hostile on-screen branch starts combat engagement [C]")
 check(R.think_gate(state(), context({ world_activity_active = true })) ==
       "combat", "0x139CE active FFDF84 takes the existing combat path")
 
@@ -491,7 +491,7 @@ check(R.think_gate(s, context({ actor_behavior_profile = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, distance = E.AiTuning.ENGAGE_DIST,
           bearing_degrees = 22.5, actor_facts = actor_facts() },
-    } })) == "patrol" and not s.world_activity_requested,
+    } })) == "patrol" and not s.combat_engagement_started,
     "0x13EF4 posture 4 at ENGAGE_DIST does not engage")
 s = state()
 check(R.think_gate(s, context({ actor_behavior_profile = {
@@ -501,8 +501,8 @@ check(R.think_gate(s, context({ actor_behavior_profile = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, distance = E.AiTuning.ENGAGE_DIST - 1,
           bearing_degrees = 22.5, actor_facts = actor_facts() },
-    } })) == "combat" and s.world_activity_requested,
-    "0x13EF4 posture 4 inside ENGAGE_DIST requests combat")
+    } })) == "combat" and s.combat_engagement_started,
+    "0x13EF4 posture 4 inside ENGAGE_DIST starts combat engagement")
 check(R.think_gate(state(), context({ actor_behavior_profile = {
       engagement_policy = "engage", approach_band = "medium",
   } })) == "combat",
@@ -590,9 +590,9 @@ s, c = guard_case({}, {}, false)
 check(not s.actor_facts.roles.spotted,
       "0x13FAC blocked line check does not mark the actor spotted")
 s, c = guard_case({ source_alarm_active = true })
-check(s.world_activity_requested and
+check(s.combat_engagement_started and
       not s.actor_facts.roles.spotted,
-      "0x13F80 FFE16F branch requests 0x1DBAA before spotting")
+      "0x13F80 alarm branch starts combat engagement before spotting [C]")
 s, c = guard_case({ ai_target_candidates = {
     { id = "party.runner.0", source_record_slot = 0,
       world_activity_actor = false, world_x = 0x2000, world_y = 0x2400,

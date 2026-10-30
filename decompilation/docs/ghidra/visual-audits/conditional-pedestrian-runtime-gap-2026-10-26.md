@@ -2171,8 +2171,9 @@ fact `active_escort_present`, and the request model receives it alongside
 whether a nonzero choice was made. The request model no longer exposes source
 slots or record bytes. Focused Debug and Release CTests cover idle,
 selected-without-escort, selected-with-escort, the Lua selection path, and the
-live contact/return path. Lua actor state still carries raw status and
-behavior bytes in other paths; removing those from Lua remains unfinished.
+live contact/return path. Actor Lua state uses named lifecycle, interaction,
+behavior, and role facts; the native adapter still translates those facts to
+the host's source-record boundary where required.
 
 This models the result rule once the request callback runs. It does not locate
 the direct/computed `FFDF42` producer or prove the automatic physical route

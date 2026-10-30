@@ -415,7 +415,7 @@ local INTENDED = {
 }
 -- Fields added by actor/think.lua (0x13904 gate outputs). Stripped before comparing so the
 -- rest of the result/state must still match the pre-split reference exactly.
-local THINK_FIELDS = { "world_activity_requested", "field_event_request", "source_spawn_state_flags",
+local THINK_FIELDS = { "combat_engagement_started", "field_event_request", "source_spawn_state_flags",
   "think_token_claimed", "source_thon_period_counter",
   "thon_action_cooldown_remaining",
   "ai_think_path", "ai_think_gap", "ai_deactivate_requested",

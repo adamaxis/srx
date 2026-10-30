@@ -366,6 +366,47 @@ struct ScriptActorRoleFacts {
     bool hostile = false;
 };
 
+struct ScriptActorLifecycleFacts {
+    bool active = false;
+    bool thinking_enabled = false;
+    bool ai_runner = false;
+    bool downed = false;
+    bool group_leader = false;
+    bool dead = false;
+};
+
+struct ScriptActorInteractionFacts {
+    bool projectile = false;
+    bool proximity_interaction_pending = false; // [H] 0xAA88 consumes it.
+    bool use_collision_heading = false; // [H] 0xB6BE selects +0x36.
+    bool collision_recovery_active = false; // [H] 0x14E0A selects recovery.
+    bool action_hook_pending = false; // [H] 0xA926 calls the actor hook.
+    bool defense_difficulty_reduction = false;
+    bool breathing_out = false;
+    bool unseen = false;
+    bool no_coverage_difficulty_bonus = false;
+};
+
+struct ScriptActorBehaviorFacts {
+    bool route_clear = false; // [H] source bit value is known; use is not.
+    bool path_active = false;
+    bool restart_steering = false;
+    bool wall_following = false;
+    bool in_target_band = false;
+    bool route_transition = false; // [H] source bit value is known; use is not.
+    bool fleeing = false;
+    bool escort = false;
+};
+
+// Gameplay actors exchange named facts with Lua. The field host translates
+// these to or from legacy record flags at its adapter boundary.
+struct ScriptActorFacts {
+    ScriptActorLifecycleFacts lifecycle;
+    ScriptActorInteractionFacts interaction;
+    ScriptActorBehaviorFacts behavior;
+    ScriptActorRoleFacts roles;
+};
+
 struct ScriptMatrixFieldActorState {
     std::string actor_id;
     ScriptActorRoleFacts roles;
@@ -2069,10 +2110,7 @@ struct ScriptActorBehaviorContext {
     // Current position in the field world. Source-record decoding stays in
     // the native adapter; Lua receives one named position value.
     std::optional<ScriptWorldPosition> world_position;
-    std::uint8_t source_record_flags = 0;
-    std::uint8_t source_interaction_flags = 0;
-    std::uint8_t source_behavior_flags = 0;
-    std::uint8_t source_spawn_state_flags = 0;
+    ScriptActorFacts actor_facts;
     // One field-frame token suppresses later due actor thoughts [C].
     std::optional<bool> source_think_suppressed;
     // Shared Thon action cooldown, measured in eligible behavior checks.
@@ -2186,11 +2224,10 @@ struct ScriptActorBehaviorDecision {
     std::string animation_id = "idle";
     std::uint8_t direction = 0;
     std::uint8_t animation_frame = 0;
-    std::uint8_t source_record_flags = 0;
-    std::uint8_t source_behavior_flags = 0;
-    std::uint8_t source_spawn_state_flags = 0;
-    // Lua asks the host to run the ROM 0x1DBAA timeout service [C].
-    bool world_activity_requested = false;
+    ScriptActorFacts actor_facts;
+    // A gameplay event; the field host starts the encounter activity delay.
+    // ROM provenance: 0x139BE / 0x13F8A / 0xB258 call 0x1DBAA [C].
+    bool combat_engagement_started = false;
     std::optional<std::uint32_t> field_event_request;
     bool think_token_claimed = false; // FFE175 was consumed in this heartbeat [C]
     // Lua returns the updated shared Thon action cooldown in behavior checks.
