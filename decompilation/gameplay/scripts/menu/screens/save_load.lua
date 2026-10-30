@@ -28,6 +28,13 @@ local function wrap(value, delta, maximum)
     return value
 end
 
+local SAVE_LOAD_ACTION_ORDER = { SL.SAVE, SL.LOAD }
+
+local function select_row(st, delta)
+    st.row = wrap(st.row, delta, #SAVE_LOAD_ACTION_ORDER - 1)
+    st.selected_action = SAVE_LOAD_ACTION_ORDER[st.row + 1]
+end
+
 local function wait(message, text, done)
     return {
         transition = T.PUSH,
@@ -44,7 +51,8 @@ end
 local SaveLoad = { window = E.WindowPlane.SIDEBAR }
 function SaveLoad.new()
     return {
-        row = SL.SAVE,
+        row = 0,
+        selected_action = SL.SAVE,
         title = "",
         labels = Text.save_load_options(),
         layout = SAVE_LOAD_LAYOUT,
@@ -66,12 +74,12 @@ function SaveLoad.enter(st, ctx)
 end
 function SaveLoad.input(st, events, ctx)
     if events & P.UP ~= 0 then
-        st.row = wrap(st.row, -1, 1)
+        select_row(st, -1)
         ctx.redraw(R.SUBMENU)
         return
     end
     if events & P.DOWN ~= 0 then
-        st.row = wrap(st.row, 1, 1)
+        select_row(st, 1)
         ctx.redraw(R.SUBMENU)
         return
     end
@@ -79,7 +87,7 @@ function SaveLoad.input(st, events, ctx)
         return {
             transition = T.PUSH,
             screen = E.MenuScreen.SAVE_SLOT,
-            args = { op = st.row },
+            args = { operation = st.selected_action },
         }
     end
     if events & P.START ~= 0 then return { transition = T.POP } end
@@ -95,13 +103,13 @@ end
 local Slot = { window = E.WindowPlane.SIDEBAR }
 function Slot.new(args)
     return {
-        op = args.op, row = 0, title = "",
+        operation = args.operation, row = 0, title = "",
         labels = Text.save_load_slots(),
         layout = SLOT_LAYOUT,
     }
 end
 function Slot.enter(st, ctx)
-    st.title = Text.save_load_slot_titles()[st.op + 1]
+    st.title = Text.save_load_slot_title(st.operation)
     ctx.redraw(R.SUBMENU)
 end
 function Slot.input(st, events, ctx)
@@ -120,12 +128,13 @@ function Slot.input(st, events, ctx)
     end
     if events & CONFIRM == 0 then return end
 
-    if st.op == SL.SAVE then
+    if st.operation == SL.SAVE then
         local saved = ctx.game.save_game(st.row)
         return wait(MM.GAME_SAVED,
                     saved and "Game saved." or "Could not write this save slot.",
                     saved)
     end
+    if st.operation ~= SL.LOAD then return end
     local loaded = ctx.game.load_game(st.row)
     return wait(loaded and MM.LOAD_OK or MM.LOAD_EMPTY,
                 loaded and "Game loaded." or "This save slot is empty or invalid.",

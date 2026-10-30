@@ -588,7 +588,7 @@ E.DebugOption = {
     CONTACTS = "contacts",
     WALK_FAST = "walk_fast",
 }
-E.SaveLoadOption = { SAVE = 0, LOAD = 1 }   -- 0xC2600 rows [C]
+E.SaveLoadOption = { SAVE = "save", LOAD = "load" } -- ROM 0xC2600 order [C]
 E.PocketOption = {
     NOTEBOOK = "notebook",
     GROUP_ITEMS = "group_items",

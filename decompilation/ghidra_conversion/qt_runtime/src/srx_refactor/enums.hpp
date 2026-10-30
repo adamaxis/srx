@@ -742,10 +742,7 @@ enum class RunnerStatus : std::int64_t {
     DEAD = 0x40,
 };
 inline constexpr std::int64_t SPELL_ITEM_BASE = 0x33;
-enum class SaveLoadOption : std::int64_t {
-    SAVE = 0x0,
-    LOAD = 0x1,
-};
+// SaveLoadOption: string-valued gameplay data, see enums.lua
 enum class Scene : std::int64_t {
     LAST_ID = 0x37,
 };

@@ -2,6 +2,12 @@
 -- The native presenter owns selection cadence, page drawing, and handlers.
 local PocketSecretary = {}
 
+local SAVE_LOAD_ACTIONS = { "save", "load" }
+local SAVE_LOAD_TEXT_IDS = {
+    save = "save_game",
+    load = "load_game",
+}
+
 local function text_entries(ids, prefix)
     local keys = {}
     for index, id in ipairs(ids) do
@@ -96,13 +102,23 @@ function PocketSecretary.dismiss_separator_text()
 end
 
 function PocketSecretary.save_load_options()
-    return text_entries(
-        { "save_game", "load_game" }, "pocket_secretary.save_load.option.")
+    local ids = {}
+    for index, action in ipairs(SAVE_LOAD_ACTIONS) do
+        ids[index] = SAVE_LOAD_TEXT_IDS[action]
+    end
+    return text_entries(ids, "pocket_secretary.save_load.option.")
 end
 
 function PocketSecretary.save_load_slot_titles()
-    return text_entries(
-        { "save_game", "load_game" }, "pocket_secretary.save_load.title.")
+    local ids = {}
+    for index, action in ipairs(SAVE_LOAD_ACTIONS) do
+        ids[index] = SAVE_LOAD_TEXT_IDS[action]
+    end
+    return text_entries(ids, "pocket_secretary.save_load.title.")
+end
+
+function PocketSecretary.save_load_slot_title(action)
+    return SAVE_LOAD_TEXT_IDS[action]
 end
 
 function PocketSecretary.save_load_slots()
