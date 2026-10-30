@@ -802,8 +802,8 @@ end
 check(regional_route_steps == 186,
       "all 18 regional pedestrian routes include each waypoint and wrap");
 
-local collision = game.movement.collision
-game.movement.collision = function() return 0, 0 end
+local follow_route_step_clear = game.movement.follow_route_step_clear
+game.movement.follow_route_step_clear = function() return true end
 local function formation_case(actor_position, leader_position, leader_heading,
                               expected_x, expected_y, description)
     local route_x, route_y
@@ -852,9 +852,9 @@ formation_case("primary", "primary", E.AiTuning.QUARTER_TURN_DEGREES,
     "0x1451E rotates a quarter-turn leader heading to the primary offset [C]")
 
 local collision_calls = 0
-game.movement.collision = function()
+game.movement.follow_route_step_clear = function()
     collision_calls = collision_calls + 1
-    return collision_calls == 1 and E.Collision.BLOCKED or 0, 0
+    return collision_calls ~= 1
 end
 local reverse_x, reverse_y
 local blocked_context = context({
@@ -882,7 +882,7 @@ R.think(s, blocked_context)
 check(collision_calls == 2 and reverse_x == 8351 and reverse_y == 9058 and
       s.ai_route_target.x == reverse_x and s.ai_route_target.y == reverse_y,
       "0x14564 negates a blocked formation offset and probes the reverse [C]")
-game.movement.collision = collision
+game.movement.follow_route_step_clear = follow_route_step_clear
 
 -- ROM 0xB574 and 0xB6BA-0xB6DE truncate dynamic-enemy walk headings even
 -- when +0x10.THINK is clear. The player BABC heading path remains rounded.
@@ -945,7 +945,10 @@ local function movement_bearing_case(bearing_degrees, expected_direction,
           description)
 end
 
-game.movement.collision = function() return 0, 0 end
+game.movement.probe = function()
+    return { kind = "clear", blocks_route_fallback = false,
+        terrain_is_clear = true }
+end
 movement_bearing_case(337.5, 7, true,
     "enemy B574/C062 truncates 0xF000 with THINK clear to direction 7 / selector 0x3C [C]")
 movement_bearing_case(22.5, 0, true,
@@ -1070,7 +1073,7 @@ check(heartbeat_result ~= nil and heartbeat_result.direction == 7 and
       heartbeat_state.movement_step.direction_animation == nil,
       "dynamic enemy heartbeat preserves semantic walking state and truncated direction 7 [C]")
 
-game.movement.collision = collision
+game.movement.follow_route_step_clear = follow_route_step_clear
 
 print(string.format("ai_think tests: %d/%d passed", pass, total))
 if pass ~= total then os.exit(1) end

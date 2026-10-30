@@ -3,8 +3,8 @@
 local R = require("actor.registry")
 local E = require("enums")
 local Bearing = require("bearing")
-local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
-    E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local SoundId, SceneId, EntryDelayMax, AiTuning =
+    E.SoundId, E.SceneId, E.EntryDelayMax, E.AiTuning
 local ActionKind = R.ActionKind   -- from actor/tables.lua
 local ActorApproachDistanceBounds = R.ActorApproachDistanceBounds -- from actor/tables.lua
 local profiles = R.profiles   -- from actor/tables.lua
@@ -392,7 +392,7 @@ local function initial_state(context, profile)
         action_item_id = context.action_item_id,
         actor_facts = copy_actor_facts(context.actor_facts),
         live_field_actor = context.live_field_actor == true,
-        movement_scene_id = context.movement_scene_id,
+        scene_id = context.scene_id,
         physical_condition = context.physical_condition,
         -- Lua owns the mutable combat meters used by world-activity policy.
         -- The host supplies this record only at spawn and later combat results

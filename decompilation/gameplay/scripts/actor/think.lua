@@ -439,17 +439,18 @@ end
 
 local function route_collision_free(state, x, y)
     if type(game) ~= "table" or type(game.movement) ~= "table" or
-       type(game.movement.collision) ~= "function" then
+       type(game.movement.follow_route_step_clear) ~= "function" then
         state.ai_think_gap = "formation_collision_query_unavailable"
         return nil
     end
-    local collision_code = game.movement.collision(x, y)
-    if type(collision_code) ~= "number" then
+    local clear = game.movement.follow_route_step_clear(x, y)
+    if type(clear) ~= "boolean" then
         state.ai_think_gap = "formation_collision_result_unavailable"
         return nil
     end
-    -- 0x14550/0x1455A accept zero or negative collision results [C].
-    return collision_code <= AiTuning.FOLLOW_COLLISION_CLEAR_MAX
+    -- ROM 0x14550/0x1455A accept zero or negative results. The native
+    -- collision service translates that source result into this path fact [C].
+    return clear
 end
 
 local function apply_follow_destination(state, context)

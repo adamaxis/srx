@@ -3,6 +3,7 @@
 #include "shadowrun_ghidra/scripting/cyberdeck_menu_bindings.hpp"
 #include "shadowrun_ghidra/scripting/run_location_catalog.hpp"
 #include "shadowrun_ghidra/core/magic_spell_catalog_conversion.hpp"
+#include "shadowrun_ghidra/entities/movement_probe_conversion.hpp"
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
 #include "enums.hpp"
 #include "world_content_tsv_loader.hpp"
@@ -47,6 +48,11 @@ constexpr std::uint8_t kRunnerDead = 0x40U;
 constexpr double kDegreesPerTurn = 360.0;
 constexpr double kSourceHeadingUnitsPerTurn = 65536.0;
 constexpr double kWorldCoordinatePeriod = 65536.0;
+// ROM 0xB77E preserves a negative terrain result when entity flag bit 1 is set [C].
+constexpr std::uint8_t kMovementRecoveryEnabledFlag = 0x02U;
+constexpr std::array<std::string_view, 8> kCompassDirections{
+    "north", "north_east", "east", "south_east",
+    "south", "south_west", "west", "north_west"};
 // ROM 0xB7B8 consumes these encodings. Keep them in the native adapter;
 // field_events.lua receives only the resulting event facts and rewrite intent.
 constexpr std::uint8_t kTerrainMarkerSuppressionByte = 0xDAU;
@@ -2783,6 +2789,14 @@ struct GameScriptRuntime::Impl {
     ScriptMenuRouteSnapshot menu_route_state{};
     ScriptActorHeartbeatObserver actor_heartbeat_observer;
     const ScriptActorBehaviorContext* active_actor_context = nullptr;
+    struct PendingMovementRecoveryProbe {
+        std::uint16_t x = 0U;
+        std::uint16_t y = 0U;
+        std::int16_t collision_code = 0;
+        std::uint8_t direction_ordinal = 0U;
+    };
+    std::optional<PendingMovementRecoveryProbe>
+        last_actor_movement_recovery_probe;
     std::optional<std::uint16_t> last_actor_terrain_collision_code;
     ScriptActorRandomBound active_conditional_actor_random_bound;
     std::string bridge_failure;
@@ -5566,18 +5580,76 @@ struct GameScriptRuntime::Impl {
             !read_integer(lua, 2, 0xFFFFU, y)) {
             return luaL_error(
                 lua,
-                "game.movement.collision expects x/y coordinates during an actor heartbeat");
+                "game.movement.probe expects x/y coordinates during an actor heartbeat");
+        }
+        std::optional<std::uint8_t> direction_ordinal;
+        if (lua_gettop(lua) >= 3) {
+            if (lua_type(lua, 3) != LUA_TSTRING) {
+                return luaL_error(
+                    lua, "game.movement.probe direction must be a compass name");
+            }
+            std::size_t direction_length = 0U;
+            const char* direction_text = lua_tolstring(lua, 3, &direction_length);
+            const std::string_view direction(direction_text, direction_length);
+            const auto direction_it = std::find(kCompassDirections.begin(),
+                                                kCompassDirections.end(),
+                                                direction);
+            if (direction_it == kCompassDirections.end()) {
+                return luaL_error(
+                    lua, "game.movement.probe expects a compass direction");
+            }
+            direction_ordinal = static_cast<std::uint8_t>(
+                std::distance(kCompassDirections.begin(), direction_it));
         }
         try {
+            self->last_actor_movement_recovery_probe.reset();
             const auto result =
                 self->active_actor_context->movement_collision(
                     static_cast<std::uint16_t>(x),
                     static_cast<std::uint16_t>(y));
             self->last_actor_terrain_collision_code =
                 result.terrain_collision_code;
-            lua_pushinteger(lua, result.collision_code);
+
+            // ROM 0xB77E preserves a negative collision result only when the
+            // actor's recovery flag is set. Keep that source encoding here;
+            // Lua receives a named movement outcome [C].
+            auto probe_code = result.collision_code;
+            if (probe_code < 0 &&
+                (self->active_actor_context->movement_entity_flags &
+                 kMovementRecoveryEnabledFlag) == 0U) {
+                probe_code = 0x7F;
+            }
+
+            const auto& context = *self->active_actor_context;
+            const auto route_code = apply_movement_result_policy(
+                probe_code,
+                MovementResultPolicy{context.movement_transition_active,
+                                     context.movement_scene_id,
+                                     context.movement_collision_mode});
+            const char* kind = "blocked";
+            if (route_code == 0) {
+                kind = "clear";
+            } else if (route_code < 0) {
+                kind = "requires_recovery";
+                if (direction_ordinal.has_value()) {
+                    self->last_actor_movement_recovery_probe =
+                        PendingMovementRecoveryProbe{
+                            static_cast<std::uint16_t>(x),
+                            static_cast<std::uint16_t>(y), probe_code,
+                            *direction_ordinal};
+                }
+            }
+
+            // The B732 policy decides whether this probe blocks route
+            // fallback. Its low-bit event encoding never crosses into Lua [C].
+            lua_createtable(lua, 0, 3);
+            lua_pushstring(lua, kind);
+            lua_setfield(lua, -2, "kind");
+            lua_pushboolean(lua, route_code > 0);
+            lua_setfield(lua, -2, "blocks_route_fallback");
             lua_pushboolean(lua, result.terrain_collision_code == 0U);
-            return 2;
+            lua_setfield(lua, -2, "terrain_is_clear");
+            return 1;
         } catch (...) {
             return luaL_error(lua,
                               "native movement collision query failed");
@@ -5695,30 +5767,82 @@ struct GameScriptRuntime::Impl {
 
     static int movement_route(lua_State* lua) {
         auto* self = from_upvalue(lua);
-        std::uint32_t route_key = 0U;
         if (self == nullptr || self->active_actor_context == nullptr ||
             !self->active_actor_context->movement_route_lookup ||
-            !read_integer(lua, 1, 12U, route_key)) {
+            lua_type(lua, 1) != LUA_TSTRING) {
             return luaL_error(
                 lua,
-                "game.movement.route expects a source route key during an actor heartbeat");
+                "game.movement.route expects a cardinal direction during an actor heartbeat");
+        }
+        std::size_t direction_length = 0U;
+        const char* direction_text = lua_tolstring(lua, 1, &direction_length);
+        const std::string_view direction(direction_text, direction_length);
+        std::uint16_t route_key = 0U;
+        if (direction == "north") {
+            route_key = 0U;
+        } else if (direction == "east") {
+            route_key = 4U;
+        } else if (direction == "south") {
+            route_key = 8U;
+        } else if (direction == "west") {
+            route_key = 12U;
+        } else {
+            return luaL_error(
+                lua,
+                "game.movement.route expects north, east, south, or west");
         }
         try {
             const auto route =
                 self->active_actor_context->movement_route_lookup(
-                    static_cast<std::uint16_t>(route_key));
+                    route_key);
             lua_createtable(lua, 0, 4);
-            lua_pushinteger(lua, route.primary_marker);
-            lua_setfield(lua, -2, "primary_marker");
-            lua_pushinteger(lua, route.secondary_marker);
-            lua_setfield(lua, -2, "secondary_marker");
-            lua_pushinteger(lua, route.primary_fallback_slot);
-            lua_setfield(lua, -2, "primary_fallback_slot");
-            lua_pushinteger(lua, route.secondary_fallback_slot);
-            lua_setfield(lua, -2, "secondary_fallback_slot");
+            lua_pushboolean(lua, route.primary_marker > 0);
+            lua_setfield(lua, -2, "primary_route_marker_present");
+            lua_pushboolean(lua, route.secondary_marker > 0);
+            lua_setfield(lua, -2, "secondary_route_marker_present");
+            const auto primary_direction = kCompassDirections[
+                route.primary_fallback_slot & 0x07U];
+            lua_pushlstring(lua, primary_direction.data(),
+                            primary_direction.size());
+            lua_setfield(lua, -2, "primary_fallback_direction");
+            const auto secondary_direction = kCompassDirections[
+                route.secondary_fallback_slot & 0x07U];
+            lua_pushlstring(lua, secondary_direction.data(),
+                            secondary_direction.size());
+            lua_setfield(lua, -2, "secondary_fallback_direction");
             return 1;
         } catch (...) {
             return luaL_error(lua, "native movement route lookup failed");
+        }
+    }
+
+    static int movement_follow_route_step_clear(lua_State* lua) {
+        auto* self = from_upvalue(lua);
+        std::uint32_t x = 0U;
+        std::uint32_t y = 0U;
+        if (self == nullptr || self->active_actor_context == nullptr ||
+            !self->active_actor_context->movement_collision ||
+            !read_integer(lua, 1, 0xFFFFU, x) ||
+            !read_integer(lua, 2, 0xFFFFU, y)) {
+            return luaL_error(
+                lua,
+                "game.movement.follow_route_step_clear expects map coordinates during an actor heartbeat");
+        }
+        try {
+            self->last_actor_movement_recovery_probe.reset();
+            const auto result =
+                self->active_actor_context->movement_collision(
+                    static_cast<std::uint16_t>(x),
+                    static_cast<std::uint16_t>(y));
+            self->last_actor_terrain_collision_code =
+                result.terrain_collision_code;
+            // ROM 0x14550/0x1455A treats zero and negative results as
+            // traversable for a follower's formation step [C].
+            lua_pushboolean(lua, result.collision_code <= 0);
+            return 1;
+        } catch (...) {
+            return luaL_error(
+                lua, "native follow-route collision query failed");
         }
     }
 
@@ -5726,26 +5850,50 @@ struct GameScriptRuntime::Impl {
         auto* self = from_upvalue(lua);
         std::uint32_t x = 0U;
         std::uint32_t y = 0U;
-        std::uint32_t direction_slot = 0U;
         if (self == nullptr || self->active_actor_context == nullptr ||
             !self->active_actor_context->movement_collision_recovery ||
             !read_integer(lua, 1, 0xFFFFU, x) ||
             !read_integer(lua, 2, 0xFFFFU, y) ||
-            !lua_isinteger(lua, 3) || lua_tointeger(lua, 3) >= 0 ||
-            lua_tointeger(lua, 3) < -32768 ||
-            !read_integer(lua, 4, 14U, direction_slot) ||
-            (direction_slot & 1U) != 0U) {
+            lua_type(lua, 3) != LUA_TSTRING ||
+            !self->last_actor_movement_recovery_probe.has_value() ||
+            self->last_actor_movement_recovery_probe->x != x ||
+            self->last_actor_movement_recovery_probe->y != y) {
             return luaL_error(
                 lua,
-                "game.movement.recover_collision expects a negative collision and an even direction slot");
+                "game.movement.recover_collision expects the candidate and direction from the latest recoverable probe");
+        }
+        std::size_t direction_length = 0U;
+        const char* direction_text = lua_tolstring(lua, 3, &direction_length);
+        const std::string_view direction(direction_text, direction_length);
+        const auto direction_it = std::find(kCompassDirections.begin(),
+                                            kCompassDirections.end(),
+                                            direction);
+        if (direction_it == kCompassDirections.end()) {
+            return luaL_error(
+                lua, "game.movement.recover_collision expects a compass direction");
+        }
+        const auto direction_ordinal = static_cast<std::uint8_t>(
+            std::distance(kCompassDirections.begin(), direction_it));
+        if (self->last_actor_movement_recovery_probe->direction_ordinal !=
+            direction_ordinal) {
+            return luaL_error(
+                lua, "game.movement.recover_collision direction does not match the latest probe");
         }
         try {
+            const auto pending_probe =
+                *self->last_actor_movement_recovery_probe;
+            self->last_actor_movement_recovery_probe.reset();
+            // ROM 0xB77E writes twice the compass ordinal to its vector-table
+            // slot. Convert the semantic direction only at this native edge [C].
+            constexpr std::uint8_t kSourceDirectionSlotScale = 2U;
             const auto recovery =
                 self->active_actor_context->movement_collision_recovery(
                     static_cast<std::uint16_t>(x),
                     static_cast<std::uint16_t>(y),
-                    static_cast<std::int16_t>(lua_tointeger(lua, 3)),
-                    static_cast<std::uint8_t>(direction_slot));
+                    pending_probe.collision_code,
+                    static_cast<std::uint8_t>(
+                        pending_probe.direction_ordinal *
+                        kSourceDirectionSlotScale));
             lua_pushboolean(lua, recovery.movement_recovered);
             lua_pushboolean(lua, (recovery.route_flags & 0x20U) != 0U);
             return 2;
@@ -6577,7 +6725,10 @@ struct GameScriptRuntime::Impl {
         lua_newtable(state);
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, movement_collision, 1);
-        lua_setfield(state, -2, "collision");
+        lua_setfield(state, -2, "probe");
+        lua_pushlightuserdata(state, this);
+        lua_pushcclosure(state, movement_follow_route_step_clear, 1);
+        lua_setfield(state, -2, "follow_route_step_clear");
         lua_pushlightuserdata(state, this);
         lua_pushcclosure(state, movement_route, 1);
         lua_setfield(state, -2, "route");
@@ -12106,13 +12257,10 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "movement_actor_facts");
     lua_pushboolean(state, context.walk_fast_enabled);
     lua_setfield(state, -2, "walk_fast_enabled");
-    lua_pushboolean(state, context.movement_transition_active);
-    lua_setfield(state, -2, "movement_transition_active");
     lua_pushinteger(state, context.movement_scene_id);
-    lua_setfield(state, -2, "movement_scene_id");
-    lua_pushinteger(state, context.movement_collision_mode);
-    lua_setfield(state, -2, "movement_collision_mode");
+    lua_setfield(state, -2, "scene_id");
     ScopedInstructionBudget instruction_budget(state);
+    impl_->last_actor_movement_recovery_probe.reset();
     impl_->last_actor_terrain_collision_code.reset();
     impl_->active_actor_context = &context;
     const auto actor_status = lua_pcall(state, 1, 1, 0);

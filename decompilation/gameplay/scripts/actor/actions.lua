@@ -3,8 +3,8 @@
 local R = require("actor.registry")
 local E = require("enums")
 local Delay = require("actor.delay")
-local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
-    E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local SoundId, SceneId, EntryDelayMax, AiTuning =
+    E.SoundId, E.SceneId, E.EntryDelayMax, E.AiTuning
 local states = game.actors
 local TARGET_MARKER_RADIUS_STEP = 8
 local TARGET_MARKER_OUTER_RADIUS = 64
@@ -417,7 +417,7 @@ function R.queue_spell_effect(state, context, target, resolution)
             repeat_countdown = effect_profile.repeat_countdown,
             caster_combatant = resolution.combatant,
             ai_target_candidates = context.ai_target_candidates,
-            scene_id = context.movement_scene_id,
+            scene_id = context.scene_id,
             caster_actor_id = state.actor_id,
             caster_is_ai_runner =
                 context.actor_facts.lifecycle.ai_runner == true,
@@ -441,7 +441,7 @@ function R.queue_spell_effect(state, context, target, resolution)
                     local marker = {
                         spell_id = "sleep",
                         actor_id = candidate.id,
-                        scene_id = context.movement_scene_id,
+                        scene_id = context.scene_id,
                     }
                     spell_effect_scans_by_actor_id[candidate.id] = marker
                     local candidate_state = states[candidate.id]
@@ -644,7 +644,7 @@ local function transfer_pending_spell_effect(state, context)
     if type(pending) ~= "table" then
         return
     end
-    if pending.scene_id ~= context.movement_scene_id then
+    if pending.scene_id ~= context.scene_id then
         pending_spell_effects_by_actor_id[actor_id] = nil
         return
     end
@@ -725,7 +725,7 @@ local function advance_spell_effect(state, context)
 
     local pending = state.spell_effect_pending
     if pending.scene_id ~= nil and
-       pending.scene_id ~= context.movement_scene_id then
+       pending.scene_id ~= context.scene_id then
         state.spell_effect_pending = nil
         return
     end

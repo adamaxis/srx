@@ -34,6 +34,15 @@ end
 local function b(h, n) return ((h >> n) & 1) == 1 end
 TYPED = {
   ["movement.collision"] = function(h) return ((h >> 3) % 0xA0) - 0x20, (h >> 9) % 8 end,
+  ["movement.probe"] = function(h)
+    local kind = h % 5 == 0 and "requires_recovery" or
+      h % 3 == 0 and "clear" or "blocked"
+    return { kind = kind,
+      blocks_route_fallback = kind == "blocked" or
+        (kind == "requires_recovery" and h % 2 == 0),
+      terrain_is_clear = h % 7 == 0 }
+  end,
+  ["movement.follow_route_step_clear"] = function(h) return h % 2 == 0 end,
   ["movement.projectile_terrain"] = function(h)
     return { blocked = (h >> 3) % 4 ~= 0,
       boundary_active = b(h, 8), outside_map = b(h, 9) }
@@ -47,9 +56,15 @@ TYPED = {
         x = (h >> 4) % 0x10000, y = (h >> 12) % 0x10000 } or nil,
       target_id = hit and b(h, 20) and ("a" .. (h % 3)) or nil }
   end,
-  ["movement.recover_collision"] = function(h) return b(h, 2), (h >> 4) % 0x100 end,
-  ["movement.route"] = function(h) return { primary_marker = (h % 3) - 1, secondary_marker = ((h >> 2) % 3) - 1,
-      primary_fallback_slot = (h >> 4) % 16, secondary_fallback_slot = (h >> 8) % 16 } end,
+  ["movement.recover_collision"] = function(h) return b(h, 2), b(h, 4) end,
+  ["movement.route"] = function(h)
+    local directions = { "north", "north_east", "east", "south_east",
+      "south", "south_west", "west", "north_west" }
+    return { primary_route_marker_present = h % 3 == 0,
+      secondary_route_marker_present = (h >> 2) % 3 == 0,
+      primary_fallback_direction = directions[(h >> 4) % 8 + 1],
+      secondary_fallback_direction = directions[(h >> 8) % 8 + 1] }
+  end,
   ["entity_motion.heading_offsets"] = function(source_heading)
     local step = require("entity_motion").projectile_step(
       source_heading)
@@ -91,6 +106,10 @@ local function make_game(log, legacy_services)
           end
         end
         local a = ser(arguments)
+        if full == "movement.collision" or full == "movement.probe" or
+           full == "movement.follow_route_step_clear" then
+          logged_full = "movement.collision"
+        end
         -- The old module requested a pure vector calculation from a host
         -- service. The port now calculates the vector in Lua; keep comparing
         -- resulting gameplay state without treating that internal call as an
@@ -98,9 +117,27 @@ local function make_game(log, legacy_services)
         if full ~= "entity_motion.heading_offsets" then
           log[#log + 1] = logged_full .. a
         end
+        -- Keep the frozen reference and modern port on the same open-path
+        -- fixture. ROM collision encodings are covered by embedded runtime QA.
+        if full == "movement.collision" then return 0, 0 end
+        if full == "movement.probe" then
+          return { kind = "clear", blocks_route_fallback = false,
+            terrain_is_clear = true }
+        end
+        if full == "movement.follow_route_step_clear" then return true end
+        if full == "movement.recover_collision" then
+          return b(hash(logged_full .. a .. count), 2),
+            legacy_services and 0 or false
+        end
         local h = hash(logged_full .. a .. count)
         local T = TYPED[full]
         if T and h % 7 ~= 0 then
+          if full == "movement.route" and legacy_services then
+            return { primary_marker = (h % 3) - 1,
+              secondary_marker = ((h >> 2) % 3) - 1,
+              primary_fallback_slot = (h >> 4) % 8,
+              secondary_fallback_slot = (h >> 8) % 8 }
+          end
           if full == "entity_motion.heading_offsets" then
             return T(arguments[1])
           end
@@ -252,7 +289,7 @@ local function context(actor)
                     MovementDirection.WEST, MovementDirection.NORTH_WEST })
     end),
     world_effect_slot_occupancy = list(bool, 8),
-    movement_scene_id = num(), movement_allowed = bool(),
+    scene_id = num(), movement_scene_id = num(), movement_allowed = bool(),
     action_animation_threshold = num(), action_animation_increment = num(), target_selection_mode = R(0, 3),
     source_projection_active = bool(), source_behavior_flags = num(), movement_entity_flags = num(),
     ai_random_bound = function(n) return (n and n > 0) and ((#actor * 7) % n) or 0 end,

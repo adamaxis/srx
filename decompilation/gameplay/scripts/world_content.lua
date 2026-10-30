@@ -526,7 +526,7 @@ function World.mark_contact_actor_for_escort_cleanup(
     end
     local state = game.actors[actor_instance_id]
     if type(state) ~= "table" or
-       state.movement_scene_id ~= scene_id or
+       state.scene_id ~= scene_id or
        type(state.actor_facts) ~= "table" or
        type(state.actor_facts.lifecycle) ~= "table" or
        state.actor_facts.lifecycle.active ~= true or

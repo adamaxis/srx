@@ -5,8 +5,8 @@ local E = require("enums")
 local I = require("lib.int68k")
 local ActorProfileCatalog = require("data.actor_profiles")
 local u8, u16, s16 = I.u8, I.u16, I.s16
-local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
-    E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local SoundId, SceneId, EntryDelayMax, AiTuning =
+    E.SoundId, E.SceneId, E.EntryDelayMax, E.AiTuning
 
 local projectile = {
     role = { primary = "primary", secondary = "secondary" },

@@ -306,7 +306,8 @@ E.AiTuning = {   -- [C] unless marked
     WORLD_TARGET_LIST_PHASE = 0x0B, -- raw 0x0B: rebuild 0x1438C at 0x13874 [C]
     RUNNER_TARGET_LIST_PHASE = 0x0F, -- raw 0x0F: rebuild 0x14446 at 0x13874 [C]
 }
-E.Collision = { BLOCKED = 0x7F, LOW_BITS = 0x1F, IMPASSABLE_FROM = 0x18 }   -- repo movement_collision_code [H names, C values]
+-- Frozen pre-split reference only. Active Lua movement receives named host outcomes.
+E.Collision = { BLOCKED = 0x7F, LOW_BITS = 0x1F, IMPASSABLE_FROM = 0x18 }
 E.EntryDelayMax = { STATIC = 15, DYNAMIC_ENCOUNTER = 0x28 }                   -- repo heartbeat guard [H names]
 E.Grid = {
     COLUMNS = 64,

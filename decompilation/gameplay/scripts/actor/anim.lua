@@ -5,8 +5,8 @@ local E = require("enums")
 local I = require("lib.int68k")
 local u8, u16, s16 = I.u8, I.u16, I.s16
 local Animator = R.Animator   -- from actor/animator.lua
-local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
-    E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local SoundId, SceneId, EntryDelayMax, AiTuning =
+    E.SoundId, E.SceneId, E.EntryDelayMax, E.AiTuning
 local PlayerHurt = E.PlayerHurt
 local VisualProfile = R.VisualProfile -- from actor/tables.lua
 local ProjectileAnimationClips =

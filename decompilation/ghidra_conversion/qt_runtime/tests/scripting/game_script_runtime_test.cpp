@@ -10208,9 +10208,12 @@ int main() {
         [](const std::uint16_t) { return ScriptMovementRouteFacts{}; };
     const auto slide_step = scripts.actor_heartbeat(slide_step_context);
 
+    // ROM 0xB77E preserves -0x3E when the actor recovery flag is set [C]. Recovery
+    // receives that native value and the compass direction converted to its
+    // source slot at the C++ boundary.
     auto pending_event_context = player_step_context(
-        "movement_pending_world_event", 0U,
-        MovementDirection::north);
+        "movement_pending_world_event", 0x4000U,
+        MovementDirection::east);
     pending_event_context.movement_entity_flags = 0x02U;
     pending_event_context.movement_state.route_flags = 0U;
     pending_event_context.movement_collision =
@@ -10218,11 +10221,17 @@ int main() {
             return ScriptMovementCollisionResult{-62, 0xFFC2U};
         };
     std::size_t pending_event_recoveries = 0U;
+    std::int16_t recovered_source_collision = 0;
+    std::uint8_t recovered_source_direction_slot = 0xFFU;
     pending_event_context.movement_collision_recovery =
-        [&pending_event_recoveries](const std::uint16_t, const std::uint16_t,
-                                    const std::int16_t,
-                                    const std::uint8_t) {
+        [&pending_event_recoveries, &recovered_source_collision,
+         &recovered_source_direction_slot](
+            const std::uint16_t, const std::uint16_t,
+            const std::int16_t collision_code,
+            const std::uint8_t direction_slot) {
             ++pending_event_recoveries;
+            recovered_source_collision = collision_code;
+            recovered_source_direction_slot = direction_slot;
             return ScriptMovementCollisionRecoveryResult{false, 0x20U};
         };
     pending_event_context.movement_route_lookup =
@@ -10246,9 +10255,156 @@ int main() {
     reset_step_context.movement_route_lookup =
         [](const std::uint16_t) { return ScriptMovementRouteFacts{}; };
     const auto reset_step = scripts.actor_heartbeat(reset_step_context);
+
+    // ROM 0xB77E normalizes the same negative result to blocked when the
+    // recovery flag is clear, so Lua routes around it without calling recovery [C].
+    auto unflagged_negative_context = player_step_context(
+        "movement_unflagged_negative_collision", 0x4000U,
+        MovementDirection::east);
+    std::size_t unflagged_negative_recoveries = 0U;
+    unflagged_negative_context.movement_collision =
+        [](const std::uint16_t x, const std::uint16_t y) {
+            if (x == 110U && y == 100U) {
+                return ScriptMovementCollisionResult{-62, 0xFFC2U};
+            }
+            return ScriptMovementCollisionResult{0, 0U};
+        };
+    unflagged_negative_context.movement_route_lookup =
+        [](const std::uint16_t) {
+            return ScriptMovementRouteFacts{0, 1, 0U, 4U};
+        };
+    unflagged_negative_context.movement_collision_recovery =
+        [&unflagged_negative_recoveries](
+            const std::uint16_t, const std::uint16_t,
+            const std::int16_t, const std::uint8_t) {
+            ++unflagged_negative_recoveries;
+            return ScriptMovementCollisionRecoveryResult{false, 0U};
+        };
+    const auto unflagged_negative_step =
+        scripts.actor_heartbeat(unflagged_negative_context);
+
+    // ROM 0xB732 keeps low bits 2 recoverable in ordinary field movement, but
+    // blocks them during a field transition, in scene 0x14, or in mode 2 [C].
+    std::size_t ordinary_negative_recoveries = 0U;
+    std::size_t scene_negative_recoveries = 0U;
+    std::size_t mode_negative_recoveries = 0U;
+    std::size_t transition_negative_recoveries = 0U;
+    const auto negative_fallback_case = [&scripts, &player_step_context](
+        const std::string_view actor_id, const std::uint16_t scene_id,
+        const std::uint16_t collision_mode,
+        const bool transition_active, std::size_t& recovery_calls) {
+        auto context = player_step_context(
+            actor_id, 0x4000U, MovementDirection::east);
+        context.movement_entity_flags = 0x02U;
+        context.movement_scene_id = scene_id;
+        context.movement_collision_mode = collision_mode;
+        context.movement_transition_active = transition_active;
+        context.movement_collision = [](const std::uint16_t x,
+                                        const std::uint16_t y) {
+            if (x == 110U && y == 100U) {
+                return ScriptMovementCollisionResult{1, 1U};
+            }
+            if (x == 100U && y == 90U) {
+                return ScriptMovementCollisionResult{-62, 0xFFC2U};
+            }
+            return ScriptMovementCollisionResult{0, 0U};
+        };
+        context.movement_route_lookup = [](const std::uint16_t) {
+            return ScriptMovementRouteFacts{0, 1, 0U, 4U};
+        };
+        context.movement_collision_recovery =
+            [&recovery_calls](const std::uint16_t, const std::uint16_t,
+                              const std::int16_t, const std::uint8_t) {
+                ++recovery_calls;
+                return ScriptMovementCollisionRecoveryResult{false, 0U};
+            };
+        return scripts.actor_heartbeat(context);
+    };
+    const auto ordinary_negative_fallback = negative_fallback_case(
+        "movement_ordinary_negative_fallback", 0U, 0U, false,
+        ordinary_negative_recoveries);
+    const auto scene_negative_fallback = negative_fallback_case(
+        "movement_alarm_scene_negative_fallback", 0x14U, 0U, false,
+        scene_negative_recoveries);
+    const auto mode_negative_fallback = negative_fallback_case(
+        "movement_world_mode_negative_fallback", 0U, 2U, false,
+        mode_negative_recoveries);
+    const auto transition_negative_fallback = negative_fallback_case(
+        "movement_transition_negative_fallback", 0U, 0U, true,
+        transition_negative_recoveries);
+
+    // ROM 0xB732 normalizes the initial negative probe to blocked in scene
+    // 0x14 before the 0xB77E recovery branch can run [C].
+    auto policy_blocked_initial_context = player_step_context(
+        "movement_policy_blocked_initial", 0x4000U,
+        MovementDirection::east);
+    policy_blocked_initial_context.movement_entity_flags = 0x02U;
+    policy_blocked_initial_context.movement_scene_id = 0x14U;
+    policy_blocked_initial_context.movement_collision =
+        [](const std::uint16_t, const std::uint16_t) {
+            return ScriptMovementCollisionResult{-62, 0xFFC2U};
+        };
+    std::size_t policy_blocked_initial_recoveries = 0U;
+    policy_blocked_initial_context.movement_collision_recovery =
+        [&policy_blocked_initial_recoveries](
+            const std::uint16_t, const std::uint16_t,
+            const std::int16_t, const std::uint8_t) {
+            ++policy_blocked_initial_recoveries;
+            return ScriptMovementCollisionRecoveryResult{false, 0U};
+        };
+    policy_blocked_initial_context.movement_route_lookup =
+        [](const std::uint16_t) {
+            return ScriptMovementRouteFacts{0, 1, 0U, 4U};
+        };
+    const auto policy_blocked_initial_step =
+        scripts.actor_heartbeat(policy_blocked_initial_context);
+
+    // ROM 0xBBC8 stores fallback direction ordinals. The adapter maps every
+    // ordinal to a compass name before Lua selects and probes the route [C].
+    const std::array<std::pair<std::uint16_t, std::uint16_t>, 8>
+        route_direction_offsets{{
+            {0U, 0xFFF6U}, {10U, 0xFFF6U}, {10U, 0U}, {10U, 10U},
+            {0U, 10U}, {0xFFF6U, 10U}, {0xFFF6U, 0U},
+            {0xFFF6U, 0xFFF6U}}};
+    bool all_route_directions_translated = true;
+    for (std::uint16_t direction = 0U; direction < 8U; ++direction) {
+        const auto actor_id =
+            "movement_route_direction_" + std::to_string(direction);
+        auto context = player_step_context(
+            actor_id, 0x4000U, MovementDirection::east);
+        std::size_t probes = 0U;
+        std::uint16_t observed_route_key = 0xFFFFU;
+        context.movement_collision = [&probes](const std::uint16_t,
+                                                const std::uint16_t) {
+            ++probes;
+            return probes == 1U
+                       ? ScriptMovementCollisionResult{1, 1U}
+                       : ScriptMovementCollisionResult{0, 0U};
+        };
+        context.movement_route_lookup =
+            [&observed_route_key, direction](const std::uint16_t key) {
+                observed_route_key = key;
+                return ScriptMovementRouteFacts{
+                    0, 1, direction,
+                    static_cast<std::uint16_t>((direction + 4U) & 7U)};
+            };
+        const auto step = scripts.actor_heartbeat(context);
+        const auto expected_x = static_cast<std::uint16_t>(
+            100U + static_cast<std::int16_t>(route_direction_offsets[direction].first));
+        const auto expected_y = static_cast<std::uint16_t>(
+            100U + static_cast<std::int16_t>(route_direction_offsets[direction].second));
+        all_route_directions_translated =
+            all_route_directions_translated && step.has_value() &&
+            step->movement_step.has_value() &&
+            step->movement_step->outcome ==
+                ScriptActorMovementStep::Outcome::accepted &&
+            step->movement_step->state.position_x == expected_x &&
+            step->movement_step->state.position_y == expected_y &&
+            observed_route_key == 4U && probes == 2U;
+    }
     // ROM C002 stores north as (0,-40), east as (40,0), and northeast as
     // (40,-40). These checks inject a 10-unit distance and exercise the same
-    // signed compass vectors without passing C002's word array into Lua.
+    // signed compass vectors without passing C002's word array into Lua [C].
     // ROM 0xBADE records a blocked cardinal direction; 0xB442 requests the
     // reset marker. Lua returns those outcomes by name for native translation.
     // ROM 0xAC5E tests FFDF64 only for zero; Lua consumes that as a boolean
@@ -10286,10 +10442,12 @@ int main() {
                 pending_event_step.has_value() &&
                 pending_event_step->movement_step.has_value() &&
                 pending_event_step->movement_step->state.route_flags == 0x20U &&
-                pending_event_step->movement_step->state.position_y == 90U &&
+                pending_event_step->movement_step->state.position_x == 110U &&
                 pending_event_step->movement_step->state.terrain_collision_code ==
                     0xFFC2U &&
                 pending_event_recoveries == 1U &&
+                recovered_source_collision == -62 &&
+                recovered_source_direction_slot == 4U &&
                 reset_step.has_value() && reset_step->movement_step.has_value() &&
                 reset_step->movement_step->outcome ==
                     ScriptActorMovementStep::Outcome::reset &&
@@ -10322,6 +10480,41 @@ int main() {
                     ScriptCardinalDirection::west) == 6U &&
                 reset_step->animation_id == "idle" &&
                 reset_step->direction == 2U &&
+                unflagged_negative_step.has_value() &&
+                unflagged_negative_step->movement_step.has_value() &&
+                unflagged_negative_step->movement_step->state.position_x ==
+                    100U &&
+                unflagged_negative_step->movement_step->state.position_y ==
+                    90U &&
+                unflagged_negative_recoveries == 0U &&
+                ordinary_negative_fallback.has_value() &&
+                ordinary_negative_fallback->movement_step.has_value() &&
+                ordinary_negative_fallback->movement_step->outcome ==
+                    ScriptActorMovementStep::Outcome::accepted &&
+                ordinary_negative_fallback->movement_step->state.position_y ==
+                    90U &&
+                ordinary_negative_recoveries == 0U &&
+                scene_negative_fallback.has_value() &&
+                scene_negative_fallback->movement_step.has_value() &&
+                scene_negative_fallback->movement_step->outcome ==
+                    ScriptActorMovementStep::Outcome::reset &&
+                scene_negative_recoveries == 0U &&
+                mode_negative_fallback.has_value() &&
+                mode_negative_fallback->movement_step.has_value() &&
+                mode_negative_fallback->movement_step->outcome ==
+                    ScriptActorMovementStep::Outcome::reset &&
+                mode_negative_recoveries == 0U &&
+                transition_negative_fallback.has_value() &&
+                transition_negative_fallback->movement_step.has_value() &&
+                transition_negative_fallback->movement_step->outcome ==
+                    ScriptActorMovementStep::Outcome::reset &&
+                transition_negative_recoveries == 0U &&
+                policy_blocked_initial_step.has_value() &&
+                policy_blocked_initial_step->movement_step.has_value() &&
+                policy_blocked_initial_step->movement_step->outcome ==
+                    ScriptActorMovementStep::Outcome::reset &&
+                policy_blocked_initial_recoveries == 0U &&
+                all_route_directions_translated &&
                 clear_step->animation_id == "walk" &&
                 route_step->animation_id == "walk" &&
                 reset_collision_queries == 4U,
@@ -10350,6 +10543,10 @@ int main() {
                   << ",slide_mark=" << (slide_state && slide_state->mark_directional_fallback)
                   << ",pending=" << (pending_state != nullptr)
                   << ",pending_x=" << (pending_state ? pending_state->position_x : 0U)
+                  << ",negative_recoveries=" << ordinary_negative_recoveries
+                  << '/' << scene_negative_recoveries
+                  << '/' << mode_negative_recoveries
+                  << '/' << transition_negative_recoveries
                   << ",reset=" << (reset_state != nullptr)
                   << ",reset_mark=" << (reset_state && reset_state->mark_reset_after_block)
                   << ",reset_route_update=" << (reset_state ? static_cast<unsigned>(reset_state->route_update.kind) : 99U)

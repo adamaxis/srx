@@ -385,14 +385,10 @@ for _, n in ipairs({ "classify_spell_dispatch", "classify_item_dispatch" }) do S
 SHAPE.classify_item_dispatch = SHAPE.begin_dynamic_item_action
 -- functions whose first parameter is not the state: return replacement leading args
 local ARGS = {
-  movement_collision_code = function(st, ctx)
-    ctx.movement_transition_active = R(3) == 1; ctx.movement_collision_mode = R(0, 3); ctx.movement_scene_id = pick({ 0x14, R(0, 0x37) })
-    return { -R(1, 0x40), ctx }
-  end,
   probe_movement = function(st, ctx)
-    ctx.movement_entity_flags = pick({ 0, 2, R(0, 255) })
-    local offs = {} for i = 1, 8 do offs[i] = { R(-32, 32), R(-32, 32) } end
-    return { ctx, H.mstate(), R(0, 15), offs }
+    local directions = { "north", "north_east", "east", "south_east",
+      "south", "south_west", "west", "north_west" }
+    return { ctx, H.mstate(), pick(directions), R(0, 40) }
   end,
 }
 math.randomseed(SEED)
@@ -410,6 +406,12 @@ local INTENDED = {
   begin_received_hit_reaction = "0xC072/C0B2 pose data and B03E/B05E cues now come from generated ROM animation data",
   source_action_delay = "0xABFC now signed-halves every nonzero D0 other than 2 [C]",
   think = "merged R.think API replaces the former advance_think/apply_think_path pair",
+  probe_movement = "0xB77E collision encodings are converted to named native probe facts before Lua movement policy",
+  movement_probe_is_blocked = "route fallback consumes the native semantic blocking fact; ROM 0xB732 encodings stay host-side",
+  advance_entity_movement = "movement consumes named native collision and route facts; focused runtime QA covers direct, recovery, fallback, scene, mode, and transition branches",
+  commit_movement_candidate = "candidate collision state uses named terrain and route facts instead of source record bytes",
+  finish_entity_movement = "terrain-clear state is translated by the native collision adapter",
+  reset_blocked_movement = "the movement result uses typed route facts and named collision outcomes",
 }
 -- Fields added by actor/think.lua (0x13904 gate outputs). Stripped before comparing so the
 -- rest of the result/state must still match the pre-split reference exactly.

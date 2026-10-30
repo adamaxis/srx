@@ -4,8 +4,8 @@ local R = require("actor.registry")
 local E = require("enums")
 local I = require("lib.int68k")
 local u16, s16 = I.u16, I.s16
-local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
-    E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local SoundId, SceneId, EntryDelayMax, AiTuning =
+    E.SoundId, E.SceneId, E.EntryDelayMax, E.AiTuning
 local VisualProfile = E.ActorVisualProfile
 
 -- ROM 0x1E514 clears the escort relationship and deactivates the actor. The
@@ -97,8 +97,7 @@ function ActorAI.heartbeat(context)
                                state.physical_condition
     state.live_field_actor = context.live_field_actor == true or
                              state.live_field_actor
-    state.movement_scene_id = context.movement_scene_id or
-                              state.movement_scene_id
+    state.scene_id = context.scene_id or state.scene_id
     state.ammunition_remaining = context.ammunition_remaining or
                                 state.ammunition_remaining
     if context.phase == "behavior" and

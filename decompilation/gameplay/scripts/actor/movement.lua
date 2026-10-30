@@ -6,8 +6,8 @@ local I = require("lib.int68k")
 local Bearing = require("bearing")
 local EntityMotion = require("entity_motion")
 local u16 = I.u16
-local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
-    E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
+local SoundId, EntryDelayMax, AiTuning =
+    E.SoundId, E.EntryDelayMax, E.AiTuning
 local MovementBearingDegrees = E.MovementBearingDegrees
 local VisualProfile = R.VisualProfile -- from actor/tables.lua
 local projectile = R.projectile   -- from actor/tables.lua
@@ -400,20 +400,6 @@ local function resolve_source_target_motion(context, state, target)
     return accepted
 end
 
-local function movement_collision_code(code, context)
-    if code >= 0 then
-        return code
-    end
-    local low_bits = code & Collision.LOW_BITS
-    if context.movement_transition_active or low_bits >= Collision.IMPASSABLE_FROM or
-       ((context.movement_scene_id == SceneId.ALARM_COMBAT or
-         context.movement_collision_mode == 2) and
-        low_bits >= 2 and low_bits <= 5) then
-        return Collision.BLOCKED
-    end
-    return code
-end
-
 -- ROM 0xBDF2, cardinal step by Quickness clamped to 0..9.
 local quickness_cardinal_steps = { 9, 9, 12, 16, 19, 22, 25, 27, 29, 31 }
 
@@ -423,17 +409,50 @@ local function movement_lifecycle(context)
 end
 
 -- Movement is represented as a distance in map units per actor update.
--- Direction supplies signed X/Y components; ROM C002's eight-entry XY word
--- table is source evidence, not a runtime Lua data structure [C].
-local direction_vectors = {
-    { x = 0, y = -1 }, { x = 1, y = -1 },
-    { x = 1, y = 0 },  { x = 1, y = 1 },
-    { x = 0, y = 1 },  { x = -1, y = 1 },
-    { x = -1, y = 0 }, { x = -1, y = -1 },
+-- ROM C002's doubled direction slots and XY word table stay in the native
+-- adapter; Lua uses named compass directions [C].
+local direction_names = {
+    "north", "north_east", "east", "south_east",
+    "south", "south_west", "west", "north_west",
 }
 
+local direction_vectors = {
+    north = { x = 0, y = -1 },
+    north_east = { x = 1, y = -1 },
+    east = { x = 1, y = 0 },
+    south_east = { x = 1, y = 1 },
+    south = { x = 0, y = 1 },
+    south_west = { x = -1, y = 1 },
+    west = { x = -1, y = 0 },
+    north_west = { x = -1, y = -1 },
+}
+
+local direction_bearings = {
+    north = 0, north_east = 45, east = 90, south_east = 135,
+    south = 180, south_west = 225, west = 270, north_west = 315,
+}
+
+local cardinal_by_octant = {
+    [0] = "north", [1] = "north",
+    [2] = "east", [3] = "east",
+    [4] = "south", [5] = "south",
+    [6] = "west", [7] = "west",
+}
+
+local next_cardinal_direction = {
+    north = "east", east = "south", south = "west", west = "north",
+}
+
+local function direction_name(octant)
+    if type(octant) ~= "number" or octant < 0 or octant > 7 or
+       octant % 1 ~= 0 then
+        return nil
+    end
+    return direction_names[octant + 1]
+end
+
 local function direction_vector(direction)
-    return direction_vectors[(direction & 0x7) + 1]
+    return direction_vectors[direction]
 end
 
 local function actor_lifecycle(context)
@@ -566,49 +585,45 @@ local function creature_movement_step_distance(context, state)
     return step
 end
 
-local function probe_movement(context, movement_state, direction_slot,
+local function probe_movement(movement_state, direction,
                               step_distance)
-    local direction = (direction_slot >> 1) & 0x7
     local vector = direction_vector(direction)
+    if vector == nil then
+        return nil
+    end
     local candidate_x = u16(
         movement_state.position_x + vector.x * step_distance)
     local candidate_y = u16(
         movement_state.position_y + vector.y * step_distance)
-    local collision_code, terrain_is_clear = game.movement.collision(
-        candidate_x, candidate_y)
-    movement_state.terrain_is_clear = terrain_is_clear
-    -- ROM 0xB77E maps detailed negative terrain results to 0x7F unless the
-    -- actor's +0x10 bit 1 requests that negative values be preserved.
-    if collision_code < 0 and
-       not actor_lifecycle(context).thinking_enabled then
-        collision_code = Collision.BLOCKED
+    local collision = game.movement.probe(
+        candidate_x, candidate_y, direction)
+    if type(collision) ~= "table" or
+       (collision.kind ~= "clear" and
+        collision.kind ~= "requires_recovery" and
+        collision.kind ~= "blocked") or
+       type(collision.blocks_route_fallback) ~= "boolean" or
+       type(collision.terrain_is_clear) ~= "boolean" then
+        return nil
     end
+    movement_state.terrain_is_clear = collision.terrain_is_clear
     return {
-        collision_code = collision_code,
+        collision = collision,
         candidate_x = candidate_x,
         candidate_y = candidate_y,
-        direction_slot = direction_slot,
+        direction = direction,
     }
 end
 
-local function route_key_for_bearing_degrees(bearing_degrees)
+local function route_direction_for_bearing_degrees(bearing_degrees)
     local octant = Bearing.octant(bearing_degrees, false)
     if octant == nil then
         return nil
     end
-    return (octant & 0x06) << 1
+    return cardinal_by_octant[octant]
 end
 
-local function cardinal_direction_id(direction)
-    if direction == 0 then return "north" end
-    if direction == 2 then return "east" end
-    if direction == 4 then return "south" end
-    if direction == 6 then return "west" end
-    return nil
-end
-
-local function movement_probe_is_blocked(probe, context)
-    return movement_collision_code(probe.collision_code, context) > 0
+local function movement_probe_is_blocked(probe)
+    return probe.collision.blocks_route_fallback
 end
 
 local function commit_movement_candidate(movement_state, probe)
@@ -617,7 +632,7 @@ local function commit_movement_candidate(movement_state, probe)
     movement_state.clear_pending_event = true
 end
 
-local function reset_blocked_movement(context, state, movement_state)
+local function reset_blocked_movement(state, movement_state)
     movement_state.route_facts.path_active = false
     movement_state.bearing_degrees = state.movement_bearing_degrees
     movement_state.mark_reset_after_block = true
@@ -628,9 +643,10 @@ local function reset_blocked_movement(context, state, movement_state)
     state.animation_id = "idle"
     -- B442 restores the facing and clears pending movement while preserving
     -- the current frame and Lua-owned animation progress for the render pass.
-    local _, terrain_is_clear = game.movement.collision(
+    local collision = game.movement.probe(
         movement_state.position_x, movement_state.position_y)
-    movement_state.terrain_is_clear = terrain_is_clear
+    movement_state.terrain_is_clear = type(collision) == "table" and
+        collision.terrain_is_clear == true
     return {
         outcome = "reset",
         state = movement_state,
@@ -674,11 +690,17 @@ local function advance_entity_movement(context, state)
 
     local octant_for_heading = movement_octant_selector(context)
     local initial_direction = octant_for_heading(movement_state.bearing_degrees)
-    local initial_slot = initial_direction * 2
+    if initial_direction == nil then
+        return nil
+    end
+    local initial_direction_name = direction_name(initial_direction)
     local initial = probe_movement(
-        context, movement_state, initial_slot, movement_step_distance)
+        movement_state, initial_direction_name, movement_step_distance)
+    if initial == nil then
+        return nil
+    end
 
-    if initial.collision_code == 0 then
+    if initial.collision.kind == "clear" then
         movement_state.substate_update = "direct_translation"
         commit_movement_candidate(movement_state, initial)
         state.animation_id = "walk"
@@ -689,10 +711,10 @@ local function advance_entity_movement(context, state)
         }
     end
 
-    if initial.collision_code < 0 then
+    if initial.collision.kind == "requires_recovery" then
         local recovered, route_transition = game.movement.recover_collision(
             initial.candidate_x, initial.candidate_y,
-            initial.collision_code, initial.direction_slot)
+            initial.direction)
         if type(recovered) ~= "boolean" or
            type(route_transition) ~= "boolean" then
             return nil
@@ -714,22 +736,28 @@ local function advance_entity_movement(context, state)
     end
 
     if movement_state.bearing_degrees % 90 == 0 then
-        local key = route_key_for_bearing_degrees(
+        local route_direction = route_direction_for_bearing_degrees(
             movement_state.bearing_degrees)
-        local route = game.movement.route(key)
+        if route_direction == nil then
+            return nil
+        end
+        local route = game.movement.route(route_direction)
         local fallback
         local carry_set = false
-        if not (route.primary_marker > 0 and route.secondary_marker > 0) then
-            local fallback_slot = route.primary_marker <= 0
-                and route.primary_fallback_slot
-                or route.secondary_fallback_slot
-            -- ROM 0xBBC8: the descriptor word is a direction ordinal;
-            -- 0xBBC8 doubles it into the probe slot (0xB77E doubles again
-            -- for the vector table) [C].
+        if not (route.primary_route_marker_present and
+                route.secondary_route_marker_present) then
+            local fallback_direction =
+                not route.primary_route_marker_present and
+                route.primary_fallback_direction or
+                route.secondary_fallback_direction
+            -- ROM 0xBBC8's descriptor becomes a compass direction at the
+            -- native route boundary, so Lua can make the choice by name.
             fallback = probe_movement(
-                context, movement_state, fallback_slot << 1,
-                movement_step_distance)
-            carry_set = movement_probe_is_blocked(fallback, context)
+                movement_state, fallback_direction, movement_step_distance)
+            if fallback == nil then
+                return nil
+            end
+            carry_set = movement_probe_is_blocked(fallback)
         else
             carry_set = true
         end
@@ -746,7 +774,7 @@ local function advance_entity_movement(context, state)
             }
         end
         local reset = reset_blocked_movement(
-            context, state, movement_state)
+            state, movement_state)
         state.animation_id = "idle"
         return reset
     end
@@ -755,35 +783,38 @@ local function advance_entity_movement(context, state)
     if octant == nil then
         return nil
     end
-    local movement_direction = octant & 0x06
-    local cardinal_id = cardinal_direction_id(movement_direction)
+    local cardinal_id = cardinal_by_octant[octant]
     if cardinal_id == nil then
         return nil
     end
     movement_state.substate_update = "cardinal_fallback"
     movement_state.cardinal_fallback_direction = cardinal_id
     local selected = probe_movement(
-        context, movement_state, movement_direction << 1,
-        movement_step_distance)
-    if movement_probe_is_blocked(selected, context) then
+        movement_state, cardinal_id, movement_step_distance)
+    if selected == nil then
+        return nil
+    end
+    if movement_probe_is_blocked(selected) then
         movement_state.route_update = {
             kind = "blocked_by_direction",
             direction = cardinal_id,
         }
-        local alternate_direction = (movement_direction + 2) & 0x07
+        local alternate_direction = next_cardinal_direction[cardinal_id]
         selected = probe_movement(
-            context, movement_state, alternate_direction << 1,
-            movement_step_distance)
-        if movement_probe_is_blocked(selected, context) then
+            movement_state, alternate_direction, movement_step_distance)
+        if selected == nil then
+            return nil
+        end
+        if movement_probe_is_blocked(selected) then
             local reset = reset_blocked_movement(
-                context, state, movement_state)
+                state, movement_state)
             state.animation_id = "idle"
             return reset
         end
     end
 
     movement_state.animation_bearing_degrees =
-        (selected.direction_slot >> 1) * Bearing.EIGHTH_TURN_DEGREES
+        direction_bearings[selected.direction]
     movement_state.mark_directional_fallback = true
     commit_movement_candidate(movement_state, selected)
     state.animation_id = "walk"
@@ -813,13 +844,12 @@ R.projectile_movement_snapshot = projectile_movement_snapshot
 R.projectile_heartbeat = projectile_heartbeat
 R.requested_movement_bearing_degrees = requested_movement_bearing_degrees
 R.resolve_source_target_motion = resolve_source_target_motion
-R.movement_collision_code = movement_collision_code
 R.walk_direction_from_bearing_degrees = walk_direction_from_bearing_degrees
 R.movement_octant_selector = movement_octant_selector
 R.movement_direction_from_bearing_degrees = movement_direction_from_bearing_degrees
 R.creature_movement_step_distance = creature_movement_step_distance
 R.probe_movement = probe_movement
-R.route_key_for_bearing_degrees = route_key_for_bearing_degrees
+R.route_direction_for_bearing_degrees = route_direction_for_bearing_degrees
 R.movement_probe_is_blocked = movement_probe_is_blocked
 R.commit_movement_candidate = commit_movement_candidate
 R.reset_blocked_movement = reset_blocked_movement
