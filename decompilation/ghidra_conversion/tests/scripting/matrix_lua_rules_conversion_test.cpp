@@ -1627,7 +1627,7 @@ local missed_search = Actions.finish_search(
 eq(missed_search.text, Actions.TEXT.NOTHING,
     "detection failure uses Int, Computer, and Sensor from typed records")
 local special_facts = { system_id = 18,
-    tips_page2_flags = 0, world_event_flags = 0 }
+    system18_project_file_collected = false }
 eq(SpecialDatastore.can_match(nil, "Project Files"), false,
     "special datastore handler rejects missing typed facts")
 eq(SpecialDatastore.can_match(special_facts, "Project Files"), true,
@@ -1702,8 +1702,26 @@ eq(story_search.story, true,
     "source special datastore can return its notebook file before detection")
 eq(story_search.text, Actions.TEXT.STORY_FILE,
     "special datastore selects the ROM notebook message")
-eq((special_facts.tips_page2_flags >> 28) & 1, 1,
-    "special datastore commits its source event bit in Lua state")
+eq(special_facts.system18_project_file_collected, true,
+    "special datastore commits a named report outcome in Lua state")
+local system18_reports = {
+    -- ROM 0x55088..0x550EA maps these file categories to FFFC34 bits 28..31.
+    { "Project Files", "system18_project_file_collected" },
+    { "Confidntl Data", "system18_confidential_file_collected" },
+    { "Financial Data", "system18_financial_file_collected" },
+    { "Mngmnt Files", "system18_management_file_collected" },
+}
+for _, report in ipairs(system18_reports) do
+    local report_facts = { system_id = 18, [report[2]] = false }
+    eq(SpecialDatastore.can_match(report_facts, report[1]), true,
+        "uncollected System 18 report is available by named category")
+    eq(SpecialDatastore.matches(report_facts, report[1]), true,
+        "System 18 report completes by named category")
+    eq(report_facts[report[2]], true,
+        "System 18 report updates its named collection fact")
+    eq(SpecialDatastore.can_match(report_facts, report[1]), false,
+        "collected System 18 report cannot be claimed twice")
+end
 local virology_facts = { system_id = 16,
     virology_research_complete = true,
     virology_report_collected = false, nuyen = 0xFFFFFFFF }

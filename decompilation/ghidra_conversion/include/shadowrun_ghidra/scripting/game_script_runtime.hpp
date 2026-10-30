@@ -275,7 +275,6 @@ struct ScriptMatrixFieldActorState {
 struct ScriptMatrixDatastoreFacts {
     std::uint8_t system_id = 0U;           // Current Matrix system, FFFBBC.
     std::optional<std::uint32_t> tips_page3_flags; // Story tips, FFFC38.
-    std::optional<std::uint32_t> tips_page2_flags; // Story tips, FFFC34.
     std::uint32_t world_event_flags = 0U;   // World-event facts, FFFC1E.
     std::optional<std::uint32_t> group_item_flags; // Group items, FFFC22.
     std::optional<std::uint32_t> nuyen;
@@ -284,6 +283,10 @@ struct ScriptMatrixDatastoreFacts {
     // derives these from Notebook state; gameplay scripts never inspect bits.
     std::optional<bool> virology_research_complete;
     std::optional<bool> virology_report_collected;
+    std::optional<bool> system18_project_file_collected;
+    std::optional<bool> system18_confidential_file_collected;
+    std::optional<bool> system18_financial_file_collected;
+    std::optional<bool> system18_management_file_collected;
 };
 
 enum class ScriptMatrixSecurityColor : std::uint8_t {

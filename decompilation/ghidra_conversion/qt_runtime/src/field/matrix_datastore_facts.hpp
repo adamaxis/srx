@@ -20,8 +20,17 @@ inline scripting::ScriptMatrixDatastoreFacts make_matrix_datastore_facts(
     // Page 1 is owned by the field dialogue flow; this handler reads pages 2
     // and 3. Preserve unknown loaded-save state as absent facts.
     if (notebook_tip_flags_resolved) {
-        facts.tips_page2_flags = notebook_tip_flags[1];
         facts.tips_page3_flags = notebook_tip_flags[2];
+        // ROM 0x55088..0x550EA uses page-2 bits 28..31 as four independent
+        // one-time Matrix reports. Keep that save representation in the host.
+        const auto page2 = notebook_tip_flags[1];
+        facts.system18_project_file_collected = (page2 & (1U << 28U)) != 0U;
+        facts.system18_confidential_file_collected =
+            (page2 & (1U << 29U)) != 0U;
+        facts.system18_financial_file_collected =
+            (page2 & (1U << 30U)) != 0U;
+        facts.system18_management_file_collected =
+            (page2 & (1U << 31U)) != 0U;
         // ROM 0x5533E..0x5536E exposes the UCAS virology report after five
         // research notices, then records the report itself. Keep this source
         // encoding here and present story-level facts to Lua.
@@ -47,17 +56,25 @@ inline void apply_matrix_datastore_facts(
     std::optional<std::uint32_t>& group_item_flags,
     std::optional<std::uint32_t>& nuyen,
     std::optional<std::uint8_t>& mr_johnsons_met_flags) {
-    if (facts.tips_page2_flags.has_value()) {
-        notebook_tip_flags[1] = *facts.tips_page2_flags;
-    }
     if (facts.tips_page3_flags.has_value()) {
         notebook_tip_flags[2] = *facts.tips_page3_flags;
+    }
+    if (facts.system18_project_file_collected.value_or(false)) {
+        notebook_tip_flags[1] |= 1U << 28U;
+    }
+    if (facts.system18_confidential_file_collected.value_or(false)) {
+        notebook_tip_flags[1] |= 1U << 29U;
+    }
+    if (facts.system18_financial_file_collected.value_or(false)) {
+        notebook_tip_flags[1] |= 1U << 30U;
+    }
+    if (facts.system18_management_file_collected.value_or(false)) {
+        notebook_tip_flags[1] |= 1U << 31U;
     }
     if (facts.virology_report_collected.value_or(false)) {
         notebook_tip_flags[2] |= 0x80000000U;
     }
-    if (facts.tips_page2_flags.has_value() &&
-        facts.tips_page3_flags.has_value()) {
+    if (facts.tips_page3_flags.has_value()) {
         notebook_tip_flags_resolved = true;
     }
     world_event_flags = facts.world_event_flags;

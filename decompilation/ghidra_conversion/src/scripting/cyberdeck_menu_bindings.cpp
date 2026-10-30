@@ -443,14 +443,12 @@ void push_matrix_world_state(lua_State* lua,
 
     if (world.datastore.has_value()) {
         const auto& facts = *world.datastore;
-        lua_createtable(lua, 0, 7);
+        lua_createtable(lua, 0, 12);
         const int datastore_index = lua_absindex(lua, -1);
         lua_pushinteger(lua, facts.system_id);
         lua_setfield(lua, datastore_index, "system_id");
         push_optional_integer(lua, datastore_index, "tips_page3_flags",
                               facts.tips_page3_flags);
-        push_optional_integer(lua, datastore_index, "tips_page2_flags",
-                              facts.tips_page2_flags);
         lua_pushinteger(lua, facts.world_event_flags);
         lua_setfield(lua, datastore_index, "world_event_flags");
         push_optional_integer(lua, datastore_index, "group_item_flags",
@@ -464,6 +462,18 @@ void push_matrix_world_state(lua_State* lua,
         push_optional_boolean(lua, datastore_index,
                               "virology_report_collected",
                               facts.virology_report_collected);
+        push_optional_boolean(lua, datastore_index,
+                              "system18_project_file_collected",
+                              facts.system18_project_file_collected);
+        push_optional_boolean(lua, datastore_index,
+                              "system18_confidential_file_collected",
+                              facts.system18_confidential_file_collected);
+        push_optional_boolean(lua, datastore_index,
+                              "system18_financial_file_collected",
+                              facts.system18_financial_file_collected);
+        push_optional_boolean(lua, datastore_index,
+                              "system18_management_file_collected",
+                              facts.system18_management_file_collected);
         lua_setfield(lua, world_index, "datastore");
     }
 
@@ -678,7 +688,6 @@ ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
         facts.system_id = static_cast<std::uint8_t>(
             read_integer(lua, datastore_index, "system_id", 0, 0, 0xFF));
         facts.tips_page3_flags = read_optional_u32("tips_page3_flags");
-        facts.tips_page2_flags = read_optional_u32("tips_page2_flags");
         facts.world_event_flags =
             read_optional_u32("world_event_flags").value_or(0U);
         facts.group_item_flags = read_optional_u32("group_item_flags");
@@ -693,6 +702,14 @@ ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
             lua, datastore_index, "virology_research_complete");
         facts.virology_report_collected = read_optional_boolean(
             lua, datastore_index, "virology_report_collected");
+        facts.system18_project_file_collected = read_optional_boolean(
+            lua, datastore_index, "system18_project_file_collected");
+        facts.system18_confidential_file_collected = read_optional_boolean(
+            lua, datastore_index, "system18_confidential_file_collected");
+        facts.system18_financial_file_collected = read_optional_boolean(
+            lua, datastore_index, "system18_financial_file_collected");
+        facts.system18_management_file_collected = read_optional_boolean(
+            lua, datastore_index, "system18_management_file_collected");
         world.datastore = facts;
     }
     lua_pop(lua, 1);

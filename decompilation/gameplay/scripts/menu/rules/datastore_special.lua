@@ -1,7 +1,7 @@
 -- rules/datastore_special.lua: AUTO-TRANSLATED from ROM 0x55058..0x5559C (tools/translate_55058.py logic, 2026-10-15) [C].
 -- Story datafiles: called by Transfer Data before the random file. Returns true when this datastore (system FFFBBC,
 -- node file class d0 = node +1) yields a story file: the bit in FFFC38 (or FFFC34 for system 0x12) is set (text 0x166968).
--- r = { system_id, tips_page3_flags, tips_page2_flags, world_event_flags,
+-- r = { system_id, tips_page3_flags, world_event_flags,
 --       group_item_flags, fbfa, fbfb, fc26, mr_johnsons_met_flags, nuyen }.
 -- Available facts are updated in place; absent source facts remain gated.
 -- Quirk kept [C]: system 0x10 class 1 needs bits 0x1A..0x1E of FFFC38 and pays +50,000 nuyen (0xC350).
@@ -13,10 +13,6 @@ local SUPPORTED = {
     [7]  = { ["Marketing Data"] = true },
     [16] = { ["System Files"] = true },
     [17] = { ["Outdated Files"] = true, ["Financial Data"] = true },
-    [18] = {
-        ["Mngmnt Files"] = true, ["Project Files"] = true,
-        ["Financial Data"] = true, ["Confidntl Data"] = true,
-    },
     [19] = { ["Outdated Files"] = true, ["Prisoner Files"] = true },
     [20] = { ["Confidntl Data"] = true },
     [21] = {
@@ -27,17 +23,26 @@ local SUPPORTED = {
     [23] = { ["Financial Data"] = true, ["Prisoner Files"] = true },
     [24] = { ["Confidntl Data"] = true },
 }
+-- ROM 0x55088..0x550EA selects four one-time reports by Matrix file category.
+-- Their save bits are decoded by the native Notebook adapter.
+local SYSTEM18_REPORTS = {
+    ["Project Files"] = "system18_project_file_collected",
+    ["Confidntl Data"] = "system18_confidential_file_collected",
+    ["Financial Data"] = "system18_financial_file_collected",
+    ["Mngmnt Files"] = "system18_management_file_collected",
+}
 local function can_match(r, node_class)
     if not r or r.system_id == nil then return false end
     local system_id = s8(r.system_id)
+    if system_id == 18 then
+        local report = SYSTEM18_REPORTS[node_class]
+        return report ~= nil and r[report] == false
+    end
     if system_id == 16 and node_class == "System Files" then
         return r.virology_research_complete == true and
                r.virology_report_collected == false and r.nuyen ~= nil
     end
     local required_tip_flags = r.tips_page3_flags
-    if system_id == 18 then
-        required_tip_flags = r.tips_page2_flags
-    end
     if not SUPPORTED[system_id] or
        not SUPPORTED[system_id][node_class] or
        required_tip_flags == nil or
@@ -66,6 +71,12 @@ local function can_match(r, node_class)
     return true
 end
 local function matches(r, file_class)
+    if r and s8(r.system_id) == 18 then
+        local report = SYSTEM18_REPORTS[file_class]
+        if report == nil or not can_match(r, file_class) then return false end
+        r[report] = true
+        return true
+    end
     if r and s8(r.system_id) == 16 and file_class == "System Files" then
         if not can_match(r, file_class) then return false end
         r.virology_report_collected = true
@@ -81,34 +92,6 @@ local function matches(r, file_class)
     ::L05506C:: -- move.b $1(a1, d1.w), d0
     ::L055070:: d5 = r.tips_page3_flags
     ::L055076:: d1 = r.world_event_flags
-    ::L05507C:: cc = s8(r.system_id) - 18
-    ::L055084:: if cc ~= 0 then goto L0550F4 end
-    ::L055088:: d5 = r.tips_page2_flags
-    ::L05508E:: cc = file_class == "Project Files" and 0 or 1
-    ::L055092:: if cc ~= 0 then goto L0550A6 end
-    ::L055096:: cc = (d5 >> 28) & 1
-    ::L05509A:: if cc ~= 0 then goto L05559A end
-    ::L05509E:: d5 = d5 | (1 << 28)
-    ::L0550A2:: goto L0550EA
-    ::L0550A6:: cc = file_class == "Confidntl Data" and 0 or 1
-    ::L0550AA:: if cc ~= 0 then goto L0550BE end
-    ::L0550AE:: cc = (d5 >> 29) & 1
-    ::L0550B2:: if cc ~= 0 then goto L05559A end
-    ::L0550B6:: d5 = d5 | (1 << 29)
-    ::L0550BA:: goto L0550EA
-    ::L0550BE:: cc = file_class == "Financial Data" and 0 or 1
-    ::L0550C2:: if cc ~= 0 then goto L0550D6 end
-    ::L0550C6:: cc = (d5 >> 30) & 1
-    ::L0550CA:: if cc ~= 0 then goto L05559A end
-    ::L0550CE:: d5 = d5 | (1 << 30)
-    ::L0550D2:: goto L0550EA
-    ::L0550D6:: cc = file_class == "Mngmnt Files" and 0 or 1
-    ::L0550DA:: if cc ~= 0 then goto L05559A end
-    ::L0550DE:: cc = (d5 >> 31) & 1
-    ::L0550E2:: if cc ~= 0 then goto L05559A end
-    ::L0550E6:: d5 = d5 | (1 << 31)
-    ::L0550EA:: r.tips_page2_flags = d5
-    ::L0550F0:: goto L05557E
     ::L0550F4:: cc = s8(r.system_id) - 17
     ::L0550FC:: if cc ~= 0 then goto L055138 end
     ::L055100:: cc = file_class == "Financial Data" and 0 or 1
