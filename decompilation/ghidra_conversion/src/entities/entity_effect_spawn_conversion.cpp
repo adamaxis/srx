@@ -31,8 +31,8 @@ struct DirectionOffsets {
 
 DirectionOffsets direction_offsets(const std::uint16_t heading) {
     // ROM 0x15A4C (position) / 0x15A6C (FFDD60/62 probe): signed words,
-    // indexed by the rotated heading used by 0x14FF8. Gameplay copy lives in
-    // gameplay/scripts/effect_spawn.lua.
+    // indexed by the rotated heading used by 0x14FF8. This recovered lookup
+    // remains local to the native effect-placement implementation.
     static constexpr std::int16_t kPositionOffsets[8][2] = {
         {0x0000, -0x00B0}, {0x007C, -0x007C},
         {0x00B0, 0x0000}, {0x007C, 0x007C},
