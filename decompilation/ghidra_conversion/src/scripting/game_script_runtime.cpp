@@ -190,6 +190,23 @@ const char* field_scene_mode_id(const ScriptFieldSceneMode mode) noexcept {
     return "unknown";
 }
 
+const char* scene_activity_state_id(
+    const ScriptSceneActivityState state) noexcept {
+    switch (state) {
+    case ScriptSceneActivityState::idle:
+        return "idle";
+    case ScriptSceneActivityState::actors_being_installed:
+        return "actors_being_installed";
+    case ScriptSceneActivityState::story_interaction_active:
+        return "story_interaction_active";
+    case ScriptSceneActivityState::other_activity_active:
+        return "other_activity_active";
+    case ScriptSceneActivityState::queued_activity:
+        return "queued_activity";
+    }
+    return "idle";
+}
+
 const char* movement_direction_id(
     const MovementDirection direction) noexcept {
     switch (direction) {
@@ -9208,11 +9225,9 @@ GameScriptRuntime::resolve_conditional_actor_selection(
     }
     lua_remove(state, -2);
     lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
-    lua_createtable(state, 0, 13);
-    lua_pushboolean(state, context.world_effect_active);
-    lua_setfield(state, -2, "world_effect_active");
-    lua_pushboolean(state, context.pending_world_effect);
-    lua_setfield(state, -2, "pending_world_effect");
+    lua_createtable(state, 0, 10);
+    lua_pushstring(state, scene_activity_state_id(context.activity_state));
+    lua_setfield(state, -2, "activity_state");
     if (context.active_offer_id.has_value()) {
         lua_pushlstring(state, context.active_offer_id->data(),
                         context.active_offer_id->size());
@@ -9229,10 +9244,13 @@ GameScriptRuntime::resolve_conditional_actor_selection(
             : "standard";
     lua_pushstring(state, scene_ten_variant);
     lua_setfield(state, -2, "scene_ten_activity_variant");
-    lua_pushboolean(state, context.scene_13_activity_gate_passed);
-    lua_setfield(state, -2, "scene_13_activity_gate_passed");
-    lua_pushboolean(state, context.scene_15_activity_gate_passed);
-    lua_setfield(state, -2, "scene_15_activity_gate_passed");
+    lua_createtable(
+        state, 0, static_cast<int>(context.completed_story_facts.size()));
+    for (const auto& fact : context.completed_story_facts) {
+        lua_pushboolean(state, 1);
+        lua_setfield(state, -2, fact.c_str());
+    }
+    lua_setfield(state, -2, "completed_story_facts");
     lua_createtable(state, 0,
                     static_cast<int>(context.party_present_activity_ids.size()));
     for (const auto& activity_id : context.party_present_activity_ids) {
@@ -9240,14 +9258,8 @@ GameScriptRuntime::resolve_conditional_actor_selection(
         lua_setfield(state, -2, activity_id.c_str());
     }
     lua_setfield(state, -2, "party_present_activity_ids");
-    lua_pushboolean(state, context.pending_activity);
-    lua_setfield(state, -2, "pending_activity");
-    lua_pushboolean(state, context.active_effect_is_story_contact);
-    lua_setfield(state, -2, "active_effect_is_story_contact");
-    lua_pushboolean(state, context.active_effect_matches_selection);
-    lua_setfield(state, -2, "active_effect_matches_selection");
-    lua_pushboolean(state, context.player_spawn_pending);
-    lua_setfield(state, -2, "player_spawn_pending");
+    lua_pushboolean(state, context.recruitment_encounter_ready);
+    lua_setfield(state, -2, "recruitment_encounter_ready");
 
     impl_->active_conditional_actor_random_bound = random_bound;
     lua_pushlightuserdata(state, impl_.get());

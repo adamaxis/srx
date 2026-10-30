@@ -3,7 +3,7 @@
 -- game.modules.world_content_data and versioned route JSON into
 -- game.content.entities; this module joins those records for map scripts.
 local World = {}
-local conditional_actor_selection_variant = nil
+local selected_recruitment_pedestrian_variant = nil
 local mode_one_activities =
     require("data.mode_one_activities")
 local field_actor_contacts = require("data.field_actor_contacts")
@@ -330,19 +330,19 @@ function World.conditional_actor_candidates_for_scene(scene_id)
 end
 
 function World.reset_conditional_actor_selection()
-    conditional_actor_selection_variant = nil
+    selected_recruitment_pedestrian_variant = nil
 end
 
 -- The request path only needs to know whether the chosen option is pending.
 -- The selected first/second variant stays private to this Lua policy.
 function World.consume_conditional_actor_selection()
-    local variant = conditional_actor_selection_variant or "none"
-    conditional_actor_selection_variant = nil
+    local variant = selected_recruitment_pedestrian_variant or "none"
+    selected_recruitment_pedestrian_variant = nil
     return variant
 end
 
 local function mode_one_activity(scene_id, facts)
-    if facts.scene_mode ~= "street" or facts.pending_activity then
+    if facts.scene_mode ~= "street" then
         return ""
     end
     local rows = mode_one_activities[scene_id]
@@ -352,8 +352,9 @@ local function mode_one_activity(scene_id, facts)
     for _, row in ipairs(rows) do
         local variant_matches = row.variant == nil or
             facts.scene_ten_activity_variant == row.variant
-        local gate_matches = row.required_gate == nil or
-            facts[row.required_gate] == true
+        local required_fact = row.required_story_fact
+        local gate_matches = required_fact == nil or
+            facts.completed_story_facts[required_fact] == true
         local party_does_not_include_actor =
             facts.party_present_activity_ids[row.activity_id] ~= true
         if variant_matches and gate_matches and party_does_not_include_actor then
@@ -363,26 +364,38 @@ local function mode_one_activity(scene_id, facts)
     return ""
 end
 
--- Lua owns the mode-one scene-list gate and A800 precedence. The host passes
--- named party, story, run, and scene facts; this policy returns stable actor
--- list identities. The selected first/second pedestrian variant remains Lua
--- state across source passes and survives a late spawn gate failure.
+-- Resolve scene activities from named gameplay facts. The host translates
+-- persisted source state at the boundary; this policy keeps a chosen
+-- recruitment encounter stable while scene setup is deferred.
 function World.resolve_conditional_actor_selection(
     scene_id, facts, random_below)
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
-       scene_id < 0 or scene_id > 55 or type(facts) ~= "table" or
-       type(facts.world_effect_active) ~= "boolean" or
-       type(facts.pending_world_effect) ~= "boolean" or
-       valid_field_scene_modes[facts.scene_mode] ~= true or
-       (facts.scene_ten_activity_variant ~= "standard" and
+       scene_id < 0 or scene_id > 55 then
+        error("conditional actor selection scene is invalid")
+    end
+    if type(facts) ~= "table" then
+        error("conditional actor selection context is invalid")
+    end
+    local valid_activity_states = {
+        idle = true,
+        actors_being_installed = true,
+        story_interaction_active = true,
+        other_activity_active = true,
+        queued_activity = true,
+    }
+    if valid_activity_states[facts.activity_state] ~= true then
+        error("conditional actor activity state is invalid: " ..
+            tostring(facts.activity_state))
+    end
+    if valid_field_scene_modes[facts.scene_mode] ~= true then
+        error("conditional actor scene mode is invalid: " ..
+            tostring(facts.scene_mode))
+    end
+    if (facts.scene_ten_activity_variant ~= "standard" and
         facts.scene_ten_activity_variant ~= "alternate") or
-       type(facts.scene_13_activity_gate_passed) ~= "boolean" or
-       type(facts.scene_15_activity_gate_passed) ~= "boolean" or
+       type(facts.completed_story_facts) ~= "table" or
        type(facts.party_present_activity_ids) ~= "table" or
-       type(facts.pending_activity) ~= "boolean" or
-       type(facts.active_effect_is_story_contact) ~= "boolean" or
-       type(facts.active_effect_matches_selection) ~= "boolean" or
-       type(facts.player_spawn_pending) ~= "boolean" or
+       type(facts.recruitment_encounter_ready) ~= "boolean" or
        type(random_below) ~= "function" then
         error("conditional actor selection facts are invalid")
     end
@@ -398,8 +411,14 @@ function World.resolve_conditional_actor_selection(
             error("conditional actor party facts are invalid")
         end
     end
+    for fact_id, completed in pairs(facts.completed_story_facts) do
+        if type(fact_id) ~= "string" or fact_id == "" or
+           type(completed) ~= "boolean" then
+            error("conditional actor story facts are invalid")
+        end
+    end
 
-    local variant = conditional_actor_selection_variant
+    local variant = selected_recruitment_pedestrian_variant
     local choice_changed = false
     local result = function(kind, selection_id)
         return {
@@ -410,27 +429,22 @@ function World.resolve_conditional_actor_selection(
         }
     end
 
-    -- ROM 0x16854 branches past all later scene-list selection when FFE120
-    -- already names a pending actor list.
-    if facts.pending_activity then
+    -- Finish the current scene transition before choosing another activity.
+    if facts.activity_state == "actors_being_installed" then
         return result("none", "")
     end
 
-    -- 0xA800 returns from this higher-priority branch unless FFF0C8, the
-    -- active effect index, is 4; FFE182 and the random branch are skipped.
-    if facts.world_effect_active then
-        if facts.active_effect_is_story_contact then
-            return result("story_contact", "scene_34_story_contact")
-        end
+    -- Active interactions keep priority over ambient scene activities.
+    if facts.activity_state == "story_interaction_active" then
+        return result("story_contact", "scene_34_story_contact")
+    elseif facts.activity_state == "other_activity_active" then
         return result("none", "")
-    end
-    if facts.pending_world_effect then
+    elseif facts.activity_state == "queued_activity" then
         return result("pending_world_activity", "scene_20_ilene_activity")
     end
 
-    -- 0x1684C sets FFDF40=1, then reads the FFFBF9/FFFC1E/compact-marker
-    -- gates before queuing a 0x16FD4 source list in FFE120. It exits early
-    -- when another source already owns that pending-list pointer.
+    -- Street locations can start their authored activities before an
+    -- incidental recruitment encounter is considered.
     if facts.scene_mode == "street" then
         local activity_id = mode_one_activity(scene_id, facts)
         if activity_id ~= "" then
@@ -439,9 +453,7 @@ function World.resolve_conditional_actor_selection(
         return result("none", "")
     end
 
-    -- ROM 0x1E69C dispatches the accepted offer through its source handler;
-    -- the run registry has already resolved handler variants to one gameplay
-    -- identity before this field policy runs.
+    -- The encounter belongs to the accepted employee-recruitment run.
     if facts.active_offer_id ~= "employee_recruitment" or
        facts.scene_mode ~= "building" then
         return result("none", "")
@@ -453,13 +465,12 @@ function World.resolve_conditional_actor_selection(
             error("conditional actor random service returned an invalid roll")
         end
         variant = roll == 0 and "first" or "second"
-        conditional_actor_selection_variant = variant
+        selected_recruitment_pedestrian_variant = variant
         choice_changed = true
     end
 
-    -- A failed late gate keeps the choice sampled above, as the ROM does.
-    if not facts.active_effect_matches_selection or
-       facts.player_spawn_pending then
+    -- Keep this target while the arrival is temporarily unable to place it.
+    if not facts.recruitment_encounter_ready then
         return result("none", "")
     end
 
@@ -472,10 +483,8 @@ function World.resolve_conditional_actor_selection(
     return result("none", "")
 end
 
--- [C] ROM 0xED60 selects generic callback 0x1F146, while 0xECCC handles the
--- higher-priority world-activity branches. The extracted IDs below correspond
--- to source lists 0xA8AE and 0xA8CC. The host resolves those source branches
--- and passes their semantic handler here; Lua never consumes those addresses.
+-- The host identifies the interaction category and Lua selects the gameplay
+-- response for that actor. Contact behavior is keyed by stable content IDs.
 function World.field_actor_contact_task(
     scene_id, actor_instance_id, activity_id, handler)
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
@@ -504,8 +513,8 @@ function World.field_actor_contact_task(
     end
 
     -- The A800 selector gives reachable random pedestrians a stable
-    -- candidate identity. This handles the ordinary contact callback without
-    -- exposing the candidate's ROM list address to Lua policy.
+    -- candidate identity. This handles its ordinary contact response through
+    -- the same stable ID used by the encounter catalog.
     for _, candidate in ipairs(
         World.conditional_actor_candidates_for_scene(scene_id)) do
         if candidate.candidate_id == activity_id then

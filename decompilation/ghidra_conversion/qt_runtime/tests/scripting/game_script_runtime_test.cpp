@@ -570,8 +570,6 @@ bool verify_conditional_actor_selector_permutations(
                                             "employee_recruitment";
                                         seed_context.scene_mode =
                                             ScriptFieldSceneMode::building;
-                                        seed_context.active_effect_matches_selection =
-                                            false;
                                         const auto seeded =
                                             scripts.resolve_conditional_actor_selection(
                                                 0x15U, seed_context,
@@ -596,25 +594,27 @@ bool verify_conditional_actor_selector_permutations(
 
                                     ScriptConditionalActorSelectionContext
                                         context{};
-                                    context.world_effect_active =
-                                        world_effect_active;
-                                    context.pending_world_effect =
-                                        pending_world_effect;
+                                    if (world_effect_active) {
+                                        context.activity_state =
+                                            effect_indices.active ==
+                                                    std::optional<std::uint16_t>{4U}
+                                                ? ScriptSceneActivityState::story_interaction_active
+                                                : ScriptSceneActivityState::other_activity_active;
+                                    } else if (pending_world_effect) {
+                                        context.activity_state =
+                                            ScriptSceneActivityState::queued_activity;
+                                    }
                                     if (!offer_id.empty()) {
                                         context.active_offer_id =
                                             std::string(offer_id);
                                     }
                                     context.scene_mode = scene_mode;
-                                    context.active_effect_is_story_contact =
-                                        effect_indices.active ==
-                                        std::optional<std::uint16_t>{4U};
-                                    context.active_effect_matches_selection =
+                                    context.recruitment_encounter_ready =
                                         effect_indices.active.has_value() &&
                                         effect_indices.selected.has_value() &&
                                         effect_indices.active ==
-                                            effect_indices.selected;
-                                    context.player_spawn_pending =
-                                        player_spawn_pending;
+                                            effect_indices.selected &&
+                                        !player_spawn_pending;
 
                                     const auto calls_before = random_calls;
                                     const auto selection =
@@ -801,14 +801,19 @@ bool verify_mode_one_activities(
         facts.scene_ten_activity_variant =
             script_scene_ten_activity_variant_from_source_event(
                 test_case.event_code);
-        facts.scene_13_activity_gate_passed =
-            (test_case.world_flags & (1U << 19U)) != 0U;
-        facts.scene_15_activity_gate_passed =
-            (test_case.world_flags & (1U << 29U)) != 0U;
+        if ((test_case.world_flags & (1U << 19U)) != 0U) {
+            facts.completed_story_facts.emplace_back("ilene_met");
+        }
+        if ((test_case.world_flags & (1U << 29U)) != 0U) {
+            facts.completed_story_facts.emplace_back("heart_delivered");
+        }
         facts.party_present_activity_ids =
             script_mode_one_activity_ids_present_from_source_markers(
                 test_case.primary_marker, test_case.secondary_marker);
-        facts.pending_activity = test_case.pending_activity;
+        if (test_case.pending_activity) {
+            facts.activity_state =
+                ScriptSceneActivityState::actors_being_installed;
+        }
         std::string expected_list_id;
         if (test_case.expected_list != 0U) {
             const auto expected_row = std::find_if(
@@ -1469,7 +1474,7 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
     ScriptConditionalActorSelectionContext facts{};
     facts.active_offer_id = *active_run_id;
     facts.scene_mode = ScriptFieldSceneMode::building;
-    facts.active_effect_matches_selection = true;
+    facts.recruitment_encounter_ready = true;
     std::size_t random_calls = 0U;
     const auto selection = scripts.resolve_conditional_actor_selection(
         0x15U, facts,
@@ -1733,7 +1738,7 @@ bool verify_employee_recruitment_pedestrian_request(
     ScriptConditionalActorSelectionContext selection_facts{};
     selection_facts.active_offer_id = *active_run_id;
     selection_facts.scene_mode = ScriptFieldSceneMode::building;
-    selection_facts.active_effect_matches_selection = true;
+    selection_facts.recruitment_encounter_ready = true;
     const auto selection = scripts.resolve_conditional_actor_selection(
         0x15U, selection_facts,
         [](const std::uint16_t bound) -> std::optional<std::uint16_t> {
@@ -2649,21 +2654,22 @@ int main() {
             unexpected_conditional_roll);
 
     ScriptConditionalActorSelectionContext story_contact_context{};
-    story_contact_context.world_effect_active = true;
-    story_contact_context.pending_world_effect = true;
-    story_contact_context.active_effect_is_story_contact = true;
+    story_contact_context.activity_state =
+        ScriptSceneActivityState::story_interaction_active;
     const auto story_contact_selection =
         scripts.resolve_conditional_actor_selection(
             0x22U, story_contact_context, unexpected_conditional_roll);
 
     auto blocked_story_context = story_contact_context;
-    blocked_story_context.active_effect_is_story_contact = false;
+    blocked_story_context.activity_state =
+        ScriptSceneActivityState::other_activity_active;
     const auto blocked_story_selection =
         scripts.resolve_conditional_actor_selection(
             0x22U, blocked_story_context, unexpected_conditional_roll);
 
     ScriptConditionalActorSelectionContext pending_context{};
-    pending_context.pending_world_effect = true;
+    pending_context.activity_state =
+        ScriptSceneActivityState::queued_activity;
     pending_context.active_offer_id = "employee_recruitment";
     pending_context.scene_mode = ScriptFieldSceneMode::building;
     const auto pending_selection = scripts.resolve_conditional_actor_selection(
@@ -2671,9 +2677,9 @@ int main() {
 
     // Run variants arrive as canonical gameplay identities at the selector.
     auto package_recovery_context = pending_context;
-    package_recovery_context.pending_world_effect = false;
+    package_recovery_context.activity_state = ScriptSceneActivityState::idle;
     package_recovery_context.active_offer_id = "package_recovery";
-    package_recovery_context.active_effect_matches_selection = true;
+    package_recovery_context.recruitment_encounter_ready = true;
     const auto package_recovery_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, package_recovery_context,
@@ -2693,12 +2699,12 @@ int main() {
     ScriptConditionalActorSelectionContext late_effect_context{};
     late_effect_context.active_offer_id = "employee_recruitment";
     late_effect_context.scene_mode = ScriptFieldSceneMode::building;
-    late_effect_context.active_effect_matches_selection = false;
+    late_effect_context.recruitment_encounter_ready = false;
     const auto late_effect_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, late_effect_context, conditional_roll(1U));
     auto resumed_effect_context = late_effect_context;
-    resumed_effect_context.active_effect_matches_selection = true;
+    resumed_effect_context.recruitment_encounter_ready = true;
     const auto resumed_effect_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, resumed_effect_context, unexpected_conditional_roll);
@@ -2706,7 +2712,7 @@ int main() {
     const bool choice_one_selection_reset =
         scripts.reset_conditional_actor_selection();
     auto reachable_choice_one_context = late_effect_context;
-    reachable_choice_one_context.active_effect_matches_selection = true;
+    reachable_choice_one_context.recruitment_encounter_ready = true;
     const auto reachable_choice_one_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, reachable_choice_one_context, conditional_roll(0U));
@@ -2714,8 +2720,7 @@ int main() {
     const bool blocked_spawn_selection_reset =
         scripts.reset_conditional_actor_selection();
     auto blocked_spawn_context = late_effect_context;
-    blocked_spawn_context.active_effect_matches_selection = true;
-    blocked_spawn_context.player_spawn_pending = true;
+    blocked_spawn_context.recruitment_encounter_ready = false;
     const auto blocked_spawn_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, blocked_spawn_context, conditional_roll(0U));
@@ -2810,7 +2815,7 @@ int main() {
     const bool wide_effect_mismatch_reset =
         scripts.reset_conditional_actor_selection();
     auto wide_effect_context = late_effect_context;
-    wide_effect_context.active_effect_matches_selection = false;
+    wide_effect_context.recruitment_encounter_ready = false;
     const auto wide_effect_mismatch =
         scripts.resolve_conditional_actor_selection(
             0x15U, wide_effect_context, conditional_roll(0U));
@@ -2830,7 +2835,7 @@ int main() {
 
     const bool equal_wide_effect_reset =
         scripts.reset_conditional_actor_selection();
-    wide_effect_context.active_effect_matches_selection = true;
+    wide_effect_context.recruitment_encounter_ready = true;
     const auto equal_wide_effect_selection =
         scripts.resolve_conditional_actor_selection(
             0x15U, wide_effect_context, conditional_roll(0U));

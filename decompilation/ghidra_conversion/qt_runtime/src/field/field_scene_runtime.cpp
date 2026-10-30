@@ -3372,30 +3372,44 @@ void FieldSceneRuntime::initialize_default_field_actors(
                                  "field.mode_transition.activity_unresolved");
     } else if (!preserved_scene_script_actors) {
         scripting::ScriptConditionalActorSelectionContext facts{};
-        facts.world_effect_active = field_world_effect_active_;
-        facts.pending_world_effect = field_pending_world_effect_;
+        // [C] Preserve the traced precedence from 0x16854 and 0xA800 as a
+        // named activity lifecycle state at the native/Lua boundary.
+        if (!pending_world_activity_script_actors_.empty()) {
+            facts.activity_state =
+                scripting::ScriptSceneActivityState::actors_being_installed;
+        } else if (field_world_effect_active_) {
+            facts.activity_state = field_active_effect_index_ ==
+                    std::optional<std::uint16_t>{4U}
+                ? scripting::ScriptSceneActivityState::story_interaction_active
+                : scripting::ScriptSceneActivityState::other_activity_active;
+        } else if (field_pending_world_effect_) {
+            facts.activity_state =
+                scripting::ScriptSceneActivityState::queued_activity;
+        }
         facts.scene_mode = scripting::script_field_scene_mode_from_source_word(
             field_movement_transition_state_.world_mode);
         facts.scene_ten_activity_variant =
             scripting::script_scene_ten_activity_variant_from_source_event(
                 field_movement_transition_state_.mode_event_code);
-        facts.scene_13_activity_gate_passed =
-            (field_exit_world_flags_ & (std::uint32_t{1U} << 19U)) != 0U;
-        facts.scene_15_activity_gate_passed =
-            (field_exit_world_flags_ & (std::uint32_t{1U} << 29U)) != 0U;
+        // [C] ROM 0x168CE-0x168EA gates these activities with FFFC1E bits
+        // 19/29. Translate them once; Lua consumes named story facts.
+        if ((field_exit_world_flags_ & (std::uint32_t{1U} << 19U)) != 0U) {
+            facts.completed_story_facts.emplace_back("ilene_met");
+        }
+        if ((field_exit_world_flags_ & (std::uint32_t{1U} << 29U)) != 0U) {
+            facts.completed_story_facts.emplace_back("heart_delivered");
+        }
         facts.party_present_activity_ids =
             scripting::script_mode_one_activity_ids_present_from_source_markers(
                 field_party_roster_.primary_compact_marker(),
                 field_party_roster_.secondary_compact_marker());
-        facts.pending_activity =
-            !pending_world_activity_script_actors_.empty();
-        facts.active_effect_is_story_contact =
-            field_active_effect_index_ == std::optional<std::uint16_t>{4U};
-        facts.active_effect_matches_selection =
+        facts.recruitment_encounter_ready =
             field_active_effect_index_.has_value() &&
             field_selected_effect_index_.has_value() &&
             field_active_effect_index_ == field_selected_effect_index_;
-        facts.player_spawn_pending = has_pending_world_effect_player_spawn();
+        facts.recruitment_encounter_ready =
+            facts.recruitment_encounter_ready &&
+            !has_pending_world_effect_player_spawn();
         facts.active_offer_id = game_scripts_.active_run_id();
         if (!facts.active_offer_id.has_value() &&
             !game_scripts_.failure().empty()) {

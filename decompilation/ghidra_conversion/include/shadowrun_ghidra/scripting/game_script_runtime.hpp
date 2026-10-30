@@ -1627,20 +1627,23 @@ std::vector<std::string>
 script_mode_one_activity_ids_present_from_source_markers(
     std::uint8_t primary_marker, std::uint8_t secondary_marker);
 
+enum class ScriptSceneActivityState : std::uint8_t {
+    idle,
+    actors_being_installed,
+    story_interaction_active,
+    other_activity_active,
+    queued_activity,
+};
+
 struct ScriptConditionalActorSelectionContext {
-    bool world_effect_active = false;
-    bool pending_world_effect = false;
+    ScriptSceneActivityState activity_state = ScriptSceneActivityState::idle;
     std::optional<std::string> active_offer_id;
     ScriptFieldSceneMode scene_mode = ScriptFieldSceneMode::none;
     ScriptSceneTenActivityVariant scene_ten_activity_variant =
         ScriptSceneTenActivityVariant::standard;
-    bool scene_13_activity_gate_passed = false;
-    bool scene_15_activity_gate_passed = false;
+    std::vector<std::string> completed_story_facts;
     std::vector<std::string> party_present_activity_ids;
-    bool pending_activity = false;
-    bool active_effect_is_story_contact = false;
-    bool active_effect_matches_selection = false;
-    bool player_spawn_pending = false;
+    bool recruitment_encounter_ready = false;
 };
 
 enum class ScriptConditionalActorSelectionKind : std::uint8_t {
