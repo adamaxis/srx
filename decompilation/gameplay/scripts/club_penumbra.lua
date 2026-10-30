@@ -14,8 +14,8 @@ end
 function ClubPenumbra.apply_mako_callback()
     local heat = StoryState.heat_level()
     if heat == nil or StoryState.strike_team_stage() == nil or
-       game.state.notebook_tip_flag_bit_49 == nil or
-       game.state.field_mode_flag_bit_20 == nil then
+       game.state[E.NotebookTip.RENRAKU_SERPENT_LOCATION] == nil or
+       game.state[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] == nil then
         return "service_unavailable"
     end
     -- Karma first: it is the only step that can still fail (no roster), so
@@ -26,11 +26,11 @@ function ClubPenumbra.apply_mako_callback()
         return "service_unavailable"
     end
 
-    game.state.mako_defeated = true
-    game.state.field_mode_flag_bit_20 = false
+    game.state[E.StoryFact.MAKO_DEFEATED] = true
+    game.state[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] = false
     game.state[E.StoryFact.MAKO_CLUB_LEAD] = false
-    game.state.field_mode_flag_bit_24 = true
-    game.state.notebook_tip_flag_bit_49 = false
+    game.state[E.FieldModeFact.MAKO_RESULT_CALLBACK_APPLIED] = true
+    game.state[E.NotebookTip.RENRAKU_SERPENT_LOCATION] = false
 
     if StoryState.advance_strike_team() ~= "applied" then
         return "service_unavailable"

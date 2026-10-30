@@ -323,9 +323,24 @@ struct FieldModeFactMapping {
 };
 
 // [C] Big Rhino's Mako answer at 0x23222 records the lead consumed by the
-// Club Penumbra gate at 0x225D2. Lua uses the story fact, not FFFC30 bit 21.
-constexpr std::array<FieldModeFactMapping, 1U> kFieldModeFactMappings{{
+// Club Penumbra gate at 0x225D2. The callback at 0x54030..0x54052 clears
+// FFFC30 bits 20/21 and sets bit 24; Lua uses named field facts. The wider
+// role of bit 20 is [H].
+constexpr std::array<FieldModeFactMapping, 3U> kFieldModeFactMappings{{
+    {"field.boris_followup_pending", 20U},
     {"mako_club_lead", 21U},
+    {"field.mako_result_callback_applied", 24U},
+}};
+
+struct NotebookTipFactMapping {
+    std::string_view fact_id;
+    std::uint8_t content_index;
+};
+
+// [C] ROM 0x54048 clears bit 17 of FFFC38. The third Notebook tip table at
+// 0xC2816 renders that entry as content item 81; Lua names the note itself.
+constexpr std::array<NotebookTipFactMapping, 1U> kNotebookTipFactMappings{{
+    {"notebook_tip.renraku_serpent_location", 81U},
 }};
 
 struct JohnsonFactMapping {
@@ -376,6 +391,23 @@ std::optional<std::uint8_t> field_mode_fact_bit_index(
     const auto bit = story_fact_bit_index(name, kFieldModeFlagBitPrefix);
     for (const auto& mapping : kFieldModeFactMappings) {
         if (bit == mapping.source_bit) {
+            return std::nullopt;
+        }
+    }
+    return bit;
+}
+
+std::optional<std::uint8_t> notebook_tip_fact_content_index(
+    const std::string_view name) {
+    for (const auto& mapping : kNotebookTipFactMappings) {
+        if (name == mapping.fact_id) {
+            return mapping.content_index;
+        }
+    }
+    const auto bit = story_fact_bit_index(
+        name, kNotebookTipFlagBitPrefix, 96U);
+    for (const auto& mapping : kNotebookTipFactMappings) {
+        if (bit == mapping.content_index) {
             return std::nullopt;
         }
     }
@@ -10361,8 +10393,7 @@ bool FieldSceneRuntime::bootstrap(
                 // Source FFFC40: Spirit Eyes quest activity markers.
                 return (field_auxiliary_flags_ & (1U << *bit)) != 0U;
             }
-            if (const auto bit = story_fact_bit_index(
-                    name, kNotebookTipFlagBitPrefix, 96U)) {
+            if (const auto bit = notebook_tip_fact_content_index(name)) {
                 if (*bit >= 96U || !notebook_tip_flags_resolved_) {
                     return std::nullopt;
                 }
@@ -10560,8 +10591,7 @@ bool FieldSceneRuntime::bootstrap(
                     : field_auxiliary_flags_ & ~mask;
                 return true;
             }
-            if (const auto bit = story_fact_bit_index(
-                    name, kNotebookTipFlagBitPrefix, 96U)) {
+            if (const auto bit = notebook_tip_fact_content_index(name)) {
                 if (*bit >= 96U || !notebook_tip_flags_resolved_) {
                     return false;
                 }

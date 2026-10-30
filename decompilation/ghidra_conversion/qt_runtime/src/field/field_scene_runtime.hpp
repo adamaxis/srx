@@ -677,6 +677,13 @@ public:
                    ? std::optional<std::uint32_t>{notebook_tip_flags_[0]}
                    : std::nullopt;
     }
+    std::optional<std::array<std::uint32_t, 3U>>
+    notebook_tip_flags_for_dump() const noexcept {
+        return notebook_tip_flags_resolved_
+                   ? std::optional<std::array<std::uint32_t, 3U>>{
+                         notebook_tip_flags_}
+                   : std::nullopt;
+    }
     std::optional<std::uint8_t> notebook_referral_flags_for_dump() const noexcept {
         return notebook_referral_flags_;
     }

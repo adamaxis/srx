@@ -3,6 +3,7 @@
 -- payment outcomes, and continue-in-place terminal. This module supplies only
 -- the named story mutations that cannot be expressed as plain flag writes.
 local DialogueGraph = require("dialogue_graph")
+local E = require("enums")
 
 local Boris = {}
 
@@ -35,7 +36,7 @@ local function action_registry()
             game.state.field_dialogue_flag_bit_1 = true
             game.state.field_mode_flag_bit_6 = false
             game.state.field_mode_flag_bit_7 = false
-            game.state.field_mode_flag_bit_20 = true
+            game.state[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] = true
             return true
         end,
         ["boris.prepare_david_information"] = function()
@@ -43,7 +44,7 @@ local function action_registry()
             -- subsequent Brother? choice reaches unconverted command 0x2C.
             game.state.field_mode_flag_bit_6 = false
             game.state.field_mode_flag_bit_7 = false
-            game.state.field_mode_flag_bit_20 = true
+            game.state[E.FieldModeFact.BORIS_FOLLOWUP_PENDING] = true
             return true
         end,
         ["boris.mark_ilene_information"] = function()

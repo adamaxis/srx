@@ -29907,9 +29907,15 @@ int run_field_penumbra_mako_qa(
     field_scene.set_field_funds_for_dump(wallet_before);
     field_scene.active_runner_record().skills[10U] =
         static_cast<std::uint8_t>(reputation);
-    const auto notebook_flags = mako_lead_missing || mode_flag_lead
+    auto notebook_flags = mako_lead_missing || mode_flag_lead
         ? std::array<std::uint32_t, 3U>{{0U, 0U, 0U}}
         : std::array<std::uint32_t, 3U>{{0U, 0U, 0x08U}};
+    if (!mako_gate_closed) {
+        // Preserve tip 49 while seeding the actual source-cleared tip 81.
+        // ROM 0x54048 clears FFFC38 bit 17, not FFFC34 bit 17.
+        notebook_flags[1U] |= (1U << 17U);
+        notebook_flags[2U] |= (1U << 17U);
+    }
     field_scene.seed_notebook_tip_flags_for_qa(notebook_flags);
     field_scene.seed_field_mode_flags_for_qa(
         mode_flag_lead ? (1U | (1U << 21U)) : 1U);
@@ -30310,6 +30316,8 @@ int run_field_penumbra_mako_qa(
         field_scene.advance_frame();
     }
     const auto debug = field_scene.debug_inspection_fields();
+    const auto notebook_tip_flags =
+        field_scene.notebook_tip_flags_for_dump();
     constexpr auto kPublishedActorBoundary =
         "field.world_activity.script_actor_published_from_rom_list";
     constexpr auto kTransitionBoundary =
@@ -30333,6 +30341,9 @@ int run_field_penumbra_mako_qa(
         (field_scene.field_mode_flags_for_dump() & (1U << 24U)) == 0U ||
         (field_scene.field_mode_flags_for_dump() &
          ((1U << 20U) | (1U << 21U))) != 0U ||
+        !notebook_tip_flags.has_value() ||
+        ((*notebook_tip_flags)[1U] & (1U << 17U)) == 0U ||
+        ((*notebook_tip_flags)[2U] & (1U << 17U)) != 0U ||
         field_scene.active_runner_record().karma !=
             static_cast<std::uint8_t>(initial_karma + 2U) ||
         field_scene.field_funds_for_dump() !=

@@ -689,6 +689,24 @@ E.StoryFact = {
   FROSTY_MET = "frosty_met",                           -- handler at 0x21FD6 [C]
 }
 
+-- Transient field-mode state exposed through gameplay meaning. The host maps
+-- these IDs to saved fields; scripts do not name FFFC30 bit positions.
+E.FieldModeFact = {
+  -- Boris's information handlers set this at 0x21B82/0x21EB0; Mako's result
+  -- callback clears it at 0x54036. Its broader narrative role is [H].
+  BORIS_FOLLOWUP_PENDING = "field.boris_followup_pending",
+  -- The Mako callback sets this immediately before returning its result page
+  -- at 0x5403E/0x5405E [C].
+  MAKO_RESULT_CALLBACK_APPLIED = "field.mako_result_callback_applied",
+}
+
+-- Notebook entries are content identities. The host owns their save encoding.
+E.NotebookTip = {
+  -- Entry 81 is Renraku's report locating the Feathered Serpent in the
+  -- Sinsearach Caves; the third pointer table begins at 0xC2816 [C].
+  RENRAKU_SERPENT_LOCATION = "notebook_tip.renraku_serpent_location",
+}
+
 -- Persistent Johnson contact knowledge. The host maps these IDs to the save
 -- representation; gameplay code does not address FFFC27 bit positions.
 E.JohnsonFact = {
