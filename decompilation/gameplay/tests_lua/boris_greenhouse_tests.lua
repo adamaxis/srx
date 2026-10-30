@@ -30,7 +30,7 @@ local content = {
     },
 }
 
-local Building = require("building")
+local Building = require("route_test_support").wrap(require("building"))
 local Boris = require("boris_greenhouse")
 
 local area_link = {

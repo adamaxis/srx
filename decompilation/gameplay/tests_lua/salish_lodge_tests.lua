@@ -1,7 +1,7 @@
 package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
-local Building = require("building")
+local Building = require("route_test_support").wrap(require("building"))
 local Owlfeather = require("salish_owlfeather")
 local RedBuffalo = require("salish_red_buffalo")
 local Json = require("json")

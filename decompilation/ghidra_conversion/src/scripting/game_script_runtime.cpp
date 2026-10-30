@@ -7459,21 +7459,27 @@ GameScriptRuntime::resolve_field_location_route(
     const auto event_code_name = collision_event_name(context.event_code);
     lua_pushlstring(state, event_code_name.c_str(), event_code_name.size());
     lua_setfield(state, input_index, "event_code");
-    lua_pushinteger(state, event_code_value);
-    lua_setfield(state, input_index, "event_index");
     lua_pushinteger(state, context.alternate_result);
     lua_setfield(state, input_index, "alternate_result");
-    lua_pushboolean(state, context.event_table_available);
-    lua_setfield(state, input_index, "event_table_available");
-    lua_createtable(state,
-                    static_cast<int>(context.event_table.size()), 0);
-    const auto table_index = lua_absindex(state, -1);
-    for (std::size_t index = 0U; index < context.event_table.size(); ++index) {
-        lua_pushinteger(state, context.event_table[index]);
-        lua_rawseti(state, table_index,
-                    static_cast<lua_Integer>(index + 1U));
+    lua_createtable(state, 0, 2);
+    const auto transition_index = lua_absindex(state, -1);
+    std::string_view transition_kind = "no_destination";
+    // [C] The profile selected through 0x3232 stores 32 scene destinations
+    // at profile+0x4E. Resolve the selected host record here and expose only
+    // the resulting world transition to gameplay Lua.
+    if (context.event_table_available &&
+        event_code_value < context.event_table.size()) {
+        transition_kind = "enter_scene";
+    } else if (!context.event_table_available && event_code_value == 0U) {
+        transition_kind = "return_to_field";
     }
-    lua_setfield(state, input_index, "event_table");
+    lua_pushlstring(state, transition_kind.data(), transition_kind.size());
+    lua_setfield(state, transition_index, "kind");
+    if (transition_kind == "enter_scene") {
+        lua_pushinteger(state, context.event_table[event_code_value]);
+        lua_setfield(state, transition_index, "destination_scene_id");
+    }
+    lua_setfield(state, input_index, "transition");
 
     // Location route predicates use the same typed field facts as dialogue
     // graph predicates. Keep them nested under `field` so ConditionEvaluator

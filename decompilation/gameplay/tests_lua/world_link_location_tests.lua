@@ -2,7 +2,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
 local E = require("enums")
-local Building = require("building")
+local Building = require("route_test_support").wrap(require("building"))
 local World = require("world_content")
 local WorldLinks = require("world_links")
 local hospital_sites = require("data.hospital_sites")
@@ -136,16 +136,6 @@ game = {
 -- but ROM 0x1F83C enters the same-map hospital handler; the linked Lua task
 -- consumes that event before the area-event destination can load.
 local D = WorldLinks.data()
-local function service_transition(scene_id, service_kind)
-    for _, link in ipairs(WorldLinks.links_in_scene(scene_id)) do
-        local transition = link.transition
-        if transition and transition.kind == "same_map_service" and
-           transition.service == service_kind then
-            return transition
-        end
-    end
-    return nil
-end
 local function has_contextual_transition(scene_id)
     for _, link in ipairs(WorldLinks.links_in_scene(scene_id)) do
         if link.transition and
@@ -155,7 +145,9 @@ local function has_contextual_transition(scene_id)
     end
     return false
 end
-local hospital_service = service_transition(0, "hospital")
+-- Scene-0 record 61 at 0x0D57E6 spans world pixels x=26624..27135,
+-- y=13824..14335 and imports as the semantic hospital service doorway.
+local hospital_service = WorldLinks.service_at(0, 26880, 14080)
 -- This is a diagnostic source expectation, not runtime script data.
 local hospital_source_route = 0x15
 local hospital_site = hospital_sites[HOSPITAL_ID]

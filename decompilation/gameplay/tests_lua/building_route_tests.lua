@@ -1,7 +1,7 @@
 package.path = "decompilation/gameplay/scripts/?.lua;" ..
     "decompilation/gameplay/scripts/?/init.lua;" .. package.path
 
-local Building = require("building")
+local Building = require("route_test_support").wrap(require("building"))
 local E = require("enums")
 
 local base_link = {
@@ -193,7 +193,7 @@ local override_link = {
     script = "area_event_table",
     destination_scene = 54,
     destination_mode = "scripted_activity",
-    source_table_destination = 13,
+    expected_destination_scene = 13,
     source_route_policy = "suppress_source_route",
     route_priority = 10,
     return_anchor = "collision_probe_lead",
@@ -252,7 +252,7 @@ local tomb_link = {
     script = "area_event_table",
     destination_scene = 54,
     destination_mode = "scripted_activity",
-    source_table_destination = 13,
+    expected_destination_scene = 13,
     source_route_policy = "suppress_source_route",
     route_priority = 10,
     route_condition_id = condition("test.tomb.route", {
@@ -314,7 +314,7 @@ local guarded_link = {
     script = "area_event_table",
     destination_scene = 13,
     destination_mode = "field",
-    source_table_destination = 13,
+    expected_destination_scene = 13,
     source_route_policy = "suppress_source_route",
     route_priority = 10,
     route_condition_id = condition("test.guarded.route", {

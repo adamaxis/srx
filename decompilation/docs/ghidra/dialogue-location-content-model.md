@@ -442,10 +442,13 @@ ID, priority, optional destination and source-route policy, named `tasks`, a
 shared `locationContext`, optional `entryDialogue`, and ROM `provenance`.
 `sourceRoutePolicy` is explicit for routes that alter map-event behavior.
 `area_event_override` records `suppress_source_route`, its expected
-`sourceTableDestination`, and its replacement `destinationScene`; Lua checks
-the expected byte against the active map's imported event-table row before
-selecting the interaction. `resume_source_route` asks Lua to read that row and
-return its destination without duplicating it in the entity document.
+`sourceTableDestination`, and its replacement `destinationScene`. The native
+route bridge resolves the active map's selected destination before invoking
+Lua; `world_content.lua` exposes the expected destination as a scene ID, and
+the route policy compares semantic transition objects instead of indexing the
+source table. `resume_source_route` uses that same resolved transition without
+duplicating its destination in the entity document. A saved-field return and
+an unresolved destination are separate transition kinds.
 Conditions remain named expressions in
 `location_conditions.json`, rather than inline Lua or string mini-languages.
 Map geometry, collision records, and event-table destinations remain in the

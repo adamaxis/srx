@@ -275,45 +275,39 @@ local function add_location_script_tasks(route, link)
     return route
 end
 
-local function area_event_source_matches(link, context)
+local function transition_matches_link(link, context)
+    local transition = context.transition
+    if type(transition) ~= "table" then return false end
     if link.route_kind == route_kind.area_event then
-        return context.event_table_available == true and
-            type(context.event_table) == "table" and
-            context.event_index < #context.event_table and
-            context.event_table[context.event_index + 1] ==
-                link.destination_scene
+        return transition.kind == "enter_scene" and
+            transition.destination_scene_id == link.destination_scene
     end
     if link.route_kind ~= route_kind.area_event_override then
         return false
     end
 
-    local source_destination = link.source_table_destination
-    if type(source_destination) ~= "number" or
-       source_destination < 0 or source_destination > 255 or
-       source_destination % 1 ~= 0 then
+    local expected_destination = link.expected_destination_scene
+    if type(expected_destination) ~= "number" or
+       expected_destination < 0 or expected_destination > 255 or
+       expected_destination % 1 ~= 0 then
         return false
     end
-    if context.event_table_available == true and
-       type(context.event_table) == "table" and
-       context.event_index < #context.event_table then
-        return context.event_table[context.event_index + 1] ==
-            source_destination
+    if transition.kind == "enter_scene" then
+        return transition.destination_scene_id == expected_destination
     end
 
-    -- Some ROM profiles have a null event-table pointer. The one-time source
-    -- audit may bind the resulting event-0 fallback as a static route; the
-    -- runtime does not reproduce null-pointer address arithmetic.
-    return context.event_table_available == false and
-        context.event_index == 0 and source_destination == 0
+    -- Some older route documents encode an absent static destination as zero.
+    -- Require the host's saved-field return fact; Lua does not index a ROM table.
+    return transition.kind == "return_to_field" and
+        context.event_code == "event_0" and expected_destination == 0
 end
 
-local function source_event_table_destination(context)
-    if context.event_table_available ~= true or
-       type(context.event_table) ~= "table" or
-       context.event_index >= #context.event_table then
+local function selected_scene_destination(context)
+    local transition = context.transition
+    if type(transition) ~= "table" or transition.kind ~= "enter_scene" then
         return nil
     end
-    local destination = context.event_table[context.event_index + 1]
+    local destination = transition.destination_scene_id
     if type(destination) ~= "number" or destination < 0 or
        destination > 255 or destination % 1 ~= 0 then
         return nil
@@ -328,8 +322,7 @@ function Building.resolve_field_location_route(context)
        context.scene_id % 1 ~= 0 or context.scene_id < 0 or
        context.scene_id > 255 or
        type(context.event_code) ~= "string" or
-       type(context.event_index) ~= "number" or
-       context.event_index < 0 or context.event_index > 255 or
+       type(context.transition) ~= "table" or
        type(context.alternate_result) ~= "number" then
         return no_route("event_0")
     end
@@ -372,10 +365,10 @@ function Building.resolve_field_location_route(context)
         elseif link.route_kind == route_kind.field_service and
                link.script == "lua_field_service" then
             if link.source_route_policy == "suppress_source_route" and
-               not area_event_source_matches({
+               not transition_matches_link({
                    route_kind = route_kind.area_event_override,
-                   source_table_destination =
-                       link.source_table_destination,
+                   expected_destination_scene =
+                       link.expected_destination_scene,
                }, context) then
                 return source_boundary(context.event_code,
                     "location.source_route_destination_mismatch:" ..
@@ -399,7 +392,7 @@ function Building.resolve_field_location_route(context)
         elseif link.route_kind == route_kind.area_event and
                link.script == route_script.map_event_table and
                link.source_route_policy == "resume_source_route" then
-            local target_scene = source_event_table_destination(context)
+            local target_scene = selected_scene_destination(context)
             if target_scene == nil then
                 local has_source_task =
                     (link.entry_dialogue_module or "") ~= "" or
@@ -408,7 +401,7 @@ function Building.resolve_field_location_route(context)
                     (link.field_exit_prompt_module or "") ~= ""
                 if has_source_task then
                     return source_boundary(context.event_code,
-                        "location.source_event_table_missing:" ..
+                        "location.source_scene_destination_missing:" ..
                         (link.entity_id or "location") .. "." ..
                         (link.link_id or link.id or "unnamed"))
                 end
@@ -446,7 +439,7 @@ function Building.resolve_field_location_route(context)
                 return source_boundary(context.event_code,
                     policy_failure .. link_identity)
             end
-            if not area_event_source_matches(link, context) then
+            if not transition_matches_link(link, context) then
                 return source_boundary(context.event_code,
                     "location.source_route_destination_mismatch:" ..
                     link_identity)
@@ -487,7 +480,7 @@ function Building.resolve_field_location_route(context)
                link.destination_scene >= 0 and
                link.destination_scene <= 255 and
                link.destination_scene % 1 == 0 and
-               area_event_source_matches(link, context) then
+               transition_matches_link(link, context) then
             local return_policy = return_fields(link)
             local mode = link.destination_mode
             if mode ~= destination_mode.field and
@@ -517,8 +510,7 @@ function Building.resolve_field_location_route(context)
             if (context.scene_id ~= E.Scene.JUMP_HOUSE and
                 context.scene_id ~= E.Scene.WANDERER) or
                context.event_code ~= "event_0" or
-               context.event_index ~= 0 or
-               context.event_table_available ~= false then
+               context.transition.kind ~= "return_to_field" then
                 return source_boundary(context.event_code,
                     "location.source_activity_return_context_mismatch:" ..
                     (link.entity_id or "location") .. "." ..
@@ -537,7 +529,7 @@ function Building.resolve_field_location_route(context)
     -- source scene context rather than selecting a fixed map number.
     if context.scene_id >= 21 and context.scene_id <= 43 and
        context.event_code == "event_0" and
-       context.event_table_available == false then
+       context.transition.kind == "return_to_field" then
         return {
             kind = route_kind.source_activity_return,
             script = route_script.source_activity_return,
@@ -545,17 +537,11 @@ function Building.resolve_field_location_route(context)
         }
     end
 
-    if context.event_table_available ~= true or
-       type(context.event_table) ~= "table" or
-       context.event_index >= #context.event_table then
+    if context.transition.kind ~= "enter_scene" then
         return no_route(context.event_code)
     end
-
-    local target_scene = context.event_table[context.event_index + 1]
-    if type(target_scene) ~= "number" or target_scene < 0 or
-       target_scene > 255 or target_scene % 1 ~= 0 then
-        return no_route(context.event_code)
-    end
+    local target_scene = selected_scene_destination(context)
+    if target_scene == nil then return no_route(context.event_code) end
 
     return attach_resource_scene_entry_placement({
         kind = route_kind.area_event,
