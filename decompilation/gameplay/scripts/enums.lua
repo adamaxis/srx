@@ -696,6 +696,8 @@ E.JohnsonFact = {
   CALEB_KNOWN = "johnson.caleb_known", -- Pocket Secretary contact row at 0xF500 [C]
   -- Caleb's first-contact branch at 0x20A78 [C].
   CALEB_FIRST_MEETING_SEEN = "johnson.caleb_first_meeting_seen",
+  -- Vigore's alternate response is read by the question builder at 0x22F90 [C].
+  VIGORE_ALTERNATE_RESPONSE_AVAILABLE = "johnson.vigore_alternate_response_available",
 }
 
 return E

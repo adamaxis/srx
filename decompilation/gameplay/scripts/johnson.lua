@@ -55,7 +55,7 @@ local function question_choices()
     local vigore_lead_available = game.state.vigore_lead_available == true
     local vigore_alternate_response_available =
         not vigore_lead_available and
-        game.state.mr_johnsons_flag_bit_3 == true
+        game.state[E.JohnsonFact.VIGORE_ALTERNATE_RESPONSE_AVAILABLE] == true
     if vigore_lead_available or vigore_alternate_response_available then
         choices[#choices + 1] = "vigore"
     end
@@ -88,7 +88,7 @@ local function answer_questions()
                 -- returns the follow-up prompt at 0x105270.
                 game.state.vigore_search_pending = true
                 response_menu = "vigore_response"
-            elseif game.state.mr_johnsons_flag_bit_3 == true then
+            elseif game.state[E.JohnsonFact.VIGORE_ALTERNATE_RESPONSE_AVAILABLE] == true then
                 -- When FFFC1E bit 26 is clear, FFFC27 bit 3 selects the
                 -- alternate response page at 0x105244, then the question
                 -- menu at 0x105258. It does not arm the Rat's Nest search.

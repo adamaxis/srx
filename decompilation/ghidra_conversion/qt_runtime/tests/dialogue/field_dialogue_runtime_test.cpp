@@ -1130,7 +1130,7 @@ int main() {
     // this response does not run action 0xE7 or arm the Rat's Nest search.
     gameplay_scripts.set_story_state({
         {"vigore_lead_available", false},
-        {"mr_johnsons_flag_bit_3", true},
+        {"johnson.vigore_alternate_response_available", true},
         {"vigore_search_pending", false},
         {"errascoe_question_available", false},
     });
@@ -1178,7 +1178,7 @@ int main() {
 
     gameplay_scripts.set_story_state({
         {"vigore_lead_available", false},
-        {"mr_johnsons_flag_bit_3", false},
+        {"johnson.vigore_alternate_response_available", false},
         {"vigore_search_pending", false},
         {"errascoe_question_available", true},
     });
