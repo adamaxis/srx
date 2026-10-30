@@ -56,8 +56,6 @@ game = {
         id = "renraku_offices_frontage",
     },
     field = {
-        mode = 1,
-        event_code = 6,
         package_run_status = "none",
     },
     modules = {

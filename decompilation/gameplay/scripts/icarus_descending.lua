@@ -8,7 +8,6 @@ local LOCATION_ID = "icarus_descending_booth"
 function IcarusDescending.present_access_blocked()
     if game.location.type ~= "building" or
        game.location.id ~= LOCATION_ID or
-       game.field.event_code ~= 30 or
        game.state.story_flag_bit_10 ~= false then
         return "denied"
     end

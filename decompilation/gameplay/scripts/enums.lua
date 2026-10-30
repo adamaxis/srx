@@ -11,6 +11,12 @@ E.PackageRunStatus = {
     PAYMENT_DUE = "payment_due",
 }
 
+E.FieldModePrompt = {
+    NONE = "none",
+    LITTLE_CHIBA_STORE = "little_chiba_store",
+    ARES_EMPORIUM = "ares_emporium",
+}
+
 E.GhoulBounty = { MAX_DEFEATS = 20 } -- FFFBF0 is capped at twenty (0x559BC) [C]
 
 -- +0x9E role/AI flags (doc 20 §2); REINFORCEMENT is set by the alarm spawner 0x1E0B8 [C]

@@ -11,8 +11,7 @@
       "route": {
         "kind": "dialogue",
         "script": "lua_dialogue",
-        "priority": 10,
-        "conditionId": "salish.sinsearach.gate.route"
+        "priority": 10
       },
       "entryDialogue": {
         "task": {

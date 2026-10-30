@@ -3819,6 +3819,25 @@ int main() {
     const auto missing_event_route =
         scripts.resolve_field_location_route(scene2_location);
 
+    // The same scene/event boundary that selects the destination also selects
+    // its optional preparation task. Scene 2/event 1 enters Scene 26 and must
+    // not inherit Ilene's Scene-20 preparation from event 0 (ROM entity links
+    // cite records 89/90 at 0x173124/0x17312E and event table 0x172CDC).
+    // ROM 0x1F7CE selects the Council Island Inn service only for Scene 4/event 0.
+    FieldScriptRouteContext council_inn_route_context{};
+    council_inn_route_context.scene_id = 4U;
+    council_inn_route_context.field_mode = 4U;
+    council_inn_route_context.event_code = FieldCollisionEventCode::event_0;
+    council_inn_route_context.event_table_available = true;
+    council_inn_route_context.event_table[0U] = 13U;
+    const auto council_inn_route =
+        scripts.resolve_field_location_route(council_inn_route_context);
+    council_inn_route_context.event_code =
+        FieldCollisionEventCode::event_1;
+    council_inn_route_context.event_table[1U] = 10U;
+    const auto council_inn_other_event_route =
+        scripts.resolve_field_location_route(council_inn_route_context);
+
     const auto resolve_event30_location = [&scripts](
         const std::uint8_t scene_id) {
         FieldScriptRouteContext context{};
@@ -4912,10 +4931,20 @@ int main() {
                 scene26_route->area_event_target == 26U &&
                 scene26_route->area_event_destination_mode ==
                     WorldActivityMode::resource_activity &&
+                !scene26_route->route_preparation.has_value() &&
                 scene26_route->return_anchor ==
                     FieldLocationReturnAnchor::collision_probe_lead &&
                 scene26_route->return_facing ==
                     FieldLocationReturnFacing::face_away_from_entry &&
+                council_inn_route.has_value() &&
+                council_inn_route->field_exit_prompt.has_value() &&
+                council_inn_route->field_exit_prompt->module ==
+                    "council_island_inn" &&
+                council_inn_other_event_route.has_value() &&
+                council_inn_other_event_route->kind ==
+                    FieldScriptRouteKind::area_event &&
+                council_inn_other_event_route->area_event_target == 10U &&
+                !council_inn_other_event_route->field_exit_prompt.has_value() &&
                 missing_event_route.has_value() &&
                 missing_event_route->kind == FieldScriptRouteKind::no_route &&
                 missing_event_route->event_code == 255U &&
@@ -5106,16 +5135,12 @@ int main() {
     const bool blocks_alternate_result = verify_ilene_gate_blocks(
         ilene_allowed_facts, ScriptFieldModeContext{2U, 0U, 1},
         "hollywood_correctional_facility");
-    const bool blocks_wrong_event = verify_ilene_gate_blocks(
-        ilene_allowed_facts, ScriptFieldModeContext{2U, 1U, 0},
-        "hollywood_correctional_facility");
     const bool blocks_wrong_location = verify_ilene_gate_blocks(
         ilene_allowed_facts, ScriptFieldModeContext{2U, 0U, 0},
         "council_island_hospital");
     if (!expect(blocks_missing_shaman && blocks_already_met &&
                     blocks_effect_flag && blocks_tip_gate &&
-                    blocks_alternate_result && blocks_wrong_event &&
-                    blocks_wrong_location,
+                    blocks_alternate_result && blocks_wrong_location,
                 "Ilene service 19 armed FFE182 outside one or more ROM gates")) {
         std::cerr << scripts.failure() << '\n';
         return 2;
@@ -15453,6 +15478,13 @@ int main() {
     hospital_context.event_table[4U] = 13U;
     const auto hospital_route =
         scripts.resolve_field_location_route(hospital_context);
+    // Confirm event 3 keeps selecting the Medicine Lodge task from above.
+    auto hospital_other_event_context = hospital_context;
+    hospital_other_event_context.event_code =
+        FieldCollisionEventCode::event_3;
+    hospital_other_event_context.event_table[3U] = 13U;
+    const auto hospital_other_event_route =
+        scripts.resolve_field_location_route(hospital_other_event_context);
     if (!expect(hospital_route.has_value() &&
                     hospital_route->kind == FieldScriptRouteKind::area_event &&
                     hospital_route->area_event_target ==
@@ -15462,6 +15494,11 @@ int main() {
                         "council_island_hospital" &&
                     hospital_route->field_exit_prompt->function ==
                         "present_field_exit_prompt" &&
+                    hospital_other_event_route.has_value() &&
+                    hospital_other_event_route->field_exit_prompt
+                        .has_value() &&
+                    hospital_other_event_route->field_exit_prompt
+                            ->module == "council_medicine_lodge" &&
                     scripts.dialogue_text(
                         "council_island_hospital.entry.default") != nullptr &&
                     scripts.dialogue_text(
@@ -17130,6 +17167,15 @@ int main() {
     medicine_lodge_context.event_table[3U] = 13U;
     const auto medicine_lodge_route =
         scripts.resolve_field_location_route(medicine_lodge_context);
+    // ROM 0x1FCF2 selects the Medicine Lodge on Scene 4/event 3; event 4 is
+    // the separate hospital service at 0x1FA02.
+    auto medicine_lodge_other_event_context = medicine_lodge_context;
+    medicine_lodge_other_event_context.event_code =
+        FieldCollisionEventCode::event_4;
+    medicine_lodge_other_event_context.event_table[4U] = 13U;
+    const auto medicine_lodge_other_event_route =
+        scripts.resolve_field_location_route(
+            medicine_lodge_other_event_context);
     if (!expect(medicine_lodge_route.has_value() &&
                     medicine_lodge_route->kind ==
                         FieldScriptRouteKind::area_event &&
@@ -17142,6 +17188,11 @@ int main() {
                         "present_field_exit_prompt" &&
                     medicine_lodge_route->field_exit_prompt->location_id ==
                         "council_medicine_lodge" &&
+                    medicine_lodge_other_event_route.has_value() &&
+                    medicine_lodge_other_event_route->field_exit_prompt
+                        .has_value() &&
+                    medicine_lodge_other_event_route->field_exit_prompt
+                            ->module == "council_island_hospital" &&
                     scripts.dialogue_text(
                         "council_medicine_lodge.entry.default") != nullptr &&
                     scripts.dialogue_text(

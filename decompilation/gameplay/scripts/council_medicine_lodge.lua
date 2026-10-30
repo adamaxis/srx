@@ -13,8 +13,6 @@ local function assert_route_context()
     assert(game.location.type == "building" and
            game.location.id == LOCATION_ID,
         "Medicine Lodge dialogue ran outside its linked building")
-    assert(game.field.mode == 4 and game.field.event_code == 3,
-        "Medicine Lodge prompt requires ROM field mode/event 4/3")
 end
 
 function MedicineLodge.present_field_exit_prompt()

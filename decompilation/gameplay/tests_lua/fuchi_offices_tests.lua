@@ -55,7 +55,7 @@ game = {
     location = {
         type = "building", id = "penumbra_site_02_fuchi", scene_id = 3,
     },
-    field = { mode = 2, event_code = 2, package_run_status = "none" },
+    field = { package_run_status = "none" },
     services = { call = function(domain, operation)
         if domain == "field" and operation == "scene_reference" then
             return "scene_3"

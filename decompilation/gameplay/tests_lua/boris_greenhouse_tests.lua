@@ -72,7 +72,6 @@ local function new_game(choices, flags, funds, package_run_status, inventory)
         funds = funds or 1000,
         location = { type = "building", id = "boris_greenhouse_frontage" },
         field = {
-            event_code = 6,
             package_run_status = package_run_status or "none",
         },
         content = content,

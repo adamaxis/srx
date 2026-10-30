@@ -14,7 +14,7 @@ game = {
         runner_information_bit_4 = false,
     },
     location = { type = "building", id = location_id },
-    field = { mode = 4, event_code = 3, package_run_status = "none" },
+    field = { package_run_status = "none" },
     ui = {
         prompt_text_key = function(id, text_key, choices)
             prompts[#prompts + 1] = {
@@ -86,10 +86,6 @@ assert(#prompts == 0 and #speeches == 1 and
        speeches[1] == "package_payment")
 
 game.field.package_run_status = "none"
-game.field.event_code = 4
-assert(not pcall(Lodge.present_field_exit_prompt),
-       "the Medicine Lodge prompt accepted the wrong ROM event")
-game.field.event_code = 3
 game.location.id = "another_building"
 assert(not pcall(Lodge.present_field_exit_prompt),
        "the Medicine Lodge prompt accepted the wrong location")

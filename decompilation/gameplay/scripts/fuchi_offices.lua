@@ -5,11 +5,11 @@ local E = require("enums")
 local StoryFlags = require("story_flags")
 
 local FuchiOffices = {}
+local LOCATION_ID = "penumbra_site_02_fuchi"
 
 function FuchiOffices.present_cyberheart_entry()
-    local scene = game.location.scene_id
-    if scene == E.FieldSafe.FUCHI_ENTRY_SCENE and
-       game.field.event_code == E.FieldSafe.FUCHI_ENTRY_EVENT and
+    if game.location.type == "building" and
+       game.location.id == LOCATION_ID and
        game.field.package_run_status == E.PackageRunStatus.NONE and
        StoryFlags.is_set(E.StoryFlag.HOSPITAL_VISITED) == true and
        StoryFlags.is_set(E.StoryFlag.CYBERHEART_SAFE) == false then

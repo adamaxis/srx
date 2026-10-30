@@ -21,7 +21,7 @@ local queued_choices, prompts, speeches, calls = {}, {}, {}, {}
 local payment_result = "paid"
 game = {
     location = { type = "building", id = "council_island_inn" },
-    field = { mode = 4, event_code = 0, package_run_status = "none" },
+    field = { package_run_status = "none" },
     ui = {
         prompt_text = function(menu_id, text, available_choices)
             local menu = assert(menus.council_island_inn[menu_id],
@@ -117,24 +117,12 @@ expect_unknown_package_run_status(nil)
 expect_unknown_package_run_status("unresolved")
 
 game.field.package_run_status = "none"
-game.field.mode = 3
-reset()
-local wrong_mode = expect_outcome("source_boundary")
-assert(wrong_mode.reason:find("mode 4/event 0", 1, true))
-assert(#prompts == 0 and #calls == 0 and #speeches == 0)
-game.field.mode = 4
 game.location.id = "other_building"
 reset()
 local wrong_location = expect_outcome("source_boundary")
-assert(wrong_location.reason:find("mode 4/event 0", 1, true))
+assert(wrong_location.reason:find("Council Island Inn", 1, true))
 assert(#prompts == 0 and #calls == 0 and #speeches == 0)
 game.location.id = "council_island_inn"
-game.field.event_code = 1
-reset()
-local wrong_event = expect_outcome("source_boundary")
-assert(wrong_event.reason:find("mode 4/event 0", 1, true))
-assert(#prompts == 0 and #calls == 0 and #speeches == 0)
-game.field.event_code = 0
 
 -- Leave at either prompt keeps the party on Scene 4 and does not touch funds.
 reset("leave")

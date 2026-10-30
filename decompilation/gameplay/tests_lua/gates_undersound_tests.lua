@@ -51,7 +51,7 @@ game = {
         type = "building",
         id = "downtown_site_04_gates_undersound",
     },
-    field = { event_code = 3, package_run_status = "none" },
+    field = { package_run_status = "none" },
     ui = {
         say = function(event_id)
             game.last_dialogue_event = event_id

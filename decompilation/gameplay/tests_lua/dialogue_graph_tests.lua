@@ -242,14 +242,15 @@ local invocation_evaluator = ConditionEvaluator.new(
         },
     }))
 local invocation_context = {
-    field = { mode = 6, event_code = 0 },
+    field = { package_run_status = "none" },
     dialogue = { entry_id = "return_followup" },
 }
 assert(invocation_evaluator:evaluate(
     eq("dialogue.entry_id", "return_followup"),
     invocation_context).status == Status.true_value)
 assert(invocation_evaluator:evaluate(
-    eq("field.mode", 6), invocation_context).status == Status.true_value)
+    eq("field.package_run_status", "none"), invocation_context).status ==
+        Status.true_value)
 assert(invocation_evaluator:evaluate(
     eq("location.id", "salish_owlfeather_ranger_lodge"),
     invocation_context).status == Status.true_value)

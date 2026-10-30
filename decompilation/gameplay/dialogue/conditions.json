@@ -6,7 +6,6 @@
         "all": [
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "boris_greenhouse_frontage" },
-          { "fact": "field.event_code", "op": "eq", "value": 6 },
           { "fact": "story.field_dialogue_flag_bit_0", "op": "in", "value": [true, false] },
           { "fact": "story.field_dialogue_flag_bit_1", "op": "in", "value": [true, false] },
           { "fact": "story.field_dialogue_flag_bit_2", "op": "in", "value": [true, false] },
@@ -108,7 +107,6 @@
         "all": [
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "downtown_site_04_gates_undersound" },
-          { "fact": "field.event_code", "op": "eq", "value": 3 },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_11", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_15", "op": "eq", "value": false }
@@ -124,7 +122,6 @@
         "all": [
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "renraku_offices_frontage" },
-          { "fact": "field.event_code", "op": "eq", "value": 6 },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_16", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_12", "op": "eq", "value": false }
@@ -140,7 +137,6 @@
         "all": [
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "penumbra_site_02_fuchi" },
-          { "fact": "field.event_code", "op": "eq", "value": 2 },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_25", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_14", "op": "eq", "value": false }
@@ -156,7 +152,6 @@
         "all": [
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_03_tarislar_city_inn" },
-          { "fact": "field.event_code", "op": "eq", "value": 1 },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_0", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_1", "op": "eq", "value": false }
@@ -172,8 +167,6 @@
         "all": [
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
-          { "fact": "field.mode", "op": "eq", "value": 1 },
-          { "fact": "field.event_code", "op": "eq", "value": 7 },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_30", "op": "eq", "value": false }
         ]
@@ -188,8 +181,6 @@
         "all": [
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
-          { "fact": "field.mode", "op": "eq", "value": 1 },
-          { "fact": "field.event_code", "op": "eq", "value": 7 },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_21", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_30", "op": "eq", "value": true }
@@ -242,8 +233,6 @@
         "all": [
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
-          { "fact": "field.mode", "op": "eq", "value": 1 },
-          { "fact": "field.event_code", "op": "eq", "value": 7 },
           { "fact": "field.package_run_status", "op": "ne", "value": "none" }
         ]
       },
@@ -275,8 +264,6 @@
         "all": [
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
-          { "fact": "field.mode", "op": "eq", "value": 1 },
-          { "fact": "field.event_code", "op": "eq", "value": 7 },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_30", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_21", "op": "eq", "value": true },
@@ -322,9 +309,7 @@
       "expression": {
         "all": [
           { "fact": "location.type", "op": "eq", "value": "building" },
-          { "fact": "location.id", "op": "eq", "value": "penumbra_site_09_wylies_gala_inn" },
-          { "fact": "field.mode", "op": "eq", "value": 3 },
-          { "fact": "field.event_code", "op": "eq", "value": 1 }
+          { "fact": "location.id", "op": "eq", "value": "penumbra_site_09_wylies_gala_inn" }
         ]
       },
       "provenance": {
@@ -364,8 +349,6 @@
         "all": [
           { "fact": "location.type", "op": "eq", "value": "motel" },
           { "fact": "location.id", "op": "eq", "value": "stoker_motel" },
-          { "fact": "field.mode", "op": "eq", "value": 2 },
-          { "fact": "field.event_code", "op": "eq", "value": 2 },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_0", "op": "eq", "value": false }
         ]
@@ -379,9 +362,7 @@
       "expression": {
         "all": [
           { "fact": "location.type", "op": "eq", "value": "motel" },
-          { "fact": "location.id", "op": "eq", "value": "stoker_motel" },
-          { "fact": "field.mode", "op": "eq", "value": 2 },
-          { "fact": "field.event_code", "op": "eq", "value": 2 }
+          { "fact": "location.id", "op": "eq", "value": "stoker_motel" }
         ]
       },
       "provenance": {
@@ -606,8 +587,6 @@
           { "fact": "dialogue.entry_id", "op": "eq", "value": "first_contact" },
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "salish_owlfeather_ranger_lodge" },
-          { "fact": "field.mode", "op": "eq", "value": 6 },
-          { "fact": "field.event_code", "op": "eq", "value": 0 },
           { "fact": "story.story_flag_bit_1", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_2", "op": "eq", "value": false }
         ]
@@ -623,8 +602,6 @@
           { "fact": "dialogue.entry_id", "op": "eq", "value": "search_followup" },
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "salish_owlfeather_ranger_lodge" },
-          { "fact": "field.mode", "op": "eq", "value": 6 },
-          { "fact": "field.event_code", "op": "eq", "value": 0 },
           { "fact": "story.story_flag_bit_2", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_3", "op": "eq", "value": false }
         ]
@@ -640,8 +617,6 @@
           { "fact": "dialogue.entry_id", "op": "eq", "value": "return_followup" },
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "salish_owlfeather_ranger_lodge" },
-          { "fact": "field.mode", "op": "eq", "value": 6 },
-          { "fact": "field.event_code", "op": "eq", "value": 0 },
           { "fact": "story.story_flag_bit_3", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_4", "op": "eq", "value": false }
         ]
@@ -664,9 +639,7 @@
       "expression": {
         "all": [
           { "fact": "location.type", "op": "eq", "value": "site" },
-          { "fact": "location.id", "op": "eq", "value": "council_spirit_eyes_site" },
-          { "fact": "field.mode", "op": "eq", "value": 4 },
-          { "fact": "field.event_code", "op": "eq", "value": 27 }
+          { "fact": "location.id", "op": "eq", "value": "council_spirit_eyes_site" }
         ]
       },
       "provenance": {
@@ -754,8 +727,7 @@
         "all": [
           { "fact": "location.type", "op": "eq", "value": "site" },
           { "fact": "location.id", "op": "eq", "value": "salish_feathered_serpent_lair" },
-          { "fact": "field.event_code", "op": "eq", "value": 25 },
-          { "fact": "field.transition_context", "op": "eq", "value": 19 }
+          { "fact": "field.serpent_lair_transition_active", "op": "eq", "value": true }
         ]
       },
       "provenance": {
@@ -784,8 +756,8 @@
     "salish.licourtrix.encounter_profile_available": {
       "expression": {
         "all": [
-          { "fact": "field.mode", "op": "eq", "value": 8 },
-          { "fact": "field.alternate_profile", "op": "ne", "value": 0 }
+          { "fact": "field.has_encounter_profile_context", "op": "eq", "value": true },
+          { "fact": "field.has_alternate_profile", "op": "eq", "value": true }
         ]
       },
       "provenance": {
@@ -797,9 +769,7 @@
       "expression": {
         "all": [
           { "fact": "location.type", "op": "eq", "value": "site" },
-          { "fact": "location.id", "op": "eq", "value": "salish_sinsearach_village_gate" },
-          { "fact": "field.mode", "op": "eq", "value": 9 },
-          { "fact": "field.event_code", "op": "eq", "value": 0 }
+          { "fact": "location.id", "op": "eq", "value": "salish_sinsearach_village_gate" }
         ]
       },
       "provenance": {
@@ -860,9 +830,7 @@
           { "fact": "location.type", "op": "eq", "value": "site" },
           { "fact": "location.id", "op": "eq", "value": "salish_feathered_serpent_lair" },
           { "fact": "location.scene_id", "op": "eq", "value": 47 },
-          { "fact": "field.mode", "op": "eq", "value": 47 },
-          { "fact": "field.event_code", "op": "eq", "value": 8 },
-          { "fact": "field.transition_context", "op": "eq", "value": 19 }
+          { "fact": "field.serpent_lair_transition_active", "op": "eq", "value": true }
         ]
       },
       "provenance": {

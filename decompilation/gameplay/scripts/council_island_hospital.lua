@@ -143,9 +143,6 @@ local function assert_hospital_field_context()
     local site = game.location.type == "building" and
         Sites[game.location.id] or nil
     assert(site ~= nil, "hospital prompt ran outside a linked hospital site")
-    assert(game.field.mode == site.mode and
-           game.field.event_code == site.event,
-        "hospital prompt requires its site's ROM field mode/event")
     NARRATOR, TEXT_PROFILE = site.narrator, site.text_profile
     return site
 end

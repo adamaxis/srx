@@ -16,7 +16,6 @@ local ACTIVITY_TEXT = table.concat({
 function Ilene.prepare_scene_20_entry()
     if game.location.type ~= "building" or
        game.location.id ~= LOCATION_ID or
-       game.field.mode ~= 2 or game.field.event_code ~= 0 or
        game.field.package_run_status ~= E.PackageRunStatus.NONE then
         return "continue"
     end

@@ -20,8 +20,7 @@ local renraku_arcology_store_ids = {
 }
 
 local function renraku_store_prompt(field)
-    if field.mode ~= 5 or
-       renraku_arcology_store_ids[field.service_id] ~= true then
+    if renraku_arcology_store_ids[field.service_id] ~= true then
         return nil
     end
     local store_id = field.service_id
@@ -50,7 +49,7 @@ function FieldMode.mode_text_content()
         return renraku_store
     end
 
-    if field.mode == 2 and field.event_code == 1 then
+    if field.prompt_id == E.FieldModePrompt.LITTLE_CHIBA_STORE then
         if field.package_run_status == E.PackageRunStatus.PAYMENT_DUE then
             return prompt("field.mode.little_chiba.package_payment",
                           "field.mode.entry.little.chiba.sprite")
@@ -63,7 +62,7 @@ function FieldMode.mode_text_content()
                       "field.mode.entry.little.chiba.sprite")
     end
 
-    if field.mode ~= 2 or field.event_code ~= 11 then
+    if field.prompt_id ~= E.FieldModePrompt.ARES_EMPORIUM then
         return {
             status = "unmatched",
             text_key = "none",

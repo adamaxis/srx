@@ -61,7 +61,7 @@ game = {
             state_facts[name] = value
         end,
     }),
-    field = { mode = 6, event_code = 0, package_run_status = "none" },
+    field = { package_run_status = "none" },
     location = { type = "building", id = "salish_owlfeather_ranger_lodge" },
     modules = { world_content_data = { entities = {}, areas = {} } },
     content = {
@@ -289,7 +289,6 @@ local red_links = {
     },
 }
 bind_entity(6, "salish_red_buffalo_lodge", red_links)
-game.field.event_code = 1
 selected = route(6, "event_1", 1, { 0, 13 })
 local red_buffalo_service = selected.indexed_title_service
 assert(selected.kind == "field_service" and

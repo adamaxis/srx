@@ -5598,10 +5598,12 @@ struct GameScriptRuntime::Impl {
             lua_pushnil(lua);
             return 1;
         }
-        if (field == "mode") {
-            lua_pushinteger(lua, self->field_mode_context.mode);
-        } else if (field == "event_code") {
-            lua_pushinteger(lua, self->field_mode_context.event_code);
+        if (field == "prompt_id") {
+            const auto prompt_id = script_field_mode_prompt_id(
+                script_field_mode_prompt_id_from_source_context(
+                    self->field_mode_context.source_mode,
+                    self->field_mode_context.source_event_code));
+            lua_pushlstring(lua, prompt_id.data(), prompt_id.size());
         } else if (field == "service_id") {
             lua_pushlstring(lua,
                             self->field_mode_context.service_id.data(),
@@ -5615,20 +5617,25 @@ struct GameScriptRuntime::Impl {
                 script_package_run_status_from_source_result(
                     self->field_mode_context.source_signed_result));
             lua_pushlstring(lua, status_id.data(), status_id.size());
-        } else if (field == "alternate_profile") {
-            if (self->field_mode_context.alternate_profile.has_value()) {
-                lua_pushinteger(
-                    lua, *self->field_mode_context.alternate_profile);
-            } else {
-                lua_pushnil(lua);
-            }
-        } else if (field == "transition_context") {
-            if (self->field_mode_context.transition_context.has_value()) {
-                lua_pushinteger(
-                    lua, *self->field_mode_context.transition_context);
-            } else {
-                lua_pushnil(lua);
-            }
+        } else if (field == "has_alternate_profile") {
+            lua_pushboolean(
+                lua, self->field_mode_context.source_alternate_profile
+                         .has_value() &&
+                         *self->field_mode_context.source_alternate_profile !=
+                             0U);
+        } else if (field == "has_encounter_profile_context") {
+            // ROM 0x53F1A/0x53F32 selects the Licourtrix conversation only
+            // in its encounter profile context (source mode 8) [C].
+            lua_pushboolean(
+                lua, self->field_mode_context.source_mode == 8U);
+        } else if (field == "serpent_lair_transition_active") {
+            // Source transition selector 19 gates the Scene-47 serpent-lair
+            // continuation at ROM 0x53EFA/0x1D54B0 and the neighboring mode
+            // table prompt at 0x53EE2 [C]. Lua consumes the named world fact,
+            // not that selector value.
+            lua_pushboolean(
+                lua, self->field_mode_context.source_transition_context ==
+                         19U);
         } else if (field == "taxi_current_region") {
             if (self->field_mode_context.taxi_current_region.has_value()) {
                 const auto region_id = script_field_region_id(
@@ -7488,22 +7495,15 @@ GameScriptRuntime::resolve_field_location_route(
     }
     lua_setfield(state, input_index, "transition");
 
-    // Location route predicates use the same typed field facts as dialogue
-    // graph predicates. Keep them nested under `field` so ConditionEvaluator
-    // reads the explicit scene/mode/event being resolved instead of relying
-    // on a possibly older global context.
-    lua_createtable(state, 0, 5);
+    // Route predicates receive semantic field facts. The source event
+    // identity remains in the route input above; raw mode/event selectors do
+    // not enter Lua's condition context.
+    lua_createtable(state, 0, 2);
     const auto field_index = lua_absindex(state, -1);
-    lua_pushinteger(state, context.scene_id);
-    lua_setfield(state, field_index, "scene_id");
     lua_pushboolean(
         state, context.field_mode == field_exit_mode_value(
                                          FieldExitMode::building_interaction));
     lua_setfield(state, field_index, "building_interaction_mode");
-    lua_pushinteger(state, context.field_mode);
-    lua_setfield(state, field_index, "mode");
-    lua_pushinteger(state, event_code_value);
-    lua_setfield(state, field_index, "event_code");
     const auto package_run_status = script_package_run_status_id(
         script_package_run_status_from_source_result(
             context.alternate_result));

@@ -20,7 +20,6 @@ local function fixture(options)
 
     local queued_choices = options.choices or {}
     local field = {
-        mode = options.field_mode,
         taxi_current_region = options.current_region,
         taxi_destination_region = options.destination,
     }

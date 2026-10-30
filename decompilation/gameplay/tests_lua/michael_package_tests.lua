@@ -55,7 +55,7 @@ game = {
     content = content,
     state = { story_flag_bit_0 = false },
     location = { type = "motel", id = "stoker_motel" },
-    field = { mode = 2, event_code = 2, package_run_status = "none" },
+    field = { package_run_status = "none" },
     ui = {
         menu = menu,
         prompt_text_key = function()
@@ -218,7 +218,6 @@ assert(result.type == "source_boundary" and
 assert(#pages == 0 and #choices == 0)
 
 game.field.package_run_status = "none"
-game.field.mode = 1
 reset()
 result = outcome(MichaelPackage.present_field_exit_prompt())
 assert(result.type == "source_boundary" and

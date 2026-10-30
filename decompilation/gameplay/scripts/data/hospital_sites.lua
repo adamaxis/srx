@@ -6,19 +6,16 @@
 -- Keyed by the entity link's location id.
 return {
     downtown_site_12_seattle_general_hospital = {
-        mode = 0, event = 0, text_root = 0x0B, -- ROM 0x1F83C
         narrator = "council_island_hospital_narrator",
         text_profile = "council_island_hospital",
         entry_text = "seattle_general_hospital.entry.default",
     },
     council_island_hospital = {
-        mode = 4, event = 4, text_root = 0x0A,   -- 0x1FA02
         narrator = "council_island_hospital_narrator",
         text_profile = "council_island_hospital",
         entry_text = "council_island_hospital.entry.default",
     },
     little_chibas_chop_shop = {
-        mode = 2, event = 1, text_root = 0x08,   -- 0x1F96A -> tail 0x1FA50
         narrator = "little_chiba_narrator",
         text_profile = "little_chiba",
         entry_text = "field.mode.little_chiba.description",

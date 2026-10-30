@@ -10,8 +10,7 @@ local LOCATION_ID = "salish_red_buffalo_lodge"
 
 local function at_lodge()
     return game.location.type == "building" and
-           game.location.id == LOCATION_ID and
-           game.field.mode == 6 and game.field.event_code == 1
+           game.location.id == LOCATION_ID
 end
 
 local function more(menu_id, text)

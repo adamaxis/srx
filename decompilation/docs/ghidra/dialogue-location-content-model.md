@@ -50,6 +50,22 @@ not claim every listed route is implemented or visually verified.
   selected; offline and unit-test construction can validate every graph
   eagerly. Replacing the package table is the reload boundary.
 
+## Lua context boundary
+
+Gameplay Lua receives named outcomes and authored location identities. The
+`game.field` view does not expose the ROM mode or event bytes: the `(2, 1)`
+Little Chiba prompt becomes `field.prompt_id = "little_chiba_store"`, and
+`(2, 11)` becomes `"ares_emporium"` (ROM `0x1F830` and `0x1FA78`). The route
+adapter still uses a symbolic `event_N` identity to select an authored entity
+interaction; after selection, dialogue checks use `game.location.id` rather
+than rechecking mode or event selectors in Lua.
+
+Source-only profile and transition selectors cross as named facts: Lua sees
+`field.has_alternate_profile` and
+`field.serpent_lair_transition_active`, while numeric selectors stay in C++
+and remain documented beside the ROM trace. Package branches use
+`field.package_run_status` (`none`, `handoff_due`, or `payment_due`).
+
 ## Source and longplay findings
 
 ### ROM route selection

@@ -1110,6 +1110,42 @@ enum class ScriptPackageRunStatus : std::uint8_t {
     payment_due,
 };
 
+enum class ScriptFieldModePromptId : std::uint8_t {
+    none,
+    little_chiba_store,
+    ares_emporium,
+};
+
+// Translate the source-selected mode/event pair into the content identity
+// consumed by Lua. ROM 0x1F830 selects Little Chiba's Scene-2/event-1 prompt;
+// 0x1FA78 selects the Ares Scene-2/event-11 prompt [C]. The pair itself stays
+// inside the adapter and is never exposed as Lua state.
+constexpr ScriptFieldModePromptId
+script_field_mode_prompt_id_from_source_context(
+    const std::uint8_t source_mode,
+    const std::uint8_t source_event_code) noexcept {
+    if (source_mode == 2U && source_event_code == 1U) {
+        return ScriptFieldModePromptId::little_chiba_store;
+    }
+    if (source_mode == 2U && source_event_code == 11U) {
+        return ScriptFieldModePromptId::ares_emporium;
+    }
+    return ScriptFieldModePromptId::none;
+}
+
+constexpr std::string_view script_field_mode_prompt_id(
+    const ScriptFieldModePromptId prompt_id) noexcept {
+    switch (prompt_id) {
+    case ScriptFieldModePromptId::little_chiba_store:
+        return "little_chiba_store";
+    case ScriptFieldModePromptId::ares_emporium:
+        return "ares_emporium";
+    case ScriptFieldModePromptId::none:
+        return "none";
+    }
+    return "none";
+}
+
 // ROM 0x1F7E8 tests signed FFF0D5: zero selects the normal entry page,
 // positive selects the package-payment page at 0xF4A98, and negative selects
 // the package-handoff page at 0xF4A90 [C]. Lua receives this named status.
@@ -1134,14 +1170,16 @@ constexpr std::string_view script_package_run_status_id(
 }
 
 struct ScriptFieldModeContext {
-    std::uint8_t mode = 0;
-    std::uint8_t event_code = 0;
+    // Source-only route selectors. Lua receives a semantic prompt_id instead.
+    std::uint8_t source_mode = 0;
+    std::uint8_t source_event_code = 0;
     // Source-only signed result; Lua reads ScriptPackageRunStatus instead.
     std::int8_t source_signed_result = 0;
-    // Source transition facts exposed only when the field host knows them.
+    // Source transition facts stay in this adapter; Lua receives named
+    // profile-presence and serpent-lair transition facts.
     // Scene mode is FFFC0E; transition context is FFFC10.
-    std::optional<std::uint16_t> alternate_profile;
-    std::optional<std::uint16_t> transition_context;
+    std::optional<std::uint16_t> source_alternate_profile;
+    std::optional<std::uint16_t> source_transition_context;
     // Entity JSON chooses the named host service; Lua uses this ID to select
     // its matching field-mode narrative profile.
     std::string service_id;

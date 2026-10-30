@@ -91,8 +91,7 @@ function TarislarApartments.present_guarded_entry()
 end
 
 function TarislarApartments.present_package_run_outcome()
-    if not at_apartments() or game.field.mode ~= 1 or
-       game.field.event_code ~= 7 or
+    if not at_apartments() or
        game.field.package_run_status == E.PackageRunStatus.NONE then
         return "denied"
     end

@@ -24,8 +24,7 @@ end
 
 local function correct_location()
     return game.location.type == "building" and
-        game.location.id == "council_island_inn" and
-        game.field.mode == 4 and game.field.event_code == 0
+        game.location.id == "council_island_inn"
 end
 
 local function known_package_run_status(status)
@@ -37,7 +36,7 @@ end
 function Inn.present_field_exit_prompt()
     if not correct_location() then
         return source_boundary(
-            "Council Island Inn prompt requires Scene 4 mode 4/event 0")
+            "Council Island Inn prompt requires its linked building location")
     end
 
     local package_run_status = game.field.package_run_status

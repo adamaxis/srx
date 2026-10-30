@@ -43,7 +43,7 @@ game = {
         story_flag_bit_30 = false,
     },
     location = { type = "building", id = location_id },
-    field = { mode = 1, event_code = 1, package_run_status = "none" },
+    field = { package_run_status = "none" },
     content = {
         speakers = load_json("dialogue/speakers"),
         menus = load_json("dialogue/menus"),
@@ -167,9 +167,9 @@ queue("more")
 assert(Inn.present_indexed_title_service() == "denied")
 assert(#prompts == 0)
 game.location.id = location_id
-game.field.mode = 2
+game.location.id = "another_building"
 assert(Inn.present_indexed_title_service() == "denied")
-game.field.mode = 1
+game.location.id = location_id
 
 -- The ordinary selector exposes Frosty only for FFFC1E bit 13 and a clear
 -- FFFC1E bit 30. It keeps the ROM's stay-here result.

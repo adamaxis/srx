@@ -31,7 +31,7 @@ game = {
     content = content,
     state = {},
     location = { type = "field", id = "scene_0_terminal" },
-    field = { mode = 0, event_code = 31, package_run_status = "none" },
+    field = { package_run_status = "none" },
     ui = {},
     services = {},
 }

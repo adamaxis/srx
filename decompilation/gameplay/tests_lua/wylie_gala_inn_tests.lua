@@ -36,7 +36,7 @@ game = {
     content = content,
     state = { runner_feature_flag_bit_2 = false },
     location = { type = "building", id = location_id },
-    field = { mode = 3, event_code = 1, package_run_status = "none" },
+    field = { package_run_status = "none" },
     ui = {
         prompt_text_key = function(menu_id, text_key, available_choices,
                                    speaker_id, text_profile)
@@ -178,7 +178,7 @@ queue("crash", "pay")
 local payment_boundary = expect_outcome("source_boundary")
 assert(payment_boundary.reason:find("wallet result", 1, true))
 
-game.field.mode = 2
+game.location.id = "another_building"
 queue()
 local wrong_context = expect_outcome("source_boundary")
 assert(wrong_context.reason:find("precondition", 1, true))

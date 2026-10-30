@@ -123,7 +123,7 @@ game = {
         group_item_flag_bit_8 = false,
     },
     location = { type = "building", id = location_id },
-    field = { mode = 1, event_code = 7, package_run_status = "none" },
+    field = { package_run_status = "none" },
     content = {
         conversations = {
             { schemaVersion = 1, graphs = {
@@ -136,8 +136,6 @@ game = {
                 repeat_service_available = condition({ all = {
                     eq("location.type", "building"),
                     eq("location.id", location_id),
-                    eq("field.mode", 1),
-                    eq("field.event_code", 7),
                     eq("field.package_run_status", "none"),
                     eq("story.story_flag_bit_21", true),
                     eq("story.story_flag_bit_30", true),

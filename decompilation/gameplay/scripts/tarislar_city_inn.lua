@@ -81,7 +81,6 @@ function Inn.present_indexed_title_service()
     if not at_inn() or
        StoryFlags.is_set(E.StoryFlag.MOTEL_BILL_PAID) ~= true or
        StoryFlags.is_set(E.StoryFlag.TARISLAR_ASKED_SHALE) ~= false or
-       game.field.mode ~= 1 or game.field.event_code ~= 1 or
        game.field.package_run_status ~= E.PackageRunStatus.NONE then
         return "denied"
     end
@@ -100,8 +99,7 @@ function Inn.present_indexed_title_service()
 end
 
 function Inn.present_field_exit_prompt()
-    if not at_inn() or game.field.mode ~= 1 or
-       game.field.event_code ~= 1 then
+    if not at_inn() then
         return "denied"
     end
 
