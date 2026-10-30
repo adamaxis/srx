@@ -1723,16 +1723,42 @@ enum class ScriptMovementSubstateUpdate : std::uint8_t {
     cardinal_fallback,
 };
 
+enum class ScriptCardinalDirection : std::uint8_t {
+    north,
+    east,
+    south,
+    west,
+};
+
+struct ScriptMovementRouteUpdate {
+    enum class Kind : std::uint8_t {
+        unchanged,
+        reset,
+        blocked_by_direction,
+    };
+
+    Kind kind = Kind::unchanged;
+    ScriptCardinalDirection direction = ScriptCardinalDirection::north;
+};
+
+// The Lua movement policy reports semantic directions and route outcomes.
+// These adapters translate only when committing to ROM-shaped live state.
+std::uint16_t source_movement_substate_for_cardinal_direction(
+    ScriptCardinalDirection direction) noexcept;
+std::int16_t source_route_status_after_script_update(
+    std::int16_t current_status,
+    const ScriptMovementRouteUpdate& update) noexcept;
+
 struct ScriptMovementStepState {
     std::uint16_t position_x = 0;
     std::uint16_t position_y = 0;
     std::uint16_t heading = 0;
     std::uint16_t animation_heading = 0;
-    std::int16_t route_status = 0;
+    ScriptMovementRouteUpdate route_update{};
     std::uint8_t route_flags = 0;
     ScriptMovementSubstateUpdate substate_update =
         ScriptMovementSubstateUpdate::unchanged;
-    std::uint8_t cardinal_direction = 0;
+    std::optional<ScriptCardinalDirection> cardinal_fallback_direction;
     // Actions replace the packed movement bytes previously exposed to Lua.
     // Their source encoding stays in the Qt/native adapter.
     bool mark_reset_after_block = false;

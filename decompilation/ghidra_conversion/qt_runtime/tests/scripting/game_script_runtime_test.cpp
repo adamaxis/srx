@@ -8786,7 +8786,6 @@ int main() {
         context.movement_state.position_y = 0x1800U;
         context.movement_state.heading = 0U;
         context.movement_state.animation_heading = 0U;
-        context.movement_state.route_status = -1;
         context.movement_state.route_flags = 0x03U;
         context.movement_default_step_distance = 18;
         context.movement_collision =
@@ -10109,7 +10108,6 @@ int main() {
         context.movement_state.position_y = 100U;
         context.movement_state.heading = initial_heading;
         context.movement_state.animation_heading = initial_heading;
-        context.movement_state.route_status = 9;
         context.movement_state.route_flags = 0x03U;
         // Use a small host movement distance; direction determines signed
         // X/Y components, matching the compass order recovered from ROM C002.
@@ -10220,6 +10218,8 @@ int main() {
     // ROM C002 stores north as (0,-40), east as (40,0), and northeast as
     // (40,-40). These checks inject a 10-unit distance and exercise the same
     // signed compass vectors without passing C002's word array into Lua.
+    // ROM 0xBADE records a blocked cardinal direction; 0xB442 requests the
+    // reset marker. Lua returns those outcomes by name for native translation.
     if (!expect(
             clear_step.has_value() && clear_step->movement_step.has_value() &&
                 clear_step->movement_step->outcome ==
@@ -10239,10 +10239,14 @@ int main() {
                 slide_step.has_value() && slide_step->movement_step.has_value() &&
                 slide_step->movement_step->state.position_x == 110U &&
                 slide_step->movement_step->state.position_y == 100U &&
-                slide_step->movement_step->state.route_status == 0 &&
+                slide_step->movement_step->state.route_update.kind ==
+                    ScriptMovementRouteUpdate::Kind::blocked_by_direction &&
+                slide_step->movement_step->state.route_update.direction ==
+                    ScriptCardinalDirection::north &&
                 slide_step->movement_step->state.substate_update ==
                     ScriptMovementSubstateUpdate::cardinal_fallback &&
-                slide_step->movement_step->state.cardinal_direction == 0U &&
+                slide_step->movement_step->state.cardinal_fallback_direction ==
+                    ScriptCardinalDirection::north &&
                 slide_step->movement_step->state.mark_directional_fallback &&
                 slide_collision_queries == 3U &&
                 pending_event_step.has_value() &&
@@ -10256,7 +10260,30 @@ int main() {
                 reset_step->movement_current_heading == 0x4000U &&
                 reset_step->movement_step->state.route_flags == 0x01U &&
                 reset_step->movement_step->state.mark_reset_after_block &&
-                reset_step->movement_step->state.route_status == -1 &&
+                reset_step->movement_step->state.route_update.kind ==
+                    ScriptMovementRouteUpdate::Kind::reset &&
+                source_route_status_after_script_update(
+                    9, clear_step->movement_step->state.route_update) == 9 &&
+                source_route_status_after_script_update(
+                    9, slide_step->movement_step->state.route_update) == 0 &&
+                source_route_status_after_script_update(
+                    9, reset_step->movement_step->state.route_update) == -1 &&
+                source_route_status_after_script_update(
+                    9, ScriptMovementRouteUpdate{
+                           ScriptMovementRouteUpdate::Kind::blocked_by_direction,
+                           ScriptCardinalDirection::east}) == 2 &&
+                source_route_status_after_script_update(
+                    9, ScriptMovementRouteUpdate{
+                           ScriptMovementRouteUpdate::Kind::blocked_by_direction,
+                           ScriptCardinalDirection::south}) == 4 &&
+                source_movement_substate_for_cardinal_direction(
+                    ScriptCardinalDirection::north) == 0U &&
+                source_movement_substate_for_cardinal_direction(
+                    ScriptCardinalDirection::east) == 2U &&
+                source_movement_substate_for_cardinal_direction(
+                    ScriptCardinalDirection::south) == 4U &&
+                source_movement_substate_for_cardinal_direction(
+                    ScriptCardinalDirection::west) == 6U &&
                 reset_step->animation_id == "idle" &&
                 reset_step->direction == 2U &&
                 clear_step->animation_id == "walk" &&
@@ -10283,13 +10310,13 @@ int main() {
                   << ",route_queries=" << route_collision_queries
                   << ",slide=" << (slide_state != nullptr)
                   << ",slide_mode=" << (slide_state ? static_cast<unsigned>(slide_state->substate_update) : 99U)
-                  << ",slide_direction=" << (slide_state ? static_cast<unsigned>(slide_state->cardinal_direction) : 99U)
+                  << ",slide_route_update=" << (slide_state ? static_cast<unsigned>(slide_state->route_update.kind) : 99U)
                   << ",slide_mark=" << (slide_state && slide_state->mark_directional_fallback)
                   << ",pending=" << (pending_state != nullptr)
                   << ",pending_x=" << (pending_state ? pending_state->position_x : 0U)
                   << ",reset=" << (reset_state != nullptr)
                   << ",reset_mark=" << (reset_state && reset_state->mark_reset_after_block)
-                  << ",reset_route=" << (reset_state ? reset_state->route_status : 0)
+                  << ",reset_route_update=" << (reset_state ? static_cast<unsigned>(reset_state->route_update.kind) : 99U)
                   << '\n';
         return 18;
     }

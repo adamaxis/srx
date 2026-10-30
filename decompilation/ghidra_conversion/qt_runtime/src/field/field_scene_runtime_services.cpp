@@ -149,7 +149,6 @@ void FieldSceneRuntime::provide_source_profile_patrol_movement_services(
     context.movement_state.heading = actor.movement_state.heading;
     context.movement_state.animation_heading =
         actor.movement_state.animation_heading;
-    context.movement_state.route_status = actor.movement_state.route_status;
     context.movement_state.route_flags = actor.source_behavior_flags;
     context.movement_state.collision_extent =
         actor.movement_state.collision_extent;

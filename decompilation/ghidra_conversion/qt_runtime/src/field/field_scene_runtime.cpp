@@ -4635,7 +4635,6 @@ void FieldSceneRuntime::advance_default_field_actors(
                 movement_state.heading = actor.movement_state.heading;
                 movement_state.animation_heading =
                     actor.movement_state.animation_heading;
-                movement_state.route_status = actor.movement_state.route_status;
                 movement_state.route_flags = actor.source_behavior_flags;
                 movement_state.collision_extent =
                     actor.movement_state.collision_extent;
@@ -5155,10 +5154,16 @@ void FieldSceneRuntime::advance_default_field_actors(
                 actor.movement_state.movement_substate = 0x1000U;
             } else if (step.state.substate_update ==
                        scripting::ScriptMovementSubstateUpdate::cardinal_fallback) {
-                actor.movement_state.movement_substate = static_cast<std::uint16_t>(
-                    step.state.cardinal_direction * 2U);
+                if (step.state.cardinal_fallback_direction.has_value()) {
+                    actor.movement_state.movement_substate =
+                        scripting::source_movement_substate_for_cardinal_direction(
+                            *step.state.cardinal_fallback_direction);
+                }
             }
-            actor.movement_state.route_status = step.state.route_status;
+            actor.movement_state.route_status =
+                scripting::source_route_status_after_script_update(
+                    actor.movement_state.route_status,
+                    step.state.route_update);
             if (step.state.mark_reset_after_block) {
                 actor.movement_state.movement_flags =
                     static_cast<std::uint8_t>(
@@ -11610,7 +11615,6 @@ FieldSceneRuntime::heartbeat_field_player(
         movement_state.heading = field_movement_state_.heading;
         movement_state.animation_heading =
             field_movement_state_.animation_heading;
-        movement_state.route_status = field_movement_state_.route_status;
         movement_state.route_flags =
             field_movement_behavior_record_.route_flags;
         movement_state.collision_extent =

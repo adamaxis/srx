@@ -599,6 +599,14 @@ local function route_key_for_bearing_degrees(bearing_degrees)
     return (octant & 0x06) << 1
 end
 
+local function cardinal_direction_id(direction)
+    if direction == 0 then return "north" end
+    if direction == 2 then return "east" end
+    if direction == 4 then return "south" end
+    if direction == 6 then return "west" end
+    return nil
+end
+
 local function movement_probe_is_blocked(probe, context)
     return movement_collision_code(probe.collision_code, context) > 0
 end
@@ -613,7 +621,7 @@ local function reset_blocked_movement(context, state, movement_state)
     movement_state.route_facts.path_active = false
     movement_state.bearing_degrees = state.movement_bearing_degrees
     movement_state.mark_reset_after_block = true
-    movement_state.route_status = -1
+    movement_state.route_update = { kind = "reset" }
     state.movement_current_bearing_degrees = state.movement_bearing_degrees
     local direction = R.direction_from_bearing_degrees(movement_state.bearing_degrees)
     state.direction = direction
@@ -650,7 +658,8 @@ local function advance_entity_movement(context, state)
     movement_state.bearing_degrees = state.movement_current_bearing_degrees
     movement_state.animation_bearing_degrees = movement_state.bearing_degrees
     movement_state.substate_update = "unchanged"
-    movement_state.cardinal_direction = 0
+    movement_state.cardinal_fallback_direction = nil
+    movement_state.route_update = { kind = "unchanged" }
     movement_state.mark_reset_after_block = false
     movement_state.mark_directional_fallback = false
     movement_state.clear_collision_recovery = false
@@ -747,13 +756,20 @@ local function advance_entity_movement(context, state)
         return nil
     end
     local movement_direction = octant & 0x06
+    local cardinal_id = cardinal_direction_id(movement_direction)
+    if cardinal_id == nil then
+        return nil
+    end
     movement_state.substate_update = "cardinal_fallback"
-    movement_state.cardinal_direction = movement_direction >> 1
+    movement_state.cardinal_fallback_direction = cardinal_id
     local selected = probe_movement(
         context, movement_state, movement_direction << 1,
         movement_step_distance)
     if movement_probe_is_blocked(selected, context) then
-        movement_state.route_status = movement_direction
+        movement_state.route_update = {
+            kind = "blocked_by_direction",
+            direction = cardinal_id,
+        }
         local alternate_direction = (movement_direction + 2) & 0x07
         selected = probe_movement(
             context, movement_state, alternate_direction << 1,

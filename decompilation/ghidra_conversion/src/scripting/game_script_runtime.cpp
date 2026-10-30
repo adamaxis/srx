@@ -207,6 +207,15 @@ std::optional<MovementDirection> movement_direction_from_id(
     return std::nullopt;
 }
 
+std::optional<ScriptCardinalDirection> cardinal_direction_from_id(
+    const std::string_view id) noexcept {
+    if (id == "north") return ScriptCardinalDirection::north;
+    if (id == "east") return ScriptCardinalDirection::east;
+    if (id == "south") return ScriptCardinalDirection::south;
+    if (id == "west") return ScriptCardinalDirection::west;
+    return std::nullopt;
+}
+
 const char* actor_engagement_policy_id(
     const ScriptActorEngagementPolicy policy) noexcept {
     switch (policy) {
@@ -2642,6 +2651,41 @@ bool push_persistent_value(lua_State* state,
 }
 
 } // namespace
+
+std::uint16_t source_movement_substate_for_cardinal_direction(
+    const ScriptCardinalDirection direction) noexcept {
+    // ROM 0xBADE records the cardinal fallback in the source movement
+    // substate. Keep that encoding at the native state boundary.
+    switch (direction) {
+    case ScriptCardinalDirection::north:
+        return 0U;
+    case ScriptCardinalDirection::east:
+        return 2U;
+    case ScriptCardinalDirection::south:
+        return 4U;
+    case ScriptCardinalDirection::west:
+        return 6U;
+    }
+    return 0U;
+}
+
+std::int16_t source_route_status_after_script_update(
+    const std::int16_t current_status,
+    const ScriptMovementRouteUpdate& update) noexcept {
+    // The route field is retained only by the native record. Lua reports the
+    // gameplay outcome; this adapter preserves or encodes the live field.
+    switch (update.kind) {
+    case ScriptMovementRouteUpdate::Kind::unchanged:
+        return current_status;
+    case ScriptMovementRouteUpdate::Kind::reset:
+        return -1;
+    case ScriptMovementRouteUpdate::Kind::blocked_by_direction:
+        return static_cast<std::int16_t>(
+            source_movement_substate_for_cardinal_direction(
+                update.direction));
+    }
+    return current_status;
+}
 
 struct GameScriptRuntime::Impl {
     enum class MenuBinding : lua_Integer {
@@ -12028,10 +12072,10 @@ GameScriptRuntime::actor_heartbeat(
     }
     lua_pushstring(state, substate_update);
     lua_setfield(state, -2, "substate_update");
-    lua_pushinteger(state, context.movement_state.cardinal_direction);
-    lua_setfield(state, -2, "cardinal_direction");
-    lua_pushinteger(state, context.movement_state.route_status);
-    lua_setfield(state, -2, "route_status");
+    lua_createtable(state, 0, 1);
+    lua_pushstring(state, "unchanged");
+    lua_setfield(state, -2, "kind");
+    lua_setfield(state, -2, "route_update");
     push_actor_behavior_facts(state, context.movement_state.route_flags);
     lua_setfield(state, -2, "route_facts");
     lua_pushboolean(state, context.movement_state.mark_reset_after_block);
@@ -13389,12 +13433,32 @@ GameScriptRuntime::actor_heartbeat(
         } else {
             return fail("actor_ai.heartbeat returned unsupported movement substate action");
         }
-        if (!read_field_integer(state, movement_state_table,
-                                "cardinal_direction", 3U, movement_value)) {
-            return fail("actor_ai.heartbeat returned invalid cardinal movement direction");
+        if (movement_step.state.substate_update ==
+            ScriptMovementSubstateUpdate::cardinal_fallback) {
+            std::string direction_id;
+            if (!read_field_string(state, movement_state_table,
+                                   "cardinal_fallback_direction",
+                                   direction_id)) {
+                return fail(
+                    "actor_ai.heartbeat omitted cardinal fallback direction");
+            }
+            movement_step.state.cardinal_fallback_direction =
+                cardinal_direction_from_id(direction_id);
+            if (!movement_step.state.cardinal_fallback_direction.has_value()) {
+                return fail(
+                    "actor_ai.heartbeat returned an invalid cardinal fallback direction");
+            }
+        } else {
+            lua_getfield(state, movement_state_table,
+                         "cardinal_fallback_direction");
+            const bool absent = lua_isnil(state, -1);
+            lua_pop(state, 1);
+            if (!absent) {
+                return fail(
+                    "actor_ai.heartbeat returned a direction without cardinal fallback");
+            }
+            movement_step.state.cardinal_fallback_direction.reset();
         }
-        movement_step.state.cardinal_direction =
-            static_cast<std::uint8_t>(movement_value);
         const auto read_movement_action = [&](const char* field, bool& value) {
             lua_getfield(state, movement_state_table, field);
             const bool valid = lua_isboolean(state, -1);
@@ -13421,6 +13485,41 @@ GameScriptRuntime::actor_heartbeat(
         }
         movement_step.state.route_flags = behavior_to_source(
             route_facts, context.movement_state.route_flags);
+        lua_getfield(state, movement_state_table, "route_update");
+        if (!lua_istable(state, -1)) {
+            return fail("actor_ai.heartbeat returned invalid movement route update");
+        }
+        const auto route_update_table = lua_absindex(state, -1);
+        std::string route_update_kind;
+        if (!read_field_string(state, route_update_table, "kind",
+                               route_update_kind)) {
+            return fail("actor_ai.heartbeat omitted movement route update kind");
+        }
+        if (route_update_kind == "unchanged") {
+            movement_step.state.route_update.kind =
+                ScriptMovementRouteUpdate::Kind::unchanged;
+        } else if (route_update_kind == "reset") {
+            movement_step.state.route_update.kind =
+                ScriptMovementRouteUpdate::Kind::reset;
+        } else if (route_update_kind == "blocked_by_direction") {
+            std::string direction_id;
+            if (!read_field_string(state, route_update_table, "direction",
+                                   direction_id)) {
+                return fail(
+                    "actor_ai.heartbeat omitted blocked route direction");
+            }
+            const auto direction = cardinal_direction_from_id(direction_id);
+            if (!direction.has_value()) {
+                return fail(
+                    "actor_ai.heartbeat returned invalid blocked route direction");
+            }
+            movement_step.state.route_update.direction = *direction;
+            movement_step.state.route_update.kind =
+                ScriptMovementRouteUpdate::Kind::blocked_by_direction;
+        } else {
+            return fail("actor_ai.heartbeat returned unsupported movement route update");
+        }
+        lua_pop(state, 1);
         lua_getfield(state, movement_state_table, "collision_extent");
         if (!lua_isinteger(state, -1) || lua_tointeger(state, -1) < -32768 ||
             lua_tointeger(state, -1) > 32767) {
@@ -13433,14 +13532,6 @@ GameScriptRuntime::actor_heartbeat(
                            movement_step.state.terrain_collision_code)) {
             return fail("actor_ai.heartbeat returned invalid terrain collision state");
         }
-        lua_getfield(state, movement_state_table, "route_status");
-        if (!lua_isinteger(state, -1) || lua_tointeger(state, -1) < -32768 ||
-            lua_tointeger(state, -1) > 32767) {
-            return fail("actor_ai.heartbeat returned invalid movement route status");
-        }
-        movement_step.state.route_status =
-            static_cast<std::int16_t>(lua_tointeger(state, -1));
-        lua_pop(state, 1);
         lua_pop(state, 1);
         decision.movement_step = movement_step;
     }

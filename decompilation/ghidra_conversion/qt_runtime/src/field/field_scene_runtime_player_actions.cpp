@@ -732,10 +732,15 @@ void FieldSceneRuntime::advance_field_movement() {
         field_movement_state_.movement_substate = 0x1000U;
     } else if (script_state.substate_update ==
                scripting::ScriptMovementSubstateUpdate::cardinal_fallback) {
-        field_movement_state_.movement_substate = static_cast<std::uint16_t>(
-            script_state.cardinal_direction * 2U);
+        if (script_state.cardinal_fallback_direction.has_value()) {
+            field_movement_state_.movement_substate =
+                scripting::source_movement_substate_for_cardinal_direction(
+                    *script_state.cardinal_fallback_direction);
+        }
     }
-    field_movement_state_.route_status = script_state.route_status;
+    field_movement_state_.route_status =
+        scripting::source_route_status_after_script_update(
+            field_movement_state_.route_status, script_state.route_update);
     if (script_state.mark_reset_after_block) {
         field_movement_state_.movement_flags =
             static_cast<std::uint8_t>(
