@@ -62,7 +62,11 @@ The rectangle and profile pointer values are extracted from the US ROM into
 `assets/field/field-alarm-profiles.tsv` and `field-alarm-regions.tsv`; their
 record addresses remain in the rows as provenance. The extraction source is
 `tools/rom_research/profile_field_world_effect_regions.py` [C]. The runtime
-uses those typed scene rectangles directly. A hit in scene `0x14` schedules
+converts the source counter gate to `alarm_check_due`, the source random word
+to a normalized `probability_sample`, and scene mode to `building_scene` at the
+native boundary. Lua sees named alarm states and tile-space regions, not the
+source counter, mode word, random word, timer storage width, or scene number.
+A hit in scene `0x14` schedules
 the existing `0x1DBAA` timeout path and does not raise the alarm. Other scenes
 require field mode `2`; they load timer `0x960` even if the alarm was already
 active. A newly raised alarm sets `FFE16F`, starts sound `0x30`, clears bit 0

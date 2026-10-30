@@ -1704,6 +1704,16 @@ empty profiles. Field alarm and random-encounter QA also pass in both builds.
 This verifies profile loading and runtime continuation, not every alarm
 outcome or an independent Genesis capture.
 
+On 2026-10-30 the alarm Lua boundary was changed to carry game facts: whether
+the check is due, whether the player is in a building, whether this scene uses
+the alarm timeout route, alarm state and remaining duration, tile-space alarm
+regions, and a normalized chance sample. The Qt adapter retains the source
+`0x1DFC4` cadence and `0xD44` PRNG conversion, preserving the strict
+`random < 0x8000` result as `sample < 0.5`; these storage details are no longer
+Lua inputs. Debug/Release Lua runtime, field encounter, and live alarm QA pass.
+The hill remains partial pending the full alarm caller/state-path sweep and
+independent Genesis comparison.
+
 ## Scene-40 default corp-guard route (partial, 2026-10-26)
 
 ROM `0x44BC` initializes each default-list actor's route pointer and cursor;

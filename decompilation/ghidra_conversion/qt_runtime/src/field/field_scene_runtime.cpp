@@ -9791,7 +9791,7 @@ bool FieldSceneRuntime::bootstrap(
     field_walk_fast_enabled_ = false;
     field_matrix_field_state_ = scripting::ScriptMatrixFieldState{};
     field_matrix_field_state_.alarm = false;
-    field_alarm_timer_ = 0;
+    alarm_time_remaining_frames_ = 0;
     field_fuchi_cyberheart_safe_armed_ = false; // 0x5418C arms it [C].
     field_alarm_transition_scheduled_ = false; // 0x54134 defers it [C].
     field_matrix_field_state_.security_off = false;

@@ -433,8 +433,8 @@ int run_field_alarm_qa(
     const auto spawned_after =
         field_scene.world_activity_script_actor_count_for_dump();
     if (!field_scene.field_alarm_active_for_dump() ||
-        field_scene.field_alarm_timer_for_dump() !=
-            static_cast<std::int16_t>(srx::AiTuning::ALARM_FRAMES) ||
+        field_scene.alarm_time_remaining_frames_for_dump() !=
+            static_cast<std::int32_t>(srx::AiTuning::ALARM_FRAMES) ||
         alarm_start_count == 0U || spawned_after <= actors_before ||
         alarm_image.isNull() ||
         alarm_image.size() != QSize(kSceneWidth, kSceneHeight) ||
@@ -442,7 +442,7 @@ int run_field_alarm_qa(
         std::cerr << "field alarm QA: ROM scene rectangle did not raise, sound, "
                      "spawn, and dump; alarm="
                   << field_scene.field_alarm_active_for_dump()
-                  << " timer=" << field_scene.field_alarm_timer_for_dump()
+                  << " timer=" << field_scene.alarm_time_remaining_frames_for_dump()
                   << " actors=" << actors_before << "->" << spawned_after
                   << " sound_starts=" << alarm_start_count
                   << " failure=" << field_scene.failure() << '\n';
@@ -450,7 +450,7 @@ int run_field_alarm_qa(
     }
 
     // Inject zero [H]; the next active tick reaches the source negative clear [C].
-    field_scene.set_field_alarm_timer_for_dump(0);
+    field_scene.set_alarm_time_remaining_frames_for_dump(0);
     field_scene.set_field_world_frame_counter_for_dump(
         static_cast<std::uint16_t>(frame_due + 1U));
     field_scene.advance_frame();
@@ -23445,7 +23445,7 @@ int run_field_mitsuhama_scene34_electronics_qa(
         field_scene.active_default_actor_positions_for_dump();
     const bool alarm_was_active = field_scene.field_alarm_active_for_dump();
     const auto alarm_timer_before_action =
-        field_scene.field_alarm_timer_for_dump();
+        field_scene.alarm_time_remaining_frames_for_dump();
     const auto alarm_sounds_before_action = audio_event_count(0x30U);
     const auto success_sounds_before_action = audio_event_count(0x4BU);
     const auto alarm_boundary_count_before_action = static_cast<std::size_t>(
@@ -23477,7 +23477,7 @@ int run_field_mitsuhama_scene34_electronics_qa(
     const auto alarm_active_after_action =
         field_scene.field_alarm_active_for_dump();
     const auto alarm_timer_after_action =
-        field_scene.field_alarm_timer_for_dump();
+        field_scene.alarm_time_remaining_frames_for_dump();
     const auto alarm_sounds_after_action = audio_event_count(0x30U);
     const auto world_actors_after_action =
         field_scene.world_activity_script_actor_count_for_dump();

@@ -1182,10 +1182,10 @@ struct ScriptFieldEncounterTriggerInput {
 };
 
 struct ScriptFieldAlarmRegion {
-    std::uint16_t x_min = 0U;
-    std::uint16_t x_max = 0U;
-    std::uint16_t y_min = 0U;
-    std::uint16_t y_max = 0U;
+    std::uint32_t min_tile_x = 0U;
+    std::uint32_t max_tile_x = 0U;
+    std::uint32_t min_tile_y = 0U;
+    std::uint32_t max_tile_y = 0U;
 };
 
 struct ScriptFieldAlarmActorFacts {
@@ -1194,26 +1194,26 @@ struct ScriptFieldAlarmActorFacts {
 };
 
 struct ScriptFieldAlarmProfile {
-    std::vector<ScriptFieldAlarmRegion> regions;
+    std::vector<ScriptFieldAlarmRegion> alarm_regions;
     std::optional<std::string> reinforcement_activity_id;
 };
 
 struct ScriptFieldAlarmInput {
-    std::uint16_t scene_id = 0U;
-    std::uint16_t frame_counter = 0U;
-    std::uint16_t scene_mode = 0U;
-    std::uint16_t player_tile_x = 0U;
-    std::uint16_t player_tile_y = 0U;
-    bool disabled = false;
-    bool alarm = false;
-    std::int16_t timer = 0;
-    std::optional<std::uint16_t> rng;
+    bool alarm_check_due = false;
+    bool building_scene = false;
+    bool alarm_timeout_scene = false;
+    std::uint32_t player_tile_x = 0U;
+    std::uint32_t player_tile_y = 0U;
+    bool security_disabled = false;
+    bool alarm_active = false;
+    std::int32_t alarm_time_remaining_frames = 0;
+    std::optional<double> probability_sample;
     bool direct_raise = false;
     bool clear_alarm = false;
     bool disable_alarm = false;
     bool reset = false;
     bool scene_exit = false;
-    std::vector<ScriptFieldAlarmRegion> regions;
+    std::vector<ScriptFieldAlarmRegion> alarm_regions;
     std::vector<ScriptFieldAlarmActorFacts> actors;
     std::optional<std::string> reinforcement_activity_id;
 };
@@ -1225,10 +1225,10 @@ enum class ScriptFieldAlarmFlagAction : std::uint8_t {
 };
 
 struct ScriptFieldAlarmResult {
-    bool alarm = false;
-    bool disabled = false;
-    std::int16_t timer = 0;
-    bool sample_rng = false;
+    bool alarm_active = false;
+    bool security_disabled = false;
+    std::int32_t alarm_time_remaining_frames = 0;
+    bool request_probability_sample = false;
     bool schedule_timeout = false;
     std::optional<std::uint16_t> sound_start;
     std::optional<std::uint16_t> sound_stop;

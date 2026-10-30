@@ -58,16 +58,6 @@ E.Scene = {
     RESOURCE_ACTIVITY_43 = 43,
     LAST_ID = 55,
 } -- 0x3232 scene table; resource placements 0x15..0x2B; 0x37 is last ROM scene [C]
-E.FieldAlarm = {
-    TILE_SHIFT = 4, -- player world position to alarm tile coordinates [C]
-    FRAME_MASK = 0x3F, -- FFDF88 cadence mask [C]
-    FRAME_VALUE = 0x0D, -- FFDF88 cadence value [C]
-    RANDOM_REJECT_FROM = 0x8000, -- unsigned 0xD44 threshold [C]
-    WORD_MAX = 0xFFFF, -- source unsigned word bound [C]
-    TIMER_MIN = -0x8000, TIMER_MAX = 0x7FFF, -- signed word bounds [C]
-    LIST_ADDRESS_MAX = 0xFFFFFFFF, -- source longword bound [C]
-    ACTOR_COUNT_MAX = 0xFF, -- FFE177 actor count is a byte [C]
-} -- 0x1DFC4 cadence and unsigned random gate [C]
 E.FieldSafe = {
     PROJECTED_EVENT = 0x1A, -- 0xB7B8 routes event 0x1A through 0x16760/0x20C90 [C]
     RENRAKU_SCENE = 0x28, -- 0x540D6 safe handler checks FFFBF8 [C]

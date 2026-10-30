@@ -443,11 +443,12 @@ public:
     void set_field_alarm_disabled_for_dump(bool disabled) noexcept {
         field_matrix_field_state_.security_off = disabled;
     }
-    std::int16_t field_alarm_timer_for_dump() const noexcept {
-        return field_alarm_timer_;
+    std::int32_t alarm_time_remaining_frames_for_dump() const noexcept {
+        return alarm_time_remaining_frames_;
     }
-    void set_field_alarm_timer_for_dump(std::int16_t timer) noexcept {
-        field_alarm_timer_ = timer;
+    void set_alarm_time_remaining_frames_for_dump(
+        std::int32_t frames) noexcept {
+        alarm_time_remaining_frames_ = frames;
     }
     bool dispatch_dialogue_service_for_dump(
         std::string_view service_id, std::string_view return_policy);
@@ -2436,8 +2437,8 @@ private:
     // docs/24 R1: aliases the single ROM RNG word FFF9F8 shared with title/menus/Matrix (random_conversion.hpp).
     std::uint16_t& field_random_seed_ = source_random_seed();
     std::uint16_t field_world_frame_counter_ = 0U;
-    // ROM FFE11E and FFE170 are transient field alarm state [C].
-    std::int16_t field_alarm_timer_ = 0;
+    // Remaining alarm duration is gameplay time, independent of source width.
+    std::int32_t alarm_time_remaining_frames_ = 0;
     std::uint32_t field_world_encounter_sequence_ = 0U;
     std::optional<SelectedInventoryItem>
         command_overview_selected_inventory_item_;

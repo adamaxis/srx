@@ -3407,19 +3407,19 @@ int main() {
     // receives the alarm policy facts.
     if (!expect(
             populated_alarm_profile.has_value() &&
-                populated_alarm_profile->regions.size() == 4U &&
+                populated_alarm_profile->alarm_regions.size() == 4U &&
                 populated_alarm_profile->reinforcement_activity_id ==
                     std::optional<std::string>{"field_alarm_scene_21"} &&
                 empty_alarm_profile_39.has_value() &&
-                empty_alarm_profile_39->regions.empty() &&
+                empty_alarm_profile_39->alarm_regions.empty() &&
                 empty_alarm_profile_39->reinforcement_activity_id ==
                     std::optional<std::string>{"field_alarm_scene_39"} &&
                 empty_alarm_profile_40.has_value() &&
-                empty_alarm_profile_40->regions.empty() &&
+                empty_alarm_profile_40->alarm_regions.empty() &&
                 empty_alarm_profile_40->reinforcement_activity_id ==
                     std::optional<std::string>{"field_alarm_scene_40"} &&
                 empty_alarm_profile_43.has_value() &&
-                empty_alarm_profile_43->regions.empty() &&
+                empty_alarm_profile_43->alarm_regions.empty() &&
                 empty_alarm_profile_43->reinforcement_activity_id ==
                     std::optional<std::string>{"field_alarm_scene_43"},
             "ROM zero-region alarm profile did not resolve as an empty profile")) {

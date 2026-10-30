@@ -342,24 +342,29 @@ void FieldSceneRuntime::advance_field_alarm(const bool direct_raise,
     }
 
     scripting::ScriptFieldAlarmInput input{};
-    input.scene_id = scene_reference;
-    input.frame_counter = field_world_frame_counter_;
-    input.scene_mode = field_movement_transition_state_.world_mode;
-    input.player_tile_x = static_cast<std::uint16_t>(
-        field_entity_.world_position.x >> static_cast<unsigned>(
-            srx::FieldAlarm::TILE_SHIFT));
-    input.player_tile_y = static_cast<std::uint16_t>(
-        field_entity_.world_position.y >> static_cast<unsigned>(
-            srx::FieldAlarm::TILE_SHIFT));
-    input.disabled = field_matrix_field_state_.security_off.value_or(false);
-    input.alarm = field_matrix_field_state_.alarm.value_or(false);
-    input.timer = field_alarm_timer_;
+    // ROM 0x1DFC4 samples on the 13th frame in each 64-frame period. Keep
+    // that source counter gate at the host boundary; scripts receive a due fact.
+    input.alarm_check_due =
+        (field_world_frame_counter_ & static_cast<std::uint16_t>(
+            srx::FieldAlarm::FRAME_MASK)) == static_cast<std::uint16_t>(
+                srx::FieldAlarm::FRAME_VALUE);
+    input.building_scene = field_movement_transition_state_.world_mode ==
+        static_cast<std::uint16_t>(srx::SceneMode::BUILDING);
+    input.alarm_timeout_scene = scene_reference ==
+        static_cast<std::uint16_t>(srx::SceneId::ALARM_COMBAT);
+    const auto tile_shift = static_cast<unsigned>(srx::FieldAlarm::TILE_SHIFT);
+    input.player_tile_x = field_entity_.world_position.x >> tile_shift;
+    input.player_tile_y = field_entity_.world_position.y >> tile_shift;
+    input.security_disabled =
+        field_matrix_field_state_.security_off.value_or(false);
+    input.alarm_active = field_matrix_field_state_.alarm.value_or(false);
+    input.alarm_time_remaining_frames = alarm_time_remaining_frames_;
     input.direct_raise = direct_raise;
     input.clear_alarm = clear_alarm;
     input.disable_alarm = disable_alarm;
     input.reset = reset_alarm;
     input.scene_exit = scene_exit;
-    input.regions = std::move(profile->regions);
+    input.alarm_regions = std::move(profile->alarm_regions);
     input.reinforcement_activity_id =
         profile->reinforcement_activity_id;
     for (const auto& actor : field_default_actors_) {
@@ -385,16 +390,19 @@ void FieldSceneRuntime::advance_field_alarm(const bool direct_raise,
         source_boundary("field.alarm.script_tick_failed");
         return;
     }
-    if (result->sample_rng) {
-        // ROM 0x1DFC4 calls 0xD44 only on its frame gate; this preserves the
-        // source PRNG stream when any earlier gate rejects the alarm check. [C]
-        input.rng = advance_source_random_seed(field_random_seed_);
+    if (result->request_probability_sample) {
+        // ROM 0x1DFC4 calls 0xD44 only after its cadence and state gates. The
+        // native adapter preserves PRNG order and translates the unsigned word
+        // to a probability in [0, 1); Lua applies the named half-chance rule. [C]
+        const auto random_word = advance_source_random_seed(field_random_seed_);
+        input.probability_sample =
+            static_cast<double>(random_word) / 65536.0;
         result = game_scripts_.evaluate_field_alarm(input);
-        if (!result.has_value() || result->sample_rng) {
+        if (!result.has_value() || result->request_probability_sample) {
             failure_ = game_scripts_.failure().empty()
                 ? "field alarm requested more than one random word"
                 : game_scripts_.failure();
-            source_boundary("field.alarm.script_rng_failed");
+            source_boundary("field.alarm.probability_sample_failed");
             return;
         }
     }
@@ -404,9 +412,9 @@ void FieldSceneRuntime::advance_field_alarm(const bool direct_raise,
 void FieldSceneRuntime::apply_field_alarm_result(
     const scripting::ScriptFieldAlarmResult& result,
     const std::uint16_t scene_reference) {
-    field_matrix_field_state_.alarm = result.alarm;
-    field_matrix_field_state_.security_off = result.disabled;
-    field_alarm_timer_ = result.timer;
+    field_matrix_field_state_.alarm = result.alarm_active;
+    field_matrix_field_state_.security_off = result.security_disabled;
+    alarm_time_remaining_frames_ = result.alarm_time_remaining_frames;
 
     for (const auto& source : result.actors) {
         const auto actor = std::find_if(
