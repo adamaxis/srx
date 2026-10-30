@@ -21,7 +21,7 @@ local queued_choices, prompts, speeches, calls = {}, {}, {}, {}
 local payment_result = "paid"
 game = {
     location = { type = "building", id = "council_island_inn" },
-    field = { mode = 4, event_code = 0, alternate_result = 0 },
+    field = { mode = 4, event_code = 0, package_run_status = "none" },
     ui = {
         prompt_text = function(menu_id, text, available_choices)
             local menu = assert(menus.council_island_inn[menu_id],
@@ -90,47 +90,33 @@ end
 
 -- ROM 0x1F7F6/0x1F800 select the signed package roots before the default
 -- room offer at 0xF4A60. Neither signed branch charges for a room.
-game.field.alternate_result = 1
+game.field.package_run_status = "payment_due"
 reset()
 expect_outcome("continue_in_place")
 assert(#prompts == 0 and #calls == 0 and #speeches == 1)
 assert(speeches[1].text:find("well-dressed elf", 1, true) and
        speeches[1].text:find("gives you the payment", 1, true))
 
-game.field.alternate_result = -1
+game.field.package_run_status = "handoff_due"
 reset()
 expect_outcome("continue_in_place")
 assert(#prompts == 0 and #calls == 0 and #speeches == 1)
 assert(speeches[1].text:find("tell the proprietor", 1, true) and
        speeches[1].text:find("finds it", 1, true))
 
--- The two byte endpoints must take the same ROM sign branches; malformed
--- values outside the signed byte domain stop at an explicit boundary.
-game.field.alternate_result = 127
-reset()
-expect_outcome("continue_in_place")
-assert(#prompts == 0 and #calls == 0 and #speeches == 1 and
-       speeches[1].text:find("well-dressed elf", 1, true))
-game.field.alternate_result = -128
-reset()
-expect_outcome("continue_in_place")
-assert(#prompts == 0 and #calls == 0 and #speeches == 1 and
-       speeches[1].text:find("tell the proprietor", 1, true))
-
-local function expect_invalid_alternate_result(value)
-    game.field.alternate_result = value
+-- Lua consumes the host's named status and reports an unknown state without
+-- inspecting a signed byte representation.
+local function expect_unknown_package_run_status(value)
+    game.field.package_run_status = value
     reset()
     local result = expect_outcome("source_boundary")
-    assert(result.reason:find("signed alternate-result byte", 1, true))
+    assert(result.reason:find("package-run status", 1, true))
     assert(#prompts == 0 and #calls == 0 and #speeches == 0)
 end
-expect_invalid_alternate_result(nil)
-expect_invalid_alternate_result(1.5)
-expect_invalid_alternate_result(128)
-expect_invalid_alternate_result(-129)
-expect_invalid_alternate_result("1")
+expect_unknown_package_run_status(nil)
+expect_unknown_package_run_status("unresolved")
 
-game.field.alternate_result = 0
+game.field.package_run_status = "none"
 game.field.mode = 3
 reset()
 local wrong_mode = expect_outcome("source_boundary")
@@ -189,4 +175,4 @@ local unresolved = expect_outcome("source_boundary")
 assert(unresolved.reason:find("wallet result", 1, true))
 assert(#calls == 1 and #speeches == 0)
 
-print("council_island_inn_tests=passed payment=40 signed_results=both")
+print("council_island_inn_tests=passed payment=40 package_statuses=both")

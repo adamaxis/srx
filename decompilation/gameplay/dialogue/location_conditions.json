@@ -33,9 +33,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -113,9 +113,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -137,9 +137,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -148,59 +148,59 @@
         "scope": "entry"
       }
     },
-    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_positive_alternate_result.route": {
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_payment_due.route": {
       "all": [
         {
-          "fact": "field.alternate_result",
-          "op": "gt",
-          "value": 0
+          "fact": "field.package_run_status",
+          "op": "eq",
+          "value": "payment_due"
         }
       ],
       "provenance": {
         "entityId": "puyallup_site_02_tarislar_garden_apartments",
-        "linkId": "rom_event_07_positive_alternate_result",
+        "linkId": "rom_event_07_payment_due",
         "scope": "route"
       }
     },
-    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_positive_alternate_result.entry": {
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_payment_due.entry": {
       "all": [
         {
-          "fact": "field.alternate_result",
-          "op": "gt",
-          "value": 0
+          "fact": "field.package_run_status",
+          "op": "eq",
+          "value": "payment_due"
         }
       ],
       "provenance": {
         "entityId": "puyallup_site_02_tarislar_garden_apartments",
-        "linkId": "rom_event_07_positive_alternate_result",
+        "linkId": "rom_event_07_payment_due",
         "scope": "entry"
       }
     },
-    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_negative_alternate_result.route": {
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_handoff_due.route": {
       "all": [
         {
-          "fact": "field.alternate_result",
-          "op": "lt",
-          "value": 0
+          "fact": "field.package_run_status",
+          "op": "eq",
+          "value": "handoff_due"
         }
       ],
       "provenance": {
         "entityId": "puyallup_site_02_tarislar_garden_apartments",
-        "linkId": "rom_event_07_negative_alternate_result",
+        "linkId": "rom_event_07_handoff_due",
         "scope": "route"
       }
     },
-    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_negative_alternate_result.entry": {
+    "puyallup_site_02_tarislar_garden_apartments.rom_event_07_handoff_due.entry": {
       "all": [
         {
-          "fact": "field.alternate_result",
-          "op": "lt",
-          "value": 0
+          "fact": "field.package_run_status",
+          "op": "eq",
+          "value": "handoff_due"
         }
       ],
       "provenance": {
         "entityId": "puyallup_site_02_tarislar_garden_apartments",
-        "linkId": "rom_event_07_negative_alternate_result",
+        "linkId": "rom_event_07_handoff_due",
         "scope": "entry"
       }
     },
@@ -217,9 +217,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -241,9 +241,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -265,9 +265,9 @@
           "value": true
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -289,9 +289,9 @@
           "value": true
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -333,9 +333,9 @@
           "value": true
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -377,9 +377,9 @@
           "value": true
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -396,9 +396,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -415,9 +415,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -439,9 +439,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -463,9 +463,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -487,9 +487,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -563,9 +563,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         },
         {
           "fact": "field.building_interaction_mode",
@@ -587,9 +587,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -601,9 +601,9 @@
     "jump_house_frontage.rom_event_04.entry": {
       "all": [
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         }
       ],
       "provenance": {
@@ -625,9 +625,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         },
         {
           "any": [
@@ -668,9 +668,9 @@
           "value": false
         },
         {
-          "fact": "field.alternate_result",
+          "fact": "field.package_run_status",
           "op": "eq",
-          "value": 0
+          "value": "none"
         },
         {
           "any": [

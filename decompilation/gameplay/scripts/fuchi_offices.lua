@@ -10,7 +10,7 @@ function FuchiOffices.present_cyberheart_entry()
     local scene = game.location.scene_id
     if scene == E.FieldSafe.FUCHI_ENTRY_SCENE and
        game.field.event_code == E.FieldSafe.FUCHI_ENTRY_EVENT and
-       game.field.alternate_result == 0 and
+       game.field.package_run_status == E.PackageRunStatus.NONE and
        StoryFlags.is_set(E.StoryFlag.HOSPITAL_VISITED) == true and
        StoryFlags.is_set(E.StoryFlag.CYBERHEART_SAFE) == false then
         -- 0x5418C arms the cyber-heart safe before opening the entry page.

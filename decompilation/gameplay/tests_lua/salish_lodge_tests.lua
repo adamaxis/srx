@@ -61,7 +61,7 @@ game = {
             state_facts[name] = value
         end,
     }),
-    field = { mode = 6, event_code = 0, alternate_result = 0 },
+    field = { mode = 6, event_code = 0, package_run_status = "none" },
     location = { type = "building", id = "salish_owlfeather_ranger_lodge" },
     modules = { world_content_data = { entities = {}, areas = {} } },
     content = {
@@ -165,7 +165,7 @@ local function route(scene, event_code, event_index, event_table)
         event_index = event_index,
         event_table_available = true,
         event_table = event_table,
-        alternate_result = 0,
+        package_run_status = "none",
     })
 end
 

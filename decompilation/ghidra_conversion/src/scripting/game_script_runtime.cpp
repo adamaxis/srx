@@ -5610,9 +5610,11 @@ struct GameScriptRuntime::Impl {
             lua_pushlstring(
                 lua, self->field_mode_context.prompt_variant.data(),
                 self->field_mode_context.prompt_variant.size());
-        } else if (field == "alternate_result") {
-            lua_pushinteger(lua,
-                            self->field_mode_context.alternate_result);
+        } else if (field == "package_run_status") {
+            const auto status_id = script_package_run_status_id(
+                script_package_run_status_from_source_result(
+                    self->field_mode_context.source_signed_result));
+            lua_pushlstring(lua, status_id.data(), status_id.size());
         } else if (field == "alternate_profile") {
             if (self->field_mode_context.alternate_profile.has_value()) {
                 lua_pushinteger(
@@ -7453,7 +7455,7 @@ GameScriptRuntime::resolve_field_location_route(
         return fail("building.lua route function is missing");
     }
 
-    lua_createtable(state, 0, 6);
+    lua_createtable(state, 0, 5);
     const auto input_index = lua_absindex(state, -1);
     lua_pushinteger(state, context.scene_id);
     lua_setfield(state, input_index, "scene_id");
@@ -7466,8 +7468,6 @@ GameScriptRuntime::resolve_field_location_route(
     const auto event_code_name = collision_event_name(context.event_code);
     lua_pushlstring(state, event_code_name.c_str(), event_code_name.size());
     lua_setfield(state, input_index, "event_code");
-    lua_pushinteger(state, context.alternate_result);
-    lua_setfield(state, input_index, "alternate_result");
     lua_createtable(state, 0, 2);
     const auto transition_index = lua_absindex(state, -1);
     std::string_view transition_kind = "no_destination";
@@ -7504,8 +7504,12 @@ GameScriptRuntime::resolve_field_location_route(
     lua_setfield(state, field_index, "mode");
     lua_pushinteger(state, event_code_value);
     lua_setfield(state, field_index, "event_code");
-    lua_pushinteger(state, context.alternate_result);
-    lua_setfield(state, field_index, "alternate_result");
+    const auto package_run_status = script_package_run_status_id(
+        script_package_run_status_from_source_result(
+            context.alternate_result));
+    lua_pushlstring(state, package_run_status.data(),
+                    package_run_status.size());
+    lua_setfield(state, field_index, "package_run_status");
     lua_setfield(state, input_index, "field");
 
     if (lua_pcall(state, 1, 1, 0) != LUA_OK) {

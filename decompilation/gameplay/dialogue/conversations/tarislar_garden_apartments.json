@@ -197,23 +197,23 @@
         }
       }
     },
-    "tarislar_garden_apartments.signed_alternate_result": {
-      "entryNode": "signed_result",
-      "precondition": "tarislar_garden_apartments.signed_alternate_result_available",
+    "tarislar_garden_apartments.package_run_outcome": {
+      "entryNode": "package_run_outcome",
+      "precondition": "tarislar_garden_apartments.package_run_outcome_available",
       "speakerId": "tarislar_apartments_narrator",
       "textProfile": "tarislar.garden.apartments.entry",
       "provenance": {
         "romAddresses": ["0x5447E", "0x15FF28", "0x15FE5D", "0x15FF20", "0x15FDB8"],
-        "scope": "scene_1_event_7_signed_alternate_package_result"
+        "scope": "scene_1_event_7_package_run_outcome"
       },
       "nodes": {
-        "signed_result": {
+        "package_run_outcome": {
           "type": "branch",
           "cases": [
-            { "when": "tarislar_garden_apartments.alternate_result_positive", "next": "package_delivery" },
-            { "when": "tarislar_garden_apartments.alternate_result_negative", "next": "package_pickup" }
+            { "when": "tarislar_garden_apartments.payment_due", "next": "package_delivery" },
+            { "when": "tarislar_garden_apartments.handoff_due", "next": "package_pickup" }
           ],
-          "fallback": "signed_result_boundary",
+          "fallback": "package_run_outcome_boundary",
           "evidence": "ROM service 21 tests signed FFF0D5 first; each nonzero sign selects its own single-page prompt group and leaves D6 at -1."
         },
         "package_pickup": {
@@ -230,7 +230,7 @@
           "type": "terminal",
           "outcome": { "type": "continue_in_place" }
         },
-        "signed_result_boundary": {
+        "package_run_outcome_boundary": {
           "type": "source_boundary",
           "reason": "ROM service 21 signed FFF0D5 did not match its positive or negative source branch."
         }

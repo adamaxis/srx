@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -219,6 +220,30 @@ bool verify_field_scene_mode_translation() {
             test_case.scene_mode) {
             std::cerr << "FFDF40 semantic conversion mismatch for source word "
                       << test_case.source_word << '\n';
+            return false;
+        }
+    }
+    return true;
+}
+
+bool verify_package_run_status_translation() {
+    using namespace shadowrun::ghidra_conversion::scripting;
+    struct Case {
+        std::int8_t source_result;
+        std::string_view status_id;
+    };
+    constexpr std::array<Case, 5U> kCases{{
+        {std::numeric_limits<std::int8_t>::min(), "handoff_due"},
+        {-1, "handoff_due"},
+        {0, "none"},
+        {1, "payment_due"},
+        {std::numeric_limits<std::int8_t>::max(), "payment_due"},
+    }};
+    for (const auto& test_case : kCases) {
+        const auto status = script_package_run_status_from_source_result(
+            test_case.source_result);
+        if (script_package_run_status_id(status) != test_case.status_id) {
+            std::cerr << "field result did not map to package-run state\n";
             return false;
         }
     }
@@ -2358,6 +2383,7 @@ int main() {
     if (!verify_weapon_action_policy_translation() ||
         !verify_semantic_combat_inventory_translation() ||
         !verify_field_scene_mode_translation() ||
+        !verify_package_run_status_translation() ||
         !verify_actor_behavior_profile_translation() ||
         !verify_combat_cyberware_translation() ||
         !verify_combat_profile_trait_translation() ||
@@ -14223,12 +14249,12 @@ int main() {
                 route->area_event_target !=
                     std::optional<std::uint8_t>{13U} ||
                 route->entry_dialogue_module != "tarislar_apartments" ||
-                route->entry_dialogue_function != "present_alternate_result" ||
+                route->entry_dialogue_function != "present_package_run_outcome" ||
                 route->entry_continue_result_id != "enter_scene_13") {
                 return false;
             }
             auto task = scripts.start_task(
-                "tarislar_apartments", "present_alternate_result");
+                "tarislar_apartments", "present_package_run_outcome");
             if (task.status !=
                     ScriptTaskStep::Status::awaiting_native_operation ||
                 !task.operation.has_value() ||
@@ -14311,7 +14337,7 @@ int main() {
                     tarislar_repeat_alternate->entry_dialogue_module ==
                         "tarislar_apartments" &&
                     tarislar_repeat_alternate->entry_dialogue_function ==
-                        "present_alternate_result",
+                        "present_package_run_outcome",
                 "Tarislar repeat route did not yield to signed FFF0D5 service")) {
         std::cerr << scripts.failure() << '\n';
         return 17;

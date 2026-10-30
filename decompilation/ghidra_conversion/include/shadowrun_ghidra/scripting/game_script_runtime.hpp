@@ -1104,10 +1104,40 @@ struct ScriptDialogueRequest {
     std::uint8_t input_delay_frames = 0U;
 };
 
+enum class ScriptPackageRunStatus : std::uint8_t {
+    none,
+    handoff_due,
+    payment_due,
+};
+
+// ROM 0x1F7E8 tests signed FFF0D5: zero selects the normal entry page,
+// positive selects the package-payment page at 0xF4A98, and negative selects
+// the package-handoff page at 0xF4A90 [C]. Lua receives this named status.
+constexpr ScriptPackageRunStatus script_package_run_status_from_source_result(
+    const std::int8_t source_result) noexcept {
+    return source_result < 0 ? ScriptPackageRunStatus::handoff_due
+         : source_result > 0 ? ScriptPackageRunStatus::payment_due
+                             : ScriptPackageRunStatus::none;
+}
+
+constexpr std::string_view script_package_run_status_id(
+    const ScriptPackageRunStatus status) noexcept {
+    switch (status) {
+    case ScriptPackageRunStatus::handoff_due:
+        return "handoff_due";
+    case ScriptPackageRunStatus::payment_due:
+        return "payment_due";
+    case ScriptPackageRunStatus::none:
+        return "none";
+    }
+    return "none";
+}
+
 struct ScriptFieldModeContext {
     std::uint8_t mode = 0;
     std::uint8_t event_code = 0;
-    std::int8_t alternate_result = 0;
+    // Source-only signed result; Lua reads ScriptPackageRunStatus instead.
+    std::int8_t source_signed_result = 0;
     // Source transition facts exposed only when the field host knows them.
     // Scene mode is FFFC0E; transition context is FFFC10.
     std::optional<std::uint16_t> alternate_profile;

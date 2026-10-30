@@ -3,7 +3,7 @@
   "entityId": "puyallup_site_02_tarislar_garden_apartments",
   "interactions": [
     {
-      "id": "rom_event_07_positive_alternate_result",
+      "id": "rom_event_07_payment_due",
       "source": {
         "sceneId": 1,
         "eventCode": "event_7"
@@ -13,7 +13,7 @@
         "script": "area_event_table",
         "sourceRoutePolicy": "suppress_source_route",
         "priority": 20,
-        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_positive_alternate_result.route",
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_payment_due.route",
         "destinationScene": 13,
         "destinationMode": "field",
         "sourceTableDestination": 13,
@@ -23,7 +23,7 @@
       "entryDialogue": {
         "task": {
           "module": "tarislar_apartments",
-          "function": "present_alternate_result"
+          "function": "present_package_run_outcome"
         },
         "locationContext": {
           "type": "building",
@@ -31,7 +31,7 @@
           "textProfile": "tarislar.garden.apartments.entry",
           "speakerId": "tarislar_apartments_narrator"
         },
-        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_positive_alternate_result.entry",
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_payment_due.entry",
         "continueResultId": "enter_scene_13"
       },
       "provenance": {
@@ -39,7 +39,7 @@
       }
     },
     {
-      "id": "rom_event_07_negative_alternate_result",
+      "id": "rom_event_07_handoff_due",
       "source": {
         "sceneId": 1,
         "eventCode": "event_7"
@@ -49,7 +49,7 @@
         "script": "area_event_table",
         "sourceRoutePolicy": "suppress_source_route",
         "priority": 20,
-        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_negative_alternate_result.route",
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_handoff_due.route",
         "destinationScene": 13,
         "destinationMode": "field",
         "sourceTableDestination": 13,
@@ -59,7 +59,7 @@
       "entryDialogue": {
         "task": {
           "module": "tarislar_apartments",
-          "function": "present_alternate_result"
+          "function": "present_package_run_outcome"
         },
         "locationContext": {
           "type": "building",
@@ -67,7 +67,7 @@
           "textProfile": "tarislar.garden.apartments.entry",
           "speakerId": "tarislar_apartments_narrator"
         },
-        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_negative_alternate_result.entry",
+        "conditionId": "puyallup_site_02_tarislar_garden_apartments.rom_event_07_handoff_due.entry",
         "continueResultId": "enter_scene_13"
       },
       "provenance": {
@@ -107,7 +107,7 @@
         "continueResultId": "enter_scene_54"
       },
       "provenance": {
-        "evidence": "ROM scene 1 record 67 at 0x17D9A2; event-table row 7 at 0x17D627 is scene 13. Indexed title service 21 at 0x5447E selects first-entry node 0xF4DF4 at 0x5456E when FFF0D5 is zero, FFFC1E bit 30 is set, and bit 21 is clear; it marks bit 21, adds +2 Karma, and starts the Harlequin prompt chain. This path does not set FFF0CC and returns to scene 1 after its prompt chain. The later repeat root 0xF4E08 offers the separately gated tomb departure; the companion rom_event_07_tomb_departure row resumes scene 54 only after its Yes travel pages return enter_scene_54. FFF0D5 is supplied as alternate_result. A pending descriptor list can override the later selector to scene 15. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+        "evidence": "ROM scene 1 record 67 at 0x17D9A2; event-table row 7 at 0x17D627 is scene 13. Indexed title service 21 at 0x5447E selects first-entry node 0xF4DF4 at 0x5456E when FFF0D5 is zero, FFFC1E bit 30 is set, and bit 21 is clear; it marks bit 21, adds +2 Karma, and starts the Harlequin prompt chain. This path does not set FFF0CC and returns to scene 1 after its prompt chain. The later repeat root 0xF4E08 offers the separately gated tomb departure; the companion rom_event_07_tomb_departure row resumes scene 54 only after its Yes travel pages return enter_scene_54. The native field host maps FFF0D5 to package_run_status before Lua reads it. A pending descriptor list can override the later selector to scene 15. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
       }
     },
     {
@@ -143,7 +143,7 @@
         "continueResultId": "enter_scene_13"
       },
       "provenance": {
-        "evidence": "ROM service 21 repeat branch at 0x5447E selects greeting/root 0xF4E08 only after the first visit. Bits 16, 28, 26, and 27 then select the Ito, question, information, or tomb branches; command 0x48 at 0x220CC gates the Renraku map response with group-item bit 8 and the paired-map response with bit 7. Tomb departure has higher route priority and remains a separate entity link. FFF0D5 is supplied as alternate_result. The same-map service returns to scene 1 without selecting scene 13 again."
+        "evidence": "ROM service 21 repeat branch at 0x5447E selects greeting/root 0xF4E08 only after the first visit. Bits 16, 28, 26, and 27 then select the Ito, question, information, or tomb branches; command 0x48 at 0x220CC gates the Renraku map response with group-item bit 8 and the paired-map response with bit 7. Tomb departure has higher route priority and remains a separate entity link. The native field host maps FFF0D5 to package_run_status before Lua reads it. The same-map service returns to scene 1 without selecting scene 13 again."
       }
     },
     {
@@ -179,7 +179,7 @@
         "continueResultId": "enter_scene_54"
       },
       "provenance": {
-        "evidence": "ROM service 21 repeat root 0xF4E08 requires story bits 30, 21, 16, 28, 26, and 27 after the Harlequin/Ito/map branches. The Yes command 0xE4 calls 0x24954, sets FFF0CC, and selects scene 54; the no branch at 0xF5A5C returns to the field map. FFF0D5 is supplied as alternate_result. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
+        "evidence": "ROM service 21 repeat root 0xF4E08 requires story bits 30, 21, 16, 28, 26, and 27 after the Harlequin/Ito/map branches. The Yes command 0xE4 calls 0x24954, sets FFF0CC, and selects scene 54; the no branch at 0xF5A5C returns to the field map. The native field host maps FFF0D5 to package_run_status before Lua reads it. Return policy: ROM 0xBC36/0xBD34 selects the collision-probe lead point; 0x2F32 restores the source scene. Lua link data records this point and faces away from the entrance on return."
       }
     },
     {

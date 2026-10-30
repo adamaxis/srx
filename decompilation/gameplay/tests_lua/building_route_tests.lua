@@ -85,7 +85,7 @@ local context = {
     event_index = 7,
     event_table_available = true,
     event_table = { 0, 0, 0, 0, 0, 0, 0, 13 },
-    alternate_result = 0,
+    package_run_status = "none",
 }
 
 local gated = Building.resolve_field_location_route(context)
@@ -201,12 +201,12 @@ local override_link = {
     route_condition_id = condition("test.first_entry.route", {
         equal("story.story_flag_bit_30", true),
         equal("story.story_flag_bit_21", false),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
     }),
     entry_condition_id = condition("test.first_entry.entry", {
         equal("story.story_flag_bit_30", true),
         equal("story.story_flag_bit_21", false),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
     }),
     entry_dialogue_module = "tarislar_apartments",
     entry_dialogue_function = "present_first_entry",
@@ -221,7 +221,7 @@ game.state.story_flag_bit_21 = false
 game.modules.world_content_data.entities.source_test.links = {
     base_link, override_link,
 }
-context.alternate_result = 0
+context.package_run_status = "none"
 local first_entry = Building.resolve_field_location_route(context)
 assert(first_entry.kind == "area_event" and
        first_entry.area_event_target == 54 and
@@ -262,7 +262,7 @@ local tomb_link = {
         equal("story.story_flag_bit_28", true),
         equal("story.story_flag_bit_26", true),
         equal("story.story_flag_bit_27", true),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
     }),
     entry_condition_id = condition("test.tomb.entry", {
         equal("story.story_flag_bit_30", true),
@@ -271,7 +271,7 @@ local tomb_link = {
         equal("story.story_flag_bit_28", true),
         equal("story.story_flag_bit_26", true),
         equal("story.story_flag_bit_27", true),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
     }),
     entry_dialogue_module = "tarislar_apartments",
     entry_dialogue_function = "present_tomb_departure",
@@ -300,12 +300,12 @@ for _, bit in ipairs({ 16, 21, 26, 27, 28, 30 }) do
            denied_tomb_route.entry_dialogue_module == nil)
     game.state["story_flag_bit_" .. bit] = true
 end
-context.alternate_result = 1
+context.package_run_status = "payment_due"
 local alternate_tomb_route = Building.resolve_field_location_route(context)
 assert(alternate_tomb_route.kind == "area_event" and
        alternate_tomb_route.area_event_target == 13 and
        alternate_tomb_route.entry_dialogue_module == nil)
-context.alternate_result = 0
+context.package_run_status = "none"
 
 local guarded_link = {
     source_scene = 1,
@@ -319,11 +319,11 @@ local guarded_link = {
     route_priority = 10,
     route_condition_id = condition("test.guarded.route", {
         equal("story.story_flag_bit_30", false),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
     }),
     entry_condition_id = condition("test.guarded.entry", {
         equal("story.story_flag_bit_30", false),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
     }),
     entry_dialogue_module = "tarislar_apartments",
     entry_dialogue_function = "present_guarded_entry",
@@ -343,12 +343,12 @@ assert(guarded_visit.kind == "area_event" and
        guarded_visit.entry_dialogue_function == "present_guarded_entry" and
        guarded_visit.entry_continue_result_id == "enter_scene_13")
 
-context.alternate_result = -1
-local alternate_result = Building.resolve_field_location_route(context)
-assert(alternate_result.kind == "area_event" and
-       alternate_result.area_event_target == 13 and
-       alternate_result.entry_dialogue_module == nil)
-context.alternate_result = 0
+context.package_run_status = "handoff_due"
+local alternate_run_route = Building.resolve_field_location_route(context)
+assert(alternate_run_route.kind == "area_event" and
+       alternate_run_route.area_event_target == 13 and
+       alternate_run_route.entry_dialogue_module == nil)
+context.package_run_status = "none"
 context.event_table[8] = 12
 local source_table_mismatch = Building.resolve_field_location_route(context)
 assert(source_table_mismatch.kind == "source_boundary" and
@@ -364,7 +364,7 @@ local inn_context = {
     event_index = 1,
     event_table_available = true,
     event_table = { 0, 53 },
-    alternate_result = 0,
+    package_run_status = "none",
 }
 local inn_location = {
     location_type = "building",
@@ -397,7 +397,7 @@ game.modules.world_content_data.entities.source_test.links = {
         route_condition_id = condition("test.inn.route", {
             equal("story.story_flag_bit_0", true),
             equal("story.story_flag_bit_1", false),
-            equal("field.alternate_result", 0),
+            equal("field.package_run_status", "none"),
         }),
         indexed_title_service_module = "tarislar_city_inn",
         indexed_title_service_function = "present_indexed_title_service",
@@ -428,7 +428,7 @@ assert(inn_generic_prompt.kind == "area_event" and
        inn_generic_prompt.field_exit_prompt.text_profile ==
            "tarislar.city_inn")
 
-inn_context.alternate_result = -1
+inn_context.package_run_status = "handoff_due"
 local inn_package_result = Building.resolve_field_location_route(inn_context)
 assert(inn_package_result.kind == "area_event" and
        inn_package_result.field_exit_prompt.function_name ==
@@ -443,7 +443,7 @@ local motel_context = {
     event_index = 2,
     event_table_available = true,
     event_table = { 20, 26, 26 },
-    alternate_result = 0,
+    package_run_status = "none",
 }
 local motel_link = {
     source_scene = 2,
@@ -453,14 +453,14 @@ local motel_link = {
     route_priority = 0,
     route_condition_id = condition("test.motel.route", {
         equal("story.story_flag_bit_0", false),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
         equal("field.building_interaction_mode", true),
     }),
     return_anchor = "collision_probe_lead",
     return_facing = "face_away_from_entry",
     entry_condition_id = condition("test.motel.entry", {
         equal("story.story_flag_bit_0", false),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
     }),
     entry_dialogue_module = "michael_package",
     entry_dialogue_function = "stoker_interaction",
@@ -512,7 +512,7 @@ local restaurant_event = Building.resolve_field_location_route({
     event_index = 30,
     event_table_available = false,
     event_table = {},
-    alternate_result = 0,
+    package_run_status = "none",
 })
 assert(restaurant_event.kind == "dialogue" and
        restaurant_event.entry_dialogue_module == "field_events" and
@@ -552,7 +552,7 @@ local scene15_event = Building.resolve_field_location_route({
     event_index = 30,
     event_table_available = false,
     event_table = {},
-    alternate_result = 0,
+    package_run_status = "none",
 })
 assert(scene15_event.kind == "dialogue" and
        scene15_event.script == "lua_dialogue" and
@@ -590,7 +590,7 @@ local wanderer_exit = Building.resolve_field_location_route({
     event_index = 0,
     event_table_available = false,
     event_table = {},
-    alternate_result = 0,
+    package_run_status = "none",
 })
 assert(wanderer_exit.kind == "source_activity_return" and
        wanderer_exit.script == "source_activity_return" and
@@ -615,7 +615,7 @@ local jump_house_exit = Building.resolve_field_location_route({
     event_index = 0,
     event_table_available = false,
     event_table = {},
-    alternate_result = 0,
+    package_run_status = "none",
 })
 assert(jump_house_exit.kind == "source_activity_return" and
        jump_house_exit.script == "source_activity_return" and
@@ -627,7 +627,7 @@ local jump_house_exit_with_table = Building.resolve_field_location_route({
     event_index = 0,
     event_table_available = true,
     event_table = { 0 },
-    alternate_result = 0,
+    package_run_status = "none",
 })
 assert(jump_house_exit_with_table.kind == "source_boundary" and
        jump_house_exit_with_table.boundary_reason:match(

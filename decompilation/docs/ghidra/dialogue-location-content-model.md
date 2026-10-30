@@ -463,9 +463,11 @@ semicolon mini-language. `conditions.json` entries wrap an `expression` plus
 ROM provenance. The evaluator supports `all`, `any`, `not`, and typed fact
 comparisons (`eq`, `ne`, `lt`, `lte`, `gt`, `gte`, `in`). Facts use semantic
 names such as `story.vid_phone_called_0`, `story.motel_bill_paid`,
-`run.active_type`, and `field.alternate_result`. A fact provider maps those
-names to Lua-owned game state or a narrow typed host query. Source bits and
-addresses belong in evidence metadata, not in condition evaluation.
+`run.active_type`, and `field.package_run_status`. The native boundary maps the
+signed field result tested at ROM `0x1F7E8` to `none`, `handoff_due`, or
+`payment_due` before scripts or conditions read it [C]. A fact provider maps
+those names to Lua-owned game state or a narrow typed host query. Source bits
+and addresses belong in evidence metadata, not in condition evaluation.
 
 Evaluation is tri-state: `true`, `false`, or `unknown`. `unknown` means a
 required save field or source boundary has not been implemented. Route

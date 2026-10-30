@@ -42,7 +42,7 @@ local area_link = {
     destination_mode = "resource_activity",
     route_priority = 0,
 }
-local function new_game(choices, flags, funds, alternate_result, inventory)
+local function new_game(choices, flags, funds, package_run_status, inventory)
     local queued_choices = {}
     for index, choice in ipairs(choices or {}) do
         queued_choices[index] = choice
@@ -71,7 +71,10 @@ local function new_game(choices, flags, funds, alternate_result, inventory)
         state = state,
         funds = funds or 1000,
         location = { type = "building", id = "boris_greenhouse_frontage" },
-        field = { event_code = 6, alternate_result = alternate_result or 0 },
+        field = {
+            event_code = 6,
+            package_run_status = package_run_status or "none",
+        },
         content = content,
         seen_pages = {},
         seen_events = {},
@@ -197,7 +200,7 @@ local context = {
     event_index = 6,
     event_table_available = true,
     event_table = { 0, 0, 0, 0, 0, 0, 26 },
-    alternate_result = 0,
+    package_run_status = "none",
 }
 
 local state = new_game({ "more", "later" })
@@ -244,12 +247,12 @@ assert(outcome.type == "continue_in_place" and
        state.seen_events[1].text_key == "boris.greenhouse.page.alternate_0" and
        state.seen_pages[1].text_key == "boris.greenhouse.page.after_michael")
 
-state = new_game({}, nil, 1000, 1)
+state = new_game({}, nil, 1000, "payment_due")
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "continue_in_place" and
        state.seen_events[1].text_key == "boris.greenhouse.page.alternate_1")
 
-state = new_game({ "more" }, nil, 1000, -1)
+state = new_game({ "more" }, nil, 1000, "handoff_due")
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "continue_in_place" and
        state.seen_events[1].text_key == "boris.greenhouse.page.alternate_2" and
@@ -502,7 +505,7 @@ assert(outcome.type == "source_boundary" and
        #state.seen_pages == 1)
 
 state = new_game({})
-state.field.alternate_result = nil
+state.field.package_run_status = nil
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "source_boundary" and
        outcome.reason:find("condition_unknown", 1, true) ~= nil)

@@ -90,9 +90,10 @@ function TarislarApartments.present_guarded_entry()
     return outcome
 end
 
-function TarislarApartments.present_alternate_result()
+function TarislarApartments.present_package_run_outcome()
     if not at_apartments() or game.field.mode ~= 1 or
-       game.field.event_code ~= 7 or game.field.alternate_result == 0 then
+       game.field.event_code ~= 7 or
+       game.field.package_run_status == E.PackageRunStatus.NONE then
         return "denied"
     end
 
@@ -100,7 +101,7 @@ function TarislarApartments.present_alternate_result()
     -- The JSON graph branches to text groups 0x15FF28 / 0x15FE5D and
     -- 0x15FF20 / 0x15FDB8. Both one-page routes suppress scene 13.
     local outcome = DialogueGraph.run(
-        "tarislar_garden_apartments.signed_alternate_result")
+        "tarislar_garden_apartments.package_run_outcome")
     if type(outcome) == "table" and
        outcome.type == "continue_in_place" then
         return "left"

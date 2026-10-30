@@ -43,7 +43,7 @@ game = {
         story_flag_bit_30 = false,
     },
     location = { type = "building", id = location_id },
-    field = { mode = 1, event_code = 1, alternate_result = 0 },
+    field = { mode = 1, event_code = 1, package_run_status = "none" },
     content = {
         speakers = load_json("dialogue/speakers"),
         menus = load_json("dialogue/menus"),
@@ -187,15 +187,15 @@ assert(game.state.field_mode_effect_flag_bit_21 == true)
 game.state.story_flag_bit_13 = false
 
 -- Scene 1's signed alternate result selects the two package text nodes.
-game.field.alternate_result = 1
+game.field.package_run_status = "payment_due"
 queue()
 assert(Inn.present_field_exit_prompt() == "field_return")
 assert(#speeches == 1 and speeches[1].text:find("package", 1, true))
-game.field.alternate_result = -1
+game.field.package_run_status = "handoff_due"
 queue()
 assert(Inn.present_field_exit_prompt() == "field_return")
 assert(#speeches == 1 and speeches[1].text:find("roots around", 1, true))
-game.field.alternate_result = 0
+game.field.package_run_status = "none"
 
 -- The ordinary field-exit crash choice reaches the same 30-nuyen room
 -- transaction as the indexed title service. Only a paid result opens Hotel

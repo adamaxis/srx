@@ -33,12 +33,12 @@ local gated_entry = {
     route_condition_id = condition("test.renraku.route", {
         equal("story.story_flag_bit_16", true),
         equal("story.story_flag_bit_12", false),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
     }),
     entry_condition_id = condition("test.renraku.entry", {
         equal("story.story_flag_bit_16", true),
         equal("story.story_flag_bit_12", false),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
     }),
     entry_dialogue_module = "renraku_offices",
     entry_dialogue_function = "present_map_overlay_entry",
@@ -58,7 +58,7 @@ game = {
     field = {
         mode = 1,
         event_code = 6,
-        alternate_result = 0,
+        package_run_status = "none",
     },
     modules = {
         world_content_data = {
@@ -115,7 +115,7 @@ local context = {
     event_index = 6,
     event_table_available = true,
     event_table = { 0, 0, 0, 0, 0, 0, 35 },
-    alternate_result = 0,
+    package_run_status = "none",
 }
 
 local route = Building.resolve_field_location_route(context)
@@ -159,7 +159,7 @@ assert(pre_ito_outcome.type == "source_boundary" and
        pre_ito_outcome.reason:match("precondition:not_satisfied") ~= nil)
 
 game.state.story_flag_bit_16 = true
-context.alternate_result = 1
+context.package_run_status = "payment_due"
 local alternate_route = Building.resolve_field_location_route(context)
 assert(alternate_route.kind == "area_event" and
        alternate_route.area_event_target == 35 and

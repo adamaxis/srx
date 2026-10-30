@@ -1,6 +1,7 @@
 -- Content selection for the shared field-mode text prompt. The native field
 -- context is read-only; this module chooses the narrative record and optional
 -- speaker art while the generic presenter owns layout, timing, and input.
+local E = require("enums")
 local FieldMode = {}
 
 local function prompt(text_key, portrait_alias)
@@ -30,9 +31,9 @@ local function renraku_store_prompt(field)
     end
 
     local text_variant = "store_intro"
-    if field.alternate_result > 0 then
+    if field.package_run_status == E.PackageRunStatus.PAYMENT_DUE then
         text_variant = "package_payment"
-    elseif field.alternate_result < 0 then
+    elseif field.package_run_status == E.PackageRunStatus.HANDOFF_DUE then
         text_variant = "package_handoff"
     end
     local portrait_alias = store_id == "weapons_world"
@@ -50,11 +51,11 @@ function FieldMode.mode_text_content()
     end
 
     if field.mode == 2 and field.event_code == 1 then
-        if field.alternate_result > 0 then
+        if field.package_run_status == E.PackageRunStatus.PAYMENT_DUE then
             return prompt("field.mode.little_chiba.package_payment",
                           "field.mode.entry.little.chiba.sprite")
         end
-        if field.alternate_result < 0 then
+        if field.package_run_status == E.PackageRunStatus.HANDOFF_DUE then
             return prompt("field.mode.little_chiba.package_handoff",
                           "field.mode.entry.little.chiba.sprite")
         end
@@ -70,10 +71,10 @@ function FieldMode.mode_text_content()
         }
     end
 
-    if field.alternate_result > 0 then
+    if field.package_run_status == E.PackageRunStatus.PAYMENT_DUE then
         return prompt("field.mode.ares.package_payment")
     end
-    if field.alternate_result < 0 then
+    if field.package_run_status == E.PackageRunStatus.HANDOFF_DUE then
         return prompt("field.mode.ares.package_handoff")
     end
     return prompt("field.mode.ares.store_intro")

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "graphs": {
     "boris_greenhouse.indexed_title_service": {
-      "entryNode": "alternate_result",
+      "entryNode": "package_run_outcome",
       "precondition": "boris_greenhouse.indexed_service_available",
       "speakerId": "boris_greenhouse_narrator",
       "textProfile": "boris.greenhouse",
@@ -11,11 +11,11 @@
         "scope": "scene_2_event_6_visa_maglock_passkey_and_mach_22_purchases_with_partially_converted_strike_team_outcome"
       },
       "nodes": {
-        "alternate_result": {
+        "package_run_outcome": {
           "type": "branch",
           "cases": [
-            { "when": "boris_greenhouse.alternate_result_positive", "next": "package_request" },
-            { "when": "boris_greenhouse.alternate_result_negative", "next": "package_payment" }
+            { "when": "boris_greenhouse.payment_due", "next": "package_request" },
+            { "when": "boris_greenhouse.handoff_due", "next": "package_payment" }
           ],
           "fallback": "michael_greeting_check"
         },

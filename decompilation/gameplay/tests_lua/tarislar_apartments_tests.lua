@@ -123,7 +123,7 @@ game = {
         group_item_flag_bit_8 = false,
     },
     location = { type = "building", id = location_id },
-    field = { mode = 1, event_code = 7, alternate_result = 0 },
+    field = { mode = 1, event_code = 7, package_run_status = "none" },
     content = {
         conversations = {
             { schemaVersion = 1, graphs = {
@@ -138,7 +138,7 @@ game = {
                     eq("location.id", location_id),
                     eq("field.mode", 1),
                     eq("field.event_code", 7),
-                    eq("field.alternate_result", 0),
+                    eq("field.package_run_status", "none"),
                     eq("story.story_flag_bit_21", true),
                     eq("story.story_flag_bit_30", true),
                 } }),
@@ -241,9 +241,9 @@ end
 
 -- The graph precondition preserves the service location, event, story, and
 -- alternate-result gates before presenting any dialogue.
-game.field.alternate_result = 1
+game.field.package_run_status = "payment_due"
 expect_rejected()
-game.field.alternate_result = 0
+game.field.package_run_status = "none"
 game.location.id = "another_building"
 expect_rejected()
 game.location.id = location_id

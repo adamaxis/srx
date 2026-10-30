@@ -33,12 +33,12 @@ local gated_entry = {
     route_condition_id = condition("test.fuchi.route", {
         equal("story.story_flag_bit_25", true),
         equal("story.story_flag_bit_14", false),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
     }),
     entry_condition_id = condition("test.fuchi.entry", {
         equal("story.story_flag_bit_25", true),
         equal("story.story_flag_bit_14", false),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
     }),
     entry_dialogue_module = "fuchi_offices",
     entry_dialogue_function = "present_cyberheart_entry",
@@ -55,7 +55,7 @@ game = {
     location = {
         type = "building", id = "penumbra_site_02_fuchi", scene_id = 3,
     },
-    field = { mode = 2, event_code = 2, alternate_result = 0 },
+    field = { mode = 2, event_code = 2, package_run_status = "none" },
     services = { call = function(domain, operation)
         if domain == "field" and operation == "scene_reference" then
             return "scene_3"
@@ -117,7 +117,7 @@ local context = {
     event_index = 2,
     event_table_available = true,
     event_table = { 0, 0, 21 },
-    alternate_result = 0,
+    package_run_status = "none",
 }
 
 local route = Building.resolve_field_location_route(context)
@@ -161,7 +161,7 @@ assert(pre_hospital_route.kind == "area_event" and
        pre_hospital_route.entry_dialogue_module == nil)
 
 game.state.story_flag_bit_25 = true
-context.alternate_result = 1
+context.package_run_status = "payment_due"
 local alternate_route = Building.resolve_field_location_route(context)
 assert(alternate_route.kind == "area_event" and
        alternate_route.area_event_target == 21 and

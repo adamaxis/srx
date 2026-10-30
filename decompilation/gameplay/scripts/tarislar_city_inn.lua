@@ -82,7 +82,7 @@ function Inn.present_indexed_title_service()
        StoryFlags.is_set(E.StoryFlag.MOTEL_BILL_PAID) ~= true or
        StoryFlags.is_set(E.StoryFlag.TARISLAR_ASKED_SHALE) ~= false or
        game.field.mode ~= 1 or game.field.event_code ~= 1 or
-       game.field.alternate_result ~= 0 then
+       game.field.package_run_status ~= E.PackageRunStatus.NONE then
         return "denied"
     end
 
@@ -105,13 +105,13 @@ function Inn.present_field_exit_prompt()
         return "denied"
     end
 
-    if game.field.alternate_result > 0 then
+    if game.field.package_run_status == E.PackageRunStatus.PAYMENT_DUE then
         say(table.concat({
             "Oh, is that the package we've been waiting for?",
             "You hand him the package and he updates your credstick.",
         }, "||"), false)
         return "field_return"
-    elseif game.field.alternate_result < 0 then
+    elseif game.field.package_run_status == E.PackageRunStatus.HANDOFF_DUE then
         say(table.concat({
             "You tell the proprietor that you are here for a package.",
             "He roots around, looking, and finds it.",

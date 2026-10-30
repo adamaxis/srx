@@ -3,6 +3,14 @@
 -- Every value cites its ROM address or RAM location. Logic code uses these names, never raw values.
 local E = {}
 
+-- Named outcomes exposed by the field host after it resolves the ROM's
+-- signed package-run result. Gameplay rules consume these states, not a byte.
+E.PackageRunStatus = {
+    NONE = "none",
+    HANDOFF_DUE = "handoff_due",
+    PAYMENT_DUE = "payment_due",
+}
+
 E.GhoulBounty = { MAX_DEFEATS = 20 } -- FFFBF0 is capped at twenty (0x559BC) [C]
 
 -- +0x9E role/AI flags (doc 20 §2); REINFORCEMENT is set by the alarm spawner 0x1E0B8 [C]

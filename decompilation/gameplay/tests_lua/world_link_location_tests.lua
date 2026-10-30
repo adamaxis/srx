@@ -158,7 +158,7 @@ local hospital_route = Building.resolve_field_location_route({
     event_index = 0,
     event_table_available = true,
     event_table = { hospital_source_route },
-    alternate_result = 0,
+    package_run_status = "none",
 })
 check(hospital_service ~= nil and
       hospital_service.kind == "hospital",
@@ -204,7 +204,7 @@ local gunderson_exit = Building.resolve_field_location_route({
     event_index = 0,
     event_table_available = false,
     event_table = {},
-    alternate_result = 0,
+    package_run_status = "none",
 })
 local gunderson_json = read_file(
     "decompilation/gameplay/world/entities/" .. SHARED_EXIT_ID ..
@@ -227,7 +227,7 @@ local wanderer_exit = Building.resolve_field_location_route({
     event_index = 0,
     event_table_available = false,
     event_table = {},
-    alternate_result = 0,
+    package_run_status = "none",
 })
 local wanderer_json = read_file(
     "decompilation/gameplay/world/entities/" .. WANDERER_EXIT_ID ..

@@ -55,7 +55,7 @@ game = {
     content = content,
     state = { story_flag_bit_0 = false },
     location = { type = "motel", id = "stoker_motel" },
-    field = { mode = 2, event_code = 2, alternate_result = 0 },
+    field = { mode = 2, event_code = 2, package_run_status = "none" },
     ui = {
         menu = menu,
         prompt_text_key = function()
@@ -174,19 +174,19 @@ assert(result.type == "source_boundary" and
        result.reason:find("wallet result", 1, true))
 
 -- The scene-2/submode-2 selector keeps signed alternate results distinct.
-game.field.alternate_result = 1
+game.field.package_run_status = "payment_due"
 reset()
 result = outcome(MichaelPackage.present_field_exit_prompt())
 assert(result.type == "continue_in_place" and #choices == 0)
 expect_page(1, "package-question")
 
-game.field.alternate_result = -1
+game.field.package_run_status = "handoff_due"
 reset()
 result = outcome(MichaelPackage.present_field_exit_prompt())
 assert(result.type == "continue_in_place" and #choices == 0)
 expect_page(1, "package-handoff")
 
-game.field.alternate_result = 0
+game.field.package_run_status = "none"
 service_results["stoker_motel.resolve_arrival"] = "manager"
 reset("leave")
 result = outcome(MichaelPackage.present_field_exit_prompt())
@@ -210,14 +210,14 @@ assert(result.type == "source_boundary" and
        result.reason:find("arrival command", 1, true))
 expect_page(1, "arrival")
 
-game.field.alternate_result = nil
+game.field.package_run_status = nil
 reset()
 result = outcome(MichaelPackage.present_field_exit_prompt())
 assert(result.type == "source_boundary" and
-       result.reason:find("field.alternate_result", 1, true))
+       result.reason:find("field.package_run_status", 1, true))
 assert(#pages == 0 and #choices == 0)
 
-game.field.alternate_result = 0
+game.field.package_run_status = "none"
 game.field.mode = 1
 reset()
 result = outcome(MichaelPackage.present_field_exit_prompt())

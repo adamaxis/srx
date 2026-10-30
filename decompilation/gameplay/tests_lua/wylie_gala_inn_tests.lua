@@ -36,7 +36,7 @@ game = {
     content = content,
     state = { runner_feature_flag_bit_2 = false },
     location = { type = "building", id = location_id },
-    field = { mode = 3, event_code = 1, alternate_result = 0 },
+    field = { mode = 3, event_code = 1, package_run_status = "none" },
     ui = {
         prompt_text_key = function(menu_id, text_key, available_choices,
                                    speaker_id, text_profile)
@@ -111,25 +111,25 @@ end
 
 -- Signed FFF0D5 result selects one of two source page roots before asking
 -- whether the party needs a room.
-game.field.alternate_result = 1
+game.field.package_run_status = "payment_due"
 queue()
 expect_outcome("continue_in_place")
 assert(#prompts == 0 and #service_calls == 0)
 assert(#speeches == 1 and speeches[1].event == "package_after")
 
-game.field.alternate_result = -1
+game.field.package_run_status = "handoff_due"
 queue()
 expect_outcome("continue_in_place")
 assert(#prompts == 0 and #service_calls == 0)
 assert(#speeches == 1 and speeches[1].event == "package_before")
 
-game.field.alternate_result = nil
+game.field.package_run_status = nil
 queue()
 local unknown_run_result = expect_outcome("source_boundary")
-assert(unknown_run_result.reason:find("field.alternate_result", 1, true))
+assert(unknown_run_result.reason:find("field.package_run_status", 1, true))
 assert(#prompts == 0 and #service_calls == 0 and #speeches == 0)
 
-game.field.alternate_result = 0
+game.field.package_run_status = "none"
 game.state.runner_feature_flag_bit_2 = false
 payment_result = "paid"
 queue("crash", "pay")

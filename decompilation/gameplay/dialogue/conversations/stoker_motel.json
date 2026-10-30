@@ -108,7 +108,7 @@
       }
     },
     "stoker_motel.field_exit_prompt": {
-      "entryNode": "signed_result",
+      "entryNode": "package_run_outcome",
       "precondition": "stoker_motel.field_exit_context",
       "speakerId": "stoker",
       "textProfile": "stoker.motel",
@@ -120,11 +120,11 @@
         "scope": "signed_prompt_selection_and_arrival_command"
       },
       "nodes": {
-        "signed_result": {
+        "package_run_outcome": {
           "type": "branch",
           "cases": [
-            { "when": "stoker_motel.alternate_result_positive", "next": "package_question" },
-            { "when": "stoker_motel.alternate_result_negative", "next": "package_handoff" }
+            { "when": "stoker_motel.payment_due", "next": "package_question" },
+            { "when": "stoker_motel.handoff_due", "next": "package_handoff" }
           ],
           "fallback": "arrival"
         },

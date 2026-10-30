@@ -10,7 +10,7 @@ local choices = {}
 local menus = {}
 local dialogue = {}
 game = {
-    field = { mode = 47, event_code = 25, alternate_result = 0 },
+    field = { mode = 47, event_code = 25, package_run_status = "none" },
     location = { type = "site", id = "salish_feathered_serpent_lair" },
     state = setmetatable({}, {
         __index = function(_, key)

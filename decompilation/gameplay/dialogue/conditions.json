@@ -18,13 +18,13 @@
         "scope": "scene_2_event_6_indexed_service_and_required_state"
       }
     },
-    "boris_greenhouse.alternate_result_positive": {
-      "expression": { "fact": "field.alternate_result", "op": "gt", "value": 0 },
-      "provenance": { "romAddresses": ["0x53F8C"], "scope": "signed_alternate_result_positive" }
+    "boris_greenhouse.payment_due": {
+      "expression": { "fact": "field.package_run_status", "op": "eq", "value": "payment_due" },
+      "provenance": { "romAddresses": ["0x53F8C"], "scope": "package_payment_due" }
     },
-    "boris_greenhouse.alternate_result_negative": {
-      "expression": { "fact": "field.alternate_result", "op": "lt", "value": 0 },
-      "provenance": { "romAddresses": ["0x53F8C"], "scope": "signed_alternate_result_negative" }
+    "boris_greenhouse.handoff_due": {
+      "expression": { "fact": "field.package_run_status", "op": "eq", "value": "handoff_due" },
+      "provenance": { "romAddresses": ["0x53F8C"], "scope": "package_handoff_due" }
     },
     "boris_greenhouse.repeat_greeting_pending": {
       "expression": { "fact": "story.field_dialogue_flag_bit_3", "op": "eq", "value": true },
@@ -109,7 +109,7 @@
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "downtown_site_04_gates_undersound" },
           { "fact": "field.event_code", "op": "eq", "value": 3 },
-          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_11", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_15", "op": "eq", "value": false }
         ]
@@ -125,7 +125,7 @@
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "renraku_offices_frontage" },
           { "fact": "field.event_code", "op": "eq", "value": 6 },
-          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_16", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_12", "op": "eq", "value": false }
         ]
@@ -141,7 +141,7 @@
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "penumbra_site_02_fuchi" },
           { "fact": "field.event_code", "op": "eq", "value": 2 },
-          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_25", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_14", "op": "eq", "value": false }
         ]
@@ -157,7 +157,7 @@
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_03_tarislar_city_inn" },
           { "fact": "field.event_code", "op": "eq", "value": 1 },
-          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_0", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_1", "op": "eq", "value": false }
         ]
@@ -174,7 +174,7 @@
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
           { "fact": "field.mode", "op": "eq", "value": 1 },
           { "fact": "field.event_code", "op": "eq", "value": 7 },
-          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_30", "op": "eq", "value": false }
         ]
       },
@@ -190,7 +190,7 @@
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
           { "fact": "field.mode", "op": "eq", "value": 1 },
           { "fact": "field.event_code", "op": "eq", "value": 7 },
-          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_21", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_30", "op": "eq", "value": true }
         ]
@@ -237,37 +237,37 @@
         "scope": "repeat_information_requires_unshown_map_item"
       }
     },
-    "tarislar_garden_apartments.signed_alternate_result_available": {
+    "tarislar_garden_apartments.package_run_outcome_available": {
       "expression": {
         "all": [
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
           { "fact": "field.mode", "op": "eq", "value": 1 },
           { "fact": "field.event_code", "op": "eq", "value": 7 },
-          { "fact": "field.alternate_result", "op": "ne", "value": 0 }
+          { "fact": "field.package_run_status", "op": "ne", "value": "none" }
         ]
       },
       "provenance": {
         "romAddresses": ["0x5447E", "0x15FF28", "0x15FF20"],
-        "scope": "signed_nonzero_package_result_before_story_gates"
+        "scope": "package_run_outcome_before_story_gates"
       }
     },
-    "tarislar_garden_apartments.alternate_result_positive": {
+    "tarislar_garden_apartments.payment_due": {
       "expression": {
-        "fact": "field.alternate_result", "op": "gt", "value": 0
+        "fact": "field.package_run_status", "op": "eq", "value": "payment_due"
       },
       "provenance": {
         "romAddresses": ["0x5447E", "0x15FF28", "0x15FE5D"],
-        "scope": "positive_package_delivery_branch"
+        "scope": "package_payment_due_branch"
       }
     },
-    "tarislar_garden_apartments.alternate_result_negative": {
+    "tarislar_garden_apartments.handoff_due": {
       "expression": {
-        "fact": "field.alternate_result", "op": "lt", "value": 0
+        "fact": "field.package_run_status", "op": "eq", "value": "handoff_due"
       },
       "provenance": {
         "romAddresses": ["0x5447E", "0x15FF20", "0x15FDB8"],
-        "scope": "negative_package_pickup_branch"
+        "scope": "package_handoff_due_branch"
       }
     },
     "tarislar_garden_apartments.tomb_departure_available": {
@@ -277,7 +277,7 @@
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
           { "fact": "field.mode", "op": "eq", "value": 1 },
           { "fact": "field.event_code", "op": "eq", "value": 7 },
-          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_30", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_21", "op": "eq", "value": true },
           { "fact": "story.story_flag_bit_16", "op": "eq", "value": true },
@@ -334,20 +334,20 @@
     },
     "wylie_gala_inn.package_delivery_complete": {
       "expression": {
-        "fact": "field.alternate_result", "op": "gt", "value": 0
+        "fact": "field.package_run_status", "op": "eq", "value": "payment_due"
       },
       "provenance": {
         "romAddresses": ["0x1F77C", "0xF49E0"],
-        "scope": "positive_signed_run_result"
+        "scope": "payment_due_run_outcome"
       }
     },
     "wylie_gala_inn.package_delivery_pending": {
       "expression": {
-        "fact": "field.alternate_result", "op": "lt", "value": 0
+        "fact": "field.package_run_status", "op": "eq", "value": "handoff_due"
       },
       "provenance": {
         "romAddresses": ["0x1F77C", "0xF4A50"],
-        "scope": "negative_signed_run_result"
+        "scope": "handoff_due_run_outcome"
       }
     },
     "wylie_gala_inn.free_stay_available": {
@@ -366,7 +366,7 @@
           { "fact": "location.id", "op": "eq", "value": "stoker_motel" },
           { "fact": "field.mode", "op": "eq", "value": 2 },
           { "fact": "field.event_code", "op": "eq", "value": 2 },
-          { "fact": "field.alternate_result", "op": "eq", "value": 0 },
+          { "fact": "field.package_run_status", "op": "eq", "value": "none" },
           { "fact": "story.story_flag_bit_0", "op": "eq", "value": false }
         ]
       },
@@ -389,22 +389,22 @@
         "scope": "scene_2_event_2_prompt_context"
       }
     },
-    "stoker_motel.alternate_result_positive": {
+    "stoker_motel.payment_due": {
       "expression": {
-        "fact": "field.alternate_result", "op": "gt", "value": 0
+        "fact": "field.package_run_status", "op": "eq", "value": "payment_due"
       },
       "provenance": {
         "romAddresses": ["0x1F65A", "0xF4AF4"],
-        "scope": "positive_signed_prompt_branch"
+        "scope": "payment_due_prompt_branch"
       }
     },
-    "stoker_motel.alternate_result_negative": {
+    "stoker_motel.handoff_due": {
       "expression": {
-        "fact": "field.alternate_result", "op": "lt", "value": 0
+        "fact": "field.package_run_status", "op": "eq", "value": "handoff_due"
       },
       "provenance": {
         "romAddresses": ["0x1F65A", "0xF4AEC"],
-        "scope": "negative_signed_prompt_branch"
+        "scope": "handoff_due_prompt_branch"
       }
     },
     "vid_phone.quinton_contact_not_called": {

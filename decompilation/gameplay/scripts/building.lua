@@ -322,8 +322,7 @@ function Building.resolve_field_location_route(context)
        context.scene_id % 1 ~= 0 or context.scene_id < 0 or
        context.scene_id > 255 or
        type(context.event_code) ~= "string" or
-       type(context.transition) ~= "table" or
-       type(context.alternate_result) ~= "number" then
+       type(context.transition) ~= "table" then
         return no_route("event_0")
     end
 

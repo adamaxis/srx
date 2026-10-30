@@ -36,7 +36,7 @@ local ordinary_entry = Building.resolve_field_location_route({
     event_index = 0,
     event_table_available = true,
     event_table = { E.Scene.RESOURCE_ACTIVITY_30 },
-    alternate_result = 0,
+    package_run_status = "none",
 })
 assert(ordinary_entry.kind == "area_event" and
        ordinary_entry.area_event_target == E.Scene.RESOURCE_ACTIVITY_30 and
@@ -57,7 +57,7 @@ local elevator_entry = Building.resolve_field_location_route({
     event_index = 29,
     event_table_available = true,
     event_table = elevator_event_table,
-    alternate_result = 0,
+    package_run_status = "none",
 })
 assert(elevator_entry.kind == "area_event" and
        elevator_entry.area_event_target == E.Scene.RESOURCE_ACTIVITY_35 and

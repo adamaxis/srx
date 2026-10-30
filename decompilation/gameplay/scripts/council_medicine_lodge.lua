@@ -22,10 +22,10 @@ function MedicineLodge.present_field_exit_prompt()
 
     -- ROM 0x1FD04 selects package records 0x1118E2 and 0x1118EA for
     -- negative and positive alternate results, respectively.
-    if game.field.alternate_result < 0 then
+    if game.field.package_run_status == E.PackageRunStatus.HANDOFF_DUE then
         game.ui.say("package_handoff")
         return "field_return"
-    elseif game.field.alternate_result > 0 then
+    elseif game.field.package_run_status == E.PackageRunStatus.PAYMENT_DUE then
         game.ui.say("package_payment")
         return "field_return"
     end

@@ -153,11 +153,11 @@ end
 function Hospital.present_field_exit_prompt()
     local site = assert_hospital_field_context()
 
-    local alternate = game.field.alternate_result
-    if alternate < 0 then
+    local package_run_status = game.field.package_run_status
+    if package_run_status == E.PackageRunStatus.HANDOFF_DUE then
         game.ui.say("package_handoff")
         return "field_return"
-    elseif alternate > 0 then
+    elseif package_run_status == E.PackageRunStatus.PAYMENT_DUE then
         game.ui.say("package_payment")
         return "field_return"
     end

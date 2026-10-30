@@ -30,7 +30,7 @@ local service_link = {
     route_condition_id = condition("test.gates.route", {
         equal("story.story_flag_bit_11", true),
         equal("story.story_flag_bit_15", false),
-        equal("field.alternate_result", 0),
+        equal("field.package_run_status", "none"),
     }),
     indexed_title_service_module = "gates_undersound",
     indexed_title_service_function = "present_ogami_departure",
@@ -51,7 +51,7 @@ game = {
         type = "building",
         id = "downtown_site_04_gates_undersound",
     },
-    field = { event_code = 3, alternate_result = 0 },
+    field = { event_code = 3, package_run_status = "none" },
     ui = {
         say = function(event_id)
             game.last_dialogue_event = event_id
@@ -107,7 +107,7 @@ local context = {
     event_index = 3,
     event_table_available = true,
     event_table = { 0, 0, 0, 21 },
-    alternate_result = 0,
+    package_run_status = "none",
 }
 
 local route = Building.resolve_field_location_route(context)
@@ -146,7 +146,7 @@ assert(pre_mako_route.kind == "area_event" and
        pre_mako_route.indexed_title_service == nil)
 
 game.state.story_flag_bit_11 = true
-context.alternate_result = 1
+context.package_run_status = "payment_due"
 local alternate_route = Building.resolve_field_location_route(context)
 assert(alternate_route.kind == "area_event" and
        alternate_route.area_event_target == 21 and
