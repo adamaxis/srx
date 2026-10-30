@@ -60,6 +60,12 @@ static_assert(
 using ActorBehaviorContext =
     shadowrun::ghidra_conversion::scripting::ScriptActorBehaviorContext;
 
+bool has_story_fact(
+    const shadowrun::ghidra_conversion::scripting::StoryFacts& facts,
+    const std::string_view fact_id) {
+    return facts.find(std::string(fact_id)) != facts.end();
+}
+
 // Test fixtures may start from an extracted record value, then hand the Lua
 // runtime named gameplay facts exactly as the native field adapter does.
 void set_actor_facts_from_fixture_record(
@@ -2033,8 +2039,8 @@ bool verify_dialogue_graph_outcomes(
         "gates.undersound", "gates_undersound_narrator");
     scripts.set_field_mode_context(ScriptFieldModeContext{0U, 3U, 0});
     scripts.set_story_state({
-        {"story_flag_bit_11", true},
-        {"story_flag_bit_15", false},
+        {"mako_defeated", true},
+        {"ogami_left", false},
         {"field_mode_effect_flag_bit_26", true},
         {"field_mode_effect_flag_bit_27", false},
     });
@@ -2066,9 +2072,8 @@ bool verify_dialogue_graph_outcomes(
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
                     task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*task.dialogue_outcome) ==
-                        DialogueOutcomeType::continue_in_place &&
-                    gates_state.at("story_trigger_active_15") &&
-                    gates_state.at("story_flag_bit_15") &&
+                        DialogueOutcomeType::continue_in_place && !has_story_fact(gates_state, "story_trigger_active_15") &&
+                    gates_state.at("ogami_left") &&
                     !gates_state.at("field_mode_effect_flag_bit_26") &&
                     gates_state.at("field_mode_effect_flag_bit_27"),
                 "Gates graph lost its ordered effects or typed outcome")) {
@@ -2096,8 +2101,8 @@ bool verify_dialogue_graph_outcomes(
         "renraku_offices_narrator");
     scripts.set_field_mode_context(ScriptFieldModeContext{0U, 6U, 0});
     scripts.set_story_state({
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_12", false},
+        {"ito_fight_won", true},
+        {"renraku_map_overlay", false},
     });
     task = scripts.start_task(
         "renraku_offices", "present_map_overlay_entry");
@@ -2114,9 +2119,8 @@ bool verify_dialogue_graph_outcomes(
     if (!expect(task.status == ScriptTaskStep::Status::completed &&
                     task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*task.dialogue_outcome) ==
-                        DialogueOutcomeType::resume_source_route &&
-                    renraku_state.at("story_trigger_active_12") &&
-                    !renraku_state.at("story_flag_bit_12"),
+                        DialogueOutcomeType::resume_source_route && !has_story_fact(renraku_state, "story_trigger_active_12") &&
+                    !renraku_state.at("renraku_map_overlay"),
                 "Renraku graph did not resume the selected source route")) {
         return false;
     }
@@ -2126,8 +2130,8 @@ bool verify_dialogue_graph_outcomes(
         "fuchi_offices_narrator", {}, 3U);
     scripts.set_field_mode_context(ScriptFieldModeContext{0U, 2U, 0});
     scripts.set_story_state({
-        {"story_flag_bit_25", true},
-        {"story_flag_bit_14", false},
+        {"hospital_visited", true},
+        {"cyberheart_safe", false},
     });
     task = scripts.start_task(
         "fuchi_offices", "present_cyberheart_entry");
@@ -2156,9 +2160,8 @@ bool verify_dialogue_graph_outcomes(
     return expect(task.status == ScriptTaskStep::Status::completed &&
                       task.dialogue_outcome.has_value() &&
                       dialogue_outcome_type(*task.dialogue_outcome) ==
-                          DialogueOutcomeType::resume_source_route &&
-                      fuchi_state.at("story_trigger_active_14") &&
-                      !fuchi_state.at("story_flag_bit_14"),
+                          DialogueOutcomeType::resume_source_route && !has_story_fact(fuchi_state, "story_trigger_active_14") &&
+                      !fuchi_state.at("cyberheart_safe"),
                   "Fuchi graph did not resume the selected source route");
 }
 
@@ -2436,10 +2439,10 @@ int main() {
         return 1;
     }
     scripts.set_story_state({
-        {"story_flag_bit_12", false},
-        {"story_flag_bit_14", false},
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_25", true},
+        {"renraku_map_overlay", false},
+        {"cyberheart_safe", false},
+        {"ito_fight_won", true},
+        {"hospital_visited", true},
     });
     const auto renraku_safe =
         scripts.resolve_field_safe_action(0x28U, true, 0U);
@@ -2450,7 +2453,7 @@ int main() {
                     renraku_safe->raise_alarm &&
                     renraku_safe->reset_strike_team_stage &&
                     renraku_safe->defer_alarm_transition &&
-                    renraku_safe_state.at("story_flag_bit_12"),
+                    renraku_safe_state.at("renraku_map_overlay"),
                 "0x540D6 Lua policy did not apply its gated one-shot reward")) {
         std::cerr << scripts.failure() << '\n';
         return 1;
@@ -2469,7 +2472,7 @@ int main() {
                     fuchi_safe->action ==
                         ScriptFieldSafeAction::fuchi_prototype_cyberheart &&
                     !fuchi_safe->raise_alarm &&
-                    fuchi_safe_state.at("story_flag_bit_14") &&
+                    fuchi_safe_state.at("cyberheart_safe") &&
                     fuchi_safe_repeat.has_value() &&
                     fuchi_safe_repeat->action ==
                         ScriptFieldSafeAction::none,
@@ -3792,10 +3795,10 @@ int main() {
     scene2_location.event_table[4] = 13U;
     scene2_location.event_table[11] = 51U;
     scene2_location.event_code = FieldCollisionEventCode::event_2;
-    scripts.set_story_state({{"story_flag_bit_0", false}});
+    scripts.set_story_state({{"motel_bill_paid", false}});
     const auto stoker_route =
         scripts.resolve_field_location_route(scene2_location);
-    scripts.set_story_state({{"story_flag_bit_0", true}});
+    scripts.set_story_state({{"motel_bill_paid", true}});
     const auto stoker_paid_route =
         scripts.resolve_field_location_route(scene2_location);
     scripts.set_story_state({});
@@ -3949,7 +3952,7 @@ int main() {
                   << '\n';
         return 13;
     }
-    scripts.set_story_state({{"story_flag_bit_10", false}});
+    scripts.set_story_state({{"michael_alias_learned", false}});
     const auto icarus_blocked_event30 = resolve_event30_location(12U);
     if (!expect(
             restaurant_event30.has_value() &&
@@ -4083,14 +4086,14 @@ int main() {
                         ScriptTaskStep::Status::completed &&
                     icarus_blocked_task.result_id ==
                         std::optional<std::string>{"field_return"} &&
-                    scripts.story_state().at("story_flag_bit_10") == false,
+                    scripts.story_state().at("michael_alias_learned") == false,
                 "Icarus blocked-entry dialogue did not return without state changes")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_10", true},
+        {"michael_alias_learned", true},
         {"mr_johnsons_flag_bit_4", false},
         {"mr_johnsons_flag_bit_7", false},
     });
@@ -4393,10 +4396,10 @@ int main() {
     scripts.set_story_state({
         {"mr_johnsons_flag_bit_1", true},
         {"mr_johnsons_flag_bit_2", false},
-        {"story_flag_bit_2", true},
-        {"story_flag_bit_3", false},
-        {"story_flag_bit_10", true},
-        {"story_flag_bit_11", false},
+        {"owlfeather_asked", true},
+        {"aragorn_found", false},
+        {"michael_alias_learned", true},
+        {"mako_defeated", false},
         {"field_mode_flag_bit_11", true},
         {"field_mode_flag_bit_12", false},
         {"field_mode_flag_bit_21", false},
@@ -4539,10 +4542,10 @@ int main() {
     scripts.set_story_state({
         {"mr_johnsons_flag_bit_1", false},
         {"mr_johnsons_flag_bit_2", true},
-        {"story_flag_bit_2", false},
-        {"story_flag_bit_3", false},
-        {"story_flag_bit_10", false},
-        {"story_flag_bit_11", false},
+        {"owlfeather_asked", false},
+        {"aragorn_found", false},
+        {"michael_alias_learned", false},
+        {"mako_defeated", false},
         {"field_mode_flag_bit_11", false},
         {"field_mode_flag_bit_12", false},
         {"field_mode_flag_bit_21", false},
@@ -4684,14 +4687,14 @@ int main() {
     const auto renraku_office =
         scripts.resolve_field_location_route(renraku_office_route);
     scripts.set_story_state({
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_12", false},
+        {"ito_fight_won", true},
+        {"renraku_map_overlay", false},
     });
     const auto renraku_office_first_visit =
         scripts.resolve_field_location_route(renraku_office_route);
     scripts.set_story_state({
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_12", true},
+        {"ito_fight_won", true},
+        {"renraku_map_overlay", true},
     });
     const auto renraku_office_repeat_visit =
         scripts.resolve_field_location_route(renraku_office_route);
@@ -4730,14 +4733,14 @@ int main() {
     fuchi_office_route.event_table_available = true;
     fuchi_office_route.event_table[2U] = 21U;
     scripts.set_story_state({
-        {"story_flag_bit_25", true},
-        {"story_flag_bit_14", false},
+        {"hospital_visited", true},
+        {"cyberheart_safe", false},
     });
     const auto fuchi_office_first_visit =
         scripts.resolve_field_location_route(fuchi_office_route);
     scripts.set_story_state({
-        {"story_flag_bit_25", true},
-        {"story_flag_bit_14", true},
+        {"hospital_visited", true},
+        {"cyberheart_safe", true},
     });
     const auto fuchi_office_repeat_visit =
         scripts.resolve_field_location_route(fuchi_office_route);
@@ -4749,14 +4752,14 @@ int main() {
     gates_undersound_route.event_table_available = true;
     gates_undersound_route.event_table[3U] = 21U;
     scripts.set_story_state({
-        {"story_flag_bit_11", true},
-        {"story_flag_bit_15", false},
+        {"mako_defeated", true},
+        {"ogami_left", false},
     });
     const auto gates_undersound_first_visit =
         scripts.resolve_field_location_route(gates_undersound_route);
     scripts.set_story_state({
-        {"story_flag_bit_11", false},
-        {"story_flag_bit_15", false},
+        {"mako_defeated", false},
+        {"ogami_left", false},
     });
     const auto gates_undersound_pre_mako =
         scripts.resolve_field_location_route(gates_undersound_route);
@@ -4818,12 +4821,24 @@ int main() {
             {4U, 4U, 13U, WorldActivityMode::field},
             {4U, 5U, 13U, WorldActivityMode::field},
         }};
-    StoryFacts known_clear_story_flags;
-    for (unsigned bit = 0U; bit < 32U; ++bit) {
-        known_clear_story_flags["story_flag_bit_" + std::to_string(bit)] =
-            false;
+    constexpr std::array<std::string_view, 31U> kKnownClearStoryFacts{{
+        "motel_bill_paid", "tarislar_asked_shale", "owlfeather_asked",
+        "aragorn_found", "aragorn_freed_told", "shaman_met",
+        "shaman_item4_given", "shaman_pelt_given", "serpent_scale_taken",
+        "shaman_tasks_done", "michael_alias_learned", "mako_defeated",
+        "renraku_map_overlay", "michael_mission_told", "cyberheart_safe",
+        "ogami_left", "ito_fight_won", "ritual_of_binding",
+        "red_buffalo_woman", "ilene_met", "gillian_initiation",
+        "garden_apts_entered", "landmark_map_taken", "holopix_shown",
+        "medicine_lodge_turned_away", "hospital_visited",
+        "renraku_map_shown", "both_maps_shown", "post_ito_briefed",
+        "heart_delivered", "frosty_met",
+    }};
+    StoryFacts known_clear_story_facts;
+    for (const auto fact_id : kKnownClearStoryFacts) {
+        known_clear_story_facts.emplace(std::string(fact_id), false);
     }
-    scripts.set_story_state(known_clear_story_flags);
+    scripts.set_story_state(known_clear_story_facts);
     bool authored_location_routes_match = true;
     for (const auto& route_case : kAuthoredLocationRouteCases) {
         FieldScriptRouteContext route_context{};
@@ -5068,8 +5083,8 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_18", true},
-        {"story_flag_bit_19", false},
+        {"red_buffalo_woman", true},
+        {"ilene_met", false},
         {"field_mode_effect_flag_bit_0", false},
         {"notebook_tip_flag_bit_12", true},
         {"pending_world_effect", false},
@@ -5106,19 +5121,19 @@ int main() {
                (marker == final_facts.end() || !marker->second);
     };
     const StoryFacts ilene_allowed_facts{
-        {"story_flag_bit_18", true},
-        {"story_flag_bit_19", false},
+        {"red_buffalo_woman", true},
+        {"ilene_met", false},
         {"field_mode_effect_flag_bit_0", false},
         {"notebook_tip_flag_bit_12", true},
         {"pending_world_effect", false},
     };
     auto ilene_blocked_facts = ilene_allowed_facts;
-    ilene_blocked_facts["story_flag_bit_18"] = false;
+    ilene_blocked_facts["red_buffalo_woman"] = false;
     const bool blocks_missing_shaman = verify_ilene_gate_blocks(
         ilene_blocked_facts, ScriptFieldModeContext{2U, 0U, 0},
         "hollywood_correctional_facility");
     ilene_blocked_facts = ilene_allowed_facts;
-    ilene_blocked_facts["story_flag_bit_19"] = true;
+    ilene_blocked_facts["ilene_met"] = true;
     const bool blocks_already_met = verify_ilene_gate_blocks(
         ilene_blocked_facts, ScriptFieldModeContext{2U, 0U, 0},
         "hollywood_correctional_facility");
@@ -12741,7 +12756,7 @@ int main() {
         return 4;
     }
 
-    const StoryFacts completed{{"story_flag_bit_0", true}};
+    const StoryFacts completed{{"motel_bill_paid", true}};
     scripts.set_story_state(completed);
     scripts.set_location_context("motel", "stoker_motel");
     const auto manager =
@@ -12760,7 +12775,7 @@ int main() {
                 "Michael quest hook leaked into another motel")) {
         return 10;
     }
-    const StoryFacts stoker_unpaid{{"story_flag_bit_0", false}};
+    const StoryFacts stoker_unpaid{{"motel_bill_paid", false}};
     scripts.set_story_state(stoker_unpaid);
     scripts.set_location_context(
         "motel", "stoker_motel", "stoker.motel", "stoker");
@@ -12774,8 +12789,7 @@ int main() {
                         ScriptNativeOperation::Type::ui_say &&
                     stoker_interaction.operation->dialogue.has_value() &&
                     stoker_interaction.operation->dialogue->event_id ==
-                        "arrival" &&
-                    scripts.story_state().at("story_trigger_active_0"),
+                        "arrival" && !has_story_fact(scripts.story_state(), "story_trigger_active_0"),
                 "Stoker JSON graph did not begin with its source page")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
@@ -13009,8 +13023,7 @@ int main() {
     }
 
     StoryFacts native_story{
-        {"story_flag_bit_0", false},
-        {"story_trigger_active_0", false},
+        {"motel_bill_paid", false},
     };
     scripts.set_story_fact_accessors(
         [&native_story](const std::string_view name)
@@ -13044,7 +13057,7 @@ int main() {
         return 13;
     }
     scripts.cancel_task();
-    native_story["story_flag_bit_0"] = true;
+    native_story["motel_bill_paid"] = true;
     const auto native_completed_visit =
         scripts.start_task("michael_package", "stoker_interaction");
     if (!expect(native_completed_visit.status ==
@@ -13364,10 +13377,10 @@ int main() {
     constexpr std::string_view kTarislarCityInnLocation =
         "puyallup_site_03_tarislar_city_inn";
     scripts.set_story_state({
-        {"story_flag_bit_0", true},
-        {"story_flag_bit_1", false},
-        {"story_flag_bit_13", false},
-        {"story_flag_bit_30", false},
+        {"motel_bill_paid", true},
+        {"tarislar_asked_shale", false},
+        {"michael_mission_told", false},
+        {"frosty_met", false},
     });
     scripts.set_location_context(
         "building", kTarislarCityInnLocation, "tarislar.city_inn",
@@ -13435,8 +13448,7 @@ int main() {
                     inn_task.operation->dialogue->event_id == "entry" &&
                     inn_task.operation->dialogue->input_delay_frames == 12U &&
                     inn_entry_text.has_value() &&
-                    inn_entry_text->title_key == "tarislar.city_inn.entry" &&
-                    scripts.story_state().at("story_trigger_active_1"),
+                    inn_entry_text->title_key == "tarislar.city_inn.entry" && !has_story_fact(scripts.story_state(), "story_trigger_active_1"),
                 "Inn JSON graph did not open its generated intro under story trigger 1")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -13707,10 +13719,10 @@ int main() {
     owlfeather_context.event_table[0U] = 13U;
     owlfeather_context.alternate_result = 0;
     scripts.set_story_state({
-        {"story_flag_bit_1", true},
-        {"story_flag_bit_2", false},
-        {"story_flag_bit_3", false},
-        {"story_flag_bit_4", false},
+        {"tarislar_asked_shale", true},
+        {"owlfeather_asked", false},
+        {"aragorn_found", false},
+        {"aragorn_freed_told", false},
     });
     auto owlfeather_route =
         scripts.resolve_field_location_route(owlfeather_context);
@@ -13753,10 +13765,10 @@ int main() {
         return 17;
     }
     scripts.set_story_state({
-        {"story_flag_bit_1", false},
-        {"story_flag_bit_2", true},
-        {"story_flag_bit_3", false},
-        {"story_flag_bit_4", false},
+        {"tarislar_asked_shale", false},
+        {"owlfeather_asked", true},
+        {"aragorn_found", false},
+        {"aragorn_freed_told", false},
     });
     owlfeather_route = scripts.resolve_field_location_route(owlfeather_context);
     if (!expect(owlfeather_route.has_value() &&
@@ -13768,10 +13780,10 @@ int main() {
         return 17;
     }
     scripts.set_story_state({
-        {"story_flag_bit_1", false},
-        {"story_flag_bit_2", false},
-        {"story_flag_bit_3", true},
-        {"story_flag_bit_4", false},
+        {"tarislar_asked_shale", false},
+        {"owlfeather_asked", false},
+        {"aragorn_found", true},
+        {"aragorn_freed_told", false},
     });
     owlfeather_route = scripts.resolve_field_location_route(owlfeather_context);
     if (!expect(owlfeather_route.has_value() &&
@@ -13783,10 +13795,10 @@ int main() {
         return 17;
     }
     scripts.set_story_state({
-        {"story_flag_bit_1", false},
-        {"story_flag_bit_2", false},
-        {"story_flag_bit_3", false},
-        {"story_flag_bit_4", false},
+        {"tarislar_asked_shale", false},
+        {"owlfeather_asked", false},
+        {"aragorn_found", false},
+        {"aragorn_freed_told", false},
     });
     owlfeather_route = scripts.resolve_field_location_route(owlfeather_context);
     if (!expect(owlfeather_route.has_value() &&
@@ -13820,8 +13832,8 @@ int main() {
         return scripts.resolve_field_location_route(mitsuhama_context);
     };
     scripts.set_story_state({
-        {"story_flag_bit_2", true},
-        {"story_flag_bit_3", false},
+        {"owlfeather_asked", true},
+        {"aragorn_found", false},
         {"field_mode_flag_bit_12", true},
         {"notebook_tip_flag_bit_68", false},
         {"notebook_tip_flag_bit_69", false},
@@ -13844,8 +13856,8 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_2", true},
-        {"story_flag_bit_3", false},
+        {"owlfeather_asked", true},
+        {"aragorn_found", false},
         {"field_mode_flag_bit_12", false},
         {"notebook_tip_flag_bit_68", true},
         {"notebook_tip_flag_bit_69", false},
@@ -13858,8 +13870,8 @@ int main() {
         return 17;
     }
     scripts.set_story_state({
-        {"story_flag_bit_2", true},
-        {"story_flag_bit_3", false},
+        {"owlfeather_asked", true},
+        {"aragorn_found", false},
         {"field_mode_flag_bit_12", false},
         {"notebook_tip_flag_bit_68", false},
         {"notebook_tip_flag_bit_69", true},
@@ -13883,8 +13895,8 @@ int main() {
                           reason);
         };
     scripts.set_story_state({
-        {"story_flag_bit_2", true},
-        {"story_flag_bit_3", false},
+        {"owlfeather_asked", true},
+        {"aragorn_found", false},
         {"field_mode_flag_bit_12", false},
         {"notebook_tip_flag_bit_68", false},
         {"notebook_tip_flag_bit_69", false},
@@ -13895,8 +13907,8 @@ int main() {
         return 17;
     }
     scripts.set_story_state({
-        {"story_flag_bit_2", false},
-        {"story_flag_bit_3", false},
+        {"owlfeather_asked", false},
+        {"aragorn_found", false},
         {"field_mode_flag_bit_12", true},
         {"notebook_tip_flag_bit_68", false},
         {"notebook_tip_flag_bit_69", false},
@@ -13907,8 +13919,8 @@ int main() {
         return 17;
     }
     scripts.set_story_state({
-        {"story_flag_bit_2", true},
-        {"story_flag_bit_3", true},
+        {"owlfeather_asked", true},
+        {"aragorn_found", true},
         {"field_mode_flag_bit_12", true},
         {"notebook_tip_flag_bit_68", false},
         {"notebook_tip_flag_bit_69", false},
@@ -13928,8 +13940,8 @@ int main() {
     mitsuhama_context.alternate_result = 0;
     scripts.set_field_mode_context(ScriptFieldModeContext{3U, 3U, 0});
     scripts.set_story_state({
-        {"story_flag_bit_2", true},
-        {"story_flag_bit_3", false},
+        {"owlfeather_asked", true},
+        {"aragorn_found", false},
         {"field_mode_flag_bit_12", false},
         {"notebook_tip_flag_bit_69", false},
     });
@@ -13949,8 +13961,8 @@ int main() {
         "aragorn_mitsuhama_narrator");
     scripts.set_field_mode_context(ScriptFieldModeContext{3U, 3U, 0});
     scripts.set_story_state({
-        {"story_flag_bit_2", true},
-        {"story_flag_bit_3", false},
+        {"owlfeather_asked", true},
+        {"aragorn_found", false},
         {"field_mode_flag_bit_12", true},
         {"notebook_tip_flag_bit_68", false},
         {"notebook_tip_flag_bit_69", false},
@@ -13974,10 +13986,9 @@ int main() {
     if (!expect(mitsuhama_task.status == ScriptTaskStep::Status::completed &&
                     mitsuhama_task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*mitsuhama_task.dialogue_outcome) ==
-                        DialogueOutcomeType::resume_source_route &&
-                    mitsuhama_state.at("story_trigger_active_3") &&
+                        DialogueOutcomeType::resume_source_route && !has_story_fact(mitsuhama_state, "story_trigger_active_3") &&
                     mitsuhama_state.at("world_effect_active") &&
-                    !mitsuhama_state.at("story_flag_bit_3") &&
+                    !mitsuhama_state.at("aragorn_found") &&
                     scripts.dialogue_text(
                         "salish.owlfeather.page.mitsuhama_entry") != nullptr,
                 "Mitsuhama's entry graph did not arm FFE180 and resume Scene 30")) {
@@ -13989,10 +14000,10 @@ int main() {
                                  "salish.owlfeather", "david_owlfeather");
     scripts.set_field_mode_context(ScriptFieldModeContext{6U, 0U, 0});
     scripts.set_story_state({
-        {"story_flag_bit_1", true},
-        {"story_flag_bit_2", false},
-        {"story_flag_bit_3", false},
-        {"story_flag_bit_4", false},
+        {"tarislar_asked_shale", true},
+        {"owlfeather_asked", false},
+        {"aragorn_found", false},
+        {"aragorn_freed_told", false},
         {"field_mode_effect_flag_bit_8", true},
         {"field_mode_effect_flag_bit_9", true},
     });
@@ -14004,8 +14015,7 @@ int main() {
                     owlfeather_task.operation->type ==
                         ScriptNativeOperation::Type::ui_menu &&
                     owlfeather_task.operation->menu.has_value() &&
-                    owlfeather_task.operation->menu->id == "opening" &&
-                    scripts.story_state().at("story_trigger_active_2"),
+                    owlfeather_task.operation->menu->id == "opening" && !has_story_fact(scripts.story_state(), "story_trigger_active_2"),
                 "Owlfeather's title service did not open its ROM opening under trigger 2")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -14034,7 +14044,7 @@ int main() {
     if (!expect(owlfeather_task.operation.has_value() &&
                     owlfeather_task.operation->menu.has_value() &&
                     owlfeather_task.operation->menu->id == "brother_more" &&
-                    scripts.story_state().at("story_flag_bit_2") &&
+                    scripts.story_state().at("owlfeather_asked") &&
                     !scripts.story_state().at("field_mode_effect_flag_bit_8") &&
                     !scripts.story_state().at("field_mode_effect_flag_bit_9"),
                 "Owlfeather's brother option did not mark bit 2 and present the holopix response")) {
@@ -14062,10 +14072,10 @@ int main() {
     // The shared information loop visits each nested topic and returns via
     // the two source-backed goodbye pages without accepting the brother task.
     scripts.set_story_state({
-        {"story_flag_bit_1", true},
-        {"story_flag_bit_2", false},
-        {"story_flag_bit_3", false},
-        {"story_flag_bit_4", false},
+        {"tarislar_asked_shale", true},
+        {"owlfeather_asked", false},
+        {"aragorn_found", false},
+        {"aragorn_freed_told", false},
     });
     owlfeather_task = scripts.start_task(
         "salish_owlfeather", "present_first_contact");
@@ -14082,17 +14092,17 @@ int main() {
                     owlfeather_task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*owlfeather_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
-                    !scripts.story_state().at("story_flag_bit_2"),
+                    !scripts.story_state().at("owlfeather_asked"),
                 "Owlfeather's shared Lands/Rangers/villages/Council topic loop changed the task gate or missed its terminal")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_1", false},
-        {"story_flag_bit_2", true},
-        {"story_flag_bit_3", false},
-        {"story_flag_bit_4", false},
+        {"tarislar_asked_shale", false},
+        {"owlfeather_asked", true},
+        {"aragorn_found", false},
+        {"aragorn_freed_told", false},
         {"field_mode_effect_flag_bit_9", true},
     });
     owlfeather_task = scripts.start_task(
@@ -14114,17 +14124,17 @@ int main() {
                     owlfeather_task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*owlfeather_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
-                    !scripts.story_state().at("story_flag_bit_3"),
+                    !scripts.story_state().at("aragorn_found"),
                 "Owlfeather's Later branch did not return in place with its repeat gate open")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_1", false},
-        {"story_flag_bit_2", false},
-        {"story_flag_bit_3", true},
-        {"story_flag_bit_4", false},
+        {"tarislar_asked_shale", false},
+        {"owlfeather_asked", false},
+        {"aragorn_found", true},
+        {"aragorn_freed_told", false},
         {"field_mode_effect_flag_bit_8", true},
         {"field_mode_effect_flag_bit_9", true},
         {"field_mode_effect_flag_bit_10", true},
@@ -14167,8 +14177,7 @@ int main() {
                     owlfeather_task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*owlfeather_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
-                    scripts.story_state().at("story_flag_bit_4") &&
-                    scripts.story_state().at("story_trigger_active_4"),
+                    scripts.story_state().at("aragorn_freed_told") && !has_story_fact(scripts.story_state(), "story_trigger_active_4"),
                 "Owlfeather's Aragorn return path missed command 0x19, its handler tail, or the typed same-map outcome")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -14187,8 +14196,8 @@ int main() {
     red_buffalo_context.event_table[1U] = 13U;
     red_buffalo_context.alternate_result = 0;
     scripts.set_story_state({
-        {"story_flag_bit_17", true},
-        {"story_flag_bit_18", false},
+        {"ritual_of_binding", true},
+        {"red_buffalo_woman", false},
     });
     const auto red_buffalo_route =
         scripts.resolve_field_location_route(red_buffalo_context);
@@ -14213,8 +14222,7 @@ int main() {
     if (!expect(red_buffalo_task.status == ScriptTaskStep::Status::completed &&
                     red_buffalo_task.result_id ==
                         std::optional<std::string>{"field_return"} &&
-                    scripts.story_state().at("story_flag_bit_18") &&
-                    scripts.story_state().at("story_trigger_active_18") &&
+                    scripts.story_state().at("red_buffalo_woman") && !has_story_fact(scripts.story_state(), "story_trigger_active_18") &&
                     scripts.story_state().at("notebook_tip_flag_bit_5") &&
                     !scripts.story_state().at("notebook_tip_flag_bit_6") &&
                     !scripts.story_state().at("field_mode_effect_flag_bit_29") &&
@@ -14225,9 +14233,9 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_30", true},
-        {"story_flag_bit_16", false},
-        {"story_flag_bit_21", false},
+        {"frosty_met", true},
+        {"ito_fight_won", false},
+        {"garden_apts_entered", false},
     });
     constexpr std::string_view kTarislarLocation =
         "puyallup_site_02_tarislar_garden_apartments";
@@ -14326,12 +14334,12 @@ int main() {
     tarislar_context.alternate_result = 0;
     scripts.set_field_mode_context(ScriptFieldModeContext{1U, 7U, 0});
     scripts.set_story_state({
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_21", true},
-        {"story_flag_bit_26", false},
-        {"story_flag_bit_27", false},
-        {"story_flag_bit_28", true},
-        {"story_flag_bit_30", true},
+        {"ito_fight_won", true},
+        {"garden_apts_entered", true},
+        {"renraku_map_shown", false},
+        {"both_maps_shown", false},
+        {"post_ito_briefed", true},
+        {"frosty_met", true},
         {"group_item_flag_bit_8", false},
     });
     const auto tarislar_repeat_route =
@@ -14370,8 +14378,8 @@ int main() {
     tarislar_context.alternate_result = 0;
     scripts.set_field_mode_context(ScriptFieldModeContext{1U, 7U, 0});
     scripts.set_story_state({
-        {"story_flag_bit_21", true},
-        {"story_flag_bit_30", false},
+        {"garden_apts_entered", true},
+        {"frosty_met", false},
     });
     const auto tarislar_repeat_before_frosty =
         scripts.resolve_field_location_route(tarislar_context);
@@ -14385,12 +14393,12 @@ int main() {
         return 17;
     }
     scripts.set_story_state({
-        {"story_flag_bit_16", false},
-        {"story_flag_bit_21", true},
-        {"story_flag_bit_26", false},
-        {"story_flag_bit_27", false},
-        {"story_flag_bit_28", true},
-        {"story_flag_bit_30", true},
+        {"ito_fight_won", false},
+        {"garden_apts_entered", true},
+        {"renraku_map_shown", false},
+        {"both_maps_shown", false},
+        {"post_ito_briefed", true},
+        {"frosty_met", true},
         {"group_item_flag_bit_8", false},
     });
     auto tarislar_repeat = scripts.start_task(
@@ -14442,12 +14450,12 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_21", true},
-        {"story_flag_bit_26", false},
-        {"story_flag_bit_27", false},
-        {"story_flag_bit_28", true},
-        {"story_flag_bit_30", true},
+        {"ito_fight_won", true},
+        {"garden_apts_entered", true},
+        {"renraku_map_shown", false},
+        {"both_maps_shown", false},
+        {"post_ito_briefed", true},
+        {"frosty_met", true},
         {"group_item_flag_bit_7", false},
         {"group_item_flag_bit_8", false},
     });
@@ -14581,7 +14589,7 @@ int main() {
          "why_renraku"},
         {"renraku_explanation", "salish.red_buffalo.page.gillian", "more"},
     }};
-    scripts.set_story_state({{"story_flag_bit_16", false}});
+    scripts.set_story_state({{"ito_fight_won", false}});
     auto harlequin_no_ito = scripts.start_task(
         "harlequin_dialogue", "present_main_conversation");
     for (const auto& prompt : harlequin_main_prompts) {
@@ -14617,7 +14625,7 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_16", true},
+        {"ito_fight_won", true},
         {"group_item_flag_bit_7", false},
         {"group_item_flag_bit_8", false},
     });
@@ -14638,8 +14646,7 @@ int main() {
                     harlequin_ito, "ito_update",
                     "salish.red_buffalo.page.gillian_followup", "ito_killed",
                     "red_buffalo_woman", "salish.red_buffalo") &&
-                    scripts.story_state().at("story_flag_bit_28") &&
-                    scripts.story_state().at("story_trigger_active_28"),
+                    scripts.story_state().at("post_ito_briefed") && !has_story_fact(scripts.story_state(), "story_trigger_active_28"),
                 "Shared Harlequin Ito branch did not apply command 0x40 before its choice")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -14677,12 +14684,12 @@ int main() {
                                  "tarislar_apartments_narrator");
     scripts.set_field_mode_context(ScriptFieldModeContext{1U, 7U, 0});
     scripts.set_story_state({
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_21", true},
-        {"story_flag_bit_26", false},
-        {"story_flag_bit_27", false},
-        {"story_flag_bit_28", true},
-        {"story_flag_bit_30", true},
+        {"ito_fight_won", true},
+        {"garden_apts_entered", true},
+        {"renraku_map_shown", false},
+        {"both_maps_shown", false},
+        {"post_ito_briefed", true},
+        {"frosty_met", true},
         {"group_item_flag_bit_7", false},
         {"group_item_flag_bit_8", true},
     });
@@ -14709,8 +14716,7 @@ int main() {
                     "salish.red_buffalo.page.ito_detail",
                     "tarislar_apartments_narrator",
                     "tarislar.garden.apartments.entry") &&
-                    scripts.story_state().at("story_flag_bit_26") &&
-                    scripts.story_state().at("story_trigger_active_26"),
+                    scripts.story_state().at("renraku_map_shown") && !has_story_fact(scripts.story_state(), "story_trigger_active_26"),
                 "Shared one-map graph lost ROM text 0xFC921 or command 0x46's bit-26 effect")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -14734,7 +14740,7 @@ int main() {
                     "tarislar_apartments_narrator",
                     "tarislar.garden.apartments.entry") &&
                     scripts.story_state().at("field_mode_effect_flag_bit_12") &&
-                    !scripts.story_state().at("story_flag_bit_27"),
+                    !scripts.story_state().at("both_maps_shown"),
                 "Shared one-map graph lost command 0x47's FFFC34 bit-12 / bit-26 branch")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -14768,7 +14774,7 @@ int main() {
                     "salish.red_buffalo.page.branch_4",
                     "tarislar_apartments_narrator",
                     "tarislar.garden.apartments.entry", "") &&
-                    !scripts.story_state().at("story_flag_bit_27"),
+                    !scripts.story_state().at("both_maps_shown"),
                 "Shared one-map graph lost its final ROM page or set the paired-map flag")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -14784,12 +14790,12 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_21", true},
-        {"story_flag_bit_26", true},
-        {"story_flag_bit_27", false},
-        {"story_flag_bit_28", true},
-        {"story_flag_bit_30", true},
+        {"ito_fight_won", true},
+        {"garden_apts_entered", true},
+        {"renraku_map_shown", true},
+        {"both_maps_shown", false},
+        {"post_ito_briefed", true},
+        {"frosty_met", true},
         {"group_item_flag_bit_7", true},
         {"group_item_flag_bit_8", true},
     });
@@ -14814,7 +14820,7 @@ int main() {
                     "salish.red_buffalo.page.branch_5",
                     "tarislar_apartments_narrator",
                     "tarislar.garden.apartments.entry") &&
-                    scripts.story_state().at("story_flag_bit_27"),
+                    scripts.story_state().at("both_maps_shown"),
                 "Shared paired-map graph lost ROM text 0xFC9F3 or command 0x46's bit-27 effect")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -14852,8 +14858,7 @@ int main() {
         return 17;
     }
     if (!expect(scripts.story_state().at("field_mode_effect_flag_bit_14") &&
-                    scripts.story_state().at("story_flag_bit_27") &&
-                    scripts.story_state().at("story_trigger_active_27"),
+                    scripts.story_state().at("both_maps_shown") && !has_story_fact(scripts.story_state(), "story_trigger_active_27"),
                 "Shared paired-map graph lost command 0x47 effects before its departure page")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -14879,12 +14884,12 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_21", true},
-        {"story_flag_bit_26", false},
-        {"story_flag_bit_27", false},
-        {"story_flag_bit_28", true},
-        {"story_flag_bit_30", true},
+        {"ito_fight_won", true},
+        {"garden_apts_entered", true},
+        {"renraku_map_shown", false},
+        {"both_maps_shown", false},
+        {"post_ito_briefed", true},
+        {"frosty_met", true},
         {"group_item_flag_bit_7", false},
         {"group_item_flag_bit_8", true},
     });
@@ -14907,12 +14912,12 @@ int main() {
     scripts.cancel_task();
 
     scripts.set_story_state({
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_21", true},
-        {"story_flag_bit_26", true},
-        {"story_flag_bit_27", false},
-        {"story_flag_bit_28", true},
-        {"story_flag_bit_30", true},
+        {"ito_fight_won", true},
+        {"garden_apts_entered", true},
+        {"renraku_map_shown", true},
+        {"both_maps_shown", false},
+        {"post_ito_briefed", true},
+        {"frosty_met", true},
         {"group_item_flag_bit_7", true},
         {"group_item_flag_bit_8", true},
     });
@@ -14935,12 +14940,12 @@ int main() {
     scripts.cancel_task();
 
     scripts.set_story_state({
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_21", true},
-        {"story_flag_bit_26", false},
-        {"story_flag_bit_27", false},
-        {"story_flag_bit_28", false},
-        {"story_flag_bit_30", true},
+        {"ito_fight_won", true},
+        {"garden_apts_entered", true},
+        {"renraku_map_shown", false},
+        {"both_maps_shown", false},
+        {"post_ito_briefed", false},
+        {"frosty_met", true},
         {"group_item_flag_bit_7", false},
         {"group_item_flag_bit_8", false},
     });
@@ -14957,8 +14962,7 @@ int main() {
                         "ito_killed" &&
                     tarislar_post_ito.operation->menu->choices[1].id ==
                         "information" &&
-                    scripts.story_state().at("story_flag_bit_28") &&
-                    scripts.story_state().at("story_trigger_active_28"),
+                    scripts.story_state().at("post_ito_briefed") && !has_story_fact(scripts.story_state(), "story_trigger_active_28"),
                 "Tarislar repeat graph did not mark bit 28 before the post-Ito menu")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -15004,9 +15008,9 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_30", true},
-        {"story_flag_bit_16", false},
-        {"story_flag_bit_21", false},
+        {"frosty_met", true},
+        {"ito_fight_won", false},
+        {"garden_apts_entered", false},
     });
     auto tarislar_dialogue = scripts.start_task(
         "tarislar_apartments", "present_first_entry");
@@ -15032,8 +15036,7 @@ int main() {
                     tarislar_dialogue.operation->dialogue->event_id ==
                         "authorized_entry" &&
                     tarislar_dialogue.operation->dialogue->inline_text.empty() &&
-                    scripts.story_state().at("story_flag_bit_21") &&
-                    scripts.story_state().at("story_trigger_active_21"),
+                    scripts.story_state().at("garden_apts_entered") && !has_story_fact(scripts.story_state(), "story_trigger_active_21"),
                 "Tarislar first-entry graph did not start with its extracted arrival page")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -15120,12 +15123,12 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_30", true},
-        {"story_flag_bit_21", true},
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_28", true},
-        {"story_flag_bit_26", true},
-        {"story_flag_bit_27", true},
+        {"frosty_met", true},
+        {"garden_apts_entered", true},
+        {"ito_fight_won", true},
+        {"post_ito_briefed", true},
+        {"renraku_map_shown", true},
+        {"both_maps_shown", true},
     });
     const auto tarislar_tomb_route =
         scripts.resolve_field_location_route(tarislar_context);
@@ -15283,9 +15286,9 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_30", false},
-        {"story_flag_bit_16", false},
-        {"story_flag_bit_21", false},
+        {"frosty_met", false},
+        {"ito_fight_won", false},
+        {"garden_apts_entered", false},
     });
     auto tarislar_guard_route =
         scripts.resolve_field_location_route(tarislar_context);
@@ -15389,8 +15392,8 @@ int main() {
                         ScriptTaskStep::Status::completed &&
                     tarislar_guard.result_id ==
                         std::optional<std::string>{"left"} &&
-                    scripts.story_state().at("story_flag_bit_30") == false &&
-                    scripts.story_state().at("story_flag_bit_21") == false,
+                    scripts.story_state().at("frosty_met") == false &&
+                    scripts.story_state().at("garden_apts_entered") == false,
                 "Tarislar guard leave choices changed story flags or resumed the source route")) {
         std::cerr << scripts.failure() << '\n';
         return 17;
@@ -15535,8 +15538,8 @@ int main() {
     }
     scripts.set_field_mode_context(ScriptFieldModeContext{4U, 27U, 0});
     scripts.set_story_state({
-        {"story_flag_bit_5", false},
-        {"story_flag_bit_6", false},
+        {"shaman_met", false},
+        {"shaman_item4_given", false},
         {"field_mode_effect_flag_bit_14", true},
         {"field_mode_effect_flag_bit_15", false},
         {"field_mode_effect_flag_bit_16", false},
@@ -15570,9 +15573,7 @@ int main() {
                         "spirit_eyes" &&
                     scripts.dialogue_text(
                         "salish.spirit_eyes.page.first_contact") != nullptr &&
-                    !scripts.story_state().at("story_flag_bit_5") &&
-                    scripts.story_state().at(
-                        "story_trigger_active_5") &&
+                    !scripts.story_state().at("shaman_met") && !has_story_fact(scripts.story_state(), "story_trigger_active_5") &&
                     !scripts.story_state().at(
                         "field_mode_effect_flag_bit_14") &&
                     scripts.story_state().at(
@@ -15595,7 +15596,7 @@ int main() {
                     scripts.dialogue_text(
                         "salish.spirit_eyes.page.spirit_eyes_description") !=
                         nullptr &&
-                    scripts.story_state().at("story_flag_bit_5"),
+                    scripts.story_state().at("shaman_met"),
                 "Spirit Eyes command 0x15 did not mark the active trigger before its next ROM page")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
@@ -15683,7 +15684,7 @@ int main() {
     // Each repeat visit consumes at most the one item for the current stage.
     // Exercise both sides of every ROM inventory gate through the JSON graph.
     scripts.set_story_state({
-        {"story_flag_bit_5", true}, {"story_flag_bit_6", false},
+        {"shaman_met", true}, {"shaman_item4_given", false},
         {"group_item_flag_bit_4", false},
     });
     spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
@@ -15704,7 +15705,7 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_5", true}, {"story_flag_bit_6", false},
+        {"shaman_met", true}, {"shaman_item4_given", false},
         {"group_item_flag_bit_4", true},
         {"field_mode_effect_flag_bit_14", true},
         {"field_mode_effect_flag_bit_16", true},
@@ -15715,7 +15716,7 @@ int main() {
     spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
     if (!expect(spirit_page_is(spirit_eyes_task, "second_item") &&
                     !scripts.story_state().at("group_item_flag_bit_4") &&
-                    scripts.story_state().at("story_flag_bit_6") &&
+                    scripts.story_state().at("shaman_item4_given") &&
                     !scripts.story_state().at(
                         "field_mode_effect_flag_bit_14") &&
                     !scripts.story_state().at(
@@ -15738,8 +15739,8 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_5", true}, {"story_flag_bit_6", true},
-        {"story_flag_bit_7", false}, {"group_item_flag_bit_3", false},
+        {"shaman_met", true}, {"shaman_item4_given", true},
+        {"shaman_pelt_given", false}, {"group_item_flag_bit_3", false},
     });
     spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
     if (!expect(spirit_page_is(spirit_eyes_task, "need_pelt"),
@@ -15757,8 +15758,8 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_5", true}, {"story_flag_bit_6", true},
-        {"story_flag_bit_7", false}, {"group_item_flag_bit_3", true},
+        {"shaman_met", true}, {"shaman_item4_given", true},
+        {"shaman_pelt_given", false}, {"group_item_flag_bit_3", true},
         {"field_mode_effect_flag_bit_17", true},
         {"field_mode_effect_flag_bit_18", false},
         {"field_auxiliary_flag_bit_1", true},
@@ -15767,7 +15768,7 @@ int main() {
     spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
     if (!expect(spirit_page_is(spirit_eyes_task, "final_item") &&
                     !scripts.story_state().at("group_item_flag_bit_3") &&
-                    scripts.story_state().at("story_flag_bit_7") &&
+                    scripts.story_state().at("shaman_pelt_given") &&
                     !scripts.story_state().at(
                         "field_mode_effect_flag_bit_17") &&
                     scripts.story_state().at(
@@ -15788,9 +15789,9 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_5", true}, {"story_flag_bit_6", true},
-        {"story_flag_bit_7", true}, {"story_flag_bit_8", false},
-        {"story_flag_bit_9", false}, {"group_item_flag_bit_2", false},
+        {"shaman_met", true}, {"shaman_item4_given", true},
+        {"shaman_pelt_given", true}, {"serpent_scale_taken", false},
+        {"shaman_tasks_done", false}, {"group_item_flag_bit_2", false},
     });
     spirit_eyes_task = scripts.start_task("salish_spirit_eyes", "present");
     if (!expect(spirit_page_is(spirit_eyes_task, "need_scale"),
@@ -15817,16 +15818,14 @@ int main() {
     // ROM 0x53F00 selects trigger 8 before the ordered story checks. Bit 7
     // wins over bit 8, so even this unusual combination shows the flight text.
     scripts.set_story_state({
-        {"story_flag_bit_7", false},
-        {"story_flag_bit_8", true},
+        {"shaman_pelt_given", false},
+        {"serpent_scale_taken", true},
         {"group_item_flag_bit_2", false},
-        {"story_trigger_active_8", false},
     });
     auto licourtrix_task = scripts.start_task(
         "salish_spirit_eyes", "present_serpent_encounter");
-    if (!expect(licourtrix_page_is(licourtrix_task, "serpent_flight") &&
-                    scripts.story_state().at("story_trigger_active_8") &&
-                    scripts.story_state().at("story_flag_bit_8") &&
+    if (!expect(licourtrix_page_is(licourtrix_task, "serpent_flight") && !has_story_fact(scripts.story_state(), "story_trigger_active_8") &&
+                    scripts.story_state().at("serpent_scale_taken") &&
                     !scripts.story_state().at("group_item_flag_bit_2") &&
                     scripts.dialogue_text(
                         "salish.licourtrix.page.serpent_flight") != nullptr,
@@ -15839,7 +15838,7 @@ int main() {
                     licourtrix_task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
-                    scripts.story_state().at("story_flag_bit_8") &&
+                    scripts.story_state().at("serpent_scale_taken") &&
                     !scripts.story_state().at("group_item_flag_bit_2"),
                 "Licourtrix flight notice changed its source story/item state")) {
         std::cerr << scripts.failure() << '\n';
@@ -15849,15 +15848,13 @@ int main() {
     // With bit 7 set, bit 8 selects the empty-lair repeat before checking the
     // profile and field-mode conditions for the first encounter.
     scripts.set_story_state({
-        {"story_flag_bit_7", true},
-        {"story_flag_bit_8", true},
+        {"shaman_pelt_given", true},
+        {"serpent_scale_taken", true},
         {"group_item_flag_bit_2", false},
-        {"story_trigger_active_8", false},
     });
     licourtrix_task = scripts.start_task(
         "salish_spirit_eyes", "present_serpent_encounter");
-    if (!expect(licourtrix_page_is(licourtrix_task, "empty_lair") &&
-                    scripts.story_state().at("story_trigger_active_8") &&
+    if (!expect(licourtrix_page_is(licourtrix_task, "empty_lair") && !has_story_fact(scripts.story_state(), "story_trigger_active_8") &&
                     scripts.dialogue_text(
                         "salish.licourtrix.page.empty_lair") != nullptr,
                 "Licourtrix bit-8 repeat branch did not select the empty-lair text")) {
@@ -15880,19 +15877,17 @@ int main() {
     scripts.set_field_mode_context(
         ScriptFieldModeContext{7U, 25U, 0, 1U, 19U});
     scripts.set_story_state({
-        {"story_flag_bit_7", true},
-        {"story_flag_bit_8", false},
+        {"shaman_pelt_given", true},
+        {"serpent_scale_taken", false},
         {"group_item_flag_bit_2", false},
-        {"story_trigger_active_8", false},
     });
     licourtrix_task = scripts.start_task(
         "salish_spirit_eyes", "present_serpent_encounter");
     if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
                     licourtrix_task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
-                        DialogueOutcomeType::continue_in_place &&
-                    scripts.story_state().at("story_trigger_active_8") &&
-                    !scripts.story_state().at("story_flag_bit_8") &&
+                        DialogueOutcomeType::continue_in_place && !has_story_fact(scripts.story_state(), "story_trigger_active_8") &&
+                    !scripts.story_state().at("serpent_scale_taken") &&
                     !scripts.story_state().at("group_item_flag_bit_2"),
                 "Licourtrix mode gate opened the conversation outside mode 8")) {
         std::cerr << scripts.failure() << '\n';
@@ -15909,7 +15904,7 @@ int main() {
                     licourtrix_task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::continue_in_place &&
-                    !scripts.story_state().at("story_flag_bit_8") &&
+                    !scripts.story_state().at("serpent_scale_taken") &&
                     !scripts.story_state().at("group_item_flag_bit_2"),
                 "Licourtrix profile gate accepted FFFC0E equal to zero")) {
         std::cerr << scripts.failure() << '\n';
@@ -15919,10 +15914,9 @@ int main() {
     scripts.set_field_mode_context(
         ScriptFieldModeContext{8U, 25U, 0, 1U, 0U});
     scripts.set_story_state({
-        {"story_flag_bit_7", true},
-        {"story_flag_bit_8", false},
+        {"shaman_pelt_given", true},
+        {"serpent_scale_taken", false},
         {"group_item_flag_bit_2", false},
-        {"story_trigger_active_8", false},
     });
     licourtrix_task = scripts.start_task(
         "salish_spirit_eyes", "present_serpent_encounter");
@@ -15930,8 +15924,8 @@ int main() {
                     licourtrix_task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
                         DialogueOutcomeType::source_boundary &&
-                    !scripts.story_state().at("story_trigger_active_8") &&
-                    !scripts.story_state().at("story_flag_bit_8") &&
+                    !has_story_fact(scripts.story_state(), "story_trigger_active_8") &&
+                    !scripts.story_state().at("serpent_scale_taken") &&
                     !scripts.story_state().at("group_item_flag_bit_2"),
                 "Licourtrix graph ignored the outer transition-context gate")) {
         std::cerr << scripts.failure() << '\n';
@@ -15954,7 +15948,7 @@ int main() {
                         "salish.licourtrix.option.neighborhood") != nullptr &&
                     scripts.dialogue_text(
                         "salish.licourtrix.option.scale") != nullptr &&
-                    !scripts.story_state().at("story_flag_bit_8") &&
+                    !scripts.story_state().at("serpent_scale_taken") &&
                     !scripts.story_state().at("group_item_flag_bit_2"),
                 "Licourtrix direct route did not begin at the ROM opening page")) {
         std::cerr << scripts.failure() << '\n';
@@ -16072,7 +16066,7 @@ int main() {
     }
     licourtrix_task = scripts.complete_native_operation(true);
     if (!expect(licourtrix_page_is(licourtrix_task, "farewell") &&
-                    !scripts.story_state().at("story_flag_bit_8") &&
+                    !scripts.story_state().at("serpent_scale_taken") &&
                     !scripts.story_state().at("group_item_flag_bit_2"),
                 "Licourtrix granted the scale before its final page was closed")) {
         std::cerr << scripts.failure() << '\n';
@@ -16082,9 +16076,8 @@ int main() {
     if (!expect(licourtrix_task.status == ScriptTaskStep::Status::completed &&
                     licourtrix_task.dialogue_outcome.has_value() &&
                     dialogue_outcome_type(*licourtrix_task.dialogue_outcome) ==
-                        DialogueOutcomeType::continue_in_place &&
-                    scripts.story_state().at("story_trigger_active_8") &&
-                    scripts.story_state().at("story_flag_bit_8") &&
+                        DialogueOutcomeType::continue_in_place && !has_story_fact(scripts.story_state(), "story_trigger_active_8") &&
+                    scripts.story_state().at("serpent_scale_taken") &&
                     scripts.story_state().at("group_item_flag_bit_2"),
                 "Licourtrix completion did not grant FFFC22 bit 2 with story bit 8")) {
         std::cerr << scripts.failure() << '\n';
@@ -16095,11 +16088,11 @@ int main() {
         "site", kSpiritEyesSite, "salish.spirit_eyes", "spirit_eyes");
     scripts.set_field_mode_context(ScriptFieldModeContext{4U, 27U, 0});
     scripts.set_story_state({
-        {"story_flag_bit_5", true},
-        {"story_flag_bit_6", true},
-        {"story_flag_bit_7", true},
-        {"story_flag_bit_8", true},
-        {"story_flag_bit_9", false},
+        {"shaman_met", true},
+        {"shaman_item4_given", true},
+        {"shaman_pelt_given", true},
+        {"serpent_scale_taken", true},
+        {"shaman_tasks_done", false},
         {"group_item_flag_bit_2", false},
     });
     auto missing_scale = scripts.start_task(
@@ -16119,14 +16112,12 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_5", true},
-        {"story_flag_bit_6", true},
-        {"story_flag_bit_7", true},
-        {"story_flag_bit_8", true},
-        {"story_flag_bit_9", false},
+        {"shaman_met", true},
+        {"shaman_item4_given", true},
+        {"shaman_pelt_given", true},
+        {"serpent_scale_taken", true},
+        {"shaman_tasks_done", false},
         {"group_item_flag_bit_2", true},
-        {"story_trigger_active_8", true},
-        {"story_trigger_active_9", false},
         {"field_mode_effect_flag_bit_15", true},
         {"field_mode_effect_flag_bit_18", true},
         {"field_mode_effect_flag_bit_19", false},
@@ -16142,9 +16133,8 @@ int main() {
                         "tasks_done" &&
                     scripts.dialogue_text(
                         "salish.spirit_eyes.page.tasks_done") != nullptr &&
-                    scripts.story_state().at("story_flag_bit_9") &&
-                    scripts.story_state().at("story_trigger_active_8") &&
-                    !scripts.story_state().at("story_trigger_active_9") &&
+                    scripts.story_state().at("shaman_tasks_done") && !has_story_fact(scripts.story_state(), "story_trigger_active_8") &&
+                    !has_story_fact(scripts.story_state(), "story_trigger_active_9") &&
                     !scripts.story_state().at("group_item_flag_bit_2") &&
                     !scripts.story_state().at(
                         "field_mode_effect_flag_bit_15") &&
@@ -16228,9 +16218,9 @@ int main() {
     }
 
     scripts.set_story_state({
-        {"story_flag_bit_5", true}, {"story_flag_bit_6", true},
-        {"story_flag_bit_7", true}, {"story_flag_bit_8", true},
-        {"story_flag_bit_9", true},
+        {"shaman_met", true}, {"shaman_item4_given", true},
+        {"shaman_pelt_given", true}, {"serpent_scale_taken", true},
+        {"shaman_tasks_done", true},
     });
     auto post_ritual = scripts.start_task(
         "salish_spirit_eyes", "present");
@@ -16295,13 +16285,13 @@ int main() {
         return 18;
     }
     scripts.set_story_state({
-        {"story_flag_bit_9", true},
-        {"story_flag_bit_13", true},
-        {"story_flag_bit_17", true},
-        {"story_flag_bit_18", true},
-        {"story_flag_bit_19", true},
-        {"story_flag_bit_20", true},
-        {"story_flag_bit_30", false},
+        {"shaman_tasks_done", true},
+        {"michael_mission_told", true},
+        {"ritual_of_binding", true},
+        {"red_buffalo_woman", true},
+        {"ilene_met", true},
+        {"gillian_initiation", true},
+        {"frosty_met", false},
         {"group_item_flag_bit_5", false},
     });
     auto sinsearach_gate = scripts.start_task(
@@ -16354,7 +16344,7 @@ int main() {
                     sinsearach_gate.operation->dialogue.has_value() &&
                     sinsearach_gate.operation->dialogue->event_id ==
                         "frosty_arrival" &&
-                    scripts.story_state().at("story_flag_bit_30"),
+                    scripts.story_state().at("frosty_met"),
                 "Sinsearach command 0x44 did not mark Frosty met before arrival")) {
         std::cerr << scripts.failure() << '\n';
         return 18;
@@ -16475,13 +16465,13 @@ int main() {
     sinsearach_fare_scripts.set_field_mode_context(
         ScriptFieldModeContext{9U, 0U, 0});
     sinsearach_fare_scripts.set_story_state({
-        {"story_flag_bit_9", false},
-        {"story_flag_bit_13", true},
-        {"story_flag_bit_17", true},
-        {"story_flag_bit_18", true},
-        {"story_flag_bit_19", true},
-        {"story_flag_bit_20", true},
-        {"story_flag_bit_30", false},
+        {"shaman_tasks_done", false},
+        {"michael_mission_told", true},
+        {"ritual_of_binding", true},
+        {"red_buffalo_woman", true},
+        {"ilene_met", true},
+        {"gillian_initiation", true},
+        {"frosty_met", false},
         {"group_item_flag_bit_5", false},
     });
     const auto fare_menu_has_choices = [&sinsearach_fare_scripts](
@@ -16696,13 +16686,13 @@ int main() {
         const bool bit_30 = (mask & 0x20U) != 0U;
         const bool group_item_5 = (mask & 0x40U) != 0U;
         sinsearach_fare_scripts.set_story_state({
-            {"story_flag_bit_9", false},
-            {"story_flag_bit_13", bit_13},
-            {"story_flag_bit_17", bit_17},
-            {"story_flag_bit_18", bit_18},
-            {"story_flag_bit_19", bit_19},
-            {"story_flag_bit_20", bit_20},
-            {"story_flag_bit_30", bit_30},
+            {"shaman_tasks_done", false},
+            {"michael_mission_told", bit_13},
+            {"ritual_of_binding", bit_17},
+            {"red_buffalo_woman", bit_18},
+            {"ilene_met", bit_19},
+            {"gillian_initiation", bit_20},
+            {"frosty_met", bit_30},
             {"group_item_flag_bit_5", group_item_5},
         });
 
@@ -16866,13 +16856,13 @@ int main() {
         };
 
     sinsearach_fare_scripts.set_story_state({
-        {"story_flag_bit_9", false},
-        {"story_flag_bit_13", false},
-        {"story_flag_bit_17", false},
-        {"story_flag_bit_18", false},
-        {"story_flag_bit_19", false},
-        {"story_flag_bit_20", false},
-        {"story_flag_bit_30", false},
+        {"shaman_tasks_done", false},
+        {"michael_mission_told", false},
+        {"ritual_of_binding", false},
+        {"red_buffalo_woman", false},
+        {"ilene_met", false},
+        {"gillian_initiation", false},
+        {"frosty_met", false},
         {"group_item_flag_bit_5", false},
     });
     auto gate_questions = sinsearach_fare_scripts.start_task(
@@ -16945,13 +16935,13 @@ int main() {
     }
 
     sinsearach_fare_scripts.set_story_state({
-        {"story_flag_bit_9", false},
-        {"story_flag_bit_13", false},
-        {"story_flag_bit_17", false},
-        {"story_flag_bit_18", true},
-        {"story_flag_bit_19", false},
-        {"story_flag_bit_20", false},
-        {"story_flag_bit_30", false},
+        {"shaman_tasks_done", false},
+        {"michael_mission_told", false},
+        {"ritual_of_binding", false},
+        {"red_buffalo_woman", true},
+        {"ilene_met", false},
+        {"gillian_initiation", false},
+        {"frosty_met", false},
         {"group_item_flag_bit_5", false},
     });
     auto question_later = sinsearach_fare_scripts.start_task(
@@ -16976,13 +16966,13 @@ int main() {
     }
 
     sinsearach_fare_scripts.set_story_state({
-        {"story_flag_bit_9", false},
-        {"story_flag_bit_13", false},
-        {"story_flag_bit_17", false},
-        {"story_flag_bit_18", true},
-        {"story_flag_bit_19", false},
-        {"story_flag_bit_20", false},
-        {"story_flag_bit_30", false},
+        {"shaman_tasks_done", false},
+        {"michael_mission_told", false},
+        {"ritual_of_binding", false},
+        {"red_buffalo_woman", true},
+        {"ilene_met", false},
+        {"gillian_initiation", false},
+        {"frosty_met", false},
         {"group_item_flag_bit_5", false},
     });
     gate_questions = sinsearach_fare_scripts.start_task(
@@ -17015,13 +17005,13 @@ int main() {
     }
 
     sinsearach_fare_scripts.set_story_state({
-        {"story_flag_bit_9", false},
-        {"story_flag_bit_13", false},
-        {"story_flag_bit_17", false},
-        {"story_flag_bit_18", true},
-        {"story_flag_bit_19", false},
-        {"story_flag_bit_20", true},
-        {"story_flag_bit_30", false},
+        {"shaman_tasks_done", false},
+        {"michael_mission_told", false},
+        {"ritual_of_binding", false},
+        {"red_buffalo_woman", true},
+        {"ilene_met", false},
+        {"gillian_initiation", true},
+        {"frosty_met", false},
         {"group_item_flag_bit_5", false},
     });
     auto frosty_left = sinsearach_fare_scripts.start_task(
@@ -17097,13 +17087,13 @@ int main() {
 
     sinsearach_fare_funds = 1000U;
     sinsearach_fare_scripts.set_story_state({
-        {"story_flag_bit_9", false},
-        {"story_flag_bit_13", true},
-        {"story_flag_bit_17", true},
-        {"story_flag_bit_18", true},
-        {"story_flag_bit_19", true},
-        {"story_flag_bit_20", true},
-        {"story_flag_bit_30", false},
+        {"shaman_tasks_done", false},
+        {"michael_mission_told", true},
+        {"ritual_of_binding", true},
+        {"red_buffalo_woman", true},
+        {"ilene_met", true},
+        {"gillian_initiation", true},
+        {"frosty_met", false},
         {"group_item_flag_bit_5", false},
     });
     auto return_offer_yes = sinsearach_fare_scripts.start_task(
@@ -17204,7 +17194,7 @@ int main() {
 
     scripts.set_field_mode_context(ScriptFieldModeContext{4U, 3U, 0});
     scripts.set_story_state({
-        {"story_flag_bit_4", false},
+        {"aragorn_freed_told", false},
         {"runner_information_bit_4", false},
     });
     auto medicine_lodge_task = scripts.start_task(

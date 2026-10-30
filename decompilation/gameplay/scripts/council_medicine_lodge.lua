@@ -2,7 +2,7 @@
 -- conversation. Lua owns its story-dependent option text and the choices;
 -- the Qt runtime only presents the yielded dialogue operations.
 local E = require("enums")
-local StoryFlags = require("story_flags")
+local StoryFacts = require("story_facts")
 
 local MedicineLodge = {}
 
@@ -28,8 +28,8 @@ function MedicineLodge.present_field_exit_prompt()
         return "field_return"
     end
 
-    local wise_one_available = StoryFlags.is_set(
-        E.StoryFlag.ARAGORN_FREED_TOLD) == true
+    local wise_one_available = StoryFacts.is_set(
+        E.StoryFact.ARAGORN_FREED_TOLD) == true
     local choices = {
         "hire_shaman",
         "browse_store",

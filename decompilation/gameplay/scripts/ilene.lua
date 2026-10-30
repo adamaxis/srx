@@ -2,7 +2,7 @@
 -- actor handoff before the event-table transition to scene 20. The service
 -- only arms FFE182; it does not consume or replace the selected route.
 local E = require("enums")
-local StoryFlags = require("story_flags")
+local StoryFacts = require("story_facts")
 
 local Ilene = {}
 local LOCATION_ID = "hollywood_correctional_facility"
@@ -20,8 +20,8 @@ function Ilene.prepare_scene_20_entry()
         return "continue"
     end
 
-    if StoryFlags.is_set(18) ~= true or
-       StoryFlags.is_set(E.StoryFlag.ILENE_MET) ~= false or
+    if StoryFacts.is_set(E.StoryFact.RED_BUFFALO_WOMAN) ~= true or
+       StoryFacts.is_set(E.StoryFact.ILENE_MET) ~= false or
        game.state.field_mode_effect_flag_bit_0 ~= false or
        game.state.notebook_tip_flag_bit_12 ~= true then
         return "continue"
@@ -47,7 +47,7 @@ function Ilene.complete_scene_20_activity()
         return "reward_unavailable"
     end
 
-    StoryFlags.set(E.StoryFlag.ILENE_MET)
+    StoryFacts.set(E.StoryFact.ILENE_MET)
     game.state.field_mode_flag_bit_31 = false
     game.state.field_mode_effect_flag_bit_0 = false
     game.state.field_mode_effect_flag_bit_1 = true

@@ -4,12 +4,12 @@
     "downtown_site_04_gates_undersound.ogami_departure_service.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_11",
+          "fact": "story.mako_defeated",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_15",
+          "fact": "story.ogami_left",
           "op": "eq",
           "value": false
         },
@@ -28,7 +28,7 @@
     "icarus_descending_booth.rom_event_11_blocked.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_10",
+          "fact": "story.michael_alias_learned",
           "op": "eq",
           "value": false
         }
@@ -42,7 +42,7 @@
     "icarus_descending_booth.rom_event_11_blocked.entry": {
       "all": [
         {
-          "fact": "story.story_flag_bit_10",
+          "fact": "story.michael_alias_learned",
           "op": "eq",
           "value": false
         }
@@ -56,7 +56,7 @@
     "icarus_descending_booth.rom_event_11_accessible.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_10",
+          "fact": "story.michael_alias_learned",
           "op": "eq",
           "value": true
         }
@@ -70,7 +70,7 @@
     "icarus_descending_booth.rom_event_11_accessible.entry": {
       "all": [
         {
-          "fact": "story.story_flag_bit_10",
+          "fact": "story.michael_alias_learned",
           "op": "eq",
           "value": true
         }
@@ -84,12 +84,12 @@
     "penumbra_site_02_fuchi.cyberheart_entry.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_25",
+          "fact": "story.hospital_visited",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_14",
+          "fact": "story.cyberheart_safe",
           "op": "eq",
           "value": false
         },
@@ -108,12 +108,12 @@
     "penumbra_site_02_fuchi.cyberheart_entry.entry": {
       "all": [
         {
-          "fact": "story.story_flag_bit_25",
+          "fact": "story.hospital_visited",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_14",
+          "fact": "story.cyberheart_safe",
           "op": "eq",
           "value": false
         },
@@ -188,12 +188,12 @@
     "puyallup_site_02_tarislar_garden_apartments.rom_event_07_first_authorized_visit.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_30",
+          "fact": "story.frosty_met",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_21",
+          "fact": "story.garden_apts_entered",
           "op": "eq",
           "value": false
         },
@@ -212,12 +212,12 @@
     "puyallup_site_02_tarislar_garden_apartments.rom_event_07_first_authorized_visit.entry": {
       "all": [
         {
-          "fact": "story.story_flag_bit_30",
+          "fact": "story.frosty_met",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_21",
+          "fact": "story.garden_apts_entered",
           "op": "eq",
           "value": false
         },
@@ -236,12 +236,12 @@
     "puyallup_site_02_tarislar_garden_apartments.rom_event_07_repeat_service.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_30",
+          "fact": "story.frosty_met",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_21",
+          "fact": "story.garden_apts_entered",
           "op": "eq",
           "value": true
         },
@@ -260,12 +260,12 @@
     "puyallup_site_02_tarislar_garden_apartments.rom_event_07_repeat_service.entry": {
       "all": [
         {
-          "fact": "story.story_flag_bit_30",
+          "fact": "story.frosty_met",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_21",
+          "fact": "story.garden_apts_entered",
           "op": "eq",
           "value": true
         },
@@ -284,32 +284,32 @@
     "puyallup_site_02_tarislar_garden_apartments.rom_event_07_tomb_departure.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_30",
+          "fact": "story.frosty_met",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_21",
+          "fact": "story.garden_apts_entered",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_16",
+          "fact": "story.ito_fight_won",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_28",
+          "fact": "story.post_ito_briefed",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_26",
+          "fact": "story.renraku_map_shown",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_27",
+          "fact": "story.both_maps_shown",
           "op": "eq",
           "value": true
         },
@@ -328,32 +328,32 @@
     "puyallup_site_02_tarislar_garden_apartments.rom_event_07_tomb_departure.entry": {
       "all": [
         {
-          "fact": "story.story_flag_bit_30",
+          "fact": "story.frosty_met",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_21",
+          "fact": "story.garden_apts_entered",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_16",
+          "fact": "story.ito_fight_won",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_28",
+          "fact": "story.post_ito_briefed",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_26",
+          "fact": "story.renraku_map_shown",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_27",
+          "fact": "story.both_maps_shown",
           "op": "eq",
           "value": true
         },
@@ -372,7 +372,7 @@
     "puyallup_site_02_tarislar_garden_apartments.rom_event_07_guarded_visit.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_30",
+          "fact": "story.frosty_met",
           "op": "eq",
           "value": false
         },
@@ -391,7 +391,7 @@
     "puyallup_site_02_tarislar_garden_apartments.rom_event_07_guarded_visit.entry": {
       "all": [
         {
-          "fact": "story.story_flag_bit_30",
+          "fact": "story.frosty_met",
           "op": "eq",
           "value": false
         },
@@ -410,12 +410,12 @@
     "puyallup_site_03_tarislar_city_inn.rom_event_01_paid_stay_and_shale_service.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_0",
+          "fact": "story.motel_bill_paid",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_1",
+          "fact": "story.tarislar_asked_shale",
           "op": "eq",
           "value": false
         },
@@ -434,12 +434,12 @@
     "renraku_offices_frontage.renraku_map_overlay_entry.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_16",
+          "fact": "story.ito_fight_won",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_12",
+          "fact": "story.renraku_map_overlay",
           "op": "eq",
           "value": false
         },
@@ -458,12 +458,12 @@
     "renraku_offices_frontage.renraku_map_overlay_entry.entry": {
       "all": [
         {
-          "fact": "story.story_flag_bit_16",
+          "fact": "story.ito_fight_won",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_12",
+          "fact": "story.renraku_map_overlay",
           "op": "eq",
           "value": false
         },
@@ -482,12 +482,12 @@
     "salish_owlfeather_ranger_lodge.owlfeather_first_contact.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_1",
+          "fact": "story.tarislar_asked_shale",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_2",
+          "fact": "story.owlfeather_asked",
           "op": "eq",
           "value": false
         }
@@ -501,12 +501,12 @@
     "salish_owlfeather_ranger_lodge.owlfeather_search_followup.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_2",
+          "fact": "story.owlfeather_asked",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_3",
+          "fact": "story.aragorn_found",
           "op": "eq",
           "value": false
         }
@@ -520,12 +520,12 @@
     "salish_owlfeather_ranger_lodge.owlfeather_return_followup.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_3",
+          "fact": "story.aragorn_found",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_4",
+          "fact": "story.aragorn_freed_told",
           "op": "eq",
           "value": false
         }
@@ -539,7 +539,7 @@
     "stoker_coffin_motel.rom_event_02.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_0",
+          "fact": "story.motel_bill_paid",
           "op": "eq",
           "value": false
         },
@@ -563,7 +563,7 @@
     "stoker_coffin_motel.rom_event_02.entry": {
       "all": [
         {
-          "fact": "story.story_flag_bit_0",
+          "fact": "story.motel_bill_paid",
           "op": "eq",
           "value": false
         },
@@ -596,12 +596,12 @@
     "penumbra_site_03_mitsuhama.aragorn_after_hours_entry.route": {
       "all": [
         {
-          "fact": "story.story_flag_bit_2",
+          "fact": "story.owlfeather_asked",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_3",
+          "fact": "story.aragorn_found",
           "op": "eq",
           "value": false
         },
@@ -639,12 +639,12 @@
     "penumbra_site_03_mitsuhama.aragorn_after_hours_entry.entry": {
       "all": [
         {
-          "fact": "story.story_flag_bit_2",
+          "fact": "story.owlfeather_asked",
           "op": "eq",
           "value": true
         },
         {
-          "fact": "story.story_flag_bit_3",
+          "fact": "story.aragorn_found",
           "op": "eq",
           "value": false
         },

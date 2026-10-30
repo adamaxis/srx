@@ -7,8 +7,6 @@ using namespace shadowrun::ghidra_conversion;
 int main() {
     StokerMotelDebtPaymentState state{};
     state.funds = 250U;
-    state.world_flags = 0x80000000U;
-    state.effect_marker = 22U;
     state.runner_feature_flags = 0x02U;
     state.followup_state.story_flags = 0x80000000U;
     state.followup_state.referral_flags = 0x80U;
@@ -20,7 +18,6 @@ int main() {
            StokerMotelDebtPaymentPrompt::michael_package_contents);
     assert(paid.remaining_funds == 500U);
     assert(state.funds == 500U);
-    assert(state.world_flags == 0x80400000U);
     assert(state.runner_feature_flags == 0x03U);
     assert(state.followup_state.story_flags == 0x8000001CU);
     assert(state.followup_state.referral_flags == 0x80U);
@@ -31,7 +28,6 @@ int main() {
 
     StokerMotelDebtPaymentState unpaid{};
     unpaid.funds = 249U;
-    unpaid.effect_marker = 22U;
     unpaid.followup_state.referral_flags = 0x80U;
     const auto referral = resolve_stoker_motel_debt_payment(unpaid);
     assert(referral.result ==
@@ -40,15 +36,12 @@ int main() {
            StokerMotelDebtPaymentPrompt::jump_house_nuyen_referral);
     assert(unpaid.funds == 249U);
     assert(unpaid.followup_state.referral_flags == 0x81U);
-    assert(unpaid.world_flags == 0U);
     assert(unpaid.followup_state.story_flags == 0U);
     assert(!referral.michael_package_sequence_follows);
 
-    // The source byte additions wrap independently, and paying twice is
-    // idempotent for all bit flags while still advancing the source bytes.
+    // Payment continues to award the same gameplay resources on repeat calls.
     resolve_stoker_motel_debt_payment(state);
     assert(state.runner_feature_flags == 0x03U);
-    assert(state.world_flags == 0x80400000U);
     assert(state.followup_state.story_flags == 0x8000001CU);
     assert(state.party_karma[0] == 0x01U);
     assert(state.party_karma[1] == 0x02U);

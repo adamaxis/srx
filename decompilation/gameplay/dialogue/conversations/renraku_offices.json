@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "graphs": {
     "renraku_offices.map_overlay_entry": {
-      "entryNode": "begin_trigger",
+      "entryNode": "entry_page",
       "precondition": "renraku_offices.map_overlay_entry_available",
       "speakerId": "renraku_offices_narrator",
       "textProfile": "renraku.offices",
@@ -11,13 +11,6 @@
         "longplayEvidence": "The reviewed longplay provides shared dialogue presentation context, but no matching first-entry branch."
       },
       "nodes": {
-        "begin_trigger": {
-          "type": "action",
-          "actionId": "story.begin_trigger",
-          "arguments": { "triggerId": 12 },
-          "next": "entry_page",
-          "evidence": "0x53A78 publishes trigger 12 to FFDD64 before the indexed handler."
-        },
         "entry_page": {
           "type": "page",
           "eventId": "entry",

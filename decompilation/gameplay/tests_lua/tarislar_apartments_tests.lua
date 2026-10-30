@@ -100,12 +100,12 @@ local graph = {
 local map_information_available = {
     any = {
         { all = {
-            eq("story.story_flag_bit_26", false),
+            eq("story.renraku_map_shown", false),
             eq("story.group_item_flag_bit_8", true),
         } },
         { all = {
-            eq("story.story_flag_bit_26", true),
-            eq("story.story_flag_bit_27", false),
+            eq("story.renraku_map_shown", true),
+            eq("story.both_maps_shown", false),
             eq("story.group_item_flag_bit_7", true),
         } },
     },
@@ -113,12 +113,12 @@ local map_information_available = {
 
 game = {
     state = {
-        story_flag_bit_16 = false,
-        story_flag_bit_21 = true,
-        story_flag_bit_26 = false,
-        story_flag_bit_27 = false,
-        story_flag_bit_28 = false,
-        story_flag_bit_30 = true,
+        ito_fight_won = false,
+        garden_apts_entered = true,
+        renraku_map_shown = false,
+        both_maps_shown = false,
+        post_ito_briefed = false,
+        frosty_met = true,
         group_item_flag_bit_7 = false,
         group_item_flag_bit_8 = false,
     },
@@ -137,11 +137,11 @@ game = {
                     eq("location.type", "building"),
                     eq("location.id", location_id),
                     eq("field.package_run_status", "none"),
-                    eq("story.story_flag_bit_21", true),
-                    eq("story.story_flag_bit_30", true),
+                    eq("story.garden_apts_entered", true),
+                    eq("story.frosty_met", true),
                 } }),
-                ito_fight_won = condition(eq("story.story_flag_bit_16", true)),
-                briefing_pending = condition(eq("story.story_flag_bit_28", false)),
+                ito_fight_won = condition(eq("story.ito_fight_won", true)),
+                briefing_pending = condition(eq("story.post_ito_briefed", false)),
                 map_information_available = condition(map_information_available),
             },
         },
@@ -213,8 +213,8 @@ local function queue(...)
     speeches = {}
 end
 
-local function set_story(bit, value)
-    game.state["story_flag_bit_" .. bit] = value
+local function set_story(fact_id, value)
+    game.state[fact_id] = value
 end
 
 local function expect_repeat(expected_choices, ...)
@@ -245,12 +245,12 @@ game.field.package_run_status = "none"
 game.location.id = "another_building"
 expect_rejected()
 game.location.id = location_id
-set_story(30, false)
+set_story("frosty_met", false)
 expect_rejected()
-set_story(30, true)
-set_story(21, false)
+set_story("frosty_met", true)
+set_story("garden_apts_entered", false)
 expect_rejected()
-set_story(21, true)
+set_story("garden_apts_entered", true)
 
 -- Before Ito is defeated, the questions-only root presents the extracted
 -- greeting and ROM response page without a More continuation.
@@ -261,11 +261,10 @@ assert(speeches[1].continuation == false)
 
 -- Ito's win with bit 28 clear marks the fixed post-Ito trigger before the
 -- two-choice page. Choosing Ito enters the shared map-information action.
-set_story(16, true)
+set_story("ito_fight_won", true)
 queue("ito_killed", "more")
 assert(Apartments.present_repeat_service() == "left")
-assert(game.state.story_flag_bit_28 == true)
-assert(game.state.story_trigger_active_28 == true)
+assert(game.state.post_ito_briefed == true)
 assert(#prompts == 2 and prompts[1].choices[1] == "ito_killed" and
        prompts[1].choices[2] == "information")
 assert(prompts[2].id == "ito_response")
@@ -277,20 +276,20 @@ assert(#speeches == 0 and map_information_calls == 1)
 game.state.group_item_flag_bit_8 = true
 expect_repeat({ "information" }, "information")
 assert(#prompts == 1 and map_information_calls == 2)
-assert(game.state.story_flag_bit_26 ~= true)
+assert(game.state.renraku_map_shown ~= true)
 assert(game.state.field_mode_effect_flag_bit_12 ~= true)
-assert(game.state.story_flag_bit_27 ~= true)
+assert(game.state.both_maps_shown ~= true)
 
 -- After story bit 26 is set, item bit 7 exposes the paired-map route.
 game.state.group_item_flag_bit_7 = true
 expect_repeat({ "information" }, "information")
 assert(#prompts == 1 and map_information_calls == 3)
-assert(game.state.story_flag_bit_27 ~= true)
+assert(game.state.both_maps_shown ~= true)
 
 -- Once both map routes are complete, or before any map item is available,
 -- the service falls back to questions.
-set_story(26, true)
-set_story(27, true)
+set_story("renraku_map_shown", true)
+set_story("both_maps_shown", true)
 game.state.group_item_flag_bit_8 = false
 game.state.group_item_flag_bit_7 = false
 expect_repeat({ "questions" }, "questions")

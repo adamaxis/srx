@@ -10,7 +10,7 @@ local speeches = {}
 
 game = {
     state = {
-        story_flag_bit_4 = false,
+        aragorn_freed_told = false,
         runner_information_bit_4 = false,
     },
     location = { type = "building", id = location_id },
@@ -55,7 +55,7 @@ assert(game.state.runner_information_bit_4 == true,
        "command 0xF0 did not set the runner-information flag")
 assert(#speeches == 1 and speeches[1] == "hire_shaman_response")
 
-game.state.story_flag_bit_4 = true
+game.state.aragorn_freed_told = true
 game.state.runner_information_bit_4 = false
 reset("wise_one")
 assert(Lodge.present_field_exit_prompt() ==
@@ -63,7 +63,7 @@ assert(Lodge.present_field_exit_prompt() ==
 assert(prompts[1].choices[3] == "wise_one")
 assert(#speeches == 1 and speeches[1] == "wise_one_followup")
 
-game.state.story_flag_bit_4 = false
+game.state.aragorn_freed_told = false
 reset("browse_store")
 assert(Lodge.present_field_exit_prompt() ==
        "medicine_lodge_store_requested")

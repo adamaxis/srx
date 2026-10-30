@@ -34,7 +34,7 @@ function HenryJCulver.actions(contact)
         end,
         ["vid_phone.henry.hollywood_access"] = function()
             return charge(1500, function()
-                game.state.vid_phone_story_flag_bit_27 = true
+                game.state.hollywood_access_granted = true
             end)
         end,
         ["vid_phone.henry.weapon_permit"] = function()

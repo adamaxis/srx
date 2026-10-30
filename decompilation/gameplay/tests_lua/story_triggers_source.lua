@@ -64,7 +64,7 @@ function StoryTriggers.live_indices()
 end
 
 -- Reachable commands of `index` that reach 0x2196C (per `marks`, normally
--- StoryFlags.DIALOGUE_COMMAND_MARKS).
+-- StoryFacts.DIALOGUE_COMMAND_MARKS).
 function StoryTriggers.story_commands(index, marks)
     local out = {}
     for _, command in ipairs(StoryTriggers.LIVE[index].commands) do

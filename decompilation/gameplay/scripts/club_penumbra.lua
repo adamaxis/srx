@@ -26,7 +26,7 @@ function ClubPenumbra.apply_mako_callback()
         return "service_unavailable"
     end
 
-    game.state.story_flag_bit_11 = true
+    game.state.mako_defeated = true
     game.state.field_mode_flag_bit_20 = false
     game.state.field_mode_flag_bit_21 = false
     game.state.field_mode_flag_bit_24 = true

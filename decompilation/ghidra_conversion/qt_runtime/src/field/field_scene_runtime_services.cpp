@@ -297,7 +297,6 @@ bool FieldSceneRuntime::open_spirit_eyes_ritual_for_dump() {
     field_exit_world_flags_ = (1U << 5U) | (1U << 6U) |
                               (1U << 7U) | (1U << 8U);
     group_item_flags_ = 1U << 2U;
-    field_active_story_trigger_ = 8U;
     field_mode_effect_flags_ = (1U << 15U) | (1U << 18U);
     field_auxiliary_flags_ = 1U << 2U;
     game_scripts_.set_location_context(

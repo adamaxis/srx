@@ -197,7 +197,7 @@ bool FieldDialogueRuntime::present_source_boundary_for_host(
 bool FieldDialogueRuntime::open_stoker_interaction_for_dump() {
     if (script_runtime_ != nullptr) {
         script_runtime_->set_story_state({
-            {"story_flag_bit_0", false}});
+            {"motel_bill_paid", false}});
         script_runtime_->set_location_context(
             "motel", "stoker_motel", "stoker.motel", "stoker");
         script_runtime_->set_field_mode_context(

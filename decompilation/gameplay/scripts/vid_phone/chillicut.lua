@@ -35,7 +35,7 @@ function Chillicut.actions(contact)
         end,
         ["vid_phone.chillicut.hollywood_access"] = function()
             return charge(3000, function()
-                game.state.vid_phone_story_flag_bit_27 = true
+                game.state.hollywood_access_granted = true
             end)
         end,
         ["vid_phone.chillicut.weapon_permit"] = function()

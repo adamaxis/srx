@@ -31,13 +31,13 @@ local gated_entry = {
     destination_mode = "resource_activity",
     route_priority = 10,
     route_condition_id = condition("test.fuchi.route", {
-        equal("story.story_flag_bit_25", true),
-        equal("story.story_flag_bit_14", false),
+        equal("story.hospital_visited", true),
+        equal("story.cyberheart_safe", false),
         equal("field.package_run_status", "none"),
     }),
     entry_condition_id = condition("test.fuchi.entry", {
-        equal("story.story_flag_bit_25", true),
-        equal("story.story_flag_bit_14", false),
+        equal("story.hospital_visited", true),
+        equal("story.cyberheart_safe", false),
         equal("field.package_run_status", "none"),
     }),
     entry_dialogue_module = "fuchi_offices",
@@ -51,7 +51,7 @@ local gated_entry = {
 
 local fuchi_cyberheart_safe_armed = false
 game = {
-    state = { story_flag_bit_25 = true, story_flag_bit_14 = false },
+    state = { hospital_visited = true, cyberheart_safe = false },
     location = {
         type = "building", id = "penumbra_site_02_fuchi", scene_id = 3,
     },
@@ -133,8 +133,8 @@ assert(route.entry_dialogue_module == "fuchi_offices" and
 local entry_outcome = FuchiOffices.present_cyberheart_entry()
 assert(entry_outcome.type == "resume_source_route")
 assert(game.last_dialogue_event == "entry" and
-       game.state.story_trigger_active_14 == true and
-       game.state.story_flag_bit_14 == false and
+       game.state.story_trigger_active_14 == nil and
+       game.state.cyberheart_safe == false and
        fuchi_cyberheart_safe_armed)
 
 local event = Dialogue.event_text_keys(
@@ -142,7 +142,7 @@ local event = Dialogue.event_text_keys(
 assert(event and event.title_key == "penumbra.fuchi.page.entry" and
        event.continuation_key == "shared.more")
 
-game.state.story_flag_bit_14 = true
+game.state.cyberheart_safe = true
 local completed_route = Building.resolve_field_location_route(context)
 assert(completed_route.kind == "area_event" and
        completed_route.area_event_target == 21 and
@@ -153,14 +153,14 @@ local repeat_outcome = FuchiOffices.present_cyberheart_entry()
 assert(repeat_outcome.type == "source_boundary" and
        repeat_outcome.reason:match("precondition:not_satisfied") ~= nil)
 
-game.state.story_flag_bit_14 = false
-game.state.story_flag_bit_25 = false
+game.state.cyberheart_safe = false
+game.state.hospital_visited = false
 local pre_hospital_route = Building.resolve_field_location_route(context)
 assert(pre_hospital_route.kind == "area_event" and
        pre_hospital_route.area_event_target == 21 and
        pre_hospital_route.entry_dialogue_module == nil)
 
-game.state.story_flag_bit_25 = true
+game.state.hospital_visited = true
 context.package_run_status = "payment_due"
 local alternate_route = Building.resolve_field_location_route(context)
 assert(alternate_route.kind == "area_event" and

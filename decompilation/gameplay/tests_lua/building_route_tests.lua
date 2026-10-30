@@ -34,11 +34,11 @@ local gated_link = {
     return_anchor = "collision_probe_lead",
     return_facing = "face_away_from_entry",
     route_condition_id = condition("test.gated.route", {
-        equal("story.story_flag_bit_30", true),
+        equal("story.frosty_met", true),
         equal("run.active_id", "package_recovery"),
     }),
     entry_condition_id = condition("test.gated.entry", {
-        equal("story.story_flag_bit_21", false),
+        equal("story.garden_apts_entered", false),
     }),
     entry_dialogue_module = "building",
     entry_dialogue_function = "present_entry_description",
@@ -51,8 +51,8 @@ local gated_link = {
 
 game = {
     state = {
-        story_flag_bit_30 = true,
-        story_flag_bit_21 = false,
+        frosty_met = true,
+        garden_apts_entered = false,
     },
     active_run = "package_recovery",
     current_run = "employee_recruitment",
@@ -159,14 +159,14 @@ assert(no_active_run.kind == "area_event" and
 assert(no_active_run.entry_dialogue_module == nil)
 
 game.active_run = "package_recovery"
-game.state.story_flag_bit_30 = false
+game.state.frosty_met = false
 local default_route = Building.resolve_field_location_route(context)
 assert(default_route.kind == "area_event" and
        default_route.area_event_target == 13)
 assert(default_route.entry_dialogue_module == nil)
 
-game.state.story_flag_bit_30 = true
-game.state.story_flag_bit_21 = true
+game.state.frosty_met = true
+game.state.garden_apts_entered = true
 gated_link.route_condition_id = condition("test.gated.current_run", {
     equal("run.current_offer_id", "employee_recruitment"),
 })
@@ -175,9 +175,9 @@ assert(repeat_visit.kind == "area_event" and
        repeat_visit.area_event_target == 13)
 assert(repeat_visit.entry_dialogue_module == nil)
 
-game.state.story_flag_bit_21 = false
+game.state.garden_apts_entered = false
 gated_link.route_condition_id = condition("test.gated.route", {
-    equal("story.story_flag_bit_30", true),
+    equal("story.frosty_met", true),
     equal("run.active_id", "package_recovery"),
 })
 gated_link.route_priority = 0
@@ -199,13 +199,13 @@ local override_link = {
     return_anchor = "collision_probe_lead",
     return_facing = "face_away_from_entry",
     route_condition_id = condition("test.first_entry.route", {
-        equal("story.story_flag_bit_30", true),
-        equal("story.story_flag_bit_21", false),
+        equal("story.frosty_met", true),
+        equal("story.garden_apts_entered", false),
         equal("field.package_run_status", "none"),
     }),
     entry_condition_id = condition("test.first_entry.entry", {
-        equal("story.story_flag_bit_30", true),
-        equal("story.story_flag_bit_21", false),
+        equal("story.frosty_met", true),
+        equal("story.garden_apts_entered", false),
         equal("field.package_run_status", "none"),
     }),
     entry_dialogue_module = "tarislar_apartments",
@@ -216,8 +216,8 @@ local override_link = {
     entry_speaker_id = "tarislar_apartments_narrator",
     entry_continue_result_id = "enter_scene_54",
 }
-game.state.story_flag_bit_30 = true
-game.state.story_flag_bit_21 = false
+game.state.frosty_met = true
+game.state.garden_apts_entered = false
 game.modules.world_content_data.entities.source_test.links = {
     base_link, override_link,
 }
@@ -256,21 +256,21 @@ local tomb_link = {
     source_route_policy = "suppress_source_route",
     route_priority = 10,
     route_condition_id = condition("test.tomb.route", {
-        equal("story.story_flag_bit_30", true),
-        equal("story.story_flag_bit_21", true),
-        equal("story.story_flag_bit_16", true),
-        equal("story.story_flag_bit_28", true),
-        equal("story.story_flag_bit_26", true),
-        equal("story.story_flag_bit_27", true),
+        equal("story.frosty_met", true),
+        equal("story.garden_apts_entered", true),
+        equal("story.ito_fight_won", true),
+        equal("story.post_ito_briefed", true),
+        equal("story.renraku_map_shown", true),
+        equal("story.both_maps_shown", true),
         equal("field.package_run_status", "none"),
     }),
     entry_condition_id = condition("test.tomb.entry", {
-        equal("story.story_flag_bit_30", true),
-        equal("story.story_flag_bit_21", true),
-        equal("story.story_flag_bit_16", true),
-        equal("story.story_flag_bit_28", true),
-        equal("story.story_flag_bit_26", true),
-        equal("story.story_flag_bit_27", true),
+        equal("story.frosty_met", true),
+        equal("story.garden_apts_entered", true),
+        equal("story.ito_fight_won", true),
+        equal("story.post_ito_briefed", true),
+        equal("story.renraku_map_shown", true),
+        equal("story.both_maps_shown", true),
         equal("field.package_run_status", "none"),
     }),
     entry_dialogue_module = "tarislar_apartments",
@@ -281,8 +281,12 @@ local tomb_link = {
     entry_speaker_id = "tarislar_apartments_narrator",
     entry_continue_result_id = "enter_scene_54",
 }
-for _, bit in ipairs({ 16, 21, 26, 27, 28, 30 }) do
-    game.state["story_flag_bit_" .. bit] = true
+local tomb_requirements = {
+    "ito_fight_won", "garden_apts_entered", "renraku_map_shown",
+    "both_maps_shown", "post_ito_briefed", "frosty_met",
+}
+for _, fact_id in ipairs(tomb_requirements) do
+    game.state[fact_id] = true
 end
 game.modules.world_content_data.entities.source_test.links = {
     base_link, tomb_link,
@@ -292,13 +296,13 @@ assert(tomb_departure.kind == "area_event" and
        tomb_departure.area_event_target == 54 and
        tomb_departure.entry_dialogue_function == "present_tomb_departure" and
        tomb_departure.entry_continue_result_id == "enter_scene_54")
-for _, bit in ipairs({ 16, 21, 26, 27, 28, 30 }) do
-    game.state["story_flag_bit_" .. bit] = false
+for _, fact_id in ipairs(tomb_requirements) do
+    game.state[fact_id] = false
     local denied_tomb_route = Building.resolve_field_location_route(context)
     assert(denied_tomb_route.kind == "area_event" and
            denied_tomb_route.area_event_target == 13 and
            denied_tomb_route.entry_dialogue_module == nil)
-    game.state["story_flag_bit_" .. bit] = true
+    game.state[fact_id] = true
 end
 context.package_run_status = "payment_due"
 local alternate_tomb_route = Building.resolve_field_location_route(context)
@@ -318,11 +322,11 @@ local guarded_link = {
     source_route_policy = "suppress_source_route",
     route_priority = 10,
     route_condition_id = condition("test.guarded.route", {
-        equal("story.story_flag_bit_30", false),
+        equal("story.frosty_met", false),
         equal("field.package_run_status", "none"),
     }),
     entry_condition_id = condition("test.guarded.entry", {
-        equal("story.story_flag_bit_30", false),
+        equal("story.frosty_met", false),
         equal("field.package_run_status", "none"),
     }),
     entry_dialogue_module = "tarislar_apartments",
@@ -333,7 +337,7 @@ local guarded_link = {
     entry_speaker_id = "tarislar_apartments_narrator",
     entry_continue_result_id = "enter_scene_13",
 }
-game.state.story_flag_bit_30 = false
+game.state.frosty_met = false
 game.modules.world_content_data.entities.source_test.links = {
     base_link, guarded_link,
 }
@@ -395,8 +399,8 @@ game.modules.world_content_data.entities.source_test.links = {
         script = "lua_field_service",
         route_priority = 10,
         route_condition_id = condition("test.inn.route", {
-            equal("story.story_flag_bit_0", true),
-            equal("story.story_flag_bit_1", false),
+            equal("story.motel_bill_paid", true),
+            equal("story.tarislar_asked_shale", false),
             equal("field.package_run_status", "none"),
         }),
         indexed_title_service_module = "tarislar_city_inn",
@@ -407,8 +411,8 @@ game.modules.world_content_data.entities.source_test.links = {
         location_speaker_id = inn_location.location_speaker_id,
     },
 }
-game.state.story_flag_bit_0 = true
-game.state.story_flag_bit_1 = false
+game.state.motel_bill_paid = true
+game.state.tarislar_asked_shale = false
 local inn_service = Building.resolve_field_location_route(inn_context)
 assert(inn_service.kind == "field_service" and
        inn_service.script == "lua_field_service" and
@@ -418,7 +422,7 @@ assert(inn_service.kind == "field_service" and
        inn_service.indexed_title_service.location_id ==
            inn_location.location_id)
 
-game.state.story_flag_bit_1 = true
+game.state.tarislar_asked_shale = true
 local inn_generic_prompt = Building.resolve_field_location_route(inn_context)
 assert(inn_generic_prompt.kind == "area_event" and
        inn_generic_prompt.area_event_target == 53 and
@@ -452,14 +456,14 @@ local motel_link = {
     script = "lua_dialogue",
     route_priority = 0,
     route_condition_id = condition("test.motel.route", {
-        equal("story.story_flag_bit_0", false),
+        equal("story.motel_bill_paid", false),
         equal("field.package_run_status", "none"),
         equal("field.building_interaction_mode", true),
     }),
     return_anchor = "collision_probe_lead",
     return_facing = "face_away_from_entry",
     entry_condition_id = condition("test.motel.entry", {
-        equal("story.story_flag_bit_0", false),
+        equal("story.motel_bill_paid", false),
         equal("field.package_run_status", "none"),
     }),
     entry_dialogue_module = "michael_package",
@@ -473,7 +477,7 @@ game.modules.world_content_data.entities.source_test.links = { motel_link }
 game.modules.world_content_data.areas[2] = {
     { entity_id = "source_test" },
 }
-game.state.story_flag_bit_0 = false
+game.state.motel_bill_paid = false
 local motel_unpaid = Building.resolve_field_location_route(motel_context)
 assert(motel_unpaid.kind == "dialogue" and
        motel_unpaid.script == "lua_dialogue" and
@@ -562,7 +566,7 @@ assert(scene15_event.kind == "dialogue" and
        scene15_event.entry_speaker_id == "jackals_lantern_old_man" and
        scene15_event.entry_event_id == "opening")
 
-game.state.story_flag_bit_0 = true
+game.state.motel_bill_paid = true
 local motel_paid = Building.resolve_field_location_route(motel_context)
 assert(motel_paid.kind == "area_event" and
        motel_paid.area_event_target == 26 and

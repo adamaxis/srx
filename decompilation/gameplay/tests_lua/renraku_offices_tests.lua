@@ -31,13 +31,13 @@ local gated_entry = {
     destination_mode = "resource_activity",
     route_priority = 10,
     route_condition_id = condition("test.renraku.route", {
-        equal("story.story_flag_bit_16", true),
-        equal("story.story_flag_bit_12", false),
+        equal("story.ito_fight_won", true),
+        equal("story.renraku_map_overlay", false),
         equal("field.package_run_status", "none"),
     }),
     entry_condition_id = condition("test.renraku.entry", {
-        equal("story.story_flag_bit_16", true),
-        equal("story.story_flag_bit_12", false),
+        equal("story.ito_fight_won", true),
+        equal("story.renraku_map_overlay", false),
         equal("field.package_run_status", "none"),
     }),
     entry_dialogue_module = "renraku_offices",
@@ -50,7 +50,7 @@ local gated_entry = {
 }
 
 game = {
-    state = { story_flag_bit_16 = true, story_flag_bit_12 = false },
+    state = { ito_fight_won = true, renraku_map_overlay = false },
     location = {
         type = "building",
         id = "renraku_offices_frontage",
@@ -129,15 +129,15 @@ assert(route.entry_dialogue_module == "renraku_offices" and
 local entry_outcome = RenrakuOffices.present_map_overlay_entry()
 assert(entry_outcome.type == "resume_source_route")
 assert(game.last_dialogue_event == "entry" and
-       game.state.story_trigger_active_12 == true and
-       game.state.story_flag_bit_12 == false)
+       game.state.story_trigger_active_12 == nil and
+       game.state.renraku_map_overlay == false)
 
 local event = Dialogue.event_text_keys(
     "renraku_offices_narrator", "renraku.offices", "entry")
 assert(event and event.title_key == "renraku.offices.page.entry" and
        event.continuation_key == "shared.more")
 
-game.state.story_flag_bit_12 = true
+game.state.renraku_map_overlay = true
 local repeat_route = Building.resolve_field_location_route(context)
 assert(repeat_route.kind == "area_event" and
        repeat_route.area_event_target == 35 and
@@ -146,8 +146,8 @@ local repeat_outcome = RenrakuOffices.present_map_overlay_entry()
 assert(repeat_outcome.type == "source_boundary" and
        repeat_outcome.reason:match("precondition:not_satisfied") ~= nil)
 
-game.state.story_flag_bit_12 = false
-game.state.story_flag_bit_16 = false
+game.state.renraku_map_overlay = false
+game.state.ito_fight_won = false
 local pre_ito_route = Building.resolve_field_location_route(context)
 assert(pre_ito_route.kind == "area_event" and
        pre_ito_route.area_event_target == 35 and
@@ -156,7 +156,7 @@ local pre_ito_outcome = RenrakuOffices.present_map_overlay_entry()
 assert(pre_ito_outcome.type == "source_boundary" and
        pre_ito_outcome.reason:match("precondition:not_satisfied") ~= nil)
 
-game.state.story_flag_bit_16 = true
+game.state.ito_fight_won = true
 context.package_run_status = "payment_due"
 local alternate_route = Building.resolve_field_location_route(context)
 assert(alternate_route.kind == "area_event" and

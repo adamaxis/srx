@@ -193,8 +193,8 @@
         },
         "mark_frosty_met": {
           "type": "action",
-          "actionId": "story.set_flag",
-          "arguments": { "flagBit": 30, "value": true },
+          "actionId": "story.set_fact",
+          "arguments": { "factId": "frosty_met", "value": true },
           "next": "frosty_arrival",
           "evidence": "Command 0x44 at 0x21FD0 sets FFFC1E bit 30, loads profile 0x121F4C, and opens record 0xF57F8."
         },

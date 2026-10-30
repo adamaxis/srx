@@ -3,7 +3,7 @@
 -- information service, and the later gated tomb prompt. The field event does
 -- not enter scene 54 until the tomb prompt's travel pages complete.
 local E = require("enums")
-local StoryFlags = require("story_flags")
+local StoryFacts = require("story_facts")
 local HarlequinDialogue = require("harlequin_dialogue")
 local DialogueGraph = require("dialogue_graph")
 
@@ -18,16 +18,15 @@ end
 
 function TarislarApartments.present_first_entry()
     if not at_apartments() or
-       StoryFlags.is_set(E.StoryFlag.FROSTY_MET) ~= true or
-       StoryFlags.is_set(E.StoryFlag.GARDEN_APTS_ENTERED) == true then
+       StoryFacts.is_set(E.StoryFact.FROSTY_MET) ~= true or
+       StoryFacts.is_set(E.StoryFact.GARDEN_APTS_ENTERED) == true then
         return "denied"
     end
 
-    -- ROM 0x5456E marks trigger 21, awards +2 Karma to the active party,
+    -- ROM 0x5456E records the first entry and awards +2 Karma to the active party,
     -- then starts prompt record 0xF4DF4. Dismissing its first page selects
     -- command 0x45 (0x21FF2), which sets FFFC34 bits 5 and 6.
-    StoryFlags.begin_trigger(E.StoryFlag.GARDEN_APTS_ENTERED)
-    StoryFlags.mark_active_trigger()
+    StoryFacts.set(E.StoryFact.GARDEN_APTS_ENTERED)
     if game.services.call("party", "award_karma_2") ~= "applied" then
         return "denied"
     end
@@ -57,9 +56,8 @@ function TarislarApartments.present_repeat_service()
     local outcome = DialogueGraph.run(
         "tarislar_garden_apartments.repeat_service", {
             ["tarislar_apartments.mark_post_ito_briefed"] = function()
-                -- ROM 0x5451A selects command 0x40; handler 0x21F32 marks
-                -- FFFC1E bit 28 before the repeat-service choices appear.
-                StoryFlags.mark_fixed(E.StoryFlag.POST_ITO_BRIEFED)
+                -- The repeat service records that Harlequin received the Ito update [C: 0x5451A].
+                StoryFacts.set(E.StoryFact.POST_ITO_BRIEFED)
                 return "applied"
             end,
             ["tarislar_apartments.present_map_information"] = function()

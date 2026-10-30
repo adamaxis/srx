@@ -1,7 +1,6 @@
 #include "shadowrun_ghidra/field/stoker_motel_debt_payment_conversion.hpp"
 
 #include "shadowrun_ghidra/session/runner_status_conversion.hpp"
-#include "shadowrun_ghidra/world/world_effect_batch_conversion.hpp"
 
 namespace shadowrun::ghidra_conversion {
 
@@ -27,15 +26,10 @@ StokerMotelDebtPaymentOutcome resolve_stoker_motel_debt_payment(
         return outcome;
     }
 
-    // Source order is significant: subtract 250, mark the pending effect
-    // through 0x2196C, then add 500 back. The net gameplay result is +250
-    // nuyen, but retaining the two source operations makes the conversion
-    // auditable.
+    // Paying the 250 nuyen debt grants 500 nuyen credit, for a net gain of
+    // 250. The dialogue graph records the named motel_bill_paid story fact
+    // after this service returns successfully.
     state.funds -= kDebt;
-    // 0x2196C reloads FFDD64 and masks it to a 32-bit bit index; it does not
-    // consume the command value 0x05 still present in D0.
-    mark_effect_bit(
-        state.world_flags, static_cast<std::int32_t>(state.effect_marker));
     state.funds += kStokerPaymentCredit;
 
     // 0x59C34 awards one Karma point to each of the three runners.

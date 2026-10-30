@@ -2,7 +2,7 @@
 -- suppresses the event-table destination; Lua owns the story branch and its
 -- completion facts, while the host presents the typed dialogue operations.
 local E = require("enums")
-local StoryFlags = require("story_flags")
+local StoryFacts = require("story_facts")
 local HarlequinDialogue = require("harlequin_dialogue")
 
 local RedBuffalo = {}
@@ -50,9 +50,8 @@ function RedBuffalo.present_indexed_title_service()
     -- The ROM selects F4DB8 only while the Ritual of Binding flag (17) is
     -- set and Red Buffalo's service bit (18) is clear. Otherwise it uses
     -- F4DCC. Both branches keep the player on scene 6.
-    StoryFlags.begin_trigger(E.StoryFlag.RED_BUFFALO_WOMAN)
-    if StoryFlags.is_set(E.StoryFlag.RITUAL_OF_BINDING) == true and
-       StoryFlags.is_set(E.StoryFlag.RED_BUFFALO_WOMAN) == false then
+    if StoryFacts.is_set(E.StoryFact.RITUAL_OF_BINDING) == true and
+       StoryFacts.is_set(E.StoryFact.RED_BUFFALO_WOMAN) == false then
         if not more("introduction", INTRODUCTION) then
             return "field_return"
         end
@@ -60,9 +59,8 @@ function RedBuffalo.present_indexed_title_service()
             return "field_return"
         end
 
-        -- 0x5435C marks FFDD64's active trigger; the adjacent writes update
-        -- FFFC22 bits 5/6 and FFFC30 bits 29/30.
-        StoryFlags.finish_trigger(E.StoryFlag.RED_BUFFALO_WOMAN)
+        -- Completing the gift exchange records the meeting [C: 0x5435C].
+        StoryFacts.set(E.StoryFact.RED_BUFFALO_WOMAN)
         game.state.notebook_tip_flag_bit_6 = false
         game.state.notebook_tip_flag_bit_5 = true
         game.state.field_mode_effect_flag_bit_29 = false

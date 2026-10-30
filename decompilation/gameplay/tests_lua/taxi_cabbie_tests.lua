@@ -11,8 +11,7 @@ end
 local function fixture(options)
     options = options or {}
     local state = {}
-    state["story_flag_bit_" .. E.StoryFlag.MOTEL_BILL_PAID] =
-        options.story_flag
+    state[E.StoryFact.MOTEL_BILL_PAID] = options.story_flag
     state["group_item_flag_bit_" .. E.GroupItemBit.INDIAN_LANDS_VISA] =
         options.visa == true
     state["group_item_flag_bit_" .. E.GroupItemBit.ORK_ARMBAND] =

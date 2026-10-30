@@ -18,7 +18,7 @@
         "select_ritual_stage": {
           "type": "branch",
           "cases": [
-            { "when": "salish.spirit_eyes.first_contact", "next": "first_select_trigger" },
+            { "when": "salish.spirit_eyes.first_contact", "next": "first_clear_effect_14" },
             { "when": "salish.spirit_eyes.horn_not_given", "next": "check_horn" },
             { "when": "salish.spirit_eyes.pelt_not_given", "next": "check_pelt" },
             { "when": "salish.spirit_eyes.tasks_not_done", "next": "check_scale" }
@@ -31,12 +31,6 @@
           "reason": "Spirit Eyes ritual graph requires the Scene-4 event-27 site context."
         },
 
-        "first_select_trigger": {
-          "type": "action",
-          "actionId": "story.select_fixed_trigger",
-          "arguments": { "triggerId": 5 },
-          "next": "first_clear_effect_14"
-        },
         "first_clear_effect_14": {
           "type": "action",
           "actionId": "field.set_mode_effect_flag",
@@ -69,8 +63,8 @@
         },
         "first_contact_command": {
           "type": "action",
-          "actionId": "story.apply_dialogue_command",
-          "arguments": { "commandId": 21 },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"shaman_met","value":true},
           "next": "spirit_eyes_description",
           "results": { "command_unresolved": "dialogue_command_boundary" },
           "evidence": "ROM command 0x15 dispatches to 0x218B2, selects prompt 0xF5150, and calls 0x2196C to set the active trigger bit after the first page."
@@ -135,8 +129,8 @@
         },
         "mark_horn_given": {
           "type": "action",
-          "actionId": "story.set_flag",
-          "arguments": { "flagBit": 6, "value": true },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"shaman_item4_given","value":true},
           "next": "horn_clear_effect_14"
         },
         "horn_clear_effect_14": {
@@ -197,8 +191,8 @@
         },
         "mark_pelt_given": {
           "type": "action",
-          "actionId": "story.set_flag",
-          "arguments": { "flagBit": 7, "value": true },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"shaman_pelt_given","value":true},
           "next": "pelt_clear_effect_17"
         },
         "pelt_clear_effect_17": {
@@ -254,8 +248,8 @@
         },
         "mark_tasks_done": {
           "type": "action",
-          "actionId": "story.set_flag",
-          "arguments": { "flagBit": 9, "value": true },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"shaman_tasks_done","value":true},
           "next": "completion_clear_effect_15"
         },
         "completion_clear_effect_15": {
@@ -290,8 +284,8 @@
         },
         "completion_dialogue_command": {
           "type": "action",
-          "actionId": "story.apply_dialogue_command",
-          "arguments": { "commandId": 26 },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"shaman_met","value":true},
           "next": "ritual_setup_page",
           "results": { "command_unresolved": "dialogue_command_boundary" },
           "evidence": "ROM command 0x1A dispatches to 0x218F8, selects prompt 0xF51A8, and marks the already active trigger after the completion page."
@@ -331,7 +325,7 @@
       }
     },
     "salish.licourtrix.encounter": {
-      "entryNode": "select_trigger_8",
+      "entryNode": "select_lair_state",
       "speakerId": "licourtrix",
       "textProfile": "salish.spirit_eyes",
       "precondition": "salish.licourtrix.event_context",
@@ -346,13 +340,6 @@
         "scope": "scene_47_event_25_licourtrix_encounter"
       },
       "nodes": {
-        "select_trigger_8": {
-          "type": "action",
-          "actionId": "story.select_fixed_trigger",
-          "arguments": { "triggerId": 8 },
-          "next": "select_lair_state",
-          "evidence": "ROM 0x53F00 selects story trigger 8 before testing the post-pelt and post-scale branches."
-        },
         "select_lair_state": {
           "type": "branch",
           "cases": [
@@ -455,8 +442,8 @@
         },
         "mark_scale_story_flag": {
           "type": "action",
-          "actionId": "story.set_flag",
-          "arguments": { "flagBit": 8, "value": true },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"serpent_scale_taken","value":true},
           "next": "grant_scale_item"
         },
         "grant_scale_item": {

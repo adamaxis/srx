@@ -4,7 +4,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
 local ConditionEvaluator = require("condition_evaluator")
 local Status = ConditionEvaluator.Status
 local facts = ConditionEvaluator.FactProvider.new({
-    state = { story_flag_bit_0 = false, story_flag_bit_1 = true },
+    state = { motel_bill_paid = false, tarislar_asked_shale = true },
     run_registry = {
         active_run_id = function() return "package_recovery" end,
         current_offer_id = function() return "employee_recruitment" end,
@@ -16,11 +16,11 @@ local function compare(fact, op, value)
 end
 
 local cases = {
-    { expression = compare("story.story_flag_bit_0", "eq", false),
+    { expression = compare("story.motel_bill_paid", "eq", false),
       expected = Status.true_value },
-    { expression = compare("story.story_flag_bit_0", "ne", true),
+    { expression = compare("story.motel_bill_paid", "ne", true),
       expected = Status.true_value },
-    { expression = compare("story.story_flag_bit_1", "in", { false, true }),
+    { expression = compare("story.tarislar_asked_shale", "in", { false, true }),
       expected = Status.true_value },
     { expression = compare("field.package_run_status", "eq", "payment_due"),
       context = { package_run_status = "payment_due" },
@@ -49,14 +49,14 @@ end
 
 assert(evaluator:evaluate({ all = {
     compare("story.not_loaded", "eq", true),
-    compare("story.story_flag_bit_0", "eq", true),
+    compare("story.motel_bill_paid", "eq", true),
 } }).status == Status.false_value)
 assert(evaluator:evaluate({ all = {
     compare("story.not_loaded", "eq", true),
 } }).status == Status.unknown)
 assert(evaluator:evaluate({ any = {
     compare("story.not_loaded", "eq", true),
-    compare("story.story_flag_bit_1", "eq", true),
+    compare("story.tarislar_asked_shale", "eq", true),
 } }).status == Status.true_value)
 assert(evaluator:evaluate({ ["not"] =
     compare("story.not_loaded", "eq", true) }).status == Status.unknown)
@@ -88,7 +88,7 @@ assert(runner_evaluator:evaluate(
 game = previous_game
 
 local valid, err = pcall(ConditionEvaluator.validate,
-    compare("story.story_flag_bit_0", "approximately", false))
+    compare("story.motel_bill_paid", "approximately", false))
 assert(not valid and tostring(err):match("unsupported operator") ~= nil)
 
 print("condition evaluator tests passed: typed operators and tri-state logic")

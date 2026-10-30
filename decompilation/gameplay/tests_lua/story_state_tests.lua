@@ -70,13 +70,13 @@ local Club = require("club_penumbra")
 reset(5, 7, 0)
 check(Club.apply_mako_callback() == "applied", "mako applied")
 check(host.heat_level == 8 and host.karma == 2 and
-      host.strike_team_stage == 1 and host.facts.story_flag_bit_11 == true and
+      host.strike_team_stage == 1 and host.facts.mako_defeated == true and
       host.facts.field_mode_flag_bit_20 == false and host.facts.field_mode_flag_bit_24 == true and
       host.facts.notebook_tip_flag_bit_49 == false, "mako effects")
 -- Missing roster: nothing changes.
 reset(5, 3, 0); host.roster = false
 check(Club.apply_mako_callback() == "service_unavailable" and host.heat_level == 3 and
-      host.facts.story_flag_bit_11 == nil, "no roster leaves state")
+      host.facts.mako_defeated == nil, "no roster leaves state")
 -- Unresolved facts: unavailable.
 reset(5, 3, 0); host.facts.notebook_tip_flag_bit_49 = nil
 check(Club.apply_mako_callback() == "service_unavailable" and host.karma == 0, "unresolved facts")

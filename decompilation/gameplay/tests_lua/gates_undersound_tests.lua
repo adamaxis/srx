@@ -28,8 +28,8 @@ local service_link = {
     script = "lua_field_service",
     route_priority = 10,
     route_condition_id = condition("test.gates.route", {
-        equal("story.story_flag_bit_11", true),
-        equal("story.story_flag_bit_15", false),
+        equal("story.mako_defeated", true),
+        equal("story.ogami_left", false),
         equal("field.package_run_status", "none"),
     }),
     indexed_title_service_module = "gates_undersound",
@@ -42,8 +42,8 @@ local service_link = {
 
 game = {
     state = {
-        story_flag_bit_11 = true,
-        story_flag_bit_15 = false,
+        mako_defeated = true,
+        ogami_left = false,
         field_mode_effect_flag_bit_26 = true,
         field_mode_effect_flag_bit_27 = false,
     },
@@ -119,8 +119,8 @@ assert(route.indexed_title_service and
 local departure_outcome = GatesUndersound.present_ogami_departure()
 assert(departure_outcome.type == "continue_in_place")
 assert(game.last_dialogue_event == "entry" and
-       game.state.story_flag_bit_15 == true and
-       game.state.story_trigger_active_15 == true and
+       game.state.ogami_left == true and
+       game.state.story_trigger_active_15 == nil and
        game.state.field_mode_effect_flag_bit_26 == false and
        game.state.field_mode_effect_flag_bit_27 == true)
 
@@ -129,7 +129,7 @@ local event = Dialogue.event_text_keys(
 assert(event and event.title_key == "gates.undersound.page.entry" and
        event.continuation_key == "")
 
-game.state.story_flag_bit_15 = true
+game.state.ogami_left = true
 local repeat_route = Building.resolve_field_location_route(context)
 assert(repeat_route.kind == "area_event" and
        repeat_route.area_event_target == 21 and
@@ -138,14 +138,14 @@ local repeat_outcome = GatesUndersound.present_ogami_departure()
 assert(repeat_outcome.type == "source_boundary" and
        repeat_outcome.reason:match("precondition:not_satisfied") ~= nil)
 
-game.state.story_flag_bit_15 = false
-game.state.story_flag_bit_11 = false
+game.state.ogami_left = false
+game.state.mako_defeated = false
 local pre_mako_route = Building.resolve_field_location_route(context)
 assert(pre_mako_route.kind == "area_event" and
        pre_mako_route.area_event_target == 21 and
        pre_mako_route.indexed_title_service == nil)
 
-game.state.story_flag_bit_11 = true
+game.state.mako_defeated = true
 context.package_run_status = "payment_due"
 local alternate_route = Building.resolve_field_location_route(context)
 assert(alternate_route.kind == "area_event" and

@@ -3,7 +3,7 @@
 -- ordinary, run-result, and Frosty prompts. The link data selects each entry
 -- path from source-backed story facts before this module presents it.
 local E = require("enums")
-local StoryFlags = require("story_flags")
+local StoryFacts = require("story_facts")
 local DialogueGraph = require("dialogue_graph")
 
 local Inn = {}
@@ -79,8 +79,8 @@ end
 
 function Inn.present_indexed_title_service()
     if not at_inn() or
-       StoryFlags.is_set(E.StoryFlag.MOTEL_BILL_PAID) ~= true or
-       StoryFlags.is_set(E.StoryFlag.TARISLAR_ASKED_SHALE) ~= false or
+       StoryFacts.is_set(E.StoryFact.MOTEL_BILL_PAID) ~= true or
+       StoryFacts.is_set(E.StoryFact.TARISLAR_ASKED_SHALE) ~= false or
        game.field.package_run_status ~= E.PackageRunStatus.NONE then
         return "denied"
     end
@@ -125,8 +125,8 @@ function Inn.present_field_exit_prompt()
         return "field_return"
     end
     local choices = { "crash" }
-    if StoryFlags.is_set(E.StoryFlag.MICHAEL_MISSION_TOLD) == true and
-       StoryFlags.is_set(E.StoryFlag.FROSTY_MET) == false then
+    if StoryFacts.is_set(E.StoryFact.MICHAEL_MISSION_TOLD) == true and
+       StoryFacts.is_set(E.StoryFact.FROSTY_MET) == false then
         choices[#choices + 1] = "frosty"
     end
     choices[#choices + 1] = "leave"

@@ -51,11 +51,8 @@
         },
         "mark_renraku_map_shown": {
           "type": "action",
-          "actionId": "story.apply_dialogue_command",
-          "arguments": {
-            "commandId": 70,
-            "options": { "branch": 1 }
-          },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"renraku_map_shown","value":true},
           "next": "vigore_map_gate",
           "evidence": "Command 0x46 at 0x22018 marks story bit 26 for the Renraku-map branch."
         },
@@ -99,11 +96,8 @@
         },
         "mark_renraku_map_again": {
           "type": "action",
-          "actionId": "story.apply_dialogue_command",
-          "arguments": {
-            "commandId": 71,
-            "options": { "branch": 1 }
-          },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"renraku_map_shown","value":true},
           "next": "vigore_lead_prompt",
           "evidence": "Command 0x47 also marks story bit 26 on its one-map branch."
         },
@@ -145,11 +139,8 @@
         },
         "mark_both_maps_shown": {
           "type": "action",
-          "actionId": "story.apply_dialogue_command",
-          "arguments": {
-            "commandId": 70,
-            "options": { "branch": 2 }
-          },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"both_maps_shown","value":true},
           "next": "both_maps_prompt",
           "evidence": "Command 0x46 at 0x22018 marks story bit 27 when both map items are present."
         },
@@ -202,11 +193,8 @@
         },
         "mark_both_maps_shown_again": {
           "type": "action",
-          "actionId": "story.apply_dialogue_command",
-          "arguments": {
-            "commandId": 71,
-            "options": { "branch": 2 }
-          },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"both_maps_shown","value":true},
           "next": "tomb_departure_prompt",
           "evidence": "Command 0x47 at 0x22072 marks story bit 27 on the paired-map branch."
         },

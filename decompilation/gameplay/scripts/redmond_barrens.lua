@@ -2,7 +2,7 @@
 -- generic area-event route; this script owns the conditional narrative and
 -- reports the completed story fact through the constrained game.state proxy.
 local E = require("enums")
-local StoryFlags = require("story_flags")
+local StoryFacts = require("story_facts")
 local RedmondBarrens = {}
 
 function RedmondBarrens.should_run_vigore_search()
@@ -18,8 +18,6 @@ function RedmondBarrens.should_run_vigore_search()
 end
 
 function RedmondBarrens.run_vigore_search()
-    -- 0x53A78 publishes trigger 22 in FFDD64 before calling handler 0x545B6.
-    StoryFlags.begin_trigger(E.StoryFlag.LANDMARK_MAP_TAKEN)
     if RedmondBarrens.should_run_vigore_search() ~= "run" then
         return "skip"
     end
@@ -27,9 +25,8 @@ function RedmondBarrens.run_vigore_search()
     game.ui.say("redmond.vigore-search.page-0")
     game.ui.say("redmond.vigore-search.page-1")
     game.ui.say("redmond.vigore-search.page-2")
-    -- 0x5463C: the handler's jsr 0x2196C after the conversation marks
-    -- FFFC1E bit FFDD64 (22, LANDMARK_MAP_TAKEN) [C].
-    StoryFlags.finish_trigger(E.StoryFlag.LANDMARK_MAP_TAKEN)
+    -- The Vigore search grants the Landmark Map after its closing page [C: 0x5463C].
+    StoryFacts.set(E.StoryFact.LANDMARK_MAP_TAKEN)
     game.state.vigore_search_completed = true
     -- 0x54652 calls the shared 0x59C34 helper with D0=2 after publishing the
     -- landmark map. Keep the party reward as a typed host service so the Lua

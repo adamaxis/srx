@@ -53,7 +53,7 @@ end
 
 game = {
     content = content,
-    state = { story_flag_bit_0 = false },
+    state = { motel_bill_paid = false },
     location = { type = "motel", id = "stoker_motel" },
     field = { package_run_status = "none" },
     ui = {
@@ -102,7 +102,7 @@ service_results["building.charge_20"] = "paid"
 local result = outcome(MichaelPackage.stoker_interaction())
 assert(result.type == "open_service" and result.serviceId == "hotel.options" and
        result.returnPolicy == "origin")
-assert(game.state.story_trigger_active_0 == true)
+assert(game.state.motel_bill_paid == false)
 expect_page(1, "arrival")
 expect_page(2, "room.paid")
 assert(choices[1].id == "manager" and #choices[1].options == 3 and
@@ -137,17 +137,17 @@ service_results["michael_package.pay_debt"] = "paid"
 reset("package", "debt-payment")
 result = outcome(MichaelPackage.stoker_interaction())
 assert(result.type == "continue_in_place" and
-       game.state.story_flag_bit_0 == true)
+       game.state.motel_bill_paid == true)
 expect_page(2, "package-handoff")
 assert(services[1].operation == "prepare_debt_offer" and
        services[2].operation == "pay_debt")
 
-game.state.story_flag_bit_0 = false
+game.state.motel_bill_paid = false
 service_results["michael_package.pay_debt"] = "insufficient"
 reset("package", "debt-payment")
 result = outcome(MichaelPackage.stoker_interaction())
 assert(result.type == "continue_in_place" and
-       game.state.story_flag_bit_0 == false)
+       game.state.motel_bill_paid == false)
 expect_page(2, "jump-house")
 
 service_results["michael_package.jump_house_referral"] = "ready"
@@ -159,14 +159,14 @@ assert(services[2].operation == "jump_house_referral")
 
 -- Unknown source facts and unavailable host transactions stop at explicit
 -- boundaries rather than choosing a branch or claiming a successful return.
-game.state.story_flag_bit_0 = nil
+game.state.motel_bill_paid = nil
 reset()
 result = outcome(MichaelPackage.stoker_interaction())
 assert(result.type == "source_boundary" and
-       result.reason:find("story.story_flag_bit_0", 1, true))
+       result.reason:find("story.motel_bill_paid", 1, true))
 assert(#choices == 0 and #pages == 0 and #services == 0)
 
-game.state.story_flag_bit_0 = false
+game.state.motel_bill_paid = false
 service_results["building.charge_20"] = nil
 reset("crash", "pay")
 result = outcome(MichaelPackage.stoker_interaction())

@@ -53,12 +53,12 @@ local function new_game(choices, flags, funds, package_run_status, inventory)
         field_dialogue_flag_bit_2 = false,
         field_dialogue_flag_bit_3 = false,
         group_item_flag_bit_1 = false,
-        story_flag_bit_1 = false,
-        story_flag_bit_3 = false,
-        story_flag_bit_9 = false,
-        story_flag_bit_10 = false,
-        story_flag_bit_18 = false,
-        story_flag_bit_19 = false,
+        tarislar_asked_shale = false,
+        aragorn_found = false,
+        shaman_tasks_done = false,
+        michael_alias_learned = false,
+        red_buffalo_woman = false,
+        ilene_met = false,
         group_item_flag_bit_5 = false,
         field_mode_flag_bit_6 = true,
         field_mode_flag_bit_7 = true,
@@ -384,12 +384,12 @@ assert(outcome.type == "continue_in_place" and state.funds == 1199 and
            "boris.greenhouse.page.insufficient_funds")
 
 state = new_game({ "more", "information", "accept", "michael", "more" }, {
-    story_flag_bit_1 = true,
+    tarislar_asked_shale = true,
 }, 1000)
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "continue_in_place" and state.funds == 500 and
        state.state.field_dialogue_flag_bit_2 == true and
-       state.state.story_flag_bit_10 == true and
+       state.state.michael_alias_learned == true and
        state.state.field_dialogue_flag_bit_1 == true and
        state.state.field_mode_flag_bit_6 == false and
        state.state.field_mode_flag_bit_7 == false and
@@ -427,8 +427,8 @@ end
 
 state = new_game({ "more", "information", "david", "brother" }, {
     field_dialogue_flag_bit_2 = true,
-    story_flag_bit_1 = true,
-    story_flag_bit_3 = false,
+    tarislar_asked_shale = true,
+    aragorn_found = false,
 }, 1000)
 local unavailable_host = strike_team_host(nil)
 state.services.call = unavailable_host.call
@@ -447,8 +447,8 @@ assert(outcome.type == "source_boundary" and
 
 state = new_game({ "more", "information", "david", "brother", "more" }, {
     field_dialogue_flag_bit_2 = true,
-    story_flag_bit_1 = true,
-    story_flag_bit_3 = false,
+    tarislar_asked_shale = true,
+    aragorn_found = false,
 }, 1000)
 local strike_host = strike_team_host(3)
 state.services.call = strike_host.call
@@ -464,8 +464,8 @@ assert(outcome.type == "continue_in_place" and strike_host.sets == 1 and
 
 state = new_game({ "more", "information", "ilene", "later" }, {
     field_dialogue_flag_bit_2 = true,
-    story_flag_bit_18 = true,
-    story_flag_bit_19 = false,
+    red_buffalo_woman = true,
+    ilene_met = false,
     group_item_flag_bit_5 = false,
 }, 1000)
 outcome = Boris.present_indexed_title_service()
@@ -476,7 +476,7 @@ assert(outcome.type == "continue_in_place" and
 
 state = new_game({ "more", "information", "thon", "more" }, {
     field_dialogue_flag_bit_2 = true,
-    story_flag_bit_9 = true,
+    shaman_tasks_done = true,
 }, 1000)
 outcome = Boris.present_indexed_title_service()
 assert(outcome.type == "continue_in_place" and
@@ -485,10 +485,10 @@ assert(outcome.type == "continue_in_place" and
 
 state = new_game({ "more", "information", "david", "brother" }, {
     field_dialogue_flag_bit_2 = true,
-    story_flag_bit_1 = true,
-    story_flag_bit_3 = false,
-    story_flag_bit_18 = true,
-    story_flag_bit_19 = false,
+    tarislar_asked_shale = true,
+    aragorn_found = false,
+    red_buffalo_woman = true,
+    ilene_met = false,
     group_item_flag_bit_5 = false,
 }, 1000)
 outcome = Boris.present_indexed_title_service()

@@ -116,8 +116,8 @@
         },
         "mark_post_ito_briefed": {
           "type": "action",
-          "actionId": "story.apply_dialogue_command",
-          "arguments": { "commandId": 64 },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"post_ito_briefed","value":true},
           "next": "ito_update",
           "evidence": "Dialogue command 0x40 at 0x21F32 selects trigger 28 and marks POST_ITO_BRIEFED before the Ito choice."
         },

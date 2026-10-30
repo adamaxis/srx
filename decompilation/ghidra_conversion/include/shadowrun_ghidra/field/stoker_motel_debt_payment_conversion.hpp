@@ -21,16 +21,6 @@ struct StokerMotelDebtPaymentState {
     // Source FFFBFE: the player's 32-bit nuyen balance.
     std::uint32_t funds = 0;
 
-    // Source FFFC1E: the persistent world/effect flag word updated through
-    // 0x2196C with the pending effect marker below.
-    std::uint32_t world_flags = 0;
-
-    // Source FFDD64: 0x2196C reloads this marker instead of using the
-    // prompt command value. The upstream indexed field-exit service owns its
-    // value, so the host boundary keeps it explicit rather than guessing a
-    // Stoker-specific bit.
-    std::uint32_t effect_marker = 0;
-
     // Source FF018F: the runner feature/status byte. The paid branch sets bit
     // zero, the cyberdeck-present flag used by the Matrix entry gate.
     std::uint8_t runner_feature_flags = 0;

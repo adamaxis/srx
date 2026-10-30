@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "graphs": {
     "tarislar_city_inn.paid_stay_and_shale_service": {
-      "entryNode": "begin_trigger",
+      "entryNode": "inn_intro",
       "precondition": "tarislar_city_inn.paid_stay_and_shale_service_available",
       "speakerId": "tarislar_city_inn_manager",
       "textProfile": "tarislar.city_inn",
@@ -11,12 +11,6 @@
         "scope": "indexed_service_room_transaction_tabatha_dialogue_and_aftermath"
       },
       "nodes": {
-        "begin_trigger": {
-          "type": "action",
-          "actionId": "story.begin_trigger",
-          "arguments": { "triggerId": 1 },
-          "next": "inn_intro"
-        },
         "inn_intro": {
           "type": "page",
           "eventId": "entry",
@@ -79,8 +73,8 @@
         },
         "tabatha_command_16": {
           "type": "action",
-          "actionId": "story.apply_dialogue_command",
-          "arguments": { "commandId": 22 },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"tarislar_asked_shale","value":true},
           "next": "tabatha_intro_0",
           "evidence": "Selecting Tabatha applies ROM command 0x16 at 0x218BC before the conversation pages."
         },

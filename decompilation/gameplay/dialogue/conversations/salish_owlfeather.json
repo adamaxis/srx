@@ -20,15 +20,15 @@
           "cases": [
             {
               "when": "salish.owlfeather.first_contact_available",
-              "next": "first_begin_trigger"
+              "next": "first_clear_effect_8"
             },
             {
               "when": "salish.owlfeather.search_followup_available",
-              "next": "search_begin_trigger"
+              "next": "search_clear_effect_9"
             },
             {
               "when": "salish.owlfeather.return_followup_available",
-              "next": "return_begin_trigger"
+              "next": "award_party_karma_2"
             }
           ],
           "fallback": "service_route_boundary",
@@ -39,13 +39,6 @@
           "reason": "The invocation entry id, location, event, or story flags do not match an Owlfeather service root traced from the ROM."
         },
 
-        "first_begin_trigger": {
-          "type": "action",
-          "actionId": "story.begin_trigger",
-          "arguments": { "triggerId": 2 },
-          "next": "first_clear_effect_8",
-          "evidence": "The indexed trigger loop stores service index 2 in FFDD64 before 0x53B78."
-        },
         "first_clear_effect_8": {
           "type": "action",
           "actionId": "field.set_mode_effect_flag",
@@ -82,8 +75,8 @@
         },
         "mark_brother_contact": {
           "type": "action",
-          "actionId": "story.apply_dialogue_command",
-          "arguments": { "commandId": 23 },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"owlfeather_asked","value":true},
           "results": { "command_unresolved": "dialogue_command_boundary" },
           "next": "brother_more"
         },
@@ -130,13 +123,6 @@
           "evidence": "Dialogue command 0x3C at 0x21ED0 sets FFFC30 bit 10 before opening 0xF50C8."
         },
 
-        "search_begin_trigger": {
-          "type": "action",
-          "actionId": "story.begin_trigger",
-          "arguments": { "triggerId": 3 },
-          "next": "search_clear_effect_9",
-          "evidence": "The indexed trigger loop stores service index 3 in FFDD64 before 0x53BCC."
-        },
         "search_clear_effect_9": {
           "type": "action",
           "actionId": "field.set_mode_effect_flag",
@@ -156,13 +142,6 @@
           "evidence": "Service 3 at 0x53BCC reaches the 0xF4B84 repeat prompt after clearing FFFC30 bit 9."
         },
 
-        "return_begin_trigger": {
-          "type": "action",
-          "actionId": "story.begin_trigger",
-          "arguments": { "triggerId": 4 },
-          "next": "award_party_karma_2",
-          "evidence": "The indexed trigger loop stores service index 4 in FFDD64 before 0x53CEA."
-        },
         "award_party_karma_2": {
           "type": "action",
           "actionId": "party.award_karma",
@@ -212,8 +191,8 @@
         },
         "mark_aragorn_returned": {
           "type": "action",
-          "actionId": "story.apply_dialogue_command",
-          "arguments": { "commandId": 25 },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"aragorn_freed_told","value":true},
           "results": { "command_unresolved": "dialogue_command_boundary" },
           "next": "return_offer",
           "evidence": "The freed choice reaches dialogue command 0x19, which marks the active trigger before the reunion pages."
@@ -350,8 +329,8 @@
         },
         "finish_return_trigger": {
           "type": "action",
-          "actionId": "story.finish_trigger",
-          "arguments": { "triggerId": 4 },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"aragorn_freed_told","value":true},
           "next": "continue_in_place",
           "evidence": "Service 4 calls 0x2196C at 0x53D4E after its dialogue returns, including after command 0x19."
         },
@@ -371,7 +350,7 @@
       }
     },
     "salish.owlfeather.mitsuhama_entry": {
-      "entryNode": "begin_trigger",
+      "entryNode": "entry_page",
       "speakerId": "aragorn_mitsuhama_narrator",
       "textProfile": "salish.owlfeather",
       "provenance": {
@@ -379,13 +358,6 @@
         "scope": "scene_3_event_3_entry_passage_then_scene_30"
       },
       "nodes": {
-        "begin_trigger": {
-          "type": "action",
-          "actionId": "story.begin_trigger",
-          "arguments": { "triggerId": 3 },
-          "next": "entry_page",
-          "evidence": "ROM 0x53A78 records indexed service 3 in FFDD64 before calling 0x53BCC."
-        },
         "entry_page": {
           "type": "page",
           "eventId": "mitsuhama_entry",
@@ -423,8 +395,8 @@
         },
         "mark_aragorn_found": {
           "type": "action",
-          "actionId": "story.set_flag",
-          "arguments": { "flagBit": 3, "value": true },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"aragorn_found","value":true},
           "next": "clear_field_mode_bit_10",
           "evidence": "ROM 0x53C90 sets FFFC1E bit 3 at 0x53C96 before opening root 0xF4BBC."
         },
@@ -478,8 +450,8 @@
         },
         "apply_command_18": {
           "type": "action",
-          "actionId": "story.apply_dialogue_command",
-          "arguments": { "commandId": 24 },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"aragorn_found","value":true},
           "next": "aragorn_refuses_help",
           "evidence": "ROM root 0xF4BBC applies dialogue command 0x18 before its final text record."
         },

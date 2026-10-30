@@ -262,10 +262,41 @@ void make_random_grid_black_transparent(QImage& image) {
 
 // Qt 6.9 added QImage::flipped(Qt::Orientations); 6.8 (Debian/Ubuntu packages)
 // only has mirrored(bool, bool). Same pixels either way.
-// game.state facts for the FFFC1E long (story_flag_bit_<n>) and the FFDD64
-// trigger index (story_trigger_active_<n>); see gameplay/scripts/story_flags.lua.
-constexpr std::string_view kStoryFlagBitPrefix = "story_flag_bit_";
-constexpr std::string_view kStoryTriggerActivePrefix = "story_trigger_active_";
+// Lua story facts use these stable identities. The native adapter maps them
+// to the source FFFC1E bit positions; gameplay scripts never index that word.
+constexpr std::array<std::string_view, 31U> kStoryFlagFactIds{{
+    "motel_bill_paid",
+    "tarislar_asked_shale",
+    "owlfeather_asked",
+    "aragorn_found",
+    "aragorn_freed_told",
+    "shaman_met",
+    "shaman_item4_given",
+    "shaman_pelt_given",
+    "serpent_scale_taken",
+    "shaman_tasks_done",
+    "michael_alias_learned",
+    "mako_defeated",
+    "renraku_map_overlay",
+    "michael_mission_told",
+    "cyberheart_safe",
+    "ogami_left",
+    "ito_fight_won",
+    "ritual_of_binding",
+    "red_buffalo_woman",
+    "ilene_met",
+    "gillian_initiation",
+    "garden_apts_entered",
+    "landmark_map_taken",
+    "holopix_shown",
+    "medicine_lodge_turned_away",
+    "hospital_visited",
+    "renraku_map_shown",
+    "both_maps_shown",
+    "post_ito_briefed",
+    "heart_delivered",
+    "frosty_met",
+}};
 // Source FFFC30: field-mode story flags. This is distinct from the FFFC1E
 // world story flags and the FFFC34 mode-effect flags below.
 constexpr std::string_view kFieldModeFlagBitPrefix = "field_mode_flag_bit_";
@@ -305,6 +336,17 @@ std::optional<std::uint8_t> story_fact_bit_index(
         return std::nullopt;
     }
     return static_cast<std::uint8_t>(index);
+}
+
+std::optional<std::uint8_t> story_flag_source_bit(
+    const std::string_view fact_id) {
+    const auto found = std::find(kStoryFlagFactIds.begin(),
+                                 kStoryFlagFactIds.end(), fact_id);
+    if (found == kStoryFlagFactIds.end()) {
+        return std::nullopt;
+    }
+    return static_cast<std::uint8_t>(
+        std::distance(kStoryFlagFactIds.begin(), found));
 }
 
 QImage flipped_image(const QImage& image, const Qt::Orientations orientations) {
@@ -848,17 +890,6 @@ FieldSceneRuntime::FieldSceneRuntime(
 
         StokerMotelDebtPaymentState payment_state{};
         payment_state.funds = *field_funds_;
-        payment_state.world_flags = field_exit_world_flags_;
-        // The live Stoker branch is title-service table entry zero at ROM
-        // 0x53AB6; 0x53A78 publishes that index in FFDD64 before dispatch,
-        // and the paid branch's 0x2196C marks whatever FFDD64 holds. The
-        // short-funds branch (0x213E2) never reads FFDD64.
-        if (paid_branch && !field_active_story_trigger_.has_value()) {
-            this->source_boundary("field.dialogue.stoker_debt_without_trigger");
-            return std::nullopt;
-        }
-        payment_state.effect_marker =
-            field_active_story_trigger_.value_or(0U);
         payment_state.runner_feature_flags =
             field_runner_feature_flags_.value_or(0U);
         payment_state.followup_state.story_flags = notebook_tip_flags_[0];
@@ -873,7 +904,6 @@ FieldSceneRuntime::FieldSceneRuntime(
             resolve_stoker_motel_debt_payment(payment_state);
         field_funds_ = payment_state.funds;
         if (outcome.result == StokerMotelDebtPaymentResult::debt_paid) {
-            field_exit_world_flags_ = payment_state.world_flags;
             field_runner_feature_flags_ =
                 payment_state.runner_feature_flags;
             for (std::size_t index = 0U;
@@ -1591,8 +1621,8 @@ bool FieldSceneRuntime::run_field_exit_orchestrator(
                     return true;
                 }
                 if (*decision == "run") {
-                    // redmond_barrens.run_vigore_search publishes FFDD64 = 22
-                    // (story_flags.begin_trigger) and marks the 0x5463C tail.
+                    // redmond_barrens.run_vigore_search records the named
+                    // landmark_map_taken fact after its closing page.
                     if (!field_dialogue_.open_gameplay_task(
                             "redmond_barrens", "run_vigore_search")) {
                         source_boundary(
@@ -9999,7 +10029,6 @@ bool FieldSceneRuntime::bootstrap(
     field_mode_entry_destination_scene_.reset();
     field_mode_entry_run_target_actor_group_.reset();
     field_indexed_title_service_result_ = 0;
-    field_active_story_trigger_.reset();
     field_controller_sample_state_ = ControllerSampleState{};
     field_controller_latch_state_ = ControllerLatchState{};
     field_target_heading_ = 0U;
@@ -10161,21 +10190,12 @@ bool FieldSceneRuntime::bootstrap(
                 }
                 return (*field_runner_feature_flags_ & (1U << bit)) != 0U;
             }
-            constexpr std::string_view kVidPhoneStoryFlagPrefix =
-                "vid_phone_story_flag_bit_";
-            if (name.size() > kVidPhoneStoryFlagPrefix.size() &&
-                name.substr(0U, kVidPhoneStoryFlagPrefix.size()) ==
-                    kVidPhoneStoryFlagPrefix) {
-                unsigned bit = 0U;
-                const auto suffix = name.substr(kVidPhoneStoryFlagPrefix.size());
-                const auto parsed = std::from_chars(
-                    suffix.data(), suffix.data() + suffix.size(), bit);
-                if (parsed.ec != std::errc{} ||
-                    parsed.ptr != suffix.data() + suffix.size() || bit >= 32U ||
-                    !notebook_contacts_flags_.has_value()) {
+            if (name == "hollywood_access_granted") {
+                if (!notebook_contacts_flags_.has_value()) {
                     return std::nullopt;
                 }
-                return (*notebook_contacts_flags_ & (1U << bit)) != 0U;
+                // Both Hollywood access offers share source FFFC38 bit 27.
+                return (*notebook_contacts_flags_ & (1U << 27U)) != 0U;
             }
             if (name == "lone_star_criminal_record_active") {
                 return field_heat_level_.has_value()
@@ -10220,8 +10240,7 @@ bool FieldSceneRuntime::bootstrap(
                 return (*notebook_contacts_flags_ &
                         (1U << (*contact_index + 13U))) != 0U;
             }
-            if (const auto bit = story_fact_bit_index(
-                    name, kStoryFlagBitPrefix)) {
+            if (const auto bit = story_flag_source_bit(name)) {
                 return (field_exit_world_flags_ & (1U << *bit)) != 0U;
             }
             if (const auto bit = story_fact_bit_index(
@@ -10280,13 +10299,6 @@ bool FieldSceneRuntime::bootstrap(
                     return std::nullopt;
                 }
                 return (*group_item_flags_ & (1U << *bit)) != 0U;
-            }
-            if (const auto trigger = story_fact_bit_index(
-                    name, kStoryTriggerActivePrefix)) {
-                if (!field_active_story_trigger_.has_value()) {
-                    return std::nullopt;
-                }
-                return *field_active_story_trigger_ == *trigger;
             }
             if (name == "pending_world_effect") {
                 return field_pending_world_effect_;
@@ -10393,21 +10405,11 @@ bool FieldSceneRuntime::bootstrap(
                           static_cast<std::uint8_t>(~mask));
                 return true;
             }
-            constexpr std::string_view kVidPhoneStoryFlagPrefix =
-                "vid_phone_story_flag_bit_";
-            if (name.size() > kVidPhoneStoryFlagPrefix.size() &&
-                name.substr(0U, kVidPhoneStoryFlagPrefix.size()) ==
-                    kVidPhoneStoryFlagPrefix) {
-                unsigned bit = 0U;
-                const auto suffix = name.substr(kVidPhoneStoryFlagPrefix.size());
-                const auto parsed = std::from_chars(
-                    suffix.data(), suffix.data() + suffix.size(), bit);
-                if (parsed.ec != std::errc{} ||
-                    parsed.ptr != suffix.data() + suffix.size() || bit >= 32U ||
-                    !notebook_contacts_flags_.has_value()) {
+            if (name == "hollywood_access_granted") {
+                if (!notebook_contacts_flags_.has_value()) {
                     return false;
                 }
-                const auto mask = std::uint32_t{1U} << bit;
+                const auto mask = std::uint32_t{1U} << 27U;
                 *notebook_contacts_flags_ = value
                     ? *notebook_contacts_flags_ | mask
                     : *notebook_contacts_flags_ & ~mask;
@@ -10422,8 +10424,7 @@ bool FieldSceneRuntime::bootstrap(
                 field_heat_level_ = 0U;
                 return true;
             }
-            if (const auto bit = story_fact_bit_index(
-                    name, kStoryFlagBitPrefix)) {
+            if (const auto bit = story_flag_source_bit(name)) {
                 const auto mask = std::uint32_t{1U} << *bit;
                 field_exit_world_flags_ = value
                     ? field_exit_world_flags_ | mask
@@ -10513,16 +10514,6 @@ bool FieldSceneRuntime::bootstrap(
                 *group_item_flags_ = value
                     ? *group_item_flags_ | mask
                     : *group_item_flags_ & ~mask;
-                return true;
-            }
-            if (const auto trigger = story_fact_bit_index(
-                    name, kStoryTriggerActivePrefix)) {
-                // Fixed-index commands write FFDD64 before 0x2196C. There is
-                // no source operation that clears it, so only true is valid.
-                if (!value) {
-                    return false;
-                }
-                field_active_story_trigger_ = *trigger;
                 return true;
             }
             if (name == "pending_world_effect") {
@@ -10625,8 +10616,7 @@ bool FieldSceneRuntime::bootstrap(
                     field_flag_mask(
                         FieldRenderEffectFlag::redmond_search_cleanup_29);
                 field_render_effect_flags_ &= ~render_cleanup;
-                // FFFC1E bit 22 is marked by the script's 0x5463C tail
-                // (story_flags.finish_trigger) before this fact is written.
+                // The script records landmark_map_taken after its final page.
                 *group_item_flags_ |= group_item_flag_mask(
                     GroupItemFlag::landmark_map);
                 return true;
@@ -11050,7 +11040,6 @@ bool FieldSceneRuntime::bootstrap(
     field_mode_entry_destination_scene_.reset();
     field_mode_entry_run_target_actor_group_.reset();
     field_indexed_title_service_result_ = 0;
-    field_active_story_trigger_.reset();
     field_runtime_state_ = integration::FieldRuntimeCoordinatorState{};
     field_runtime_state_.scene_id =
         state_.field_scene_buffers.scene_reference;

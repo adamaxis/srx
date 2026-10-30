@@ -31,35 +31,11 @@ local function select_choice(menu_id, text, options)
 end
 
 local state_facts = {}
-local active_story_trigger
 local condition_definitions = {}
 game = {
     state = setmetatable({}, {
-        __index = function(_, name)
-            local trigger = type(name) == "string" and
-                name:match("^story_trigger_active_(%d+)$")
-            if trigger ~= nil then
-                return active_story_trigger == tonumber(trigger)
-            end
-            return state_facts[name]
-        end,
-        __newindex = function(_, name, value)
-            local trigger = type(name) == "string" and
-                name:match("^story_trigger_active_(%d+)$")
-            if trigger ~= nil then
-                -- True models writing the FFDD64 index. Nil is used by the
-                -- fixture only to reset the register between independent
-                -- interactions; production Lua never clears this register.
-                if value == true then
-                    active_story_trigger = tonumber(trigger)
-                elseif value == nil and
-                       active_story_trigger == tonumber(trigger) then
-                    active_story_trigger = nil
-                end
-                return
-            end
-            state_facts[name] = value
-        end,
+        __index = function(_, name) return state_facts[name] end,
+        __newindex = function(_, name, value) state_facts[name] = value end,
     }),
     field = { package_run_status = "none" },
     location = { type = "building", id = "salish_owlfeather_ranger_lodge" },
@@ -180,8 +156,8 @@ local owl_links = {
         route_kind = "field_service", script = "lua_field_service",
         route_priority = 30,
         route_condition_id = condition("test.owlfeather.first", {
-            equal("story.story_flag_bit_1", true),
-            equal("story.story_flag_bit_2", false),
+            equal("story.tarislar_asked_shale", true),
+            equal("story.owlfeather_asked", false),
         }),
         indexed_title_service_module = "salish_owlfeather",
         indexed_title_service_function = "present_first_contact",
@@ -193,8 +169,8 @@ local owl_links = {
         route_kind = "field_service", script = "lua_field_service",
         route_priority = 20,
         route_condition_id = condition("test.owlfeather.search", {
-            equal("story.story_flag_bit_2", true),
-            equal("story.story_flag_bit_3", false),
+            equal("story.owlfeather_asked", true),
+            equal("story.aragorn_found", false),
         }),
         indexed_title_service_module = "salish_owlfeather",
         indexed_title_service_function = "present_search_followup",
@@ -206,8 +182,8 @@ local owl_links = {
         route_kind = "field_service", script = "lua_field_service",
         route_priority = 10,
         route_condition_id = condition("test.owlfeather.return", {
-            equal("story.story_flag_bit_3", true),
-            equal("story.story_flag_bit_4", false),
+            equal("story.aragorn_found", true),
+            equal("story.aragorn_freed_told", false),
         }),
         indexed_title_service_module = "salish_owlfeather",
         indexed_title_service_function = "present_return_followup",
@@ -217,60 +193,56 @@ local owl_links = {
 }
 bind_entity(6, "salish_owlfeather_ranger_lodge", owl_links)
 local event_table = { 13 }
-game.state.story_flag_bit_1 = true
-game.state.story_flag_bit_2 = false
+game.state.tarislar_asked_shale = true
+game.state.owlfeather_asked = false
 local selected = route(6, "event_0", 0, event_table)
 assert(selected.kind == "field_service" and
        selected.indexed_title_service.function_name == "present_first_contact")
 
-game.state.story_flag_bit_1 = false
-game.state.story_flag_bit_2 = true
-game.state.story_flag_bit_3 = false
+game.state.tarislar_asked_shale = false
+game.state.owlfeather_asked = true
+game.state.aragorn_found = false
 selected = route(6, "event_0", 0, event_table)
 assert(selected.kind == "field_service" and
        selected.indexed_title_service.function_name == "present_search_followup")
 
-game.state.story_flag_bit_2 = false
-game.state.story_flag_bit_3 = true
-game.state.story_flag_bit_4 = false
+game.state.owlfeather_asked = false
+game.state.aragorn_found = true
+game.state.aragorn_freed_told = false
 selected = route(6, "event_0", 0, event_table)
 assert(selected.kind == "field_service" and
        selected.indexed_title_service.function_name == "present_return_followup")
 
-game.state.story_flag_bit_3 = false
-game.state.story_flag_bit_4 = false
+game.state.aragorn_found = false
+game.state.aragorn_freed_told = false
 selected = route(6, "event_0", 0, event_table)
 assert(selected.kind == "area_event" and selected.area_event_target == 13)
 
 -- The JSON graph dispatches these reusable typed actions. Its actual text,
 -- conditions, and branch permutations are exercised through GameScriptRuntime.
-local StoryFlags = require("story_flags")
+local StoryFacts = require("story_facts")
 local DialogueActions = require("dialogue_actions")
+local E = require("enums")
 local action_registry = DialogueActions.new_default_registry()
-game.state.story_flag_bit_2 = false
-StoryFlags.begin_trigger(2)
+game.state.owlfeather_asked = false
 local succeeded, result = action_registry:execute(
     "party.award_karma", { amount = 1 })
 assert(succeeded and result == "applied")
 succeeded, result = action_registry:execute(
-    "story.apply_dialogue_command", { commandId = 0x17 })
-assert(succeeded and result == nil and game.state.story_flag_bit_2 == true)
+    "story.set_fact", { factId = E.StoryFact.OWLFEATHER_ASKED, value = true })
+assert(succeeded and result == nil and game.state.owlfeather_asked == true)
 
-game.state.story_flag_bit_4 = false
-StoryFlags.begin_trigger(4)
+game.state.aragorn_freed_told = false
 succeeded, result = action_registry:execute(
     "party.award_karma", { amount = 2 })
 assert(succeeded and result == "applied")
 succeeded, result = action_registry:execute(
-    "story.apply_dialogue_command", { commandId = 0x19 })
-assert(succeeded and result == nil and game.state.story_flag_bit_4 == true)
-StoryFlags.finish_trigger(4)
-assert(game.state.story_trigger_active_4 == true and
-       game.state.story_flag_bit_4 == true)
+    "story.set_fact", { factId = E.StoryFact.ARAGORN_FREED_TOLD, value = true })
+assert(succeeded and result == nil and game.state.aragorn_freed_told == true)
 
 succeeded, result = action_registry:execute(
     "story.apply_dialogue_command", { commandId = 0xFF })
-assert(succeeded and result == "command_unresolved")
+assert(not succeeded and result == nil)
 
 local red_links = {
     {
@@ -305,17 +277,15 @@ game.location.id = red_buffalo_service.location_id
 game.location.text_profile = red_buffalo_service.text_profile
 game.location.speaker_id = red_buffalo_service.speaker_id
 
-game.state.story_flag_bit_17 = true
-game.state.story_flag_bit_18 = false
-game.state.story_trigger_active_4 = nil
+game.state.ritual_of_binding = true
+game.state.red_buffalo_woman = false
 game.state.notebook_tip_flag_bit_5 = false
 game.state.notebook_tip_flag_bit_6 = true
 game.state.field_mode_effect_flag_bit_29 = true
 game.state.field_mode_effect_flag_bit_30 = false
 choices = { "more", "more" }
 assert(RedBuffalo.present_indexed_title_service() == "field_return")
-assert(game.state.story_flag_bit_18 == true and
-       game.state.story_trigger_active_18 == true)
+assert(game.state.red_buffalo_woman == true)
 assert(game.state.notebook_tip_flag_bit_5 == true and
        game.state.notebook_tip_flag_bit_6 == false and
        game.state.field_mode_effect_flag_bit_29 == false and
@@ -323,10 +293,9 @@ assert(game.state.notebook_tip_flag_bit_5 == true and
 
 -- ROM prompt node 0xF5888 has separate no-business and More outcomes. The
 -- former leaves the lodge; the latter advances into the penthouse passage.
-game.state.story_flag_bit_17 = false
-game.state.story_flag_bit_18 = false
-game.state.story_flag_bit_16 = false
-game.state.story_trigger_active_18 = nil
+game.state.ritual_of_binding = false
+game.state.red_buffalo_woman = false
+game.state.ito_fight_won = false
 local dialogue_count = #dialogues
 choices = { "more", "no_business" }
 assert(RedBuffalo.present_indexed_title_service() == "field_return")

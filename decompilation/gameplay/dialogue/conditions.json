@@ -42,18 +42,18 @@
       "provenance": { "romAddresses": ["0x53F8C"], "scope": "information_payment_repeat_gate" }
     },
     "boris_greenhouse.michael_already_learned": {
-      "expression": { "fact": "story.story_flag_bit_10", "op": "eq", "value": true },
+      "expression": { "fact": "story.michael_alias_learned", "op": "eq", "value": true },
       "provenance": { "romAddresses": ["0x21B82"], "scope": "michael_alias_already_learned" }
     },
     "boris_greenhouse.michael_identity_unknown": {
-      "expression": { "fact": "story.story_flag_bit_1", "op": "eq", "value": false },
+      "expression": { "fact": "story.tarislar_asked_shale", "op": "eq", "value": false },
       "provenance": { "romAddresses": ["0x21B82"], "scope": "michael_story_gate" }
     },
     "boris_greenhouse.david_topic_available": {
       "expression": {
         "all": [
-          { "fact": "story.story_flag_bit_1", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_3", "op": "eq", "value": false }
+          { "fact": "story.tarislar_asked_shale", "op": "eq", "value": true },
+          { "fact": "story.aragorn_found", "op": "eq", "value": false }
         ]
       },
       "provenance": { "romAddresses": ["0x53F8C", "0x21EB0"], "scope": "david_topic_gate" }
@@ -62,12 +62,12 @@
       "expression": {
         "all": [
           { "not": { "all": [
-            { "fact": "story.story_flag_bit_1", "op": "eq", "value": true },
-            { "fact": "story.story_flag_bit_3", "op": "eq", "value": false }
+            { "fact": "story.tarislar_asked_shale", "op": "eq", "value": true },
+            { "fact": "story.aragorn_found", "op": "eq", "value": false }
           ] } },
-          { "fact": "story.story_flag_bit_18", "op": "eq", "value": true },
+          { "fact": "story.red_buffalo_woman", "op": "eq", "value": true },
           { "fact": "story.group_item_flag_bit_5", "op": "eq", "value": false },
-          { "fact": "story.story_flag_bit_19", "op": "eq", "value": false }
+          { "fact": "story.ilene_met", "op": "eq", "value": false }
         ]
       },
       "provenance": { "romAddresses": ["0x53F8C", "0x21B6A"], "scope": "ilene_topic_gate_after_david_priority" }
@@ -76,15 +76,15 @@
       "expression": {
         "all": [
           { "not": { "all": [
-            { "fact": "story.story_flag_bit_1", "op": "eq", "value": true },
-            { "fact": "story.story_flag_bit_3", "op": "eq", "value": false }
+            { "fact": "story.tarislar_asked_shale", "op": "eq", "value": true },
+            { "fact": "story.aragorn_found", "op": "eq", "value": false }
           ] } },
           { "any": [
-            { "fact": "story.story_flag_bit_18", "op": "eq", "value": false },
+            { "fact": "story.red_buffalo_woman", "op": "eq", "value": false },
             { "fact": "story.group_item_flag_bit_5", "op": "eq", "value": true },
-            { "fact": "story.story_flag_bit_19", "op": "eq", "value": true }
+            { "fact": "story.ilene_met", "op": "eq", "value": true }
           ] },
-          { "fact": "story.story_flag_bit_9", "op": "eq", "value": true }
+          { "fact": "story.shaman_tasks_done", "op": "eq", "value": true }
         ]
       },
       "provenance": { "romAddresses": ["0x53F8C"], "scope": "thon_topic_gate_after_david_and_ilene_priority" }
@@ -92,11 +92,11 @@
     "boris_greenhouse.topic_facts_available": {
       "expression": {
         "all": [
-          { "fact": "story.story_flag_bit_1", "op": "in", "value": [true, false] },
-          { "fact": "story.story_flag_bit_3", "op": "in", "value": [true, false] },
-          { "fact": "story.story_flag_bit_9", "op": "in", "value": [true, false] },
-          { "fact": "story.story_flag_bit_18", "op": "in", "value": [true, false] },
-          { "fact": "story.story_flag_bit_19", "op": "in", "value": [true, false] },
+          { "fact": "story.tarislar_asked_shale", "op": "in", "value": [true, false] },
+          { "fact": "story.aragorn_found", "op": "in", "value": [true, false] },
+          { "fact": "story.shaman_tasks_done", "op": "in", "value": [true, false] },
+          { "fact": "story.red_buffalo_woman", "op": "in", "value": [true, false] },
+          { "fact": "story.ilene_met", "op": "in", "value": [true, false] },
           { "fact": "story.group_item_flag_bit_5", "op": "in", "value": [true, false] }
         ]
       },
@@ -108,8 +108,8 @@
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "downtown_site_04_gates_undersound" },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
-          { "fact": "story.story_flag_bit_11", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_15", "op": "eq", "value": false }
+          { "fact": "story.mako_defeated", "op": "eq", "value": true },
+          { "fact": "story.ogami_left", "op": "eq", "value": false }
         ]
       },
       "provenance": {
@@ -123,8 +123,8 @@
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "renraku_offices_frontage" },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
-          { "fact": "story.story_flag_bit_16", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_12", "op": "eq", "value": false }
+          { "fact": "story.ito_fight_won", "op": "eq", "value": true },
+          { "fact": "story.renraku_map_overlay", "op": "eq", "value": false }
         ]
       },
       "provenance": {
@@ -138,8 +138,8 @@
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "penumbra_site_02_fuchi" },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
-          { "fact": "story.story_flag_bit_25", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_14", "op": "eq", "value": false }
+          { "fact": "story.hospital_visited", "op": "eq", "value": true },
+          { "fact": "story.cyberheart_safe", "op": "eq", "value": false }
         ]
       },
       "provenance": {
@@ -153,8 +153,8 @@
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_03_tarislar_city_inn" },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
-          { "fact": "story.story_flag_bit_0", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_1", "op": "eq", "value": false }
+          { "fact": "story.motel_bill_paid", "op": "eq", "value": true },
+          { "fact": "story.tarislar_asked_shale", "op": "eq", "value": false }
         ]
       },
       "provenance": {
@@ -168,7 +168,7 @@
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
-          { "fact": "story.story_flag_bit_30", "op": "eq", "value": false }
+          { "fact": "story.frosty_met", "op": "eq", "value": false }
         ]
       },
       "provenance": {
@@ -182,8 +182,8 @@
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
-          { "fact": "story.story_flag_bit_21", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_30", "op": "eq", "value": true }
+          { "fact": "story.garden_apts_entered", "op": "eq", "value": true },
+          { "fact": "story.frosty_met", "op": "eq", "value": true }
         ]
       },
       "provenance": {
@@ -193,7 +193,7 @@
     },
     "tarislar_garden_apartments.repeat_ito_fight_won": {
       "expression": {
-        "fact": "story.story_flag_bit_16", "op": "eq", "value": true
+        "fact": "story.ito_fight_won", "op": "eq", "value": true
       },
       "provenance": {
         "romAddresses": ["0x544E8", "0xF4E34"],
@@ -202,7 +202,7 @@
     },
     "tarislar_garden_apartments.repeat_post_ito_briefing_pending": {
       "expression": {
-        "fact": "story.story_flag_bit_28", "op": "eq", "value": false
+        "fact": "story.post_ito_briefed", "op": "eq", "value": false
       },
       "provenance": {
         "romAddresses": ["0x544E8", "0x5451A", "0xF4E34"],
@@ -213,12 +213,12 @@
       "expression": {
         "any": [
           { "all": [
-            { "fact": "story.story_flag_bit_26", "op": "eq", "value": false },
+            { "fact": "story.renraku_map_shown", "op": "eq", "value": false },
             { "fact": "story.group_item_flag_bit_8", "op": "eq", "value": true }
           ] },
           { "all": [
-            { "fact": "story.story_flag_bit_26", "op": "eq", "value": true },
-            { "fact": "story.story_flag_bit_27", "op": "eq", "value": false },
+            { "fact": "story.renraku_map_shown", "op": "eq", "value": true },
+            { "fact": "story.both_maps_shown", "op": "eq", "value": false },
             { "fact": "story.group_item_flag_bit_7", "op": "eq", "value": true }
           ] }
         ]
@@ -265,12 +265,12 @@
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "puyallup_site_02_tarislar_garden_apartments" },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
-          { "fact": "story.story_flag_bit_30", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_21", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_16", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_28", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_26", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_27", "op": "eq", "value": true }
+          { "fact": "story.frosty_met", "op": "eq", "value": true },
+          { "fact": "story.garden_apts_entered", "op": "eq", "value": true },
+          { "fact": "story.ito_fight_won", "op": "eq", "value": true },
+          { "fact": "story.post_ito_briefed", "op": "eq", "value": true },
+          { "fact": "story.renraku_map_shown", "op": "eq", "value": true },
+          { "fact": "story.both_maps_shown", "op": "eq", "value": true }
         ]
       },
       "provenance": {
@@ -280,7 +280,7 @@
     },
     "harlequin.main_conversation_ito_fight_won": {
       "expression": {
-        "fact": "story.story_flag_bit_16", "op": "eq", "value": true
+        "fact": "story.ito_fight_won", "op": "eq", "value": true
       },
       "provenance": {
         "romAddresses": ["0xF58C0", "0xF594C", "0xF5968"],
@@ -350,7 +350,7 @@
           { "fact": "location.type", "op": "eq", "value": "motel" },
           { "fact": "location.id", "op": "eq", "value": "stoker_motel" },
           { "fact": "field.package_run_status", "op": "eq", "value": "none" },
-          { "fact": "story.story_flag_bit_0", "op": "eq", "value": false }
+          { "fact": "story.motel_bill_paid", "op": "eq", "value": false }
         ]
       },
       "provenance": {
@@ -566,8 +566,8 @@
     "club_penumbra.mako_activity_available": {
       "expression": {
         "all": [
-          { "fact": "story.story_flag_bit_10", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_11", "op": "eq", "value": false },
+          { "fact": "story.michael_alias_learned", "op": "eq", "value": true },
+          { "fact": "story.mako_defeated", "op": "eq", "value": false },
           {
             "any": [
               { "fact": "story.field_mode_flag_bit_21", "op": "eq", "value": true },
@@ -587,8 +587,8 @@
           { "fact": "dialogue.entry_id", "op": "eq", "value": "first_contact" },
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "salish_owlfeather_ranger_lodge" },
-          { "fact": "story.story_flag_bit_1", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_2", "op": "eq", "value": false }
+          { "fact": "story.tarislar_asked_shale", "op": "eq", "value": true },
+          { "fact": "story.owlfeather_asked", "op": "eq", "value": false }
         ]
       },
       "provenance": {
@@ -602,8 +602,8 @@
           { "fact": "dialogue.entry_id", "op": "eq", "value": "search_followup" },
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "salish_owlfeather_ranger_lodge" },
-          { "fact": "story.story_flag_bit_2", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_3", "op": "eq", "value": false }
+          { "fact": "story.owlfeather_asked", "op": "eq", "value": true },
+          { "fact": "story.aragorn_found", "op": "eq", "value": false }
         ]
       },
       "provenance": {
@@ -617,8 +617,8 @@
           { "fact": "dialogue.entry_id", "op": "eq", "value": "return_followup" },
           { "fact": "location.type", "op": "eq", "value": "building" },
           { "fact": "location.id", "op": "eq", "value": "salish_owlfeather_ranger_lodge" },
-          { "fact": "story.story_flag_bit_3", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_4", "op": "eq", "value": false }
+          { "fact": "story.aragorn_found", "op": "eq", "value": true },
+          { "fact": "story.aragorn_freed_told", "op": "eq", "value": false }
         ]
       },
       "provenance": {
@@ -649,7 +649,7 @@
     },
     "salish.spirit_eyes.first_contact": {
       "expression": {
-        "fact": "story.story_flag_bit_5", "op": "eq", "value": false
+        "fact": "story.shaman_met", "op": "eq", "value": false
       },
       "provenance": {
         "romAddresses": ["0x53D5A", "0xF4BD8"],
@@ -658,7 +658,7 @@
     },
     "salish.spirit_eyes.horn_not_given": {
       "expression": {
-        "fact": "story.story_flag_bit_6", "op": "eq", "value": false
+        "fact": "story.shaman_item4_given", "op": "eq", "value": false
       },
       "provenance": {
         "romAddresses": ["0x53DD0", "0xF4BD8"],
@@ -676,7 +676,7 @@
     },
     "salish.spirit_eyes.pelt_not_given": {
       "expression": {
-        "fact": "story.story_flag_bit_7", "op": "eq", "value": false
+        "fact": "story.shaman_pelt_given", "op": "eq", "value": false
       },
       "provenance": {
         "romAddresses": ["0x53E38", "0xF4BD8"],
@@ -694,7 +694,7 @@
     },
     "salish.spirit_eyes.scale_not_taken": {
       "expression": {
-        "fact": "story.story_flag_bit_8", "op": "eq", "value": false
+        "fact": "story.serpent_scale_taken", "op": "eq", "value": false
       },
       "provenance": {
         "romAddresses": ["0x53E84", "0x53EA8", "0xF4BD8"],
@@ -704,7 +704,7 @@
     "salish.spirit_eyes.scale_available": {
       "expression": {
         "all": [
-          { "fact": "story.story_flag_bit_8", "op": "eq", "value": true },
+          { "fact": "story.serpent_scale_taken", "op": "eq", "value": true },
           { "fact": "story.group_item_flag_bit_2", "op": "eq", "value": true }
         ]
       },
@@ -715,7 +715,7 @@
     },
     "salish.spirit_eyes.tasks_not_done": {
       "expression": {
-        "fact": "story.story_flag_bit_9", "op": "eq", "value": false
+        "fact": "story.shaman_tasks_done", "op": "eq", "value": false
       },
       "provenance": {
         "romAddresses": ["0x53EA8", "0xF4C04"],
@@ -737,7 +737,7 @@
     },
     "salish.licourtrix.pelt_not_given": {
       "expression": {
-        "fact": "story.story_flag_bit_7", "op": "eq", "value": false
+        "fact": "story.shaman_pelt_given", "op": "eq", "value": false
       },
       "provenance": {
         "romAddresses": ["0x53F0A", "0x53F6A", "0xF4C60"],
@@ -746,7 +746,7 @@
     },
     "salish.licourtrix.scale_already_taken": {
       "expression": {
-        "fact": "story.story_flag_bit_8", "op": "eq", "value": true
+        "fact": "story.serpent_scale_taken", "op": "eq", "value": true
       },
       "provenance": {
         "romAddresses": ["0x53F12", "0x53F74", "0xF4C68"],
@@ -780,7 +780,7 @@
     "salish.sinsearach.gate.hostile_guard": {
       "expression": {
         "any": [
-          { "fact": "story.story_flag_bit_18", "op": "eq", "value": false },
+          { "fact": "story.red_buffalo_woman", "op": "eq", "value": false },
           { "fact": "story.group_item_flag_bit_5", "op": "eq", "value": true }
         ]
       },
@@ -791,7 +791,7 @@
     },
     "salish.sinsearach.gate.frosty_choice_available": {
       "expression": {
-        "fact": "story.story_flag_bit_20", "op": "eq", "value": true
+        "fact": "story.gillian_initiation", "op": "eq", "value": true
       },
       "provenance": {
         "romAddresses": ["0x1FE38", "0x11B5D8"],
@@ -801,13 +801,13 @@
     "salish.sinsearach.gate.lady_gillian_available": {
       "expression": {
         "all": [
-          { "fact": "story.story_flag_bit_13", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_17", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_18", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_19", "op": "eq", "value": true },
-          { "fact": "story.story_flag_bit_20", "op": "eq", "value": true },
+          { "fact": "story.michael_mission_told", "op": "eq", "value": true },
+          { "fact": "story.ritual_of_binding", "op": "eq", "value": true },
+          { "fact": "story.red_buffalo_woman", "op": "eq", "value": true },
+          { "fact": "story.ilene_met", "op": "eq", "value": true },
+          { "fact": "story.gillian_initiation", "op": "eq", "value": true },
           { "fact": "story.group_item_flag_bit_5", "op": "eq", "value": false },
-          { "fact": "story.story_flag_bit_30", "op": "eq", "value": false }
+          { "fact": "story.frosty_met", "op": "eq", "value": false }
         ]
       },
       "provenance": {
@@ -817,7 +817,7 @@
     },
     "salish.sinsearach.gate.frosty_expected": {
       "expression": {
-        "fact": "story.story_flag_bit_9", "op": "eq", "value": true
+        "fact": "story.shaman_tasks_done", "op": "eq", "value": true
       },
       "provenance": {
         "romAddresses": ["0x24DFE", "0x0F57BC", "0x0F57D0"],

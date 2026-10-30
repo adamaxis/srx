@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "graphs": {
     "stoker_motel.indexed_service": {
-      "entryNode": "begin_trigger",
+      "entryNode": "arrival",
       "precondition": "stoker_motel.indexed_service_context",
       "speakerId": "stoker",
       "textProfile": "stoker.motel",
@@ -15,12 +15,6 @@
         "scope": "indexed_service_and_confirmed_manager_payment_branches"
       },
       "nodes": {
-        "begin_trigger": {
-          "type": "action",
-          "actionId": "story.begin_trigger",
-          "arguments": { "triggerId": 0 },
-          "next": "arrival"
-        },
         "arrival": { "type": "page", "eventId": "arrival", "next": "manager" },
         "manager": {
           "type": "choice",
@@ -84,8 +78,8 @@
         },
         "record_paid_debt": {
           "type": "action",
-          "actionId": "story.set_flag",
-          "arguments": { "flagBit": 0, "value": true },
+          "actionId": "story.set_fact",
+          "arguments": {"factId":"motel_bill_paid","value":true},
           "next": "package_handoff"
         },
         "package_handoff": { "type": "page", "eventId": "package-handoff", "next": "stay_on_map" },

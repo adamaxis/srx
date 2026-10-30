@@ -2396,7 +2396,7 @@ Registry._pending_johnson_return = {
 }
 game.location = { text_profile = "wanderer.vigore_jarl" }
 game.state = {
-    story_flag_bit_16 = true,
+    ito_fight_won = true,
     wanderer_vigore_jarl_intro_seen = false,
 }
 local vacated_say

@@ -289,8 +289,8 @@ end
 -- Dialogue task: present the 0xC778 wake-up passage. DocWagon (C25A0) has
 -- two records, Little Chiba (C25BC) one [C].
 function PartyDown.present_wake()
-    local StoryFlags = require("story_flags")
-    local paid = StoryFlags.is_set(E.StoryFlag.MOTEL_BILL_PAID)
+    local StoryFacts = require("story_facts")
+    local paid = StoryFacts.is_set(E.StoryFact.MOTEL_BILL_PAID)
     pending_wake_destination = PartyDown.wake_destination(paid)
     if paid then
         game.ui.say("party_wipe_docwagon")

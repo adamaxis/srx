@@ -2,7 +2,7 @@
 -- mark. The FFE178 branch gates only Renraku's 0x540D6 reward; 0x541B2 has
 -- its own FFE187 gate and is checked afterward. [C]
 local E = require("enums")
-local StoryFlags = require("story_flags")
+local StoryFacts = require("story_facts")
 
 local Safes = {}
 
@@ -17,15 +17,15 @@ end
 local function renraku_map_overlay(context)
     if context.projected_terrain_event_published ~= true or
        context.scene_id ~= E.FieldSafe.RENRAKU_SCENE or
-       StoryFlags.is_set(E.StoryFlag.ITO_FIGHT_WON) ~= true or
-       StoryFlags.is_set(E.StoryFlag.RENRAKU_MAP_OVERLAY) ~= false then
+       StoryFacts.is_set(E.StoryFact.ITO_FIGHT_WON) ~= true or
+       StoryFacts.is_set(E.StoryFact.RENRAKU_MAP_OVERLAY) ~= false then
         return false
     end
 
     -- ROM 0x540D6: story bit 12, four FFFC34 clue changes, and group
     -- item 8. The typed host resets escalation and schedules the deferred
     -- alarm transition around the 0x1E04A alarm service, in source order.
-    StoryFlags.set(E.StoryFlag.RENRAKU_MAP_OVERLAY)
+    StoryFacts.set(E.StoryFact.RENRAKU_MAP_OVERLAY)
     set_effect_flag(9, true)
     set_effect_flag(16, false)
     set_effect_flag(8, false)
@@ -36,14 +36,14 @@ end
 
 local function fuchi_prototype_cyberheart(context)
     if not context.fuchi_cyberheart_safe_armed or
-       StoryFlags.is_set(E.StoryFlag.HOSPITAL_VISITED) ~= true or
-       StoryFlags.is_set(E.StoryFlag.CYBERHEART_SAFE) ~= false then
+       StoryFacts.is_set(E.StoryFact.HOSPITAL_VISITED) ~= true or
+       StoryFacts.is_set(E.StoryFact.CYBERHEART_SAFE) ~= false then
         return false
     end
 
     -- ROM 0x541B2: mark bit 14, update the two FFFC34 flags, and give
     -- FFFC22 bit 0. The safe remains armed after this branch.
-    StoryFlags.set(E.StoryFlag.CYBERHEART_SAFE)
+    StoryFacts.set(E.StoryFact.CYBERHEART_SAFE)
     set_effect_flag(19, false)
     set_effect_flag(20, true)
     set_group_item(E.GroupItemBit.PROTOTYPE_CYBERHEART, true)

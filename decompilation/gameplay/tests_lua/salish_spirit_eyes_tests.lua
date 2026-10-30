@@ -3,9 +3,9 @@ package.path = "decompilation/gameplay/scripts/?.lua;" ..
 
 local DialogueActions = require("dialogue_actions")
 local SpiritEyes = require("salish_spirit_eyes")
+local E = require("enums")
 
 local backing = {}
-local active_trigger
 local choices = {}
 local menus = {}
 local dialogue = {}
@@ -13,21 +13,8 @@ game = {
     field = { package_run_status = "none" },
     location = { type = "site", id = "salish_feathered_serpent_lair" },
     state = setmetatable({}, {
-        __index = function(_, key)
-            local index = type(key) == "string" and
-                key:match("^story_trigger_active_(%d+)$")
-            if index ~= nil then return active_trigger == tonumber(index) end
-            return backing[key]
-        end,
-        __newindex = function(_, key, value)
-            local index = type(key) == "string" and
-                key:match("^story_trigger_active_(%d+)$")
-            if index ~= nil then
-                active_trigger = tonumber(index)
-                return
-            end
-            backing[key] = value
-        end,
+        __index = function(_, key) return backing[key] end,
+        __newindex = function(_, key, value) backing[key] = value end,
     }),
     ui = {
         prompt_text = function(menu_id, text, options)
@@ -57,9 +44,11 @@ assert(unavailable.type == "source_boundary" and
        unavailable.reason == "dialogue_graph:content_catalog_missing")
 
 local actions = DialogueActions.new_default_registry()
-assert(actions:execute("story.select_fixed_trigger", { triggerId = 9 }))
-assert(game.state.story_trigger_active_9 == true and
-       game.state.story_flag_bit_9 == nil)
+assert(actions:execute("story.set_fact", {
+    factId = E.StoryFact.SERPENT_SCALE_TAKEN, value = true,
+}))
+assert(game.state.serpent_scale_taken == true and
+       game.state.shaman_tasks_done == nil)
 assert(actions:execute("item.set_group_flag", {
     flagBit = 2, value = true,
 }))
@@ -73,16 +62,16 @@ assert(game.state.field_auxiliary_flag_bit_2 == false)
 -- adapter suite has no loaded content package, so the graph remains an
 -- explicit boundary here. ROM state permutations are covered by the C++
 -- GameScriptRuntime integration test using the production JSON catalogs.
-game.state.story_flag_bit_7 = true
-game.state.story_flag_bit_8 = false
-game.state.story_flag_bit_9 = false
+game.state.shaman_pelt_given = true
+game.state.serpent_scale_taken = false
+game.state.shaman_tasks_done = false
 game.state.group_item_flag_bit_2 = false
 local licourtrix_unavailable = SpiritEyes.present_serpent_encounter()
 assert(type(licourtrix_unavailable) == "table" and
        licourtrix_unavailable.type == "source_boundary" and
        licourtrix_unavailable.reason ==
            "dialogue_graph:content_catalog_missing" and
-       game.state.story_flag_bit_8 == false and
+       game.state.serpent_scale_taken == false and
        game.state.group_item_flag_bit_2 == false)
 
 print("Spirit Eyes tests passed: graph adapter boundaries and shared Lua actions")

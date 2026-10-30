@@ -26032,7 +26032,7 @@ int run_field_wanderer_vacated_entry_qa(
              "gate\tspeaker\tportrait\tchoices\n"
           << "14\t30\tordinary_up\t" << movement_ticks << '\t'
           << contact.x << '\t' << contact.y
-          << "\tstory_flag_bit_16=true\tNarration\tblank\t0\n";
+          << "\tito_fight_won=true\tNarration\tblank\t0\n";
     std::cout << "field_wanderer_vacated_entry_qa=passed scene=14 event=30 "
                  "movement=ordinary-up gate=story-flag-16 "
                  "portrait=blank choices=0 captures=" << output.string()
@@ -32646,7 +32646,7 @@ int run_field_medicine_lodge_physical_entry_qa(
         std::ofstream trace(output / "route.tsv", std::ios::trunc);
         if (!trace) return 3;
         trace << "record\tevent\tgate\tchoice\tresult\n"
-              << "88\t3\tstory_flag_bit_4=1\twise_one\t"
+              << "88\t3\taragorn_freed_told=1\twise_one\t"
                  "same_scene_profile_0x1668A_applied_at_0x5B00_0x0880\n";
         std::cout << "field_medicine_lodge_wise_one_physical_entry_qa=passed "
                      "record=88 event=3 profile=0x1668A "
@@ -32960,7 +32960,7 @@ int run_field_medicine_lodge_physical_entry_qa(
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) return 3;
     trace << "record\tevent\tservice\tgate\tmovement_ticks\tresult\taudio_requests\n"
-          << "88\t3\tfield_exit_prompt\tstory_flag_bit_4=0,alternate_result=0\t"
+          << "88\t3\tfield_exit_prompt\taragorn_freed_told=0,alternate_result=0\t"
           << movement_ticks << "\tsame_scene_medicine_lodge_mode3_spell_item_focus_purchases\t"
           << field_audio_events.size() << '\n';
     std::cout << "field_medicine_lodge_physical_entry_qa=passed "
@@ -33306,10 +33306,10 @@ int run_field_spirit_eyes_physical_entry_qa(
     std::ofstream trace(output / "route.tsv", std::ios::trunc);
     if (!trace) return 3;
     trace << "record\tevent\tcontinuation\tgate\tmovement_ticks\tresult\taudio_requests\n"
-          << "96\t27\t0x53D5A\tstory_flag_bit_5=0\t"
+          << "96\t27\t0x53D5A\tshaman_met=0\t"
           << movement_ticks << "\tcomplete_first_contact_prompt_chain\t"
           << field_audio_events.size() << '\n'
-          << "96\t27\t0x53E98\tstory_flag_bit_8=1,group_item_flag_bit_2=1\t"
+          << "96\t27\t0x53E98\tserpent_scale_taken=1,group_item_flag_bit_2=1\t"
           << "seeded\tcomplete_four_page_ritual_and_source_context_return\t"
           << field_audio_events.size() << '\n';
     std::cout << "field_spirit_eyes_physical_entry_qa=passed "
@@ -43416,7 +43416,7 @@ int main(int argc, char** argv) {
                         "Renraku Offices", 5U, 46U, 0x2600U, 0x0D00U,
                         0x0260U, 0x027FU, 0x00A0U, 0x00BFU, 0x00C6U, 6U,
                         16U, 12U, 12U, 35U, "activity-35",
-                        "story_flag_bit_16=1,story_flag_bit_12=0,alternate_result=0",
+                        "ito_fight_won=1,renraku_map_overlay=0,alternate_result=0",
                         "make it past the foyer",
                         "Finding out what Renraku knows about this whole mess",
                         "dialogue.portraits.renraku.offices.entry", 5U, 0U,
@@ -43433,7 +43433,7 @@ int main(int argc, char** argv) {
                         "Penumbra Fuchi", 3U, 97U, 0x0800U, 0x1700U,
                         0x0080U, 0x009FU, 0x0140U, 0x015FU, 0x00C2U, 2U,
                         25U, 14U, 14U, 21U, "activity-21",
-                        "story_flag_bit_25=1,story_flag_bit_14=0,alternate_result=0",
+                        "hospital_visited=1,cyberheart_safe=0,alternate_result=0",
                         "enter Fuchi just prior to their closing",
                         "Now to find that cyber-heart",
                         "dialogue.portraits.fuchi.offices.entry", 2U, 3U,
@@ -43451,7 +43451,7 @@ int main(int argc, char** argv) {
                         0x0800U, 0x1700U,
                         0x0080U, 0x009FU, 0x0140U, 0x015FU, 0x00C2U, 2U,
                         25U, 14U, 14U, 21U, "activity-21",
-                        "story_flag_bit_25=1,story_flag_bit_14=0,alternate_result=0",
+                        "hospital_visited=1,cyberheart_safe=0,alternate_result=0",
                         "enter Fuchi just prior to their closing",
                         "Now to find that cyber-heart",
                         "dialogue.portraits.fuchi.offices.entry", 2U, 3U,

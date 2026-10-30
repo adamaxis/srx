@@ -37,10 +37,10 @@ end
 
 game = {
     state = {
-        story_flag_bit_0 = true,
-        story_flag_bit_1 = false,
-        story_flag_bit_13 = false,
-        story_flag_bit_30 = false,
+        motel_bill_paid = true,
+        tarislar_asked_shale = false,
+        michael_mission_told = false,
+        frosty_met = false,
     },
     location = { type = "building", id = location_id },
     field = { package_run_status = "none" },
@@ -176,7 +176,7 @@ game.location.id = location_id
 queue("more", "leave")
 assert(Inn.present_field_exit_prompt() == "field_return")
 assert(#prompts[2].choices == 2 and prompts[2].choices[2] == "leave")
-game.state.story_flag_bit_13 = true
+game.state.michael_mission_told = true
 queue("more", "frosty")
 assert(Inn.present_field_exit_prompt() == "field_return")
 assert(prompts[2].choices[2] == "frosty")
@@ -184,7 +184,7 @@ assert(game.state.notebook_tip_flag_bit_23 == true)
 assert(game.state.field_mode_effect_flag_bit_4 == true)
 assert(game.state.field_mode_effect_flag_bit_13 == true)
 assert(game.state.field_mode_effect_flag_bit_21 == true)
-game.state.story_flag_bit_13 = false
+game.state.michael_mission_told = false
 
 -- Scene 1's signed alternate result selects the two package text nodes.
 game.field.package_run_status = "payment_due"
@@ -248,15 +248,13 @@ assert(speeches[#speeches].event == "leave")
 -- marks the active trigger before the first page; command 0x14's typed source
 -- Karma award and story masks happen only after Tabatha agrees to receive
 -- the runner.
-game.state.story_flag_bit_1 = false
-game.state.story_trigger_active_1 = nil
+game.state.tarislar_asked_shale = false
 karma_award_result = "applied"
 seed_tabatha_acceptance_flags()
 local refusal_route = location_task_result("continue_in_place",
     "more", "shale", "more", "more", "more", "about_michael", "more",
     "caleb", "errascoe", "recruit", "more", "more", "more", "more")
-assert(game.state.story_trigger_active_1 == true)
-assert(game.state.story_flag_bit_1 == true)
+assert(game.state.tarislar_asked_shale == true)
 assert(game.state.notebook_tip_flag_bit_2 == true)
 assert(game.state.notebook_tip_flag_bit_4 == true)
 assert(game.state.notebook_tip_flag_bit_5 == true)
@@ -312,9 +310,9 @@ assert(Inn.present_indexed_title_service() == "denied",
 
 -- The reverse topic permutation converges on Caleb's account and the same
 -- attack page when the runner thanks Tabatha.
-game.state.story_flag_bit_1 = false
-game.state.story_flag_bit_30 = false
-game.state.story_flag_bit_13 = false
+game.state.tarislar_asked_shale = false
+game.state.frosty_met = false
+game.state.michael_mission_told = false
 karma_award_result = "applied"
 seed_tabatha_acceptance_flags()
 location_task_result("continue_in_place",
@@ -336,7 +334,7 @@ assert(prompts[5].id == "shale_followup_after_errascoe" and
 
 -- A restored checkpoint with unresolved story stores must not partially
 -- apply command 0x14 or call the Karma service before reporting its boundary.
-game.state.story_flag_bit_1 = false
+game.state.tarislar_asked_shale = false
 for _, bit in ipairs({ 2, 4, 5, 6, 8 }) do
     game.state["notebook_tip_flag_bit_" .. bit] = nil
 end
@@ -352,7 +350,7 @@ assert(#service_calls == 0 and
 
 -- A resolved story state with an unavailable runner service also leaves all
 -- acceptance flags untouched.
-game.state.story_flag_bit_1 = false
+game.state.tarislar_asked_shale = false
 seed_tabatha_acceptance_flags()
 karma_award_result = "unavailable"
 local state_boundary = location_task_result("source_boundary",

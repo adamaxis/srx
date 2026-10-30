@@ -35,7 +35,7 @@ local function reset(called, service_results, ...)
         vid_phone_contact_9 = true,
         vid_phone_called_9 = called,
         lone_star_criminal_record_active = true,
-        vid_phone_story_flag_bit_27 = false,
+        hollywood_access_granted = false,
         group_item_flag_bit_11 = false,
     }
 end
@@ -112,7 +112,7 @@ local offers = {
       fact = "lone_star_criminal_record_active", value = false },
     { id = "hollywood_access", menu = "henry_offer_hollywood_access",
       operation = "charge_1500", result = "hollywood_access_granted",
-      fact = "vid_phone_story_flag_bit_27", value = true },
+      fact = "hollywood_access_granted", value = true },
     { id = "weapon_permit", menu = "henry_offer_weapon_permit",
       operation = "charge_8000", result = "weapon_permit_granted",
       fact = "group_item_flag_bit_11", value = true },

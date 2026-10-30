@@ -1,7 +1,7 @@
 -- Taxi service logic recovered from 0x20714, 0x2076A, and 0x208A8 [C].
 local E = require("enums")
 local Taxi = require("data.taxi_destinations")
-local StoryFlags = require("story_flags")
+local StoryFacts = require("story_facts")
 
 local M = {}
 local SPEAKER = "taxi_cabbie"
@@ -41,8 +41,8 @@ function M.run(destination_region)
     end
 
     -- FFFC1E bit 0 blocks cab service when clear; keep its existing story name [C].
-    local cab_service_available = StoryFlags.is_set(
-        E.StoryFlag.MOTEL_BILL_PAID)
+    local cab_service_available = StoryFacts.is_set(
+        E.StoryFact.MOTEL_BILL_PAID)
     if cab_service_available == nil then
         return "taxi_story_flag_unresolved"
     end

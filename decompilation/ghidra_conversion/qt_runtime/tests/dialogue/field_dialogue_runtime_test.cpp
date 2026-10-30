@@ -168,8 +168,8 @@ int main() {
     runtime.set_script_runtime(&gameplay_scripts);
 
     gameplay_scripts.set_story_state({
-        {"story_flag_bit_11", true},
-        {"story_flag_bit_15", false},
+        {"mako_defeated", true},
+        {"ogami_left", false},
         {"field_mode_effect_flag_bit_26", true},
         {"field_mode_effect_flag_bit_27", false},
     });
@@ -194,8 +194,8 @@ int main() {
     }
 
     gameplay_scripts.set_story_state({
-        {"story_flag_bit_16", true},
-        {"story_flag_bit_12", false},
+        {"ito_fight_won", true},
+        {"renraku_map_overlay", false},
     });
     gameplay_scripts.set_location_context(
         "building", "renraku_offices_frontage", "renraku.offices",
@@ -219,8 +219,8 @@ int main() {
     }
 
     gameplay_scripts.set_story_state({
-        {"story_flag_bit_25", true},
-        {"story_flag_bit_14", false},
+        {"hospital_visited", true},
+        {"cyberheart_safe", false},
     });
     runtime.set_native_script_service_callback(
         [&fuchi_safe_arm_calls](const std::string_view service_id)
@@ -455,10 +455,10 @@ int main() {
     };
 
     gameplay_scripts.set_story_state({
-        {"story_flag_bit_0", true},
-        {"story_flag_bit_1", false},
-        {"story_flag_bit_13", false},
-        {"story_flag_bit_30", false},
+        {"motel_bill_paid", true},
+        {"tarislar_asked_shale", false},
+        {"michael_mission_told", false},
+        {"frosty_met", false},
     });
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{1U, 1U, 0});
@@ -686,7 +686,7 @@ int main() {
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{4U, 3U, 0});
     gameplay_scripts.set_story_state({
-        {"story_flag_bit_4", false},
+        {"aragorn_freed_told", false},
         {"runner_information_bit_4", false},
     });
     if (!expect(runtime.open_gameplay_task(
@@ -745,10 +745,10 @@ int main() {
 
     inn_funds = 29U;
     gameplay_scripts.set_story_state({
-        {"story_flag_bit_0", true},
-        {"story_flag_bit_1", false},
-        {"story_flag_bit_13", false},
-        {"story_flag_bit_30", false},
+        {"motel_bill_paid", true},
+        {"tarislar_asked_shale", false},
+        {"michael_mission_told", false},
+        {"frosty_met", false},
     });
     gameplay_scripts.set_location_context(
         "building", "puyallup_site_03_tarislar_city_inn",
@@ -799,10 +799,10 @@ int main() {
     }
 
     gameplay_scripts.set_story_state({
-        {"story_flag_bit_0", true},
-        {"story_flag_bit_1", false},
-        {"story_flag_bit_13", false},
-        {"story_flag_bit_30", false},
+        {"motel_bill_paid", true},
+        {"tarislar_asked_shale", false},
+        {"michael_mission_told", false},
+        {"frosty_met", false},
         {"notebook_tip_flag_bit_0", true},
         {"notebook_tip_flag_bit_2", false},
         {"notebook_tip_flag_bit_4", false},
@@ -1479,10 +1479,10 @@ int main() {
     gameplay_scripts.set_story_state({
         {"mr_johnsons_flag_bit_1", true},
         {"mr_johnsons_flag_bit_2", false},
-        {"story_flag_bit_2", true},
-        {"story_flag_bit_3", false},
-        {"story_flag_bit_10", true},
-        {"story_flag_bit_11", false},
+        {"owlfeather_asked", true},
+        {"aragorn_found", false},
+        {"michael_alias_learned", true},
+        {"mako_defeated", false},
         {"field_mode_flag_bit_11", true},
         {"field_mode_flag_bit_12", false},
         {"field_mode_flag_bit_21", false},
@@ -1900,7 +1900,7 @@ int main() {
         FieldExitResourceProfile::stoker_motel,
         FieldExitPromptAsset::stoker_motel_arrival,
         0x14U};
-    gameplay_scripts.set_story_state({{"story_flag_bit_0", false}});
+    gameplay_scripts.set_story_state({{"motel_bill_paid", false}});
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{2U, 2U, 0});
     boundary = {};
@@ -2264,7 +2264,7 @@ int main() {
         return 34;
     }
 
-    gameplay_scripts.set_story_state({{"story_flag_bit_0", false}});
+    gameplay_scripts.set_story_state({{"motel_bill_paid", false}});
     gameplay_scripts.set_field_mode_context(
         scripting::ScriptFieldModeContext{2U, 2U, 0});
     if (!expect(runtime.open_stoker_interaction_for_dump()) ||
@@ -2298,7 +2298,7 @@ int main() {
     // C++ callback contributes only the ROM-derived wallet transaction.
     debt_payment_state.funds = 249U;
     debt_payment_state.followup_state = followup_state;
-    gameplay_scripts.set_story_state({{"story_flag_bit_0", false}});
+    gameplay_scripts.set_story_state({{"motel_bill_paid", false}});
     if (!expect(runtime.open_stoker_interaction_for_dump()) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
@@ -2312,7 +2312,7 @@ int main() {
         !expect(debt_payment_outcome.result ==
                 StokerMotelDebtPaymentResult::insufficient_funds) ||
         !expect(debt_payment_outcome.remaining_funds == 249U) ||
-        !expect(!gameplay_scripts.story_state().at("story_flag_bit_0")) ||
+        !expect(!gameplay_scripts.story_state().at("motel_bill_paid")) ||
         !expect(runtime.panel().text_segments[0].find("Jump House") !=
                 std::string_view::npos) ||
         !expect(runtime.panel().option_count == 0U) ||
@@ -2327,12 +2327,10 @@ int main() {
     }
 
     debt_payment_state.funds = 250U;
-    debt_payment_state.world_flags = 0U;
-    debt_payment_state.effect_marker = 0U;
     debt_payment_state.runner_feature_flags = 0x40U;
     debt_payment_state.party_karma = {0xFFU, 0x00U, 0x7FU};
     debt_payment_state.followup_state = followup_state;
-    gameplay_scripts.set_story_state({{"story_flag_bit_0", false}});
+    gameplay_scripts.set_story_state({{"motel_bill_paid", false}});
     if (!expect(runtime.open_stoker_interaction_for_dump()) ||
         !expect(runtime.advance_controller_events(0x4000U) ==
                 FieldDialogueAdvanceResult::prompt_advanced) ||
@@ -2344,8 +2342,7 @@ int main() {
                 StokerMotelDebtPaymentResult::debt_paid) ||
         !expect(debt_payment_outcome.remaining_funds == 500U) ||
         !expect(debt_payment_outcome.michael_package_sequence_follows) ||
-        !expect(gameplay_scripts.story_state().at("story_flag_bit_0")) ||
-        !expect(debt_payment_state.world_flags == 0x01U) ||
+        !expect(gameplay_scripts.story_state().at("motel_bill_paid")) ||
         !expect(debt_payment_state.runner_feature_flags == 0x41U) ||
         !expect(debt_payment_state.party_karma ==
                 std::array<std::uint8_t, 3>{0x00U, 0x01U, 0x80U}) ||
@@ -2369,8 +2366,7 @@ int main() {
                   << " package="
                   << debt_payment_outcome.michael_package_sequence_follows
                   << " story=" << gameplay_scripts.story_state().at(
-                         "story_flag_bit_0")
-                  << " world=" << debt_payment_state.world_flags
+                         "motel_bill_paid")
                   << " runner=" << static_cast<unsigned>(
                          debt_payment_state.runner_feature_flags)
                   << " followup=" << debt_payment_state.followup_state.story_flags

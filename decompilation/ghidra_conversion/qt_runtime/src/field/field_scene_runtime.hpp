@@ -2731,9 +2731,6 @@ private:
     std::optional<std::string> field_pending_activity_completion_;
     std::int8_t field_indexed_title_service_result_ = 0;
     // FFDD64: 0x53A78 stores the index of the trigger service it dispatches.
-    // 0x2196C sets that bit of FFFC1E (field_exit_world_flags_). Lua reads
-    // it as story_trigger_active_<n>; empty until a trigger is dispatched.
-    std::optional<std::uint8_t> field_active_story_trigger_;
     std::uint8_t field_palette_fade_steps_ = 0U;
     std::uint8_t field_modal_return_transition_frames_remaining_ = 0U;
     bool command_overview_return_transition_active_ = false;

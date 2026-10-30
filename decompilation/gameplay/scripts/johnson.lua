@@ -2,7 +2,7 @@
 -- speaker, portrait, menu copy, and ROM-derived dialogue pages; this module
 -- owns the reusable conversation flow.
 local Johnson = {}
-local StoryFlags = require("story_flags")
+local StoryFacts = require("story_facts")
 
 local function present_location_intro(profile, entry_seen_before)
     if profile == nil then
@@ -256,12 +256,12 @@ local function present_mortimer_questions()
         if game.state.mr_johnsons_flag_bit_1 then
             choices[#choices + 1] = "julius"
         end
-        if game.state.story_flag_bit_10 and
-           not game.state.story_flag_bit_11 then
+        if game.state.michael_alias_learned and
+           not game.state.mako_defeated then
             choices[#choices + 1] = "mako"
         end
-        if game.state.story_flag_bit_2 and
-           not game.state.story_flag_bit_3 then
+        if game.state.owlfeather_asked and
+           not game.state.aragorn_found then
             choices[#choices + 1] = "aragorn"
         end
         if #choices == 0 then
@@ -334,8 +334,8 @@ function Johnson.interaction()
             game.state[fact] = true
         end
     end
-    if profile ~= nil and profile.post_departure_story_flag ~= nil and
-       StoryFlags.is_set(profile.post_departure_story_flag) == true then
+    if profile ~= nil and profile.post_departure_story_fact ~= nil and
+       StoryFacts.is_set(profile.post_departure_story_fact) == true then
         -- Scene 14 checks FFFC1E bit 16 before its normal first-visit and
         -- Johnson-return paths. It clears context 3 with 0x1E68C, then shows
         -- the blank-profile booth-vacated page with no choices.

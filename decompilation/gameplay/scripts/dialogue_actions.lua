@@ -3,7 +3,7 @@
 local DialogueActions = {}
 local Registry = {}
 Registry.__index = Registry
-local StoryFlags = require("story_flags")
+local StoryFacts = require("story_facts")
 
 local function is_identifier(value)
     return type(value) == "string" and value ~= "" and
@@ -41,40 +41,11 @@ function Registry:execute(action_id, arguments, context)
 end
 
 local function register_core_actions(registry)
-    registry:register("story.begin_trigger", function(arguments)
-        assert(is_integer(arguments.triggerId, 0, 31),
-            "story.begin_trigger needs triggerId 0..31")
-        StoryFlags.begin_trigger(arguments.triggerId)
-        return true
-    end)
-
-    registry:register("story.finish_trigger", function(arguments)
-        assert(is_integer(arguments.triggerId, 0, 31),
-            "story.finish_trigger needs triggerId 0..31")
-        StoryFlags.finish_trigger(arguments.triggerId)
-        return true
-    end)
-
-    registry:register("story.select_fixed_trigger", function(arguments)
-        assert(is_integer(arguments.triggerId, 0, 31),
-            "story.select_fixed_trigger needs triggerId 0..31")
-        StoryFlags.select_fixed_trigger(arguments.triggerId)
-        return true
-    end)
-
-    registry:register("story.apply_dialogue_command", function(arguments)
-        assert(is_integer(arguments.commandId, 0, 255),
-            "story.apply_dialogue_command needs commandId 0..255")
-        local marked = StoryFlags.apply_dialogue_command(
-            arguments.commandId, arguments.options)
-        return marked == nil and "command_unresolved" or true
-    end)
-
-    registry:register("story.set_flag", function(arguments)
-        assert(is_integer(arguments.flagBit, 0, 31) and
+    registry:register("story.set_fact", function(arguments)
+        assert(StoryFacts.is_known(arguments.factId) and
                type(arguments.value) == "boolean",
-            "story.set_flag needs a flagBit and boolean value")
-        game.state["story_flag_bit_" .. arguments.flagBit] = arguments.value
+            "story.set_fact needs a known factId and boolean value")
+        StoryFacts.set(arguments.factId, arguments.value)
         return true
     end)
 

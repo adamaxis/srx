@@ -235,7 +235,7 @@ local evaluator = ConditionEvaluator.new(
     ConditionEvaluator.FactProvider.new({ state = { enabled = true } }))
 local invocation_evaluator = ConditionEvaluator.new(
     ConditionEvaluator.FactProvider.new({
-        state = { story_flag_bit_3 = true },
+        state = { aragorn_found = true },
         location = {
             type = "building",
             id = "salish_owlfeather_ranger_lodge",
@@ -255,7 +255,7 @@ assert(invocation_evaluator:evaluate(
     eq("location.id", "salish_owlfeather_ranger_lodge"),
     invocation_context).status == Status.true_value)
 assert(invocation_evaluator:evaluate(
-    eq("story.story_flag_bit_3", true), invocation_context).status ==
+    eq("story.aragorn_found", true), invocation_context).status ==
         Status.true_value)
 local action_calls = 0
 local actions = {

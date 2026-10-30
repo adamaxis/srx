@@ -1,103 +1,40 @@
--- story_flags.lua: FFFC1E / FFDD64 rule (0x2196C) against a host stub that
--- mirrors FieldSceneRuntime's story-fact accessors.
+-- Named story-fact model and source audit for its ROM provenance.
 local E = require("enums")
-
-local host = { fffc1e = 0, ffdd64 = nil }
-local function reset(flags, trigger) host.fffc1e, host.ffdd64 = flags, trigger end
-game = { state = setmetatable({}, {
-    __index = function(_, name)
-        local bit = name:match("^story_flag_bit_(%d+)$")
-        if bit then return (host.fffc1e >> tonumber(bit)) & 1 == 1 end
-        local trig = name:match("^story_trigger_active_(%d+)$")
-        if trig then
-            if host.ffdd64 == nil then return nil end
-            return host.ffdd64 == tonumber(trig)
-        end
-        return nil
-    end,
-    __newindex = function(_, name, value)
-        local bit = name:match("^story_flag_bit_(%d+)$")
-        if bit then
-            local m = 1 << tonumber(bit)
-            host.fffc1e = value and (host.fffc1e | m) or (host.fffc1e & ~m)
-            return
-        end
-        local trig = name:match("^story_trigger_active_(%d+)$")
-        if trig then
-            local index = tonumber(trig)
-            if value then host.ffdd64 = index
-            elseif host.ffdd64 == index then host.ffdd64 = nil end
-            return
-        end
-        error("unwritable fact " .. name)
-    end,
-}) }
-
-local S = require("story_flags")
+local StoryFacts = require("story_facts")
 local pass, total = 0, 0
-local function check(cond, label)
+local function check(condition, label)
     total = total + 1
-    if cond then pass = pass + 1 else print("FAIL " .. label) end
+    if condition then pass = pass + 1 else print("FAIL " .. label) end
 end
 
-reset(0, 5)
-check(S.active_trigger() == 5, "FFDD64 read back")
-S.begin_trigger(2)
-check(host.ffdd64 == 2 and S.active_trigger() == 2 and
-      game.state.story_trigger_active_5 == false,
-      "begin_trigger replaces the single FFDD64 index")
-S.mark_fixed(13)
-check(host.ffdd64 == 13 and S.active_trigger() == 13 and
-      game.state.story_trigger_active_2 == false,
-      "fixed story commands replace FFDD64 instead of accumulating indexes")
-
-reset(0, 5)
-check(S.apply_dialogue_command(0x15) == E.StoryFlag.SHAMAN_MET, "cmd15 sets the active trigger's bit")
-check(host.fffc1e == 1 << 5, "only bit 5 set")
-
-reset(0, 0)
-check(S.apply_dialogue_command(0x05) == nil, "cmd05 unpaid branch does not mark")
-check(S.apply_dialogue_command(0x05, { paid = true }) == E.StoryFlag.MOTEL_BILL_PAID, "cmd05 paid marks trigger 0")
-check(S.is_set(E.StoryFlag.MOTEL_BILL_PAID) == true, "is_set reads FFFC1E")
-
-reset(0, 3)
-check(S.apply_dialogue_command(0x1C) == E.StoryFlag.MICHAEL_MISSION_TOLD, "cmd1C uses fixed 0x0D")
-check(host.ffdd64 == 13, "cmd1C overwrites FFDD64")
-check(S.apply_dialogue_command(0x1D) == 13, "later cmd1D sees the overwritten FFDD64")
-check(host.fffc1e & (1 << 3) == 0, "original trigger bit untouched")
-
-reset(0, 1)
-check(S.apply_dialogue_command(0x46, { branch = 2 }) == E.StoryFlag.BOTH_MAPS_SHOWN, "cmd46 second branch")
-check(S.apply_dialogue_command(0x61) == E.StoryFlag.HOSPITAL_VISITED, "cmd61 fixed 0x19")
-check(S.apply_dialogue_command(0x30) == nil, "unrelated command leaves flags alone")
-
-reset(0, 21)
-check(S.apply_dialogue_command(0x44) == E.StoryFlag.FROSTY_MET,
-      "cmd44 marks Frosty met")
-check(host.fffc1e == 1 << E.StoryFlag.FROSTY_MET and host.ffdd64 == 21,
-      "cmd44 sets FFFC1E bit 30 without changing FFDD64")
-
-reset(0, nil)
-check(not pcall(S.mark_active_trigger), "missing FFDD64 is an error, not bit 0")
-check(S.is_set(31) == false and S.name(0) == "MOTEL_BILL_PAID", "name lookup")
-check(not pcall(S.set, 32), "bit range is checked")
-
-reset(0, nil)
-check(S.select_fixed_trigger(E.StoryFlag.SERPENT_SCALE_TAKEN) == 8 and
-      host.ffdd64 == 8 and host.fffc1e == 0,
-      "direct field activity selects FFDD64 without prematurely marking bit 8")
-check(S.apply_dialogue_command(0x1A) == 8 and
-      host.fffc1e == (1 << 8),
-      "active dialogue command marks the selected direct-activity trigger")
-
-for cmd, mark in pairs(S.DIALOGUE_COMMAND_MARKS) do
-    if type(mark) == "number" then
-        check(S.name(mark) ~= nil, string.format("cmd %02X fixed index is a named StoryFlag", cmd))
-    end
+local state = {}
+game = { state = state }
+local ids = {}
+for name, fact_id in pairs(E.StoryFact) do
+    check(type(fact_id) == "string" and
+          fact_id:match("^[a-z][a-z0-9_]*$") ~= nil,
+          name .. " has a semantic fact identity")
+    check(not ids[fact_id], fact_id .. " is unique")
+    ids[fact_id] = true
+    check(StoryFacts.is_known(fact_id), fact_id .. " is recognized")
 end
+check(not StoryFacts.is_known("story_flag_bit_7"),
+      "ROM storage positions are not gameplay facts")
+check(not StoryFacts.is_known("unknown_story_fact"),
+      "unknown progression names are rejected")
+StoryFacts.set(E.StoryFact.MOTEL_BILL_PAID, true)
+check(StoryFacts.is_set(E.StoryFact.MOTEL_BILL_PAID) == true,
+      "named fact can be recorded")
+StoryFacts.set(E.StoryFact.MOTEL_BILL_PAID, false)
+check(StoryFacts.is_set(E.StoryFact.MOTEL_BILL_PAID) == false,
+      "named fact can be cleared")
+check(not pcall(StoryFacts.set, "story_flag_bit_7", true),
+      "raw storage identity cannot be written")
+check(not pcall(StoryFacts.is_set, "unknown_story_fact"),
+      "unknown fact cannot be queried")
 
 -- ---- live triggers (story_triggers.lua) against the ROM [C] ----------------
-local T = require("story_triggers")
+local T = require("story_triggers_source")
 local rom = assert(io.open("decompilation/input/shadowrun_genesis_us.bin", "rb")):read("a")
 local function u16(a) return rom:byte(a + 1) << 8 | rom:byte(a + 2) end
 local function u32(a) return u16(a) << 16 | u16(a + 2) end
@@ -261,54 +198,51 @@ for _, i in ipairs(T.live_indices()) do
               string.format("trigger %d preset FFDD64=%d then jsr 0x2196C at %06X", i, p.index, p.site))
     end
 end
--- Every live trigger: begin_trigger publishes FFDD64; each reachable story
--- command and the handler tail mark exactly the expected FFFC1E bits [C].
-local F = E.StoryFlag
-local expected = {
-    [0]  = { commands = { [0x05] = F.MOTEL_BILL_PAID } },
-    [1]  = { commands = { [0x16] = F.TARISLAR_ASKED_SHALE } },
-    [2]  = { commands = { [0x17] = F.OWLFEATHER_ASKED } },
-    [3]  = { commands = {} },
-    [4]  = { commands = { [0x19] = F.ARAGORN_FREED_TOLD }, tail = F.ARAGORN_FREED_TOLD },
-    [10] = { commands = {} }, [12] = { commands = {} }, [14] = { commands = {} },
-    [15] = { commands = {}, tail = F.OGAMI_LEFT },
-    [18] = { commands = {}, tail = F.RED_BUFFALO_WOMAN },
-    [19] = { commands = {} },
-    [21] = { commands = { [0x40] = F.POST_ITO_BRIEFED, [0x46] = { F.RENRAKU_MAP_SHOWN, F.BOTH_MAPS_SHOWN },
-                          [0x47] = { F.RENRAKU_MAP_SHOWN, F.BOTH_MAPS_SHOWN } },
-             preset = { F.POST_ITO_BRIEFED, F.GARDEN_APTS_ENTERED } },
-    [22] = { commands = {}, tail = F.LANDMARK_MAP_TAKEN },
+-- The content interface records specific outcomes by name. These checks
+-- prevent the old generic ROM command/trigger API from returning to gameplay.
+local Json = require("json")
+local conversation_files = {
+    "fuchi_offices.json", "gates_undersound.json",
+    "harlequin_main_conversation.json", "harlequin_map_information.json",
+    "renraku_offices.json", "salish_owlfeather.json",
+    "salish_sinsearach_gate.json", "salish_spirit_eyes.json",
+    "stoker_motel.json", "tarislar_city_inn.json",
 }
-for _, i in ipairs(T.live_indices()) do
-    local x = expected[i]
-    local story = T.story_commands(i, S.DIALOGUE_COMMAND_MARKS)
-    local n_expected = 0; for _ in pairs(x.commands) do n_expected = n_expected + 1 end
-    check(#story == n_expected, string.format("trigger %d: %d story commands reachable", i, n_expected))
-    for _, c in ipairs(story) do
-        local want = x.commands[c]
-        if type(want) == "table" then
-            for branch = 1, 2 do
-                reset(0, nil); S.begin_trigger(i)
-                local bit = S.apply_dialogue_command(c, { branch = branch })
-                check(bit == want[branch] and host.fffc1e == 1 << want[branch],
-                      string.format("trigger %d cmd %02X branch %d -> bit %d", i, c, branch, want[branch]))
+local fact_actions = {}
+for _, filename in ipairs(conversation_files) do
+    local file = assert(io.open(
+        "decompilation/gameplay/dialogue/conversations/" .. filename, "rb"))
+    local document = Json.decode(file:read("*a"))
+    file:close()
+    for _, graph in pairs(document.graphs) do
+        for _, node in pairs(graph.nodes) do
+            if type(node.actionId) == "string" and
+               node.actionId:match("^story%.") then
+                check(node.actionId == "story.set_fact",
+                      filename .. " uses only named story actions")
+                local arguments = node.arguments or {}
+                check(StoryFacts.is_known(arguments.factId) and
+                      type(arguments.value) == "boolean",
+                      filename .. " action names a known boolean fact")
+                if arguments.factId then fact_actions[arguments.factId] = true end
+                check(arguments.flagBit == nil and arguments.commandId == nil and
+                      arguments.triggerId == nil,
+                      filename .. " carries no ROM storage or command index")
             end
-        else
-            reset(0, nil); S.begin_trigger(i)
-            local bit = S.apply_dialogue_command(c, { paid = true })
-            check(bit == want and host.fffc1e == 1 << want, string.format("trigger %d cmd %02X -> bit %s", i, c, tostring(want)))
         end
     end
-    reset(0, nil); S.begin_trigger(i)
-    check(host.ffdd64 == i, string.format("begin_trigger(%d) publishes FFDD64", i))
-    local tail = S.finish_trigger(i)
-    check(tail == x.tail and host.fffc1e == (x.tail and 1 << x.tail or 0), string.format("trigger %d tail marks %s", i, tostring(x.tail)))
-    for k, p in ipairs(T.LIVE[i].preset or {}) do
-        reset(0, nil); S.begin_trigger(i)
-        check(S.mark_fixed(p.index) == x.preset[k] and host.ffdd64 == x.preset[k], string.format("trigger %d preset %d", i, p.index))
-    end
 end
-check(not pcall(S.begin_trigger, 5) and not pcall(S.begin_trigger, 23), "begin_trigger rejects no-op / out-of-table indices")
+local required_content_facts = {
+    "motel_bill_paid", "tarislar_asked_shale", "owlfeather_asked",
+    "aragorn_found", "aragorn_freed_told", "shaman_met",
+    "shaman_item4_given", "shaman_pelt_given", "serpent_scale_taken",
+    "shaman_tasks_done", "frosty_met", "ogami_left", "post_ito_briefed",
+    "renraku_map_shown", "both_maps_shown",
+}
+for _, fact_id in ipairs(required_content_facts) do
+    check(fact_actions[fact_id] == true,
+          fact_id .. " is an explicit dialogue outcome")
+end
 
-print(string.format("story_flags tests: %d/%d passed", pass, total))
+print(string.format("story fact tests: %d/%d passed", pass, total))
 if pass ~= total then os.exit(1) end

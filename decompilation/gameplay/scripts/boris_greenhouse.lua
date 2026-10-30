@@ -31,7 +31,7 @@ local function action_registry()
         ["boris.reveal_michael_information"] = function()
             -- Command 0x2B at 0x21B82 learns Michael's alias and prepares the
             -- source field-mode state for the next same-map service visit.
-            game.state.story_flag_bit_10 = true
+            game.state.michael_alias_learned = true
             game.state.field_dialogue_flag_bit_1 = true
             game.state.field_mode_flag_bit_6 = false
             game.state.field_mode_flag_bit_7 = false

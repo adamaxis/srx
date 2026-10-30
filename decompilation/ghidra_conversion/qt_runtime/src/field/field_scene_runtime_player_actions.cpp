@@ -439,7 +439,7 @@ void FieldSceneRuntime::complete_field_party_wipe() {
     }
     recovery_context.nuyen = field_funds_.value_or(0U);
     const auto story = game_scripts_.story_state();
-    const auto bit0 = story.find("story_flag_bit_0");
+    const auto bit0 = story.find("motel_bill_paid");
     recovery_context.motel_bill_paid =
         bit0 != story.end() && bit0->second;
     const auto recovery = game_scripts_.party_wipe_recovery(recovery_context);
