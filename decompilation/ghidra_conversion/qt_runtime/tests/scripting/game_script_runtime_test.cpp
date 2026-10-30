@@ -10251,6 +10251,8 @@ int main() {
     // signed compass vectors without passing C002's word array into Lua.
     // ROM 0xBADE records a blocked cardinal direction; 0xB442 requests the
     // reset marker. Lua returns those outcomes by name for native translation.
+    // ROM 0xAC5E tests FFDF64 only for zero; Lua consumes that as a boolean
+    // while the host keeps the complete terrain result for source side effects.
     if (!expect(
             clear_step.has_value() && clear_step->movement_step.has_value() &&
                 clear_step->movement_step->outcome ==
@@ -10261,6 +10263,7 @@ int main() {
                 clear_step->movement_step->state.substate_update ==
                     ScriptMovementSubstateUpdate::direct_translation &&
                 clear_step->movement_step->state.route_flags == 0x03U &&
+                clear_step->movement_step->state.terrain_collision_code == 0U &&
                 clear_collision_queries == 1U &&
                 route_step.has_value() && route_step->movement_step.has_value() &&
                 route_step->movement_step->state.position_x == 100U &&
@@ -10284,6 +10287,8 @@ int main() {
                 pending_event_step->movement_step.has_value() &&
                 pending_event_step->movement_step->state.route_flags == 0x20U &&
                 pending_event_step->movement_step->state.position_y == 90U &&
+                pending_event_step->movement_step->state.terrain_collision_code ==
+                    0xFFC2U &&
                 pending_event_recoveries == 1U &&
                 reset_step.has_value() && reset_step->movement_step.has_value() &&
                 reset_step->movement_step->outcome ==

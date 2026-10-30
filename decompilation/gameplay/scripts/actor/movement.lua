@@ -574,9 +574,9 @@ local function probe_movement(context, movement_state, direction_slot,
         movement_state.position_x + vector.x * step_distance)
     local candidate_y = u16(
         movement_state.position_y + vector.y * step_distance)
-    local collision_code, terrain_collision_code = game.movement.collision(
+    local collision_code, terrain_is_clear = game.movement.collision(
         candidate_x, candidate_y)
-    movement_state.terrain_collision_code = terrain_collision_code
+    movement_state.terrain_is_clear = terrain_is_clear
     -- ROM 0xB77E maps detailed negative terrain results to 0x7F unless the
     -- actor's +0x10 bit 1 requests that negative values be preserved.
     if collision_code < 0 and
@@ -628,9 +628,9 @@ local function reset_blocked_movement(context, state, movement_state)
     state.animation_id = "idle"
     -- B442 restores the facing and clears pending movement while preserving
     -- the current frame and Lua-owned animation progress for the render pass.
-    local _, terrain_collision_code = game.movement.collision(
+    local _, terrain_is_clear = game.movement.collision(
         movement_state.position_x, movement_state.position_y)
-    movement_state.terrain_collision_code = terrain_collision_code
+    movement_state.terrain_is_clear = terrain_is_clear
     return {
         outcome = "reset",
         state = movement_state,
@@ -799,8 +799,9 @@ end
 local function finish_entity_movement(context, movement_step)
     if movement_step ~= nil and
        actor_lifecycle(context).ai_runner and
-       movement_step.state.terrain_collision_code == 0 then
-        -- Clear the transition outcome after the accepted terrain probe.
+       movement_step.state.terrain_is_clear == true then
+        -- ROM 0xAC5E clears +0xB0 bit 5 only after FFDF64 becomes zero.
+        -- The native collision service exposes that as a named terrain fact.
         movement_step.state.route_facts.route_transition = false
     end
     return movement_step

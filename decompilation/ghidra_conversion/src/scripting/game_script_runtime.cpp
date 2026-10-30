@@ -2783,6 +2783,7 @@ struct GameScriptRuntime::Impl {
     ScriptMenuRouteSnapshot menu_route_state{};
     ScriptActorHeartbeatObserver actor_heartbeat_observer;
     const ScriptActorBehaviorContext* active_actor_context = nullptr;
+    std::optional<std::uint16_t> last_actor_terrain_collision_code;
     ScriptActorRandomBound active_conditional_actor_random_bound;
     std::string bridge_failure;
     std::string failure;
@@ -5572,8 +5573,10 @@ struct GameScriptRuntime::Impl {
                 self->active_actor_context->movement_collision(
                     static_cast<std::uint16_t>(x),
                     static_cast<std::uint16_t>(y));
+            self->last_actor_terrain_collision_code =
+                result.terrain_collision_code;
             lua_pushinteger(lua, result.collision_code);
-            lua_pushinteger(lua, result.terrain_collision_code);
+            lua_pushboolean(lua, result.terrain_collision_code == 0U);
             return 2;
         } catch (...) {
             return luaL_error(lua,
@@ -12095,8 +12098,9 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "clear_pending_event");
     lua_pushinteger(state, context.movement_state.collision_extent);
     lua_setfield(state, -2, "collision_extent");
-    lua_pushinteger(state, context.movement_state.terrain_collision_code);
-    lua_setfield(state, -2, "terrain_collision_code");
+    lua_pushboolean(state,
+                    context.movement_state.terrain_collision_code == 0U);
+    lua_setfield(state, -2, "terrain_is_clear");
     lua_setfield(state, -2, "movement_state");
     push_actor_facts(state, context.movement_entity_flags, 0U, 0U, 0U);
     lua_setfield(state, -2, "movement_actor_facts");
@@ -12109,6 +12113,7 @@ GameScriptRuntime::actor_heartbeat(
     lua_pushinteger(state, context.movement_collision_mode);
     lua_setfield(state, -2, "movement_collision_mode");
     ScopedInstructionBudget instruction_budget(state);
+    impl_->last_actor_terrain_collision_code.reset();
     impl_->active_actor_context = &context;
     const auto actor_status = lua_pcall(state, 1, 1, 0);
     impl_->active_actor_context = nullptr;
@@ -13535,9 +13540,9 @@ GameScriptRuntime::actor_heartbeat(
         movement_step.state.collision_extent =
             static_cast<std::int16_t>(lua_tointeger(state, -1));
         lua_pop(state, 1);
-        if (!read_movement("terrain_collision_code", 0xFFFFU,
-                           movement_step.state.terrain_collision_code)) {
-            return fail("actor_ai.heartbeat returned invalid terrain collision state");
+        if (impl_->last_actor_terrain_collision_code.has_value()) {
+            movement_step.state.terrain_collision_code =
+                *impl_->last_actor_terrain_collision_code;
         }
         lua_pop(state, 1);
         decision.movement_step = movement_step;
