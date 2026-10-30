@@ -592,6 +592,135 @@ bool normalize_saved_gang_contract_variant(
     return true;
 }
 
+bool normalize_legacy_matrix_run_state(
+    ScriptPersistentValue::Object& offer, std::string& failure) {
+    const auto id_field = offer.find("id");
+    const auto* run_id = id_field == offer.end()
+        ? nullptr
+        : std::get_if<std::string>(&id_field->second.value);
+    if (run_id == nullptr || *run_id != "matrix_objective") {
+        return true;
+    }
+
+    const auto state_field = offer.find("matrix_run_state");
+    if (state_field == offer.end()) return true;
+    auto* run_state = std::get_if<ScriptPersistentValue::Object>(
+        &state_field->second.value);
+    if (run_state == nullptr || run_state->find("status") != run_state->end()) {
+        return true;
+    }
+
+    // Previous save versions stored packed Matrix record fields. Decode once
+    // here; run_registry.lua only receives the named state used by gameplay.
+    const auto read_integer = [run_state](const char* name)
+        -> std::optional<std::int64_t> {
+        const auto field = run_state->find(name);
+        if (field == run_state->end()) return std::nullopt;
+        const auto* value = std::get_if<std::int64_t>(&field->second.value);
+        return value == nullptr ? std::nullopt
+                                : std::optional<std::int64_t>{*value};
+    };
+    const auto legacy_status = read_integer("state");
+    const auto legacy_class = read_integer("objective");
+    const auto legacy_value = read_integer("value");
+    const auto legacy_size = read_integer("size");
+    const auto completion_flags = read_integer("fc28");
+    const auto run_flags = read_integer("fc1c");
+    const auto in_range = [](const std::optional<std::int64_t>& value,
+                             const std::int64_t minimum,
+                             const std::int64_t maximum) {
+        return value.has_value() && *value >= minimum && *value <= maximum;
+    };
+    if (!in_range(legacy_status, -128, 127) ||
+        !in_range(legacy_class, -128, 127) ||
+        !in_range(legacy_value, -128, 127) ||
+        !in_range(legacy_size, 0, 255) ||
+        !in_range(completion_flags, 0, 255) ||
+        !in_range(run_flags, 0, 255)) {
+        failure = "saved Matrix run has invalid legacy record values";
+        return false;
+    }
+
+    static constexpr std::array<std::string_view, 47> kFileClassLabels{
+        "Outdated Files", "System Files", "Mngmnt Files", "Project Files",
+        "Security Files", "Dead Projects", "Competition", "Marketing Data",
+        "Simsense Files", "Financial Data", "Confidntl Data", "Legal Files",
+        "Prisoner Files", "Case Files", "Unlisted", "Seattle Gneral",
+        "Renraku", "Fuchi", "Mitsuhama", "Hlywd Corr Fac", "Aztechnology",
+        "UCAS Fed. Gov.", "Gates Undrsnd.", "Ares", "Lone Star", "City Hall",
+        "Club Penumbra", "Building Maint", "Security", "Executive Area",
+        "Research", "Marketing", "Retail Control", "Data Routing",
+        "Office Mangmnt", "Shipping", "Simsense Rec.", "Terminal", "Matrix Jack",
+        "Security Cntrl", "Cameras", "Maglocks", "Alert Control",
+        "Automtd. Equip", "Elevator Cntrl", "Undrwatr Equip", "HVAC Systems",
+    };
+
+    const auto completed = ((*run_flags & 0x80) != 0) || *legacy_status > 0;
+    const auto status = completed ? "completed"
+        : *legacy_status < 0 ? "active" : "inactive";
+    ScriptPersistentValue::Object objective;
+    const auto add_string = [](ScriptPersistentValue::Object& object,
+                               const char* key, std::string value) {
+        ScriptPersistentValue field{};
+        field.value = std::move(value);
+        object.emplace(key, std::move(field));
+    };
+    const auto add_integer = [](ScriptPersistentValue::Object& object,
+                                const char* key, std::int64_t value) {
+        ScriptPersistentValue field{};
+        field.value = value;
+        object.emplace(key, std::move(field));
+    };
+    add_string(objective, "action", "crash_system");
+    if (*legacy_class < 0) {
+        add_string(objective, "node", "cpu");
+    } else {
+        if (*legacy_class >=
+            static_cast<std::int64_t>(kFileClassLabels.size())) {
+            failure = "saved Matrix file class is outside its legacy table";
+            return false;
+        }
+        const auto action = *legacy_value < 0 ? "upload_file"
+            : *legacy_value == 0 ? "delete_file" : "download_file";
+        if (*legacy_value >= 0 && *legacy_value > 69) {
+            failure = "saved Matrix file selection is outside its legacy range";
+            return false;
+        }
+        objective.clear();
+        add_string(objective, "node", "datastore");
+        add_string(objective, "action", action);
+        add_string(objective, "file_class",
+                   std::string(kFileClassLabels[
+                       static_cast<std::size_t>(*legacy_class)]));
+        if (*legacy_value >= 0) {
+            add_integer(objective, "file_id", *legacy_value);
+        }
+    }
+
+    std::optional<ScriptPersistentValue> target_system_id;
+    if (const auto target = run_state->find("target_system_id");
+        target != run_state->end()) {
+        target_system_id = target->second;
+    }
+    run_state->clear();
+    add_string(*run_state, "status", status);
+    ScriptPersistentValue objective_value{};
+    objective_value.value = std::move(objective);
+    run_state->emplace("objective", std::move(objective_value));
+    add_integer(*run_state, "file_size", *legacy_size);
+    ScriptPersistentValue completion_marker{};
+    completion_marker.value = ((*completion_flags & 1) != 0);
+    run_state->emplace("completion_marker_present",
+                       std::move(completion_marker));
+    ScriptPersistentValue completion_recorded{};
+    completion_recorded.value = completed;
+    run_state->emplace("completion_recorded", std::move(completion_recorded));
+    if (target_system_id.has_value()) {
+        run_state->emplace("target_system_id", std::move(*target_system_id));
+    }
+    return true;
+}
+
 bool normalize_saved_run_locations(
     ScriptPersistentValue::Object& offer, std::string& failure) {
     const auto run_id_field = offer.find("id");
@@ -722,6 +851,7 @@ bool normalize_saved_offer_variant(
     if (!normalize_legacy_run_identity(*offer, failure)) return false;
     if (!normalize_legacy_run_client_ids(*offer, failure)) return false;
     if (!normalize_saved_gang_contract_variant(*offer, failure)) return false;
+    if (!normalize_legacy_matrix_run_state(*offer, failure)) return false;
     if (!normalize_saved_run_locations(*offer, failure)) return false;
     if (const auto* run_id = [&]() -> const std::string* {
             const auto id = offer->find("id");

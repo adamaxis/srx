@@ -1734,6 +1734,213 @@ bool verify_employee_recruitment_pedestrian_request(
         two_site_variant_reaches_request && renraku_variant_reaches_request;
 }
 
+bool verify_legacy_matrix_save_migration(
+    const std::filesystem::path& script_directory,
+    const std::filesystem::path& dialogue_text) {
+    using namespace shadowrun::ghidra_conversion::scripting;
+
+    GameScriptRuntime scripts;
+    if (!scripts.load_package(script_directory, dialogue_text)) {
+        std::cerr << scripts.failure() << '\n';
+        return expect(false, "Matrix save migration package did not load");
+    }
+
+    const auto scalar = [](auto value) {
+        ScriptPersistentValue result{};
+        result.value = std::move(value);
+        return result;
+    };
+    const auto legacy_offer = [&scalar](const std::int64_t status,
+                                        const std::int64_t objective,
+                                        const std::int64_t value,
+                                        const std::int64_t size,
+                                        const std::int64_t completion_flags,
+                                        const std::int64_t run_flags,
+                                        const std::optional<std::int64_t>
+                                            target_system_id) {
+        ScriptPersistentValue::Object matrix_state{
+            {"state", scalar(status)},
+            {"objective", scalar(objective)},
+            {"value", scalar(value)},
+            {"size", scalar(size)},
+            {"fc28", scalar(completion_flags)},
+            {"fc1c", scalar(run_flags)},
+        };
+        if (target_system_id.has_value()) {
+            matrix_state.emplace("target_system_id",
+                                 scalar(*target_system_id));
+        }
+        ScriptPersistentValue matrix_state_value{};
+        matrix_state_value.value = std::move(matrix_state);
+        ScriptPersistentValue::Object offer{
+            {"id", scalar(std::string("matrix_objective"))},
+            {"category", scalar(std::string("matrix"))},
+            {"objective", scalar(std::string("complete_matrix_run"))},
+            {"completion_condition",
+             scalar(std::string("matrix_objective_complete"))},
+            {"runner_progress_delta", scalar(std::int64_t{0})},
+            {"matrix_run_state", std::move(matrix_state_value)},
+        };
+        ScriptPersistentValue result{};
+        result.value = std::move(offer);
+        return result;
+    };
+
+    ScriptPersistentValue::Object save{
+        {"schema_version", scalar(std::int64_t{1})},
+        {"current_offer", legacy_offer(0, 10, -1, 3, 0, 0, std::nullopt)},
+        {"active_offer", legacy_offer(-1, 4, 20, 30, 1, 0, 7)},
+        {"last_completed_offer", legacy_offer(1, -1, 0, 0, 0, 0x80,
+                                               std::nullopt)},
+        {"last_offer_result", scalar(std::string("accepted"))},
+    };
+    ScriptPersistentValue legacy_save{};
+    legacy_save.value = std::move(save);
+    if (!expect(scripts.validate_run_registry_state(legacy_save) &&
+                    scripts.restore_run_registry_state(legacy_save),
+                "native save adapter did not normalize legacy Matrix records")) {
+        std::cerr << scripts.failure() << '\n';
+        return false;
+    }
+
+    const auto migrated = scripts.save_run_registry_state();
+    const auto* migrated_registry = migrated.has_value()
+        ? std::get_if<ScriptPersistentValue::Object>(&migrated->value)
+        : nullptr;
+    const auto object_field = [](const ScriptPersistentValue::Object* object,
+                                 const char* name)
+        -> const ScriptPersistentValue::Object* {
+        if (object == nullptr) return nullptr;
+        const auto field = object->find(name);
+        if (field == object->end()) return nullptr;
+        return std::get_if<ScriptPersistentValue::Object>(
+            &field->second.value);
+    };
+    const auto value_field = [](const ScriptPersistentValue::Object* object,
+                                const char* name)
+        -> const ScriptPersistentValue* {
+        if (object == nullptr) return nullptr;
+        const auto field = object->find(name);
+        return field == object->end() ? nullptr : &field->second;
+    };
+    const auto string_field = [&value_field](
+                                  const ScriptPersistentValue::Object* object,
+                                  const char* name) -> const std::string* {
+        const auto* value = value_field(object, name);
+        return value == nullptr ? nullptr
+            : std::get_if<std::string>(&value->value);
+    };
+    const auto integer_field = [&value_field](
+                                  const ScriptPersistentValue::Object* object,
+                                  const char* name) -> const std::int64_t* {
+        const auto* value = value_field(object, name);
+        return value == nullptr ? nullptr
+            : std::get_if<std::int64_t>(&value->value);
+    };
+    const auto boolean_field = [&value_field](
+                                   const ScriptPersistentValue::Object* object,
+                                   const char* name) -> const bool* {
+        const auto* value = value_field(object, name);
+        return value == nullptr ? nullptr
+            : std::get_if<bool>(&value->value);
+    };
+    const auto matrix_state = [&object_field](
+                                  const ScriptPersistentValue::Object* registry,
+                                  const char* offer_name) {
+        const auto* offer = object_field(registry, offer_name);
+        return object_field(offer, "matrix_run_state");
+    };
+
+    const auto* current = matrix_state(migrated_registry, "current_offer");
+    const auto* current_objective = object_field(current, "objective");
+    const auto* active = matrix_state(migrated_registry, "active_offer");
+    const auto* active_objective = object_field(active, "objective");
+    const auto* completed = matrix_state(migrated_registry,
+                                         "last_completed_offer");
+    const auto* completed_objective = object_field(completed, "objective");
+    const auto target_system_id = integer_field(active, "target_system_id");
+    const bool normalized =
+        string_field(current, "status") != nullptr &&
+        *string_field(current, "status") == "inactive" &&
+        string_field(current_objective, "action") != nullptr &&
+        *string_field(current_objective, "action") == "upload_file" &&
+        string_field(current_objective, "file_class") != nullptr &&
+        *string_field(current_objective, "file_class") == "Confidntl Data" &&
+        value_field(current_objective, "file_id") == nullptr &&
+        string_field(active, "status") != nullptr &&
+        *string_field(active, "status") == "active" &&
+        string_field(active_objective, "action") != nullptr &&
+        *string_field(active_objective, "action") == "download_file" &&
+        string_field(active_objective, "file_class") != nullptr &&
+        *string_field(active_objective, "file_class") == "Security Files" &&
+        integer_field(active_objective, "file_id") != nullptr &&
+        *integer_field(active_objective, "file_id") == 20 &&
+        integer_field(active, "file_size") != nullptr &&
+        *integer_field(active, "file_size") == 30 &&
+        boolean_field(active, "completion_marker_present") != nullptr &&
+        *boolean_field(active, "completion_marker_present") &&
+        boolean_field(active, "completion_recorded") != nullptr &&
+        !*boolean_field(active, "completion_recorded") &&
+        target_system_id != nullptr && *target_system_id == 7 &&
+        string_field(completed, "status") != nullptr &&
+        *string_field(completed, "status") == "completed" &&
+        string_field(completed_objective, "node") != nullptr &&
+        *string_field(completed_objective, "node") == "cpu" &&
+        string_field(completed_objective, "action") != nullptr &&
+        *string_field(completed_objective, "action") == "crash_system" &&
+        boolean_field(completed, "completion_recorded") != nullptr &&
+        *boolean_field(completed, "completion_recorded");
+    if (!expect(normalized,
+                "Matrix save migration did not preserve named actions and lifecycle")) {
+        return false;
+    }
+
+    const auto has_legacy_field = [](
+                                      const ScriptPersistentValue::Object* object) {
+        return object != nullptr &&
+            (object->find("state") != object->end() ||
+             object->find("value") != object->end() ||
+             object->find("size") != object->end() ||
+             object->find("fc28") != object->end() ||
+             object->find("fc1c") != object->end());
+    };
+    if (!expect(!has_legacy_field(current) && !has_legacy_field(active) &&
+                    !has_legacy_field(completed),
+                "restored Matrix run state retained packed save fields")) {
+        return false;
+    }
+
+    ScriptPersistentValue invalid_save = legacy_save;
+    auto* invalid_registry =
+        std::get_if<ScriptPersistentValue::Object>(&invalid_save.value);
+    const auto invalid_current_field = invalid_registry == nullptr
+        ? ScriptPersistentValue::Object::iterator{}
+        : invalid_registry->find("current_offer");
+    auto* invalid_current = invalid_registry != nullptr &&
+            invalid_current_field != invalid_registry->end()
+        ? std::get_if<ScriptPersistentValue::Object>(
+              &invalid_current_field->second.value)
+        : nullptr;
+    const auto invalid_state_field = invalid_current == nullptr
+        ? ScriptPersistentValue::Object::iterator{}
+        : invalid_current->find("matrix_run_state");
+    auto* invalid_state = invalid_current != nullptr &&
+            invalid_state_field != invalid_current->end()
+        ? std::get_if<ScriptPersistentValue::Object>(
+              &invalid_state_field->second.value)
+        : nullptr;
+    if (invalid_state == nullptr) {
+        return expect(false, "legacy Matrix invalid-case fixture is malformed");
+    }
+    const auto objective_field = invalid_state->find("objective");
+    if (objective_field == invalid_state->end()) {
+        return expect(false, "legacy Matrix invalid-case objective is missing");
+    }
+    objective_field->second.value = std::int64_t{47};
+    return expect(!scripts.validate_run_registry_state(invalid_save),
+                  "native save adapter accepted an unknown Matrix file class");
+}
+
 bool verify_dialogue_graph_outcomes(
     const std::filesystem::path& script_directory,
     const std::filesystem::path& dialogue_text) {
@@ -3121,6 +3328,12 @@ int main() {
             std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
                 "dialogue" / "script-text.json")) {
         std::cerr << scripts.failure() << '\n';
+        return 3;
+    }
+    if (!verify_legacy_matrix_save_migration(
+            SHADOWRUN_GAMEPLAY_SCRIPT_ROOT,
+            std::filesystem::path(SHADOWRUN_GHIDRA_ASSET_ROOT) /
+                "dialogue" / "script-text.json")) {
         return 3;
     }
     if (!verify_employee_recruitment_pedestrian_request(

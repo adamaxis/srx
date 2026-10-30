@@ -8,13 +8,8 @@ local FileClasses = require("data.matrix_file_classes")
 local RunStatus = E.MatrixRunStatus
 local RunAction = E.MatrixRunAction
 
-local function class_name(class_id)
-    local label = FileClasses[class_id]
-    return type(label) == "string" and label:match("^%s*(.-)%s*$") or nil
-end
-
--- Saved offers from the previous schema are normalized at the save boundary.
--- New gameplay code sees only named lifecycle and objective facts.
+-- Native persistence normalizes older saved records before they reach this
+-- module. Gameplay accepts only the named lifecycle and objective facts.
 local function matrix_run_state_view(state)
     if type(state) ~= "table" then return nil end
 
@@ -23,46 +18,6 @@ local function matrix_run_state_view(state)
     local file_size = state.file_size
     local completion_marker_present = state.completion_marker_present
     local completion_recorded = state.completion_recorded
-    if status == nil then
-        local legacy_status = state.state
-        local legacy_class = state.objective
-        local legacy_value = state.value
-        local old_completion_flags = state.fc28
-        local old_run_flags = state.fc1c
-        local function legacy_integer(value, minimum, maximum)
-            return type(value) == "number" and value % 1 == 0 and
-                   value >= minimum and value <= maximum
-        end
-        if not legacy_integer(legacy_status, -128, 127) or
-           not legacy_integer(legacy_class, -128, 127) or
-           not legacy_integer(legacy_value, -128, 127) or
-           not legacy_integer(old_completion_flags, 0, 255) or
-           not legacy_integer(old_run_flags, 0, 255) then
-            return nil
-        end
-        status = ((old_run_flags & 0x80) ~= 0 or legacy_status > 0) and
-                     RunStatus.COMPLETED or
-                 (legacy_status < 0 and RunStatus.ACTIVE or
-                  RunStatus.INACTIVE)
-        if legacy_class < 0 then
-            objective = { node = "cpu", action = RunAction.CRASH_SYSTEM }
-        else
-            local action = legacy_value < 0 and RunAction.UPLOAD_FILE or
-                           legacy_value == 0 and RunAction.DELETE_FILE or
-                           RunAction.DOWNLOAD_FILE
-            objective = {
-                node = "datastore",
-                action = action,
-                file_class = class_name(legacy_class),
-                file_id = legacy_value >= 0 and legacy_value or nil,
-            }
-        end
-        file_size = state.size
-        completion_marker_present = (old_completion_flags & 1) ~= 0
-        completion_recorded = (old_run_flags & 0x80) ~= 0 or
-                              legacy_status > 0
-    end
-
     if (status ~= RunStatus.PENDING and status ~= RunStatus.INACTIVE and
         status ~= RunStatus.ACTIVE and status ~= RunStatus.COMPLETED) or
        type(objective) ~= "table" or

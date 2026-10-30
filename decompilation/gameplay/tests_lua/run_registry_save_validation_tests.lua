@@ -252,21 +252,8 @@ matrix_offer.matrix_run_state = {
     target_system_id = 7,
 }
 local legacy_matrix_save = saved(matrix_offer)
-assert(Registry.validate_saved_state(legacy_matrix_save),
-    "the save boundary accepts a prior Matrix run record for migration")
-Registry.restore_saved_state(legacy_matrix_save)
-local migrated_matrix = Registry.active_matrix_run_state()
-assert(migrated_matrix.status == E.MatrixRunStatus.ACTIVE and
-       migrated_matrix.objective.node == "datastore" and
-       migrated_matrix.objective.action == E.MatrixRunAction.DOWNLOAD_FILE and
-       migrated_matrix.objective.file_class == "Security Files" and
-       migrated_matrix.objective.file_id == 20 and
-       migrated_matrix.file_size == 30 and
-       migrated_matrix.completion_marker_present and
-       not migrated_matrix.completion_recorded and
-       migrated_matrix.target_system_id == 7 and
-       migrated_matrix.state == nil and migrated_matrix.fc28 == nil,
-    "legacy Matrix save fields normalize once into named objective facts")
+assert(not Registry.validate_saved_state(legacy_matrix_save),
+    "Lua rejects packed Matrix save fields; native persistence owns migration")
 
 local invalid_matrix_offer = copy_offer(matrix_offer)
 invalid_matrix_offer.matrix_run_state = {
