@@ -417,7 +417,8 @@ local THINK_FIELDS = { "world_activity_requested", "field_event_request", "sourc
   "think_token_claimed", "source_thon_period_counter",
   "thon_action_cooldown_remaining",
   "ai_think_path", "ai_think_gap", "ai_deactivate_requested",
-  "ai_route_target_x", "ai_route_target_y", "ai_waypoint_index" }
+  "ai_route_target_x", "ai_route_target_y", "ai_route_target",
+  "ai_waypoint_index" }
 local function strip_think(v, seen)
   if type(v) ~= "table" then return v end
   seen = seen or {}; if seen[v] then return v end; seen[v] = true

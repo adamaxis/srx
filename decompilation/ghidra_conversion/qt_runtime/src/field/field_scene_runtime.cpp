@@ -4319,8 +4319,8 @@ void FieldSceneRuntime::advance_default_field_actors(
                 context.source_actor_slot = source_slot;
                 context.live_field_actor = true;
             }
-            context.source_world_x = actor.world_position.x;
-            context.source_world_y = actor.world_position.y;
+            context.world_position = scripting::ScriptWorldPosition{
+                actor.world_position.x, actor.world_position.y};
             context.source_record_flags = actor.source_record_flags;
             context.source_interaction_flags =
                 actor.source_interaction_flags;

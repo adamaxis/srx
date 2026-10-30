@@ -1769,6 +1769,10 @@ using ScriptActorRandomBound =
 // True when 0x14D8E leaves carry clear for these linked world coordinates.
 using ScriptActorActionLineClear =
     std::function<bool(std::uint16_t world_x, std::uint16_t world_y)>;
+struct ScriptWorldPosition {
+    std::int32_t x = 0;
+    std::int32_t y = 0;
+};
 struct ScriptActorDestinationMeasurement {
     std::uint16_t heading = 0;
     std::uint16_t distance = 0;
@@ -1869,9 +1873,9 @@ struct ScriptActorBehaviorContext {
     // initializes runner records to 0..2 [C]. Retained for native validation;
     // Lua receives semantic actor facts instead of this raw value.
     std::optional<std::uint8_t> source_actor_slot;
-    // Live actor +0/+4 position, which seeds +0x96/+0x98 at spawn [C].
-    std::optional<std::uint16_t> source_world_x;
-    std::optional<std::uint16_t> source_world_y;
+    // Current position in the field world. Source-record decoding stays in
+    // the native adapter; Lua receives one named position value.
+    std::optional<ScriptWorldPosition> world_position;
     std::uint8_t source_record_flags = 0;
     std::uint8_t source_interaction_flags = 0;
     std::uint8_t source_behavior_flags = 0;

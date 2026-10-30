@@ -10973,18 +10973,16 @@ GameScriptRuntime::actor_heartbeat(
     lua_pushboolean(state, context.live_field_actor ||
                                context.source_actor_slot.has_value());
     lua_setfield(state, -2, "live_field_actor");
-    if (context.source_world_x.has_value()) {
-        lua_pushinteger(state, *context.source_world_x);
+    if (context.world_position.has_value()) {
+        lua_createtable(state, 0, 2);
+        lua_pushinteger(state, context.world_position->x);
+        lua_setfield(state, -2, "x");
+        lua_pushinteger(state, context.world_position->y);
+        lua_setfield(state, -2, "y");
     } else {
         lua_pushnil(state);
     }
-    lua_setfield(state, -2, "source_world_x");
-    if (context.source_world_y.has_value()) {
-        lua_pushinteger(state, *context.source_world_y);
-    } else {
-        lua_pushnil(state);
-    }
-    lua_setfield(state, -2, "source_world_y");
+    lua_setfield(state, -2, "world_position");
     push_actor_facts(state, context.source_record_flags,
                      context.source_interaction_flags,
                      context.source_behavior_flags,

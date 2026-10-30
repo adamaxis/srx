@@ -644,38 +644,37 @@ check(patrol_route ~= nil,
 if patrol_route ~= nil then
     local route_context = context({
         actor_id = patrol_actor_id,
-        source_world_x = patrol_route.initial.x,
-        source_world_y = patrol_route.initial.y,
+        world_position = {
+            x = patrol_route.initial.x,
+            y = patrol_route.initial.y,
+        },
     })
     route_context.measure_destination = function()
         return { bearing_degrees = 0, distance = 0, step_cost = 0 }
     end
     s = state()
     check(R.think(s, route_context) and
-          s.ai_route_target_x == 15616 and s.ai_route_target_y == 4096 and
+          s.ai_route_target.x == 15616 and s.ai_route_target.y == 4096 and
           s.ai_waypoint_index == E.AiTuning.PATROL_WAYPOINT_STRIDE,
           "0x142F4 advances +0xE4 and selects the first patrol pair [C]")
 
     s.behavior_timer = 0
-    route_context.source_world_x = patrol_route.points[1].x
-    route_context.source_world_y = patrol_route.points[1].y
-    s.ai_route_target_x = patrol_route.points[1].x
-    s.ai_route_target_y = patrol_route.points[1].y
+    route_context.world_position = patrol_route.points[1]
+    s.ai_route_target = patrol_route.points[1]
     check(R.think(s, route_context) and
-          s.ai_route_target_x == 15616 and s.ai_route_target_y == 8704 and
+          s.ai_route_target.x == 15616 and s.ai_route_target.y == 8704 and
           s.ai_waypoint_index == E.AiTuning.PATROL_WAYPOINT_STRIDE * 2,
           "0x142F4 advances to the next ROM waypoint pair [C]")
 
     s.behavior_timer = 0
     local last_point = patrol_route.points[#patrol_route.points]
-    route_context.source_world_x = last_point.x
-    route_context.source_world_y = last_point.y
-    s.ai_route_target_x, s.ai_route_target_y = last_point.x, last_point.y
+    route_context.world_position = last_point
+    s.ai_route_target = last_point
     s.ai_waypoint_index = #patrol_route.points *
                           E.AiTuning.PATROL_WAYPOINT_STRIDE
     check(R.think(s, route_context) and
-          s.ai_route_target_x == patrol_route.initial.x and
-          s.ai_route_target_y == patrol_route.initial.y and
+          s.ai_route_target.x == patrol_route.initial.x and
+          s.ai_route_target.y == patrol_route.initial.y and
           s.ai_waypoint_index == 0,
           "0x142F6 clears +0xE4 and wraps to the spawn pair [C]")
 end
@@ -705,16 +704,15 @@ for source_order = 0, 2 do
             actor_id = "field_scene_2_actor_" .. source_order,
             visual_profile_id = E.ActorVisualProfile.PEDESTRIAN_RAT_SHAMAN,
             actor_facts = { roles = { pedestrian = true } },
-            source_world_x = route.initial.x,
-            source_world_y = route.initial.y,
+            world_position = route.initial,
         })
         route_context.measure_destination = function()
             return { bearing_degrees = 0, distance = 0, step_cost = 0 }
         end
         local pedestrian_state = state()
         check(R.think(pedestrian_state, route_context) and
-              pedestrian_state.ai_route_target_x == expected.x and
-              pedestrian_state.ai_route_target_y == expected.y and
+              pedestrian_state.ai_route_target.x == expected.x and
+              pedestrian_state.ai_route_target.y == expected.y and
               pedestrian_state.ai_waypoint_index ==
                   E.AiTuning.PATROL_WAYPOINT_STRIDE,
               string.format("0x142F4 selects pedestrian %d's first Redmond waypoint", source_order))
@@ -755,12 +753,11 @@ for _, region in ipairs(regional_pedestrian_routes) do
                 actor_id = actor_id,
                 visual_profile_id = E.ActorVisualProfile.PEDESTRIAN_RAT_SHAMAN,
                 actor_facts = { roles = { pedestrian = true } },
-                source_world_x = route.initial.x,
-                source_world_y = route.initial.y,
+                world_position = route.initial,
             })
             route_context.measure_destination = function(target_x, target_y)
-                if target_x ~= route_context.source_world_x or
-                   target_y ~= route_context.source_world_y then
+                if target_x ~= route_context.world_position.x or
+                   target_y ~= route_context.world_position.y then
                     return nil
                 end
                 return { bearing_degrees = 0, distance = 0, step_cost = 0 }
@@ -771,8 +768,7 @@ for _, region in ipairs(regional_pedestrian_routes) do
             })
             local arrived_at = route.initial
             for step = 1, expected_points + 2 do
-                route_context.source_world_x = arrived_at.x
-                route_context.source_world_y = arrived_at.y
+                route_context.world_position = arrived_at
                 pedestrian_state.behavior_timer = 0
 
                 local expected_target
@@ -789,9 +785,9 @@ for _, region in ipairs(regional_pedestrian_routes) do
                 end
 
                 check(R.think(pedestrian_state, route_context) and
-                      pedestrian_state.ai_route_target_x ==
+                      pedestrian_state.ai_route_target.x ==
                           expected_target.x and
-                      pedestrian_state.ai_route_target_y ==
+                      pedestrian_state.ai_route_target.y ==
                           expected_target.y and
                       pedestrian_state.ai_waypoint_index == expected_cursor,
                       string.format(
@@ -836,8 +832,8 @@ local function formation_case(actor_position, leader_position, leader_heading,
     end
     local follower = state({ actor_facts = { behavior = { escort = true } } })
     local handled = R.think(follower, formation_context)
-    check(handled and follower.ai_route_target_x == expected_x and
-          follower.ai_route_target_y == expected_y and
+    check(handled and follower.ai_route_target.x == expected_x and
+          follower.ai_route_target.y == expected_y and
           route_x == expected_x and route_y == expected_y and
           follower.movement_active == true,
           description)
@@ -884,7 +880,7 @@ end
 s = state({ actor_facts = { behavior = { escort = true } } })
 R.think(s, blocked_context)
 check(collision_calls == 2 and reverse_x == 8351 and reverse_y == 9058 and
-      s.ai_route_target_x == reverse_x and s.ai_route_target_y == reverse_y,
+      s.ai_route_target.x == reverse_x and s.ai_route_target.y == reverse_y,
       "0x14564 negates a blocked formation offset and probes the reverse [C]")
 game.movement.collision = collision
 

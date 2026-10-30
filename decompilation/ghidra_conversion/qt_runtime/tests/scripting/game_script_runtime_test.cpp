@@ -8936,8 +8936,7 @@ int main() {
         caster.dynamic_world_encounter_actor = true;
         caster.source_actor_has_waypoint_data = true;
         caster.source_actor_slot = 0U;
-        caster.source_world_x = 0x0A00U;
-        caster.source_world_y = 0x0800U;
+        caster.world_position = ScriptWorldPosition{0x0A00, 0x0800};
         caster.thon_action_cooldown_remaining = 0U;
         caster.animation_blocks_behavior = false;
         caster.can_start_item_action = true;

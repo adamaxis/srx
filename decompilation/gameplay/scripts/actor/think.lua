@@ -332,7 +332,7 @@ local function apply_flee(state, context)
     end
     state.movement_bearing_degrees = Bearing.normalize(
         measured.bearing_degrees)
-    state.movement_route_distance = u16(measured.distance)
+    state.movement_route_distance = measured.distance
     state.movement_active = true
 end
 
@@ -353,9 +353,17 @@ local function actor_spawn_record(context)
     return ActorWaypointRoutes[actor_id]
 end
 
-local function set_route_target(state, x, y)
-    state.ai_route_target_x = u16(x)
-    state.ai_route_target_y = u16(y)
+local function set_route_target(state, position)
+    if type(position) ~= "table" or type(position.x) ~= "number" or
+       type(position.y) ~= "number" then
+        state.ai_think_gap = "actor_route_target_position_unavailable"
+        return false
+    end
+    state.ai_route_target = {
+        x = position.x,
+        y = position.y,
+    }
+    return true
 end
 
 local function stop_route(state, context)
@@ -370,14 +378,14 @@ local function stop_route(state, context)
 end
 
 local function measure_route_target(state, context)
-    if type(state.ai_route_target_x) ~= "number" or
-       type(state.ai_route_target_y) ~= "number" or
+    local target = state.ai_route_target
+    if type(target) ~= "table" or type(target.x) ~= "number" or
+       type(target.y) ~= "number" or
        type(context.measure_destination) ~= "function" then
         state.ai_think_gap = "actor_route_destination_measure_unavailable"
         return nil
     end
-    local measured = context.measure_destination(
-        state.ai_route_target_x, state.ai_route_target_y)
+    local measured = context.measure_destination(target.x, target.y)
     if type(measured) ~= "table" or
        type(measured.bearing_degrees) ~= "number" or
        type(measured.distance) ~= "number" or
@@ -399,28 +407,30 @@ local function continue_route(state, measured, context)
     end
     state.movement_bearing_degrees = Bearing.normalize(
         measured.bearing_degrees)
-    state.movement_route_distance = u16(measured.distance)
+    state.movement_route_distance = measured.distance
     state.movement_active = true
 end
 
 local function initial_route_target(state, context, route)
-    if type(state.ai_route_target_x) == "number" and
-       type(state.ai_route_target_y) == "number" then
+    if type(state.ai_route_target) == "table" and
+       type(state.ai_route_target.x) == "number" and
+       type(state.ai_route_target.y) == "number" then
         return true
     end
     -- 0x44BC copies the first +0xE0 pair into the live actor position and
     -- +0x96/+0x98 [C]. The host forwards that current position each pass.
-    if type(context.source_world_x) == "number" and
-       type(context.source_world_y) == "number" then
-        set_route_target(state, context.source_world_x,
-                         context.source_world_y)
+    local current_position = context.world_position
+    if type(current_position) == "table" and
+       type(current_position.x) == "number" and
+       type(current_position.y) == "number" then
+        set_route_target(state, current_position)
         return true
     end
     if type(route) == "table" and type(route.initial) == "table" and
        route.no_patrol ~= true and
        type(route.initial.x) == "number" and
        type(route.initial.y) == "number" then
-        set_route_target(state, route.initial.x, route.initial.y)
+        set_route_target(state, route.initial)
         return true
     end
     state.ai_think_gap = "actor_route_initial_position_unavailable"
@@ -482,28 +492,34 @@ local function apply_follow_destination(state, context)
         return
     end
 
-    local target_x = u16(leader.world_x + offset.horizontal)
-    local target_y = u16(leader.world_y + offset.vertical)
-    local first_clear = route_collision_free(state, target_x, target_y)
+    local target = {
+        x = u16(leader.world_x + offset.horizontal),
+        y = u16(leader.world_y + offset.vertical),
+    }
+    local first_clear = route_collision_free(state, target.x, target.y)
     if first_clear == nil then
         return
     end
     if not first_clear then
-        target_x = u16(leader.world_x - offset.horizontal)
-        target_y = u16(leader.world_y - offset.vertical)
-        local second_clear = route_collision_free(state, target_x, target_y)
+        target = {
+            x = u16(leader.world_x - offset.horizontal),
+            y = u16(leader.world_y - offset.vertical),
+        }
+        local second_clear = route_collision_free(state, target.x, target.y)
         if second_clear == nil then
             return
         end
         if not second_clear then
             -- 0x1458A falls back to the leader's live XY after both probes [C].
-            target_x = u16(leader.world_x)
-            target_y = u16(leader.world_y)
+            target = {
+                x = u16(leader.world_x),
+                y = u16(leader.world_y),
+            }
         end
     end
 
     -- 0x14590 writes +0x96/+0x98 before 0x144E8/0x145A2 [C].
-    set_route_target(state, target_x, target_y)
+    set_route_target(state, target)
     local measured = measure_route_target(state, context)
     if measured ~= nil then
         continue_route(state, measured, context)
@@ -568,7 +584,7 @@ local function apply_patrol(state, context)
         -- 0x142F6 sees the zero-X terminator, clears +0xE4, and selects the
         -- spawn pair at +0xE0. The next arrival restarts at the first point [C].
         state.ai_waypoint_index = AiTuning.PATROL_INITIAL_CURSOR
-        set_route_target(state, route.initial.x, route.initial.y)
+        set_route_target(state, route.initial)
         return
     end
     if type(waypoint.x) ~= "number" or type(waypoint.y) ~= "number" then
@@ -576,7 +592,7 @@ local function apply_patrol(state, context)
         return
     end
     state.ai_waypoint_index = next_cursor
-    set_route_target(state, waypoint.x, waypoint.y)
+    set_route_target(state, waypoint)
 end
 
 local function preserve_offscreen_action_dispatch(state, context)
