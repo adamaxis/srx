@@ -280,6 +280,10 @@ struct ScriptMatrixDatastoreFacts {
     std::optional<std::uint32_t> group_item_flags; // Group items, FFFC22.
     std::optional<std::uint32_t> nuyen;
     std::optional<std::uint8_t> mr_johnsons_met_flags; // FFFC27.
+    // Semantic facts for the UCAS virology archive. The native adapter
+    // derives these from Notebook state; gameplay scripts never inspect bits.
+    std::optional<bool> virology_research_complete;
+    std::optional<bool> virology_report_collected;
 };
 
 enum class ScriptMatrixSecurityColor : std::uint8_t {

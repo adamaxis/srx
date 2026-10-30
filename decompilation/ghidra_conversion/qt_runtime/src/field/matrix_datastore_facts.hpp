@@ -22,6 +22,15 @@ inline scripting::ScriptMatrixDatastoreFacts make_matrix_datastore_facts(
     if (notebook_tip_flags_resolved) {
         facts.tips_page2_flags = notebook_tip_flags[1];
         facts.tips_page3_flags = notebook_tip_flags[2];
+        // ROM 0x5533E..0x5536E exposes the UCAS virology report after five
+        // research notices, then records the report itself. Keep this source
+        // encoding here and present story-level facts to Lua.
+        constexpr std::uint32_t kResearchNotices = 0x7C000000U;
+        constexpr std::uint32_t kReportCollected = 0x80000000U;
+        facts.virology_research_complete =
+            (notebook_tip_flags[2] & kResearchNotices) == kResearchNotices;
+        facts.virology_report_collected =
+            (notebook_tip_flags[2] & kReportCollected) != 0U;
     }
     facts.world_event_flags = world_event_flags;
     facts.group_item_flags = group_item_flags;
@@ -43,6 +52,9 @@ inline void apply_matrix_datastore_facts(
     }
     if (facts.tips_page3_flags.has_value()) {
         notebook_tip_flags[2] = *facts.tips_page3_flags;
+    }
+    if (facts.virology_report_collected.value_or(false)) {
+        notebook_tip_flags[2] |= 0x80000000U;
     }
     if (facts.tips_page2_flags.has_value() &&
         facts.tips_page3_flags.has_value()) {

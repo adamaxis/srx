@@ -458,6 +458,12 @@ void push_matrix_world_state(lua_State* lua,
         push_optional_integer(lua, datastore_index, "nuyen", facts.nuyen);
         push_optional_integer(lua, datastore_index, "mr_johnsons_met_flags",
                               facts.mr_johnsons_met_flags);
+        push_optional_boolean(lua, datastore_index,
+                              "virology_research_complete",
+                              facts.virology_research_complete);
+        push_optional_boolean(lua, datastore_index,
+                              "virology_report_collected",
+                              facts.virology_report_collected);
         lua_setfield(lua, world_index, "datastore");
     }
 
@@ -683,6 +689,10 @@ ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
             facts.mr_johnsons_met_flags = static_cast<std::uint8_t>(
                 std::clamp<lua_Integer>(*value, 0, 0xFFLL));
         }
+        facts.virology_research_complete = read_optional_boolean(
+            lua, datastore_index, "virology_research_complete");
+        facts.virology_report_collected = read_optional_boolean(
+            lua, datastore_index, "virology_report_collected");
         world.datastore = facts;
     }
     lua_pop(lua, 1);

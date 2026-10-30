@@ -289,11 +289,41 @@ void verify_matrix_datastore_field_projection(int& failures) {
               facts.mr_johnsons_met_flags == 0x08U,
           "Matrix datastore receives the live world, item, wallet, and Johnson facts",
           failures);
+    check(facts.virology_research_complete == false &&
+              facts.virology_report_collected == false,
+          "Matrix adapter presents UCAS research and report as named facts",
+          failures);
+
+    const auto completed_research = make_matrix_datastore_facts(
+        {0U, 0U, 0x7C123456U}, true, 0U, std::nullopt, std::nullopt,
+        std::nullopt);
+    check(completed_research.virology_research_complete == true &&
+              completed_research.virology_report_collected == false,
+          "UCAS report gate derives completion from its five research notices",
+          failures);
+    auto report_collected = completed_research;
+    report_collected.virology_report_collected = true;
+    auto virology_tips = std::array<std::uint32_t, 3>{0U, 0U,
+                                                       0x7C123456U};
+    bool virology_tips_resolved = true;
+    std::uint32_t virology_world_flags = 0U;
+    std::optional<std::uint32_t> virology_group_items;
+    std::optional<std::uint32_t> virology_nuyen;
+    std::optional<std::uint8_t> virology_johnsons;
+    apply_matrix_datastore_facts(
+        report_collected, virology_tips, virology_tips_resolved,
+        virology_world_flags, virology_group_items, virology_nuyen,
+        virology_johnsons);
+    check(virology_tips[2] == 0xFC123456U,
+          "named report outcome updates Notebook state without changing unrelated clues",
+          failures);
 
     const auto unresolved = make_matrix_datastore_facts(
         notebook_tips, false, 0U, std::nullopt, std::nullopt, std::nullopt);
     check(!unresolved.tips_page2_flags.has_value() &&
-              !unresolved.tips_page3_flags.has_value(),
+              !unresolved.tips_page3_flags.has_value() &&
+              !unresolved.virology_research_complete.has_value() &&
+              !unresolved.virology_report_collected.has_value(),
           "unrestored Notebook flags remain unknown to Matrix story dispatch",
           failures);
 

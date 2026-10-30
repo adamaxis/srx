@@ -24,6 +24,10 @@ local SUPPORTED = {
 local function can_match(r, node_class)
     if not r or r.system_id == nil then return false end
     local system_id = s8(r.system_id)
+    if system_id == 16 and node_class == "System Files" then
+        return r.virology_research_complete == true and
+               r.virology_report_collected == false and r.nuyen ~= nil
+    end
     local required_tip_flags = r.tips_page3_flags
     if system_id == 18 then
         required_tip_flags = r.tips_page2_flags
@@ -60,6 +64,12 @@ local function can_match(r, node_class)
     return true
 end
 local function matches(r, d0)
+    if r and s8(r.system_id) == 16 and d0 == "System Files" then
+        if not can_match(r, d0) then return false end
+        r.virology_report_collected = true
+        r.nuyen = (r.nuyen + 50000) & 0xFFFFFFFF
+        return true
+    end
     local d5, d1, cc = 0, 0, 0
     ::L055058:: -- clr.l d0
     ::L05505A:: -- clr.l d1

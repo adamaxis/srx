@@ -1703,14 +1703,17 @@ eq(story_search.text, Actions.TEXT.STORY_FILE,
     "special datastore selects the ROM notebook message")
 eq((special_facts.tips_page2_flags >> 28) & 1, 1,
     "special datastore commits its source event bit in Lua state")
-local virology_facts = { system_id = 16, tips_page3_flags = 0x7C000000,
-    tips_page2_flags = 0, world_event_flags = 0, nuyen = 0xFFFFFFFF }
-eq(SpecialDatastore.matches(virology_facts, 1), true,
-    "system 16 class 1 completes when source flag bits 26 through 30 are set")
-eq(virology_facts.tips_page3_flags, 0xFC000000,
-    "system 16 class 1 sets source flag bit 31")
+local virology_facts = { system_id = 16,
+    virology_research_complete = true,
+    virology_report_collected = false, nuyen = 0xFFFFFFFF }
+eq(SpecialDatastore.can_match(virology_facts, "System Files"), true,
+    "UCAS System Files exposes the report after its research is complete")
+eq(SpecialDatastore.matches(virology_facts, "System Files"), true,
+    "UCAS System Files completes its available virology report")
+eq(virology_facts.virology_report_collected, true,
+    "collecting the report records a named story outcome")
 eq(virology_facts.nuyen, 49999,
-    "system 16 class 1 applies the 32-bit ROM wallet addition")
+    "collecting the report awards 50,000 nuyen with source wallet rollover")
 local low_storage = { storage = 0, files = {}, ratings = {} }
 for i = 0, 4 do low_storage.files[i] = { id = -1, size = 0 } end
 for i = 0, 11 do low_storage.ratings[i] = 0 end
