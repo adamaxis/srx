@@ -2,12 +2,14 @@
 -- Split from the pre-module gameplay/scripts/actor_ai.lua; see docs/ghidra/lua-actor-ai-module-boundaries.md.
 local R = require("actor.registry")
 local E = require("enums")
-local I = require("lib.int68k")
 local Delay = require("actor.delay")
-local u8, u16, s16 = I.u8, I.u16, I.s16
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local states = game.actors
+local TARGET_MARKER_RADIUS_STEP = 8
+local TARGET_MARKER_OUTER_RADIUS = 64
+local TARGET_MARKER_ANIMATION_FRAMES =
+    TARGET_MARKER_OUTER_RADIUS // TARGET_MARKER_RADIUS_STEP + 1
 R.pending_spell_effects_by_actor_id = R.pending_spell_effects_by_actor_id or {}
 R.spell_effect_scans_by_actor_id = R.spell_effect_scans_by_actor_id or {}
 local pending_spell_effects_by_actor_id = R.pending_spell_effects_by_actor_id
@@ -112,7 +114,7 @@ local function advance_target_marker(state, context)
         state.target_marker_animating = false
         state.target_marker_style = 0
         state.target_marker_radius = 0
-        state.target_marker_countdown = 0
+        state.target_marker_frames_remaining = 0
         return
     end
 
@@ -146,28 +148,22 @@ local function advance_target_marker(state, context)
     end
 
     if not state.target_selection_latched then
-        -- ROM 0x1DC4C seeds +0xA6 with -0x7FF7. The render pass then calls
-        -- 0x5C7E, which decrements that signed word before placing its four
-        -- corner sprites at an 8-pixel-per-step shrinking radius.
-        state.target_marker_countdown = -0x7ff7
+        -- [C] ROM 0x1DD26 seeds +0xA6 with 0x8009; 0x5D12..0x5D28 produces
+        -- nine radii from 64 down to zero in 8-pixel steps. Store that as a
+        -- presentation duration instead of preserving the signed-word sentinel.
+        state.target_marker_frames_remaining =
+            TARGET_MARKER_ANIMATION_FRAMES
     end
     state.target_selection_latched = true
     state.target_marker_visible = true
 
-    local countdown = state.target_marker_countdown or 0
-    if countdown < 0 then
-        local next_word = u16(countdown - 1)
-        local next_countdown = next_word >= 0x8000
-            and next_word - 0x10000 or next_word
-        if next_countdown < 0 then
-            state.target_marker_countdown = next_countdown
-            state.target_marker_animating = true
-            state.target_marker_radius = (next_word & 0x7f) * 8
-        else
-            state.target_marker_countdown = 0
-            state.target_marker_animating = false
-            state.target_marker_radius = 0
-        end
+    local frames_remaining = state.target_marker_frames_remaining or 0
+    if frames_remaining > 0 then
+        frames_remaining = frames_remaining - 1
+        state.target_marker_frames_remaining = frames_remaining
+        state.target_marker_animating = true
+        state.target_marker_radius = frames_remaining *
+            TARGET_MARKER_RADIUS_STEP
     else
         state.target_marker_animating = false
         state.target_marker_radius = 0

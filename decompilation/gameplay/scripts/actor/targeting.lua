@@ -441,7 +441,7 @@ local function initial_state(context, profile)
         target_marker_animating = false,
         target_marker_style = 0,
         target_marker_radius = 0,
-        target_marker_countdown = 0,
+        target_marker_frames_remaining = 0,
         action_delay = context.initial_action_delay or 0,
         last_action_successes = type(context.combatant) == "table"
             and context.combatant.last_action_successes or 0,

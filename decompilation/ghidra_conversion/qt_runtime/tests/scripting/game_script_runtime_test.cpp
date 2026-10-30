@@ -5357,9 +5357,19 @@ int main() {
     const auto target_marker_first =
         scripts.actor_heartbeat(target_marker_animation_context);
     std::optional<ScriptActorBehaviorDecision> target_marker_last_animated;
+    bool target_marker_sequence_matches = true;
+    // [C] ROM 0x1DD26 seeds +0xA6 with 0x8009; 0x5D12..0x5D28 renders
+    // radii 64, 56, ... 0 before switching to the settled marker.
     for (std::size_t frame = 1U; frame < 9U; ++frame) {
-        target_marker_last_animated =
+        auto marker_frame =
             scripts.actor_heartbeat(target_marker_animation_context);
+        const auto expected_radius = static_cast<std::uint8_t>(
+            (8U - frame) * 8U);
+        target_marker_sequence_matches =
+            target_marker_sequence_matches && marker_frame.has_value() &&
+            marker_frame->target_marker_animating &&
+            marker_frame->target_marker_radius == expected_radius;
+        target_marker_last_animated = std::move(marker_frame);
     }
     const auto target_marker_static =
         scripts.actor_heartbeat(target_marker_animation_context);
@@ -7718,6 +7728,7 @@ int main() {
                 target_marker_first->target_marker_visible &&
                 target_marker_first->target_marker_animating &&
                 target_marker_first->target_marker_radius == 64U &&
+                target_marker_sequence_matches &&
                 target_marker_last_animated.has_value() &&
                 target_marker_last_animated->target_marker_animating &&
                 target_marker_last_animated->target_marker_radius == 0U &&
