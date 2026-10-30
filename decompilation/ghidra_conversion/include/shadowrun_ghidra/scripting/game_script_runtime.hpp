@@ -1096,7 +1096,7 @@ struct ScriptCombatantFacts {
     ScriptCombatSkills skills;
     // Live +0x9D is the actor's force, used by spell and action rules.
     std::uint8_t force = 0;
-    std::uint8_t action_result = 0; // live +0x9F
+    std::uint16_t last_action_successes = 0U;
     // Resolved item identity; the source +0x76 armor selector stays in the
     // native record adapter.
     std::string equipped_armor_id;
@@ -1241,7 +1241,7 @@ struct ScriptActorSpellActionResolution {
     std::uint16_t target_record_type = 0;
     ScriptActorSpellFieldEffectKind field_effect_kind =
         ScriptActorSpellFieldEffectKind::none;
-    std::uint8_t action_result = 0;
+    std::uint16_t successes = 0U;
     bool roll_attempted = false;
     std::optional<std::uint8_t> initial_trial_count;
     std::optional<std::uint8_t> difficulty;

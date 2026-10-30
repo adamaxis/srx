@@ -60,8 +60,11 @@ TYPED = {
   ["combat.resolve_weapon_attack_seed"] = function(h) return (h >> 3) % 256 end,
   ["combat.resolve_reaction"] = function(h) return { damage = h % 5, stun = (h >> 3) % 3 } end,
   ["combat.resolve_weapon_hit"] = function(h) return { damage = h % 5 } end,
-  ["combat.resolve_spell_action"] = function(h) return { action_result = (h >> 3) % 256,
-      next_action_kind = ({ "none", "item", "spell" })[h % 3 + 1] } end,
+  ["combat.resolve_spell_action"] = function(h)
+    local successes = (h >> 3) % 256
+    return { action_result = successes, successes = successes,
+      next_action_kind = ({ "none", "item", "spell" })[h % 3 + 1] }
+  end,
   ["magic.actor_effect_profile"] = function(h) return { duration = (h >> 3) % 64, kind = h % 4 } end,
 }
 local function make_game(log, legacy_services)

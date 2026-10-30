@@ -6419,7 +6419,7 @@ int main() {
         *spell_action_result->initial_trial_count == 8U &&
         spell_action_result->difficulty.has_value() &&
         *spell_action_result->difficulty == 6U &&
-        spell_action_result->action_result == 8U &&
+        spell_action_result->successes == 8U &&
         spell_action_result->effect_requested &&
         resolved_spell_cast.refresh->audio_event == 0x0032U &&
         !spell_action_result->inventory_changed &&
@@ -6575,7 +6575,7 @@ int main() {
     const bool full_spell_effect_pool_blocks_spawn =
         full_effect_pool_result.has_value() &&
         full_effect_pool_result->roll_attempted &&
-        full_effect_pool_result->action_result == 8U &&
+        full_effect_pool_result->successes == 8U &&
         full_effect_pool_result->effect_requested &&
         !full_effect_pool_result->effect_started &&
         !full_effect_pool_result->spell_effect_slot.has_value() &&
@@ -6628,7 +6628,7 @@ int main() {
                                   ? std::to_string(*value.difficulty)
                                   : "nil")
                           << " successes="
-                          << static_cast<unsigned>(value.action_result)
+                          << static_cast<unsigned>(value.successes)
                           << " effect=" << value.effect_requested
                           << " target=" << value.target_id
                           << " slot="
@@ -8032,7 +8032,7 @@ int main() {
                 player_barrier_no_target.has_value() &&
                 player_barrier_no_target->spell_action_resolution.has_value() &&
                 player_barrier_no_target->spell_action_resolution->untargeted &&
-                player_barrier_no_target->spell_action_resolution->action_result >
+                player_barrier_no_target->spell_action_resolution->successes >
                     0U &&
                 player_barrier_no_target->spell_action_resolution->difficulty ==
                     std::optional<std::uint8_t>{6U} &&
@@ -9081,7 +9081,7 @@ int main() {
             std::optional<std::string>{"spell"} &&
         thon_failed_roll.cast->spell_action_resolution.has_value() &&
         thon_failed_roll.cast->spell_action_resolution->roll_attempted &&
-        thon_failed_roll.cast->spell_action_resolution->action_result == 0U &&
+        thon_failed_roll.cast->spell_action_resolution->successes == 0U &&
         !thon_failed_roll.cast->spell_action_resolution->effect_started &&
         !thon_failed_roll.cast->audio_event.has_value() &&
         thon_failed_roll.cast->animation_id == "spell" &&

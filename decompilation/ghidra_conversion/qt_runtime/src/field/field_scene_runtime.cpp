@@ -4880,9 +4880,9 @@ void FieldSceneRuntime::advance_default_field_actors(
         actor.action_delay = decision->action_delay;
         if (decision->spell_action_resolution.has_value()) {
             const auto& resolution = *decision->spell_action_resolution;
-            actor.combatant.action_result = resolution.roll_attempted
-                ? resolution.action_result
-                : actor.combatant.action_result;
+            actor.combatant.last_action_successes = resolution.roll_attempted
+                ? resolution.successes
+                : actor.combatant.last_action_successes;
             actor.combatant.mental_meter = resolution.mental_meter;
             actor.combatant.item_codes = resolution.item_codes;
             actor.combatant.item_phases = resolution.item_phases;
@@ -12406,8 +12406,8 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
              projectile_outcome == scripting::ScriptActorProjectileOutcome::
                                        burst_followup_restarted);
         if (attack_seed_refreshed) {
-            spawn.shooter_facts.action_result = static_cast<std::uint8_t>(
-                movement.attack_successes);
+            spawn.shooter_facts.last_action_successes =
+                movement.attack_successes;
             if (context.projectile_attack_seed_pending) {
                 spawn.source_record.action_result = static_cast<std::int8_t>(
                     movement.attack_successes);
@@ -12430,8 +12430,8 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                                    spawn.shooter_actor_id;
                     });
                 if (shooter != field_default_actors_.end()) {
-                    shooter->combatant.action_result = static_cast<std::uint8_t>(
-                        movement.attack_successes);
+                    shooter->combatant.last_action_successes =
+                        movement.attack_successes;
                 }
             }
         }

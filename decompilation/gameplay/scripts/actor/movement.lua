@@ -81,7 +81,8 @@ local function projectile_movement_snapshot(context, state)
         shots_remaining = source.shots_remaining,
         bearing_degrees = source.bearing_degrees,
         burst_origin = { x = origin.x, y = origin.y },
-        attack_successes = state.action_result or source.attack_successes,
+        attack_successes = state.last_action_successes or
+            source.attack_successes,
         animation_action = "unchanged",
         outcome = projectile.outcome.none,
     }
@@ -260,7 +261,7 @@ local function projectile_heartbeat(state, context)
         local result = game.modules.combat.resolve_weapon_attack_seed(context)
         state.attack_seed_resolved = type(result) == "number"
         if state.attack_seed_resolved then
-            state.action_result = result
+            state.last_action_successes = result
         end
     end
     local movement, audio_event = projectile_movement_snapshot(context, state)
@@ -278,7 +279,7 @@ local function projectile_heartbeat(state, context)
             return nil
         end
         state.attack_seed_resolved = true
-        state.action_result = result
+        state.last_action_successes = result
         movement.attack_successes = result
         -- ROM 0x14F86 clears +0x18 and +0x1E before the next render pass.
         state.animation_frame = 0
@@ -296,7 +297,9 @@ local function projectile_heartbeat(state, context)
         end
         if hit_target ~= nil and state.attack_seed_resolved then
             state.combat_meter_update = game.modules.combat.resolve_weapon_hit(
-                context, { attack_successes = state.action_result }, hit_target)
+                context,
+                { attack_successes = state.last_action_successes },
+                hit_target)
         end
     end
     return R.snapshot(state, "hold", audio_event, movement)

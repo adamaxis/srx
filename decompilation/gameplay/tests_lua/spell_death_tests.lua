@@ -75,7 +75,7 @@ local function lethal_flame_bolt(blocked_pose)
         end,
     }, {
         spell_id = "flame_bolt",
-        action_result = 10,
+        successes = 10,
         target_id = target_id,
     }, {
         id = target_id,

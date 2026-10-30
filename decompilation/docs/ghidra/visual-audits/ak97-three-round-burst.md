@@ -55,6 +55,10 @@ decrement/wrap logic. The weapon-hit rule still applies the source's signed
 arithmetic to the difference between the two success counts.
 The pre-split differential fixture retains the old arithmetic only behind a
 test adapter that translates between its frozen inputs and gameplay state.
+Weapon and spell roll results now cross the Lua API as success counts
+(`attack_successes`, `last_action_successes`, and `successes`). The field
+adapter encodes them into signed +0x9F only when updating the source record
+after the weapon roll at `0x55640` or spell roll at `0x1033E`.
 
 ## Visual and state review
 

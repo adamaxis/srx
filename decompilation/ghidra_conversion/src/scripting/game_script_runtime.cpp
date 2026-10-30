@@ -11177,7 +11177,8 @@ GameScriptRuntime::actor_heartbeat(
         set_skill("melee_combat", combatant.skills.melee_combat);
         lua_setfield(state, table_index, "skills");
         set_integer("force", combatant.force);
-        set_integer("action_result", combatant.action_result);
+        set_integer("last_action_successes",
+                    combatant.last_action_successes);
         set_integer("spell_trial_cap", combatant.spell_trial_cap);
         if (combatant.equipped_armor_id.empty()) {
             lua_pushnil(state);
@@ -12083,8 +12084,8 @@ GameScriptRuntime::actor_heartbeat(
         resolution.target_record_type =
             action_target->combatant->record_type;
         resolution.target_record_slot = action_target->record_slot;
-        if (!read_field_integer(state, resolution_table, "action_result",
-                                0xFFU, resolution_value) ||
+        if (!read_field_integer(state, resolution_table, "successes",
+                                0x7FU, resolution_value) ||
             !read_field_boolean(state, resolution_table, "roll_attempted",
                                 resolution.roll_attempted) ||
             !read_field_string(state, resolution_table, "outcome",
@@ -12099,8 +12100,8 @@ GameScriptRuntime::actor_heartbeat(
             return fail(
                 "actor_ai.heartbeat returned incomplete spell result facts");
         }
-        resolution.action_result =
-            static_cast<std::uint8_t>(resolution_value);
+        resolution.successes =
+            static_cast<std::uint16_t>(resolution_value);
         resolution.residual_effect =
             static_cast<std::int16_t>(signed_resolution_value);
         if (!read_field_integer(state, resolution_table,
@@ -12231,14 +12232,15 @@ GameScriptRuntime::actor_heartbeat(
         }
         const auto updated_combatant_table = lua_absindex(state, -1);
         if (!read_field_integer(state, updated_combatant_table,
-                                "action_result", 0xFFU, resolution_value)) {
+                                "last_action_successes", 0x7FU,
+                                resolution_value)) {
             return fail(
-                "actor_ai.heartbeat returned an invalid spell action result");
+                "actor_ai.heartbeat returned an invalid caster success count");
         }
-        const auto returned_action_result =
-            static_cast<std::uint8_t>(resolution_value);
+        const auto returned_successes =
+            static_cast<std::uint16_t>(resolution_value);
         if ((resolution.roll_attempted &&
-             returned_action_result != resolution.action_result) ||
+             returned_successes != resolution.successes) ||
             !read_field_integer(state, updated_combatant_table,
                                 "mental_meter", 0xFFU, resolution_value)) {
             return fail(
@@ -12359,10 +12361,10 @@ GameScriptRuntime::actor_heartbeat(
               context.world_effect_slot_occupancy[
                   *resolution.spell_effect_slot])) ||
             (resolution.roll_attempted &&
-             ((resolution.action_result > 0U) !=
+             ((resolution.successes > 0U) !=
               resolution.effect_requested)) ||
             (!resolution.roll_attempted &&
-             (resolution.action_result != 0U ||
+             (resolution.successes != 0U ||
               resolution.effect_requested)) ||
             (resolution.behavior_meter_delta != 0U &&
              resolution.behavior_meter_delta != 1U) ||

@@ -90,7 +90,7 @@ local function thon_action_path(state, context)
         end
         if type(resolution) == "table" then
             state.spell_action_resolution = resolution
-            state.action_result = resolution.action_result
+            state.last_action_successes = resolution.successes
             if type(resolution.combatant) == "table" then
                 state.combatant = resolution.combatant
             end

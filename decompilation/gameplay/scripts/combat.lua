@@ -601,7 +601,7 @@ local function resolve_spell_action(context, target, allow_untargeted)
         target_id = not untargeted and target.id or "",
         untargeted = untargeted,
         field_effect_kind = SpellEffectKind.NONE,
-        action_result = 0,
+        successes = 0,
         roll_attempted = false,
         outcome = "roll_failed",
         effect_requested = false,
@@ -668,8 +668,8 @@ local function resolve_spell_action(context, target, allow_untargeted)
         result.outcome = "random_service_unavailable"
         return result
     end
-    attacker.action_result = successes
-    result.action_result = successes
+    attacker.last_action_successes = successes
+    result.successes = successes
     result.combatant = attacker
     if successes == 0 then
         return result
@@ -771,7 +771,9 @@ function Combat.resolve_spell_impact(context, pending, target)
        type(target.combatant) ~= "table" or
        type(context.ai_random_bound) ~= "function" or
        type(pending.spell_id) ~= "string" or
-       type(pending.action_result) ~= "number" or
+       type(pending.successes) ~= "number" or
+       pending.successes < 0 or
+       pending.successes ~= math.floor(pending.successes) or
        type(pending.target_id) ~= "string" or
        type(target.id) ~= "string" or
        target.id == "" or
@@ -809,7 +811,7 @@ function Combat.resolve_spell_impact(context, pending, target)
         -- ROM 0x56DE ends by calling 0x55C2C. That callback heals directly
         -- from the caster's stored +0x9F result; unlike the offensive spell
         -- callback, it does not perform a second target roll.
-        local heal_amount = signed_byte(pending.action_result)
+        local heal_amount = pending.successes
         if heal_amount <= 0 then
             heal_amount = 1
         end
@@ -878,8 +880,7 @@ function Combat.resolve_spell_impact(context, pending, target)
 
     -- ROM 0x559BC subtracts the target's +0x9F roll from the caster's stored
     -- action result and adjusts the D4EA0 effect value by that signed byte.
-    local action_result = pending.action_result & 0xff
-    local delta = signed_byte(action_result - target_successes)
+    local delta = signed_byte(pending.successes - target_successes)
     local effect_value = spell.target_effect or 0
     if delta < 0 then
         effect_value = signed_byte(add_source_byte(effect_value, delta))
@@ -943,7 +944,7 @@ function Combat.resolve_default_bonus_action(context, target)
     if initial_successes == nil then
         return nil
     end
-    attacker.action_result = initial_successes
+    attacker.last_action_successes = initial_successes
     attacker.force = E.CombatTuning.DEFAULT_ACTION_TRIAL_COUNT
 
     local target_trials = defender.attributes.body

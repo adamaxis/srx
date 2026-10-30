@@ -89,7 +89,7 @@ local function actor_from_row(row)
             },
             equipped_armor_id = row.equipped_armor_id,
             combat_traits = row.combat_traits,
-            action_result = 0,
+            last_action_successes = 0,
             action_profile_options = {
                 primary = row.primary_action_profile_enabled,
                 secondary = row.secondary_action_profile_enabled,

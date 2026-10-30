@@ -131,7 +131,7 @@ for action_code = E.SpellActionCode.FLAME_DART,
           string.format("action %d enters 0x1033E without a target slot",
                         action_code))
     check(result ~= nil and result.roll_attempted and
-          result.action_result > 0 and result.effect_requested and
+          result.successes > 0 and result.effect_requested and
           result.difficulty == 6 and
           result.behavior_meter_delta == 1 and
           result.combatant.mental_meter == 1,
@@ -142,7 +142,7 @@ for action_code = E.SpellActionCode.FLAME_DART,
               audio == E.SoundId.FIELD_3B and
               state.player_field_spell_effect ~= nil and
               state.player_field_spell_effect.remaining ==
-                  result.action_result *
+                  result.successes *
                       E.SpellTuning.FIELD_BARRIER_TICKS_PER_SUCCESS,
               string.format("action %d spawns 0x49A2 field barrier/audio",
                             action_code))

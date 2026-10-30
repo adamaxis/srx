@@ -866,7 +866,7 @@ void FieldSceneRuntime::service_player_spell_cast(
         if (resolution.roll_attempted) {
             // 0x103B2 publishes the caster's threshold result at +0x9F [C].
             runner.action_result = static_cast<std::int8_t>(
-                resolution.action_result);
+                resolution.successes);
         }
         // 0x1033E writes the caster's +0x9C meter and 0x10660 fetish cells.
         runner.behavior_meter = resolution.mental_meter;

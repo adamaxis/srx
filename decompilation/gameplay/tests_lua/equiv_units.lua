@@ -214,7 +214,8 @@ local R = math.random
 local function pick(t) return t[R(#t)] end
 local ANIM = { "action", "attack", "down", "entry", "hurt", "idle", "projectile", "spell", "walk", "weapon" }
 local function pending()
-  return { action_code = R(0, 13), action_result = H.num(), ai_target_candidates = H.list(H.cand, 3), caster_actor_id = "a" .. R(3),
+  local successes = H.num()
+  return { action_code = R(0, 13), action_result = successes, successes = successes, ai_target_candidates = H.list(H.cand, 3), caster_actor_id = "a" .. R(3),
     caster_combatant = H.bool(), caster_source_flags = H.num(), countdown = R(0, 4), effect_slot = R(0, 7), initial_countdown = R(0, 4),
     owns_effect_slot = H.bool(), phase = R(0, 4), phase_count = R(1, 4), repeat_countdown = R(0, 3), scene_id = R(0, 5),
     source_record_slot = R(0, 7), target_id = "a" .. R(3), profile_id = H.pids[R(#H.pids)] }

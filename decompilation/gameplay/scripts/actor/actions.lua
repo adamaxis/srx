@@ -79,8 +79,9 @@ local function request_target_motion_effect(state, context, heading, target)
             if type(update) == "table" and
                type(update.combatant) == "table" then
                 state.combatant = update.combatant
-                state.action_result = update.combatant.action_result or
-                    state.action_result
+                state.last_action_successes =
+                    update.combatant.last_action_successes or
+                    state.last_action_successes
             end
             state.combat_meter_update = update
             if type(update) == "table" and update.changed == true and
@@ -410,7 +411,7 @@ function R.queue_spell_effect(state, context, target, resolution)
         end
         local pending = {
             spell_id = context.action_spell_id,
-            action_result = resolution.action_result,
+            successes = resolution.successes,
             target_id = target.id,
             effect_slot = resolution.spell_effect_slot,
             initial_countdown = effect_profile.initial_countdown,
@@ -524,7 +525,7 @@ function R.begin_player_spell_cast(state, context)
         end
         state.source_action_dispatch = "player_spell"
         state.spell_action_resolution = resolution
-        state.action_result = resolution.action_result
+        state.last_action_successes = resolution.successes
         state.combat_action_requested = false
         state.combatant = resolution.combatant
         if resolution.field_effect_kind == E.SpellEffectKind.FIELD_BARRIER then
@@ -534,7 +535,7 @@ function R.begin_player_spell_cast(state, context)
                 state.player_field_spell_effect = {
                     spell_id = resolution.spell_id,
                     effect_slot = resolution.spell_effect_slot,
-                    remaining = resolution.action_result *
+                    remaining = resolution.successes *
                         E.SpellTuning.FIELD_BARRIER_TICKS_PER_SUCCESS,
                 }
             end
@@ -803,7 +804,7 @@ local function advance_spell_effect(state, context)
                            marker ~= nil then
                             local next_pending = {
                                 spell_id = pending.spell_id,
-                                action_result = pending.action_result,
+                                successes = pending.successes,
                                 target_id = candidate.id,
                                 effect_slot = pending.effect_slot,
                                 initial_countdown =

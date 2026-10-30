@@ -360,8 +360,8 @@ function ActorAI.heartbeat(context)
                                     if spell_resolution ~= nil then
                                         state.spell_action_resolution =
                                             spell_resolution
-                                        state.action_result =
-                                            spell_resolution.action_result
+                                        state.last_action_successes =
+                                            spell_resolution.successes
                                         if type(spell_resolution.next_action_kind) ==
                                                "string" and
                                            type(spell_resolution.next_profile_prefix) ==

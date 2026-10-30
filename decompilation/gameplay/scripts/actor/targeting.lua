@@ -443,8 +443,8 @@ local function initial_state(context, profile)
         target_marker_radius = 0,
         target_marker_countdown = 0,
         action_delay = context.initial_action_delay or 0,
-        action_result = type(context.combatant) == "table"
-            and context.combatant.action_result or 0,
+        last_action_successes = type(context.combatant) == "table"
+            and context.combatant.last_action_successes or 0,
         spell_action_resolution = nil,
         spell_effect_pending = nil,
         spell_effect_scan_marker = nil,
@@ -485,7 +485,7 @@ local function initial_state(context, profile)
         state.projectile_animation_started = false
         state.animation_complete = false
         local projectile = context.projectile_movement
-        state.action_result = type(projectile) == "table"
+        state.last_action_successes = type(projectile) == "table"
             and projectile.attack_successes or 0
         state.attack_seed_resolved =
             not context.projectile_attack_seed_pending
