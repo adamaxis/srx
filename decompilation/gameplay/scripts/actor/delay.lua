@@ -1,8 +1,6 @@
 -- actor/delay.lua: shared source action-delay math for actors and the player.
 local E = require("enums")
-local I = require("lib.int68k")
 local Weapons = require("data.weapons")
-local u8 = I.u8
 
 local M = {}
 local Mode = E.ActionDelayMode
@@ -23,9 +21,10 @@ local weapon_scale_modes = {
 -- delay modifier. Lua combines that value with named actor attributes. [C]
 local function delay_factor(primary_attribute, secondary_attribute,
                             action_delay_modifier)
-    -- ROM 0xD81C adds the two bytes before shifting, so the sum wraps at one byte. [C]
-    local wrapped_sum = u8(primary_attribute + secondary_attribute)
-    local factor = (wrapped_sum >> 1) + action_delay_modifier - 1
+    -- ROM 0xD81C averages the named Quickness and Intelligence values [C].
+    local attribute_average = math.floor(
+        (primary_attribute + secondary_attribute) / 2)
+    local factor = attribute_average + action_delay_modifier - 1
     if factor < 0 then
         factor = 0
     end

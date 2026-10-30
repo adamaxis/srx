@@ -220,6 +220,14 @@ add_test(NAME shadowrun_gameplay_script_runtime_qa
 
 find_program(SHADOWRUN_LUA_EXECUTABLE NAMES lua5.4 lua54 lua)
 if(SHADOWRUN_LUA_EXECUTABLE)
+    add_test(NAME shadowrun_gameplay_actor_delay_formula_qa
+        COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"
+            "${CMAKE_SOURCE_DIR}/../.."
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/delay_tests.lua")
+    set_tests_properties(shadowrun_gameplay_actor_delay_formula_qa PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../.."
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
     add_test(NAME shadowrun_gameplay_entity_motion_qa
         COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
             "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"
