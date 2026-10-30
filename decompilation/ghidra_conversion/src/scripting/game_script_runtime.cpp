@@ -2790,7 +2790,7 @@ struct GameScriptRuntime::Impl {
         roll_successes,
         pocket_extra_row,
         in_combat,
-        scene_mode,
+        is_outside_area,
         save_game,
         load_game,
         save_status,
@@ -3512,11 +3512,10 @@ struct GameScriptRuntime::Impl {
                          ? 1
                          : 0);
             return 1;
-        case MenuBinding::scene_mode:
-            lua_pushinteger(
-                lua, self->menu_route_bindings.game.scene_mode
-                         ? self->menu_route_bindings.game.scene_mode()
-                         : 0);
+        case MenuBinding::is_outside_area:
+            lua_pushboolean(
+                lua, !self->menu_route_bindings.game.is_outside_area ||
+                         self->menu_route_bindings.game.is_outside_area());
             return 1;
         case MenuBinding::save_game:
             lua_pushboolean(
@@ -3825,8 +3824,8 @@ struct GameScriptRuntime::Impl {
                          MenuBinding::pocket_extra_row);
         add_menu_binding(state, table_index, "in_combat",
                          MenuBinding::in_combat);
-        add_menu_binding(state, table_index, "scene_mode",
-                         MenuBinding::scene_mode);
+        add_menu_binding(state, table_index, "is_outside_area",
+                         MenuBinding::is_outside_area);
         add_menu_binding(state, table_index, "save_game",
                          MenuBinding::save_game);
         add_menu_binding(state, table_index, "load_game",

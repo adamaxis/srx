@@ -92,7 +92,7 @@ local function mk(o)
         set_walk_fast = function() g.fast = true end, jack_in = function(n) g.jack = n; return o.abort or false end,
         field_resume = function() g.resumed = true end, kill_leader = function() g.killed = true end,
         set_leader_spells = function(t) g.spells = t end,
-        scene_mode = function() return o.scene or 0 end, in_combat = function() return o.combat or false end,
+        is_outside_area = function() return o.outside_area ~= false end, in_combat = function() return o.combat or false end,
         save_game = function(n) g.saved = n; return o.save_ok ~= false end, load_game = function(n) g.loaded = n; return o.load_ok or false end,
         save_status = function(n) return (o.save_status or {})[n] or 0 end,
         deck_enter = function() g.deck_in = true; return 7 end, deck_leave = function(v) g.deck_out = v end,
@@ -471,9 +471,9 @@ section('save/load 0xEFB4 [C]', function()
 local function sl(o) local r, l, g = mk(o); r:frame(P.A); r:frame(P.UP); r:frame(P.A); return r, l, g end
 local r9, l9, g9 = sl({ combat = true }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_IN_COMBAT, "gate FFDF84 [C 0xEFE6]")
 r9:frame(P.A); check(top(r9) == S.POCKET_SECRETARY, "gate -> PS rebuild")
-r9 = sl({ scene = 2 }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_OUTSIDE_ONLY, "gate FFDF40 [C 0xEFC4]")
+r9 = sl({ outside_area = false }); check(top(r9) == S.MESSAGE and st(r9).message == MM.SAVE_OUTSIDE_ONLY, "inside areas are gated [C 0xEFC4]")
 r9:frame(P.A); check(top(r9) == S.POCKET_SECRETARY, "outside gate -> PS rebuild")
-r9 = sl({ scene = 1, combat = true }); check(st(r9).message == MM.SAVE_OUTSIDE_ONLY, "FFDF40 checked before FFDF84 [C 0xEFC4 < 0xEFE6]")
+r9 = sl({ outside_area = false, combat = true }); check(st(r9).message == MM.SAVE_OUTSIDE_ONLY, "outside-area gate precedes the combat gate [C 0xEFC4 < 0xEFE6]")
 r9, l9, g9 = sl({ save_status = { [0] = 1 } }); check(top(r9) == S.SAVE_LOAD and st(r9).title == "" and st(r9).labels[1] == "save_game" and st(r9).labels[2] == "load_game", "Save/Load uses its ROM text IDs without a title [C]"); local s9 = #l9.sounds
 check(st(r9).layout.label_x == 96 and st(r9).layout.label_y == 80 and st(r9).layout.cursor_x == 80 and st(r9).layout.cursor_y == 80 and st(r9).layout.row_spacing == 16, "Save/Load option rows use ROM C518/C514 coordinates [C]")
 r9:frame(P.UP); check(st(r9).row == 1 and #l9.sounds == s9, "2 rows, silent wrap"); r9:frame(P.UP)

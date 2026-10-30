@@ -579,8 +579,8 @@ struct ScriptMenuRouteGame {
     std::function<int(int, int)> roll_successes;
     std::function<bool()> pocket_extra_row;
     std::function<bool()> in_combat;
-    // FFDF40 field scene mode (0 = outside). ROM 0xEFC4 gates Save/Load on it.
-    std::function<int()> scene_mode;
+    // ROM 0xEFC4 allows Save/Load only when the player is outside [C].
+    std::function<bool()> is_outside_area;
     std::function<bool(int)> save_game;
     std::function<bool(int)> load_game;
     std::function<int(int)> save_status;

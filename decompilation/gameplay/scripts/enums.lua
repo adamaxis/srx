@@ -25,7 +25,6 @@ E.ActorAnimation = {
 
 E.Posture   = { FULL_DEFENSE = 0, MEDIUM_DEFENSE = 1, NEUTRAL = 2, MEDIUM_OFFENSE = 3, FULL_OFFENSE = 4 }  -- +0x4D, names 0xD1A05 [C]
 E.ActorAttribute = { BODY = "body", WILLPOWER = "willpower" } -- semantic attributes used by combat rules; +0x77/+0x7C [C]
-E.SceneMode = { NONE = 0, STREET = 1, BUILDING = 2, CAVE = 3 }  -- FFDF40: 1 scenes <0x15, 2 0x15-0x2B, 3 0x2C-0x37 [C]
 E.MovementDirection = {
     NORTH = "north", NORTH_EAST = "north_east", EAST = "east",
     SOUTH_EAST = "south_east", SOUTH = "south",

@@ -48,7 +48,7 @@ local function mk(o)
         legacy_advance = function(s, ev) if ev & P.START ~= 0 then return false, o.legacy_exit end; return true end,
     }
     local game = {
-        scene_mode = function() return 0 end, in_combat = function() return false end,
+        is_outside_area = function() return true end, in_combat = function() return false end,
         reselect_leader = function() g.reselects = g.reselects + 1 end,
         leader_posture = function() return g.posture end, set_leader_posture = function(v) g.posture = v end,
         leader_class = function() return g.character_class end,

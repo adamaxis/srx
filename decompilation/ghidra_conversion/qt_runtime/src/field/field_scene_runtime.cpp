@@ -9457,9 +9457,11 @@ void FieldSceneRuntime::configure_field_menu_route() {
         // FFDF86 separately as a frame count [H].
         return world_frame_logic_state_.world_active != 0U;
     };
-    bindings.game.scene_mode = [this] {
-        // FFDF40: 0 outside; 0x1684C/0x1695C/0x16A04 write 1/2/3 [C].
-        return static_cast<int>(field_movement_transition_state_.world_mode);
+    bindings.game.is_outside_area = [this] {
+        // ROM 0xEFC4 checks whether FFDF40 is zero before Save/Load [C].
+        return scripting::script_field_scene_mode_from_source_word(
+                   field_movement_transition_state_.world_mode) ==
+               scripting::ScriptFieldSceneMode::none;
     };
     bindings.game.save_game = [this](const int slot) {
         return save_game_slot(slot);

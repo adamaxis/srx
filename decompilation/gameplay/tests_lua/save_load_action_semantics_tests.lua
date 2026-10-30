@@ -6,13 +6,13 @@ local function check(condition, message)
     if not condition then error(message, 2) end
 end
 
-local function context()
+local function context(is_outside_area)
     local calls = {}
     return {
         calls = calls,
         redraw = function() end,
         game = {
-            scene_mode = function() return E.SceneMode.NONE end,
+            is_outside_area = function() return is_outside_area ~= false end,
             in_combat = function() return false end,
             save_game = function(slot)
                 calls.save = slot
@@ -55,6 +55,13 @@ end
 local initial = Screens.SaveLoad.new()
 check(initial.row == 0 and initial.selected_action == "save",
       "initial save selection separates cursor position from action identity")
+
+local inside_context = context(false)
+local inside_state = Screens.SaveLoad.new()
+local outside_gate = Screens.SaveLoad.enter(inside_state, inside_context)
+check(outside_gate.screen == E.MenuScreen.MESSAGE and
+      outside_gate.args.message == E.MenuMessage.SAVE_OUTSIDE_ONLY,
+      "inside-area save/load gate consumes the named host fact")
 
 local save_ctx, save_slot, save_result = open_slot("save", 0)
 check(save_slot.row == 0 and save_ctx.calls.save == 0 and

@@ -59,8 +59,8 @@ function SaveLoad.new()
     }
 end
 function SaveLoad.enter(st, ctx)
-    -- 0xEFC4: tst.w FFDF40; nonzero -> text 0xC26C3, checked before FFDF84 [C].
-    if ctx.game.scene_mode() ~= E.SceneMode.NONE then
+    -- ROM 0xEFC4 allows Save/Load only in an outside area [C].
+    if not ctx.game.is_outside_area() then
         st.gated = true
         return wait(MM.SAVE_OUTSIDE_ONLY,
                     "Save/Load only works in an outside area.")
