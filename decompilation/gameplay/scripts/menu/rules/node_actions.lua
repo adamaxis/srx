@@ -132,8 +132,9 @@ local function detection_score(decker, deck)
 end
 
 function M.finish_search(node, decker, deck, special, rand)
-    local file_class = node.file_class or node.class
-    if special and SPECIAL.can_match(special, file_class) and
+    local file_class = node.file_class
+    if special and file_class ~= nil and
+       SPECIAL.can_match(special, file_class) and
        SPECIAL.matches(special, file_class) then
         return { story = true, text = M.TEXT.STORY_FILE }
     end

@@ -1628,74 +1628,75 @@ eq(missed_search.text, Actions.TEXT.NOTHING,
     "detection failure uses Int, Computer, and Sensor from typed records")
 local special_facts = { system_id = 18,
     tips_page2_flags = 0, world_event_flags = 0 }
-eq(SpecialDatastore.can_match(nil, 3), false,
+eq(SpecialDatastore.can_match(nil, "Project Files"), false,
     "special datastore handler rejects missing typed facts")
-eq(SpecialDatastore.can_match(special_facts, 3), true,
-    "system 18 class 3 needs its FFFC34 page-2 word")
+eq(SpecialDatastore.can_match(special_facts, "Project Files"), true,
+    "system 18 project files need its FFFC34 page-2 word")
 eq(SpecialDatastore.can_match(
     { system_id = 21, tips_page3_flags = 0,
-      world_event_flags = 0 }, 3), false,
-    "system 21 class 3 waits for its group-item fact")
+      world_event_flags = 0 }, "Project Files"), false,
+    "system 21 project files wait for their group-item fact")
 eq(SpecialDatastore.can_match(
     { system_id = 21, tips_page3_flags = 0,
-      world_event_flags = 0, group_item_flags = 0 }, 3), true,
-    "system 21 class 3 is enabled when its group-item fact exists")
+      world_event_flags = 0, group_item_flags = 0 }, "Project Files"), true,
+    "system 21 project files are enabled when their group-item fact exists")
 eq(SpecialDatastore.can_match(
     { system_id = 19, tips_page3_flags = 0,
-      world_event_flags = 0 }, 12), true,
-    "system 19 class 12 uses the source FFFC1E and FFFC38 facts")
+      world_event_flags = 0 }, "Prisoner Files"), true,
+    "system 19 prisoner files use the supplied world and notebook facts")
 eq(SpecialDatastore.can_match(
     { system_id = 19, tips_page3_flags = 0,
-      world_event_flags = 0 }, 2), false,
-    "system 19 class 2 has no special-handler branch")
+      world_event_flags = 0 }, "Mngmnt Files"), false,
+    "system 19 management files have no special-handler branch")
 eq(SpecialDatastore.can_match(
     { system_id = 19, tips_page3_flags = 0,
-      world_event_flags = 0 }, 0), false,
-    "system 19 class 0 stays gated while its FFFC27 and FFFC26 facts are absent")
+      world_event_flags = 0 }, "Outdated Files"), false,
+    "system 19 outdated files stay gated while contact and fallback facts are absent")
 local system_19_johnson_fact = { system_id = 19, tips_page3_flags = 0,
     world_event_flags = 0, mr_johnsons_met_flags = 0x08 }
-eq(SpecialDatastore.can_match(system_19_johnson_fact, 0), true,
-    "system 19 class 0 uses the known FFFC27 bit-3 route")
-eq(SpecialDatastore.matches(system_19_johnson_fact, 0), true,
-    "system 19 class 0 returns its first-time story clue")
+eq(SpecialDatastore.can_match(system_19_johnson_fact, "Outdated Files"), true,
+    "system 19 outdated files use the known Johnson-contact route")
+eq(SpecialDatastore.matches(system_19_johnson_fact, "Outdated Files"), true,
+    "system 19 outdated files return their first-time story clue")
 eq((system_19_johnson_fact.tips_page3_flags >> 14) & 1, 1,
     "system 19 class 0 commits its page-3 clue")
 eq(SpecialDatastore.can_match(
     { system_id = 19, tips_page3_flags = 1 << 14,
-      world_event_flags = 0, mr_johnsons_met_flags = 0x08 }, 0), false,
-    "system 19 class 0 remains gated when it would need unknown FFFC26")
+      world_event_flags = 0, mr_johnsons_met_flags = 0x08 }, "Outdated Files"), false,
+    "system 19 outdated files remain gated when they would need the unknown fallback fact")
 eq(SpecialDatastore.can_match(
-    { system_id = 16, tips_page3_flags = 0,
-      world_event_flags = 0 }, 1), false,
-    "system 16 class 1 waits for the wallet balance it awards")
+    { system_id = 16, virology_research_complete = true,
+      virology_report_collected = false }, "System Files"), false,
+    "UCAS report waits for the wallet balance it awards")
 eq(SpecialDatastore.can_match(
-    { system_id = 16, tips_page3_flags = 0,
-      world_event_flags = 0, nuyen = 0 }, 1), true,
-    "system 16 class 1 is enabled when the wallet is available")
+    { system_id = 16, virology_research_complete = true,
+      virology_report_collected = false, nuyen = 0 }, "System Files"), true,
+    "UCAS report is enabled when the wallet is available")
 eq(SpecialDatastore.can_match(
     { system_id = 23, tips_page3_flags = 0,
-      world_event_flags = 0 }, 9), true,
-    "system 23 class 9 uses the supplied FFFC38 and FFFC1E facts")
+      world_event_flags = 0 }, "Financial Data"), true,
+    "system 23 financial data uses the supplied world and notebook facts")
 local system_23_facts = { system_id = 23, tips_page3_flags = 0,
     world_event_flags = 0 }
-eq(SpecialDatastore.matches(system_23_facts, 9), true,
+eq(SpecialDatastore.matches(system_23_facts, "Financial Data"), true,
     "system 23 class 9 returns its special datafile")
 eq(system_23_facts.tips_page3_flags, 1 << 11,
     "system 23 class 9 commits source Tips & Clues page 3 bit 11")
 eq(SpecialDatastore.can_match(
     { system_id = 23, tips_page3_flags = 0,
-      world_event_flags = 0 }, 13), false,
+      world_event_flags = 0 }, "Case Files"), false,
     "unavailable story facts leave system 23 class 13 unresolved")
 local system_23_johnson_fact = { system_id = 23, tips_page3_flags = 0,
     world_event_flags = 0, mr_johnsons_met_flags = 0x08 }
-eq(SpecialDatastore.can_match(system_23_johnson_fact, 12), true,
-    "system 23 class 12 uses the known FFFC27 bit-3 route")
-eq(SpecialDatastore.matches(system_23_johnson_fact, 12), true,
-    "system 23 class 12 returns its first-time story clue")
+eq(SpecialDatastore.can_match(system_23_johnson_fact, "Prisoner Files"), true,
+    "system 23 prisoner files use the known Johnson-contact route")
+eq(SpecialDatastore.matches(system_23_johnson_fact, "Prisoner Files"), true,
+    "system 23 prisoner files return their first-time story clue")
 eq((system_23_johnson_fact.tips_page3_flags >> 9) & 1, 1,
     "system 23 class 12 commits its page-3 clue")
 local story_search = Actions.finish_search(
-    { class = 3 }, source_decker, source_deck, special_facts,
+    { class = 3, file_class = "Project Files" },
+    source_decker, source_deck, special_facts,
     function() error("story datastores do not roll for random data") end)
 eq(story_search.story, true,
     "source special datastore can return its notebook file before detection")

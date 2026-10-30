@@ -10,16 +10,22 @@ local function s8(v) v = v & 0xFF; return v >= 0x80 and v - 0x100 or v end
 -- Other branches also read FFFBFA/FB, FFFC26, or additional FFFC22 bits;
 -- leave those explicit until the host has the matching source facts.
 local SUPPORTED = {
-    [7]  = { [10] = true },
-    [16] = { [1] = true },
-    [17] = { [0] = true, [9] = true },
-    [18] = { [2] = true, [3] = true, [9] = true, [10] = true },
-    [19] = { [0] = true, [12] = true },
-    [20] = { [10] = true },
-    [21] = { [2] = true, [3] = true, [10] = true },
-    [22] = { [2] = true, [4] = true },
-    [23] = { [9] = true, [12] = true },
-    [24] = { [10] = true },
+    [7]  = { ["Marketing Data"] = true },
+    [16] = { ["System Files"] = true },
+    [17] = { ["Outdated Files"] = true, ["Financial Data"] = true },
+    [18] = {
+        ["Mngmnt Files"] = true, ["Project Files"] = true,
+        ["Financial Data"] = true, ["Confidntl Data"] = true,
+    },
+    [19] = { ["Outdated Files"] = true, ["Prisoner Files"] = true },
+    [20] = { ["Confidntl Data"] = true },
+    [21] = {
+        ["Mngmnt Files"] = true, ["Project Files"] = true,
+        ["Confidntl Data"] = true,
+    },
+    [22] = { ["Mngmnt Files"] = true, ["Security Files"] = true },
+    [23] = { ["Financial Data"] = true, ["Prisoner Files"] = true },
+    [24] = { ["Confidntl Data"] = true },
 }
 local function can_match(r, node_class)
     if not r or r.system_id == nil then return false end
@@ -38,15 +44,11 @@ local function can_match(r, node_class)
        r.world_event_flags == nil then
         return false
     end
-    if system_id == 21 and node_class == 3 and
+    if system_id == 21 and node_class == "Project Files" and
        r.group_item_flags == nil then
         return false
     end
-    if system_id == 16 and node_class == 1 and
-       r.nuyen == nil then
-        return false
-    end
-    if system_id == 19 and node_class == 0 then
+    if system_id == 19 and node_class == "Outdated Files" then
         -- The source tries the FFFC27 bit-3 branch before FFFC26 bit 0.
         -- Only admit the first branch while its page-3 clue is still clear;
         -- the fallback fact is not yet supplied by the host.
@@ -56,16 +58,16 @@ local function can_match(r, node_class)
             return false
         end
     end
-    if system_id == 23 and node_class == 12 and
+    if system_id == 23 and node_class == "Prisoner Files" and
        (r.mr_johnsons_met_flags == nil or
         (r.mr_johnsons_met_flags & 0x08) == 0) then
         return false
     end
     return true
 end
-local function matches(r, d0)
-    if r and s8(r.system_id) == 16 and d0 == "System Files" then
-        if not can_match(r, d0) then return false end
+local function matches(r, file_class)
+    if r and s8(r.system_id) == 16 and file_class == "System Files" then
+        if not can_match(r, file_class) then return false end
         r.virology_report_collected = true
         r.nuyen = (r.nuyen + 50000) & 0xFFFFFFFF
         return true
@@ -82,25 +84,25 @@ local function matches(r, d0)
     ::L05507C:: cc = s8(r.system_id) - 18
     ::L055084:: if cc ~= 0 then goto L0550F4 end
     ::L055088:: d5 = r.tips_page2_flags
-    ::L05508E:: cc = d0 - 3
+    ::L05508E:: cc = file_class == "Project Files" and 0 or 1
     ::L055092:: if cc ~= 0 then goto L0550A6 end
     ::L055096:: cc = (d5 >> 28) & 1
     ::L05509A:: if cc ~= 0 then goto L05559A end
     ::L05509E:: d5 = d5 | (1 << 28)
     ::L0550A2:: goto L0550EA
-    ::L0550A6:: cc = d0 - 10
+    ::L0550A6:: cc = file_class == "Confidntl Data" and 0 or 1
     ::L0550AA:: if cc ~= 0 then goto L0550BE end
     ::L0550AE:: cc = (d5 >> 29) & 1
     ::L0550B2:: if cc ~= 0 then goto L05559A end
     ::L0550B6:: d5 = d5 | (1 << 29)
     ::L0550BA:: goto L0550EA
-    ::L0550BE:: cc = d0 - 9
+    ::L0550BE:: cc = file_class == "Financial Data" and 0 or 1
     ::L0550C2:: if cc ~= 0 then goto L0550D6 end
     ::L0550C6:: cc = (d5 >> 30) & 1
     ::L0550CA:: if cc ~= 0 then goto L05559A end
     ::L0550CE:: d5 = d5 | (1 << 30)
     ::L0550D2:: goto L0550EA
-    ::L0550D6:: cc = d0 - 2
+    ::L0550D6:: cc = file_class == "Mngmnt Files" and 0 or 1
     ::L0550DA:: if cc ~= 0 then goto L05559A end
     ::L0550DE:: cc = (d5 >> 31) & 1
     ::L0550E2:: if cc ~= 0 then goto L05559A end
@@ -109,7 +111,7 @@ local function matches(r, d0)
     ::L0550F0:: goto L05557E
     ::L0550F4:: cc = s8(r.system_id) - 17
     ::L0550FC:: if cc ~= 0 then goto L055138 end
-    ::L055100:: cc = d0 - 9
+    ::L055100:: cc = file_class == "Financial Data" and 0 or 1
     ::L055104:: if cc ~= 0 then goto L05559A end
     ::L055108:: cc = (d1 >> 11) & 1
     ::L05510C:: if cc == 0 then goto L05559A end
@@ -117,7 +119,7 @@ local function matches(r, d0)
     ::L055114:: if cc ~= 0 then goto L05559A end
     ::L055118:: d5 = d5 | (1 << 0)
     ::L05511C:: goto L055578
-    ::L055120:: cc = d0 - 0
+    ::L055120:: cc = file_class == "Outdated Files" and 0 or 1
     ::L055124:: if cc ~= 0 then goto L05559A end
     ::L055128:: cc = (d5 >> 1) & 1
     ::L05512C:: if cc ~= 0 then goto L05559A end
@@ -125,7 +127,7 @@ local function matches(r, d0)
     ::L055134:: goto L055578
     ::L055138:: cc = s8(r.system_id) - 7
     ::L055140:: if cc ~= 0 then goto L05515C end
-    ::L055144:: cc = d0 - 10
+    ::L055144:: cc = file_class == "Confidntl Data" and 0 or 1
     ::L055148:: if cc ~= 0 then goto L05559A end
     ::L05514C:: cc = (d5 >> 26) & 1
     ::L055150:: if cc ~= 0 then goto L05559A end
@@ -133,7 +135,7 @@ local function matches(r, d0)
     ::L055158:: goto L055578
     ::L05515C:: cc = s8(r.system_id) - 22
     ::L055164:: if cc ~= 0 then goto L0551C0 end
-    ::L055168:: cc = d0 - 2
+    ::L055168:: cc = file_class == "Mngmnt Files" and 0 or 1
     ::L05516C:: if cc ~= 0 then goto L055188 end
     ::L055170:: cc = (d1 >> 29) & 1
     ::L055174:: if cc ~= 0 then goto L05559A end
@@ -141,7 +143,7 @@ local function matches(r, d0)
     ::L05517C:: if cc ~= 0 then goto L05559A end
     ::L055180:: d5 = d5 | (1 << 2)
     ::L055184:: goto L055578
-    ::L055188:: cc = d0 - 4
+    ::L055188:: cc = file_class == "Security Files" and 0 or 1
     ::L05518C:: if cc ~= 0 then goto L0551A8 end
     ::L055190:: cc = (d1 >> 29) & 1
     ::L055194:: if cc ~= 0 then goto L0551A8 end
@@ -149,7 +151,7 @@ local function matches(r, d0)
     ::L05519C:: if cc ~= 0 then goto L0551A8 end
     ::L0551A0:: d5 = d5 | (1 << 3)
     ::L0551A4:: goto L055578
-    ::L0551A8:: cc = d0 - 4
+    ::L0551A8:: cc = file_class == "Security Files" and 0 or 1
     ::L0551AC:: if cc ~= 0 then goto L05559A end
     ::L0551B0:: cc = (d5 >> 27) & 1
     ::L0551B4:: if cc ~= 0 then goto L05559A end
@@ -157,13 +159,13 @@ local function matches(r, d0)
     ::L0551BC:: goto L055578
     ::L0551C0:: cc = s8(r.system_id) - 20
     ::L0551C8:: if cc ~= 0 then goto L055224 end
-    ::L0551CC:: cc = d0 - 10
+    ::L0551CC:: cc = file_class == "Confidntl Data" and 0 or 1
     ::L0551D0:: if cc ~= 0 then goto L0551E4 end
     ::L0551D4:: cc = (d5 >> 28) & 1
     ::L0551D8:: if cc ~= 0 then goto L05559A end
     ::L0551DC:: d5 = d5 | (1 << 28)
     ::L0551E0:: goto L055578
-    ::L0551E4:: cc = d0 - 10
+    ::L0551E4:: cc = file_class == "Confidntl Data" and 0 or 1
     ::L0551E8:: if cc ~= 0 then goto L055204 end
     ::L0551EC:: cc = (d1 >> 3) & 1
     ::L0551F0:: if cc ~= 0 then goto L05559A end
@@ -171,7 +173,7 @@ local function matches(r, d0)
     ::L0551F8:: if cc ~= 0 then goto L05559A end
     ::L0551FC:: d5 = d5 | (1 << 5)
     ::L055200:: goto L055578
-    ::L055204:: cc = d0 - 4
+    ::L055204:: cc = file_class == "Security Files" and 0 or 1
     ::L055208:: if cc ~= 0 then goto L05559A end
     ::L05520C:: cc = (d1 >> 3) & 1
     ::L055210:: if cc ~= 0 then goto L05559A end
@@ -181,7 +183,7 @@ local function matches(r, d0)
     ::L055220:: goto L055578
     ::L055224:: cc = s8(r.system_id) - 23
     ::L05522C:: if cc ~= 0 then goto L055302 end
-    ::L055230:: cc = d0 - 13
+    ::L055230:: cc = file_class == "Case Files" and 0 or 1
     ::L055234:: if cc ~= 0 then goto L0552A2 end
     ::L055238:: cc = s8(r.fbfa)
     ::L05523E:: if cc == 0 then goto L05559A end
@@ -207,7 +209,7 @@ local function matches(r, d0)
     ::L055296:: d5 = d5 & ~(1 << 6)
     ::L05529A:: d5 = d5 & ~(1 << 7)
     ::L05529E:: goto L055578
-    ::L0552A2:: cc = d0 - 12
+    ::L0552A2:: cc = file_class == "Prisoner Files" and 0 or 1
     ::L0552A6:: if cc ~= 0 then goto L0552E2 end
     ::L0552AA:: cc = (r.mr_johnsons_met_flags >> 3) & 1
     ::L0552B2:: if cc == 0 then goto L0552C6 end
@@ -221,7 +223,7 @@ local function matches(r, d0)
     ::L0552D6:: if cc ~= 0 then goto L05559A end
     ::L0552DA:: d5 = d5 | (1 << 10)
     ::L0552DE:: goto L055578
-    ::L0552E2:: cc = d0 - 9
+    ::L0552E2:: cc = file_class == "Financial Data" and 0 or 1
     ::L0552E6:: if cc ~= 0 then goto L05559A end
     ::L0552EA:: cc = (d1 >> 29) & 1
     ::L0552EE:: if cc ~= 0 then goto L05559A end
@@ -231,13 +233,13 @@ local function matches(r, d0)
     ::L0552FE:: goto L055578
     ::L055302:: cc = s8(r.system_id) - 24
     ::L05530A:: if cc ~= 0 then goto L055346 end
-    ::L05530E:: cc = d0 - 10
+    ::L05530E:: cc = file_class == "Confidntl Data" and 0 or 1
     ::L055312:: if cc ~= 0 then goto L05559A end
     ::L055316:: cc = (d5 >> 29) & 1
     ::L05531A:: if cc ~= 0 then goto L055326 end
     ::L05531E:: d5 = d5 | (1 << 29)
     ::L055322:: goto L055578
-    ::L055326:: cc = d0 - 10
+    ::L055326:: cc = file_class == "Confidntl Data" and 0 or 1
     ::L05532A:: if cc ~= 0 then goto L05559A end
     ::L05532E:: cc = (d1 >> 19) & 1
     ::L055332:: if cc ~= 0 then goto L05559A end
@@ -247,7 +249,7 @@ local function matches(r, d0)
     ::L055342:: goto L055578
     ::L055346:: cc = s8(r.system_id) - 19
     ::L05534E:: if cc ~= 0 then goto L0553B2 end
-    ::L055352:: cc = d0 - 12
+    ::L055352:: cc = file_class == "Prisoner Files" and 0 or 1
     ::L055356:: if cc ~= 0 then goto L055372 end
     ::L05535A:: cc = (d1 >> 19) & 1
     ::L05535E:: if cc ~= 0 then goto L05559A end
@@ -255,7 +257,7 @@ local function matches(r, d0)
     ::L055366:: if cc ~= 0 then goto L05559A end
     ::L05536A:: d5 = d5 | (1 << 13)
     ::L05536E:: goto L055578
-    ::L055372:: cc = d0 - 0
+    ::L055372:: cc = file_class == "Outdated Files" and 0 or 1
     ::L055376:: if cc ~= 0 then goto L05559A end
     ::L05537A:: cc = (r.mr_johnsons_met_flags >> 3) & 1
     ::L055382:: if cc == 0 then goto L055396 end
@@ -271,7 +273,7 @@ local function matches(r, d0)
     ::L0553AE:: goto L055578
     ::L0553B2:: cc = s8(r.system_id) - 21
     ::L0553BA:: if cc ~= 0 then goto L055526 end
-    ::L0553BE:: cc = d0 - 10
+    ::L0553BE:: cc = file_class == "Confidntl Data" and 0 or 1
     ::L0553C2:: if cc ~= 0 then goto L0553F6 end
     ::L0553C6:: cc = (d5 >> 30) & 1
     ::L0553CA:: if cc ~= 0 then goto L0553D6 end
@@ -285,7 +287,7 @@ local function matches(r, d0)
     ::L0553EA:: if cc ~= 0 then goto L05559A end
     ::L0553EE:: d5 = d5 | (1 << 18)
     ::L0553F2:: goto L055578
-    ::L0553F6:: cc = d0 - 3
+    ::L0553F6:: cc = file_class == "Project Files" and 0 or 1
     ::L0553FA:: if cc ~= 0 then goto L055474 end
     ::L0553FE:: cc = (d1 >> 7) & 1
     ::L055402:: if cc == 0 then goto L05541E end
@@ -316,7 +318,7 @@ local function matches(r, d0)
     ::L055468:: if cc ~= 0 then goto L05559A end
     ::L05546C:: d5 = d5 | (1 << 25)
     ::L055470:: goto L055578
-    ::L055474:: cc = d0 - 2
+    ::L055474:: cc = file_class == "Mngmnt Files" and 0 or 1
     ::L055478:: if cc ~= 0 then goto L055494 end
     ::L05547C:: cc = (d1 >> 10) & 1
     ::L055480:: if cc == 0 then goto L05559A end
@@ -324,7 +326,7 @@ local function matches(r, d0)
     ::L055488:: if cc ~= 0 then goto L05559A end
     ::L05548C:: d5 = d5 | (1 << 17)
     ::L055490:: goto L055578
-    ::L055494:: cc = d0 - 4
+    ::L055494:: cc = file_class == "Security Files" and 0 or 1
     ::L055498:: if cc ~= 0 then goto L05559A end
     ::L05549C:: cc = (d1 >> 10) & 1
     ::L0554A0:: if cc ~= 0 then goto L0554AC end
@@ -360,7 +362,7 @@ local function matches(r, d0)
     ::L055522:: goto L055578
     ::L055526:: cc = s8(r.system_id) - 16
     ::L05552E:: if cc ~= 0 then goto L05559A end
-    ::L055532:: cc = d0 - 1
+    ::L055532:: cc = file_class == "System Files" and 0 or 1
     ::L055536:: if cc ~= 0 then goto L05559A end
     ::L05553A:: cc = (d5 >> 26) & 1
     ::L05553E:: if cc == 0 then goto L05559A end
