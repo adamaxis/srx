@@ -359,48 +359,52 @@ end
 local function adjusted_meters(record, physical, damage, context)
     local physical_meter = record.physical_meter
     local mental_meter = record.mental_meter
+
+    -- Track the remaining meter and any damage that carries past zero as game
+    -- values, rather than encoding either one through byte wraparound.
+    local function apply_damage(meter, amount)
+        local remaining = meter - amount
+        if remaining <= 0 then
+            return 0, math.max(0, -remaining)
+        end
+        return remaining, 0
+    end
+
     if record.is_party_member then
         if context.combat_meter_service_blocked then
             return physical_meter, mental_meter
         end
-        local function advance_delay(delta)
+        local function advance_delay(amount)
             if not record.actor_facts.lifecycle.active then
                 physical_meter = 0
                 return
             end
-            local updated = add_source_byte(physical_meter, delta)
-            if signed_byte(updated) > 0 then
-                physical_meter = math.min(updated, 10)
-            else
-                physical_meter = 0
-            end
+            local remaining = apply_damage(physical_meter, amount)
+            physical_meter = math.min(remaining, 10)
         end
         if physical then
-            advance_delay(-damage)
+            advance_delay(damage)
         else
             if not record.actor_facts.lifecycle.active then
                 mental_meter = 0
             else
-                local updated = add_source_byte(mental_meter, -damage)
-                if signed_byte(updated) > 0 then
-                    mental_meter = math.min(updated, 10)
-                else
-                    advance_delay(signed_byte(updated))
-                    mental_meter = 0
+                local overkill
+                mental_meter, overkill = apply_damage(mental_meter, damage)
+                if overkill > 0 then
+                    advance_delay(overkill)
                 end
             end
         end
         return physical_meter, mental_meter
     end
 
-    local delta = record.combat_traits.takes_fixed_meter_damage and
-        -1 or -damage
+    -- [C] ROM 0x55A78..0x55A9E keeps a positive remainder and clears the
+    -- selected world actor meter when the result is nonpositive.
+    local amount = record.combat_traits.takes_fixed_meter_damage and 1 or damage
     if physical then
-        local updated = add_source_byte(physical_meter, delta)
-        physical_meter = signed_byte(updated) > 0 and updated or 0
+        physical_meter = apply_damage(physical_meter, amount)
     else
-        local updated = add_source_byte(mental_meter, delta)
-        mental_meter = signed_byte(updated) > 0 and updated or 0
+        mental_meter = apply_damage(mental_meter, amount)
     end
     return physical_meter, mental_meter
 end

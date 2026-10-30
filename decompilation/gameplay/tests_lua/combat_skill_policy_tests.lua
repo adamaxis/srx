@@ -183,13 +183,13 @@ local armor_catalog = {
 }
 game.modules.items.catalog = armor_catalog
 
-local function armor_hit(equipped_armor_id, target_id)
+local function armor_hit(equipped_armor_id, target_id, physical_meter)
     local target = {
         id = target_id,
         combatant = {
             is_party_member = false,
             blocks_spell_death_pose = false,
-            physical_meter = 10,
+            physical_meter = physical_meter or 10,
             mental_meter = 10,
             posture_reduction_percent = 0,
             equipped_armor_id = equipped_armor_id,
@@ -239,6 +239,15 @@ local armored_hit = armor_hit("heavy_combat_armor", "armored_target")
 check(unarmored_hit ~= nil and unarmored_hit.physical_meter == 4 and
       armored_hit ~= nil and armored_hit.physical_meter == 10,
       "weapon resolution did not select armor modifiers by item identity")
+-- [C] ROM 0x55A90..0x55A9E subtracts the hit amount and clears a meter when
+-- its resulting value is nonpositive. This fixture resolves six damage from
+-- five attack successes against zero target successes (0x559DA..0x559E8).
+for meter = 0, 10 do
+    local hit = armor_hit(nil, "meter_boundary_" .. meter, meter)
+    check(hit ~= nil and hit.physical_meter == math.max(0, meter - 6),
+          "six damage did not produce the semantic remaining meter from " ..
+              meter)
+end
 
 print(string.format("combat_skill_policy_tests: %d/%d passed", passed, total))
 if passed ~= total then os.exit(1) end
