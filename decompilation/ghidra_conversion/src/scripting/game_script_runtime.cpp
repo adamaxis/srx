@@ -1989,6 +1989,41 @@ std::string collision_event_name(const FieldCollisionEventCode event_code) {
                            field_collision_event_value(event_code));
 }
 
+// [C] ROM 0xB7B8 selects behavior from the collision identity. This adapter
+// reduces that source identity to the gameplay concept Lua needs; the numeric
+// event never crosses the scripting boundary.
+std::string_view field_collision_kind_name(
+    const FieldCollisionEventCode event_code,
+    const bool lockable_door_context) noexcept {
+    switch (event_code) {
+    case FieldCollisionEventCode::event_0:
+        return "empty_world_interaction";
+    case FieldCollisionEventCode::event_2:
+    case FieldCollisionEventCode::event_3:
+    case FieldCollisionEventCode::event_4:
+    case FieldCollisionEventCode::event_5:
+        return lockable_door_context ? "lockable_door"
+                                     : "world_interaction";
+    case FieldCollisionEventCode::event_24:
+        return "security_terminal";
+    case FieldCollisionEventCode::event_25:
+        return "contextual_activity";
+    case FieldCollisionEventCode::event_26:
+        return "terrain_marker";
+    case FieldCollisionEventCode::event_27:
+        return "world_activity";
+    case FieldCollisionEventCode::event_28:
+    case FieldCollisionEventCode::event_29:
+        return "activity_transition";
+    case FieldCollisionEventCode::event_30:
+        return "profiled_contact";
+    case FieldCollisionEventCode::event_31:
+        return "field_activity";
+    default:
+        return "world_interaction";
+    }
+}
+
 bool parse_collision_event_name(const std::string_view name,
                                 FieldCollisionEventCode& event_code) {
     if (name == "no_event") {
@@ -2006,28 +2041,41 @@ bool parse_collision_event_name(const std::string_view name,
 }
 
 bool field_map_event_action(const std::string_view name,
+                            const FieldCollisionEventCode source_event_code,
                             FieldMapEventAction& action) {
     if (name == "project_world_interaction") {
         action = FieldMapEventAction::project_world_interaction;
     } else if (name == "skip_world_interaction") {
         action = FieldMapEventAction::skip_world_interaction;
-    } else if (name == "begin_event_31_activity") {
-        action = FieldMapEventAction::begin_event_31_activity;
-    } else if (name == "begin_event_30_activity") {
-        action = FieldMapEventAction::begin_event_30_activity;
-    } else if (name == "begin_event_29_activity") {
-        action = FieldMapEventAction::begin_event_29_activity;
-    } else if (name == "begin_event_28_activity") {
-        action = FieldMapEventAction::begin_event_28_activity;
-    } else if (name == "begin_event_27_activity") {
-        action = FieldMapEventAction::begin_event_27_activity;
+    } else if (name == "begin_world_activity") {
+        // Keep source-specific continuation selection in the native adapter.
+        switch (source_event_code) {
+        case FieldCollisionEventCode::event_31:
+            action = FieldMapEventAction::begin_event_31_activity;
+            break;
+        case FieldCollisionEventCode::event_30:
+            action = FieldMapEventAction::begin_event_30_activity;
+            break;
+        case FieldCollisionEventCode::event_29:
+            action = FieldMapEventAction::begin_event_29_activity;
+            break;
+        case FieldCollisionEventCode::event_28:
+            action = FieldMapEventAction::begin_event_28_activity;
+            break;
+        case FieldCollisionEventCode::event_27:
+            action = FieldMapEventAction::begin_event_27_activity;
+            break;
+        default:
+            return false;
+        }
     } else if (name == "mark_projected_terrain") {
         action = FieldMapEventAction::mark_projected_terrain;
     } else if (name == "begin_maglock_interaction") {
         action = FieldMapEventAction::begin_maglock_interaction;
     } else if (name == "begin_security_terminal") {
         action = FieldMapEventAction::begin_security_terminal;
-    } else if (name == "begin_event_25_activity") {
+    } else if (name == "begin_special_activity" &&
+               source_event_code == FieldCollisionEventCode::event_25) {
         action = FieldMapEventAction::begin_event_25_activity;
     } else if (name == "begin_field_mode_exit") {
         action = FieldMapEventAction::begin_field_mode_exit;
@@ -8749,28 +8797,30 @@ GameScriptRuntime::resolve_field_collision_event(
         return fail("field_events.resolve_collision is missing");
     }
 
-    lua_createtable(state, 0, 12);
+    lua_createtable(state, 0, 11);
     const auto input_index = lua_absindex(state, -1);
     const auto source_event_code =
         field_collision_event_code(input.raw_collision_code);
-    const auto source_event_name = collision_event_name(source_event_code);
-    lua_pushlstring(state, source_event_name.c_str(),
-                    source_event_name.size());
-    lua_setfield(state, input_index, "event_code");
-    lua_pushinteger(state, input.scene_id);
-    lua_setfield(state, input_index, "scene_id");
+    const bool lockable_door_context =
+        input.scene_id == field_scene_id_value(FieldSceneId::scene_20) ||
+        input.world_mode == static_cast<std::uint16_t>(
+                                WorldActivityMode::resource_activity);
+    const auto collision_kind =
+        field_collision_kind_name(source_event_code, lockable_door_context);
+    lua_pushlstring(state, collision_kind.data(), collision_kind.size());
+    lua_setfield(state, input_index, "collision_kind");
     lua_pushboolean(
         state, input.world_mode == static_cast<std::uint16_t>(
                                        WorldActivityMode::resource_activity));
-    lua_setfield(state, input_index, "interaction_mode");
+    lua_setfield(state, input_index, "resource_site");
     lua_pushboolean(
         state, input.scene_id == field_scene_id_value(FieldSceneId::scene_20));
-    lua_setfield(state, input_index, "scene_20");
+    lua_setfield(state, input_index, "correctional_facility");
     lua_pushboolean(
         state, input.field_transition_context ==
                    static_cast<std::uint16_t>(
                        FieldTransitionContext::event_25_special));
-    lua_setfield(state, input_index, "transition_context_25");
+    lua_setfield(state, input_index, "special_activity_context");
     lua_pushboolean(state,
                     field_mode_exit_requested(input.field_global_flags));
     lua_setfield(state, input_index, "field_mode_exit_requested");
@@ -8802,22 +8852,18 @@ GameScriptRuntime::resolve_field_collision_event(
     }
     const auto result_index = lua_absindex(state, -1);
     std::string action_name;
-    std::string event_code_name;
     std::string collision_rewrite;
     FieldMapEventAction action{};
-    FieldCollisionEventCode event_code = FieldCollisionEventCode::event_0;
-    bool mode_event_code_published = false;
+    bool publishes_world_interaction = false;
     bool projected_terrain_event_published = false;
     const bool valid =
         read_field_string(state, result_index, "action", action_name) &&
-        field_map_event_action(action_name, action) &&
-        read_field_string(state, result_index, "event_code",
-                          event_code_name) &&
-        parse_collision_event_name(event_code_name, event_code) &&
+        field_map_event_action(action_name, source_event_code, action) &&
         read_field_string(state, result_index, "collision_rewrite",
                           collision_rewrite) &&
-        read_field_boolean(state, result_index, "mode_event_code_published",
-                           mode_event_code_published) &&
+        read_field_boolean(state, result_index,
+                           "publishes_world_interaction",
+                           publishes_world_interaction) &&
         read_field_boolean(state, result_index,
                            "projected_terrain_event_published",
                            projected_terrain_event_published);
@@ -8825,27 +8871,29 @@ GameScriptRuntime::resolve_field_collision_event(
         return fail("field_events.resolve_collision returned invalid fields");
     }
 
-    const bool rewrites_event_25 =
-        collision_rewrite == "event_25_generic_world_interaction";
-    if ((!rewrites_event_25 && collision_rewrite != "none") ||
-        (rewrites_event_25 &&
+    const bool rewrites_contextual_activity =
+        collision_rewrite == "ordinary_interaction";
+    if ((!rewrites_contextual_activity && collision_rewrite != "none") ||
+        (rewrites_contextual_activity &&
          (source_event_code != FieldCollisionEventCode::event_25 ||
-          event_code != FieldCollisionEventCode::event_8 ||
           (action != FieldMapEventAction::project_world_interaction &&
            action != FieldMapEventAction::begin_field_mode_exit))) ||
-        (!rewrites_event_25 && event_code != source_event_code)) {
+        (action == FieldMapEventAction::begin_event_25_activity &&
+         source_event_code != FieldCollisionEventCode::event_25)) {
         return fail("field_events.resolve_collision returned an invalid collision rewrite");
     }
 
     FieldMapEventPolicyDecision decision{};
     decision.action = action;
     decision.source_event_code = source_event_code;
-    decision.event_code = event_code;
+    decision.event_code = rewrites_contextual_activity
+                              ? FieldCollisionEventCode::event_8
+                              : source_event_code;
     decision.raw_collision_code = input.raw_collision_code;
-    decision.mode_event_code_published = mode_event_code_published;
+    decision.mode_event_code_published = publishes_world_interaction;
     decision.projected_terrain_event_published =
         projected_terrain_event_published;
-    if (rewrites_event_25) {
+    if (rewrites_contextual_activity) {
         decision.raw_collision_code = kEvent25RewrittenCollisionCode;
         decision.rewrite_direction_probe = true;
         decision.direction_probe_value = kEvent25DirectionProbe;

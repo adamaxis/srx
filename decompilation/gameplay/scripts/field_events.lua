@@ -5,43 +5,47 @@
 local Events = {}
 local MovementDirection = require("enums").MovementDirection
 
-local event_code = {}
-for value = 0, 31 do
-    event_code[value] = "event_" .. value
-end
-
 local action = {
     project_world_interaction = "project_world_interaction",
     skip_world_interaction = "skip_world_interaction",
-    begin_event_31_activity = "begin_event_31_activity",
-    begin_event_30_activity = "begin_event_30_activity",
-    begin_event_29_activity = "begin_event_29_activity",
-    begin_event_28_activity = "begin_event_28_activity",
-    begin_event_27_activity = "begin_event_27_activity",
+    begin_world_activity = "begin_world_activity",
     mark_projected_terrain = "mark_projected_terrain",
     begin_maglock_interaction = "begin_maglock_interaction",
     begin_security_terminal = "begin_security_terminal",
-    begin_event_25_activity = "begin_event_25_activity",
+    begin_special_activity = "begin_special_activity",
     begin_field_mode_exit = "begin_field_mode_exit",
 }
 
-local function decision(context, next_action, next_event_code)
+local collision_kind = {
+    empty_world_interaction = true,
+    world_interaction = true,
+    lockable_door = true,
+    security_terminal = true,
+    contextual_activity = true,
+    terrain_marker = true,
+    world_activity = true,
+    activity_transition = true,
+    profiled_contact = true,
+    field_activity = true,
+}
+
+local function decision(next_action, collision_rewrite)
     return {
         action = next_action,
-        event_code = next_event_code or context.event_code,
-        collision_rewrite = "none",
-        mode_event_code_published = false,
+        collision_rewrite = collision_rewrite or "none",
+        publishes_world_interaction = false,
         projected_terrain_event_published = false,
     }
 end
 
 function Events.resolve_collision(context)
     if type(context) ~= "table" or
-       type(context.event_code) ~= "string" or
-       type(context.scene_id) ~= "number" or
-       type(context.interaction_mode) ~= "boolean" or
-       type(context.scene_20) ~= "boolean" or
-       type(context.transition_context_25) ~= "boolean" or
+       context.event_code ~= nil or context.raw_collision_code ~= nil or
+       context.scene_id ~= nil or
+       type(context.collision_kind) ~= "string" or
+       type(context.correctional_facility) ~= "boolean" or
+       type(context.resource_site) ~= "boolean" or
+       type(context.special_activity_context) ~= "boolean" or
        type(context.field_mode_exit_requested) ~= "boolean" or
        type(context.interaction_gate_active) ~= "boolean" or
        type(context.activity_sequence_active) ~= "boolean" or
@@ -52,54 +56,44 @@ function Events.resolve_collision(context)
         return nil
     end
 
-    local code = context.event_code
-    if code == event_code[31] then
-        return decision(context, action.begin_event_31_activity)
-    elseif code == event_code[30] then
-        return decision(context, action.begin_event_30_activity)
-    elseif code == event_code[29] then
+    local kind = context.collision_kind
+    if not collision_kind[kind] then
+        return nil
+    end
+    if kind == "field_activity" or kind == "profiled_contact" or
+       kind == "world_activity" then
+        return decision(action.begin_world_activity)
+    elseif kind == "activity_transition" then
         if context.activity_sequence_active then
-            return decision(context, action.skip_world_interaction)
+            return decision(action.skip_world_interaction)
         end
-        return decision(context, action.begin_event_29_activity)
-    elseif code == event_code[28] then
-        if context.activity_sequence_active then
-            return decision(context, action.skip_world_interaction)
-        end
-        return decision(context, action.begin_event_28_activity)
-    elseif code == event_code[27] then
-        return decision(context, action.begin_event_27_activity)
-    elseif code == event_code[26] then
-        local result = decision(context, action.mark_projected_terrain)
+        return decision(action.begin_world_activity)
+    elseif kind == "terrain_marker" then
+        local result = decision(action.mark_projected_terrain)
         result.projected_terrain_event_published =
             context.terrain_marker_publish_allowed
         return result
     end
 
-    local is_maglock_selection =
-        code == event_code[2] or code == event_code[3] or
-        code == event_code[4] or code == event_code[5]
-    -- ROM 0xB7B8 selects the shared 0x20E48 lock prompt for events 2..5
-    -- only while FFE17F is clear. When maglocks are disabled, fall through
-    -- to the ordinary world-interaction path below.
-    if (context.scene_20 or context.interaction_mode) and
-       is_maglock_selection and not context.terrain_event_suppressed and
+    -- The native boundary only labels a collision a lockable door after its
+    -- source scene/mode context selects the shared lock prompt.
+    if kind == "lockable_door" and
+       not context.terrain_event_suppressed and
        context.maglocks_disabled ~= true then
-        return decision(context, action.begin_maglock_interaction)
+        return decision(action.begin_maglock_interaction)
     end
 
-    if code == event_code[24] then
-        return decision(context, action.begin_security_terminal)
+    if kind == "security_terminal" then
+        return decision(action.begin_security_terminal)
     end
 
-    local result = decision(context, action.project_world_interaction)
-    if code == event_code[25] then
-        if context.transition_context_25 then
-            result.action = action.begin_event_25_activity
+    local result = decision(action.project_world_interaction)
+    if kind == "contextual_activity" then
+        if context.special_activity_context then
+            result.action = action.begin_special_activity
             return result
         end
-        result.collision_rewrite = "event_25_generic_world_interaction"
-        result.event_code = event_code[8]
+        result.collision_rewrite = "ordinary_interaction"
     end
 
     if context.field_mode_exit_requested then
@@ -107,9 +101,9 @@ function Events.resolve_collision(context)
         return result
     end
 
-    result.mode_event_code_published = true
-    if context.interaction_mode and not context.scene_20 and
-       result.event_code == event_code[0] and
+    result.publishes_world_interaction = true
+    if context.resource_site and not context.correctional_facility and
+       kind == "empty_world_interaction" and
        (context.interaction_gate_active or
         context.activity_sequence_active) then
         result.action = action.skip_world_interaction

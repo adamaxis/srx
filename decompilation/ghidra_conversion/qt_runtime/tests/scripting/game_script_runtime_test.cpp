@@ -5228,7 +5228,7 @@ int main() {
                         FieldCollisionEventCode::event_31 &&
                     collision_decision->event_code ==
                         FieldCollisionEventCode::event_31,
-                "Lua must map event 31 to its typed activity action")) {
+                "field activity semantics must resolve to the native continuation")) {
         std::cerr << scripts.failure() << '\n';
         return 3;
     }
@@ -5461,6 +5461,20 @@ int main() {
         return 17;
     }
     collision_input = collision(FieldCollisionEventCode::event_1);
+    // [C] ROM 0xB7B8's retry gate is restricted to low-five-bit identity 0;
+    // other world interactions keep their normal projected interaction path.
+    collision_input.world_mode = 2U;
+    collision_input.interaction_gate = 1U;
+    collision_decision =
+        scripts.resolve_field_collision_event(collision_input);
+    if (!expect(collision_decision.has_value() &&
+                    collision_decision->action ==
+                        FieldMapEventAction::project_world_interaction &&
+                    collision_decision->mode_event_code_published,
+                "the resource-site retry gate must not suppress nonzero world interactions")) {
+        std::cerr << scripts.failure() << '\n';
+        return 117;
+    }
     collision_input.field_global_flags = 80U;
     collision_decision =
         scripts.resolve_field_collision_event(collision_input);
