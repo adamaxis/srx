@@ -84,6 +84,106 @@ constexpr std::array<std::array<int, 2>, 12> kHospitalRandomGridOrigins{{
     {{56, 200}}, {{200, 200}}, {{56, 208}}, {{200, 208}},
 }};
 
+using ScriptValue = scripting::ScriptPersistentValue;
+
+ScriptValue script_integer_value(const std::int64_t value) {
+    ScriptValue result;
+    result.value = value;
+    return result;
+}
+
+ScriptValue script_number_value(const double value) {
+    ScriptValue result;
+    result.value = value;
+    return result;
+}
+
+ScriptValue script_boolean_value(const bool value) {
+    ScriptValue result;
+    result.value = value;
+    return result;
+}
+
+ScriptValue script_text_value(const std::string_view value) {
+    ScriptValue result;
+    result.value = std::string(value);
+    return result;
+}
+
+ScriptValue script_object_value(ScriptValue::Object value) {
+    ScriptValue result;
+    result.value = std::move(value);
+    return result;
+}
+
+const ScriptValue* script_member(const ScriptValue& value,
+                                const std::string_view name) {
+    const auto* object = std::get_if<ScriptValue::Object>(&value.value);
+    if (object == nullptr) return nullptr;
+    const auto found = object->find(std::string(name));
+    return found == object->end() ? nullptr : &found->second;
+}
+
+std::optional<std::int64_t> script_integer(const ScriptValue* value) {
+    if (value == nullptr) return std::nullopt;
+    const auto* integer = std::get_if<std::int64_t>(&value->value);
+    return integer == nullptr ? std::nullopt
+                              : std::optional<std::int64_t>(*integer);
+}
+
+std::optional<double> script_number(const ScriptValue* value) {
+    if (value == nullptr) return std::nullopt;
+    if (const auto* number = std::get_if<double>(&value->value)) {
+        return *number;
+    }
+    if (const auto* integer = std::get_if<std::int64_t>(&value->value)) {
+        return static_cast<double>(*integer);
+    }
+    return std::nullopt;
+}
+
+std::optional<bool> script_boolean(const ScriptValue* value) {
+    if (value == nullptr) return std::nullopt;
+    const auto* boolean = std::get_if<bool>(&value->value);
+    return boolean == nullptr ? std::nullopt
+                              : std::optional<bool>(*boolean);
+}
+
+std::optional<std::string_view> script_text(const ScriptValue* value) {
+    if (value == nullptr) return std::nullopt;
+    const auto* string = std::get_if<std::string>(&value->value);
+    return string == nullptr ? std::nullopt
+                             : std::optional<std::string_view>(*string);
+}
+
+const ScriptValue::Array* script_array(const ScriptValue* value) {
+    return value == nullptr
+        ? nullptr
+        : std::get_if<ScriptValue::Array>(&value->value);
+}
+
+struct DoorReturnSide {
+    std::string_view id;
+    std::uint8_t source_index;
+};
+
+DoorReturnSide door_return_side_from_collision_samples(
+    const std::array<std::uint8_t, 3>& samples) {
+    // The collision adapter translates ROM 0xB7B8/0xBC52 into a named side
+    // here. Gameplay Lua receives only that side, never collision bytes.
+    auto selected = samples.back();
+    for (const auto sample : samples) {
+        if ((sample & 0x80U) != 0U) {
+            selected = sample;
+            break;
+        }
+    }
+    constexpr std::array<std::string_view, 4> sides{
+        "north", "east", "south", "west"};
+    const auto index = static_cast<std::uint8_t>((selected >> 5U) & 0x03U);
+    return DoorReturnSide{sides[index], index};
+}
+
 } // namespace
 
 bool FieldSceneRuntime::prepare_runtime_field_scene(
@@ -750,59 +850,106 @@ void FieldSceneRuntime::handle_game_script_task_step(
 }
 
 void FieldSceneRuntime::record_field_door_contact(
-    const std::array<std::uint8_t, 3>& probe_bytes) {
-    const auto result = game_scripts_.call_integers(
-        "world_links", "door_contact_flat",
-        {static_cast<std::int64_t>(field_movement_transition_state_.world_mode),
-         static_cast<std::int64_t>(field_entity_.world_position.x),
-         static_cast<std::int64_t>(field_entity_.world_position.y),
-         static_cast<std::int64_t>(static_cast<std::uint16_t>(
-             state_.field_scene_buffers.camera_x)),
-         static_cast<std::int64_t>(static_cast<std::uint16_t>(
-             state_.field_scene_buffers.camera_y)),
-         probe_bytes[0], probe_bytes[1], probe_bytes[2]});
-    if (!result.has_value() || result->size() < 3U) {
+    const std::array<std::uint8_t, 3>& collision_samples) {
+    const auto side = door_return_side_from_collision_samples(collision_samples);
+    const auto result = game_scripts_.call_value(
+        "world_links", "door_contact",
+        {script_object_value({
+            {"outdoor_field", script_boolean_value(
+                                  field_movement_transition_state_.world_mode ==
+                                  0U)},
+            {"return_side", script_text_value(side.id)},
+            {"lead", script_object_value({
+                {"x", script_integer_value(field_entity_.world_position.x)},
+                {"y", script_integer_value(field_entity_.world_position.y)}})},
+            {"camera", script_object_value({
+                {"x", script_integer_value(static_cast<std::uint16_t>(
+                             state_.field_scene_buffers.camera_x))},
+                {"y", script_integer_value(static_cast<std::uint16_t>(
+                             state_.field_scene_buffers.camera_y))}})},
+        })});
+    const auto saved = result.has_value()
+        ? script_boolean(script_member(*result, "saved"))
+        : std::nullopt;
+    if (!result.has_value()) {
         failure_ = game_scripts_.failure();
         source_boundary("field.door.contact_script_failed");
         return;
     }
-    // D4 is written before the FFDF40 test, so the row updates even when
-    // the return point is kept (saved == 0 away from the outdoor field).
+    if (!saved.has_value()) {
+        failure_ = "world_links.door_contact returned no saved flag";
+        source_boundary("field.door.contact_script_failed");
+        return;
+    }
     field_collision_probe_state_.selected_offset_bank =
-        static_cast<std::uint8_t>((*result)[1]);
-    if ((*result)[0] == 0 || result->size() < 11U) {
+        side.source_index;
+    if (!*saved) {
+        return;
+    }
+    const auto* party = script_array(script_member(*result, "party"));
+    const auto* camera = script_member(*result, "camera");
+    const auto camera_x = camera == nullptr
+        ? std::nullopt : script_integer(script_member(*camera, "x"));
+    const auto camera_y = camera == nullptr
+        ? std::nullopt : script_integer(script_member(*camera, "y"));
+    if (party == nullptr || party->size() !=
+            field_collision_probe_state_.points.size() ||
+        !camera_x.has_value() || !camera_y.has_value()) {
+        failure_ = "world_links.door_contact returned an invalid placement";
+        source_boundary("field.door.contact_script_failed");
         return;
     }
     for (std::size_t index = 0U;
          index < field_collision_probe_state_.points.size(); ++index) {
+        const auto x = script_integer(script_member(party->at(index), "x"));
+        const auto y = script_integer(script_member(party->at(index), "y"));
+        if (!x.has_value() || !y.has_value()) {
+            failure_ = "world_links.door_contact returned an invalid party point";
+            source_boundary("field.door.contact_script_failed");
+            return;
+        }
         field_collision_probe_state_.points[index] = CollisionProbePoint{
-            static_cast<std::uint16_t>((*result)[3U + index * 2U]),
-            static_cast<std::uint16_t>((*result)[4U + index * 2U])};
+            static_cast<std::uint16_t>(*x),
+            static_cast<std::uint16_t>(*y)};
     }
     field_collision_probe_state_.camera_x =
-        static_cast<std::uint16_t>((*result)[9]);
+        static_cast<std::uint16_t>(*camera_x);
     field_collision_probe_state_.camera_y =
-        static_cast<std::uint16_t>((*result)[10]);
+        static_cast<std::uint16_t>(*camera_y);
     field_collision_probe_state_.initialized = true;
 }
 
 std::uint16_t FieldSceneRuntime::field_door_exit_heading(
     const std::uint16_t entry_heading) {
-    // E.LinkFacing: PRESERVE_ENTRY = 0, FACE_AWAY = 1.
-    const std::int64_t facing =
+    const std::string_view facing_policy =
         pending_field_return_facing_ ==
                 FieldLocationReturnFacing::face_away_from_entry
-            ? 1
-            : 0;
-    const auto result = game_scripts_.call_integers(
-        "world_links", "exit_heading_flat",
-        {facing, static_cast<std::int64_t>(entry_heading)});
-    if (!result.has_value() || result->size() != 1U) {
-        failure_ = game_scripts_.failure();
-        source_boundary("field.door.exit_heading_script_failed");
+            ? "face_away_from_entry"
+            : "preserve_entry";
+    constexpr double kDegreesPerTurn = 360.0;
+    constexpr double kUnitsPerTurn = 65536.0;
+    const auto entry_bearing =
+        static_cast<double>(entry_heading) * kDegreesPerTurn / kUnitsPerTurn;
+    const auto result = game_scripts_.call_value(
+        "world_links", "exit_bearing",
+        {script_object_value({
+            {"facing_policy", script_text_value(facing_policy)},
+            {"entry_bearing_degrees", script_number_value(entry_bearing)},
+        })});
+    const auto bearing = result.has_value()
+        ? script_number(script_member(*result, "bearing_degrees"))
+        : std::nullopt;
+    if (!bearing.has_value() || !std::isfinite(*bearing) ||
+        *bearing < 0.0 || *bearing >= kDegreesPerTurn) {
+        failure_ = result.has_value()
+            ? "world_links.exit_bearing returned an invalid bearing"
+            : game_scripts_.failure();
+        source_boundary("field.door.exit_bearing_script_failed");
         return entry_heading;
     }
-    return static_cast<std::uint16_t>((*result)[0]);
+    const auto host_heading = static_cast<std::int64_t>(
+        std::llround(*bearing * kUnitsPerTurn / kDegreesPerTurn));
+    return static_cast<std::uint16_t>(host_heading);
 }
 
 void FieldSceneRuntime::save_field_door_return_point() {
@@ -825,7 +972,7 @@ void FieldSceneRuntime::save_field_door_return_point() {
     }
     field_door_return_point_.lead = field_door_return_point_.party[0U];
     // The entity-owned link chooses whether to retain its entry heading or
-    // resume facing away from the doorway (Lua world_links.exit_heading).
+    // resume facing away from the doorway (Lua world_links.exit_bearing).
     field_door_return_point_.heading =
         field_door_exit_heading(field_movement_state_.heading);
     field_door_return_point_.camera_x =

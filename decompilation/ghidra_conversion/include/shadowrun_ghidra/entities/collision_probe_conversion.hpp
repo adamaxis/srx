@@ -26,8 +26,8 @@ struct CollisionProbeState {
 using CollisionProbeOffsetBank =
     std::array<std::array<CollisionProbeOffset, 3>, 4>;
 
-// ROM 0xBC36 door-contact math (row from FFEF10..12, 0xBD34 offsets, the
-// FFDF40 gate) lives in Lua world_links.door_contact. CollisionProbeState is
-// only the host mirror of the FFDF44..52 record it returns.
+// The gameplay layer expresses door contact with a named side, map position,
+// and camera position. Lua applies the imported party formation; this state
+// stores the resulting host positions for scene transitions.
 
 } // namespace shadowrun::ghidra_conversion

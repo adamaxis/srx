@@ -56,8 +56,8 @@ int main() {
         return 2;
     }
 
-    // Exits are Lua-resolved (world_links.cave_exit_flat); vectors mirror
-    // world_links_tests.lua. FFFBF9=8, FFFC10=0 → mode 5, scene 0x2D, select 1, pair 0x5E00/0x2280.
+    // The native adapter maps the source exit event to north; the imported
+    // room model resolves scene and arrival. Vectors mirror world_links_tests.lua.
     const auto street = advance_field_mode_transition(
         {8U, 0, 0U, FieldModeTransitionExit{5, 0x2DU, 0x5E00U, 0x2280U}}, {});
     if (!expect(street.resolved && street.next_mode_index == 5 &&

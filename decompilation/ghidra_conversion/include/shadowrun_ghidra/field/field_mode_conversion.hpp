@@ -48,14 +48,14 @@ void initialize_field_mode(
     FieldModeProfile profile,
     const FieldModeInitializationCallbacks& callbacks);
 
-// ROM 0x2E72/0x2E42/0x2ED2/0x2D92 room graph tables live only in Lua
-// (world_links.cave_exit_flat, data/world_links_data.lua room_graph). The
-// host resolves FFFBF9/FFFC10 there and passes the exit in.
+// The offline importer resolves ROM room tables 0x2E42/0x2E72/0x2ED2/0x2D92
+// into named Lua exits with destination positions. The host translates the
+// movement event into a compass direction and passes the resolved exit in.
 struct FieldModeTransitionExit {
-    std::int16_t next_mode_index = 0; // FFFC10 (0x2E72 byte, EXT.W)
-    std::uint16_t scene_id = 0; // FFDDC4 (0x2E42)
-    std::uint16_t override_x = 0; // FFE10A (0x2D92 pair)
-    std::uint16_t override_y = 0; // FFE10C
+    std::int16_t next_room = 0;
+    std::uint16_t destination_scene = 0;
+    std::uint16_t arrival_x = 0;
+    std::uint16_t arrival_y = 0;
 };
 
 enum class FieldModePendingActivity {

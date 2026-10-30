@@ -8113,20 +8113,76 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
         };
     field_runtime_callbacks_.advance_field_mode_transition =
         [this](integration::FieldRuntimeCoordinatorState& runtime) {
-            // Lua world_links owns the 0x2CE0 room graph (sole source); the
-            // converted routine keeps only the mode 0x13 activity gate.
-            const auto lua_exit = game_scripts_.call_integers(
-                "world_links", "cave_exit_flat",
-                {static_cast<std::int64_t>(runtime.transition_context),
-                 static_cast<std::int64_t>(runtime.mode_event_code)});
+            // Convert the source zone event into a compass exit at the host
+            // boundary. Lua receives a room and a named direction; the
+            // offline-imported room model supplies the resolved destination.
+            std::optional<std::string_view> exit_direction;
+            switch (runtime.mode_event_code) {
+            case 8U: exit_direction = "north"; break;
+            case 9U: exit_direction = "east"; break;
+            case 10U: exit_direction = "south"; break;
+            case 11U: exit_direction = "west"; break;
+            default: break;
+            }
+            std::optional<scripting::ScriptPersistentValue> lua_exit;
+            if (exit_direction.has_value()) {
+                scripting::ScriptPersistentValue context;
+                context.value = scripting::ScriptPersistentValue::Object{
+                    {"room", static_cast<std::int64_t>(
+                                 runtime.transition_context)},
+                    {"direction", std::string(*exit_direction)}};
+                lua_exit = game_scripts_.call_value(
+                    "world_links", "cave_exit", {std::move(context)});
+            }
             std::optional<FieldModeTransitionExit> exit;
-            if (lua_exit.has_value() && lua_exit->size() == 4U &&
-                (*lua_exit)[0] >= 0) {
+            const auto* exit_object = lua_exit.has_value()
+                ? std::get_if<scripting::ScriptPersistentValue::Object>(
+                      &lua_exit->value)
+                : nullptr;
+            const auto read_integer = [exit_object](const char* field)
+                -> std::optional<std::int64_t> {
+                if (exit_object == nullptr) return std::nullopt;
+                const auto found = exit_object->find(field);
+                if (found == exit_object->end()) return std::nullopt;
+                const auto* value = std::get_if<std::int64_t>(
+                    &found->second.value);
+                return value == nullptr
+                    ? std::nullopt
+                    : std::optional<std::int64_t>(*value);
+            };
+            const auto* arrival_value = [&]() -> const scripting::
+                ScriptPersistentValue* {
+                if (exit_object == nullptr) return nullptr;
+                const auto found = exit_object->find("arrival");
+                return found == exit_object->end()
+                    ? nullptr : &found->second;
+            }();
+            const auto* arrival = arrival_value == nullptr
+                ? nullptr
+                : std::get_if<scripting::ScriptPersistentValue::Object>(
+                      &arrival_value->value);
+            const auto read_arrival = [arrival](const char* field)
+                -> std::optional<std::int64_t> {
+                if (arrival == nullptr) return std::nullopt;
+                const auto found = arrival->find(field);
+                if (found == arrival->end()) return std::nullopt;
+                const auto* value = std::get_if<std::int64_t>(
+                    &found->second.value);
+                return value == nullptr
+                    ? std::nullopt
+                    : std::optional<std::int64_t>(*value);
+            };
+            const auto destination_room = read_integer("room");
+            const auto destination_scene = read_integer("scene");
+            const auto arrival_x = read_arrival("x");
+            const auto arrival_y = read_arrival("y");
+            if (destination_room.has_value() && destination_scene.has_value() &&
+                arrival_x.has_value() && arrival_y.has_value()) {
                 exit = FieldModeTransitionExit{
-                    static_cast<std::int16_t>((*lua_exit)[0]),
-                    static_cast<std::uint16_t>((*lua_exit)[1]),
-                    static_cast<std::uint16_t>((*lua_exit)[2]),
-                    static_cast<std::uint16_t>((*lua_exit)[3])};
+                    static_cast<std::int16_t>(*destination_room),
+                    static_cast<std::uint16_t>(*destination_scene),
+                    static_cast<std::uint16_t>(*arrival_x),
+                    static_cast<std::uint16_t>(*arrival_y)};
             }
             const auto plan = advance_field_mode_transition(
                 FieldModeTransitionInput{
@@ -8163,7 +8219,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                             "field.mode_transition.schedule_timeout");
                     }});
             if (!exit.has_value()) {
-                source_boundary("field.mode_transition.lua_room_graph_missing");
+                source_boundary("field.mode_transition.cave_exit_missing");
             }
             if (!plan.resolved || !plan.spawn_position_available ||
                 !field_session_source_assets_ ||
@@ -8181,7 +8237,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                 source_boundary("field.mode_transition.actor_list_missing");
                 return false;
             }
-            source_boundary("field.mode_transition.lua_room_graph_selected");
+            source_boundary("field.mode_transition.cave_exit_resolved");
             runtime.transition_context = plan.next_mode_index;
             runtime.scene_id = plan.scene_id;
             field_movement_transition_state_.field_transition_context =
@@ -11129,14 +11185,13 @@ bool FieldSceneRuntime::recover_blocked_field_movement(
     EntityMovementModeTransitionCallbacks transition_callbacks{};
     transition_callbacks.build_collision_probe_points = [this](
                                                                EntityBehaviorFrameRecord&) {
-        const std::array<std::uint8_t, 3> probe_bytes{
+        const std::array<std::uint8_t, 3> collision_samples{
             field_terrain_sample_state_[0], field_terrain_sample_state_[1],
             field_terrain_sample_state_[2]};
-        // ROM 0xB834 -> 0xBC36 at every door contact. Lua world_links picks
-        // the door row from the probe codes and, in the outdoor field,
-        // returns the FFDF44..4E party points and FFDF50/52 camera. The
-        // host only mirrors that RAM record; it has no copy of the math.
-        record_field_door_contact(probe_bytes);
+        // The collision adapter turns its sampled result into a named return
+        // side. Lua world_links applies that side's party formation to the
+        // current map point and camera through a structured context.
+        record_field_door_contact(collision_samples);
         return MovementProjectionPreparation{
             field_collision_probe_state_.selected_offset_bank};
     };

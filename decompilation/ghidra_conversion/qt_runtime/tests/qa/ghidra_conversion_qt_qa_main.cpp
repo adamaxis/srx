@@ -9889,8 +9889,7 @@ int run_field_scene20_physical_entry_qa(
             !write_exit_state("scene2-return", "none") ||
             !save("scene20-c0-scene2-return") || !save("actual")) {
             std::cerr << "Scene-20 C0 QA: event 0 did not restore the "
-                         "Lua-selected source collision-probe anchor and "
-                         "away-facing pose\n";
+                         "door-contact return anchor and away-facing pose\n";
             return 3;
         }
 
@@ -34517,9 +34516,9 @@ int run_field_mode_13_entry_qa(
     const auto selected = std::find(
         source_boundaries.begin(), source_boundaries.end(),
         "field.mode_transition.destination_selected");
-    const auto lua_graph = std::find(
+    const auto cave_exit_resolved = std::find(
         source_boundaries.begin(), source_boundaries.end(),
-        "field.mode_transition.lua_room_graph_selected");
+        "field.mode_transition.cave_exit_resolved");
     const auto queued = std::find(
         source_boundaries.begin(), source_boundaries.end(),
         "field.world_activity.pending_activity_group_queued");
@@ -34533,7 +34532,7 @@ int run_field_mode_13_entry_qa(
                 .world_activity_countdown == 0U ||
         runner.x != 0x5E80U || runner.y != 0x1300U || !actors_match ||
         selected == source_boundaries.end() || queued == source_boundaries.end() ||
-        lua_graph == source_boundaries.end() ||
+        cave_exit_resolved == source_boundaries.end() ||
         entry_image.size() != QSize(kSceneWidth, kSceneHeight) ||
         !entry_image.save(QString::fromStdWString(entry_image_path.wstring()))) {
         std::cerr << "Mode-13 entry QA: ROM-selected Scene 47 route failed "

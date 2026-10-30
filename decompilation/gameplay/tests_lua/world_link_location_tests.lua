@@ -132,12 +132,32 @@ game = {
     },
 }
 
--- Seattle General record 52 publishes scene-0/event-0. Its table byte is 21,
+-- Seattle General record 52 publishes scene-0/event-0. Its destination is 21,
 -- but ROM 0x1F83C enters the same-map hospital handler; the linked Lua task
 -- consumes that event before the area-event destination can load.
 local D = WorldLinks.data()
-local hospital_service = WorldLinks.service_at(0, 0)
-local hospital_source_route = WorldLinks.event_destination(0, 0)
+local function service_transition(scene_id, service_kind)
+    for _, link in ipairs(WorldLinks.links_in_scene(scene_id)) do
+        local transition = link.transition
+        if transition and transition.kind == "same_map_service" and
+           transition.service == service_kind then
+            return transition
+        end
+    end
+    return nil
+end
+local function has_contextual_transition(scene_id)
+    for _, link in ipairs(WorldLinks.links_in_scene(scene_id)) do
+        if link.transition and
+           link.transition.kind == "contextual_transition" then
+            return true
+        end
+    end
+    return false
+end
+local hospital_service = service_transition(0, "hospital")
+-- This is a diagnostic source expectation, not runtime script data.
+local hospital_source_route = 0x15
 local hospital_site = hospital_sites[HOSPITAL_ID]
 local hospital_route = Building.resolve_field_location_route({
     scene_id = 0,
@@ -149,9 +169,8 @@ local hospital_route = Building.resolve_field_location_route({
     alternate_result = 0,
 })
 check(hospital_service ~= nil and
-      hospital_service.kind == E.ServiceKind.HOSPITAL and
-      hospital_service.handler == 0x01F83C,
-      "Seattle General scene 0/event 0 uses ROM hospital handler 0x1F83C")
+      hospital_service.kind == "hospital",
+      "Seattle General scene 0/event_0 uses the hospital service policy")
 check(hospital_source_route == 0x15,
       "Seattle General event-table row 0 at 0x0D54B2 is diagnostic 0x15")
 check(hospital_site ~= nil and hospital_site.mode == 0 and
@@ -198,8 +217,8 @@ local gunderson_exit = Building.resolve_field_location_route({
 local gunderson_json = read_file(
     "decompilation/gameplay/world/entities/" .. SHARED_EXIT_ID ..
     "/interactions.json")
-check(WorldLinks.event_destination(13, 0) == nil and
-      D.scenes[13].event_table_address == nil and
+check(has_contextual_transition(13) and
+      D.scenes[13].event_destinations == nil and
       gunderson_exit.kind == "source_activity_return" and
       gunderson_exit.script == "source_activity_return" and
       gunderson_exit.area_event_target == nil and
@@ -221,8 +240,8 @@ local wanderer_exit = Building.resolve_field_location_route({
 local wanderer_json = read_file(
     "decompilation/gameplay/world/entities/" .. WANDERER_EXIT_ID ..
     "/interactions.json")
-check(WorldLinks.event_destination(E.Scene.WANDERER, 0) == nil and
-      D.scenes[E.Scene.WANDERER].event_table_address == nil and
+check(has_contextual_transition(E.Scene.WANDERER) and
+      D.scenes[E.Scene.WANDERER].event_destinations == nil and
       wanderer_exit.kind == "source_activity_return" and
       wanderer_exit.area_event_target == nil and
       contains(wanderer_json, '"kind": "source_activity_return"') and

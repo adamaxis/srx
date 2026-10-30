@@ -722,8 +722,8 @@ bool FieldSceneRuntime::dispatch_field_interaction_through_coordinator_for_dump(
 
 #ifdef SHADOWRUN_QT_QA_DRIVER
 void FieldSceneRuntime::seed_field_door_contact_for_dump(
-    const std::array<std::uint8_t, 3> probe_codes) {
-    record_field_door_contact(probe_codes);
+    const std::array<std::uint8_t, 3> collision_samples) {
+    record_field_door_contact(collision_samples);
 }
 
 bool FieldSceneRuntime::initialize_world_activity_for_dump(

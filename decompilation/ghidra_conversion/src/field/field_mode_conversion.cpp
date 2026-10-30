@@ -36,10 +36,10 @@ FieldModeTransitionPlan advance_field_mode_transition(
     if (!input.exit.has_value()) {
         return plan;
     }
-    plan.next_mode_index = input.exit->next_mode_index;
-    plan.scene_id = input.exit->scene_id;
-    plan.override_x = input.exit->override_x;
-    plan.override_y = input.exit->override_y;
+    plan.next_mode_index = input.exit->next_room;
+    plan.scene_id = input.exit->destination_scene;
+    plan.override_x = input.exit->arrival_x;
+    plan.override_y = input.exit->arrival_y;
     plan.spawn_position_available = true;
     plan.resolved = true;
     if (plan.next_mode_index == 0x13 &&

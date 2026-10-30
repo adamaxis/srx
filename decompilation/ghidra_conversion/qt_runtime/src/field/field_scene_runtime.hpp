@@ -596,7 +596,7 @@ public:
         return field_collision_probe_state_;
     }
     void seed_field_door_contact_for_dump(
-        std::array<std::uint8_t, 3> probe_codes);
+        std::array<std::uint8_t, 3> collision_samples);
 #endif
     bool open_attributes_skills_for_dump();
     bool attributes_skills_menu_open() const noexcept {
@@ -2764,7 +2764,7 @@ private:
     mutable QImage field_door_return_modal_frame_;
     void save_field_door_return_point();
     void record_field_door_contact(
-        const std::array<std::uint8_t, 3>& probe_bytes);
+        const std::array<std::uint8_t, 3>& collision_samples);
     std::uint16_t field_door_exit_heading(std::uint16_t entry_heading);
     void begin_field_door_return();
     void place_party_at_field_door_return_point();

@@ -259,12 +259,6 @@ enum class DisplayBlank : std::int64_t {
     OFF = 0x8134,
     ON = 0x8174,
 };
-enum class DoorRow : std::int64_t {
-    UP = 0x0,
-    RIGHT = 0x1,
-    DOWN = 0x2,
-    LEFT = 0x3,
-};
 enum class EndingState : std::int64_t {
     NONE = 0x0,
     FINAL_FIGHT = 0x3,
@@ -459,20 +453,6 @@ enum class KarmaUpgrade : std::int64_t {
     UNKNOWN_SPECIES = 0x3,
     CLASS_RESTRICTED = 0x4,
     AT_LIMIT = 0x5,
-};
-enum class LinkCode : std::int64_t {
-    ROW_MASK = 0x3,
-    ROW_SHIFT = 0x5,
-    EVENT_MASK = 0x1F,
-    LINK = 0x80,
-};
-enum class LinkFacing : std::int64_t {
-    PRESERVE_ENTRY = 0x0,
-    FACE_AWAY = 0x1,
-};
-enum class LinkReturn : std::int64_t {
-    SERVICE = 0x1,
-    INTERIOR = 0x2,
 };
 enum class MatrixDeckMode : std::int64_t {
     BALANCED = 0x0,
