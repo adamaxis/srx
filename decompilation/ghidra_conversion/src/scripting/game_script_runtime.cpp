@@ -47,6 +47,11 @@ constexpr std::uint8_t kRunnerDead = 0x40U;
 constexpr double kDegreesPerTurn = 360.0;
 constexpr double kSourceHeadingUnitsPerTurn = 65536.0;
 constexpr double kWorldCoordinatePeriod = 65536.0;
+// ROM 0xB7B8 consumes these encodings. Keep them in the native adapter;
+// field_events.lua receives only the resulting event facts and rewrite intent.
+constexpr std::uint8_t kTerrainMarkerSuppressionByte = 0xDAU;
+constexpr std::uint16_t kEvent25RewrittenCollisionCode = 0x00A8U;
+constexpr std::int8_t kEvent25DirectionProbe = -0x58;
 
 // ROM turn units stay inside the native adapter. Lua receives a bearing in
 // degrees clockwise from north and returns that same semantic quantity.
@@ -8542,8 +8547,6 @@ GameScriptRuntime::resolve_field_collision_event(
     lua_pushlstring(state, source_event_name.c_str(),
                     source_event_name.size());
     lua_setfield(state, input_index, "event_code");
-    lua_pushinteger(state, input.raw_collision_code);
-    lua_setfield(state, input_index, "raw_collision_code");
     lua_pushinteger(state, input.scene_id);
     lua_setfield(state, input_index, "scene_id");
     lua_pushboolean(
@@ -8567,8 +8570,12 @@ GameScriptRuntime::resolve_field_collision_event(
     lua_setfield(state, input_index, "activity_sequence_active");
     lua_pushboolean(state, input.terrain_event_suppressed);
     lua_setfield(state, input_index, "terrain_event_suppressed");
-    lua_pushboolean(state, input.world_effect_control_bit);
-    lua_setfield(state, input_index, "world_effect_control_bit");
+    const bool terrain_marker_publish_allowed =
+        (input.raw_collision_code & 0x00FFU) !=
+            kTerrainMarkerSuppressionByte &&
+        !input.world_effect_control_bit;
+    lua_pushboolean(state, terrain_marker_publish_allowed);
+    lua_setfield(state, input_index, "terrain_marker_publish_allowed");
     if (input.maglocks_disabled.has_value()) {
         lua_pushboolean(state, *input.maglocks_disabled);
     } else {
@@ -8586,55 +8593,55 @@ GameScriptRuntime::resolve_field_collision_event(
     const auto result_index = lua_absindex(state, -1);
     std::string action_name;
     std::string event_code_name;
-    std::uint32_t raw_collision_code = 0U;
-    std::uint32_t quantized_delta = 0U;
-    int direction_probe_value = 0;
+    std::string collision_rewrite;
     FieldMapEventAction action{};
     FieldCollisionEventCode event_code = FieldCollisionEventCode::event_0;
     bool mode_event_code_published = false;
     bool projected_terrain_event_published = false;
-    bool rewrite_direction_probe = false;
-    bool rewrite_quantized_delta = false;
     const bool valid =
         read_field_string(state, result_index, "action", action_name) &&
         field_map_event_action(action_name, action) &&
         read_field_string(state, result_index, "event_code",
                           event_code_name) &&
         parse_collision_event_name(event_code_name, event_code) &&
-        read_field_integer(state, result_index, "raw_collision_code",
-                           65535U, raw_collision_code) &&
+        read_field_string(state, result_index, "collision_rewrite",
+                          collision_rewrite) &&
         read_field_boolean(state, result_index, "mode_event_code_published",
                            mode_event_code_published) &&
         read_field_boolean(state, result_index,
                            "projected_terrain_event_published",
-                           projected_terrain_event_published) &&
-        read_field_boolean(state, result_index, "rewrite_direction_probe",
-                           rewrite_direction_probe) &&
-        read_field_signed_integer(state, result_index,
-                                  "direction_probe_value", -128, 127,
-                                  direction_probe_value) &&
-        read_field_boolean(state, result_index, "rewrite_quantized_delta",
-                           rewrite_quantized_delta) &&
-        read_field_integer(state, result_index, "quantized_delta", 65535U,
-                           quantized_delta);
+                           projected_terrain_event_published);
     if (!valid) {
         return fail("field_events.resolve_collision returned invalid fields");
+    }
+
+    const bool rewrites_event_25 =
+        collision_rewrite == "event_25_generic_world_interaction";
+    if ((!rewrites_event_25 && collision_rewrite != "none") ||
+        (rewrites_event_25 &&
+         (source_event_code != FieldCollisionEventCode::event_25 ||
+          event_code != FieldCollisionEventCode::event_8 ||
+          (action != FieldMapEventAction::project_world_interaction &&
+           action != FieldMapEventAction::begin_field_mode_exit))) ||
+        (!rewrites_event_25 && event_code != source_event_code)) {
+        return fail("field_events.resolve_collision returned an invalid collision rewrite");
     }
 
     FieldMapEventPolicyDecision decision{};
     decision.action = action;
     decision.source_event_code = source_event_code;
     decision.event_code = event_code;
-    decision.raw_collision_code =
-        static_cast<std::uint16_t>(raw_collision_code);
+    decision.raw_collision_code = input.raw_collision_code;
     decision.mode_event_code_published = mode_event_code_published;
     decision.projected_terrain_event_published =
         projected_terrain_event_published;
-    decision.rewrite_direction_probe = rewrite_direction_probe;
-    decision.direction_probe_value =
-        static_cast<std::int8_t>(direction_probe_value);
-    decision.rewrite_quantized_delta = rewrite_quantized_delta;
-    decision.quantized_delta = static_cast<std::uint16_t>(quantized_delta);
+    if (rewrites_event_25) {
+        decision.raw_collision_code = kEvent25RewrittenCollisionCode;
+        decision.rewrite_direction_probe = true;
+        decision.direction_probe_value = kEvent25DirectionProbe;
+        decision.rewrite_quantized_delta = true;
+        decision.quantized_delta = kEvent25RewrittenCollisionCode;
+    }
 
     lua_settop(state, stack_base);
     impl_->failure.clear();

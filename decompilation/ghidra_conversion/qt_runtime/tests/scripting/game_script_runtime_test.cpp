@@ -5157,6 +5157,18 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 11;
     }
+    // ROM 0xB7B8 event 0x1A publishes FFE178 when the terrain low byte is
+    // not 0xDA and FFFC1C bit 7 is clear; Lua receives that named decision.
+    collision_input.raw_collision_code = 26U;
+    collision_input.world_effect_control_bit = false;
+    collision_decision =
+        scripts.resolve_field_collision_event(collision_input);
+    if (!expect(collision_decision.has_value() &&
+                    collision_decision->projected_terrain_event_published,
+                "Lua must publish eligible projected terrain events")) {
+        std::cerr << scripts.failure() << '\n';
+        return 111;
+    }
     constexpr std::array<FieldCollisionEventCode, 4> maglock_events{
         FieldCollisionEventCode::event_2,
         FieldCollisionEventCode::event_3,
@@ -5254,6 +5266,8 @@ int main() {
         return 15;
     }
     collision_input.field_transition_context = 0U;
+    // ROM 0xB7B8's ordinary event-0x19 branch writes collision 0x00A8,
+    // direction probe -0x58, and continuation event 8.
     collision_decision =
         scripts.resolve_field_collision_event(collision_input);
     if (!expect(collision_decision.has_value() &&
@@ -5269,6 +5283,23 @@ int main() {
                 "Lua must preserve the context-free event-25 rewrite")) {
         std::cerr << scripts.failure() << '\n';
         return 16;
+    }
+    // ROM 0xB7B8 performs the event-0x19 rewrite before its field-mode-exit
+    // branch, so the native rewrite must survive that later action choice.
+    collision_input.field_global_flags = 0x50U;
+    collision_decision =
+        scripts.resolve_field_collision_event(collision_input);
+    if (!expect(collision_decision.has_value() &&
+                    collision_decision->action ==
+                        FieldMapEventAction::begin_field_mode_exit &&
+                    collision_decision->event_code ==
+                        FieldCollisionEventCode::event_8 &&
+                    collision_decision->raw_collision_code == 168U &&
+                    collision_decision->direction_probe_value == -88 &&
+                    collision_decision->quantized_delta == 168U,
+                "event-25 rewrite must survive the mode-exit action")) {
+        std::cerr << scripts.failure() << '\n';
+        return 112;
     }
     collision_input = collision(FieldCollisionEventCode::event_0);
     collision_input.world_mode = 2U;
