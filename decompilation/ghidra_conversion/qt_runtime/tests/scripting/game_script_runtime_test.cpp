@@ -4402,7 +4402,7 @@ int main() {
         {"mako_defeated", false},
         {"field_mode_flag_bit_11", true},
         {"field_mode_flag_bit_12", false},
-        {"field_mode_flag_bit_21", false},
+        {"mako_club_lead", false},
         {"vid_phone_contact_1", false},
     });
     scripts.set_location_context(
@@ -4461,7 +4461,7 @@ int main() {
                     mortimer_task.operation->menu->inline_text.find(
                         "Mako") != std::string::npos &&
                     scripts.story_state().at(
-                        "field_mode_flag_bit_21"),
+                        "mako_club_lead"),
                 "Mortimer's Mako answer did not use ROM text/effect bit")) {
         std::cerr << scripts.failure() << '\n';
         return 13;
@@ -4548,7 +4548,7 @@ int main() {
         {"mako_defeated", false},
         {"field_mode_flag_bit_11", false},
         {"field_mode_flag_bit_12", false},
-        {"field_mode_flag_bit_21", false},
+        {"mako_club_lead", false},
         {"vid_phone_contact_1", false},
     });
     mortimer_task = scripts.start_task("johnson", "interaction");

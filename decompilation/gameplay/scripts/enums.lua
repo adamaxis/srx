@@ -666,6 +666,7 @@ E.StoryFact = {
   SERPENT_SCALE_TAKEN = "serpent_scale_taken",         -- activity at 0x53F50 [C]
   SHAMAN_TASKS_DONE = "shaman_tasks_done",             -- service at 0x53EA8 [C]
   MICHAEL_ALIAS_LEARNED = "michael_alias_learned",     -- dialogue at 0xF5414 [C site][H name]
+  MAKO_CLUB_LEAD = "mako_club_lead",                   -- Big Rhino info and Club entry at 0x23222/0x225D2 [C]
   MAKO_DEFEATED = "mako_defeated",                     -- encounter at 0x53FFC [C]
   RENRAKU_MAP_OVERLAY = "renraku_map_overlay",         -- service at 0x540F8 [C]
   MICHAEL_MISSION_TOLD = "michael_mission_told",       -- handler at 0x2193A [C site][H name]

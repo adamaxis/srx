@@ -1485,7 +1485,7 @@ int main() {
         {"mako_defeated", false},
         {"field_mode_flag_bit_11", true},
         {"field_mode_flag_bit_12", false},
-        {"field_mode_flag_bit_21", false},
+        {"mako_club_lead", false},
         {"vid_phone_contact_1", false},
     });
     gameplay_scripts.set_location_context(

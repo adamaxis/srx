@@ -570,7 +570,7 @@
           { "fact": "story.mako_defeated", "op": "eq", "value": false },
           {
             "any": [
-              { "fact": "story.field_mode_flag_bit_21", "op": "eq", "value": true },
+              { "fact": "story.mako_club_lead", "op": "eq", "value": true },
               { "fact": "story.notebook_tip_flag_bit_67", "op": "eq", "value": true }
             ]
           }

@@ -276,8 +276,8 @@ local function present_mortimer_questions()
             answer_key = "big-rhino.information.question.julius"
         elseif topic == "mako" then
             answer_key = "big-rhino.information.question.mako"
-            -- ROM action 0x8E at 0x23222 records the Mako lead in FFFC30.
-            game.state.field_mode_flag_bit_21 = true
+            -- ROM action 0x8E at 0x23222 records the Club Penumbra lead.
+            game.state[E.StoryFact.MAKO_CLUB_LEAD] = true
         elseif topic == "aragorn" then
             answer_key = "big-rhino.information.question.aragorn"
             -- ROM action 0x8F at 0x2323A clears bit 11 and sets bit 12.

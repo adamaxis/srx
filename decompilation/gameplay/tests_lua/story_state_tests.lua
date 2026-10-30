@@ -6,7 +6,8 @@ local function reset(scene, heat, strike, busy)
              strike_team_stage = strike, busy = busy or false,
              queued = {}, karma = 0, roster = true,
              facts = { notebook_tip_flag_bit_49 = true,
-                       field_mode_flag_bit_20 = true } }
+                       field_mode_flag_bit_20 = true,
+                       mako_club_lead = true } }
 end
 game = {
     state = setmetatable({}, {
@@ -71,6 +72,7 @@ reset(5, 7, 0)
 check(Club.apply_mako_callback() == "applied", "mako applied")
 check(host.heat_level == 8 and host.karma == 2 and
       host.strike_team_stage == 1 and host.facts.mako_defeated == true and
+      host.facts.mako_club_lead == false and
       host.facts.field_mode_flag_bit_20 == false and host.facts.field_mode_flag_bit_24 == true and
       host.facts.notebook_tip_flag_bit_49 == false, "mako effects")
 -- Missing roster: nothing changes.

@@ -317,6 +317,17 @@ constexpr std::string_view kMrJohnsonsFlagBitPrefix =
 constexpr std::string_view kRunnerInformationFlagBitPrefix =
     "runner_information_bit_";
 
+struct FieldModeFactMapping {
+    std::string_view fact_id;
+    std::uint8_t source_bit;
+};
+
+// [C] Big Rhino's Mako answer at 0x23222 records the lead consumed by the
+// Club Penumbra gate at 0x225D2. Lua uses the story fact, not FFFC30 bit 21.
+constexpr std::array<FieldModeFactMapping, 1U> kFieldModeFactMappings{{
+    {"mako_club_lead", 21U},
+}};
+
 struct JohnsonContactFactMapping {
     std::string_view fact_id;
     std::uint8_t save_bit;
@@ -347,6 +358,22 @@ std::optional<std::uint8_t> story_fact_bit_index(
         return std::nullopt;
     }
     return static_cast<std::uint8_t>(index);
+}
+
+std::optional<std::uint8_t> field_mode_fact_bit_index(
+    const std::string_view name) {
+    for (const auto& mapping : kFieldModeFactMappings) {
+        if (name == mapping.fact_id) {
+            return mapping.source_bit;
+        }
+    }
+    const auto bit = story_fact_bit_index(name, kFieldModeFlagBitPrefix);
+    for (const auto& mapping : kFieldModeFactMappings) {
+        if (bit == mapping.source_bit) {
+            return std::nullopt;
+        }
+    }
+    return bit;
 }
 
 std::optional<std::uint8_t> mr_johnsons_fact_bit_index(
@@ -10304,8 +10331,7 @@ bool FieldSceneRuntime::bootstrap(
             if (const auto bit = story_flag_source_bit(name)) {
                 return (field_exit_world_flags_ & (1U << *bit)) != 0U;
             }
-            if (const auto bit = story_fact_bit_index(
-                    name, kFieldModeFlagBitPrefix)) {
+            if (const auto bit = field_mode_fact_bit_index(name)) {
                 if (!field_mode_flags_resolved_) {
                     return std::nullopt;
                 }
@@ -10490,8 +10516,7 @@ bool FieldSceneRuntime::bootstrap(
                     : field_exit_world_flags_ & ~mask;
                 return true;
             }
-            if (const auto bit = story_fact_bit_index(
-                    name, kFieldModeFlagBitPrefix)) {
+            if (const auto bit = field_mode_fact_bit_index(name)) {
                 if (!field_mode_flags_resolved_) {
                     return false;
                 }

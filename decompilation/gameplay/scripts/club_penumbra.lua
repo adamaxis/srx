@@ -28,7 +28,7 @@ function ClubPenumbra.apply_mako_callback()
 
     game.state.mako_defeated = true
     game.state.field_mode_flag_bit_20 = false
-    game.state.field_mode_flag_bit_21 = false
+    game.state[E.StoryFact.MAKO_CLUB_LEAD] = false
     game.state.field_mode_flag_bit_24 = true
     game.state.notebook_tip_flag_bit_49 = false
 
