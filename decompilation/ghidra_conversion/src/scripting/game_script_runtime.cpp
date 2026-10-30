@@ -10113,8 +10113,8 @@ GameScriptRuntime::evaluate_field_encounter_trigger(
         impl_->failure = "Lua runtime is unavailable for field encounter triggers";
         return std::nullopt;
     }
-    if (input.scene_id > 55U) {
-        impl_->failure = "field encounter trigger scene is outside the ROM table";
+    if (input.scene_id > static_cast<std::uint16_t>(srx::SceneId::FINAL)) {
+        impl_->failure = "field encounter trigger scene is outside game content";
         return std::nullopt;
     }
 
@@ -10143,22 +10143,25 @@ GameScriptRuntime::evaluate_field_encounter_trigger(
         lua_pushboolean(state, value);
         lua_setfield(state, -2, name);
     };
+    const auto set_number = [state](const char* name, const double value) {
+        lua_pushnumber(state, value);
+        lua_setfield(state, -2, name);
+    };
     set_integer("scene_id", input.scene_id);
-    set_integer("frame_counter", input.frame_counter);
-    set_integer("display_service_word", input.display_service_word);
-    set_boolean("leader_protected", input.leader_protected);
-    set_boolean("field_activity_lock_active",
-                input.field_activity_lock_active);
-    set_boolean("field_alarm_active", input.field_alarm_active);
+    set_boolean("encounter_check_due", input.encounter_check_due);
+    set_boolean("display_busy", input.display_busy);
+    set_boolean("leader_unseen", input.leader_unseen);
+    set_boolean("world_activity_locked", input.world_activity_locked);
+    set_boolean("alarm_active", input.alarm_active);
     set_boolean("combat_active", input.combat_active);
-    set_integer("encounter_actor_count", input.encounter_actor_count);
-    if (input.probability_roll.has_value()) {
-        set_integer("probability_roll", *input.probability_roll);
+    set_boolean("encounter_in_progress", input.encounter_in_progress);
+    if (input.probability_sample.has_value()) {
+        set_number("probability_sample", *input.probability_sample);
     } else {
         lua_pushnil(state);
-        lua_setfield(state, -2, "probability_roll");
+        lua_setfield(state, -2, "probability_sample");
     }
-    set_integer("probability_threshold", input.probability_threshold);
+    set_number("encounter_probability", input.encounter_probability);
 
     ScopedInstructionBudget instruction_budget(state);
     if (lua_pcall(state, 1, 1, 0) != LUA_OK) {

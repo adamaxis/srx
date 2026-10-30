@@ -117,45 +117,46 @@ local function placement_policy_for_rule(placement_rule)
     return nil
 end
 
--- ROM 0x1E166 owns the encounter attempt policy. The host supplies typed
--- world facts and performs the source PRNG draw only when this function asks
--- for one, so blocked/not-due field passes do not consume random state.
+-- ROM 0x1E166 owns the encounter attempt policy. The host supplies semantic
+-- world facts and a normalized chance only when this function asks for one,
+-- so blocked/not-due field passes do not consume random state.
 function Encounters.trigger_attempt(context)
     if type(context) ~= "table" or
        not integer(context.scene_id, 0, E.Scene.LAST_ID) or
-       not integer(context.frame_counter, 0, E.FieldAlarm.WORD_MAX) or
-       not integer(context.display_service_word, 0, E.FieldAlarm.WORD_MAX) or
-       type(context.leader_protected) ~= "boolean" or
-       type(context.field_activity_lock_active) ~= "boolean" or
-       type(context.field_alarm_active) ~= "boolean" or
+       type(context.encounter_check_due) ~= "boolean" or
+       type(context.display_busy) ~= "boolean" or
+       type(context.leader_unseen) ~= "boolean" or
+       type(context.world_activity_locked) ~= "boolean" or
+       type(context.alarm_active) ~= "boolean" or
        type(context.combat_active) ~= "boolean" or
-       not integer(context.encounter_actor_count, 0,
-                   E.FieldAlarm.ACTOR_COUNT_MAX) then
+       type(context.encounter_in_progress) ~= "boolean" or
+       type(context.encounter_probability) ~= "number" or
+       context.encounter_probability ~= context.encounter_probability or
+       context.encounter_probability < 0 or
+       context.encounter_probability > 1 then
         return nil
     end
 
-    if context.display_service_word ~= 0 or
-       context.leader_protected or
-       context.field_activity_lock_active or
-       (not context.field_alarm_active and context.combat_active) or
-       context.encounter_actor_count ~= 0 then
+    if context.display_busy or
+       context.leader_unseen or
+       context.world_activity_locked or
+       (not context.alarm_active and context.combat_active) or
+       context.encounter_in_progress then
         return "blocked"
     end
-    if (context.frame_counter & E.FieldEncounter.FRAME_MASK) ~=
-       E.FieldEncounter.FRAME_VALUE then
+    if not context.encounter_check_due then
         return "not_due"
     end
-    if context.probability_roll == nil then
+    if context.probability_sample == nil then
         return "sample_probability"
     end
-    if not integer(context.probability_roll, 0, 0xffff) or
-       not integer(context.probability_threshold, 0, 0xffff) then
+    if not selection_fraction(context.probability_sample) then
         return nil
     end
-    if context.probability_roll >= context.probability_threshold then
+    if context.probability_sample >= context.encounter_probability then
         return "random_miss"
     end
-    if context.field_alarm_active then
+    if context.alarm_active then
         return "select_alarm_sequence"
     end
     return "select_scene_outcome"
@@ -319,7 +320,7 @@ function Encounters.resolve_sequence(scene_id, sequence_id)
 end
 
 -- ROM 0x1E1DA selects the fixed alternate list at 0x1E20A while FFE16F
--- (field_alarm_active) is set. The list's actor template pointer is 0x1D6A1C.
+-- (alarm_active) is set. The list's actor template pointer is 0x1D6A1C.
 function Encounters.resolve_alarm_sequence(scene_id)
     return Encounters.resolve_sequence(
         scene_id, "field_alarm_reinforcements")

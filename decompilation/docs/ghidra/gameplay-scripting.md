@@ -479,9 +479,10 @@ synchronized.
   and the positive `0x14F86` follow-up remain explicit boundaries.
   Temporary random-world encounter actors now receive Lua target selection,
   movement policy, entry/walk animation state, and B-selection marker state.
-  `field_encounters.lua` also owns the `0x1E166` blocker, `0x3FF` cadence,
-  probability, and active-sequence decisions; the host consumes source RNG
-  only after Lua requests it. Enabled dialogue handlers and the end-to-end
+  `field_encounters.lua` owns the encounter eligibility and active-sequence
+  decisions. The native adapter turns source RAM gates at `0x1E166` into
+  named facts and normalized chance values; it consumes source RNG only after
+  Lua requests a sample. Enabled dialogue handlers and the end-to-end
   production encounter dispatch capture are still open.
   The script does not yet own default NPC movement/target selection, general
   combat choices, weapon fire, hits, or damage. The ROM call order,

@@ -1113,21 +1113,25 @@ python decompilation/ghidra_conversion/tools/rom_research/extract_world_activity
 
 ## Native runtime status (partial)
 
-The Qt field loop supplies typed state to Lua's `field_encounters` module,
-which owns encounter eligibility and probability decisions. Qt advances the
-source PRNG only after Lua reports that blockers and the `0x3FF` cadence allow
-a probability draw. Lua then decides whether to miss, forward an active
-sequence, or select a scene outcome. For the selector branch the host maps the
-random sample to the weighted-choice fraction and Lua selects among semantic
-content entries; the source's pair-of-rolls and table-index representation
-stays outside Lua. Zero-cell results spawn the listed actors
-through the source edge-placement and entity/effect slot rules, then call Lua
-for behavior and render heartbeats. Dynamic actor entry art is extracted by
-entity kind and direction; entry delay and finite C0B2 frame count are passed
-as typed values. Lua links targets using the ROM candidate pools and source
-PRNG. The B-button target selector is connected to live actor records; its
-`+0x11.4` selected latch remains separate from the `+0x10.4` action-candidate
-reservation. Enabled dialogue handlers remain a dispatch boundary.
+The Qt field loop converts the ROM gates at `0x1E166` into named facts before
+calling Lua's `field_encounters` module. Lua owns encounter eligibility and
+probability decisions; the native clock supplies a due/not-due fact, and Qt
+advances the source PRNG only after Lua requests a sample. The native adapter
+normalizes the profile threshold and random sample, preserving the strict
+unsigned comparison at `0x1E1BC..0x1E1CA` without exposing the source words to
+Lua.
+
+For scene selection, the host maps the two bound-five draws at `0x59986` to a
+weighted-choice fraction. Runtime rows keep source-sum order and coalesce only
+adjacent identical outcomes, so each normalized interval still selects the
+semantic event or actor group for that sum. Lua receives neither the pair nor
+the selector sum or table index. The native scene system applies the recovered
+placement policy and allocates actor records; Lua owns those actors' behavior
+and animation decisions. Dynamic actor entry art is extracted by entity kind
+and direction, while the host exposes entry timing as typed values. Lua links
+targets using semantic actor facts. The B-button target selector is connected
+to live actor records; its selected state remains separate from the action
+candidate reservation. Enabled dialogue handlers remain a dispatch boundary.
 
 The creature entry branch also returns the `0xB05E` cue selected by entity
 kind. For the encounter kinds, those requests select table-2 slots 46, 47, 86,

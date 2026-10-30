@@ -2,9 +2,10 @@
 
 ## ROM evidence
 
-- `0x59986` selects a field outcome from two source bounded draws; Lua's
-  `field_encounters.trigger_attempt` now applies `0x1E166`'s blocker,
-  cadence, and probability gates before the host consumes the source PRNG.
+- `0x59986` selects a field outcome from two source bounded draws. Lua's
+  `field_encounters.trigger_attempt` applies the encounter policy using named
+  gate facts and normalized probabilities; the native adapter maps the ROM
+  checks at `0x1E166` and advances the source PRNG only when Lua requests it.
 - A zero-cell result reaches `0x1E216`; `0x1E25A` initializes each listed
   actor, sets the encounter flags, writes its edge coordinate, and schedules
   the shared timeout. `0x1E302` uses live camera words `FFDDC6/FFDDC8` and map

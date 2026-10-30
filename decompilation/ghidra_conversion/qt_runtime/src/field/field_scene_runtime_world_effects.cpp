@@ -70,6 +70,21 @@
 #include <utility>
 
 namespace shadowrun::ghidra_conversion::qt_runtime {
+namespace {
+
+// ROM 0x1E1A8..0x1E1B6 checks one encounter opportunity per 1024 field
+// frames, at phase 10. Keep that schedule in the native clock adapter; Lua
+// receives only whether an opportunity is due.
+constexpr std::uint16_t kEncounterCheckPeriodFrames = 1024U;
+constexpr std::uint16_t kEncounterCheckPhase = 10U;
+constexpr double kSourceRandomRange = 65536.0;
+
+bool encounter_check_is_due(const std::uint16_t field_frame_number) {
+    return field_frame_number % kEncounterCheckPeriodFrames ==
+           kEncounterCheckPhase;
+}
+
+} // namespace
 
 void FieldSceneRuntime::initialize_field_entity_selection_state() {
     // ROM 0x42B0 publishes the three field-record types in slot order. Seed
@@ -281,27 +296,24 @@ bool FieldSceneRuntime::project_field_world_interaction() {
 std::int16_t FieldSceneRuntime::select_field_world_effect_sequence() {
     const auto first = sample_source_random_bound(field_random_seed_, 5U);
     const auto second = sample_source_random_bound(field_random_seed_, 5U);
-    if (first < 0 || first > 4 || second < 0 || second > 4) {
+    std::optional<double> weighted_selection;
+    if (first >= 0 && second >= 0) {
+        weighted_selection = field_scene_detail::
+            field_encounter_selection_fraction(
+                static_cast<std::uint16_t>(first),
+                static_cast<std::uint16_t>(second));
+    }
+    if (!weighted_selection.has_value()) {
         pending_field_encounter_outcome_.reset();
         failure_ = "ROM field encounter selector produced an invalid bounded draw";
         source_boundary("field.random_encounter.invalid_selector_draw");
         return 1;
     }
-    // The source's 16x9 table at 0x1D70E4 gives each selector sum the
-    // corresponding number of pairs from two bound-five draws. Flatten that
-    // distribution into a generic weighted-choice fraction before Lua sees it.
-    const auto sum = static_cast<unsigned>(first + second);
-    const auto pairs_before_sum = sum <= 4U
-        ? (sum * (sum + 1U)) / 2U
-        : 25U - (((9U - sum) * (10U - sum)) / 2U);
-    const auto first_for_sum = sum > 4U ? sum - 4U : 0U;
-    const auto ticket = pairs_before_sum +
-        static_cast<unsigned>(first) - first_for_sum;
-    const auto weighted_selection =
-        (static_cast<double>(ticket) + 0.5) / 25.0;
+    // Lua receives a normalized position in the content weights. Adjacent
+    // weights preserve the nine source-sum outcomes from 0x59986 [C].
     auto outcome = game_scripts_.resolve_field_encounter(
         state_.field_scene_buffers.scene_reference,
-        weighted_selection);
+        *weighted_selection);
     if (!outcome.has_value()) {
         pending_field_encounter_outcome_.reset();
         failure_ = game_scripts_.failure();
@@ -474,22 +486,32 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
     }
     scripting::ScriptFieldEncounterTriggerInput trigger{};
     trigger.scene_id = state_.field_scene_buffers.scene_reference;
-    trigger.frame_counter = field_world_frame_counter_;
-    trigger.display_service_word =
-        field_runtime_state_.display_service_word; // FFDFE8 [C]
+    // FFDF88 low 10 bits == 10 at ROM 0x1E1A8..0x1E1B6 [C]. The host's
+    // field-frame clock is the source-counter mapping [H].
+    trigger.encounter_check_due =
+        encounter_check_is_due(field_world_frame_counter_);
+    trigger.display_busy = field_runtime_state_.display_service_word != 0U;
     const auto leader_status_ex = static_cast<std::uint8_t>(
         active_runner_record().flags & 0x00FFU); // FFFC04 +0x11 (low byte) [C]
-    trigger.leader_protected =
+    trigger.leader_unseen =
         (leader_status_ex & static_cast<std::uint8_t>(
              srx::v(srx::ActorStatusEx::UNSEEN))) != 0U; // bit 7 [C]
-    trigger.field_activity_lock_active =
+    trigger.world_activity_locked =
         field_runtime_state_.field_activity_lock; // FFE18B [C]
-    trigger.field_alarm_active =
+    trigger.alarm_active =
         field_matrix_field_state_.alarm.value_or(false); // FFE16F [C]
     trigger.combat_active =
         world_frame_logic_state_.world_active != 0U; // FFDF84 [C]
-    trigger.encounter_actor_count =
-        field_world_activity_timeout_state_.encounter_actor_count; // FFE177 [C]
+    trigger.encounter_in_progress =
+        field_world_activity_timeout_state_.encounter_actor_count != 0U;
+    const auto source_probability_threshold = state_.field_scene_buffers.profile[
+        field_scene_profile_word_index(
+            FieldSceneProfileWord::random_event_probability_threshold)];
+    // ROM 0x1E1BC..0x1E1CA accepts the unsigned PRNG result below FFDE18.
+    // Scaling both operands by 2^-16 preserves that comparison exactly [C].
+    trigger.encounter_probability =
+        static_cast<double>(source_probability_threshold) /
+        kSourceRandomRange;
 
     auto action = game_scripts_.evaluate_field_encounter_trigger(trigger);
     if (!action.has_value()) {
@@ -502,12 +524,11 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
         return;
     }
 
-    // 0x1E166 advances the source PRNG only after its state and 0x3FF cadence
-    // gates pass. Lua requests this draw, then owns the probability decision.
-    trigger.probability_roll = advance_source_random_seed(field_random_seed_);
-    trigger.probability_threshold = state_.field_scene_buffers.profile[
-        field_scene_profile_word_index(
-            FieldSceneProfileWord::random_event_probability_threshold)];
+    // Lua requests this draw only after all state and cadence gates pass.
+    // 0x1E1BC..0x1E1CA compares the source unsigned result with FFDE18 [C].
+    trigger.probability_sample =
+        static_cast<double>(advance_source_random_seed(field_random_seed_)) /
+        kSourceRandomRange;
     action = game_scripts_.evaluate_field_encounter_trigger(trigger);
     if (!action.has_value()) {
         failure_ = game_scripts_.failure();

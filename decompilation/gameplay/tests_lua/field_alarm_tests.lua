@@ -14,7 +14,7 @@ end
 
 local function facts(overrides)
     local value = {
-        scene_id = E.FieldAlarmRomLayout.FIRST_LIST_SCENE,
+        scene_id = E.Scene.RESOURCE_ACTIVITY_21,
         frame_counter = E.FieldAlarm.FRAME_VALUE,
         scene_mode = E.SceneMode.BUILDING,
         player_tile_x = 33,
@@ -183,18 +183,18 @@ local quiet_exit = Alarm.tick(facts({ alarm = false, scene_exit = true }))
 eq(quiet_exit.sound_stop, nil,
    "scene exit with no active alarm sends no second 0x30 stop")
 eq(Encounters.trigger_attempt({
-       scene_id = E.FieldAlarmRomLayout.FIRST_LIST_SCENE,
-       frame_counter = E.FieldEncounter.FRAME_VALUE,
-       display_service_word = 0,
-       leader_protected = false,
-       field_activity_lock_active = false,
-       field_alarm_active = scene_exit.alarm,
+       scene_id = E.Scene.RESOURCE_ACTIVITY_21,
+       encounter_check_due = true,
+       display_busy = false,
+       leader_unseen = false,
+       world_activity_locked = false,
+       alarm_active = scene_exit.alarm,
        combat_active = false,
-       encounter_actor_count = 0,
-       probability_roll = 0,
-       probability_threshold = E.FieldAlarm.WORD_MAX,
+       encounter_in_progress = false,
+       probability_sample = 0,
+       encounter_probability = 1,
    }), "select_scene_outcome",
-   "scene exit restores the ordinary table instead of alarm list 0x1E20A")
+   "scene exit restores the ordinary field event set")
 
 local reset = Alarm.tick(facts({ alarm = true, disabled = true, reset = true }))
 eq(reset.alarm, false, "projected-cell reset clears FFE16F")

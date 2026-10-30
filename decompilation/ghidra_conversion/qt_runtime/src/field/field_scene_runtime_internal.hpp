@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string_view>
 
 #include <QColor>
@@ -20,6 +21,26 @@ namespace shadowrun::ghidra_conversion::qt_runtime::field_scene_detail {
 // resource selection below.
 inline constexpr std::uint16_t kInitialFieldSceneReference = 2U;
 inline constexpr std::uint8_t kFieldModalReturnTransitionFrames = 60U;
+
+// Keep the two source bounded draws inside the host adapter. The weighted
+// content rows retain source-sum order, so this normalized midpoint resolves
+// the same semantic event without exposing either draw to Lua. [C: 0x59986]
+inline std::optional<double> field_encounter_selection_fraction(
+    const std::uint16_t first_roll, const std::uint16_t second_roll) {
+    constexpr std::uint16_t kDrawBound = 5U;
+    constexpr unsigned kPairCount = kDrawBound * kDrawBound;
+    if (first_roll >= kDrawBound || second_roll >= kDrawBound) {
+        return std::nullopt;
+    }
+    const auto sum = static_cast<unsigned>(first_roll + second_roll);
+    const auto pairs_before_sum = sum <= 4U
+        ? (sum * (sum + 1U)) / 2U
+        : kPairCount - (((9U - sum) * (10U - sum)) / 2U);
+    const auto first_for_sum = sum > 4U ? sum - 4U : 0U;
+    const auto ticket = pairs_before_sum + first_roll - first_for_sum;
+    return (static_cast<double>(ticket) + 0.5) /
+           static_cast<double>(kPairCount);
+}
 
 // +0x9E actor roles cross into Lua as named facts. The source byte is decoded
 // and merged only where the native live actor record enters or leaves scripts.

@@ -7762,8 +7762,6 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                         ScriptFieldEncounterOutcomeKind::
                             dynamic_world_effect_sequence ||
                     outcome->scene_id != 15U ||
-                    outcome->context_group != 0U ||
-                    outcome->random_sum != 0U ||
                     outcome->actors.size() != 4U ||
                     std::any_of(
                         outcome->actors.begin(), outcome->actors.end(),

@@ -1167,17 +1167,18 @@ struct ScriptFieldSafeDecision {
 
 struct ScriptFieldEncounterTriggerInput {
     std::uint16_t scene_id = 0;
-    std::uint16_t frame_counter = 0; // FFDF88 cadence value; host mapping [H]
-    std::uint16_t display_service_word = 0; // FFDFE8 [C]
-    bool leader_protected = false; // FFFC04 +0x11 bit 7 [C]
-    bool field_activity_lock_active = false; // FFE18B [C]
-    bool field_alarm_active = false; // FFE16F, Lua field_alarm state [C]
-    bool combat_active = false; // FFDF84 [C]
-    std::uint8_t encounter_actor_count = 0; // FFE177 [C]
-    // Absent for the first Lua call. The host draws only after Lua reports
-    // sample_probability, preserving the ROM's conditional PRNG consumption.
-    std::optional<std::uint16_t> probability_roll;
-    std::uint16_t probability_threshold = 0;
+    bool encounter_check_due = false;
+    bool display_busy = false;
+    bool leader_unseen = false;
+    bool world_activity_locked = false;
+    bool alarm_active = false;
+    bool combat_active = false;
+    bool encounter_in_progress = false;
+    // Absent on the first Lua call. The host samples only after Lua requests
+    // it, preserving conditional RNG consumption while exposing game-level
+    // probabilities instead of the source's 16-bit operands.
+    std::optional<double> probability_sample;
+    double encounter_probability = 0.0;
 };
 
 struct ScriptFieldAlarmRegion {

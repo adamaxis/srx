@@ -402,10 +402,14 @@ def render_runtime(
 
     actor_sequences = read_weighted_actor_sequences(actor_catalog)
     # Convert the ROM's two bounded draws into ordinary content weights.
-    # Repeated entries that resolve to the same semantic event or actor group
-    # are combined; Lua sees neither context-table groups nor selector sums.
-    outcomes: dict[tuple[str, str, str], dict[str, str]] = {}
-    for row in rows:
+    # Coalesce only adjacent equal outcomes: their positions in the weighted
+    # list must still correspond to the source sum buckets when the native
+    # adapter maps a bounded pair to a normalized selection fraction.
+    outcomes: list[dict[str, str]] = []
+    ordered_rows = sorted(
+        rows, key=lambda row: (int(row["scene"]), int(row["random_sum"]))
+    )
+    for row in ordered_rows:
         scene = row["scene"]
         if row["outcome_kind"] == "dialogue_event":
             outcome_id = f"event.{row['event_id']}"
@@ -418,21 +422,26 @@ def render_runtime(
                     f"for scene={scene}, context={actor_key[1]}, "
                     f"sum={actor_key[2]}"
                 )
-        key = (scene, row["outcome_kind"], outcome_id)
         weight = int(row["roll_pair_count"])
-        if key not in outcomes:
-            outcomes[key] = {
+        if (
+            outcomes
+            and outcomes[-1]["scene_id"] == scene
+            and outcomes[-1]["outcome_kind"] == row["outcome_kind"]
+            and outcomes[-1]["outcome_id"] == outcome_id
+        ):
+            outcomes[-1]["chance_weight"] = str(
+                int(outcomes[-1]["chance_weight"]) + weight
+            )
+        else:
+            outcomes.append({
                 "scene_id": scene,
-                "chance_weight": "0",
+                "chance_weight": str(weight),
                 "outcome_kind": row["outcome_kind"],
                 "outcome_id": outcome_id,
-            }
-        outcomes[key]["chance_weight"] = str(
-            int(outcomes[key]["chance_weight"]) + weight
-        )
+            })
 
     totals: dict[str, int] = {}
-    for outcome in outcomes.values():
+    for outcome in outcomes:
         scene = outcome["scene_id"]
         totals[scene] = totals.get(scene, 0) + int(outcome["chance_weight"])
     if len(totals) != CONTEXT_COUNT or any(total != 25 for total in totals.values()):
@@ -444,7 +453,7 @@ def render_runtime(
         extrasaction="ignore",
     )
     writer.writeheader()
-    writer.writerows(outcomes.values())
+    writer.writerows(outcomes)
     return stream.getvalue()
 
 

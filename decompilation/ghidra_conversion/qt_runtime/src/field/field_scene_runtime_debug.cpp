@@ -1362,8 +1362,15 @@ std::size_t FieldSceneRuntime::resolve_and_spawn_field_encounter_for_dump(
     const auto scene_reference =
         state_.field_scene_buffers.scene_reference;
     field_random_seed_ = random_seed;
+    const auto weighted_selection = field_scene_detail::
+        field_encounter_selection_fraction(first_roll, second_roll);
+    if (!weighted_selection.has_value()) {
+        failure_ = "field encounter QA received an invalid bounded draw";
+        source_boundary("field.random_encounter.qa_invalid_selector_draw");
+        return 0U;
+    }
     auto outcome = game_scripts_.resolve_field_encounter(
-        scene_reference, first_roll, second_roll);
+        scene_reference, *weighted_selection);
     if (!outcome.has_value()) {
         failure_ = game_scripts_.failure();
         source_boundary("field.random_encounter.qa_selector_unresolved");

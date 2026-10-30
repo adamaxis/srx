@@ -3303,50 +3303,47 @@ int main() {
 
     ScriptFieldEncounterTriggerInput encounter_trigger{};
     encounter_trigger.scene_id = 2U;
-    encounter_trigger.frame_counter = static_cast<std::uint16_t>(
-        srx::v(srx::FieldEncounter::FRAME_VALUE));
+    encounter_trigger.encounter_check_due = true;
     const auto gate_requests_roll =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.frame_counter = static_cast<std::uint16_t>(
-        srx::v(srx::FieldEncounter::FRAME_VALUE) - 1);
+    encounter_trigger.encounter_check_due = false;
     const auto gate_waits_for_cadence =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.frame_counter = static_cast<std::uint16_t>(
-        srx::v(srx::FieldEncounter::FRAME_VALUE));
-    encounter_trigger.display_service_word = 1U;
+    encounter_trigger.encounter_check_due = true;
+    encounter_trigger.display_busy = true;
     const auto gate_respects_delay =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.display_service_word = 0U;
-    encounter_trigger.leader_protected = true;
+    encounter_trigger.display_busy = false;
+    encounter_trigger.leader_unseen = true;
     const auto gate_respects_protected_actor =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.leader_protected = false;
-    encounter_trigger.field_activity_lock_active = true;
+    encounter_trigger.leader_unseen = false;
+    encounter_trigger.world_activity_locked = true;
     const auto gate_respects_activity_lock =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.field_activity_lock_active = false;
+    encounter_trigger.world_activity_locked = false;
     encounter_trigger.combat_active = true;
     const auto gate_respects_active_combat =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.field_alarm_active = true;
+    encounter_trigger.alarm_active = true;
     const auto gate_alarm_allows_active_combat =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.encounter_actor_count = 1U;
+    encounter_trigger.encounter_in_progress = true;
     const auto gate_respects_encounter_actor_count =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.encounter_actor_count = 0U;
-    encounter_trigger.field_alarm_active = false;
+    encounter_trigger.encounter_in_progress = false;
+    encounter_trigger.alarm_active = false;
     encounter_trigger.combat_active = false;
-    encounter_trigger.probability_roll = 4U;
-    encounter_trigger.probability_threshold = 5U;
+    encounter_trigger.probability_sample = 4.0 / 65536.0;
+    encounter_trigger.encounter_probability = 5.0 / 65536.0;
     const auto gate_accepts_below_threshold =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.probability_roll = 5U;
+    encounter_trigger.probability_sample = 5.0 / 65536.0;
     const auto gate_rejects_at_threshold =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
-    encounter_trigger.field_alarm_active = true;
+    encounter_trigger.alarm_active = true;
     encounter_trigger.combat_active = true;
-    encounter_trigger.probability_roll = 0U;
+    encounter_trigger.probability_sample = 0.0;
     const auto gate_selects_alarm_sequence =
         scripts.evaluate_field_encounter_trigger(encounter_trigger);
     if (!expect(
@@ -3372,7 +3369,7 @@ int main() {
                     ScriptFieldEncounterTriggerAction::random_miss &&
                 gate_selects_alarm_sequence ==
                     ScriptFieldEncounterTriggerAction::select_alarm_sequence,
-            "Lua ROM encounter gates did not preserve eligibility and random thresholds")) {
+            "Lua encounter policy did not preserve eligibility and chance boundaries")) {
         std::cerr << scripts.failure() << '\n';
         return 2;
     }

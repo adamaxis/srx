@@ -14,14 +14,14 @@ end
 local function context(overrides)
     local value = {
         scene_id = 2,
-        frame_counter = E.FieldEncounter.FRAME_VALUE,
-        display_service_word = 0,
-        leader_protected = false,
-        field_activity_lock_active = false,
-        field_alarm_active = false,
+        encounter_check_due = true,
+        display_busy = false,
+        leader_unseen = false,
+        world_activity_locked = false,
+        alarm_active = false,
         combat_active = false,
-        encounter_actor_count = 0,
-        probability_threshold = 5,
+        encounter_in_progress = false,
+        encounter_probability = 5 / 65536,
     }
     for key, item in pairs(overrides or {}) do
         value[key] = item
@@ -201,37 +201,38 @@ game = {
 eq(Encounters.trigger_attempt(context()), "sample_probability",
    "eligible cadence requests a probability draw")
 eq(Encounters.trigger_attempt(context({
-       frame_counter = E.FieldEncounter.FRAME_VALUE - 1,
-   })), "not_due", "cadence mask waits until the source phase")
-eq(Encounters.trigger_attempt(context({ display_service_word = 1 })),
-   "blocked", "nonzero FFDFE8 blocks the attempt")
-eq(Encounters.trigger_attempt(context({ leader_protected = true })),
-   "blocked", "leader +0x11 bit 7 blocks the attempt")
-eq(Encounters.trigger_attempt(context({ field_activity_lock_active = true })),
-   "blocked", "FFE18B blocks the attempt")
+       encounter_check_due = false,
+   })), "not_due", "field clock has no encounter opportunity this pass")
+eq(Encounters.trigger_attempt(context({ display_busy = true })),
+   "blocked", "busy field presentation blocks the attempt")
+eq(Encounters.trigger_attempt(context({ leader_unseen = true })),
+   "blocked", "an unseen leader blocks the attempt")
+eq(Encounters.trigger_attempt(context({ world_activity_locked = true })),
+   "blocked", "locked world activity blocks the attempt")
 eq(Encounters.trigger_attempt(context({ combat_active = true })),
-   "blocked", "FFDF84 blocks while the alarm latch is clear")
+   "blocked", "combat blocks while the alarm is clear")
 eq(Encounters.trigger_attempt(context({
        combat_active = true,
-       field_alarm_active = true,
+       alarm_active = true,
    })), "sample_probability",
-   "active alarm latch permits the attempt through the FFDF84 gate")
-eq(Encounters.trigger_attempt(context({ encounter_actor_count = 1 })),
-   "blocked", "nonzero FFE177 actor count blocks the attempt")
+   "active alarm permits the attempt during combat")
+eq(Encounters.trigger_attempt(context({ encounter_in_progress = true })),
+   "blocked", "an existing encounter blocks another attempt")
 eq(Encounters.trigger_attempt(context({
-       probability_roll = 4,
-       probability_threshold = 5,
+       probability_sample = 4 / 65536,
    })), "select_scene_outcome", "below-threshold roll selects a scene outcome")
 eq(Encounters.trigger_attempt(context({
-       probability_roll = 5,
-       probability_threshold = 5,
-   })), "random_miss", "equal-threshold roll is rejected")
+       probability_sample = 5 / 65536,
+   })), "random_miss", "sample equal to the chance boundary is rejected")
 eq(Encounters.trigger_attempt(context({
-       field_alarm_active = true,
-       probability_roll = 4,
-       probability_threshold = 5,
+       alarm_active = true,
+       probability_sample = 4 / 65536,
    })), "select_alarm_sequence",
    "active alarm selects the fixed alternate list after a successful roll")
+eq(Encounters.trigger_attempt(context({
+       probability_sample = 65535 / 65536,
+       encounter_probability = 65535 / 65536,
+   })), "random_miss", "upper source sample equal to the chance boundary misses")
 
 local grenade_seller = Encounters.resolve(0, 0.10)
 eq(grenade_seller.kind, "dialogue_event",
