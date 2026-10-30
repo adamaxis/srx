@@ -1176,5 +1176,4 @@ This does not complete random-event gameplay. Enabled dialogue handlers,
 creature item/spell actions, attack effects, hit/damage/death, removal and
 queued activity continuations remain open. Ordered template overrides are
 retained; only the `+0x11` render/selection byte is currently projected into
-typed runtime state. The Release Qt executable builds, but this slice has no
-new scene dump or QA run and remains partial.
+typed runtime state. The separate Hidden Camera route has Debug/Release Scene-26 QA and opening/result BMPs; this broader encounter slice remains partial.
