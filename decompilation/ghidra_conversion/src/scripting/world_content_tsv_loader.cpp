@@ -1067,6 +1067,9 @@ using ActivityScriptIds = std::map<ActivityScriptKey, std::string>;
 using ActorProfileKey = std::tuple<lua_Integer, lua_Integer, lua_Integer>;
 using ActorProfileIds = std::map<ActorProfileKey, std::string>;
 using SourceSequenceIds = std::map<lua_Integer, std::string>;
+using SourceActivityGroupIds = std::map<lua_Integer, std::string>;
+using ActivityGroupBindings =
+    std::map<ActivityListKey, ScriptWorldActivityGroupBinding>;
 
 bool load_source_sequence_ids(
     const std::filesystem::path& world_directory,
@@ -1113,9 +1116,58 @@ bool load_source_sequence_ids(
     return true;
 }
 
+bool load_source_activity_group_ids(
+    const std::filesystem::path& world_directory,
+    SourceActivityGroupIds& activity_ids, std::string& failure) {
+    const auto path = world_directory / "field_actor_activity_groups.tsv";
+    TsvDocument document;
+    if (!read_tsv(path, true, document, failure)) {
+        return false;
+    }
+    std::set<std::string> unique_activity_ids;
+    for (std::size_t index = 0U; index < document.rows.size(); ++index) {
+        const auto& row = document.rows[index];
+        lua_Integer source_group_offset = 0;
+        if (!row_integer(document, row, "source_group_offset",
+                         source_group_offset, path, index + 2U, failure) ||
+            source_group_offset < 0 || source_group_offset > 0x1FFFFFU) {
+            if (failure.empty()) {
+                failure = path.string() + ": row " +
+                    std::to_string(index + 2U) +
+                    " has an invalid source activity-group key";
+            }
+            return false;
+        }
+        const auto activity_id = row_string(document, row, "activity_id");
+        const bool valid_id = !activity_id.empty() &&
+            std::all_of(activity_id.begin(), activity_id.end(),
+                        [](const char character) {
+                            return (character >= 'a' && character <= 'z') ||
+                                   (character >= 'A' && character <= 'Z') ||
+                                   (character >= '0' && character <= '9') ||
+                                   character == '_' || character == '-' ||
+                                   character == '.' || character == ':';
+                        });
+        if (!valid_id || !unique_activity_ids.insert(activity_id).second) {
+            failure = path.string() + ": row " +
+                std::to_string(index + 2U) +
+                " has a missing, invalid, or duplicate semantic activity id";
+            return false;
+        }
+        if (!activity_ids.emplace(source_group_offset, activity_id).second) {
+            failure = path.string() + ": source activity-group keys are duplicated";
+            return false;
+        }
+    }
+    return true;
+}
+
 bool collect_activity_list_ids(
     const TsvDocument& document, const std::filesystem::path& path,
-    ActivityListIds& activity_ids, std::string& failure) {
+    const SourceActivityGroupIds& source_activity_group_ids,
+    ActivityListIds& activity_ids,
+    ActivityGroupBindings& activity_group_bindings,
+    std::string& failure) {
     for (std::size_t index = 0U; index < document.rows.size(); ++index) {
         const auto& row = document.rows[index];
         lua_Integer scene_id = 0;
@@ -1133,19 +1185,36 @@ bool collect_activity_list_ids(
             }
             return false;
         }
-        const auto activity_id = row_string(document, row, "list_id");
-        if (activity_id.empty() || activity_id.size() > 128U) {
+        const auto source_list_key = row_string(document, row, "list_id");
+        if (source_list_key.empty() || source_list_key.size() > 128U) {
             failure = path.string() + ": row " +
                 std::to_string(index + 2U) +
                 " has no stable activity id";
             return false;
         }
+        const auto named_group =
+            source_activity_group_ids.find(list_offset);
+        const auto activity_id = named_group == source_activity_group_ids.end()
+            ? source_list_key
+            : named_group->second;
         const ActivityListKey key{scene_id, list_offset};
         const auto [found, inserted] =
             activity_ids.emplace(key, activity_id);
         if (!inserted && found->second != activity_id) {
             failure = path.string() + ": scene/list pair maps to multiple "
                       "activity ids";
+            return false;
+        }
+        const auto [binding, binding_inserted] =
+            activity_group_bindings.emplace(
+                key, ScriptWorldActivityGroupBinding{
+                         static_cast<std::uint16_t>(scene_id),
+                         static_cast<std::uint32_t>(list_offset),
+                         activity_id});
+        if (!binding_inserted &&
+            binding->second.activity_id != activity_id) {
+            failure = path.string() + ": source activity group has conflicting "
+                      "identities";
             return false;
         }
     }
@@ -1222,11 +1291,16 @@ bool append_action_profile_options(
 
 bool make_semantic_activity_actor_rows(
     const TsvDocument& source, const std::filesystem::path& path,
+    const ActivityListIds& activity_ids,
     TsvDocument& semantic, ActivityScriptIds& script_ids,
     std::string& failure) {
     const auto tag_column = source.column_indexes.find("tagged_template");
     if (tag_column == source.column_indexes.end() ||
         source.column_indexes.find("scene") == source.column_indexes.end() ||
+        source.column_indexes.find("source_order") ==
+            source.column_indexes.end() ||
+        source.column_indexes.find("list_offset") ==
+            source.column_indexes.end() ||
         source.column_indexes.find("list_id") == source.column_indexes.end() ||
         source.column_indexes.find("script_index") ==
             source.column_indexes.end() ||
@@ -1240,6 +1314,8 @@ bool make_semantic_activity_actor_rows(
     }
 
     const auto scene_column = source.column_indexes.at("scene");
+    const auto source_order_column = source.column_indexes.at("source_order");
+    const auto list_offset_column = source.column_indexes.at("list_offset");
     const auto list_column = source.column_indexes.at("list_id");
     const auto selector_column = source.column_indexes.at("script_index");
     const auto active_gate_column =
@@ -1255,7 +1331,8 @@ bool make_semantic_activity_actor_rows(
             name == "source_action_ammo" ||
             name == "source_action_counter" || name == "script_index" ||
             name == "world_effect_active_gate" ||
-            name == "pending_world_effect_gate";
+            name == "pending_world_effect_gate" ||
+            name == "ordered_overrides";
     };
 
     semantic = {};
@@ -1279,10 +1356,14 @@ bool make_semantic_activity_actor_rows(
             }
             continue;
         }
-        const auto runtime_column = source_column == "tagged_template"
+        const auto runtime_column = source_column == "source_order"
+            ? std::string("id")
+            : source_column == "tagged_template"
             ? std::string("activity_probe_enabled")
             : source_column == "action_code"
                 ? std::string("action_id")
+                : source_column == "list_id"
+                    ? std::string("activity_id")
                 : std::string(semantic_actor_runtime_column(source_column));
         const auto index = semantic.columns.size();
         if (!semantic.column_indexes.emplace(runtime_column, index).second) {
@@ -1306,6 +1387,7 @@ bool make_semantic_activity_actor_rows(
     }
 
     semantic.rows.reserve(source.rows.size());
+    std::set<std::pair<std::string, std::uint16_t>> activity_member_ids;
     for (std::size_t row_index = 0U; row_index < source.rows.size();
          ++row_index) {
         const auto& source_row = source.rows[row_index];
@@ -1322,14 +1404,20 @@ bool make_semantic_activity_actor_rows(
         }
 
         lua_Integer scene_id = 0;
+        lua_Integer source_order = 0;
+        lua_Integer list_offset = 0;
         lua_Integer script_index = 0;
         lua_Integer active_gate = 0;
         lua_Integer pending_gate = 0;
         if (!parse_integer(source_row[scene_column], scene_id) ||
+            !parse_integer(source_row[source_order_column], source_order) ||
+            !parse_integer(source_row[list_offset_column], list_offset) ||
             !parse_integer(source_row[selector_column], script_index) ||
             !parse_integer(source_row[active_gate_column], active_gate) ||
             !parse_integer(source_row[pending_gate_column], pending_gate) ||
             scene_id < 0 || scene_id > srx::v(srx::Scene::LAST_ID) ||
+            source_order < 0 || source_order > 0xFFFF ||
+            list_offset < 0 || list_offset > 0x1FFFFF ||
             (script_index != -1 &&
              (script_index < 0 || script_index > 0xFF)) ||
             active_gate < -1 || active_gate > 1 ||
@@ -1339,6 +1427,21 @@ bool make_semantic_activity_actor_rows(
             failure = path.string() + ": row " +
                 std::to_string(row_index + 2U) +
                 " has an invalid activity selector or condition";
+            return false;
+        }
+        const auto activity = activity_ids.find({scene_id, list_offset});
+        if (activity == activity_ids.end()) {
+            failure = path.string() + ": row " +
+                std::to_string(row_index + 2U) +
+                " has no semantic actor activity identity";
+            return false;
+        }
+        if (!activity_member_ids.emplace(
+                activity->second,
+                static_cast<std::uint16_t>(source_order)).second) {
+            failure = path.string() + ": row " +
+                std::to_string(row_index + 2U) +
+                " duplicates an actor identity within its activity";
             return false;
         }
 
@@ -1357,8 +1460,8 @@ bool make_semantic_activity_actor_rows(
         if (script_index >= 0) {
             const ActivityScriptKey key{scene_id, script_index};
             const auto [found, inserted] =
-                script_ids.emplace(key, source_row[list_column]);
-            if (!inserted && found->second != source_row[list_column]) {
+                script_ids.emplace(key, activity->second);
+            if (!inserted && found->second != activity->second) {
                 failure = path.string() +
                     ": one scene-script selector maps to multiple actor lists";
                 return false;
@@ -1388,6 +1491,12 @@ bool make_semantic_activity_actor_rows(
                     return false;
                 }
                 runtime_row.push_back(std::move(action_id));
+            } else if (column == source_order_column) {
+                runtime_row.push_back(
+                    "field_activity_" + activity->second + "_actor_" +
+                    std::to_string(static_cast<std::uint16_t>(source_order)));
+            } else if (source.columns[column] == "list_id") {
+                runtime_row.push_back(activity->second);
             } else if (column == tag_column->second) {
                 // Preserve the current host interpretation without exposing
                 // the tagged source pointer to Lua.
@@ -2329,7 +2438,7 @@ void push_empty_data(lua_State* state, const int modules_reference) {
     lua_createtable(state, 0, 0);
     lua_setfield(state, root_table, "dynamic_world_activity_actors");
     lua_createtable(state, 0, 0);
-    lua_setfield(state, root_table, "world_activity_actor_lists");
+    lua_setfield(state, root_table, "world_activity_actors");
     lua_createtable(state, 0, 0);
     lua_setfield(state, root_table, "conditional_actor_candidates");
     lua_createtable(state, 0, 0);
@@ -2350,15 +2459,20 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
                             const std::filesystem::path& field_asset_directory,
                             std::vector<ScriptConditionalActorCandidate>*
                                 conditional_actor_catalog,
-                            std::vector<ScriptWorldActivityListBinding>*
-                                activity_list_bindings,
+                            std::vector<ScriptActivitySelectorBinding>*
+                                activity_selector_bindings,
+                            std::vector<ScriptWorldActivityGroupBinding>*
+                                activity_group_bindings,
                             std::vector<std::pair<std::string, std::uint16_t>>*
                                 action_profile_bindings) {
     if (conditional_actor_catalog != nullptr) {
         conditional_actor_catalog->clear();
     }
-    if (activity_list_bindings != nullptr) {
-        activity_list_bindings->clear();
+    if (activity_selector_bindings != nullptr) {
+        activity_selector_bindings->clear();
+    }
+    if (activity_group_bindings != nullptr) {
+        activity_group_bindings->clear();
     }
     if (action_profile_bindings != nullptr) {
         action_profile_bindings->clear();
@@ -2446,7 +2560,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
              {"activity_probe_enabled", "primary_action_profile_enabled",
               "secondary_action_profile_enabled"}},
             {"entities/world-activity-actors.tsv",
-             "world_activity_actor_lists",
+             "world_activity_actors",
              {"scene", "source_order", "template_offset",
               "entity_kind", "action_code", "palette_line", "world_x",
               "world_y", "initial_heading", "source_spawn_state_flags",
@@ -2482,11 +2596,15 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
              {"scene", "choice"}},
         }};
         ActivityListIds activity_ids;
+        ActivityGroupBindings activity_group_bindings_by_source;
         ActivityScriptIds activity_script_ids;
         ActorProfileIds actor_profile_ids;
         SourceSequenceIds source_sequence_ids;
+        SourceActivityGroupIds source_activity_group_ids;
         if (!load_source_sequence_ids(world_directory, source_sequence_ids,
-                                      failure)) {
+                                      failure) ||
+            !load_source_activity_group_ids(
+                world_directory, source_activity_group_ids, failure)) {
             lua_settop(state, stack_base);
             return false;
         }
@@ -2537,13 +2655,15 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
                 }
                 runtime_document = &semantic_dynamic_actor_rows;
             } else if (std::string_view(source_table.field) ==
-                "world_activity_actor_lists") {
-                if (!collect_activity_list_ids(document, path, activity_ids,
-                                               failure) ||
+                "world_activity_actors") {
+                if (!collect_activity_list_ids(
+                        document, path, source_activity_group_ids,
+                        activity_ids, activity_group_bindings_by_source,
+                        failure) ||
                     !collect_actor_profile_ids(document, path,
                                                actor_profile_ids, failure) ||
                     !make_semantic_activity_actor_rows(
-                        document, path, semantic_actor_rows,
+                        document, path, activity_ids, semantic_actor_rows,
                         activity_script_ids, failure)) {
                     lua_settop(state, stack_base);
                     return false;
@@ -2569,13 +2689,22 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
             }
             lua_setfield(state, root_table, source_table.field);
         }
-        if (activity_list_bindings != nullptr) {
-            activity_list_bindings->reserve(activity_script_ids.size());
+        if (activity_selector_bindings != nullptr) {
+            activity_selector_bindings->reserve(activity_script_ids.size());
             for (const auto& [key, list_id] : activity_script_ids) {
-                activity_list_bindings->push_back(
-                    ScriptWorldActivityListBinding{
+                activity_selector_bindings->push_back(
+                    ScriptActivitySelectorBinding{
                         static_cast<std::uint16_t>(key.first),
                         static_cast<std::uint16_t>(key.second), list_id});
+            }
+        }
+        if (activity_group_bindings != nullptr) {
+            activity_group_bindings->reserve(
+                activity_group_bindings_by_source.size());
+            for (const auto& [unused_key, binding] :
+                 activity_group_bindings_by_source) {
+                (void)unused_key;
+                activity_group_bindings->push_back(binding);
             }
         }
 
@@ -2617,7 +2746,7 @@ bool load_world_content_tsv(lua_State* state, const int modules_reference,
         lua_createtable(state, 0, 0);
         lua_setfield(state, root_table, "dynamic_world_activity_actors");
         lua_createtable(state, 0, 0);
-        lua_setfield(state, root_table, "world_activity_actor_lists");
+        lua_setfield(state, root_table, "world_activity_actors");
         lua_createtable(state, 0, 0);
         lua_setfield(state, root_table, "field_alarm_profiles");
         lua_createtable(state, 0, 0);

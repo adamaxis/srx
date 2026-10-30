@@ -1637,7 +1637,7 @@ struct ScriptConditionalActorSelectionContext {
     bool scene_13_activity_gate_passed = false;
     bool scene_15_activity_gate_passed = false;
     std::vector<std::string> party_present_activity_ids;
-    bool pending_actor_list = false;
+    bool pending_activity = false;
     bool active_effect_is_story_contact = false;
     bool active_effect_matches_selection = false;
     bool player_spawn_pending = false;
@@ -1663,7 +1663,7 @@ struct ScriptConditionalActorSelection {
     ScriptConditionalActorVariant selection_variant =
         ScriptConditionalActorVariant::none;
     bool choice_changed = false;
-    std::string list_id;
+    std::string selection_id;
 };
 
 enum class ScriptFieldActorContactHandler : std::uint8_t {
@@ -1687,10 +1687,18 @@ enum class ScriptWorldActivityKind : std::uint8_t {
 // The source selector is resolved to a stable content id at the import
 // boundary. This binding stays in the native adapter and is never exposed to
 // gameplay Lua.
-struct ScriptWorldActivityListBinding {
+struct ScriptActivitySelectorBinding {
     std::uint16_t scene_id = 0;
     std::uint16_t selector = 0;
-    std::string list_id;
+    std::string activity_id;
+};
+
+// Import-only mapping for connecting extracted actor rows to stable content
+// identities. Source offsets and extractor keys stay in the native adapter.
+struct ScriptWorldActivityGroupBinding {
+    std::uint16_t scene_id = 0;
+    std::uint32_t source_group_offset = 0;
+    std::string activity_id;
 };
 
 // A source-selected field script list is installed by the world-activity
@@ -1699,9 +1707,7 @@ struct ScriptWorldActivityListBinding {
 // the scene-script list at 0x167AE / 0x43B6.
 struct ScriptWorldActivityActor {
     std::uint16_t scene_id = 0;
-    std::string list_id;
-    // Stable content identity used by gameplay policy. Template and list
-    // addresses are resolved to semantic profiles and activity IDs at import.
+    std::string instance_id;
     std::string activity_id;
     ScriptWorldActivityKind activity_kind =
         ScriptWorldActivityKind::event_driven;
@@ -2400,8 +2406,12 @@ public:
     world_activity_actors_for_script(std::uint16_t scene_id,
                                      std::uint16_t script_index);
     std::optional<std::vector<ScriptWorldActivityActor>>
-    world_activity_actors_for_list_id(std::uint16_t scene_id,
-                                     std::string_view list_id);
+    world_activity_actors_for_activity_id(std::uint16_t scene_id,
+                                          std::string_view activity_id);
+    std::optional<std::vector<ScriptWorldActivityActor>>
+    world_activity_actors_for_activity_id(std::string_view activity_id);
+    std::optional<std::string> activity_id_for_source_group(
+        std::uint16_t scene_id, std::uint32_t source_group_offset) const;
     std::optional<ScriptFieldActorContactAction> field_actor_contact_task(
         std::uint16_t scene_id, std::string_view actor_instance_id,
         std::string_view activity_id,
@@ -2419,7 +2429,7 @@ public:
         const ScriptConditionalActorSelectionContext& context,
         const ScriptActorRandomBound& random_bound);
     std::optional<std::string>
-    pending_world_activity_actor_list_for_scene(
+    pending_world_activity_id_for_scene(
         std::uint16_t scene_id, bool world_effect_active,
         bool pending_world_effect);
     std::optional<ScriptFieldEncounterOutcome>
@@ -2550,8 +2560,9 @@ public:
 
 private:
     std::optional<std::vector<ScriptWorldActivityActor>>
-    world_activity_actors_for_list_id_impl(std::uint16_t scene_id,
-                                           std::string_view list_id);
+    world_activity_actors_for_activity_id_impl(
+        std::optional<std::uint16_t> scene_id,
+        std::string_view activity_id);
     std::optional<ScriptFieldEncounterOutcome>
     resolve_field_encounter_impl(std::uint16_t scene_id,
                                  double weighted_selection,

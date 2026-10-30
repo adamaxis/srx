@@ -4,8 +4,8 @@
 -- game.content.entities; this module joins those records for map scripts.
 local World = {}
 local conditional_actor_selection_variant = nil
-local mode_one_activity_actor_lists =
-    require("data.mode_one_activity_actor_lists")
+local mode_one_activities =
+    require("data.mode_one_activities")
 local field_actor_contacts = require("data.field_actor_contacts")
 local valid_field_scene_modes = {
     none = true,
@@ -23,7 +23,7 @@ local function content()
             actor_spawns = {}, encounter_regions = {},
             world_activity_outcomes = {},
             dynamic_world_activity_actors = {},
-            world_activity_actor_lists = {},
+            world_activity_actors = {},
         }
     end
     return data
@@ -230,21 +230,19 @@ function World.actor_spawns_in_scene(scene_id)
     return records_in_scene("actor_spawns", scene_id)
 end
 
--- Return actors from one named activity list. The import boundary resolves
--- source selectors and gate encodings before these rows reach gameplay Lua.
-local function world_activity_actor_descriptors(scene_id, list_id)
-    local rows = content().world_activity_actor_lists or {}
+-- Return actor definitions for one named activity. The import boundary
+-- resolves source selectors and gate encodings before Lua sees these rows.
+local function world_activity_actor_descriptors(activity_id, scene_id)
+    local rows = content().world_activity_actors or {}
     local result = {}
     for _, row in ipairs(rows) do
-        if row.scene == scene_id and row.list_id == list_id then
-            local id = "world_activity:" .. scene_id .. ":" ..
-                list_id .. ":" .. row.source_order
+        if row.activity_id == activity_id and
+           (scene_id == nil or row.scene == scene_id) then
             result[#result + 1] = {
-                id = id,
+                id = row.id,
                 scene = row.scene,
-                list_id = row.list_id,
+                activity_id = row.activity_id,
                 activity_kind = row.activity_kind,
-                source_order = row.source_order,
                 activity_probe_enabled = row.activity_probe_enabled,
                 name = row.actor_name,
                 profile_id = row.profile_id,
@@ -296,18 +294,16 @@ local function world_activity_actor_descriptors(scene_id, list_id)
             }
         end
     end
-    table.sort(result, function(left, right)
-        return left.source_order < right.source_order
-    end)
     return result
 end
 
-function World.world_activity_actors_for_list_id(scene_id, list_id)
-    if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
-       type(list_id) ~= "string" or list_id == "" then
+function World.world_activity_actors_for_activity_id(activity_id, scene_id)
+    if type(activity_id) ~= "string" or activity_id == "" or
+       (scene_id ~= nil and
+        (type(scene_id) ~= "number" or scene_id % 1 ~= 0)) then
         return {}
     end
-    return world_activity_actor_descriptors(scene_id, list_id)
+    return world_activity_actor_descriptors(activity_id, scene_id)
 end
 
 -- Expose only the semantic choices the A800 policy needs. Spawn placement,
@@ -345,11 +341,11 @@ function World.consume_conditional_actor_selection()
     return variant
 end
 
-local function mode_one_activity_actor_list(scene_id, facts)
-    if facts.scene_mode ~= "street" or facts.pending_actor_list then
+local function mode_one_activity(scene_id, facts)
+    if facts.scene_mode ~= "street" or facts.pending_activity then
         return ""
     end
-    local rows = mode_one_activity_actor_lists[scene_id]
+    local rows = mode_one_activities[scene_id]
     if type(rows) ~= "table" then
         return ""
     end
@@ -361,7 +357,7 @@ local function mode_one_activity_actor_list(scene_id, facts)
         local party_does_not_include_actor =
             facts.party_present_activity_ids[row.activity_id] ~= true
         if variant_matches and gate_matches and party_does_not_include_actor then
-            return row.list_id
+            return row.world_activity_id
         end
     end
     return ""
@@ -383,7 +379,7 @@ function World.resolve_conditional_actor_selection(
        type(facts.scene_13_activity_gate_passed) ~= "boolean" or
        type(facts.scene_15_activity_gate_passed) ~= "boolean" or
        type(facts.party_present_activity_ids) ~= "table" or
-       type(facts.pending_actor_list) ~= "boolean" or
+       type(facts.pending_activity) ~= "boolean" or
        type(facts.active_effect_is_story_contact) ~= "boolean" or
        type(facts.active_effect_matches_selection) ~= "boolean" or
        type(facts.player_spawn_pending) ~= "boolean" or
@@ -405,18 +401,18 @@ function World.resolve_conditional_actor_selection(
 
     local variant = conditional_actor_selection_variant
     local choice_changed = false
-    local result = function(kind, list_id)
+    local result = function(kind, selection_id)
         return {
             kind = kind,
             selection_variant = variant or "none",
             choice_changed = choice_changed,
-            list_id = list_id,
+            selection_id = selection_id,
         }
     end
 
     -- ROM 0x16854 branches past all later scene-list selection when FFE120
     -- already names a pending actor list.
-    if facts.pending_actor_list then
+    if facts.pending_activity then
         return result("none", "")
     end
 
@@ -429,16 +425,16 @@ function World.resolve_conditional_actor_selection(
         return result("none", "")
     end
     if facts.pending_world_effect then
-        return result("pending_world_activity", "scene_20_ilene_pending_list")
+        return result("pending_world_activity", "scene_20_ilene_activity")
     end
 
     -- 0x1684C sets FFDF40=1, then reads the FFFBF9/FFFC1E/compact-marker
     -- gates before queuing a 0x16FD4 source list in FFE120. It exits early
     -- when another source already owns that pending-list pointer.
     if facts.scene_mode == "street" then
-        local list_id = mode_one_activity_actor_list(scene_id, facts)
-        if list_id ~= "" then
-            return result("mode_one_world_activity", list_id)
+        local activity_id = mode_one_activity(scene_id, facts)
+        if activity_id ~= "" then
+            return result("mode_one_world_activity", activity_id)
         end
         return result("none", "")
     end
@@ -537,14 +533,14 @@ function World.mark_contact_actor_for_escort_cleanup(
     return true
 end
 
-function World.pending_world_activity_actor_list_for_scene(
+function World.pending_world_activity_id_for_scene(
     scene_id, world_effect_active, pending_world_effect)
     if type(scene_id) ~= "number" or scene_id % 1 ~= 0 or
        type(world_effect_active) ~= "boolean" or
        type(pending_world_effect) ~= "boolean" then
         return nil
     end
-    local selected_list_id = nil
+    local selected_activity_id = nil
     local function requirement_matches(requirement, actual, active_word,
                                        inactive_word)
         if requirement == active_word then
@@ -555,23 +551,23 @@ function World.pending_world_activity_actor_list_for_scene(
         end
         return false
     end
-    for _, row in ipairs(content().world_activity_actor_lists or {}) do
+    for _, row in ipairs(content().world_activity_actors or {}) do
         if row.scene == scene_id and row.activity_kind == "event_driven" and
            requirement_matches(row.world_effect_active_requirement,
                                world_effect_active, "active", "inactive") and
            requirement_matches(row.pending_world_effect_requirement,
                                pending_world_effect, "pending", "clear") then
-            if type(row.list_id) ~= "string" or row.list_id == "" then
-                error("pending world-activity list is missing its activity id")
+            if type(row.activity_id) ~= "string" or row.activity_id == "" then
+                error("pending world activity is missing its activity id")
             end
-            if selected_list_id ~= nil and
-               selected_list_id ~= row.list_id then
-                error("ambiguous pending world-activity actor lists")
+            if selected_activity_id ~= nil and
+               selected_activity_id ~= row.activity_id then
+                error("ambiguous pending world activities")
             end
-            selected_list_id = row.list_id
+            selected_activity_id = row.activity_id
         end
     end
-    return selected_list_id
+    return selected_activity_id
 end
 
 function World.encounter_regions_in_scene(scene_id)

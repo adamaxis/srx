@@ -653,7 +653,7 @@ bool verify_conditional_actor_selector_permutations(
                                         expected_kind =
                                             ScriptConditionalActorSelectionKind::pending_world_activity;
                                         expected_list_id =
-                                            "scene_20_ilene_pending_list";
+                                            "scene_20_ilene_activity";
                                     } else if (is_employee_recruitment &&
                                                scene_mode ==
                                                    ScriptFieldSceneMode::building &&
@@ -676,7 +676,7 @@ bool verify_conditional_actor_selector_permutations(
                                     ++permutation_count;
                                     if (!selection.has_value() ||
                                         selection->kind != expected_kind ||
-                                        selection->list_id !=
+                                        selection->selection_id !=
                                             expected_list_id ||
                                         selection->selection_variant !=
                                             expected_variant ||
@@ -733,7 +733,7 @@ bool verify_conditional_actor_selector_permutations(
                   "A800 source-gate permutation count mismatch");
 }
 
-bool verify_mode_one_activity_actor_lists(
+bool verify_mode_one_activities(
     shadowrun::ghidra_conversion::scripting::GameScriptRuntime& scripts) {
     using namespace shadowrun::ghidra_conversion::scripting;
 
@@ -743,7 +743,7 @@ bool verify_mode_one_activity_actor_lists(
         std::uint32_t world_flags;
         std::uint8_t primary_marker;
         std::uint8_t secondary_marker;
-        bool pending_actor_list;
+        bool pending_activity;
         std::uint16_t source_mode_word;
         std::uint32_t expected_list;
     };
@@ -808,7 +808,7 @@ bool verify_mode_one_activity_actor_lists(
         facts.party_present_activity_ids =
             script_mode_one_activity_ids_present_from_source_markers(
                 test_case.primary_marker, test_case.secondary_marker);
-        facts.pending_actor_list = test_case.pending_actor_list;
+        facts.pending_activity = test_case.pending_activity;
         std::string expected_list_id;
         if (test_case.expected_list != 0U) {
             const auto expected_row = std::find_if(
@@ -828,7 +828,7 @@ bool verify_mode_one_activity_actor_lists(
             : ScriptConditionalActorSelectionKind::mode_one_world_activity;
         if (!expect(selection.has_value() &&
                         selection->kind == expected_kind &&
-                        selection->list_id == expected_list_id &&
+                        selection->selection_id == expected_list_id &&
                         !selection->choice_changed,
                     "0x1684C mode-one actor-list gate mismatch")) {
             std::cerr << "scene=" << test_case.scene
@@ -839,18 +839,19 @@ bool verify_mode_one_activity_actor_lists(
                              test_case.primary_marker)
                       << ',' << static_cast<unsigned>(
                              test_case.secondary_marker)
-                      << " pending=" << test_case.pending_actor_list
+                      << " pending=" << test_case.pending_activity
                       << " source-mode-word=" << test_case.source_mode_word
                       << " expected_list=0x" << test_case.expected_list
                       << " failure=" << scripts.failure() << std::dec << '\n';
             return false;
         }
         if (test_case.expected_list != 0U) {
-            const auto actors = scripts.world_activity_actors_for_list_id(
+            const auto actors = scripts.world_activity_actors_for_activity_id(
                 test_case.scene, expected_list_id);
             if (!expect(actors.has_value() && actors->size() == 1U &&
-                            actors->front().list_id == expected_list_id &&
-                            actors->front().activity_id == expected_list_id,
+                            actors->front().activity_id == expected_list_id &&
+                            actors->front().instance_id.rfind(
+                                "field_activity_", 0U) == 0U,
                         "0x16FD4 selected list lacks its extracted actor")) {
                 std::cerr << "scene=" << test_case.scene
                           << " list=0x" << std::hex
@@ -1509,7 +1510,7 @@ bool verify_accepted_employee_offer_variant_reaches_a800(
             selection->choice_changed &&
             selection->selection_variant == expected_variant &&
             expected_candidate_found &&
-            selection->list_id == expected_candidate_id &&
+            selection->selection_id == expected_candidate_id &&
             random_calls == 1U &&
             consumed_choice ==
                 std::optional<ScriptConditionalActorVariant>{expected_variant} &&
@@ -2399,7 +2400,7 @@ int main() {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
-    if (!verify_mode_one_activity_actor_lists(scripts)) {
+    if (!verify_mode_one_activities(scripts)) {
         std::cerr << scripts.failure() << '\n';
         return 1;
     }
@@ -2505,15 +2506,17 @@ int main() {
     const auto absent_scene_script_actors =
         scripts.world_activity_actors_for_script(13U, 2U);
     const auto ilene_pending_list =
-        scripts.world_activity_actors_for_list_id(
-            20U, "scene_20_ilene_pending_list");
+        scripts.world_activity_actors_for_activity_id(
+            20U, "scene_20_ilene_activity");
     const auto spirit_eyes_entry_list =
-        scripts.world_activity_actors_for_list_id(47U, "mode_13_entry");
+        scripts.world_activity_actors_for_activity_id(47U, "mode_13_entry");
+    const auto mako_activity_actors =
+        scripts.world_activity_actors_for_activity_id("club_penumbra_mako");
     const auto spirit_eyes_entry_failure = scripts.failure();
     const auto ilene_selected_pending_list =
-        scripts.pending_world_activity_actor_list_for_scene(20U, false, true);
+        scripts.pending_world_activity_id_for_scene(20U, false, true);
     const auto ilene_blocked_pending_list =
-        scripts.pending_world_activity_actor_list_for_scene(20U, true, true);
+        scripts.pending_world_activity_id_for_scene(20U, true, true);
     const auto seed_contact_actor = [&scripts](
         const std::string_view actor_id,
         const std::uint16_t scene_id,
@@ -2548,10 +2551,10 @@ int main() {
         34U, "qa_aragorn_contact", "scene_34_story_contact",
         ContactHandler::world_effect);
     const auto ilene_contact_route = scripts.field_actor_contact_task(
-        20U, "qa_ilene_contact", "scene_20_ilene_pending_list",
+        20U, "qa_ilene_contact", "scene_20_ilene_activity",
         ContactHandler::pending_world_effect);
     const auto unrelated_contact_route = scripts.field_actor_contact_task(
-        20U, "qa_ilene_contact", "scene_20_ilene_pending_list",
+        20U, "qa_ilene_contact", "scene_20_ilene_activity",
         ContactHandler::world_effect);
     const auto random_pedestrian_effect_route =
         scripts.field_actor_contact_task(
@@ -2726,7 +2729,7 @@ int main() {
         story_contact_selection.has_value() &&
         story_contact_selection->kind ==
             ScriptConditionalActorSelectionKind::story_contact &&
-        story_contact_selection->list_id == "scene_34_story_contact" &&
+        story_contact_selection->selection_id == "scene_34_story_contact" &&
         story_contact_selection->selection_variant ==
             ScriptConditionalActorVariant::none &&
         !story_contact_selection->choice_changed &&
@@ -2736,7 +2739,7 @@ int main() {
         pending_selection.has_value() &&
         pending_selection->kind ==
             ScriptConditionalActorSelectionKind::pending_world_activity &&
-        pending_selection->list_id == "scene_20_ilene_pending_list" &&
+        pending_selection->selection_id == "scene_20_ilene_activity" &&
         package_recovery_selection.has_value() &&
         package_recovery_selection->kind ==
             ScriptConditionalActorSelectionKind::none &&
@@ -2757,7 +2760,7 @@ int main() {
             ScriptConditionalActorSelectionKind::random_pedestrian &&
         resumed_effect_selection->selection_variant ==
             ScriptConditionalActorVariant::second &&
-        resumed_effect_selection->list_id ==
+        resumed_effect_selection->selection_id ==
             (first_candidate_scene.has_value() &&
                      first_candidate_scene->size() > 1U
                  ? first_candidate_scene->at(1U).candidate_id
@@ -2768,7 +2771,7 @@ int main() {
             ScriptConditionalActorSelectionKind::random_pedestrian &&
         reachable_choice_one_selection->selection_variant ==
             ScriptConditionalActorVariant::first &&
-        reachable_choice_one_selection->list_id ==
+        reachable_choice_one_selection->selection_id ==
             (first_candidate_scene.has_value() &&
                      !first_candidate_scene->empty()
                  ? first_candidate_scene->front().candidate_id
@@ -2872,9 +2875,9 @@ int main() {
             spirit_eyes_entry_list.has_value() &&
                 spirit_eyes_entry_list->size() == 5U &&
                 spirit_eyes_entry_list->front().scene_id == 47U &&
-                spirit_eyes_entry_list->front().list_id == "mode_13_entry" &&
-                spirit_eyes_entry_list->front().activity_id ==
-                    "mode_13_entry" &&
+                spirit_eyes_entry_list->front().activity_id == "mode_13_entry" &&
+                spirit_eyes_entry_list->front().instance_id ==
+                    "field_activity_mode_13_entry_actor_0" &&
                 spirit_eyes_entry_list->front().source_order == 0U &&
                 spirit_eyes_entry_list->front().world_x == 0x5980U &&
                 spirit_eyes_entry_list->front().world_y == 0x0E80U,
@@ -2889,16 +2892,33 @@ int main() {
         return 1;
     }
     if (!expect(
+            mako_activity_actors.has_value() &&
+                mako_activity_actors->size() == 4U &&
+                std::all_of(
+                    mako_activity_actors->begin(),
+                    mako_activity_actors->end(),
+                    [](const ScriptWorldActivityActor& actor) {
+                        return actor.activity_id == "club_penumbra_mako" &&
+                               actor.instance_id.rfind(
+                                   "field_activity_club_penumbra_mako_actor_",
+                                   0U) == 0U;
+                    }),
+            "Mako actor content did not resolve through its semantic activity id")) {
+        std::cerr << "Mako activity lookup failure: " << scripts.failure()
+                  << '\n';
+        return 1;
+    }
+    if (!expect(
             ilene_gate_actors.has_value() &&
                 ilene_gate_actors->size() == 1U &&
                 ilene_gate_actors->front().scene_id == 13U &&
-                ilene_gate_actors->front().list_id ==
+                ilene_gate_actors->front().activity_id ==
                     "scene_13_ilene_gate_script" &&
                 ilene_gate_actors->front().activity_kind ==
                     ScriptWorldActivityKind::scene_script &&
                 ilene_gate_actors->front().source_order == 0U &&
-                ilene_gate_actors->front().activity_id ==
-                    "scene_13_ilene_gate_script" &&
+                ilene_gate_actors->front().instance_id ==
+                    "field_activity_scene_13_ilene_gate_script_actor_0" &&
                 ilene_gate_actors->front().activity_probe_enabled &&
                 ilene_gate_actors->front().actor_name == "lone11" &&
                 ilene_gate_actors->front().profile_id ==
@@ -2942,7 +2962,7 @@ int main() {
                     ScriptWorldActivityKind::event_driven &&
                 ilene_pending_list->front().source_order == 0U &&
                 ilene_pending_list->front().activity_id ==
-                    "scene_20_ilene_pending_list" &&
+                    "scene_20_ilene_activity" &&
                 ilene_pending_list->front().activity_probe_enabled &&
                 ilene_pending_list->front().profile_id ==
                     "lone11_k0a_item03" &&
@@ -2959,7 +2979,7 @@ int main() {
                     0x08U &&
                 ilene_selected_pending_list ==
                     std::optional<std::string>{
-                        "scene_20_ilene_pending_list"} &&
+                        "scene_20_ilene_activity"} &&
                 !ilene_blocked_pending_list.has_value() &&
                 seeded_aragorn_contact_actor &&
                 seeded_ilene_contact_actor &&

@@ -7,14 +7,14 @@ local E = require("enums")
 game = {
     modules = {
         world_content_data = {
-            world_activity_actor_lists = {
+            world_activity_actors = {
                 {
+                    id = "field_activity_scene_13_ilene_gate_script_actor_0",
                     scene = 13,
-                    list_id = "scene_13_ilene_gate_script",
+                    activity_id = "scene_13_ilene_gate_script",
                     activity_kind = "scene_script",
                     world_effect_active_requirement = "unspecified",
                     pending_world_effect_requirement = "unspecified",
-                    source_order = 0,
                     actor_name = "lone11",
                     visual_profile_id = E.ActorVisualProfile.LONE_STAR_MAGE,
                     palette_line = 1,
@@ -28,21 +28,21 @@ game = {
                     actor_facts = { roles = {}, interaction = {} },
                 },
                 {
+                    id = "field_activity_scene_47_strike_team_actor_0",
                     scene = 47,
-                    list_id = "scene_47_strike_team",
+                    activity_id = "scene_47_strike_team",
                     activity_kind = "event_driven",
                     world_effect_active_requirement = "unspecified",
                     pending_world_effect_requirement = "unspecified",
-                    source_order = 0,
                     actor_name = "Strike Team",
                 },
                 {
+                    id = "field_activity_scene_20_ilene_activity_actor_0",
                     scene = 20,
-                    list_id = "scene_20_ilene_pending_list",
+                    activity_id = "scene_20_ilene_activity",
                     activity_kind = "event_driven",
                     world_effect_active_requirement = "inactive",
                     pending_world_effect_requirement = "pending",
-                    source_order = 0,
                     actor_name = "lone11",
                     visual_profile_id = E.ActorVisualProfile.LONE_STAR_MAGE,
                     profile_id = "lone11_k0a_item03",
@@ -61,10 +61,11 @@ game = {
     },
 }
 
-local actors = World.world_activity_actors_for_list_id(
-    13, "scene_13_ilene_gate_script")
+local actors = World.world_activity_actors_for_activity_id(
+    "scene_13_ilene_gate_script", 13)
 assert(#actors == 1, "selector lookup returned the wrong actor count")
-assert(actors[1].id == "world_activity:13:scene_13_ilene_gate_script:0" and
+assert(actors[1].id ==
+       "field_activity_scene_13_ilene_gate_script_actor_0" and
        actors[1].name == "lone11" and
        actors[1].visual_profile_id == E.ActorVisualProfile.LONE_STAR_MAGE and
        actors[1].palette_line == 1 and
@@ -76,11 +77,11 @@ assert(actors[1].id == "world_activity:13:scene_13_ilene_gate_script:0" and
        actors[1].ordered_overrides == nil and
        actors[1].actor_facts.roles ~= nil,
        "selector lookup lost the typed host actor facts")
-local pending = World.world_activity_actors_for_list_id(
-    20, "scene_20_ilene_pending_list")
+local pending = World.world_activity_actors_for_activity_id(
+    "scene_20_ilene_activity", 20)
 assert(#pending == 1 and
        pending[1].id ==
-           "world_activity:20:scene_20_ilene_pending_list:0" and
+           "field_activity_scene_20_ilene_activity_actor_0" and
        pending[1].activity_kind == "event_driven" and
        pending[1].name == "lone11" and
        pending[1].visual_profile_id == E.ActorVisualProfile.LONE_STAR_MAGE and
@@ -89,21 +90,25 @@ assert(#pending == 1 and
        pending[1].ordered_overrides == nil and
        pending[1].actor_facts.roles ~= nil,
        "activity-id lookup did not preserve the pending Ilene actor")
-assert(#World.world_activity_actors_for_list_id(
-           20, "scene_47_strike_team") == 0,
+assert(#World.world_activity_actors_for_activity_id(
+           "scene_47_strike_team", 20) == 0,
        "activity-id lookup crossed scene boundaries")
-assert(World.pending_world_activity_actor_list_for_scene(20, false, true) ==
-           "scene_20_ilene_pending_list" and
-       World.pending_world_activity_actor_list_for_scene(20, true, true) ==
+assert(#World.world_activity_actors_for_activity_id(
+           "scene_13_ilene_gate_script") == 1,
+       "semantic activity lookup unexpectedly requires a scene number")
+assert(World.pending_world_activity_id_for_scene(20, false, true) ==
+           "scene_20_ilene_activity" and
+       World.pending_world_activity_id_for_scene(20, true, true) ==
            nil and
-       World.pending_world_activity_actor_list_for_scene(20, false, false) ==
+       World.pending_world_activity_id_for_scene(20, false, false) ==
            nil and
-       World.pending_world_activity_actor_list_for_scene(20, true, false) ==
+       World.pending_world_activity_id_for_scene(20, true, false) ==
            nil and
-       World.pending_world_activity_actor_list_for_scene(47, false, true) ==
+       World.pending_world_activity_id_for_scene(47, false, true) ==
            nil,
        "pending actor-list selector ignored its extracted marker gates")
-assert(#World.world_activity_actors_for_list_id("13", "scene_13_ilene_gate_script") == 0,
+assert(#World.world_activity_actors_for_activity_id(
+           "scene_13_ilene_gate_script", "13") == 0,
        "activity lookup accepted a nonnumeric scene")
 
 -- ROM 0x1DED8 scans live field actor records and requests the 0x1E514 escort

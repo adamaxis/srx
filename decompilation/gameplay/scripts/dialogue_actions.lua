@@ -167,8 +167,8 @@ local function register_core_actions(registry)
         return "service_unavailable"
     end)
 
-    registry:register("field.queue_mako_actor_list", function()
-        local result = require("route_actor_lists").queue(
+    registry:register("field.queue_mako_activity", function()
+        local result = require("story_activity_routes").request(
             "club_penumbra_mako")
         return result == "queued" and result or "service_unavailable"
     end)

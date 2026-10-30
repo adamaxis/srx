@@ -260,12 +260,12 @@ QJsonObject FieldSceneRuntime::debug_inspection_fields() const {
                   field_runtime_state_.world_activity_countdown);
     fields.insert(
         QStringLiteral("field.debug.mako_actor_transitions_remaining"),
-        field_route_actor_transitions_remaining_.has_value()
+        field_route_activity_members_remaining_.has_value()
             ? QJsonValue(static_cast<int>(
-                  *field_route_actor_transitions_remaining_))
+                  *field_route_activity_members_remaining_))
             : QJsonValue(-1));
     fields.insert(QStringLiteral("field.debug.actor_list_callback_pending"),
-                  field_pending_actor_list_callback_.has_value());
+                  field_pending_activity_completion_.has_value());
     fields.insert(QStringLiteral("field.debug.heat_level"),
                   field_heat_level_.has_value()
                       ? QJsonValue(*field_heat_level_)

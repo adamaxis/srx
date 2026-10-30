@@ -9110,7 +9110,7 @@ int run_field_scene20_physical_entry_qa(
                 "field.world_activity.script_actor_published_from_rom_list"));
         const auto pending_lists_queued = std::count(
             source_boundaries.begin(), source_boundaries.end(),
-            std::string("field.world_activity.pending_actor_list_queued"));
+            std::string("field.world_activity.pending_activity_group_queued"));
         if (!field_scene.pending_world_effect_for_dump() ||
             route_preparations != 1 || pending_lists_queued != 1 ||
             pending_list_publications != 1 || !actor_position.has_value() ||
@@ -22438,7 +22438,7 @@ int run_field_pedestrian_scenes_qa(
                 !field_scene.pending_world_effect_for_dump() &&
                 !field_scene.world_effect_player_spawn_pending_for_dump() &&
                 !field_scene.pending_mode_transition_actor_list_for_dump() &&
-                !field_scene.pending_route_actor_list_for_dump();
+                !field_scene.pending_route_activity_for_dump();
             if (!source_gates_match ||
                 field_scene.world_activity_script_actor_count_for_dump() != 1U ||
                 !actor || actor->world_position.x != expected->world_x ||
@@ -30033,7 +30033,7 @@ int run_field_penumbra_mako_qa(
             field_scene.field_scene_reference_for_dump() != 3U ||
             field_scene.field_funds_for_dump() !=
                 std::optional<std::uint32_t>{wallet_before} ||
-            boundary_count("field.world_activity.club_penumbra_mako_list_queued") !=
+            boundary_count("field.world_activity.club_penumbra_mako_activity_queued") !=
                 0 ||
             !save("actual", true) ||
             !write_branch_trace("doorman_later_and_return")) {
@@ -30067,7 +30067,7 @@ int run_field_penumbra_mako_qa(
             field_scene.field_scene_reference_for_dump() != 3U ||
             field_scene.field_funds_for_dump() !=
                 std::optional<std::uint32_t>{wallet_before} ||
-            boundary_count("field.world_activity.club_penumbra_mako_list_queued") !=
+            boundary_count("field.world_activity.club_penumbra_mako_activity_queued") !=
                 0 ||
             !save("actual", true) ||
             !write_branch_trace("reputation_rejection_and_return")) {
@@ -30096,7 +30096,7 @@ int run_field_penumbra_mako_qa(
             field_scene.field_scene_reference_for_dump() != 3U ||
             field_scene.field_funds_for_dump() !=
                 std::optional<std::uint32_t>{wallet_before} ||
-            boundary_count("field.world_activity.club_penumbra_mako_list_queued") !=
+            boundary_count("field.world_activity.club_penumbra_mako_activity_queued") !=
                 0 ||
             !save("actual", true) ||
             !write_branch_trace("entry_fee_later_and_return")) {
@@ -30124,7 +30124,7 @@ int run_field_penumbra_mako_qa(
         tap_qa_controller_button(field_scene, 0x40U);
         if (field_scene.dialogue_open() ||
             field_scene.field_scene_reference_for_dump() != 3U ||
-            boundary_count("field.world_activity.club_penumbra_mako_list_queued") !=
+            boundary_count("field.world_activity.club_penumbra_mako_activity_queued") !=
                 0 ||
             !save("actual", true) ||
             !write_branch_trace("insufficient_funds_and_return")) {
@@ -30166,7 +30166,7 @@ int run_field_penumbra_mako_qa(
         // branch asserts the Mako pending-list route itself was not queued.
         if (field_scene.field_scene_reference_for_dump() != 17U ||
             field_scene.dialogue_open() ||
-            boundary_count("field.world_activity.club_penumbra_mako_list_queued") !=
+            boundary_count("field.world_activity.club_penumbra_mako_activity_queued") !=
                 0 ||
             field_scene.field_funds_for_dump() !=
                 std::optional<std::uint32_t>{0U} ||
@@ -30186,7 +30186,7 @@ int run_field_penumbra_mako_qa(
                       << field_scene.world_activity_script_actor_count_for_dump()
                       << ", list_queued="
                       << boundary_count(
-                             "field.world_activity.club_penumbra_mako_list_queued")
+                             "field.world_activity.club_penumbra_mako_activity_queued")
                       << ", paid_response=" << contains("fee deducted")
                       << ", mako_intro=" << contains("Once inside")
                       << ")\n";
@@ -30266,7 +30266,7 @@ int run_field_penumbra_mako_qa(
         std::size_t count = 0U;
         for (auto it = fields.constBegin(); it != fields.constEnd(); ++it) {
             if (it.key().startsWith(QStringLiteral(
-                    "actor.field_scene_17_pending_list_1e628_actor_")) &&
+                    "actor.field_activity_club_penumbra_mako_actor_")) &&
                 it.key().endsWith(QStringLiteral(".profile"))) {
                 ++count;
             }
@@ -30289,7 +30289,7 @@ int run_field_penumbra_mako_qa(
                   << ")\n";
         for (const auto& boundary : source_boundaries) {
             if (boundary.find("mako") != std::string::npos ||
-                boundary.find("pending_actor_list") != std::string::npos ||
+                boundary.find("pending_activity") != std::string::npos ||
                 boundary.find("script_actor_published") !=
                     std::string::npos) {
                 std::cerr << "route_boundary=" << boundary << '\n';
@@ -30300,7 +30300,7 @@ int run_field_penumbra_mako_qa(
 
     // The four list actors spawn live (combat-fixes-1); FFE177 counts them
     // down only as each one dies (0xAB02). Stand in for the fight.
-    if (field_scene.defeat_mako_actor_list_for_qa() != 4U) {
+    if (field_scene.defeat_mako_activity_for_qa() != 4U) {
         std::cerr << "Club Penumbra Mako QA: could not defeat the four list "
                      "actors\n";
         return 3;
@@ -30318,7 +30318,7 @@ int run_field_penumbra_mako_qa(
     if (!field_scene.dialogue_open() ||
         !contains("On the floor, Mako lies unconscious") ||
         field_scene.field_scene_reference_for_dump() != 17U ||
-        boundary_count("field.world_activity.club_penumbra_mako_list_queued") !=
+        boundary_count("field.world_activity.club_penumbra_mako_activity_queued") !=
             1 ||
         boundary_count(kTransitionBoundary) != 4 ||
         boundary_count("field.world_activity.club_penumbra_mako_callback_dispatched") !=
@@ -30389,13 +30389,13 @@ int run_field_penumbra_mako_qa(
                          "field.world_activity.club_penumbra_mako_callback_dialogue_open_failed")
                   << ", list_queued="
                   << boundary_count(
-                         "field.world_activity.club_penumbra_mako_list_queued")
+                         "field.world_activity.club_penumbra_mako_activity_queued")
                   << ", actor_list_incomplete="
                   << boundary_count(
-                         "field.world_activity.club_penumbra_mako_actor_list_incomplete")
+                         "field.world_activity.club_penumbra_mako_activity_incomplete")
                   << ", list_unresolved="
                   << boundary_count(
-                         "field.world_activity.club_penumbra_mako_list_unresolved")
+                         "field.world_activity.club_penumbra_mako_unresolved")
                   << ", dialogue_boundary="
                   << field_scene.dialogue_panel().source_boundary_reason
                   << ")\n";
@@ -34522,7 +34522,7 @@ int run_field_mode_13_entry_qa(
         "field.mode_transition.lua_room_graph_selected");
     const auto queued = std::find(
         source_boundaries.begin(), source_boundaries.end(),
-        "field.world_activity.pending_actor_list_queued");
+        "field.world_activity.pending_activity_group_queued");
     const auto entry_image = render_qa_field(field_scene);
     const auto entry_image_path = output / "entry.bmp";
     if (field_scene.field_scene_reference_for_dump() != 47U ||

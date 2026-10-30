@@ -1,6 +1,7 @@
 -- Regenerates data/actor_patrol_routes.lua from actor spawn records and
--- their +0xE0 coordinate lists. Usage:
--- lua tools/gen_actor_patrol_routes.lua <rom.bin> <default-actors.tsv> <world-activity-actors.tsv> > data/actor_patrol_routes.lua
+-- their coordinate lists. Source offsets select rows during import; runtime
+-- route keys use stable activity identities. Usage:
+-- lua tools/gen_actor_patrol_routes.lua <rom.bin> <default-actors.tsv> <world-activity-actors.tsv> <field_actor_activity_groups.tsv> <output.lua>
 local function read_file(path)
     local file = assert(io.open(path, "rb"), "cannot open " .. path)
     local value = file:read("a")
@@ -51,6 +52,15 @@ local function number(row, field)
     local result = tonumber(row[field])
     assert(result ~= nil, "invalid " .. field .. " in actor source table")
     return result
+end
+
+local activity_group_ids = {}
+for _, row in ipairs(tsv(assert(arg[4], "actor activity group TSV path"))) do
+    local source_group_offset = number(row, "source_group_offset")
+    local activity_id = assert(row.activity_id, "actor activity id")
+    assert(activity_id ~= "" and activity_group_ids[source_group_offset] == nil,
+           "invalid or duplicate semantic actor activity mapping")
+    activity_group_ids[source_group_offset] = activity_id
 end
 
 local sources = {}
@@ -147,12 +157,15 @@ for list_offset, rows in pairs(default_lists) do
 end
 
 -- Conditional scene actor records already retain the tagged template and
--- coordinate-list pointer in the extracted manifest [C].
+-- coordinate-list pointer in the extracted manifest [C]. Their generated
+-- keys use the import-resolved activity identity, never a source list address.
 for _, row in ipairs(tsv(assert(arg[3], "world-activity actor TSV path"))) do
-    local route_id = string.format("field_scene_%d_%s_actor_%d",
-        number(row, "scene"), assert(row.list_id, "actor list id"),
-        number(row, "source_order"))
-    add_source(route_id, number(row, "list_offset"),
+    local list_offset = number(row, "list_offset")
+    local activity_id = activity_group_ids[list_offset] or
+        assert(row.list_id, "actor activity id")
+    local route_id = string.format("field_activity_%s_actor_%d",
+        activity_id, number(row, "source_order"))
+    add_source(route_id, list_offset,
                number(row, "source_order"),
                number(row, "position_offset"),
                number(row, "tagged_template"))
@@ -238,4 +251,12 @@ for _, route_id in ipairs(route_ids) do
         entry.tagged_template)
 end
 out[#out + 1] = "}"
-io.write(table.concat(out, "\n"), "\n")
+local generated_text = table.concat(out, "\n") .. "\n"
+if arg[5] then
+    local output = assert(io.open(arg[5], "wb"),
+                          "cannot write " .. arg[5])
+    output:write(generated_text)
+    output:close()
+else
+    io.write(generated_text)
+end

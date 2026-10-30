@@ -161,11 +161,16 @@ Scene-3/event-0 doorman branch in finalizer `0x1FD80`. The extractor indexes
 the same list under the Scene-47 activity-table context, but the source exit
 sequence continues to Scene 17 and the common consumer has no scene transition.
 The Club dialogue graph models the entry checks and both Mako introduction
-pages. Its Lua action queues the extracted list before the pages; after the
-source route resumes to Scene 17, the typed field path resolves and publishes
-the four rows from the Scene-47 table context. The host counts four eligible
-Lua behavior-completion edges and resets actor service links at zero. Dispatch
-through FFE104 now invokes the typed Lua result graph; Qt route QA remains open. This is not a
+pages. Its Lua action requests semantic activity `club_penumbra_mako` before
+the pages. The native importer maps source selector `0x1E628` to that host
+identity, derives stable actor IDs and the member count from imported actor
+definitions, then publishes the four rows in Scene 17 from the Scene-47 data
+context. [C] This follows the ROM selection at `0x225D2` and four behavior
+transitions counted by `0x43B6`. Lua receives neither the source offset,
+source order, nor the unused byte-pair override string. Dispatch through
+FFE104 invokes the typed Lua result graph. Debug Mako route QA passes; its
+Scene-17 return remains black in the host renderer and independent Genesis
+comparison remains open. This is not a
 random-event selector result.
 
 The linked ROM records confirm this is a Mako story route. Entry descriptor

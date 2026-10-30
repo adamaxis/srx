@@ -98,10 +98,10 @@ int main() {
                 world.override_x == 0x5E80U && world.override_y == 0x1300U &&
                 world.spawn_position_available &&
                 world.start_world_activity && started == 1 && timed == 1 &&
-                world.pending_actor_list ==
-                    FieldModePendingActorList::council_island_spirit_eyes &&
-                field_mode_pending_actor_list_id(
-                    *world.pending_actor_list) == "mode_13_entry")) {
+                world.pending_activity ==
+                    FieldModePendingActivity::council_island_spirit_eyes &&
+                field_mode_pending_activity_id(
+                    *world.pending_activity) == "mode_13_entry")) {
         return 6;
     }
 
@@ -114,7 +114,7 @@ int main() {
     if (!expect(locked.resolved && locked.next_mode_index == 0x13 &&
                 locked.scene_id == 0x2FU &&
                 !locked.start_world_activity && started == 0 && timed == 0 &&
-                !locked.pending_actor_list.has_value())) {
+                !locked.pending_activity.has_value())) {
         return 7;
     }
 

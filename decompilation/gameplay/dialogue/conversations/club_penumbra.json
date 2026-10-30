@@ -90,15 +90,15 @@
           "cases": [
             {
               "when": "club_penumbra.mako_activity_available",
-              "next": "queue_mako_actor_list"
+              "next": "queue_mako_activity"
             }
           ],
           "fallback": "resume_club_route",
           "evidence": "ROM command 0x60 writes pending list 0x1E628 only when story bit 10 is set, bit 11 is clear, and FFFC30 bit 21 or FFFC38 bit 3 is set."
         },
-        "queue_mako_actor_list": {
+        "queue_mako_activity": {
           "type": "action",
-          "actionId": "field.queue_mako_actor_list",
+          "actionId": "field.queue_mako_activity",
           "results": {
             "queued": "mako_intro",
             "service_unavailable": "mako_encounter_boundary"
@@ -146,7 +146,7 @@
         "romAddresses": [
           "0x53FFC", "0xAB02", "0x1F1E0", "0xF4CA8", "0xF98FA"
         ],
-        "scope": "club_penumbra_mako_actor_list_outcome"
+        "scope": "club_penumbra_mako_activity_outcome"
       },
       "nodes": {
         "apply_callback": {

@@ -2,10 +2,10 @@
 
 namespace shadowrun::ghidra_conversion {
 
-std::string_view field_mode_pending_actor_list_id(
-    const FieldModePendingActorList actor_list) noexcept {
+std::string_view field_mode_pending_activity_id(
+    const FieldModePendingActivity actor_list) noexcept {
     switch (actor_list) {
-    case FieldModePendingActorList::council_island_spirit_eyes:
+    case FieldModePendingActivity::council_island_spirit_eyes:
         return "mode_13_entry";
     }
     return {};
@@ -45,8 +45,8 @@ FieldModeTransitionPlan advance_field_mode_transition(
     if (plan.next_mode_index == 0x13 &&
         (input.world_activity_flags & 0x100U) == 0U) {
         plan.start_world_activity = true;
-        plan.pending_actor_list =
-            FieldModePendingActorList::council_island_spirit_eyes;
+        plan.pending_activity =
+            FieldModePendingActivity::council_island_spirit_eyes;
         if (callbacks.begin_world_activity) {
             callbacks.begin_world_activity();
         }

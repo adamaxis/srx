@@ -426,7 +426,7 @@ public:
         std::uint16_t source_order, std::uint8_t physical_meter) noexcept;
     // QA stand-in for the fight: zero the +0x4C meter of every Club
     // Penumbra Mako list member so 0xB330/0xAB02 run as in combat.
-    std::size_t defeat_mako_actor_list_for_qa() noexcept;
+    std::size_t defeat_mako_activity_for_qa() noexcept;
     bool open_command_overview_for_dump();
     bool menu_display_blank_active_for_dump() const noexcept {
         return command_overview_start_transition_black_frame_ ||
@@ -497,10 +497,10 @@ public:
         return field_mode_exit_transition_state_.transition_flags;
     }
     bool pending_mode_transition_actor_list_for_dump() const noexcept {
-        return field_pending_mode_transition_actor_list_.has_value();
+        return field_pending_mode_transition_activity_.has_value();
     }
-    bool pending_route_actor_list_for_dump() const noexcept {
-        return field_pending_route_actor_list_.has_value();
+    bool pending_route_activity_for_dump() const noexcept {
+        return field_pending_route_activity_.has_value();
     }
     void seed_conditional_actor_effect_facts_for_dump(
         const bool world_effect_active,
@@ -1704,17 +1704,12 @@ private:
         wake,
     };
 
-    // A route actor list queued by Lua (route_actor_lists.lua data): when
-    // the party enters consume_scene, the source_scene activity list
-    // pending_list_<list> is published and `transitions` actor behavior
-    // transitions are counted down before route_actor_lists.complete_<name>
-    // runs. E.g. club_penumbra_mako: scene 17, scene 47 list 0x1E628, 4.
-    struct FieldRoutePendingActorList {
-        std::uint16_t consume_scene = 0U;
-        std::uint16_t source_scene = 0U;
-        std::uint32_t list = 0U;
-        std::uint8_t transitions = 0U;
-        std::string name;
+    // A semantic world activity queued by Lua is installed at the next field
+    // scene entry. Its member count is derived from the native activity rows.
+    struct FieldRoutePendingActivity {
+        std::uint16_t queued_scene = 0U;
+        std::size_t member_count = 0U;
+        std::string activity_id;
     };
 
     struct DefaultFieldActorPresentation;
@@ -2722,17 +2717,17 @@ private:
     std::optional<std::uint16_t> field_mode_entry_destination_scene_;
     std::optional<std::uint16_t> field_pending_mode_transition_scene_;
     std::optional<SceneRunnerPosition> field_pending_mode_transition_spawn_;
-    std::optional<FieldModePendingActorList>
-        field_pending_mode_transition_actor_list_;
-    std::optional<FieldRoutePendingActorList>
-        field_pending_route_actor_list_;
-    std::optional<FieldRoutePendingActorList>
-        field_pending_actor_list_transition_group_;
-    std::optional<std::uint8_t>
-        field_route_actor_transitions_remaining_;
-    // Route actor list whose transitions are being counted down.
-    std::string field_active_route_actor_list_;
-    std::optional<std::string> field_pending_actor_list_callback_;
+    std::optional<FieldModePendingActivity>
+        field_pending_mode_transition_activity_;
+    std::optional<FieldRoutePendingActivity>
+        field_pending_route_activity_;
+    std::optional<FieldRoutePendingActivity>
+        field_pending_activity_actor_group_;
+    std::optional<std::size_t>
+        field_route_activity_members_remaining_;
+    // Route activity whose member transitions are being counted down.
+    std::string field_active_route_activity_id_;
+    std::optional<std::string> field_pending_activity_completion_;
     std::int8_t field_indexed_title_service_result_ = 0;
     // FFDD64: 0x53A78 stores the index of the trigger service it dispatches.
     // 0x2196C sets that bit of FFFC1E (field_exit_world_flags_). Lua reads

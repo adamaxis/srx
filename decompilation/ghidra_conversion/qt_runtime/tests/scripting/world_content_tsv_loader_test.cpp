@@ -106,14 +106,17 @@ int main() {
     const int modules_reference = luaL_ref(state, LUA_REGISTRYINDEX);
     std::string failure;
     std::vector<shadowrun::ghidra_conversion::scripting::
-        ScriptWorldActivityListBinding> activity_list_bindings;
+        ScriptActivitySelectorBinding> activity_selector_bindings;
+    std::vector<shadowrun::ghidra_conversion::scripting::
+        ScriptWorldActivityGroupBinding> activity_group_bindings;
     std::vector<std::pair<std::string, std::uint16_t>>
         action_profile_bindings;
     if (!shadowrun::ghidra_conversion::scripting::detail::
             load_world_content_tsv(
                 state, modules_reference, SHADOWRUN_GAMEPLAY_WORLD_ROOT,
                 failure, SHADOWRUN_FIELD_ASSET_ROOT, nullptr,
-                &activity_list_bindings, &action_profile_bindings)) {
+                &activity_selector_bindings, &activity_group_bindings,
+                &action_profile_bindings)) {
         std::cerr << failure << '\n';
         lua_close(state);
         return 1;
@@ -346,7 +349,7 @@ int main() {
         return valid_armor && field_is_nil(state, row, "combat_armor_index");
     };
 
-    lua_getfield(state, data_table, "world_activity_actor_lists");
+    lua_getfield(state, data_table, "world_activity_actors");
     const int actor_list_rows = lua_absindex(state, -1);
     const auto actor_list_count = lua_rawlen(state, actor_list_rows);
     bool actor_rows_are_semantic = true;
@@ -355,6 +358,7 @@ int main() {
     bool found_bodyguard_timing_modifier = false;
     bool found_named_script_activity = false;
     bool found_named_pending_requirements = false;
+    bool found_mako_activity = false;
     for (std::size_t index = 1U; index <= actor_list_count; ++index) {
         lua_rawgeti(state, actor_list_rows, static_cast<lua_Integer>(index));
         const auto row = lua_absindex(state, -1);
@@ -409,13 +413,16 @@ int main() {
                              "bodyguard_k05_item07") &&
              field_integer_is(state, row, "action_delay_modifier", 4));
         const bool old_selector_fields_are_absent =
+            field_is_nil(state, row, "list_id") &&
+            field_is_nil(state, row, "source_order") &&
+            field_is_nil(state, row, "ordered_overrides") &&
             field_is_nil(state, row, "script_index") &&
             field_is_nil(state, row, "world_effect_active_gate") &&
             field_is_nil(state, row, "pending_world_effect_gate");
         actor_rows_are_semantic = actor_rows_are_semantic &&
             old_selector_fields_are_absent;
         found_named_script_activity = found_named_script_activity ||
-            (field_string_is(state, row, "list_id",
+            (field_string_is(state, row, "activity_id",
                              "scene_13_ilene_gate_script") &&
              field_string_is(state, row, "activity_kind", "scene_script") &&
              field_string_is(state, row,
@@ -426,13 +433,18 @@ int main() {
                              "unspecified"));
         found_named_pending_requirements =
             found_named_pending_requirements ||
-            (field_string_is(state, row, "list_id",
-                             "scene_20_ilene_pending_list") &&
+            (field_string_is(state, row, "activity_id",
+                             "scene_20_ilene_activity") &&
              field_string_is(state, row, "activity_kind", "event_driven") &&
              field_string_is(state, row,
                              "world_effect_active_requirement", "inactive") &&
              field_string_is(state, row,
                              "pending_world_effect_requirement", "pending"));
+        found_mako_activity = found_mako_activity ||
+            (field_string_is(state, row, "activity_id",
+                            "club_penumbra_mako") &&
+             field_string_is(state, row, "id",
+                             "field_activity_club_penumbra_mako_actor_0"));
         lua_getfield(state, row, "action_delay_modifier");
         const auto action_delay_modifier = lua_tointeger(state, -1);
         actor_rows_are_semantic = actor_rows_are_semantic &&
@@ -446,22 +458,32 @@ int main() {
                             found_bodyguard_timing_modifier &&
                             found_named_script_activity &&
                             found_named_pending_requirements &&
+                            found_mako_activity &&
                             found_named_armor,
                         "actor catalog did not replace source pointers with "
                         "semantic identity, named selection conditions, "
                         "timing modifiers, and boolean probe facts");
     const auto script_binding = std::find_if(
-        activity_list_bindings.begin(), activity_list_bindings.end(),
+        activity_selector_bindings.begin(), activity_selector_bindings.end(),
         [](const auto& binding) {
             return binding.scene_id == 13U && binding.selector == 3U &&
-                binding.list_id == "scene_13_ilene_gate_script";
+                binding.activity_id == "scene_13_ilene_gate_script";
         });
-    valid = expect(script_binding != activity_list_bindings.end(),
+    valid = expect(script_binding != activity_selector_bindings.end(),
                    "native adapter did not resolve its scene selector to a "
                    "stable activity id") && valid;
+    const auto mako_group = std::find_if(
+        activity_group_bindings.begin(), activity_group_bindings.end(),
+        [](const auto& binding) {
+            return binding.source_group_offset == 0x1E628U &&
+                binding.activity_id == "club_penumbra_mako";
+        });
+    valid = expect(mako_group != activity_group_bindings.end(),
+                   "native import adapter did not bind the Mako content id") &&
+            valid;
     lua_rawgeti(state, actor_list_rows, 1);
     const int first_actor_list_row = lua_absindex(state, -1);
-    valid = expect(field_string_is(state, first_actor_list_row, "list_id",
+    valid = expect(field_string_is(state, first_actor_list_row, "activity_id",
                                    "scene_10_event_6_script") &&
                        field_boolean_is(state, first_actor_list_row,
                                         "activity_probe_enabled", true),
@@ -649,7 +671,7 @@ int main() {
                    "to resolve named sequences") && valid;
     lua_pop(state, 1);
 
-    lua_getfield(state, data_table, "world_activity_actor_lists");
+    lua_getfield(state, data_table, "world_activity_actors");
     bool activity_actor_actions_are_semantic = true;
     for (std::size_t index = 1U;
          index <= lua_rawlen(state, -1); ++index) {

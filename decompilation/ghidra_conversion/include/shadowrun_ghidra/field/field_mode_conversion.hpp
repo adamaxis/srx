@@ -58,12 +58,12 @@ struct FieldModeTransitionExit {
     std::uint16_t override_y = 0; // FFE10C
 };
 
-enum class FieldModePendingActorList {
+enum class FieldModePendingActivity {
     council_island_spirit_eyes,
 };
 
-std::string_view field_mode_pending_actor_list_id(
-    FieldModePendingActorList actor_list) noexcept;
+std::string_view field_mode_pending_activity_id(
+    FieldModePendingActivity actor_list) noexcept;
 
 struct FieldModeTransitionInput {
     std::uint8_t event_code = 0; // FFFBF9
@@ -81,7 +81,7 @@ struct FieldModeTransitionPlan {
     bool resolved = false;
     bool spawn_position_available = false;
     bool start_world_activity = false;
-    std::optional<FieldModePendingActorList> pending_actor_list;
+    std::optional<FieldModePendingActivity> pending_activity;
 };
 
 struct FieldModeTransitionCallbacks {

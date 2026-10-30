@@ -1544,16 +1544,20 @@ under Scene 47, but that table context does not redirect this route.
 
 The new entity link and Lua graph model the doorman prompt, Reputation
 threshold, 75-nuyen fee, rejection pages, Mako gates, and both introduction
-pages. The Mako branch queues the extracted actor list before the pages; Scene
-17 resolves the four rows from the Scene-47 table context and publishes them
-through the existing typed actor path. Lua behavior-completion edges decrement
-a separate four-transition counter when `+0x9E` bit 6 is set and `+0x10` bit 3
-is clear. At zero the host resets actor service links and invokes the Lua
+pages. The Lua action requests the semantic activity `club_penumbra_mako`;
+it carries no source-list offset, scene selector, or actor count. The native
+import adapter maps ROM offset `0x1E628` to that host identity, derives stable
+actor IDs from imported members, and resolves their source profiles before Lua
+receives the actor definitions. [C] ROM `0x225D2` selects `0x1E628`, and
+`0x43B6` publishes four actor rows in field scene 17 from the Scene-47 table
+context. The host derives the callback count from those resolved members. Lua
+behavior-completion edges decrement that count when `+0x9E` bit 6 is set and
+`+0x10` bit 3 is clear. At zero the host resets actor service links and invokes the Lua
 callback graph, which updates numeric heat, party Karma, story flags, the
 Strike Team progression counter, and presents the ROM result page. The new
 `shadowrun_ghidra_conversion_qt_field_penumbra_mako_qa` physically enters
 Scene-3 record 101 with ordinary Up, checks the 75-nuyen debit and qualifying
-story gates, verifies all four pending-list actors, then checks the four
+story gates, verifies all four activity actors, then checks the four
 transition callbacks, source effects, result page, and field return. It writes
 `actual.bmp` and `route.tsv` under
 `build/conversion/qt/{debug,release}/qt_runtime/field-penumbra-mako-qa/`. The route also

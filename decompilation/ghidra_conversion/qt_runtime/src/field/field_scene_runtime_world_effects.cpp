@@ -459,12 +459,12 @@ void FieldSceneRuntime::apply_field_alarm_result(
     }
     if (!pending_world_activity_script_actors_.empty() ||
         pending_world_activity_script_actor_scene_.has_value() ||
-        field_pending_actor_list_transition_group_.has_value() ||
-        field_route_actor_transitions_remaining_.has_value()) {
+        field_pending_activity_actor_group_.has_value() ||
+        field_route_activity_members_remaining_.has_value()) {
         source_boundary("field.alarm.reinforcement_list_conflict");
         return;
     }
-    auto actors = game_scripts_.world_activity_actors_for_list_id(
+    auto actors = game_scripts_.world_activity_actors_for_activity_id(
         scene_reference, *result.reinforcement_activity_id);
     if (!actors.has_value() || actors->empty()) {
         failure_ = game_scripts_.failure().empty()

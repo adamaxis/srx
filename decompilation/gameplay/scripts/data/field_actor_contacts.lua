@@ -7,7 +7,7 @@ return {
         action = "aragorn_contact",
         mark_escort = true,
     },
-    scene_20_ilene_pending_list = {
+    scene_20_ilene_activity = {
         handler = "pending_world_effect",
         action = "ilene_activity",
         mark_escort = true,

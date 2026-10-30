@@ -2772,7 +2772,8 @@ struct GameScriptRuntime::Impl {
     std::optional<ScriptNativeOperation> active_native_operation;
     StoryFacts story_facts;
     std::vector<ScriptConditionalActorCandidate> conditional_actor_catalog;
-    std::vector<ScriptWorldActivityListBinding> activity_list_bindings;
+    std::vector<ScriptActivitySelectorBinding> activity_selector_bindings;
+    std::vector<ScriptWorldActivityGroupBinding> activity_group_bindings;
     std::unordered_map<std::string, std::uint16_t>
         action_profile_index_by_actor_profile_id;
     StoryFactReader story_fact_reader;
@@ -6647,7 +6648,8 @@ struct GameScriptRuntime::Impl {
         active_native_operation.reset();
         story_facts.clear();
         conditional_actor_catalog.clear();
-        activity_list_bindings.clear();
+        activity_selector_bindings.clear();
+        activity_group_bindings.clear();
         action_profile_index_by_actor_profile_id.clear();
         dialogue_texts.clear();
         location_type.clear();
@@ -7064,13 +7066,16 @@ bool GameScriptRuntime::load_package(
     const auto field_asset_directory =
         script_directory.parent_path().parent_path() / "assets" / "field";
     std::vector<std::pair<std::string, std::uint16_t>> action_profile_bindings;
+    std::vector<ScriptWorldActivityGroupBinding> activity_group_bindings;
     if (!detail::load_world_content_tsv(
             impl_->state, impl_->modules_reference, world_directory,
             impl_->failure, field_asset_directory,
             &impl_->conditional_actor_catalog,
-            &impl_->activity_list_bindings, &action_profile_bindings)) {
+            &impl_->activity_selector_bindings, &activity_group_bindings,
+            &action_profile_bindings)) {
         return false;
     }
+    impl_->activity_group_bindings = std::move(activity_group_bindings);
     for (const auto& [profile_id, source_profile_index] :
          action_profile_bindings) {
         const auto [entry, inserted] =
@@ -8936,26 +8941,57 @@ GameScriptRuntime::world_activity_actors_for_script(
         return std::nullopt;
     }
     const auto binding = std::find_if(
-        impl_->activity_list_bindings.begin(),
-        impl_->activity_list_bindings.end(),
-        [scene_id, script_index](const ScriptWorldActivityListBinding& row) {
+        impl_->activity_selector_bindings.begin(),
+        impl_->activity_selector_bindings.end(),
+        [scene_id, script_index](const ScriptActivitySelectorBinding& row) {
             return row.scene_id == scene_id && row.selector == script_index;
         });
-    if (binding == impl_->activity_list_bindings.end()) {
+    if (binding == impl_->activity_selector_bindings.end()) {
         impl_->failure.clear();
         return std::vector<ScriptWorldActivityActor>{};
     }
-    return world_activity_actors_for_list_id_impl(scene_id, binding->list_id);
+    return world_activity_actors_for_activity_id_impl(
+        scene_id, binding->activity_id);
 }
 
 std::optional<std::vector<ScriptWorldActivityActor>>
-GameScriptRuntime::world_activity_actors_for_list_id(
-    const std::uint16_t scene_id, const std::string_view list_id) {
-    if (list_id.empty() || list_id.size() > 128U) {
-        impl_->failure = "world-activity actor-list id is empty or too long";
+GameScriptRuntime::world_activity_actors_for_activity_id(
+    const std::uint16_t scene_id, const std::string_view activity_id) {
+    if (activity_id.empty() || activity_id.size() > 128U) {
+        impl_->failure = "world-activity id is empty or too long";
         return std::nullopt;
     }
-    return world_activity_actors_for_list_id_impl(scene_id, list_id);
+    return world_activity_actors_for_activity_id_impl(scene_id, activity_id);
+}
+
+std::optional<std::vector<ScriptWorldActivityActor>>
+GameScriptRuntime::world_activity_actors_for_activity_id(
+    const std::string_view activity_id) {
+    if (activity_id.empty() || activity_id.size() > 128U ||
+        !valid_identifier(activity_id)) {
+        impl_->failure = "world-activity id is invalid";
+        return std::nullopt;
+    }
+    return world_activity_actors_for_activity_id_impl(std::nullopt,
+                                                        activity_id);
+}
+
+std::optional<std::string>
+GameScriptRuntime::activity_id_for_source_group(
+    const std::uint16_t scene_id,
+    const std::uint32_t source_group_offset) const {
+    const auto found = std::find_if(
+        impl_->activity_group_bindings.begin(),
+        impl_->activity_group_bindings.end(),
+        [scene_id, source_group_offset](
+            const ScriptWorldActivityGroupBinding& binding) {
+            return binding.scene_id == scene_id &&
+                   binding.source_group_offset == source_group_offset;
+        });
+    if (found == impl_->activity_group_bindings.end()) {
+        return std::nullopt;
+    }
+    return found->activity_id;
 }
 
 std::optional<ScriptFieldActorContactAction>
@@ -9204,8 +9240,8 @@ GameScriptRuntime::resolve_conditional_actor_selection(
         lua_setfield(state, -2, activity_id.c_str());
     }
     lua_setfield(state, -2, "party_present_activity_ids");
-    lua_pushboolean(state, context.pending_actor_list);
-    lua_setfield(state, -2, "pending_actor_list");
+    lua_pushboolean(state, context.pending_activity);
+    lua_setfield(state, -2, "pending_activity");
     lua_pushboolean(state, context.active_effect_is_story_contact);
     lua_setfield(state, -2, "active_effect_is_story_contact");
     lua_pushboolean(state, context.active_effect_matches_selection);
@@ -9229,11 +9265,12 @@ GameScriptRuntime::resolve_conditional_actor_selection(
     const auto decision_index = lua_absindex(state, -1);
     std::string kind;
     std::string selection_variant;
-    std::string list_id;
+    std::string selection_id;
     if (!read_field_text(state, decision_index, "kind", kind) ||
         !read_field_text(state, decision_index, "selection_variant",
                          selection_variant, 32U) ||
-        !read_field_text(state, decision_index, "list_id", list_id, 128U)) {
+        !read_field_text(state, decision_index, "selection_id",
+                         selection_id, 128U)) {
         return fail("conditional actor selector returned invalid decision fields");
     }
     if (selection_variant != "none" && selection_variant != "first" &&
@@ -9251,8 +9288,8 @@ GameScriptRuntime::resolve_conditional_actor_selection(
     ScriptConditionalActorSelection decision{};
     if (kind == "none") {
         decision.kind = ScriptConditionalActorSelectionKind::none;
-        if (!list_id.empty()) {
-            return fail("empty conditional actor decision names an actor list");
+        if (!selection_id.empty()) {
+            return fail("empty conditional actor decision names an activity");
         }
     } else if (kind == "story_contact") {
         decision.kind = ScriptConditionalActorSelectionKind::story_contact;
@@ -9268,8 +9305,8 @@ GameScriptRuntime::resolve_conditional_actor_selection(
         return fail("conditional actor selector returned an unknown decision");
     }
     if (decision.kind != ScriptConditionalActorSelectionKind::none &&
-        list_id.empty()) {
-        return fail("selected conditional actor decision has no actor list id");
+        selection_id.empty()) {
+        return fail("selected conditional actor decision has no activity id");
     }
     if (selection_variant == "first") {
         decision.selection_variant = ScriptConditionalActorVariant::first;
@@ -9279,14 +9316,14 @@ GameScriptRuntime::resolve_conditional_actor_selection(
         decision.selection_variant = ScriptConditionalActorVariant::none;
     }
     decision.choice_changed = choice_changed;
-    decision.list_id = std::move(list_id);
+    decision.selection_id = std::move(selection_id);
     lua_settop(state, stack_base);
     impl_->failure.clear();
     return decision;
 }
 
 std::optional<std::string>
-GameScriptRuntime::pending_world_activity_actor_list_for_scene(
+GameScriptRuntime::pending_world_activity_id_for_scene(
     const std::uint16_t scene_id, const bool world_effect_active,
     const bool pending_world_effect) {
     auto* state = impl_->state;
@@ -9306,10 +9343,10 @@ GameScriptRuntime::pending_world_activity_actor_list_for_scene(
         return fail("gameplay script module is missing: world_content");
     }
     lua_getfield(state, -1,
-                 "pending_world_activity_actor_list_for_scene");
+                 "pending_world_activity_id_for_scene");
     if (!lua_isfunction(state, -1)) {
         return fail(
-            "world_content.pending_world_activity_actor_list_for_scene is missing");
+            "world_content.pending_world_activity_id_for_scene is missing");
     }
     lua_remove(state, -2);
     lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
@@ -9318,7 +9355,7 @@ GameScriptRuntime::pending_world_activity_actor_list_for_scene(
     ScopedInstructionBudget instruction_budget(state);
     if (lua_pcall(state, 3, 1, 0) != LUA_OK) {
         return fail(
-            "world_content.pending_world_activity_actor_list_for_scene: " +
+            "world_content.pending_world_activity_id_for_scene: " +
             stack_error(state));
     }
     if (lua_isnil(state, -1)) {
@@ -9337,11 +9374,13 @@ GameScriptRuntime::pending_world_activity_actor_list_for_scene(
 }
 
 std::optional<std::vector<ScriptWorldActivityActor>>
-GameScriptRuntime::world_activity_actors_for_list_id_impl(
-    const std::uint16_t scene_id, const std::string_view list_id) {
+GameScriptRuntime::world_activity_actors_for_activity_id_impl(
+    const std::optional<std::uint16_t> scene_id,
+    const std::string_view activity_id) {
     auto* state = impl_->state;
-    if (state == nullptr || scene_id > 55U || list_id.empty() ||
-        list_id.size() > 128U || !valid_identifier(list_id)) {
+    if (state == nullptr || (scene_id.has_value() && *scene_id > 55U) ||
+        activity_id.empty() || activity_id.size() > 128U ||
+        !valid_identifier(activity_id)) {
         impl_->failure = "world-activity actor lookup has an invalid activity id";
         return std::nullopt;
     }
@@ -9355,16 +9394,20 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
     if (!impl_->push_module("world_content")) {
         return fail("gameplay script module is missing: world_content");
     }
-    lua_getfield(state, -1, "world_activity_actors_for_list_id");
+    lua_getfield(state, -1, "world_activity_actors_for_activity_id");
     if (!lua_isfunction(state, -1)) {
-        return fail("world_content.world_activity_actors_for_list_id is missing");
+        return fail("world_content.world_activity_actors_for_activity_id is missing");
     }
     lua_remove(state, -2);
-    lua_pushinteger(state, static_cast<lua_Integer>(scene_id));
-    lua_pushlstring(state, list_id.data(), list_id.size());
+    lua_pushlstring(state, activity_id.data(), activity_id.size());
+    int argument_count = 1;
+    if (scene_id.has_value()) {
+        lua_pushinteger(state, static_cast<lua_Integer>(*scene_id));
+        ++argument_count;
+    }
     ScopedInstructionBudget instruction_budget(state);
-    if (lua_pcall(state, 2, 1, 0) != LUA_OK) {
-        return fail("world_content.world_activity_actors_for_list_id: " +
+    if (lua_pcall(state, argument_count, 1, 0) != LUA_OK) {
+        return fail("world_content.world_activity_actors_for_activity_id: " +
                     stack_error(state));
     }
     if (!lua_istable(state, -1)) {
@@ -9372,13 +9415,10 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
     }
     const auto list_index = lua_absindex(state, -1);
     const auto actor_count = lua_rawlen(state, list_index);
-    if (actor_count > 32U) {
-        return fail("world-content script actor list exceeds the ROM limit");
-    }
 
     std::vector<ScriptWorldActivityActor> actors;
     actors.reserve(actor_count);
-    std::set<std::uint16_t> source_orders;
+    std::set<std::string> actor_instance_ids;
     for (std::size_t index = 0U; index < actor_count; ++index) {
         lua_rawgeti(state, list_index, static_cast<lua_Integer>(index + 1U));
         if (!lua_istable(state, -1)) {
@@ -9386,7 +9426,6 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
         }
         const auto row_index = lua_absindex(state, -1);
         ScriptWorldActivityActor actor{};
-        std::uint32_t source_order = 0U;
         std::string visual_profile_id;
         std::uint32_t palette_line = 0U;
         std::string action_id;
@@ -9401,7 +9440,8 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
         bool activity_probe_enabled = false;
         std::string action_kind;
         std::string activity_kind;
-        std::string row_list_id;
+        std::string row_instance_id;
+        std::string row_activity_id;
         std::string invalid_fact;
         const auto valid_fact = [&invalid_fact](
                                     const bool valid,
@@ -9414,16 +9454,18 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
         const bool valid =
             valid_fact(read_field_integer(state, row_index, "scene", 55U,
                                           row_scene), "scene id") &&
-            valid_fact(row_scene == scene_id, "scene selection") &&
-            valid_fact(read_field_string(state, row_index, "list_id",
-                                         row_list_id), "activity id") &&
-            valid_fact(valid_identifier(row_list_id), "activity id") &&
-            valid_fact(read_field_integer(state, row_index, "source_order",
-                                          31U, source_order), "actor order") &&
-            valid_fact(source_orders.insert(
-                           static_cast<std::uint16_t>(source_order)).second,
-                       "actor order uniqueness") &&
-            valid_fact(row_list_id == list_id,
+            valid_fact(!scene_id.has_value() || row_scene == *scene_id,
+                       "scene selection") &&
+            valid_fact(read_field_string(state, row_index, "id",
+                                         row_instance_id), "actor identity") &&
+            valid_fact(valid_identifier(row_instance_id), "actor identity") &&
+            valid_fact(index <= 0xFFFFU, "activity member index") &&
+            valid_fact(actor_instance_ids.insert(row_instance_id).second,
+                       "actor identity uniqueness") &&
+            valid_fact(read_field_string(state, row_index, "activity_id",
+                                         row_activity_id), "activity id") &&
+            valid_fact(valid_identifier(row_activity_id), "activity id") &&
+            valid_fact(row_activity_id == activity_id,
                        "activity selection") &&
             valid_fact(read_field_string(state, row_index, "activity_kind",
                                          activity_kind), "activity kind") &&
@@ -9475,6 +9517,17 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
             return fail("world-content actor descriptor has invalid " +
                         invalid_fact);
         }
+        const auto group = std::find_if(
+            impl_->activity_group_bindings.begin(),
+            impl_->activity_group_bindings.end(),
+            [row_scene, &row_activity_id](
+                const ScriptWorldActivityGroupBinding& binding) {
+                return binding.scene_id == row_scene &&
+                       binding.activity_id == row_activity_id;
+            });
+        if (group == impl_->activity_group_bindings.end()) {
+            return fail("world-content actor has no native source-group mapping");
+        }
         const auto source_sprite_type =
             script_source_type_from_actor_visual_profile_id(
                 visual_profile_id);
@@ -9503,10 +9556,10 @@ GameScriptRuntime::world_activity_actors_for_list_id_impl(
         if (!source_action_code.has_value()) {
             return fail("world-content script actor action fields disagree");
         }
-        actor.scene_id = scene_id;
-        actor.list_id = std::move(row_list_id);
-        actor.activity_id = actor.list_id;
-        actor.source_order = static_cast<std::uint16_t>(source_order);
+        actor.scene_id = static_cast<std::uint16_t>(row_scene);
+        actor.instance_id = std::move(row_instance_id);
+        actor.activity_id = std::move(row_activity_id);
+        actor.source_order = static_cast<std::uint16_t>(index);
         actor.activity_probe_enabled = activity_probe_enabled;
         actor.entity_kind = *source_sprite_type;
         actor.combatant.blocks_spell_death_pose =

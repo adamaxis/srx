@@ -1109,47 +1109,35 @@ FieldSceneRuntime::FieldSceneRuntime(
                     "_sequence_queued");
                 return "queued";
             }
-            // field.queue_route_actor_list_<consume scene>_<source scene>_
-            //     <list hex>_<transitions>_<name>
-            constexpr std::string_view kQueueRouteActorListPrefix =
-                "field.queue_route_actor_list_";
-            if (service_id.rfind(kQueueRouteActorListPrefix, 0U) == 0U) {
-                if (field_pending_route_actor_list_.has_value() ||
-                    field_pending_actor_list_transition_group_.has_value() ||
-                    field_route_actor_transitions_remaining_.has_value() ||
-                    field_pending_actor_list_callback_.has_value() ||
+            // Queue a content-named activity; its source catalog mapping is
+            // resolved in the native actor-data adapter.
+            constexpr std::string_view kQueueRouteActivityPrefix =
+                "field.queue_activity_";
+            if (service_id.rfind(kQueueRouteActivityPrefix, 0U) == 0U) {
+                if (field_pending_route_activity_.has_value() ||
+                    field_pending_activity_actor_group_.has_value() ||
+                    field_route_activity_members_remaining_.has_value() ||
+                    field_pending_activity_completion_.has_value() ||
                     !pending_world_activity_script_actors_.empty()) {
                     return std::nullopt;
                 }
-                auto rest =
-                    service_id.substr(kQueueRouteActorListPrefix.size());
-                std::array<std::uint32_t, 4U> numbers{};
-                for (std::size_t index = 0U; index < numbers.size(); ++index) {
-                    const auto split = rest.find('_');
-                    if (split == std::string_view::npos) {
-                        return std::nullopt;
-                    }
-                    const auto text = rest.substr(0U, split);
-                    const auto parsed = std::from_chars(
-                        text.data(), text.data() + text.size(), numbers[index],
-                        index == 2U ? 16 : 10);
-                    if (text.empty() || parsed.ec != std::errc{} ||
-                        parsed.ptr != text.data() + text.size()) {
-                        return std::nullopt;
-                    }
-                    rest = rest.substr(split + 1U);
-                }
-                if (rest.empty() || numbers[0] > 0xFFFFU ||
-                    numbers[1] > 0xFFFFU || numbers[3] == 0U ||
-                    numbers[3] > 0xFFU) {
+                const auto activity_id = service_id.substr(
+                    kQueueRouteActivityPrefix.size());
+                if (activity_id.empty() ||
+                    !std::all_of(activity_id.begin(), activity_id.end(),
+                        [](const char character) {
+                            return (character >= 'a' && character <= 'z') ||
+                                   (character >= '0' && character <= '9') ||
+                                   character == '_';
+                        })) {
                     return std::nullopt;
                 }
-                field_pending_route_actor_list_ = FieldRoutePendingActorList{
-                    static_cast<std::uint16_t>(numbers[0]),
-                    static_cast<std::uint16_t>(numbers[1]), numbers[2],
-                    static_cast<std::uint8_t>(numbers[3]), std::string(rest)};
+                field_pending_route_activity_ = FieldRoutePendingActivity{
+                    state_.field_scene_buffers.scene_reference, 0U,
+                    std::string(activity_id)};
                 this->source_boundary("field.world_activity." +
-                                      std::string(rest) + "_list_queued");
+                                      std::string(activity_id) +
+                                      "_activity_queued");
                 return "queued";
             }
             constexpr std::string_view kBuildingChargePrefix =
@@ -2753,6 +2741,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
     };
     const auto script_index_column = column_index("script_index");
     const auto scene_column = column_index("scene");
+    const auto list_offset_column = column_index("list_offset");
     const auto list_id_column = column_index("list_id");
     const auto source_order_column = column_index("source_order");
     const auto template_offset_column = column_index("template_offset");
@@ -2765,7 +2754,8 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
     const auto action_ammo_column = column_index("source_action_ammo");
     const auto action_count_column = column_index("source_action_counter");
     if (script_actor_columns.size() < 21U || !script_index_column ||
-        !scene_column || !list_id_column || !source_order_column ||
+        !scene_column || !list_offset_column || !list_id_column ||
+        !source_order_column ||
         !template_offset_column || !entity_kind_column || !profile_id_column ||
         !sprite_stem_column || !action_kind_column || !action_code_column ||
         !action_slot_column || !action_ammo_column || !action_count_column) {
@@ -2806,6 +2796,8 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                 fields[*scene_column], 10);
             const auto source_order = parse_source_number(
                 fields[*source_order_column], 10);
+            const auto source_group_offset = parse_source_number(
+                fields[*list_offset_column], 0);
             const auto template_offset = parse_source_number(
                 fields[*template_offset_column], 0);
             const auto action_code = parse_source_number(
@@ -2817,6 +2809,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             const auto action_count = parse_source_number(
                 fields[*action_count_column], 10);
             if (source_scene > 55UL || source_order > 0xFFFFUL ||
+                source_group_offset > 0x1FFFFFUL ||
                 template_offset > 0x1FFFFFUL || action_code > 0xFFUL ||
                 equipped_action_slot > 0xFFUL ||
                 ammunition_remaining > 0xFFUL || action_count > 0xFFUL) {
@@ -2841,6 +2834,14 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
             }
             if (!fields[*list_id_column].empty() &&
                 !fields[*profile_id_column].empty()) {
+                const auto activity_id =
+                    game_scripts_.activity_id_for_source_group(
+                        static_cast<std::uint16_t>(source_scene),
+                        static_cast<std::uint32_t>(source_group_offset));
+                if (!activity_id.has_value()) {
+                    failure_ = "world-activity source group has no semantic identity";
+                    return false;
+                }
                 DynamicActorSourceProfileFacts action_profile{};
                 action_profile.profile_id = fields[*profile_id_column];
                 action_profile.template_offset =
@@ -2857,7 +2858,7 @@ bool FieldSceneRuntime::load_dynamic_world_actor_artwork(
                     static_cast<std::uint16_t>(action_count);
                 const auto profile_key =
                     std::to_string(source_scene) + "|" +
-                    fields[*list_id_column] + "|" +
+                    *activity_id + "|" +
                     std::to_string(source_order);
                 const auto [profile, inserted] =
                     field_world_activity_actor_profile_facts_.emplace(
@@ -3299,7 +3300,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
             return actor.active && actor.scene_reference == scene_reference &&
                    actor.world_activity_script_actor;
         });
-    const auto queue_pending_actor_list =
+    const auto queue_pending_activity_group =
         [this, scene_reference](
             std::optional<std::vector<scripting::ScriptWorldActivityActor>>
                 actors,
@@ -3312,7 +3313,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
         } else if (actors->size() > kFieldWorldActorSlots.size()) {
             failure_ =
                 "selected pending world-activity list exceeds live actor slots";
-            source_boundary("field.world_activity.pending_list_slot_overflow");
+            source_boundary("field.world_activity.pending_activity_group_capacity_exceeded");
         } else {
             std::vector<DynamicActorSourceProfileFacts> actor_profiles;
             actor_profiles.reserve(actors->size());
@@ -3331,51 +3332,44 @@ void FieldSceneRuntime::initialize_default_field_actors(
             pending_world_activity_script_actor_profiles_ =
                 std::move(actor_profiles);
             pending_world_activity_script_actors_ = std::move(*actors);
-            source_boundary("field.world_activity.pending_actor_list_queued");
+            source_boundary("field.world_activity.pending_activity_group_queued");
         }
     };
-    if (field_pending_route_actor_list_.has_value() &&
-        scene_reference == field_pending_route_actor_list_->consume_scene) {
-        const auto pending_route_list = *field_pending_route_actor_list_;
-        field_pending_route_actor_list_.reset();
-        char list_id[32]{};
-        std::snprintf(list_id, sizeof(list_id), "pending_list_%05x",
-                      static_cast<unsigned>(pending_route_list.list));
-        // The extractor records the reusable source list in the source
-        // scene's activity table (Mako: Scene 47). The ROM's 0x43B6 consumer
-        // drains FFE120 without a scene check; the Club finalizer enters
-        // Scene 17 before that pass.
-        auto actors = game_scripts_.world_activity_actors_for_list_id(
-            pending_route_list.source_scene, list_id);
-        const bool has_source_actor_list =
-            actors.has_value() &&
-            actors->size() == pending_route_list.transitions;
-        queue_pending_actor_list(
+    if (field_pending_route_activity_.has_value() &&
+        scene_reference != field_pending_route_activity_->queued_scene) {
+        auto pending_activity = *field_pending_route_activity_;
+        field_pending_route_activity_.reset();
+        auto actors = game_scripts_.world_activity_actors_for_activity_id(
+            pending_activity.activity_id);
+        const auto activity_member_count = actors.has_value()
+            ? actors->size()
+            : 0U;
+        const bool has_activity_members =
+            actors.has_value() && activity_member_count != 0U;
+        pending_activity.member_count = activity_member_count;
+        queue_pending_activity_group(
             std::move(actors),
-            "field.world_activity." + pending_route_list.name +
-                "_list_unresolved");
-        if (has_source_actor_list &&
+            "field.world_activity." + pending_activity.activity_id +
+                "_unresolved");
+        if (has_activity_members &&
             pending_world_activity_script_actor_scene_ == scene_reference &&
             pending_world_activity_script_actors_.size() ==
-                pending_route_list.transitions) {
-            field_pending_actor_list_transition_group_ = pending_route_list;
-            field_active_route_actor_list_ = pending_route_list.name;
-            // ROM 0x43B6 seeds FFE177 with the actor behavior transitions
-            // still outstanding for the list (four for 0x1E628).
-            field_route_actor_transitions_remaining_ =
-                pending_route_list.transitions;
+                pending_activity.member_count) {
+            field_pending_activity_actor_group_ = pending_activity;
+            field_active_route_activity_id_ = pending_activity.activity_id;
+            field_route_activity_members_remaining_ = activity_member_count;
         }
-    } else if (field_pending_mode_transition_actor_list_.has_value()) {
-        const auto list_id = field_mode_pending_actor_list_id(
-            *field_pending_mode_transition_actor_list_);
-        auto actors = list_id.empty()
+    } else if (field_pending_mode_transition_activity_.has_value()) {
+        const auto activity_id = field_mode_pending_activity_id(
+            *field_pending_mode_transition_activity_);
+        auto actors = activity_id.empty()
             ? std::optional<
                   std::vector<scripting::ScriptWorldActivityActor>>{}
-            : game_scripts_.world_activity_actors_for_list_id(
-                  scene_reference, list_id);
-        field_pending_mode_transition_actor_list_.reset();
-        queue_pending_actor_list(std::move(actors),
-                                 "field.mode_transition.actor_list_unresolved");
+            : game_scripts_.world_activity_actors_for_activity_id(
+                  scene_reference, activity_id);
+        field_pending_mode_transition_activity_.reset();
+        queue_pending_activity_group(std::move(actors),
+                                 "field.mode_transition.activity_unresolved");
     } else if (!preserved_scene_script_actors) {
         scripting::ScriptConditionalActorSelectionContext facts{};
         facts.world_effect_active = field_world_effect_active_;
@@ -3393,7 +3387,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
             scripting::script_mode_one_activity_ids_present_from_source_markers(
                 field_party_roster_.primary_compact_marker(),
                 field_party_roster_.secondary_compact_marker());
-        facts.pending_actor_list =
+        facts.pending_activity =
             !pending_world_activity_script_actors_.empty();
         facts.active_effect_is_story_contact =
             field_active_effect_index_ == std::optional<std::uint16_t>{4U};
@@ -3440,27 +3434,27 @@ void FieldSceneRuntime::initialize_default_field_actors(
                 case ScriptConditionalActorSelectionKind::story_contact:
                 case ScriptConditionalActorSelectionKind::pending_world_activity: {
                     auto actors =
-                        game_scripts_.world_activity_actors_for_list_id(
-                            scene_reference, selection->list_id);
+                        game_scripts_.world_activity_actors_for_activity_id(
+                            scene_reference, selection->selection_id);
                     field_world_activity_transfer_actor_template_.reset();
                     if (actors.has_value() && !actors->empty()) {
                         field_world_activity_transfer_actor_template_ =
                             actors->front();
                     }
-                    queue_pending_actor_list(
+                    queue_pending_activity_group(
                         std::move(actors),
                         selection->kind ==
                                 ScriptConditionalActorSelectionKind::story_contact
-                            ? "field.conditional_actor.story_contact_list_unresolved"
-                            : "field.conditional_actor.pending_list_unresolved");
+                            ? "field.conditional_actor.story_contact_activity_unresolved"
+                            : "field.conditional_actor.activity_group_unresolved");
                     break;
                 }
                 case ScriptConditionalActorSelectionKind::mode_one_world_activity: {
                     auto actors =
-                        game_scripts_.world_activity_actors_for_list_id(
-                            scene_reference, selection->list_id);
+                        game_scripts_.world_activity_actors_for_activity_id(
+                            scene_reference, selection->selection_id);
                     field_world_activity_transfer_actor_template_.reset();
-                    queue_pending_actor_list(
+                    queue_pending_activity_group(
                         std::move(actors),
                         "field.mode_one_activity.actor_list_unresolved");
                     break;
@@ -3478,7 +3472,7 @@ void FieldSceneRuntime::initialize_default_field_actors(
                     const auto candidate = std::find_if(
                         candidates->begin(), candidates->end(),
                         [&selection](const auto& row) {
-                            return row.candidate_id == selection->list_id;
+                            return row.candidate_id == selection->selection_id;
                         });
                     if (candidate == candidates->end()) {
                         failure_ = "A800 selected a list absent from its scene table";
@@ -3866,7 +3860,7 @@ FieldSceneRuntime::source_profile_facts_for_actor(
 std::optional<FieldSceneRuntime::DynamicActorSourceProfileFacts>
 FieldSceneRuntime::world_activity_profile_facts_for_actor(
     const scripting::ScriptWorldActivityActor& actor) const {
-    const auto key = std::to_string(actor.scene_id) + "|" + actor.list_id +
+    const auto key = std::to_string(actor.scene_id) + "|" + actor.activity_id +
         "|" + std::to_string(actor.source_order);
     const auto found = field_world_activity_actor_profile_facts_.find(key);
     if (found == field_world_activity_actor_profile_facts_.end() ||
@@ -3969,7 +3963,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             actor_profile_facts->action_kind != source_actor.action_kind ||
             actor_profile_facts->action_code != source_actor.action_code) {
             failure_ = "selected world-script actor has no unique native profile: " +
-                source_actor.profile_id + " in " + source_actor.list_id +
+                source_actor.profile_id + " in " + source_actor.activity_id +
                 " scene=" + std::to_string(source_actor.scene_id) +
                 " order=" + std::to_string(source_actor.source_order);
             source_boundary(
@@ -3977,10 +3971,7 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             break;
         }
 
-        const auto actor_instance_id =
-            "field_scene_" + std::to_string(scene_reference) +
-            "_" + source_actor.list_id +
-            "_actor_" + std::to_string(source_actor.source_order);
+        const auto& actor_instance_id = source_actor.instance_id;
         const auto existing_instance = std::find_if(
             field_default_actors_.begin(), field_default_actors_.end(),
             [&actor_instance_id, scene_reference](const auto& actor) {
@@ -3993,9 +3984,9 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
             // 0x43B6 drains that single pending list before the default list.
             // The host's repeated destination preparation can deliver the
             // same script/order row again; keep its one live Lua instance.
-            if (field_pending_actor_list_transition_group_.has_value()) {
+            if (field_pending_activity_actor_group_.has_value()) {
                 existing_instance->actor_list_completion_group =
-                    field_pending_actor_list_transition_group_->name;
+                    field_pending_activity_actor_group_->activity_id;
             }
             ++retained;
             source_boundary(
@@ -4065,9 +4056,9 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
         actor.source_behavior_flags = source_actor.source_behavior_flags;
         actor.source_spawn_state_flags =
             source_actor.source_spawn_state_flags;
-        if (field_pending_actor_list_transition_group_.has_value()) {
+        if (field_pending_activity_actor_group_.has_value()) {
             actor.actor_list_completion_group =
-                field_pending_actor_list_transition_group_->name;
+                field_pending_activity_actor_group_->activity_id;
         } else {
             actor.actor_list_completion_group.reset();
         }
@@ -4181,20 +4172,20 @@ void FieldSceneRuntime::publish_pending_world_activity_script_actors(
     pending_world_activity_script_actors_.clear();
     pending_world_activity_script_actor_profiles_.clear();
     pending_world_activity_script_actor_scene_.reset();
-    if (field_pending_actor_list_transition_group_.has_value()) {
-        const auto& group = *field_pending_actor_list_transition_group_;
-        if (expected_actor_count != group.transitions ||
+    if (field_pending_activity_actor_group_.has_value()) {
+        const auto& group = *field_pending_activity_actor_group_;
+        if (expected_actor_count != group.member_count ||
             published + retained != expected_actor_count) {
             for (auto& actor : field_default_actors_) {
-                if (actor.actor_list_completion_group == group.name) {
+                if (actor.actor_list_completion_group == group.activity_id) {
                     actor.actor_list_completion_group.reset();
                 }
             }
-            field_route_actor_transitions_remaining_.reset();
-            source_boundary("field.world_activity." + group.name +
-                            "_actor_list_incomplete");
+            field_route_activity_members_remaining_.reset();
+            source_boundary("field.world_activity." + group.activity_id +
+                            "_activity_incomplete");
         }
-        field_pending_actor_list_transition_group_.reset();
+        field_pending_activity_actor_group_.reset();
     }
     if (published != 0U) {
         refresh_world_entity_service_targets();
@@ -5101,21 +5092,21 @@ void FieldSceneRuntime::advance_default_field_actors(
             }
             if (actor.actor_list_completion_group.has_value() &&
                 *actor.actor_list_completion_group ==
-                    field_active_route_actor_list_ &&
-                field_route_actor_transitions_remaining_.has_value() &&
-                *field_route_actor_transitions_remaining_ != 0U) {
+                    field_active_route_activity_id_ &&
+                field_route_activity_members_remaining_.has_value() &&
+                *field_route_activity_members_remaining_ != 0U) {
                 actor.actor_list_completion_group.reset();
-                --*field_route_actor_transitions_remaining_;
+                --*field_route_activity_members_remaining_;
                 source_boundary("field.world_activity." +
-                                field_active_route_actor_list_ +
+                                field_active_route_activity_id_ +
                                 "_actor_transition_completed");
-                if (*field_route_actor_transitions_remaining_ == 0U) {
-                    field_route_actor_transitions_remaining_.reset();
+                if (*field_route_activity_members_remaining_ == 0U) {
+                    field_route_activity_members_remaining_.reset();
                     reset_field_entity_service_records();
-                    field_pending_actor_list_callback_ =
-                        field_active_route_actor_list_;
+                    field_pending_activity_completion_ =
+                        field_active_route_activity_id_;
                     source_boundary("field.world_activity." +
-                                    field_active_route_actor_list_ +
+                                    field_active_route_activity_id_ +
                                     "_callback_dispatch_pending");
                 }
             }
@@ -5274,12 +5265,12 @@ void FieldSceneRuntime::advance_default_field_actors(
         }
         resolve_default_actor_proximity(actor);
     }
-    if (field_pending_actor_list_callback_.has_value() &&
+    if (field_pending_activity_completion_.has_value() &&
         !field_dialogue_.open()) {
-        const auto name = std::move(*field_pending_actor_list_callback_);
-        field_pending_actor_list_callback_.reset();
-        // route_actor_lists.lua maps complete_<name> to the list's callback.
-        if (field_dialogue_.open_gameplay_task("route_actor_lists",
+        const auto name = std::move(*field_pending_activity_completion_);
+        field_pending_activity_completion_.reset();
+        // story_activity_routes.lua maps complete_<name> to the list's callback.
+        if (field_dialogue_.open_gameplay_task("story_activity_routes",
                                                "complete_" + name)) {
             source_boundary("field.world_activity." + name +
                             "_callback_dispatched");
@@ -6102,16 +6093,16 @@ FieldSceneRuntime::guard_world_effect_player_spawn() {
                 auto saved_pending_scene =
                     std::move(pending_world_activity_script_actor_scene_);
                 auto saved_transition_group =
-                    std::move(field_pending_actor_list_transition_group_);
+                    std::move(field_pending_activity_actor_group_);
                 auto saved_transition_count =
-                    std::move(field_route_actor_transitions_remaining_);
+                    std::move(field_route_activity_members_remaining_);
                 pending_world_activity_script_actor_scene_ = scene_reference;
                 pending_world_activity_script_actors_.clear();
                 pending_world_activity_script_actor_profiles_.clear();
                 pending_world_activity_script_actors_.push_back(
                     std::move(fallback_actor));
-                field_pending_actor_list_transition_group_.reset();
-                field_route_actor_transitions_remaining_.reset();
+                field_pending_activity_actor_group_.reset();
+                field_route_activity_members_remaining_.reset();
 
                 const auto actors_before = count_live_activity_actors();
                 publish_pending_world_activity_script_actors(
@@ -6124,9 +6115,9 @@ FieldSceneRuntime::guard_world_effect_player_spawn() {
                     std::move(saved_pending_actor_profiles);
                 pending_world_activity_script_actor_scene_ =
                     std::move(saved_pending_scene);
-                field_pending_actor_list_transition_group_ =
+                field_pending_activity_actor_group_ =
                     std::move(saved_transition_group);
-                field_route_actor_transitions_remaining_ =
+                field_route_activity_members_remaining_ =
                     std::move(saved_transition_count);
                 if (actors_after == actors_before) {
                     source_boundary(
@@ -7845,7 +7836,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                             ? "selected ROM world script has no extracted actor list"
                             : game_scripts_.failure();
                         source_boundary(
-                            "field.world_activity.script_actor_list_unresolved");
+                            "field.world_activity.script_actor_group_unresolved");
                         runtime.field_transition_requested = true;
                     } else {
                         std::vector<DynamicActorSourceProfileFacts>
@@ -7874,7 +7865,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
                             pending_world_activity_script_actors_ =
                                 std::move(*actors);
                             source_boundary(
-                                "field.world_activity.script_actor_list_queued");
+                                "field.world_activity.script_actor_group_queued");
                         }
                     }
                 }
@@ -8172,7 +8163,7 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             }
 
             if (plan.start_world_activity &&
-                !plan.pending_actor_list.has_value()) {
+                !plan.pending_activity.has_value()) {
                 source_boundary("field.mode_transition.actor_list_missing");
                 return false;
             }
@@ -8184,8 +8175,8 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             field_pending_mode_transition_scene_ = plan.scene_id;
             field_pending_mode_transition_spawn_ =
                 SceneRunnerPosition{plan.override_x, plan.override_y};
-            field_pending_mode_transition_actor_list_ =
-                plan.pending_actor_list;
+            field_pending_mode_transition_activity_ =
+                plan.pending_activity;
             field_world_activity_scene_entry_pending_ = true;
             source_boundary("field.mode_transition.destination_selected");
             return true;
@@ -9968,13 +9959,13 @@ bool FieldSceneRuntime::bootstrap(
     field_world_activity_scene_entry_pending_ = false;
     field_pending_mode_transition_scene_.reset();
     field_pending_mode_transition_spawn_.reset();
-    field_pending_mode_transition_actor_list_.reset();
+    field_pending_mode_transition_activity_.reset();
     field_pending_story_world_effect_.reset();
-    field_pending_route_actor_list_.reset();
-    field_pending_actor_list_transition_group_.reset();
-    field_route_actor_transitions_remaining_.reset();
-    field_pending_actor_list_callback_.reset();
-    field_active_route_actor_list_.clear();
+    field_pending_route_activity_.reset();
+    field_pending_activity_actor_group_.reset();
+    field_route_activity_members_remaining_.reset();
+    field_pending_activity_completion_.reset();
+    field_active_route_activity_id_.clear();
     field_world_activity_state_ = WorldActivityState{};
     field_think_token_claimed_ = false;
     // The shared Thon cooldown is ready when the field session starts.
@@ -18676,10 +18667,10 @@ bool FieldSceneRuntime::set_default_actor_physical_meter_for_dump(
     return true;
 }
 
-std::size_t FieldSceneRuntime::defeat_mako_actor_list_for_qa() noexcept {
+std::size_t FieldSceneRuntime::defeat_mako_activity_for_qa() noexcept {
     std::size_t count = 0U;
     for (auto& actor : field_default_actors_) {
-        // Route actor lists are named by route_actor_lists.lua descriptors.
+        // Route actor lists are named by story_activity_routes.lua descriptors.
         if (actor.active && actor.actor_list_completion_group ==
                                 std::optional<std::string>{"club_penumbra_mako"}) {
             actor.physical_meter = 0U;

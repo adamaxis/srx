@@ -86,8 +86,13 @@ print(("story_state tests passed: %d checks"):format(checks))
 -- Route actor lists: queue id carries the data-table descriptor.
 local seen
 game.services.call = function(domain, op) seen = domain .. "." .. op; return "queued" end
-local Routes = require("route_actor_lists")
+local Routes = require("story_activity_routes")
 assert(Routes.queue("club_penumbra_mako") == "queued" and
-       seen == "field.queue_route_actor_list_17_47_1e628_4_club_penumbra_mako", seen)
+       seen == "field.queue_activity_club_penumbra_mako", seen)
+assert(Routes.LISTS.club_penumbra_mako.consume_scene == nil and
+       Routes.LISTS.club_penumbra_mako.source_scene == nil and
+       Routes.LISTS.club_penumbra_mako.list == nil and
+       Routes.LISTS.club_penumbra_mako.transitions == nil,
+       "route activity leaked source selectors or a copied transition count")
 assert(type(Routes.complete_club_penumbra_mako) == "function")
-print("route_actor_lists tests passed")
+print("story_activity_routes tests passed")
