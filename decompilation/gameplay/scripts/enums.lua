@@ -452,18 +452,6 @@ E.DisplayBlank = { OFF = 0x8134, ON = 0x8174 }   -- VDP reg 1 writes around a bu
 E.MenuMask = { LEAD = 1, REVEAL = 2 }   -- port host phases for staged partial frames (not ROM values)
 E.WindowPlane = { SIDEBAR = 0x9191, OFF = 0x9100 } -- VDP reg 0x11 [C]
 
--- Runner record view used by menu rules (C++ proxies these onto FF0100+0x100*slot) [C offsets: srx runner_record_access]
-E.RunnerStatus = {
-    ACTIVE = 0x01,
-    SELECTION_MARKER = 0x02, -- live +0x10 bit 1, cleared/set by 0x3974/0x39A8 [C]
-    REMAINDER = 0x02, -- name [H] (clips 0x12062 usage)
-    DOWN = 0x10,
-    DEAD = 0x40,
-} -- live record +0x10 status byte [C]
-E.RunnerField = { STATUS = 0x10, STATE_FN = 0x3A, PHYSICAL = 0x4C, POSTURE = 0x4D, ROUNDS = 0x4E, CLIPS = 0x4F,
-                  WEAPON_SLOT = 0x56, WEAPON_CODE = 0x57, INVENTORY = 0x66, ITEM_PHASE = 0x6E, ARMOR = 0x76,
-                  ATTRIBUTES = 0x77, MAGIC = 0x7F, SKILLS_A = 0x80, SKILLS_B = 0x87, KARMA = 0x8D, SPECIES = 0x9A,
-                  ARCHETYPE = 0x9B, STUN = 0x9C, FORCE = 0x9D, SPELL_TABLE = 0xA0 }
 E.KarmaUpgrade = { AVAILABLE = 0, INVALID = 1, NOT_UPGRADEABLE = 2, UNKNOWN_SPECIES = 3,
                   CLASS_RESTRICTED = 4, AT_LIMIT = 5 }   -- 0xD82A preview outcome (D9DE = error path) [C]
 E.Archetype = { CASTER_LIMIT = 2 }        -- +0x9B < 2 = magic user (0xFBA6 path, Sorcery gate) [C]

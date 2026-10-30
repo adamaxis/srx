@@ -1,6 +1,7 @@
 -- Source-derived combat policy for close actor reactions. The host supplies
 -- typed actor records and bounded ROM random draws; this module owns the
 -- 0x55C76 trial sequence and returns the resulting meter snapshot.
+-- Combat calculations use semantic counts and modifiers, not source-width words.
 local Combat = {}
 local E = require("enums")
 local SpellEffectKind = E.SpellEffectKind
@@ -33,28 +34,6 @@ local SpellDeath = {
     mana_zap = { animation_variant = "spell_death_e4" },
     mana_blast = { animation_variant = "spell_death_e4" },
 }
-
-local function signed_byte(value)
-    value = value & 0xff
-    return value >= 0x80 and value - 0x100 or value
-end
-
-local function signed_word(value)
-    value = value & 0xffff
-    return value >= 0x8000 and value - 0x10000 or value
-end
-
-local function add_source_byte(value, delta)
-    return (value + delta) & 0xff
-end
-
-local function subtract_source_byte(value, amount)
-    return (value & 0xff00) | ((value - amount) & 0xff)
-end
-
-local function add_source_byte_to_word(value, amount)
-    return (value & 0xff00) | ((value + amount) & 0xff)
-end
 
 local function inventory_items(record)
     return type(record.inventory) == "table" and record.inventory or {}
@@ -95,14 +74,13 @@ local function find_inventory_item(record, item_id, reverse, maximum_slot)
 end
 
 local function command_average(record)
-    local total = (record.attributes.quickness +
-                   record.attributes.intelligence +
-                   record.attributes.willpower) & 0xff
-    local value = total >> 1
+    local value = math.floor((record.attributes.quickness +
+                              record.attributes.intelligence +
+                              record.attributes.willpower) / 2)
     local spell_lock = find_inventory_item(
         record, Item.COMBAT_SENSE_SPELL_LOCK, false)
     if spell_lock ~= nil then
-        return (value + (spell_lock.command_bonus or 0)) & 0xff
+        return value + (spell_lock.command_bonus or 0)
     end
     return value
 end
@@ -114,13 +92,13 @@ local function posture_reduction(value, posture_reduction_percent)
 end
 
 local function item18_skill_value(record)
-    local value = record.skills.sorcery & 0xff
+    local value = record.skills.sorcery
     -- 0x55F02 scans positions 1..7 from the last slot down; slot 8 belongs
     -- to the separate special-item path at 0x104F6.
     local focus = find_inventory_item(
         record, Item.POWER_FOCUS, true, 7)
     if focus ~= nil then
-        return add_source_byte_to_word(value, focus.sorcery_bonus or 0)
+        return value + (focus.sorcery_bonus or 0)
     end
     return value
 end
@@ -141,7 +119,7 @@ local function action_phase_modifier(value, record, spell_id)
         if type(focus.spell_action_bonus) ~= "number" then
             return nil
         end
-        value = add_source_byte_to_word(value, focus.spell_action_bonus)
+        value = value + focus.spell_action_bonus
     end
 
     local totem = inventory_item_at(record, 8)
@@ -164,8 +142,8 @@ local function action_phase_modifier(value, record, spell_id)
     if type(modifier) ~= "number" then
         return nil
     end
-    value = (value + modifier) & 0xffff
-    if signed_word(value) <= 0 then
+    value = value + modifier
+    if value <= 0 then
         value = 1
     end
     return value
@@ -306,8 +284,7 @@ local function dynamic_status_modifier(difficulty, attacker, linked, context)
     end
     local attribute = attacker.attributes[attribute_name]
     if attacker.is_party_member then
-        attribute = add_source_byte_to_word(
-            ready_party_bonus(context), attribute)
+        attribute = attribute + ready_party_bonus(context)
     end
     local successes = thresholded_rolls(attribute, roll_difficulty,
                                         context.ai_random_bound)
@@ -641,14 +618,13 @@ local function resolve_spell_action(context, target, allow_untargeted)
         skill, attacker.posture_reduction_percent)
     initial_trials = math.min(
         initial_trials, attacker.spell_trial_cap or 0)
-    initial_trials = add_source_byte_to_word(initial_trials, attacker.force or 0)
+    initial_trials = initial_trials + (attacker.force or 0)
     initial_trials = action_phase_modifier(
         initial_trials, attacker, context.action_spell_id)
     if initial_trials == nil then
         result.outcome = "source_data_unavailable"
         return result
     end
-    initial_trials = initial_trials & 0xff
     result.initial_trial_count = initial_trials
 
     local difficulty = untargeted
@@ -723,8 +699,7 @@ local function resolve_spell_action(context, target, allow_untargeted)
 
     local remaining_skill = skill - posture_reduction(
         skill, attacker.posture_reduction_percent)
-    local effect_trials = (remaining_skill +
-        attacker.attributes.willpower) & 0xff
+    local effect_trials = remaining_skill + attacker.attributes.willpower
     local residual = spell_residual(
         attacker.force or 0,
         effect_trials, spell)
@@ -867,10 +842,9 @@ function Combat.resolve_spell_impact(context, pending, target)
     end
     local attribute = defender.attributes[resistance_attribute]
     if defender.is_party_member then
-        attribute = add_source_byte_to_word(
-            attribute, ready_party_bonus(context))
+        attribute = attribute + ready_party_bonus(context)
     end
-    result.target_trial_count = attribute & 0xff
+    result.target_trial_count = attribute
     local force = caster.force or 0
     result.difficulty = math.max(force, 2)
     local target_successes = thresholded_rolls(
@@ -882,12 +856,12 @@ function Combat.resolve_spell_impact(context, pending, target)
     end
     result.target_roll_successes = target_successes
 
-    -- ROM 0x559BC subtracts the target's +0x9F roll from the caster's stored
-    -- action result and adjusts the D4EA0 effect value by that signed byte.
-    local delta = signed_byte(pending.successes - target_successes)
+    -- ROM 0x559BC compares the caster and target successes, then adjusts the
+    -- named spell effect by their difference.
+    local delta = pending.successes - target_successes
     local effect_value = spell.target_effect or 0
     if delta < 0 then
-        effect_value = signed_byte(add_source_byte(effect_value, delta))
+        effect_value = effect_value + delta
         if effect_value <= 0 then
             result.outcome = "target_resisted"
             return result
@@ -978,9 +952,9 @@ function Combat.resolve_default_bonus_action(context, target)
     end
     result.continuation_successes = target_successes
 
-    -- 0x559CE..0x559F0 compares the first result with the target roll using
-    -- signed-byte arithmetic, then caps the action value at ten.
-    local delta = signed_byte(initial_successes - target_successes)
+    -- 0x559CE..0x559F0 compares the two success counts, then caps the
+    -- resulting action value at ten.
+    local delta = initial_successes - target_successes
     local action_value = E.CombatTuning.DEFAULT_ACTION_VALUE + delta
     if action_value > E.CombatTuning.ACTION_VALUE_MAX then
         action_value = E.CombatTuning.ACTION_VALUE_MAX
@@ -1041,13 +1015,12 @@ function Combat.resolve_reaction(context, target)
     end
 
     local remaining = first_successes + 3
-    remaining = subtract_source_byte(
-        remaining, secondary_armor_modifier(defender))
-    if signed_byte(remaining) <= 0 then
+    remaining = remaining - secondary_armor_modifier(defender)
+    if remaining <= 0 then
         return nil
     end
     remaining = defense_modifier(remaining, attacker)
-    if signed_byte(remaining) <= 0 then
+    if remaining <= 0 then
         return nil
     end
 
@@ -1070,15 +1043,14 @@ function Combat.resolve_reaction(context, target)
     if second_successes == nil then
         return nil
     end
-    remaining = subtract_source_byte(remaining, second_successes)
-    if signed_byte(remaining) <= 0 then
+    remaining = remaining - second_successes
+    if remaining <= 0 then
         return nil
     end
 
     local final_difficulty = attacker.attributes.strength +
         (combat_cyberware(attacker).melee_strength_bonus or 0)
-    local final_count = add_source_byte_to_word(
-        second_count, defender.attributes.body)
+    local final_count = second_count + defender.attributes.body
     final_count = final_count +
         (combat_cyberware(defender).melee_defense_bonus or 0)
     final_difficulty = math.max(final_difficulty, 2)
@@ -1087,8 +1059,8 @@ function Combat.resolve_reaction(context, target)
     if final_successes == nil then
         return nil
     end
-    remaining = subtract_source_byte(remaining, final_successes)
-    if signed_byte(remaining) <= 0 then
+    remaining = remaining - final_successes
+    if remaining <= 0 then
         return nil
     end
 
@@ -1096,13 +1068,13 @@ function Combat.resolve_reaction(context, target)
     local physical_penalty =
         combat_cyberware(attacker).hand_razors == true
     if not direct_physical and physical_penalty then
-        remaining = subtract_source_byte(remaining, 2)
-        if signed_byte(remaining) <= 0 then
+        remaining = remaining - 2
+        if remaining <= 0 then
             return nil
         end
     end
     local physical = direct_physical or physical_penalty
-    local damage = signed_byte(remaining)
+    local damage = remaining
     local physical_meter, mental_meter = adjusted_meters(
         defender, physical, damage, context)
     local changed = commit_combatant_meters(
@@ -1242,8 +1214,7 @@ local function resolve_weapon_action_value(context, projectile,
     local average = command_average(target)
     local reduction = posture_reduction(
         average, target.posture_reduction_percent)
-    local trial_count = add_source_byte_to_word(
-        average - reduction, target.attributes.body)
+    local trial_count = average - reduction + target.attributes.body
     trial_count = trial_count +
         (combat_cyberware(target).melee_defense_bonus or 0)
     local difficulty = dynamic_status_modifier(
@@ -1257,17 +1228,17 @@ local function resolve_weapon_action_value(context, projectile,
         return nil
     end
 
-    -- ROM 0x559BC subtracts the target roll from the projectile's +0x9F seed
-    -- using a signed byte, then adds that delta to 0x55948's effect value.
-    local delta = signed_byte(projectile.attack_successes - successes)
+    -- ROM 0x559BC subtracts target successes from the projectile's attack
+    -- successes, then applies that difference to 0x55948's effect value.
+    local delta = projectile.attack_successes - successes
     local action_value = source_action.effect_value
     if delta < 0 then
-        action_value = signed_byte(add_source_byte(action_value, delta))
+        action_value = action_value + delta
         if action_value <= 0 then
             return 0
         end
     else
-        action_value = action_value + (delta & 0xff)
+        action_value = action_value + delta
         if action_value >= 0x0b then
             action_value = 0x0a
         end
@@ -1277,8 +1248,7 @@ local function resolve_weapon_action_value(context, projectile,
     if armor_modifier == nil then
         return nil
     end
-    action_value = signed_byte(subtract_source_byte(
-        action_value, armor_modifier))
+    action_value = action_value - armor_modifier
     if action_value <= 0 then
         return 0
     end
