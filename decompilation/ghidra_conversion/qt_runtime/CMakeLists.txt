@@ -303,6 +303,14 @@ if(SHADOWRUN_LUA_EXECUTABLE)
     set_tests_properties(shadowrun_gameplay_field_encounters_qa PROPERTIES
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../.."
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
+    add_test(NAME shadowrun_gameplay_field_random_events_qa
+        COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"
+            "${CMAKE_SOURCE_DIR}/../.."
+            "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/field_random_events_tests.lua")
+    set_tests_properties(shadowrun_gameplay_field_random_events_qa PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../.."
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SRX_HEADLESS=1;SDL_AUDIODRIVER=dummy")
     add_test(NAME shadowrun_gameplay_field_barrier_policy_qa
         COMMAND "${SHADOWRUN_LUA_EXECUTABLE}"
             "${CMAKE_SOURCE_DIR}/../gameplay/tests_lua/run_lua_ctest.lua"
@@ -709,6 +717,13 @@ add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_random_encounter_s
                  --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
                  --field-random-encounter-spawn-qa
                  "${CMAKE_CURRENT_BINARY_DIR}/field-random-encounter-spawn-qa")
+
+# Scene 26's selector pair 0+0 opens the Hidden Camera prompt; continue
+# through its Quickness check, failed-check alarm, and result-page capture.
+add_shadowrun_qt_qa_case(shadowrun_ghidra_conversion_qt_field_hidden_camera_qa
+                 --assets "${CMAKE_CURRENT_SOURCE_DIR}/../../assets"
+                 --field-hidden-camera-qa
+                 "${CMAKE_CURRENT_BINARY_DIR}/field-hidden-camera-qa")
 
 # Resolve Scene 2's source sum-8 Weenr row, allow its Lua AI to approach the
 # runner, and observe the connected 0x1514E spawn, ammo, sound, and 0xB39A/C042

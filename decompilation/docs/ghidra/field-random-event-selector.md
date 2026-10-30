@@ -464,6 +464,31 @@ the alarm follows the special timeout-only path. On scenes 26-43, the shared
 transition processes the scene-specific corporate-guard list above when its
 world-mode and latch checks pass. It does not itself start combat.
 
+### Host coverage (2026-10-30)
+
+**[C]** The `hidden_camera` selector outcome now opens a Lua gameplay task.
+Lua reads the named party lifecycle and Quickness facts, floors the average
+Quickness for the dice pool, and sets the target to 4 plus each active support
+runner. It uses the shared thresholded-roll policy (including zero-dice and
+exploding-six behavior), requests bounded six-sided draws through the host
+random service, and calls the typed field alarm service only on zero
+successes. The alarm service retains the scene-20 timeout and scenes-26-43
+reinforcement rules above. Result text is keyed to ROM records `0x121320` and
+`0x121328`; the opening text and one-MORE choice come from the extracted
+semantic event-content rows.
+
+`field_random_events_tests.lua` checks one-, two-, and three-runner targets,
+flooring the party average, the zero-dice/exploding-six path, both result
+branches, and that only failure raises the alarm. The headless
+`shadowrun_ghidra_conversion_qt_field_hidden_camera_qa` selects the Scene 26
+sum-0 event, opens the source MORE page, continues through a deterministically
+failed check using the live party's Quickness, verifies the typed alarm and
+completed return, and writes `opening.bmp` plus `actual.bmp`. Debug CTest
+passes. This validates the integrated host path; it is not an independent
+Genesis visual comparison. The selector hill remains partial because its
+other enabled dialogue handlers are not implemented and Release coverage is
+still pending.
+
 **Custodian / missing-pass check (`0x2101E`, scene 20, sum 1).** The entry
 stub pairs prompt record `0x121330` with profile `0x121E5C`. That profile is a
 56x72 dialogue portrait; the ROM also selects the same profile for a separate

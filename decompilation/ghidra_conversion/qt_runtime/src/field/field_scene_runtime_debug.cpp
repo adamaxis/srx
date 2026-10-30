@@ -1376,6 +1376,13 @@ std::size_t FieldSceneRuntime::resolve_and_spawn_field_encounter_for_dump(
         source_boundary("field.random_encounter.qa_selector_unresolved");
         return 0U;
     }
+    if (outcome->kind ==
+            scripting::ScriptFieldEncounterOutcomeKind::dialogue_event &&
+        outcome->event_id == "hidden_camera") {
+        pending_field_encounter_outcome_ = std::move(*outcome);
+        (void)present_field_dialogue_event();
+        return 0U;
+    }
     if (outcome->kind != scripting::ScriptFieldEncounterOutcomeKind::
                              dynamic_world_effect_sequence) {
         failure_ = "field encounter QA selector did not resolve an actor sequence";

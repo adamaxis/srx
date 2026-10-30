@@ -194,6 +194,19 @@ local function thresholded_rolls(count, difficulty, random_bound)
     return successes
 end
 
+-- Hidden-camera and other field-dialogue checks use the same exploding-six
+-- threshold roll as combat, but their policy and dice-pool source belong to
+-- the field event. Keep this wrapper semantic so callers never need to copy
+-- the roll loop or pass source record fields into Lua.
+function Combat.roll_thresholded_successes(count, difficulty, random_bound)
+    if type(count) ~= "number" or count % 1 ~= 0 or count < 0 or
+       count > 0xFF or type(difficulty) ~= "number" or
+       difficulty % 1 ~= 0 or difficulty < 1 or difficulty > 0xFF then
+        return nil
+    end
+    return thresholded_rolls(count, difficulty, random_bound)
+end
+
 local function condition_modifier(difficulty, attacker, target)
     local has_cyberware = combat_cyberware(attacker).cybereyes == true
     if has_cyberware then

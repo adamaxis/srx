@@ -1117,6 +1117,10 @@ FieldSceneRuntime::FieldSceneRuntime(
                 handle_field_mode_action_event();
                 return "applied";
             }
+            if (service_id == "field.raise_alarm") {
+                advance_field_alarm(true);
+                return "applied";
+            }
             constexpr std::string_view kAwardKarmaPrefix =
                 "party.award_karma_";
             if (service_id.rfind(kAwardKarmaPrefix, 0U) == 0U) {
@@ -13409,6 +13413,23 @@ void FieldSceneRuntime::advance_frame() {
         } else if (result == FieldDialogueAdvanceResult::returned_to_field) {
             hospital_service_session_active_ = false;
             source_boundary("field.dialogue.returned_to_field");
+            if (pending_field_encounter_outcome_.has_value() &&
+                pending_field_encounter_outcome_->kind ==
+                    scripting::ScriptFieldEncounterOutcomeKind::dialogue_event &&
+                pending_field_encounter_outcome_->event_id == "hidden_camera") {
+                const auto task_result =
+                    field_dialogue_.take_gameplay_task_result();
+                pending_field_encounter_outcome_.reset();
+                if (task_result !=
+                    std::optional<std::string>{"resolved"}) {
+                    failure_ = "hidden-camera field event did not resolve";
+                    source_boundary(
+                        "field.random_encounter.hidden_camera_result_missing");
+                } else {
+                    source_boundary(
+                        "field.random_encounter.hidden_camera_resolved");
+                }
+            }
             if (field_party_wipe_dialogue_stage_ !=
                 FieldPartyWipeDialogueStage::inactive) {
                 (void)field_dialogue_.take_gameplay_task_result();

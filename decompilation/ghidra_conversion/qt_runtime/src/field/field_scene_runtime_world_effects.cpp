@@ -488,6 +488,39 @@ void FieldSceneRuntime::apply_field_alarm_result(
     source_boundary("field.alarm.reinforcements_published");
 }
 
+bool FieldSceneRuntime::present_field_dialogue_event() {
+    if (!pending_field_encounter_outcome_.has_value() ||
+        pending_field_encounter_outcome_->kind !=
+            scripting::ScriptFieldEncounterOutcomeKind::dialogue_event) {
+        return false;
+    }
+    if (pending_field_encounter_outcome_->event_id != "hidden_camera") {
+        failure_ = "field event has no Lua behavior: " +
+            pending_field_encounter_outcome_->event_id;
+        source_boundary(
+            "field.random_encounter.dialogue_handler_unimplemented");
+        return false;
+    }
+
+    const auto event_id = pending_field_encounter_outcome_->event_id;
+    const auto scene_id = static_cast<std::uint8_t>(
+        state_.field_scene_buffers.scene_reference);
+    game_scripts_.set_location_context(
+        "field_map", "random_field_event", "field.world_event",
+        "field_narrator", event_id, scene_id);
+    if (!field_dialogue_.open_gameplay_task(
+            "field_random_events", "present_hidden_camera")) {
+        failure_ = "could not open hidden-camera field event: " +
+            field_dialogue_.failure();
+        source_boundary(
+            "field.random_encounter.hidden_camera_open_failed");
+        pending_field_encounter_outcome_.reset();
+        return false;
+    }
+    source_boundary("field.random_encounter.hidden_camera_prompt_opened");
+    return true;
+}
+
 void FieldSceneRuntime::trigger_field_world_effect_sequence() {
     if (process_pending_story_world_effect_sequence()) {
         return;
@@ -574,10 +607,7 @@ void FieldSceneRuntime::trigger_field_world_effect_sequence() {
         }
         if (pending_field_encounter_outcome_->kind ==
             scripting::ScriptFieldEncounterOutcomeKind::dialogue_event) {
-            failure_ = "field event has no Lua behavior: " +
-                pending_field_encounter_outcome_->event_id;
-            source_boundary(
-                "field.random_encounter.dialogue_handler_unimplemented");
+            (void)present_field_dialogue_event();
             return;
         }
         spawn_field_world_effect_sequence();

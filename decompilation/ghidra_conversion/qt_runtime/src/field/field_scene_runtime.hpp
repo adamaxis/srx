@@ -1837,6 +1837,7 @@ private:
         const scripting::ScriptActorBehaviorDecision& decision);
     bool apply_scripted_field_entity_target_selection(
         const std::optional<std::string>& selected_actor_id);
+    bool present_field_dialogue_event();
     void trigger_field_world_effect_sequence();
     void advance_field_alarm(bool direct_raise = false,
                              bool clear_alarm = false,

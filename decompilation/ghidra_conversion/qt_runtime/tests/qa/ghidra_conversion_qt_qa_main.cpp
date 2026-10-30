@@ -3440,6 +3440,158 @@ int run_field_random_encounter_spawn_qa(
     return 0;
 }
 
+int run_field_hidden_camera_qa(
+    FieldSceneRuntime& field_scene,
+    const std::filesystem::path& output,
+    const std::vector<std::string>& source_boundaries) {
+    std::error_code error;
+    std::filesystem::create_directories(output, error);
+    if (error) {
+        std::cerr << "field hidden-camera QA: cannot create output: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    clear_qa_bitmap_artifacts(output, error);
+    if (error) {
+        std::cerr << "field hidden-camera QA: cannot clear old captures: "
+                  << error.message() << '\n';
+        return 3;
+    }
+    if (field_scene.field_scene_reference_for_dump() != 2U ||
+        !field_scene.reenter_field_scene_for_dump(26U)) {
+        std::cerr << "field hidden-camera QA: could not prepare Scene 26\n";
+        return 3;
+    }
+
+    const auto& party = field_scene.field_party_records_for_dump();
+    std::uint32_t quickness_total = 0U;
+    std::uint32_t active_runners = 0U;
+    for (const auto& runner : party) {
+        const auto status = static_cast<std::uint8_t>(runner.flags >> 8U);
+        if ((status & static_cast<std::uint8_t>(srx::RunnerStatus::ACTIVE)) ==
+            0U) {
+            continue;
+        }
+        quickness_total += runner.attributes[1U];
+        ++active_runners;
+    }
+    if (active_runners == 0U || active_runners > 3U) {
+        std::cerr << "field hidden-camera QA: invalid active party size "
+                  << active_runners << '\n';
+        return 3;
+    }
+    const auto dice_pool = static_cast<std::uint16_t>(
+        quickness_total / active_runners);
+    const auto target = static_cast<std::int16_t>(4U + active_runners - 1U);
+
+    // Find a source-RNG state for which the live semantic party's exact
+    // threshold check fails. The event's selector pair is injected separately;
+    // only its subsequent Quickness test consumes this seed.
+    std::optional<std::uint16_t> failure_seed;
+    for (std::uint32_t candidate = 0U; candidate <= 0xFFFFU; ++candidate) {
+        auto simulated_seed = static_cast<std::uint16_t>(candidate);
+        const auto successes =
+            shadowrun::ghidra_conversion::count_thresholded_random_rolls(
+                dice_pool, target,
+                [&simulated_seed](const std::uint16_t bound) {
+                    return shadowrun::ghidra_conversion::
+                        sample_source_random_bound(simulated_seed, bound);
+                });
+        if (successes == 0U) {
+            failure_seed = static_cast<std::uint16_t>(candidate);
+            break;
+        }
+    }
+    if (!failure_seed.has_value()) {
+        std::cerr << "field hidden-camera QA: could not find a failing seed for "
+                  << dice_pool << " Quickness dice\n";
+        return 3;
+    }
+
+    // Scene 26, selector pair 0+0 is the hidden-camera source-sum row.
+    // ROM 0x21004 opens its one-MORE prompt, then 0x244D2 runs the check and
+    // calls shared alarm routine 0x1E04A on failure.
+    const auto spawned = field_scene.resolve_and_spawn_field_encounter_for_dump(
+        0U, 0U, *failure_seed);
+    const auto& opening = field_scene.dialogue_panel();
+    const auto opening_image = render_qa_field(field_scene);
+    const auto opening_text_contains = std::any_of(
+        opening.text_segments.begin(),
+        opening.text_segments.begin() +
+            static_cast<std::ptrdiff_t>(opening.text_segment_count),
+        [](const std::string_view segment) {
+            return segment.find("shiver runs down your spine") !=
+                   std::string_view::npos;
+        });
+    const bool opening_saved =
+        save_qa_image(output, "opening.bmp", opening_image);
+    if (spawned != 0U || !opening.open || !opening.has_more ||
+        !opening_text_contains || opening_image.isNull() ||
+        opening_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !opening_saved) {
+        std::cerr << "field hidden-camera QA: selector did not open the "
+                     "source prompt; spawned=" << spawned
+                  << " dialogue=" << opening.open
+                  << " more=" << opening.has_more
+                  << " text_match=" << opening_text_contains
+                  << " segments=" << opening.text_segment_count
+                  << " image=" << opening_image.width() << 'x'
+                  << opening_image.height()
+                  << " saved=" << opening_saved
+                  << " failure=" << field_scene.failure() << '\n';
+        for (std::size_t index = 0U;
+             index < opening.text_segment_count; ++index) {
+            std::cerr << "  page[" << index << "]="
+                      << opening.text_segments[index] << '\n';
+        }
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U);
+    const auto& result = field_scene.dialogue_panel();
+    const auto result_image = render_qa_field(field_scene);
+    const auto result_text_contains = std::any_of(
+        result.text_segments.begin(),
+        result.text_segments.begin() +
+            static_cast<std::ptrdiff_t>(result.text_segment_count),
+        [](const std::string_view segment) {
+            return segment.find("alarm goes off") != std::string_view::npos;
+        });
+    const bool result_saved =
+        save_qa_image(output, "actual.bmp", result_image);
+    if (!result.open || result.has_more || !result_text_contains ||
+        !field_scene.field_alarm_active_for_dump() ||
+        result_image.isNull() ||
+        result_image.size() != QSize(kSceneWidth, kSceneHeight) ||
+        !result_saved) {
+        std::cerr << "field hidden-camera QA: failed check did not show the "
+                     "alarm result and activate the shared alarm; dialogue="
+                  << result.open
+                  << " alarm=" << field_scene.field_alarm_active_for_dump()
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    tap_qa_controller_button(field_scene, 0x40U);
+    if (!finish_field_modal_return_transition(field_scene) ||
+        field_scene.dialogue_open() ||
+        std::find(source_boundaries.begin(), source_boundaries.end(),
+                  "field.random_encounter.hidden_camera_resolved") ==
+            source_boundaries.end()) {
+        std::cerr << "field hidden-camera QA: result page did not return to "
+                     "the field through the completed gameplay task; "
+                  << "dialogue=" << field_scene.dialogue_open()
+                  << " failure=" << field_scene.failure() << '\n';
+        return 3;
+    }
+
+    std::cout << "field_hidden_camera_qa=passed scene=26 party="
+              << active_runners << " dice=" << dice_pool
+              << " target=" << target << " alarm=1 actual="
+              << (output / "actual.bmp").string() << '\n';
+    return 0;
+}
+
 int run_field_npc_item_action_qa(
     FieldSceneRuntime& field_scene,
     const std::filesystem::path& asset_root,
@@ -37116,6 +37268,8 @@ int main(int argc, char** argv) {
         std::optional<std::filesystem::path>
             field_random_encounter_spawn_qa_path;
         std::optional<std::filesystem::path>
+            field_hidden_camera_qa_path;
+        std::optional<std::filesystem::path>
             field_npc_item_action_qa_path;
         std::optional<std::filesystem::path>
             field_default_guard_item_action_qa_path;
@@ -37512,6 +37666,13 @@ int main(int argc, char** argv) {
                 index + 1 < argc) {
                 field_smoke = true;
                 field_random_encounter_spawn_qa_path =
+                    std::filesystem::path(argv[++index]);
+            }
+            if (std::string(argv[index]) ==
+                    "--field-hidden-camera-qa" &&
+                index + 1 < argc) {
+                field_smoke = true;
+                field_hidden_camera_qa_path =
                     std::filesystem::path(argv[++index]);
             }
             if (std::string(argv[index]) ==
@@ -43244,6 +43405,11 @@ int main(int argc, char** argv) {
                     field_scene, smoke_state, asset_root,
                     *field_random_encounter_spawn_qa_path,
                     field_audio_events, field_source_boundaries);
+            }
+            if (field_hidden_camera_qa_path.has_value()) {
+                return run_field_hidden_camera_qa(
+                    field_scene, *field_hidden_camera_qa_path,
+                    field_source_boundaries);
             }
             if (field_npc_item_action_qa_path.has_value()) {
                 return run_field_npc_item_action_qa(
