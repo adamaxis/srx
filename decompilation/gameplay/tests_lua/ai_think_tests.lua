@@ -68,7 +68,7 @@ local function context(overrides)
             { id = "party.runner.0", source_record_slot = 0,
               formation_position = "primary",
               world_activity_actor = false, world_x = 0x2000,
-              world_y = 0x2400, heading = 0x1000, distance = 0x300,
+              world_y = 0x2400, bearing_degrees = 22.5, distance = 0x300,
               projected_y_nonzero = true,
               actor_facts = actor_facts() },
         },
@@ -88,7 +88,7 @@ local function state(overrides)
         behavior_timer = 0,
         actor_facts = actor_facts(),
         animation_id = "idle",
-        movement_current_heading = 0x1000,
+        movement_current_bearing_degrees = 22.5,
         movement_active = false,
     }
     for key, value in pairs(overrides or {}) do
@@ -181,7 +181,7 @@ local field_actor_context = {
     profile_id = "pedestrian_k0b_none00",
     visual_profile_id = E.ActorVisualProfile.PEDESTRIAN_RAT_SHAMAN,
     action_kind = R.ActionKind.none,
-    initial_heading = 0x4200,
+    initial_bearing_degrees = 92.8125,
     entry_delay = 0,
     source_actor_has_waypoint_data = true,
     live_field_actor = true,
@@ -196,10 +196,10 @@ local detached_actor_state = R.initial_state(
     field_actor_context, R.source_profile(field_actor_context))
 check(field_actor_profile ~= nil and field_actor_state ~= nil and
       field_actor_state.live_field_actor == true and
-      field_actor_state.movement_current_heading == 0x4200 and
+      field_actor_state.movement_current_bearing_degrees == 92.8125 and
       detached_actor_state ~= nil and
       detached_actor_state.live_field_actor == false and
-      detached_actor_state.movement_current_heading == nil,
+      detached_actor_state.movement_current_bearing_degrees == nil,
       "source patrol movement starts only for a live field actor [C]")
 
 local world_due, runner_due = R.should_rebuild_target_lists(
@@ -277,7 +277,7 @@ local thon_context = context({
           world_activity_actor = false, projected_y_nonzero = true,
           actor_facts = actor_facts(),
           world_x = 0x2000, world_y = 0x2400,
-          heading = 0x1000, distance = 0x300 },
+          bearing_degrees = 22.5, distance = 0x300 },
     },
     ai_random_bound = function() return 0 end,
     action_line_clear = function() return true end,
@@ -297,7 +297,7 @@ check(thon_skips == E.AiTuning.THON_ACTION_INTERVAL and
       thon_state.thon_action_cooldown_remaining ==
           E.AiTuning.THON_ACTION_INTERVAL and
       thon_state.ai_target_id == "party.runner.0" and
-      thon_state.movement_current_heading == 0x1000 and
+      thon_state.movement_current_bearing_degrees == 22.5 and
       thon_state.animation_id == "spell",
       "Thon waits for eight behavior checks, then aims and casts")
 
@@ -336,16 +336,16 @@ local strike_context = context({
     visual_profile_id = E.ActorVisualProfile.GHOUL_EYE_FIVER,
     dynamic_world_encounter_actor = true,
     movement_allowed = true,
-    initial_heading = 0,
+    initial_bearing_degrees = 0,
 })
 local strike_state = state({
     visual_profile_id = E.ActorVisualProfile.GHOUL_EYE_FIVER,
     action_delay = -1,
-    movement_current_heading = 0,
+    movement_current_bearing_degrees = 0,
 })
 local strike_target = {
     id = "party.runner.0",
-    heading = E.AiTuning.QUARTER_TURN,
+    bearing_degrees = E.AiTuning.QUARTER_TURN_DEGREES,
     distance = E.AiTuning.CLOSE_STRIKE_RANGE - 1,
 }
 local strike_in_range = R.resolve_source_target_motion(
@@ -458,7 +458,7 @@ c = context({ actor_facts = { roles = { pedestrian = true } },
 local measured_x, measured_y
 c.measure_destination = function(x, y)
     measured_x, measured_y = x, y
-    return { heading = 0x2000, distance = 0x500, step_cost = 0x300 }
+    return { bearing_degrees = 45, distance = 0x500, step_cost = 0x300 }
 end
 local flee_handled = R.think(s, c)
 check(flee_handled and s.ai_think_path == "flee" and measured_x == 0x3F80 and
@@ -490,7 +490,7 @@ check(R.think_gate(s, context({ actor_behavior_profile = {
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, distance = E.AiTuning.ENGAGE_DIST,
-          heading = 0x1000, actor_facts = actor_facts() },
+          bearing_degrees = 22.5, actor_facts = actor_facts() },
     } })) == "patrol" and not s.world_activity_requested,
     "0x13EF4 posture 4 at ENGAGE_DIST does not engage")
 s = state()
@@ -500,7 +500,7 @@ check(R.think_gate(s, context({ actor_behavior_profile = {
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, distance = E.AiTuning.ENGAGE_DIST - 1,
-          heading = 0x1000, actor_facts = actor_facts() },
+          bearing_degrees = 22.5, actor_facts = actor_facts() },
     } })) == "combat" and s.world_activity_requested,
     "0x13EF4 posture 4 inside ENGAGE_DIST requests combat")
 check(R.think_gate(state(), context({ actor_behavior_profile = {
@@ -513,7 +513,7 @@ check(R.think_gate(state(), context({ actor_behavior_profile = {
       ai_target_candidates = {
           { id = "party.runner.0", source_record_slot = 0,
             world_activity_actor = false, distance = E.AiTuning.WATCH_DIST,
-            heading = 0x1000, actor_facts = actor_facts() },
+            bearing_degrees = 22.5, actor_facts = actor_facts() },
       } })) == "patrol",
       "0x13F52 watch distance at WATCH_DIST returns to patrol")
 s = state()
@@ -524,11 +524,11 @@ local watch_context = context({
     ai_target_candidates = {
         { id = "party.runner.0", source_record_slot = 0,
           world_activity_actor = false, distance = E.AiTuning.WATCH_DIST - 1,
-          heading = 0x2000, actor_facts = actor_facts() },
+          bearing_degrees = 45, actor_facts = actor_facts() },
     },
 })
 check(R.think(s, watch_context) and s.ai_think_path == "watch" and
-      s.movement_current_heading == 0x2000,
+      s.movement_current_bearing_degrees == 45,
       "0x13F68 watch branch faces FFFC04")
 local missing_profile_context = context()
 missing_profile_context.actor_behavior_profile = nil
@@ -556,7 +556,7 @@ local function guard_case(overrides, actor_overrides, line_clear)
         ai_target_candidates = {
             { id = "party.runner.0", source_record_slot = 0,
               world_activity_actor = false, world_x = 0x2000,
-              world_y = 0x2400, distance = 0x300, heading = 0x1000,
+              world_y = 0x2400, distance = 0x300, bearing_degrees = 22.5,
               actor_facts = actor_facts() },
         },
     })
@@ -564,7 +564,7 @@ local function guard_case(overrides, actor_overrides, line_clear)
     local gs = state({ actor_facts = {
         lifecycle = { group_leader = true },
     },
-        movement_current_heading = 0x2000 })
+        movement_current_bearing_degrees = 45 })
     for key, value in pairs(actor_overrides or {}) do gs[key] = value end
     return gs, gc, R.think_gate(gs, gc)
 end
@@ -580,7 +580,7 @@ check(s.actor_facts.roles.spotted and
 s, c = guard_case({ ai_target_candidates = {
     { id = "party.runner.0", source_record_slot = 0,
       world_activity_actor = false, world_x = 0x2000, world_y = 0x2400,
-      distance = 0x300, heading = 0x1000,
+      distance = 0x300, bearing_degrees = 22.5,
       actor_facts = actor_facts({ interaction = { unseen = true } }) },
 } })
 check(s.actor_facts.roles.spotted and
@@ -596,7 +596,7 @@ check(s.world_activity_requested and
 s, c = guard_case({ ai_target_candidates = {
     { id = "party.runner.0", source_record_slot = 0,
       world_activity_actor = false, world_x = 0x2000, world_y = 0x2400,
-      distance = 0x300, heading = 0x7000,
+      distance = 0x300, bearing_degrees = 157.5,
       actor_facts = actor_facts({ lifecycle = { active = false } }) },
 } })
 check(s.actor_facts.roles.spotted and
@@ -605,17 +605,17 @@ check(s.actor_facts.roles.spotted and
 s, c = guard_case({ ai_target_candidates = {
     { id = "party.runner.0", source_record_slot = 0,
       world_activity_actor = false, world_x = 0x2000, world_y = 0x2400,
-      distance = 0x300, heading = 0x1000,
+      distance = 0x300, bearing_degrees = 22.5,
       actor_facts = actor_facts(),
-} } }, { movement_current_heading = 0x5000 })
+} } }, { movement_current_bearing_degrees = 112.5 })
 check(not s.actor_facts.roles.spotted,
       "0x13FC6 rejects a facing difference at the quarter-turn boundary")
 s, c = guard_case({ ai_target_candidates = {
     { id = "party.runner.0", source_record_slot = 0,
       world_activity_actor = false, world_x = 0x2000, world_y = 0x2400,
-      distance = 0x300, heading = 32769,
+      distance = 0x300, bearing_degrees = 180.005493164063,
       actor_facts = actor_facts(),
-} } }, { movement_current_heading = 32767 })
+} } }, { movement_current_bearing_degrees = 179.994506835938 })
 check(s.actor_facts.roles.spotted,
       "0x13FB4 wraps the signed heading delta across 0x8000")
 
@@ -648,7 +648,7 @@ if patrol_route ~= nil then
         source_world_y = patrol_route.initial.y,
     })
     route_context.measure_destination = function()
-        return { heading = 0, distance = 0, step_cost = 0 }
+        return { bearing_degrees = 0, distance = 0, step_cost = 0 }
     end
     s = state()
     check(R.think(s, route_context) and
@@ -709,7 +709,7 @@ for source_order = 0, 2 do
             source_world_y = route.initial.y,
         })
         route_context.measure_destination = function()
-            return { heading = 0, distance = 0, step_cost = 0 }
+            return { bearing_degrees = 0, distance = 0, step_cost = 0 }
         end
         local pedestrian_state = state()
         check(R.think(pedestrian_state, route_context) and
@@ -763,7 +763,7 @@ for _, region in ipairs(regional_pedestrian_routes) do
                    target_y ~= route_context.source_world_y then
                     return nil
                 end
-                return { heading = 0, distance = 0, step_cost = 0 }
+                return { bearing_degrees = 0, distance = 0, step_cost = 0 }
             end
 
             local pedestrian_state = state({
@@ -822,14 +822,14 @@ local function formation_case(actor_position, leader_position, leader_heading,
               formation_position = leader_position,
               world_activity_actor = false,
               world_x = 8192, world_y = 9216,
-              source_record_heading = leader_heading,
-              heading = 0, distance = 0, actor_facts = actor_facts() },
+              facing_degrees = leader_heading,
+              bearing_degrees = 0, distance = 0, actor_facts = actor_facts() },
         },
     })
     formation_context.measure_destination = function(x, y)
         route_x, route_y = x, y
         return {
-            heading = 0,
+            bearing_degrees = 0,
             distance = E.AiTuning.ARRIVE_DIST + 1,
             step_cost = E.AiTuning.ARRIVE_DIST + 1,
         }
@@ -851,7 +851,7 @@ formation_case("secondary", "secondary", 0, 8350, 9374,
     "0x1452A gives the secondary actor the clockwise offset otherwise [C]")
 formation_case("other", "secondary", 0, 8350, 9374,
     "0x1452A gives other actors the clockwise offset [C]")
-formation_case("primary", "primary", E.AiTuning.QUARTER_TURN,
+formation_case("primary", "primary", E.AiTuning.QUARTER_TURN_DEGREES,
     8033, 9057,
     "0x1451E rotates a quarter-turn leader heading to the primary offset [C]")
 
@@ -869,14 +869,14 @@ local blocked_context = context({
         { id = "party.runner.0", formation_position = "primary",
           world_activity_actor = false,
           world_x = 8192, world_y = 9216,
-          source_record_heading = 0, heading = 0, distance = 0,
+          facing_degrees = 0, bearing_degrees = 0, distance = 0,
           actor_facts = actor_facts() },
     },
 })
 blocked_context.measure_destination = function(x, y)
     reverse_x, reverse_y = x, y
     return {
-        heading = 0,
+        bearing_degrees = 0,
         distance = E.AiTuning.ARRIVE_DIST + 1,
         step_cost = E.AiTuning.ARRIVE_DIST + 1,
     }
@@ -905,6 +905,7 @@ local function movement_fixture(dynamic_actor)
         source_projection_active = true,
         world_activity_active = false,
         movement_services_available = true,
+        movement_default_step_distance = 10,
         movement_offsets = {
             { 0, -1 }, { 1, -1 }, { 1, 0 }, { 1, 1 },
             { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 },
@@ -929,29 +930,31 @@ local function movement_fixture(dynamic_actor)
     }
 end
 
-local function movement_heading_case(heading, expected_direction,
+local function movement_bearing_case(bearing_degrees, expected_direction,
                                      dynamic_actor, description)
     local movement_context = movement_fixture(dynamic_actor)
     local actor_state = {
-        movement_heading = heading,
-        movement_current_heading = heading,
+        movement_bearing_degrees = bearing_degrees,
+        movement_current_bearing_degrees = bearing_degrees,
+        movement_route_distance = 0x500,
     }
     local step = R.advance_entity_movement(movement_context, actor_state)
     check(step ~= nil and step.outcome == "accepted" and
           actor_state.direction == expected_direction and
           actor_state.animation_id == "walk" and
           step.direction_animation == nil and
-          R.movement_direction_from_heading(movement_context, heading) ==
+          R.movement_direction_from_bearing_degrees(
+              movement_context, bearing_degrees) ==
               expected_direction,
           description)
 end
 
 game.movement.collision = function() return 0, 0 end
-movement_heading_case(0xF000, 7, true,
+movement_bearing_case(337.5, 7, true,
     "enemy B574/C062 truncates 0xF000 with THINK clear to direction 7 / selector 0x3C [C]")
-movement_heading_case(0x1000, 0, true,
+movement_bearing_case(22.5, 0, true,
     "enemy B574/C062 truncates 0x1000 with THINK clear to direction 0 / selector 0x20 [C]")
-movement_heading_case(0xF000, 0, false,
+movement_bearing_case(337.5, 0, false,
     "non-dynamic controller heading keeps the rounded BABC direction [C]")
 
 -- Scene 0x23 source order 1 follows 0x1DC3D6 from (0x6080,0x4C80)
@@ -966,8 +969,8 @@ route_actor_context.actor_facts.roles.reinforcement = true
 route_actor_context.movement_actor_facts.lifecycle.active = true
 route_actor_context.combatant = { attributes = { quickness = 19 } }
 local route_actor_state = {
-    movement_heading = 0xF000,
-    movement_current_heading = 0xF000,
+    movement_bearing_degrees = 337.5,
+    movement_current_bearing_degrees = 337.5,
     movement_route_distance = 0x3C40,
 }
 local route_actor_step = R.advance_entity_movement(
@@ -976,7 +979,8 @@ check(route_actor_step ~= nil and route_actor_step.outcome == "accepted" and
       route_actor_state.direction == 7 and
       route_actor_state.animation_id == "walk" and
       route_actor_step.direction_animation == nil and
-      R.movement_direction_from_heading(route_actor_context, 0xF000) == 7,
+      R.movement_direction_from_bearing_degrees(
+          route_actor_context, 337.5) == 7,
       "Scene-35 default route guard B574/C062 truncates measured 0xF000 to direction 7 [C]")
 
 -- Regional pedestrian records have +0x10 THINK clear, carry a source waypoint
@@ -995,8 +999,8 @@ for _, speed_case in ipairs(regional_pedestrian_speed_cases) do
     speed_context.movement_actor_facts.lifecycle.active = true
     speed_context.combatant = { attributes = { quickness = 1 } }
     local speed_state = {
-        movement_heading = 0x4000,
-        movement_current_heading = 0x4000,
+        movement_bearing_degrees = 90,
+        movement_current_bearing_degrees = 90,
         movement_route_distance = speed_case[1],
     }
     local speed_step = R.advance_entity_movement(speed_context, speed_state)
@@ -1010,14 +1014,15 @@ end
 -- whose 0x15D3C result crosses the old BABC rounding boundary. These ten
 -- distinct measured headings cover every affected selector value. [C]
 local route_heading_cases = {
-    { 0x1300, 0 }, { 0x5200, 2 }, { 0x5300, 2 }, { 0x5600, 2 },
-    { 0x7000, 3 }, { 0x7900, 3 }, { 0xB500, 5 }, { 0xBB00, 5 },
-    { 0xF000, 7 }, { 0xFE00, 7 },
+    { 34.453125, 0 }, { 114.609375, 2 }, { 115.48828125, 2 },
+    { 118.125, 2 }, { 157.5, 3 }, { 170.15625, 3 },
+    { 254.53125, 5 }, { 262.96875, 5 }, { 337.5, 7 },
+    { 357.1875, 7 },
 }
 for _, route_case in ipairs(route_heading_cases) do
-    check(R.movement_direction_from_heading(
+    check(R.movement_direction_from_bearing_degrees(
               route_actor_context, route_case[1]) == route_case[2],
-          string.format("default routed B574 heading 0x%04X truncates to %d [C]",
+          string.format("default routed B574 bearing %.5f degrees truncates to %d [C]",
                         route_case[1], route_case[2]))
 end
 
@@ -1027,7 +1032,7 @@ local heartbeat_target = {
     world_activity_actor = false,
     projected_y_nonzero = true,
     actor_facts = actor_facts(),
-    heading = 0xF000,
+    bearing_degrees = 337.5,
     distance = E.AiTuning.HELL_HOUND_PURSUIT_RANGE,
 }
 local heartbeat_context = movement_fixture(true)
@@ -1038,7 +1043,7 @@ heartbeat_context.action_kind = "none"
 heartbeat_context.action_code = E.ItemId.NONE
 heartbeat_context.phase = "behavior"
 heartbeat_context.spawn = true
-heartbeat_context.initial_heading = 0xF000
+heartbeat_context.initial_bearing_degrees = 337.5
 heartbeat_context.entry_delay = 0
 heartbeat_context.entry_animation_frame_count = 1
 heartbeat_context.movement_allowed = true
@@ -1056,8 +1061,8 @@ heartbeat_state.transition_complete = true
 heartbeat_state.behavior_timer = 1
 heartbeat_state.linked_target_id = heartbeat_target.id
 heartbeat_state.movement_active = true
-heartbeat_state.movement_heading = 0xF000
-heartbeat_state.movement_current_heading = 0xF000
+heartbeat_state.movement_bearing_degrees = 337.5
+heartbeat_state.movement_current_bearing_degrees = 337.5
 heartbeat_context.spawn = false
 local source_think = R.think
 R.think = function() return false end

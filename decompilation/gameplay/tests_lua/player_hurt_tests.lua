@@ -123,7 +123,7 @@ local function player_context(phase, spawn)
         action_kind = "none",
         action_code = 0,
         phase = phase,
-        initial_heading = 0,
+        initial_bearing_degrees = 0,
         entry_delay = 0,
         spawn = spawn,
         source_record_slot = 1,

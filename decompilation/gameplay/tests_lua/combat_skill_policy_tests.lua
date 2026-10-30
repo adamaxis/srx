@@ -231,7 +231,7 @@ local function armor_hit(equipped_armor_id, target_id)
     return Combat.resolve_weapon_hit({
         projectile_action_id = "test_weapon",
         ai_random_bound = function() return 0 end,
-    }, { action_result = 5 }, target)
+    }, { attack_successes = 5 }, target)
 end
 
 local unarmored_hit = armor_hit(nil, "unarmored_target")

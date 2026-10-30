@@ -2,8 +2,7 @@
 -- Split from the pre-module gameplay/scripts/actor_ai.lua; see docs/ghidra/lua-actor-ai-module-boundaries.md.
 local R = require("actor.registry")
 local E = require("enums")
-local I = require("lib.int68k")
-local u16, s16 = I.u16, I.s16
+local Bearing = require("bearing")
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
 local ActionKind = R.ActionKind   -- from actor/tables.lua
@@ -102,31 +101,16 @@ function R.should_rebuild_target_lists(frame_counter, display_service_word)
            phase == AiTuning.RUNNER_TARGET_LIST_PHASE
 end
 
-local function direction_from_heading(heading)
-    -- ROM 0xB36A rotates the heading three bits, rounds signed values upward,
-    -- then masks to one of the eight C0B2 directional animation lists.
-    local value = u16((heading << 3) | (heading >> 13))
-    if (value & 0x8000) ~= 0 then
-        value = u16(value + 1)
-    end
-    return value & 0x7
+local function direction_from_bearing_degrees(bearing_degrees)
+    -- The eight way animation selector rounds the measured bearing to the
+    -- nearest authored facing. Bearings use degrees clockwise from north.
+    return Bearing.octant(bearing_degrees, true)
 end
 
-local function approach_heading(current, target)
-    -- ROM 0xB530 moves a 16-bit fixed-point heading in 0x0800-unit steps.
-    local delta = u16(current - target)
-    if delta == 0 then
-        return current
-    end
-    local signed_delta = s16(delta)
-    if signed_delta < 0 then
-        if delta < 0xf800 then
-            return u16(current + 0x0800)
-        end
-    elseif delta > 0x07ff then
-        return u16(current - 0x0800)
-    end
-    return target
+local function approach_bearing_degrees(current_degrees, target_degrees)
+    -- The source slew is an 11.25 degree step per actor service pass. Keep
+    -- that behavior while storing an ordinary bearing in Lua state.
+    return Bearing.approach(current_degrees, target_degrees, 11.25)
 end
 
 local function dynamic_encounter_profile(context)
@@ -324,11 +308,11 @@ local function source_motion_bounds(context, state)
     return range, true
 end
 
-local function source_motion_destination_heading(context, state, target)
+local function source_motion_destination_bearing_degrees(context, state, target)
     -- ROM 0x13D0C clears +0xB0.4 before selecting the action distance row.
     state.actor_facts.behavior.in_target_band = false
     if type(target) ~= "table" or not context.movement_allowed or
-       type(target.heading) ~= "number" or
+       type(target.bearing_degrees) ~= "number" or
        type(target.distance) ~= "number" or
        type(target.direct_route_distance) ~= "number" or
        type(target.perpendicular_route_distance) ~= "number" or
@@ -341,7 +325,7 @@ local function source_motion_destination_heading(context, state, target)
     if not bounds_resolved then
         return nil
     end
-    local heading = target.heading
+    local bearing_degrees = target.bearing_degrees
     local distance = target.distance & 0xffff
     if bounds == nil or distance < bounds.maximum_distance then
         -- A zero +0xB5 counter reaches 0x13DCA directly. The selected action
@@ -349,7 +333,8 @@ local function source_motion_destination_heading(context, state, target)
         state.actor_facts.behavior.in_target_band = true
     end
     context.movement_state.route_facts = state.actor_facts.behavior
-    local destination_heading = u16(heading + AiTuning.QUARTER_TURN)
+    local destination_bearing_degrees =
+        Bearing.normalize(bearing_degrees + AiTuning.QUARTER_TURN_DEGREES)
     local destination_step_cost = target.perpendicular_route_step_cost
     local destination_distance = target.perpendicular_route_distance & 0xffff
 
@@ -361,7 +346,7 @@ local function source_motion_destination_heading(context, state, target)
         elseif distance >= bounds.maximum_distance then
             -- At or beyond the upper bound the ROM copies the linked
             -- position and routes directly toward it.
-            destination_heading = heading
+            destination_bearing_degrees = bearing_degrees
             destination_step_cost = target.direct_route_step_cost
             destination_distance = target.direct_route_distance & 0xffff
         end
@@ -375,7 +360,7 @@ local function source_motion_destination_heading(context, state, target)
         return nil
     end
     state.movement_route_distance = destination_distance
-    return destination_heading
+    return destination_bearing_degrees
 end
 
 local function retained_linked_target(context, state)
@@ -419,7 +404,8 @@ local function initial_state(context, profile)
         animation_cadence_profile =
             profile.animation_cadence_profile or "moving_actor_walk",
         weapon_item_id = profile.weapon_item_id,
-        direction = direction_from_heading(context.initial_heading),
+        direction = direction_from_bearing_degrees(
+            context.initial_bearing_degrees),
         entry_delay = context.entry_delay,
         behavior_timer = 0,
         movement_distance_per_update = 0,
@@ -434,11 +420,11 @@ local function initial_state(context, profile)
         hurt_behavior_timer = 0,
         hurt_audio_event = nil,
         hurt_audio_emitted = false,
-        movement_current_heading =
+        movement_current_bearing_degrees =
             (profile.controls_movement or
              (profile.source_profile_patrol and
               context.live_field_actor == true)) and
-            context.initial_heading or nil,
+            context.initial_bearing_degrees or nil,
         movement_route_distance = nil,
         movement_active = false,
         transition_started = false,
@@ -446,7 +432,7 @@ local function initial_state(context, profile)
         transition_complete = false,
         combat_action_requested = false,
         ai_target_id = nil,
-        ai_target_heading = nil,
+        ai_target_bearing_degrees = nil,
         ai_target_distance = nil,
         ai_target_engaged = false,
         target_motion_delay = 0,
@@ -500,7 +486,7 @@ local function initial_state(context, profile)
         state.animation_complete = false
         local projectile = context.projectile_movement
         state.action_result = type(projectile) == "table"
-            and projectile.action_result or 0
+            and projectile.attack_successes or 0
         state.attack_seed_resolved =
             not context.projectile_attack_seed_pending
         state.combat_meter_update = nil
@@ -556,15 +542,15 @@ end
 
 
 -- register this module's definitions
-R.direction_from_heading = direction_from_heading
-R.approach_heading = approach_heading
+R.direction_from_bearing_degrees = direction_from_bearing_degrees
+R.approach_bearing_degrees = approach_bearing_degrees
 R.dynamic_encounter_profile = dynamic_encounter_profile
 R.source_profile = source_profile
 R.target_is_eligible = target_is_eligible
 R.linked_target = linked_target
 R.action_target_motion_range = action_target_motion_range
 R.source_motion_bounds = source_motion_bounds
-R.source_motion_destination_heading = source_motion_destination_heading
+R.source_motion_destination_bearing_degrees = source_motion_destination_bearing_degrees
 R.retained_linked_target = retained_linked_target
 R.initial_state = initial_state
 R.same_actor = same_actor

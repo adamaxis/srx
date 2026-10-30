@@ -2695,10 +2695,12 @@ int run_field_random_encounter_spawn_qa(
     // ROM 0x14F86 starts the next ray after reducing the two-shot budget.
     const bool first_followup_timer =
         burst_followup_records.size() > 0U &&
-        burst_followup_records[0].find(":remaining=1:heading=") != std::string::npos;
+        burst_followup_records[0].find(
+            ":shots_remaining=1:bearing_degrees=") != std::string::npos;
     const bool second_followup_timer =
         burst_followup_records.size() > 1U &&
-        burst_followup_records[1].find(":remaining=0:heading=") != std::string::npos;
+        burst_followup_records[1].find(
+            ":shots_remaining=0:bearing_degrees=") != std::string::npos;
     const bool burst_full_screen_clean =
         std::all_of(burst_followup_frames_saved.begin(),
                     burst_followup_frames_saved.end(),

@@ -12106,12 +12106,50 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
             (static_cast<std::uint32_t>(current) & 0xFFFFU);
         return static_cast<std::int32_t>(combined);
     };
+    const auto map_position_from_fixed = [](const std::int32_t fixed) {
+        const auto bits = static_cast<std::uint32_t>(fixed);
+        return static_cast<double>(bits >> 16U) +
+               static_cast<double>(bits & 0xFFFFU) / 65536.0;
+    };
+    const auto fixed_from_map_position = [](const double position) {
+        const auto scaled = std::llround(position * 65536.0);
+        const auto bits = static_cast<std::uint32_t>(
+            static_cast<std::uint64_t>(scaled) & 0xFFFFFFFFULL);
+        const auto signed_value = bits >= 0x80000000U
+            ? static_cast<std::int64_t>(bits) - 0x100000000LL
+            : static_cast<std::int64_t>(bits);
+        return static_cast<std::int32_t>(signed_value);
+    };
+    const auto map_distance_from_source_clear_steps = [](const std::uint32_t steps) {
+        return (static_cast<double>(steps) + 1.0) * 96.0;
+    };
+    const auto source_clear_steps_from_map_distance = [](const double distance) {
+        const auto sample_count = std::llround(distance / 96.0);
+        return static_cast<std::uint32_t>(sample_count - 1LL);
+    };
+    const auto bearing_degrees_from_record = [](const std::uint16_t heading) {
+        return static_cast<double>(heading) * 360.0 / 65536.0;
+    };
+    const auto record_heading_from_bearing = [](const double bearing) {
+        return static_cast<std::uint16_t>(
+            std::llround(bearing * 65536.0 / 360.0) & 0xFFFFLL);
+    };
+    const auto source_step_from_map_velocity = [](const double velocity) {
+        return static_cast<std::int16_t>(std::floor(velocity * 256.0));
+    };
 
     const auto advance_record = [this, &release_slot, &live_collision_targets,
                                  &live_collision_target_ids,
                                  &live_projectile_combat_targets,
                                  &live_party_combat_candidates,
-                                 &word_from_fixed, &signed_fixed_from_word](
+                                 &word_from_fixed, &signed_fixed_from_word,
+                                 &map_position_from_fixed,
+                                 &fixed_from_map_position,
+                                 &map_distance_from_source_clear_steps,
+                                 &source_clear_steps_from_map_distance,
+                                 &bearing_degrees_from_record,
+                                 &record_heading_from_bearing,
+                                 &source_step_from_map_velocity](
                                     FieldWeaponProjectilePresentation& spawn,
                                     const bool primary_record) {
         auto& record = primary_record ? spawn.primary_record
@@ -12181,34 +12219,40 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         projectile_movement.role = primary_record
             ? scripting::ScriptActorProjectileRole::primary
             : scripting::ScriptActorProjectileRole::secondary;
-        projectile_movement.active = active;
-        // Decode native record state here. Lua sees behavior-level facts, and
-        // the serializer below merges them back while retaining unrelated bits.
-        projectile_movement.waiting_for_animation_end =
+        const bool waiting_for_animation =
             (record.record_flags & 0x08U) != 0U; // 0x14E0A [C]
+        projectile_movement.phase = !active
+            ? scripting::ScriptActorProjectilePhase::inactive
+            : waiting_for_animation
+                ? scripting::ScriptActorProjectilePhase::awaiting_animation
+                : scripting::ScriptActorProjectilePhase::flying;
         projectile_movement.impact_occurred =
             (record.record_flags & 0x01U) != 0U; // 0x14E32 [C]
         projectile_movement.animation_finished = animation_complete;
-        projectile_movement.world_x = primary_record
-            ? spawn.primary_fixed_position.world_x
-            : signed_fixed_from_word(record.position_x, 0);
-        projectile_movement.world_y = primary_record
-            ? spawn.primary_fixed_position.world_y
-            : signed_fixed_from_word(record.position_y, 0);
-        projectile_movement.tile_offset_x = primary_record
-            ? record.heading_offset_x
-            : std::int16_t{0};
-        projectile_movement.tile_offset_y = primary_record
-            ? record.heading_offset_y
-            : std::int16_t{0};
-        projectile_movement.remaining_clear_steps =
-            record.remaining_clear_steps;
-        projectile_movement.additional_shots_remaining =
+        projectile_movement.position = {
+            map_position_from_fixed(primary_record
+                ? spawn.primary_fixed_position.world_x
+                : signed_fixed_from_word(record.position_x, 0)),
+            map_position_from_fixed(primary_record
+                ? spawn.primary_fixed_position.world_y
+                : signed_fixed_from_word(record.position_y, 0)),
+        };
+        projectile_movement.velocity = {};
+        projectile_movement.remaining_flight_range =
+            map_distance_from_source_clear_steps(record.remaining_clear_steps);
+        projectile_movement.shots_remaining =
             record.additional_shots_remaining;
-        projectile_movement.heading = record.heading;
-        projectile_movement.saved_position_x = record.saved_position_x;
-        projectile_movement.saved_position_y = record.saved_position_y;
-        projectile_movement.action_result = record.action_result;
+        projectile_movement.bearing_degrees =
+            bearing_degrees_from_record(record.heading);
+        projectile_movement.burst_origin = {
+            static_cast<double>(record.saved_position_x),
+            static_cast<double>(record.saved_position_y),
+        };
+        // ROM 0x55640 stores the weapon roll count in signed +0x9F [C]. The
+        // actor boundary exposes successes as a count, so the record adapter
+        // converts here instead of leaking byte semantics into Lua.
+        projectile_movement.attack_successes = static_cast<std::uint16_t>(
+            std::max<int>(record.action_result, 0));
         context.projectile_attack_seed_pending =
             primary_record && !script_initialized;
         if (primary_record) {
@@ -12265,7 +12309,7 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                     x, y, spawn.primary_collision_record,
                     field_terrain_sample_state_, record.flags, false);
                 return scripting::ScriptProjectileTerrainSample{
-                    static_cast<std::uint16_t>(terrain_code),
+                    terrain_code != 0U,
                     field_terrain_boundary_active_,
                     field_terrain_outside_bounds_marker_};
             };
@@ -12287,12 +12331,20 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                     hit_target_id =
                         live_collision_target_ids[*result.candidate_index];
                 }
-                return scripting::ScriptProjectileCollisionSearchResult{
-                    result.source_carry,
-                    result.source_position_updated,
-                    result.source_x,
-                    result.source_y,
-                    std::move(hit_target_id)};
+                scripting::ScriptProjectileCollisionSearchResult contact{};
+                if (result.source_carry && result.source_position_updated) {
+                    contact.kind =
+                        scripting::ScriptProjectileContactKind::target_hit;
+                    contact.target_position =
+                        scripting::ScriptActorProjectileVector{
+                            static_cast<double>(result.source_x),
+                            static_cast<double>(result.source_y)};
+                    contact.hit_target_id = std::move(hit_target_id);
+                } else if (result.source_carry) {
+                    contact.kind = scripting::ScriptProjectileContactKind::
+                        linked_followup;
+                }
+                return contact;
             };
 
         const auto decision = game_scripts_.actor_heartbeat(context);
@@ -12325,10 +12377,13 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         };
         // Encode the named Lua outcomes only at the native record boundary;
         // retain reserved bits from the live projectile record.
-        record.flags = merge_record_flag(record.flags, 0x01U, movement.active);
+        const bool movement_active = movement.phase !=
+            scripting::ScriptActorProjectilePhase::inactive;
+        const bool movement_waiting = movement.phase ==
+            scripting::ScriptActorProjectilePhase::awaiting_animation;
+        record.flags = merge_record_flag(record.flags, 0x01U, movement_active);
         record.record_flags = merge_record_flag(
-            record.record_flags, 0x08U,
-            movement.waiting_for_animation_end);
+            record.record_flags, 0x08U, movement_waiting);
         record.record_flags = merge_record_flag(
             record.record_flags, 0x01U, movement.impact_occurred);
         if (movement.animation_action ==
@@ -12341,18 +12396,21 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
         animation.redraw_requested =
             animation.redraw_requested ||
             previous_animation_resource != record.animation_resource;
-        record.remaining_clear_steps = movement.remaining_clear_steps;
-        record.additional_shots_remaining =
-            movement.additional_shots_remaining;
-        record.action_result = movement.action_result;
+        record.remaining_clear_steps =
+            source_clear_steps_from_map_distance(movement.remaining_flight_range);
+        record.additional_shots_remaining = movement.shots_remaining;
+        record.action_result = static_cast<std::int8_t>(
+            movement.attack_successes);
         const bool attack_seed_refreshed = primary_record &&
             (context.projectile_attack_seed_pending ||
              projectile_outcome == scripting::ScriptActorProjectileOutcome::
                                        burst_followup_restarted);
         if (attack_seed_refreshed) {
-            spawn.shooter_facts.action_result = movement.action_result;
+            spawn.shooter_facts.action_result = static_cast<std::uint8_t>(
+                movement.attack_successes);
             if (context.projectile_attack_seed_pending) {
-                spawn.source_record.action_result = movement.action_result;
+                spawn.source_record.action_result = static_cast<std::int8_t>(
+                    movement.attack_successes);
             }
             if (spawn.shooter_party_slot.has_value() &&
                 *spawn.shooter_party_slot <
@@ -12360,7 +12418,8 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                 field_party_roster_.slot_active(
                     *spawn.shooter_party_slot)) {
                 field_party_roster_.records()[*spawn.shooter_party_slot]
-                    .action_result = movement.action_result;
+                    .action_result = static_cast<std::uint8_t>(
+                        movement.attack_successes);
             } else if (!spawn.shooter_actor_id.empty()) {
                 const auto shooter = std::find_if(
                     field_default_actors_.begin(),
@@ -12371,19 +12430,26 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                                    spawn.shooter_actor_id;
                     });
                 if (shooter != field_default_actors_.end()) {
-                    shooter->combatant.action_result =
-                        movement.action_result;
+                    shooter->combatant.action_result = static_cast<std::uint8_t>(
+                        movement.attack_successes);
                 }
             }
         }
         if (primary_record) {
-            record.heading = movement.heading;
-            record.heading_offset_x = movement.tile_offset_x;
-            record.heading_offset_y = movement.tile_offset_y;
-            spawn.primary_fixed_position.world_x = movement.world_x;
-            spawn.primary_fixed_position.world_y = movement.world_y;
-            record.position_x = word_from_fixed(movement.world_x);
-            record.position_y = word_from_fixed(movement.world_y);
+            record.heading = record_heading_from_bearing(
+                movement.bearing_degrees);
+            record.heading_offset_x = source_step_from_map_velocity(
+                movement.velocity.x);
+            record.heading_offset_y = source_step_from_map_velocity(
+                movement.velocity.y);
+            spawn.primary_fixed_position.world_x =
+                fixed_from_map_position(movement.position.x);
+            spawn.primary_fixed_position.world_y =
+                fixed_from_map_position(movement.position.y);
+            record.position_x = word_from_fixed(
+                spawn.primary_fixed_position.world_x);
+            record.position_y = word_from_fixed(
+                spawn.primary_fixed_position.world_y);
             if (projectile_outcome ==
                 scripting::ScriptActorProjectileOutcome::
                     burst_followup_restarted) {
@@ -12422,17 +12488,20 @@ void FieldSceneRuntime::advance_field_weapon_projectiles() {
                 burst_followup_restarted) {
             source_boundary(
                 std::string(
-                    "field.combat.weapon_projectile_burst_followup_started:remaining=") +
+                    "field.combat.weapon_projectile_burst_followup_started:shots_remaining=") +
                 std::to_string(
-                    movement.additional_shots_remaining) +
-                ":heading=" + std::to_string(movement.heading) +
+                    movement.shots_remaining) +
+                ":bearing_degrees=" +
+                std::to_string(movement.bearing_degrees) +
                 ":position=" +
-                std::to_string(word_from_fixed(movement.world_x)) + "," +
-                std::to_string(word_from_fixed(movement.world_y)) +
-                ":action_result=" +
-                std::to_string(static_cast<int>(movement.action_result)));
+                std::to_string(word_from_fixed(
+                    fixed_from_map_position(movement.position.x))) + "," +
+                std::to_string(word_from_fixed(
+                    fixed_from_map_position(movement.position.y))) +
+                ":attack_successes=" +
+                std::to_string(movement.attack_successes));
         }
-        active = movement.active;
+        active = movement_active;
         if (!active) {
             release_slot(slot);
         }

@@ -34,13 +34,30 @@ end
 local function b(h, n) return ((h >> n) & 1) == 1 end
 TYPED = {
   ["movement.collision"] = function(h) return ((h >> 3) % 0xA0) - 0x20, (h >> 9) % 8 end,
-  ["movement.projectile_terrain"] = function(h) return (h >> 3) % 4, b(h, 8), b(h, 9) end,
+  ["movement.projectile_terrain"] = function(h)
+    return { blocked = (h >> 3) % 4 ~= 0,
+      boundary_active = b(h, 8), outside_map = b(h, 9) }
+  end,
   ["movement.projectile_collision"] = function(h)
-    return b(h, 2), b(h, 3), (h >> 4) % 0x10000, (h >> 12) % 0x10000, b(h, 20) and ("a" .. (h % 3)) or nil end,
+    local hit = b(h, 2)
+    local has_position = hit and b(h, 3)
+    return { kind = not hit and "none" or has_position and "target_hit" or
+        "linked_followup",
+      target_position = has_position and {
+        x = (h >> 4) % 0x10000, y = (h >> 12) % 0x10000 } or nil,
+      target_id = hit and b(h, 20) and ("a" .. (h % 3)) or nil }
+  end,
   ["movement.recover_collision"] = function(h) return b(h, 2), (h >> 4) % 0x100 end,
   ["movement.route"] = function(h) return { primary_marker = (h % 3) - 1, secondary_marker = ((h >> 2) % 3) - 1,
       primary_fallback_slot = (h >> 4) % 16, secondary_fallback_slot = (h >> 8) % 16 } end,
-  ["entity_motion.heading_offsets"] = function(h) return { horizontal = (h % 64) - 32, vertical = ((h >> 6) % 64) - 32 } end,
+  ["entity_motion.heading_offsets"] = function(source_heading)
+    local step = require("entity_motion").projectile_step(
+      source_heading)
+    return {
+      horizontal = math.floor(step.x * 256),
+      vertical = math.floor(step.y * 256),
+    }
+  end,
   ["combat.resolve_weapon_attack_seed"] = function(h) return (h >> 3) % 256 end,
   ["combat.resolve_reaction"] = function(h) return { damage = h % 5, stun = (h >> 3) % 3 } end,
   ["combat.resolve_weapon_hit"] = function(h) return { damage = h % 5 } end,
@@ -48,18 +65,54 @@ TYPED = {
       next_action_kind = ({ "none", "item", "spell" })[h % 3 + 1] } end,
   ["magic.actor_effect_profile"] = function(h) return { duration = (h >> 3) % 64, kind = h % 4 } end,
 }
-local function make_game(log)
+local function make_game(log, legacy_services)
   local count = 0
   local function svc(path)
     return setmetatable({}, { __index = function(_, name)
       local full = path .. "." .. name
       return function(...)
         count = count + 1
-        local a = ser({ ... })
-        log[#log + 1] = full .. a
-        local h = hash(full .. a .. count)
+        local arguments = { ... }
+        local logged_full = full
+        if full == "entity_motion.heading_offsets" and
+           type(arguments[1]) == "number" then
+          logged_full = "movement.projectile_step_offsets"
+          arguments[1] = (arguments[1] % 0x10000) * 360 / 0x10000
+        end
+        if full == "movement.projectile_terrain" or
+           full == "movement.projectile_collision" then
+          for index = 1, 2 do
+            if type(arguments[index]) == "number" then
+              arguments[index] = math.floor(arguments[index]) % 0x10000
+            end
+          end
+        end
+        local a = ser(arguments)
+        -- The old module requested a pure vector calculation from a host
+        -- service. The port now calculates the vector in Lua; keep comparing
+        -- resulting gameplay state without treating that internal call as an
+        -- externally visible host action.
+        if full ~= "entity_motion.heading_offsets" then
+          log[#log + 1] = logged_full .. a
+        end
+        local h = hash(logged_full .. a .. count)
         local T = TYPED[full]
-        if T and h % 7 ~= 0 then return T(h) end
+        if T and h % 7 ~= 0 then
+          if full == "entity_motion.heading_offsets" then
+            return T(arguments[1])
+          end
+          local result = T(h)
+          if legacy_services and full == "movement.projectile_terrain" then
+            return result.blocked and 1 or 0,
+              result.boundary_active, result.outside_map
+          end
+          if legacy_services and full == "movement.projectile_collision" then
+            local position = result.target_position or {}
+            return result.kind ~= "none", result.kind == "target_hit",
+              position.x or 0, position.y or 0, result.target_id
+          end
+          return result
+        end
         local k = h % 5
         if k == 0 then return nil
         elseif k == 1 then return h % 3 == 0
@@ -67,7 +120,8 @@ local function make_game(log)
         else
           return { blocked = (h & 1) == 1, hit = (h & 2) == 2, position_x = (h >> 3) % 0x10000,
                    position_y = (h >> 7) % 0x10000, terrain_collision_code = (h >> 11) % 4,
-                   heading = (h >> 13) % 0x10000, status = (h >> 2) % 3, seed = (h >> 5) % 256,
+                   bearing_degrees = ((h >> 13) % 0x10000) * 360 / 0x10000,
+                   status = (h >> 2) % 3, seed = (h >> 5) % 256,
                    damage = (h >> 9) % 10, next_profile_id = nil, collision_code = (h >> 6) % 4 }
         end
       end
@@ -106,6 +160,9 @@ local function num()
   if k == 1 then return 0 elseif k == 2 then return R(0, 15) elseif k == 3 then return R(0, 0xff)
   elseif k == 4 then return R(0, 0xffff) elseif k == 5 then return R(1, 8) else return pick({ 0x28, 15, 0x10, 0x20, 0x80 }) end
 end
+local function bearing()
+  return R(0, 0xffff) * 360 / 0x10000
+end
 local function maybe(f) if R(5) == 1 then return nil end return f() end
 local function bool() return R(2) == 1 end
 local function cand(i)
@@ -114,13 +171,14 @@ local function cand(i)
            projected_y_nonzero = projected_y_nonzero, service_flags = num(), behavior_flags = num(),
            spawn_state_flags = num(), source_record_slot = R(0, 7), world_activity_actor = bool(),
            direct_route_step_cost = num(), direct_route_distance = num(), perpendicular_route_distance = num(),
-           perpendicular_route_step_cost = num(), distance = num(), heading = num(), world_x = num(), world_y = num(),
-           source_record_heading = num() }
+           perpendicular_route_step_cost = num(), distance = num(),
+           bearing_degrees = bearing(), world_x = num(), world_y = num(),
+           facing_degrees = bearing() }
 end
 local function list(f, n) local t = {} for i = 1, R(0, n) do t[i] = f(i) end return t end
 local function mstate()
-  return { animation_heading = num(), collision_context = num(), collision_extent = num(),
-           heading = num(), position_x = num(), position_y = num(), route_status = num(),
+  return { animation_bearing_degrees = bearing(), collision_context = num(), collision_extent = num(),
+           bearing_degrees = bearing(), position_x = num(), position_y = num(), route_status = num(),
            terrain_collision_code = num(), substate_update = "unchanged",
            cardinal_direction = R(0, 3), mark_reset_after_block = bool(),
            mark_directional_fallback = bool(), clear_collision_recovery = bool(),
@@ -176,7 +234,7 @@ local function context(actor)
         or pick(VisualProfileIds), action_kind = ak or "none", action_code = action_code,
     action_spell_id = ak == "spell" and SpellIdByActionCode[action_code] or nil,
     phase = pick({ "behavior", "render", "behavior" }), spawn = R(6) == 1,
-    initial_heading = num(), entry_delay = R(0, 16), entry_animation_frame_count = R(1, 8),
+    initial_bearing_degrees = bearing(), entry_delay = R(0, 16), entry_animation_frame_count = R(1, 8),
     source_record_flags = R(4) == 1 and 0 or 1, source_record_slot = R(0, 7), combatant = bool(),
     action_timing = { quickness = R(0, 10), intelligence = R(0, 10),
                       modifier = pick({ 0, 4, 8, 12 }) },
@@ -235,4 +293,4 @@ local function norm_err(e)
   -- strip file:line and local-variable names (lib.int68k helpers name their parameter differently)
   return (tostring(e):gsub("[^%s:]+%.lua:%d+:", "<src>:"):gsub(" %(local '[%w_]+'%)", ""):gsub(" %(upvalue '[%w_]+'%)", ""))
 end
-return { ORIG = ORIG, ser = ser, make_game = make_game, context = context, cand = cand, mstate = mstate, num = num, bool = bool, list = list, deepcopy = deepcopy, norm_err = norm_err, pids = pids }
+return { ORIG = ORIG, ser = ser, make_game = make_game, context = context, cand = cand, mstate = mstate, num = num, bearing = bearing, bool = bool, list = list, deepcopy = deepcopy, norm_err = norm_err, pids = pids }

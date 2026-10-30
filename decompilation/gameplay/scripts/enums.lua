@@ -31,16 +31,16 @@ E.MovementDirection = {
     SOUTH_EAST = "south_east", SOUTH = "south",
     SOUTH_WEST = "south_west", WEST = "west", NORTH_WEST = "north_west",
 }
-E.MovementHeading = {
-    [E.MovementDirection.NORTH] = 0x0000,
-    [E.MovementDirection.NORTH_EAST] = 0x2000,
-    [E.MovementDirection.EAST] = 0x4000,
-    [E.MovementDirection.SOUTH_EAST] = 0x6000,
-    [E.MovementDirection.SOUTH] = 0x8000,
-    [E.MovementDirection.NORTH_WEST] = 0xA000,
-    [E.MovementDirection.WEST] = 0xC000,
-    [E.MovementDirection.SOUTH_WEST] = 0xE000,
-} -- host intent names converted to field angles through ROM 0x19D2 [C]
+E.MovementBearingDegrees = {
+    [E.MovementDirection.NORTH] = 0,
+    [E.MovementDirection.NORTH_EAST] = 45,
+    [E.MovementDirection.EAST] = 90,
+    [E.MovementDirection.SOUTH_EAST] = 135,
+    [E.MovementDirection.SOUTH] = 180,
+    [E.MovementDirection.SOUTH_WEST] = 225,
+    [E.MovementDirection.WEST] = 270,
+    [E.MovementDirection.NORTH_WEST] = 315,
+} -- degrees clockwise from north; native boundary converts to field angles [C]
 E.Scene = {
     JUMP_HOUSE = 13, WANDERER = 14, -- 0x1B3C06 / 0x1D5B52 scene profiles [C]
     RESOURCE_ACTIVITY_FIRST = 21, RESOURCE_ACTIVITY_LAST = 43,
@@ -286,25 +286,21 @@ E.EventFn = { GUARD_SPOTS_YOU = 0x20FEC }                                       
 
 E.AiTuning = {   -- [C] unless marked
     THINK_FRAMES = 0x14, THINK_RETRY = -1, -- 0x13904 + FFE175 retry remains negative [C]
-    ARRIVE_DIST = 0x1E0, FLANK_RADIUS = 0xE0, FLANK_ANGLE = 0x6000,
+    ARRIVE_DIST = 0x1E0, FLANK_RADIUS = 0xE0, FLANK_ANGLE_DEGREES = 135,
     CLOSE_STRIKE_RANGE = 0x200, -- 0x15C58 accepts an actor target below this distance [C]
     PATROL_WAYPOINT_STRIDE = 0x4, -- 0x142F4 advances +0xE4 by one XY pair [C]
     FOLLOW_RADIUS_INITIAL = 0x20, -- 0x14512 first writes this radius [C]
     FOLLOW_RADIUS = 0xE0, -- 0x14516 overwrites the prior radius [C]
-    FOLLOW_ANGLE_STEP = 0x6000, -- 0x14532 / 0x1452A [C]
-    FOLLOW_SAMPLE_SHIFT = 9, -- 0x15DCC indexes the wave by heading >> 9 [C]
-    FOLLOW_SAMPLE_MASK = 0x7F, -- 0x15E56 contains 128 signed samples [C]
-    FOLLOW_QUARTER_WAVE_SAMPLES = 0x20, -- 0x15E16 is 32 samples earlier [C]
-    FOLLOW_VECTOR_SCALE = 0x8000, -- 0x15DCC product is doubled then SWAPed [C]
+    FOLLOW_ANGLE_STEP_DEGREES = 135, -- 0x14532 / 0x1452A [C]
     FOLLOW_COLLISION_CLEAR_MAX = 0, -- 0x1455A/0x14580 accept nonpositive results [C]
     HELL_HOUND_CLOSE_RANGE = 0x0300, -- 0x14D04 close range action branch [C]
     HELL_HOUND_PURSUIT_RANGE = 0x0600, -- 0x14D04 pursuit branch ends at 0x0600 [C]
     PATROL_INITIAL_CURSOR = 0, -- 0x142FE clears +0xE4 at the list terminator [C]
-    WORD_MAX = 0xFFFF, -- 0x1450E heading and coordinate inputs are 16-bit words [C]
+    WORD_MAX = 0xFFFF, -- 0x1450E coordinate inputs are 16-bit words [C]
     FLEE_OFFSET = 0x2580, FLEE_CAMERA_BIAS = 0xA00, ENGAGE_DIST = 0x500, WATCH_DIST = 0x640,
     THON_ACTION_INTERVAL = 8, -- ROM 0x13A66 reloads after the shared action cooldown expires [C]
     HURT_BELOW = 4, CAST_MIN_STUN = 5, SPELL_GATE_MAX = 2, APPROACH_TICKS = 6,
-    QUARTER_TURN = 0x4000, NO_TARGET = 0x12345678, STEER_NONE = 0x1000, ALARM_FRAMES = 0x960,
+    QUARTER_TURN_DEGREES = 90, NO_TARGET = 0x12345678, STEER_NONE = 0x1000, ALARM_FRAMES = 0x960,
     RELOAD_ROUNDS = 0x26, PATH_TRIES = 5, ANIM_TIMER_MASK = 0x7FF,
     TARGET_LIST_PHASE_MASK = 0x3F, -- raw 0x3F: FFDF88 mask at 0x13874 [C]
     WORLD_TARGET_LIST_PHASE = 0x0B, -- raw 0x0B: rebuild 0x1438C at 0x13874 [C]

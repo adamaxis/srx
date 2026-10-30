@@ -14,16 +14,21 @@ After a terminal projectile's finite animation list completes,
 primary. Otherwise it selects `+0x16 = 0x14`, resets `+0x89 = 0x20`, reruns the
 `0x55640` action-pair calculation, restores the saved origin while preserving
 fractional coordinates, updates heading, clears the finite-animation state,
-and derives new offsets through `0x150E8`. Lua recalculates the corresponding
-source action result from the live runner facts. The resulting headings are
+and derives new offsets through `0x150E8`. The native port derives a fresh
+weapon success count from live runner facts. The resulting headings are
 the initial aim, initial aim minus `0x400`, and initial aim plus `0x400`.
 
-The Lua heading helper was compared against all 128 big-endian words in the US
-ROM table at `0x15E56`; the companion table at `0x15E16` matches the 96-entry
-rotation used by the helper. Entry 111 is `0xA1A2` in the ROM, including the
-apparently asymmetric sample that prompted this check. A Lua-backed runtime
-regression reaches heading `0xDE00` and checks its scaled offsets against that
-entry and the companion word (`-18119`, `-16503`).
+The ROM table at `0x15E56` has 128 direction samples; `0x15E16` is its
+96-entry rotation. The source-table audit verified all entries, including
+entry 111 (`0xA1A2`), which is slightly asymmetric with its companion sample.
+That table remains evidence for direction resolution and step scale. Lua
+represents bearings in degrees, positions as map-space points, velocity as a
+map-space vector, and flight allowance as a distance. The field adapter
+translates those values to and from the record's fractional storage. Projectile
+movement derives velocity from the bearing with native trigonometry; the
+runtime does not read the ROM direction samples.
+Runtime QA checks the semantic vector at the burst headings and at the heading
+corresponding to source entry 111.
 
 The first connected Scene 2 AK-97 QA failed before the fix: it spent all three
 rounds and hit the live Weenr, but captured zero `burst_followup_started`
@@ -31,23 +36,25 @@ records and retired its projectile. The typed special-spawn helper had copied
 the saved origin and flags but omitted the ROM's `+0x41 = 2`, so the first
 stopped pass decremented zero and retired immediately. `prepare_special_spawn_record`
 now sets that field, and the existing entity-transition test asserts it.
-Lua restarts the projectile from its typed saved position, applies the source
-heading turn and ROM `0x150E8` table in `entity_motion.lua`, and obtains a fresh
-attack result through the Lua combat resolver. The field runtime applies that
-state to the live projectile record.
+Lua restarts the projectile from its semantic burst origin, applies the
+source-derived angular changes as degree bearings, and calculates a native
+vector step from that bearing. It obtains a fresh weapon success count through
+the Lua combat resolver. The field runtime applies that state to the live
+projectile record.
 
 ## Native state representation
 
-The active C++ and Lua model expresses the projectile limits as
-`remaining_clear_steps` and `additional_shots_remaining`. The ordinary spawn
-seed `+0x89 = 0x7F` at `0x151D0` becomes 127 allowed steps; the special seed
-`+0x89 = 0x20` and `+0x41 = 2` at `0x152FA` becomes 32 steps and two further
-shots. ROM `0x14F64..0x14F68` decrements the source byte and stops on its signed
-transition; the native model consumes a step while positive and stops when it
-reaches zero. ROM `0x14F86` similarly becomes a count of shots still to start.
-This keeps the same movement and three-shot sequence without byte wrapping in
-Lua. The pre-split differential fixture retains the old arithmetic only behind
-a test adapter that translates between its frozen inputs and gameplay state.
+Lua's projectile state uses `remaining_flight_range`, `shots_remaining`, and a
+named flight phase. The C++ field adapter converts the source clear-step
+counter into map-space distance before Lua sees it, then translates the
+returned distance back at the record boundary. A clear probe consumes one
+96-map-unit movement increment; the source zero-counter check becomes a
+range-exhaustion check. The source linked-action byte becomes a count of shots
+still to start. Lua contains neither the source flight counter nor its signed
+decrement/wrap logic. The weapon-hit rule still applies the source's signed
+arithmetic to the difference between the two success counts.
+The pre-split differential fixture retains the old arithmetic only behind a
+test adapter that translates between its frozen inputs and gameplay state.
 
 ## Visual and state review
 
@@ -70,7 +77,7 @@ visible, and the hit/burst route does not leave dialogue, field interaction,
 hotel, or command panels over the field. The capture shows the one-round
 Warhawk hit and the three-round AK-97 route on the same scene. QA checks ammo
 `6 → 5` and `30 → 27`, two continuation records (`+0x41` values 1 then 0),
-restarted headings/offsets in Lua runtime tests, and eventual primary-record
+restarted bearings/vector offsets in Lua runtime tests, and eventual primary-record
 retirement. This is internal screen and state evidence; the renderer uses the
 same imported art under review.
 
@@ -119,7 +126,7 @@ claimed as proof of this burst's exact projectile art, placement, or cadence.
   pass; the test checks the live Scene 2 player action, not a detached Lua
   helper.
 - After fix: `shadowrun_gameplay_script_runtime_qa` passes in Debug and
-  Release, including both follow-up headings, source offsets, saved origin,
+  Release, including both follow-up bearings, semantic vector offsets, saved origin,
   counter, selector, fresh action result, and the questioned ROM table entry.
 - After fix: `shadowrun_ghidra_entity_transition` passes in Debug and Release,
   including the `+0x41 = 2` special-spawn assertion.

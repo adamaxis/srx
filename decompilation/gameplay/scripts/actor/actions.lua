@@ -67,7 +67,7 @@ local function request_target_motion_effect(state, context, heading, target)
             state.target_motion_effect_countdown = 0
             state.target_motion_effect_phase = 0
             state.target_motion_effect_direction =
-                R.direction_from_heading(heading)
+                R.direction_from_bearing_degrees(heading)
             -- ROM 0x14C7C sets +0x11.6 for a close, delayed Hell Hound with
             -- a free effect slot; 0x13FFE dispatches 0xB11C. That path uses
             -- 0x55B16 and spawns its 0xB146 child only when +0x4C or +0x9C
@@ -290,7 +290,7 @@ local function classify_item_dispatch(state, context, target)
     if item.kind ~= "firearm" then
         return "item_gated"
     end
-    if type(target.source_record_heading) ~= "number" then
+    if type(target.facing_degrees) ~= "number" then
         return "item_target_heading_unresolved"
     end
     if context.field_sequence_active == true or
@@ -303,11 +303,11 @@ local function classify_item_dispatch(state, context, target)
     return "item_gated"
 end
 
-local function select_c082_directional_pose(state, heading)
-    if type(heading) ~= "number" then
+local function select_c082_directional_pose(state, bearing_degrees)
+    if type(bearing_degrees) ~= "number" then
         return nil
     end
-    local direction = R.direction_from_heading(u16(heading))
+    local direction = R.direction_from_bearing_degrees(bearing_degrees)
     if type(direction) ~= "number" then
         return nil
     end
@@ -320,19 +320,19 @@ end
 
 local function begin_thon_action(state, target, line_clear)
     if type(target) ~= "table" or
-       type(target.heading) ~= "number" then
+       type(target.bearing_degrees) ~= "number" then
         return false
     end
-    local direction = select_c082_directional_pose(state, target.heading)
+    local direction = select_c082_directional_pose(state, target.bearing_degrees)
     if direction == nil then
         return false
     end
 
     -- ROM 0xAE6E aims +0x2E at the linked record; both 0xAF7C and 0xAFAE
     -- select the same directional +0x16 entry from the C082 list [C].
-    state.movement_current_heading = u16(target.heading)
+    state.movement_current_bearing_degrees = target.bearing_degrees
     state.ai_target_id = target.id
-    state.ai_target_heading = u16(target.heading)
+    state.ai_target_bearing_degrees = target.bearing_degrees
     state.ai_target_distance = target.distance
     state.ai_target_engaged = line_clear == true
     state.action_animation_complete = false
@@ -341,11 +341,11 @@ end
 
 local function begin_dynamic_item_action(state, context, target)
     local heading = type(target) == "table" and
-        target.source_record_heading or nil
+        target.facing_degrees or nil
     if type(heading) ~= "number" then
         return false
     end
-    local direction = R.direction_from_heading(heading)
+    local direction = R.direction_from_bearing_degrees(heading)
     local animation = Animator.list(state.visual_profile_id, Animator.Clip.ITEM,
                                     direction)
     if animation == nil or animation.looping ~= false then
@@ -371,8 +371,8 @@ local function begin_spell_cast(state, context, target, resolution)
     -- +0xDC with mode 0. A successful 0x1033E action has already reserved an
     -- effect record through 0x15830; its 0x521E phase clock owns the delayed
     -- target callback.
-    local heading = target.heading & 0xffff
-    local direction = R.direction_from_heading(heading)
+    local bearing_degrees = target.bearing_degrees
+    local direction = R.direction_from_bearing_degrees(bearing_degrees)
     state.direction = direction
     state.animation_id = "spell"
     state.animation_frame = 0
@@ -380,7 +380,7 @@ local function begin_spell_cast(state, context, target, resolution)
     state.action_animation_complete = false
     state.action_delay = source_action_delay(context, state, 0)
     state.ai_target_engaged = false
-    state.movement_heading = nil
+    state.movement_bearing_degrees = nil
     state.movement_active = false
     state.movement_route_distance = nil
     state.movement_step = nil
@@ -588,9 +588,9 @@ function R.begin_player_melee(state, context)
         or SoundId.MELEE_SWING
     local target = type(context.ai_target_candidates) == "table" and
         context.ai_target_candidates[1] or nil
-    if type(target) == "table" and type(target.heading) == "number" then
+    if type(target) == "table" and type(target.bearing_degrees) == "number" then
         -- ROM 0xB212: 0x15D3C self->target bearing to +0x34 and +0x2E.
-        state.strike_heading = target.heading & 0xffff
+        state.strike_bearing_degrees = target.bearing_degrees
     end
     -- ROM 0x15C58: target +0x10 bit 0 set, bit 6 clear, 0x14D58 < 0x200.
     local lifecycle = type(target) == "table" and
@@ -843,18 +843,18 @@ local function begin_dynamic_target_action(state, context, target)
     -- ROM 0xB1FC..0xB21C re-measures the linked target with 0x15D3C and
     -- stores it in +0x34 and +0x2E before picking the C0A2 direction, so the
     -- strike faces the target, not the last walk heading [C].
-    local heading = state.movement_current_heading or context.initial_heading or 0
-    if type(target) == "table" and type(target.heading) == "number" then
-        heading = target.heading
+    local bearing_degrees = state.movement_current_bearing_degrees or
+        context.initial_bearing_degrees or 0
+    if type(target) == "table" and type(target.bearing_degrees) == "number" then
+        bearing_degrees = target.bearing_degrees
     end
-    heading = u16(heading)
-    local direction = R.direction_from_heading(heading)
+    local direction = R.direction_from_bearing_degrees(bearing_degrees)
     local animation = Animator.list(state.visual_profile_id,
                                     Animator.Clip.ACTION, direction)
     if animation == nil or animation.looping ~= false then
         return nil
     end
-    state.movement_current_heading = heading
+    state.movement_current_bearing_degrees = bearing_degrees
 
     -- ROM 0xB1DC selects C0A2 for the accepted target heading, requests the
     -- kind-specific action cue, resets +0x1A/+0x1E, and applies delay mode 1.

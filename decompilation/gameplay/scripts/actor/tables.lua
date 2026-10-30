@@ -21,9 +21,6 @@ local projectile = {
     movement_probes_per_update = 4,
     impact_sound_event = E.SoundId.PROJECTILE_IMPACT,   -- 0x3C
 }
-local fixed_long_mask = 0xffffffff
-local fixed_integer_shift = 16
-local fixed_fraction_scale = 0x100
 
 -- Semantic names for the source-template facts consumed by actor packages.
 -- Numeric values remain here as data; package definitions use game concepts.
@@ -117,9 +114,6 @@ end
 
 -- register this module's definitions
 R.projectile = projectile
-R.fixed_long_mask = fixed_long_mask
-R.fixed_integer_shift = fixed_integer_shift
-R.fixed_fraction_scale = fixed_fraction_scale
 R.ActionKind = ActionKind
 R.VisualProfile = VisualProfile
 R.ActorApproachDistanceBounds = ActorApproachDistanceBounds

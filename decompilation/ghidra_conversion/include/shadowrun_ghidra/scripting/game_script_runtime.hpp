@@ -1613,12 +1613,23 @@ struct ScriptActorHitSparkSpawnRequest {
     std::uint16_t world_y = 0U;
 };
 
-// Projectile behavior state is supplied by the native field scene, while
-// Lua owns the source update decisions. The callbacks below only sample the
-// host world and return the collision routine's source result.
+// The field scene adapts projectile records to this game-level state at the
+// host boundary. Lua owns movement and burst policy; callbacks expose map and
+// collision facts without exposing the record representation.
 enum class ScriptActorProjectileRole : std::uint8_t {
     primary,
     secondary,
+};
+
+enum class ScriptActorProjectilePhase : std::uint8_t {
+    inactive,
+    flying,
+    awaiting_animation,
+};
+
+struct ScriptActorProjectileVector {
+    double x = 0.0;
+    double y = 0.0;
 };
 
 enum class ScriptActorProjectileOutcome : std::uint8_t {
@@ -1638,36 +1649,36 @@ enum class ScriptActorProjectileAnimationAction : std::uint8_t {
 
 struct ScriptActorProjectileMovement {
     ScriptActorProjectileRole role = ScriptActorProjectileRole::primary;
-    bool active = false;
-    bool waiting_for_animation_end = false;
+    ScriptActorProjectilePhase phase = ScriptActorProjectilePhase::inactive;
     bool impact_occurred = false;
     bool animation_finished = false;
-    std::int32_t world_x = 0;
-    std::int32_t world_y = 0;
-    std::int16_t tile_offset_x = 0;
-    std::int16_t tile_offset_y = 0;
-      std::uint32_t remaining_clear_steps = 0;
-      std::uint32_t additional_shots_remaining = 0;
-    std::uint16_t heading = 0;
-    std::uint16_t saved_position_x = 0;
-    std::uint16_t saved_position_y = 0;
-    std::int8_t action_result = 0; // live +0x9F, shared by the projectile pair
+    ScriptActorProjectileVector position{};
+    ScriptActorProjectileVector velocity{};
+    double remaining_flight_range = 0.0;
+    std::uint32_t shots_remaining = 0U;
+    double bearing_degrees = 0.0;
+    ScriptActorProjectileVector burst_origin{};
+    std::uint16_t attack_successes = 0U;
     ScriptActorProjectileAnimationAction animation_action =
         ScriptActorProjectileAnimationAction::unchanged;
     std::string hit_target_id;
 };
 
 struct ScriptProjectileTerrainSample {
-    std::uint16_t terrain_result = 0;
-    bool terrain_boundary_active = false;
-    bool outside_bounds_marker = false;
+    bool blocked = false;
+    bool boundary_active = false;
+    bool outside_map = false;
+};
+
+enum class ScriptProjectileContactKind : std::uint8_t {
+    none,
+    target_hit,
+    linked_followup,
 };
 
 struct ScriptProjectileCollisionSearchResult {
-    bool source_carry = false;
-    bool source_position_updated = false;
-    std::uint16_t source_x = 0;
-    std::uint16_t source_y = 0;
+    ScriptProjectileContactKind kind = ScriptProjectileContactKind::none;
+    std::optional<ScriptActorProjectileVector> target_position;
     std::optional<std::string> hit_target_id;
 };
 

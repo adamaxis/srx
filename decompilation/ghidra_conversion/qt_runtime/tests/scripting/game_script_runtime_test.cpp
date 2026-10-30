@@ -2,7 +2,6 @@
 #include "shadowrun_ghidra/scripting/combat_inventory.hpp"
 #include "shadowrun_ghidra/world/world_activity_routine_conversion.hpp"
 #include "enums.hpp"
-#include "shadowrun_ghidra/entities/entity_coordinate_conversion.hpp"
 #include "shadowrun_ghidra/entities/entity_route_primitives_conversion.hpp"
 #include "shadowrun_ghidra/core/item_catalog_conversion.hpp"
 #include "shadowrun_ghidra/core/armor_catalog_conversion.hpp"
@@ -12,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -7791,6 +7791,8 @@ int main() {
 
     // All sixteen controller combinations from ROM 0x19D2 become either a
     // named direction or no intent before Lua receives the actor context.
+    // ROM table 0x19D2 maps nibble 5 to 0xE000 (northwest) and nibble 6
+    // to 0xA000 (southwest); keep the names aligned with those bearings [C].
     constexpr std::array<std::optional<MovementDirection>, 16>
         rom_controller_directions{{
         std::nullopt,
@@ -7798,8 +7800,8 @@ int main() {
         MovementDirection::south,
         std::nullopt,
         MovementDirection::west,
-        MovementDirection::south_west,
         MovementDirection::north_west,
+        MovementDirection::south_west,
         std::nullopt,
         MovementDirection::east,
         MovementDirection::north_east,
@@ -7812,7 +7814,7 @@ int main() {
     }};
     constexpr std::array<std::uint16_t, 8> heading_by_direction{{
         0x0000U, 0x2000U, 0x4000U, 0x6000U,
-        0x8000U, 0xE000U, 0xC000U, 0xA000U,
+        0x8000U, 0xA000U, 0xC000U, 0xE000U,
     }};
     for (std::uint8_t nibble = 0U; nibble < rom_controller_directions.size();
          ++nibble) {
@@ -8360,21 +8362,25 @@ int main() {
 
     ScriptActorProjectileMovement moving_projectile{};
     moving_projectile.role = ScriptActorProjectileRole::primary;
-    moving_projectile.active = true;
-    moving_projectile.world_x = 10 * 0x10000;
-    moving_projectile.world_y = 20 * 0x10000;
-    moving_projectile.tile_offset_x = 0x0100;
-    // ROM 0x14F64 consumes one travel step per accepted terrain sample.
-    moving_projectile.remaining_clear_steps = 20U;
+    moving_projectile.phase = ScriptActorProjectilePhase::flying;
+    moving_projectile.position = {10.0, 20.0};
+    moving_projectile.bearing_degrees = 90.0;
+    moving_projectile.remaining_flight_range = 21.0 * 96.0;
     std::vector<std::uint16_t> projectile_terrain_x;
     std::uint32_t projectile_collision_count = 0U;
     auto moving_projectile_context = projectile_behavior_context(
         "field_weapon_slot_move", moving_projectile);
+    const auto expected_projectile_velocity = [](const double bearing) {
+        constexpr double kPi = 3.14159265358979323846;
+        const auto radians = bearing * kPi / 180.0;
+        return ScriptActorProjectileVector{
+            96.0 * std::sin(radians), -96.0 * std::cos(radians)};
+    };
     moving_projectile_context.projectile_terrain_probe =
         [&projectile_terrain_x](const std::uint16_t x,
                                 const std::uint16_t) {
             projectile_terrain_x.push_back(x);
-            return ScriptProjectileTerrainSample{0U, true, false};
+            return ScriptProjectileTerrainSample{false, true, false};
         };
     moving_projectile_context.projectile_collision_search =
         [&projectile_collision_count](const std::uint16_t,
@@ -8388,13 +8394,14 @@ int main() {
             moving_projectile_step.has_value() &&
                 moving_projectile_step->projectile_movement.has_value() &&
                 projectile_terrain_x ==
-                    std::vector<std::uint16_t>{11U, 12U, 13U, 14U} &&
+                    std::vector<std::uint16_t>{106U, 202U, 298U, 394U} &&
                 projectile_collision_count == 4U &&
-                moving_projectile_step->projectile_movement->state.world_x ==
-                    14 * 0x10000 &&
-                moving_projectile_step->projectile_movement->state.remaining_clear_steps ==
-                    16U &&
-                moving_projectile_step->projectile_movement->state.active &&
+                moving_projectile_step->projectile_movement->state.position.x ==
+                    394.0 &&
+                std::abs(moving_projectile_step->projectile_movement->state.remaining_flight_range -
+                    17.0 * 96.0) < 1.0e-9 &&
+                moving_projectile_step->projectile_movement->state.phase ==
+                    ScriptActorProjectilePhase::flying &&
                 moving_projectile_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::none &&
                 !moving_projectile_step->audio_event.has_value(),
@@ -8404,16 +8411,15 @@ int main() {
     }
 
     auto outside_projectile = moving_projectile;
-    outside_projectile.tile_offset_x = 2;
     // ROM 0x14F54..0x14F60 takes the blocking branch before decrementing
     // the travel budget at 0x14F64.
-    outside_projectile.remaining_clear_steps = 7U;
+    outside_projectile.remaining_flight_range = 8.0 * 96.0;
     auto outside_projectile_context = projectile_behavior_context(
         "field_weapon_slot_outside", outside_projectile);
     std::uint32_t outside_collision_count = 0U;
     outside_projectile_context.projectile_terrain_probe =
         [](const std::uint16_t, const std::uint16_t) {
-            return ScriptProjectileTerrainSample{1U, false, true};
+            return ScriptProjectileTerrainSample{true, false, true};
         };
     outside_projectile_context.projectile_collision_search =
         [&outside_collision_count](const std::uint16_t,
@@ -8427,14 +8433,14 @@ int main() {
             outside_projectile_step.has_value() &&
                 outside_projectile_step->projectile_movement.has_value() &&
                 outside_projectile_step->projectile_movement->state.impact_occurred &&
-                outside_projectile_step->projectile_movement->state.waiting_for_animation_end &&
-                !outside_projectile_step->projectile_movement->state.active &&
+                outside_projectile_step->projectile_movement->state.phase ==
+                    ScriptActorProjectilePhase::inactive &&
                 outside_projectile_step->projectile_movement->state.animation_action ==
                     ScriptActorProjectileAnimationAction::stop &&
-                outside_projectile_step->projectile_movement->state.tile_offset_x ==
-                    0 &&
-                outside_projectile_step->projectile_movement->state.remaining_clear_steps ==
-                    7U &&
+                outside_projectile_step->projectile_movement->state.velocity.x ==
+                    0.0 &&
+                std::abs(outside_projectile_step->projectile_movement->state.remaining_flight_range -
+                    8.0 * 96.0) < 1.0e-9 &&
                 outside_projectile_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::retired &&
                 outside_collision_count == 0U &&
@@ -8445,15 +8451,13 @@ int main() {
     }
 
     auto exhausted_projectile = moving_projectile;
-    // A zero semantic budget represents the ROM's sign transition at
-    // 0x14F64..0x14F68 without exposing the wrapped byte to Lua.
-    exhausted_projectile.remaining_clear_steps = 0U;
+    exhausted_projectile.remaining_flight_range = 96.0;
     auto exhausted_projectile_context = projectile_behavior_context(
         "field_weapon_slot_exhausted", exhausted_projectile);
     std::uint32_t exhausted_collision_count = 0U;
     exhausted_projectile_context.projectile_terrain_probe =
         [](const std::uint16_t, const std::uint16_t) {
-            return ScriptProjectileTerrainSample{0U, true, false};
+            return ScriptProjectileTerrainSample{false, true, false};
         };
     exhausted_projectile_context.projectile_collision_search =
         [&exhausted_collision_count](const std::uint16_t,
@@ -8466,9 +8470,10 @@ int main() {
     if (!expect(
             exhausted_projectile_step.has_value() &&
                 exhausted_projectile_step->projectile_movement.has_value() &&
-                exhausted_projectile_step->projectile_movement->state.remaining_clear_steps ==
-                    0U &&
-                exhausted_projectile_step->projectile_movement->state.active &&
+                exhausted_projectile_step->projectile_movement->state.remaining_flight_range ==
+                    96.0 &&
+                exhausted_projectile_step->projectile_movement->state.phase ==
+                    ScriptActorProjectilePhase::awaiting_animation &&
                 exhausted_projectile_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::stopped &&
                 exhausted_projectile_step->audio_event == 0x003CU &&
@@ -8479,18 +8484,18 @@ int main() {
     }
 
     auto hit_projectile = moving_projectile;
-    hit_projectile.world_x = 10 * 0x10000 + 123;
-    hit_projectile.tile_offset_x = 0x0100;
+    hit_projectile.position.x = 10.0 + 123.0 / 65536.0;
     auto hit_projectile_context = projectile_behavior_context(
         "field_weapon_slot_hit", hit_projectile);
     hit_projectile_context.projectile_terrain_probe =
         [](const std::uint16_t, const std::uint16_t) {
-            return ScriptProjectileTerrainSample{0U, true, false};
+            return ScriptProjectileTerrainSample{false, true, false};
         };
     hit_projectile_context.projectile_collision_search =
         [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
-                true, true, 45U, 77U,
+                ScriptProjectileContactKind::target_hit,
+                ScriptActorProjectileVector{45.0, 77.0},
                 std::string{"field_scene_2_encounter_1_actor_0"}};
         };
     const auto hit_projectile_step =
@@ -8502,8 +8507,8 @@ int main() {
                     ScriptActorProjectileOutcome::hit_resolution_pending &&
                 hit_projectile_step->projectile_movement->state.hit_target_id ==
                     "field_scene_2_encounter_1_actor_0" &&
-                hit_projectile_step->projectile_movement->state.world_x ==
-                    45 * 0x10000 + 123 &&
+                std::abs(hit_projectile_step->projectile_movement->state.position.x -
+                    (45.0 + 123.0 / 65536.0)) < 1.0e-9 &&
                 hit_projectile_step->audio_event == 0x003CU,
             "Lua projectile hit branch did not preserve fractional coordinates and request hit audio")) {
         std::cerr << scripts.failure() << '\n';
@@ -8511,7 +8516,7 @@ int main() {
     }
 
     auto source_weapon_hit = moving_projectile;
-    source_weapon_hit.action_result = 0;
+    source_weapon_hit.attack_successes = 0U;
     auto source_weapon_hit_context = projectile_behavior_context(
         "field_weapon_slot_combat_hit", source_weapon_hit);
     source_weapon_hit_context.projectile_action =
@@ -8778,12 +8783,13 @@ int main() {
     };
     source_weapon_hit_context.projectile_terrain_probe =
         [](const std::uint16_t, const std::uint16_t) {
-            return ScriptProjectileTerrainSample{0U, true, false};
+            return ScriptProjectileTerrainSample{false, true, false};
         };
     source_weapon_hit_context.projectile_collision_search =
         [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
-                true, true, 45U, 77U,
+                ScriptProjectileContactKind::target_hit,
+                ScriptActorProjectileVector{45.0, 77.0},
                 std::string{"field_scene_2_encounter_1_actor_0"}};
         };
     const auto source_weapon_hit_step =
@@ -8791,7 +8797,7 @@ int main() {
     if (!expect(
             source_weapon_hit_step.has_value() &&
                 source_weapon_hit_step->projectile_movement.has_value() &&
-                source_weapon_hit_step->projectile_movement->state.action_result ==
+                source_weapon_hit_step->projectile_movement->state.attack_successes ==
                     0 &&
                 source_weapon_hit_step->combat_meter_update.has_value() &&
                 source_weapon_hit_step->combat_meter_update->target_id ==
@@ -9179,7 +9185,8 @@ int main() {
     static_guard_projectile.projectile_collision_search =
         [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
-                true, true, 45U, 77U,
+                ScriptProjectileContactKind::target_hit,
+                ScriptActorProjectileVector{45.0, 77.0},
                 std::string{"static_default_corp_guard_slot_3"}};
         };
     const auto static_guard_hit =
@@ -9200,7 +9207,8 @@ int main() {
     static_pedestrian_projectile.projectile_collision_search =
         [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
-                true, true, 45U, 77U,
+                ScriptProjectileContactKind::target_hit,
+                ScriptActorProjectileVector{45.0, 77.0},
                 std::string{"static_default_pedestrian_slot_4"}};
         };
     const auto static_pedestrian_hit =
@@ -9366,7 +9374,8 @@ int main() {
     moving_weapon_hit_context.projectile_collision_search =
         [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
-                true, true, 45U, 77U,
+                ScriptProjectileContactKind::target_hit,
+                ScriptActorProjectileVector{45.0, 77.0},
                 std::string{"field_scene_2_encounter_1_actor_2"}};
         };
     const auto moving_weapon_hit =
@@ -9432,7 +9441,8 @@ int main() {
     lethal_hit_context.projectile_collision_search =
         [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
-                true, true, 45U, 77U,
+                ScriptProjectileContactKind::target_hit,
+                ScriptActorProjectileVector{45.0, 77.0},
                 std::string{"field_scene_2_encounter_1_actor_1"}};
         };
     const auto lethal_hit_step = scripts.actor_heartbeat(lethal_hit_context);
@@ -9456,7 +9466,8 @@ int main() {
     scene_55_lethal_hit_context.projectile_collision_search =
         [](const std::uint16_t, const std::uint16_t) {
             return ScriptProjectileCollisionSearchResult{
-                true, true, 45U, 77U,
+                ScriptProjectileContactKind::target_hit,
+                ScriptActorProjectileVector{45.0, 77.0},
                 std::string{"scene_55_scan_live"}};
         };
     const auto scene_55_live_actor_hit =
@@ -9579,19 +9590,19 @@ int main() {
     };
     unresolved_weapon_context.projectile_terrain_probe =
         [](const std::uint16_t, const std::uint16_t) {
-            return ScriptProjectileTerrainSample{0U, true, false};
+            return ScriptProjectileTerrainSample{false, true, false};
         };
     unresolved_weapon_context.projectile_collision_search =
         [](const std::uint16_t x, const std::uint16_t y) {
-            return ScriptProjectileCollisionSearchResult{
-                false, false, x, y, std::nullopt};
+            return ScriptProjectileCollisionSearchResult{};
         };
     const auto unresolved_weapon_step =
         scripts.actor_heartbeat(unresolved_weapon_context);
     if (!expect(
             unresolved_weapon_step.has_value() &&
                 unresolved_weapon_step->projectile_movement.has_value() &&
-                unresolved_weapon_step->projectile_movement->state.active &&
+                unresolved_weapon_step->projectile_movement->state.phase ==
+                    ScriptActorProjectilePhase::flying &&
                 unresolved_weapon_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::none &&
                 !unresolved_weapon_step->combat_meter_update.has_value(),
@@ -9602,6 +9613,7 @@ int main() {
 
     auto secondary_projectile = moving_projectile;
     secondary_projectile.role = ScriptActorProjectileRole::secondary;
+    secondary_projectile.phase = ScriptActorProjectilePhase::flying;
     secondary_projectile.animation_finished = true;
     auto secondary_projectile_context = projectile_behavior_context(
         "field_weapon_slot_secondary", secondary_projectile);
@@ -9618,7 +9630,8 @@ int main() {
     if (!expect(
             secondary_projectile_step.has_value() &&
                 secondary_projectile_step->projectile_movement.has_value() &&
-                !secondary_projectile_step->projectile_movement->state.active &&
+                secondary_projectile_step->projectile_movement->state.phase ==
+                    ScriptActorProjectilePhase::inactive &&
                 secondary_projectile_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::retired &&
                 !secondary_projectile_step->audio_event.has_value(),
@@ -9628,10 +9641,11 @@ int main() {
     }
 
     auto stopped_projectile = moving_projectile;
-    stopped_projectile.waiting_for_animation_end = true;
+    stopped_projectile.phase =
+        ScriptActorProjectilePhase::awaiting_animation;
     stopped_projectile.animation_finished = true;
     // ROM 0x14F86 retires after the initial shot when no continuation remains.
-    stopped_projectile.additional_shots_remaining = 0U;
+    stopped_projectile.shots_remaining = 0U;
     auto stopped_projectile_context = projectile_behavior_context(
         "field_weapon_slot_stopped", stopped_projectile);
     stopped_projectile_context.projectile_terrain_probe =
@@ -9647,9 +9661,10 @@ int main() {
     if (!expect(
             stopped_projectile_step.has_value() &&
                 stopped_projectile_step->projectile_movement.has_value() &&
-                stopped_projectile_step->projectile_movement->state.additional_shots_remaining ==
+                stopped_projectile_step->projectile_movement->state.shots_remaining ==
                     0U &&
-                !stopped_projectile_step->projectile_movement->state.active &&
+                stopped_projectile_step->projectile_movement->state.phase ==
+                    ScriptActorProjectilePhase::inactive &&
                 stopped_projectile_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::retired,
             "Lua stopped projectile did not retire after its source countdown expired")) {
@@ -9660,12 +9675,13 @@ int main() {
     auto burst_projectile = stopped_projectile;
     burst_projectile.impact_occurred = true;
     // ROM 0x152FA seeds two follow-up shots; 0x14F86 starts each in order.
-    burst_projectile.additional_shots_remaining = 2U;
-    burst_projectile.heading = 0x2000U;
-    burst_projectile.saved_position_x = 0x2345U;
-    burst_projectile.saved_position_y = 0x3456U;
-    burst_projectile.world_x = 20 * 0x10000 + 0xABCD;
-    burst_projectile.world_y = 30 * 0x10000 + 0x1357;
+    burst_projectile.shots_remaining = 2U;
+    burst_projectile.bearing_degrees = 45.0;
+    burst_projectile.burst_origin = {0x2345, 0x3456};
+    burst_projectile.position = {
+        20.0 + 0xABCD / 65536.0,
+        30.0 + 0x1357 / 65536.0,
+    };
     auto linked_projectile_context = projectile_behavior_context(
         "field_weapon_slot_linked", burst_projectile);
     linked_projectile_context.projectile_action =
@@ -9694,27 +9710,30 @@ int main() {
         linked_projectile_step->projectile_movement.has_value()
         ? linked_projectile_step->projectile_movement->state
         : ScriptActorProjectileMovement{};
-    const auto first_burst_source_offsets =
-        shadowrun::ghidra_conversion::derive_entity_heading_offsets(0x1c00U);
+    // [C] ROM 0x14F86 changes the bearing by -0x400 then +0x800, and
+    // 0x150E8 resolves motion at 128 directions with an approximately
+    // 96-map-unit step. The Lua port derives these degree-space vectors
+    // mathematically instead of replaying the ROM's sampled wave table.
     if (!expect(
             linked_projectile_step.has_value() &&
                 linked_projectile_step->projectile_movement.has_value() &&
-                first_burst.additional_shots_remaining == 1U &&
-                first_burst.active && first_burst.heading == 0x1c00U &&
-                first_burst.world_x ==
-                    static_cast<std::int32_t>(0x2345abcdU) &&
-                first_burst.world_y ==
-                    static_cast<std::int32_t>(0x34561357U) &&
-                first_burst.tile_offset_x ==
-                    first_burst_source_offsets.horizontal &&
-                first_burst.tile_offset_y ==
-                    first_burst_source_offsets.vertical &&
-                first_burst.remaining_clear_steps == 32U &&
+                first_burst.shots_remaining == 1U &&
+                first_burst.phase == ScriptActorProjectilePhase::flying &&
+                first_burst.bearing_degrees == 39.375 &&
+                std::abs(first_burst.position.x -
+                    (0x2345 + 0xABCD / 65536.0)) < 1.0e-9 &&
+                std::abs(first_burst.position.y -
+                    (0x3456 + 0x1357 / 65536.0)) < 1.0e-9 &&
+                std::abs(first_burst.velocity.x -
+                    expected_projectile_velocity(39.375).x) < 1.0e-9 &&
+                std::abs(first_burst.velocity.y -
+                    expected_projectile_velocity(39.375).y) < 1.0e-9 &&
+                first_burst.remaining_flight_range ==
+                    33.0 * 96.0 &&
                 first_burst.animation_action ==
                     ScriptActorProjectileAnimationAction::restart &&
-                !first_burst.waiting_for_animation_end &&
                 first_burst.impact_occurred &&
-                first_burst.action_result == 0 &&
+                first_burst.attack_successes == 0U &&
                 linked_projectile_step->projectile_movement->outcome ==
                     ScriptActorProjectileOutcome::burst_followup_restarted &&
                 burst_attack_seed_rolls > 0U,
@@ -9737,7 +9756,8 @@ int main() {
     }
 
     auto second_burst_state = first_burst;
-    second_burst_state.waiting_for_animation_end = true;
+    second_burst_state.phase =
+        ScriptActorProjectilePhase::awaiting_animation;
     second_burst_state.animation_finished = true;
     second_burst_state.animation_action =
         ScriptActorProjectileAnimationAction::unchanged;
@@ -9749,19 +9769,17 @@ int main() {
         second_burst_step->projectile_movement.has_value()
         ? second_burst_step->projectile_movement->state
         : ScriptActorProjectileMovement{};
-    const auto second_burst_source_offsets =
-        shadowrun::ghidra_conversion::derive_entity_heading_offsets(0x2400U);
     if (!expect(second_burst_step.has_value() &&
                     second_burst_step->projectile_movement.has_value() &&
-                    second_burst.additional_shots_remaining == 0U &&
-                    second_burst.heading == 0x2400U &&
-                    second_burst.tile_offset_x ==
-                        second_burst_source_offsets.horizontal &&
-                    second_burst.tile_offset_y ==
-                        second_burst_source_offsets.vertical &&
+                    second_burst.shots_remaining == 0U &&
+                    second_burst.bearing_degrees == 50.625 &&
+                    std::abs(second_burst.velocity.x -
+                        expected_projectile_velocity(50.625).x) < 1.0e-9 &&
+                    std::abs(second_burst.velocity.y -
+                        expected_projectile_velocity(50.625).y) < 1.0e-9 &&
                     second_burst.animation_action ==
                         ScriptActorProjectileAnimationAction::restart &&
-                    !second_burst.waiting_for_animation_end &&
+                    second_burst.phase == ScriptActorProjectilePhase::flying &&
                     second_burst.impact_occurred &&
                     second_burst_step->projectile_movement->outcome ==
                         ScriptActorProjectileOutcome::burst_followup_restarted &&
@@ -9771,12 +9789,12 @@ int main() {
         std::cerr << "second burst: present=" << second_burst_step.has_value()
                   << " state=" << (second_burst_step.has_value() &&
                          second_burst_step->projectile_movement.has_value())
-                  << " additional_shots=" << second_burst.additional_shots_remaining
-                  << " heading=0x" << std::hex << second_burst.heading
-                  << " offset=" << std::dec << second_burst.tile_offset_x
-                  << ',' << second_burst.tile_offset_y
+                  << " shots_remaining=" << second_burst.shots_remaining
+                  << " bearing=" << second_burst.bearing_degrees
+                  << " velocity=" << second_burst.velocity.x
+                  << ',' << second_burst.velocity.y
                   << " animation_action=" << static_cast<unsigned>(second_burst.animation_action)
-                  << " stopped=" << second_burst.waiting_for_animation_end
+                  << " phase=" << static_cast<unsigned>(second_burst.phase)
                   << " impact=" << second_burst.impact_occurred
                   << " outcome=" << (second_burst_step.has_value() &&
                          second_burst_step->projectile_movement.has_value()
@@ -9787,7 +9805,8 @@ int main() {
     }
 
     auto final_burst_state = second_burst;
-    final_burst_state.waiting_for_animation_end = true;
+    final_burst_state.phase =
+        ScriptActorProjectilePhase::awaiting_animation;
     final_burst_state.animation_finished = true;
     final_burst_state.animation_action =
         ScriptActorProjectileAnimationAction::unchanged;
@@ -9796,9 +9815,10 @@ int main() {
         scripts.actor_heartbeat(linked_projectile_context);
     if (!expect(final_burst_step.has_value() &&
                     final_burst_step->projectile_movement.has_value() &&
-                    final_burst_step->projectile_movement->state.additional_shots_remaining ==
+                    final_burst_step->projectile_movement->state.shots_remaining ==
                         0U &&
-                    !final_burst_step->projectile_movement->state.active &&
+                    final_burst_step->projectile_movement->state.phase ==
+                        ScriptActorProjectilePhase::inactive &&
                     final_burst_step->projectile_movement->outcome ==
                         ScriptActorProjectileOutcome::retired,
                 "Lua did not retire the AK-97 primary after exactly three source burst rays")) {
@@ -9806,34 +9826,34 @@ int main() {
         return 27;
     }
 
-    auto source_table_sample = stopped_projectile;
-    source_table_sample.impact_occurred = true;
-    source_table_sample.additional_shots_remaining = 2U;
-    source_table_sample.heading = 0xE200U;
-    source_table_sample.saved_position_x = 0x2345U;
-    source_table_sample.saved_position_y = 0x3456U;
-    source_table_sample.animation_finished = true;
-    linked_projectile_context.projectile_movement = source_table_sample;
+    auto sampled_bearing = stopped_projectile;
+    sampled_bearing.impact_occurred = true;
+    sampled_bearing.shots_remaining = 2U;
+    sampled_bearing.bearing_degrees = 0xE200 * 360.0 / 65536.0;
+    sampled_bearing.burst_origin = {0x2345, 0x3456};
+    sampled_bearing.animation_finished = true;
+    linked_projectile_context.projectile_movement = sampled_bearing;
     const auto questioned_source_sample_step =
         scripts.actor_heartbeat(linked_projectile_context);
     if (!expect(questioned_source_sample_step.has_value() &&
                     questioned_source_sample_step->projectile_movement.has_value() &&
-                    questioned_source_sample_step->projectile_movement->state.heading ==
-                        0xDE00U &&
-                    questioned_source_sample_step->projectile_movement->state.tile_offset_x ==
-                        -18119 &&
-                    questioned_source_sample_step->projectile_movement->state.tile_offset_y ==
-                        -16503,
-                "Lua heading helper did not preserve ROM table entry 111 and its companion sample")) {
+                    questioned_source_sample_step->projectile_movement->state.bearing_degrees ==
+                        312.1875 &&
+                    std::abs(questioned_source_sample_step->projectile_movement->state.velocity.x -
+                        expected_projectile_velocity(312.1875).x) < 1.0e-9 &&
+                    std::abs(questioned_source_sample_step->projectile_movement->state.velocity.y -
+                        expected_projectile_velocity(312.1875).y) < 1.0e-9,
+                "Lua bearing vector did not preserve the 128-direction projectile step")) {
         std::cerr << scripts.failure() << '\n';
         if (questioned_source_sample_step.has_value() &&
             questioned_source_sample_step->projectile_movement.has_value()) {
             const auto& state =
                 questioned_source_sample_step->projectile_movement->state;
-            std::cerr << "table-sample heading=0x" << std::hex << state.heading
-                      << " offsets=" << std::dec << state.tile_offset_x << ','
-                      << state.tile_offset_y << " active=" << state.active
-                      << " additional_shots=" << state.additional_shots_remaining
+            std::cerr << "bearing-sample degrees=" << state.bearing_degrees
+                      << " velocity=" << state.velocity.x << ','
+                      << state.velocity.y << " phase="
+                      << static_cast<unsigned>(state.phase)
+                      << " shots_remaining=" << state.shots_remaining
                       << " outcome=" << static_cast<unsigned>(
                              questioned_source_sample_step->projectile_movement->outcome)
                       << '\n';

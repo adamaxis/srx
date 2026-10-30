@@ -2,9 +2,10 @@
 local R = require("actor.registry")
 local E = require("enums")
 local I = require("lib.int68k")
+local Bearing = require("bearing")
 local EntityMotion = require("entity_motion")
 local ActorWaypointRoutes = require("data.actor_patrol_routes")
-local u16, s16 = I.u16, I.s16
+local u16 = I.u16
 local AiTuning = E.AiTuning
 local ActionKind = R.ActionKind
 
@@ -48,7 +49,7 @@ local function thon_action_path(state, context)
     -- Start the next interval before resolving a target, as the source does.
     state.thon_action_cooldown_remaining = AiTuning.THON_ACTION_INTERVAL
     local target = R.linked_target(context, state)
-    if type(target) ~= "table" or type(target.heading) ~= "number" then
+    if type(target) ~= "table" or type(target.bearing_degrees) ~= "number" then
         state.ai_think_gap = "thon_target_link_unavailable"
         return "thon_unresolved"
     end
@@ -123,22 +124,23 @@ local function guard_spots_you(state, context, leader)
     if context.action_line_clear(leader.world_x, leader.world_y) ~= true then
         return
     end
-    if type(state.movement_current_heading) ~= "number" then
+    if type(state.movement_current_bearing_degrees) ~= "number" then
         state.ai_think_gap = "guard_heading_unavailable"
         return
     end
     -- 0x15D3C measures guard-to-leader heading; 0x14D8E stores it in FF13AE
     -- when the leader is ACTIVE, otherwise FF13AE keeps the guard's +0x2E [C].
     local facing_reference = leader.actor_facts.lifecycle.active
-        and leader.heading or state.movement_current_heading
+        and leader.bearing_degrees or state.movement_current_bearing_degrees
     if type(facing_reference) ~= "number" then
         state.ai_think_gap = "leader_heading_unavailable"
         return
     end
-    local facing_delta = s16(u16(
-        state.movement_current_heading - facing_reference))
-    -- 0x13FB4 rejects an absolute signed-word delta at or above 0x4000 [C].
-    if math.abs(facing_delta) >= AiTuning.QUARTER_TURN then
+    local facing_delta = Bearing.signed_difference(
+        facing_reference, state.movement_current_bearing_degrees)
+    -- 0x13FB4 rejects an absolute bearing delta at or above 90 degrees [C].
+    if facing_delta == nil or
+       math.abs(facing_delta) >= AiTuning.QUARTER_TURN_DEGREES then
         return
     end
 
@@ -231,7 +233,7 @@ local function think_gate(state, context)
         return "combat"
     end
     if type(leader) ~= "table" or type(leader.distance) ~= "number" or
-       type(leader.heading) ~= "number" then
+       type(leader.bearing_degrees) ~= "number" then
         state.ai_think_gap = "controlled_runner_watch_facts_unavailable"
         return "combat"
     end
@@ -239,7 +241,8 @@ local function think_gate(state, context)
         return "patrol"
     end
     if context.animation_blocks_behavior ~= true then
-        state.watch_heading = u16(leader.heading)
+        state.watch_bearing_degrees = Bearing.normalize(
+            leader.bearing_degrees)
     end
     return "watch"
 end
@@ -274,12 +277,12 @@ local function set_idle(state, context)
         return
     end
     state.movement_active = false
-    state.movement_heading = nil
+    state.movement_bearing_degrees = nil
     state.movement_route_distance = nil
     state.animation_id = "idle"
     state.animation_frame = 0
-    state.direction = R.direction_from_heading(
-        state.watch_heading or state.movement_current_heading or 0)
+    state.direction = R.direction_from_bearing_degrees(
+        state.watch_bearing_degrees or state.movement_current_bearing_degrees or 0)
 end
 
 local function apply_flee(state, context)
@@ -315,7 +318,7 @@ local function apply_flee(state, context)
     local measured = context.measure_destination(
         state.flee_target_x, state.flee_target_y)
     if type(measured) ~= "table" or
-       type(measured.heading) ~= "number" or
+       type(measured.bearing_degrees) ~= "number" or
        type(measured.distance) ~= "number" or
        type(measured.step_cost) ~= "number" then
         state.ai_think_gap = "flee_destination_measure_unavailable"
@@ -323,20 +326,22 @@ local function apply_flee(state, context)
     end
     if measured.step_cost < AiTuning.ARRIVE_DIST then
         state.movement_active = false
-        state.movement_heading = nil
+        state.movement_bearing_degrees = nil
         state.movement_route_distance = nil
         return
     end
-    state.movement_heading = u16(measured.heading)
+    state.movement_bearing_degrees = Bearing.normalize(
+        measured.bearing_degrees)
     state.movement_route_distance = u16(measured.distance)
     state.movement_active = true
 end
 
 local function apply_watch(state, context)
-    if type(state.watch_heading) ~= "number" then
+    if type(state.watch_bearing_degrees) ~= "number" then
         return
     end
-    state.movement_current_heading = u16(state.watch_heading)
+    state.movement_current_bearing_degrees = Bearing.normalize(
+        state.watch_bearing_degrees)
     set_idle(state, context)
 end
 
@@ -359,7 +364,7 @@ local function stop_route(state, context)
     -- presentation state to become idle; the host may still be playing an
     -- action animation and block that presentation change.
     state.movement_active = false
-    state.movement_heading = nil
+    state.movement_bearing_degrees = nil
     state.movement_route_distance = nil
     set_idle(state, context)
 end
@@ -374,7 +379,7 @@ local function measure_route_target(state, context)
     local measured = context.measure_destination(
         state.ai_route_target_x, state.ai_route_target_y)
     if type(measured) ~= "table" or
-       type(measured.heading) ~= "number" or
+       type(measured.bearing_degrees) ~= "number" or
        type(measured.distance) ~= "number" or
        type(measured.step_cost) ~= "number" then
         state.ai_think_gap = "actor_route_destination_measure_unavailable"
@@ -392,7 +397,8 @@ local function continue_route(state, measured, context)
     if context.animation_blocks_behavior == true then
         return
     end
-    state.movement_heading = u16(measured.heading)
+    state.movement_bearing_degrees = Bearing.normalize(
+        measured.bearing_degrees)
     state.movement_route_distance = u16(measured.distance)
     state.movement_active = true
 end
@@ -444,20 +450,26 @@ local function apply_follow_destination(state, context)
     end
     if type(leader) ~= "table" or type(leader.world_x) ~= "number" or
        type(leader.world_y) ~= "number" or
-       type(leader.source_record_heading) ~= "number" or
+       type(leader.facing_degrees) ~= "number" or
        not known_formation_position(leader.formation_position) or
        not known_formation_position(context.formation_position) then
         state.ai_think_gap = "formation_leader_record_unavailable"
         return
     end
 
-    local angle = u16(leader.source_record_heading)
+    local angle = Bearing.normalize(leader.facing_degrees)
+    if angle == nil then
+        state.ai_think_gap = "formation_leader_record_unavailable"
+        return
+    end
     if context.formation_position == "primary" or
        (context.formation_position == "secondary" and
         leader.formation_position == "primary") then
-        angle = u16(angle - AiTuning.FOLLOW_ANGLE_STEP)
+        angle = Bearing.normalize(
+            angle - AiTuning.FOLLOW_ANGLE_STEP_DEGREES)
     else
-        angle = u16(angle + AiTuning.FOLLOW_ANGLE_STEP)
+        angle = Bearing.normalize(
+            angle + AiTuning.FOLLOW_ANGLE_STEP_DEGREES)
     end
     -- 0x14512 stores 0x20 to d3, then 0x14516 overwrites it with 0xE0;
     -- the effective 0x15DCC radius is E.AiTuning.FOLLOW_RADIUS [C].
@@ -579,7 +591,7 @@ local function preserve_offscreen_action_dispatch(state, context)
     local target = R.linked_target(context, state)
     if type(target) == "table" then
         state.ai_target_id = target.id
-        state.ai_target_heading = target.heading
+        state.ai_target_bearing_degrees = target.bearing_degrees
         state.ai_target_distance = target.distance
         state.ai_target_engaged = false
     end
@@ -612,7 +624,7 @@ local function apply_think_result(state, context, path)
         apply_flee(state, context)
         return true
     elseif path == "hold" then
-        state.watch_heading = nil
+        state.watch_bearing_degrees = nil
         set_idle(state, context)
         return true
     elseif path == "watch" then

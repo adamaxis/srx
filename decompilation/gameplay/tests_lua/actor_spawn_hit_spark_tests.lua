@@ -60,12 +60,12 @@ local function strike_fixture(target_meter)
         visual_profile_id = E.ActorVisualProfile.HELL_HOUND,
         action_delay = -1,
         target_motion_effect_active = false,
-        movement_current_heading = 0,
+        movement_current_bearing_degrees = 0,
     }
     local target = {
         id = "party.runner.0",
         source_record_slot = 0,
-        heading = E.AiTuning.QUARTER_TURN,
+        bearing_degrees = E.AiTuning.QUARTER_TURN_DEGREES,
         distance = E.AiTuning.HELL_HOUND_CLOSE_RANGE - 1,
         world_x = 4660,
         world_y = 2748,

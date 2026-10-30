@@ -3,47 +3,68 @@
 local R = require("actor.registry")
 local E = require("enums")
 local I = require("lib.int68k")
+local Bearing = require("bearing")
+local EntityMotion = require("entity_motion")
 local u16 = I.u16
 local SoundId, SceneId, Collision, EntryDelayMax, AiTuning =
     E.SoundId, E.SceneId, E.Collision, E.EntryDelayMax, E.AiTuning
-local MovementHeading = E.MovementHeading
+local MovementBearingDegrees = E.MovementBearingDegrees
 local VisualProfile = R.VisualProfile -- from actor/tables.lua
-local fixed_fraction_scale = R.fixed_fraction_scale   -- from actor/tables.lua
-local fixed_integer_shift = R.fixed_integer_shift   -- from actor/tables.lua
-local fixed_long_mask = R.fixed_long_mask   -- from actor/tables.lua
 local projectile = R.projectile   -- from actor/tables.lua
+local PROJECTILE_PROBE_DISTANCE = 96
+local BURST_FOLLOWUP_RANGE = 33 * PROJECTILE_PROBE_DISTANCE
 
--- 68000 helpers now shared via lib/int68k.lua (lua_review #4); names kept for call-site compatibility.
-local signed_word_from_long = I.s32
-local integer_world_word = I.fixed_int_word
+local function wrap_map_coordinate(value)
+    -- [C] The native boundary stores map positions on a 16-bit world axis.
+    return value % 65536
+end
+
+local function preserve_fractional_position(integer_position, position)
+    -- [C] ROM 0x15ABA replaces the integer coordinate and keeps its fraction.
+    return wrap_map_coordinate(integer_position + position % 1)
+end
 
 local function projectile_movement_snapshot(context, state)
     local source = context.projectile_movement
+    local position = type(source) == "table" and source.position or nil
+    local velocity = type(source) == "table" and source.velocity or nil
+    local origin = type(source) == "table" and source.burst_origin or nil
     if type(source) ~= "table" or
        (source.role ~= projectile.role.primary and
         source.role ~= projectile.role.secondary) or
-       type(source.active) ~= "boolean" or
-       type(source.waiting_for_animation_end) ~= "boolean" or
+       (source.phase ~= "inactive" and source.phase ~= "flying" and
+        source.phase ~= "awaiting_animation") or
        type(source.impact_occurred) ~= "boolean" or
        type(source.animation_finished) ~= "boolean" or
-       type(source.world_x) ~= "number" or
-       type(source.world_y) ~= "number" or
-       type(source.tile_offset_x) ~= "number" or
-       type(source.tile_offset_y) ~= "number" or
-       type(source.remaining_clear_steps) ~= "number" or
-       source.remaining_clear_steps < 0 or source.remaining_clear_steps > 127 or
-       source.remaining_clear_steps ~= math.floor(source.remaining_clear_steps) or
-       type(source.additional_shots_remaining) ~= "number" or
-       source.additional_shots_remaining < 0 or
-       source.additional_shots_remaining > 2 or
-       source.additional_shots_remaining ~=
-           math.floor(source.additional_shots_remaining) or
-       type(source.heading) ~= "number" or source.heading < 0 or
-       source.heading > AiTuning.WORD_MAX or
-       type(source.saved_position_x) ~= "number" or
-       source.saved_position_x < 0 or source.saved_position_x > AiTuning.WORD_MAX or
-       type(source.saved_position_y) ~= "number" or
-       source.saved_position_y < 0 or source.saved_position_y > AiTuning.WORD_MAX or
+       type(position) ~= "table" or
+       type(position.x) ~= "number" or position.x < 0 or position.x >= 65536 or
+       position.x ~= position.x or
+       type(position.y) ~= "number" or position.y < 0 or position.y >= 65536 or
+       position.y ~= position.y or
+       type(velocity) ~= "table" or
+       type(velocity.x) ~= "number" or velocity.x ~= velocity.x or
+       velocity.x == math.huge or velocity.x == -math.huge or
+       type(velocity.y) ~= "number" or velocity.y ~= velocity.y or
+       velocity.y == math.huge or velocity.y == -math.huge or
+       type(source.remaining_flight_range) ~= "number" or
+       source.remaining_flight_range < PROJECTILE_PROBE_DISTANCE or
+       source.remaining_flight_range > 128 * PROJECTILE_PROBE_DISTANCE or
+       source.remaining_flight_range ~= source.remaining_flight_range or
+       source.remaining_flight_range == math.huge or
+       source.remaining_flight_range == -math.huge or
+       type(source.shots_remaining) ~= "number" or
+       source.shots_remaining < 0 or source.shots_remaining > 2 or
+       source.shots_remaining ~= math.floor(source.shots_remaining) or
+       type(source.bearing_degrees) ~= "number" or
+       source.bearing_degrees < 0 or source.bearing_degrees >= 360 or
+       type(source.attack_successes) ~= "number" or
+       source.attack_successes < 0 or source.attack_successes > 65535 or
+       source.attack_successes ~= math.floor(source.attack_successes) or
+       type(origin) ~= "table" or
+       type(origin.x) ~= "number" or origin.x < 0 or
+       origin.x > AiTuning.WORD_MAX or origin.x ~= math.floor(origin.x) or
+       type(origin.y) ~= "number" or origin.y < 0 or
+       origin.y > AiTuning.WORD_MAX or origin.y ~= math.floor(origin.y) or
        type(source.animation_action) ~= "string" or
        source.animation_action ~= "unchanged" then
         return nil
@@ -51,116 +72,111 @@ local function projectile_movement_snapshot(context, state)
 
     local result = {
         role = source.role,
-        active = source.active,
-        waiting_for_animation_end = source.waiting_for_animation_end,
+        phase = source.phase,
         impact_occurred = source.impact_occurred,
         animation_finished = source.animation_finished,
-        world_x = source.world_x,
-        world_y = source.world_y,
-        tile_offset_x = source.tile_offset_x,
-        tile_offset_y = source.tile_offset_y,
-        remaining_clear_steps = source.remaining_clear_steps,
-        additional_shots_remaining = source.additional_shots_remaining,
-        heading = source.heading,
-        saved_position_x = source.saved_position_x,
-        saved_position_y = source.saved_position_y,
-        action_result = state.action_result or source.action_result,
+        position = { x = position.x, y = position.y },
+        velocity = { x = velocity.x, y = velocity.y },
+        remaining_flight_range = source.remaining_flight_range,
+        shots_remaining = source.shots_remaining,
+        bearing_degrees = source.bearing_degrees,
+        burst_origin = { x = origin.x, y = origin.y },
+        attack_successes = state.action_result or source.attack_successes,
         animation_action = "unchanged",
         outcome = projectile.outcome.none,
     }
     local audio_event
 
-    if not result.active then
+    if result.phase == "inactive" then
         return result, nil
     end
     if result.role == projectile.role.secondary then
         -- ROM 0xAC4E retires the secondary record after the preceding render
         -- heartbeat marks its finite animation list complete.
         if result.animation_finished then
-            result.active = false
+            result.phase = "inactive"
             result.outcome = projectile.outcome.retired
         end
         return result, nil
     end
 
-    if result.waiting_for_animation_end then
+    if result.phase == "awaiting_animation" then
         -- ROM 0x14E0A/0x14F1C wait for the stopped record's finite list.
         -- Weapon action-pair resolution in ROM 0x14F86 remains an explicit boundary.
         if result.animation_finished then
-            if result.additional_shots_remaining == 0 then
-                result.active = false
+            if result.shots_remaining == 0 then
+                result.phase = "inactive"
                 result.outcome = projectile.outcome.retired
             else
-                result.additional_shots_remaining =
-                    result.additional_shots_remaining - 1
+                result.shots_remaining = result.shots_remaining - 1
                 -- ROM 0x14F86 starts the next member of the three-round
                 -- weapon burst at the saved spawn coordinate. It rotates the
                 -- heading by -0x400 for the second shot and +0x800 for the
-                -- third, then derives the 0x150E8 movement offsets.
-                result.heading = u16(result.heading +
-                    (result.additional_shots_remaining > 0 and
-                        -0x0400 or 0x0800))
-                result.world_x = signed_word_from_long(
-                    (result.saved_position_x << fixed_integer_shift) |
-                    (result.world_x & AiTuning.WORD_MAX))
-                result.world_y = signed_word_from_long(
-                    (result.saved_position_y << fixed_integer_shift) |
-                    (result.world_y & AiTuning.WORD_MAX))
-                local entity_motion = game.modules.entity_motion
-                local offsets = type(entity_motion) == "table" and
-                    type(entity_motion.heading_offsets) == "function" and
-                    entity_motion.heading_offsets(result.heading) or nil
-                if type(offsets) ~= "table" or
-                   type(offsets.horizontal) ~= "number" or
-                   type(offsets.vertical) ~= "number" then
+                -- third, then recalculates its semantic vector step.
+                result.bearing_degrees = Bearing.normalize(
+                    result.bearing_degrees +
+                    (result.shots_remaining > 0 and -5.625 or 11.25))
+                result.position.x = preserve_fractional_position(
+                    result.burst_origin.x, result.position.x)
+                result.position.y = preserve_fractional_position(
+                    result.burst_origin.y, result.position.y)
+                local step = EntityMotion.projectile_step(
+                    result.bearing_degrees)
+                if type(step) ~= "table" or
+                   type(step.x) ~= "number" or
+                   type(step.y) ~= "number" then
                     return nil
                 end
-                result.tile_offset_x = offsets.horizontal
-                result.tile_offset_y = offsets.vertical
-                result.remaining_clear_steps = 32
+                result.velocity = { x = step.x, y = step.y }
+                result.remaining_flight_range = BURST_FOLLOWUP_RANGE
                 result.animation_action = "restart"
-                result.waiting_for_animation_end = false
+                result.phase = "flying"
                 result.outcome = projectile.outcome.burst_followup_restarted
             end
         end
         return result, nil
     end
 
+    -- The host sends position, phase, and bearing. Rebuild motion from the
+    -- game-level bearing instead of carrying the source record's offset pair.
+    local step = EntityMotion.projectile_step(result.bearing_degrees)
+    if type(step) ~= "table" or type(step.x) ~= "number" or
+       type(step.y) ~= "number" then
+        return nil
+    end
+    result.velocity = { x = step.x, y = step.y }
+
     local outside_bounds_marker = false
     for _ = 1, projectile.movement_probes_per_update do
-        -- ROM 0x14F26 adds the signed +0x4C/+0x4E tile offsets as 8.8
-        -- fixed-point deltas before sampling terrain.
-        local probe_x = signed_word_from_long(
-            result.world_x + result.tile_offset_x * fixed_fraction_scale)
-        local probe_y = signed_word_from_long(
-            result.world_y + result.tile_offset_y * fixed_fraction_scale)
-        local terrain_result, boundary_active, outside_marker =
-            game.movement.projectile_terrain(
-                integer_world_word(probe_x), integer_world_word(probe_y))
-        if type(terrain_result) ~= "number" or
-           type(boundary_active) ~= "boolean" or
-           type(outside_marker) ~= "boolean" then
+        local probe_x = wrap_map_coordinate(
+            result.position.x + result.velocity.x)
+        local probe_y = wrap_map_coordinate(
+            result.position.y + result.velocity.y)
+        local terrain = game.movement.projectile_terrain(probe_x, probe_y)
+        if type(terrain) ~= "table" or
+           type(terrain.blocked) ~= "boolean" or
+           type(terrain.boundary_active) ~= "boolean" or
+           type(terrain.outside_map) ~= "boolean" then
             return nil
         end
-        outside_bounds_marker = outside_marker
+        outside_bounds_marker = terrain.outside_map
 
-        local terminal = terrain_result ~= 0 and not boundary_active
+        local terminal = terrain.blocked and not terrain.boundary_active
         if not terminal then
-            if result.remaining_clear_steps == 0 then
+            if result.remaining_flight_range <= PROJECTILE_PROBE_DISTANCE then
                 terminal = true
             else
-                result.remaining_clear_steps =
-                    result.remaining_clear_steps - 1
+                result.remaining_flight_range =
+                    result.remaining_flight_range - PROJECTILE_PROBE_DISTANCE
             end
         end
         if terminal then
             result.impact_occurred = true
-            result.waiting_for_animation_end = true
+            result.phase = "awaiting_animation"
             result.animation_action = "stop"
-            result.tile_offset_x = 0
-            result.tile_offset_y = 0
+            result.velocity = { x = 0, y = 0 }
             if outside_bounds_marker then
-                result.active = false
+                result.phase = "inactive"
                 result.outcome = projectile.outcome.retired
             else
                 result.outcome = projectile.outcome.stopped
@@ -171,40 +187,47 @@ local function projectile_movement_snapshot(context, state)
             break
         end
 
-        result.world_x = probe_x
-        result.world_y = probe_y
-        local source_carry, source_position_updated, source_x, source_y,
-              hit_target_id =
-            game.movement.projectile_collision(
-                integer_world_word(probe_x), integer_world_word(probe_y))
-        if type(source_carry) ~= "boolean" or
-           type(source_position_updated) ~= "boolean" or
-           type(source_x) ~= "number" or type(source_y) ~= "number" then
+        result.position.x = probe_x
+        result.position.y = probe_y
+        local contact = game.movement.projectile_collision(probe_x, probe_y)
+        if type(contact) ~= "table" or
+           (contact.kind ~= "none" and contact.kind ~= "target_hit" and
+            contact.kind ~= "linked_followup") then
             return nil
         end
+        local target_position = contact.target_position
+        if contact.kind == "target_hit" then
+            if type(target_position) ~= "table" or
+               type(target_position.x) ~= "number" or
+               target_position.x < 0 or target_position.x > AiTuning.WORD_MAX or
+               target_position.x ~= math.floor(target_position.x) or
+               type(target_position.y) ~= "number" or
+               target_position.y < 0 or target_position.y > AiTuning.WORD_MAX or
+               target_position.y ~= math.floor(target_position.y) then
+                return nil
+            end
+        elseif target_position ~= nil then
+            return nil
+        end
+        local hit_target_id = contact.target_id
         if hit_target_id ~= nil and
            (type(hit_target_id) ~= "string" or hit_target_id == "") then
             return nil
         end
-        if source_carry then
+        if contact.kind ~= "none" then
             result.impact_occurred = true
-            result.waiting_for_animation_end = true
+            result.phase = "awaiting_animation"
             result.animation_action = "stop"
-            result.tile_offset_x = 0
-            result.tile_offset_y = 0
+            result.velocity = { x = 0, y = 0 }
             if outside_bounds_marker then
-                result.active = false
+                result.phase = "inactive"
                 result.outcome = projectile.outcome.retired
             end
-            if source_position_updated then
-                -- 0x15ABA copies the target's integer coordinates while
-                -- preserving the projectile record's fractional words.
-                result.world_x = signed_word_from_long(
-                    (source_x << fixed_integer_shift) |
-                    (probe_x & AiTuning.WORD_MAX))
-                result.world_y = signed_word_from_long(
-                    (source_y << fixed_integer_shift) |
-                    (probe_y & AiTuning.WORD_MAX))
+            if contact.kind == "target_hit" then
+                result.position.x = preserve_fractional_position(
+                    target_position.x, probe_x)
+                result.position.y = preserve_fractional_position(
+                    target_position.y, probe_y)
                 result.outcome =
                     projectile.outcome.hit_resolution_pending
                 result.hit_target_id = hit_target_id
@@ -256,7 +279,7 @@ local function projectile_heartbeat(state, context)
         end
         state.attack_seed_resolved = true
         state.action_result = result
-        movement.action_result = result
+        movement.attack_successes = result
         -- ROM 0x14F86 clears +0x18 and +0x1E before the next render pass.
         state.animation_frame = 0
         state.animation_elapsed_updates = 0
@@ -273,22 +296,22 @@ local function projectile_heartbeat(state, context)
         end
         if hit_target ~= nil and state.attack_seed_resolved then
             state.combat_meter_update = game.modules.combat.resolve_weapon_hit(
-                context, { action_result = state.action_result }, hit_target)
+                context, { attack_successes = state.action_result }, hit_target)
         end
     end
     return R.snapshot(state, "hold", audio_event, movement)
 end
 
-local function requested_movement_heading(context, profile, state)
+local function requested_movement_bearing_degrees(context, profile, state)
     if profile.dynamic_encounter_only then
         local target = R.linked_target(context, state)
-        local heading = target and target.heading or nil
+        local heading = target and target.bearing_degrees or nil
         local distance = target and target.distance or nil
         -- Keep the selected source actor relation explicit in Lua state.
         -- The host may render and inspect this R.snapshot but does not choose
         -- the target or apply the creature's movement policy.
         state.ai_target_id = target and target.id or nil
-        state.ai_target_heading = heading
+        state.ai_target_bearing_degrees = heading
         state.ai_target_distance = distance
         -- ROM 0x13D0C selects a destination on the +0xB6 timer. Its route is
         -- then followed by the actor's +0x3A continuation each service pass.
@@ -302,18 +325,21 @@ local function requested_movement_heading(context, profile, state)
     if type(direction) ~= "string" then
         return nil
     end
-    return MovementHeading[direction]
+    return MovementBearingDegrees[direction]
 end
 
 local function resolve_source_target_motion(context, state, target)
     state.ai_target_engaged = false
     if not context.movement_allowed or type(target) ~= "table" or
-       type(target.heading) ~= "number" or
+       type(target.bearing_degrees) ~= "number" or
        type(target.distance) ~= "number" then
         return false
     end
 
-    local heading = target.heading & AiTuning.WORD_MAX
+    local bearing_degrees = Bearing.normalize(target.bearing_degrees)
+    if bearing_degrees == nil then
+        return false
+    end
     local distance = target.distance & AiTuning.WORD_MAX
     local accepted = false
 
@@ -325,15 +351,15 @@ local function resolve_source_target_motion(context, state, target)
         if distance < AiTuning.HELL_HOUND_CLOSE_RANGE then
             if state.action_delay < 0 then
                 accepted = R.request_target_motion_effect(
-                    state, context, heading, target)
+                    state, context, bearing_degrees, target)
                 if accepted then
-                    state.movement_current_heading = heading
+                    state.movement_current_bearing_degrees = bearing_degrees
                 end
             else
                 accepted = true
             end
         elseif distance < AiTuning.HELL_HOUND_PURSUIT_RANGE then
-            state.movement_current_heading = heading
+            state.movement_current_bearing_degrees = bearing_degrees
             accepted = true
         end
     elseif context.visual_profile_id == VisualProfile.GARGOYLE or
@@ -351,7 +377,7 @@ local function resolve_source_target_motion(context, state, target)
                context.ai_animation_frame == 2 then
                 state.animation_progress = 1.0
             else
-                state.movement_current_heading = heading
+                state.movement_current_bearing_degrees = bearing_degrees
                 accepted = true
             end
         end
@@ -362,11 +388,11 @@ local function resolve_source_target_motion(context, state, target)
     end
 
     if accepted then
-        state.movement_heading = heading
+        state.movement_bearing_degrees = bearing_degrees
         state.movement_active = false
         state.movement_route_distance = nil
         state.ai_target_engaged = true
-        state.direction = R.direction_from_heading(heading)
+        state.direction = R.direction_from_bearing_degrees(bearing_degrees)
     end
     return accepted
 end
@@ -415,13 +441,13 @@ local function actor_lifecycle(context)
     return movement_lifecycle(context)
 end
 
-local function walk_direction_from_heading(heading)
+local function walk_direction_from_bearing_degrees(bearing_degrees)
     -- ROM 0xB574 walk handler (0xB57E, 0xB5BE) and its walk animation pick
     -- (0xB6CC, C062): rol.w #3 then andi.w #7 with no round-up, so the
     -- octant is truncated. 0xB36A-family animation picks and the 0xBABC
-    -- step round up instead (R.direction_from_heading) [C: disasm; emulator
+    -- step round up instead (R.direction_from_bearing_degrees) [C: disasm; emulator
     -- run5 FF012E 0x7800..0x6000 step diagonally, 0x5800 steps right].
-    return (heading >> 13) & 0x7
+    return Bearing.octant(bearing_degrees, false)
 end
 
 local function movement_octant_selector(context)
@@ -433,13 +459,13 @@ local function movement_octant_selector(context)
     if context.dynamic_world_encounter_actor == true or
        context.source_actor_has_waypoint_data == true or
        actor_lifecycle(context).thinking_enabled then
-        return walk_direction_from_heading
+        return walk_direction_from_bearing_degrees
     end
-    return R.direction_from_heading
+    return R.direction_from_bearing_degrees
 end
 
-local function movement_direction_from_heading(context, heading)
-    return movement_octant_selector(context)(heading)
+local function movement_direction_from_bearing_degrees(context, bearing_degrees)
+    return movement_octant_selector(context)(bearing_degrees)
 end
 
 local function creature_movement_step_distance(context, state)
@@ -562,10 +588,12 @@ local function probe_movement(context, movement_state, direction_slot,
     }
 end
 
-local function route_key_for_heading(heading)
-    local rotated = u16((heading << 3) | (heading >> 13))
-    rotated = rotated & 0x07
-    return (rotated & 0x06) << 1
+local function route_key_for_bearing_degrees(bearing_degrees)
+    local octant = Bearing.octant(bearing_degrees, false)
+    if octant == nil then
+        return nil
+    end
+    return (octant & 0x06) << 1
 end
 
 local function movement_probe_is_blocked(probe, context)
@@ -580,11 +608,11 @@ end
 
 local function reset_blocked_movement(context, state, movement_state)
     movement_state.route_facts.path_active = false
-    movement_state.heading = state.movement_heading
+    movement_state.bearing_degrees = state.movement_bearing_degrees
     movement_state.mark_reset_after_block = true
     movement_state.route_status = -1
-    state.movement_current_heading = state.movement_heading
-    local direction = R.direction_from_heading(movement_state.heading)
+    state.movement_current_bearing_degrees = state.movement_bearing_degrees
+    local direction = R.direction_from_bearing_degrees(movement_state.bearing_degrees)
     state.direction = direction
     state.animation_id = "idle"
     -- B442 restores the facing and clears pending movement while preserving
@@ -600,8 +628,8 @@ end
 
 local function advance_entity_movement(context, state)
     if not context.movement_services_available or
-       state.movement_heading == nil or
-       state.movement_current_heading == nil then
+       state.movement_bearing_degrees == nil or
+       state.movement_current_bearing_degrees == nil then
         return nil
     end
 
@@ -616,8 +644,8 @@ local function advance_entity_movement(context, state)
     for key, value in pairs(context.movement_state) do
         movement_state[key] = value
     end
-    movement_state.heading = state.movement_current_heading
-    movement_state.animation_heading = movement_state.heading
+    movement_state.bearing_degrees = state.movement_current_bearing_degrees
+    movement_state.animation_bearing_degrees = movement_state.bearing_degrees
     movement_state.substate_update = "unchanged"
     movement_state.cardinal_direction = 0
     movement_state.mark_reset_after_block = false
@@ -633,7 +661,7 @@ local function advance_entity_movement(context, state)
     end
 
     local octant_for_heading = movement_octant_selector(context)
-    local initial_direction = octant_for_heading(movement_state.heading)
+    local initial_direction = octant_for_heading(movement_state.bearing_degrees)
     local initial_slot = initial_direction * 2
     local initial = probe_movement(
         context, movement_state, initial_slot, movement_step_distance)
@@ -664,7 +692,7 @@ local function advance_entity_movement(context, state)
             commit_movement_candidate(movement_state, initial)
             state.animation_id = "walk"
             local fallback_direction = octant_for_heading(
-                movement_state.heading)
+                movement_state.bearing_degrees)
             state.direction = fallback_direction
             return {
                 outcome = "accepted",
@@ -673,8 +701,9 @@ local function advance_entity_movement(context, state)
         end
     end
 
-    if (movement_state.heading & 0x3fff) == 0 then
-        local key = route_key_for_heading(movement_state.heading)
+    if movement_state.bearing_degrees % 90 == 0 then
+        local key = route_key_for_bearing_degrees(
+            movement_state.bearing_degrees)
         local route = game.movement.route(key)
         local fallback
         local carry_set = false
@@ -697,7 +726,7 @@ local function advance_entity_movement(context, state)
             commit_movement_candidate(movement_state, fallback)
             state.animation_id = "walk"
             local fallback_direction = octant_for_heading(
-                movement_state.heading)
+                movement_state.bearing_degrees)
             state.direction = fallback_direction
             return {
                 outcome = "accepted",
@@ -710,7 +739,11 @@ local function advance_entity_movement(context, state)
         return reset
     end
 
-    local movement_direction = (movement_state.heading >> 13) & 0x06
+    local octant = Bearing.octant(movement_state.bearing_degrees, false)
+    if octant == nil then
+        return nil
+    end
+    local movement_direction = octant & 0x06
     movement_state.substate_update = "cardinal_fallback"
     movement_state.cardinal_direction = movement_direction >> 1
     local selected = probe_movement(
@@ -730,14 +763,13 @@ local function advance_entity_movement(context, state)
         end
     end
 
-    movement_state.animation_heading =
-        u16((selected.direction_slot >> 4) |
-         (selected.direction_slot << 12))
+    movement_state.animation_bearing_degrees =
+        (selected.direction_slot >> 1) * Bearing.EIGHTH_TURN_DEGREES
     movement_state.mark_directional_fallback = true
     commit_movement_candidate(movement_state, selected)
     state.animation_id = "walk"
     local selected_direction = octant_for_heading(
-        movement_state.animation_heading)
+        movement_state.animation_bearing_degrees)
     state.direction = selected_direction
     return {
         outcome = "accepted",
@@ -757,19 +789,17 @@ end
 
 
 -- register this module's definitions
-R.signed_word_from_long = signed_word_from_long
-R.integer_world_word = integer_world_word
 R.projectile_movement_snapshot = projectile_movement_snapshot
 R.projectile_heartbeat = projectile_heartbeat
-R.requested_movement_heading = requested_movement_heading
+R.requested_movement_bearing_degrees = requested_movement_bearing_degrees
 R.resolve_source_target_motion = resolve_source_target_motion
 R.movement_collision_code = movement_collision_code
-R.walk_direction_from_heading = walk_direction_from_heading
+R.walk_direction_from_bearing_degrees = walk_direction_from_bearing_degrees
 R.movement_octant_selector = movement_octant_selector
-R.movement_direction_from_heading = movement_direction_from_heading
+R.movement_direction_from_bearing_degrees = movement_direction_from_bearing_degrees
 R.creature_movement_step_distance = creature_movement_step_distance
 R.probe_movement = probe_movement
-R.route_key_for_heading = route_key_for_heading
+R.route_key_for_bearing_degrees = route_key_for_bearing_degrees
 R.movement_probe_is_blocked = movement_probe_is_blocked
 R.commit_movement_candidate = commit_movement_candidate
 R.reset_blocked_movement = reset_blocked_movement

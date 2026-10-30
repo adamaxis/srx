@@ -25,19 +25,19 @@ local function fixture(meter_changed)
     local state = {
         visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD,
         action_delay = -1,
-        movement_current_heading = 0,
+        movement_current_bearing_degrees = 0,
         target_motion_effect_active = false,
     }
     local context = {
         dynamic_world_encounter_actor = true,
         visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD,
         phase = "behavior",
-        initial_heading = 0,
+        initial_bearing_degrees = 0,
         target_heading_audio_alternate = false,
     }
     local target = {
         id = "party.runner.0",
-        heading = 0,
+        bearing_degrees = 0,
         world_x = 4660,
         world_y = 2748,
     }

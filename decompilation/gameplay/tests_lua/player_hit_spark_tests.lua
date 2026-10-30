@@ -73,7 +73,7 @@ local target = {
     source_record_slot = 3,
     world_x = 4660,
     world_y = 2748,
-    heading = 16384,
+    bearing_degrees = 90,
     distance = 256,
     actor_facts = {
         lifecycle = { active = true, dead = false, downed = false,
@@ -95,7 +95,7 @@ local context = {
     action_kind = "none",
     action_code = E.ItemId.NONE,
     entry_delay = 0,
-    initial_heading = 0,
+    initial_bearing_degrees = 0,
     actor_facts = {
         lifecycle = { active = true, thinking_enabled = false,
             ai_runner = false, downed = false, group_leader = false,

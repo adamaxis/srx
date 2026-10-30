@@ -43,6 +43,68 @@ constexpr std::uint8_t kRunnerActive = 0x01U;
 constexpr std::uint8_t kRunnerClipRemainder = 0x02U;
 constexpr std::uint8_t kRunnerDowned = 0x10U;
 constexpr std::uint8_t kRunnerDead = 0x40U;
+constexpr double kDegreesPerTurn = 360.0;
+constexpr double kSourceHeadingUnitsPerTurn = 65536.0;
+constexpr double kWorldCoordinatePeriod = 65536.0;
+
+// ROM turn units stay inside the native adapter. Lua receives a bearing in
+// degrees clockwise from north and returns that same semantic quantity.
+double bearing_degrees_from_source(const std::uint16_t heading) {
+    return static_cast<double>(heading) * kDegreesPerTurn /
+           kSourceHeadingUnitsPerTurn;
+}
+
+std::optional<std::uint16_t> source_heading_from_bearing_degrees(
+    const double degrees) {
+    if (!std::isfinite(degrees) || degrees < 0.0 ||
+        degrees >= kDegreesPerTurn) {
+        return std::nullopt;
+    }
+    const auto source_units = std::llround(
+        degrees * kSourceHeadingUnitsPerTurn / kDegreesPerTurn);
+    return static_cast<std::uint16_t>(source_units & 0xFFFFLL);
+}
+
+bool read_optional_source_heading_from_bearing_field(
+    lua_State* state, const int table_index, const char* field_name,
+    std::optional<std::uint16_t>& output) {
+    lua_getfield(state, table_index, field_name);
+    if (lua_isnil(state, -1)) {
+        lua_pop(state, 1);
+        output.reset();
+        return true;
+    }
+    if (lua_type(state, -1) != LUA_TNUMBER) {
+        lua_pop(state, 1);
+        return false;
+    }
+    const auto degrees = static_cast<double>(lua_tonumber(state, -1));
+    lua_pop(state, 1);
+    const auto source_heading = source_heading_from_bearing_degrees(degrees);
+    if (!source_heading.has_value()) {
+        return false;
+    }
+    output = *source_heading;
+    return true;
+}
+
+bool world_coordinate_cell(const double coordinate,
+                           std::uint16_t& output) {
+    if (!std::isfinite(coordinate) || coordinate < 0.0 ||
+        coordinate >= kWorldCoordinatePeriod) {
+        return false;
+    }
+    output = static_cast<std::uint16_t>(std::floor(coordinate));
+    return true;
+}
+
+bool read_number(lua_State* state, const int index, double& value) {
+    if (lua_type(state, index) != LUA_TNUMBER) {
+        return false;
+    }
+    value = static_cast<double>(lua_tonumber(state, index));
+    return std::isfinite(value);
+}
 
 const char* formation_position_id(
     const ScriptFormationPosition position) noexcept {
@@ -1277,6 +1339,14 @@ bool read_field_integer(lua_State* state, const int table_index,
                         std::uint32_t& value) {
     lua_getfield(state, table_index, field);
     const bool valid = read_integer(state, -1, maximum, value);
+    lua_pop(state, 1);
+    return valid;
+}
+
+bool read_field_number(lua_State* state, const int table_index,
+                       const char* field, double& value) {
+    lua_getfield(state, table_index, field);
+    const bool valid = read_number(state, -1, value);
     lua_pop(state, 1);
     return valid;
 }
@@ -5061,8 +5131,8 @@ struct GameScriptRuntime::Impl {
                 return 1;
             }
             lua_createtable(lua, 0, 3);
-            lua_pushinteger(lua, measured->heading);
-            lua_setfield(lua, -2, "heading");
+            lua_pushnumber(lua, bearing_degrees_from_source(measured->heading));
+            lua_setfield(lua, -2, "bearing_degrees");
             lua_pushinteger(lua, measured->distance);
             lua_setfield(lua, -2, "distance");
             lua_pushinteger(lua, measured->step_cost);
@@ -5137,26 +5207,33 @@ struct GameScriptRuntime::Impl {
 
     static int movement_projectile_terrain(lua_State* lua) {
         auto* self = from_upvalue(lua);
-        std::uint32_t x = 0U;
-        std::uint32_t y = 0U;
+        double map_x = 0.0;
+        double map_y = 0.0;
+        std::uint16_t x = 0U;
+        std::uint16_t y = 0U;
         if (self == nullptr || self->active_actor_context == nullptr ||
             !self->active_actor_context->projectile_movement.has_value() ||
             !self->active_actor_context->projectile_terrain_probe ||
-            !read_integer(lua, 1, 0xFFFFU, x) ||
-            !read_integer(lua, 2, 0xFFFFU, y)) {
+            !read_number(lua, 1, map_x) ||
+            !read_number(lua, 2, map_y) ||
+            !world_coordinate_cell(map_x, x) ||
+            !world_coordinate_cell(map_y, y)) {
             return luaL_error(
                 lua,
-                "game.movement.projectile_terrain expects x/y during a projectile behavior heartbeat");
+                "game.movement.projectile_terrain expects map positions during a projectile behavior heartbeat");
         }
         try {
             const auto sample =
                 self->active_actor_context->projectile_terrain_probe(
-                    static_cast<std::uint16_t>(x),
-                    static_cast<std::uint16_t>(y));
-            lua_pushinteger(lua, sample.terrain_result);
-            lua_pushboolean(lua, sample.terrain_boundary_active);
-            lua_pushboolean(lua, sample.outside_bounds_marker);
-            return 3;
+                    x, y);
+            lua_createtable(lua, 0, 3);
+            lua_pushboolean(lua, sample.blocked);
+            lua_setfield(lua, -2, "blocked");
+            lua_pushboolean(lua, sample.boundary_active);
+            lua_setfield(lua, -2, "boundary_active");
+            lua_pushboolean(lua, sample.outside_map);
+            lua_setfield(lua, -2, "outside_map");
+            return 1;
         } catch (...) {
             return luaL_error(
                 lua, "native projectile terrain query failed");
@@ -5165,33 +5242,53 @@ struct GameScriptRuntime::Impl {
 
     static int movement_projectile_collision(lua_State* lua) {
         auto* self = from_upvalue(lua);
-        std::uint32_t x = 0U;
-        std::uint32_t y = 0U;
+        double map_x = 0.0;
+        double map_y = 0.0;
+        std::uint16_t x = 0U;
+        std::uint16_t y = 0U;
         if (self == nullptr || self->active_actor_context == nullptr ||
             !self->active_actor_context->projectile_movement.has_value() ||
             !self->active_actor_context->projectile_collision_search ||
-            !read_integer(lua, 1, 0xFFFFU, x) ||
-            !read_integer(lua, 2, 0xFFFFU, y)) {
+            !read_number(lua, 1, map_x) ||
+            !read_number(lua, 2, map_y) ||
+            !world_coordinate_cell(map_x, x) ||
+            !world_coordinate_cell(map_y, y)) {
             return luaL_error(
                 lua,
-                "game.movement.projectile_collision expects x/y during a projectile behavior heartbeat");
+                "game.movement.projectile_collision expects map positions during a projectile behavior heartbeat");
         }
         try {
             const auto result =
                 self->active_actor_context->projectile_collision_search(
-                    static_cast<std::uint16_t>(x),
-                    static_cast<std::uint16_t>(y));
-            lua_pushboolean(lua, result.source_carry);
-            lua_pushboolean(lua, result.source_position_updated);
-            lua_pushinteger(lua, result.source_x);
-            lua_pushinteger(lua, result.source_y);
+                    x, y);
+            lua_createtable(lua, 0, 3);
+            const char* kind =
+                result.kind == ScriptProjectileContactKind::target_hit
+                    ? "target_hit"
+                    : result.kind ==
+                              ScriptProjectileContactKind::linked_followup
+                          ? "linked_followup"
+                          : "none";
+            lua_pushstring(lua, kind);
+            lua_setfield(lua, -2, "kind");
+            if (result.target_position.has_value()) {
+                lua_createtable(lua, 0, 2);
+                lua_pushnumber(lua, result.target_position->x);
+                lua_setfield(lua, -2, "x");
+                lua_pushnumber(lua, result.target_position->y);
+                lua_setfield(lua, -2, "y");
+            } else {
+                lua_pushnil(lua);
+            }
+            lua_setfield(lua, -2, "target_position");
             if (result.hit_target_id.has_value()) {
                 lua_pushlstring(lua, result.hit_target_id->data(),
                                 result.hit_target_id->size());
             } else {
                 lua_pushnil(lua);
             }
-            return 5;
+            lua_setfield(lua, -2, "target_id");
+            return 1;
         } catch (...) {
             return luaL_error(
                 lua, "native projectile collision search failed");
@@ -10813,8 +10910,8 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "entry_started");
     lua_pushboolean(state, context.entry_complete);
     lua_setfield(state, -2, "entry_complete");
-    lua_pushinteger(state, context.initial_heading);
-    lua_setfield(state, -2, "initial_heading");
+    lua_pushnumber(state, bearing_degrees_from_source(context.initial_heading));
+    lua_setfield(state, -2, "initial_bearing_degrees");
     lua_pushboolean(state, context.spawn);
     lua_setfield(state, -2, "spawn");
     lua_pushboolean(state, context.movement_allowed);
@@ -11216,14 +11313,17 @@ GameScriptRuntime::actor_heartbeat(
             lua_setfield(state, -2, "world_x");
             lua_pushinteger(state, candidate.world_y);
             lua_setfield(state, -2, "world_y");
-            lua_pushinteger(state, candidate.heading);
-            lua_setfield(state, -2, "heading");
+            lua_pushnumber(state, bearing_degrees_from_source(candidate.heading));
+            lua_setfield(state, -2, "bearing_degrees");
             if (candidate.source_record_heading.has_value()) {
-                lua_pushinteger(state, *candidate.source_record_heading);
+                lua_pushnumber(
+                    state,
+                    bearing_degrees_from_source(
+                        *candidate.source_record_heading));
             } else {
                 lua_pushnil(state);
             }
-            lua_setfield(state, -2, "source_record_heading");
+            lua_setfield(state, -2, "facing_degrees");
             lua_pushinteger(state, candidate.distance);
             lua_setfield(state, -2, "distance");
             push_actor_facts(state, candidate.service_flags,
@@ -11338,34 +11438,45 @@ GameScriptRuntime::actor_heartbeat(
                               : "secondary";
         lua_pushstring(state, role);
         lua_setfield(state, -2, "role");
-        lua_pushboolean(state, movement.active);
-        lua_setfield(state, -2, "active");
-        lua_pushboolean(state, movement.waiting_for_animation_end);
-        lua_setfield(state, -2, "waiting_for_animation_end");
+        const char* phase = movement.phase ==
+                                    ScriptActorProjectilePhase::inactive
+            ? "inactive"
+            : movement.phase ==
+                      ScriptActorProjectilePhase::awaiting_animation
+                  ? "awaiting_animation"
+                  : "flying";
+        lua_pushstring(state, phase);
+        lua_setfield(state, -2, "phase");
         lua_pushboolean(state, movement.impact_occurred);
         lua_setfield(state, -2, "impact_occurred");
         lua_pushboolean(state, movement.animation_finished);
         lua_setfield(state, -2, "animation_finished");
-        lua_pushinteger(state, movement.world_x);
-        lua_setfield(state, -2, "world_x");
-        lua_pushinteger(state, movement.world_y);
-        lua_setfield(state, -2, "world_y");
-        lua_pushinteger(state, movement.tile_offset_x);
-        lua_setfield(state, -2, "tile_offset_x");
-        lua_pushinteger(state, movement.tile_offset_y);
-        lua_setfield(state, -2, "tile_offset_y");
-        lua_pushinteger(state, movement.remaining_clear_steps);
-        lua_setfield(state, -2, "remaining_clear_steps");
-        lua_pushinteger(state, movement.additional_shots_remaining);
-        lua_setfield(state, -2, "additional_shots_remaining");
-        lua_pushinteger(state, movement.heading);
-        lua_setfield(state, -2, "heading");
-        lua_pushinteger(state, movement.saved_position_x);
-        lua_setfield(state, -2, "saved_position_x");
-        lua_pushinteger(state, movement.saved_position_y);
-        lua_setfield(state, -2, "saved_position_y");
-        lua_pushinteger(state, movement.action_result);
-        lua_setfield(state, -2, "action_result");
+        lua_createtable(state, 0, 2);
+        lua_pushnumber(state, movement.position.x);
+        lua_setfield(state, -2, "x");
+        lua_pushnumber(state, movement.position.y);
+        lua_setfield(state, -2, "y");
+        lua_setfield(state, -2, "position");
+        lua_createtable(state, 0, 2);
+        lua_pushnumber(state, movement.velocity.x);
+        lua_setfield(state, -2, "x");
+        lua_pushnumber(state, movement.velocity.y);
+        lua_setfield(state, -2, "y");
+        lua_setfield(state, -2, "velocity");
+        lua_pushnumber(state, movement.remaining_flight_range);
+        lua_setfield(state, -2, "remaining_flight_range");
+        lua_pushinteger(state, movement.shots_remaining);
+        lua_setfield(state, -2, "shots_remaining");
+        lua_pushnumber(state, movement.bearing_degrees);
+        lua_setfield(state, -2, "bearing_degrees");
+        lua_createtable(state, 0, 2);
+        lua_pushnumber(state, movement.burst_origin.x);
+        lua_setfield(state, -2, "x");
+        lua_pushnumber(state, movement.burst_origin.y);
+        lua_setfield(state, -2, "y");
+        lua_setfield(state, -2, "burst_origin");
+        lua_pushinteger(state, movement.attack_successes);
+        lua_setfield(state, -2, "attack_successes");
         const char* animation_action = "unchanged";
         if (movement.animation_action ==
             ScriptActorProjectileAnimationAction::stop) {
@@ -11403,10 +11514,13 @@ GameScriptRuntime::actor_heartbeat(
     lua_setfield(state, -2, "position_x");
     lua_pushinteger(state, context.movement_state.position_y);
     lua_setfield(state, -2, "position_y");
-    lua_pushinteger(state, context.movement_state.heading);
-    lua_setfield(state, -2, "heading");
-    lua_pushinteger(state, context.movement_state.animation_heading);
-    lua_setfield(state, -2, "animation_heading");
+    lua_pushnumber(
+        state, bearing_degrees_from_source(context.movement_state.heading));
+    lua_setfield(state, -2, "bearing_degrees");
+    lua_pushnumber(
+        state, bearing_degrees_from_source(
+                   context.movement_state.animation_heading));
+    lua_setfield(state, -2, "animation_bearing_degrees");
     const char* substate_update = "unchanged";
     if (context.movement_state.substate_update ==
         ScriptMovementSubstateUpdate::direct_translation) {
@@ -11468,17 +11582,16 @@ GameScriptRuntime::actor_heartbeat(
                 (movement.role == ScriptActorProjectileRole::primary
                      ? std::string("primary")
                      : std::string("secondary")) +
-                ",active=" + (movement.active ? "true" : "false") +
-                ",waiting_for_animation_end=" +
-                (movement.waiting_for_animation_end ? "true" : "false") +
+                ",phase=" +
+                std::to_string(static_cast<unsigned>(movement.phase)) +
                 ",impact_occurred=" +
                 (movement.impact_occurred ? "true" : "false") +
                 ",animation_finished=" +
                 (movement.animation_finished ? "true" : "false") +
-                ",clear_steps=" +
-                std::to_string(movement.remaining_clear_steps) +
-                ",additional_shots=" +
-                std::to_string(movement.additional_shots_remaining) +
+                ",flight_range=" +
+                std::to_string(movement.remaining_flight_range) +
+                ",shots_remaining=" +
+                std::to_string(movement.shots_remaining) +
                 "}";
         }
         return fail(std::move(reason));
@@ -12577,18 +12690,20 @@ GameScriptRuntime::actor_heartbeat(
             static_cast<std::uint16_t>(event);
     }
     lua_pop(state, 1);
-    lua_getfield(state, decision_table, "strike_heading");
-    if (lua_type(state, -1) != LUA_TNIL) {
-        std::uint32_t heading = 0U;
-        if (!read_integer(state, -1, 0xFFFFU, heading) ||
-            !context.player_melee_available ||
+    std::optional<std::uint16_t> strike_source_heading;
+    if (!read_optional_source_heading_from_bearing_field(
+            state, decision_table, "strike_bearing_degrees",
+            strike_source_heading)) {
+        return fail("actor_ai.heartbeat returned an invalid strike bearing");
+    }
+    if (strike_source_heading.has_value()) {
+        if (!context.player_melee_available ||
             context.dynamic_world_encounter_actor ||
             context.phase != ScriptActorHeartbeatPhase::behavior) {
-            return fail("actor_ai.heartbeat returned an invalid strike heading");
+            return fail("actor_ai.heartbeat returned a disallowed strike bearing");
         }
-        decision.strike_heading = static_cast<std::uint16_t>(heading);
+        decision.strike_heading = *strike_source_heading;
     }
-    lua_pop(state, 1);
     lua_getfield(state, decision_table, "weapon_item_id");
     if (lua_type(state, -1) != LUA_TNIL) {
         std::string item_id;
@@ -12604,22 +12719,24 @@ GameScriptRuntime::actor_heartbeat(
         decision.weapon_item_id = *item_code;
     }
     lua_pop(state, 1);
-    lua_getfield(state, decision_table, "movement_current_heading");
-    if (lua_type(state, -1) != LUA_TNIL) {
-        std::uint32_t heading = 0U;
+    std::optional<std::uint16_t> current_source_heading;
+    if (!read_optional_source_heading_from_bearing_field(
+            state, decision_table, "movement_current_bearing_degrees",
+            current_source_heading)) {
+        return fail(
+            "actor_ai.heartbeat returned an invalid current bearing");
+    }
+    if (current_source_heading.has_value()) {
         const bool movement_actor =
             context.profile_id == "field_runner_k03_none00" ||
             context.dynamic_world_encounter_actor ||
             context.source_actor_slot.has_value();
-        if (!read_integer(state, -1, 0xFFFFU, heading) ||
-            !movement_actor) {
+        if (!movement_actor) {
             return fail(
-                "actor_ai.heartbeat returned an invalid current heading");
+                "actor_ai.heartbeat returned a current bearing for a non-mover");
         }
-        decision.movement_current_heading =
-            static_cast<std::uint16_t>(heading);
+        decision.movement_current_heading = *current_source_heading;
     }
-    lua_pop(state, 1);
     std::string ai_target_id;
     if (!read_optional_field_string(state, decision_table, "ai_target_id",
                                     ai_target_id)) {
@@ -12628,17 +12745,17 @@ GameScriptRuntime::actor_heartbeat(
     if (!ai_target_id.empty()) {
         decision.ai_target_id = std::move(ai_target_id);
     }
-    std::optional<std::uint32_t> ai_target_heading;
+    std::optional<std::uint16_t> ai_target_source_heading;
     std::optional<std::uint32_t> ai_target_distance;
-    if (!read_optional_field_u32(state, decision_table, "ai_target_heading",
-                                 0xFFFFU, ai_target_heading) ||
+    if (!read_optional_source_heading_from_bearing_field(
+            state, decision_table, "ai_target_bearing_degrees",
+            ai_target_source_heading) ||
         !read_optional_field_u32(state, decision_table, "ai_target_distance",
                                  0xFFFFU, ai_target_distance)) {
         return fail("actor_ai.heartbeat returned invalid AI target geometry");
     }
-    if (ai_target_heading.has_value()) {
-        decision.ai_target_heading = static_cast<std::uint16_t>(
-            *ai_target_heading);
+    if (ai_target_source_heading.has_value()) {
+        decision.ai_target_heading = *ai_target_source_heading;
     }
     if (ai_target_distance.has_value()) {
         decision.ai_target_distance = static_cast<std::uint16_t>(
@@ -12661,27 +12778,28 @@ GameScriptRuntime::actor_heartbeat(
     }
     decision.target_motion_delay =
         static_cast<std::uint8_t>(target_motion_delay);
-    lua_getfield(state, decision_table, "movement_heading");
-    if (lua_type(state, -1) != LUA_TNIL) {
-        std::uint32_t heading = 0U;
+    std::optional<std::uint16_t> movement_source_heading;
+    if (!read_optional_source_heading_from_bearing_field(
+            state, decision_table, "movement_bearing_degrees",
+            movement_source_heading)) {
+        return fail("actor_ai.heartbeat returned an invalid movement bearing");
+    }
+    if (movement_source_heading.has_value()) {
         const bool movement_actor =
             context.profile_id == "field_runner_k03_none00" ||
             context.dynamic_world_encounter_actor ||
             context.source_actor_slot.has_value();
-        // Lua snapshots retain the last selected route heading during the
-        // separate render heartbeat. It is applied only on behavior passes;
-        // render passes must still be able to return the same typed actor
-        // state without being rejected as a fresh movement request.
-        if (!read_integer(state, -1, 0xFFFFU, heading) || !movement_actor ||
+        // Lua snapshots retain the selected destination bearing through the
+        // separate render heartbeat; behavior passes apply it as movement.
+        if (!movement_actor ||
             (context.phase == ScriptActorHeartbeatPhase::behavior &&
              !context.movement_allowed &&
              !context.source_actor_slot.has_value())) {
             return fail(
                 "actor_ai.heartbeat returned an invalid movement intent");
         }
-        decision.movement_heading = static_cast<std::uint16_t>(heading);
+        decision.movement_heading = *movement_source_heading;
     }
-    lua_pop(state, 1);
     std::optional<std::uint32_t> movement_route_distance;
     if (!read_optional_field_u32(state, decision_table,
                                  "movement_route_distance", 0xFFFFU,
@@ -12738,16 +12856,24 @@ GameScriptRuntime::actor_heartbeat(
                 movement_value);
             return true;
         };
+        std::optional<std::uint16_t> movement_source_bearing;
+        std::optional<std::uint16_t> animation_source_bearing;
         if (!read_movement("position_x", 0xFFFFU,
                            movement_step.state.position_x) ||
             !read_movement("position_y", 0xFFFFU,
                            movement_step.state.position_y) ||
-            !read_movement("heading", 0xFFFFU,
-                           movement_step.state.heading) ||
-            !read_movement("animation_heading", 0xFFFFU,
-                           movement_step.state.animation_heading)) {
+            !read_optional_source_heading_from_bearing_field(
+                state, movement_state_table, "bearing_degrees",
+                movement_source_bearing) ||
+            !movement_source_bearing.has_value() ||
+            !read_optional_source_heading_from_bearing_field(
+                state, movement_state_table, "animation_bearing_degrees",
+                animation_source_bearing) ||
+            !animation_source_bearing.has_value()) {
             return fail("actor_ai.heartbeat returned incomplete movement state");
         }
+        movement_step.state.heading = *movement_source_bearing;
+        movement_step.state.animation_heading = *animation_source_bearing;
         std::string substate_update;
         if (!read_field_string(state, movement_state_table,
                                "substate_update", substate_update)) {
@@ -12864,6 +12990,7 @@ GameScriptRuntime::actor_heartbeat(
             return valid;
         };
         std::string role;
+        std::string phase;
         std::uint32_t unsigned_value = 0U;
         lua_Integer signed_value = 0;
         if (!read_field_string(state, movement_table, "role", role) ||
@@ -12871,9 +12998,9 @@ GameScriptRuntime::actor_heartbeat(
                              ScriptActorProjectileRole::primary
                          ? "primary"
                          : "secondary") ||
-            !read_boolean("active", movement_decision.state.active) ||
-            !read_boolean("waiting_for_animation_end",
-                          movement_decision.state.waiting_for_animation_end) ||
+            !read_field_string(state, movement_table, "phase", phase) ||
+            (phase != "inactive" && phase != "flying" &&
+             phase != "awaiting_animation") ||
             !read_boolean("impact_occurred",
                           movement_decision.state.impact_occurred) ||
             !read_boolean("animation_finished",
@@ -12881,75 +13008,94 @@ GameScriptRuntime::actor_heartbeat(
             return fail(
                 "actor_ai.heartbeat returned an incomplete projectile state");
         }
-        if (!read_signed("world_x",
-                         static_cast<lua_Integer>(-2147483647LL - 1LL),
-                         2147483647LL, signed_value)) {
+        movement_decision.state.phase =
+            phase == "inactive"
+                ? ScriptActorProjectilePhase::inactive
+                : phase == "awaiting_animation"
+                    ? ScriptActorProjectilePhase::awaiting_animation
+                    : ScriptActorProjectilePhase::flying;
+        double position_x = 0.0;
+        double position_y = 0.0;
+        lua_getfield(state, movement_table, "position");
+        const bool position_table_valid = lua_istable(state, -1);
+        const auto position_table = position_table_valid
+            ? lua_absindex(state, -1)
+            : 0;
+        const bool position_valid = position_table_valid &&
+            read_field_number(state, position_table, "x", position_x) &&
+            read_field_number(state, position_table, "y", position_y) &&
+            position_x >= 0.0 && position_x < kWorldCoordinatePeriod &&
+            position_y >= 0.0 && position_y < kWorldCoordinatePeriod;
+        lua_pop(state, 1);
+        if (!position_valid) {
             return fail(
-                "actor_ai.heartbeat returned invalid projectile X position");
+                "actor_ai.heartbeat returned an invalid projectile map position");
         }
-        movement_decision.state.world_x =
-            static_cast<std::int32_t>(signed_value);
-        if (!read_signed("world_y",
-                         static_cast<lua_Integer>(-2147483647LL - 1LL),
-                         2147483647LL, signed_value)) {
+        movement_decision.state.position = {position_x, position_y};
+        double velocity_x = 0.0;
+        double velocity_y = 0.0;
+        lua_getfield(state, movement_table, "velocity");
+        const bool velocity_table_valid = lua_istable(state, -1);
+        const auto velocity_table = velocity_table_valid
+            ? lua_absindex(state, -1)
+            : 0;
+        const bool velocity_valid = velocity_table_valid &&
+            read_field_number(state, velocity_table, "x", velocity_x) &&
+            read_field_number(state, velocity_table, "y", velocity_y);
+        lua_pop(state, 1);
+        if (!velocity_valid) {
             return fail(
-                "actor_ai.heartbeat returned invalid projectile Y position");
+                "actor_ai.heartbeat returned an invalid projectile step vector");
         }
-        movement_decision.state.world_y =
-            static_cast<std::int32_t>(signed_value);
-        if (!read_signed("tile_offset_x", -32768, 32767, signed_value)) {
-            return fail(
-                "actor_ai.heartbeat returned invalid projectile X offset");
-        }
-        movement_decision.state.tile_offset_x =
-            static_cast<std::int16_t>(signed_value);
-        if (!read_signed("tile_offset_y", -32768, 32767, signed_value)) {
-            return fail(
-                "actor_ai.heartbeat returned invalid projectile Y offset");
-        }
-        movement_decision.state.tile_offset_y =
-            static_cast<std::int16_t>(signed_value);
-        if (!read_field_integer(state, movement_table,
-                                "remaining_clear_steps", 127U,
-                                unsigned_value)) {
+        movement_decision.state.velocity = {velocity_x, velocity_y};
+        if (!read_field_number(state, movement_table, "remaining_flight_range",
+                               movement_decision.state.remaining_flight_range) ||
+            movement_decision.state.remaining_flight_range <
+                96.0 ||
+            movement_decision.state.remaining_flight_range >
+                128.0 * 96.0) {
             return fail(
                 "actor_ai.heartbeat returned an invalid projectile travel budget");
         }
-        movement_decision.state.remaining_clear_steps = unsigned_value;
-        if (!read_field_integer(state, movement_table,
-                                "additional_shots_remaining", 2U,
+        if (!read_field_integer(state, movement_table, "shots_remaining", 2U,
                                 unsigned_value)) {
             return fail(
                 "actor_ai.heartbeat returned an invalid burst continuation count");
         }
-        movement_decision.state.additional_shots_remaining = unsigned_value;
-        if (!read_field_integer(state, movement_table, "heading", 0xFFFFU,
-                                unsigned_value)) {
+        movement_decision.state.shots_remaining =
+            static_cast<std::uint8_t>(unsigned_value);
+        if (!read_field_number(state, movement_table, "bearing_degrees",
+                               movement_decision.state.bearing_degrees) ||
+            movement_decision.state.bearing_degrees < 0.0 ||
+            movement_decision.state.bearing_degrees >= kDegreesPerTurn) {
             return fail(
-                "actor_ai.heartbeat returned an invalid projectile heading");
+                "actor_ai.heartbeat returned an invalid projectile bearing");
         }
-        movement_decision.state.heading =
+        double origin_x = 0.0;
+        double origin_y = 0.0;
+        lua_getfield(state, movement_table, "burst_origin");
+        const bool origin_table_valid = lua_istable(state, -1);
+        const auto origin_table = origin_table_valid
+            ? lua_absindex(state, -1)
+            : 0;
+        const bool origin_valid = origin_table_valid &&
+            read_field_number(state, origin_table, "x", origin_x) &&
+            read_field_number(state, origin_table, "y", origin_y) &&
+            origin_x >= 0.0 && origin_x < kWorldCoordinatePeriod &&
+            origin_y >= 0.0 && origin_y < kWorldCoordinatePeriod;
+        lua_pop(state, 1);
+        if (!origin_valid) {
+            return fail(
+                "actor_ai.heartbeat returned an invalid projectile burst origin");
+        }
+        movement_decision.state.burst_origin = {origin_x, origin_y};
+        if (!read_field_integer(state, movement_table, "attack_successes",
+                                127U, unsigned_value)) {
+            return fail(
+                "actor_ai.heartbeat returned invalid projectile success count");
+        }
+        movement_decision.state.attack_successes =
             static_cast<std::uint16_t>(unsigned_value);
-        if (!read_field_integer(state, movement_table, "saved_position_x",
-                                0xFFFFU, unsigned_value)) {
-            return fail(
-                "actor_ai.heartbeat returned an invalid projectile origin X");
-        }
-        movement_decision.state.saved_position_x =
-            static_cast<std::uint16_t>(unsigned_value);
-        if (!read_field_integer(state, movement_table, "saved_position_y",
-                                0xFFFFU, unsigned_value)) {
-            return fail(
-                "actor_ai.heartbeat returned an invalid projectile origin Y");
-        }
-        movement_decision.state.saved_position_y =
-            static_cast<std::uint16_t>(unsigned_value);
-        if (!read_signed("action_result", -128, 127, signed_value)) {
-            return fail(
-                "actor_ai.heartbeat returned invalid projectile action result");
-        }
-        movement_decision.state.action_result =
-            static_cast<std::int8_t>(signed_value);
         std::string animation_action;
         if (!read_field_string(state, movement_table, "animation_action",
                                animation_action)) {

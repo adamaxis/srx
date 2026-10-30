@@ -8,11 +8,173 @@ local TRIALS, SEED = tonumber(arg[1]) or 300, tonumber(arg[2]) or 1
 local ser, deepcopy = H.ser, H.deepcopy
 
 local logA, logB = {}, {}
-local gameA, gameB = H.make_game(logA), H.make_game(logB)
+local gameA, gameB = H.make_game(logA, true), H.make_game(logB, false)
 _G.game = gameA; local A = dofile(H.ORIG)
 _G.game = gameB; require("actor.init"); local REG = require("actor.registry")
 local E = require("enums")
+local MovementBearingDegrees = E.MovementBearingDegrees
 local Items = require("items")
+
+-- Translate between semantic gameplay bearings and the frozen reference's
+-- source-word fields. This adapter exists only in the differential test.
+local source_bearing_fields = {
+  initial_heading = "initial_bearing_degrees",
+  heading = "bearing_degrees",
+  source_record_heading = "facing_degrees",
+  movement_heading = "movement_bearing_degrees",
+  movement_current_heading = "movement_current_bearing_degrees",
+  ai_target_heading = "ai_target_bearing_degrees",
+  strike_heading = "strike_bearing_degrees",
+  watch_heading = "watch_bearing_degrees",
+  animation_heading = "animation_bearing_degrees",
+}
+local semantic_bearing_fields = {}
+for source_name, semantic_name in pairs(source_bearing_fields) do
+  semantic_bearing_fields[semantic_name] = source_name
+end
+local function source_units_to_degrees(value)
+  return (value % 0x10000) * 360 / 0x10000
+end
+local function degrees_to_source_units(value)
+  return math.floor((value % 360) * 0x10000 / 360 + 0.5) % 0x10000
+end
+local function source_fixed_to_map(value)
+  local bits = value % 0x100000000
+  return (bits >> 16) + (bits & 0xffff) / 0x10000
+end
+local function map_to_source_fixed(value)
+  return math.floor(value * 0x10000 + 0.5) % 0x100000000
+end
+local function map_step_to_source(value)
+  local word = math.floor(value * 0x100) % 0x10000
+  return word >= 0x8000 and word - 0x10000 or word
+end
+local function legacy_projectile_coordinates(value)
+  if type(value) ~= "table" or
+     type(value.position) ~= "table" or
+     type(value.velocity) ~= "table" or
+     type(value.burst_origin) ~= "table" then
+    return
+  end
+  local vector = require("entity_motion").projectile_step(
+    value.bearing_degrees)
+  value.world_x = map_to_source_fixed(value.position.x)
+  value.world_y = map_to_source_fixed(value.position.y)
+  value.tile_offset_x = map_step_to_source(vector.x)
+  value.tile_offset_y = map_step_to_source(vector.y)
+  value.saved_position_x = value.burst_origin.x
+  value.saved_position_y = value.burst_origin.y
+  value.active = value.phase ~= "inactive"
+  value.waiting_for_animation_end = value.phase == "awaiting_animation"
+  value.remaining_clear_steps = math.floor(
+    value.remaining_flight_range / 96 + 0.5) - 1
+  value.additional_shots_remaining = value.shots_remaining
+  value.heading = degrees_to_source_units(value.bearing_degrees)
+  value.action_result = value.attack_successes
+  value.position = nil
+  value.velocity = nil
+  value.burst_origin = nil
+  value.phase = nil
+  value.remaining_flight_range = nil
+  value.shots_remaining = nil
+  value.bearing_degrees = nil
+  value.attack_successes = nil
+end
+local function semanticize_projectile_coordinates(value)
+  if type(value) ~= "table" or
+     type(value.world_x) ~= "number" or
+     type(value.world_y) ~= "number" or
+     type(value.tile_offset_x) ~= "number" or
+     type(value.tile_offset_y) ~= "number" then
+    return
+  end
+  value.position = {
+    x = source_fixed_to_map(value.world_x),
+    y = source_fixed_to_map(value.world_y),
+  }
+  value.velocity = {
+    x = value.tile_offset_x / 0x100,
+    y = value.tile_offset_y / 0x100,
+  }
+  value.burst_origin = {
+    x = value.saved_position_x,
+    y = value.saved_position_y,
+  }
+  value.remaining_flight_range =
+    ((value.remaining_clear_steps or 0) + 1) * 96
+  value.shots_remaining = value.additional_shots_remaining or 0
+  value.phase = not value.active and "inactive" or
+    value.waiting_for_animation_end and "awaiting_animation" or "flying"
+  value.bearing_degrees = source_units_to_degrees(value.heading or 0)
+  value.attack_successes = value.action_result
+  value.remaining_clear_steps = nil
+  value.additional_shots_remaining = nil
+  value.waiting_for_animation_end = nil
+  value.active = nil
+  value.heading = nil
+  value.action_result = nil
+  value.world_x = nil
+  value.world_y = nil
+  value.tile_offset_x = nil
+  value.tile_offset_y = nil
+  value.saved_position_x = nil
+  value.saved_position_y = nil
+end
+local function convert_bearings(value, to_semantic, seen)
+  if type(value) ~= "table" then return value end
+  seen = seen or {}
+  if seen[value] then return value end
+  seen[value] = true
+  local renames = {}
+  for key, item in pairs(value) do
+    convert_bearings(item, to_semantic, seen)
+    local new_key
+    if to_semantic then
+      new_key = source_bearing_fields[key]
+    else
+      new_key = semantic_bearing_fields[key]
+    end
+    if new_key ~= nil then
+      if type(item) == "number" then
+        item = to_semantic and source_units_to_degrees(item) or
+          degrees_to_source_units(item)
+      end
+      renames[#renames + 1] = { key, new_key, item }
+    end
+  end
+  for _, rename in ipairs(renames) do
+    value[rename[2]] = rename[3]
+    value[rename[1]] = nil
+  end
+  return value
+end
+local function reference_context(context)
+  local result = deepcopy(context)
+  legacy_projectile_coordinates(result.projectile_movement)
+  convert_bearings(result, false)
+  local direction = context.movement_direction_override
+  if direction ~= nil and MovementBearingDegrees[direction] ~= nil then
+    result.movement_heading_override = degrees_to_source_units(
+      MovementBearingDegrees[direction])
+  end
+  result.movement_direction_override = nil
+  return result
+end
+local function semantic_reference_context(context)
+  local source_heading = context.movement_heading_override
+  if type(source_heading) == "number" then
+    local degrees = source_units_to_degrees(source_heading)
+    for direction, value in pairs(MovementBearingDegrees) do
+      if value == degrees then
+        context.movement_direction_override = direction
+        break
+      end
+    end
+  end
+  context.movement_heading_override = nil
+  semanticize_projectile_coordinates(context.projectile_movement)
+  return convert_bearings(context, true)
+end
 -- The frozen differential reference still models the old source selector.
 local LEGACY_ITEM_POSE_SELECTOR = 0x40
 local SpellIdByActionCode = {
@@ -77,13 +239,19 @@ end
 -- Targeted generators: shape context/state so specific deep paths are reachable (coverage for spell/item chains,
 -- dynamic target actions, received hits and projectile impacts).
 local function projectile_source()
-  return { role = R(5) == 1 and "secondary" or "primary", active = R(6) ~= 1,
-    waiting_for_animation_end = R(2) == 1, impact_occurred = R(2) == 1,
+  local phase = R(6) == 1 and "inactive" or
+    R(2) == 1 and "awaiting_animation" or "flying"
+  return { role = R(5) == 1 and "secondary" or "primary", phase = phase,
+    impact_occurred = R(2) == 1,
     animation_finished = R(2) == 1, animation_action = "unchanged",
-    world_x = R(0, 0xffffff), world_y = R(0, 0xffffff),
-    tile_offset_x = R(-2, 2), tile_offset_y = R(-2, 2), remaining_clear_steps = R(0, 4), additional_shots_remaining = R(0, 2),
-    heading = R(0, 0xffff), saved_position_x = R(0, 0xffff), saved_position_y = R(0, 0xffff),
-    action_result = R(0, 255) }
+    position = { x = source_fixed_to_map(R(0, 0xffffff)),
+      y = source_fixed_to_map(R(0, 0xffffff)) },
+    velocity = { x = R(-2, 2) / 0x100, y = R(-2, 2) / 0x100 },
+    remaining_flight_range = (R(0, 4) + 1) * 96,
+    shots_remaining = R(0, 2),
+    bearing_degrees = R(0, 0xffff) * 360 / 0x10000,
+    burst_origin = { x = R(0, 0xffff), y = R(0, 0xffff) },
+    attack_successes = R(0, 255) }
 end
 
 -- Keep the frozen pre-split reference in its original source-shaped format.
@@ -91,8 +259,8 @@ end
 -- counters; production Lua receives neither ROM field nor byte arithmetic.
 local function prepare_reference_projectile(v)
   if type(v) ~= "table" then return end
-  if type(v.remaining_clear_steps) == "number" and
-     type(v.additional_shots_remaining) == "number" then
+  if type(v.additional_shots_remaining) == "number" and
+     type(v.remaining_clear_steps) == "number" then
     v.flags = v.active and 0x01 or 0
     v.record_flags = (v.waiting_for_animation_end and 0x08 or 0) |
       (v.impact_occurred and 0x01 or 0)
@@ -105,6 +273,7 @@ local function prepare_reference_projectile(v)
     v.impact_occurred = nil
     v.animation_finished = nil
     v.animation_action = nil
+    v.phase = nil
   end
 end
 local function normalize_reference_projectile(v, seen)
@@ -149,6 +318,7 @@ local function normalize_reference_projectile(v, seen)
       v.animation_action = "unchanged"
     end
   end
+  semanticize_projectile_coordinates(v)
   for _, child in pairs(v) do normalize_reference_projectile(child, seen) end
 end
 local function canonical_animation_state(st, pose)
@@ -188,7 +358,8 @@ local SHAPE = {
   begin_dynamic_target_action = function(st, ctx)
     ctx.dynamic_world_encounter_actor = true; st.action_delay = -R(1, 10); st.target_motion_effect_active = false
     ctx.visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD; st.visual_profile_id = E.ActorVisualProfile.HUMAN_GUARD
-    st.movement_current_heading = 0x1000; ctx.initial_heading = 0x1000
+    st.movement_current_bearing_degrees = 22.5
+    ctx.initial_bearing_degrees = 22.5
   end,
   projectile_movement_snapshot = function(st, ctx) ctx.projectile_movement = projectile_source() end,
   projectile_heartbeat = function(st, ctx) ctx.projectile_movement = projectile_source(); st.attack_seed_resolved = R(2) == 1 end,
@@ -261,7 +432,7 @@ for _, name in ipairs(targets) do
   local bad = 0
   for t = 1, TRIALS do
     local ctx = H.context(pick({ "field_player_runner", "a1", "a2" }))
-    local st = random_state(ctx)
+    local st = convert_bearings(random_state(ctx), true)
     local canonical_animation = name == "advance_dynamic_actor_action_animation" or
       name == "advance_dynamic_actor_item_action_animation" or
       name == "advance_dynamic_actor_walk_animation"
@@ -269,27 +440,47 @@ for _, name in ipairs(targets) do
       SHAPE[name](st, ctx)
     end
     local extra = { pick({ H.cand(1), H.num(), nil, 1, 2 }), pick({ { action_result = H.num(), effect_started = H.bool(), spell_effect_slot = R(0, 7), combatant = H.bool() }, H.num(), nil, 0x1000 }), pick({ H.num(), nil, 0x1000 }) }
-    local others = {}
-    for i = 1, 2 do others["a" .. i] = random_state(ctx) end
+    local othersA, othersB = {}, {}
+    for i = 1, 2 do
+      local id = "a" .. i
+      othersA[id] = random_state(ctx)
+      othersB[id] = convert_bearings(deepcopy(othersA[id]), true)
+    end
     for k in pairs(gameA.actors) do gameA.actors[k] = nil; gameB.actors[k] = nil end
-    for k, v in pairs(others) do gameA.actors[k] = deepcopy(v); gameB.actors[k] = deepcopy(v) end
-    local sA, sB, cA, cB = deepcopy(st), deepcopy(st), deepcopy(ctx), deepcopy(ctx)
-    cB.ai_random_bound = ctx.ai_random_bound; cA.ai_random_bound = ctx.ai_random_bound
-    local xA, xB = deepcopy(extra), deepcopy(extra)
+    for k, v in pairs(othersA) do
+      gameA.actors[k] = deepcopy(v)
+      gameB.actors[k] = deepcopy(othersB[k])
+    end
+    local sB, cB = deepcopy(st), deepcopy(ctx)
+    cB.ai_random_bound = ctx.ai_random_bound
+    local xB = deepcopy(extra)
     for i = #logA, 1, -1 do logA[i] = nil end; for i = #logB, 1, -1 do logB[i] = nil end
     local argsA, argsB
     if ARGS[name] and t % 4 ~= 0 then
-      math.randomseed(SEED * 100003 + t); local a1 = ARGS[name](sA, cA)
       math.randomseed(SEED * 100003 + t); local b1 = ARGS[name](sB, cB)
-      argsA, argsB = a1, b1
+      argsB = b1
     else
-      argsA, argsB = { sA, cA, xA[1], xA[2], xA[3] }, { sB, cB, xB[1], xB[2], xB[3] }
+      argsB = { sB, cB, xB[1], xB[2], xB[3] }
+    end
+    local sA = convert_bearings(deepcopy(sB), false)
+    local cA = reference_context(cB)
+    local xA = convert_bearings(deepcopy(xB), false)
+    if argsB[1] == sB and argsB[2] == cB then
+      argsA = { sA, cA, xA[1], xA[2], xA[3] }
+    else
+      argsA = convert_bearings(deepcopy(argsB), false,
+        { [sB] = sA, [cB] = cA, [xB] = xA })
     end
     prepare_reference_projectile(cA.projectile_movement)
     _G.game = gameA; local ra = table.pack(pcall(fa, table.unpack(argsA, 1, 5)))
     _G.game = gameB; local rb = table.pack(pcall(fb, table.unpack(argsB, 1, 5)))
     normalize_reference_projectile(ra)
     normalize_reference_projectile(cA)
+    convert_bearings(ra, true)
+    convert_bearings(sA, true)
+    semantic_reference_context(cA)
+    convert_bearings(gameA.actors, true)
+    convert_bearings(xA, true)
     if name == "begin_player_melee" then
       -- ROM 0xB29E..0xB2EA adds this player-only child request after a changed
       -- 0x55C76 meter result. The frozen bfa3908 helper predates that source

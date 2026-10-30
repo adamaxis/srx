@@ -8,7 +8,7 @@ local TRIALS = tonumber(arg[1]) or 2000
 local SEED = tonumber(arg[2]) or 1
 local Enums = require("enums")
 local VisualProfile = Enums.ActorVisualProfile
-local MovementHeading = Enums.MovementHeading
+local MovementBearingDegrees = Enums.MovementBearingDegrees
 local MovementDirection = Enums.MovementDirection
 
 local function ser(v, seen, depth)
@@ -40,9 +40,19 @@ end
 local function b(h, n) return ((h >> n) & 1) == 1 end
 TYPED = {
   ["movement.collision"] = function(h) return ((h >> 3) % 0xA0) - 0x20, (h >> 9) % 8 end,
-  ["movement.projectile_terrain"] = function(h) return (h >> 3) % 4, b(h, 8), b(h, 9) end,
+  ["movement.projectile_terrain"] = function(h)
+    return { blocked = (h >> 3) % 4 ~= 0,
+      boundary_active = b(h, 8), outside_map = b(h, 9) }
+  end,
   ["movement.projectile_collision"] = function(h)
-    return b(h, 2), b(h, 3), (h >> 4) % 0x10000, (h >> 12) % 0x10000, b(h, 20) and ("a" .. (h % 3)) or nil end,
+    local hit = b(h, 2)
+    local has_position = hit and b(h, 3)
+    return { kind = not hit and "none" or has_position and "target_hit" or
+        "linked_followup",
+      target_position = has_position and {
+        x = (h >> 4) % 0x10000, y = (h >> 12) % 0x10000 } or nil,
+      target_id = hit and b(h, 20) and ("a" .. (h % 3)) or nil }
+  end,
   ["movement.recover_collision"] = function(h) return b(h, 2), (h >> 4) % 0x100 end,
   ["movement.route"] = function(h) return { primary_marker = (h % 3) - 1, secondary_marker = ((h >> 2) % 3) - 1,
       primary_fallback_slot = (h >> 4) % 16, secondary_fallback_slot = (h >> 8) % 16 } end,
@@ -54,18 +64,51 @@ TYPED = {
       next_action_kind = ({ "none", "item", "spell" })[h % 3 + 1] } end,
   ["magic.actor_effect_profile"] = function(h) return { duration = (h >> 3) % 64, kind = h % 4 } end,
 }
-local function make_game(log)
+local function make_game(log, legacy_services)
   local count = 0
   local function svc(path)
     return setmetatable({}, { __index = function(_, name)
       local full = path .. "." .. name
       return function(...)
         count = count + 1
-        local a = ser({ ... })
-        log[#log + 1] = full .. a
-        local h = hash(full .. a .. count)
+        local arguments = { ... }
+        if full == "movement.projectile_terrain" or
+           full == "movement.projectile_collision" then
+          for index = 1, 2 do
+            if type(arguments[index]) == "number" then
+              arguments[index] = math.floor(arguments[index]) % 0x10000
+            end
+          end
+        end
+        local semantic_geometry = full == "entity_motion.heading_offsets"
+        local logged_full = full
+        if semantic_geometry and type(arguments[1]) == "number" then
+          logged_full = "movement.projectile_step_offsets"
+          arguments[1] = (arguments[1] % 0x10000) * 360 / 0x10000
+        end
+        local a = ser(arguments)
+        if not semantic_geometry then log[#log + 1] = logged_full .. a end
+        local h = hash(logged_full .. a .. count)
         local T = TYPED[full]
-        if T and h % 7 ~= 0 then return T(h) end
+        if T and h % 7 ~= 0 then
+          if semantic_geometry then
+            local step = require("entity_motion").projectile_step(
+              arguments[1])
+            return { horizontal = math.floor(step.x * 256),
+              vertical = math.floor(step.y * 256) }
+          end
+          local result = T(h)
+          if legacy_services and full == "movement.projectile_terrain" then
+            return result.blocked and 1 or 0,
+              result.boundary_active, result.outside_map
+          end
+          if legacy_services and full == "movement.projectile_collision" then
+            local position = result.target_position or {}
+            return result.kind ~= "none", result.kind == "target_hit",
+              position.x or 0, position.y or 0, result.target_id
+          end
+          return result
+        end
         local k = h % 5
         if k == 0 then return nil
         elseif k == 1 then return h % 3 == 0
@@ -86,7 +129,7 @@ end
 
 -- load implementations, each with its own game
 local logA, logB = {}, {}
-local gameA, gameB = make_game(logA), make_game(logB)
+local gameA, gameB = make_game(logA, true), make_game(logB, false)
 local Items = require("items")
 gameA.modules.items = Items
 gameB.modules.items = Items
@@ -119,6 +162,13 @@ local function num()
   if k == 1 then return 0 elseif k == 2 then return R(0, 15) elseif k == 3 then return R(0, 0xff)
   elseif k == 4 then return R(0, 0xffff) elseif k == 5 then return R(1, 8) else return pick({ 0x28, 15, 0x10, 0x20, 0x80 }) end
 end
+local function bearing()
+  local source_units = R(0, 0xffff)
+  return source_units * 360 / 0x10000
+end
+local function source_heading(degrees)
+  return math.floor((degrees % 360) * 0x10000 / 360 + 0.5) % 0x10000
+end
 local function maybe(f) if R(5) == 1 then return nil end return f() end
 local function bool() return R(2) == 1 end
 local rom_controller_headings = {
@@ -139,13 +189,14 @@ local function cand(i)
   return { id = "a" .. R(4), combatant = bool(), has_action = bool(), service_flags = num(), behavior_flags = num(),
            spawn_state_flags = num(), source_record_slot = R(0, 7), world_activity_actor = bool(),
            direct_route_step_cost = num(), direct_route_distance = num(), perpendicular_route_distance = num(),
-           perpendicular_route_step_cost = num(), distance = num(), heading = num(), world_x = num(), world_y = num(),
-           source_record_heading = num() }
+           perpendicular_route_step_cost = num(), distance = num(),
+           bearing_degrees = bearing(), world_x = num(), world_y = num(),
+           facing_degrees = bearing() }
 end
 local function list(f, n) local t = {} for i = 1, R(0, n) do t[i] = f(i) end return t end
 local function mstate()
-  return { animation_heading = num(), collision_context = num(), collision_extent = num(),
-           heading = num(), position_x = num(), position_y = num(), route_status = num(),
+  return { animation_bearing_degrees = bearing(), collision_context = num(), collision_extent = num(),
+           bearing_degrees = bearing(), position_x = num(), position_y = num(), route_status = num(),
            terrain_collision_code = num(), substate_update = "unchanged",
            cardinal_direction = R(0, 3), mark_reset_after_block = bool(),
            mark_directional_fallback = bool(), clear_collision_recovery = bool(),
@@ -218,7 +269,7 @@ local function context(actor)
     action_item_id = action_item and action_item.id or nil,
     action_spell_id = action_spell_id,
     phase = pick({ "behavior", "render", "behavior" }), spawn = R(6) == 1,
-    initial_heading = num(), entry_delay = R(0, 16), entry_animation_frame_count = R(1, 8),
+    initial_bearing_degrees = bearing(), entry_delay = R(0, 16), entry_animation_frame_count = R(1, 8),
     source_record_flags = R(4) == 1 and 0 or 1, source_record_slot = R(0, 7), combatant = bool(),
     ai_target_candidates = maybe(function() return list(cand, 4) end),
     world_target_selection_candidates = maybe(function() return list(cand, 3) end),
@@ -242,8 +293,6 @@ local function context(actor)
     hold_for_ending_activity = false,
     projectile_attack_seed_pending = bool(), projectile_animation = bool(), projectile_movement = maybe(mstate),
     movement_direction_override = movement_direction_override,
-    movement_heading_override = movement_direction_override and
-        MovementHeading[movement_direction_override] or nil,
     item_action_threshold = num(), item_action_increment = num(),
     item_action_frame_count = R(1, 8), hurt_audio_event = num(), hurt_animation_threshold = num(),
     hurt_animation_increment = num(), hurt_animation_frame_count = R(1, 8), down_audio_event = num(),
@@ -269,6 +318,50 @@ local function deepcopy(v, seen)
   local c = {} seen[v] = c
   for k, x in pairs(v) do c[deepcopy(k, seen)] = deepcopy(x, seen) end
   return c
+end
+local legacy_bearing_fields = {
+  initial_heading = "initial_bearing_degrees",
+  heading = "bearing_degrees",
+  source_record_heading = "facing_degrees",
+  movement_heading = "movement_bearing_degrees",
+  movement_current_heading = "movement_current_bearing_degrees",
+  ai_target_heading = "ai_target_bearing_degrees",
+  strike_heading = "strike_bearing_degrees",
+  watch_heading = "watch_bearing_degrees",
+  animation_heading = "animation_bearing_degrees",
+}
+local semantic_bearing_fields = {
+  initial_bearing_degrees = true,
+  bearing_degrees = true,
+  facing_degrees = true,
+  movement_bearing_degrees = true,
+  movement_current_bearing_degrees = true,
+  ai_target_bearing_degrees = true,
+  strike_bearing_degrees = true,
+  watch_bearing_degrees = true,
+  animation_bearing_degrees = true,
+}
+local function canonicalize_bearings(value)
+  if type(value) ~= "table" then return value end
+  local renames = {}
+  for key, item in pairs(value) do
+    canonicalize_bearings(item)
+    local canonical_name = legacy_bearing_fields[key]
+    if canonical_name ~= nil and type(item) == "number" then
+      renames[#renames + 1] = { key, canonical_name, item, true }
+    elseif semantic_bearing_fields[key] and type(item) == "number" then
+      renames[#renames + 1] = { key, key, item, false }
+    end
+  end
+  for _, rename in ipairs(renames) do
+    local old_key, canonical_name, value_number, is_legacy =
+      rename[1], rename[2], rename[3], rename[4]
+    local source_units = is_legacy and (value_number % 0x10000) or
+      source_heading(value_number)
+    value[canonical_name] = source_units * 360 / 0x10000
+    if old_key ~= canonical_name then value[old_key] = nil end
+  end
+  return value
 end
 local function modifier_flags(modifier)
   if modifier == 4 then return 1 << 12 end
@@ -296,8 +389,33 @@ local function legacy_posture_from_behavior_profile(profile)
 end
 local function legacy_context_for_reference(context)
   local legacy = deepcopy(context)
+  legacy.initial_heading = source_heading(context.initial_bearing_degrees)
+  legacy.initial_bearing_degrees = nil
+  local function source_actor_bearings(value)
+    if type(value) ~= "table" then return end
+    if type(value.bearing_degrees) == "number" then
+      value.heading = source_heading(value.bearing_degrees)
+      value.bearing_degrees = nil
+    end
+    if type(value.facing_degrees) == "number" then
+      value.source_record_heading = source_heading(value.facing_degrees)
+      value.facing_degrees = nil
+    end
+    if type(value.animation_bearing_degrees) == "number" then
+      value.animation_heading = source_heading(value.animation_bearing_degrees)
+      value.animation_bearing_degrees = nil
+    end
+    for _, item in pairs(value) do
+      if type(item) == "table" then source_actor_bearings(item) end
+    end
+  end
+  source_actor_bearings(legacy.ai_target_candidates)
+  source_actor_bearings(legacy.world_target_selection_candidates)
+  source_actor_bearings(legacy.projectile_combat_targets)
+  source_actor_bearings(legacy.movement_state)
+  source_actor_bearings(legacy.projectile_movement)
   legacy.movement_heading_override = context.movement_direction_override and
-      MovementHeading[context.movement_direction_override] or nil
+      source_heading(MovementBearingDegrees[context.movement_direction_override]) or nil
   legacy.entity_kind = SourceKindByVisualProfile[context.visual_profile_id]
   legacy.visual_profile_id = nil
   -- The frozen pre-port reference still consumes +0x4D. Keep that old
@@ -324,7 +442,7 @@ local function legacy_context_for_reference(context)
   return legacy
 end
 local function serialize_context_for_parity(context)
-  local comparable = deepcopy(context)
+  local comparable = canonicalize_bearings(deepcopy(context))
   if comparable.visual_profile_id == nil then
     comparable.visual_profile_id =
       VisualProfileBySourceKind[comparable.entity_kind]
@@ -354,7 +472,7 @@ local function serialize_context_for_parity(context)
   return ser(comparable)
 end
 local function serialize_actor_states_for_parity(actors)
-  local comparable = deepcopy(actors)
+  local comparable = canonicalize_bearings(deepcopy(actors))
   for _, state in pairs(comparable) do
     if type(state) == "table" then
       if type(state.movement_step) == "table" then
@@ -390,7 +508,7 @@ local function serialize_actor_states_for_parity(actors)
   return ser(comparable)
 end
 local function serialize_result_for_parity(result)
-  local comparable = deepcopy(result)
+  local comparable = canonicalize_bearings(deepcopy(result))
   if type(comparable) == "table" and
      type(comparable.movement_step) == "table" then
     comparable.movement_step.direction_animation = nil

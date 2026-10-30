@@ -28,8 +28,8 @@ local function snapshot(state, action, audio_event, projectile_movement,
     end
     local combat_meter_update = state.combat_meter_update
     state.combat_meter_update = nil
-    local strike_heading = state.strike_heading
-    state.strike_heading = nil
+    local strike_bearing_degrees = state.strike_bearing_degrees
+    state.strike_bearing_degrees = nil
     local hit_spark_spawn_request = state.hit_spark_spawn_request
     state.hit_spark_spawn_request = nil
     local result = {
@@ -66,13 +66,13 @@ local function snapshot(state, action, audio_event, projectile_movement,
         combat_action_requested = state.combat_action_requested,
         audio_event = audio_event,
         target_heading_audio_event = target_heading_audio_event,
-        strike_heading = strike_heading,
+        strike_bearing_degrees = strike_bearing_degrees,
         weapon_item_id = state.weapon_item_id,
-        movement_heading = state.movement_heading,
-        movement_current_heading = state.movement_current_heading,
+        movement_bearing_degrees = state.movement_bearing_degrees,
+        movement_current_bearing_degrees = state.movement_current_bearing_degrees,
         movement_route_distance = state.movement_route_distance,
         ai_target_id = state.ai_target_id,
-        ai_target_heading = state.ai_target_heading,
+        ai_target_bearing_degrees = state.ai_target_bearing_degrees,
         ai_target_distance = state.ai_target_distance,
         ai_target_engaged = state.ai_target_engaged,
         target_motion_delay = state.target_motion_delay,
@@ -484,7 +484,7 @@ local function advance_player_animation(state, context)
     if type(context.animation_direction_override) == "number" then
         state.direction = context.animation_direction_override & 0x7
     else
-        state.direction = R.direction_from_heading(context.initial_heading)
+        state.direction = R.direction_from_bearing_degrees(context.initial_bearing_degrees)
     end
 
     local runner_hurt = context.animation_mode == "runner_hurt" or

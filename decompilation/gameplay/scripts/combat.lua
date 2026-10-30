@@ -1218,7 +1218,7 @@ function Combat.resolve_weapon_attack_seed(context)
         return nil
     end
     -- 0x55640 publishes the same byte to the runner and new primary record.
-    return signed_byte(successes)
+    return successes
 end
 
 local function primary_armor_modifier(target)
@@ -1254,7 +1254,7 @@ local function resolve_weapon_action_value(context, projectile,
 
     -- ROM 0x559BC subtracts the target roll from the projectile's +0x9F seed
     -- using a signed byte, then adds that delta to 0x55948's effect value.
-    local delta = signed_byte(projectile.action_result - successes)
+    local delta = signed_byte(projectile.attack_successes - successes)
     local action_value = source_action.effect_value
     if delta < 0 then
         action_value = signed_byte(add_source_byte(action_value, delta))
@@ -1291,6 +1291,9 @@ end
 
 function Combat.resolve_weapon_hit(context, projectile, target)
     if type(context) ~= "table" or type(projectile) ~= "table" or
+       type(projectile.attack_successes) ~= "number" or
+       projectile.attack_successes < 0 or
+       projectile.attack_successes ~= math.floor(projectile.attack_successes) or
        type(target) ~= "table" or type(target.combatant) ~= "table" or
        type(context.ai_random_bound) ~= "function" or
        type(target.id) ~= "string" or target.id == "" then

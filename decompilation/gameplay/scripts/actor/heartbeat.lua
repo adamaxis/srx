@@ -28,7 +28,7 @@ function ActorAI.heartbeat(context)
     end
     local profile = R.source_profile(context)
     if profile == nil or type(context.actor_id) ~= "string" or
-       context.actor_id == "" or type(context.initial_heading) ~= "number" or
+       context.actor_id == "" or type(context.initial_bearing_degrees) ~= "number" or
        type(context.entry_delay) ~= "number" or context.entry_delay < 0 or
        context.entry_delay >
            (context.dynamic_world_encounter_actor and EntryDelayMax.DYNAMIC_ENCOUNTER or EntryDelayMax.STATIC) or
@@ -61,12 +61,12 @@ function ActorAI.heartbeat(context)
                 context.combat_input_blocked ~= true
             state.movement_step = nil
             if context.phase == "behavior" then
-                state.movement_heading =
-                    R.requested_movement_heading(context, profile, state)
-                if state.movement_heading ~= nil then
-                    state.movement_current_heading = R.approach_heading(
-                        state.movement_current_heading,
-                        state.movement_heading)
+                state.movement_bearing_degrees =
+                    R.requested_movement_bearing_degrees(context, profile, state)
+                if state.movement_bearing_degrees ~= nil then
+                    state.movement_current_bearing_degrees = R.approach_bearing_degrees(
+                        state.movement_current_bearing_degrees,
+                        state.movement_bearing_degrees)
                     state.movement_step = R.finish_entity_movement(
                         context, R.advance_entity_movement(context, state))
                 end
@@ -81,7 +81,7 @@ function ActorAI.heartbeat(context)
         return nil
     end
     state.source_action_dispatch = nil
-    state.strike_heading = nil
+    state.strike_bearing_degrees = nil
     state.spell_action_resolution = nil
     local incoming_facts = context.actor_facts
     if type(incoming_facts) ~= "table" then
@@ -249,7 +249,7 @@ function ActorAI.heartbeat(context)
             state.movement_step = nil
             if not profile.dynamic_encounter_only and
                not profile.source_profile_patrol then
-                state.movement_heading = nil
+                state.movement_bearing_degrees = nil
             end
             if profile.dynamic_encounter_only or profile.source_profile_patrol then
                 if state.animation_id == "action" then
@@ -269,11 +269,12 @@ function ActorAI.heartbeat(context)
                         return nil
                     end
                 else
-                    local facing_heading = state.ai_target_engaged
-                        and state.ai_target_heading or
-                        state.movement_current_heading or
-                        context.initial_heading
-                    state.direction = R.direction_from_heading(facing_heading)
+                    local facing_bearing_degrees = state.ai_target_engaged
+                        and state.ai_target_bearing_degrees or
+                        state.movement_current_bearing_degrees or
+                        context.initial_bearing_degrees
+                    state.direction = R.direction_from_bearing_degrees(
+                        facing_bearing_degrees)
                     state.animation_id = "idle"
                     state.animation_frame = 0
                     if not R.advance_dynamic_actor_idle_animation(state) then
@@ -313,7 +314,7 @@ function ActorAI.heartbeat(context)
                         -- service passes; +0x3A continues movement each pass.
                         -- Lua's typed patrol/follow destination remains active
                         -- here while the source continuation advances it [C].
-                        R.requested_movement_heading(context, profile, state)
+                        R.requested_movement_bearing_degrees(context, profile, state)
                         local target
                         if context.action_kind == ActionKind.item or
                            context.action_kind == ActionKind.spell then
@@ -323,7 +324,7 @@ function ActorAI.heartbeat(context)
                             target = R.linked_target(context, state)
                             if type(target) == "table" then
                                 state.ai_target_id = target.id
-                                state.ai_target_heading = target.heading
+                                state.ai_target_bearing_degrees = target.bearing_degrees
                                 state.ai_target_distance = target.distance
                             end
                         else
@@ -398,9 +399,9 @@ function ActorAI.heartbeat(context)
                                                  spell_resolution)
                             elseif state.animation_id ~= "spell" then
                                 local route_heading =
-                                    R.source_motion_destination_heading(
+                                    R.source_motion_destination_bearing_degrees(
                                         context, state, target)
-                                state.movement_heading = route_heading
+                                state.movement_bearing_degrees = route_heading
                                 state.movement_active = route_heading ~= nil
                                 if not state.movement_active then
                                     state.movement_route_distance = nil
@@ -410,9 +411,9 @@ function ActorAI.heartbeat(context)
                             -- Nonnegative +0x56 never enters 0x14C7C / 0xB1DC.
                             state.ai_target_engaged = false
                             local route_heading =
-                                R.source_motion_destination_heading(
+                                R.source_motion_destination_bearing_degrees(
                                     context, state, target)
-                            state.movement_heading = route_heading
+                            state.movement_bearing_degrees = route_heading
                             state.movement_active = route_heading ~= nil
                             if not state.movement_active then
                                 state.movement_route_distance = nil
@@ -437,15 +438,15 @@ function ActorAI.heartbeat(context)
                             local route_heading = nil
                             if context.movement_allowed and
                                type(target) == "table" and
-                               type(target.heading) == "number" and
+                               type(target.bearing_degrees) == "number" and
                                type(target.distance) == "number" then
-                                route_heading = target.heading & 0xffff
+                                route_heading = target.bearing_degrees
                                 state.movement_route_distance =
                                     target.distance & 0xffff
                             else
                                 state.movement_route_distance = nil
                             end
-                            state.movement_heading = route_heading
+                            state.movement_bearing_degrees = route_heading
                             state.movement_active = route_heading ~= nil
                         else
                             audio_event, target_heading_audio_event =
@@ -459,33 +460,33 @@ function ActorAI.heartbeat(context)
                     -- +0x34 heading by 0x0800 and advances using +0xC8, which
                     -- 0x145A2 measured to the selected route destination.
                     if state.transition_complete and state.movement_active then
-                        state.movement_current_heading = R.approach_heading(
-                            state.movement_current_heading,
-                            state.movement_heading)
+                        state.movement_current_bearing_degrees = R.approach_bearing_degrees(
+                            state.movement_current_bearing_degrees,
+                            state.movement_bearing_degrees)
                         state.movement_step = R.finish_entity_movement(
                             context,
                             R.advance_entity_movement(context, state))
                         if state.movement_step ~= nil and
                            state.movement_step.state ~= nil then
-                            state.direction = R.movement_direction_from_heading(
+                            state.direction = R.movement_direction_from_bearing_degrees(
                                 context,
-                                state.movement_step.state.animation_heading)
+                                state.movement_step.state.animation_bearing_degrees)
                         end
                     end
                 end
             else
-                state.movement_heading =
-                    R.requested_movement_heading(context, profile, state)
-                if state.movement_heading ~= nil then
-                    state.movement_current_heading = R.approach_heading(
-                        state.movement_current_heading,
-                        state.movement_heading)
+                state.movement_bearing_degrees =
+                    R.requested_movement_bearing_degrees(context, profile, state)
+                if state.movement_bearing_degrees ~= nil then
+                    state.movement_current_bearing_degrees = R.approach_bearing_degrees(
+                        state.movement_current_bearing_degrees,
+                        state.movement_bearing_degrees)
                     state.movement_step = R.finish_entity_movement(
                         context, R.advance_entity_movement(context, state))
                     if state.movement_step ~= nil and
                        state.movement_step.state ~= nil then
-                        state.direction = R.direction_from_heading(
-                            state.movement_step.state.animation_heading)
+                        state.direction = R.direction_from_bearing_degrees(
+                            state.movement_step.state.animation_bearing_degrees)
                     end
                 end
             end
@@ -501,7 +502,7 @@ function ActorAI.heartbeat(context)
         -- the meter reaches zero; it is never a spawn sequence.
         return R.snapshot(state, action, nil)
     end
-    state.movement_heading = nil
+    state.movement_bearing_degrees = nil
 
     -- The seeded delay is the +0xB6 think timer 0x13904 counts down; the
     -- actor stays live (idle, hittable) meanwhile. No death list, no cue.
