@@ -9414,7 +9414,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
         world.field = field_matrix_field_state_;
         world.datastore = make_matrix_datastore_facts(
             notebook_tip_flags_, notebook_tip_flags_resolved_,
-            field_exit_world_flags_, group_item_flags_, field_funds_,
+            group_item_flags_, field_funds_,
             notebook_referral_flags_);
         const auto scene_reference =
             state_.field_scene_buffers.scene_reference;
@@ -9455,8 +9455,7 @@ void FieldSceneRuntime::configure_field_menu_route() {
         if (update.datastore.has_value()) {
             apply_matrix_datastore_facts(
                 *update.datastore, notebook_tip_flags_,
-                notebook_tip_flags_resolved_, field_exit_world_flags_,
-                group_item_flags_, field_funds_, notebook_referral_flags_);
+                notebook_tip_flags_resolved_, field_funds_);
         }
         const auto scene_reference =
             state_.field_scene_buffers.scene_reference;

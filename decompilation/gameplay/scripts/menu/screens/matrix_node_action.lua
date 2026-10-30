@@ -9,6 +9,7 @@ local MatrixRules = require("menu.rules.matrix")
 local MatrixCombat = require("menu.rules.matrix_combat")
 local DeckRules = require("menu.rules.deck")
 local MatrixPrograms = require("menu.rules.matrix_programs")
+local MatrixRunCatalog = require("data.matrix_run_catalog")
 
 local M = { window = E.WindowPlane.OFF }
 local CONFIRM = P.A | P.B | P.C
@@ -534,7 +535,9 @@ local function finish_transfer_search(st, ctx)
     local node = MatrixSession.current_node(st.matrix_state)
     local world = MatrixSession.world_state(game)
     local special = world.datastore
-    if special then special.system_id = st.system_id end
+    if special then
+        special.system_key = MatrixRunCatalog.special_system_keys[st.system_id]
+    end
     local party = game.party()
     local runner = party[game.active_slot()]
     local deck = game.deck_record()

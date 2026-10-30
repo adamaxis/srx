@@ -1,373 +1,258 @@
--- rules/datastore_special.lua: AUTO-TRANSLATED from ROM 0x55058..0x5559C (tools/translate_55058.py logic, 2026-10-15) [C].
--- Story datafiles: called by Transfer Data before the random file. Returns true when this datastore (system FFFBBC,
--- node file class d0 = node +1) yields a story file: the bit in FFFC38 (or FFFC34 for system 0x12) is set (text 0x166968).
--- r = { system_id, tips_page3_flags, world_event_flags,
---       group_item_flags, fbfa, fbfb, fc26, mr_johnsons_met_flags, nuyen }.
--- Available facts are updated in place; absent source facts remain gated.
--- Quirk kept [C]: system 0x10 class 1 needs bits 0x1A..0x1E of FFFC38 and pays +50,000 nuyen (0xC350).
-local function s8(v) v = v & 0xFF; return v >= 0x80 and v - 0x100 or v end
--- The host currently resolves these system/class pairs from typed facts.
--- Other branches also read FFFBFA/FB, FFFC26, or additional FFFC22 bits;
--- leave those explicit until the host has the matching source facts.
-local SUPPORTED = {
-    [7]  = { ["Marketing Data"] = true },
-    [16] = { ["System Files"] = true },
-    [17] = { ["Outdated Files"] = true, ["Financial Data"] = true },
-    [19] = { ["Outdated Files"] = true, ["Prisoner Files"] = true },
-    [20] = { ["Confidntl Data"] = true },
-    [21] = {
-        ["Mngmnt Files"] = true, ["Project Files"] = true,
-        ["Confidntl Data"] = true,
+-- Native story-file rules for Matrix datastores. The host adapter turns save
+-- records into named collection facts; this module never reads or edits flag
+-- words. ROM 0x55058 selects these outcomes before ordinary search detection.
+local E = require("enums")
+local StoryFlags = require("story_flags")
+
+local M = {}
+
+-- Normalize the ROM's displayed file-category labels at the menu boundary.
+-- Rule tables below use stable names that do not inherit source spelling.
+local CATEGORY_BY_LABEL = {
+    ["Outdated Files"] = "outdated_files",
+    ["System Files"] = "system_files",
+    ["Mngmnt Files"] = "management_files",
+    ["Project Files"] = "project_files",
+    ["Security Files"] = "security_files",
+    ["Marketing Data"] = "marketing_data",
+    ["Financial Data"] = "financial_data",
+    ["Confidntl Data"] = "confidential_data",
+    ["Prisoner Files"] = "prisoner_files",
+    ["Case Files"] = "case_files",
+}
+
+local function category_key(label)
+    if type(label) ~= "string" then return nil end
+    local normalized = label:match("^%s*(.-)%s*$")
+    return CATEGORY_BY_LABEL[normalized]
+end
+
+local function outcome(name, when, wallet_reward)
+    return { fact = name, when = when, wallet_reward = wallet_reward }
+end
+
+local function story_flag_is(flag, expected)
+    local value = StoryFlags.is_set(flag)
+    if value == nil then return nil end
+    return value == expected
+end
+
+local function fact_is(facts, name, expected)
+    local value = facts[name]
+    if value == nil then return nil end
+    return value == expected
+end
+
+local function has_story_flag(flag)
+    return function()
+        return story_flag_is(flag, true)
+    end
+end
+
+local function lacks_story_flag(flag)
+    return function()
+        return story_flag_is(flag, false)
+    end
+end
+
+local function either_story_flag(first, second)
+    local first_value = StoryFlags.is_set(first)
+    local second_value = StoryFlags.is_set(second)
+    if first_value == true or second_value == true then return true end
+    if first_value == nil or second_value == nil then return nil end
+    return false
+end
+
+-- Ordered outcomes preserve the source handler's fall-through order when a
+-- system offers more than one report in a category.
+local RULES = {
+    -- [C] ROM 0x550F4..0x55134: Gates financial and outdated files.
+    gates_undersound = {
+        financial_data = {
+            outcome("gates_financial_file_collected",
+                has_story_flag(E.StoryFlag.MAKO_DEFEATED)),
+        },
+        outdated_files = {
+            outcome("gates_outdated_file_collected"),
+        },
     },
-    [22] = { ["Mngmnt Files"] = true, ["Security Files"] = true },
-    [23] = { ["Financial Data"] = true, ["Prisoner Files"] = true },
-    [24] = { ["Confidntl Data"] = true },
+    -- [C] ROM 0x55138..0x55158: Aztechnology confidential files.
+    aztechnology = {
+        confidential_data = {
+            outcome("aztechnology_confidential_file_collected"),
+        },
+    },
+    -- [C] ROM 0x5515C..0x551BC: Fuchi management, security, and follow-up.
+    fuchi = {
+        management_files = {
+            outcome("fuchi_management_file_collected",
+                lacks_story_flag(E.StoryFlag.HEART_DELIVERED)),
+        },
+        security_files = {
+            outcome("fuchi_security_file_collected",
+                lacks_story_flag(E.StoryFlag.HEART_DELIVERED)),
+            outcome("fuchi_security_followup_collected", function(r)
+                local heart_delivered = StoryFlags.is_set(
+                    E.StoryFlag.HEART_DELIVERED)
+                if heart_delivered == true then return true end
+                if heart_delivered == nil then return nil end
+                return fact_is(r, "fuchi_security_file_collected", true)
+            end),
+        },
+    },
+    -- [C] ROM 0x551C0..0x55220: Mitsuhama confidential/security files.
+    mitsuhama = {
+        confidential_data = {
+            outcome("mitsuhama_confidential_file_collected"),
+        },
+        security_files = {
+            outcome("mitsuhama_security_file_collected",
+                lacks_story_flag(E.StoryFlag.ARAGORN_FOUND)),
+        },
+    },
+    -- [C] ROM 0x55224..0x55302: Lone Star case, prisoner, and financial files.
+    lone_star = {
+        prisoner_files = {
+            outcome("lone_star_prisoner_file_collected", function(r)
+                return fact_is(r, "johnson_contact_recorded", true)
+            end),
+        },
+        financial_data = {
+            outcome("lone_star_financial_file_collected",
+                lacks_story_flag(E.StoryFlag.HEART_DELIVERED)),
+        },
+    },
+    -- [C] ROM 0x55302..0x55346: Ares confidential file and Ilene follow-up.
+    ares = {
+        confidential_data = {
+            outcome("ares_confidential_file_collected"),
+            outcome("ares_confidential_followup_collected", function(r)
+                local primary = fact_is(
+                    r, "ares_confidential_file_collected", true)
+                if primary ~= true then return primary end
+                return story_flag_is(E.StoryFlag.ILENE_MET, false)
+            end),
+        },
+    },
+    -- [C] ROM 0x55346..0x553B2: Hollywood prisoner and outdated files.
+    hollywood = {
+        prisoner_files = {
+            outcome("hollywood_prisoner_file_collected", function()
+                return story_flag_is(E.StoryFlag.ILENE_MET, false)
+            end),
+        },
+        outdated_files = {
+            outcome("hollywood_outdated_file_collected", function(r)
+                return fact_is(r, "johnson_contact_recorded", true)
+            end),
+        },
+    },
+    -- [C] ROM 0x553B2..0x55526: Renraku report sequence and prerequisites.
+    renraku = {
+        confidential_data = {
+            outcome("renraku_confidential_file_collected"),
+            outcome("renraku_confidential_followup_collected", function(r)
+                local primary = fact_is(
+                    r, "renraku_confidential_file_collected", true)
+                if primary ~= true then return primary end
+                return either_story_flag(E.StoryFlag.MAKO_DEFEATED,
+                                         E.StoryFlag.MICHAEL_MISSION_TOLD)
+            end),
+        },
+        project_files = {
+            outcome("renraku_shaman_project_report_collected", function()
+                local pelt_given = StoryFlags.is_set(
+                    E.StoryFlag.SHAMAN_PELT_GIVEN)
+                if pelt_given == nil then return nil end
+                if pelt_given ~= true then return false end
+                return story_flag_is(E.StoryFlag.SERPENT_SCALE_TAKEN, false)
+            end),
+            outcome("renraku_mako_project_report_collected",
+                has_story_flag(E.StoryFlag.MAKO_DEFEATED)),
+            outcome("renraku_michael_project_report_collected", function()
+                return either_story_flag(E.StoryFlag.MICHAEL_ALIAS_LEARNED,
+                                         E.StoryFlag.MICHAEL_MISSION_TOLD)
+            end),
+            outcome("renraku_map_project_report_collected", function(r)
+                return fact_is(r, "renraku_map_overlay_collected", true)
+            end),
+        },
+        management_files = {
+            outcome("renraku_management_file_collected",
+                has_story_flag(E.StoryFlag.MICHAEL_ALIAS_LEARNED)),
+        },
+    },
+    -- [C] ROM 0x5507C..0x550F0: Ito's four categories use the second page.
+    ito_passcode = {
+        project_files = {
+            outcome("ito_project_file_collected"),
+        },
+        confidential_data = {
+            outcome("ito_confidential_file_collected"),
+        },
+        financial_data = {
+            outcome("ito_financial_file_collected"),
+        },
+        management_files = {
+            outcome("ito_management_file_collected"),
+        },
+    },
+    -- [C] ROM 0x55526..0x55578: UCAS research report and wallet reward.
+    ucas_federal_government = {
+        system_files = {
+            outcome("ucas_virology_report_collected", function(r)
+                local research_complete = r.ucas_virology_research_complete
+                if research_complete == nil then return nil end
+                if research_complete ~= true then return false end
+                return type(r.nuyen) == "number"
+            end, 50000),
+        },
+    },
 }
--- ROM 0x55088..0x550EA selects four one-time reports by Matrix file category.
--- Their save bits are decoded by the native Notebook adapter.
-local SYSTEM18_REPORTS = {
-    ["Project Files"] = "system18_project_file_collected",
-    ["Confidntl Data"] = "system18_confidential_file_collected",
-    ["Financial Data"] = "system18_financial_file_collected",
-    ["Mngmnt Files"] = "system18_management_file_collected",
-}
-local function can_match(r, node_class)
-    if not r or r.system_id == nil then return false end
-    local system_id = s8(r.system_id)
-    if system_id == 18 then
-        local report = SYSTEM18_REPORTS[node_class]
-        return report ~= nil and r[report] == false
-    end
-    if system_id == 16 and node_class == "System Files" then
-        return r.virology_research_complete == true and
-               r.virology_report_collected == false and r.nuyen ~= nil
-    end
-    local required_tip_flags = r.tips_page3_flags
-    if not SUPPORTED[system_id] or
-       not SUPPORTED[system_id][node_class] or
-       required_tip_flags == nil or
-       r.world_event_flags == nil then
-        return false
-    end
-    if system_id == 21 and node_class == "Project Files" and
-       r.group_item_flags == nil then
-        return false
-    end
-    if system_id == 19 and node_class == "Outdated Files" then
-        -- The source tries the FFFC27 bit-3 branch before FFFC26 bit 0.
-        -- Only admit the first branch while its page-3 clue is still clear;
-        -- the fallback fact is not yet supplied by the host.
-        if r.mr_johnsons_met_flags == nil or
-           (r.mr_johnsons_met_flags & 0x08) == 0 or
-           ((r.tips_page3_flags >> 14) & 1) ~= 0 then
-            return false
+
+local function selected_outcome(facts, file_class)
+    if type(facts) ~= "table" then return nil end
+    local system_rules = RULES[facts.system_key]
+    local category_rules = system_rules and
+        system_rules[category_key(file_class)]
+    if category_rules == nil then return nil end
+
+    for _, candidate in ipairs(category_rules) do
+        local eligible = true
+        if candidate.when ~= nil then eligible = candidate.when(facts) end
+        if eligible == nil then return nil end
+        if eligible == true then
+            local collected = facts[candidate.fact]
+            if collected == nil then return nil end
+            if collected == false and
+               (candidate.wallet_reward == nil or
+                type(facts.nuyen) == "number") then
+                return candidate
+            end
         end
     end
-    if system_id == 23 and node_class == "Prisoner Files" and
-       (r.mr_johnsons_met_flags == nil or
-        (r.mr_johnsons_met_flags & 0x08) == 0) then
-        return false
+    return nil
+end
+
+function M.can_match(facts, file_class)
+    return selected_outcome(facts, file_class) ~= nil
+end
+
+-- The ROM adds the UCAS reward to a 32-bit wallet at 0x5536E. Keep that
+-- currency rule in one named operation rather than exposing bit-mask math to
+-- the story handler.
+local function credit_wallet(balance, amount)
+    return (balance + amount) % 4294967296
+end
+
+function M.matches(facts, file_class)
+    local selected = selected_outcome(facts, file_class)
+    if selected == nil then return false end
+    facts[selected.fact] = true
+    if selected.wallet_reward ~= nil then
+        facts.nuyen = credit_wallet(facts.nuyen, selected.wallet_reward)
     end
     return true
 end
-local function matches(r, file_class)
-    if r and s8(r.system_id) == 18 then
-        local report = SYSTEM18_REPORTS[file_class]
-        if report == nil or not can_match(r, file_class) then return false end
-        r[report] = true
-        return true
-    end
-    if r and s8(r.system_id) == 16 and file_class == "System Files" then
-        if not can_match(r, file_class) then return false end
-        r.virology_report_collected = true
-        r.nuyen = (r.nuyen + 50000) & 0xFFFFFFFF
-        return true
-    end
-    local d5, d1, cc = 0, 0, 0
-    ::L055058:: -- clr.l d0
-    ::L05505A:: -- clr.l d1
-    ::L05505C:: -- move.w $fff118.l, d1
-    ::L055062:: -- mulu.w #$14, d1
-    ::L055066:: -- lea.l $ff1100.l, a1
-    ::L05506C:: -- move.b $1(a1, d1.w), d0
-    ::L055070:: d5 = r.tips_page3_flags
-    ::L055076:: d1 = r.world_event_flags
-    ::L0550F4:: cc = s8(r.system_id) - 17
-    ::L0550FC:: if cc ~= 0 then goto L055138 end
-    ::L055100:: cc = file_class == "Financial Data" and 0 or 1
-    ::L055104:: if cc ~= 0 then goto L05559A end
-    ::L055108:: cc = (d1 >> 11) & 1
-    ::L05510C:: if cc == 0 then goto L05559A end
-    ::L055110:: cc = (d5 >> 0) & 1
-    ::L055114:: if cc ~= 0 then goto L05559A end
-    ::L055118:: d5 = d5 | (1 << 0)
-    ::L05511C:: goto L055578
-    ::L055120:: cc = file_class == "Outdated Files" and 0 or 1
-    ::L055124:: if cc ~= 0 then goto L05559A end
-    ::L055128:: cc = (d5 >> 1) & 1
-    ::L05512C:: if cc ~= 0 then goto L05559A end
-    ::L055130:: d5 = d5 | (1 << 1)
-    ::L055134:: goto L055578
-    ::L055138:: cc = s8(r.system_id) - 7
-    ::L055140:: if cc ~= 0 then goto L05515C end
-    ::L055144:: cc = file_class == "Confidntl Data" and 0 or 1
-    ::L055148:: if cc ~= 0 then goto L05559A end
-    ::L05514C:: cc = (d5 >> 26) & 1
-    ::L055150:: if cc ~= 0 then goto L05559A end
-    ::L055154:: d5 = d5 | (1 << 26)
-    ::L055158:: goto L055578
-    ::L05515C:: cc = s8(r.system_id) - 22
-    ::L055164:: if cc ~= 0 then goto L0551C0 end
-    ::L055168:: cc = file_class == "Mngmnt Files" and 0 or 1
-    ::L05516C:: if cc ~= 0 then goto L055188 end
-    ::L055170:: cc = (d1 >> 29) & 1
-    ::L055174:: if cc ~= 0 then goto L05559A end
-    ::L055178:: cc = (d5 >> 2) & 1
-    ::L05517C:: if cc ~= 0 then goto L05559A end
-    ::L055180:: d5 = d5 | (1 << 2)
-    ::L055184:: goto L055578
-    ::L055188:: cc = file_class == "Security Files" and 0 or 1
-    ::L05518C:: if cc ~= 0 then goto L0551A8 end
-    ::L055190:: cc = (d1 >> 29) & 1
-    ::L055194:: if cc ~= 0 then goto L0551A8 end
-    ::L055198:: cc = (d5 >> 3) & 1
-    ::L05519C:: if cc ~= 0 then goto L0551A8 end
-    ::L0551A0:: d5 = d5 | (1 << 3)
-    ::L0551A4:: goto L055578
-    ::L0551A8:: cc = file_class == "Security Files" and 0 or 1
-    ::L0551AC:: if cc ~= 0 then goto L05559A end
-    ::L0551B0:: cc = (d5 >> 27) & 1
-    ::L0551B4:: if cc ~= 0 then goto L05559A end
-    ::L0551B8:: d5 = d5 | (1 << 27)
-    ::L0551BC:: goto L055578
-    ::L0551C0:: cc = s8(r.system_id) - 20
-    ::L0551C8:: if cc ~= 0 then goto L055224 end
-    ::L0551CC:: cc = file_class == "Confidntl Data" and 0 or 1
-    ::L0551D0:: if cc ~= 0 then goto L0551E4 end
-    ::L0551D4:: cc = (d5 >> 28) & 1
-    ::L0551D8:: if cc ~= 0 then goto L05559A end
-    ::L0551DC:: d5 = d5 | (1 << 28)
-    ::L0551E0:: goto L055578
-    ::L0551E4:: cc = file_class == "Confidntl Data" and 0 or 1
-    ::L0551E8:: if cc ~= 0 then goto L055204 end
-    ::L0551EC:: cc = (d1 >> 3) & 1
-    ::L0551F0:: if cc ~= 0 then goto L05559A end
-    ::L0551F4:: cc = (d5 >> 5) & 1
-    ::L0551F8:: if cc ~= 0 then goto L05559A end
-    ::L0551FC:: d5 = d5 | (1 << 5)
-    ::L055200:: goto L055578
-    ::L055204:: cc = file_class == "Security Files" and 0 or 1
-    ::L055208:: if cc ~= 0 then goto L05559A end
-    ::L05520C:: cc = (d1 >> 3) & 1
-    ::L055210:: if cc ~= 0 then goto L05559A end
-    ::L055214:: cc = (d5 >> 4) & 1
-    ::L055218:: if cc ~= 0 then goto L05559A end
-    ::L05521C:: d5 = d5 | (1 << 4)
-    ::L055220:: goto L055578
-    ::L055224:: cc = s8(r.system_id) - 23
-    ::L05522C:: if cc ~= 0 then goto L055302 end
-    ::L055230:: cc = file_class == "Case Files" and 0 or 1
-    ::L055234:: if cc ~= 0 then goto L0552A2 end
-    ::L055238:: cc = s8(r.fbfa)
-    ::L05523E:: if cc == 0 then goto L05559A end
-    ::L055242:: cc = s8(r.fbfa) - 8
-    ::L05524A:: if cc >= 0 then goto L05528A end
-    ::L05524E:: cc = s8(r.fbfa) - 3
-    ::L055256:: if cc >= 0 then goto L055272 end
-    ::L05525A:: cc = (d5 >> 6) & 1
-    ::L05525E:: if cc ~= 0 then goto L05559A end
-    ::L055262:: d5 = d5 | (1 << 6)
-    ::L055266:: d5 = d5 & ~(1 << 7)
-    ::L05526A:: d5 = d5 & ~(1 << 8)
-    ::L05526E:: goto L055578
-    ::L055272:: cc = (d5 >> 7) & 1
-    ::L055276:: if cc ~= 0 then goto L05559A end
-    ::L05527A:: d5 = d5 | (1 << 7)
-    ::L05527E:: d5 = d5 & ~(1 << 6)
-    ::L055282:: d5 = d5 & ~(1 << 8)
-    ::L055286:: goto L055578
-    ::L05528A:: cc = (d5 >> 8) & 1
-    ::L05528E:: if cc ~= 0 then goto L05559A end
-    ::L055292:: d5 = d5 | (1 << 8)
-    ::L055296:: d5 = d5 & ~(1 << 6)
-    ::L05529A:: d5 = d5 & ~(1 << 7)
-    ::L05529E:: goto L055578
-    ::L0552A2:: cc = file_class == "Prisoner Files" and 0 or 1
-    ::L0552A6:: if cc ~= 0 then goto L0552E2 end
-    ::L0552AA:: cc = (r.mr_johnsons_met_flags >> 3) & 1
-    ::L0552B2:: if cc == 0 then goto L0552C6 end
-    ::L0552B6:: cc = (d5 >> 9) & 1
-    ::L0552BA:: if cc ~= 0 then goto L05559A end
-    ::L0552BE:: d5 = d5 | (1 << 9)
-    ::L0552C2:: goto L055578
-    ::L0552C6:: cc = (r.fc26 >> 0) & 1
-    ::L0552CE:: if cc == 0 then goto L05559A end
-    ::L0552D2:: cc = (d5 >> 10) & 1
-    ::L0552D6:: if cc ~= 0 then goto L05559A end
-    ::L0552DA:: d5 = d5 | (1 << 10)
-    ::L0552DE:: goto L055578
-    ::L0552E2:: cc = file_class == "Financial Data" and 0 or 1
-    ::L0552E6:: if cc ~= 0 then goto L05559A end
-    ::L0552EA:: cc = (d1 >> 29) & 1
-    ::L0552EE:: if cc ~= 0 then goto L05559A end
-    ::L0552F2:: cc = (d5 >> 11) & 1
-    ::L0552F6:: if cc ~= 0 then goto L05559A end
-    ::L0552FA:: d5 = d5 | (1 << 11)
-    ::L0552FE:: goto L055578
-    ::L055302:: cc = s8(r.system_id) - 24
-    ::L05530A:: if cc ~= 0 then goto L055346 end
-    ::L05530E:: cc = file_class == "Confidntl Data" and 0 or 1
-    ::L055312:: if cc ~= 0 then goto L05559A end
-    ::L055316:: cc = (d5 >> 29) & 1
-    ::L05531A:: if cc ~= 0 then goto L055326 end
-    ::L05531E:: d5 = d5 | (1 << 29)
-    ::L055322:: goto L055578
-    ::L055326:: cc = file_class == "Confidntl Data" and 0 or 1
-    ::L05532A:: if cc ~= 0 then goto L05559A end
-    ::L05532E:: cc = (d1 >> 19) & 1
-    ::L055332:: if cc ~= 0 then goto L05559A end
-    ::L055336:: cc = (d5 >> 12) & 1
-    ::L05533A:: if cc ~= 0 then goto L05559A end
-    ::L05533E:: d5 = d5 | (1 << 12)
-    ::L055342:: goto L055578
-    ::L055346:: cc = s8(r.system_id) - 19
-    ::L05534E:: if cc ~= 0 then goto L0553B2 end
-    ::L055352:: cc = file_class == "Prisoner Files" and 0 or 1
-    ::L055356:: if cc ~= 0 then goto L055372 end
-    ::L05535A:: cc = (d1 >> 19) & 1
-    ::L05535E:: if cc ~= 0 then goto L05559A end
-    ::L055362:: cc = (d5 >> 13) & 1
-    ::L055366:: if cc ~= 0 then goto L05559A end
-    ::L05536A:: d5 = d5 | (1 << 13)
-    ::L05536E:: goto L055578
-    ::L055372:: cc = file_class == "Outdated Files" and 0 or 1
-    ::L055376:: if cc ~= 0 then goto L05559A end
-    ::L05537A:: cc = (r.mr_johnsons_met_flags >> 3) & 1
-    ::L055382:: if cc == 0 then goto L055396 end
-    ::L055386:: cc = (d5 >> 14) & 1
-    ::L05538A:: if cc ~= 0 then goto L055396 end
-    ::L05538E:: d5 = d5 | (1 << 14)
-    ::L055392:: goto L055578
-    ::L055396:: cc = (r.fc26 >> 0) & 1
-    ::L05539E:: if cc == 0 then goto L05559A end
-    ::L0553A2:: cc = (d5 >> 15) & 1
-    ::L0553A6:: if cc ~= 0 then goto L05559A end
-    ::L0553AA:: d5 = d5 | (1 << 15)
-    ::L0553AE:: goto L055578
-    ::L0553B2:: cc = s8(r.system_id) - 21
-    ::L0553BA:: if cc ~= 0 then goto L055526 end
-    ::L0553BE:: cc = file_class == "Confidntl Data" and 0 or 1
-    ::L0553C2:: if cc ~= 0 then goto L0553F6 end
-    ::L0553C6:: cc = (d5 >> 30) & 1
-    ::L0553CA:: if cc ~= 0 then goto L0553D6 end
-    ::L0553CE:: d5 = d5 | (1 << 30)
-    ::L0553D2:: goto L055578
-    ::L0553D6:: cc = (d1 >> 11) & 1
-    ::L0553DA:: if cc ~= 0 then goto L0553E6 end
-    ::L0553DE:: cc = (d1 >> 13) & 1
-    ::L0553E2:: if cc == 0 then goto L05559A end
-    ::L0553E6:: cc = (d5 >> 18) & 1
-    ::L0553EA:: if cc ~= 0 then goto L05559A end
-    ::L0553EE:: d5 = d5 | (1 << 18)
-    ::L0553F2:: goto L055578
-    ::L0553F6:: cc = file_class == "Project Files" and 0 or 1
-    ::L0553FA:: if cc ~= 0 then goto L055474 end
-    ::L0553FE:: cc = (d1 >> 7) & 1
-    ::L055402:: if cc == 0 then goto L05541E end
-    ::L055406:: cc = (d1 >> 8) & 1
-    ::L05540A:: if cc ~= 0 then goto L05541E end
-    ::L05540E:: cc = (d5 >> 16) & 1
-    ::L055412:: if cc ~= 0 then goto L05541E end
-    ::L055416:: d5 = d5 | (1 << 16)
-    ::L05541A:: goto L055578
-    ::L05541E:: cc = (d1 >> 11) & 1
-    ::L055422:: if cc == 0 then goto L055436 end
-    ::L055426:: cc = (d5 >> 19) & 1
-    ::L05542A:: if cc ~= 0 then goto L055436 end
-    ::L05542E:: d5 = d5 | (1 << 19)
-    ::L055432:: goto L055578
-    ::L055436:: cc = (d1 >> 10) & 1
-    ::L05543A:: if cc ~= 0 then goto L055446 end
-    ::L05543E:: cc = (d1 >> 13) & 1
-    ::L055442:: if cc == 0 then goto L055456 end
-    ::L055446:: cc = (d5 >> 24) & 1
-    ::L05544A:: if cc ~= 0 then goto L055456 end
-    ::L05544E:: d5 = d5 | (1 << 24)
-    ::L055452:: goto L055578
-    ::L055456:: d1 = r.group_item_flags
-    ::L05545C:: cc = (d1 >> 8) & 1
-    ::L055460:: if cc == 0 then goto L05559A end
-    ::L055464:: cc = (d5 >> 25) & 1
-    ::L055468:: if cc ~= 0 then goto L05559A end
-    ::L05546C:: d5 = d5 | (1 << 25)
-    ::L055470:: goto L055578
-    ::L055474:: cc = file_class == "Mngmnt Files" and 0 or 1
-    ::L055478:: if cc ~= 0 then goto L055494 end
-    ::L05547C:: cc = (d1 >> 10) & 1
-    ::L055480:: if cc == 0 then goto L05559A end
-    ::L055484:: cc = (d5 >> 17) & 1
-    ::L055488:: if cc ~= 0 then goto L05559A end
-    ::L05548C:: d5 = d5 | (1 << 17)
-    ::L055490:: goto L055578
-    ::L055494:: cc = file_class == "Security Files" and 0 or 1
-    ::L055498:: if cc ~= 0 then goto L05559A end
-    ::L05549C:: cc = (d1 >> 10) & 1
-    ::L0554A0:: if cc ~= 0 then goto L0554AC end
-    ::L0554A4:: cc = (d1 >> 13) & 1
-    ::L0554A8:: if cc == 0 then goto L0554BC end
-    ::L0554AC:: cc = (d5 >> 20) & 1
-    ::L0554B0:: if cc ~= 0 then goto L0554BC end
-    ::L0554B4:: d5 = d5 | (1 << 20)
-    ::L0554B8:: goto L055578
-    ::L0554BC:: cc = s8(r.fbfb)
-    ::L0554C2:: if cc == 0 then goto L05559A end
-    ::L0554C6:: cc = s8(r.fbfb) - 8
-    ::L0554CE:: if cc >= 0 then goto L05550E end
-    ::L0554D2:: cc = s8(r.fbfb) - 3
-    ::L0554DA:: if cc >= 0 then goto L0554F6 end
-    ::L0554DE:: cc = (d5 >> 21) & 1
-    ::L0554E2:: if cc ~= 0 then goto L05559A end
-    ::L0554E6:: d5 = d5 | (1 << 21)
-    ::L0554EA:: d5 = d5 & ~(1 << 22)
-    ::L0554EE:: d5 = d5 & ~(1 << 23)
-    ::L0554F2:: goto L055578
-    ::L0554F6:: cc = (d5 >> 22) & 1
-    ::L0554FA:: if cc ~= 0 then goto L05559A end
-    ::L0554FE:: d5 = d5 | (1 << 22)
-    ::L055502:: d5 = d5 & ~(1 << 21)
-    ::L055506:: d5 = d5 & ~(1 << 23)
-    ::L05550A:: goto L055578
-    ::L05550E:: cc = (d5 >> 23) & 1
-    ::L055512:: if cc ~= 0 then goto L05559A end
-    ::L055516:: d5 = d5 | (1 << 23)
-    ::L05551A:: d5 = d5 & ~(1 << 21)
-    ::L05551E:: d5 = d5 & ~(1 << 22)
-    ::L055522:: goto L055578
-    ::L055526:: cc = s8(r.system_id) - 16
-    ::L05552E:: if cc ~= 0 then goto L05559A end
-    ::L055532:: cc = file_class == "System Files" and 0 or 1
-    ::L055536:: if cc ~= 0 then goto L05559A end
-    ::L05553A:: cc = (d5 >> 26) & 1
-    ::L05553E:: if cc == 0 then goto L05559A end
-    ::L055542:: cc = (d5 >> 27) & 1
-    ::L055546:: if cc == 0 then goto L05559A end
-    ::L05554A:: cc = (d5 >> 28) & 1
-    ::L05554E:: if cc == 0 then goto L05559A end
-    ::L055552:: cc = (d5 >> 29) & 1
-    ::L055556:: if cc == 0 then goto L05559A end
-    ::L05555A:: cc = (d5 >> 30) & 1
-    ::L05555E:: if cc == 0 then goto L05559A end
-    ::L055562:: cc = (d5 >> 31) & 1
-    ::L055566:: if cc ~= 0 then goto L05559A end
-    ::L05556A:: d5 = d5 | (1 << 31)
-    ::L05556E:: r.nuyen = (r.nuyen + 0xC350) & 0xFFFFFFFF
-    ::L055578:: r.tips_page3_flags = d5
-    ::L05557E:: -- lea.l $166968.l, a1
-    ::L055584:: -- movea.l #$c616, a2
-    ::L05558A:: -- move.w #$0, d1
-    ::L05558E:: -- jsr $c0da.l
-    ::L055594:: do return true end
-    ::L055598:: -- rts
-    ::L05559A:: do return false end
-end
-return { can_match = can_match, matches = matches }
+
+return { can_match = M.can_match, matches = M.matches }

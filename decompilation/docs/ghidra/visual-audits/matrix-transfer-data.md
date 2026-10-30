@@ -51,19 +51,22 @@ Primary source: `input/shadowrun_genesis_us.bin`.
   list uses `0x16681B`. Ordinary downloads use the value table at `0x16668A`
   and the node-colour multiplier (Red uses 5).
 - The special handler at `0x55058` selects story data by current system and
-  node class. Its flag words are Tips & Clues page 3 (FFFC38), Tips & Clues
-  page 2 (FFFC34), and world progress (FFFC1E); it writes the changed flag
-  word before showing text at `0x166968`. System 21 class 3 can also read the
-  Group Items word (FFFC22). System 16 class 1 adds 50,000 to the active wallet
-  after setting its source flag. The field host passes these facts through
-  the typed Matrix world-state transaction. The host reads FFFC34/FFFC38 from
-  the actual three-word Notebook tip state, FFFC1E from world-progress state,
-  and FFFC27's known low bits from the Mr. Johnsons Notebook state. Lua gets
-  the active system ID from its Matrix session. Unrestored tip/Johnson facts
-  remain absent.
+  node class. Its source fields are Tips & Clues page 3 (FFFC38), Tips & Clues
+  page 2 (FFFC34), and world progress (FFFC1E); it records the changed outcome
+  before showing text at `0x166968`. System 21 class 3 can also read Group
+  Items (FFFC22). System 16 class 1 adds 50,000 to the active wallet after
+  recording its report. The field host translates the supported saved-state
+  fields into named Matrix outcomes such as `ito_project_file_collected` and
+  `renraku_map_project_report_collected`. Lua receives a named system key and
+  those semantic facts; it never receives or edits the Notebook flag words,
+  Group Items word, or Johnson flag byte. World-progress prerequisites are
+  queried through the existing named `StoryFlags` service. Unrestored
+  collection/contact facts remain absent, and an unknown prerequisite blocks
+  later ordered outcomes.
 - The adapter currently evaluates only paths whose required facts are
   available: systems/classes 7/10, 16/1, 17/0 and 9, 18/2, 3, 9 and 10,
-  19/0 and 12, 20/10, 21/2, 3 and 10, 22/2 and 4, 23/9 and 12, and 24/10.
+  19/0 and 12, 20/4 and 10, 21/2, 3 and 10, 22/2 and 4, 23/9 and 12, and
+  24/10.
   System 18 uses only FFFC34. System 16 class 1 requires the live wallet
   because it grants 50,000 nuyen; System 21 class 3 requires FFFC22. Systems
   19 class 0 and 23 class 12 run only on their FFFC27 bit-3 branch; the

@@ -1626,113 +1626,235 @@ local missed_search = Actions.finish_search(
     function(bound) return bound - 1 end)
 eq(missed_search.text, Actions.TEXT.NOTHING,
     "detection failure uses Int, Computer, and Sensor from typed records")
-local special_facts = { system_id = 18,
-    system18_project_file_collected = false }
+local RunCatalog = require("data.matrix_run_catalog")
+local function datastore(system_key, facts)
+    local result = { system_key = system_key }
+    for key, value in pairs(facts or {}) do result[key] = value end
+    return result
+end
+local function set_story_flag(flag, value)
+    game.state["story_flag_bit_" .. flag] = value
+end
+local function set_story_flags(values)
+    game = { state = {} }
+    for flag, value in pairs(values or {}) do set_story_flag(flag, value) end
+end
+
+-- [C] ROM 0x5507C reads the system ID; supported values become named keys.
+local special_system_keys = {
+    [7] = "aztechnology", [16] = "ucas_federal_government",
+    [17] = "gates_undersound", [18] = "ito_passcode",
+    [19] = "hollywood", [20] = "mitsuhama", [21] = "renraku",
+    [22] = "fuchi", [23] = "lone_star", [24] = "ares",
+}
+for system_id, system_key in pairs(special_system_keys) do
+    eq(RunCatalog.special_system_keys[system_id], system_key,
+        "Matrix system selection is translated to a named story system")
+end
+-- [C] ROM 0x55058 selects system/category outcomes; 0x55088..0x550EA
+-- handles Ito's reports; 0x5533E..0x5536E handles the UCAS reward.
+local ito_facts = datastore("ito_passcode", {
+    ito_project_file_collected = false,
+})
+set_story_flags()
 eq(SpecialDatastore.can_match(nil, "Project Files"), false,
     "special datastore handler rejects missing typed facts")
-eq(SpecialDatastore.can_match(special_facts, "Project Files"), true,
-    "system 18 project files need its FFFC34 page-2 word")
-eq(SpecialDatastore.can_match(
-    { system_id = 21, tips_page3_flags = 0,
-      world_event_flags = 0 }, "Project Files"), false,
-    "system 21 project files wait for their group-item fact")
-eq(SpecialDatastore.can_match(
-    { system_id = 21, tips_page3_flags = 0,
-      world_event_flags = 0, group_item_flags = 0 }, "Project Files"), true,
-    "system 21 project files are enabled when their group-item fact exists")
-eq(SpecialDatastore.can_match(
-    { system_id = 19, tips_page3_flags = 0,
-      world_event_flags = 0 }, "Prisoner Files"), true,
-    "system 19 prisoner files use the supplied world and notebook facts")
-eq(SpecialDatastore.can_match(
-    { system_id = 19, tips_page3_flags = 0,
-      world_event_flags = 0 }, "Mngmnt Files"), false,
-    "system 19 management files have no special-handler branch")
-eq(SpecialDatastore.can_match(
-    { system_id = 19, tips_page3_flags = 0,
-      world_event_flags = 0 }, "Outdated Files"), false,
-    "system 19 outdated files stay gated while contact and fallback facts are absent")
-local system_19_johnson_fact = { system_id = 19, tips_page3_flags = 0,
-    world_event_flags = 0, mr_johnsons_met_flags = 0x08 }
-eq(SpecialDatastore.can_match(system_19_johnson_fact, "Outdated Files"), true,
-    "system 19 outdated files use the known Johnson-contact route")
-eq(SpecialDatastore.matches(system_19_johnson_fact, "Outdated Files"), true,
-    "system 19 outdated files return their first-time story clue")
-eq((system_19_johnson_fact.tips_page3_flags >> 14) & 1, 1,
-    "system 19 class 0 commits its page-3 clue")
-eq(SpecialDatastore.can_match(
-    { system_id = 19, tips_page3_flags = 1 << 14,
-      world_event_flags = 0, mr_johnsons_met_flags = 0x08 }, "Outdated Files"), false,
-    "system 19 outdated files remain gated when they would need the unknown fallback fact")
-eq(SpecialDatastore.can_match(
-    { system_id = 16, virology_research_complete = true,
-      virology_report_collected = false }, "System Files"), false,
-    "UCAS report waits for the wallet balance it awards")
-eq(SpecialDatastore.can_match(
-    { system_id = 16, virology_research_complete = true,
-      virology_report_collected = false, nuyen = 0 }, "System Files"), true,
-    "UCAS report is enabled when the wallet is available")
-eq(SpecialDatastore.can_match(
-    { system_id = 23, tips_page3_flags = 0,
-      world_event_flags = 0 }, "Financial Data"), true,
-    "system 23 financial data uses the supplied world and notebook facts")
-local system_23_facts = { system_id = 23, tips_page3_flags = 0,
-    world_event_flags = 0 }
-eq(SpecialDatastore.matches(system_23_facts, "Financial Data"), true,
-    "system 23 class 9 returns its special datafile")
-eq(system_23_facts.tips_page3_flags, 1 << 11,
-    "system 23 class 9 commits source Tips & Clues page 3 bit 11")
-eq(SpecialDatastore.can_match(
-    { system_id = 23, tips_page3_flags = 0,
-      world_event_flags = 0 }, "Case Files"), false,
-    "unavailable story facts leave system 23 class 13 unresolved")
-local system_23_johnson_fact = { system_id = 23, tips_page3_flags = 0,
-    world_event_flags = 0, mr_johnsons_met_flags = 0x08 }
-eq(SpecialDatastore.can_match(system_23_johnson_fact, "Prisoner Files"), true,
-    "system 23 prisoner files use the known Johnson-contact route")
-eq(SpecialDatastore.matches(system_23_johnson_fact, "Prisoner Files"), true,
-    "system 23 prisoner files return their first-time story clue")
-eq((system_23_johnson_fact.tips_page3_flags >> 9) & 1, 1,
-    "system 23 class 12 commits its page-3 clue")
+eq(SpecialDatastore.can_match(ito_facts, "Project Files"), true,
+    "Ito project file is available from its named collection fact")
+eq(SpecialDatastore.matches(ito_facts, "Project Files"), true,
+    "Ito project report completes by semantic category")
+eq(ito_facts.ito_project_file_collected, true,
+    "claiming the Ito report records its named outcome")
+eq(SpecialDatastore.can_match(ito_facts, "Project Files"), false,
+    "a collected Ito report cannot be claimed twice")
+
+-- [C] ROM 0x55088..0x550EA maps each category to an independent report.
+local ito_reports = {
+    { "Project Files", "ito_project_file_collected" },
+    { "Confidntl Data", "ito_confidential_file_collected" },
+    { "Financial Data", "ito_financial_file_collected" },
+    { "Mngmnt Files", "ito_management_file_collected" },
+}
+for _, report in ipairs(ito_reports) do
+    local report_facts = datastore("ito_passcode", { [report[2]] = false })
+    eq(SpecialDatastore.can_match(report_facts, report[1]), true,
+        "uncollected Ito report is available by named category")
+    eq(SpecialDatastore.matches(report_facts, report[1]), true,
+        "Ito report completes by named category")
+    eq(report_facts[report[2]], true,
+        "Ito report updates its named collection fact")
+    eq(SpecialDatastore.can_match(report_facts, report[1]), false,
+        "collected Ito report cannot be claimed twice")
+end
+
+-- [C] ROM 0x5533E..0x5536E requires all five research facts, an uncollected
+-- report, and a live wallet, then credits 50,000 with 32-bit wallet rollover.
+local virology_facts = datastore("ucas_federal_government", {
+    ucas_virology_research_complete = false,
+    ucas_virology_report_collected = false,
+    nuyen = 0xFFFFFFFF,
+})
+eq(SpecialDatastore.can_match(virology_facts, "System Files"), false,
+    "UCAS report stays gated until the five research facts are complete")
+virology_facts.ucas_virology_research_complete = true
+virology_facts.nuyen = nil
+eq(SpecialDatastore.can_match(virology_facts, "System Files"), false,
+    "UCAS report waits for the wallet it credits")
+virology_facts.nuyen = 0xFFFFFFFF
+eq(SpecialDatastore.matches(virology_facts, "System Files"), true,
+    "UCAS System Files grants the available report")
+eq(virology_facts.ucas_virology_report_collected, true,
+    "collecting the UCAS report records a named story outcome")
+eq(virology_facts.nuyen, 49999,
+    "UCAS reward applies the source wallet rollover")
+
+-- [C] ROM 0x550F4..0x55578 reads these named story prerequisites and writes
+-- the associated one-time outcomes. Missing restored facts remain unknown.
+set_story_flags()
+local gates_financial = datastore("gates_undersound", {
+    gates_financial_file_collected = false,
+})
+eq(SpecialDatastore.can_match(gates_financial, "Financial Data"), false,
+    "Gates financial report waits for the Mako story fact")
+set_story_flags({ [E.StoryFlag.MAKO_DEFEATED] = true })
+eq(SpecialDatastore.matches(gates_financial, "Financial Data"), true,
+    "Gates financial report appears after Mako is defeated")
+local aztechnology = datastore("aztechnology", {
+    aztechnology_confidential_file_collected = false,
+})
+eq(SpecialDatastore.matches(aztechnology, "Confidntl Data"), true,
+    "Aztechnology confidential report records its collection fact")
+
+set_story_flags({ [E.StoryFlag.HEART_DELIVERED] = false })
+local fuchi = datastore("fuchi", {
+    fuchi_management_file_collected = false,
+    fuchi_security_file_collected = false,
+    fuchi_security_followup_collected = false,
+})
+eq(SpecialDatastore.matches(fuchi, "Mngmnt Files"), true,
+    "Fuchi management report requires the heart to remain undelivered")
+eq(SpecialDatastore.matches(fuchi, "Security Files"), true,
+    "Fuchi security report selects its first outcome")
+eq(fuchi.fuchi_security_file_collected, true,
+    "Fuchi primary report updates its semantic outcome")
+eq(SpecialDatastore.matches(fuchi, "Security Files"), true,
+    "Fuchi security report can later expose its follow-up outcome")
+eq(fuchi.fuchi_security_followup_collected, true,
+    "Fuchi follow-up records a separate semantic outcome")
+set_story_flags()
+eq(SpecialDatastore.can_match(datastore("fuchi", {
+    fuchi_security_file_collected = false,
+    fuchi_security_followup_collected = false,
+}), "Security Files"), false,
+    "Fuchi security report stays gated while heart state is unresolved")
+
+set_story_flags()
+local mitsuhama = datastore("mitsuhama", {
+    mitsuhama_confidential_file_collected = false,
+    mitsuhama_security_file_collected = false,
+})
+eq(SpecialDatastore.matches(mitsuhama, "Confidntl Data"), true,
+    "Mitsuhama confidential report is a named one-time outcome")
+eq(SpecialDatastore.can_match(mitsuhama, "Security Files"), false,
+    "Mitsuhama security report waits for the Aragorn story fact")
+-- [C] ROM 0x55204..0x55220 requires Aragorn-unfound and an uncollected file.
+set_story_flag(E.StoryFlag.ARAGORN_FOUND, false)
+eq(SpecialDatastore.matches(mitsuhama, "Security Files"), true,
+    "Mitsuhama security report requires Aragorn to remain undiscovered")
+
+set_story_flags()
+local hollywood = datastore("hollywood", {
+    hollywood_prisoner_file_collected = false,
+    hollywood_outdated_file_collected = false,
+    johnson_contact_recorded = true,
+})
+eq(SpecialDatastore.can_match(hollywood, "Prisoner Files"), false,
+    "Hollywood prisoner file waits for the Ilene story fact")
+set_story_flag(E.StoryFlag.ILENE_MET, false)
+eq(SpecialDatastore.matches(hollywood, "Prisoner Files"), true,
+    "Hollywood prisoner file follows the Ilene condition")
+eq(SpecialDatastore.matches(hollywood, "Outdated Files"), true,
+    "Hollywood outdated file follows the recorded Johnson contact")
+
+-- [C] ROM 0x553B2..0x55490 checks Renraku's ordered project outcomes.
+set_story_flags({
+    [E.StoryFlag.MAKO_DEFEATED] = true,
+})
+local renraku = datastore("renraku", {
+    renraku_confidential_file_collected = false,
+    renraku_confidential_followup_collected = false,
+    renraku_shaman_project_report_collected = false,
+    renraku_mako_project_report_collected = false,
+    renraku_michael_project_report_collected = false,
+    renraku_map_project_report_collected = false,
+    renraku_management_file_collected = false,
+    renraku_map_overlay_collected = true,
+})
+eq(SpecialDatastore.can_match(renraku, "Project Files"), false,
+    "unknown earlier Renraku story facts block later ordered reports")
+set_story_flag(E.StoryFlag.SHAMAN_PELT_GIVEN, true)
+set_story_flag(E.StoryFlag.SERPENT_SCALE_TAKEN, false)
+set_story_flag(E.StoryFlag.MICHAEL_ALIAS_LEARNED, true)
+eq(SpecialDatastore.matches(renraku, "Project Files"), true,
+    "Renraku project search selects the shaman report first")
+eq(renraku.renraku_shaman_project_report_collected, true,
+    "Renraku shaman report updates its named outcome")
+eq(SpecialDatastore.matches(renraku, "Project Files"), true,
+    "Renraku project search advances to the Mako report")
+eq(SpecialDatastore.matches(renraku, "Project Files"), true,
+    "Renraku project search advances to the Michael report")
+eq(SpecialDatastore.matches(renraku, "Project Files"), true,
+    "Renraku project search advances to the map report")
+eq(SpecialDatastore.can_match(renraku, "Project Files"), false,
+    "all four Renraku project outcomes prevent further story matches")
+eq(SpecialDatastore.matches(renraku, "Mngmnt Files"), true,
+    "Renraku management report follows Michael's alias")
+set_story_flag(E.StoryFlag.MAKO_DEFEATED, false)
+set_story_flag(E.StoryFlag.MICHAEL_MISSION_TOLD, false)
+eq(SpecialDatastore.matches(renraku, "Confidntl Data"), true,
+    "Renraku confidential report records its first outcome")
+eq(SpecialDatastore.can_match(renraku, "Confidntl Data"), false,
+    "Renraku confidential follow-up stays gated when neither mission fact is set")
+set_story_flag(E.StoryFlag.MAKO_DEFEATED, true)
+eq(SpecialDatastore.matches(renraku, "Confidntl Data"), true,
+    "Renraku confidential report exposes its Mako follow-up")
+eq(SpecialDatastore.can_match(renraku, "Security Files"), false,
+    "Renraku security path stays gated while its source prerequisites are absent")
+
+set_story_flags({ [E.StoryFlag.HEART_DELIVERED] = false })
+local lone_star = datastore("lone_star", {
+    lone_star_financial_file_collected = false,
+    lone_star_prisoner_file_collected = false,
+    johnson_contact_recorded = true,
+})
+eq(SpecialDatastore.matches(lone_star, "Financial Data"), true,
+    "Lone Star financial report requires the heart to remain undelivered")
+eq(SpecialDatastore.matches(lone_star, "Prisoner Files"), true,
+    "Lone Star prisoner report follows the Johnson contact")
+eq(SpecialDatastore.can_match(lone_star, "Case Files"), false,
+    "Lone Star case file remains gated without its source state")
+
+set_story_flags({ [E.StoryFlag.ILENE_MET] = false })
+local ares = datastore("ares", {
+    ares_confidential_file_collected = false,
+    ares_confidential_followup_collected = false,
+})
+eq(SpecialDatastore.matches(ares, "Confidntl Data"), true,
+    "Ares confidential report records its primary outcome")
+eq(SpecialDatastore.matches(ares, "Confidntl Data"), true,
+    "Ares confidential report exposes the Ilene follow-up")
+eq(ares.ares_confidential_followup_collected, true,
+    "Ares follow-up is stored as a separate named outcome")
+
 local story_search = Actions.finish_search(
     { class = 3, file_class = "Project Files" },
-    source_decker, source_deck, special_facts,
+    source_decker, source_deck,
+    datastore("ito_passcode", { ito_project_file_collected = false }),
     function() error("story datastores do not roll for random data") end)
 eq(story_search.story, true,
-    "source special datastore can return its notebook file before detection")
+    "story datastore returns its report before ordinary detection")
 eq(story_search.text, Actions.TEXT.STORY_FILE,
-    "special datastore selects the ROM notebook message")
-eq(special_facts.system18_project_file_collected, true,
-    "special datastore commits a named report outcome in Lua state")
-local system18_reports = {
-    -- ROM 0x55088..0x550EA maps these file categories to FFFC34 bits 28..31.
-    { "Project Files", "system18_project_file_collected" },
-    { "Confidntl Data", "system18_confidential_file_collected" },
-    { "Financial Data", "system18_financial_file_collected" },
-    { "Mngmnt Files", "system18_management_file_collected" },
-}
-for _, report in ipairs(system18_reports) do
-    local report_facts = { system_id = 18, [report[2]] = false }
-    eq(SpecialDatastore.can_match(report_facts, report[1]), true,
-        "uncollected System 18 report is available by named category")
-    eq(SpecialDatastore.matches(report_facts, report[1]), true,
-        "System 18 report completes by named category")
-    eq(report_facts[report[2]], true,
-        "System 18 report updates its named collection fact")
-    eq(SpecialDatastore.can_match(report_facts, report[1]), false,
-        "collected System 18 report cannot be claimed twice")
-end
-local virology_facts = { system_id = 16,
-    virology_research_complete = true,
-    virology_report_collected = false, nuyen = 0xFFFFFFFF }
-eq(SpecialDatastore.can_match(virology_facts, "System Files"), true,
-    "UCAS System Files exposes the report after its research is complete")
-eq(SpecialDatastore.matches(virology_facts, "System Files"), true,
-    "UCAS System Files completes its available virology report")
-eq(virology_facts.virology_report_collected, true,
-    "collecting the report records a named story outcome")
-eq(virology_facts.nuyen, 49999,
-    "collecting the report awards 50,000 nuyen with source wallet rollover")
+    "special datastore selects the story-file message")
 local low_storage = { storage = 0, files = {}, ratings = {} }
 for i = 0, 4 do low_storage.files[i] = { id = -1, size = 0 } end
 for i = 0, 11 do low_storage.ratings[i] = 0 end

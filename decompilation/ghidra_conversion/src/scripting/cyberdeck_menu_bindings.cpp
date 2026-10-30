@@ -443,37 +443,73 @@ void push_matrix_world_state(lua_State* lua,
 
     if (world.datastore.has_value()) {
         const auto& facts = *world.datastore;
-        lua_createtable(lua, 0, 12);
+        lua_createtable(lua, 0, 31);
         const int datastore_index = lua_absindex(lua, -1);
-        lua_pushinteger(lua, facts.system_id);
-        lua_setfield(lua, datastore_index, "system_id");
-        push_optional_integer(lua, datastore_index, "tips_page3_flags",
-                              facts.tips_page3_flags);
-        lua_pushinteger(lua, facts.world_event_flags);
-        lua_setfield(lua, datastore_index, "world_event_flags");
-        push_optional_integer(lua, datastore_index, "group_item_flags",
-                              facts.group_item_flags);
         push_optional_integer(lua, datastore_index, "nuyen", facts.nuyen);
-        push_optional_integer(lua, datastore_index, "mr_johnsons_met_flags",
-                              facts.mr_johnsons_met_flags);
+        const auto push_fact = [&](const char* name,
+                                   const std::optional<bool>& value) {
+            push_optional_boolean(lua, datastore_index, name, value);
+        };
         push_optional_boolean(lua, datastore_index,
-                              "virology_research_complete",
-                              facts.virology_research_complete);
+                              "renraku_map_overlay_collected",
+                              facts.renraku_map_overlay_collected);
         push_optional_boolean(lua, datastore_index,
-                              "virology_report_collected",
-                              facts.virology_report_collected);
-        push_optional_boolean(lua, datastore_index,
-                              "system18_project_file_collected",
-                              facts.system18_project_file_collected);
-        push_optional_boolean(lua, datastore_index,
-                              "system18_confidential_file_collected",
-                              facts.system18_confidential_file_collected);
-        push_optional_boolean(lua, datastore_index,
-                              "system18_financial_file_collected",
-                              facts.system18_financial_file_collected);
-        push_optional_boolean(lua, datastore_index,
-                              "system18_management_file_collected",
-                              facts.system18_management_file_collected);
+                              "johnson_contact_recorded",
+                              facts.johnson_contact_recorded);
+        push_fact("ucas_virology_research_complete",
+                  facts.ucas_virology_research_complete);
+        push_fact("ucas_virology_report_collected",
+                  facts.ucas_virology_report_collected);
+        push_fact("ito_project_file_collected",
+                  facts.ito_project_file_collected);
+        push_fact("ito_confidential_file_collected",
+                  facts.ito_confidential_file_collected);
+        push_fact("ito_financial_file_collected",
+                  facts.ito_financial_file_collected);
+        push_fact("ito_management_file_collected",
+                  facts.ito_management_file_collected);
+        push_fact("aztechnology_confidential_file_collected",
+                  facts.aztechnology_confidential_file_collected);
+        push_fact("gates_financial_file_collected",
+                  facts.gates_financial_file_collected);
+        push_fact("gates_outdated_file_collected",
+                  facts.gates_outdated_file_collected);
+        push_fact("hollywood_prisoner_file_collected",
+                  facts.hollywood_prisoner_file_collected);
+        push_fact("hollywood_outdated_file_collected",
+                  facts.hollywood_outdated_file_collected);
+        push_fact("mitsuhama_confidential_file_collected",
+                  facts.mitsuhama_confidential_file_collected);
+        push_fact("mitsuhama_security_file_collected",
+                  facts.mitsuhama_security_file_collected);
+        push_fact("fuchi_management_file_collected",
+                  facts.fuchi_management_file_collected);
+        push_fact("fuchi_security_file_collected",
+                  facts.fuchi_security_file_collected);
+        push_fact("fuchi_security_followup_collected",
+                  facts.fuchi_security_followup_collected);
+        push_fact("renraku_confidential_file_collected",
+                  facts.renraku_confidential_file_collected);
+        push_fact("renraku_confidential_followup_collected",
+                  facts.renraku_confidential_followup_collected);
+        push_fact("renraku_shaman_project_report_collected",
+                  facts.renraku_shaman_project_report_collected);
+        push_fact("renraku_mako_project_report_collected",
+                  facts.renraku_mako_project_report_collected);
+        push_fact("renraku_michael_project_report_collected",
+                  facts.renraku_michael_project_report_collected);
+        push_fact("renraku_map_project_report_collected",
+                  facts.renraku_map_project_report_collected);
+        push_fact("renraku_management_file_collected",
+                  facts.renraku_management_file_collected);
+        push_fact("lone_star_financial_file_collected",
+                  facts.lone_star_financial_file_collected);
+        push_fact("lone_star_prisoner_file_collected",
+                  facts.lone_star_prisoner_file_collected);
+        push_fact("ares_confidential_file_collected",
+                  facts.ares_confidential_file_collected);
+        push_fact("ares_confidential_followup_collected",
+                  facts.ares_confidential_followup_collected);
         lua_setfield(lua, world_index, "datastore");
     }
 
@@ -685,31 +721,66 @@ ScriptMatrixWorldState read_matrix_world_state(lua_State* lua,
                 std::clamp<lua_Integer>(*value, 0, 0xFFFFFFFFLL));
         };
         ScriptMatrixDatastoreFacts facts;
-        facts.system_id = static_cast<std::uint8_t>(
-            read_integer(lua, datastore_index, "system_id", 0, 0, 0xFF));
-        facts.tips_page3_flags = read_optional_u32("tips_page3_flags");
-        facts.world_event_flags =
-            read_optional_u32("world_event_flags").value_or(0U);
-        facts.group_item_flags = read_optional_u32("group_item_flags");
         facts.nuyen = read_optional_u32("nuyen");
-        if (const auto value = read_optional_integer(
-                lua, datastore_index, "mr_johnsons_met_flags");
-            value.has_value()) {
-            facts.mr_johnsons_met_flags = static_cast<std::uint8_t>(
-                std::clamp<lua_Integer>(*value, 0, 0xFFLL));
-        }
-        facts.virology_research_complete = read_optional_boolean(
-            lua, datastore_index, "virology_research_complete");
-        facts.virology_report_collected = read_optional_boolean(
-            lua, datastore_index, "virology_report_collected");
-        facts.system18_project_file_collected = read_optional_boolean(
-            lua, datastore_index, "system18_project_file_collected");
-        facts.system18_confidential_file_collected = read_optional_boolean(
-            lua, datastore_index, "system18_confidential_file_collected");
-        facts.system18_financial_file_collected = read_optional_boolean(
-            lua, datastore_index, "system18_financial_file_collected");
-        facts.system18_management_file_collected = read_optional_boolean(
-            lua, datastore_index, "system18_management_file_collected");
+        facts.renraku_map_overlay_collected = read_optional_boolean(
+            lua, datastore_index, "renraku_map_overlay_collected");
+        facts.johnson_contact_recorded = read_optional_boolean(
+            lua, datastore_index, "johnson_contact_recorded");
+        const auto read_fact = [&](const char* name) {
+            return read_optional_boolean(lua, datastore_index, name);
+        };
+        facts.ucas_virology_research_complete =
+            read_fact("ucas_virology_research_complete");
+        facts.ucas_virology_report_collected =
+            read_fact("ucas_virology_report_collected");
+        facts.ito_project_file_collected = read_fact("ito_project_file_collected");
+        facts.ito_confidential_file_collected =
+            read_fact("ito_confidential_file_collected");
+        facts.ito_financial_file_collected = read_fact("ito_financial_file_collected");
+        facts.ito_management_file_collected =
+            read_fact("ito_management_file_collected");
+        facts.aztechnology_confidential_file_collected =
+            read_fact("aztechnology_confidential_file_collected");
+        facts.gates_financial_file_collected =
+            read_fact("gates_financial_file_collected");
+        facts.gates_outdated_file_collected =
+            read_fact("gates_outdated_file_collected");
+        facts.hollywood_prisoner_file_collected =
+            read_fact("hollywood_prisoner_file_collected");
+        facts.hollywood_outdated_file_collected =
+            read_fact("hollywood_outdated_file_collected");
+        facts.mitsuhama_confidential_file_collected =
+            read_fact("mitsuhama_confidential_file_collected");
+        facts.mitsuhama_security_file_collected =
+            read_fact("mitsuhama_security_file_collected");
+        facts.fuchi_management_file_collected =
+            read_fact("fuchi_management_file_collected");
+        facts.fuchi_security_file_collected =
+            read_fact("fuchi_security_file_collected");
+        facts.fuchi_security_followup_collected =
+            read_fact("fuchi_security_followup_collected");
+        facts.renraku_confidential_file_collected =
+            read_fact("renraku_confidential_file_collected");
+        facts.renraku_confidential_followup_collected =
+            read_fact("renraku_confidential_followup_collected");
+        facts.renraku_shaman_project_report_collected =
+            read_fact("renraku_shaman_project_report_collected");
+        facts.renraku_mako_project_report_collected =
+            read_fact("renraku_mako_project_report_collected");
+        facts.renraku_michael_project_report_collected =
+            read_fact("renraku_michael_project_report_collected");
+        facts.renraku_map_project_report_collected =
+            read_fact("renraku_map_project_report_collected");
+        facts.renraku_management_file_collected =
+            read_fact("renraku_management_file_collected");
+        facts.lone_star_financial_file_collected =
+            read_fact("lone_star_financial_file_collected");
+        facts.lone_star_prisoner_file_collected =
+            read_fact("lone_star_prisoner_file_collected");
+        facts.ares_confidential_file_collected =
+            read_fact("ares_confidential_file_collected");
+        facts.ares_confidential_followup_collected =
+            read_fact("ares_confidential_followup_collected");
         world.datastore = facts;
     }
     lua_pop(lua, 1);

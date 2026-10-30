@@ -269,24 +269,39 @@ struct ScriptMatrixFieldActorState {
     ScriptActorRoleFacts roles;
 };
 
-// Typed subset read by the ROM special-datastore handler at 0x55058. Lua
-// supplies the active system ID from its Matrix session; FFFC22 and the
-// wallet are optional because either source fact may be unavailable.
+// Semantic facts and outcomes for Matrix story files. The native adapter
+// translates Notebook and save-record encodings before Lua sees this state.
 struct ScriptMatrixDatastoreFacts {
-    std::uint8_t system_id = 0U;           // Current Matrix system, FFFBBC.
-    std::optional<std::uint32_t> tips_page3_flags; // Story tips, FFFC38.
-    std::uint32_t world_event_flags = 0U;   // World-event facts, FFFC1E.
-    std::optional<std::uint32_t> group_item_flags; // Group items, FFFC22.
     std::optional<std::uint32_t> nuyen;
-    std::optional<std::uint8_t> mr_johnsons_met_flags; // FFFC27.
-    // Semantic facts for the UCAS virology archive. The native adapter
-    // derives these from Notebook state; gameplay scripts never inspect bits.
-    std::optional<bool> virology_research_complete;
-    std::optional<bool> virology_report_collected;
-    std::optional<bool> system18_project_file_collected;
-    std::optional<bool> system18_confidential_file_collected;
-    std::optional<bool> system18_financial_file_collected;
-    std::optional<bool> system18_management_file_collected;
+    std::optional<bool> renraku_map_overlay_collected;
+    std::optional<bool> johnson_contact_recorded;
+    std::optional<bool> ucas_virology_research_complete;
+    std::optional<bool> ucas_virology_report_collected;
+    std::optional<bool> ito_project_file_collected;
+    std::optional<bool> ito_confidential_file_collected;
+    std::optional<bool> ito_financial_file_collected;
+    std::optional<bool> ito_management_file_collected;
+    std::optional<bool> aztechnology_confidential_file_collected;
+    std::optional<bool> gates_financial_file_collected;
+    std::optional<bool> gates_outdated_file_collected;
+    std::optional<bool> hollywood_prisoner_file_collected;
+    std::optional<bool> hollywood_outdated_file_collected;
+    std::optional<bool> mitsuhama_confidential_file_collected;
+    std::optional<bool> mitsuhama_security_file_collected;
+    std::optional<bool> fuchi_management_file_collected;
+    std::optional<bool> fuchi_security_file_collected;
+    std::optional<bool> fuchi_security_followup_collected;
+    std::optional<bool> renraku_confidential_file_collected;
+    std::optional<bool> renraku_confidential_followup_collected;
+    std::optional<bool> renraku_shaman_project_report_collected;
+    std::optional<bool> renraku_mako_project_report_collected;
+    std::optional<bool> renraku_michael_project_report_collected;
+    std::optional<bool> renraku_map_project_report_collected;
+    std::optional<bool> renraku_management_file_collected;
+    std::optional<bool> lone_star_financial_file_collected;
+    std::optional<bool> lone_star_prisoner_file_collected;
+    std::optional<bool> ares_confidential_file_collected;
+    std::optional<bool> ares_confidential_followup_collected;
 };
 
 enum class ScriptMatrixSecurityColor : std::uint8_t {

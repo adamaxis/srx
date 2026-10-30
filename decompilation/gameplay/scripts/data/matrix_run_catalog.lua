@@ -63,6 +63,21 @@ local systems = {
     [24] = "Ares",
 }
 
+-- [C] ROM 0x5507C reads FFFBBC for special-file dispatch. Translate the
+-- supported system identities into domain keys before the rules consume them.
+local special_system_keys = {
+    [7] = "aztechnology",
+    [16] = "ucas_federal_government",
+    [17] = "gates_undersound",
+    [18] = "ito_passcode",
+    [19] = "hollywood",
+    [20] = "mitsuhama",
+    [21] = "renraku",
+    [22] = "fuchi",
+    [23] = "lone_star",
+    [24] = "ares",
+}
+
 local objectives = {
     objective("datastore", E.MatrixRunAction.DOWNLOAD_FILE, "Security Files", 20, { 2, 5, 7, 10, 11, 12, 14, 15, 16, 17, 19, 21, 22, 23, 24 },
         "is curious about how good their security is.||Go into their system, and retrieve a high security data file.||Bring it to me along with a briefing of their strengths and weaknesses, and you will be well paid."),
@@ -115,6 +130,7 @@ local bands = {
 return {
     objectives = objectives,
     systems = systems,
+    special_system_keys = special_system_keys,
     system_order = system_order,
     bands = bands,
 }

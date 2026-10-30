@@ -275,115 +275,100 @@ void verify_matrix_datastore_field_projection(int& failures) {
     const std::array<std::uint32_t, 3> notebook_tips{
         0x01020304U, 0x11223344U, 0x55667788U};
     const auto facts = make_matrix_datastore_facts(
-        notebook_tips, true, 0x81234567U,
+        notebook_tips, true,
         std::optional<std::uint32_t>{0x6023U},
         std::optional<std::uint32_t>{0x12345678U},
         std::optional<std::uint8_t>{0x08U});
-    check(facts.tips_page3_flags == 0x55667788U,
-          "Matrix datastore receives page-3 facts for supported story routes",
+    check(facts.renraku_map_overlay_collected == false &&
+              facts.johnson_contact_recorded == true &&
+              facts.nuyen == 0x12345678U,
+          "Matrix adapter supplies named item/contact facts and the live wallet",
           failures);
-    check(facts.world_event_flags == 0x81234567U &&
-              facts.group_item_flags == 0x6023U &&
-              facts.nuyen == 0x12345678U &&
-              facts.mr_johnsons_met_flags == 0x08U,
-          "Matrix datastore receives the live world, item, wallet, and Johnson facts",
-          failures);
-    check(facts.virology_research_complete == false &&
-              facts.virology_report_collected == false,
+    check(facts.ucas_virology_research_complete == false &&
+              facts.ucas_virology_report_collected == false,
           "Matrix adapter presents UCAS research and report as named facts",
           failures);
-    // ROM 0x55088..0x550EA maps System 18's four categories to FFFC34 bits
-    // 28..31; the Lua route consumes these outcomes as named booleans.
-    check(facts.system18_project_file_collected == true &&
-              facts.system18_confidential_file_collected == false &&
-              facts.system18_financial_file_collected == false &&
-              facts.system18_management_file_collected == false,
-          "Matrix adapter projects System 18 reports as named collection facts",
+    // ROM 0x55088..0x550EA maps Ito reports to FFFC34 bits 28..31.
+    check(facts.ito_project_file_collected == true &&
+              facts.ito_confidential_file_collected == false &&
+              facts.ito_financial_file_collected == false &&
+              facts.ito_management_file_collected == false,
+          "Matrix adapter projects Ito reports as named collection facts",
           failures);
 
-    const auto all_system18_reports = make_matrix_datastore_facts(
-        {0U, 0xF0000000U, 0U}, true, 0U, std::nullopt, std::nullopt,
+    const auto all_ito_reports = make_matrix_datastore_facts(
+        {0U, 0xF0000000U, 0U}, true, std::nullopt, std::nullopt,
         std::nullopt);
-    check(all_system18_reports.system18_project_file_collected == true &&
-              all_system18_reports.system18_confidential_file_collected == true &&
-              all_system18_reports.system18_financial_file_collected == true &&
-              all_system18_reports.system18_management_file_collected == true,
-          "System 18 report facts project all four independent collection states",
+    check(all_ito_reports.ito_project_file_collected == true &&
+              all_ito_reports.ito_confidential_file_collected == true &&
+              all_ito_reports.ito_financial_file_collected == true &&
+              all_ito_reports.ito_management_file_collected == true,
+          "Ito report facts project all four independent collection states",
+          failures);
+
+    // ROM 0x55204..0x55220 maps Mitsuhama Security Files to FFFC38 bit 4.
+    const auto mitsuhama_security = make_matrix_datastore_facts(
+        {0U, 0U, 1U << 4U}, true, std::nullopt, std::nullopt,
+        std::nullopt);
+    check(mitsuhama_security.mitsuhama_security_file_collected == true,
+          "Matrix adapter projects the Mitsuhama security outcome by name",
           failures);
 
     auto newly_collected_report = make_matrix_datastore_facts(
-        {0U, 0x01234567U, 0U}, true, 0U, std::nullopt, std::nullopt,
+        {0U, 0x01234567U, 0U}, true, std::nullopt, std::nullopt,
         std::nullopt);
-    newly_collected_report.system18_project_file_collected = true;
-    auto system18_tips = std::array<std::uint32_t, 3>{11U, 0x01234567U, 13U};
-    bool system18_tips_resolved = true;
-    std::uint32_t system18_world_flags = 0U;
-    std::optional<std::uint32_t> system18_group_items;
-    std::optional<std::uint32_t> system18_nuyen;
-    std::optional<std::uint8_t> system18_johnsons;
+    newly_collected_report.ito_project_file_collected = true;
+    auto ito_tips = std::array<std::uint32_t, 3>{11U, 0x01234567U, 13U};
+    bool ito_tips_resolved = true;
+    std::optional<std::uint32_t> ito_nuyen;
     apply_matrix_datastore_facts(
-        newly_collected_report, system18_tips, system18_tips_resolved,
-        system18_world_flags, system18_group_items, system18_nuyen,
-        system18_johnsons);
-    check(system18_tips[1] == 0x11234567U && system18_tips[0] == 11U,
-          "named System 18 outcome merges into Notebook state without replacing unrelated progress",
+        newly_collected_report, ito_tips, ito_tips_resolved, ito_nuyen);
+    check(ito_tips[1] == 0x11234567U && ito_tips[0] == 11U,
+          "named Ito outcome merges into Notebook state without replacing unrelated progress",
           failures);
 
     const auto completed_research = make_matrix_datastore_facts(
-        {0U, 0U, 0x7C123456U}, true, 0U, std::nullopt, std::nullopt,
+        {0U, 0U, 0x7C123456U}, true, std::nullopt, std::nullopt,
         std::nullopt);
-    check(completed_research.virology_research_complete == true &&
-              completed_research.virology_report_collected == false,
+    check(completed_research.ucas_virology_research_complete == true &&
+              completed_research.ucas_virology_report_collected == false,
           "UCAS report gate derives completion from its five research notices",
           failures);
     auto report_collected = completed_research;
-    report_collected.virology_report_collected = true;
+    report_collected.ucas_virology_report_collected = true;
     auto virology_tips = std::array<std::uint32_t, 3>{0U, 0U,
                                                        0x7C123456U};
     bool virology_tips_resolved = true;
-    std::uint32_t virology_world_flags = 0U;
-    std::optional<std::uint32_t> virology_group_items;
     std::optional<std::uint32_t> virology_nuyen;
-    std::optional<std::uint8_t> virology_johnsons;
     apply_matrix_datastore_facts(
         report_collected, virology_tips, virology_tips_resolved,
-        virology_world_flags, virology_group_items, virology_nuyen,
-        virology_johnsons);
+        virology_nuyen);
     check(virology_tips[2] == 0xFC123456U,
           "named report outcome updates Notebook state without changing unrelated clues",
           failures);
 
     const auto unresolved = make_matrix_datastore_facts(
-        notebook_tips, false, 0U, std::nullopt, std::nullopt, std::nullopt);
-    check(!unresolved.tips_page3_flags.has_value() &&
-              !unresolved.virology_research_complete.has_value() &&
-              !unresolved.virology_report_collected.has_value() &&
-              !unresolved.system18_project_file_collected.has_value() &&
-              !unresolved.system18_confidential_file_collected.has_value() &&
-              !unresolved.system18_financial_file_collected.has_value() &&
-              !unresolved.system18_management_file_collected.has_value(),
+        notebook_tips, false, std::nullopt, std::nullopt, std::nullopt);
+    check(!unresolved.ucas_virology_research_complete.has_value() &&
+              !unresolved.ucas_virology_report_collected.has_value() &&
+              !unresolved.renraku_map_overlay_collected.has_value() &&
+              !unresolved.johnson_contact_recorded.has_value() &&
+              !unresolved.ito_project_file_collected.has_value() &&
+              !unresolved.gates_financial_file_collected.has_value() &&
+              !unresolved.mitsuhama_security_file_collected.has_value(),
           "unrestored Notebook flags remain unknown to Matrix story dispatch",
           failures);
 
     auto committed_tips = notebook_tips;
     bool tips_resolved = false;
-    std::uint32_t committed_world_flags = 0U;
-    std::optional<std::uint32_t> committed_group_items;
     std::optional<std::uint32_t> committed_nuyen;
-    std::optional<std::uint8_t> committed_johnsons;
     apply_matrix_datastore_facts(
-        facts, committed_tips, tips_resolved, committed_world_flags,
-        committed_group_items, committed_nuyen, committed_johnsons);
-    check(tips_resolved && committed_tips[0] == notebook_tips[0] &&
-              committed_tips[1] == notebook_tips[1] &&
-              committed_tips[2] == 0x55667788U,
-          "Matrix story updates preserve loaded Notebook pages outside named outcomes",
+        facts, committed_tips, tips_resolved, committed_nuyen);
+    check(tips_resolved && committed_tips == notebook_tips,
+          "Matrix story projection exposes named facts without rewriting loaded Notebook outcomes",
           failures);
-    check(committed_world_flags == 0x81234567U &&
-              committed_group_items == 0x6023U &&
-              committed_nuyen == 0x12345678U &&
-              committed_johnsons == 0x08U,
-          "Matrix story updates preserve the typed field facts",
+    check(committed_nuyen == 0x12345678U,
+          "Matrix story updates preserve the wallet fact",
           failures);
 }
 #endif
@@ -433,16 +418,16 @@ int main() {
         ScriptMatrixRunStatus::active, ScriptMatrixRunNode::cpu,
         ScriptMatrixRunAction::crash_system, {}, std::nullopt, 0, true);
     ScriptMatrixDatastoreFacts matrix_datastore;
-    matrix_datastore.system_id = 0U;
-    matrix_datastore.tips_page3_flags = 0xA2345678U;
-    matrix_datastore.world_event_flags = 0x81234567U;
-    matrix_datastore.group_item_flags = 0x6023U;
     matrix_datastore.nuyen = 0x12345678U;
-    matrix_datastore.mr_johnsons_met_flags = 0x08U;
-    matrix_datastore.system18_project_file_collected = false;
-    matrix_datastore.system18_confidential_file_collected = false;
-    matrix_datastore.system18_financial_file_collected = true;
-    matrix_datastore.system18_management_file_collected = true;
+    matrix_datastore.renraku_map_overlay_collected = false;
+    matrix_datastore.johnson_contact_recorded = true;
+    matrix_datastore.ucas_virology_research_complete = true;
+    matrix_datastore.ucas_virology_report_collected = false;
+    matrix_datastore.ito_project_file_collected = false;
+    matrix_datastore.ito_confidential_file_collected = false;
+    matrix_datastore.ito_financial_file_collected = true;
+    matrix_datastore.ito_management_file_collected = true;
+    matrix_datastore.mitsuhama_security_file_collected = false;
     matrix_world_state.datastore = matrix_datastore;
     matrix_world_state.field.alarm = true;
     matrix_world_state.field.security_off = false;
@@ -2870,25 +2855,27 @@ int main() {
           "FFF0A3 signed counter survives the Lua world-state host round trip",
           failures);
     check(matrix_world_state.datastore.has_value() &&
-              matrix_world_state.datastore->tips_page3_flags ==
-                  0xA2345678U &&
-              matrix_world_state.datastore->system18_project_file_collected ==
-                  false &&
-              matrix_world_state.datastore->system18_confidential_file_collected ==
-                  false &&
-              matrix_world_state.datastore->system18_financial_file_collected ==
+              matrix_world_state.datastore->ucas_virology_research_complete ==
                   true &&
-              matrix_world_state.datastore->system18_management_file_collected ==
+              matrix_world_state.datastore->ucas_virology_report_collected ==
+                  false &&
+              matrix_world_state.datastore->ito_project_file_collected ==
+                  false &&
+              matrix_world_state.datastore->ito_confidential_file_collected ==
+                  false &&
+              matrix_world_state.datastore->ito_financial_file_collected ==
                   true &&
-              matrix_world_state.datastore->world_event_flags ==
-                  0x81234567U &&
-              matrix_world_state.datastore->group_item_flags ==
-                  std::optional<std::uint32_t>{0x6023U} &&
+              matrix_world_state.datastore->ito_management_file_collected ==
+                  true &&
+              matrix_world_state.datastore->mitsuhama_security_file_collected ==
+                  false &&
+              matrix_world_state.datastore->renraku_map_overlay_collected ==
+                  false &&
+              matrix_world_state.datastore->johnson_contact_recorded ==
+                  true &&
               matrix_world_state.datastore->nuyen ==
-                  std::optional<std::uint32_t>{0x12345678U} &&
-              matrix_world_state.datastore->mr_johnsons_met_flags ==
-                  std::optional<std::uint8_t>{0x08U},
-          "Matrix datastore flag words survive the Lua-to-host state transaction",
+                  std::optional<std::uint32_t>{0x12345678U},
+          "Matrix datastore semantic facts survive the Lua-to-host transaction",
           failures);
     check(matrix_world_state.actors.size() == 2U &&
               matrix_world_state.actors[0].roles.reinforcement &&
