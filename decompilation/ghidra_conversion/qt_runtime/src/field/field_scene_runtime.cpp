@@ -8127,10 +8127,14 @@ void FieldSceneRuntime::configure_runtime_coordinator_callbacks() {
             std::optional<scripting::ScriptPersistentValue> lua_exit;
             if (exit_direction.has_value()) {
                 scripting::ScriptPersistentValue context;
+                scripting::ScriptPersistentValue room_value;
+                room_value.value = static_cast<std::int64_t>(
+                    runtime.transition_context);
+                scripting::ScriptPersistentValue direction_value;
+                direction_value.value = std::string(*exit_direction);
                 context.value = scripting::ScriptPersistentValue::Object{
-                    {"room", static_cast<std::int64_t>(
-                                 runtime.transition_context)},
-                    {"direction", std::string(*exit_direction)}};
+                    {"room", std::move(room_value)},
+                    {"direction", std::move(direction_value)}};
                 lua_exit = game_scripts_.call_value(
                     "world_links", "cave_exit", {std::move(context)});
             }
@@ -9470,20 +9474,22 @@ void FieldSceneRuntime::configure_field_menu_route() {
         field_funds_ = amount;
     };
     bindings.game.nuyen = [this] { return field_funds_; };
-    bindings.game.begin_taxi_cabbie = [this](const int destination) {
-        if (!field_taxi_route_active_ || destination < 0 || destination > 6 ||
+    bindings.game.begin_taxi_cabbie =
+        [this](const scripting::ScriptFieldRegion destination) {
+        const auto destination_value =
+            scripting::script_field_region_source_value(destination);
+        if (!field_taxi_route_active_ ||
             field_taxi_pending_destination_.has_value() ||
             field_taxi_cabbie_destination_.has_value() ||
             field_dialogue_.open() ||
             !field_session_source_assets_ ||
-            static_cast<std::size_t>(destination) >=
+            static_cast<std::size_t>(destination_value) >=
                 field_session_source_assets_->field_scene_resources.size()) {
             return false;
         }
         // ROM 0x20714 opens the cabbie dialogue here; 0x136B6 travels only
         // after that dialogue accepts and clears FFF0E0 [C].
-        field_taxi_cabbie_destination_ =
-            static_cast<std::uint16_t>(destination);
+        field_taxi_cabbie_destination_ = destination;
         source_boundary("field.taxi.cabbie_requested");
         return true;
     };
@@ -9809,19 +9815,22 @@ void FieldSceneRuntime::advance_field_menu_route() {
     if (!route_state.open && field_taxi_cabbie_destination_.has_value() &&
         !field_dialogue_.open()) {
         const auto destination = *field_taxi_cabbie_destination_;
-        const auto current_region = static_cast<std::uint8_t>(
+        const auto current_scene_id = static_cast<std::uint8_t>(
             state_.field_scene_buffers.scene_reference);
+        const auto current_region =
+            scripting::script_field_region_from_source_value(
+                state_.field_scene_buffers.field_resource_mode);
         game_scripts_.set_location_context(
             "activity", "taxi_cabbie", "field.taxi", "taxi_cabbie",
-            "cabbie", current_region);
+            "cabbie", current_scene_id);
         scripting::ScriptFieldModeContext context{
             state_.field_scene_buffers.field_resource_mode,
             field_movement_transition_state_.mode_event_code,
             field_exit_alternate_result_,
             state_.field_scene_buffers.scene_mode,
             field_movement_transition_state_.field_transition_context};
-        context.taxi_destination_region =
-            static_cast<std::uint8_t>(destination);
+        context.taxi_current_region = current_region;
+        context.taxi_destination_region = destination;
         game_scripts_.set_field_mode_context(std::move(context));
         if (!field_dialogue_.open_gameplay_task("taxi_cabbie", "present")) {
             field_taxi_cabbie_destination_.reset();
@@ -13317,7 +13326,8 @@ void FieldSceneRuntime::advance_frame() {
                     // field_resource_mode; keep their mirrors current before
                     // applying selector 0x136B6's FFFBF8 vs FFDDC4 check [C].
                     const auto accepted_field_mode =
-                        game_scripts_.field_mode_context_value();
+                        scripting::script_field_region_source_value(
+                            destination);
                     state_.field_scene_buffers.field_resource_mode =
                         accepted_field_mode;
                     state_.field_resource_mode = accepted_field_mode;
@@ -13327,7 +13337,8 @@ void FieldSceneRuntime::advance_frame() {
                         source_boundary(
                             "field.taxi.accepted_current_scene_no_travel");
                     } else {
-                        field_taxi_pending_destination_ = destination;
+                        field_taxi_pending_destination_ =
+                            static_cast<std::uint16_t>(accepted_field_mode);
                         if (field_elevator_scene_transition_.begin_fade_out()) {
                             field_taxi_transition_active_ = true;
                             taxi_departure_started = true;
@@ -13479,12 +13490,14 @@ void FieldSceneRuntime::advance_frame() {
                    FieldDialogueAdvanceResult::taxi_selector_requested) {
             const auto current_region =
                 state_.field_scene_buffers.field_resource_mode;
-            if (current_region > 6U) {
+            const auto region =
+                scripting::script_field_region_from_source_value(
+                    static_cast<std::uint8_t>(current_region));
+            if (!region.has_value()) {
                 source_boundary("field.taxi.current_region_unresolved");
             } else {
                 scripting::ScriptMenuRouteStartArguments arguments{};
-                arguments.taxi_current_region =
-                    static_cast<std::uint8_t>(current_region);
+                arguments.taxi_current_region = *region;
                 open_command_overview(
                     static_cast<std::uint16_t>(
                         srx::MenuScreen::TAXI_SELECTOR),
@@ -16113,15 +16126,16 @@ void FieldSceneRuntime::paint_command_overview(QPainter& painter) const {
         painter.drawImage(kCabMapPlateScreenX, kCabMapPlateScreenY,
                           field_taxi_map_);
         const auto routed_menu = game_scripts_.menu_route_snapshot();
-        const auto region = routed_menu.top_selection;
+        const auto region = scripting::script_field_region_from_id(
+            routed_menu.top_selection_id);
         const auto phase = routed_menu.top_page;
-        if (!region.has_value() || *region < 0 || *region > 6 ||
-            !phase.has_value() || *phase < 0 || *phase > 4) {
+        if (!region.has_value() || !phase.has_value() ||
+            *phase < 0 || *phase > 4) {
             source_boundary("field.taxi.selection_unresolved");
             return;
         }
         const auto plan = cab_mode_selection_plan(
-            static_cast<std::uint8_t>(*region),
+            scripting::script_field_region_source_value(*region),
             static_cast<std::uint8_t>(*phase));
         constexpr int kTile = 8;
         const auto x = plan.cursor_x;

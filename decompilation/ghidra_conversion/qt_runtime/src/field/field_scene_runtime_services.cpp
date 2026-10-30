@@ -779,11 +779,13 @@ bool FieldSceneRuntime::seed_employee_recruitment_run_target_for_dump(
 
 bool FieldSceneRuntime::open_taxi_selector_for_dump(
     const std::uint8_t current_region) {
-    if (!ready_ || current_region > 6U) {
+    const auto region =
+        scripting::script_field_region_from_source_value(current_region);
+    if (!ready_ || !region.has_value()) {
         return false;
     }
     scripting::ScriptMenuRouteStartArguments arguments{};
-    arguments.taxi_current_region = current_region;
+    arguments.taxi_current_region = *region;
     open_command_overview(
         static_cast<std::uint16_t>(srx::MenuScreen::TAXI_SELECTOR),
         std::move(arguments));

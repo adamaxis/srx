@@ -3719,10 +3719,20 @@ struct GameScriptRuntime::Impl {
             }
             return 0;
         case MenuBinding::begin_taxi_cabbie: {
+            std::string region_id;
+            if (!read_string(lua, 1, region_id)) {
+                return luaL_error(
+                    lua, "game.begin_taxi_cabbie expects a named region");
+            }
+            const auto region = script_field_region_from_id(region_id);
+            if (!region.has_value()) {
+                return luaL_error(
+                    lua, "game.begin_taxi_cabbie received an unknown region");
+            }
             const bool accepted =
                 self->menu_route_bindings.game.begin_taxi_cabbie &&
                 self->menu_route_bindings.game.begin_taxi_cabbie(
-                    integer_argument(1));
+                    *region);
             lua_pushboolean(lua, accepted ? 1 : 0);
             return 1;
         }
@@ -4397,6 +4407,9 @@ struct GameScriptRuntime::Impl {
                 menu_route_state.top_selection =
                     read_optional_alias(screen_state_index, "selection",
                                         "selector");
+                (void)read_optional_field_string(
+                    state, screen_state_index, "selection",
+                    menu_route_state.top_selection_id);
                 (void)read_optional_field_string(
                     state, screen_state_index, "selected_action",
                     menu_route_state.top_action_id);
@@ -5615,11 +5628,19 @@ struct GameScriptRuntime::Impl {
             } else {
                 lua_pushnil(lua);
             }
+        } else if (field == "taxi_current_region") {
+            if (self->field_mode_context.taxi_current_region.has_value()) {
+                const auto region_id = script_field_region_id(
+                    *self->field_mode_context.taxi_current_region);
+                lua_pushlstring(lua, region_id.data(), region_id.size());
+            } else {
+                lua_pushnil(lua);
+            }
         } else if (field == "taxi_destination_region") {
             if (self->field_mode_context.taxi_destination_region.has_value()) {
-                lua_pushinteger(
-                    lua,
+                const auto region_id = script_field_region_id(
                     *self->field_mode_context.taxi_destination_region);
+                lua_pushlstring(lua, region_id.data(), region_id.size());
             } else {
                 lua_pushnil(lua);
             }
@@ -5630,20 +5651,7 @@ struct GameScriptRuntime::Impl {
     }
 
     static int field_context_newindex(lua_State* lua) {
-        auto* self = from_upvalue(lua);
-        std::string field;
-        if (self == nullptr || lua_type(lua, 2) != LUA_TSTRING ||
-            !read_string(lua, 2, field) || field != "mode") {
-            return luaL_error(lua, "game.field context is read-only");
-        }
-        std::uint32_t mode = 0U;
-        if (!read_integer(lua, 3, 0xFFU, mode)) {
-            return luaL_error(lua, "game.field.mode must be a byte");
-        }
-        // FFFBF8 is a mutable source context byte. ROM 0x208FE writes the
-        // selected taxi region here before 0x136B6 decides whether to travel.
-        self->field_mode_context.mode = static_cast<std::uint8_t>(mode);
-        return 0;
+        return luaL_error(lua, "game.field context is read-only");
     }
 
     static int movement_collision(lua_State* lua) {
@@ -11536,10 +11544,6 @@ void GameScriptRuntime::set_field_mode_context(
     impl_->field_mode_context = context;
 }
 
-std::uint8_t GameScriptRuntime::field_mode_context_value() const noexcept {
-    return impl_->field_mode_context.mode;
-}
-
 void GameScriptRuntime::set_actor_heartbeat_observer(
     ScriptActorHeartbeatObserver observer) {
     impl_->actor_heartbeat_observer = std::move(observer);
@@ -15886,7 +15890,9 @@ bool GameScriptRuntime::open_menu_route(
         lua_setfield(state, -2, "node_analysis_level");
     }
     if (start_arguments.taxi_current_region.has_value()) {
-        lua_pushinteger(state, *start_arguments.taxi_current_region);
+        const auto region_id = script_field_region_id(
+            *start_arguments.taxi_current_region);
+        lua_pushlstring(state, region_id.data(), region_id.size());
         lua_setfield(state, -2, "current_region");
     }
     lua_pushboolean(state, start_arguments.return_to_field ? 1 : 0);

@@ -13,8 +13,8 @@ end
 function M.new(args)
     args = args or {}
     local region = args.current_region
-    local selection = type(region) == "number" and
-                      Taxi.region_to_cursor[region + 1] or nil
+    local selection = type(region) == "string" and
+                      Taxi.region_to_cursor[region] or nil
     assert(selection ~= nil, "taxi selector requires a known field region")
     return {
         row = selection,

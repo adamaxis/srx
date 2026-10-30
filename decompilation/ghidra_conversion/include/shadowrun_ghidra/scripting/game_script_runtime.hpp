@@ -23,6 +23,75 @@
 
 namespace shadowrun::ghidra_conversion::scripting {
 
+// Stable gameplay identities for regions used by the taxi service. The
+// numeric field-resource selector is translated at the native boundary;
+// gameplay Lua only sees these names.
+enum class ScriptFieldRegion : std::uint8_t {
+    downtown_seattle,
+    puyallup_barrens,
+    redmond_barrens,
+    penumbra_district,
+    council_island,
+    renraku_arcology,
+    salish_shidhe,
+};
+
+inline constexpr std::string_view script_field_region_id(
+    const ScriptFieldRegion region) noexcept {
+    switch (region) {
+    case ScriptFieldRegion::downtown_seattle: return "downtown_seattle";
+    case ScriptFieldRegion::puyallup_barrens: return "puyallup_barrens";
+    case ScriptFieldRegion::redmond_barrens: return "redmond_barrens";
+    case ScriptFieldRegion::penumbra_district: return "penumbra_district";
+    case ScriptFieldRegion::council_island: return "council_island";
+    case ScriptFieldRegion::renraku_arcology: return "renraku_arcology";
+    case ScriptFieldRegion::salish_shidhe: return "salish_shidhe";
+    }
+    return {};
+}
+
+inline constexpr std::optional<ScriptFieldRegion> script_field_region_from_id(
+    const std::string_view id) noexcept {
+    if (id == "downtown_seattle") return ScriptFieldRegion::downtown_seattle;
+    if (id == "puyallup_barrens") return ScriptFieldRegion::puyallup_barrens;
+    if (id == "redmond_barrens") return ScriptFieldRegion::redmond_barrens;
+    if (id == "penumbra_district") return ScriptFieldRegion::penumbra_district;
+    if (id == "council_island") return ScriptFieldRegion::council_island;
+    if (id == "renraku_arcology") return ScriptFieldRegion::renraku_arcology;
+    if (id == "salish_shidhe") return ScriptFieldRegion::salish_shidhe;
+    return std::nullopt;
+}
+
+// These conversions are confined to the host adapter. The source region
+// value is FFFBF8 / selector state; it is not a Lua-side region identifier.
+inline constexpr std::optional<ScriptFieldRegion>
+script_field_region_from_source_value(const std::uint8_t value) noexcept {
+    switch (value) {
+    case 0U: return ScriptFieldRegion::downtown_seattle;
+    case 1U: return ScriptFieldRegion::puyallup_barrens;
+    case 2U: return ScriptFieldRegion::redmond_barrens;
+    case 3U: return ScriptFieldRegion::penumbra_district;
+    case 4U: return ScriptFieldRegion::council_island;
+    case 5U: return ScriptFieldRegion::renraku_arcology;
+    case 6U: return ScriptFieldRegion::salish_shidhe;
+    default: return std::nullopt;
+    }
+}
+
+inline constexpr std::uint8_t script_field_region_source_value(
+    const ScriptFieldRegion region) noexcept {
+    switch (region) {
+    case ScriptFieldRegion::downtown_seattle: return 0U;
+    case ScriptFieldRegion::puyallup_barrens: return 1U;
+    case ScriptFieldRegion::redmond_barrens: return 2U;
+    case ScriptFieldRegion::penumbra_district: return 3U;
+    case ScriptFieldRegion::council_island: return 4U;
+    case ScriptFieldRegion::renraku_arcology: return 5U;
+    case ScriptFieldRegion::salish_shidhe: return 6U;
+    }
+    return 0U;
+}
+
 using StoryFacts = std::unordered_map<std::string, bool>;
 using StoryFactReader =
     std::function<std::optional<bool>(std::string_view)>;
@@ -517,7 +586,7 @@ struct ScriptMenuRouteGame {
     std::function<int(int)> save_status;
     std::function<std::optional<std::uint32_t>()> nuyen;
     std::function<void(std::uint32_t)> set_nuyen;
-    std::function<bool(int)> begin_taxi_cabbie;
+    std::function<bool(ScriptFieldRegion)> begin_taxi_cabbie;
     std::function<void()> consume_debug_unlock;
     std::function<void()> seed_debug_contacts;
     std::function<void()> set_walk_fast;
@@ -562,7 +631,7 @@ struct ScriptMenuRouteStartArguments {
     std::optional<std::uint8_t> matrix_node_ic_condition;
     // Optional semantic analysis level for a progressed Matrix QA snapshot.
     std::optional<std::uint8_t> matrix_node_analysis_level;
-    std::optional<std::uint8_t> taxi_current_region;
+    std::optional<ScriptFieldRegion> taxi_current_region;
     bool return_to_field = false;
 };
 
@@ -727,6 +796,7 @@ struct ScriptMenuRouteSnapshot {
     std::optional<int> top_column;
     std::optional<int> top_row;
     std::optional<int> top_selection;
+    std::string top_selection_id;
     std::string top_action_id;
     std::optional<int> top_program_index;
     std::optional<int> top_program_slot;
@@ -1048,9 +1118,10 @@ struct ScriptFieldModeContext {
     // A named modal variant lets a shared field-mode presenter resolve
     // service-specific notices without encoding content keys in C++.
     std::string prompt_variant;
-    // Selector-confirmed target passed to the Lua cabbie dialogue; mapped from
-    // the destination table at 0xD445D [C].
-    std::optional<std::uint8_t> taxi_destination_region;
+    // Stable region identities passed to the Lua cabbie dialogue. The native
+    // adapter maps source selector values through the table at 0xD445D [C].
+    std::optional<ScriptFieldRegion> taxi_current_region;
+    std::optional<ScriptFieldRegion> taxi_destination_region;
 };
 
 enum class ScriptRunFieldEventAction : std::uint8_t {
@@ -2460,10 +2531,6 @@ public:
                               std::optional<std::uint8_t> scene_id =
                                   std::nullopt);
     void set_field_mode_context(ScriptFieldModeContext context) noexcept;
-    // FFFBF8 is writable by selected Lua field commands such as the taxi
-    // destination handoff at ROM 0x208FE; the field host reads it back before
-    // applying the ROM 0x136B6 scene-change gate.
-    std::uint8_t field_mode_context_value() const noexcept;
     // Lua resolves attack/reload mode from the weapon data and applies the
     // shared 0xABFC / 0xD7EA calculation to the marshalled runner facts. [C]
     std::optional<std::int16_t> player_weapon_action_delay(

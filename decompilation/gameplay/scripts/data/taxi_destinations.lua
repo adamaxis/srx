@@ -2,38 +2,48 @@
 -- ROM 0xD445D maps that cursor position back to the destination region.
 local M = {}
 
-M.cursor_to_region = { 6, 4, 2, 5, 0, 3, 1 }
-M.region_to_cursor = { 4, 6, 2, 5, 1, 3, 0 }
-M.region_names = {
-    [0] = "Downtown Seattle",
-    [1] = "Puyallup Barrens",
-    [2] = "Redmond Barrens",
-    [3] = "Penumbra District",
-    [4] = "Council Island",
-    [5] = "Renraku Arcology",
-    [6] = "Salish-Shidhe",
+M.cursor_to_region = {
+    "salish_shidhe", "council_island", "redmond_barrens",
+    "renraku_arcology", "downtown_seattle", "penumbra_district",
+    "puyallup_barrens",
 }
-
--- Region indices come from the cursor table at 0xD445D [C]. Each fare is
--- record byte +0x1D in the 30-byte records beginning at 0xD4464 [C].
+M.region_to_cursor = {
+    downtown_seattle = 4,
+    puyallup_barrens = 6,
+    redmond_barrens = 2,
+    penumbra_district = 5,
+    council_island = 1,
+    renraku_arcology = 3,
+    salish_shidhe = 0,
+}
+-- Stable game-facing region IDs are translated to the field selector's source
+-- values by the native adapter. Each fare comes from record byte +0x1D in the
+-- 30-byte records beginning at 0xD4464 [C].
 M.Region = {
-    DOWNTOWN_SEATTLE = 0, -- Region table index from 0xD445D [C]
-    PUYALLUP_BARRENS = 1, -- Region table index from 0xD445D [C]
-    REDMOND_BARRENS = 2, -- Region table index from 0xD445D [C]
-    PENUMBRA_DISTRICT = 3, -- Region table index from 0xD445D [C]
-    COUNCIL_ISLAND = 4, -- Region table index from 0xD445D [C]
-    RENRAKU_ARCOLOGY = 5, -- Region table index from 0xD445D [C]
-    SALISH_SHIDHE = 6, -- Region table index from 0xD445D [C]
+    DOWNTOWN_SEATTLE = "downtown_seattle",
+    PUYALLUP_BARRENS = "puyallup_barrens",
+    REDMOND_BARRENS = "redmond_barrens",
+    PENUMBRA_DISTRICT = "penumbra_district",
+    COUNCIL_ISLAND = "council_island",
+    RENRAKU_ARCOLOGY = "renraku_arcology",
+    SALISH_SHIDHE = "salish_shidhe",
 }
 
 M.regions = {
-    [M.Region.DOWNTOWN_SEATTLE] = { name = M.region_names[0], fare = 20 },
-    [M.Region.PUYALLUP_BARRENS] = { name = M.region_names[1], fare = 40 },
-    [M.Region.REDMOND_BARRENS] = { name = M.region_names[2], fare = 40 },
-    [M.Region.PENUMBRA_DISTRICT] = { name = M.region_names[3], fare = 20 },
-    [M.Region.COUNCIL_ISLAND] = { name = M.region_names[4], fare = 75 },
-    [M.Region.RENRAKU_ARCOLOGY] = { name = M.region_names[5], fare = 20 },
-    [M.Region.SALISH_SHIDHE] = { name = M.region_names[6], fare = 100 },
+    [M.Region.DOWNTOWN_SEATTLE] = {
+        name = "Downtown Seattle", fare = 20 },
+    [M.Region.PUYALLUP_BARRENS] = {
+        name = "Puyallup Barrens", fare = 40 },
+    [M.Region.REDMOND_BARRENS] = {
+        name = "Redmond Barrens", fare = 40 },
+    [M.Region.PENUMBRA_DISTRICT] = {
+        name = "Penumbra District", fare = 20 },
+    [M.Region.COUNCIL_ISLAND] = {
+        name = "Council Island", fare = 75 },
+    [M.Region.RENRAKU_ARCOLOGY] = {
+        name = "Renraku Arcology", fare = 20 },
+    [M.Region.SALISH_SHIDHE] = {
+        name = "Salish-Shidhe", fare = 100 },
 }
 
 -- 0x207B0 selects one of three source fare comments [C]. The 50-nuyen

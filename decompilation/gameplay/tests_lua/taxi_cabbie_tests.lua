@@ -20,7 +20,8 @@ local function fixture(options)
 
     local queued_choices = options.choices or {}
     local field = {
-        mode = options.field_mode or options.current_region,
+        mode = options.field_mode,
+        taxi_current_region = options.current_region,
         taxi_destination_region = options.destination,
     }
     local result = {
@@ -96,8 +97,8 @@ check(Cabbie.present() == nil and speech_was(blocked, "traffic_blocked") and
 
 local already_there = fixture({
     destination = Taxi.Region.REDMOND_BARRENS,
-    field_mode = Taxi.Region.REDMOND_BARRENS,
-    current_scene = Taxi.Region.DOWNTOWN_SEATTLE,
+    current_region = Taxi.Region.REDMOND_BARRENS,
+    current_scene = 0,
     story_flag = true,
     funds = 80,
 })
@@ -106,19 +107,19 @@ check(Cabbie.present() == nil and
       #already_there.prompts == 0,
     "current region exits through the already-there page")
 
-local scene_is_destination_but_field_mode_is_not = fixture({
+local scene_is_destination_but_current_region_is_not = fixture({
     destination = Taxi.Region.DOWNTOWN_SEATTLE,
-    field_mode = Taxi.Region.REDMOND_BARRENS,
-    current_scene = Taxi.Region.DOWNTOWN_SEATTLE,
+    current_region = Taxi.Region.REDMOND_BARRENS,
+    current_scene = 0,
     story_flag = true,
     funds = 80,
     choices = { "no" },
 })
 check(Cabbie.present() == nil and
-      not speech_was(scene_is_destination_but_field_mode_is_not,
+      not speech_was(scene_is_destination_but_current_region_is_not,
                      "already_there") and
-      #scene_is_destination_but_field_mode_is_not.prompts == 1,
-    "scene ID does not replace FFFBF8 for the already-there check")
+      #scene_is_destination_but_current_region_is_not.prompts == 1,
+    "scene ID does not replace the named field region in the already-there check")
 
 local declined = fixture({
     destination = Taxi.Region.DOWNTOWN_SEATTLE,
@@ -142,7 +143,9 @@ local armband_ride = fixture({
 check(Cabbie.present() == "taxi_ride_accepted" and
       speech_was(armband_ride, "free_ride_armband") and
       #armband_ride.prompts == 1 and armband_ride.funds == 0 and
-      armband_ride.field.mode == Taxi.Region.DOWNTOWN_SEATTLE,
+      armband_ride.field.taxi_current_region ==
+          Taxi.Region.REDMOND_BARRENS and
+      armband_ride.field.mode == nil,
     "ork armband grants a free ride without asking for a fare")
 
 local armband_state_unresolved = fixture({
@@ -250,7 +253,8 @@ local charged = fixture({
 })
 check(Cabbie.present() == "taxi_ride_accepted" and charged.funds == 60 and
       speech_was(charged, "hop_in") and
-      charged.field.mode == Taxi.Region.PUYALLUP_BARRENS,
+      charged.field.taxi_current_region == Taxi.Region.REDMOND_BARRENS and
+      charged.field.mode == nil,
     "accepted fare is deducted before the cabbie's normal travel line")
 
 local salish_ride = fixture({

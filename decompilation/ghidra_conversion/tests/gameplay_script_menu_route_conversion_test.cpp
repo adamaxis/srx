@@ -26,6 +26,9 @@ extern "C" {
 #include <vector>
 
 using shadowrun::ghidra_conversion::scripting::GameScriptRuntime;
+using shadowrun::ghidra_conversion::scripting::ScriptFieldRegion;
+using shadowrun::ghidra_conversion::scripting::script_field_region_from_source_value;
+using shadowrun::ghidra_conversion::scripting::script_field_region_id;
 using shadowrun::ghidra_conversion::menus::CommandSection;
 using shadowrun::ghidra_conversion::scripting::ScriptNotebookBoundary;
 using shadowrun::ghidra_conversion::scripting::ScriptNotebookFacts;
@@ -459,7 +462,7 @@ int main() {
     matrix_deck.ratings[11] = 4U;
     std::array<ScriptCyberdeckProgramSlot, 5> matrix_deck_slots{};
     int matrix_deck_commits = 0;
-    std::optional<int> taxi_destination;
+    std::optional<ScriptFieldRegion> taxi_destination;
     bool pocket_extra_row = false;
     std::vector<int> random_bounds;
     bool random_high_branch = false;
@@ -524,8 +527,7 @@ int main() {
         posture = value;
     };
     bindings.game.begin_taxi_cabbie =
-        [&taxi_destination](const int destination) {
-            if (destination < 0 || destination > 6) return false;
+        [&taxi_destination](const ScriptFieldRegion destination) {
             taxi_destination = destination;
             return true;
         };
@@ -3668,13 +3670,21 @@ int main() {
     // Taxi's Lua menu uses the same seven ROM destinations and cab outline
     // records as the opening selector. Confirm requests the cabbie dialogue;
     // travel is dispatched only after that field task accepts the ride.
+    const auto taxi_region_id = [](const std::uint8_t source_value) {
+        const auto region =
+            script_field_region_from_source_value(source_value);
+        return region.has_value()
+            ? std::string(script_field_region_id(*region))
+            : std::string{};
+    };
     ScriptMenuRouteStartArguments taxi_arguments{};
-    taxi_arguments.taxi_current_region = 2U;
+    taxi_arguments.taxi_current_region = ScriptFieldRegion::redmond_barrens;
     check(runtime.open_menu_route(kTaxiSelector, taxi_arguments),
           "field terminal opens the Lua taxi selector", failures);
     route = runtime.menu_route_snapshot();
     check(route.open && route.top_screen == kTaxiSelector &&
-              route.row == 2 && route.top_selection == 2 &&
+              route.row == 2 &&
+              route.top_selection_id == "redmond_barrens" &&
               route.top_page == 0 &&
               route.top_caption_visible == std::optional<bool>{false},
           "taxi selector starts from the current ROM region", failures);
@@ -3695,12 +3705,14 @@ int main() {
     // low byte. The selector's BTST.B instructions read the high-byte edge.
     runtime.advance_menu_route(0x0008U);
     route = runtime.menu_route_snapshot();
-    check(route.row == 2 && route.top_selection == 2,
+    check(route.row == 2 &&
+              route.top_selection_id == "redmond_barrens",
           "taxi selector ignores held Right without a fresh edge",
           failures);
     runtime.advance_menu_route(0x0800U); // Right edge: Redmond -> Council Island.
     route = runtime.menu_route_snapshot();
-    check(route.row == 1 && route.top_selection == 4 &&
+    check(route.row == 1 &&
+              route.top_selection_id == "council_island" &&
               route.top_page == 0 &&
               route.top_caption_visible == std::optional<bool>{false},
           "taxi Right follows the ROM decrement branch and destination table",
@@ -3710,13 +3722,15 @@ int main() {
     }
     runtime.advance_menu_route(0x0400U); // Left edge reverses Right.
     route = runtime.menu_route_snapshot();
-    check(route.row == 2 && route.top_selection == 2,
+    check(route.row == 2 &&
+              route.top_selection_id == "redmond_barrens",
           "taxi Left follows the ROM increment branch", failures);
     for (int frame = 0; frame < 10; ++frame) {
         runtime.advance_menu_route(0U);
     }
     runtime.advance_menu_route(0x4000U); // A edge: request cabbie dialogue.
-    check(!runtime.menu_route_snapshot().open && taxi_destination == 2 &&
+    check(!runtime.menu_route_snapshot().open &&
+              taxi_destination == ScriptFieldRegion::redmond_barrens &&
               closed_count == 10,
           "taxi confirm requests cabbie dialogue for the selected region",
           failures);
@@ -3727,7 +3741,8 @@ int main() {
         runtime.advance_menu_route(0U);
     }
     runtime.advance_menu_route(0x8000U); // Start edge takes the 0x10AF0 exit.
-    check(!runtime.menu_route_snapshot().open && taxi_destination == 2 &&
+    check(!runtime.menu_route_snapshot().open &&
+              taxi_destination == ScriptFieldRegion::redmond_barrens &&
               closed_count == 11,
           "taxi Start exits without opening the A/B cabbie route",
           failures);
@@ -3738,7 +3753,8 @@ int main() {
         runtime.advance_menu_route(0U);
     }
     runtime.advance_menu_route(0x4800U); // Right edge then A edge.
-    check(!runtime.menu_route_snapshot().open && taxi_destination == 4 &&
+    check(!runtime.menu_route_snapshot().open &&
+              taxi_destination == ScriptFieldRegion::council_island &&
               closed_count == 12,
           "taxi applies direction before confirming the selected destination",
           failures);
@@ -3752,10 +3768,11 @@ int main() {
     runtime.advance_menu_route(0x2000U); // C edge calls 0x391A.
     check(runtime.menu_route_snapshot().open &&
               reselect_count == reselect_count_before_taxi_c + 1 &&
-              taxi_destination == 4,
+              taxi_destination == ScriptFieldRegion::council_island,
           "taxi C invokes runner reselect and stays on the selector", failures);
     runtime.advance_menu_route(0xF000U); // A > B > C > Start in ROM order.
-    check(!runtime.menu_route_snapshot().open && taxi_destination == 2 &&
+    check(!runtime.menu_route_snapshot().open &&
+              taxi_destination == ScriptFieldRegion::redmond_barrens &&
               reselect_count == reselect_count_before_taxi_c + 1,
           "taxi A priority precedes B, C, and Start", failures);
 
@@ -3767,7 +3784,8 @@ int main() {
     runtime.advance_menu_route(
         0x4A00U); // Right, Down, then A in the ROM's input order.
     route = runtime.menu_route_snapshot();
-    check(!route.open && taxi_destination == 2,
+    check(!route.open &&
+              taxi_destination == ScriptFieldRegion::redmond_barrens,
           "taxi applies both opposite direction groups before confirm",
           failures);
 
@@ -3793,13 +3811,15 @@ int main() {
             for (std::size_t confirm_index = 0U;
                  confirm_index < kTaxiConfirmButtons.size();
                  ++confirm_index) {
-                taxi_arguments.taxi_current_region = current_region;
+                taxi_arguments.taxi_current_region =
+                    script_field_region_from_source_value(current_region);
                 const auto closed_before_taxi_matrix = closed_count;
                 check(runtime.open_menu_route(kTaxiSelector, taxi_arguments),
                       "taxi selector opens for region matrix", failures);
                 route = runtime.menu_route_snapshot();
                 check(route.row == kTaxiRegionToCursor[current_region] &&
-                          route.top_selection == current_region,
+                          route.top_selection_id ==
+                              taxi_region_id(current_region),
                       "taxi initial cursor matches ROM current-region table",
                       failures);
                 settle_taxi_outline();
@@ -3828,7 +3848,9 @@ int main() {
                         : static_cast<std::uint8_t>((row + 1U) % 7U);
                     route = runtime.menu_route_snapshot();
                     check(route.row == row &&
-                              route.top_selection == kTaxiCursorToRegion[row],
+                              route.top_selection_id ==
+                                  taxi_region_id(
+                                      kTaxiCursorToRegion[row]),
                           "taxi direction edge follows the ROM row table",
                           failures);
                     settle_taxi_outline();
@@ -3837,7 +3859,9 @@ int main() {
                 runtime.advance_menu_route(
                     kTaxiConfirmButtons[confirm_index]);
                 check(!runtime.menu_route_snapshot().open &&
-                          taxi_destination == destination_region &&
+                          taxi_destination ==
+                              script_field_region_from_source_value(
+                                  destination_region) &&
                           closed_count == closed_before_taxi_matrix + 1,
                       "taxi A/B confirms every mapped destination",
                       failures);
@@ -3849,7 +3873,7 @@ int main() {
     // Pair each fresh edge with the same held byte after first exercising the
     // corresponding held-only input and releasing it. This checks every
     // physically reachable button subset and proves the selector reads edges.
-    taxi_arguments.taxi_current_region = 2U;
+    taxi_arguments.taxi_current_region = ScriptFieldRegion::redmond_barrens;
     for (std::uint16_t button_mask = 0U; button_mask < 0x0100U;
          ++button_mask) {
         const auto closed_before_taxi_mask = closed_count;
@@ -3861,7 +3885,8 @@ int main() {
 
         runtime.advance_menu_route(button_mask);
         route = runtime.menu_route_snapshot();
-        check(route.open && route.row == 2U && route.top_selection == 2U &&
+        check(route.open && route.row == 2U &&
+                  route.top_selection_id == "redmond_barrens" &&
                   taxi_destination == taxi_destination_before_mask &&
                   reselect_count == reselect_before_mask,
               "taxi ignores every held-only controller mask", failures);
@@ -3890,7 +3915,10 @@ int main() {
               "taxi C edge follows A/B priority in every input mask",
               failures);
         if (has_ab) {
-            check(!route.open && taxi_destination == expected_destination,
+            check(!route.open &&
+                      taxi_destination ==
+                          script_field_region_from_source_value(
+                              expected_destination),
                   "taxi A/B edge confirms the post-direction destination",
                   failures);
         } else {
@@ -3904,7 +3932,8 @@ int main() {
                   failures);
         } else {
             check(route.open && route.row == expected_row &&
-                      route.top_selection == expected_destination,
+                      route.top_selection_id ==
+                          taxi_region_id(expected_destination),
                   "taxi directions and C preserve ROM branch order",
                   failures);
             settle_taxi_outline();

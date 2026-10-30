@@ -23,9 +23,9 @@ function M.fare_offer_text(region)
 end
 
 local function accepted_ride(region)
-    -- 0x208FE clears the pending selector and writes the destination byte to
-    -- FFFBF8; its Salish branch also consumes the visa [C].
-    game.field.mode = region
+    -- The selected destination is already retained by the native taxi route.
+    -- Return the gameplay outcome; the host translates that named destination
+    -- into its field transition state after this dialogue accepts [C].
     if region == Taxi.Region.SALISH_SHIDHE then
         game.state[VISA_FACT] = false
     end
@@ -34,8 +34,9 @@ end
 
 function M.run(destination_region)
     local destination = Taxi.regions[destination_region]
-    local current_region = game.field.mode
-    if destination == nil or type(current_region) ~= "number" then
+    local current_region = game.field.taxi_current_region
+    if destination == nil or type(current_region) ~= "string" or
+       Taxi.regions[current_region] == nil then
         return "taxi_cabbie_context_unresolved"
     end
 
