@@ -3,7 +3,7 @@ package.path = "decompilation/gameplay/scripts/?.lua;decompilation/gameplay/scri
 local E = require("enums"); local Route = require("menu")
 local Items = require("items").by_id
 local Inventory = require("menu.rules.inventory")
-local P, S, T, Pg = E.Pad, E.MenuScreen, E.MenuTransition, E.MenuPage
+local P, S, T, Section = E.Pad, E.MenuScreen, E.MenuTransition, E.CommandSection
 local fails, n = 0, 0
 local function check(c, msg) n = n + 1; if not c then fails = fails + 1; print("FAIL " .. msg) end end
 local function exact_masks(log, phase, frame, expected)
@@ -100,7 +100,7 @@ local function st(r) return r.stack[1].state end
 local function clear(log) log.sounds = {} end
 
 -- open: page 6, row 0, display off/on, sound 0x25 [C 0x10F50, 0x10E2E]
-local r, log = mk(); check(st(r).page == Pg.POCKET_SECRETARY and st(r).row == 0, "open page")
+local r, log = mk(); check(st(r).section == Section.POCKET_SECRETARY and st(r).selected_inventory_row == 0, "open section")
 check(log.sounds[1] == E.MenuSound.MOVE and #log.sounds == 1, "open sound")
 check(log.blanks[1] == E.DisplayBlank.OFF and log.blanks[2] == E.DisplayBlank.ON, "blank")
 check(log.hold and log.hold[1] == 27 and log.hold[2] == 175, "open build blank hold (emulator 27 black, line 175)")
@@ -121,7 +121,7 @@ check(exact_masks(log, E.MenuMask.LEAD, 0, { { 0, 30, 320, 194 } }) and
       }) and #log.masks == 28, "open lead and staged reveal masks (emulator e2 8600/8628/8629)")
 -- AS exit 0xD4A0 staged frames + return build [C emulator e2 8960..8990]
 do
-    local ra, la = mk(); st(ra).page = Pg.ATTRIBUTES_SKILLS; ra:frame(P.A)
+    local ra, la = mk(); st(ra).section = Section.ATTRIBUTES_SKILLS; ra:frame(P.A)
     check(ra:top().screen == S.ATTRIBUTES_SKILLS, "AS open")
     la.masks = {}; la.hold = nil; ra:frame(P.START)
     local lead0, lead1, rev0, rev1 = 0, 0, 0, 0
@@ -133,8 +133,8 @@ do
     check(la.hold and la.hold[1] == 27 and la.hold[2] == 211, "AS return hold 27 black, line 211")
 end
 -- page wrap 6->0->6 [C 0x114A0]
-r:frame(P.RIGHT); check(st(r).page == 0, "wrap up")
-r:frame(P.LEFT); check(st(r).page == 6, "wrap down")
+r:frame(P.RIGHT); check(st(r).section == Section.INVENTORY_LEFT, "wrap up")
+r:frame(P.LEFT); check(st(r).section == Section.POCKET_SECRETARY, "wrap down")
 -- [C emulator] Model 101T appears after eight VBlanks; Armor Clothing after seven.
 -- [H] The Lua hold represents the CPU-bound picture decode and extends the
 -- measured per-picture delays to the native menu route.
@@ -149,7 +149,7 @@ do
         Inventory.cell(0, 0), "model_101t", 12
     clear(held_log)
     held:frame(P.RIGHT)
-    check(st(held).page == 0 and st(held).inventory_cursor_hidden_frames == 1 and
+    check(st(held).section == Section.INVENTORY_LEFT and st(held).inventory_cursor_hidden_frames == 1 and
           st(held).inventory_cursor_hidden and
           not st(held).inventory_detail_pending and
           st(held).inventory_ammo_count == 12 and
@@ -199,10 +199,10 @@ do
           "pistol detail appears one frame after the MOVE cue [C emulator e6 8748/8789]")
 end
 -- inventory row clamp 0..3
-r:frame(P.RIGHT); for _ = 1, 6 do r:frame(P.DOWN) end; check(st(r).row == 3, "row clamp hi")
-for _ = 1, 6 do r:frame(P.UP) end; check(st(r).row == 0, "row clamp lo")
+r:frame(P.RIGHT); for _ = 1, 6 do r:frame(P.DOWN) end; check(st(r).selected_inventory_row == 3, "row clamp hi")
+for _ = 1, 6 do r:frame(P.UP) end; check(st(r).selected_inventory_row == 0, "row clamp lo")
 -- priority: Left beats A and Start in one frame
-r:frame(P.LEFT | P.A | P.START); check(st(r).page == 6 and r:is_open(), "priority")
+r:frame(P.LEFT | P.A | P.START); check(st(r).section == Section.POCKET_SECRETARY and r:is_open(), "priority")
 -- posture: Up on page>=2 pushes, Right raises with 0x25, clamp at 4, Down closes
 local r2, l2, g2 = mk(); r2:frame(P.UP); check(r2:top().screen == S.POSTURE, "posture push")
 clear(l2); r2:frame(P.RIGHT); check(g2.posture == 3 and l2.sounds[1] == 0x25, "raise")
@@ -252,7 +252,7 @@ do
 end
 -- C: reselect, page 6, never opens posture
 local r4, _, g4 = mk(); r4:frame(P.LEFT); r4:frame(P.C)
-check(st(r4).page == 6 and r4:top().screen == S.COMMAND and g4.reselects == 1, "C path")
+check(st(r4).section == Section.POCKET_SECRETARY and r4:top().screen == S.COMMAND and g4.reselects == 1, "C path")
 -- A on empty inventory slot: 0x24, no push; on item: push ITEM_ACTION
 -- slot 0 = column 0, row 0 (0x12148 row*2+column); any nonzero code
 local r5, l5 = mk({ items = { [0] = 0x01 } }); r5:frame(P.RIGHT); clear(l5)
@@ -263,16 +263,16 @@ r5:frame(P.UP); r5:frame(P.B); check(r5:top().screen == S.ITEM_ACTION, "item act
 -- medical item codes. The source padding is part of the text placement.
 do
     local expected_actions = {
-        [E.ItemAction.EQUIP_OR_USE] = "  Equip/Unequip  ",
-        [E.ItemAction.DISCARD] = "     Discard     ",
-        [E.ItemAction.TRADE] = "      Trade      ",
-        [E.ItemAction.CANCEL] = "     Cancel      ",
+        [E.InventoryAction.EQUIP_OR_USE] = "  Equip/Unequip  ",
+        [E.InventoryAction.DISCARD] = "     Discard     ",
+        [E.InventoryAction.TRADE] = "      Trade      ",
+        [E.InventoryAction.CANCEL] = "     Cancel      ",
     }
     local expected_first_aid = {
-        [E.ItemAction.EQUIP_OR_USE] = "    First Aid    ",
-        [E.ItemAction.DISCARD] = "     Discard     ",
-        [E.ItemAction.TRADE] = "      Trade      ",
-        [E.ItemAction.CANCEL] = "     Cancel      ",
+        [E.InventoryAction.EQUIP_OR_USE] = "    First Aid    ",
+        [E.InventoryAction.DISCARD] = "     Discard     ",
+        [E.InventoryAction.TRADE] = "      Trade      ",
+        [E.InventoryAction.CANCEL] = "     Cancel      ",
     }
     local function action_route(item_code)
         local route = mk({ items = { [0] = item_code } })
@@ -285,18 +285,22 @@ do
         { "medkit", expected_first_aid, "First Aid" },
     }) do
         local route = action_route(fixture[1])
-        for selector = E.ItemAction.EQUIP_OR_USE, E.ItemAction.CANCEL do
-            check(route:top().state.selector == selector and
-                  route:top().state.footer_text == fixture[2][selector],
-                  fixture[3] .. " action footer selector " .. selector)
-            if selector < E.ItemAction.CANCEL then route:frame(P.RIGHT) end
+        local actions = {
+            E.InventoryAction.EQUIP_OR_USE, E.InventoryAction.DISCARD,
+            E.InventoryAction.TRADE, E.InventoryAction.CANCEL,
+        }
+        for position, action in ipairs(actions) do
+            check(route:top().state.selected_action == action and
+                  route:top().state.footer_text == fixture[2][action],
+                  fixture[3] .. " action footer " .. action)
+            if position < #actions then route:frame(P.RIGHT) end
         end
     end
 end
 -- attributes return rebuilds and resets page to 6; window OFF while open
-local r6, l6 = mk(); for _ = 1, 3 do r6:frame(P.LEFT) end; check(st(r6).page == 3, "page 3")
+local r6, l6 = mk(); for _ = 1, 3 do r6:frame(P.LEFT) end; check(st(r6).section == Section.ATTRIBUTES_SKILLS, "attributes section")
 r6:frame(P.A); check(l6.windows[#l6.windows] == E.WindowPlane.OFF, "attr hides sidebar")
-r6:frame(P.START); check(r6:top().screen == S.COMMAND and st(r6).page == 6 and #l6.blanks == 6, "attr rebuild (0xD01C display off/on + 0x10F50 rebuild)")
+r6:frame(P.START); check(r6:top().screen == S.COMMAND and st(r6).section == Section.POCKET_SECRETARY and #l6.blanks == 6, "attr rebuild (0xD01C display off/on + 0x10F50 rebuild)")
 -- pocket secretary exit flag (FFF0CD) leaves menu; otherwise rebuild
 -- (Save/Load is a Lua screen now: screens/save_load.lua; Start = rts, no flags -> PS rebuild) [C 0xEFB4]
 local r7 = mk(); r7:frame(P.A); for _ = 1, 4 do r7:frame(P.DOWN) end; r7:frame(P.A)
